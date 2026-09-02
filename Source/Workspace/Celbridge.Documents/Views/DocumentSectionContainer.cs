@@ -550,6 +550,10 @@ public sealed partial class DocumentSectionContainer
                     tab.ViewModel.FileResource == _activeDocument;
                 tab.UpdateActiveDocumentState(isActiveDocument, _isPanelFocused);
             }
+
+            // The section draws the indicator over whichever of its tabs the loop just marked, so it is
+            // placed once the whole section has been marked rather than once per tab.
+            sectionView.UpdateActiveDocumentIndicator();
         }
     }
 

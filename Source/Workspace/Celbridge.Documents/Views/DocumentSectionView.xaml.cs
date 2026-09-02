@@ -36,6 +36,18 @@ public sealed partial class DocumentSectionView : UserControl
     private readonly WheelGestureAxisTracker _wheelGestureAxisTracker;
     private Storyboard? _perimeterStoryboard;
 
+    // How far below the top of the strip the active document indicator sits, inside the gap the tabs keep
+    // above themselves.
+    private const double ActiveDocumentIndicatorInset = 1;
+
+    // How far inside its tab each end of the active document indicator stops. The bar floats above the tab
+    // rather than touching it, so the eye lines it up against the tab's top edge, which the corner radius
+    // draws in on both sides. The trailing end is held further in than the leading one: a tab has its
+    // neighbour beside it to be read against, while the last tab in the strip has only the gutter, and the
+    // overhang shows there.
+    private const double ActiveDocumentIndicatorLeadingInset = 2;
+    private const double ActiveDocumentIndicatorTrailingInset = 6;
+
     // The tab list template's two overflow arrows, named by their containers because that is what carries
     // the width each arrow costs the strip.
     private static readonly string[] TabStripScrollButtonContainerNames =
@@ -241,7 +253,7 @@ public sealed partial class DocumentSectionView : UserControl
 
         // The strip is still mid-arrange while its size change is raised, so its leading edge only settles on
         // the following cycle.
-        _ = DispatcherQueue.TryEnqueue(UpdateTabStripScrollIndicator);
+        _ = DispatcherQueue.TryEnqueue(UpdateTabStripOverlays);
     }
 
     /// <summary>
@@ -783,7 +795,7 @@ public sealed partial class DocumentSectionView : UserControl
         _ = DispatcherQueue.TryEnqueue(() =>
         {
             AttachTabStripScrollHandlers();
-            UpdateTabStripScrollIndicator();
+            UpdateTabStripOverlays();
         });
     }
 
@@ -874,7 +886,7 @@ public sealed partial class DocumentSectionView : UserControl
         ScrollIndicator.ScrollRequested += OnScrollIndicatorScrollRequested;
         _scrollIndicatorAttached = true;
 
-        UpdateTabStripScrollIndicator();
+        UpdateTabStripOverlays();
     }
 
     // UNO-BUG: the tab strip's ScrollViewer scrolls horizontal wheel input the wrong way on macOS.
@@ -904,13 +916,88 @@ public sealed partial class DocumentSectionView : UserControl
 
     private void OnTabStripViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
     {
-        UpdateTabStripScrollIndicator();
+        UpdateTabStripOverlays();
     }
 
     private void OnScrollIndicatorScrollRequested(double offset)
     {
         var scrollViewer = GetTabStripScrollViewer();
         scrollViewer?.ChangeView(offset, null, null, disableAnimation: true);
+    }
+
+    // The strip draws two overlays outside the tabs themselves: the scroll indicator along the band's bottom
+    // edge, and the active document indicator in the gap above the tabs. Both are placed from the strip's
+    // geometry, so both are refreshed whenever that geometry moves.
+    private void UpdateTabStripOverlays()
+    {
+        UpdateTabStripScrollIndicator();
+        UpdateActiveDocumentIndicator();
+    }
+
+    /// <summary>
+    /// Places the active document indicator over the tab holding the active document, and hides it while this
+    /// section has no such tab or that tab has scrolled out of the strip.
+    /// </summary>
+    public void UpdateActiveDocumentIndicator()
+    {
+        if (_isShuttingDown)
+        {
+            return;
+        }
+
+        DocumentTab? activeTab = null;
+        foreach (var tab in GetAllTabs())
+        {
+            if (tab.IsActiveDocument)
+            {
+                activeTab = tab;
+                break;
+            }
+        }
+
+        var scrollViewer = GetTabStripScrollViewer();
+        if (activeTab is null ||
+            activeTab.ActualWidth <= 0 ||
+            scrollViewer is null ||
+            scrollViewer.ActualWidth <= 0 ||
+            MeasureTabStripHeight() <= 0)
+        {
+            ActiveDocumentIndicator.Visibility = Visibility.Collapsed;
+
+            return;
+        }
+
+        var stripBounds = scrollViewer
+            .TransformToVisual(RootGrid)
+            .TransformBounds(new Rect(0, 0, scrollViewer.ActualWidth, scrollViewer.ActualHeight));
+
+        var tabBounds = activeTab
+            .TransformToVisual(RootGrid)
+            .TransformBounds(new Rect(0, 0, activeTab.ActualWidth, activeTab.ActualHeight));
+
+        // The strip scrolls under the indicator rather than carrying it, so whatever of the tab has passed
+        // either end of the strip comes off the bar instead of being drawn over the chrome beside it. The
+        // inset is taken off the tab before that, so a bar the strip has clipped still stops short of its tab.
+        double left = Math.Max(tabBounds.Left + ActiveDocumentIndicatorLeadingInset, stripBounds.Left);
+        double right = Math.Min(tabBounds.Right - ActiveDocumentIndicatorTrailingInset, stripBounds.Right);
+        if (right - left < 1)
+        {
+            ActiveDocumentIndicator.Visibility = Visibility.Collapsed;
+
+            return;
+        }
+
+        // The bar sits nearer the top of the strip than the tab below it, rather than centred in the gap: the
+        // section's own edge runs directly above the bar and reads as part of the space over it, so an equal
+        // split leaves the top looking the wider of the two. Measured from the top of the strip rather than of
+        // the section, which the section's edge holds a pixel below it.
+        double indicatorTop = stripBounds.Top + ActiveDocumentIndicatorInset;
+
+        ActiveDocumentIndicator.Visibility = Visibility.Visible;
+        ActiveDocumentIndicator.Width = right - left;
+        ActiveDocumentIndicator.Margin = new Thickness(left, indicatorTop, 0, 0);
+
+        FocusedDocumentIndicator.Visibility = activeTab.IsFocusedActiveDocument ? Visibility.Visible : Visibility.Collapsed;
     }
 
     /// <summary>
@@ -935,17 +1022,18 @@ public sealed partial class DocumentSectionView : UserControl
             return;
         }
 
-        // The band is pinned to the authored strip height and starts at the top of the section's content, so
-        // the indicator's place down the band is the same in every section. The pixel it keeps below itself
-        // clears the document underneath: on macOS that is a native web view drawn over managed content,
-        // which clips a bar flush with the band's bottom edge.
-        double indicatorTop = stripHeight - ScrollIndicator.Height - 1;
-
         // Where the tabs start across the band depends on the toolbar in the strip header, so the leading
         // edge is the one part of the placement that has to be measured.
         var stripBounds = scrollViewer
             .TransformToVisual(RootGrid)
             .TransformBounds(new Rect(0, 0, scrollViewer.ActualWidth, scrollViewer.ActualHeight));
+
+        // The band is pinned to the authored strip height, so the indicator's place down the band is the same
+        // in every section. Measured from the top of the strip rather than of the section, which the section's
+        // own edge holds a pixel below it. The pixel the bar keeps below itself clears the document
+        // underneath: on macOS that is a native web view drawn over managed content, which clips a bar flush
+        // with the band's bottom edge.
+        double indicatorTop = stripBounds.Top + stripHeight - ScrollIndicator.Height - 1;
 
         ScrollIndicator.Width = stripBounds.Width;
         ScrollIndicator.Margin = new Thickness(stripBounds.Left, indicatorTop, 0, 0);

@@ -5,6 +5,7 @@ using Celbridge.Platform;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.UserInterface.Services;
+using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Xaml.Media.Animation;
 
@@ -42,6 +43,13 @@ public partial class DocumentTab : TabViewItem
     private readonly IMessengerService _messengerService;
     private readonly IPlatformInfo _platformInfo;
 
+    /// <summary>
+    /// The gap the tab keeps between itself and the top of the strip band. The section draws the active
+    /// document indicator in it, which is what stops that bar sharing an edge with either the tab or the
+    /// section.
+    /// </summary>
+    public const double StripTopGap = 7;
+
     // How long after handling a double tap a second one is treated as the duplicate event rather than a
     // new gesture. Wide enough to cover the duplicate, which trails by a few milliseconds, and well short
     // of the two further presses a real second double-click needs.
@@ -53,7 +61,7 @@ public partial class DocumentTab : TabViewItem
     // When the last double tap was handled, used to discard the duplicate that follows it.
     private DateTime _lastDoubleTapTime;
 
-    // Whether the documents panel holds the keyboard, which the selection indicator's tone shows.
+    // Whether the documents panel holds the keyboard, which the active document indicator's tone shows.
     private bool _isPanelFocused;
 
     public DocumentTabViewModel ViewModel { get; }
@@ -78,6 +86,12 @@ public partial class DocumentTab : TabViewItem
     /// Gets whether this tab is the active document.
     /// </summary>
     public bool IsActiveDocument { get; private set; }
+
+    /// <summary>
+    /// Gets whether this tab is the active document while the documents panel holds the keyboard, which is
+    /// what the active document indicator shows in the accent colour.
+    /// </summary>
+    public bool IsFocusedActiveDocument => IsActiveDocument && _isPanelFocused;
 
     /// <summary>
     /// Briefly pulses the tab's background to the accent color to draw the user's attention to it, then fades
@@ -114,6 +128,11 @@ public partial class DocumentTab : TabViewItem
     public DocumentTab()
     {
         this.InitializeComponent();
+
+        // The tab takes the strip band less the gap it holds above itself, so it runs from under the active
+        // document indicator down to the document it heads.
+        Height = WorkspaceConstants.SectionTabStripHeight - StripTopGap;
+        Margin = new Thickness(0, StripTopGap, 0, 0);
 
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _commandService = ServiceLocator.AcquireService<ICommandService>();
@@ -211,24 +230,14 @@ public partial class DocumentTab : TabViewItem
     }
 
     /// <summary>
-    /// Updates the visual state to indicate whether this tab is the active document, and whether the
-    /// documents panel holds the keyboard.
+    /// Records whether this tab is the active document, and whether the documents panel holds the keyboard.
+    /// The section reads both back when it places the active document indicator, which it draws itself since
+    /// a tab clips anything drawn inside it to its own rounded corners.
     /// </summary>
     public void UpdateActiveDocumentState(bool isActiveDocument, bool isPanelFocused)
     {
-        if (IsActiveDocument == isActiveDocument
-            && _isPanelFocused == isPanelFocused)
-        {
-            return;
-        }
-
         IsActiveDocument = isActiveDocument;
         _isPanelFocused = isPanelFocused;
-
-        SelectionIndicator.Visibility = isActiveDocument ? Visibility.Visible : Visibility.Collapsed;
-
-        bool isFocusedActiveDocument = isActiveDocument && isPanelFocused;
-        FocusedSelectionIndicator.Visibility = isFocusedActiveDocument ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void ContextMenu_Close(object sender, RoutedEventArgs e)

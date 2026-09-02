@@ -29,10 +29,13 @@
                  FontStyle="Italic"/>
     </Border>
     
-    <!-- TabView for documents -->
+    <!-- TabView for documents. The stock padding holds the tab list eight pixels down the band. Cleared so the
+         whole band belongs to the tabs, which keep a gap of their own above themselves for the active document
+         indicator to sit in. -->
     <TabView x:Name="TabView"
              AutomationProperties.AutomationId="document-tab-strip"
              IsAddTabButtonVisible="False"
+             Padding="0"
              TabWidthMode="SizeToContent"
              VerticalAlignment="Stretch"
              CanReorderTabs="True"
@@ -62,6 +65,25 @@
                                    HorizontalAlignment="Left"
                                    VerticalAlignment="Top"
                                    Visibility="Collapsed"/>
+
+    <!-- Active document indicator, drawn in the gap the tabs keep above themselves. Kept outside the tabs
+         because a tab clips its content to its own rounded corners, so a bar drawn inside one cannot reach
+         that gap. Placed over the active tab from code-behind, which is where the strip's geometry is known. -->
+    <Grid x:Name="ActiveDocumentIndicator"
+          Height="3"
+          HorizontalAlignment="Left"
+          VerticalAlignment="Top"
+          IsHitTestVisible="False"
+          Visibility="Collapsed">
+      <!-- The neutral bar marks the active document. The accent bar over it marks the documents panel holding
+           the keyboard, so the bar reads as accent only while the document shortcuts are live. -->
+      <Border Background="{ThemeResource ButtonActiveBackgroundBrush}"
+              CornerRadius="1.5"/>
+      <Border x:Name="FocusedDocumentIndicator"
+              Background="{ThemeResource AccentContrastBrush}"
+              CornerRadius="1.5"
+              Visibility="Collapsed"/>
+    </Grid>
 
     <!-- Attention flash outline, tracing the same edges and corners as the section's own chrome. -->
     <Border x:Name="PerimeterOverlay"
