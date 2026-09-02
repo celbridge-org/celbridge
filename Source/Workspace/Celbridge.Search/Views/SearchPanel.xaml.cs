@@ -1,4 +1,5 @@
 using Celbridge.Search.ViewModels;
+using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.UserInterface.Services;
 using Windows.System;
@@ -31,6 +32,9 @@ public sealed partial class SearchPanel : UserControl, ISearchPanel
         var overlayInputSuppressor = ServiceLocator.AcquireService<IOverlayInputSuppressor>();
         overlayInputSuppressor.SuppressWhileOpen(SearchHistoryFlyout);
         overlayInputSuppressor.SuppressWhileOpen(ReplaceHistoryFlyout);
+
+        // The query and replace boxes handle their own editing keys, and the host drives no selection here.
+        FocusTracking.SetEditTarget(this, new DisabledEditTarget());
     }
 
     private void OnSearchHistoryFlyoutOpening(object? sender, object e)

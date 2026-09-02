@@ -83,14 +83,15 @@ public class FocusServiceTests
     }
 
     [Test]
-    public void OnFocusReceived_WebSurfaceWithNoTarget_ClearsTheEditTarget()
+    public void OnFocusReceived_WebSurfaceWithNoTargetInTheSamePanel_ClearsTheEditTarget()
     {
         var target = Substitute.For<IEditTarget>();
-        _focusService.OnFocusReceived(FocusClaim.FromManagedControl(FocusPanelId.Explorer, target));
+        _focusService.OnFocusReceived(FocusClaim.FromManagedControl(FocusPanelId.Documents, target));
 
-        // A .webview page edits itself natively, so Edit commands must stop routing to the tree the user left.
-        var pageClaim = FocusClaim.FromWebSurface(FocusPanelId.Documents, null, _surface, () => { });
-        _focusService.OnFocusReceived(pageClaim);
+        // Only chrome preserves the edit context, and a web surface is not chrome, so a surface claiming the
+        // panel that holds the context ends the edit rather than inheriting it.
+        var surfaceClaim = FocusClaim.FromWebSurface(FocusPanelId.Documents, null, _surface, () => { });
+        _focusService.OnFocusReceived(surfaceClaim);
 
         _focusService.EditTarget.Should().BeNull();
     }
@@ -139,9 +140,8 @@ public class FocusServiceTests
             () => firstReleaseCount++);
         _focusService.OnFocusReceived(firstClaim);
 
-        // Two .webview documents both claim the Documents panel and carry no edit target, so neither the
-        // panel nor the target changes when focus moves between them. Only the surface identity shows that
-        // the first has lost the keyboard and must drop its caret.
+        // Both surfaces claim the Documents panel, so only the surface identity marks the first as losing
+        // the keyboard.
         var secondSurface = new TestFocusSurface();
         var secondClaim = FocusClaim.FromWebSurface(
             FocusPanelId.Documents,
@@ -168,19 +168,42 @@ public class FocusServiceTests
     }
 
     [Test]
-    public void OnFocusReceived_NewPanelWithoutTarget_PreservesEditTarget()
+    public void OnFocusReceived_NewPanelWithoutTarget_ClearsEditTarget()
     {
         var target = Substitute.For<IEditTarget>();
-        var documentsClaim = FocusClaim.FromManagedControl(FocusPanelId.Documents, target);
+        var explorerClaim = FocusClaim.FromManagedControl(FocusPanelId.Explorer, target);
+        _focusService.OnFocusReceived(explorerClaim);
+
+        var documentsClaim = FocusClaim.FromManagedControl(FocusPanelId.Documents);
         _focusService.OnFocusReceived(documentsClaim);
 
-        // A panel that claims focus without an edit target (e.g. Search) leaves the last editing surface in
-        // place, so Edit commands still route there.
-        var searchClaim = FocusClaim.FromManagedControl(FocusPanelId.Search);
-        _focusService.OnFocusReceived(searchClaim);
+        _focusService.FocusedPanel.Should().Be(FocusPanelId.Documents);
+        _focusService.EditTarget.Should().BeNull();
+    }
 
-        _focusService.FocusedPanel.Should().Be(FocusPanelId.Search);
+    [Test]
+    public void OnFocusReceived_ChromeInTheSamePanel_PreservesEditTarget()
+    {
+        var target = Substitute.For<IEditTarget>();
+        _focusService.OnFocusReceived(FocusClaim.FromManagedControl(FocusPanelId.Documents, target));
+
+        // Chrome in the panel that already holds the edit context takes the keyboard without ending the
+        // edit, whether or not a web surface is what holds it.
+        _focusService.OnFocusReceived(FocusClaim.FromManagedControl(FocusPanelId.Documents));
+
         _focusService.EditTarget.Should().Be(target);
+    }
+
+    [Test]
+    public void OnFocusReceived_WebSurfaceWithoutTargetInANewPanel_ClearsEditTarget()
+    {
+        var target = Substitute.For<IEditTarget>();
+        _focusService.OnFocusReceived(FocusClaim.FromManagedControl(FocusPanelId.Explorer, target));
+
+        var surfaceClaim = FocusClaim.FromWebSurface(FocusPanelId.Documents, null, _surface, () => { });
+        _focusService.OnFocusReceived(surfaceClaim);
+
+        _focusService.EditTarget.Should().BeNull();
     }
 
     [Test]

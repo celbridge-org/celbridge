@@ -3,7 +3,9 @@ using Celbridge.Logging;
 using Celbridge.ProjectSettings.ViewModels;
 using Celbridge.Resources;
 using Celbridge.UserInterface;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.UserInterface.Views.Controls;
+using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.ProjectSettings.Views;
@@ -210,6 +212,8 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
         return Result.Ok();
     }
 
+    public IEditTarget EditTarget { get; } = new DisabledEditTarget();
+
     public void FocusDocument()
     {
         // The rail is this document's own navigation, so it is what holds the keyboard. Focusing the view
@@ -231,6 +235,9 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
     public async Task PrepareToClose()
     {
         await Task.CompletedTask;
+
+        var focusService = ServiceLocator.AcquireService<IFocusService>();
+        focusService.ClearEditTarget(EditTarget);
 
         ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
         ViewModel.Unregister();

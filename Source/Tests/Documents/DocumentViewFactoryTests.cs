@@ -21,7 +21,6 @@ public class DocumentViewFactoryTests
     private FileTypeHelper _fileTypeHelper = null!;
     private DocumentEditorPreferenceStore _preferenceStore = null!;
     private FileTypeClassifier _classifier = null!;
-    private IServiceProvider _serviceProvider = null!;
 
     [SetUp]
     public void Setup()
@@ -63,8 +62,6 @@ public class DocumentViewFactoryTests
             _textBinarySniffer,
             _workspaceWrapper,
             _registry);
-
-        _serviceProvider = Substitute.For<IServiceProvider>();
     }
 
     [Test]
@@ -364,7 +361,6 @@ public class DocumentViewFactoryTests
             _workspaceWrapper,
             _preferenceStore,
             _classifier,
-            _serviceProvider,
             Substitute.For<ILogger<DocumentViewFactory>>());
     }
 
