@@ -3,7 +3,7 @@ using Celbridge.Dialog;
 using Celbridge.FilePicker;
 using Celbridge.Projects;
 using Celbridge.UserInterface.Services;
-using Celbridge.Workshop;
+using Celbridge.Community;
 
 namespace Celbridge.UserInterface.ViewModels;
 
@@ -63,21 +63,21 @@ public partial class HomeViewModel : ObservableObject
     [RelayCommand]
     private void ShowLearn()
     {
-        OpenWorkshopSection(WorkshopSections.Learn);
+        OpenCommunityUrl(CommunityUrls.Learn);
     }
 
     [RelayCommand]
     private void ShowForum()
     {
-        OpenWorkshopSection(WorkshopSections.Forum);
+        OpenCommunityUrl(CommunityUrls.Forum);
     }
 
     // No workspace is loaded on the Home page, so there is nowhere to dock a web view document.
-    private void OpenWorkshopSection(WorkshopSection section)
+    private void OpenCommunityUrl(string url)
     {
         _commandService.Execute<IOpenBrowserCommand>(command =>
         {
-            command.URL = section.Url;
+            command.URL = url;
         });
     }
 

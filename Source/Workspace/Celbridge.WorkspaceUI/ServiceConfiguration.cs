@@ -1,6 +1,6 @@
 using Celbridge.DataTransfer;
 using Celbridge.UserInterface;
-using Celbridge.Workshop;
+using Celbridge.Community;
 using Celbridge.Workspace;
 using Celbridge.WorkspaceUI.Commands;
 using Celbridge.WorkspaceUI.Platform;
@@ -20,7 +20,7 @@ public static class ServiceConfiguration
 
         services.AddSingleton<IFocusService, FocusService>();
         services.AddSingleton<PanelFocusTracker>();
-        services.AddSingleton<IWorkshopService, WorkshopService>();
+        services.AddSingleton<ICommunityService, CommunityService>();
 
         PlatformServiceConfiguration.ConfigureServices(services);
 

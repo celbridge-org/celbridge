@@ -1433,16 +1433,16 @@ Open with default application instead?</value>
   <data name="UtilityPanel_DocumentShortcutTooltip" xml:space="preserve">
     <value>Open '{0}'</value>
   </data>
-  <data name="UtilityPanel_WorkshopTooltip" xml:space="preserve">
-    <value>Community Workshop</value>
+  <data name="UtilityPanel_CommunityTooltip" xml:space="preserve">
+    <value>Community</value>
   </data>
-  <data name="Workshop_Section_Celbridge" xml:space="preserve">
+  <data name="Community_Section_Celbridge" xml:space="preserve">
     <value>Celbridge</value>
   </data>
-  <data name="Workshop_Section_Learn" xml:space="preserve">
+  <data name="Community_Section_Learn" xml:space="preserve">
     <value>Learn</value>
   </data>
-  <data name="Workshop_Section_Forum" xml:space="preserve">
+  <data name="Community_Section_Forum" xml:space="preserve">
     <value>Forum</value>
   </data>
   <data name="Utility_OpenAsDocument_Tooltip" xml:space="preserve">

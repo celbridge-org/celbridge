@@ -1,5 +1,5 @@
 using System.Text;
-using Celbridge.Workshop;
+using Celbridge.Community;
 using Celbridge.Logging;
 using Celbridge.Packages;
 using Celbridge.Platform;
@@ -20,7 +20,7 @@ public class WorkspaceLoader
     private readonly IProjectLoadReporter _loadReporter;
     private readonly IProjectHealthService _projectHealthService;
     private readonly IAppEnvironment _appEnvironment;
-    private readonly IWorkshopService _workshopService;
+    private readonly ICommunityService _communityService;
 
     public WorkspaceLoader(
         ILogger<WorkspaceLoader> logger,
@@ -31,7 +31,7 @@ public class WorkspaceLoader
         IProjectLoadReporter loadReporter,
         IProjectHealthService projectHealthService,
         IAppEnvironment appEnvironment,
-        IWorkshopService workshopService)
+        ICommunityService communityService)
     {
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;
@@ -41,7 +41,7 @@ public class WorkspaceLoader
         _loadReporter = loadReporter;
         _projectHealthService = projectHealthService;
         _appEnvironment = appEnvironment;
-        _workshopService = workshopService;
+        _communityService = communityService;
     }
 
     public async Task<Result> LoadWorkspaceAsync()
@@ -121,10 +121,10 @@ public class WorkspaceLoader
                 _logger.LogWarning(initMonitorResult, "Failed to initialize resource monitor");
             }
 
-            // Write the Workshop document before the first resource scan. The temp: root that holds it is
+            // Write the Community document before the first resource scan. The temp: root that holds it is
             // wiped on every load, and an open document checks the disk whenever the registry updates, so a
-            // Workshop tab left open last session has to find its file already back in place.
-            await _workshopService.SeedDocumentAsync();
+            // Community tab left open last session has to find its file already back in place.
+            await _communityService.SeedDocumentAsync();
 
             // Register packages before the first resource scan so the sidecar
             // pairing pass sees package-contributed document-editor factories.

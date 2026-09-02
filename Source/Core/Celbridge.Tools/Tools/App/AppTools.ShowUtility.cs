@@ -7,7 +7,7 @@ namespace Celbridge.Tools;
 public partial class AppTools
 {
     /// <summary>Show a utility by id: reveal it where it is, or move it to a workspace area first.</summary>
-    /// <param name="utilityId">The utility to show: a built-in id ("celbridge.explorer", "celbridge.search", "celbridge.project-settings", "celbridge.workshop") or a custom id in "{packageName}.{contributionId}" form.</param>
+    /// <param name="utilityId">The utility to show: a built-in id ("celbridge.explorer", "celbridge.search", "celbridge.project-settings", "celbridge.community") or a custom id in "{packageName}.{contributionId}" form.</param>
     /// <param name="area">Workspace area to move the utility to before revealing it: "utility" (the Utility Panel rail), or "main", "bottom" or "side" (a document tab in that area). "document" is accepted as an alias for the area the utility declares as its dock area. Pass an empty string to reveal the utility wherever it currently is without moving it. Only a custom utility moves between areas: naming an area that a built-in or a document shortcut is not already in fails rather than being ignored.</param>
     [McpServerTool(Name = "app_show_utility")]
     [ToolAlias("app.show_utility")]

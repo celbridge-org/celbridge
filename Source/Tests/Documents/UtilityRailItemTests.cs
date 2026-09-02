@@ -76,12 +76,12 @@ public class UtilityRailItemTests
     public void DocumentShortcut_CarriesNoPanelView()
     {
         var railItem = UtilityRailItem.CreateDocumentShortcut(
-            BuiltInShortcutIds.Workshop,
-            "workshop-utility-button",
+            BuiltInShortcutIds.Community,
+            "community-utility-button",
             "people",
-            "Community Workshop",
-            "Community Workshop",
-            new ResourceKey("temp:workshop.webview"),
+            "Community",
+            "Community",
+            new ResourceKey("temp:community.webview"),
             EditorId.Create("celbridge", "webview"),
             WorkspaceArea.Main);
 
