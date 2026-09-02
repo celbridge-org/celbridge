@@ -313,10 +313,7 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
 
         // Invalidate the edit context on teardown so a closed editor cannot leave the Edit menu enabled. The
         // focus service keeps a newer target that has replaced this one.
-        if (registration.EditTarget is not null)
-        {
-            _focusService.ClearEditTarget(registration.EditTarget);
-        }
+        _focusService.ClearEditTarget(registration.EditTarget);
     }
 
     public void GrantFocus(WebView2 webView)
@@ -624,11 +621,9 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
             return false;
         }
 
-        // The surface's own edit target takes the key first. Consulting the registration rather than the
-        // focus service matters: the service preserves the previous edit target across a claim by a surface
-        // that has none, so a .webview focused after a code editor would otherwise indent the hidden editor.
-        if (registration.EditTarget is not null
-            && registration.EditTarget.TryHandleTabKey(shift))
+        // The surface's own edit target takes the key first. Read from the registration, not the focus
+        // service, so the key stays with the surface that holds the keyboard.
+        if (registration.EditTarget.TryHandleTabKey(shift))
         {
             return true;
         }

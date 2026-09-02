@@ -188,12 +188,11 @@ public abstract partial class DocumentView : UserControl, IDocumentView
     }
 
     // Registers a hosted web surface with the focus registry using the Documents-panel contract the web-view
-    // document editors share: a focus gain reports the Documents panel and marks this the active document.
-    // Pass the editor's edit target, or null for a surface that hosts none (an external-URL document).
-    // releaseFocus drops the surface's caret when focus leaves it, and grantDomFocus hands it back.
+    // document editors share: a focus gain reports the Documents panel, carries this document's edit target,
+    // and marks this the active document. releaseFocus drops the surface's caret when focus leaves it, and
+    // grantDomFocus hands it back.
     protected void RegisterWebSurfaceFocus(
         WebView2 webView,
-        IEditTarget? editTarget,
         Action releaseFocus,
         Func<Task>? grantDomFocus = null)
     {
@@ -204,7 +203,7 @@ public abstract partial class DocumentView : UserControl, IDocumentView
             webView,
             FileResource.ToString(),
             FocusPanelId.Documents,
-            EditTarget: editTarget,
+            EditTarget: EditTarget,
             ReleaseFocus: releaseFocus,
             GrantDomFocus: grantDomFocus,
             OnFocusGained: () => messengerService.Send(new DocumentViewFocusedMessage(FileResource)));
@@ -212,8 +211,11 @@ public abstract partial class DocumentView : UserControl, IDocumentView
         webViewFocusRegistry.Register(registration);
     }
 
+    // Abstract rather than defaulted, so a new document view has to say what Edit commands do in it.
+    public abstract IEditTarget EditTarget { get; }
+
     // Web-view-hosted editors override this to give their web content focus and report it to the focus
-    // service. Views with no focusable surface (e.g. the plain text box) leave it as a no-op.
+    // service. Views with no focusable surface leave it as a no-op.
     public virtual void FocusDocument()
     {
     }

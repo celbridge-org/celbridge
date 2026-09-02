@@ -9,10 +9,12 @@ using Celbridge.Logging;
 using Celbridge.Platform;
 using Celbridge.Projects;
 using Celbridge.UserInterface;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.WebHost;
 using Celbridge.WebHost.Services;
 using Celbridge.WebView.Services;
 using Celbridge.WebView.ViewModels;
+using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.Web.WebView2.Core;
@@ -213,10 +215,10 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
             _webView = await _webViewFactory.AcquireAsync();
             AppWebViewContainer.Children.Add(_webView);
 
-            // This surface hosts no edit target. The DOM focus callbacks reach the client script a form
-            // page loads; the external-URL role injects none, so on macOS the registry's native click
-            // monitor supplies the click-focus signal instead and the callbacks do nothing.
-            RegisterWebSurfaceFocus(_webView, editTarget: null, ReleaseFocus, GrantDomFocusAsync);
+            // The DOM focus callbacks reach the client script a form page loads; the external-URL role
+            // injects none, so on macOS the registry's native click monitor supplies the click-focus signal
+            // instead and the callbacks do nothing.
+            RegisterWebSurfaceFocus(_webView, ReleaseFocus, GrantDomFocusAsync);
 
             _webView.CoreWebView2.Settings.AreDevToolsEnabled = _webViewService.IsDevToolsFeatureEnabled();
 
@@ -1201,6 +1203,10 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
             ViewModel.OpenBrowser(url);
         }
     }
+
+    // The page handles its own editing keys and the host cannot reach its selection, so there is nothing to
+    // offer.
+    public override IEditTarget EditTarget { get; } = new DisabledEditTarget();
 
     public override void FocusDocument()
     {

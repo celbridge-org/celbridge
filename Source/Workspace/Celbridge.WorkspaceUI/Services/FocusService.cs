@@ -18,8 +18,8 @@ public class FocusService : IFocusService
     // native panel taking focus would otherwise leave a WebView editor's DOM caret active.
     private Action? _releaseFocusedSurface;
 
-    // Identifies the surface that release callback belongs to. Two surfaces in the same panel that both carry
-    // no edit target (two .webview documents) are otherwise indistinguishable from one surface re-reporting.
+    // Identifies the surface that release callback belongs to. Without it, two surfaces in the same panel
+    // look the same as one surface reporting its focus twice.
     private IFocusSurface? _focusedSurface;
 
     public FocusService(
@@ -56,22 +56,24 @@ public class FocusService : IFocusService
         var previousSurface = _focusedSurface;
         var releasePreviousSurface = _releaseFocusedSurface;
 
-        // Surface identity alone separates a move off a surface from that surface re-reporting its own
-        // focus. Neither the panel nor the edit target can stand in for it: two .webview documents both claim
-        // Documents and carry no edit target, and managed chrome taking the keyboard inside the panel a
-        // surface holds it for (the URL bar, the find bar) is a move with nothing else to show for it.
+        // Only the surface identity tells a move off a surface apart from that surface reporting its focus
+        // again. The panel cannot: two documents in the same area both claim Documents, and chrome taking
+        // the keyboard inside a surface's panel (the URL bar, the find bar) does not change it either.
         var surfaceChanged = !ReferenceEquals(claim.Surface, previousSurface);
 
         _focusedPanel = claim.Panel;
         _focusedSurface = claim.Surface;
         _releaseFocusedSurface = claim.ReleaseFocus;
 
-        // The edit context follows edit intent, not the caret. A claim carrying a target replaces it; a
-        // target-less claim (chrome focus, or None) preserves the last editing surface so Edit commands
-        // still route there.
+        // A claim with a target replaces the current one. A claim without one clears it, so Edit commands
+        // cannot act on a surface the user has moved away from, unless the claim came from chrome.
         if (claim.EditTarget is not null)
         {
             _editTarget = claim.EditTarget;
+        }
+        else if (!PreservesEditTarget(claim, previousPanel, previousSurface))
+        {
+            _editTarget = null;
         }
 
         // State is updated before the release so a re-entrant report triggered by it observes the new
@@ -139,6 +141,25 @@ public class FocusService : IFocusService
         {
             focusHandler.Invoke();
         }
+    }
+
+    // Whether a claim with no edit target leaves the current one alone. Two kinds of chrome take the
+    // keyboard without ending the edit: chrome outside the panels (the toolbar, the menu), which claims no
+    // panel, and a managed control inside the panel a web surface holds (a URL bar, a find bar). Any other
+    // claim means the user has moved somewhere with nothing editable, so the target is stale.
+    private static bool PreservesEditTarget(
+        FocusClaim claim,
+        FocusPanelId previousPanel,
+        IFocusSurface? previousSurface)
+    {
+        if (claim.Panel == FocusPanelId.None)
+        {
+            return true;
+        }
+
+        return claim.Kind == FocusClaimKind.ManagedControl
+            && claim.Panel == previousPanel
+            && previousSurface is not null;
     }
 
     // How a claim reads in a focus log: what took the keyboard, and for a web surface which one.

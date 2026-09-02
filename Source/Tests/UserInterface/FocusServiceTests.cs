@@ -126,9 +126,9 @@ public class FocusServiceTests
             () => firstReleaseCount++);
         _focusService.OnFocusReceived(firstClaim);
 
-        // Two .webview documents both claim the Documents panel and carry no edit target, so neither the
-        // panel nor the target changes when focus moves between them. Only the surface identity shows that
-        // the first has lost the keyboard and must drop its caret.
+        // Two surfaces in the same document area both claim the Documents panel, so the panel does not
+        // change when focus moves between them. Only the surface identity shows that the first has lost the
+        // keyboard and must drop its caret.
         var secondSurface = new TestFocusSurface();
         var secondClaim = FocusClaim.FromWebSurface(
             FocusPanelId.Documents,
@@ -155,19 +155,32 @@ public class FocusServiceTests
     }
 
     [Test]
-    public void OnFocusReceived_NewPanelWithoutTarget_PreservesEditTarget()
+    public void OnFocusReceived_NewPanelWithoutTarget_ClearsEditTarget()
     {
         var target = Substitute.For<IEditTarget>();
-        var documentsClaim = FocusClaim.FromManagedControl(FocusPanelId.Documents, target);
+        var explorerClaim = FocusClaim.FromManagedControl(FocusPanelId.Explorer, target);
+        _focusService.OnFocusReceived(explorerClaim);
+
+        // Focus moving to a panel with nothing editable ends the edit, so Edit commands cannot act on the
+        // tree the user has left.
+        var documentsClaim = FocusClaim.FromManagedControl(FocusPanelId.Documents);
         _focusService.OnFocusReceived(documentsClaim);
 
-        // A panel that claims focus without an edit target (e.g. Search) leaves the last editing surface in
-        // place, so Edit commands still route there.
-        var searchClaim = FocusClaim.FromManagedControl(FocusPanelId.Search);
-        _focusService.OnFocusReceived(searchClaim);
+        _focusService.FocusedPanel.Should().Be(FocusPanelId.Documents);
+        _focusService.EditTarget.Should().BeNull();
+    }
 
-        _focusService.FocusedPanel.Should().Be(FocusPanelId.Search);
-        _focusService.EditTarget.Should().Be(target);
+    [Test]
+    public void OnFocusReceived_ChromeInAPanelHoldingNoSurface_ClearsEditTarget()
+    {
+        var target = Substitute.For<IEditTarget>();
+        _focusService.OnFocusReceived(FocusClaim.FromManagedControl(FocusPanelId.Documents, target));
+
+        // No surface holds a caret in the panel, so this is a move onto something with nothing editable,
+        // not chrome taking the keyboard off a surface.
+        _focusService.OnFocusReceived(FocusClaim.FromManagedControl(FocusPanelId.Documents));
+
+        _focusService.EditTarget.Should().BeNull();
     }
 
     [Test]

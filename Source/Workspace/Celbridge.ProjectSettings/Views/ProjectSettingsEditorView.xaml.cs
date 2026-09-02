@@ -3,7 +3,9 @@ using Celbridge.Logging;
 using Celbridge.ProjectSettings.ViewModels;
 using Celbridge.Resources;
 using Celbridge.UserInterface;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.UserInterface.Views.Controls;
+using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.ProjectSettings.Views;
@@ -209,6 +211,10 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
 
         return Result.Ok();
     }
+
+    // The section fields handle their own editing keys and the host cannot reach their selection, so there
+    // is nothing to offer.
+    public IEditTarget EditTarget { get; } = new DisabledEditTarget();
 
     public void FocusDocument()
     {

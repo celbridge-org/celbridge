@@ -65,6 +65,8 @@ public sealed partial class DockedUtilityDocumentView : DocumentView
         return Result.Ok();
     }
 
+    public override IEditTarget EditTarget => _controller;
+
     public override void FocusDocument()
     {
         _controller.FocusWebView();
