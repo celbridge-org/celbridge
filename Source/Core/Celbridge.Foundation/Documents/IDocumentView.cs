@@ -1,3 +1,5 @@
+using Celbridge.Workspace;
+
 namespace Celbridge.Documents;
 
 /// <summary>
@@ -58,6 +60,11 @@ public interface IDocumentView
     /// Navigate to a specific location within the document.
     /// </summary>
     Task<Result> NavigateToLocation(string location);
+
+    /// <summary>
+    /// What Edit commands act on while this document has focus.
+    /// </summary>
+    IEditTarget EditTarget { get; }
 
     /// <summary>
     /// Gives this document keyboard focus and reports the focus change so any previously focused surface

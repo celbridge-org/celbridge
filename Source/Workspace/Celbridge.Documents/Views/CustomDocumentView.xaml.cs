@@ -112,6 +112,8 @@ public sealed partial class CustomDocumentView : DocumentView
         await base.PrepareToClose();
     }
 
+    public override IEditTarget EditTarget => _controller;
+
     public override void FocusDocument()
     {
         _controller.FocusWebView();
