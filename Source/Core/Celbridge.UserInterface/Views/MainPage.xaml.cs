@@ -1,3 +1,4 @@
+using Celbridge.Commands;
 using Celbridge.Logging;
 using Celbridge.UserInterface.Platform;
 using Celbridge.UserInterface.Services;
@@ -83,7 +84,9 @@ public partial class MainPage : Page
         // Command+F to the active document's find bar. macOS-only. A no-op elsewhere.
         var focusServiceForKeyMonitor = ServiceLocator.AcquireService<IFocusService>();
         var webViewFocusRegistry = ServiceLocator.AcquireService<IWebViewFocusRegistry>();
-        MacOSKeyEventMonitor.Start(focusServiceForKeyMonitor, webViewFocusRegistry, _messengerService, _logger);
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+        MacOSKeyEventMonitor.Start(
+            focusServiceForKeyMonitor, webViewFocusRegistry, _messengerService, commandService, _logger);
 
         // Undo native first-responder resigns caused by managed-focus housekeeping, which would otherwise
         // deactivate the focused web surface (hidden caret, beeping keys). macOS-only. A no-op elsewhere.

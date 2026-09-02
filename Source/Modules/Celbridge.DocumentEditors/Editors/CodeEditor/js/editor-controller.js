@@ -16,6 +16,8 @@ export class EditorController {
     #isInitialized = false;
     #isReloadingExternally = false;
     #readOnly = false;
+    // The ranges the last getSelectedText read, so the cut that follows clears exactly those.
+    #copiedRanges = null;
     #pendingNavigation = null;
     #onContentChanged = () => {};
     #onScrollChanged = () => {};
@@ -92,20 +94,27 @@ export class EditorController {
             return;
         }
 
-        // Every cursor receives the text, matching Monaco's own multi-cursor paste. The host clears a cut
-        // by inserting empty text, so an empty insert removes exactly what getSelectedText returned.
-        const targets = (text.length === 0 ? this.#cursorLineRanges() : null)
+        // The host clears a cut by inserting empty text, which removes what getSelectedText recorded.
+        const clearing = text.length === 0;
+        const targets = (clearing ? this.#copiedRanges : null)
             ?? this.#editor.getSelections()
             ?? [];
 
-        const edits = targets.map(range => ({
+        this.#copiedRanges = null;
+
+        // One clipboard line per cursor when the counts match, matching Monaco's own multi-cursor paste.
+        // Every cursor receives the whole text otherwise.
+        const lines = clearing ? null : text.split(/\r\n|\r|\n/);
+        const perCursor = lines !== null && lines.length === targets.length && targets.length > 1;
+
+        const edits = targets.map((range, index) => ({
             range: {
                 startLineNumber: range.startLineNumber,
                 startColumn: range.startColumn,
                 endLineNumber: range.endLineNumber,
                 endColumn: range.endColumn
             },
-            text: text
+            text: perCursor ? lines[index] : text
         }));
 
         if (edits.length === 0) {
@@ -131,7 +140,11 @@ export class EditorController {
 
         const eol = model.getEOL();
 
+        // The cut's clear step removes exactly these, so a caret moved during the round trip cannot make
+        // the cut delete a line it never copied.
         const lineRanges = this.#cursorLineRanges();
+        this.#copiedRanges = lineRanges ?? [...selections];
+
         if (lineRanges) {
             return lineRanges
                 .map(range => model.getValueInRange(range))
@@ -156,6 +169,12 @@ export class EditorController {
         }
 
         if (selections.some(selection => !selection.isEmpty())) {
+            return null;
+        }
+
+        // Monaco's Copy still runs its own empty-selection rule, so read the option it obeys rather than
+        // assuming it, and the two stay in step.
+        if (!this.#editor.getOption(monaco.editor.EditorOption.emptySelectionClipboard)) {
             return null;
         }
 

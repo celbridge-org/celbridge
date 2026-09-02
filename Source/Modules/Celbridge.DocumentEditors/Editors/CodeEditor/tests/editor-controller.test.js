@@ -36,6 +36,7 @@ function createMockEditor(model) {
         onDidBlurEditorText: vi.fn(),
         executeEdits: vi.fn(),
         hasTextFocus: vi.fn(() => true),
+        getOption: vi.fn(() => true),
         getSelection: vi.fn(() => ({ isEmpty: () => true })),
         setSelection: vi.fn(),
         trigger: vi.fn(),
@@ -51,6 +52,7 @@ function installMonacoStub(editor) {
         editor: {
             create: vi.fn(() => editor),
             EndOfLineSequence: { CRLF: 1, LF: 0 },
+            EditorOption: { emptySelectionClipboard: 38 },
             setModelLanguage: vi.fn(),
             setTheme: vi.fn()
         },
@@ -340,12 +342,55 @@ describe('EditorController clipboard text', () => {
     it('removes the whole line when the host clears an empty selection', () => {
         editor.getSelections.mockReturnValue([at(2, 3)]);
 
+        // The host reads the selection before clearing it, which is what fixes the range to clear.
+        controller.getSelectedText();
         controller.insertText('');
 
         expect(editor.executeEdits).toHaveBeenCalledWith('insert', [{
             range: { startLineNumber: 2, startColumn: 1, endLineNumber: 3, endColumn: 1 },
             text: ''
         }]);
+    });
+
+    it('clears what the copy read, not where the caret has since moved', () => {
+        editor.getSelections.mockReturnValue([at(2, 3)]);
+        controller.getSelectedText();
+
+        // The caret moves while the host's read is in flight.
+        editor.getSelections.mockReturnValue([at(3, 1)]);
+        controller.insertText('');
+
+        expect(editor.executeEdits).toHaveBeenCalledWith('insert', [{
+            range: { startLineNumber: 2, startColumn: 1, endLineNumber: 3, endColumn: 1 },
+            text: ''
+        }]);
+    });
+
+    it('leaves the line alone when Monaco does not take it either', () => {
+        editor.getOption.mockReturnValue(false);
+        editor.getSelections.mockReturnValue([at(2, 3)]);
+
+        expect(controller.getSelectedText()).toBe('');
+    });
+
+    it('gives each cursor its own clipboard line when the counts match', () => {
+        editor.getSelections.mockReturnValue([at(1, 1), at(2, 1)]);
+
+        controller.insertText('one\ntwo');
+
+        expect(editor.executeEdits).toHaveBeenCalledWith('insert', [
+            { range: { startLineNumber: 1, startColumn: 1, endLineNumber: 1, endColumn: 1 }, text: 'one' },
+            { range: { startLineNumber: 2, startColumn: 1, endLineNumber: 2, endColumn: 1 }, text: 'two' }
+        ]);
+    });
+
+    it('gives every cursor the whole text when the counts differ', () => {
+        editor.getSelections.mockReturnValue([at(1, 1), at(2, 1)]);
+
+        controller.insertText('one\ntwo\nthree');
+
+        expect(editor.executeEdits.mock.calls[0][1].map(edit => edit.text))
+            .toEqual(['one\ntwo\nthree', 'one\ntwo\nthree']);
     });
 
     it('inserts at the cursor rather than replacing its line', () => {

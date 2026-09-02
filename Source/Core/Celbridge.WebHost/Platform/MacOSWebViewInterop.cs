@@ -277,6 +277,18 @@ public static class MacOSWebViewInterop
 
     private delegate void SetMaintainsInactiveSelection(IntPtr page, byte maintains);
 
+    // Resolved once: this runs on every focus grant, and neither the symbol nor the selector changes.
+    private static readonly SetMaintainsInactiveSelection? _setMaintainsInactiveSelection = ResolveMaintainsInactiveSelection();
+
+    private static SetMaintainsInactiveSelection? ResolveMaintainsInactiveSelection()
+    {
+        var symbol = dlsym(RtldDefault, "WKPageSetMaintainsInactiveSelection");
+
+        return symbol == IntPtr.Zero
+            ? null
+            : Marshal.GetDelegateForFunctionPointer<SetMaintainsInactiveSelection>(symbol);
+    }
+
     /// <summary>
     /// Keeps the page's selection when the web view stops being the first responder, which WebKit otherwise
     /// discards. Returns whether WebKit still exposes the setting. Both the page accessor and the setter are
@@ -289,14 +301,13 @@ public static class MacOSWebViewInterop
             return false;
         }
 
-        var pageSelector = GetSelector("_pageRefForTransitionToWKWebView");
-        if (SendMessage(webView, GetSelector("respondsToSelector:"), pageSelector) == IntPtr.Zero)
+        if (_setMaintainsInactiveSelection is null)
         {
             return false;
         }
 
-        var symbol = dlsym(RtldDefault, "WKPageSetMaintainsInactiveSelection");
-        if (symbol == IntPtr.Zero)
+        var pageSelector = GetSelector("_pageRefForTransitionToWKWebView");
+        if (SendMessage(webView, GetSelector("respondsToSelector:"), pageSelector) == IntPtr.Zero)
         {
             return false;
         }
@@ -307,7 +318,7 @@ public static class MacOSWebViewInterop
             return false;
         }
 
-        Marshal.GetDelegateForFunctionPointer<SetMaintainsInactiveSelection>(symbol)(page, 1);
+        _setMaintainsInactiveSelection(page, 1);
 
         return true;
     }

@@ -13,6 +13,9 @@ let designer = null;
 // fired during the locked window can't queue a save.
 let frameworkReadOnly = false;
 
+// The range the last getSelectedText returned, so a cut clears what it copied rather than the live selection.
+let copiedRange = null;
+
 async function deserializeExcelData(base64Data, viewState = null, preserveView = true) {
     if (!base64Data) {
         client.document.notifyImportComplete(true);
@@ -335,6 +338,7 @@ function getSelectedText() {
     const sheet = context.sheet;
     const selection = (sheet.getSelections() ?? [])[0];
     if (!selection) {
+        copiedRange = null;
         return '';
     }
 
@@ -366,6 +370,10 @@ function getSelectedText() {
         rows.push(cells.join('\t'));
     }
 
+    // The cut's clear step removes exactly this, so a range the copy never read keeps its values.
+    copiedRange = new GC.Spread.Sheets.Range(
+        firstRow, firstColumn, endRow - firstRow + 1, endColumn - firstColumn + 1);
+
     return rows.join('\n');
 }
 
@@ -381,10 +389,16 @@ function insertText(text) {
 
     if (!text) {
         // clearValues acts only on the ranges it is given, not on the sheet's own selection.
+        const ranges = copiedRange ? [copiedRange] : [];
+        copiedRange = null;
+        if (ranges.length === 0) {
+            return;
+        }
+
         commandManager.execute({
             cmd: 'clearValues',
             sheetName: sheet.name(),
-            ranges: sheet.getSelections()
+            ranges
         });
         return;
     }

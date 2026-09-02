@@ -42,12 +42,14 @@ internal static class MacOSKeyEventMonitor
     private static IFocusService? _focusService;
     private static IWebViewFocusRegistry? _webViewFocusRegistry;
     private static IMessengerService? _messengerService;
+    private static ICommandService? _commandService;
     private static ILogger? _logger;
 
     public static void Start(
         IFocusService focusService,
         IWebViewFocusRegistry webViewFocusRegistry,
         IMessengerService messengerService,
+        ICommandService commandService,
         ILogger logger)
     {
         if (!OperatingSystem.IsMacOS())
@@ -64,6 +66,7 @@ internal static class MacOSKeyEventMonitor
         _focusService = focusService;
         _webViewFocusRegistry = webViewFocusRegistry;
         _messengerService = messengerService;
+        _commandService = commandService;
         _logger = logger;
 
         var nsEventClass = GetClass("NSEvent");
@@ -216,11 +219,21 @@ internal static class MacOSKeyEventMonitor
     // Returns whether the chord was acted on, in which case the key must not also reach the page.
     private static bool TryHandleWebSurfaceCommandChord(IntPtr nsEvent, ulong keyCode, ulong modifierFlags)
     {
-        var editIntent = ResolveEditIntent(ResolveShortcutCharacter(nsEvent, keyCode), modifierFlags);
+        var shortcutCharacter = ResolveShortcutCharacter(nsEvent, keyCode);
+
+        var editIntent = ResolveEditIntent(shortcutCharacter, modifierFlags);
         if (editIntent is not null
             && TryHandleEditIntent(editIntent.Value))
         {
             return true;
+        }
+
+        // The close and find chords are handled below rather than by the menubar, so they are not offered
+        // to it: one owner each, whether or not a menu item happens to carry the same key equivalent.
+        if (IsCloseShortcut(shortcutCharacter, modifierFlags)
+            || IsFindShortcut(shortcutCharacter, modifierFlags))
+        {
+            return false;
         }
 
         return TryPerformMenuKeyEquivalent(nsEvent);
@@ -238,8 +251,7 @@ internal static class MacOSKeyEventMonitor
 
         if (editTarget.CanPerformEdit(intent))
         {
-            ServiceLocator.AcquireService<ICommandService>()
-                .Execute<IPerformEditCommand>(command => command.Intent = intent);
+            _commandService?.Execute<IPerformEditCommand>(command => command.Intent = intent);
 
             return true;
         }

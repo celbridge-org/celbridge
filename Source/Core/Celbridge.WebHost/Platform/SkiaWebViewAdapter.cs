@@ -179,23 +179,22 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     private void KeepSelectionWhileUnfocused(IntPtr nativeWebViewHandle)
     {
         var maintained = MacOSWebViewInterop.MaintainInactiveSelection(nativeWebViewHandle);
-        if (maintained)
-        {
-            if (!_checkedInactiveSelection)
-            {
-                _checkedInactiveSelection = true;
-                _logger.LogDebug("Hosted pages keep their selection while unfocused");
-            }
 
+        if (_checkedInactiveSelection)
+        {
             return;
         }
 
-        if (!_checkedInactiveSelection)
+        _checkedInactiveSelection = true;
+
+        if (maintained)
         {
-            _checkedInactiveSelection = true;
-            _logger.LogWarning(
-                "WebKit no longer exposes the inactive selection setting, so a selection in a hosted page is lost when focus moves");
+            _logger.LogDebug("Hosted pages keep their selection while unfocused");
+            return;
         }
+
+        _logger.LogWarning(
+            "WebKit no longer exposes the inactive selection setting, so a selection in a hosted page is lost when focus moves");
     }
 
     public void CloseWebView(WebView2 webView, Panel? container)
