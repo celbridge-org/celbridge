@@ -104,6 +104,7 @@
                          IsSpellCheckEnabled="False"
                          PlaceholderText="{x:Bind AddressPlaceholderString}"
                          Text="{x:Bind ViewModel.AddressText, Mode=OneWay}"
+                         TextChanged="AddressTextBox_TextChanged"
                          KeyDown="AddressTextBox_KeyDown" />
 
                 <StackPanel Grid.Column="2"

@@ -9,6 +9,7 @@ using Celbridge.Logging;
 using Celbridge.Platform;
 using Celbridge.Projects;
 using Celbridge.UserInterface;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.WebHost;
 using Celbridge.WebHost.Services;
 using Celbridge.WebView.Services;
@@ -661,6 +662,12 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
         SyncAddressText();
         Navigate(url);
         GiveFocusToWebContent();
+    }
+
+    private void AddressTextBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        // Tab is here to move focus, and an address holds no tab or line break anyway.
+        SingleLineText.RemoveTabsAndLineBreaks(AddressTextBox);
     }
 
     private void AddressTextBox_KeyDown(object sender, KeyRoutedEventArgs e)
