@@ -10,10 +10,8 @@ using FocusManager = Microsoft.UI.Xaml.Input.FocusManager;
 namespace Celbridge.WorkspaceUI.Services;
 
 /// <summary>
-/// Observes every managed focus change in the window and reports what the focused element belongs to: the
-/// panel, taken from its nearest ancestor declaring FocusTracking.Panel, the document it sits in, taken from
-/// its nearest IDocumentView ancestor, and the edit target Edit commands act on, which comes from that
-/// document, or from the panel declaration when it is not in one.
+/// Observes every managed focus change in the window and reports the panel, the document, and the edit
+/// target the focused element belongs to.
 ///
 /// It also enforces the panel hold. A click keeps producing focus events for a few milliseconds after the
 /// work it triggered has finished, so opening a document can be followed by the Explorer tree quietly taking
@@ -106,9 +104,7 @@ public class PanelFocusTracker
         // classifies as None, which clears panel focus but preserves the edit context.
         var panel = FocusPanelId.None;
 
-        // Every document has an edit target, so focus anywhere inside one sends Edit commands to that
-        // document. Outside a document the panel declaration supplies the target, as the Explorer does for
-        // its resource tree.
+        // A document's own edit target wins. Outside a document the panel declaration supplies one.
         IEditTarget? editTarget = documentView?.EditTarget;
         var foundDeclaration = false;
         var reachedMainContentRoot = false;

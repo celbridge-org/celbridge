@@ -126,9 +126,8 @@ public class FocusServiceTests
             () => firstReleaseCount++);
         _focusService.OnFocusReceived(firstClaim);
 
-        // Two surfaces in the same document area both claim the Documents panel, so the panel does not
-        // change when focus moves between them. Only the surface identity shows that the first has lost the
-        // keyboard and must drop its caret.
+        // Both surfaces claim the Documents panel, so only the surface identity marks the first as losing
+        // the keyboard.
         var secondSurface = new TestFocusSurface();
         var secondClaim = FocusClaim.FromWebSurface(
             FocusPanelId.Documents,
@@ -161,8 +160,6 @@ public class FocusServiceTests
         var explorerClaim = FocusClaim.FromManagedControl(FocusPanelId.Explorer, target);
         _focusService.OnFocusReceived(explorerClaim);
 
-        // Focus moving to a panel with nothing editable ends the edit, so Edit commands cannot act on the
-        // tree the user has left.
         var documentsClaim = FocusClaim.FromManagedControl(FocusPanelId.Documents);
         _focusService.OnFocusReceived(documentsClaim);
 
@@ -176,8 +173,7 @@ public class FocusServiceTests
         var target = Substitute.For<IEditTarget>();
         _focusService.OnFocusReceived(FocusClaim.FromManagedControl(FocusPanelId.Documents, target));
 
-        // No surface holds a caret in the panel, so this is a move onto something with nothing editable,
-        // not chrome taking the keyboard off a surface.
+        // No surface holds a caret in this panel, so the chrome exemption does not apply.
         _focusService.OnFocusReceived(FocusClaim.FromManagedControl(FocusPanelId.Documents));
 
         _focusService.EditTarget.Should().BeNull();

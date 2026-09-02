@@ -90,8 +90,7 @@ public static class FocusTracking
 
     /// <summary>
     /// The edit target that focus reports carry when this element's Panel declaration classifies the
-    /// focused element. Set in code by panels that expose an edit target. Documents use
-    /// IDocumentView.EditTarget instead, which the focus tracker prefers to this.
+    /// focused element.
     /// </summary>
     public static readonly DependencyProperty EditTargetProperty =
         DependencyProperty.RegisterAttached(

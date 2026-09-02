@@ -212,8 +212,6 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
         return Result.Ok();
     }
 
-    // The section fields handle their own editing keys and the host cannot reach their selection, so there
-    // is nothing to offer.
     public IEditTarget EditTarget { get; } = new DisabledEditTarget();
 
     public void FocusDocument()

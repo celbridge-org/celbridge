@@ -215,9 +215,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
             _webView = await _webViewFactory.AcquireAsync();
             AppWebViewContainer.Children.Add(_webView);
 
-            // The DOM focus callbacks reach the client script a form page loads; the external-URL role
-            // injects none, so on macOS the registry's native click monitor supplies the click-focus signal
-            // instead and the callbacks do nothing.
+            // The DOM focus callbacks only reach a page that loads the client script. An external-URL page
+            // relies on the registry's native click monitor instead.
             RegisterWebSurfaceFocus(_webView, ReleaseFocus, GrantDomFocusAsync);
 
             _webView.CoreWebView2.Settings.AreDevToolsEnabled = _webViewService.IsDevToolsFeatureEnabled();
@@ -1204,8 +1203,6 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
         }
     }
 
-    // The page handles its own editing keys and the host cannot reach its selection, so there is nothing to
-    // offer.
     public override IEditTarget EditTarget { get; } = new DisabledEditTarget();
 
     public override void FocusDocument()

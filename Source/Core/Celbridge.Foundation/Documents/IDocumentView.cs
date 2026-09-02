@@ -62,8 +62,7 @@ public interface IDocumentView
     Task<Result> NavigateToLocation(string location);
 
     /// <summary>
-    /// What Edit commands act on while this document has focus. A document with nothing the host can edit
-    /// supplies a target that refuses every verb.
+    /// What Edit commands act on while this document has focus.
     /// </summary>
     IEditTarget EditTarget { get; }
 

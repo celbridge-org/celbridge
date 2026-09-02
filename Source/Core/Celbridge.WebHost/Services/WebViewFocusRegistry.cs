@@ -621,8 +621,7 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
             return false;
         }
 
-        // The surface's own edit target takes the key first. Read from the registration, not the focus
-        // service, so the key stays with the surface that holds the keyboard.
+        // The edit target comes from the registration, so the key stays with the surface holding the keyboard.
         if (registration.EditTarget.TryHandleTabKey(shift))
         {
             return true;

@@ -188,9 +188,8 @@ public abstract partial class DocumentView : UserControl, IDocumentView
     }
 
     // Registers a hosted web surface with the focus registry using the Documents-panel contract the web-view
-    // document editors share: a focus gain reports the Documents panel, carries this document's edit target,
-    // and marks this the active document. releaseFocus drops the surface's caret when focus leaves it, and
-    // grantDomFocus hands it back.
+    // document editors share. releaseFocus drops the surface's caret when focus leaves it, and grantDomFocus
+    // hands it back.
     protected void RegisterWebSurfaceFocus(
         WebView2 webView,
         Action releaseFocus,
@@ -211,11 +210,10 @@ public abstract partial class DocumentView : UserControl, IDocumentView
         webViewFocusRegistry.Register(registration);
     }
 
-    // Abstract rather than defaulted, so a new document view has to say what Edit commands do in it.
     public abstract IEditTarget EditTarget { get; }
 
     // Web-view-hosted editors override this to give their web content focus and report it to the focus
-    // service. Views with no focusable surface leave it as a no-op.
+    // service.
     public virtual void FocusDocument()
     {
     }
