@@ -57,10 +57,12 @@ public class GetUtilitiesStateCommandTests
         return new List<UtilityRailItem>
         {
             UtilityRailItem.CreatePanelUtility(
+                RailItemGroup.BuiltInUtility,
                 BuiltInUtilityIds.Explorer, "explorer-utility-button", "folder", "Explorer", "Explorer",
                 new UtilityRailPanelView(new object(), () => { }, FocusPanelId.Explorer)),
 
             UtilityRailItem.CreateDockableUtility(
+                RailItemGroup.ProjectItem,
                 NotepadId, "notepad-utility-button", "sticky", "Notepad", "Notepad",
                 NotepadResource,
                 NotepadId,
@@ -68,6 +70,7 @@ public class GetUtilitiesStateCommandTests
                 WorkspaceArea.Bottom),
 
             UtilityRailItem.CreateDocumentShortcut(
+                RailItemGroup.BuiltInShortcut,
                 BuiltInShortcutIds.Community, "community-utility-button", "people",
                 "Community", "Community",
                 CommunityResource,

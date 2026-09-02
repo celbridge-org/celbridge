@@ -58,12 +58,13 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     // rail register holds every item.
     private readonly List<UtilityRailItem> _builtInUtilityItems = new();
 
-    // The rail's buttons in the three ordered groups the panel presents: the built-in utilities, then the
-    // contribution utilities, then the document shortcuts. The rail draws them as one stack, so the panel
-    // rebuilds it from these whenever the middle group changes.
+    // The rail's buttons in the three bands the panel presents: the built-in utilities, then everything the
+    // project brings, which is its contribution utilities and the document shortcuts it declares, then the
+    // built-in document shortcuts. The rail draws them as one stack, so the panel rebuilds it from these
+    // whenever the middle band changes.
     private readonly List<UtilityButton> _builtInUtilityButtons = new();
-    private readonly List<UtilityButton> _customUtilityButtons = new();
-    private readonly List<UtilityButton> _shortcutButtons = new();
+    private readonly List<UtilityButton> _projectItemButtons = new();
+    private readonly List<UtilityButton> _builtInShortcutButtons = new();
 
     private Storyboard? _perimeterStoryboard;
 
@@ -162,6 +163,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
             PreservePanelFocus: true);
 
         var explorerItem = UtilityRailItem.CreatePanelUtility(
+            RailItemGroup.BuiltInUtility,
             BuiltInUtilityIds.Explorer,
             ExplorerLandmarkId,
             _iconService.GetIconName(IconSymbol.Folder),
@@ -178,6 +180,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
             PreservePanelFocus: true);
 
         var searchItem = UtilityRailItem.CreatePanelUtility(
+            RailItemGroup.BuiltInUtility,
             BuiltInUtilityIds.Search,
             SearchLandmarkId,
             _iconService.GetIconName(IconSymbol.Search),
@@ -620,14 +623,21 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 
             var railButton = AddRailItem(railItem);
 
-            // A document shortcut joins the group the rail draws after the gap.
-            if (railItem.Kind == RailItemKind.DocumentShortcut)
+            // Which band the button joins follows from where the item came from rather than from what it
+            // does, so a contributed utility and a document shortcut the project declares sit together.
+            // The built-in utilities never reach here, because the guard above skips them.
+            switch (railItem.Group)
             {
-                _shortcutButtons.Add(railButton);
-            }
-            else
-            {
-                _customUtilityButtons.Add(railButton);
+                case RailItemGroup.ProjectItem:
+                    _projectItemButtons.Add(railButton);
+                    break;
+
+                case RailItemGroup.BuiltInShortcut:
+                    _builtInShortcutButtons.Add(railButton);
+                    break;
+
+                default:
+                    throw new NotSupportedException($"Unhandled rail item group '{railItem.Group}'");
             }
         }
 
@@ -637,19 +647,16 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         UpdateProjectSettingsIssuePip();
     }
 
-    // Rebuilds the rail as two visual groups: the built-in utilities with the contribution utilities, then
-    // the document shortcuts. The rail draws the gap at the group boundary, so no button carries layout of
-    // its own.
+    // Rebuilds the rail as three visual bands: the built-in utilities, then everything the project brings,
+    // then the built-in document shortcuts. The rail draws the gaps at the band boundaries, so no button
+    // carries layout of its own, and a project with nothing of its own collapses to two bands.
     private void RefreshRailButtons()
     {
         _rail.ClearButtons();
 
-        var utilityGroup = new List<UtilityButton>();
-        utilityGroup.AddRange(_builtInUtilityButtons);
-        utilityGroup.AddRange(_customUtilityButtons);
-
-        _rail.AddButtonGroup(utilityGroup);
-        _rail.AddButtonGroup(_shortcutButtons);
+        _rail.AddButtonGroup(_builtInUtilityButtons);
+        _rail.AddButtonGroup(_projectItemButtons);
+        _rail.AddButtonGroup(_builtInShortcutButtons);
     }
 
     public void ClearRailItems()
@@ -674,9 +681,6 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 
         foreach (var utilityId in GetCustomUtilityIds())
         {
-            var railButton = _buttons[utilityId];
-            _customUtilityButtons.Remove(railButton);
-
             var contentControl = _contentControls[utilityId];
             contentControl.Content = null;
             ContentArea.Children.Remove(contentControl);
@@ -698,7 +702,11 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         }
 
         _shortcutItems.Clear();
-        _shortcutButtons.Clear();
+
+        // Both built bands are rebuilt whole, so they are dropped whole. The built-in utility buttons are
+        // left alone: the panel built them and their views outlive the rebuild.
+        _projectItemButtons.Clear();
+        _builtInShortcutButtons.Clear();
     }
 
     public void SetUtilityArea(EditorId utilityId, WorkspaceArea area, ResourceKey documentResource)

@@ -32,13 +32,14 @@ public class UtilityService : IUtilityService, IDisposable
     private const string ProjectShortcutScope = "celbridge";
 
     // The rail register, in rail order. The built-in utilities are published by the Utility Panel because
-    // their descriptors wrap live views. The rest are built here. The shortcut group holds the ones the
-    // project declares first, so the built-in shortcuts stay pinned at the end of the rail.
+    // their descriptors wrap live views. The rest are built here. The two middle lists are both what the
+    // project brings, so they share a rail band and the built-in shortcuts hold the last band on their own.
     private readonly List<UtilityRailItem> _builtInUtilityItems = new();
     private readonly List<UtilityRailItem> _contributedItems = new();
-    private readonly List<UtilityRailItem> _shortcutItems = new();
+    private readonly List<UtilityRailItem> _projectShortcutItems = new();
+    private readonly List<UtilityRailItem> _builtInShortcutItems = new();
 
-    // The three groups above as one ordered list, and the same items by id. Rebuilt whenever a group
+    // The four lists above as one ordered list, and the same items by id. Rebuilt whenever a list
     // changes, so a reader never pays to assemble them.
     private readonly List<UtilityRailItem> _railItems = new();
     private readonly Dictionary<EditorId, UtilityRailItem> _railItemsById = new();
@@ -86,7 +87,8 @@ public class UtilityService : IUtilityService, IDisposable
         _railItems.Clear();
         _railItems.AddRange(_builtInUtilityItems);
         _railItems.AddRange(_contributedItems);
-        _railItems.AddRange(_shortcutItems);
+        _railItems.AddRange(_projectShortcutItems);
+        _railItems.AddRange(_builtInShortcutItems);
 
         _railItemsById.Clear();
         foreach (var railItem in _railItems)
@@ -195,9 +197,11 @@ public class UtilityService : IUtilityService, IDisposable
             _contributedItems.Add(railItem);
         }
 
-        _shortcutItems.Clear();
-        _shortcutItems.AddRange(BuildProjectShortcutItems());
-        _shortcutItems.AddRange(BuildBuiltInShortcutItems());
+        _projectShortcutItems.Clear();
+        _projectShortcutItems.AddRange(BuildProjectShortcutItems());
+
+        _builtInShortcutItems.Clear();
+        _builtInShortcutItems.AddRange(BuildBuiltInShortcutItems());
 
         RebuildRailRegister();
     }
@@ -262,6 +266,7 @@ public class UtilityService : IUtilityService, IDisposable
             // The editor is left unnamed so the shortcut opens the file in whichever editor its extension
             // resolves to, including any the project associates with it.
             var shortcutItem = UtilityRailItem.CreateDocumentShortcut(
+                RailItemGroup.ProjectItem,
                 itemId,
                 landmarkId,
                 iconName,
@@ -299,6 +304,7 @@ public class UtilityService : IUtilityService, IDisposable
                 string projectSettingsName = stringLocalizer.GetString("UtilityPanel_ProjectSettingsTooltip");
 
                 var projectSettingsItem = UtilityRailItem.CreateDocumentShortcut(
+                    RailItemGroup.BuiltInShortcut,
                     BuiltInShortcutIds.ProjectSettings,
                     ProjectSettingsLandmarkId,
                     iconService.GetIconName(IconSymbol.Sliders),
@@ -315,6 +321,7 @@ public class UtilityService : IUtilityService, IDisposable
         string communityName = stringLocalizer.GetString("UtilityPanel_CommunityTooltip");
 
         var communityItem = UtilityRailItem.CreateDocumentShortcut(
+            RailItemGroup.BuiltInShortcut,
             BuiltInShortcutIds.Community,
             CommunityLandmarkId,
             iconService.GetIconName(IconSymbol.People),

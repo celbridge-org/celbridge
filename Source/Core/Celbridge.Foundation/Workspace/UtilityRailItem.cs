@@ -28,6 +28,31 @@ public enum RailItemKind
 }
 
 /// <summary>
+/// The band of the rail an item sits in. The rail draws a gap between bands, which sets the utilities the
+/// application ships apart from everything the project brings, and both apart from the document shortcuts
+/// the application ships.
+/// </summary>
+public enum RailItemGroup
+{
+    /// <summary>
+    /// A utility the application ships, at the head of the rail. Explorer and Search are these.
+    /// </summary>
+    BuiltInUtility,
+
+    /// <summary>
+    /// Something the project brings: a utility one of its packages contributes, or a document shortcut its
+    /// config declares. This is the band that changes from one project to the next.
+    /// </summary>
+    ProjectItem,
+
+    /// <summary>
+    /// A document shortcut the application ships, pinned at the end of the rail. Project Settings and
+    /// Community are these.
+    /// </summary>
+    BuiltInShortcut
+}
+
+/// <summary>
 /// The view a rail item shows while it occupies the Utility Panel. Content is the view itself, FocusPanel
 /// gives it keyboard focus, and FocusIdentity is the panel it reports focus as. PreservePanelFocus keeps the
 /// reported panel while the platform bounces focus up onto the host, which a view that rebuilds its focused
@@ -49,6 +74,13 @@ public sealed record UtilityRailItem
     /// Which kind of entry this is. Every other member is constrained by it.
     /// </summary>
     public required RailItemKind Kind { get; init; }
+
+    /// <summary>
+    /// The rail band this item sits in. Kind says what the button does and this says where the item came
+    /// from, so a contributed utility and a document shortcut the project declares share a band without
+    /// sharing a kind.
+    /// </summary>
+    public required RailItemGroup Group { get; init; }
 
     /// <summary>
     /// The id that addresses this item.
@@ -104,6 +136,7 @@ public sealed record UtilityRailItem
     /// for a built-in view with nothing behind it.
     /// </summary>
     public static UtilityRailItem CreatePanelUtility(
+        RailItemGroup group,
         EditorId itemId,
         string landmarkId,
         string iconName,
@@ -116,6 +149,7 @@ public sealed record UtilityRailItem
         return new UtilityRailItem
         {
             Kind = RailItemKind.PanelUtility,
+            Group = group,
             ItemId = itemId,
             LandmarkId = landmarkId,
             IconName = iconName,
@@ -131,6 +165,7 @@ public sealed record UtilityRailItem
     /// A utility that lives in the Utility Panel and can be docked into a tab in the given document area.
     /// </summary>
     public static UtilityRailItem CreateDockableUtility(
+        RailItemGroup group,
         EditorId itemId,
         string landmarkId,
         string iconName,
@@ -144,6 +179,7 @@ public sealed record UtilityRailItem
         return new UtilityRailItem
         {
             Kind = RailItemKind.DockableUtility,
+            Group = group,
             ItemId = itemId,
             LandmarkId = landmarkId,
             IconName = iconName,
@@ -158,7 +194,8 @@ public sealed record UtilityRailItem
 
     /// <summary>
     /// A utility a package contributes, whose declared dock area decides its kind: an area makes it
-    /// dockable into a tab there, and null keeps it in the Utility Panel.
+    /// dockable into a tab there, and null keeps it in the Utility Panel. It comes from the project either
+    /// way, so it always sits in the project band.
     /// </summary>
     public static UtilityRailItem CreateContributedUtility(
         EditorId itemId,
@@ -174,10 +211,12 @@ public sealed record UtilityRailItem
         if (dockArea is null)
         {
             return CreatePanelUtility(
+                RailItemGroup.ProjectItem,
                 itemId, landmarkId, iconName, displayName, tooltip, panelView, fileResource, editorId);
         }
 
         return CreateDockableUtility(
+            RailItemGroup.ProjectItem,
             itemId, landmarkId, iconName, displayName, tooltip, fileResource, editorId, panelView, dockArea.Value);
     }
 
@@ -185,6 +224,7 @@ public sealed record UtilityRailItem
     /// A button that opens a document in the given area.
     /// </summary>
     public static UtilityRailItem CreateDocumentShortcut(
+        RailItemGroup group,
         EditorId itemId,
         string landmarkId,
         string iconName,
@@ -197,6 +237,7 @@ public sealed record UtilityRailItem
         return new UtilityRailItem
         {
             Kind = RailItemKind.DocumentShortcut,
+            Group = group,
             ItemId = itemId,
             LandmarkId = landmarkId,
             IconName = iconName,
