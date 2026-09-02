@@ -134,8 +134,7 @@ public class DeleteResourceDialogCommand : CommandBase, IDeleteResourceDialogCom
 
         var confirmationOptions = new ConfirmationDialogOptions
         {
-            PrimaryButtonText = deleteString,
-            IsDestructive = true
+            PrimaryButtonText = deleteString
         };
         var showResult = await _dialogService.ShowConfirmationDialogAsync(deleteString, confirmDeleteString, confirmationOptions);
         if (showResult.IsSuccess)

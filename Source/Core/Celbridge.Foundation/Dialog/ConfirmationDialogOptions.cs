@@ -16,8 +16,8 @@ public record ConfirmationDialogOptions
     public string? SecondaryButtonText { get; init; }
 
     /// <summary>
-    /// When true, the confirm button is styled as a destructive action and keyboard focus starts on
-    /// the cancel button, so pressing Enter cancels rather than carrying out the action. Defaults to false.
+    /// When true, the cancel button becomes the accented default and takes initial focus, so pressing
+    /// Enter cancels. Use for actions that cannot be undone. Defaults to false.
     /// </summary>
     public bool IsDestructive { get; init; }
 }
