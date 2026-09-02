@@ -1,22 +1,22 @@
+using Celbridge.Community;
 using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Projects;
 using Celbridge.WebHost;
-using Celbridge.Workshop;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.WorkspaceUI.Services;
 
-public class WorkshopService : IWorkshopService
+public class CommunityService : ICommunityService
 {
-    private const string DocumentName = "workshop";
+    private const string DocumentName = "community";
 
-    private readonly ILogger<WorkshopService> _logger;
+    private readonly ILogger<CommunityService> _logger;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public WorkshopService(
-        ILogger<WorkshopService> logger,
+    public CommunityService(
+        ILogger<CommunityService> logger,
         IStringLocalizer stringLocalizer,
         IWorkspaceWrapper workspaceWrapper)
     {
@@ -33,33 +33,32 @@ public class WorkshopService : IWorkshopService
         var writeResult = await WriteDocumentAsync();
         if (writeResult.IsFailure)
         {
-            _logger.LogWarning(writeResult, "Failed to seed the Workshop document");
+            _logger.LogWarning(writeResult, "Failed to seed the Community document");
         }
     }
 
-    public async Task<Result> WriteDocumentAsync()
+    private async Task<Result> WriteDocumentAsync()
     {
         // Seeding runs partway through the workspace load, so the page has not finished loading yet and
         // the presence of the workspace service is what says the write can reach the file system.
         if (!_workspaceWrapper.HasWorkspaceService)
         {
-            return Result.Fail("Failed to write the Workshop document because no workspace is loaded");
+            return Result.Fail("Failed to write the Community document because no workspace is loaded");
         }
 
         var resource = DocumentResource;
 
-        var bookmarks = new List<WebViewBookmark>();
-        foreach (var section in WorkshopSections.All)
+        // The landing page is bookmarked as well as being the Home target, so the bookmarks bar alone is a
+        // complete way around the site.
+        var bookmarks = new List<WebViewBookmark>
         {
-            // Names are resolved at seed time rather than when the bar is drawn, so a language change
-            // reaches the bookmarks on the next workspace load.
-            string name = _stringLocalizer.GetString(section.NameKey);
-
-            bookmarks.Add(new WebViewBookmark(section.Url, name, section.IconName));
-        }
+            CreateBookmark(CommunityUrls.Celbridge, "Community_Section_Celbridge", "bs-house"),
+            CreateBookmark(CommunityUrls.Learn, "Community_Section_Learn", "bs-book"),
+            CreateBookmark(CommunityUrls.Forum, "Community_Section_Forum", "bs-chat-dots")
+        };
 
         // The URL bar stays on: the sections link out to the wider web, and the user needs the way back.
-        var content = new WebViewFileContent(WorkshopSections.Celbridge.Url)
+        var content = new WebViewFileContent(CommunityUrls.Celbridge)
         {
             Bookmarks = bookmarks
         };
@@ -69,10 +68,17 @@ public class WorkshopService : IWorkshopService
         var writeResult = await resourceFileSystem.WriteAllTextAsync(resource, content.ToToml());
         if (writeResult.IsFailure)
         {
-            return Result.Fail($"Failed to write the Workshop document: '{resource}'")
+            return Result.Fail($"Failed to write the Community document: '{resource}'")
                 .WithErrors(writeResult);
         }
 
         return Result.Ok();
+    }
+
+    // Names are resolved at seed time rather than when the bar is drawn, so a language change reaches the
+    // bookmarks on the next workspace load.
+    private WebViewBookmark CreateBookmark(string url, string nameKey, string iconName)
+    {
+        return new WebViewBookmark(url, _stringLocalizer.GetString(nameKey), iconName);
     }
 }

@@ -128,17 +128,17 @@ public class ShowUtilityCommandTests
     {
         // A document shortcut opens a document rather than occupying the panel, so it is not a live utility
         // either. An agent asked for a button the user can see has to be able to reveal it.
-        _utilityPanel.HasRailItem(BuiltInShortcutIds.Workshop).Returns(true);
+        _utilityPanel.HasRailItem(BuiltInShortcutIds.Community).Returns(true);
 
         var command = new ShowUtilityCommand(_workspaceWrapper)
         {
-            UtilityId = BuiltInShortcutIds.Workshop
+            UtilityId = BuiltInShortcutIds.Community
         };
 
         var result = await command.ExecuteAsync();
 
         result.IsSuccess.Should().BeTrue();
-        _utilityPanel.Received(1).ShowUtility(BuiltInShortcutIds.Workshop);
+        _utilityPanel.Received(1).ShowUtility(BuiltInShortcutIds.Community);
 
         // Only a live utility can be moved between areas, so a shortcut never reaches the dock path.
         await _utilityService.DidNotReceive().DockUtilityAsync(Arg.Any<EditorId>(), Arg.Any<WorkspaceArea>());
@@ -149,12 +149,12 @@ public class ShowUtilityCommandTests
     {
         // A document shortcut's document opens in the area it declares. Reporting success while quietly
         // dropping the requested area would leave a caller believing the move happened.
-        _utilityPanel.HasRailItem(BuiltInShortcutIds.Workshop).Returns(true);
-        _utilityService.GetRailItems().Returns(new List<UtilityRailItem> { CreateWorkshopShortcut() });
+        _utilityPanel.HasRailItem(BuiltInShortcutIds.Community).Returns(true);
+        _utilityService.GetRailItems().Returns(new List<UtilityRailItem> { CreateCommunityShortcut() });
 
         var command = new ShowUtilityCommand(_workspaceWrapper)
         {
-            UtilityId = BuiltInShortcutIds.Workshop,
+            UtilityId = BuiltInShortcutIds.Community,
             TargetArea = WorkspaceArea.Side
         };
 
@@ -168,19 +168,19 @@ public class ShowUtilityCommandTests
     public async Task Execute_ShortcutWithTheAreaItOpensIn_RevealsIt()
     {
         // Naming where the item already opens is a reveal, not a move, so it succeeds.
-        _utilityPanel.HasRailItem(BuiltInShortcutIds.Workshop).Returns(true);
-        _utilityService.GetRailItems().Returns(new List<UtilityRailItem> { CreateWorkshopShortcut() });
+        _utilityPanel.HasRailItem(BuiltInShortcutIds.Community).Returns(true);
+        _utilityService.GetRailItems().Returns(new List<UtilityRailItem> { CreateCommunityShortcut() });
 
         var command = new ShowUtilityCommand(_workspaceWrapper)
         {
-            UtilityId = BuiltInShortcutIds.Workshop,
+            UtilityId = BuiltInShortcutIds.Community,
             TargetArea = WorkspaceArea.Main
         };
 
         var result = await command.ExecuteAsync();
 
         result.IsSuccess.Should().BeTrue();
-        _utilityPanel.Received(1).ShowUtility(BuiltInShortcutIds.Workshop);
+        _utilityPanel.Received(1).ShowUtility(BuiltInShortcutIds.Community);
     }
 
     [Test]
@@ -193,15 +193,15 @@ public class ShowUtilityCommandTests
         result.IsFailure.Should().BeTrue();
     }
 
-    private static UtilityRailItem CreateWorkshopShortcut()
+    private static UtilityRailItem CreateCommunityShortcut()
     {
         return UtilityRailItem.CreateDocumentShortcut(
-            BuiltInShortcutIds.Workshop,
-            "workshop-utility-button",
+            BuiltInShortcutIds.Community,
+            "community-utility-button",
             "people",
-            "Community Workshop",
-            "Community Workshop",
-            new ResourceKey("temp:workshop.webview"),
+            "Community",
+            "Community",
+            new ResourceKey("temp:community.webview"),
             BuiltInEditors.WebViewEditorId,
             WorkspaceArea.Main);
     }

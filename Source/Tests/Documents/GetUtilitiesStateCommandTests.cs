@@ -13,7 +13,7 @@ public class GetUtilitiesStateCommandTests
 {
     private static readonly EditorId NotepadId = EditorId.Create("acme", "notepad");
     private static readonly ResourceKey NotepadResource = new("utils:acme.notepad._notepad");
-    private static readonly ResourceKey WorkshopResource = new("temp:workshop.webview");
+    private static readonly ResourceKey CommunityResource = new("temp:community.webview");
 
     private IUtilityPanel _utilityPanel = null!;
     private IUtilityService _utilityService = null!;
@@ -36,7 +36,7 @@ public class GetUtilitiesStateCommandTests
         // Nothing is collapsed unless a test says so, so isVisible follows what is presenting the item.
         _layoutService = Substitute.For<ILayoutService>();
         _layoutService.IsAreaVisible(Arg.Any<WorkspaceArea>()).Returns(true);
-        _utilityService.GetCurrentArea(BuiltInShortcutIds.Workshop).Returns(WorkspaceArea.Main);
+        _utilityService.GetCurrentArea(BuiltInShortcutIds.Community).Returns(WorkspaceArea.Main);
 
         _documentsService = Substitute.For<IDocumentsService>();
         _documentsService.ActiveDocument.Returns(ResourceKey.Empty);
@@ -68,9 +68,9 @@ public class GetUtilitiesStateCommandTests
                 WorkspaceArea.Bottom),
 
             UtilityRailItem.CreateDocumentShortcut(
-                BuiltInShortcutIds.Workshop, "workshop-utility-button", "people",
-                "Community Workshop", "Community Workshop",
-                WorkshopResource,
+                BuiltInShortcutIds.Community, "community-utility-button", "people",
+                "Community", "Community",
+                CommunityResource,
                 BuiltInEditors.WebViewEditorId,
                 WorkspaceArea.Main)
         };
@@ -98,10 +98,10 @@ public class GetUtilitiesStateCommandTests
         utilities[1].Resource.Should().Be(NotepadResource);
 
         // A document shortcut is listed like anything else on the rail, whatever its scope.
-        utilities[2].UtilityId.Should().Be(BuiltInShortcutIds.Workshop);
-        utilities[2].DisplayName.Should().Be("Community Workshop");
+        utilities[2].UtilityId.Should().Be(BuiltInShortcutIds.Community);
+        utilities[2].DisplayName.Should().Be("Community");
         utilities[2].CurrentArea.Should().Be(WorkspaceArea.Main);
-        utilities[2].Resource.Should().Be(WorkshopResource);
+        utilities[2].Resource.Should().Be(CommunityResource);
     }
 
     [Test]
@@ -120,7 +120,7 @@ public class GetUtilitiesStateCommandTests
         utilities.Single(utility => utility.UtilityId == NotepadId).DockArea
             .Should().Be(WorkspaceArea.Bottom);
 
-        utilities.Single(utility => utility.UtilityId == BuiltInShortcutIds.Workshop).DockArea
+        utilities.Single(utility => utility.UtilityId == BuiltInShortcutIds.Community).DockArea
             .Should().Be(WorkspaceArea.Main);
 
         utilities.Single(utility => utility.UtilityId == BuiltInUtilityIds.Explorer).DockArea
@@ -157,9 +157,9 @@ public class GetUtilitiesStateCommandTests
         notepad.CurrentArea.Should().Be(WorkspaceArea.Main);
         notepad.IsVisible.Should().BeTrue();
 
-        // The Workshop is in a document area too, but no section is showing its document.
-        var workshop = command.ResultValue.Utilities.Single(utility => utility.UtilityId == BuiltInShortcutIds.Workshop);
-        workshop.IsVisible.Should().BeFalse();
+        // The Community is in a document area too, but no section is showing its document.
+        var community = command.ResultValue.Utilities.Single(utility => utility.UtilityId == BuiltInShortcutIds.Community);
+        community.IsVisible.Should().BeFalse();
     }
 
     [Test]

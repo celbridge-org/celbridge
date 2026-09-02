@@ -23,7 +23,7 @@ Utility Panel rail (the icon strip on the far left that switches the primary pan
 - `explorer-utility-button` — the Explorer icon in the rail.
 - `search-utility-button` — the Search icon in the rail.
 - `project-settings-utility-button` — the Project Settings icon in the rail, which opens the project file as a document.
-- `workshop-utility-button` — the Community Workshop icon at the end of the rail, which opens the Celbridge site as a document.
+- `community-utility-button` — the Community icon at the end of the rail, which opens the Celbridge site as a document.
 
 Explorer toolbar (its buttons are revealed automatically when spotlighted):
 
