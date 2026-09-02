@@ -20,6 +20,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
 
     private bool _checkedBackgroundActivity;
     private bool _checkedInactiveSelection;
+    private bool _reportedRemoteInspection;
 
     // The find methods receive only a CoreWebView2, so sessions are keyed by it to recover per-find state.
     private readonly Dictionary<CoreWebView2, FindSession> _findSessions = new();
@@ -435,6 +436,60 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     {
         // The Skia heads' managed WebView2 surface does not implement zoom control, and user zoom is not
         // wired there, so there is nothing to toggle.
+    }
+
+    public void SetDevToolsEnabled(CoreWebView2 coreWebView2, bool enabled, string targetName)
+    {
+        // Honoured by the real WebView2 behind the Windows-under-Skia head. Stored and ignored on the macOS
+        // and Linux heads, which is why macOS goes on to opt the native view in itself.
+        coreWebView2.Settings.AreDevToolsEnabled = enabled;
+
+        if (!OperatingSystem.IsMacOS())
+        {
+            return;
+        }
+
+        if (!MacOSWebViewInterop.TryGetNativeWebViewHandle(coreWebView2, out var nativeHandle, out var detail))
+        {
+            _logger.LogWarning("Could not set the WebView developer tools state: {Detail}", detail);
+            return;
+        }
+
+        MacOSWebViewInterop.RetainNativeWebView(nativeHandle);
+
+        var inspectable = MacOSWebViewInterop.SetInspectable(nativeHandle, enabled);
+
+        var named = !enabled
+            || MacOSWebViewInterop.SetRemoteInspectionName(nativeHandle, targetName);
+
+        ReportRemoteInspectionOnce(enabled, inspectable && named);
+    }
+
+    // Reported once per session because a silent no-op here leaves every hosted page undebuggable, with
+    // nothing in the log to say so.
+    internal void ReportRemoteInspectionOnce(bool enabled, bool applied)
+    {
+        if (_reportedRemoteInspection)
+        {
+            return;
+        }
+
+        _reportedRemoteInspection = true;
+
+        if (!applied)
+        {
+            _logger.LogWarning(
+                "WebKit did not accept an inspection setting, so hosted pages may not appear in Safari's Develop menu");
+            return;
+        }
+
+        if (enabled)
+        {
+            _logger.LogDebug("Hosted pages are inspectable from Safari's Develop menu");
+            return;
+        }
+
+        _logger.LogDebug("Hosted pages are not inspectable: web inspection is disabled");
     }
 
     private string ResolveSafariVersion()

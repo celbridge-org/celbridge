@@ -157,6 +157,12 @@ public sealed class WindowsWebViewAdapter : IWebViewAdapter
         coreWebView2.Settings.IsZoomControlEnabled = enabled;
     }
 
+    public void SetDevToolsEnabled(CoreWebView2 coreWebView2, bool enabled, string targetName)
+    {
+        // Chromium's DevTools open against one page, so the target name has nothing to distinguish here.
+        coreWebView2.Settings.AreDevToolsEnabled = enabled;
+    }
+
     // Windows uses Chromium's built-in find bar (ProvidesBuiltInFind is true), so the host never drives find
     // through the adapter here. These no-ops satisfy the shared adapter contract.
     public async Task StartFindAsync(CoreWebView2 coreWebView2, string term, FindOptions options)

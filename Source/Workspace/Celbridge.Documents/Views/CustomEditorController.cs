@@ -360,8 +360,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         // DevTools is off when the hosting package blocks it (sensitive material)
         // or when the user has not enabled the WebViewDevTools feature flag.
         var devToolsBlocked = _contribution.Package.DevToolsBlocked;
-        WebView.CoreWebView2.Settings.AreDevToolsEnabled =
-            !devToolsBlocked && _webViewService.IsDevToolsFeatureEnabled();
+        var devToolsEnabled = !devToolsBlocked && _webViewService.IsDevToolsFeatureEnabled();
+        _webViewAdapter.SetDevToolsEnabled(WebView.CoreWebView2, devToolsEnabled, _viewModel.FileResource.ToString());
 
         // A custom editor is application chrome, not a browsable page, so disable WebView zoom (Ctrl+/-,
         // Ctrl+scroll). It reads as part of the app and follows OS display scaling like the native panels.

@@ -150,6 +150,15 @@ public interface IWebViewAdapter
     void SetZoomControlEnabled(CoreWebView2 coreWebView2, bool enabled);
 
     /// <summary>
+    /// Enables or disables the developer tools for the page, and names it in the debugger's target list,
+    /// which otherwise identifies every hosted editor by its index.html URL. The Windows heads take the
+    /// WebView2 setting, which Chromium acts on. That setting never reaches WebKit on the macOS Skia head, so
+    /// the native WKWebView is opted into remote inspection instead, which is what lists the page in Safari's
+    /// Develop menu. The Linux Skia head has no developer tools wired.
+    /// </summary>
+    void SetDevToolsEnabled(CoreWebView2 coreWebView2, bool enabled, string targetName);
+
+    /// <summary>
     /// Begins (or restarts) a whole-page find for the given term, selecting and scrolling to the first match.
     /// Drives the native WKWebView findString on macOS. Inert where ProvidesBuiltInFind is true (the Windows
     /// heads), whose backend supplies its own find bar. Match progress is reported through

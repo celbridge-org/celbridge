@@ -275,6 +275,57 @@ public static class MacOSWebViewInterop
         SendMessage(webView, closeSelector);
     }
 
+    /// <summary>
+    /// Opts the web view into remote inspection, which is what makes the hosted page reachable from Safari's
+    /// Develop menu. Returns whether the view reports the requested state afterwards. The managed
+    /// AreDevToolsEnabled is stored and never reaches WebKit on the Skia head, so this is the only way to
+    /// enable inspection on macOS.
+    /// </summary>
+    public static bool SetInspectable(IntPtr webView, bool inspectable)
+    {
+        if (webView == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        // Public API since macOS 13.3, so the probe only guards against a system older than that.
+        var inspectableSelector = GetSelector("setInspectable:");
+        if (SendMessage(webView, GetSelector("respondsToSelector:"), inspectableSelector) == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        SendMessageVoidBool(webView, inspectableSelector, inspectable);
+
+        // Read back rather than trust the send, so a property that stores the value and acts on nothing is
+        // reported as a failure.
+        return SendMessageReturnBool(webView, GetSelector("isInspectable")) == inspectable;
+    }
+
+    /// <summary>
+    /// Names the web view in the remote inspector's target list, replacing the URL-derived label a debugger
+    /// would otherwise show. Returns whether the name reads back.
+    /// </summary>
+    public static bool SetRemoteInspectionName(IntPtr webView, string name)
+    {
+        if (webView == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        var nameSelector = GetSelector("_setRemoteInspectionNameOverride:");
+        if (SendMessage(webView, GetSelector("respondsToSelector:"), nameSelector) == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        SendMessageVoid(webView, nameSelector, CreateNSString(name));
+
+        var appliedName = SendMessage(webView, GetSelector("_remoteInspectionNameOverride"));
+
+        return ReadNSString(appliedName) == name;
+    }
+
     private delegate void SetMaintainsInactiveSelection(IntPtr page, byte maintains);
 
     // Resolved once: this runs on every focus grant, and neither the symbol nor the selector changes.

@@ -223,7 +223,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
             // relies on the registry's native click monitor instead.
             RegisterWebSurfaceFocus(_webView, ReleaseFocus, GrantDomFocusAsync);
 
-            _webView.CoreWebView2.Settings.AreDevToolsEnabled = _webViewService.IsDevToolsFeatureEnabled();
+            var devToolsEnabled = _webViewService.IsDevToolsFeatureEnabled();
+            _webViewAdapter.SetDevToolsEnabled(_webView.CoreWebView2, devToolsEnabled, FileResource.ToString());
 
             // The .webview browser and HTML viewer render page content, so keep user zoom enabled.
             _webViewAdapter.SetZoomControlEnabled(_webView.CoreWebView2, true);
