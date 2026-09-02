@@ -1,6 +1,8 @@
 using Celbridge.Commands;
 using Celbridge.ContextMenu;
+using Celbridge.Platform;
 using Celbridge.UserInterface;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.DataTransfer;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
@@ -15,6 +17,7 @@ public class CutMenuOption : IMenuOption<ExplorerMenuContext>
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IPlatformInfo _platformInfo;
 
     public int Priority => 1;
     public string GroupId => nameof(ExplorerMenuGroup.EditActions);
@@ -22,18 +25,21 @@ public class CutMenuOption : IMenuOption<ExplorerMenuContext>
     public CutMenuOption(
         IStringLocalizer stringLocalizer,
         ICommandService commandService,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        IPlatformInfo platformInfo)
     {
         _stringLocalizer = stringLocalizer;
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
+        _platformInfo = platformInfo;
     }
 
     public MenuItemDisplayInfo GetDisplayInfo(ExplorerMenuContext context)
     {
         return new MenuItemDisplayInfo(
             _stringLocalizer.GetString("ResourceTree_Cut"),
-            Icon: IconSymbol.Cut);
+            Icon: IconSymbol.Cut,
+            ShortcutHint: EditShortcutHint.For(EditIntent.Cut, _platformInfo));
     }
 
     public MenuItemState GetState(ExplorerMenuContext context)

@@ -105,6 +105,12 @@ public class MenuBuilder<TContext> : IMenuBuilder<TContext> where TContext : IMe
                 menuItem.Icon = new Icon { Symbol = iconSymbol };
             }
 
+            // A display-only hint. The chord is handled by the focused surface, not by this menu item.
+            if (item.DisplayInfo.ShortcutHint is string shortcutHint)
+            {
+                menuItem.KeyboardAcceleratorTextOverride = shortcutHint;
+            }
+
             // Wire up click handler
             var option = item.Option; // Capture for closure
             menuItem.Click += (_, _) =>
