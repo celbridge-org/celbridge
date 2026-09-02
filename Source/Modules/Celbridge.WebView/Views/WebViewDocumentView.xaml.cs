@@ -185,6 +185,10 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
         ViewModel.CurrentUrl = uri.AbsoluteUri;
         _pendingNavigationUrl = uri.AbsoluteUri;
 
+        // Paired with the completion below, so a page that never arrives can be told from one that arrived
+        // and failed, and from one the policy declined.
+        _logger.LogDebug("Navigating {Resource} to {Url}", FileResource, uri.AbsoluteUri);
+
         _webView.Source = uri;
     }
 
@@ -501,6 +505,19 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
                 var reason = $"The WebView navigation failed with status '{e.WebErrorStatus}'.";
                 _toolBridge?.NotifyContentFailed(FileResource, reason);
             }
+        }
+
+        if (e.IsSuccess)
+        {
+            _logger.LogDebug("Navigation completed for {Resource} at {Url}", FileResource, ViewModel.CurrentUrl);
+        }
+        else
+        {
+            _logger.LogWarning(
+                "Navigation failed for {Resource} at {Url} with status {Status}",
+                FileResource,
+                ViewModel.CurrentUrl,
+                e.WebErrorStatus);
         }
 
         ViewModel.NotifyNavigationCompleted(e.IsSuccess);
