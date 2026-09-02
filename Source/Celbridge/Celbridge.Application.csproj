@@ -13,7 +13,7 @@
          TFM agrees. The Uno.Sdk maps it to $(Version) on the platform heads but not the plain net10.0 TFM,
          which would otherwise default to 1.0.0 and fail project load in Visual Studio. The packaged
          Windows Identity Version in Package.appxmanifest is separate, keep it in sync. -->
-    <ApplicationDisplayVersion>0.3.0</ApplicationDisplayVersion>
+    <ApplicationDisplayVersion>1.0.0</ApplicationDisplayVersion>
     <ApplicationVersion>1</ApplicationVersion>
     <Version>$(ApplicationDisplayVersion)</Version>
     <ApplicationPublisher>An Tulcha</ApplicationPublisher>
