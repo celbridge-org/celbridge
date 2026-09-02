@@ -126,6 +126,7 @@ public sealed partial class DocumentSectionView : UserControl
         RootGrid.AddHandler(PointerPressedEvent, _documentPointerPressedHandler, handledEventsToo: true);
 
         TabView.Loaded += OnTabViewLoaded;
+        TabView.SelectionChanged += OnTabViewSelectionChanged;
 
         // A narrower strip moves the scroll indicator and can change whether it is needed at all. It also
         // leaves the selected tab clipped off-screen, so a window resize or a change in the number of
@@ -574,52 +575,62 @@ public sealed partial class DocumentSectionView : UserControl
         // the layout pass runs, so measuring synchronously here would read stale bounds.
         DispatcherQueue.TryEnqueue(() =>
         {
+            if (_isShuttingDown)
+            {
+                return;
+            }
+
             var tabListView = VisualTree.FindDescendant<ListViewBase>(TabView);
-            if (tabListView is null)
+            var scrollViewer = GetTabStripScrollViewer();
+            if (tabListView is null ||
+                scrollViewer is null)
             {
                 return;
             }
 
-            var scrollViewer = VisualTree.FindDescendant<ScrollViewer>(tabListView);
-            if (scrollViewer is null)
-            {
-                return;
-            }
-
-            // Measure before disturbing the strip. A tab the user clicked is arranged already and is
-            // usually in view, and the realization pass below moves the offset whether or not there was
-            // anything to reveal, which lands the strip back near its first tab.
-            var container = tabListView.ContainerFromItem(tab) as FrameworkElement;
-            if (container is not null &&
-                container.ActualWidth > 0 &&
-                GetRevealOffset(container, scrollViewer) is null)
-            {
-                return;
-            }
-
-            // Realize the container for an off-screen (virtualized) tab and force the strip to lay out, so
-            // the measurements below reflect the settled geometry rather than a transient resize state.
-            tabListView.ScrollIntoView(tab, ScrollIntoViewAlignment.Default);
+            // Settle the strip before measuring it, so the offset and the bounds read below belong to the
+            // same arrangement.
             tabListView.UpdateLayout();
 
-            container = tabListView.ContainerFromItem(tab) as FrameworkElement;
-            if (container is null ||
-                container.ActualWidth == 0)
+            if (tabListView.ContainerFromItem(tab) is FrameworkElement container &&
+                container.ActualWidth > 0)
             {
-                // Uno can realize a tab many positions off-screen without arranging it (zero bounds). Its
-                // ScrollIntoView above is the best available fallback; driving the scroll from zero geometry
-                // would only push the strip to the wrong place.
+                ScrollToRevealTab(container, scrollViewer);
+
                 return;
             }
 
-            if (GetRevealOffset(container, scrollViewer) is not double targetOffset)
-            {
-                return;
-            }
+            // A virtualized tab has no bounds to measure, and the strip's own reveal is the only thing that
+            // will realize it. Where it lands is then corrected on the following cycle, once it has settled.
+            tabListView.ScrollIntoView(tab, ScrollIntoViewAlignment.Default);
 
-            double clampedOffset = Math.Clamp(targetOffset, 0, scrollViewer.ScrollableWidth);
-            scrollViewer.ChangeView(clampedOffset, null, null, disableAnimation: true);
+            _ = DispatcherQueue.TryEnqueue(() =>
+            {
+                if (_isShuttingDown)
+                {
+                    return;
+                }
+
+                if (tabListView.ContainerFromItem(tab) is FrameworkElement realized &&
+                    realized.ActualWidth > 0)
+                {
+                    ScrollToRevealTab(realized, scrollViewer);
+                }
+            });
         });
+    }
+
+    // Scrolls the strip by the least it takes to bring the tab fully into view, and leaves the strip alone
+    // while the tab is already there.
+    private static void ScrollToRevealTab(FrameworkElement container, ScrollViewer scrollViewer)
+    {
+        if (GetRevealOffset(container, scrollViewer) is not double targetOffset)
+        {
+            return;
+        }
+
+        double clampedOffset = Math.Clamp(targetOffset, 0, scrollViewer.ScrollableWidth);
+        scrollViewer.ChangeView(clampedOffset, null, null, disableAnimation: true);
     }
 
     /// <summary>
@@ -634,6 +645,20 @@ public sealed partial class DocumentSectionView : UserControl
         double tabWidth = container.ActualWidth;
         double viewportWidth = scrollViewer.ViewportWidth;
         double currentOffset = scrollViewer.HorizontalOffset;
+
+        // A tab too wide for the strip cannot be brought fully into view, so its leading edge is the edge to
+        // show: the document's name starts there, while the trailing edge carries only the close button. The
+        // trailing check below would otherwise stay true however far the strip scrolled, and take the name off
+        // the leading edge to satisfy it.
+        if (tabWidth >= viewportWidth)
+        {
+            if (tabViewportX == 0)
+            {
+                return null;
+            }
+
+            return currentOffset + tabViewportX;
+        }
 
         if (tabViewportX < 0)
         {
@@ -873,6 +898,21 @@ public sealed partial class DocumentSectionView : UserControl
 
         AttachTabStripScrollIndicator(scrollViewer);
         AttachTabStripWheelHandler(scrollViewer);
+
+        // Left to itself the strip scrolls a tab into view whenever that tab takes focus, landing wherever the
+        // framework chooses rather than at the least scroll that shows the tab, and sometimes short of the
+        // edge it scrolled towards. Revealing runs from the selection instead, once the strip has settled.
+        scrollViewer.BringIntoViewOnFocusChange = false;
+    }
+
+    private void OnTabViewSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_isShuttingDown)
+        {
+            return;
+        }
+
+        RevealSelectedTab();
     }
 
     private void AttachTabStripScrollIndicator(ScrollViewer scrollViewer)

@@ -75,10 +75,20 @@
                                Margin="0"
                                Visibility="{x:Bind ViewModel.IsUtilityEditor, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
 
-                <TextBlock Text="{x:Bind ViewModel.DocumentName, Mode=OneWay}"
-                           Margin="4,0,0,0"
-                           ToolTipService.ToolTip="{x:Bind ViewModel.TabTooltip, Mode=OneWay}"
-                           ToolTipService.Placement="Bottom" />
+                <!-- The label is held at the width it takes at the heavier weight a selected tab draws it in.
+                     The strip sizes its tabs to their content, so without this a tab widens as it is selected
+                     and every tab after it shifts, which moves the ground under anything measuring the strip.
+                     The sizing copy is laid out but never drawn. -->
+                <Grid Margin="4,0,0,0">
+                    <TextBlock Text="{x:Bind ViewModel.DocumentName, Mode=OneWay}"
+                               FontWeight="SemiBold"
+                               Opacity="0"
+                               IsHitTestVisible="False" />
+
+                    <TextBlock Text="{x:Bind ViewModel.DocumentName, Mode=OneWay}"
+                               ToolTipService.ToolTip="{x:Bind ViewModel.TabTooltip, Mode=OneWay}"
+                               ToolTipService.Placement="Bottom" />
+                </Grid>
             </StackPanel>
         </Grid>
     </muxc:TabViewItem.Header>
