@@ -117,7 +117,6 @@ public class DocumentsService : IDocumentsService, IDisposable
             _workspaceWrapper,
             _preferenceStore,
             _fileTypeClassifier,
-            _serviceProvider,
             serviceProvider.GetRequiredService<ILogger<DocumentViewFactory>>());
 
         _layoutStore = new DocumentLayoutStore(
