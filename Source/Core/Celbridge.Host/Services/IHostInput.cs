@@ -23,6 +23,9 @@ public static class InputRpcMethods
     // Client to host. Reports which edit verbs the editor can currently perform.
     public const string EditAvailabilityChanged = "input/editAvailabilityChanged";
 
+    // Client to host. Asks the host to perform an edit verb on the calling editor.
+    public const string RequestEdit = "input/requestEdit";
+
     // Client to host. Reports that the keyboard has left the page. Sent by a listener the host injects into
     // every hosted surface, so it arrives over the native web message bus rather than the RPC channel: the
     // page it comes from may have no client library at all.
@@ -47,8 +50,8 @@ public interface IHostInput
     void OnLinkClicked(string href) { }
 
     /// <summary>
-    /// Called when a WebView editor reports which edit verbs it can currently perform, so the host can
-    /// drive menu enable state.
+    /// Called when a WebView editor reports which edit verbs it can currently perform. hostMediatedClipboard
+    /// marks an editor whose Cut, Copy and Paste run through the host rather than the platform.
     /// </summary>
     [JsonRpcMethod(InputRpcMethods.EditAvailabilityChanged)]
     void OnEditAvailabilityChanged(
@@ -58,9 +61,16 @@ public interface IHostInput
         bool canSelectAll,
         bool canUndo,
         bool canRedo,
-        bool canIndent = false)
+        bool canIndent = false,
+        bool hostMediatedClipboard = false)
     { }
 
+    /// <summary>
+    /// Called when an editor's own menu asks the host to perform an edit verb on it. The command is one of
+    /// cut, copy, paste, selectAll, undo or redo, and the host performs it on the calling editor.
+    /// </summary>
+    [JsonRpcMethod(InputRpcMethods.RequestEdit)]
+    Task RequestEditAsync(string command) => Task.CompletedTask;
 }
 
 public static class HostInputExtensions

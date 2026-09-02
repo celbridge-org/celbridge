@@ -15,6 +15,9 @@ export class EditorController {
     #containerElement = null;
     #isInitialized = false;
     #isReloadingExternally = false;
+    #readOnly = false;
+    // The ranges the last getSelectedText read, so the cut that follows clears exactly those.
+    #copiedRanges = null;
     #pendingNavigation = null;
     #onContentChanged = () => {};
     #onScrollChanged = () => {};
@@ -91,31 +94,103 @@ export class EditorController {
             return;
         }
 
-        const selection = this.#editor.getSelection();
-        const range = {
-            startLineNumber: selection.startLineNumber,
-            startColumn: selection.startColumn,
-            endLineNumber: selection.endLineNumber,
-            endColumn: selection.endColumn
-        };
+        // The host clears a cut by inserting empty text, which removes what getSelectedText recorded.
+        const clearing = text.length === 0;
+        const targets = (clearing ? this.#copiedRanges : null)
+            ?? this.#editor.getSelections()
+            ?? [];
 
-        this.#editor.executeEdits('insert', [{ range: range, text: text }]);
+        this.#copiedRanges = null;
+
+        // One clipboard line per cursor when the counts match, matching Monaco's own multi-cursor paste.
+        // Every cursor receives the whole text otherwise.
+        const lines = clearing ? null : text.split(/\r\n|\r|\n/);
+        const perCursor = lines !== null && lines.length === targets.length && targets.length > 1;
+
+        const edits = targets.map((range, index) => ({
+            range: {
+                startLineNumber: range.startLineNumber,
+                startColumn: range.startColumn,
+                endLineNumber: range.endLineNumber,
+                endColumn: range.endColumn
+            },
+            text: perCursor ? lines[index] : text
+        }));
+
+        if (edits.length === 0) {
+            return;
+        }
+
+        this.#editor.executeEdits('insert', edits);
         this.#editor.focus();
     }
 
-    // Returns the currently selected text. The host fetches this for clipboard copy/cut, because the
-    // WebView's own JS clipboard write is blocked outside a user gesture on the Skia WKWebView.
+    // The selection as text, which the host fetches for copy and cut. Every selection contributes, because
+    // the host's cut is get-then-clear and insertText writes to all of them.
     getSelectedText() {
         if (!this.#editor) {
             return '';
         }
 
-        const selection = this.#editor.getSelection();
-        if (!selection) {
+        const model = this.#editor.getModel();
+        const selections = this.#editor.getSelections();
+        if (!model || !selections) {
             return '';
         }
 
-        return this.#editor.getModel().getValueInRange(selection);
+        const eol = model.getEOL();
+
+        // The cut's clear step removes exactly these, so a caret moved during the round trip cannot make
+        // the cut delete a line it never copied.
+        const lineRanges = this.#cursorLineRanges();
+        this.#copiedRanges = lineRanges ?? [...selections];
+
+        if (lineRanges) {
+            return lineRanges
+                .map(range => model.getValueInRange(range))
+                .map(lineText => lineText.endsWith(eol) ? lineText : lineText + eol)
+                .join('');
+        }
+
+        return [...selections]
+            .sort((a, b) => a.startLineNumber - b.startLineNumber || a.startColumn - b.startColumn)
+            .map(selection => model.getValueInRange(selection))
+            .filter(text => text.length > 0)
+            .join(eol);
+    }
+
+    // Cut and copy with nothing selected act on the cursor's whole line, matching Monaco's
+    // emptySelectionClipboard behaviour. Null means some selection has content, so it is the target instead.
+    #cursorLineRanges() {
+        const model = this.#editor.getModel();
+        const selections = this.#editor.getSelections();
+        if (!model || !selections || selections.length === 0) {
+            return null;
+        }
+
+        if (selections.some(selection => !selection.isEmpty())) {
+            return null;
+        }
+
+        // Monaco's Copy still runs its own empty-selection rule, so read the option it obeys rather than
+        // assuming it, and the two stay in step.
+        if (!this.#editor.getOption(monaco.editor.EditorOption.emptySelectionClipboard)) {
+            return null;
+        }
+
+        const lastLine = model.getLineCount();
+
+        return [...new Set(selections.map(selection => selection.startLineNumber))]
+            .sort((a, b) => a - b)
+            .map(lineNumber => lineNumber < lastLine
+                // Take the line terminator too, so a cut removes the line rather than emptying it.
+                ? { startLineNumber: lineNumber, startColumn: 1, endLineNumber: lineNumber + 1, endColumn: 1 }
+                : {
+                    startLineNumber: lineNumber,
+                    startColumn: 1,
+                    endLineNumber: lineNumber,
+                    endColumn: model.getLineMaxColumn(lineNumber)
+                });
     }
 
     // Runs one of Monaco's own edit commands in response to a host edit intent (e.g. a host menu or
@@ -349,7 +424,9 @@ export class EditorController {
             // Logged so a user-reported "stuck read-only" can be diagnosed from the WebView2 console
             // without re-running with extra instrumentation.
             log('editor: writable state', { state, readOnly });
+            this.#readOnly = readOnly;
             this.#editor.updateOptions({ readOnly });
+            this.#notifyEditAvailability();
             if (onWritableStateChanged) {
                 onWritableStateChanged({ state, readOnly });
             }
@@ -553,9 +630,8 @@ export class EditorController {
     }
 
     #setupSelectionListener() {
-        // Report edit availability to the host whenever the selection or focus changes, so a host
-        // menu enables Copy/Cut only when there is a selection. Copy is the discriminating verb.
-        // Paste/select-all/undo/redo are always offered and no-op when there is nothing to do.
+        // Report edit availability to the host whenever the selection or focus changes.
+        // Paste/undo/redo are offered whenever the editor is writable and no-op when there is nothing to do.
         this.#editor.onDidChangeCursorSelection(() => this.#notifyEditAvailability());
         this.#editor.onDidFocusEditorText(() => this.#notifyEditAvailability());
         this.#editor.onDidBlurEditorText(() => this.#notifyEditAvailability());
@@ -569,16 +645,21 @@ export class EditorController {
         const selection = this.#editor.getSelection();
         const hasSelection = selection !== null && !selection.isEmpty();
 
+        // With nothing selected the clipboard verbs take the cursor's line, so they stay available.
+        const canUseClipboard = hasSelection || this.#editor.hasTextFocus();
+        const canMutate = !this.#readOnly;
+
         celbridge.input.notifyEditAvailability({
-            canCopy: hasSelection,
-            canCut: hasSelection,
-            canPaste: true,
+            canCopy: canUseClipboard,
+            canCut: canUseClipboard && canMutate,
+            canPaste: canMutate,
             canSelectAll: true,
-            canUndo: true,
-            canRedo: true,
+            canUndo: canMutate,
+            canRedo: canMutate,
             // Only claim Tab while the editor text has focus, so Tab still moves between the fields of the
             // find widget or any other control hosted in the same WebView.
-            canIndent: this.#editor.hasTextFocus()
+            canIndent: this.#editor.hasTextFocus() && canMutate,
+            hostMediatedClipboard: true
         });
     }
 

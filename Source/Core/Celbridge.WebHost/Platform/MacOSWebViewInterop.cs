@@ -275,6 +275,54 @@ public static class MacOSWebViewInterop
         SendMessage(webView, closeSelector);
     }
 
+    private delegate void SetMaintainsInactiveSelection(IntPtr page, byte maintains);
+
+    // Resolved once: this runs on every focus grant, and neither the symbol nor the selector changes.
+    private static readonly SetMaintainsInactiveSelection? _setMaintainsInactiveSelection = ResolveMaintainsInactiveSelection();
+
+    private static SetMaintainsInactiveSelection? ResolveMaintainsInactiveSelection()
+    {
+        var symbol = dlsym(RtldDefault, "WKPageSetMaintainsInactiveSelection");
+
+        return symbol == IntPtr.Zero
+            ? null
+            : Marshal.GetDelegateForFunctionPointer<SetMaintainsInactiveSelection>(symbol);
+    }
+
+    /// <summary>
+    /// Keeps the page's selection when the web view stops being the first responder, which WebKit otherwise
+    /// discards. Returns whether WebKit still exposes the setting. Both the page accessor and the setter are
+    /// private SPI, so each is probed before use to degrade to a no-op rather than crash.
+    /// </summary>
+    public static bool MaintainInactiveSelection(IntPtr webView)
+    {
+        if (webView == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        if (_setMaintainsInactiveSelection is null)
+        {
+            return false;
+        }
+
+        var pageSelector = GetSelector("_pageRefForTransitionToWKWebView");
+        if (SendMessage(webView, GetSelector("respondsToSelector:"), pageSelector) == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        var page = SendMessage(webView, pageSelector);
+        if (page == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        _setMaintainsInactiveSelection(page, 1);
+
+        return true;
+    }
+
     /// <summary>
     /// Makes the native WKWebView its window's first responder, so keyboard input routes natively to the
     /// web content. Programmatic managed focus leaves the first responder on the Skia canvas, where keys
@@ -293,6 +341,10 @@ public static class MacOSWebViewInterop
         {
             return;
         }
+
+        // WebKit drops the inactive selection setting when the view takes first responder, so re-assert it on
+        // every grant, before the early return below covers the view that already holds it.
+        MaintainInactiveSelection(webView);
 
         // Re-applying this when the web view already holds first responder would resign and re-establish it.
         // The page reports that pair as a blur like any other, and the native focus guard observes the resign

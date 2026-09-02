@@ -69,6 +69,8 @@ public sealed class WebViewNavigationPolicy : IWebViewNavigationPolicy
             var decision = decisionTask.Result;
             if (decision != NavigationDecision.Allow)
             {
+                _logger.LogDebug("Cancelled navigation to {Url}, decided {Decision}", destination, decision);
+
                 args.Cancel = true;
                 DispatchSideEffect(decision, destination);
             }
@@ -77,6 +79,8 @@ public sealed class WebViewNavigationPolicy : IWebViewNavigationPolicy
 
         // Async path. Cancel synchronously so the WebView never starts loading the
         // destination, then await the handler and dispatch any side effect.
+        _logger.LogDebug("Cancelled navigation to {Url} while the destination is decided", destination);
+
         args.Cancel = true;
         _ = AwaitAndDispatchAsync(decisionTask, destination);
     }

@@ -1,4 +1,5 @@
 using Celbridge.Logging;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.WebHost;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Input;
@@ -85,18 +86,9 @@ public sealed partial class WebViewFindBar : UserControl
 
     private void FindTextBox_TextChanged(object sender, TextChangedEventArgs e)
     {
-        // The Skia TextBox inserts a literal tab on Tab (KeyDown.Handled does not gate it), and tabs/newlines
-        // can never match anyway. Strip them, then let default Tab navigation move focus. Re-assigning Text
-        // re-enters this handler with the cleaned value, which then drives the search.
-        var cleaned = FindTextBox.Text
-            .Replace("\t", string.Empty)
-            .Replace("\r", string.Empty)
-            .Replace("\n", string.Empty);
-        if (cleaned != FindTextBox.Text)
+        // The cleaned value drives the search when it re-enters this handler.
+        if (SingleLineText.RemoveTabsAndLineBreaks(FindTextBox))
         {
-            var caret = Math.Min(FindTextBox.SelectionStart, cleaned.Length);
-            FindTextBox.Text = cleaned;
-            FindTextBox.SelectionStart = caret;
             return;
         }
 

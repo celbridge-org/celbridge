@@ -11,7 +11,7 @@ import { ViewMode } from './view-mode-controller.js';
 import { PreviewPipeline } from './preview-pipeline.js';
 import { initializeToolbar, setToolbarReadOnly } from './toolbar.js';
 import { initializeLanguageMap, getLanguageForFile } from './language-mapper.js';
-import { log } from './logger.js';
+import { log, warn } from './logger.js';
 
 let editorController = null;
 let previewPipeline = null;
@@ -19,8 +19,28 @@ let previewPipeline = null;
 // Configure AMD loader and load Monaco
 require.config({ paths: { 'vs': './min/vs' } });
 require(['vs/editor/editor.main'], () => {
+    routeClipboardCommandsThroughHost();
     initialize();
 });
+
+// Points Cut and Paste at the host, because the macOS WebView refuses Monaco's own clipboard access.
+// Registering a command under an existing id wins, since Monaco resolves an id to the most recently
+// registered handler. Copy stays with Monaco, whose clipboard flavour carries the highlighting and the
+// multi-cursor metadata a plain text clipboard would drop.
+function routeClipboardCommandsThroughHost() {
+    const hostCommands = {
+        'editor.action.clipboardCutAction': 'cut',
+        'editor.action.clipboardPasteAction': 'paste'
+    };
+
+    for (const [commandId, verb] of Object.entries(hostCommands)) {
+        monaco.editor.registerCommand(commandId, () => {
+            celbridge.input.requestEdit(verb).catch((error) => {
+                warn(`${verb} request failed`, error);
+            });
+        });
+    }
+}
 
 function parseOptions() {
     // celbridge.options is populated from the host capability context. Callers must await

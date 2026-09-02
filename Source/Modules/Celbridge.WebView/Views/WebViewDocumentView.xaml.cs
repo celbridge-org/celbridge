@@ -185,6 +185,10 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
         ViewModel.CurrentUrl = uri.AbsoluteUri;
         _pendingNavigationUrl = uri.AbsoluteUri;
 
+        // Paired with the completion below, so a page that never arrives can be told from one that arrived
+        // and failed, and from one the policy declined.
+        _logger.LogDebug("Navigating {Resource} to {Url}", FileResource, uri.AbsoluteUri);
+
         _webView.Source = uri;
     }
 
@@ -503,6 +507,19 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
             }
         }
 
+        if (e.IsSuccess)
+        {
+            _logger.LogDebug("Navigation completed for {Resource} at {Url}", FileResource, ViewModel.CurrentUrl);
+        }
+        else
+        {
+            _logger.LogWarning(
+                "Navigation failed for {Resource} at {Url} with status {Status}",
+                FileResource,
+                ViewModel.CurrentUrl,
+                e.WebErrorStatus);
+        }
+
         ViewModel.NotifyNavigationCompleted(e.IsSuccess);
         UpdateNavigationState();
     }
@@ -662,6 +679,12 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
         SyncAddressText();
         Navigate(url);
         GiveFocusToWebContent();
+    }
+
+    private void AddressTextBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        // Tab is here to move focus, and an address holds no tab or line break anyway.
+        SingleLineText.RemoveTabsAndLineBreaks(AddressTextBox);
     }
 
     private void AddressTextBox_KeyDown(object sender, KeyRoutedEventArgs e)

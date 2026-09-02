@@ -83,6 +83,20 @@ public class FocusServiceTests
     }
 
     [Test]
+    public void OnFocusReceived_WebSurfaceWithNoTargetInTheSamePanel_ClearsTheEditTarget()
+    {
+        var target = Substitute.For<IEditTarget>();
+        _focusService.OnFocusReceived(FocusClaim.FromManagedControl(FocusPanelId.Documents, target));
+
+        // Only chrome preserves the edit context, and a web surface is not chrome, so a surface claiming the
+        // panel that holds the context ends the edit rather than inheriting it.
+        var surfaceClaim = FocusClaim.FromWebSurface(FocusPanelId.Documents, null, _surface, () => { });
+        _focusService.OnFocusReceived(surfaceClaim);
+
+        _focusService.EditTarget.Should().BeNull();
+    }
+
+    [Test]
     public void OnFocusReceived_SamePanelFromManagedChromeRepeatedly_ReleasesTheSurfaceOnce()
     {
         var releaseCount = 0;

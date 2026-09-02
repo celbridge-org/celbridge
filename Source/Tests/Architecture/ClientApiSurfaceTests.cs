@@ -42,7 +42,8 @@ public class ClientApiSurfaceTests
         {
             "notifyEditAvailability",
             "notifyLinkClicked",
-            "notifyShortcut"
+            "notifyShortcut",
+            "requestEdit"
         },
         ["api/localization-api.js"] = new[]
         {

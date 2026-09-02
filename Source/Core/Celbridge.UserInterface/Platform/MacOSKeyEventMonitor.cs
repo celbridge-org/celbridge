@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using Celbridge.Commands;
 using Celbridge.Logging;
 using Celbridge.WebHost;
 using Celbridge.Workspace;
@@ -10,12 +11,7 @@ namespace Celbridge.UserInterface.Platform;
 /// <summary>
 /// Installs an AppKit local key-down monitor for the keys that act on a focused document on the Skia head,
 /// where a WKWebView is first responder and neither Uno's managed input nor the web content reliably sees the
-/// event. A local monitor sees each key before it is dispatched to any responder. While a document holds focus
-/// it keeps Tab inside the document instead of letting the managed focus loop advance out to the surrounding
-/// panels, and it routes Command+W, Command+Shift+W, and Command+F to the close-document and find shortcuts
-/// (which WKWebView otherwise swallows as key equivalents). Tab is routed through the web-view focus
-/// registry, which knows the focused surface: its edit target acts on the key (indent, move a cell), or the
-/// key is delivered to the page itself so it can move between its own form fields. macOS-only.
+/// event. A local monitor sees each key before it is dispatched to any responder. macOS-only.
 /// </summary>
 internal static class MacOSKeyEventMonitor
 {
@@ -46,12 +42,14 @@ internal static class MacOSKeyEventMonitor
     private static IFocusService? _focusService;
     private static IWebViewFocusRegistry? _webViewFocusRegistry;
     private static IMessengerService? _messengerService;
+    private static ICommandService? _commandService;
     private static ILogger? _logger;
 
     public static void Start(
         IFocusService focusService,
         IWebViewFocusRegistry webViewFocusRegistry,
         IMessengerService messengerService,
+        ICommandService commandService,
         ILogger logger)
     {
         if (!OperatingSystem.IsMacOS())
@@ -68,6 +66,7 @@ internal static class MacOSKeyEventMonitor
         _focusService = focusService;
         _webViewFocusRegistry = webViewFocusRegistry;
         _messengerService = messengerService;
+        _commandService = commandService;
         _logger = logger;
 
         var nsEventClass = GetClass("NSEvent");
@@ -133,6 +132,15 @@ internal static class MacOSKeyEventMonitor
                 && !isCommand)
             {
                 return nsEvent;
+            }
+
+            // A Command chord arriving while a hosted web surface holds focus never reaches AppKit's
+            // key-equivalent phase, so it is acted on here.
+            if (isCommand
+                && _webViewFocusRegistry?.HasFocusedSurface == true
+                && TryHandleWebSurfaceCommandChord(nsEvent, keyCode, modifierFlags))
+            {
+                return IntPtr.Zero;
             }
 
             // Only act while a document is focused. Tab still navigates the managed panels (Explorer, Search,
@@ -202,6 +210,80 @@ internal static class MacOSKeyEventMonitor
             _logger?.LogError(exception, "The key event monitor callback failed");
             return nsEvent;
         }
+    }
+
+    // Acts on a Command chord while a hosted web surface holds focus. Uno's canvas is an NSTextInputClient,
+    // so its window reports every key handled and AppKit's key-equivalent phase never runs. A verb the
+    // focused surface can perform goes through the app's edit command, because the responder chain's
+    // selectAll: moves WebKit's selection without telling the editor. Everything else goes to the menubar.
+    // Returns whether the chord was acted on, in which case the key must not also reach the page.
+    private static bool TryHandleWebSurfaceCommandChord(IntPtr nsEvent, ulong keyCode, ulong modifierFlags)
+    {
+        var shortcutCharacter = ResolveShortcutCharacter(nsEvent, keyCode);
+
+        var editIntent = ResolveEditIntent(shortcutCharacter, modifierFlags);
+        if (editIntent is not null
+            && TryHandleEditIntent(editIntent.Value))
+        {
+            return true;
+        }
+
+        // The close and find chords are handled below rather than by the menubar, so they are not offered
+        // to it: one owner each, whether or not a menu item happens to carry the same key equivalent.
+        if (IsCloseShortcut(shortcutCharacter, modifierFlags)
+            || IsFindShortcut(shortcutCharacter, modifierFlags))
+        {
+            return false;
+        }
+
+        return TryPerformMenuKeyEquivalent(nsEvent);
+    }
+
+    // Whether the focused surface answers for the verb: it can perform it, or it mediates the clipboard and
+    // so an unavailable clipboard verb is swallowed rather than falling through to the responder chain.
+    private static bool TryHandleEditIntent(EditIntent intent)
+    {
+        var editTarget = _focusService?.EditTarget;
+        if (editTarget is null)
+        {
+            return false;
+        }
+
+        if (editTarget.CanPerformEdit(intent))
+        {
+            _commandService?.Execute<IPerformEditCommand>(command => command.Intent = intent);
+
+            return true;
+        }
+
+        return editTarget.HostMediatedClipboard
+            && intent is EditIntent.Cut or EditIntent.Copy or EditIntent.Paste;
+    }
+
+    // The edit verb a Command chord names, or null for a chord naming none.
+    private static EditIntent? ResolveEditIntent(char? shortcutCharacter, ulong modifierFlags)
+    {
+        if (!IsPlainCommandChord(modifierFlags))
+        {
+            return null;
+        }
+
+        var shift = (modifierFlags & MacOSKeyboardModifiers.ShiftFlag) != 0;
+
+        return MacOSEditShortcuts.ResolveIntent(shortcutCharacter, shift);
+    }
+
+    // Offers the chord to the menubar. Returns whether a menu item claimed and ran it.
+    private static bool TryPerformMenuKeyEquivalent(IntPtr nsEvent)
+    {
+        var application = SendMessage(GetClass("NSApplication"), GetSelector("sharedApplication"));
+        var mainMenu = SendMessage(application, GetSelector("mainMenu"));
+        if (mainMenu == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        return SendMessageReturnBool(mainMenu, GetSelector("performKeyEquivalent:"), nsEvent);
     }
 
     // True for Command+W and Command+Shift+W.

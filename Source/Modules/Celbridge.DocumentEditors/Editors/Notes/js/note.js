@@ -222,12 +222,15 @@ const editor = new Editor({
         if (!transaction?.docChanged) {
             return;
         }
+        // Every edit changes what undo and redo can do, so report ahead of the debounce.
+        reportEditAvailability();
         // Debounce change notifications
         if (changeTimer) clearTimeout(changeTimer);
         changeTimer = setTimeout(() => {
             client.document.notifyChanged();
         }, CHANGE_DEBOUNCE_MS);
     },
+    onFocus: () => reportEditAvailability(),
 });
 
 // Store editor in context for modules
@@ -411,6 +414,23 @@ function applyReadOnlyState(readOnly) {
     if (isReadOnly) {
         hideAllPopovers();
     }
+
+    reportEditAvailability();
+}
+
+// Reports which edit verbs the host Edit menu should offer. Cut, copy and paste stay with the platform,
+// whose clipboard carries the note's formatting where the host's plain text would flatten it.
+function reportEditAvailability() {
+    // The read-only handler can run before the editor view exists.
+    if (!editor?.view) {
+        return;
+    }
+
+    client.input.notifyEditAvailability({
+        canSelectAll: true,
+        canUndo: !isReadOnly && editor.can().undo(),
+        canRedo: !isReadOnly && editor.can().redo(),
+    });
 }
 
 // Main toolbar click handler
@@ -562,6 +582,18 @@ async function initializeEditor() {
         console.error('[Note] Failed to initialize:', e);
     }
 }
+
+// The host routes an edit verb here when the note holds focus.
+client.onNotification('input/performEdit', (params) => {
+    const command = params?.command;
+    if (command === 'selectAll') {
+        editor.chain().focus().selectAll().run();
+    } else if (command === 'undo') {
+        editor.chain().focus().undo().run();
+    } else if (command === 'redo') {
+        editor.chain().focus().redo().run();
+    }
+});
 
 client.viewState.onChanged((viewState) => {
     if (viewState.writable) {

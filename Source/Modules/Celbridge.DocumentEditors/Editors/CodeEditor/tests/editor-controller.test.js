@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import celbridge, { __capturedHandlers } from './fixtures/celbridge-stub.js';
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
+import celbridge, { __capturedHandlers, __capturedEditAvailability } from './fixtures/celbridge-stub.js';
 
 import { EditorController } from '../js/editor-controller.js';
 
@@ -34,7 +34,9 @@ function createMockEditor(model) {
         onDidChangeCursorSelection: vi.fn(),
         onDidFocusEditorText: vi.fn(),
         onDidBlurEditorText: vi.fn(),
+        executeEdits: vi.fn(),
         hasTextFocus: vi.fn(() => true),
+        getOption: vi.fn(() => true),
         getSelection: vi.fn(() => ({ isEmpty: () => true })),
         setSelection: vi.fn(),
         trigger: vi.fn(),
@@ -50,6 +52,7 @@ function installMonacoStub(editor) {
         editor: {
             create: vi.fn(() => editor),
             EndOfLineSequence: { CRLF: 1, LF: 0 },
+            EditorOption: { emptySelectionClipboard: 38 },
             setModelLanguage: vi.fn(),
             setTheme: vi.fn()
         },
@@ -183,5 +186,221 @@ describe('EditorController.performEdit', () => {
 
         expect(editor.trigger).not.toHaveBeenCalled();
         expect(editor.setSelection).not.toHaveBeenCalled();
+    });
+});
+
+describe('EditorController edit availability', () => {
+    let model;
+    let editor;
+    let controller;
+
+    beforeEach(async () => {
+        for (const key of Object.keys(__capturedHandlers)) {
+            delete __capturedHandlers[key];
+        }
+        __capturedEditAvailability.length = 0;
+        celbridge.isHosted = true;
+
+        model = createMockModel();
+        editor = createMockEditor(model);
+        installMonacoStub(editor);
+
+        controller = new EditorController();
+        controller.create(document.createElement('div'));
+
+        await controller.initializeHost({});
+    });
+
+    afterEach(() => {
+        celbridge.isHosted = false;
+    });
+
+    function reportedAvailability() {
+        return __capturedEditAvailability.at(-1);
+    }
+
+    it('withholds the mutating verbs while the document is read-only', () => {
+        __capturedHandlers.onViewStateChanged({ writable: 'Locked' });
+
+        expect(reportedAvailability()).toMatchObject({
+            canCut: false,
+            canPaste: false,
+            canUndo: false,
+            canRedo: false,
+            canIndent: false
+        });
+    });
+
+    it('still offers copy and select all while the document is read-only', () => {
+        __capturedHandlers.onViewStateChanged({ writable: 'Locked' });
+
+        expect(reportedAvailability()).toMatchObject({
+            canCopy: true,
+            canSelectAll: true
+        });
+    });
+
+    it('restores the mutating verbs when the document becomes writable', () => {
+        __capturedHandlers.onViewStateChanged({ writable: 'Locked' });
+        __capturedHandlers.onViewStateChanged({ writable: 'Writable' });
+
+        expect(reportedAvailability()).toMatchObject({
+            canCut: true,
+            canPaste: true,
+            canUndo: true,
+            canRedo: true,
+            canIndent: true
+        });
+    });
+
+    it('reports on a writable state change, not only on a selection change', () => {
+        __capturedHandlers.onViewStateChanged({ writable: 'Locked' });
+
+        expect(__capturedEditAvailability).toHaveLength(1);
+    });
+
+    it('offers cut with nothing selected, because it takes the cursor line', () => {
+        editor.getSelection.mockReturnValue({ isEmpty: () => true });
+
+        __capturedHandlers.onViewStateChanged({ writable: 'Writable' });
+
+        expect(reportedAvailability()).toMatchObject({ canCopy: true, canCut: true });
+    });
+});
+
+describe('EditorController clipboard text', () => {
+    const EOL = '\n';
+
+    function createDocumentModel(lines) {
+        const model = createMockModel();
+
+        model.getEOL = vi.fn(() => EOL);
+        model.getLineCount = vi.fn(() => lines.length);
+        model.getLineMaxColumn = vi.fn((lineNumber) => lines[lineNumber - 1].length + 1);
+        model.getValueInRange = vi.fn((range) => {
+            const parts = [];
+            for (let lineNumber = range.startLineNumber; lineNumber <= range.endLineNumber; lineNumber++) {
+                const line = lines[lineNumber - 1];
+                const start = lineNumber === range.startLineNumber ? range.startColumn - 1 : 0;
+                const end = lineNumber === range.endLineNumber ? range.endColumn - 1 : line.length;
+                parts.push(line.slice(start, end));
+            }
+
+            return parts.join(EOL);
+        });
+
+        return model;
+    }
+
+    function at(startLineNumber, startColumn, endLineNumber = startLineNumber, endColumn = startColumn) {
+        return {
+            startLineNumber,
+            startColumn,
+            endLineNumber,
+            endColumn,
+            isEmpty: () => startLineNumber === endLineNumber && startColumn === endColumn
+        };
+    }
+
+    let model;
+    let editor;
+    let controller;
+
+    beforeEach(() => {
+        model = createDocumentModel(['alpha', 'beta', 'gamma']);
+        editor = createMockEditor(model);
+        installMonacoStub(editor);
+
+        controller = new EditorController();
+        controller.create(document.createElement('div'));
+    });
+
+    it('takes the cursor line and its terminator when nothing is selected', () => {
+        editor.getSelections.mockReturnValue([at(2, 3)]);
+
+        expect(controller.getSelectedText()).toBe('beta\n');
+    });
+
+    it('terminates the last line, which carries no terminator of its own', () => {
+        editor.getSelections.mockReturnValue([at(3, 1)]);
+
+        expect(controller.getSelectedText()).toBe('gamma\n');
+    });
+
+    it('takes a line once however many cursors sit on it, in document order', () => {
+        editor.getSelections.mockReturnValue([at(3, 2), at(1, 1), at(3, 4)]);
+
+        expect(controller.getSelectedText()).toBe('alpha\ngamma\n');
+    });
+
+    it('takes the selection, not the line, once anything is selected', () => {
+        editor.getSelections.mockReturnValue([at(1, 2, 1, 4)]);
+
+        expect(controller.getSelectedText()).toBe('lp');
+    });
+
+    it('removes the whole line when the host clears an empty selection', () => {
+        editor.getSelections.mockReturnValue([at(2, 3)]);
+
+        // The host reads the selection before clearing it, which is what fixes the range to clear.
+        controller.getSelectedText();
+        controller.insertText('');
+
+        expect(editor.executeEdits).toHaveBeenCalledWith('insert', [{
+            range: { startLineNumber: 2, startColumn: 1, endLineNumber: 3, endColumn: 1 },
+            text: ''
+        }]);
+    });
+
+    it('clears what the copy read, not where the caret has since moved', () => {
+        editor.getSelections.mockReturnValue([at(2, 3)]);
+        controller.getSelectedText();
+
+        // The caret moves while the host's read is in flight.
+        editor.getSelections.mockReturnValue([at(3, 1)]);
+        controller.insertText('');
+
+        expect(editor.executeEdits).toHaveBeenCalledWith('insert', [{
+            range: { startLineNumber: 2, startColumn: 1, endLineNumber: 3, endColumn: 1 },
+            text: ''
+        }]);
+    });
+
+    it('leaves the line alone when Monaco does not take it either', () => {
+        editor.getOption.mockReturnValue(false);
+        editor.getSelections.mockReturnValue([at(2, 3)]);
+
+        expect(controller.getSelectedText()).toBe('');
+    });
+
+    it('gives each cursor its own clipboard line when the counts match', () => {
+        editor.getSelections.mockReturnValue([at(1, 1), at(2, 1)]);
+
+        controller.insertText('one\ntwo');
+
+        expect(editor.executeEdits).toHaveBeenCalledWith('insert', [
+            { range: { startLineNumber: 1, startColumn: 1, endLineNumber: 1, endColumn: 1 }, text: 'one' },
+            { range: { startLineNumber: 2, startColumn: 1, endLineNumber: 2, endColumn: 1 }, text: 'two' }
+        ]);
+    });
+
+    it('gives every cursor the whole text when the counts differ', () => {
+        editor.getSelections.mockReturnValue([at(1, 1), at(2, 1)]);
+
+        controller.insertText('one\ntwo\nthree');
+
+        expect(editor.executeEdits.mock.calls[0][1].map(edit => edit.text))
+            .toEqual(['one\ntwo\nthree', 'one\ntwo\nthree']);
+    });
+
+    it('inserts at the cursor rather than replacing its line', () => {
+        editor.getSelections.mockReturnValue([at(2, 3)]);
+
+        controller.insertText('x');
+
+        expect(editor.executeEdits).toHaveBeenCalledWith('insert', [{
+            range: { startLineNumber: 2, startColumn: 3, endLineNumber: 2, endColumn: 3 },
+            text: 'x'
+        }]);
     });
 });
