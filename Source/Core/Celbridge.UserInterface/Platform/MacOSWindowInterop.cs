@@ -211,6 +211,35 @@ internal static class MacOSWindowInterop
     }
 
     /// <summary>
+    /// Whether the application window holds the keyboard, so one of its surfaces owns the standard edit
+    /// verbs. False while a native panel runs in front of it (a file picker, the About panel), whose own
+    /// text fields the responder chain serves. Returns false off macOS.
+    /// </summary>
+    public static bool IsAppWindowKey()
+    {
+        if (!OperatingSystem.IsMacOS())
+        {
+            return false;
+        }
+
+        var application = SendMessage(GetClass("NSApplication"), GetSelector("sharedApplication"));
+        if (application == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        var keyWindow = SendMessage(application, GetSelector("keyWindow"));
+        if (keyWindow == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        // A native panel takes the keyboard without becoming the main window, which AppKit leaves naming
+        // the window behind it, so the two differ for exactly the case this rules out.
+        return keyWindow == GetMainWindow();
+    }
+
+    /// <summary>
     /// Returns the native NSWindow handle for the application window, or IntPtr.Zero when it cannot be
     /// resolved.
     /// </summary>

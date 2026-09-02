@@ -39,6 +39,10 @@ internal static class MacOSMainMenu
     private const long TagThemeLight = 24;
     private const long TagThemeDark = 25;
 
+    // Edit verb items are generated from the shortcut table, so their tags start above the fixed tags and
+    // index into it.
+    private const long TagEditVerbBase = 100;
+
     // Recent project items are generated on demand, so their tags start above the fixed tags and index into
     // _recentProjectPaths, which the Open Recent submenu provider rebuilds each time the menu opens.
     private const long TagRecentProjectBase = 1000;
@@ -165,15 +169,18 @@ internal static class MacOSMainMenu
         return MacOSMenuInterop.Install(menus, OnCommand, QueryState);
     }
 
-    // The Uno panels are painted on the Skia canvas and are not AppKit responders, so these items are
-    // disabled while one of them holds focus.
+    // Each verb goes to the focused surface, which the Uno panels reach as well as the hosted editors: they
+    // are painted on the Skia canvas and are not AppKit responders, so a plain Selector item would leave
+    // them out. The selector each item carries serves the surfaces that answer for no verb of their own.
     private static IReadOnlyList<MacMenuItem> BuildEditMenuItems(Func<string, string> text)
     {
         var items = new List<MacMenuItem>();
 
         int? previousGroup = null;
-        foreach (var shortcut in MacOSEditShortcuts.All)
+        for (var index = 0; index < MacOSEditShortcuts.All.Count; index++)
         {
+            var shortcut = MacOSEditShortcuts.All[index];
+
             if (previousGroup is not null
                 && shortcut.Group != previousGroup)
             {
@@ -185,8 +192,9 @@ internal static class MacOSMainMenu
                 ? MacKeyModifier.Command | MacKeyModifier.Shift
                 : MacKeyModifier.Command;
 
-            items.Add(MacMenuItem.Selector(
+            items.Add(MacMenuItem.RoutedCommand(
                 text(shortcut.LabelKey),
+                TagEditVerbBase + index,
                 shortcut.SelectorName,
                 shortcut.Character.ToString(),
                 modifiers));
@@ -262,6 +270,12 @@ internal static class MacOSMainMenu
             return MacMenuItemState.Disabled;
         }
 
+        var editShortcut = ResolveEditShortcut(tag);
+        if (editShortcut is not null)
+        {
+            return EditVerbState(editShortcut.Intent);
+        }
+
         // Reload and Close act on the open project, so they are enabled only while a workspace is loaded.
         // Every other project command is always available. Mirrors the hamburger menu's gating.
         switch (tag)
@@ -314,6 +328,54 @@ internal static class MacOSMainMenu
         }
     }
 
+    // The shortcut a generated edit verb item stands for, or null for any other tag.
+    private static MacOSEditShortcut? ResolveEditShortcut(long tag)
+    {
+        var index = tag - TagEditVerbBase;
+
+        return index >= 0 && index < MacOSEditShortcuts.All.Count
+            ? MacOSEditShortcuts.All[(int)index]
+            : null;
+    }
+
+    private static MacMenuItemState EditVerbState(EditIntent intent)
+    {
+        return ResolveEditRouting(intent) switch
+        {
+            EditRouting.Surface => MacMenuItemState.Enabled,
+            EditRouting.Unavailable => MacMenuItemState.Disabled,
+            _ => MacMenuItemState.ResponderChain
+        };
+    }
+
+    private static void PerformEditVerb(MacOSEditShortcut shortcut)
+    {
+        if (ResolveEditRouting(shortcut.Intent) == EditRouting.Surface)
+        {
+            var commandService = ServiceLocator.AcquireService<ICommandService>();
+            commandService.Execute<IPerformEditCommand>(command => command.Intent = shortcut.Intent);
+
+            return;
+        }
+
+        MacOSMenuInterop.SendActionToResponderChain(shortcut.SelectorName);
+    }
+
+    // The focused surface only owns the verb while the application window holds the keyboard. A native
+    // panel in front of it (a file picker) serves its own text fields from the responder chain, and the
+    // focus service still names the surface behind it.
+    private static EditRouting ResolveEditRouting(EditIntent intent)
+    {
+        if (!MacOSWindowInterop.IsAppWindowKey())
+        {
+            return EditRouting.ResponderChain;
+        }
+
+        var focusService = ServiceLocator.AcquireService<IFocusService>();
+
+        return MacOSEditCommands.Resolve(intent, focusService);
+    }
+
     private static MacMenuItemState FindCommandState()
     {
         var canFind = ActiveDocumentFind.GetActiveFindableDocument()?.CanFind ?? false;
@@ -363,6 +425,13 @@ internal static class MacOSMainMenu
         // The project commands run through the same view-model the hamburger menu uses, so the two menus
         // stay in lockstep. Resolved per invocation. The methods only dispatch commands or open dialogs.
         var viewModel = ServiceLocator.AcquireService<ApplicationMenuViewModel>();
+
+        var editShortcut = ResolveEditShortcut(tag);
+        if (editShortcut is not null)
+        {
+            PerformEditVerb(editShortcut);
+            return;
+        }
 
         // Recent project items carry generated tags above the fixed range. Open the project they map to.
         if (tag >= TagRecentProjectBase)
