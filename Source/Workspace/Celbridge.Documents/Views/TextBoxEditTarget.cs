@@ -7,6 +7,17 @@ using Windows.ApplicationModel.DataTransfer;
 namespace Celbridge.Documents.Views;
 
 /// <summary>
+/// The text box and clipboard state that decides which edit verbs are available.
+/// </summary>
+internal readonly record struct TextBoxEditState(
+    int SelectionLength,
+    int TextLength,
+    bool IsReadOnly,
+    bool CanUndo,
+    bool CanRedo,
+    bool HasClipboardText);
+
+/// <summary>
 /// The edit target for a document shown as a single text box. Every verb acts on the box's own selection.
 /// </summary>
 public sealed class TextBoxEditTarget : IEditTarget
@@ -15,32 +26,48 @@ public sealed class TextBoxEditTarget : IEditTarget
     private readonly ICommandService _commandService;
     private readonly ILogger<TextBoxEditTarget> _logger;
 
-    public TextBoxEditTarget(TextBox textBox)
+    public TextBoxEditTarget(
+        TextBox textBox,
+        ICommandService commandService,
+        ILogger<TextBoxEditTarget> logger)
     {
         _textBox = textBox;
-        _commandService = ServiceLocator.AcquireService<ICommandService>();
-        _logger = ServiceLocator.AcquireService<ILogger<TextBoxEditTarget>>();
+        _commandService = commandService;
+        _logger = logger;
     }
 
     public bool CanPerformEdit(EditIntent intent)
     {
-        var hasSelection = _textBox.SelectionLength > 0;
-        var isWritable = !_textBox.IsReadOnly;
+        return CanPerformEdit(intent, ReadState());
+    }
+
+    // Separated from the control so the verb rules can be exercised without a live text box.
+    internal static bool CanPerformEdit(EditIntent intent, TextBoxEditState state)
+    {
+        var hasSelection = state.SelectionLength > 0;
+        var isWritable = !state.IsReadOnly;
 
         return intent switch
         {
             EditIntent.Copy => hasSelection,
             EditIntent.Cut => hasSelection && isWritable,
-            EditIntent.Paste => isWritable,
-            EditIntent.SelectAll => _textBox.Text.Length > 0,
-            EditIntent.Undo => isWritable && _textBox.CanUndo,
-            EditIntent.Redo => isWritable && _textBox.CanRedo,
+            EditIntent.Paste => isWritable && state.HasClipboardText,
+            EditIntent.SelectAll => state.TextLength > 0,
+            EditIntent.Undo => isWritable && state.CanUndo,
+            EditIntent.Redo => isWritable && state.CanRedo,
             _ => false
         };
     }
 
     public void PerformEdit(EditIntent intent)
     {
+        // Assigning SelectedText edits the document even when the box is read-only, so the verb is
+        // re-checked here rather than trusting every caller to have asked first.
+        if (!CanPerformEdit(intent))
+        {
+            return;
+        }
+
         switch (intent)
         {
             case EditIntent.Copy:
@@ -75,6 +102,31 @@ public sealed class TextBoxEditTarget : IEditTarget
         return false;
     }
 
+    private TextBoxEditState ReadState()
+    {
+        return new TextBoxEditState(
+            _textBox.SelectionLength,
+            _textBox.Text.Length,
+            _textBox.IsReadOnly,
+            _textBox.CanUndo,
+            _textBox.CanRedo,
+            HasClipboardText());
+    }
+
+    // An unreadable clipboard reports text, so Paste stays offered and does nothing when it runs.
+    private bool HasClipboardText()
+    {
+        try
+        {
+            return Clipboard.GetContent().Contains(StandardDataFormats.Text);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to read the clipboard");
+            return true;
+        }
+    }
+
     private void CopySelection(bool deleteSelection)
     {
         var selectedText = _textBox.SelectedText;
@@ -91,8 +143,7 @@ public sealed class TextBoxEditTarget : IEditTarget
         }
     }
 
-    // Replaces the selection with the clipboard text. Reading the clipboard is async, so this finishes after
-    // PerformEdit has returned.
+    // Reading the clipboard is async, so this finishes after PerformEdit has returned.
     private async Task PasteAsync()
     {
         try

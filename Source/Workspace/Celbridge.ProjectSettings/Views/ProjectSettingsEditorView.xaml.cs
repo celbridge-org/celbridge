@@ -236,6 +236,9 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
     {
         await Task.CompletedTask;
 
+        var focusService = ServiceLocator.AcquireService<IFocusService>();
+        focusService.ClearEditTarget(EditTarget);
+
         ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
         ViewModel.Unregister();
     }

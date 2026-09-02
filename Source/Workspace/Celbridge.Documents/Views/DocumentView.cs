@@ -175,6 +175,12 @@ public abstract partial class DocumentView : UserControl, IDocumentView
     public virtual async Task PrepareToClose()
     {
         await Task.CompletedTask;
+
+        if (ClearsEditTargetOnClose)
+        {
+            var focusService = ServiceLocator.AcquireService<IFocusService>();
+            focusService.ClearEditTarget(EditTarget);
+        }
     }
 
     public virtual Task<string?> TrySaveEditorStateAsync()
@@ -195,6 +201,10 @@ public abstract partial class DocumentView : UserControl, IDocumentView
         Action releaseFocus,
         Func<Task>? grantDomFocus = null)
     {
+        // A subclass that assigns its edit target after registering would register nothing, which only
+        // surfaces later as a failure to release the target on teardown.
+        Guard.IsNotNull(EditTarget);
+
         var messengerService = ServiceLocator.AcquireService<IMessengerService>();
         var webViewFocusRegistry = ServiceLocator.AcquireService<IWebViewFocusRegistry>();
 
@@ -211,6 +221,10 @@ public abstract partial class DocumentView : UserControl, IDocumentView
     }
 
     public abstract IEditTarget EditTarget { get; }
+
+    // False for a view that borrows its edit target from a longer-lived owner, which keeps using it after
+    // this view closes.
+    protected virtual bool ClearsEditTargetOnClose => true;
 
     // Web-view-hosted editors override this to give their web content focus and report it to the focus
     // service.

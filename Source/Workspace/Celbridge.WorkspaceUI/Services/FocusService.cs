@@ -68,7 +68,7 @@ public class FocusService : IFocusService
         {
             _editTarget = claim.EditTarget;
         }
-        else if (!PreservesEditTarget(claim, previousPanel, previousSurface))
+        else if (!PreservesEditTarget(claim, previousPanel))
         {
             _editTarget = null;
         }
@@ -141,11 +141,9 @@ public class FocusService : IFocusService
     }
 
     // Whether a claim with no edit target leaves the current one alone. Chrome outside the panels claims no
-    // panel, and chrome inside the panel a web surface holds arrives as a managed control.
-    private static bool PreservesEditTarget(
-        FocusClaim claim,
-        FocusPanelId previousPanel,
-        IFocusSurface? previousSurface)
+    // panel, and chrome inside the panel that already holds the edit context arrives as a managed control
+    // there.
+    private static bool PreservesEditTarget(FocusClaim claim, FocusPanelId previousPanel)
     {
         if (claim.Panel == FocusPanelId.None)
         {
@@ -153,8 +151,7 @@ public class FocusService : IFocusService
         }
 
         return claim.Kind == FocusClaimKind.ManagedControl
-            && claim.Panel == previousPanel
-            && previousSurface is not null;
+            && claim.Panel == previousPanel;
     }
 
     // How a claim reads in a focus log: what took the keyboard, and for a web surface which one.

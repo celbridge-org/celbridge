@@ -169,8 +169,9 @@ public interface IFocusService
     FocusPanelId HeldPanel { get; }
 
     /// <summary>
-    /// The surface Edit commands route to, or null when nothing editable has focus. It survives focus
-    /// moving onto chrome such as a toolbar or a URL bar.
+    /// The surface Edit commands route to, or null when no surface holds the edit context. Every panel and
+    /// document names a target, so null means nothing has claimed one yet or the last holder was torn down.
+    /// The target survives focus moving onto chrome such as a toolbar or a URL bar.
     /// </summary>
     IEditTarget? EditTarget { get; }
 

@@ -1,4 +1,6 @@
+using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
+using Celbridge.Logging;
 using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Views;
@@ -6,6 +8,7 @@ namespace Celbridge.Documents.Views;
 public sealed partial class TextBoxDocumentView : DocumentView
 {
     private readonly TextBoxEditTarget _editTarget;
+    private readonly ILogger<TextBoxDocumentView> _logger;
 
     public DefaultDocumentViewModel ViewModel { get; }
 
@@ -15,10 +18,14 @@ public sealed partial class TextBoxDocumentView : DocumentView
         IServiceProvider serviceProvider)
     {
         ViewModel = serviceProvider.GetRequiredService<DefaultDocumentViewModel>();
+        _logger = serviceProvider.GetRequiredService<ILogger<TextBoxDocumentView>>();
 
         this.InitializeComponent();
 
-        _editTarget = new TextBoxEditTarget(DocumentTextBox);
+        _editTarget = new TextBoxEditTarget(
+            DocumentTextBox,
+            serviceProvider.GetRequiredService<ICommandService>(),
+            serviceProvider.GetRequiredService<ILogger<TextBoxEditTarget>>());
     }
 
     public override async Task<Result> LoadContent()
@@ -49,6 +56,9 @@ public sealed partial class TextBoxDocumentView : DocumentView
 
     public override void FocusDocument()
     {
-        DocumentTextBox.Focus(FocusState.Programmatic);
+        if (!DocumentTextBox.Focus(FocusState.Programmatic))
+        {
+            _logger.LogDebug("The text document did not take focus");
+        }
     }
 }

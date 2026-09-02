@@ -168,13 +168,26 @@ public class FocusServiceTests
     }
 
     [Test]
-    public void OnFocusReceived_ChromeInAPanelHoldingNoSurface_ClearsEditTarget()
+    public void OnFocusReceived_ChromeInTheSamePanel_PreservesEditTarget()
     {
         var target = Substitute.For<IEditTarget>();
         _focusService.OnFocusReceived(FocusClaim.FromManagedControl(FocusPanelId.Documents, target));
 
-        // No surface holds a caret in this panel, so the chrome exemption does not apply.
+        // Chrome in the panel that already holds the edit context takes the keyboard without ending the
+        // edit, whether or not a web surface is what holds it.
         _focusService.OnFocusReceived(FocusClaim.FromManagedControl(FocusPanelId.Documents));
+
+        _focusService.EditTarget.Should().Be(target);
+    }
+
+    [Test]
+    public void OnFocusReceived_WebSurfaceWithoutTargetInANewPanel_ClearsEditTarget()
+    {
+        var target = Substitute.For<IEditTarget>();
+        _focusService.OnFocusReceived(FocusClaim.FromManagedControl(FocusPanelId.Explorer, target));
+
+        var surfaceClaim = FocusClaim.FromWebSurface(FocusPanelId.Documents, null, _surface, () => { });
+        _focusService.OnFocusReceived(surfaceClaim);
 
         _focusService.EditTarget.Should().BeNull();
     }

@@ -67,6 +67,9 @@ public sealed partial class DockedUtilityDocumentView : DocumentView
 
     public override IEditTarget EditTarget => _controller;
 
+    // The Utility Panel owns the controller and keeps using it after this tab closes.
+    protected override bool ClearsEditTargetOnClose => false;
+
     public override void FocusDocument()
     {
         _controller.FocusWebView();
