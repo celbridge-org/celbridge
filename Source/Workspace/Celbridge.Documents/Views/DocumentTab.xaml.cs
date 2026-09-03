@@ -44,9 +44,7 @@ public partial class DocumentTab : TabViewItem
     private readonly IPlatformInfo _platformInfo;
 
     /// <summary>
-    /// The gap the tab keeps between itself and the top of the strip band. The section draws the active
-    /// document indicator in it, which is what stops that bar sharing an edge with either the tab or the
-    /// section.
+    /// The gap the tab keeps between itself and the top of the strip band.
     /// </summary>
     public const double StripTopGap = 7;
 
@@ -88,8 +86,7 @@ public partial class DocumentTab : TabViewItem
     public bool IsActiveDocument { get; private set; }
 
     /// <summary>
-    /// Gets whether this tab is the active document while the documents panel holds the keyboard, which is
-    /// what the active document indicator shows in the accent colour.
+    /// Gets whether this tab is the active document while the documents panel holds the keyboard.
     /// </summary>
     public bool IsFocusedActiveDocument => IsActiveDocument && _isPanelFocused;
 
@@ -129,8 +126,7 @@ public partial class DocumentTab : TabViewItem
     {
         this.InitializeComponent();
 
-        // The tab takes the strip band less the gap it holds above itself, so it runs from under the active
-        // document indicator down to the document it heads.
+        // The tab takes the strip band less the gap it holds above itself.
         Height = WorkspaceConstants.SectionTabStripHeight - StripTopGap;
         Margin = new Thickness(0, StripTopGap, 0, 0);
 
@@ -231,13 +227,20 @@ public partial class DocumentTab : TabViewItem
 
     /// <summary>
     /// Records whether this tab is the active document, and whether the documents panel holds the keyboard.
-    /// The section reads both back when it places the active document indicator, which it draws itself since
-    /// a tab clips anything drawn inside it to its own rounded corners.
+    /// Returns whether either of them changed.
     /// </summary>
-    public void UpdateActiveDocumentState(bool isActiveDocument, bool isPanelFocused)
+    public bool UpdateActiveDocumentState(bool isActiveDocument, bool isPanelFocused)
     {
+        if (IsActiveDocument == isActiveDocument
+            && _isPanelFocused == isPanelFocused)
+        {
+            return false;
+        }
+
         IsActiveDocument = isActiveDocument;
         _isPanelFocused = isPanelFocused;
+
+        return true;
     }
 
     private void ContextMenu_Close(object sender, RoutedEventArgs e)

@@ -29,9 +29,8 @@
                  FontStyle="Italic"/>
     </Border>
     
-    <!-- TabView for documents. The stock padding holds the tab list eight pixels down the band. Cleared so the
-         whole band belongs to the tabs, which keep a gap of their own above themselves for the active document
-         indicator to sit in. -->
+    <!-- TabView for documents. The stock padding indents the tab list down the band. The tabs hold their own
+         gap above themselves, so it is cleared here. -->
     <TabView x:Name="TabView"
              AutomationProperties.AutomationId="document-tab-strip"
              IsAddTabButtonVisible="False"
@@ -66,17 +65,16 @@
                                    VerticalAlignment="Top"
                                    Visibility="Collapsed"/>
 
-    <!-- Active document indicator, drawn in the gap the tabs keep above themselves. Kept outside the tabs
-         because a tab clips its content to its own rounded corners, so a bar drawn inside one cannot reach
-         that gap. Placed over the active tab from code-behind, which is where the strip's geometry is known. -->
+    <!-- Active document indicator, drawn in the gap above the tabs and placed over the active tab from
+         code-behind. A tab clips its content to its rounded corners, so the bar cannot live inside one. -->
     <Grid x:Name="ActiveDocumentIndicator"
           Height="3"
           HorizontalAlignment="Left"
           VerticalAlignment="Top"
           IsHitTestVisible="False"
           Visibility="Collapsed">
-      <!-- The neutral bar marks the active document. The accent bar over it marks the documents panel holding
-           the keyboard, so the bar reads as accent only while the document shortcuts are live. -->
+      <!-- The neutral bar marks the active document. The accent bar over it marks the documents panel
+           holding the keyboard. -->
       <Border Background="{ThemeResource ButtonActiveBackgroundBrush}"
               CornerRadius="1.5"/>
       <Border x:Name="FocusedDocumentIndicator"
