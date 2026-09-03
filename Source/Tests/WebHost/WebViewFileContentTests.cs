@@ -186,12 +186,13 @@ public class WebViewFileContentTests
     }
 
     [Test]
-    public void TryParse_IgnoresBookmarksOfWrongType()
+    public void TryParse_FailsOnBookmarksOfWrongType()
     {
+        // A bookmarks value that is not an array of tables fails the parse, as a wrongly typed scalar
+        // does. A bookmark entry with no usable URL is still dropped rather than failing.
         var result = WebViewFileContent.TryParse("bookmarks = \"nonsense\"");
 
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Bookmarks.Should().BeEmpty();
+        result.IsFailure.Should().BeTrue();
     }
 
     [Test]

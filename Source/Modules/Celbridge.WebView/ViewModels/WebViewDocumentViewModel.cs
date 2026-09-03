@@ -3,6 +3,7 @@ using System.Collections.Specialized;
 using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
+using Celbridge.Logging;
 using Celbridge.Server;
 using Celbridge.UserInterface;
 using Celbridge.WebHost;
@@ -27,6 +28,7 @@ public enum WebViewDownloadStatus
 
 public partial class WebViewDocumentViewModel : DocumentViewModel
 {
+    private readonly ILogger<WebViewDocumentViewModel> _logger;
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IServerService _serverService;
@@ -365,11 +367,13 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     }
 
     public WebViewDocumentViewModel(
+        ILogger<WebViewDocumentViewModel> logger,
         ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper,
         IServerService serverService,
         IStringLocalizer stringLocalizer)
     {
+        _logger = logger;
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
         _serverService = serverService;
@@ -456,6 +460,13 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
                 .WithErrors(parseResult);
         }
         var content = parseResult.Value;
+
+        if (content.UnknownFields.Count > 0)
+        {
+            // Advisory: the document still opens, but ToToml drops these keys on the next save.
+            _logger.LogWarning(
+                $"WebView document declares keys the host does not define ({string.Join(", ", content.UnknownFields)}): {FileResource}");
+        }
 
         ShowUrlBar = content.ShowUrlBar;
         ShowBookmarksBar = content.ShowBookmarksBar;

@@ -1,6 +1,6 @@
 # Celbridge Python Connector
 
-Python connector for the [Celbridge](https://github.com/nicholasgasior/celbridge) application. Provides an interactive IPython REPL with a `cel` proxy object for calling application tools via JSON-RPC.
+Python connector for the [Celbridge](https://github.com/celbridge-org/celbridge) application. Provides an interactive IPython REPL with a `cel` proxy object for calling application tools via JSON-RPC.
 
 ## Usage
 

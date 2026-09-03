@@ -2,11 +2,9 @@ using Celbridge.Documents;
 using Celbridge.Projects;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
-using Tomlyn;
 using Tomlyn.Model;
-using Tomlyn.Parsing;
 
-namespace Celbridge.Packages;
+namespace Celbridge.Packages.Helpers;
 
 /// <summary>
 /// Parses a single editor manifest (*.editor.toml) into an EditorContribution: the [editor] section,
@@ -18,7 +16,6 @@ internal static class EditorManifestLoader
     private const string EditorSection = "editor";
     private const string FileTypesSection = "file-types";
     private const string TemplatesSection = "templates";
-    private const string OptionsSection = "options";
     private const string UtilitySection = "utility";
     private const string ConfigSection = "config";
 
@@ -27,20 +24,15 @@ internal static class EditorManifestLoader
     private const string ExtensionKey = "extension";
     private const string FromCatalogKey = "from-catalog";
     private const string DisplayNameKey = "display-name";
-    private const string DescriptionKey = "description";
-    private const string TemplateFileKey = "template-file";
     private const string DefaultKey = "default";
     private const string ValuesKey = "values";
     private const string KeyKey = "key";
-    private const string EntryPointKey = "entry-point";
-    private const string BinaryKey = "binary";
     private const string ExternalContentKey = "external-content";
     private const string ActivationKey = "activation";
     private const string RequiredActivationValue = "required";
     private const string RecommendedActivationValue = "recommended";
     private const string OptionalActivationValue = "optional";
     private const string ResourceExtensionKey = "resource-extension";
-    private const string TemplateKey = "template";
     private const string IconKey = "icon";
     private const string IconColorKey = "icon-color";
     private const string IconScaleKey = "icon-scale";
@@ -48,67 +40,6 @@ internal static class EditorManifestLoader
     private const string NoDockAreaValue = "none";
 
     private const string CatalogLanguagesValue = "languages";
-
-    // The sections a manifest declares, and the fields each one defines. A key outside these sets is
-    // reported as an unknown field. The keys under [options] are the editor's own, so they are never
-    // checked.
-    private static readonly IReadOnlySet<string> KnownRootKeys = new HashSet<string>(StringComparer.Ordinal)
-    {
-        EditorSection,
-        FileTypesSection,
-        TemplatesSection,
-        OptionsSection,
-        UtilitySection,
-        ConfigSection
-    };
-
-    private static readonly IReadOnlySet<string> KnownEditorKeys = new HashSet<string>(StringComparer.Ordinal)
-    {
-        IdKey,
-        TypeKey,
-        DisplayNameKey,
-        DescriptionKey,
-        EntryPointKey,
-        BinaryKey,
-        ExternalContentKey,
-        ActivationKey
-    };
-
-    private static readonly IReadOnlySet<string> KnownFileTypeKeys = new HashSet<string>(StringComparer.Ordinal)
-    {
-        ExtensionKey,
-        FromCatalogKey,
-        DisplayNameKey,
-        IconKey,
-        IconColorKey,
-        IconScaleKey
-    };
-
-    private static readonly IReadOnlySet<string> KnownTemplateKeys = new HashSet<string>(StringComparer.Ordinal)
-    {
-        IdKey,
-        DisplayNameKey,
-        TemplateFileKey,
-        DefaultKey
-    };
-
-    private static readonly IReadOnlySet<string> KnownUtilityKeys = new HashSet<string>(StringComparer.Ordinal)
-    {
-        ResourceExtensionKey,
-        IconKey,
-        TemplateKey,
-        DockAreaKey
-    };
-
-    private static readonly IReadOnlySet<string> KnownConfigKeys = new HashSet<string>(StringComparer.Ordinal)
-    {
-        KeyKey,
-        TypeKey,
-        ValuesKey,
-        DefaultKey,
-        DisplayNameKey,
-        DescriptionKey
-    };
 
     // The values dock-area accepts, spelled out for the error message it produces.
     private const string ValidDockAreaTokens =
@@ -141,27 +72,22 @@ internal static class EditorManifestLoader
                     .WithErrors(readResult);
             }
             var toml = readResult.Value;
-            var parsed = SyntaxParser.Parse(toml);
 
-            if (parsed.HasErrors)
+            var manifestResult = ManifestDeserializer.Deserialize<EditorManifest>(toml, editorTomlPath);
+            if (manifestResult.IsFailure)
             {
-                var errors = string.Join("; ", parsed.Diagnostics.Select(d => d.ToString()));
-                return Result.Fail($"TOML parse error in {editorTomlPath}: {errors}");
+                return Result<EditorContribution>.Fail(manifestResult.FirstErrorMessage)
+                    .WithErrors(manifestResult);
             }
+            var manifest = manifestResult.Value;
 
-            var root = TomlSerializer.Deserialize<TomlTable>(toml);
-            if (root is null)
-            {
-                return Result.Fail($"Failed to deserialize editor manifest: {editorTomlPath}");
-            }
-
-            if (!root.TryGetValue(EditorSection, out var editorObject) ||
-                editorObject is not TomlTable editorTable)
+            var editorSection = manifest.Editor;
+            if (editorSection is null)
             {
                 return Result.Fail($"Missing [{EditorSection}] section: {editorTomlPath}");
             }
 
-            var editorId = TomlTableReader.GetString(editorTable, IdKey);
+            var editorId = editorSection.Id;
             if (string.IsNullOrEmpty(editorId))
             {
                 return Result.Fail($"Editor missing required '{IdKey}' field: {editorTomlPath}");
@@ -174,7 +100,7 @@ internal static class EditorManifestLoader
                     $"Editor ids use only lowercase letters, digits, and hyphens.");
             }
 
-            var editorType = TomlTableReader.GetStringOrNull(editorTable, TypeKey);
+            var editorType = editorSection.Type;
             if (string.IsNullOrEmpty(editorType))
             {
                 return Result.Fail(
@@ -192,8 +118,8 @@ internal static class EditorManifestLoader
 
             // Per-type section validation: the type names the sections the manifest must and
             // must not declare.
-            var hasUtilitySection = root.ContainsKey(UtilitySection);
-            var hasFileTypesSection = root.ContainsKey(FileTypesSection);
+            var hasUtilitySection = manifest.Utility is not null;
+            var hasFileTypesSection = manifest.FileTypes.Count > 0;
 
             UtilityDescriptor? utilityDescriptor = null;
             if (editorType == UtilityTypeValue)
@@ -209,12 +135,7 @@ internal static class EditorManifestLoader
                         $"'{TypeKey} = \"{UtilityTypeValue}\"' forbids [[{FileTypesSection}]]: {editorTomlPath}");
                 }
 
-                if (root[UtilitySection] is not TomlTable utilityTable)
-                {
-                    return Result.Fail($"[{UtilitySection}] must be a table: {editorTomlPath}");
-                }
-
-                var utilityResult = ParseUtilitySection(utilityTable, editorTomlPath);
+                var utilityResult = ParseUtilitySection(manifest.Utility!, editorTomlPath);
                 if (utilityResult.IsFailure)
                 {
                     return Result<EditorContribution>.Fail(utilityResult.FirstErrorMessage)
@@ -236,7 +157,7 @@ internal static class EditorManifestLoader
                 }
             }
 
-            var displayName = TomlTableReader.GetString(editorTable, DisplayNameKey);
+            var displayName = editorSection.DisplayName;
             if (string.IsNullOrEmpty(displayName))
             {
                 return Result.Fail(
@@ -245,94 +166,15 @@ internal static class EditorManifestLoader
             }
 
             // Optional; when set it is the tooltip on the Utility Panel rail button and the docked tab.
-            var description = TomlTableReader.GetStringOrNull(editorTable, DescriptionKey) ?? string.Empty;
+            var description = editorSection.Description ?? string.Empty;
 
-            var unknownFields = new List<string>();
-            CollectUnknownManifestFields(root, editorTable, unknownFields);
-
-            var fileTypes = new List<EditorFileType>();
-            if (root.TryGetValue(FileTypesSection, out var fileTypesObject) &&
-                fileTypesObject is TomlTableArray fileTypesArray)
+            var fileTypesResult = ParseFileTypes(manifest.FileTypes, editorTomlPath, fileTypeCatalog);
+            if (fileTypesResult.IsFailure)
             {
-                foreach (var fileTypeTable in fileTypesArray)
-                {
-                    CollectUnknownFields(fileTypeTable, KnownFileTypeKeys, FileTypesSection, unknownFields);
-
-                    var fileTypeDisplayName = TomlTableReader.GetString(fileTypeTable, DisplayNameKey);
-                    if (string.IsNullOrEmpty(fileTypeDisplayName))
-                    {
-                        return Result.Fail(
-                            $"File type missing required '{DisplayNameKey}' field in [[{FileTypesSection}]] entry: {editorTomlPath}. " +
-                            $"Supply a localization key or plain string naming the file type (e.g., the noun shown in the Reopen-with dialog).");
-                    }
-
-                    var icon = TomlTableReader.GetStringOrNull(fileTypeTable, IconKey) ?? string.Empty;
-                    var iconColor = TomlTableReader.GetStringOrNull(fileTypeTable, IconColorKey) ?? string.Empty;
-                    if (string.IsNullOrEmpty(icon) &&
-                        !string.IsNullOrEmpty(iconColor))
-                    {
-                        return Result.Fail(
-                            $"A [[{FileTypesSection}]] entry cannot specify '{IconColorKey}' without '{IconKey}': {editorTomlPath}");
-                    }
-
-                    var iconScale = TomlTableReader.GetDoubleOrNull(fileTypeTable, IconScaleKey);
-                    if (string.IsNullOrEmpty(icon) &&
-                        iconScale is not null)
-                    {
-                        return Result.Fail(
-                            $"A [[{FileTypesSection}]] entry cannot specify '{IconScaleKey}' without '{IconKey}': {editorTomlPath}");
-                    }
-
-                    var extensionLiteral = TomlTableReader.GetStringOrNull(fileTypeTable, ExtensionKey);
-                    var fromCatalogValue = TomlTableReader.GetStringOrNull(fileTypeTable, FromCatalogKey);
-
-                    if (!string.IsNullOrEmpty(fromCatalogValue))
-                    {
-                        if (!string.IsNullOrEmpty(extensionLiteral))
-                        {
-                            return Result.Fail(
-                                $"A [[{FileTypesSection}]] entry cannot specify both '{ExtensionKey}' and '{FromCatalogKey}': {editorTomlPath}");
-                        }
-
-                        if (fromCatalogValue != CatalogLanguagesValue)
-                        {
-                            return Result.Fail(
-                                $"Unknown '{FromCatalogKey}' value '{fromCatalogValue}': {editorTomlPath}. " +
-                                $"The only supported value is \"{CatalogLanguagesValue}\".");
-                        }
-
-                        foreach (var catalogExtension in fileTypeCatalog.LanguageExtensions)
-                        {
-                            fileTypes.Add(new EditorFileType
-                            {
-                                FileExtension = catalogExtension,
-                                DisplayName = fileTypeDisplayName,
-                                Icon = icon,
-                                IconColor = iconColor,
-                                IconScale = iconScale ?? 1.0
-                            });
-                        }
-                    }
-                    else
-                    {
-                        var extension = extensionLiteral ?? string.Empty;
-                        if (!FileExtensionUtils.IsWellFormedFileExtension(extension))
-                        {
-                            return Result.Fail(
-                                $"A [[{FileTypesSection}]] '{ExtensionKey}' value '{extension}' must be a well-formed file extension (e.g. \".txt\"): {editorTomlPath}");
-                        }
-
-                        fileTypes.Add(new EditorFileType
-                        {
-                            FileExtension = extension.ToLowerInvariant(),
-                            DisplayName = fileTypeDisplayName,
-                            Icon = icon,
-                            IconColor = iconColor,
-                            IconScale = iconScale ?? 1.0
-                        });
-                    }
-                }
+                return Result<EditorContribution>.Fail(fileTypesResult.FirstErrorMessage)
+                    .WithErrors(fileTypesResult);
             }
+            var fileTypes = fileTypesResult.Value;
 
             if (utilityDescriptor is null &&
                 fileTypes.Count == 0)
@@ -341,32 +183,29 @@ internal static class EditorManifestLoader
             }
 
             var templates = new List<DocumentTemplate>();
-            if (root.TryGetValue(TemplatesSection, out var templatesObject) &&
-                templatesObject is TomlTableArray templatesArray)
+            foreach (var manifestTemplate in manifest.Templates)
             {
-                foreach (var templateTable in templatesArray)
+                templates.Add(new DocumentTemplate
                 {
-                    templates.Add(new DocumentTemplate
-                    {
-                        Id = TomlTableReader.GetString(templateTable, IdKey),
-                        DisplayName = TomlTableReader.GetString(templateTable, DisplayNameKey),
-                        TemplateFile = TomlTableReader.GetString(templateTable, TemplateFileKey),
-                        Default = TomlTableReader.GetBool(templateTable, DefaultKey)
-                    });
-                }
+                    Id = manifestTemplate.Id ?? string.Empty,
+                    DisplayName = manifestTemplate.DisplayName ?? string.Empty,
+                    TemplateFile = manifestTemplate.TemplateFile ?? string.Empty,
+                    Default = manifestTemplate.Default
+                });
             }
 
             // An editor with external-content = true sources its content from outside the file bytes,
             // so a starter template would never be written to disk.
+            var externalContent = editorSection.ExternalContent ?? false;
             if (templates.Count > 0 &&
-                (TomlTableReader.GetBoolOrNull(editorTable, ExternalContentKey) ?? false))
+                externalContent)
             {
                 return Result.Fail(
                     $"Editor manifest '{editorTomlPath}' declares both '{ExternalContentKey} = true' and [[{TemplatesSection}]]. " +
                     $"Templates cannot be used with external content.");
             }
 
-            var descriptorsResult = ParseConfigDescriptors(root, editorTomlPath);
+            var descriptorsResult = ParseConfigDescriptors(manifest.Config, editorTomlPath);
             if (descriptorsResult.IsFailure)
             {
                 return Result<EditorContribution>.Fail(descriptorsResult.FirstErrorMessage)
@@ -374,7 +213,7 @@ internal static class EditorManifestLoader
             }
             var configDescriptors = descriptorsResult.Value;
 
-            var activationResult = ParseActivation(editorTable, editorTomlPath);
+            var activationResult = ParseActivation(editorSection, editorTomlPath);
             if (activationResult.IsFailure)
             {
                 return Result<EditorContribution>.Fail(activationResult.FirstErrorMessage)
@@ -382,14 +221,26 @@ internal static class EditorManifestLoader
             }
             var activation = activationResult.Value;
 
-            var contribution = BuildContribution(root, packageInfo, editorId, displayName, description, fileTypes, templates, configDescriptors, activation, editorTable, utilityDescriptor);
-            var loadedContribution = contribution with
+            var contribution = new EditorContribution
             {
+                Package = packageInfo,
+                Id = editorId,
+                DisplayName = displayName,
+                Description = description,
+                FileTypes = fileTypes.AsReadOnly(),
+                Templates = templates.AsReadOnly(),
+                EntryPoint = editorSection.EntryPoint ?? DefaultEntryPoint,
+                Binary = editorSection.Binary ?? false,
+                ExternalContent = externalContent,
+                Activation = activation,
+                Options = ParseOptions(manifest.Options),
+                ConfigDescriptors = configDescriptors.AsReadOnly(),
+                UtilityDescriptor = utilityDescriptor,
                 ManifestPath = editorTomlPath,
-                UnknownFields = unknownFields.AsReadOnly()
+                UnknownFields = CollectUnknownFields(manifest)
             };
 
-            return Result<EditorContribution>.Ok(loadedContribution);
+            return Result<EditorContribution>.Ok(contribution);
         }
         catch (Exception ex)
         {
@@ -397,46 +248,94 @@ internal static class EditorManifestLoader
         }
     }
 
-    private static EditorContribution BuildContribution(
-        TomlTable root,
-        PackageInfo packageInfo,
-        string editorId,
-        string displayName,
-        string description,
-        List<EditorFileType> fileTypes,
-        List<DocumentTemplate> templates,
-        List<ConfigDescriptor> configDescriptors,
-        ActivationPolicy activation,
-        TomlTable editorTable,
-        UtilityDescriptor? utilityDescriptor)
+    private static Result<List<EditorFileType>> ParseFileTypes(
+        List<ManifestFileTypeEntry> manifestFileTypes,
+        string editorTomlPath,
+        IFileTypeCatalog fileTypeCatalog)
     {
-        var entryPoint = TomlTableReader.GetStringOrNull(editorTable, EntryPointKey) ?? DefaultEntryPoint;
-        var binary = TomlTableReader.GetBoolOrNull(editorTable, BinaryKey) ?? false;
-        var externalContent = TomlTableReader.GetBoolOrNull(editorTable, ExternalContentKey) ?? false;
+        var fileTypes = new List<EditorFileType>();
 
-        var options = ParseOptionsTable(root);
-
-        return new EditorContribution
+        foreach (var manifestFileType in manifestFileTypes)
         {
-            Package = packageInfo,
-            Id = editorId,
-            DisplayName = displayName,
-            Description = description,
-            FileTypes = fileTypes.AsReadOnly(),
-            Templates = templates.AsReadOnly(),
-            EntryPoint = entryPoint,
-            Binary = binary,
-            ExternalContent = externalContent,
-            Activation = activation,
-            Options = options,
-            ConfigDescriptors = configDescriptors.AsReadOnly(),
-            UtilityDescriptor = utilityDescriptor
-        };
+            var displayName = manifestFileType.DisplayName;
+            if (string.IsNullOrEmpty(displayName))
+            {
+                return Result.Fail(
+                    $"File type missing required '{DisplayNameKey}' field in [[{FileTypesSection}]] entry: {editorTomlPath}. " +
+                    $"Supply a localization key or plain string naming the file type (e.g., the noun shown in the Reopen-with dialog).");
+            }
+
+            var icon = manifestFileType.Icon ?? string.Empty;
+            var iconColor = manifestFileType.IconColor ?? string.Empty;
+            if (string.IsNullOrEmpty(icon) &&
+                !string.IsNullOrEmpty(iconColor))
+            {
+                return Result.Fail(
+                    $"A [[{FileTypesSection}]] entry cannot specify '{IconColorKey}' without '{IconKey}': {editorTomlPath}");
+            }
+
+            var iconScale = manifestFileType.IconScale;
+            if (string.IsNullOrEmpty(icon) &&
+                iconScale is not null)
+            {
+                return Result.Fail(
+                    $"A [[{FileTypesSection}]] entry cannot specify '{IconScaleKey}' without '{IconKey}': {editorTomlPath}");
+            }
+
+            var fromCatalogValue = manifestFileType.FromCatalog;
+            if (!string.IsNullOrEmpty(fromCatalogValue))
+            {
+                if (!string.IsNullOrEmpty(manifestFileType.Extension))
+                {
+                    return Result.Fail(
+                        $"A [[{FileTypesSection}]] entry cannot specify both '{ExtensionKey}' and '{FromCatalogKey}': {editorTomlPath}");
+                }
+
+                if (fromCatalogValue != CatalogLanguagesValue)
+                {
+                    return Result.Fail(
+                        $"Unknown '{FromCatalogKey}' value '{fromCatalogValue}': {editorTomlPath}. " +
+                        $"The only supported value is \"{CatalogLanguagesValue}\".");
+                }
+
+                foreach (var catalogExtension in fileTypeCatalog.LanguageExtensions)
+                {
+                    fileTypes.Add(new EditorFileType
+                    {
+                        FileExtension = catalogExtension,
+                        DisplayName = displayName,
+                        Icon = icon,
+                        IconColor = iconColor,
+                        IconScale = iconScale ?? 1.0
+                    });
+                }
+
+                continue;
+            }
+
+            var extension = manifestFileType.Extension ?? string.Empty;
+            if (!FileExtensionUtils.IsWellFormedFileExtension(extension))
+            {
+                return Result.Fail(
+                    $"A [[{FileTypesSection}]] '{ExtensionKey}' value '{extension}' must be a well-formed file extension (e.g. \".txt\"): {editorTomlPath}");
+            }
+
+            fileTypes.Add(new EditorFileType
+            {
+                FileExtension = extension.ToLowerInvariant(),
+                DisplayName = displayName,
+                Icon = icon,
+                IconColor = iconColor,
+                IconScale = iconScale ?? 1.0
+            });
+        }
+
+        return fileTypes;
     }
 
-    private static Result<ActivationPolicy> ParseActivation(TomlTable editorTable, string editorTomlPath)
+    private static Result<ActivationPolicy> ParseActivation(ManifestEditorSection editorSection, string editorTomlPath)
     {
-        var activationValue = TomlTableReader.GetStringOrNull(editorTable, ActivationKey);
+        var activationValue = editorSection.Activation;
         if (activationValue is null)
         {
             return ActivationPolicy.Required;
@@ -462,54 +361,54 @@ internal static class EditorManifestLoader
             $"'{RequiredActivationValue}', '{RecommendedActivationValue}', or '{OptionalActivationValue}': {editorTomlPath}");
     }
 
-    // Records every field the manifest declares that the host does not define, for each section that has
-    // a fixed shape. [[file-types]] entries are collected as they are parsed.
-    private static void CollectUnknownManifestFields(TomlTable root, TomlTable editorTable, List<string> unknownFields)
+    // Every field the manifest declares that the host does not define, named by its section. The keys under
+    // [options] are the editor's own, so they are held as free-form data and never appear here.
+    private static IReadOnlyList<string> CollectUnknownFields(EditorManifest manifest)
     {
-        unknownFields.AddRange(ConfigSchemaHelper.FindUnknownKeys(root.Keys, KnownRootKeys));
+        var unknownFields = new List<string>();
 
-        CollectUnknownFields(editorTable, KnownEditorKeys, EditorSection, unknownFields);
+        unknownFields.AddRange(manifest.UnknownKeys.Keys);
+        AddUnknownKeys(manifest.Editor?.UnknownKeys, EditorSection, unknownFields);
 
-        if (root.TryGetValue(TemplatesSection, out var templatesObject) &&
-            templatesObject is TomlTableArray templatesArray)
+        foreach (var manifestFileType in manifest.FileTypes)
         {
-            foreach (var templateTable in templatesArray)
-            {
-                CollectUnknownFields(templateTable, KnownTemplateKeys, TemplatesSection, unknownFields);
-            }
+            AddUnknownKeys(manifestFileType.UnknownKeys, FileTypesSection, unknownFields);
         }
 
-        if (root.TryGetValue(UtilitySection, out var utilityObject) &&
-            utilityObject is TomlTable utilityTable)
+        foreach (var manifestTemplate in manifest.Templates)
         {
-            CollectUnknownFields(utilityTable, KnownUtilityKeys, UtilitySection, unknownFields);
+            AddUnknownKeys(manifestTemplate.UnknownKeys, TemplatesSection, unknownFields);
         }
 
-        if (root.TryGetValue(ConfigSection, out var configObject) &&
-            configObject is TomlTableArray configArray)
+        AddUnknownKeys(manifest.Utility?.UnknownKeys, UtilitySection, unknownFields);
+
+        foreach (var manifestConfig in manifest.Config)
         {
-            foreach (var configTable in configArray)
-            {
-                CollectUnknownFields(configTable, KnownConfigKeys, ConfigSection, unknownFields);
-            }
+            AddUnknownKeys(manifestConfig.UnknownKeys, ConfigSection, unknownFields);
         }
+
+        return unknownFields.AsReadOnly();
     }
 
-    private static void CollectUnknownFields(
-        TomlTable table,
-        IReadOnlySet<string> sectionKeys,
+    private static void AddUnknownKeys(
+        Dictionary<string, object?>? unknownKeys,
         string sectionName,
         List<string> unknownFields)
     {
-        foreach (var key in ConfigSchemaHelper.FindUnknownKeys(table.Keys, sectionKeys))
+        if (unknownKeys is null)
+        {
+            return;
+        }
+
+        foreach (var key in unknownKeys.Keys)
         {
             unknownFields.Add($"{sectionName}.{key}");
         }
     }
 
-    private static Result<UtilityDescriptor> ParseUtilitySection(TomlTable utilityTable, string editorTomlPath)
+    private static Result<UtilityDescriptor> ParseUtilitySection(ManifestUtilitySection utility, string editorTomlPath)
     {
-        var resourceExtension = TomlTableReader.GetString(utilityTable, ResourceExtensionKey);
+        var resourceExtension = utility.ResourceExtension;
         if (string.IsNullOrEmpty(resourceExtension))
         {
             return Result.Fail($"[{UtilitySection}] missing required '{ResourceExtensionKey}' field: {editorTomlPath}");
@@ -521,15 +420,15 @@ internal static class EditorManifestLoader
                 $"[{UtilitySection}] '{ResourceExtensionKey}' value '{resourceExtension}' must be a well-formed file extension (e.g. \".txt\"): {editorTomlPath}");
         }
 
-        var icon = TomlTableReader.GetString(utilityTable, IconKey);
+        var icon = utility.Icon;
         if (string.IsNullOrEmpty(icon))
         {
             return Result.Fail($"[{UtilitySection}] missing required '{IconKey}' field: {editorTomlPath}");
         }
 
-        var template = TomlTableReader.GetStringOrNull(utilityTable, TemplateKey) ?? string.Empty;
+        var template = utility.Template ?? string.Empty;
 
-        var dockAreaResult = ParseDockArea(utilityTable, editorTomlPath, out var dockArea);
+        var dockAreaResult = ParseDockArea(utility, editorTomlPath, out var dockArea);
         if (dockAreaResult.IsFailure)
         {
             return Result<UtilityDescriptor>.Fail(dockAreaResult.FirstErrorMessage).WithErrors(dockAreaResult);
@@ -549,11 +448,11 @@ internal static class EditorManifestLoader
     // Reads the dock-area key: the document area the utility's "Open as document" control sends it to, or
     // null for a utility that stays in the Utility Panel, which the manifest spells "none". The area is an
     // out parameter because a success Result cannot carry a null payload.
-    private static Result ParseDockArea(TomlTable utilityTable, string editorTomlPath, out WorkspaceArea? dockArea)
+    private static Result ParseDockArea(ManifestUtilitySection utility, string editorTomlPath, out WorkspaceArea? dockArea)
     {
         dockArea = WorkspaceArea.Main;
 
-        var dockAreaValue = TomlTableReader.GetStringOrNull(utilityTable, DockAreaKey);
+        var dockAreaValue = utility.DockArea;
         if (dockAreaValue is null)
         {
             return Result.Ok();
@@ -584,22 +483,15 @@ internal static class EditorManifestLoader
         return Result.Ok();
     }
 
-    private static Result<List<ConfigDescriptor>> ParseConfigDescriptors(TomlTable root, string editorTomlPath)
+    private static Result<List<ConfigDescriptor>> ParseConfigDescriptors(
+        List<ManifestConfigEntry> manifestConfigs,
+        string editorTomlPath)
     {
         var descriptors = new List<ConfigDescriptor>();
-        if (!root.TryGetValue(ConfigSection, out var configObject))
-        {
-            return descriptors;
-        }
 
-        if (configObject is not TomlTableArray configArray)
+        foreach (var manifestConfig in manifestConfigs)
         {
-            return Result.Fail($"[[{ConfigSection}]] must be an array of tables: {editorTomlPath}");
-        }
-
-        foreach (var configTable in configArray)
-        {
-            var key = TomlTableReader.GetString(configTable, KeyKey);
+            var key = manifestConfig.Key;
             if (string.IsNullOrEmpty(key))
             {
                 return Result.Fail($"Config descriptor missing required '{KeyKey}' field: {editorTomlPath}");
@@ -624,7 +516,7 @@ internal static class EditorManifestLoader
                 return Result.Fail($"Duplicate config descriptor key '{key}': {editorTomlPath}");
             }
 
-            var typeValue = TomlTableReader.GetStringOrNull(configTable, TypeKey);
+            var typeValue = manifestConfig.Type;
             var descriptorType = typeValue switch
             {
                 "bool" => ConfigValueType.Bool,
@@ -641,41 +533,40 @@ internal static class EditorManifestLoader
                     $"Valid types are \"bool\", \"string\", \"number\", \"enum\", and \"string-list\".");
             }
 
-            var values = TomlTableReader.GetStringArray(configTable, ValuesKey);
+            var values = manifestConfig.Values;
             if (descriptorType == ConfigValueType.Enum)
             {
-                if (values.Count == 0)
+                if (values is null ||
+                    values.Count == 0)
                 {
                     return Result.Fail(
                         $"Config descriptor '{key}' of type \"enum\" requires a non-empty '{ValuesKey}' list: {editorTomlPath}");
                 }
             }
-            else if (configTable.ContainsKey(ValuesKey))
+            else if (values is not null)
             {
                 return Result.Fail(
                     $"Config descriptor '{key}' declares '{ValuesKey}' but is not of type \"enum\": {editorTomlPath}");
             }
 
-            var displayName = TomlTableReader.GetString(configTable, DisplayNameKey);
+            var displayName = manifestConfig.DisplayName;
             if (string.IsNullOrEmpty(displayName))
             {
                 return Result.Fail($"Config descriptor '{key}' missing required '{DisplayNameKey}' field: {editorTomlPath}");
             }
 
-            var description = TomlTableReader.GetString(configTable, DescriptionKey);
-
             var descriptor = new ConfigDescriptor
             {
                 Key = key,
                 Type = descriptorType.Value,
-                Values = values,
+                Values = values?.AsReadOnly() ?? (IReadOnlyList<string>)Array.Empty<string>(),
                 DisplayName = displayName,
-                Description = description
+                Description = manifestConfig.Description ?? string.Empty
             };
 
-            if (configTable.TryGetValue(DefaultKey, out var defaultObject))
+            if (manifestConfig.Default is not null)
             {
-                var rawDefault = NormalizeTomlValue(defaultObject);
+                var rawDefault = NormalizeTomlValue(manifestConfig.Default);
                 var encodeResult = ConfigValueEncoder.Encode(rawDefault, descriptor);
                 if (encodeResult.IsFailure)
                 {
@@ -711,16 +602,10 @@ internal static class EditorManifestLoader
         return value;
     }
 
-    private static IReadOnlyDictionary<string, string> ParseOptionsTable(TomlTable root)
+    private static IReadOnlyDictionary<string, string> ParseOptions(Dictionary<string, object?> options)
     {
-        if (!root.TryGetValue(OptionsSection, out var optionsObject) ||
-            optionsObject is not TomlTable optionsTable)
-        {
-            return new Dictionary<string, string>();
-        }
-
         var result = new Dictionary<string, string>();
-        foreach (var entry in optionsTable)
+        foreach (var entry in options)
         {
             var stringValue = entry.Value switch
             {
@@ -739,5 +624,4 @@ internal static class EditorManifestLoader
 
         return result;
     }
-
 }

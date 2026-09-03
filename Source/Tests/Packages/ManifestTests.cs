@@ -1,4 +1,5 @@
 using Celbridge.Packages;
+using Celbridge.Packages.Helpers;
 using Celbridge.Tests.Architecture;
 using Celbridge.Workspace;
 
@@ -842,23 +843,25 @@ public class ManifestTests
     }
 
     [Test]
-    public void LoadPackage_PermissionsSectionWithNonStringEntries_SkipsInvalid()
+    public void LoadPackage_PermissionsSectionWithNonStringEntry_ReturnsFailure()
     {
+        // A non-string in the tools list is a mistake in the manifest. Dropping it would silently
+        // withhold a permission the author believes they declared, so the load fails instead.
         WritePackageToml("""
             [package]
             name = "test-mixed"
             title = "Mixed"
 
             [permissions]
-            tools = ["app.*", 42, "", "file.read"]
+            tools = ["app.*", 42, "file.read"]
 
             [contributes]
             """);
 
         var result = LoadPackage();
 
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Info.PermittedTools.Should().Equal("app.*", "file.read");
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("String");
     }
 
     [Test]
@@ -1613,6 +1616,29 @@ public class ManifestTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Editors[0].UnknownFields.Should().BeEmpty();
+    }
+
+    [Test]
+    public void LoadPackage_KnownFieldWithTheWrongType_ReturnsFailure()
+    {
+        // A known key holding the wrong type is a mistake in the manifest rather than a value to fall
+        // back from, so it fails the load and names the position.
+        WriteSingleEditorPackage("""
+            [editor]
+            id = "mistyped"
+            type = "document"
+            display-name = "TestEditor"
+            binary = "yes"
+
+            [[file-types]]
+            extension = ".mt"
+            display-name = "TestFileType"
+            """);
+
+        var result = LoadPackage();
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("Boolean");
     }
 
     [Test]

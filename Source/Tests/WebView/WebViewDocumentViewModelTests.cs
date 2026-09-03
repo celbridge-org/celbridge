@@ -7,6 +7,7 @@ using Celbridge.WebHost;
 using Microsoft.Extensions.Localization;
 using Celbridge.WebHost.Services;
 using Celbridge.WebView.Services;
+using Celbridge.Tests.Helpers;
 using Celbridge.WebView.ViewModels;
 using Celbridge.Workspace;
 
@@ -167,7 +168,7 @@ public class WebViewDocumentViewModelTests
         // The HtmlViewer role serves the HTML file directly via the project virtual
         // host without consulting any .webview file. The resource file system is
         // never called for this role.
-        var viewModel = new WebViewDocumentViewModel(_commandService, _workspaceWrapper, _serverService, _stringLocalizer)
+        var viewModel = new WebViewDocumentViewModel(new NullLogger<WebViewDocumentViewModel>(), _commandService, _workspaceWrapper, _serverService, _stringLocalizer)
         {
             FilePath = "ignored.html",
             FileResource = new ResourceKey("page.html"),
@@ -184,7 +185,7 @@ public class WebViewDocumentViewModelTests
     public void IsUrlBarVisible_HtmlViewer_IsFalse()
     {
         // The URL bar is external-URL chrome; the HTML viewer never shows it.
-        var viewModel = new WebViewDocumentViewModel(_commandService, _workspaceWrapper, _serverService, _stringLocalizer)
+        var viewModel = new WebViewDocumentViewModel(new NullLogger<WebViewDocumentViewModel>(), _commandService, _workspaceWrapper, _serverService, _stringLocalizer)
         {
             FileResource = new ResourceKey("page.html"),
             Role = WebViewDocumentRole.HtmlViewer,
@@ -196,7 +197,7 @@ public class WebViewDocumentViewModelTests
     [Test]
     public void NavigateUrl_HtmlViewer_BuildsLoopbackProjectUrlFromResourceKey()
     {
-        var viewModel = new WebViewDocumentViewModel(_commandService, _workspaceWrapper, _serverService, _stringLocalizer)
+        var viewModel = new WebViewDocumentViewModel(new NullLogger<WebViewDocumentViewModel>(), _commandService, _workspaceWrapper, _serverService, _stringLocalizer)
         {
             FileResource = new ResourceKey("Pages/welcome.html"),
             Role = WebViewDocumentRole.HtmlViewer,
@@ -507,7 +508,7 @@ public class WebViewDocumentViewModelTests
 
     private WebViewDocumentViewModel CreateViewModel()
     {
-        return new WebViewDocumentViewModel(_commandService, _workspaceWrapper, _serverService, _stringLocalizer)
+        return new WebViewDocumentViewModel(new NullLogger<WebViewDocumentViewModel>(), _commandService, _workspaceWrapper, _serverService, _stringLocalizer)
         {
             FileResource = new ResourceKey("test.webview"),
         };
