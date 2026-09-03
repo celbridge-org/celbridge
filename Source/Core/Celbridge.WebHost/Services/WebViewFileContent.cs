@@ -1,8 +1,7 @@
 using System.Text;
+using System.Text.Json;
 using Celbridge.Utilities;
 using Tomlyn;
-using Tomlyn.Model;
-using Tomlyn.Parsing;
 
 namespace Celbridge.WebHost;
 
@@ -30,16 +29,28 @@ public sealed record WebViewFileContent(
     private const string BookmarkNameKey = "name";
     private const string BookmarkIconKey = "icon";
 
+    // File keys are the snake_case spelling of the WebViewDocumentFile property names.
+    private static readonly TomlSerializerOptions DocumentOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
+    };
+
     /// <summary>
     /// The bookmarked pages, in the order their buttons appear in the bookmarks bar.
     /// </summary>
     public IReadOnlyList<WebViewBookmark> Bookmarks { get; init; } = Array.Empty<WebViewBookmark>();
 
     /// <summary>
+    /// Keys the file declared that the host does not define. The document still opens, so this is
+    /// advisory. Note that ToToml writes only the known keys, so an unknown key is lost on save.
+    /// </summary>
+    public IReadOnlyList<string> UnknownFields { get; init; } = Array.Empty<string>();
+
+    /// <summary>
     /// Parses the TOML body of a .webview file. An empty file or a missing key
     /// yields the default value rather than a failure, so a brand-new file (or a
-    /// hand-edited blank file) still loads. Unrecognised keys are ignored, and a
-    /// malformed bookmark is dropped rather than failing the parse.
+    /// hand-edited blank file) still loads. A bookmark with no usable URL is dropped rather than
+    /// failing the parse.
     /// </summary>
     public static Result<WebViewFileContent> TryParse(string toml)
     {
@@ -51,50 +62,35 @@ public sealed record WebViewFileContent(
         // Tomlyn rejects bare-\r line terminators, so normalize before parsing.
         var text = LineEndingHelper.ConvertLineEndings(toml, "\n");
 
-        var parse = SyntaxParser.Parse(text);
-        if (parse.HasErrors)
+        WebViewDocumentFile? document;
+        try
         {
-            var errors = string.Join("; ", parse.Diagnostics.Select(d => d.ToString()));
-            return Result.Fail($"Invalid TOML: {errors}");
+            document = TomlSerializer.Deserialize<WebViewDocumentFile>(text, DocumentOptions);
+        }
+        catch (TomlException exception)
+        {
+            // A shape error carries no diagnostic, only a message, so fall back to it.
+            var detail = exception.Message;
+            if (exception.Diagnostics.Count > 0)
+            {
+                detail = string.Join("; ", exception.Diagnostics.Select(diagnostic => diagnostic.ToString()));
+            }
+
+            return Result.Fail($"Invalid TOML: {detail}");
         }
 
-        var root = TomlSerializer.Deserialize<TomlTable>(text);
-        if (root is null)
+        if (document is null)
         {
             return Result.Fail("Invalid TOML: failed to deserialize.");
         }
 
-        var sourceUrl = string.Empty;
-        if (root.TryGetValue(SourceUrlKey, out var sourceUrlValue))
+        return new WebViewFileContent(
+            document.SourceUrl ?? string.Empty,
+            document.ShowUrlBar ?? true,
+            document.ShowBookmarksBar ?? true)
         {
-            if (sourceUrlValue is not string sourceUrlText)
-            {
-                return Result.Fail($"Key '{SourceUrlKey}' must be a string.");
-            }
-            sourceUrl = sourceUrlText;
-        }
-
-        var showUrlBarResult = TryReadFlag(root, ShowUrlBarKey);
-        if (showUrlBarResult.IsFailure)
-        {
-            return Result.Fail($"Failed to read key '{ShowUrlBarKey}'")
-                .WithErrors(showUrlBarResult);
-        }
-        var showUrlBar = showUrlBarResult.Value;
-
-        var showBookmarksBarResult = TryReadFlag(root, ShowBookmarksBarKey);
-        if (showBookmarksBarResult.IsFailure)
-        {
-            return Result.Fail($"Failed to read key '{ShowBookmarksBarKey}'")
-                .WithErrors(showBookmarksBarResult);
-        }
-        var showBookmarksBar = showBookmarksBarResult.Value;
-
-        var bookmarks = ReadBookmarks(root);
-
-        return new WebViewFileContent(sourceUrl, showUrlBar, showBookmarksBar)
-        {
-            Bookmarks = bookmarks
+            Bookmarks = ReadBookmarks(document),
+            UnknownFields = CollectUnknownFields(document)
         };
     }
 
@@ -137,77 +133,44 @@ public sealed record WebViewFileContent(
         return builder.ToString();
     }
 
-    // Reads a boolean key, defaulting to true when it is absent.
-    private static Result<bool> TryReadFlag(TomlTable root, string key)
-    {
-        if (!root.TryGetValue(key, out var value))
-        {
-            return true;
-        }
-
-        if (value is not bool flag)
-        {
-            return Result.Fail($"Key '{key}' must be a boolean.");
-        }
-
-        return flag;
-    }
-
-    private static List<WebViewBookmark> ReadBookmarks(TomlTable root)
+    // A bookmark with no usable URL has nothing to navigate to, so it is dropped. The name and icon are
+    // both optional.
+    private static IReadOnlyList<WebViewBookmark> ReadBookmarks(WebViewDocumentFile document)
     {
         var bookmarks = new List<WebViewBookmark>();
 
-        if (!root.TryGetValue(BookmarksKey, out var bookmarksValue))
+        foreach (var entry in document.Bookmarks)
         {
-            return bookmarks;
-        }
-
-        // Anything other than the array of tables this writes is passed over, for the same reason a single
-        // malformed entry is: the bookmarks are chrome, and none of them are worth failing the page over.
-        if (bookmarksValue is not TomlTableArray bookmarkTables)
-        {
-            return bookmarks;
-        }
-
-        foreach (var bookmarkTable in bookmarkTables)
-        {
-            var bookmark = TryReadBookmark(bookmarkTable);
-            if (bookmark is null)
+            var url = entry.Url ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(url))
             {
                 continue;
             }
 
-            bookmarks.Add(bookmark);
+            var name = entry.Name ?? string.Empty;
+            var icon = entry.Icon ?? string.Empty;
+
+            bookmarks.Add(new WebViewBookmark(url.Trim(), name.Trim(), icon.Trim()));
         }
 
         return bookmarks;
     }
 
-    // A bookmark with no usable URL has nothing to navigate to, so it is dropped. The name and icon are
-    // both optional, and a value of the wrong type is read as unset.
-    private static WebViewBookmark? TryReadBookmark(TomlTable table)
+    private static IReadOnlyList<string> CollectUnknownFields(WebViewDocumentFile document)
     {
-        var url = ReadOptionalString(table, BookmarkUrlKey);
-        if (string.IsNullOrWhiteSpace(url))
+        var unknownFields = new List<string>();
+
+        unknownFields.AddRange(document.UnknownKeys.Keys);
+
+        foreach (var entry in document.Bookmarks)
         {
-            return null;
+            foreach (var key in entry.UnknownKeys.Keys)
+            {
+                unknownFields.Add($"{BookmarksKey}.{key}");
+            }
         }
 
-        var name = ReadOptionalString(table, BookmarkNameKey);
-        var icon = ReadOptionalString(table, BookmarkIconKey);
-
-        return new WebViewBookmark(url.Trim(), name.Trim(), icon.Trim());
-    }
-
-    private static string ReadOptionalString(TomlTable table, string key)
-    {
-        if (table.TryGetValue(key, out var value)
-            && value is string text)
-        {
-            return text;
-        }
-
-        return string.Empty;
+        return unknownFields.AsReadOnly();
     }
 
     private static void AppendStringKey(StringBuilder builder, string key, string value)

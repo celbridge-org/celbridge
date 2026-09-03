@@ -1,7 +1,4 @@
 using Celbridge.Utilities;
-using Tomlyn;
-using Tomlyn.Model;
-using Tomlyn.Parsing;
 
 namespace Celbridge.Packages;
 
@@ -33,15 +30,8 @@ public static class PackageManifestLoader
     private const string PackageSection = "package";
     private const string ContributesSection = "contributes";
     private const string PermissionsSection = "permissions";
-    private const string EditorsKey = "editors";
-    private const string ToolsKey = "tools";
 
     private const string NameKey = "name";
-    private const string TitleKey = "title";
-
-    /// <summary>
-    /// File extension of an editor manifest.
-    /// </summary>
 
     private static readonly IReadOnlyDictionary<string, string> EmptySecrets = new Dictionary<string, string>();
 
@@ -73,27 +63,22 @@ public static class PackageManifestLoader
                     .WithErrors(readResult);
             }
             var toml = readResult.Value;
-            var parsed = SyntaxParser.Parse(toml);
 
-            if (parsed.HasErrors)
+            var manifestResult = ManifestDeserializer.Deserialize<PackageManifest>(toml, packageTomlPath);
+            if (manifestResult.IsFailure)
             {
-                var errors = string.Join("; ", parsed.Diagnostics.Select(d => d.ToString()));
-                return Result.Fail($"TOML parse error in {packageTomlPath}: {errors}");
+                return Result<Package>.Fail(manifestResult.FirstErrorMessage)
+                    .WithErrors(manifestResult);
             }
+            var manifest = manifestResult.Value;
 
-            var root = TomlSerializer.Deserialize<TomlTable>(toml);
-            if (root is null)
-            {
-                return Result.Fail($"Failed to deserialize package manifest: {packageTomlPath}");
-            }
-
-            if (!root.TryGetValue(PackageSection, out var packageObject) ||
-                packageObject is not TomlTable packageTable)
+            var packageSection = manifest.Package;
+            if (packageSection is null)
             {
                 return Result.Fail($"Missing [{PackageSection}] section: {packageTomlPath}");
             }
 
-            var packageName = TomlTableReader.GetString(packageTable, NameKey);
+            var packageName = packageSection.Name;
             if (string.IsNullOrEmpty(packageName))
             {
                 return Result.Fail($"Package missing required '{NameKey}' field: {packageTomlPath}");
@@ -106,13 +91,10 @@ public static class PackageManifestLoader
                 return Result.Fail($"Package has invalid '{NameKey}' value '{packageName}': {packageTomlPath}. Package names must be lowercase ASCII letters and digits with single interior hyphens, at most {PackageConstants.MaxNameLength} characters.");
             }
 
-            var packageTitle = TomlTableReader.GetString(packageTable, TitleKey);
-
             var permittedTools = Array.Empty<string>() as IReadOnlyList<string>;
-            if (root.TryGetValue(PermissionsSection, out var permissionsObject) &&
-                permissionsObject is TomlTable permissionsTable)
+            if (manifest.Permissions?.Tools is not null)
             {
-                permittedTools = TomlTableReader.GetStringArray(permissionsTable, ToolsKey);
+                permittedTools = manifest.Permissions.Tools.AsReadOnly();
             }
 
             var packageSecrets = secrets ?? EmptySecrets;
@@ -133,7 +115,7 @@ public static class PackageManifestLoader
             var packageInfo = new PackageInfo
             {
                 Name = packageName,
-                Title = packageTitle,
+                Title = packageSection.Title ?? string.Empty,
                 PackageFolder = packageFolder,
                 PermittedTools = permittedTools,
                 Secrets = packageSecrets,
@@ -142,65 +124,19 @@ public static class PackageManifestLoader
                 Version = packageVersion
             };
 
-            var editorManifestPaths = new List<string>();
-            if (root.TryGetValue(ContributesSection, out var contributesObject) &&
-                contributesObject is TomlTable contributesTable)
+            var editorsResult = LoadEditors(manifest, packageInfo, packageTomlPath, packageFolder, reader, fileTypeCatalog);
+            if (editorsResult.IsFailure)
             {
-                if (contributesTable.TryGetValue(EditorsKey, out var editorsObject))
-                {
-                    if (editorsObject is not TomlArray editorsArray)
-                    {
-                        return Result<Package>.Fail(
-                            $"'{ContributesSection}.{EditorsKey}' must be an array of editor manifest paths: {packageTomlPath}");
-                    }
-
-                    foreach (var editorEntry in editorsArray)
-                    {
-                        if (editorEntry is not string editorManifestPath)
-                        {
-                            return Result<Package>.Fail(
-                                $"'{ContributesSection}.{EditorsKey}' entries must be strings: {packageTomlPath}");
-                        }
-
-                        editorManifestPaths.Add(editorManifestPath);
-                    }
-                }
+                return Result<Package>.Fail(editorsResult.FirstErrorMessage)
+                    .WithErrors(editorsResult);
             }
-
-            var editors = new List<EditorContribution>();
-            foreach (var relativePath in editorManifestPaths)
-            {
-                if (!relativePath.EndsWith(PackageConstants.EditorManifestExtension, StringComparison.Ordinal))
-                {
-                    return Result.Fail(
-                        $"Editor manifest reference '{relativePath}' must use the '{PackageConstants.EditorManifestExtension}' extension: {packageTomlPath}");
-                }
-
-                var fullPath = Path.Combine(packageFolder, relativePath);
-                var loadResult = EditorManifestLoader.LoadEditor(fullPath, packageInfo, reader, fileTypeCatalog);
-                if (loadResult.IsFailure)
-                {
-                    // The reason is folded into the message rather than nested, because the
-                    // package load failure reports only the first error message.
-                    return Result<Package>.Fail(
-                        $"Package '{packageName}' has an invalid editor manifest '{relativePath}': {loadResult.FirstErrorMessage}")
-                        .WithErrors(loadResult);
-                }
-                var contribution = loadResult.Value;
-
-                if (editors.Any(e => string.Equals(e.Id, contribution.Id, StringComparison.Ordinal)))
-                {
-                    return Result.Fail(
-                        $"Package '{packageName}' declares more than one editor with id '{contribution.Id}': {packageTomlPath}");
-                }
-
-                editors.Add(contribution);
-            }
+            var editors = editorsResult.Value;
 
             var package = new Package
             {
                 Info = packageInfo,
-                Editors = editors.AsReadOnly()
+                Editors = editors.AsReadOnly(),
+                UnknownFields = CollectUnknownFields(manifest)
             };
 
             return Result<Package>.Ok(package);
@@ -208,6 +144,83 @@ public static class PackageManifestLoader
         catch (Exception ex)
         {
             return Result.Fail($"Failed to load package: {packageTomlPath}").WithException(ex);
+        }
+    }
+
+    private static Result<List<EditorContribution>> LoadEditors(
+        PackageManifest manifest,
+        PackageInfo packageInfo,
+        string packageTomlPath,
+        string packageFolder,
+        IPackageReader reader,
+        IFileTypeCatalog fileTypeCatalog)
+    {
+        var editors = new List<EditorContribution>();
+
+        var editorManifestPaths = manifest.Contributes?.Editors;
+        if (editorManifestPaths is null)
+        {
+            return editors;
+        }
+
+        foreach (var relativePath in editorManifestPaths)
+        {
+            if (!relativePath.EndsWith(PackageConstants.EditorManifestExtension, StringComparison.Ordinal))
+            {
+                return Result.Fail(
+                    $"Editor manifest reference '{relativePath}' must use the '{PackageConstants.EditorManifestExtension}' extension: {packageTomlPath}");
+            }
+
+            var fullPath = Path.Combine(packageFolder, relativePath);
+            var loadResult = EditorManifestLoader.LoadEditor(fullPath, packageInfo, reader, fileTypeCatalog);
+            if (loadResult.IsFailure)
+            {
+                // The reason is folded into the message rather than nested, because the
+                // package load failure reports only the first error message.
+                return Result<List<EditorContribution>>.Fail(
+                    $"Package '{packageInfo.Name}' has an invalid editor manifest '{relativePath}': {loadResult.FirstErrorMessage}")
+                    .WithErrors(loadResult);
+            }
+            var contribution = loadResult.Value;
+
+            if (editors.Any(e => string.Equals(e.Id, contribution.Id, StringComparison.Ordinal)))
+            {
+                return Result.Fail(
+                    $"Package '{packageInfo.Name}' declares more than one editor with id '{contribution.Id}': {packageTomlPath}");
+            }
+
+            editors.Add(contribution);
+        }
+
+        return editors;
+    }
+
+    // Every field the manifest declares that the host does not define, named by its section.
+    private static IReadOnlyList<string> CollectUnknownFields(PackageManifest manifest)
+    {
+        var unknownFields = new List<string>();
+
+        unknownFields.AddRange(manifest.UnknownKeys.Keys);
+        AddUnknownKeys(manifest.Package?.UnknownKeys, PackageSection, unknownFields);
+        AddUnknownKeys(manifest.Contributes?.UnknownKeys, ContributesSection, unknownFields);
+        AddUnknownKeys(manifest.Permissions?.UnknownKeys, PermissionsSection, unknownFields);
+
+        return unknownFields.AsReadOnly();
+    }
+
+    private static void AddUnknownKeys(
+        Dictionary<string, object?>? unknownKeys,
+        string sectionName,
+        List<string> unknownFields)
+    {
+        if (unknownKeys is null)
+        {
+            return;
+        }
+
+        foreach (var key in unknownKeys.Keys)
+        {
+            unknownFields.Add($"{sectionName}.{key}");
         }
     }
 }

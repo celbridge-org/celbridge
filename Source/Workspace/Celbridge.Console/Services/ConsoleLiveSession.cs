@@ -154,6 +154,13 @@ internal sealed class ConsoleLiveSession : IDisposable
         }
         var config = parseResult.Value;
 
+        if (config.UnknownFields.Count > 0)
+        {
+            // Advisory: the session still launches with the keys the host does define.
+            _logger.LogWarning(
+                $"Console document declares keys the host does not define ({string.Join(", ", config.UnknownFields)}): {Resource}");
+        }
+
         var provider = ResolveProvider(config.Type);
         if (provider is null)
         {

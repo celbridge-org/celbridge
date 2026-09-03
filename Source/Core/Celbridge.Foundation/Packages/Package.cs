@@ -15,4 +15,10 @@ public record Package
     /// Editor contributions provided by this package.
     /// </summary>
     public IReadOnlyList<EditorContribution> Editors { get; init; } = [];
+
+    /// <summary>
+    /// Fields the package manifest declared that the host does not define, each named by its section (for
+    /// example "package.author"). Fields declared by the editor manifests are carried on each contribution.
+    /// </summary>
+    public IReadOnlyList<string> UnknownFields { get; init; } = [];
 }

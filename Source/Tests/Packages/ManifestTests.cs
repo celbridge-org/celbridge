@@ -842,23 +842,25 @@ public class ManifestTests
     }
 
     [Test]
-    public void LoadPackage_PermissionsSectionWithNonStringEntries_SkipsInvalid()
+    public void LoadPackage_PermissionsSectionWithNonStringEntry_ReturnsFailure()
     {
+        // A non-string in the tools list is a mistake in the manifest. Dropping it would silently
+        // withhold a permission the author believes they declared, so the load fails instead.
         WritePackageToml("""
             [package]
             name = "test-mixed"
             title = "Mixed"
 
             [permissions]
-            tools = ["app.*", 42, "", "file.read"]
+            tools = ["app.*", 42, "file.read"]
 
             [contributes]
             """);
 
         var result = LoadPackage();
 
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Info.PermittedTools.Should().Equal("app.*", "file.read");
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("String");
     }
 
     [Test]

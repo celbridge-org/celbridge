@@ -2,8 +2,6 @@ using Celbridge.Documents;
 using Celbridge.Projects;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
-using System.Text.Json;
-using Tomlyn;
 using Tomlyn.Model;
 
 namespace Celbridge.Packages;
@@ -43,13 +41,6 @@ internal static class EditorManifestLoader
 
     private const string CatalogLanguagesValue = "languages";
 
-    // The manifest's keys are the kebab-case spelling of the EditorManifest property names, and every key
-    // outside that set lands in an UnknownKeys bag rather than being dropped.
-    private static readonly TomlSerializerOptions ManifestOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.KebabCaseLower
-    };
-
     // The values dock-area accepts, spelled out for the error message it produces.
     private const string ValidDockAreaTokens =
         $"{WorkspaceAreaTokens.Main}, {WorkspaceAreaTokens.Bottom}, {WorkspaceAreaTokens.Side}, {NoDockAreaValue}";
@@ -82,7 +73,7 @@ internal static class EditorManifestLoader
             }
             var toml = readResult.Value;
 
-            var manifestResult = DeserializeManifest(toml, editorTomlPath);
+            var manifestResult = ManifestDeserializer.Deserialize<EditorManifest>(toml, editorTomlPath);
             if (manifestResult.IsFailure)
             {
                 return Result<EditorContribution>.Fail(manifestResult.FirstErrorMessage)
@@ -254,31 +245,6 @@ internal static class EditorManifestLoader
         catch (Exception ex)
         {
             return Result.Fail($"Failed to load editor manifest: {editorTomlPath}").WithException(ex);
-        }
-    }
-
-    private static Result<EditorManifest> DeserializeManifest(string toml, string editorTomlPath)
-    {
-        try
-        {
-            var manifest = TomlSerializer.Deserialize<EditorManifest>(toml, ManifestOptions);
-            if (manifest is null)
-            {
-                return Result.Fail($"Failed to deserialize editor manifest: {editorTomlPath}");
-            }
-
-            return manifest;
-        }
-        catch (TomlException exception)
-        {
-            // A shape or value error carries no diagnostic, only a message, so fall back to it.
-            var detail = exception.Message;
-            if (exception.Diagnostics.Count > 0)
-            {
-                detail = string.Join("; ", exception.Diagnostics.Select(diagnostic => diagnostic.ToString()));
-            }
-
-            return Result.Fail($"TOML error in {editorTomlPath}: {detail}");
         }
     }
 

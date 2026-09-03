@@ -473,6 +473,26 @@ public class PackageRegistry
 
     // Rejects packages whose document-type registration declares any file
     // extension inside the reserved .cel sidecar namespace.
+    // A manifest key the host does not define is advisory: the package still loads, and the field is
+    // named so a package author can find it in the log.
+    private void LogUnknownManifestFields(Package package, string manifestPath)
+    {
+        if (package.UnknownFields.Count > 0)
+        {
+            _logger.LogWarning(
+                $"Package manifest declares fields the host does not define ({string.Join(", ", package.UnknownFields)}): {manifestPath}");
+        }
+
+        foreach (var contribution in package.Editors)
+        {
+            if (contribution.UnknownFields.Count > 0)
+            {
+                _logger.LogWarning(
+                    $"Editor manifest declares fields the host does not define ({string.Join(", ", contribution.UnknownFields)}): {contribution.ManifestPath}");
+            }
+        }
+    }
+
     private Result CheckReservedExtensions(Package package)
     {
         var sidecarService = _workspaceWrapper.WorkspaceService.ResourceService.Sidecars;
@@ -725,6 +745,7 @@ public class PackageRegistry
             }
 
             var package = loadResult.Value;
+            LogUnknownManifestFields(package, manifestPath);
 
             var reservedExtensionCheck = CheckReservedExtensions(package);
             if (reservedExtensionCheck.IsFailure)
@@ -822,6 +843,7 @@ public class PackageRegistry
             }
 
             var package = loadResult.Value;
+            LogUnknownManifestFields(package, manifestPath);
 
             var reservedExtensionCheck = CheckReservedExtensions(package);
             if (reservedExtensionCheck.IsFailure)
