@@ -11,7 +11,7 @@
 
   <Grid>
     <ScrollViewer Padding="12"
-                  Visibility="{x:Bind ViewModel.HasFileTypes, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                  Visibility="{x:Bind ViewModel.HasContent, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
       <ItemsControl ItemsSource="{x:Bind ViewModel.FileTypeRows}">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:FileTypeRowViewModel">
@@ -47,6 +47,6 @@
                TextAlignment="Center"
                HorizontalAlignment="Center"
                VerticalAlignment="Center"
-               Visibility="{x:Bind ViewModel.HasNoFileTypes, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+               Visibility="{x:Bind ViewModel.IsEmpty, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
   </Grid>
 </UserControl>

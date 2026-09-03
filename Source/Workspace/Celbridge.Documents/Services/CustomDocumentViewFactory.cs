@@ -35,6 +35,8 @@ public class CustomDocumentViewFactory : DocumentEditorFactoryBase
 
     public override bool IsUtility => _resolvedEditor.Contribution.IsUtility;
 
+    public override bool HandlesBinaryContent => _resolvedEditor.Contribution.Binary;
+
     public override IReadOnlyList<string> SupportedExtensions =>
         _resolvedEditor.Contribution.FileTypes.Select(fileType => fileType.FileExtension).ToList();
 

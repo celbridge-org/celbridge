@@ -496,16 +496,56 @@ public class DocumentEditorRegistryTests
         candidates.Should().ContainSingle().Which.Should().Be(codeEditor);
     }
 
+    [Test]
+    public void GetUserPickableFactoriesForResource_OmitsCodeEditorForAnEditorThatHandlesBinaryContent()
+    {
+        // The claiming editor declares that it opens the format as binary, which settles the question
+        // without the host's extension list having to know the format at all.
+        var sniffer = Substitute.For<ITextBinarySniffer>();
+        sniffer.IsBinaryExtension(".acme").Returns(false);
+        var registry = new DocumentEditorRegistry(sniffer);
+
+        var binaryEditor = CreateMockFactory("acme.model", ".acme", handlesBinaryContent: true);
+        var codeEditor = CreateMockFactory(DocumentConstants.CodeEditorId.ToString(), ".cs");
+
+        registry.RegisterFactory(binaryEditor);
+        registry.RegisterFactory(codeEditor);
+
+        var candidates = registry.GetUserPickableFactoriesForResource(new ResourceKey("model.acme"));
+
+        candidates.Should().ContainSingle().Which.Should().Be(binaryEditor);
+    }
+
+    [Test]
+    public void GetUserPickableFactoriesForResource_AppendsCodeEditorForAnEditorThatHandlesText()
+    {
+        var sniffer = Substitute.For<ITextBinarySniffer>();
+        sniffer.IsBinaryExtension(".note").Returns(false);
+        var registry = new DocumentEditorRegistry(sniffer);
+
+        var noteEditor = CreateMockFactory("acme.note", ".note");
+        var codeEditor = CreateMockFactory(DocumentConstants.CodeEditorId.ToString(), ".cs");
+
+        registry.RegisterFactory(noteEditor);
+        registry.RegisterFactory(codeEditor);
+
+        var candidates = registry.GetUserPickableFactoriesForResource(new ResourceKey("todo.note"));
+
+        candidates.Should().Equal(noteEditor, codeEditor);
+    }
+
     private static IDocumentEditorFactory CreateMockFactory(
         string editorId,
         string extension,
-        bool canHandle = true)
+        bool canHandle = true,
+        bool handlesBinaryContent = false)
     {
         var factory = Substitute.For<IDocumentEditorFactory>();
         factory.EditorId.Returns(new EditorId(editorId));
         factory.DisplayName.Returns(editorId);
         factory.SupportedExtensions.Returns(new List<string> { extension });
         factory.CanHandleResource(Arg.Any<ResourceKey>()).Returns(canHandle);
+        factory.HandlesBinaryContent.Returns(handlesBinaryContent);
         return factory;
     }
 }

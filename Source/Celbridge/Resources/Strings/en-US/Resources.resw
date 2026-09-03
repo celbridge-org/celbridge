@@ -845,6 +845,9 @@ Open with default application instead?</value>
   <data name="ProjectSettings_FileEditorsEmpty" xml:space="preserve">
     <value>No file types in this project offer a choice of editor.</value>
   </data>
+  <data name="ProjectSettings_UnavailableEditorFormat" xml:space="preserve">
+    <value>{0} (unavailable)</value>
+  </data>
   <data name="ProjectSettings_PagesHeader" xml:space="preserve">
     <value>Pages</value>
   </data>
@@ -1003,6 +1006,9 @@ Open with default application instead?</value>
   </data>
   <data name="ProjectSettings_ContributionIssue_UnresolvedIcon_Single" xml:space="preserve">
     <value>The icon '{0}' could not be resolved, so a default icon is shown.</value>
+  </data>
+  <data name="ProjectSettings_ContributionIssue_UnknownField_Single" xml:space="preserve">
+    <value>Ignored the unknown setting '{0}' declared in this manifest.</value>
   </data>
   <data name="ProjectSettings_ContributionIssue_Multiple" xml:space="preserve">
     <value>{0} settings could not be applied.</value>

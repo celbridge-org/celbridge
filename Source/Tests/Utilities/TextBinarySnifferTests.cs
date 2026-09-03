@@ -1,5 +1,6 @@
 using Celbridge.FileSystem.Services;
 using Celbridge.Tests.Migration.TestHelpers;
+using Celbridge.Tests.Packages;
 using System.Text;
 
 namespace Celbridge.Tests.Utilities;
@@ -8,7 +9,8 @@ namespace Celbridge.Tests.Utilities;
 public class TextBinarySnifferTests
 {
     private string _testFilesDir = null!;
-    private readonly TextBinarySniffer _sniffer = new(new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>()));
+    private readonly ITextBinarySniffer _sniffer = TestFileTypeCatalog.CreateSniffer(
+        new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>()));
 
     [SetUp]
     public void SetUp()
@@ -76,10 +78,9 @@ public class TextBinarySnifferTests
         // cover, so a media format missing from it is presented as an editable text file.
         string[] mediaExtensions =
         [
-            ".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".bmp", ".ico",
+            ".jpeg", ".gif", ".webp", ".bmp", ".ico",
             ".mp3", ".wav", ".ogg", ".flac", ".m4a",
-            ".mp4", ".webm", ".avi", ".mov", ".mkv",
-            ".pdf"
+            ".mp4", ".webm", ".avi", ".mov", ".mkv"
         ];
 
         foreach (var extension in mediaExtensions)

@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Celbridge.Documents;
 using Celbridge.Logging;
 using Celbridge.Packages;
 using Celbridge.Projects;
@@ -6,11 +7,11 @@ using Celbridge.Projects;
 namespace Celbridge.ProjectSettings.ViewModels;
 
 /// <summary>
-/// Drives the File Editors section: the file types that more than one active document editor can open,
-/// paired with the editor that opens each. The candidate editors and default come from the runtime
-/// resolver, so the section reflects what actually opens a file. Choosing a non-default editor writes an
-/// editor association; choosing the default clears it. A file type only one editor claims presents no
-/// choice, so it is not listed.
+/// Drives the File Editors section: the file types that offer a choice of editor, paired with the editor
+/// that opens each. The candidate editors and default come from the runtime resolver, so the section
+/// reflects what actually opens a file. Choosing a non-default editor writes an editor association;
+/// choosing the default clears it. A file type only one editor claims presents no choice, so it is not
+/// listed unless it carries a stale association the user would otherwise be unable to clear.
 /// </summary>
 public class FileEditorsSectionViewModel : ProjectSettingsSectionViewModel
 {
@@ -18,6 +19,8 @@ public class FileEditorsSectionViewModel : ProjectSettingsSectionViewModel
     private readonly ILogger<FileEditorsSectionViewModel> _logger;
 
     public ObservableCollection<FileTypeRowViewModel> FileTypeRows { get; } = new();
+
+    public override string EmptyText => ProjectSettingsLabels.FileEditorsEmpty;
 
     public FileEditorsSectionViewModel(
         ProjectSettingsContext context,
@@ -28,20 +31,14 @@ public class FileEditorsSectionViewModel : ProjectSettingsSectionViewModel
         _logger = ServiceLocator.AcquireService<ILogger<FileEditorsSectionViewModel>>();
     }
 
-    public bool HasFileTypes => FileTypeRows.Count > 0;
-
-    public bool HasNoFileTypes => FileTypeRows.Count == 0;
-
-    public string EmptyText => ProjectSettingsLabels.FileEditorsEmpty;
-
     public override void Load()
     {
         BuildFileTypes();
     }
 
-    // Builds a row for each extension that more than one active document editor (contribution or built-in)
-    // claims. The candidate editors and default come from the runtime resolver, so this section matches what
-    // actually opens a file (reload state), rather than re-deriving resolution from the manifests.
+    // Builds a row for each extension that offers a choice of editor. The candidate editors and default come
+    // from the runtime resolver, so this section matches what actually opens a file (reload state), rather
+    // than re-deriving resolution from the manifests.
     private void BuildFileTypes()
     {
         FileTypeRows.Clear();
@@ -53,27 +50,36 @@ public class FileEditorsSectionViewModel : ProjectSettingsSectionViewModel
             || documentsService is null
             || config is null)
         {
-            NotifyFileTypesChanged();
+            SetNotLoadedContentState();
             return;
         }
 
-        var extensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        // Extensions are lowercased as they are collected, so an ordinal set and ordering are enough.
+        var extensions = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var instance in packageService.GetResolvedEditors())
         {
-            if (instance.Contribution.IsUtility)
-            {
-                continue;
-            }
-            CollectExtensions(instance.Contribution.FileTypes, extensions);
+            CollectExtensions(instance.Contribution, extensions);
         }
         foreach (var builtIn in packageService.GetBuiltInEditors())
         {
-            CollectExtensions(builtIn.Contribution.FileTypes, extensions);
+            CollectExtensions(builtIn.Contribution, extensions);
         }
 
         foreach (var extension in extensions.OrderBy(key => key, StringComparer.Ordinal))
         {
+            var pick = documentsService.GetEditorCandidatesForExtension(extension);
+            var defaultEditorId = pick.DefaultEditorId.ToString();
+
+            config.Celbridge.EditorAssociations.TryGetValue(extension, out var associatedEditorId);
+
+            var candidates = BuildCandidates(pick, defaultEditorId, associatedEditorId);
+            if (candidates.Count < 2)
+            {
+                // Only one editor opens this extension, so there is nothing to choose between.
+                continue;
+            }
+
             if (documentsService.IsReservedFileType(extension))
             {
                 // Core file types carry a role the application depends on, so they are not the user's
@@ -81,38 +87,50 @@ public class FileEditorsSectionViewModel : ProjectSettingsSectionViewModel
                 continue;
             }
 
-            var pick = documentsService.GetEditorCandidatesForExtension(extension);
-            if (pick.Candidates.Count < 2)
-            {
-                // Only one editor opens this extension, so there is nothing to choose between.
-                continue;
-            }
-
-            var defaultEditorId = pick.DefaultEditorId.ToString();
-
-            // List the default editor first, then the rest alphabetically, so the dropdown reads
-            // predictably rather than in internal editor-resolution order.
-            var candidates = pick.Candidates
-                .Select(candidate => new AssociationCandidate(candidate.EditorId.ToString(), candidate.DisplayName))
-                .OrderByDescending(candidate => candidate.EditorId == defaultEditorId)
-                .ThenBy(candidate => candidate.DisplayName, StringComparer.CurrentCultureIgnoreCase)
-                .ToList();
-
-            config.Celbridge.EditorAssociations.TryGetValue(extension, out var associatedEditorId);
-
             var typeName = _fileTypeCatalog.GetDisplayName(extension);
             var row = new FileTypeRowViewModel(extension, typeName, candidates, defaultEditorId, associatedEditorId, CommitAssociation);
             FileTypeRows.Add(row);
         }
 
-        NotifyFileTypesChanged();
+        SetLoadedContentState(FileTypeRows.Count);
+    }
+
+    // The editors a dropdown offers for an extension: the default first, then the rest alphabetically, so
+    // the list reads predictably rather than in internal editor-resolution order. An association naming an
+    // editor that no longer claims the extension is stale and opens nothing, so it is listed last, letting
+    // the user pick a working editor and clear the entry.
+    private static List<AssociationCandidate> BuildCandidates(
+        ExtensionEditorCandidates pick,
+        string defaultEditorId,
+        string? associatedEditorId)
+    {
+        var candidates = pick.Candidates
+            .Select(candidate => new AssociationCandidate(candidate.EditorId.ToString(), candidate.DisplayName))
+            .OrderByDescending(candidate => candidate.EditorId == defaultEditorId)
+            .ThenBy(candidate => candidate.DisplayName, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+
+        if (associatedEditorId is not null
+            && !candidates.Any(candidate => candidate.EditorId == associatedEditorId))
+        {
+            var unavailableName = ProjectSettingsLabels.UnavailableEditor(associatedEditorId);
+            candidates.Add(new AssociationCandidate(associatedEditorId, unavailableName));
+        }
+
+        return candidates;
     }
 
     // Records each extension a document editor supports, lowercased so the same extension claimed by two
-    // editors resolves to one row.
-    private static void CollectExtensions(IReadOnlyList<EditorFileType> fileTypes, HashSet<string> extensions)
+    // editors resolves to one row. A utility is presented by the Utility Panel rather than opened by
+    // extension, so it contributes none.
+    private static void CollectExtensions(EditorContribution contribution, HashSet<string> extensions)
     {
-        foreach (var fileType in fileTypes)
+        if (contribution.IsUtility)
+        {
+            return;
+        }
+
+        foreach (var fileType in contribution.FileTypes)
         {
             var extension = fileType.FileExtension.ToLowerInvariant();
             if (string.IsNullOrEmpty(extension))
@@ -122,12 +140,6 @@ public class FileEditorsSectionViewModel : ProjectSettingsSectionViewModel
 
             extensions.Add(extension);
         }
-    }
-
-    private void NotifyFileTypesChanged()
-    {
-        OnPropertyChanged(nameof(HasFileTypes));
-        OnPropertyChanged(nameof(HasNoFileTypes));
     }
 
     private void CommitAssociation(string extension, string? editorId)

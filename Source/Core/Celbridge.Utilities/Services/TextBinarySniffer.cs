@@ -1,6 +1,7 @@
 using System.Buffers;
 using System.Text;
 using Celbridge.FileSystem;
+using Celbridge.Packages;
 
 namespace Celbridge.Utilities;
 
@@ -13,44 +14,18 @@ public class TextBinarySniffer : ITextBinarySniffer
     private const int SampleSize = 8192;
 
     private readonly ILocalFileSystem _fileSystem;
+    private readonly IFileTypeCatalog _fileTypeCatalog;
 
-    public TextBinarySniffer(ILocalFileSystem fileSystem)
+    public TextBinarySniffer(
+        ILocalFileSystem fileSystem,
+        IFileTypeCatalog fileTypeCatalog)
     {
         _fileSystem = fileSystem;
+        _fileTypeCatalog = fileTypeCatalog;
     }
 
-    /// <summary>
-    /// Known binary file extensions for fast-path detection.
-    /// </summary>
-    private readonly HashSet<string> _binaryExtensions = new(StringComparer.OrdinalIgnoreCase)
-    {
-        // Executables and libraries
-        ".exe", ".dll", ".pdb", ".obj", ".o", ".a", ".lib",
-        ".so", ".dylib", ".bin", ".dat",
-        // Archives
-        ".zip", ".tar", ".gz", ".7z", ".rar", ".bz2",
-        // Images
-        ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".ico", ".webp", ".svg",
-        // Audio
-        ".mp3", ".wav", ".ogg", ".flac", ".aac", ".m4a",
-        // Video
-        ".mp4", ".avi", ".mkv", ".mov", ".webm",
-        // Documents
-        ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
-        // Fonts
-        ".ttf", ".otf", ".woff", ".woff2", ".eot",
-        // Compiled code
-        ".pyc", ".pyo", ".class",
-        // Databases
-        ".db", ".sqlite", ".sqlite3",
-        // Packages
-        ".nupkg", ".snupkg", ".vsix", ".msi", ".cab"
-    };
-
-    /// <summary>
-    /// Quickly checks if a file extension indicates a binary file format.
-    /// This is a fast path that avoids reading file content.
-    /// </summary>
+    // The file type catalog is the host's record of which formats are binary. It is loaded when a
+    // project loads, ahead of every caller here, and reports an unknown extension as text.
     public bool IsBinaryExtension(string extension)
     {
         if (string.IsNullOrEmpty(extension))
@@ -64,7 +39,7 @@ public class TextBinarySniffer : ITextBinarySniffer
             extension = "." + extension;
         }
 
-        return _binaryExtensions.Contains(extension);
+        return _fileTypeCatalog.IsBinaryExtension(extension);
     }
 
     /// <summary>

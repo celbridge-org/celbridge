@@ -49,6 +49,67 @@ internal static class EditorManifestLoader
 
     private const string CatalogLanguagesValue = "languages";
 
+    // The sections a manifest declares, and the fields each one defines. A key outside these sets is
+    // reported as an unknown field. [options] is absent because its keys are the editor's own, passed
+    // through to the editor rather than interpreted here.
+    private static readonly IReadOnlySet<string> RootKeys = new HashSet<string>(StringComparer.Ordinal)
+    {
+        EditorSection,
+        FileTypesSection,
+        TemplatesSection,
+        OptionsSection,
+        UtilitySection,
+        ConfigSection
+    };
+
+    private static readonly IReadOnlySet<string> EditorKeys = new HashSet<string>(StringComparer.Ordinal)
+    {
+        IdKey,
+        TypeKey,
+        DisplayNameKey,
+        DescriptionKey,
+        EntryPointKey,
+        BinaryKey,
+        ExternalContentKey,
+        ActivationKey
+    };
+
+    private static readonly IReadOnlySet<string> FileTypeKeys = new HashSet<string>(StringComparer.Ordinal)
+    {
+        ExtensionKey,
+        FromCatalogKey,
+        DisplayNameKey,
+        IconKey,
+        IconColorKey,
+        IconScaleKey
+    };
+
+    private static readonly IReadOnlySet<string> TemplateKeys = new HashSet<string>(StringComparer.Ordinal)
+    {
+        IdKey,
+        DisplayNameKey,
+        TemplateFileKey,
+        DefaultKey
+    };
+
+    private static readonly IReadOnlySet<string> UtilityKeys = new HashSet<string>(StringComparer.Ordinal)
+    {
+        ResourceExtensionKey,
+        IconKey,
+        TemplateKey,
+        DockAreaKey
+    };
+
+    private static readonly IReadOnlySet<string> ConfigKeys = new HashSet<string>(StringComparer.Ordinal)
+    {
+        KeyKey,
+        TypeKey,
+        ValuesKey,
+        DefaultKey,
+        DisplayNameKey,
+        DescriptionKey
+    };
+
     // The values dock-area accepts, spelled out for the error message it produces.
     private const string ValidDockAreaTokens =
         $"{WorkspaceAreaTokens.Main}, {WorkspaceAreaTokens.Bottom}, {WorkspaceAreaTokens.Side}, {NoDockAreaValue}";
@@ -186,12 +247,17 @@ internal static class EditorManifestLoader
             // Optional; when set it is the tooltip on the Utility Panel rail button and the docked tab.
             var description = TomlTableReader.GetStringOrNull(editorTable, DescriptionKey) ?? string.Empty;
 
+            var unknownFields = new List<string>();
+            CollectUnknownManifestFields(root, editorTable, unknownFields);
+
             var fileTypes = new List<EditorFileType>();
             if (root.TryGetValue(FileTypesSection, out var fileTypesObject) &&
                 fileTypesObject is TomlTableArray fileTypesArray)
             {
                 foreach (var fileTypeTable in fileTypesArray)
                 {
+                    CollectUnknownFields(fileTypeTable, FileTypeKeys, FileTypesSection, unknownFields);
+
                     var fileTypeDisplayName = TomlTableReader.GetString(fileTypeTable, DisplayNameKey);
                     if (string.IsNullOrEmpty(fileTypeDisplayName))
                     {
@@ -317,9 +383,13 @@ internal static class EditorManifestLoader
             var activation = activationResult.Value;
 
             var contribution = BuildContribution(root, packageInfo, editorId, displayName, description, fileTypes, templates, configDescriptors, activation, editorTable, utilityDescriptor);
-            var contributionWithPath = contribution with { ManifestPath = editorTomlPath };
+            var loadedContribution = contribution with
+            {
+                ManifestPath = editorTomlPath,
+                UnknownFields = unknownFields.AsReadOnly()
+            };
 
-            return Result<EditorContribution>.Ok(contributionWithPath);
+            return Result<EditorContribution>.Ok(loadedContribution);
         }
         catch (Exception ex)
         {
@@ -390,6 +460,63 @@ internal static class EditorManifestLoader
         return Result.Fail(
             $"[{EditorSection}] '{ActivationKey}' value '{activationValue}' must be one of " +
             $"'{RequiredActivationValue}', '{RecommendedActivationValue}', or '{OptionalActivationValue}': {editorTomlPath}");
+    }
+
+    // Records every field the manifest declares that the host does not define, for each section that has
+    // a fixed shape. [[file-types]] entries are collected as they are parsed instead.
+    private static void CollectUnknownManifestFields(TomlTable root, TomlTable editorTable, List<string> unknownFields)
+    {
+        foreach (var key in root.Keys)
+        {
+            if (!RootKeys.Contains(key))
+            {
+                unknownFields.Add(key);
+            }
+        }
+
+        CollectUnknownFields(editorTable, EditorKeys, EditorSection, unknownFields);
+
+        if (root.TryGetValue(TemplatesSection, out var templatesObject) &&
+            templatesObject is TomlTableArray templatesArray)
+        {
+            foreach (var templateTable in templatesArray)
+            {
+                CollectUnknownFields(templateTable, TemplateKeys, TemplatesSection, unknownFields);
+            }
+        }
+
+        if (root.TryGetValue(UtilitySection, out var utilityObject) &&
+            utilityObject is TomlTable utilityTable)
+        {
+            CollectUnknownFields(utilityTable, UtilityKeys, UtilitySection, unknownFields);
+        }
+
+        if (root.TryGetValue(ConfigSection, out var configObject) &&
+            configObject is TomlTableArray configArray)
+        {
+            foreach (var configTable in configArray)
+            {
+                CollectUnknownFields(configTable, ConfigKeys, ConfigSection, unknownFields);
+            }
+        }
+    }
+
+    // Records each key a section does not define, so a stale or misspelled field is reported rather than
+    // silently dropped. The field is ignored either way: a manifest still loads with one, because losing
+    // an editor over a field the host simply does not read would cost the user more than it saves.
+    private static void CollectUnknownFields(
+        TomlTable table,
+        IReadOnlySet<string> sectionKeys,
+        string sectionName,
+        List<string> unknownFields)
+    {
+        foreach (var key in table.Keys)
+        {
+            if (!sectionKeys.Contains(key))
+            {
+                unknownFields.Add($"{sectionName}.{key}");
+            }
+        }
     }
 
     private static Result<UtilityDescriptor> ParseUtilitySection(TomlTable utilityTable, string editorTomlPath)

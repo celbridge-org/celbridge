@@ -90,6 +90,13 @@ public partial record EditorContribution
     public IReadOnlyDictionary<string, string> Options { get; init; } = EmptyOptions;
 
     /// <summary>
+    /// Fields the manifest declared that the host does not define, each named by its section (for example
+    /// "file-types.category"). The contribution loaded without them, so these are reported as issues
+    /// rather than failing the package.
+    /// </summary>
+    public IReadOnlyList<string> UnknownFields { get; init; } = [];
+
+    /// <summary>
     /// Typed configuration keys declared by the manifest's [[config]] entries. Contribution tables in
     /// the project config are type-checked against these descriptors.
     /// </summary>

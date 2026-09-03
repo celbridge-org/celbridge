@@ -66,6 +66,12 @@ internal static class ProjectSettingsLabels
         return Localizer.GetString($"ProjectSettings_WorkspaceArea_{area}");
     }
 
+    /// <summary>
+    /// Names an editor an association points at that no longer opens the file type, shown in the picker
+    /// so the stale choice is visible and can be replaced.
+    /// </summary>
+    public static string UnavailableEditor(string editorId) => Localizer.GetString("ProjectSettings_UnavailableEditorFormat", editorId);
+
     public static string PackageName(string name) => Localizer.GetString("ProjectSettings_PackageNameFormat", name);
 
     public static string PackageVersion(int version) => Localizer.GetString("ProjectSettings_PackageVersionFormat", version);
@@ -126,6 +132,11 @@ internal static class ProjectSettingsLabels
             if (issue.Kind == ContributionIssueKind.UnresolvedIcon)
             {
                 return new IssueMessage("ProjectSettings_ContributionIssue_UnresolvedIcon_Single", issue.Value);
+            }
+
+            if (issue.Kind == ContributionIssueKind.UnknownField)
+            {
+                return new IssueMessage("ProjectSettings_ContributionIssue_UnknownField_Single", issue.Value);
             }
         }
 

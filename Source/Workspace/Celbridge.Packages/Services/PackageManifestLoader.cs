@@ -14,6 +14,7 @@ internal sealed class EmptyFileTypeCatalog : IFileTypeCatalog
     public static readonly EmptyFileTypeCatalog Instance = new();
 
     public Task LoadAsync() => Task.CompletedTask;
+    public bool IsBinaryExtension(string extension) => false;
     public string GetLanguage(string extension) => string.Empty;
     public string GetDisplayName(string extension) => string.Empty;
     public FileTypeIcon? GetIcon(string extension) => null;

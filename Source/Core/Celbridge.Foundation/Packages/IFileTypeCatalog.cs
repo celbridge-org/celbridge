@@ -9,10 +9,10 @@ namespace Celbridge.Packages;
 public sealed record FileTypeIcon(string IconName, string Color, double Scale = 1.0);
 
 /// <summary>
-/// The host's central catalog of established file types, loaded from the bundled file-types.json. Each
-/// entry maps a file extension to the language id an editor highlights it as, the name the type is known
-/// by, and the icon it is drawn with. These are properties of the extension, not of the editor that opens
-/// it. Packages describe their own novel extensions in their manifests.
+/// The host's central record of established file types, loaded from the bundled file-types.json. What it
+/// holds are properties of the extension itself rather than of the editor that opens it, so an extension
+/// is described here once however many editors claim it. A package describes its own novel extensions in
+/// its manifest instead.
 /// </summary>
 public interface IFileTypeCatalog
 {
@@ -21,6 +21,13 @@ public interface IFileTypeCatalog
     /// catalog populated can call this without coordinating with the others.
     /// </summary>
     Task LoadAsync();
+
+    /// <summary>
+    /// Returns true when the catalog records the extension as a binary format. False for a text format
+    /// and for an extension the catalog does not know. The extension includes its leading dot and is
+    /// matched case-insensitively.
+    /// </summary>
+    bool IsBinaryExtension(string extension);
 
     /// <summary>
     /// Returns the language id a code editor highlights the extension as, or empty when the catalog

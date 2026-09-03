@@ -25,7 +25,7 @@ public class DocumentShortcutsSectionViewModel : ProjectSettingsSectionViewModel
 
     public ObservableCollection<DocumentShortcutViewModel> Shortcuts { get; } = new();
 
-    public string EmptyText => ProjectSettingsLabels.ShortcutsEmpty;
+    public override string EmptyText => ProjectSettingsLabels.ShortcutsEmpty;
 
     public string AddShortcutText => ProjectSettingsLabels.AddShortcut;
 

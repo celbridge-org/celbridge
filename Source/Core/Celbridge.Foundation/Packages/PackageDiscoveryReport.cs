@@ -73,6 +73,11 @@ public enum ContributionIssueKind
     /// An icon name declared in the manifest did not resolve to a glyph in any bundled icon font.
     /// </summary>
     UnresolvedIcon,
+
+    /// <summary>
+    /// The manifest declared a field the host does not define, so the field was ignored.
+    /// </summary>
+    UnknownField,
 }
 
 /// <summary>

@@ -1543,6 +1543,81 @@ public class ManifestTests
     }
 
     [Test]
+    public void LoadPackage_UnknownField_LoadsAndRecordsTheField()
+    {
+        // A field the host does not define is reported rather than dropped, but it does not cost the
+        // user the package: the rest of the manifest is still usable.
+        WriteSingleEditorPackage("""
+            [editor]
+            id = "stale-field"
+            type = "document"
+            display-name = "TestEditor"
+            colour-scheme = "dark"
+
+            [[file-types]]
+            extension = ".sf"
+            display-name = "TestFileType"
+            category = "text"
+            """);
+
+        var result = LoadPackage();
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Editors[0].FileTypes.Should().ContainSingle();
+        result.Value.Editors[0].UnknownFields.Should().BeEquivalentTo(
+            ["editor.colour-scheme", "file-types.category"]);
+    }
+
+    [Test]
+    public void LoadPackage_UnknownSection_IsRecordedAsAnUnknownField()
+    {
+        WriteSingleEditorPackage("""
+            [editor]
+            id = "stale-section"
+            type = "document"
+            display-name = "TestEditor"
+
+            [[file-types]]
+            extension = ".ss"
+            display-name = "TestFileType"
+
+            [[file-type]]
+            extension = ".typo"
+            display-name = "TestFileType"
+            """);
+
+        var result = LoadPackage();
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Editors[0].UnknownFields.Should().BeEquivalentTo(["file-type"]);
+    }
+
+    [Test]
+    public void LoadPackage_OptionsKeys_AreNotReportedAsUnknown()
+    {
+        // The keys under [options] are the editor's own, passed through to it rather than interpreted
+        // by the host, so any name is valid there.
+        WriteSingleEditorPackage("""
+            [editor]
+            id = "with-options"
+            type = "document"
+            display-name = "TestEditor"
+
+            [options]
+            anything_at_all = "value"
+
+            [[file-types]]
+            extension = ".wo"
+            display-name = "TestFileType"
+            """);
+
+        var result = LoadPackage();
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Editors[0].UnknownFields.Should().BeEmpty();
+    }
+
+    [Test]
     public void LoadPackage_FileTypeIcon_IsCarriedOnTheFileType()
     {
         WriteSingleEditorPackage("""

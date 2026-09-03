@@ -6,10 +6,11 @@ using Celbridge.Platform;
 namespace Celbridge.Packages;
 
 /// <summary>
-/// One catalogued file type: the language a code editor highlights it as, the name it is known by, and
-/// the icon it is drawn with. Every field is optional.
+/// One catalogued file type. The catalog describes established types loosely, so an entry carries only
+/// what is known about that extension and every field is optional.
 /// </summary>
 internal sealed record FileTypeEntry(
+    bool IsBinary,
     string Language,
     string DisplayName,
     FileTypeIcon? Icon);
@@ -18,6 +19,7 @@ public sealed class FileTypeCatalog : IFileTypeCatalog
 {
     private const string CatalogRelativePath = "celbridge-client/file-types.json";
 
+    private const string BinaryKey = "binary";
     private const string LanguageKey = "language";
     private const string DisplayNameKey = "display-name";
     private const string IconKey = "icon";
@@ -85,6 +87,16 @@ public sealed class FileTypeCatalog : IFileTypeCatalog
             _iconExtensions = new List<string>();
             _iconFileNames = new List<string>();
         }
+    }
+
+    public bool IsBinaryExtension(string extension)
+    {
+        if (TryGetEntry(extension, out var entry))
+        {
+            return entry.IsBinary;
+        }
+
+        return false;
     }
 
     public string GetLanguage(string extension)
@@ -197,6 +209,13 @@ public sealed class FileTypeCatalog : IFileTypeCatalog
 
     private FileTypeEntry ParseEntry(JsonElement element)
     {
+        var isBinary = false;
+        if (element.TryGetProperty(BinaryKey, out var binaryElement) &&
+            binaryElement.ValueKind == JsonValueKind.True)
+        {
+            isBinary = true;
+        }
+
         var language = string.Empty;
         if (element.TryGetProperty(LanguageKey, out var languageElement) &&
             languageElement.ValueKind == JsonValueKind.String)
@@ -233,6 +252,6 @@ public sealed class FileTypeCatalog : IFileTypeCatalog
             icon = new FileTypeIcon(iconName, iconColor, iconScale);
         }
 
-        return new FileTypeEntry(language, displayName, icon);
+        return new FileTypeEntry(isBinary, language, displayName, icon);
     }
 }
