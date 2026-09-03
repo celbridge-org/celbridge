@@ -1616,6 +1616,29 @@ public class ManifestTests
     }
 
     [Test]
+    public void LoadPackage_KnownFieldWithTheWrongType_ReturnsFailure()
+    {
+        // A known key holding the wrong type is a mistake in the manifest rather than a value to fall
+        // back from, so it fails the load and names the position.
+        WriteSingleEditorPackage("""
+            [editor]
+            id = "mistyped"
+            type = "document"
+            display-name = "TestEditor"
+            binary = "yes"
+
+            [[file-types]]
+            extension = ".mt"
+            display-name = "TestFileType"
+            """);
+
+        var result = LoadPackage();
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("Boolean");
+    }
+
+    [Test]
     public void LoadPackage_FileTypeIcon_IsCarriedOnTheFileType()
     {
         WriteSingleEditorPackage("""
