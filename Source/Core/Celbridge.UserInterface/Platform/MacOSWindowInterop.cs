@@ -233,15 +233,22 @@ internal static class MacOSWindowInterop
             return false;
         }
 
-        // AppKit can leave mainWindow nil while a panel is up, so the key window is identified by class.
-        var windowClass = GetClass("UNOWindow");
-        if (windowClass == IntPtr.Zero)
+        // A panel takes the keyboard without becoming the main window, so the two windows differ while one is
+        // up. AppKit can also leave mainWindow nil then, which this reads as "not the app's".
+        var mainWindow = SendMessage(application, GetSelector("mainWindow"));
+        if (keyWindow == mainWindow)
         {
-            // Without Uno's window class a panel cannot be told apart, so assume the app holds the keyboard.
             return true;
         }
 
-        // Live windows are KVO-swizzled subclasses of that class.
+        // Second signal, so a nil mainWindow alone cannot make every edit verb defer. Live windows are
+        // KVO-swizzled subclasses of Uno's window class, so the class is matched rather than the pointer.
+        var windowClass = GetClass("UNOWindow");
+        if (windowClass == IntPtr.Zero)
+        {
+            return false;
+        }
+
         return SendMessageReturnBool(keyWindow, GetSelector("isKindOfClass:"), windowClass);
     }
 

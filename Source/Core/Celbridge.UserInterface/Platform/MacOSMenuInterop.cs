@@ -60,25 +60,36 @@ internal enum MacKeyModifier
 }
 
 /// <summary>
+/// Whether a Command item can be chosen when its menu is about to be shown.
+/// </summary>
+internal enum MacMenuItemAvailability
+{
+    Enabled,
+    Disabled,
+
+    /// <summary>
+    /// AppKit decides, by validating the item's fallback selector against the responder chain as it would a
+    /// Selector item's.
+    /// </summary>
+    ResponderChain
+}
+
+/// <summary>
 /// The display state of a Command item at the moment its menu is about to be shown: whether the item can
 /// be chosen, and whether it carries a check mark. Selector items are validated by AppKit instead.
 /// </summary>
-internal sealed record MacMenuItemState(bool IsEnabled, bool IsChecked, bool DefersToResponderChain = false)
+internal sealed record MacMenuItemState(MacMenuItemAvailability Availability, bool IsChecked)
 {
-    public static readonly MacMenuItemState Enabled = new(true, false);
+    public static readonly MacMenuItemState Enabled = new(MacMenuItemAvailability.Enabled, false);
 
-    public static readonly MacMenuItemState Disabled = new(false, false);
+    public static readonly MacMenuItemState Disabled = new(MacMenuItemAvailability.Disabled, false);
 
-    /// <summary>
-    /// A RoutedCommand item whose state AppKit decides, because the verb belongs to the responder chain. Its
-    /// fallback selector is validated there, like a Selector item's.
-    /// </summary>
-    public static readonly MacMenuItemState ResponderChain = new(false, false, DefersToResponderChain: true);
+    public static readonly MacMenuItemState ResponderChain = new(MacMenuItemAvailability.ResponderChain, false);
 
     /// <summary>
     /// An enabled item that shows a check mark while it represents the current selection.
     /// </summary>
-    public static MacMenuItemState Checkable(bool isChecked) => new(true, isChecked);
+    public static MacMenuItemState Checkable(bool isChecked) => new(MacMenuItemAvailability.Enabled, isChecked);
 }
 
 /// <summary>
@@ -351,9 +362,12 @@ internal static class MacOSMenuInterop
             nint controlState = state.IsChecked ? 1 : 0;
             SendMessageVoid(menuItem, GetSelector("setState:"), controlState);
 
-            var isEnabled = state.DefersToResponderChain
-                ? ValidateFallbackAction(tag, menuItem)
-                : state.IsEnabled;
+            var isEnabled = state.Availability switch
+            {
+                MacMenuItemAvailability.Enabled => true,
+                MacMenuItemAvailability.ResponderChain => ValidateFallbackAction(tag, menuItem),
+                _ => false
+            };
 
             return isEnabled ? (byte)1 : (byte)0;
         }
@@ -420,7 +434,14 @@ internal static class MacOSMenuInterop
             return false;
         }
 
-        var target = SendMessage(application, GetSelector("targetForAction:"), GetSelector(selectorName));
+        // Resolved the way SendActionToResponderChain dispatches, so validation and the click cannot land on
+        // different responders. The three argument form also consults supplementalTargetForAction:sender:.
+        var target = SendMessage(
+            application,
+            GetSelector("targetForAction:to:from:"),
+            GetSelector(selectorName),
+            IntPtr.Zero,
+            IntPtr.Zero);
         if (target == IntPtr.Zero)
         {
             return false;

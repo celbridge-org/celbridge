@@ -41,7 +41,7 @@ internal static class MacOSMainMenu
 
     // Edit verb items are generated from the shortcut table, so their tags start above the fixed tags and
     // index into it.
-    private const long TagEditVerbBase = 100;
+    internal const long TagEditVerbBase = 100;
 
     // Recent project items are generated on demand, so their tags start above the fixed tags and index into
     // _recentProjectPaths, which the Open Recent submenu provider rebuilds each time the menu opens.
@@ -329,13 +329,17 @@ internal static class MacOSMainMenu
     }
 
     // The shortcut a generated edit verb item stands for, or null for any other tag.
-    private static MacOSEditShortcut? ResolveEditShortcut(long tag)
+    internal static MacOSEditShortcut? ResolveEditShortcut(long tag)
     {
         var index = tag - TagEditVerbBase;
 
-        return index >= 0 && index < MacOSEditShortcuts.All.Count
-            ? MacOSEditShortcuts.All[(int)index]
-            : null;
+        if (index < 0
+            || index >= MacOSEditShortcuts.All.Count)
+        {
+            return null;
+        }
+
+        return MacOSEditShortcuts.All[(int)index];
     }
 
     private static MacMenuItemState EditVerbState(EditIntent intent)
@@ -415,16 +419,16 @@ internal static class MacOSMainMenu
 
     private static void OnCommand(long tag)
     {
-        // The project commands run through the same view-model the hamburger menu uses, so the two menus
-        // stay in lockstep. Resolved per invocation. The methods only dispatch commands or open dialogs.
-        var viewModel = ServiceLocator.AcquireService<ApplicationMenuViewModel>();
-
         var editShortcut = ResolveEditShortcut(tag);
         if (editShortcut is not null)
         {
             PerformEditVerb(editShortcut);
             return;
         }
+
+        // The project commands run through the same view-model the hamburger menu uses, so the two menus
+        // stay in lockstep. Resolved per invocation. The methods only dispatch commands or open dialogs.
+        var viewModel = ServiceLocator.AcquireService<ApplicationMenuViewModel>();
 
         // Recent project items carry generated tags above the fixed range. Open the project they map to.
         if (tag >= TagRecentProjectBase)

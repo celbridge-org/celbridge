@@ -44,15 +44,16 @@ public class ShortcutHintServiceTests
         return platformInfo;
     }
 
-    private static ShortcutHintService MacOS => new(
+    // Built once, because each construction re-reads and re-parses the application's resources.
+    private static readonly ShortcutHintService MacOS = new(
         CreatePlatformInfo(CommandModifierKey.Command, treatsBackspaceAsDeleteKey: true),
         CreateStringLocalizer());
 
-    private static ShortcutHintService Windows => new(
+    private static readonly ShortcutHintService Windows = new(
         CreatePlatformInfo(CommandModifierKey.Control, treatsCtrlYAsRedo: true),
         CreateStringLocalizer());
 
-    private static ShortcutHintService Linux => new(
+    private static readonly ShortcutHintService Linux = new(
         CreatePlatformInfo(CommandModifierKey.Control),
         CreateStringLocalizer());
 

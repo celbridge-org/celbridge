@@ -49,10 +49,13 @@ internal static class MacOSEditCommands
 
         // The host mediates this surface's clipboard, so AppKit's own cut: or paste: would change the page
         // without telling the editor.
-        return editTarget.HostMediatedClipboard
-            && intent is EditIntent.Cut or EditIntent.Copy or EditIntent.Paste
-            ? EditRouting.Unavailable
-            : EditRouting.ResponderChain;
+        if (editTarget.HostMediatedClipboard
+            && intent is EditIntent.Cut or EditIntent.Copy or EditIntent.Paste)
+        {
+            return EditRouting.Unavailable;
+        }
+
+        return EditRouting.ResponderChain;
     }
 
     /// <summary>
