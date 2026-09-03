@@ -138,31 +138,7 @@ public sealed partial class ResourceTree : IEditTarget
 
         var shift = EditKeyboard.IsShiftDown();
 
-        if (key == VirtualKey.Z)
-        {
-            return shift ? EditIntent.Redo : EditIntent.Undo;
-        }
-
-        if (shift)
-        {
-            return null;
-        }
-
-        if (key == VirtualKey.Y
-            && _platformInfo.TreatsCtrlYAsRedo)
-        {
-            return EditIntent.Redo;
-        }
-
-        return key switch
-        {
-            VirtualKey.A => EditIntent.SelectAll,
-            VirtualKey.D => EditIntent.Duplicate,
-            VirtualKey.C => EditIntent.Copy,
-            VirtualKey.X => EditIntent.Cut,
-            VirtualKey.V => EditIntent.Paste,
-            _ => null
-        };
+        return ExplorerEditShortcuts.ResolveIntent(key, shift, _platformInfo.TreatsCtrlYAsRedo);
     }
 
     private void PerformIntent(EditIntent intent)

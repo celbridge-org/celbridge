@@ -1,3 +1,4 @@
+using Celbridge.Explorer.Views;
 using Celbridge.Messaging;
 using Celbridge.Messaging.Services;
 using Celbridge.Platform;
@@ -117,5 +118,36 @@ public class ShortcutHintDriftTests
 
         closeRequested.Should().BeTrue();
         closeAllRequested.Should().BeTrue();
+    }
+
+    [Test]
+    public void UndoHint_NamesTheChordExplorerEditShortcutsResolvesToUndo()
+    {
+        var chord = ParseChord(Hint("Shortcut_UndoControl"))!;
+
+        ExplorerEditShortcuts.ResolveIntent(chord.Key, chord.Shift, treatsCtrlYAsRedo: false)
+            .Should().Be(EditIntent.Undo);
+    }
+
+    [Test]
+    public void RedoHint_NamesTheChordExplorerEditShortcutsResolvesToRedo()
+    {
+        var chord = ParseChord(Hint("Shortcut_RedoControl"))!;
+
+        ExplorerEditShortcuts.ResolveIntent(chord.Key, chord.Shift, treatsCtrlYAsRedo: false)
+            .Should().Be(EditIntent.Redo);
+    }
+
+    [Test]
+    public void RedoCtrlYHint_NamesTheChordWindowsResolvesToRedo()
+    {
+        var chord = ParseChord(Hint("Shortcut_RedoCtrlY"))!;
+
+        ExplorerEditShortcuts.ResolveIntent(chord.Key, chord.Shift, treatsCtrlYAsRedo: true)
+            .Should().Be(EditIntent.Redo);
+
+        // Named for Windows: the chord must not resolve to Redo where the platform does not treat it that way.
+        ExplorerEditShortcuts.ResolveIntent(chord.Key, chord.Shift, treatsCtrlYAsRedo: false)
+            .Should().NotBe(EditIntent.Redo);
     }
 }
