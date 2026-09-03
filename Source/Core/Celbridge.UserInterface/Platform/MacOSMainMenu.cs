@@ -170,8 +170,7 @@ internal static class MacOSMainMenu
     }
 
     // Uno's panels are painted on the Skia canvas and are not AppKit responders, so a plain Selector item
-    // would never reach them. Each item routes its verb to the focused surface, falling back to its selector
-    // for surfaces that handle no verb of their own.
+    // would never reach them.
     private static IReadOnlyList<MacMenuItem> BuildEditMenuItems(Func<string, string> text)
     {
         var items = new List<MacMenuItem>();
@@ -363,9 +362,7 @@ internal static class MacOSMainMenu
         }
     }
 
-    // The focus service, or null while a native panel such as a file picker holds the keyboard. The focus
-    // service still names the surface behind the panel, but the panel's text fields belong to the responder
-    // chain.
+    // The focus service, or null while a native panel such as a file picker holds the keyboard.
     private static IFocusService? EditVerbFocusService()
     {
         return MacOSWindowInterop.IsAppWindowKey()

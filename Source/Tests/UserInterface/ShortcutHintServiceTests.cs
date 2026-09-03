@@ -9,8 +9,8 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.Tests.UserInterface;
 
 /// <summary>
-/// Unit tests for the shortcut hints shown beside menu item labels. They read the application's own en-US
-/// resources, so a hint with no entry fails here rather than reaching a user as a raw resource name.
+/// Unit tests for the shortcut hints shown beside menu item labels, checked against the application's own
+/// en-US resources.
 /// </summary>
 [TestFixture]
 public class ShortcutHintServiceTests
@@ -44,7 +44,7 @@ public class ShortcutHintServiceTests
         return platformInfo;
     }
 
-    // Built once, because each construction re-reads and re-parses the application's resources.
+    // CreateStringLocalizer parses the resw file on every call.
     private static readonly ShortcutHintService MacOS = new(
         CreatePlatformInfo(CommandModifierKey.Command, treatsBackspaceAsDeleteKey: true),
         CreateStringLocalizer());
@@ -60,8 +60,6 @@ public class ShortcutHintServiceTests
     [Test]
     public void EveryEditVerbDeclaresBothPlatformForms()
     {
-        // The resource name is composed from the verb, so a verb added without its two entries would show a
-        // raw resource name in the menu.
         var strings = TestLocalizerService.LoadStrings();
         strings.Should().NotBeEmpty("the application's en-US Resources.resw should be readable");
 
@@ -92,7 +90,6 @@ public class ShortcutHintServiceTests
     [Test]
     public void GetText_OnMacOS_MatchesTheChordsTheMenuBarHandles()
     {
-        // The hint is display only, so it is useful only if it matches the chord the menu bar carries.
         var shortcutHintService = MacOS;
 
         foreach (var shortcut in MacOSEditShortcuts.All)

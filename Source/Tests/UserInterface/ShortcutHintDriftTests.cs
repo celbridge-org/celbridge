@@ -10,16 +10,13 @@ using Windows.System;
 namespace Celbridge.Tests.UserInterface;
 
 /// <summary>
-/// The chord a shortcut hint names. Nullable-wrapped by the parser, so a hint naming no chord never becomes
-/// a partly filled record.
+/// The chord a shortcut hint names.
 /// </summary>
 internal sealed partial record ShortcutChord(VirtualKey Key, bool Control, bool Shift, bool Alt);
 
 /// <summary>
 /// Checks the Control-modifier shortcut hints against what the application actually does with those chords.
-/// The macOS hints are checked against MacOSEditShortcuts, which installs the chords the menu bar carries.
-/// The Control forms have no such table, so they are parsed back into a chord and fed to the handler that
-/// owns them.
+/// Each hint is parsed back into a chord and fed to the handler that owns it.
 /// </summary>
 [TestFixture]
 public class ShortcutHintDriftTests
@@ -29,7 +26,7 @@ public class ShortcutHintDriftTests
     private KeyboardShortcutService _shortcutService = null!;
     private object _recipient = null!;
 
-    // Reading and parsing the application's resources is the same work for every test here.
+    // LoadStrings parses the resw file on every call.
     private static readonly IReadOnlyDictionary<string, string> _strings = TestLocalizerService.LoadStrings();
 
     [SetUp]
@@ -84,7 +81,7 @@ public class ShortcutHintDriftTests
             Alt: modifiers.Contains("Alt"));
     }
 
-    // The resource's value, or its name when there is no entry, matching what a localizer returns for a miss.
+    // The resource's value, falling back to its name the way a localizer does for a missing entry.
     private static string Hint(string resourceName)
     {
         return _strings.TryGetValue(resourceName, out var value) ? value : resourceName;
@@ -93,8 +90,6 @@ public class ShortcutHintDriftTests
     [Test]
     public void EveryControlHintNamesAChord()
     {
-        // A hint is worth nothing if it cannot be read as a chord, so a typo or a changed separator fails
-        // here rather than reaching a menu.
         var resourceNames = Enum.GetValues<EditIntent>()
             .Select(intent => $"Shortcut_{intent}Control")
             .Append("Shortcut_RedoCtrlY")

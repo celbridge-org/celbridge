@@ -3,8 +3,8 @@ using Celbridge.Workspace;
 namespace Celbridge.UserInterface;
 
 /// <summary>
-/// The display form of the chord that performs a shortcut, read from the string resources. Menu items show
-/// this beside their label. It is display only and binds nothing.
+/// Provides the display form of the chord that performs a shortcut, read from the string resources. The
+/// text is display only and creates no key binding.
 /// </summary>
 public interface IShortcutHintService
 {
@@ -14,9 +14,8 @@ public interface IShortcutHintService
     string GetText(EditIntent intent);
 
     /// <summary>
-    /// The chord that performs the named shortcut on the current platform. The name is what its two resource
-    /// entries share, so "DocumentTab_CloseShortcut" resolves DocumentTab_CloseShortcutCommand on macOS and
-    /// DocumentTab_CloseShortcutControl elsewhere.
+    /// The chord that performs the named shortcut on the current platform. The name is the shared prefix of
+    /// its two resource entries, suffixed Command on macOS and Control elsewhere.
     /// </summary>
     string GetText(string shortcutName);
 }

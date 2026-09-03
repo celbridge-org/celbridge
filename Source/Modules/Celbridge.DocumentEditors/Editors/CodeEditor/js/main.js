@@ -47,10 +47,8 @@ function routeClipboardCommandsThroughHost() {
 const displayOnlyShortcut = 'celbridgeShortcutHint';
 
 // Monaco leaves the clipboard verbs unbound in a browser build, so its context menu lists Cut, Copy and
-// Paste with no chord beside them. These rules give the menu a chord to show while the keystroke still
-// reaches whoever handles it today, because the guard is never satisfied. The label depends on Monaco
-// returning a command's only registered keybinding without evaluating its guard, so a Monaco upgrade that
-// changes that lookup, or that binds these verbs itself, is worth re-checking against the context menu.
+// Paste with no chord beside them. The menu draws a chord from a command's registered keybinding without
+// evaluating the keybinding's guard, so these rules label the menu without binding the keystroke.
 function declareClipboardShortcuts() {
     const chords = {
         'editor.action.clipboardCutAction': monaco.KeyCode.KeyX,

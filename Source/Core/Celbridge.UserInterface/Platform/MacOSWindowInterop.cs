@@ -211,8 +211,8 @@ internal static class MacOSWindowInterop
     }
 
     /// <summary>
-    /// Whether the application window holds the keyboard, so one of its surfaces owns the standard edit
-    /// verbs. False while a native panel such as a file picker runs in front of it, and false off macOS.
+    /// Whether the application window holds the keyboard. False while a native panel such as a file picker
+    /// runs in front of it, and false off macOS.
     /// </summary>
     public static bool IsAppWindowKey()
     {
@@ -234,15 +234,15 @@ internal static class MacOSWindowInterop
         }
 
         // A panel takes the keyboard without becoming the main window, so the two windows differ while one is
-        // up. AppKit can also leave mainWindow nil then, which this reads as "not the app's".
+        // up. AppKit can also leave mainWindow nil then.
         var mainWindow = SendMessage(application, GetSelector("mainWindow"));
         if (keyWindow == mainWindow)
         {
             return true;
         }
 
-        // Second signal, so a nil mainWindow alone cannot make every edit verb defer. Live windows are
-        // KVO-swizzled subclasses of Uno's window class, so the class is matched rather than the pointer.
+        // Live windows are KVO-swizzled subclasses of Uno's window class, so the class is matched rather
+        // than the pointer.
         var windowClass = GetClass("UNOWindow");
         if (windowClass == IntPtr.Zero)
         {

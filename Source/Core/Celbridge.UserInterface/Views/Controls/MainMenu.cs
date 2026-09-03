@@ -209,7 +209,7 @@ public class MainMenu
                 Text = _stringLocalizer.GetString(labelKey),
                 IsEnabled = isEnabled,
 
-                // Display only. The focused surface handles the chord itself.
+                // Display only. This text creates no key binding.
                 KeyboardAcceleratorTextOverride = shortcutHintService.GetText(intent)
             };
             editItem.Click += (sender, e) => PerformEdit(intent);

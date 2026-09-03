@@ -26,8 +26,8 @@ internal enum EditRouting
 }
 
 /// <summary>
-/// Routes a standard edit verb to the surface that owns it, so the Edit menu and the keyboard reach the same
-/// place. A surface that does not handle the verb leaves it to the AppKit responder chain. macOS-only.
+/// Routes a standard edit verb to the surface that owns it. A surface that does not handle the verb leaves
+/// it to the AppKit responder chain. macOS-only.
 /// </summary>
 internal static class MacOSEditCommands
 {

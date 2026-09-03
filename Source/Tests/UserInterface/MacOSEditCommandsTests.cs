@@ -43,8 +43,6 @@ public class MacOSEditCommandsTests
     [TestCase(EditIntent.Paste)]
     public void Resolve_ForAnUnavailableVerbOnAMediatedClipboard_GivesItToNobody(EditIntent intent)
     {
-        // AppKit's own cut: would change the page without telling the editor, so an unavailable verb stays
-        // unavailable.
         var focusService = CreateFocusService(CreateEditTarget(hostMediatedClipboard: true));
 
         MacOSEditCommands.Resolve(intent, focusService).Should().Be(EditRouting.Unavailable);
@@ -96,7 +94,6 @@ public class MacOSEditCommandsTests
         var focusService = CreateFocusService(CreateEditTarget(hostMediatedClipboard: true));
         var commandService = Substitute.For<ICommandService>();
 
-        // The caller stops here, and no edit command runs.
         MacOSEditCommands.Perform(EditIntent.Cut, focusService, commandService)
             .Should().Be(EditRouting.Unavailable);
 

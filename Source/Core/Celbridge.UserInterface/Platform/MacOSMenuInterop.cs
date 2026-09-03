@@ -138,8 +138,7 @@ internal static class MacOSMenuInterop
     // hands the NSMenu back in menuNeedsUpdate:, so the pointer is the lookup key.
     private static readonly Dictionary<IntPtr, Func<IReadOnlyList<MacMenuItem>>> _dynamicSubmenuProviders = new();
 
-    // Each RoutedCommand item's tag mapped to the selector it falls back to, used to validate a deferred
-    // item against the responder chain.
+    // Each RoutedCommand item's tag mapped to the selector it falls back to.
     private static readonly Dictionary<long, string> _fallbackSelectors = new();
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
@@ -418,9 +417,8 @@ internal static class MacOSMenuInterop
             IntPtr.Zero);
     }
 
-    // Validates a deferred RoutedCommand item by hand: find the responder that implements the action, then
-    // ask it. AppKit validates an item automatically only when it has no explicit target, and these items
-    // target this object.
+    // Validates a deferred RoutedCommand item by hand. AppKit validates an item automatically only when it
+    // has no explicit target, and these items target this object.
     private static bool ValidateFallbackAction(long tag, IntPtr menuItem)
     {
         if (!_fallbackSelectors.TryGetValue(tag, out var selectorName))
@@ -434,8 +432,8 @@ internal static class MacOSMenuInterop
             return false;
         }
 
-        // Resolved the way SendActionToResponderChain dispatches, so validation and the click cannot land on
-        // different responders. The three argument form also consults supplementalTargetForAction:sender:.
+        // Must resolve the same target SendActionToResponderChain dispatches to. The three argument form
+        // also consults supplementalTargetForAction:sender:.
         var target = SendMessage(
             application,
             GetSelector("targetForAction:to:from:"),

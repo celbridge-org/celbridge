@@ -3,8 +3,7 @@ using Celbridge.UserInterface;
 namespace Celbridge.ContextMenu;
 
 /// <summary>
-/// Display information for a menu option. ShortcutHint is the keyboard chord that performs the option,
-/// written for display beside the label, or null for an option with no shortcut.
+/// Display information for a menu option.
 /// </summary>
 public record MenuItemDisplayInfo(string LocalizedText, IconSymbol? Icon = null, string? ShortcutHint = null);
 
