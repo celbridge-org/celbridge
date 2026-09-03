@@ -69,6 +69,25 @@ public class TextBinarySnifferTests
         _sniffer.IsBinaryExtension(".svg").Should().BeTrue();
     }
 
+    [Test]
+    public void IsBinaryExtension_MediaFormats_AreBinary()
+    {
+        // The code editor is offered as a "view as text" option for every extension this list does not
+        // cover, so a media format missing from it is presented as an editable text file.
+        string[] mediaExtensions =
+        [
+            ".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".bmp", ".ico",
+            ".mp3", ".wav", ".ogg", ".flac", ".m4a",
+            ".mp4", ".webm", ".avi", ".mov", ".mkv",
+            ".pdf"
+        ];
+
+        foreach (var extension in mediaExtensions)
+        {
+            _sniffer.IsBinaryExtension(extension).Should().BeTrue($"'{extension}' is a media format");
+        }
+    }
+
     #endregion
 
     #region UTF-8 Tests

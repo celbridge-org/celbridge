@@ -67,9 +67,9 @@ public sealed record ContributionItemInfo
     public string EditorId { get; init; } = string.Empty;
 
     /// <summary>
-    /// The file types the contribution claims.
+    /// The file extensions the contribution claims.
     /// </summary>
-    public IReadOnlyList<FileTypeInfo> FileTypes { get; init; } = [];
+    public IReadOnlyList<string> FileExtensions { get; init; } = [];
 
     /// <summary>
     /// Configuration the contribution declared that could not be applied, one entry per dropped setting.
@@ -114,7 +114,7 @@ public partial class ContributionItemViewModel : ObservableObject
     public bool IsOptional => _info.IsOptional;
     public bool CanToggle => _info.CanToggle;
     public string EditorId => _info.EditorId;
-    public IReadOnlyList<FileTypeInfo> FileTypes => _info.FileTypes;
+    public IReadOnlyList<string> FileExtensions => _info.FileExtensions;
 
     /// <summary>
     /// The contribution's description as the row tooltip, or null when it declares none.
@@ -141,12 +141,12 @@ public partial class ContributionItemViewModel : ObservableObject
     /// <summary>
     /// The extensions this contribution claims, as a comma separated list.
     /// </summary>
-    public string FileExtensionsText => string.Join(", ", FileTypes.Select(fileType => fileType.Extension));
+    public string FileExtensionsText => string.Join(", ", FileExtensions);
 
     /// <summary>
     /// Whether the contribution claims any extensions to list.
     /// </summary>
-    public bool HasFileExtensions => FileTypes.Count > 0;
+    public bool HasFileExtensions => FileExtensions.Count > 0;
 
     public string FileExtensionsLabel => ProjectSettingsLabels.FileExtensionsLabel;
 

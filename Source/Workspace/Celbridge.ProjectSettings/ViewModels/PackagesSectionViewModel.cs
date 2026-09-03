@@ -122,8 +122,8 @@ public class PackagesSectionViewModel : ProjectSettingsSectionViewModel
     {
         var packageName = contribution.Package.Name;
         var displayName = ContributionDisplayName(contribution);
-        var fileTypes = contribution.FileTypes
-            .Select(fileType => new FileTypeInfo(fileType.FileExtension.ToLowerInvariant(), fileType.Category))
+        var fileExtensions = contribution.FileTypes
+            .Select(fileType => fileType.FileExtension.ToLowerInvariant())
             .ToArray();
         var editorId = EditorId.Create(packageName, contribution.Id).ToString();
         var iconName = contribution.UtilityDescriptor?.Icon ?? string.Empty;
@@ -154,7 +154,7 @@ public class PackagesSectionViewModel : ProjectSettingsSectionViewModel
             IsOptional = contribution.Activation == ActivationPolicy.Optional,
             CanToggle = contribution.Activation != ActivationPolicy.Required,
             EditorId = editorId,
-            FileTypes = fileTypes,
+            FileExtensions = fileExtensions,
             Issues = issues ?? []
         };
 

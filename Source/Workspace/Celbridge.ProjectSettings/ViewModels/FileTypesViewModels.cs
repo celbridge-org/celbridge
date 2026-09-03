@@ -1,13 +1,6 @@
-using Celbridge.Packages;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.ProjectSettings.ViewModels;
-
-/// <summary>
-/// An extension a document editor handles, paired with the category it groups under in the File Editors
-/// section, or null when the manifest declares no category.
-/// </summary>
-public sealed record FileTypeInfo(string Extension, FileTypeCategory? Category);
 
 /// <summary>
 /// A candidate editor for an extension, pairing the editor id written to the associations map with the

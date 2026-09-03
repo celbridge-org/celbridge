@@ -32,7 +32,7 @@ public class TextBinarySniffer : ITextBinarySniffer
         // Images
         ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".ico", ".webp", ".svg",
         // Audio
-        ".mp3", ".wav", ".ogg", ".flac", ".aac",
+        ".mp3", ".wav", ".ogg", ".flac", ".aac", ".m4a",
         // Video
         ".mp4", ".avi", ".mkv", ".mov", ".webm",
         // Documents

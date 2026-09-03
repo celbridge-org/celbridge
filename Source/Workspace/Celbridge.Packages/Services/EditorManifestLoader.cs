@@ -26,7 +26,6 @@ internal static class EditorManifestLoader
     private const string TypeKey = "type";
     private const string ExtensionKey = "extension";
     private const string FromCatalogKey = "from-catalog";
-    private const string CategoryKey = "category";
     private const string DisplayNameKey = "display-name";
     private const string DescriptionKey = "description";
     private const string TemplateFileKey = "template-file";
@@ -201,18 +200,6 @@ internal static class EditorManifestLoader
                             $"Supply a localization key or plain string naming the file type (e.g., the noun shown in the Reopen-with dialog).");
                     }
 
-                    FileTypeCategory? category = null;
-                    var categoryValue = TomlTableReader.GetStringOrNull(fileTypeTable, CategoryKey);
-                    if (categoryValue is not null)
-                    {
-                        var categoryResult = ParseCategoryValue(categoryValue, editorTomlPath);
-                        if (categoryResult.IsFailure)
-                        {
-                            return Result.Fail(categoryResult.FirstErrorMessage).WithErrors(categoryResult);
-                        }
-                        category = categoryResult.Value;
-                    }
-
                     var icon = TomlTableReader.GetStringOrNull(fileTypeTable, IconKey) ?? string.Empty;
                     var iconColor = TomlTableReader.GetStringOrNull(fileTypeTable, IconColorKey) ?? string.Empty;
                     if (string.IsNullOrEmpty(icon) &&
@@ -254,7 +241,6 @@ internal static class EditorManifestLoader
                             {
                                 FileExtension = catalogExtension,
                                 DisplayName = fileTypeDisplayName,
-                                Category = category,
                                 Icon = icon,
                                 IconColor = iconColor,
                                 IconScale = iconScale ?? 1.0
@@ -274,7 +260,6 @@ internal static class EditorManifestLoader
                         {
                             FileExtension = extension.ToLowerInvariant(),
                             DisplayName = fileTypeDisplayName,
-                            Category = category,
                             Icon = icon,
                             IconColor = iconColor,
                             IconScale = iconScale ?? 1.0
@@ -405,31 +390,6 @@ internal static class EditorManifestLoader
         return Result.Fail(
             $"[{EditorSection}] '{ActivationKey}' value '{activationValue}' must be one of " +
             $"'{RequiredActivationValue}', '{RecommendedActivationValue}', or '{OptionalActivationValue}': {editorTomlPath}");
-    }
-
-    // Maps a declared category value to its enum. The caller supplies null when no category is declared,
-    // in which case the host classifies the extension from its catalog instead.
-    private static Result<FileTypeCategory> ParseCategoryValue(string categoryValue, string editorTomlPath)
-    {
-        switch (categoryValue)
-        {
-            case "text":
-                return FileTypeCategory.Text;
-            case "image":
-                return FileTypeCategory.Image;
-            case "audio":
-                return FileTypeCategory.Audio;
-            case "video":
-                return FileTypeCategory.Video;
-            case "data":
-                return FileTypeCategory.Data;
-            case "document":
-                return FileTypeCategory.Document;
-            default:
-                return Result.Fail(
-                    $"[[{FileTypesSection}]] '{CategoryKey}' value '{categoryValue}' is not a recognized category " +
-                    $"(text, image, audio, video, data, document): {editorTomlPath}");
-        }
     }
 
     private static Result<UtilityDescriptor> ParseUtilitySection(TomlTable utilityTable, string editorTomlPath)

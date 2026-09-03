@@ -840,10 +840,10 @@ Open with default application instead?</value>
     <value>Enable or disable packages and configure their contributions.</value>
   </data>
   <data name="ProjectSettings_FileEditorsDescription" xml:space="preserve">
-    <value>Some file types can be opened by more than one editor. Choose which one to use.</value>
+    <value>Choose your preferred editor for these file types.</value>
   </data>
   <data name="ProjectSettings_FileEditorsEmpty" xml:space="preserve">
-    <value>No file types have more than one editor available. Every other file type opens in its usual editor.</value>
+    <value>No file types in this project offer a choice of editor.</value>
   </data>
   <data name="ProjectSettings_PagesHeader" xml:space="preserve">
     <value>Pages</value>
@@ -921,7 +921,7 @@ Open with default application instead?</value>
     <value>Feature Flags</value>
   </data>
   <data name="ProjectSettings_FeatureFlagsDescription" xml:space="preserve">
-    <value>Turn advanced features on or off for this project, or inherit the application default.</value>
+    <value>Turn advanced features on or off.</value>
   </data>
   <data name="ProjectSettings_FeatureFlagState_On" xml:space="preserve">
     <value>On</value>

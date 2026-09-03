@@ -6,12 +6,11 @@ using Celbridge.Platform;
 namespace Celbridge.Packages;
 
 /// <summary>
-/// One catalogued file type: the language a code editor highlights it as, the categories it is grouped
-/// under, and the name it is known by. Every field is optional.
+/// One catalogued file type: the language a code editor highlights it as, the name it is known by, and
+/// the icon it is drawn with. Every field is optional.
 /// </summary>
 internal sealed record FileTypeEntry(
     string Language,
-    IReadOnlyList<FileTypeCategory> Categories,
     string DisplayName,
     FileTypeIcon? Icon);
 
@@ -20,13 +19,10 @@ public sealed class FileTypeCatalog : IFileTypeCatalog
     private const string CatalogRelativePath = "celbridge-client/file-types.json";
 
     private const string LanguageKey = "language";
-    private const string CategoriesKey = "categories";
     private const string DisplayNameKey = "display-name";
     private const string IconKey = "icon";
     private const string IconColorKey = "icon-color";
     private const string IconScaleKey = "icon-scale";
-
-    private static readonly IReadOnlyList<FileTypeCategory> NoCategories = Array.Empty<FileTypeCategory>();
 
     private readonly ILogger<FileTypeCatalog> _logger;
     private readonly ILocalFileSystem _fileSystem;
@@ -89,16 +85,6 @@ public sealed class FileTypeCatalog : IFileTypeCatalog
             _iconExtensions = new List<string>();
             _iconFileNames = new List<string>();
         }
-    }
-
-    public IReadOnlyList<FileTypeCategory> GetCategories(string extension)
-    {
-        if (TryGetEntry(extension, out var entry))
-        {
-            return entry.Categories;
-        }
-
-        return NoCategories;
     }
 
     public string GetLanguage(string extension)
@@ -247,26 +233,6 @@ public sealed class FileTypeCatalog : IFileTypeCatalog
             icon = new FileTypeIcon(iconName, iconColor, iconScale);
         }
 
-        var categories = NoCategories;
-        if (element.TryGetProperty(CategoriesKey, out var categoriesElement) &&
-            categoriesElement.ValueKind == JsonValueKind.Array)
-        {
-            var parsed = new List<FileTypeCategory>();
-            foreach (var categoryElement in categoriesElement.EnumerateArray())
-            {
-                var categoryName = categoryElement.GetString();
-                if (Enum.TryParse<FileTypeCategory>(categoryName, ignoreCase: true, out var category))
-                {
-                    parsed.Add(category);
-                }
-                else
-                {
-                    _logger.LogWarning($"Skipping unknown category '{categoryName}' in the file type catalog.");
-                }
-            }
-            categories = parsed;
-        }
-
-        return new FileTypeEntry(language, categories, displayName, icon);
+        return new FileTypeEntry(language, displayName, icon);
     }
 }
