@@ -37,6 +37,7 @@ internal static class ProjectSettingsLabels
     public static string PageManifestIssue => Localizer.GetString("ProjectSettings_PageManifestIssue");
     public static string PagesEmpty => Localizer.GetString("ProjectSettings_PagesEmpty");
     public static string FileExtensionsLabel => Localizer.GetString("ProjectSettings_FileExtensionsLabel");
+    public static string FileEditorsEmpty => Localizer.GetString("ProjectSettings_FileEditorsEmpty");
     public static string ShortcutsEmpty => Localizer.GetString("ProjectSettings_ShortcutsEmpty");
     public static string AddShortcut => Localizer.GetString("ProjectSettings_AddShortcut");
     public static string ShortcutUntitled => Localizer.GetString("ProjectSettings_ShortcutUntitled");

@@ -19,17 +19,9 @@ public sealed record AssociationCandidate(string EditorId, string DisplayName)
 }
 
 /// <summary>
-/// A category choice in the File Editors section picker: a specific category, or All when Category is null.
-/// </summary>
-public sealed record FileTypeCategoryOption(string Label, FileTypeCategory? Category)
-{
-    public override string ToString() => Label;
-}
-
-/// <summary>
-/// One extension in the File Editors section. When more than one editor claims the extension a dropdown pins
-/// which one opens it (writing editor-associations, clearing the entry when the resolution default is
-/// chosen); otherwise the single editor is shown as read-only text.
+/// One extension in the File Editors section, which lists only the extensions more than one editor claims.
+/// The dropdown pins which editor opens it, writing editor-associations and clearing the entry when the
+/// resolution default is chosen.
 /// </summary>
 public partial class FileTypeRowViewModel : ObservableObject
 {
@@ -78,22 +70,6 @@ public partial class FileTypeRowViewModel : ObservableObject
     public IReadOnlyList<AssociationCandidate> Candidates { get; }
 
     public string EditorPickerTooltip => ProjectSettingsLabels.EditorPickerTooltip;
-
-    /// <summary>
-    /// Whether more than one editor claims this extension, so a dropdown is shown to pin the choice.
-    /// </summary>
-    public bool IsContested => Candidates.Count > 1;
-
-    /// <summary>
-    /// Whether exactly one editor claims this extension, so a read-only editor name is shown instead of
-    /// a dropdown.
-    /// </summary>
-    public bool IsSingleEditor => Candidates.Count == 1;
-
-    /// <summary>
-    /// Display name of the currently selected editor, shown when the extension is not contested.
-    /// </summary>
-    public string EditorName => SelectedCandidate?.DisplayName ?? string.Empty;
 
     partial void OnSelectedCandidateChanged(AssociationCandidate? value)
     {

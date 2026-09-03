@@ -840,7 +840,10 @@ Open with default application instead?</value>
     <value>Enable or disable packages and configure their contributions.</value>
   </data>
   <data name="ProjectSettings_FileEditorsDescription" xml:space="preserve">
-    <value>Choose which editor opens each type of file.</value>
+    <value>Some file types can be opened by more than one editor. Choose which one to use.</value>
+  </data>
+  <data name="ProjectSettings_FileEditorsEmpty" xml:space="preserve">
+    <value>No file types have more than one editor available. Every other file type opens in its usual editor.</value>
   </data>
   <data name="ProjectSettings_PagesHeader" xml:space="preserve">
     <value>Pages</value>
@@ -1042,36 +1045,6 @@ Open with default application instead?</value>
   </data>
   <data name="ProjectSettings_ProjectVersionTooltip" xml:space="preserve">
     <value>A version number you can set to track your project, for your own use.</value>
-  </data>
-  <data name="ProjectSettings_CategoryPickerTooltip" xml:space="preserve">
-    <value>Filter file types by category</value>
-  </data>
-  <data name="ProjectSettings_FilterExtensionsPlaceholder" xml:space="preserve">
-    <value>Filter extensions</value>
-  </data>
-  <data name="ProjectSettings_Category_All" xml:space="preserve">
-    <value>All</value>
-  </data>
-  <data name="ProjectSettings_Category_Custom" xml:space="preserve">
-    <value>Custom</value>
-  </data>
-  <data name="ProjectSettings_Category_Text" xml:space="preserve">
-    <value>Text</value>
-  </data>
-  <data name="ProjectSettings_Category_Image" xml:space="preserve">
-    <value>Image</value>
-  </data>
-  <data name="ProjectSettings_Category_Audio" xml:space="preserve">
-    <value>Audio</value>
-  </data>
-  <data name="ProjectSettings_Category_Video" xml:space="preserve">
-    <value>Video</value>
-  </data>
-  <data name="ProjectSettings_Category_Data" xml:space="preserve">
-    <value>Data</value>
-  </data>
-  <data name="ProjectSettings_Category_Document" xml:space="preserve">
-    <value>Document</value>
   </data>
   <data name="ProjectSettings_StringListPlaceholder" xml:space="preserve">
     <value>One value per line</value>

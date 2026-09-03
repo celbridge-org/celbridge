@@ -127,7 +127,7 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
         _context = new ProjectSettingsContext(workspaceWrapper, projectService, commandService, MarkPending);
         InformationSection = new InformationSectionViewModel(_context);
         PackagesSection = new PackagesSectionViewModel(_context, packageLocalization);
-        FileEditorsSection = new FileEditorsSectionViewModel(_context, fileTypeCatalog, _stringLocalizer);
+        FileEditorsSection = new FileEditorsSectionViewModel(_context, fileTypeCatalog);
         PagesSection = new PagesSectionViewModel(_context);
         DocumentShortcutsSection = new DocumentShortcutsSectionViewModel(_context, iconService, dialogService);
         FeatureFlagsSection = new FeatureFlagsSectionViewModel(_context, _stringLocalizer);
