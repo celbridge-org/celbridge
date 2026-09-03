@@ -56,8 +56,7 @@ public interface IDocumentEditorFactory
     bool IsUtility { get; }
 
     /// <summary>
-    /// True when this editor opens its files as binary or as content the host does not read as text, so
-    /// the extensions it claims are never offered the code editor's view-as-text option.
+    /// True when this editor opens its files as binary, or as content the host does not read as text.
     /// </summary>
     bool HandlesBinaryContent { get; }
 

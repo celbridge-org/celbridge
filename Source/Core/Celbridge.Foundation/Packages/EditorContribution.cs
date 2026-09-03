@@ -91,8 +91,7 @@ public partial record EditorContribution
 
     /// <summary>
     /// Fields the manifest declared that the host does not define, each named by its section (for example
-    /// "file-types.category"). The contribution loaded without them, so these are reported as issues
-    /// rather than failing the package.
+    /// "file-types.category").
     /// </summary>
     public IReadOnlyList<string> UnknownFields { get; init; } = [];
 

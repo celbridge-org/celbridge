@@ -1545,8 +1545,7 @@ public class ManifestTests
     [Test]
     public void LoadPackage_UnknownField_LoadsAndRecordsTheField()
     {
-        // A field the host does not define is reported rather than dropped, but it does not cost the
-        // user the package: the rest of the manifest is still usable.
+        // An unknown field is recorded as an issue and the rest of the manifest still loads.
         WriteSingleEditorPackage("""
             [editor]
             id = "stale-field"
@@ -1595,8 +1594,7 @@ public class ManifestTests
     [Test]
     public void LoadPackage_OptionsKeys_AreNotReportedAsUnknown()
     {
-        // The keys under [options] are the editor's own, passed through to it rather than interpreted
-        // by the host, so any name is valid there.
+        // The keys under [options] are the editor's own, so any name is valid there.
         WriteSingleEditorPackage("""
             [editor]
             id = "with-options"

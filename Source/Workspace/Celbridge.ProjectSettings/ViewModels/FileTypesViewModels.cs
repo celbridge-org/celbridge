@@ -12,9 +12,8 @@ public sealed record AssociationCandidate(string EditorId, string DisplayName)
 }
 
 /// <summary>
-/// One extension in the File Editors section, which lists only the extensions more than one editor claims.
-/// The dropdown pins which editor opens it, writing editor-associations and clearing the entry when the
-/// resolution default is chosen.
+/// One extension in the File Editors section. Choosing a candidate writes the editor association for the
+/// extension, and choosing the resolution default clears it.
 /// </summary>
 public partial class FileTypeRowViewModel : ObservableObject
 {

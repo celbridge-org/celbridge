@@ -72,7 +72,7 @@ public class FileEditorsSectionViewModelTests
     [Test]
     public void Load_ExtensionWithOneEditor_IsNotListed()
     {
-        // A file type only one editor opens presents no choice, so listing it would be noise.
+        // A file type only one editor opens presents no choice.
         SetClaimedExtensions(".png");
         SetCandidates(".png", CodeEditorId);
 
@@ -127,8 +127,7 @@ public class FileEditorsSectionViewModelTests
     [Test]
     public void Load_AssociationNamingAnEditorThatNoLongerClaimsTheType_IsListedSoItCanBeCleared()
     {
-        // Deactivating the package that owned the pinned editor leaves an association nothing answers
-        // to. Without a row the user has no way to reach it.
+        // Deactivating the package that owned the pinned editor leaves an association nothing answers to.
         SetClaimedExtensions(".widget");
         SetCandidates(".widget", CodeEditorId);
 

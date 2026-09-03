@@ -500,7 +500,7 @@ public class DocumentEditorRegistryTests
     public void GetUserPickableFactoriesForResource_OmitsCodeEditorForAnEditorThatHandlesBinaryContent()
     {
         // The claiming editor declares that it opens the format as binary, which settles the question
-        // without the host's extension list having to know the format at all.
+        // even though the sniffer does not recognise the extension.
         var sniffer = Substitute.For<ITextBinarySniffer>();
         sniffer.IsBinaryExtension(".acme").Returns(false);
         var registry = new DocumentEditorRegistry(sniffer);

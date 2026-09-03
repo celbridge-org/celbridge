@@ -6,8 +6,8 @@ using Celbridge.Platform;
 namespace Celbridge.Packages;
 
 /// <summary>
-/// One catalogued file type. The catalog describes established types loosely, so an entry carries only
-/// what is known about that extension and every field is optional.
+/// One catalogued file type. Every field is optional, so an entry carries only what the catalog knows
+/// about that extension.
 /// </summary>
 internal sealed record FileTypeEntry(
     bool IsBinary,

@@ -74,8 +74,7 @@ public class TextBinarySnifferTests
     [Test]
     public void IsBinaryExtension_MediaFormats_AreBinary()
     {
-        // The code editor is offered as a "view as text" option for every extension this list does not
-        // cover, so a media format missing from it is presented as an editable text file.
+        // A media format missing from this list would be presented as an editable text file.
         string[] mediaExtensions =
         [
             ".jpeg", ".gif", ".webp", ".bmp", ".ico",

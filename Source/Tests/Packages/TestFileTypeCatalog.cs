@@ -6,9 +6,8 @@ using Celbridge.Tests.FileSystem;
 namespace Celbridge.Tests.Packages;
 
 /// <summary>
-/// Test-side factory for a file type catalog loaded from the bundled file-types.json, which is the
-/// host's record of which formats are binary. Tests that exercise a component reading the catalog use
-/// this so they see the same data the application does.
+/// Test-side factory for a file type catalog loaded from the bundled file-types.json, so tests see the
+/// same data the application does.
 /// </summary>
 internal static class TestFileTypeCatalog
 {

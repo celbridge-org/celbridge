@@ -8,10 +8,8 @@ namespace Celbridge.ProjectSettings.ViewModels;
 
 /// <summary>
 /// Drives the File Editors section: the file types that offer a choice of editor, paired with the editor
-/// that opens each. The candidate editors and default come from the runtime resolver, so the section
-/// reflects what actually opens a file. Choosing a non-default editor writes an editor association;
-/// choosing the default clears it. A file type only one editor claims presents no choice, so it is not
-/// listed unless it carries a stale association the user would otherwise be unable to clear.
+/// that opens each. Choosing a non-default editor writes an editor association. Choosing the default
+/// clears it.
 /// </summary>
 public class FileEditorsSectionViewModel : ProjectSettingsSectionViewModel
 {
@@ -36,9 +34,8 @@ public class FileEditorsSectionViewModel : ProjectSettingsSectionViewModel
         BuildFileTypes();
     }
 
-    // Builds a row for each extension that offers a choice of editor. The candidate editors and default come
-    // from the runtime resolver, so this section matches what actually opens a file (reload state), rather
-    // than re-deriving resolution from the manifests.
+    // Builds a row for each extension that offers a choice of editor. Candidates and defaults come from
+    // the runtime resolver, so the rows reflect the editors currently loaded.
     private void BuildFileTypes()
     {
         FileTypeRows.Clear();
@@ -83,7 +80,7 @@ public class FileEditorsSectionViewModel : ProjectSettingsSectionViewModel
             if (documentsService.IsReservedFileType(extension))
             {
                 // Core file types carry a role the application depends on, so they are not the user's
-                // to reassign, even when the code editor also claims them as text.
+                // to reassign.
                 continue;
             }
 
@@ -95,10 +92,8 @@ public class FileEditorsSectionViewModel : ProjectSettingsSectionViewModel
         SetLoadedContentState(FileTypeRows.Count);
     }
 
-    // The editors a dropdown offers for an extension: the default first, then the rest alphabetically, so
-    // the list reads predictably rather than in internal editor-resolution order. An association naming an
-    // editor that no longer claims the extension is stale and opens nothing, so it is listed last, letting
-    // the user pick a working editor and clear the entry.
+    // The editors a dropdown offers for an extension: the default first, then the rest alphabetically. An
+    // association naming an editor that no longer claims the extension is listed last.
     private static List<AssociationCandidate> BuildCandidates(
         ExtensionEditorCandidates pick,
         string defaultEditorId,
@@ -121,8 +116,7 @@ public class FileEditorsSectionViewModel : ProjectSettingsSectionViewModel
     }
 
     // Records each extension a document editor supports, lowercased so the same extension claimed by two
-    // editors resolves to one row. A utility is presented by the Utility Panel rather than opened by
-    // extension, so it contributes none.
+    // editors resolves to one row. A utility is not opened by extension, so it contributes none.
     private static void CollectExtensions(EditorContribution contribution, HashSet<string> extensions)
     {
         if (contribution.IsUtility)

@@ -9,10 +9,8 @@ namespace Celbridge.Packages;
 public sealed record FileTypeIcon(string IconName, string Color, double Scale = 1.0);
 
 /// <summary>
-/// The host's central record of established file types, loaded from the bundled file-types.json. What it
-/// holds are properties of the extension itself rather than of the editor that opens it, so an extension
-/// is described here once however many editors claim it. A package describes its own novel extensions in
-/// its manifest instead.
+/// The host's central record of established file types, loaded from the bundled file-types.json. Entries
+/// describe the extension itself, so an extension is described here once however many editors claim it.
 /// </summary>
 public interface IFileTypeCatalog
 {

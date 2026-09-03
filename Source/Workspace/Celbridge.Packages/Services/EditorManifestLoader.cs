@@ -50,8 +50,8 @@ internal static class EditorManifestLoader
     private const string CatalogLanguagesValue = "languages";
 
     // The sections a manifest declares, and the fields each one defines. A key outside these sets is
-    // reported as an unknown field. [options] is absent because its keys are the editor's own, passed
-    // through to the editor rather than interpreted here.
+    // reported as an unknown field. The keys under [options] are the editor's own, so they are never
+    // checked.
     private static readonly IReadOnlySet<string> KnownRootKeys = new HashSet<string>(StringComparer.Ordinal)
     {
         EditorSection,
@@ -463,7 +463,7 @@ internal static class EditorManifestLoader
     }
 
     // Records every field the manifest declares that the host does not define, for each section that has
-    // a fixed shape. [[file-types]] entries are collected as they are parsed instead.
+    // a fixed shape. [[file-types]] entries are collected as they are parsed.
     private static void CollectUnknownManifestFields(TomlTable root, TomlTable editorTable, List<string> unknownFields)
     {
         unknownFields.AddRange(ConfigSchemaHelper.FindUnknownKeys(root.Keys, KnownRootKeys));
@@ -495,9 +495,6 @@ internal static class EditorManifestLoader
         }
     }
 
-    // Records each key a section does not define, so a stale or misspelled field is reported rather than
-    // silently dropped. The field is ignored either way: a manifest still loads with one, because losing
-    // an editor over a field the host simply does not read would cost the user more than it saves.
     private static void CollectUnknownFields(
         TomlTable table,
         IReadOnlySet<string> sectionKeys,

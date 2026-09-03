@@ -508,8 +508,6 @@ public class PackageRegistry
         return _bundledReader;
     }
 
-    // Reports each field a manifest declared that the host does not define. The contribution loaded
-    // without it, so this is advisory: the Packages section badges the row, and the field stays ignored.
     private void ReportUnknownManifestFields(List<ContributionIssue> contributionIssues)
     {
         foreach (var contribution in GetAvailableContributions())

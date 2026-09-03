@@ -24,8 +24,8 @@ public class TextBinarySniffer : ITextBinarySniffer
         _fileTypeCatalog = fileTypeCatalog;
     }
 
-    // The file type catalog is the host's record of which formats are binary. It is loaded when a
-    // project loads, ahead of every caller here, and reports an unknown extension as text.
+    // The catalog is loaded when a project loads, ahead of every caller here, and reports an unknown
+    // extension as text.
     public bool IsBinaryExtension(string extension)
     {
         if (string.IsNullOrEmpty(extension))

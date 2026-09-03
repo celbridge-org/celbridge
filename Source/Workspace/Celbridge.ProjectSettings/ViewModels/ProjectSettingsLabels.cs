@@ -67,8 +67,7 @@ internal static class ProjectSettingsLabels
     }
 
     /// <summary>
-    /// Names an editor an association points at that no longer opens the file type, shown in the picker
-    /// so the stale choice is visible and can be replaced.
+    /// Names an editor that an association points at but that no longer opens the file type.
     /// </summary>
     public static string UnavailableEditor(string editorId) => Localizer.GetString("ProjectSettings_UnavailableEditorFormat", editorId);
 

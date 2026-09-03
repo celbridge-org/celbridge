@@ -76,10 +76,6 @@ public abstract class ProjectSettingsSectionViewModel : ObservableObject
         _context = context;
     }
 
-    /// <summary>
-    /// What the section is presenting, which the view binds to swap between its content and the
-    /// empty-state message.
-    /// </summary>
     public SectionContentState ContentState { get; private set; } = SectionContentState.NotLoaded;
 
     public bool HasContent => ContentState == SectionContentState.Populated;
@@ -110,8 +106,7 @@ public abstract class ProjectSettingsSectionViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Records that the section has no content and did not load, so it shows neither its content nor the
-    /// empty-state message.
+    /// Records that the section did not load, so it shows neither its content nor the empty-state message.
     /// </summary>
     protected void SetNotLoadedContentState()
     {

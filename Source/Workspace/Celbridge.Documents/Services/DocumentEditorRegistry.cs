@@ -227,8 +227,8 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
             .Where(factory => !factory.IsPlaceholder)
             .ToList();
 
-        // An editor that opens its files as binary owns them outright, and a catalogued binary format is
-        // never text, so neither is offered the code editor.
+        // Neither an editor that opens its files as binary nor a catalogued binary format is offered
+        // the code editor.
         if (candidates.Any(factory => factory.HandlesBinaryContent))
         {
             return candidates;
