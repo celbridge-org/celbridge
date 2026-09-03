@@ -1,4 +1,4 @@
-using Celbridge.Console.Helpers;
+﻿using Celbridge.Console.Helpers;
 using Celbridge.Logging;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
@@ -377,11 +377,19 @@ internal sealed class ConsoleLiveSession : IDisposable
 
     public void Resize(int cols, int rows)
     {
-        _terminal?.SetSize(cols, rows);
+        // A view reports no size until a layout pass has arranged it, which a tab that has never been shown
+        // never gets, and the active tab of a project reload does not get until the workspace has finished
+        // rebuilding. The launch size stands until a real one arrives: applying an empty one collapses the
+        // pty to a single row and the output already on its screen is lost to the reflow.
+        if (cols > 0 &&
+            rows > 0)
+        {
+            _terminal?.SetSize(cols, rows);
+        }
 
-        // A deferred reveal waits for this first real size before injecting, so the revealed prompt is
-        // drawn at the width it will be shown at. The resize itself redraws the pre-reveal prompt, which
-        // the marker scan still discards.
+        // A deferred reveal waits for this first size before injecting, so the revealed prompt is drawn at
+        // the width it will be shown at. The resize itself redraws the pre-reveal prompt, which the marker
+        // scan still discards.
         List<string>? deferredInjectionLines;
         lock (_gateLock)
         {
