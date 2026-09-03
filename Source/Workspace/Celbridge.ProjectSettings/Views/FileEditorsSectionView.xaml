@@ -9,18 +9,9 @@
     <services:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
   </UserControl.Resources>
 
-  <ScrollViewer Padding="12">
-    <StackPanel Spacing="8">
-
-      <ComboBox HorizontalAlignment="Stretch"
-                ToolTipService.ToolTip="{x:Bind CategoryPickerTooltip}"
-                ItemsSource="{x:Bind ViewModel.CategoryOptions}"
-                SelectedItem="{x:Bind ViewModel.SelectedCategoryOption, Mode=TwoWay}"/>
-
-      <TextBox PlaceholderText="{x:Bind FilterExtensionsPlaceholder}"
-               Visibility="{x:Bind ViewModel.IsAllCategorySelected, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-               Text="{x:Bind ViewModel.FileTypeFilterText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-
+  <Grid>
+    <ScrollViewer Padding="12"
+                  Visibility="{x:Bind ViewModel.HasContent, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
       <ItemsControl ItemsSource="{x:Bind ViewModel.FileTypeRows}">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:FileTypeRowViewModel">
@@ -41,19 +32,21 @@
               <ComboBox Grid.Column="1"
                         HorizontalAlignment="Stretch"
                         ToolTipService.ToolTip="{x:Bind EditorPickerTooltip}"
-                        Visibility="{x:Bind IsContested, Converter={StaticResource BoolToVisibilityConverter}}"
                         ItemsSource="{x:Bind Candidates}"
                         SelectedItem="{x:Bind SelectedCandidate, Mode=TwoWay}"/>
-              <TextBlock Grid.Column="1"
-                         Text="{x:Bind EditorName}"
-                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                         VerticalAlignment="Center"
-                         Visibility="{x:Bind IsSingleEditor, Converter={StaticResource BoolToVisibilityConverter}}"/>
             </Grid>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>
+    </ScrollViewer>
 
-    </StackPanel>
-  </ScrollViewer>
+    <TextBlock Text="{x:Bind ViewModel.EmptyText, Mode=OneWay}"
+               Margin="24"
+               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+               TextWrapping="Wrap"
+               TextAlignment="Center"
+               HorizontalAlignment="Center"
+               VerticalAlignment="Center"
+               Visibility="{x:Bind ViewModel.IsEmpty, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+  </Grid>
 </UserControl>

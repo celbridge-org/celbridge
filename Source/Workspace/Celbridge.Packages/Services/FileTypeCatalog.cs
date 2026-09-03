@@ -6,12 +6,12 @@ using Celbridge.Platform;
 namespace Celbridge.Packages;
 
 /// <summary>
-/// One catalogued file type: the language a code editor highlights it as, the categories it is grouped
-/// under, and the name it is known by. Every field is optional.
+/// One catalogued file type. Every field is optional, so an entry carries only what the catalog knows
+/// about that extension.
 /// </summary>
 internal sealed record FileTypeEntry(
+    bool IsBinary,
     string Language,
-    IReadOnlyList<FileTypeCategory> Categories,
     string DisplayName,
     FileTypeIcon? Icon);
 
@@ -19,14 +19,12 @@ public sealed class FileTypeCatalog : IFileTypeCatalog
 {
     private const string CatalogRelativePath = "celbridge-client/file-types.json";
 
+    private const string BinaryKey = "binary";
     private const string LanguageKey = "language";
-    private const string CategoriesKey = "categories";
     private const string DisplayNameKey = "display-name";
     private const string IconKey = "icon";
     private const string IconColorKey = "icon-color";
     private const string IconScaleKey = "icon-scale";
-
-    private static readonly IReadOnlyList<FileTypeCategory> NoCategories = Array.Empty<FileTypeCategory>();
 
     private readonly ILogger<FileTypeCatalog> _logger;
     private readonly ILocalFileSystem _fileSystem;
@@ -91,14 +89,14 @@ public sealed class FileTypeCatalog : IFileTypeCatalog
         }
     }
 
-    public IReadOnlyList<FileTypeCategory> GetCategories(string extension)
+    public bool IsBinaryExtension(string extension)
     {
         if (TryGetEntry(extension, out var entry))
         {
-            return entry.Categories;
+            return entry.IsBinary;
         }
 
-        return NoCategories;
+        return false;
     }
 
     public string GetLanguage(string extension)
@@ -211,6 +209,13 @@ public sealed class FileTypeCatalog : IFileTypeCatalog
 
     private FileTypeEntry ParseEntry(JsonElement element)
     {
+        var isBinary = false;
+        if (element.TryGetProperty(BinaryKey, out var binaryElement) &&
+            binaryElement.ValueKind == JsonValueKind.True)
+        {
+            isBinary = true;
+        }
+
         var language = string.Empty;
         if (element.TryGetProperty(LanguageKey, out var languageElement) &&
             languageElement.ValueKind == JsonValueKind.String)
@@ -247,26 +252,6 @@ public sealed class FileTypeCatalog : IFileTypeCatalog
             icon = new FileTypeIcon(iconName, iconColor, iconScale);
         }
 
-        var categories = NoCategories;
-        if (element.TryGetProperty(CategoriesKey, out var categoriesElement) &&
-            categoriesElement.ValueKind == JsonValueKind.Array)
-        {
-            var parsed = new List<FileTypeCategory>();
-            foreach (var categoryElement in categoriesElement.EnumerateArray())
-            {
-                var categoryName = categoryElement.GetString();
-                if (Enum.TryParse<FileTypeCategory>(categoryName, ignoreCase: true, out var category))
-                {
-                    parsed.Add(category);
-                }
-                else
-                {
-                    _logger.LogWarning($"Skipping unknown category '{categoryName}' in the file type catalog.");
-                }
-            }
-            categories = parsed;
-        }
-
-        return new FileTypeEntry(language, categories, displayName, icon);
+        return new FileTypeEntry(isBinary, language, displayName, icon);
     }
 }

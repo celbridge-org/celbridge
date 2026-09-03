@@ -123,7 +123,7 @@
 
   <Grid>
     <ScrollViewer Padding="12"
-                  Visibility="{x:Bind ViewModel.HasPages, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                  Visibility="{x:Bind ViewModel.HasContent, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
       <ItemsControl ItemsSource="{x:Bind ViewModel.Pages}"
                     ItemTemplate="{StaticResource PageCardTemplate}"/>
     </ScrollViewer>
@@ -135,6 +135,6 @@
                TextAlignment="Center"
                HorizontalAlignment="Center"
                VerticalAlignment="Center"
-               Visibility="{x:Bind ViewModel.HasNoPages, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+               Visibility="{x:Bind ViewModel.IsEmpty, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
   </Grid>
 </UserControl>

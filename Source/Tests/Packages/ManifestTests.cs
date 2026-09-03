@@ -1542,91 +1542,77 @@ public class ManifestTests
         result.FirstErrorMessage.Should().Contain("activation");
     }
 
-    [TestCase("text", FileTypeCategory.Text)]
-    [TestCase("image", FileTypeCategory.Image)]
-    [TestCase("data", FileTypeCategory.Data)]
-    [TestCase("document", FileTypeCategory.Document)]
-    public void LoadPackage_FileTypeCategory_ParsesCategory(string categoryValue, FileTypeCategory expected)
-    {
-        WriteSingleEditorPackage($"""
-            [editor]
-            id = "categorized"
-            type = "document"
-            display-name = "TestEditor"
-
-            [[file-types]]
-            extension = ".cat"
-            display-name = "TestFileType"
-            category = "{categoryValue}"
-            """);
-
-        var result = LoadPackage();
-
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Editors[0].FileTypes[0].Category.Should().Be(expected);
-    }
-
     [Test]
-    public void LoadPackage_FileTypeWithoutCategory_HasNullCategory()
+    public void LoadPackage_UnknownField_LoadsAndRecordsTheField()
     {
+        // An unknown field is recorded as an issue and the rest of the manifest still loads.
         WriteSingleEditorPackage("""
             [editor]
-            id = "uncategorized"
+            id = "stale-field"
             type = "document"
             display-name = "TestEditor"
+            colour-scheme = "dark"
 
             [[file-types]]
-            extension = ".unc"
+            extension = ".sf"
             display-name = "TestFileType"
-            """);
-
-        var result = LoadPackage();
-
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Editors[0].FileTypes[0].Category.Should().BeNull();
-    }
-
-    [Test]
-    public void LoadPackage_FileTypeInvalidCategory_ReturnsFailure()
-    {
-        WriteSingleEditorPackage("""
-            [editor]
-            id = "bad-category"
-            type = "document"
-            display-name = "TestEditor"
-
-            [[file-types]]
-            extension = ".bc"
-            display-name = "TestFileType"
-            category = "spreadsheet"
-            """);
-
-        var result = LoadPackage();
-
-        result.IsFailure.Should().BeTrue();
-        result.FirstErrorMessage.Should().Contain("category");
-    }
-
-    [Test]
-    public void LoadPackage_FromCatalogCategory_AppliesToEveryClaimedType()
-    {
-        WriteSingleEditorPackage("""
-            [editor]
-            id = "code-editor"
-            type = "document"
-            display-name = "TestEditor"
-
-            [[file-types]]
-            from-catalog = "languages"
-            display-name = "Code_FileType_Code"
             category = "text"
             """);
 
-        var result = LoadPackage(CatalogWithLanguages(".js", ".py"));
+        var result = LoadPackage();
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Editors[0].FileTypes.Should().AllSatisfy(fileType =>
-            fileType.Category.Should().Be(FileTypeCategory.Text));
+        result.Value.Editors[0].FileTypes.Should().ContainSingle();
+        result.Value.Editors[0].UnknownFields.Should().BeEquivalentTo(
+            ["editor.colour-scheme", "file-types.category"]);
+    }
+
+    [Test]
+    public void LoadPackage_UnknownSection_IsRecordedAsAnUnknownField()
+    {
+        WriteSingleEditorPackage("""
+            [editor]
+            id = "stale-section"
+            type = "document"
+            display-name = "TestEditor"
+
+            [[file-types]]
+            extension = ".ss"
+            display-name = "TestFileType"
+
+            [[file-type]]
+            extension = ".typo"
+            display-name = "TestFileType"
+            """);
+
+        var result = LoadPackage();
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Editors[0].UnknownFields.Should().BeEquivalentTo(["file-type"]);
+    }
+
+    [Test]
+    public void LoadPackage_OptionsKeys_AreNotReportedAsUnknown()
+    {
+        // The keys under [options] are the editor's own, so any name is valid there.
+        WriteSingleEditorPackage("""
+            [editor]
+            id = "with-options"
+            type = "document"
+            display-name = "TestEditor"
+
+            [options]
+            anything_at_all = "value"
+
+            [[file-types]]
+            extension = ".wo"
+            display-name = "TestFileType"
+            """);
+
+        var result = LoadPackage();
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Editors[0].UnknownFields.Should().BeEmpty();
     }
 
     [Test]

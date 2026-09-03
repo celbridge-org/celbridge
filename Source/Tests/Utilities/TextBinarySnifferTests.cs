@@ -1,5 +1,6 @@
 using Celbridge.FileSystem.Services;
 using Celbridge.Tests.Migration.TestHelpers;
+using Celbridge.Tests.Packages;
 using System.Text;
 
 namespace Celbridge.Tests.Utilities;
@@ -8,7 +9,8 @@ namespace Celbridge.Tests.Utilities;
 public class TextBinarySnifferTests
 {
     private string _testFilesDir = null!;
-    private readonly TextBinarySniffer _sniffer = new(new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>()));
+    private readonly ITextBinarySniffer _sniffer = TestFileTypeCatalog.CreateSniffer(
+        new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>()));
 
     [SetUp]
     public void SetUp()
@@ -67,6 +69,23 @@ public class TextBinarySnifferTests
     {
         // As per design doc: SVG treated as binary (opened in WebView2, not edited as text)
         _sniffer.IsBinaryExtension(".svg").Should().BeTrue();
+    }
+
+    [Test]
+    public void IsBinaryExtension_MediaFormats_AreBinary()
+    {
+        // A media format missing from this list would be presented as an editable text file.
+        string[] mediaExtensions =
+        [
+            ".jpeg", ".gif", ".webp", ".bmp", ".ico",
+            ".mp3", ".wav", ".ogg", ".flac", ".m4a",
+            ".mp4", ".webm", ".avi", ".mov", ".mkv"
+        ];
+
+        foreach (var extension in mediaExtensions)
+        {
+            _sniffer.IsBinaryExtension(extension).Should().BeTrue($"'{extension}' is a media format");
+        }
     }
 
     #endregion

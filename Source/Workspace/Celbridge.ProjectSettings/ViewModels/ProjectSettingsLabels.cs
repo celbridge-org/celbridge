@@ -37,6 +37,7 @@ internal static class ProjectSettingsLabels
     public static string PageManifestIssue => Localizer.GetString("ProjectSettings_PageManifestIssue");
     public static string PagesEmpty => Localizer.GetString("ProjectSettings_PagesEmpty");
     public static string FileExtensionsLabel => Localizer.GetString("ProjectSettings_FileExtensionsLabel");
+    public static string FileEditorsEmpty => Localizer.GetString("ProjectSettings_FileEditorsEmpty");
     public static string ShortcutsEmpty => Localizer.GetString("ProjectSettings_ShortcutsEmpty");
     public static string AddShortcut => Localizer.GetString("ProjectSettings_AddShortcut");
     public static string ShortcutUntitled => Localizer.GetString("ProjectSettings_ShortcutUntitled");
@@ -64,6 +65,11 @@ internal static class ProjectSettingsLabels
     {
         return Localizer.GetString($"ProjectSettings_WorkspaceArea_{area}");
     }
+
+    /// <summary>
+    /// Names an editor that an association points at but that no longer opens the file type.
+    /// </summary>
+    public static string UnavailableEditor(string editorId) => Localizer.GetString("ProjectSettings_UnavailableEditorFormat", editorId);
 
     public static string PackageName(string name) => Localizer.GetString("ProjectSettings_PackageNameFormat", name);
 
@@ -125,6 +131,11 @@ internal static class ProjectSettingsLabels
             if (issue.Kind == ContributionIssueKind.UnresolvedIcon)
             {
                 return new IssueMessage("ProjectSettings_ContributionIssue_UnresolvedIcon_Single", issue.Value);
+            }
+
+            if (issue.Kind == ContributionIssueKind.UnknownField)
+            {
+                return new IssueMessage("ProjectSettings_ContributionIssue_UnknownField_Single", issue.Value);
             }
         }
 

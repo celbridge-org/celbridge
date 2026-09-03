@@ -19,11 +19,7 @@ public class PagesSectionViewModel : ProjectSettingsSectionViewModel
     {
     }
 
-    public bool HasPages => Pages.Count > 0;
-
-    public bool HasNoPages => Pages.Count == 0;
-
-    public string EmptyText => ProjectSettingsLabels.PagesEmpty;
+    public override string EmptyText => ProjectSettingsLabels.PagesEmpty;
 
     public override void Load()
     {
@@ -32,7 +28,7 @@ public class PagesSectionViewModel : ProjectSettingsSectionViewModel
         var registry = WorkspaceService?.ResourceService.Registry;
         if (registry is null)
         {
-            NotifyPagesChanged();
+            SetNotLoadedContentState();
             return;
         }
 
@@ -51,7 +47,7 @@ public class PagesSectionViewModel : ProjectSettingsSectionViewModel
             Pages.Add(pageItem);
         }
 
-        NotifyPagesChanged();
+        SetLoadedContentState(Pages.Count);
     }
 
     private PageItemViewModel BuildPage(FileResourceEntry manifestEntry)
@@ -74,9 +70,4 @@ public class PagesSectionViewModel : ProjectSettingsSectionViewModel
         return new PageItemViewModel(info, OpenManifest, RevealManifest);
     }
 
-    private void NotifyPagesChanged()
-    {
-        OnPropertyChanged(nameof(HasPages));
-        OnPropertyChanged(nameof(HasNoPages));
-    }
 }

@@ -52,6 +52,17 @@ public sealed class ProjectSettingsContext
 }
 
 /// <summary>
+/// What a section is presenting: its content, the empty-state message, or neither while it has not
+/// loaded.
+/// </summary>
+public enum SectionContentState
+{
+    NotLoaded,
+    Empty,
+    Populated
+}
+
+/// <summary>
 /// Base for the Project Settings section view models. Each section reads the reconciled config on Load
 /// and mutates the shared draft as the user edits; the draft reaches disk on the editor's save tick, and
 /// the running workspace only reflects it after a reload.
@@ -65,6 +76,18 @@ public abstract class ProjectSettingsSectionViewModel : ObservableObject
         _context = context;
     }
 
+    public SectionContentState ContentState { get; private set; } = SectionContentState.NotLoaded;
+
+    public bool HasContent => ContentState == SectionContentState.Populated;
+
+    public bool IsEmpty => ContentState == SectionContentState.Empty;
+
+    /// <summary>
+    /// The message shown in place of the section's content when it loads with nothing to show. Empty for
+    /// a section that is never empty.
+    /// </summary>
+    public virtual string EmptyText => string.Empty;
+
     protected IWorkspaceService? WorkspaceService => _context.WorkspaceWrapper.WorkspaceService;
 
     protected IProjectService ProjectService => _context.ProjectService;
@@ -72,6 +95,36 @@ public abstract class ProjectSettingsSectionViewModel : ObservableObject
     protected ICommandService CommandService => _context.CommandService;
 
     protected ProjectConfig? GetConfig() => _context.GetConfig();
+
+    /// <summary>
+    /// Records that the section loaded, with the empty state chosen by how much content it found.
+    /// </summary>
+    protected void SetLoadedContentState(int itemCount)
+    {
+        var state = itemCount > 0 ? SectionContentState.Populated : SectionContentState.Empty;
+        SetContentState(state);
+    }
+
+    /// <summary>
+    /// Records that the section did not load, so it shows neither its content nor the empty-state message.
+    /// </summary>
+    protected void SetNotLoadedContentState()
+    {
+        SetContentState(SectionContentState.NotLoaded);
+    }
+
+    private void SetContentState(SectionContentState state)
+    {
+        if (ContentState == state)
+        {
+            return;
+        }
+
+        ContentState = state;
+        OnPropertyChanged(nameof(ContentState));
+        OnPropertyChanged(nameof(HasContent));
+        OnPropertyChanged(nameof(IsEmpty));
+    }
 
     /// <summary>
     /// Mutates the draft and reports the edit. A no-op before the editor has loaded a draft.

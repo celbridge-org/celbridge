@@ -4,6 +4,7 @@ using Celbridge.Resources;
 using Celbridge.Resources.Services;
 using Celbridge.Search.Services;
 using Celbridge.Tests.FileSystem;
+using Celbridge.Tests.Packages;
 using Celbridge.Tests.Migration.TestHelpers;
 using Celbridge.Workspace;
 
@@ -47,7 +48,7 @@ public class SearchServiceFilterTests
         _service = new SearchService(
             Substitute.For<ILogger<SearchService>>(),
             workspaceWrapper,
-            new TextBinarySniffer(new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>())),
+            TestFileTypeCatalog.CreateSniffer(new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>())),
             Substitute.For<Celbridge.UserInterface.Services.ISpotlightService>());
     }
 

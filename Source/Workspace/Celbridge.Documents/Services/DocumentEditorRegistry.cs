@@ -227,6 +227,13 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
             .Where(factory => !factory.IsPlaceholder)
             .ToList();
 
+        // Neither an editor that opens its files as binary nor a catalogued binary format is offered
+        // the code editor.
+        if (candidates.Any(factory => factory.HandlesBinaryContent))
+        {
+            return candidates;
+        }
+
         var extension = Path.GetExtension(fileResource.ResourceName).ToLowerInvariant();
         if (_textBinarySniffer.IsBinaryExtension(extension))
         {

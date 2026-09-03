@@ -26,7 +26,6 @@ internal static class EditorManifestLoader
     private const string TypeKey = "type";
     private const string ExtensionKey = "extension";
     private const string FromCatalogKey = "from-catalog";
-    private const string CategoryKey = "category";
     private const string DisplayNameKey = "display-name";
     private const string DescriptionKey = "description";
     private const string TemplateFileKey = "template-file";
@@ -49,6 +48,67 @@ internal static class EditorManifestLoader
     private const string NoDockAreaValue = "none";
 
     private const string CatalogLanguagesValue = "languages";
+
+    // The sections a manifest declares, and the fields each one defines. A key outside these sets is
+    // reported as an unknown field. The keys under [options] are the editor's own, so they are never
+    // checked.
+    private static readonly IReadOnlySet<string> KnownRootKeys = new HashSet<string>(StringComparer.Ordinal)
+    {
+        EditorSection,
+        FileTypesSection,
+        TemplatesSection,
+        OptionsSection,
+        UtilitySection,
+        ConfigSection
+    };
+
+    private static readonly IReadOnlySet<string> KnownEditorKeys = new HashSet<string>(StringComparer.Ordinal)
+    {
+        IdKey,
+        TypeKey,
+        DisplayNameKey,
+        DescriptionKey,
+        EntryPointKey,
+        BinaryKey,
+        ExternalContentKey,
+        ActivationKey
+    };
+
+    private static readonly IReadOnlySet<string> KnownFileTypeKeys = new HashSet<string>(StringComparer.Ordinal)
+    {
+        ExtensionKey,
+        FromCatalogKey,
+        DisplayNameKey,
+        IconKey,
+        IconColorKey,
+        IconScaleKey
+    };
+
+    private static readonly IReadOnlySet<string> KnownTemplateKeys = new HashSet<string>(StringComparer.Ordinal)
+    {
+        IdKey,
+        DisplayNameKey,
+        TemplateFileKey,
+        DefaultKey
+    };
+
+    private static readonly IReadOnlySet<string> KnownUtilityKeys = new HashSet<string>(StringComparer.Ordinal)
+    {
+        ResourceExtensionKey,
+        IconKey,
+        TemplateKey,
+        DockAreaKey
+    };
+
+    private static readonly IReadOnlySet<string> KnownConfigKeys = new HashSet<string>(StringComparer.Ordinal)
+    {
+        KeyKey,
+        TypeKey,
+        ValuesKey,
+        DefaultKey,
+        DisplayNameKey,
+        DescriptionKey
+    };
 
     // The values dock-area accepts, spelled out for the error message it produces.
     private const string ValidDockAreaTokens =
@@ -187,30 +247,23 @@ internal static class EditorManifestLoader
             // Optional; when set it is the tooltip on the Utility Panel rail button and the docked tab.
             var description = TomlTableReader.GetStringOrNull(editorTable, DescriptionKey) ?? string.Empty;
 
+            var unknownFields = new List<string>();
+            CollectUnknownManifestFields(root, editorTable, unknownFields);
+
             var fileTypes = new List<EditorFileType>();
             if (root.TryGetValue(FileTypesSection, out var fileTypesObject) &&
                 fileTypesObject is TomlTableArray fileTypesArray)
             {
                 foreach (var fileTypeTable in fileTypesArray)
                 {
+                    CollectUnknownFields(fileTypeTable, KnownFileTypeKeys, FileTypesSection, unknownFields);
+
                     var fileTypeDisplayName = TomlTableReader.GetString(fileTypeTable, DisplayNameKey);
                     if (string.IsNullOrEmpty(fileTypeDisplayName))
                     {
                         return Result.Fail(
                             $"File type missing required '{DisplayNameKey}' field in [[{FileTypesSection}]] entry: {editorTomlPath}. " +
                             $"Supply a localization key or plain string naming the file type (e.g., the noun shown in the Reopen-with dialog).");
-                    }
-
-                    FileTypeCategory? category = null;
-                    var categoryValue = TomlTableReader.GetStringOrNull(fileTypeTable, CategoryKey);
-                    if (categoryValue is not null)
-                    {
-                        var categoryResult = ParseCategoryValue(categoryValue, editorTomlPath);
-                        if (categoryResult.IsFailure)
-                        {
-                            return Result.Fail(categoryResult.FirstErrorMessage).WithErrors(categoryResult);
-                        }
-                        category = categoryResult.Value;
                     }
 
                     var icon = TomlTableReader.GetStringOrNull(fileTypeTable, IconKey) ?? string.Empty;
@@ -254,7 +307,6 @@ internal static class EditorManifestLoader
                             {
                                 FileExtension = catalogExtension,
                                 DisplayName = fileTypeDisplayName,
-                                Category = category,
                                 Icon = icon,
                                 IconColor = iconColor,
                                 IconScale = iconScale ?? 1.0
@@ -274,7 +326,6 @@ internal static class EditorManifestLoader
                         {
                             FileExtension = extension.ToLowerInvariant(),
                             DisplayName = fileTypeDisplayName,
-                            Category = category,
                             Icon = icon,
                             IconColor = iconColor,
                             IconScale = iconScale ?? 1.0
@@ -332,9 +383,13 @@ internal static class EditorManifestLoader
             var activation = activationResult.Value;
 
             var contribution = BuildContribution(root, packageInfo, editorId, displayName, description, fileTypes, templates, configDescriptors, activation, editorTable, utilityDescriptor);
-            var contributionWithPath = contribution with { ManifestPath = editorTomlPath };
+            var loadedContribution = contribution with
+            {
+                ManifestPath = editorTomlPath,
+                UnknownFields = unknownFields.AsReadOnly()
+            };
 
-            return Result<EditorContribution>.Ok(contributionWithPath);
+            return Result<EditorContribution>.Ok(loadedContribution);
         }
         catch (Exception ex)
         {
@@ -407,28 +462,48 @@ internal static class EditorManifestLoader
             $"'{RequiredActivationValue}', '{RecommendedActivationValue}', or '{OptionalActivationValue}': {editorTomlPath}");
     }
 
-    // Maps a declared category value to its enum. The caller supplies null when no category is declared,
-    // in which case the host classifies the extension from its catalog instead.
-    private static Result<FileTypeCategory> ParseCategoryValue(string categoryValue, string editorTomlPath)
+    // Records every field the manifest declares that the host does not define, for each section that has
+    // a fixed shape. [[file-types]] entries are collected as they are parsed.
+    private static void CollectUnknownManifestFields(TomlTable root, TomlTable editorTable, List<string> unknownFields)
     {
-        switch (categoryValue)
+        unknownFields.AddRange(ConfigSchemaHelper.FindUnknownKeys(root.Keys, KnownRootKeys));
+
+        CollectUnknownFields(editorTable, KnownEditorKeys, EditorSection, unknownFields);
+
+        if (root.TryGetValue(TemplatesSection, out var templatesObject) &&
+            templatesObject is TomlTableArray templatesArray)
         {
-            case "text":
-                return FileTypeCategory.Text;
-            case "image":
-                return FileTypeCategory.Image;
-            case "audio":
-                return FileTypeCategory.Audio;
-            case "video":
-                return FileTypeCategory.Video;
-            case "data":
-                return FileTypeCategory.Data;
-            case "document":
-                return FileTypeCategory.Document;
-            default:
-                return Result.Fail(
-                    $"[[{FileTypesSection}]] '{CategoryKey}' value '{categoryValue}' is not a recognized category " +
-                    $"(text, image, audio, video, data, document): {editorTomlPath}");
+            foreach (var templateTable in templatesArray)
+            {
+                CollectUnknownFields(templateTable, KnownTemplateKeys, TemplatesSection, unknownFields);
+            }
+        }
+
+        if (root.TryGetValue(UtilitySection, out var utilityObject) &&
+            utilityObject is TomlTable utilityTable)
+        {
+            CollectUnknownFields(utilityTable, KnownUtilityKeys, UtilitySection, unknownFields);
+        }
+
+        if (root.TryGetValue(ConfigSection, out var configObject) &&
+            configObject is TomlTableArray configArray)
+        {
+            foreach (var configTable in configArray)
+            {
+                CollectUnknownFields(configTable, KnownConfigKeys, ConfigSection, unknownFields);
+            }
+        }
+    }
+
+    private static void CollectUnknownFields(
+        TomlTable table,
+        IReadOnlySet<string> sectionKeys,
+        string sectionName,
+        List<string> unknownFields)
+    {
+        foreach (var key in ConfigSchemaHelper.FindUnknownKeys(table.Keys, sectionKeys))
+        {
+            unknownFields.Add($"{sectionName}.{key}");
         }
     }
 

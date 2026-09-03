@@ -22,6 +22,8 @@ public abstract class DocumentEditorFactoryBase : IDocumentEditorFactory
 
     public virtual bool IsUtility => false;
 
+    public virtual bool HandlesBinaryContent => false;
+
     public virtual bool CanHandleResource(ResourceKey fileResource)
     {
         var fileName = Path.GetFileName(fileResource.ToString());

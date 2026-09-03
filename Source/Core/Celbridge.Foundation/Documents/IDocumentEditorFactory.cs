@@ -56,6 +56,11 @@ public interface IDocumentEditorFactory
     bool IsUtility { get; }
 
     /// <summary>
+    /// True when this editor opens its files as binary, or as content the host does not read as text.
+    /// </summary>
+    bool HandlesBinaryContent { get; }
+
+    /// <summary>
     /// Determines if this factory can handle the given file resource.
     /// </summary>
     bool CanHandleResource(ResourceKey fileResource);

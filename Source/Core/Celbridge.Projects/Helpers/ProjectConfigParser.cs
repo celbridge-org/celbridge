@@ -36,8 +36,8 @@ public static class ProjectConfigParser
     private const string ValidDocumentShortcutAreaTokens =
         $"{WorkspaceAreaTokens.Main}, {WorkspaceAreaTokens.Bottom}, {WorkspaceAreaTokens.Side}";
 
-    private static readonly string[] KnownCelbridgeKeys =
-    [
+    private static readonly IReadOnlySet<string> KnownCelbridgeKeys = new HashSet<string>(StringComparer.Ordinal)
+    {
         CelbridgeVersionKey,
         ProjectVersionKey,
         DescriptionKey,
@@ -46,22 +46,22 @@ public static class ProjectConfigParser
         EditorAssociationsKey,
         FeaturesKey,
         ResourcesKey,
-    ];
+    };
 
-    private static readonly string[] KnownResourcesKeys =
-    [
+    private static readonly IReadOnlySet<string> KnownResourcesKeys = new HashSet<string>(StringComparer.Ordinal)
+    {
         "ignore-file",
         "add",
         "remove",
         "lock",
-    ];
+    };
 
-    private static readonly string[] KnownDocumentShortcutKeys =
-    [
+    private static readonly IReadOnlySet<string> KnownDocumentShortcutKeys = new HashSet<string>(StringComparer.Ordinal)
+    {
         DocumentShortcutResourceKey,
         DocumentShortcutIconKey,
         DocumentShortcutAreaKey,
-    ];
+    };
 
     /// <summary>
     /// Parses a project config from a .celbridge file.
@@ -236,13 +236,10 @@ public static class ProjectConfigParser
         resourcesSection = new ResourcesSection();
         featuresDict = new Dictionary<string, bool>();
 
-        foreach (var key in celbridgeTable.Keys)
+        foreach (var key in ConfigSchemaHelper.FindUnknownKeys(celbridgeTable.Keys, KnownCelbridgeKeys))
         {
-            if (!KnownCelbridgeKeys.Contains(key, StringComparer.Ordinal))
-            {
-                entryErrors.Add(new ProjectConfigEntryError(
-                    CelbridgeSectionName, $"Unknown key '{key}' on [{CelbridgeSectionName}]. The key was ignored."));
-            }
+            entryErrors.Add(new ProjectConfigEntryError(
+                CelbridgeSectionName, $"Unknown key '{key}' on [{CelbridgeSectionName}]. The key was ignored."));
         }
 
         var disabledPackages = new List<string>();
@@ -332,14 +329,11 @@ public static class ProjectConfigParser
                 // A flat key hand-appended after the [celbridge.resources] header lands in this
                 // table per TOML rules. Unknown keys are reported so the mistake fails loud
                 // rather than silently re-parenting.
-                foreach (var key in resourcesTable.Keys)
+                foreach (var key in ConfigSchemaHelper.FindUnknownKeys(resourcesTable.Keys, KnownResourcesKeys))
                 {
-                    if (!KnownResourcesKeys.Contains(key, StringComparer.Ordinal))
-                    {
-                        entryErrors.Add(new ProjectConfigEntryError(
-                            $"{CelbridgeSectionName}.{ResourcesKey}",
-                            $"Unknown key '{key}' on [{CelbridgeSectionName}.{ResourcesKey}]. Flat [{CelbridgeSectionName}] keys must precede the [{CelbridgeSectionName}.{ResourcesKey}] header."));
-                    }
+                    entryErrors.Add(new ProjectConfigEntryError(
+                        $"{CelbridgeSectionName}.{ResourcesKey}",
+                        $"Unknown key '{key}' on [{CelbridgeSectionName}.{ResourcesKey}]. Flat [{CelbridgeSectionName}] keys must precede the [{CelbridgeSectionName}.{ResourcesKey}] header."));
                 }
 
                 resourcesSection = resourcesSection with
@@ -471,13 +465,10 @@ public static class ProjectConfigParser
     {
         var entryName = $"[[{DocumentShortcutSectionName}]] #{entryIndex}";
 
-        foreach (var key in entryTable.Keys)
+        foreach (var key in ConfigSchemaHelper.FindUnknownKeys(entryTable.Keys, KnownDocumentShortcutKeys))
         {
-            if (!KnownDocumentShortcutKeys.Contains(key, StringComparer.Ordinal))
-            {
-                entryErrors.Add(new ProjectConfigEntryError(
-                    entryName, $"Unknown key '{key}'. The key was ignored."));
-            }
+            entryErrors.Add(new ProjectConfigEntryError(
+                entryName, $"Unknown key '{key}'. The key was ignored."));
         }
 
         var resource = ReadString(entryTable, DocumentShortcutResourceKey);

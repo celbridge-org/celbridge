@@ -6,6 +6,7 @@ using Celbridge.Resources.Commands;
 using Celbridge.Resources.Services;
 using Celbridge.Resources.Services.Roots;
 using Celbridge.Tests.FileSystem;
+using Celbridge.Tests.Packages;
 using Celbridge.Tests.Migration.TestHelpers;
 using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
@@ -90,7 +91,7 @@ public class ResourceCommandTests
     [Test]
     public async Task GetFileInfo_ForTextFile_ReportsTextAndLineCount()
     {
-        var textBinarySniffer = new TextBinarySniffer(new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>()));
+        var textBinarySniffer = TestFileTypeCatalog.CreateSniffer(new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>()));
         var command = new GetFileInfoCommand(_workspaceWrapper, textBinarySniffer)
         {
             Resource = new ResourceKey(RootFileName)
@@ -111,7 +112,7 @@ public class ResourceCommandTests
     [Test]
     public async Task GetFileInfo_ForBinaryFile_ReportsBinaryWithNoLineCount()
     {
-        var textBinarySniffer = new TextBinarySniffer(new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>()));
+        var textBinarySniffer = TestFileTypeCatalog.CreateSniffer(new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>()));
         var command = new GetFileInfoCommand(_workspaceWrapper, textBinarySniffer)
         {
             Resource = new ResourceKey(BinaryFileName)
@@ -131,7 +132,7 @@ public class ResourceCommandTests
     [Test]
     public async Task GetFileInfo_ForFolder_ReportsExistsButNotFile()
     {
-        var textBinarySniffer = new TextBinarySniffer(new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>()));
+        var textBinarySniffer = TestFileTypeCatalog.CreateSniffer(new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>()));
         var command = new GetFileInfoCommand(_workspaceWrapper, textBinarySniffer)
         {
             Resource = new ResourceKey(FolderName)

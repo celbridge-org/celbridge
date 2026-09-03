@@ -88,6 +88,7 @@ public class PackageRegistry
         ResolveBuiltInEditors();
 
         var contributionIssues = new List<ContributionIssue>();
+        ReportUnknownManifestFields(contributionIssues);
         ApplyFileIconOverrides(contributionIssues);
         _lastContributionIssues = contributionIssues.AsReadOnly();
 
@@ -505,6 +506,32 @@ public class PackageRegistry
         }
 
         return _bundledReader;
+    }
+
+    private void ReportUnknownManifestFields(List<ContributionIssue> contributionIssues)
+    {
+        foreach (var contribution in GetAvailableContributions())
+        {
+            if (contribution.UnknownFields.Count == 0)
+            {
+                continue;
+            }
+
+            var editorId = EditorId.Create(contribution.Package.Name, contribution.Id).ToString();
+
+            foreach (var unknownField in contribution.UnknownFields)
+            {
+                _logger.LogWarning(
+                    $"Ignoring the unknown field '{unknownField}' declared in {contribution.ManifestPath}");
+
+                contributionIssues.Add(new ContributionIssue
+                {
+                    EditorId = editorId,
+                    Kind = ContributionIssueKind.UnknownField,
+                    Value = unknownField
+                });
+            }
+        }
     }
 
     // Publishes the per-extension icons declared by the catalog and by package manifests, so every

@@ -11,9 +11,8 @@ public class FileTypeCatalogTests
     private const string CatalogJson = """
         {
           ".cs": { "language": "csharp" },
-          ".json": { "language": "json", "categories": ["Text", "Data"], "display-name": "JSON" },
-          ".png": { "categories": ["Image"], "display-name": "PNG Image", "icon": "image", "icon-color": "#40A0FF" },
-          ".bogus": { "categories": ["NotACategory"] }
+          ".json": { "language": "json", "display-name": "JSON" },
+          ".png": { "display-name": "PNG Image", "icon": "image", "icon-color": "#40A0FF" }
         }
         """;
 
@@ -37,31 +36,6 @@ public class FileTypeCatalogTests
         {
             Directory.Delete(_tempFolder, true);
         }
-    }
-
-    [Test]
-    public async Task GetCategories_MultiCategoryExtension_ReturnsAllCategoriesInOrder()
-    {
-        var catalog = await LoadCatalogAsync(CatalogJson);
-
-        catalog.GetCategories(".json").Should().Equal(FileTypeCategory.Text, FileTypeCategory.Data);
-    }
-
-    [Test]
-    public async Task GetCategories_IsCaseInsensitive()
-    {
-        var catalog = await LoadCatalogAsync(CatalogJson);
-
-        catalog.GetCategories(".PNG").Should().Equal(FileTypeCategory.Image);
-    }
-
-    [Test]
-    public async Task GetCategories_ExtensionWithOnlyALanguage_ReturnsEmpty()
-    {
-        // A code extension the catalog assigns no category defaults to Text at the call site, not here.
-        var catalog = await LoadCatalogAsync(CatalogJson);
-
-        catalog.GetCategories(".cs").Should().BeEmpty();
     }
 
     [Test]
@@ -111,21 +85,13 @@ public class FileTypeCatalogTests
     }
 
     [Test]
-    public async Task Load_UnknownCategoryName_IsSkippedWithoutFailingTheEntry()
-    {
-        var catalog = await LoadCatalogAsync(CatalogJson);
-
-        catalog.GetCategories(".bogus").Should().BeEmpty();
-    }
-
-    [Test]
     public async Task Load_MalformedCatalog_LeavesEveryExtensionUncatalogued()
     {
         // A broken catalog must not stop the application; the code editor's package reports the
         // resulting load failure instead.
         var catalog = await LoadCatalogAsync("{ not json");
 
-        catalog.GetCategories(".json").Should().BeEmpty();
+        catalog.GetDisplayName(".json").Should().BeEmpty();
         catalog.LanguageExtensions.Should().BeEmpty();
     }
 
@@ -155,8 +121,6 @@ public class FileTypeCatalogTests
 
         catalog.LanguageExtensions.Count.Should().BeGreaterThan(100);
         catalog.GetLanguage(".cs").Should().Be("csharp");
-        catalog.GetCategories(".json").Should().Equal(FileTypeCategory.Text, FileTypeCategory.Data);
-        catalog.GetCategories(".png").Should().Equal(FileTypeCategory.Image);
         catalog.GetDisplayName(".png").Should().Be("PNG Image");
     }
 
