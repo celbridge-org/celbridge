@@ -1,5 +1,6 @@
 using Celbridge.Logging;
 using Celbridge.Platform;
+using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.Services;
 
@@ -34,6 +35,30 @@ public class ManagedFocus : IManagedFocus
 
             return focusedElement is not null
                 && FocusTracking.IsPopupHosted(focusedElement);
+        }
+    }
+
+    public bool TryPerformTextEditing(EditIntent intent)
+    {
+        if (GetFocusedElement() is not TextBox textBox)
+        {
+            return false;
+        }
+
+        // Not gated on CanUndo or CanRedo: Uno reports both false right after typing on the Skia head, while
+        // Undo still reverts the text. A chord with nothing to revert is still the control's to swallow.
+        switch (intent)
+        {
+            case EditIntent.Undo:
+                textBox.Undo();
+                return true;
+
+            case EditIntent.Redo:
+                textBox.Redo();
+                return true;
+
+            default:
+                return false;
         }
     }
 

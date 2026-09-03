@@ -49,16 +49,6 @@ public record RestoreWindowStateMessage();
 public record ExitedFullscreenViaDragMessage();
 
 /// <summary>
-/// Message sent to request an undo operation.
-/// </summary>
-public record UndoRequestedMessage();
-
-/// <summary>
-/// Message sent to request a redo operation.
-/// </summary>
-public record RedoRequestedMessage();
-
-/// <summary>
 /// Message sent to request closing the active document tab.
 /// </summary>
 public record CloseActiveDocumentRequestedMessage();

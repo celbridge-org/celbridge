@@ -28,5 +28,9 @@
     <ProjectReference Include="..\Celbridge.WorkspaceUI\Celbridge.WorkspaceUI.csproj" />
     <ProjectReference Include="..\Celbridge.Resources\Celbridge.Resources.csproj" />
   </ItemGroup>
-  
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Celbridge.Tests" />
+  </ItemGroup>
+
 </Project>

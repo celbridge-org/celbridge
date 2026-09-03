@@ -1,3 +1,4 @@
+using Celbridge.Explorer.Views;
 using Celbridge.Messaging;
 using Celbridge.Messaging.Services;
 using Celbridge.Platform;
@@ -22,7 +23,6 @@ internal sealed partial record ShortcutChord(VirtualKey Key, bool Control, bool 
 public class ShortcutHintDriftTests
 {
     private IMessengerService _messengerService = null!;
-    private IPlatformInfo _platformInfo = null!;
     private KeyboardShortcutService _shortcutService = null!;
     private object _recipient = null!;
 
@@ -33,8 +33,7 @@ public class ShortcutHintDriftTests
     public void Setup()
     {
         _messengerService = new MessengerService();
-        _platformInfo = Substitute.For<IPlatformInfo>();
-        _shortcutService = new KeyboardShortcutService(_messengerService, _platformInfo);
+        _shortcutService = new KeyboardShortcutService(_messengerService);
         _recipient = new object();
     }
 
@@ -104,45 +103,6 @@ public class ShortcutHintDriftTests
     }
 
     [Test]
-    public void UndoHint_NamesTheChordThatRequestsUndo()
-    {
-        var chord = ParseChord(Hint("Shortcut_UndoControl"))!;
-
-        var undoRequested = false;
-        _messengerService.Register<UndoRequestedMessage>(_recipient, (r, m) => undoRequested = true);
-
-        _shortcutService.HandleShortcut(chord.Key, chord.Control, chord.Shift, chord.Alt).Should().BeTrue();
-        undoRequested.Should().BeTrue();
-    }
-
-    [Test]
-    public void RedoHint_NamesTheChordThatRequestsRedo()
-    {
-        var crossPlatform = ParseChord(Hint("Shortcut_RedoControl"))!;
-
-        var redoRequested = false;
-        _messengerService.Register<RedoRequestedMessage>(_recipient, (r, m) => redoRequested = true);
-
-        _shortcutService.HandleShortcut(crossPlatform.Key, crossPlatform.Control, crossPlatform.Shift, crossPlatform.Alt)
-            .Should().BeTrue();
-        redoRequested.Should().BeTrue();
-    }
-
-    [Test]
-    public void RedoCtrlYHint_NamesTheChordWindowsRequestsRedoWith()
-    {
-        _platformInfo.TreatsCtrlYAsRedo.Returns(true);
-
-        var chord = ParseChord(Hint("Shortcut_RedoCtrlY"))!;
-
-        var redoRequested = false;
-        _messengerService.Register<RedoRequestedMessage>(_recipient, (r, m) => redoRequested = true);
-
-        _shortcutService.HandleShortcut(chord.Key, chord.Control, chord.Shift, chord.Alt).Should().BeTrue();
-        redoRequested.Should().BeTrue();
-    }
-
-    [Test]
     public void CloseHints_NameTheChordsThatCloseDocuments()
     {
         var close = ParseChord(Hint("DocumentTab_CloseShortcutControl"))!;
@@ -158,5 +118,36 @@ public class ShortcutHintDriftTests
 
         closeRequested.Should().BeTrue();
         closeAllRequested.Should().BeTrue();
+    }
+
+    [Test]
+    public void UndoHint_NamesTheChordExplorerEditShortcutsResolvesToUndo()
+    {
+        var chord = ParseChord(Hint("Shortcut_UndoControl"))!;
+
+        ExplorerEditShortcuts.ResolveIntent(chord.Key, chord.Shift, treatsCtrlYAsRedo: false)
+            .Should().Be(EditIntent.Undo);
+    }
+
+    [Test]
+    public void RedoHint_NamesTheChordExplorerEditShortcutsResolvesToRedo()
+    {
+        var chord = ParseChord(Hint("Shortcut_RedoControl"))!;
+
+        ExplorerEditShortcuts.ResolveIntent(chord.Key, chord.Shift, treatsCtrlYAsRedo: false)
+            .Should().Be(EditIntent.Redo);
+    }
+
+    [Test]
+    public void RedoCtrlYHint_NamesTheChordWindowsResolvesToRedo()
+    {
+        var chord = ParseChord(Hint("Shortcut_RedoCtrlY"))!;
+
+        ExplorerEditShortcuts.ResolveIntent(chord.Key, chord.Shift, treatsCtrlYAsRedo: true)
+            .Should().Be(EditIntent.Redo);
+
+        // Named for Windows: the chord must not resolve to Redo where the platform does not treat it that way.
+        ExplorerEditShortcuts.ResolveIntent(chord.Key, chord.Shift, treatsCtrlYAsRedo: false)
+            .Should().NotBe(EditIntent.Redo);
     }
 }

@@ -1,5 +1,6 @@
 using Celbridge.DataTransfer;
 using Celbridge.Explorer.Models;
+using Celbridge.Resources;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
@@ -57,6 +58,8 @@ public sealed partial class ResourceTree : IEditTarget
             EditIntent.Delete => ViewModel.GetSelectedResources().Count > 0,
             EditIntent.Paste => true,
             EditIntent.SelectAll => true,
+            EditIntent.Undo => _operationService.CanUndo,
+            EditIntent.Redo => _operationService.CanRedo,
             EditIntent.Duplicate => selectedItem is not null && !selectedItem.IsProjectFolder,
             EditIntent.Rename => selectedItem is not null && !selectedItem.IsProjectFolder,
             _ => false
@@ -97,6 +100,14 @@ public sealed partial class ResourceTree : IEditTarget
             case EditIntent.Rename:
                 HandleRename(selectedItem);
                 break;
+
+            case EditIntent.Undo:
+                _commandService.Execute<IUndoResourceCommand>();
+                break;
+
+            case EditIntent.Redo:
+                _commandService.Execute<IRedoResourceCommand>();
+                break;
         }
     }
 
@@ -106,7 +117,7 @@ public sealed partial class ResourceTree : IEditTarget
         return false;
     }
 
-    private static EditIntent? ResolveEditIntent(VirtualKey key)
+    private EditIntent? ResolveEditIntent(VirtualKey key)
     {
         // Delete is modifier-agnostic so the macOS native Cmd+Backspace shortcut deletes the selection
         // just as plain Backspace and Delete do.
@@ -125,20 +136,9 @@ public sealed partial class ResourceTree : IEditTarget
             return null;
         }
 
-        if (EditKeyboard.IsShiftDown())
-        {
-            return null;
-        }
+        var shift = EditKeyboard.IsShiftDown();
 
-        return key switch
-        {
-            VirtualKey.A => EditIntent.SelectAll,
-            VirtualKey.D => EditIntent.Duplicate,
-            VirtualKey.C => EditIntent.Copy,
-            VirtualKey.X => EditIntent.Cut,
-            VirtualKey.V => EditIntent.Paste,
-            _ => null
-        };
+        return ExplorerEditShortcuts.ResolveIntent(key, shift, _platformInfo.TreatsCtrlYAsRedo);
     }
 
     private void PerformIntent(EditIntent intent)

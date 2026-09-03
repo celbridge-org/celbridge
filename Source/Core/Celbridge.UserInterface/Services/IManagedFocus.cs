@@ -1,3 +1,5 @@
+using Celbridge.Workspace;
+
 namespace Celbridge.UserInterface.Services;
 
 /// <summary>
@@ -11,6 +13,12 @@ public interface IManagedFocus
     /// dialog. Answered from the focused element each time it is asked, so it cannot go stale.
     /// </summary>
     bool IsPopupHoldingFocus { get; }
+
+    /// <summary>
+    /// Performs undo or redo on the text editing control that holds managed keyboard focus. Returns true when
+    /// such a control took the verb, and false for any other verb or when no text control has focus.
+    /// </summary>
+    bool TryPerformTextEditing(EditIntent intent);
 
     /// <summary>
     /// Gives up managed keyboard focus, so the keys the platform routes through the managed tree reach no
