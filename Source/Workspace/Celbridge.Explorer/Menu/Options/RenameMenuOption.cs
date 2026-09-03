@@ -14,6 +14,7 @@ public class RenameMenuOption : IMenuOption<ExplorerMenuContext>
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IShortcutHintService _shortcutHintService;
 
     public int Priority => 5;
     public string GroupId => nameof(ExplorerMenuGroup.EditActions);
@@ -21,18 +22,21 @@ public class RenameMenuOption : IMenuOption<ExplorerMenuContext>
     public RenameMenuOption(
         IStringLocalizer stringLocalizer,
         ICommandService commandService,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        IShortcutHintService shortcutHintService)
     {
         _stringLocalizer = stringLocalizer;
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
+        _shortcutHintService = shortcutHintService;
     }
 
     public MenuItemDisplayInfo GetDisplayInfo(ExplorerMenuContext context)
     {
         return new MenuItemDisplayInfo(
             _stringLocalizer.GetString("ResourceTree_Rename"),
-            Icon: IconSymbol.Rename);
+            Icon: IconSymbol.Rename,
+            ShortcutHint: _shortcutHintService.GetText(EditIntent.Rename));
     }
 
     public MenuItemState GetState(ExplorerMenuContext context)

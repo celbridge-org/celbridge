@@ -15,6 +15,7 @@ public class CopyMenuOption : IMenuOption<ExplorerMenuContext>
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IShortcutHintService _shortcutHintService;
 
     public int Priority => 2;
     public string GroupId => nameof(ExplorerMenuGroup.EditActions);
@@ -22,18 +23,21 @@ public class CopyMenuOption : IMenuOption<ExplorerMenuContext>
     public CopyMenuOption(
         IStringLocalizer stringLocalizer,
         ICommandService commandService,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        IShortcutHintService shortcutHintService)
     {
         _stringLocalizer = stringLocalizer;
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
+        _shortcutHintService = shortcutHintService;
     }
 
     public MenuItemDisplayInfo GetDisplayInfo(ExplorerMenuContext context)
     {
         return new MenuItemDisplayInfo(
             _stringLocalizer.GetString("ResourceTree_Copy"),
-            Icon: IconSymbol.Copy);
+            Icon: IconSymbol.Copy,
+            ShortcutHint: _shortcutHintService.GetText(EditIntent.Copy));
     }
 
     public MenuItemState GetState(ExplorerMenuContext context)

@@ -191,6 +191,7 @@ public class MainMenu
     private MenuFlyoutSubItem CreateEditSubItem()
     {
         var focusService = ServiceLocator.AcquireService<IFocusService>();
+        var shortcutHintService = ServiceLocator.AcquireService<IShortcutHintService>();
         var activeTarget = focusService.EditTarget;
 
         var editSubItem = new MenuFlyoutSubItem
@@ -206,7 +207,10 @@ public class MainMenu
             var editItem = new MenuFlyoutItem
             {
                 Text = _stringLocalizer.GetString(labelKey),
-                IsEnabled = isEnabled
+                IsEnabled = isEnabled,
+
+                // Display only. This text creates no key binding.
+                KeyboardAcceleratorTextOverride = shortcutHintService.GetText(intent)
             };
             editItem.Click += (sender, e) => PerformEdit(intent);
 

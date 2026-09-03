@@ -14,6 +14,7 @@ public class DeleteMenuOption : IMenuOption<ExplorerMenuContext>
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IShortcutHintService _shortcutHintService;
 
     public int Priority => 4;
     public string GroupId => nameof(ExplorerMenuGroup.EditActions);
@@ -21,18 +22,21 @@ public class DeleteMenuOption : IMenuOption<ExplorerMenuContext>
     public DeleteMenuOption(
         IStringLocalizer stringLocalizer,
         ICommandService commandService,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        IShortcutHintService shortcutHintService)
     {
         _stringLocalizer = stringLocalizer;
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
+        _shortcutHintService = shortcutHintService;
     }
 
     public MenuItemDisplayInfo GetDisplayInfo(ExplorerMenuContext context)
     {
         return new MenuItemDisplayInfo(
             _stringLocalizer.GetString("ResourceTree_Delete"),
-            Icon: IconSymbol.Delete);
+            Icon: IconSymbol.Delete,
+            ShortcutHint: _shortcutHintService.GetText(EditIntent.Delete));
     }
 
     public MenuItemState GetState(ExplorerMenuContext context)

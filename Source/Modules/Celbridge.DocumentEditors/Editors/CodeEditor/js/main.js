@@ -20,6 +20,7 @@ let previewPipeline = null;
 require.config({ paths: { 'vs': './min/vs' } });
 require(['vs/editor/editor.main'], () => {
     routeClipboardCommandsThroughHost();
+    declareClipboardShortcuts();
     initialize();
 });
 
@@ -40,6 +41,27 @@ function routeClipboardCommandsThroughHost() {
             });
         });
     }
+}
+
+// A context key nothing ever defines, so a rule guarded by it never fires.
+const displayOnlyShortcut = 'celbridgeShortcutHint';
+
+// Monaco leaves the clipboard verbs unbound in a browser build, so its context menu lists Cut, Copy and
+// Paste with no chord beside them. The menu draws a chord from a command's registered keybinding without
+// evaluating the keybinding's guard, so these rules label the menu without binding the keystroke.
+function declareClipboardShortcuts() {
+    const chords = {
+        'editor.action.clipboardCutAction': monaco.KeyCode.KeyX,
+        'editor.action.clipboardCopyAction': monaco.KeyCode.KeyC,
+        'editor.action.clipboardPasteAction': monaco.KeyCode.KeyV
+    };
+
+    monaco.editor.addKeybindingRules(
+        Object.entries(chords).map(([command, keyCode]) => ({
+            command,
+            keybinding: monaco.KeyMod.CtrlCmd | keyCode,
+            when: displayOnlyShortcut
+        })));
 }
 
 function parseOptions() {

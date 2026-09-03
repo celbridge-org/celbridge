@@ -5,7 +5,7 @@ namespace Celbridge.ContextMenu;
 /// <summary>
 /// Display information for a menu option.
 /// </summary>
-public record MenuItemDisplayInfo(string LocalizedText, IconSymbol? Icon = null);
+public record MenuItemDisplayInfo(string LocalizedText, IconSymbol? Icon = null, string? ShortcutHint = null);
 
 /// <summary>
 /// State information for a menu option.

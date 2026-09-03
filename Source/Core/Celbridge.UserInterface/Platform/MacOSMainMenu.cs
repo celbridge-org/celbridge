@@ -39,6 +39,10 @@ internal static class MacOSMainMenu
     private const long TagThemeLight = 24;
     private const long TagThemeDark = 25;
 
+    // Edit verb items are generated from the shortcut table, so their tags start above the fixed tags and
+    // index into it.
+    internal const long TagEditVerbBase = 100;
+
     // Recent project items are generated on demand, so their tags start above the fixed tags and index into
     // _recentProjectPaths, which the Open Recent submenu provider rebuilds each time the menu opens.
     private const long TagRecentProjectBase = 1000;
@@ -165,15 +169,17 @@ internal static class MacOSMainMenu
         return MacOSMenuInterop.Install(menus, OnCommand, QueryState);
     }
 
-    // The Uno panels are painted on the Skia canvas and are not AppKit responders, so these items are
-    // disabled while one of them holds focus.
+    // Uno's panels are painted on the Skia canvas and are not AppKit responders, so a plain Selector item
+    // would never reach them.
     private static IReadOnlyList<MacMenuItem> BuildEditMenuItems(Func<string, string> text)
     {
         var items = new List<MacMenuItem>();
 
         int? previousGroup = null;
-        foreach (var shortcut in MacOSEditShortcuts.All)
+        for (var index = 0; index < MacOSEditShortcuts.All.Count; index++)
         {
+            var shortcut = MacOSEditShortcuts.All[index];
+
             if (previousGroup is not null
                 && shortcut.Group != previousGroup)
             {
@@ -185,8 +191,9 @@ internal static class MacOSMainMenu
                 ? MacKeyModifier.Command | MacKeyModifier.Shift
                 : MacKeyModifier.Command;
 
-            items.Add(MacMenuItem.Selector(
+            items.Add(MacMenuItem.RoutedCommand(
                 text(shortcut.LabelKey),
+                TagEditVerbBase + index,
                 shortcut.SelectorName,
                 shortcut.Character.ToString(),
                 modifiers));
@@ -262,6 +269,12 @@ internal static class MacOSMainMenu
             return MacMenuItemState.Disabled;
         }
 
+        var editShortcut = ResolveEditShortcut(tag);
+        if (editShortcut is not null)
+        {
+            return EditVerbState(editShortcut.Intent);
+        }
+
         // Reload and Close act on the open project, so they are enabled only while a workspace is loaded.
         // Every other project command is always available. Mirrors the hamburger menu's gating.
         switch (tag)
@@ -314,6 +327,49 @@ internal static class MacOSMainMenu
         }
     }
 
+    // The shortcut a generated edit verb item stands for, or null for any other tag.
+    internal static MacOSEditShortcut? ResolveEditShortcut(long tag)
+    {
+        var index = tag - TagEditVerbBase;
+
+        if (index < 0
+            || index >= MacOSEditShortcuts.All.Count)
+        {
+            return null;
+        }
+
+        return MacOSEditShortcuts.All[(int)index];
+    }
+
+    private static MacMenuItemState EditVerbState(EditIntent intent)
+    {
+        return MacOSEditCommands.Resolve(intent, EditVerbFocusService()) switch
+        {
+            EditRouting.Surface => MacMenuItemState.Enabled,
+            EditRouting.Unavailable => MacMenuItemState.Disabled,
+            _ => MacMenuItemState.ResponderChain
+        };
+    }
+
+    private static void PerformEditVerb(MacOSEditShortcut shortcut)
+    {
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
+        var routing = MacOSEditCommands.Perform(shortcut.Intent, EditVerbFocusService(), commandService);
+        if (routing == EditRouting.ResponderChain)
+        {
+            MacOSMenuInterop.SendActionToResponderChain(shortcut.SelectorName);
+        }
+    }
+
+    // The focus service, or null while a native panel such as a file picker holds the keyboard.
+    private static IFocusService? EditVerbFocusService()
+    {
+        return MacOSWindowInterop.IsAppWindowKey()
+            ? ServiceLocator.AcquireService<IFocusService>()
+            : null;
+    }
+
     private static MacMenuItemState FindCommandState()
     {
         var canFind = ActiveDocumentFind.GetActiveFindableDocument()?.CanFind ?? false;
@@ -360,6 +416,13 @@ internal static class MacOSMainMenu
 
     private static void OnCommand(long tag)
     {
+        var editShortcut = ResolveEditShortcut(tag);
+        if (editShortcut is not null)
+        {
+            PerformEditVerb(editShortcut);
+            return;
+        }
+
         // The project commands run through the same view-model the hamburger menu uses, so the two menus
         // stay in lockstep. Resolved per invocation. The methods only dispatch commands or open dialogs.
         var viewModel = ServiceLocator.AcquireService<ApplicationMenuViewModel>();

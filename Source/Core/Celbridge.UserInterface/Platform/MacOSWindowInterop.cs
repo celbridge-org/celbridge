@@ -211,6 +211,48 @@ internal static class MacOSWindowInterop
     }
 
     /// <summary>
+    /// Whether the application window holds the keyboard. False while a native panel such as a file picker
+    /// runs in front of it, and false off macOS.
+    /// </summary>
+    public static bool IsAppWindowKey()
+    {
+        if (!OperatingSystem.IsMacOS())
+        {
+            return false;
+        }
+
+        var application = SendMessage(GetClass("NSApplication"), GetSelector("sharedApplication"));
+        if (application == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        var keyWindow = SendMessage(application, GetSelector("keyWindow"));
+        if (keyWindow == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        // A panel takes the keyboard without becoming the main window, so the two windows differ while one is
+        // up. AppKit can also leave mainWindow nil then.
+        var mainWindow = SendMessage(application, GetSelector("mainWindow"));
+        if (keyWindow == mainWindow)
+        {
+            return true;
+        }
+
+        // Live windows are KVO-swizzled subclasses of Uno's window class, so the class is matched rather
+        // than the pointer.
+        var windowClass = GetClass("UNOWindow");
+        if (windowClass == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        return SendMessageReturnBool(keyWindow, GetSelector("isKindOfClass:"), windowClass);
+    }
+
+    /// <summary>
     /// Returns the native NSWindow handle for the application window, or IntPtr.Zero when it cannot be
     /// resolved.
     /// </summary>

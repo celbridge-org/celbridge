@@ -213,17 +213,15 @@ internal static class MacOSKeyEventMonitor
     }
 
     // Acts on a Command chord while a hosted web surface holds focus. Uno's canvas is an NSTextInputClient,
-    // so its window reports every key handled and AppKit's key-equivalent phase never runs. A verb the
-    // focused surface can perform goes through the app's edit command, because the responder chain's
-    // selectAll: moves WebKit's selection without telling the editor. Everything else goes to the menubar.
-    // Returns whether the chord was acted on, in which case the key must not also reach the page.
+    // so its window reports every key handled and AppKit's key-equivalent phase never runs. Returns whether
+    // the chord was acted on, in which case the key must not also reach the page.
     private static bool TryHandleWebSurfaceCommandChord(IntPtr nsEvent, ulong keyCode, ulong modifierFlags)
     {
         var shortcutCharacter = ResolveShortcutCharacter(nsEvent, keyCode);
 
         var editIntent = ResolveEditIntent(shortcutCharacter, modifierFlags);
         if (editIntent is not null
-            && TryHandleEditIntent(editIntent.Value))
+            && MacOSEditCommands.Perform(editIntent.Value, _focusService, _commandService) != EditRouting.ResponderChain)
         {
             return true;
         }
@@ -237,27 +235,6 @@ internal static class MacOSKeyEventMonitor
         }
 
         return TryPerformMenuKeyEquivalent(nsEvent);
-    }
-
-    // Whether the focused surface answers for the verb: it can perform it, or it mediates the clipboard and
-    // so an unavailable clipboard verb is swallowed rather than falling through to the responder chain.
-    private static bool TryHandleEditIntent(EditIntent intent)
-    {
-        var editTarget = _focusService?.EditTarget;
-        if (editTarget is null)
-        {
-            return false;
-        }
-
-        if (editTarget.CanPerformEdit(intent))
-        {
-            _commandService?.Execute<IPerformEditCommand>(command => command.Intent = intent);
-
-            return true;
-        }
-
-        return editTarget.HostMediatedClipboard
-            && intent is EditIntent.Cut or EditIntent.Copy or EditIntent.Paste;
     }
 
     // The edit verb a Command chord names, or null for a chord naming none.
