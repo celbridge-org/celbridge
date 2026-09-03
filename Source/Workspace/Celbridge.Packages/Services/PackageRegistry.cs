@@ -1,5 +1,6 @@
 using Celbridge.Documents;
 using Celbridge.Logging;
+using Celbridge.Packages.Helpers;
 using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.UserInterface;

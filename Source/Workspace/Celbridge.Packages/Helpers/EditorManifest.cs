@@ -1,6 +1,6 @@
 using Tomlyn.Serialization;
 
-namespace Celbridge.Packages;
+namespace Celbridge.Packages.Helpers;
 
 /// <summary>
 /// The [editor] section of an editor manifest, naming the contribution and how it activates. Its

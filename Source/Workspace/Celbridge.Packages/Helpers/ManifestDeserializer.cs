@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Tomlyn;
 
-namespace Celbridge.Packages;
+namespace Celbridge.Packages.Helpers;
 
 /// <summary>
 /// Deserializes a manifest file into its typed model, reporting a TOML syntax or value error as a

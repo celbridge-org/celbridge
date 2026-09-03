@@ -1,6 +1,6 @@
 using Tomlyn.Serialization;
 
-namespace Celbridge.Packages;
+namespace Celbridge.Packages.Helpers;
 
 /// <summary>
 /// The [package] section of a package manifest, identifying the package.

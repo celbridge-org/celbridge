@@ -1,6 +1,6 @@
 using Celbridge.Utilities;
 
-namespace Celbridge.Packages;
+namespace Celbridge.Packages.Helpers;
 
 /// <summary>
 /// Stands in for the host catalog when a caller supplies none, so a manifest that claims catalog

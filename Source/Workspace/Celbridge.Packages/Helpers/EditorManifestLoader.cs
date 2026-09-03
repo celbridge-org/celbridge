@@ -4,7 +4,7 @@ using Celbridge.Utilities;
 using Celbridge.Workspace;
 using Tomlyn.Model;
 
-namespace Celbridge.Packages;
+namespace Celbridge.Packages.Helpers;
 
 /// <summary>
 /// Parses a single editor manifest (*.editor.toml) into an EditorContribution: the [editor] section,

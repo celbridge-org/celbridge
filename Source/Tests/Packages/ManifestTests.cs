@@ -1,4 +1,5 @@
 using Celbridge.Packages;
+using Celbridge.Packages.Helpers;
 using Celbridge.Tests.Architecture;
 using Celbridge.Workspace;
 
