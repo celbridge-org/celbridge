@@ -5,10 +5,7 @@ namespace Celbridge.UserInterface.Helpers;
 
 /// <summary>
 /// The display form of the chord that performs an edit verb, written the way the current platform writes
-/// it. Menu items show this beside their label so the shortcut is discoverable from the menu.
-///
-/// Display only. The chords themselves are resolved by EditKeyboard and handled by the focused surface,
-/// the macOS menu bar, and the key monitors, so a change to one belongs in both places.
+/// it. Menu items show this beside their label. It is display only and binds nothing.
 /// </summary>
 public static class EditShortcutHint
 {
@@ -23,7 +20,7 @@ public static class EditShortcutHint
         {
             EditIntent.Undo => Chord(usesCommandModifier, "Z"),
 
-            // Windows spells redo Ctrl+Y, the other heads take the cross-platform Shift chord.
+            // Windows spells redo Ctrl+Y, other platforms use the Shift chord.
             EditIntent.Redo => platformInfo.TreatsCtrlYAsRedo
                 ? "Ctrl+Y"
                 : Chord(usesCommandModifier, "Z", shift: true),
@@ -34,7 +31,7 @@ public static class EditShortcutHint
             EditIntent.SelectAll => Chord(usesCommandModifier, "A"),
             EditIntent.Duplicate => Chord(usesCommandModifier, "D"),
 
-            // Unmodified, and named for the key the platform's keyboard labels: Backspace on macOS.
+            // No modifier. macOS labels this key Backspace and shows the ⌫ glyph.
             EditIntent.Delete => platformInfo.TreatsBackspaceAsDeleteKey ? "⌫" : "Del",
 
             EditIntent.Rename => "F2",
@@ -42,7 +39,6 @@ public static class EditShortcutHint
         };
     }
 
-    // "⇧⌘Z" on macOS, "Ctrl+Shift+Z" elsewhere.
     private static string Chord(bool usesCommandModifier, string key, bool shift = false)
     {
         if (usesCommandModifier)

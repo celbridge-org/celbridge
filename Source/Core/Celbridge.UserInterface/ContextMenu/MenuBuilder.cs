@@ -105,7 +105,7 @@ public class MenuBuilder<TContext> : IMenuBuilder<TContext> where TContext : IMe
                 menuItem.Icon = new Icon { Symbol = iconSymbol };
             }
 
-            // A display-only hint. The chord is handled by the focused surface, not by this menu item.
+            // Display only. The focused surface handles the chord itself.
             if (item.DisplayInfo.ShortcutHint is string shortcutHint)
             {
                 menuItem.KeyboardAcceleratorTextOverride = shortcutHint;

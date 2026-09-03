@@ -213,16 +213,16 @@ internal static class MacOSKeyEventMonitor
     }
 
     // Acts on a Command chord while a hosted web surface holds focus. Uno's canvas is an NSTextInputClient,
-    // so its window reports every key handled and AppKit's key-equivalent phase never runs. An edit verb goes
-    // to MacOSEditCommands, the same router the Edit menu uses. Everything else goes to the menubar. Returns
-    // whether the chord was acted on, in which case the key must not also reach the page.
+    // so its window reports every key handled and AppKit's key-equivalent phase never runs. An edit verb is
+    // routed to the focused surface, everything else to the menubar. Returns whether the chord was acted on,
+    // in which case the key must not also reach the page.
     private static bool TryHandleWebSurfaceCommandChord(IntPtr nsEvent, ulong keyCode, ulong modifierFlags)
     {
         var shortcutCharacter = ResolveShortcutCharacter(nsEvent, keyCode);
 
         var editIntent = ResolveEditIntent(shortcutCharacter, modifierFlags);
         if (editIntent is not null
-            && MacOSEditCommands.TryPerform(editIntent.Value, _focusService, _commandService))
+            && MacOSEditCommands.Perform(editIntent.Value, _focusService, _commandService) != EditRouting.ResponderChain)
         {
             return true;
         }

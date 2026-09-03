@@ -15,22 +15,19 @@ internal enum EditRouting
 
     /// <summary>
     /// Nobody. The focused surface owns the verb but cannot perform it right now, so the responder chain
-    /// must not act on it either.
+    /// must not act on it.
     /// </summary>
     Unavailable,
 
     /// <summary>
-    /// The AppKit responder chain, because no surface answers for the verb.
+    /// The AppKit responder chain, because no focused surface handles the verb.
     /// </summary>
     ResponderChain
 }
 
 /// <summary>
 /// Routes a standard edit verb to the surface that owns it, so the Edit menu and the keyboard reach the same
-/// place. A surface that answers for the verb performs it through the app's edit command, because the
-/// responder chain's own cut: and selectAll: act on the native web view without telling the editor. A surface
-/// that does not answer (an external page, a rich text editor that keeps the platform clipboard) leaves the
-/// verb to the responder chain, whose native handling is what those surfaces need. macOS-only.
+/// place. A surface that does not handle the verb leaves it to the AppKit responder chain. macOS-only.
 /// </summary>
 internal static class MacOSEditCommands
 {
@@ -50,8 +47,8 @@ internal static class MacOSEditCommands
             return EditRouting.Surface;
         }
 
-        // A surface whose clipboard the host mediates has already reported that it cannot perform the verb,
-        // so the native handling would edit the page behind the editor's back.
+        // The host mediates this surface's clipboard, so AppKit's own cut: or paste: would change the page
+        // without telling the editor.
         return editTarget.HostMediatedClipboard
             && intent is EditIntent.Cut or EditIntent.Copy or EditIntent.Paste
             ? EditRouting.Unavailable
@@ -59,10 +56,9 @@ internal static class MacOSEditCommands
     }
 
     /// <summary>
-    /// Performs the verb on the focused surface when it answers for it. Returns whether the surface
-    /// answered, in which case the responder chain must not also see the verb.
+    /// Performs the verb on the focused surface when it owns it. Returns who the verb was routed to.
     /// </summary>
-    public static bool TryPerform(EditIntent intent, IFocusService? focusService, ICommandService? commandService)
+    public static EditRouting Perform(EditIntent intent, IFocusService? focusService, ICommandService? commandService)
     {
         var routing = Resolve(intent, focusService);
 
@@ -71,6 +67,6 @@ internal static class MacOSEditCommands
             commandService?.Execute<IPerformEditCommand>(command => command.Intent = intent);
         }
 
-        return routing != EditRouting.ResponderChain;
+        return routing;
     }
 }

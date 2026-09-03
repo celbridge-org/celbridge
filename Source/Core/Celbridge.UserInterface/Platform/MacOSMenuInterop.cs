@@ -6,10 +6,10 @@ namespace Celbridge.UserInterface.Platform;
 /// <summary>
 /// One item in a native macOS menu. A Command item dispatches back to managed code by Tag. A Selector item
 /// targets the AppKit responder chain by selector name (e.g. "copy:") and is auto-enabled only when some
-/// responder handles it. A RoutedCommand item is a Command that falls back to a Selector: managed code takes
-/// it when it answers for it, and otherwise the item behaves as the Selector item would. A Separator is a
-/// divider. A Submenu item opens a nested menu whose contents are rebuilt by SubmenuItemsProvider each time
-/// it is shown, so a changing list (e.g. recent projects) stays current.
+/// responder handles it. A RoutedCommand item is a Command with a Selector fallback: managed code takes it
+/// when it can, and otherwise the item behaves as the Selector item would. A Separator is a divider. A
+/// Submenu item opens a nested menu whose contents are rebuilt by SubmenuItemsProvider each time it is
+/// shown, so a changing list (e.g. recent projects) stays current.
 /// </summary>
 internal sealed record MacMenuItem
 {
@@ -70,8 +70,8 @@ internal sealed record MacMenuItemState(bool IsEnabled, bool IsChecked, bool Def
     public static readonly MacMenuItemState Disabled = new(false, false);
 
     /// <summary>
-    /// A RoutedCommand item whose state is AppKit's to decide, because the verb belongs to the responder
-    /// chain. Its fallback selector is validated there, as a Selector item's would be.
+    /// A RoutedCommand item whose state AppKit decides, because the verb belongs to the responder chain. Its
+    /// fallback selector is validated there, like a Selector item's.
     /// </summary>
     public static readonly MacMenuItemState ResponderChain = new(false, false, DefersToResponderChain: true);
 
@@ -100,9 +100,8 @@ internal sealed record MacAboutLink(string Label, string Url);
 /// <summary>
 /// Builds and installs a native AppKit menubar (NSMenu) behind Uno's macOS Skia head, which provides only a
 /// minimal default app menu. Command items dispatch back to managed code through a single callback keyed by
-/// the item's tag. Selector items ride the responder chain, and a RoutedCommand item does both: managed
-/// state and dispatch, falling back to its selector on the chain. macOS-only. Callers gate on
-/// OperatingSystem.IsMacOS() and must invoke on the main (UI) thread, where AppKit is safe.
+/// the item's tag. Selector items go to the responder chain, and a RoutedCommand item does both. macOS-only.
+/// Callers gate on OperatingSystem.IsMacOS() and must invoke on the main (UI) thread, where AppKit is safe.
 /// </summary>
 internal static class MacOSMenuInterop
 {
@@ -128,8 +127,8 @@ internal static class MacOSMenuInterop
     // hands the NSMenu back in menuNeedsUpdate:, so the pointer is the lookup key.
     private static readonly Dictionary<IntPtr, Func<IReadOnlyList<MacMenuItem>>> _dynamicSubmenuProviders = new();
 
-    // Each RoutedCommand item's tag mapped to the selector it falls back to, so a deferred item can be
-    // validated against the responder chain the way AppKit validates a Selector item.
+    // Each RoutedCommand item's tag mapped to the selector it falls back to, used to validate a deferred
+    // item against the responder chain.
     private static readonly Dictionary<long, string> _fallbackSelectors = new();
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
@@ -382,23 +381,22 @@ internal static class MacOSMenuInterop
     }
 
     /// <summary>
-    /// Sends the named selector down the AppKit responder chain, as choosing a Selector item would. Returns
-    /// whether a responder took it.
+    /// Sends the named selector down the AppKit responder chain.
     /// </summary>
-    public static bool SendActionToResponderChain(string selectorName)
+    public static void SendActionToResponderChain(string selectorName)
     {
         if (!OperatingSystem.IsMacOS())
         {
-            return false;
+            return;
         }
 
         var application = SendMessage(GetClass("NSApplication"), GetSelector("sharedApplication"));
         if (application == IntPtr.Zero)
         {
-            return false;
+            return;
         }
 
-        return SendActionMessage(
+        SendActionMessage(
             application,
             GetSelector("sendAction:to:from:"),
             GetSelector(selectorName),
@@ -406,9 +404,9 @@ internal static class MacOSMenuInterop
             IntPtr.Zero);
     }
 
-    // Validates a deferred RoutedCommand item the way AppKit validates a Selector item: find the responder
-    // that implements the action, then ask it. The item's own target is this object rather than that
-    // responder, so AppKit's automatic validation never runs for it.
+    // Validates a deferred RoutedCommand item by hand: find the responder that implements the action, then
+    // ask it. AppKit validates an item automatically only when it has no explicit target, and these items
+    // target this object.
     private static bool ValidateFallbackAction(long tag, IntPtr menuItem)
     {
         if (!_fallbackSelectors.TryGetValue(tag, out var selectorName))
@@ -442,7 +440,7 @@ internal static class MacOSMenuInterop
             return SendMessageReturnBool(target, validateMenuItem, menuItem);
         }
 
-        // A responder that implements the action but validates nothing takes it, which is AppKit's default.
+        // A responder that implements the action but validates nothing accepts it. That is AppKit's default.
         return true;
     }
 

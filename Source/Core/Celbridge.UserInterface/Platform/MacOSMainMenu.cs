@@ -169,9 +169,9 @@ internal static class MacOSMainMenu
         return MacOSMenuInterop.Install(menus, OnCommand, QueryState);
     }
 
-    // Each verb goes to the focused surface, which the Uno panels reach as well as the hosted editors: they
-    // are painted on the Skia canvas and are not AppKit responders, so a plain Selector item would leave
-    // them out. The selector each item carries serves the surfaces that answer for no verb of their own.
+    // Uno's panels are painted on the Skia canvas and are not AppKit responders, so a plain Selector item
+    // would never reach them. Each item routes its verb to the focused surface, falling back to its selector
+    // for surfaces that handle no verb of their own.
     private static IReadOnlyList<MacMenuItem> BuildEditMenuItems(Func<string, string> text)
     {
         var items = new List<MacMenuItem>();
@@ -340,7 +340,7 @@ internal static class MacOSMainMenu
 
     private static MacMenuItemState EditVerbState(EditIntent intent)
     {
-        return ResolveEditRouting(intent) switch
+        return MacOSEditCommands.Resolve(intent, EditVerbFocusService()) switch
         {
             EditRouting.Surface => MacMenuItemState.Enabled,
             EditRouting.Unavailable => MacMenuItemState.Disabled,
@@ -350,30 +350,23 @@ internal static class MacOSMainMenu
 
     private static void PerformEditVerb(MacOSEditShortcut shortcut)
     {
-        if (ResolveEditRouting(shortcut.Intent) == EditRouting.Surface)
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+
+        var routing = MacOSEditCommands.Perform(shortcut.Intent, EditVerbFocusService(), commandService);
+        if (routing == EditRouting.ResponderChain)
         {
-            var commandService = ServiceLocator.AcquireService<ICommandService>();
-            commandService.Execute<IPerformEditCommand>(command => command.Intent = shortcut.Intent);
-
-            return;
+            MacOSMenuInterop.SendActionToResponderChain(shortcut.SelectorName);
         }
-
-        MacOSMenuInterop.SendActionToResponderChain(shortcut.SelectorName);
     }
 
-    // The focused surface only owns the verb while the application window holds the keyboard. A native
-    // panel in front of it (a file picker) serves its own text fields from the responder chain, and the
-    // focus service still names the surface behind it.
-    private static EditRouting ResolveEditRouting(EditIntent intent)
+    // The focus service, or null while a native panel such as a file picker holds the keyboard. The focus
+    // service still names the surface behind the panel, but the panel's text fields belong to the responder
+    // chain.
+    private static IFocusService? EditVerbFocusService()
     {
-        if (!MacOSWindowInterop.IsAppWindowKey())
-        {
-            return EditRouting.ResponderChain;
-        }
-
-        var focusService = ServiceLocator.AcquireService<IFocusService>();
-
-        return MacOSEditCommands.Resolve(intent, focusService);
+        return MacOSWindowInterop.IsAppWindowKey()
+            ? ServiceLocator.AcquireService<IFocusService>()
+            : null;
     }
 
     private static MacMenuItemState FindCommandState()

@@ -43,8 +43,8 @@ public class MacOSEditCommandsTests
     [TestCase(EditIntent.Paste)]
     public void Resolve_ForAnUnavailableVerbOnAMediatedClipboard_GivesItToNobody(EditIntent intent)
     {
-        // The native cut: would edit the page behind the editor's back, so an unavailable verb stays
-        // unavailable rather than falling through.
+        // AppKit's own cut: would change the page without telling the editor, so an unavailable verb stays
+        // unavailable.
         var focusService = CreateFocusService(CreateEditTarget(hostMediatedClipboard: true));
 
         MacOSEditCommands.Resolve(intent, focusService).Should().Be(EditRouting.Unavailable);
@@ -55,8 +55,7 @@ public class MacOSEditCommandsTests
     [TestCase(EditIntent.Paste)]
     public void Resolve_ForAClipboardVerbOnAnUnmediatedSurface_GivesItToTheResponderChain(EditIntent intent)
     {
-        // A rich text editor keeps the platform clipboard so its formatting survives, which is the
-        // responder chain's native handling.
+        // A rich text editor needs the responder chain's native clipboard handling, which keeps formatting.
         var focusService = CreateFocusService(CreateEditTarget(hostMediatedClipboard: false));
 
         MacOSEditCommands.Resolve(intent, focusService).Should().Be(EditRouting.ResponderChain);
@@ -80,35 +79,38 @@ public class MacOSEditCommandsTests
     }
 
     [Test]
-    public void TryPerform_WhenTheSurfaceCanPerformTheVerb_ExecutesTheEditCommand()
+    public void Perform_WhenTheSurfaceCanPerformTheVerb_ExecutesTheEditCommand()
     {
         var focusService = CreateFocusService(CreateEditTarget(hostMediatedClipboard: true, EditIntent.SelectAll));
         var commandService = Substitute.For<ICommandService>();
 
-        MacOSEditCommands.TryPerform(EditIntent.SelectAll, focusService, commandService).Should().BeTrue();
+        MacOSEditCommands.Perform(EditIntent.SelectAll, focusService, commandService)
+            .Should().Be(EditRouting.Surface);
 
         commandService.ReceivedWithAnyArgs(1).Execute<IPerformEditCommand>();
     }
 
     [Test]
-    public void TryPerform_ForAnUnavailableVerbOnAMediatedClipboard_ClaimsItWithoutExecuting()
+    public void Perform_ForAnUnavailableVerbOnAMediatedClipboard_RunsNothing()
     {
         var focusService = CreateFocusService(CreateEditTarget(hostMediatedClipboard: true));
         var commandService = Substitute.For<ICommandService>();
 
-        // Claimed, so the responder chain never sees it, but there is nothing to run.
-        MacOSEditCommands.TryPerform(EditIntent.Cut, focusService, commandService).Should().BeTrue();
+        // The caller stops here, and no edit command runs.
+        MacOSEditCommands.Perform(EditIntent.Cut, focusService, commandService)
+            .Should().Be(EditRouting.Unavailable);
 
         commandService.DidNotReceiveWithAnyArgs().Execute<IPerformEditCommand>();
     }
 
     [Test]
-    public void TryPerform_ForAVerbTheResponderChainOwns_LeavesItUnclaimed()
+    public void Perform_ForAVerbTheResponderChainOwns_RunsNothing()
     {
         var focusService = CreateFocusService(CreateEditTarget(hostMediatedClipboard: false));
         var commandService = Substitute.For<ICommandService>();
 
-        MacOSEditCommands.TryPerform(EditIntent.Paste, focusService, commandService).Should().BeFalse();
+        MacOSEditCommands.Perform(EditIntent.Paste, focusService, commandService)
+            .Should().Be(EditRouting.ResponderChain);
 
         commandService.DidNotReceiveWithAnyArgs().Execute<IPerformEditCommand>();
     }

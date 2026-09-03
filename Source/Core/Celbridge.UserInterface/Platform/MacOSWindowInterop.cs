@@ -212,8 +212,7 @@ internal static class MacOSWindowInterop
 
     /// <summary>
     /// Whether the application window holds the keyboard, so one of its surfaces owns the standard edit
-    /// verbs. False while a native panel runs in front of it (a file picker, the About panel), whose own
-    /// text fields the responder chain serves. Returns false off macOS.
+    /// verbs. False while a native panel such as a file picker runs in front of it, and false off macOS.
     /// </summary>
     public static bool IsAppWindowKey()
     {
@@ -234,9 +233,16 @@ internal static class MacOSWindowInterop
             return false;
         }
 
-        // A native panel takes the keyboard without becoming the main window, which AppKit leaves naming
-        // the window behind it, so the two differ for exactly the case this rules out.
-        return keyWindow == GetMainWindow();
+        // AppKit can leave mainWindow nil while a panel is up, so the key window is identified by class.
+        var windowClass = GetClass("UNOWindow");
+        if (windowClass == IntPtr.Zero)
+        {
+            // Without Uno's window class a panel cannot be told apart, so assume the app holds the keyboard.
+            return true;
+        }
+
+        // Live windows are KVO-swizzled subclasses of that class.
+        return SendMessageReturnBool(keyWindow, GetSelector("isKindOfClass:"), windowClass);
     }
 
     /// <summary>

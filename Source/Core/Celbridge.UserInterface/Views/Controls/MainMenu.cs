@@ -211,7 +211,7 @@ public class MainMenu
                 IsEnabled = isEnabled
             };
 
-            // A display-only hint. The chord reaches the focused surface, not this menu item.
+            // Display only. The focused surface handles the chord itself.
             if (EditShortcutHint.For(intent, platformInfo) is string shortcutHint)
             {
                 editItem.KeyboardAcceleratorTextOverride = shortcutHint;

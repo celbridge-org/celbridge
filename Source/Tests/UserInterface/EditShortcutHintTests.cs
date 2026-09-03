@@ -72,8 +72,7 @@ public class EditShortcutHintTests
     [Test]
     public void For_EveryEditVerb_NamesAChord()
     {
-        // A verb with no hint would appear in a menu with a blank shortcut column, so every verb the app
-        // offers has to name one.
+        // A verb with no hint shows a blank shortcut column in the menu.
         foreach (var intent in Enum.GetValues<EditIntent>())
         {
             EditShortcutHint.For(intent, MacOS).Should().NotBeNullOrWhiteSpace();
@@ -84,8 +83,7 @@ public class EditShortcutHintTests
     [Test]
     public void For_OnMacOS_MatchesTheChordsTheMenuBarHandles()
     {
-        // The hint is display only, so it is worth nothing unless it names the chord the macOS menu bar
-        // actually carries for that verb.
+        // The hint is display only, so it is useful only if it matches the chord the menu bar carries.
         foreach (var shortcut in MacOSEditShortcuts.All)
         {
             var expected = (shortcut.Shift ? "⇧⌘" : "⌘") + char.ToUpperInvariant(shortcut.Character);
