@@ -36,6 +36,18 @@ public sealed partial class DocumentSectionView : UserControl
     private readonly WheelGestureAxisTracker _wheelGestureAxisTracker;
     private Storyboard? _perimeterStoryboard;
 
+    // The gap the active document indicator leaves between itself and the tab below it. What the tab's own
+    // gap leaves over goes above the bar.
+    private const double ActiveDocumentIndicatorGapToTab = 3;
+
+    // How far inside its tab each end of the active document indicator stops. The two differ deliberately:
+    // the trailing end needs more to clear the gutter beside the last tab in the strip.
+    private const double ActiveDocumentIndicatorLeadingInset = 2;
+    private const double ActiveDocumentIndicatorTrailingInset = 6;
+
+    // The distance below which a scroll would move the strip by less than a pixel.
+    private const double RevealAlignmentTolerance = 0.5;
+
     // The tab list template's two overflow arrows, named by their containers because that is what carries
     // the width each arrow costs the strip.
     private static readonly string[] TabStripScrollButtonContainerNames =
@@ -114,11 +126,17 @@ public sealed partial class DocumentSectionView : UserControl
         RootGrid.AddHandler(PointerPressedEvent, _documentPointerPressedHandler, handledEventsToo: true);
 
         TabView.Loaded += OnTabViewLoaded;
+        TabView.SelectionChanged += OnTabViewSelectionChanged;
 
         // A narrower strip moves the scroll indicator and can change whether it is needed at all. It also
         // leaves the selected tab clipped off-screen, so a window resize or a change in the number of
         // sections has to re-scroll it into view.
         TabView.SizeChanged += OnTabViewSizeChanged;
+
+        // The toolbars in these slots share the band with the tab list, so their width decides where the tabs
+        // start and the overlays drawn over the tabs move with them.
+        HeaderPresenter.SizeChanged += OnTabStripPresenterSizeChanged;
+        FooterPresenter.SizeChanged += OnTabStripPresenterSizeChanged;
     }
 
     // The web surfaces report a click anywhere over them, while managed focus only moves for a press that
@@ -241,7 +259,7 @@ public sealed partial class DocumentSectionView : UserControl
 
         // The strip is still mid-arrange while its size change is raised, so its leading edge only settles on
         // the following cycle.
-        _ = DispatcherQueue.TryEnqueue(UpdateTabStripScrollIndicator);
+        _ = DispatcherQueue.TryEnqueue(UpdateTabStripOverlays);
     }
 
     /// <summary>
@@ -562,78 +580,100 @@ public sealed partial class DocumentSectionView : UserControl
         // the layout pass runs, so measuring synchronously here would read stale bounds.
         DispatcherQueue.TryEnqueue(() =>
         {
+            if (_isShuttingDown)
+            {
+                return;
+            }
+
             var tabListView = VisualTree.FindDescendant<ListViewBase>(TabView);
-            if (tabListView is null)
+            var scrollViewer = GetTabStripScrollViewer();
+            if (tabListView is null ||
+                scrollViewer is null)
             {
                 return;
             }
 
-            var scrollViewer = VisualTree.FindDescendant<ScrollViewer>(tabListView);
-            if (scrollViewer is null)
-            {
-                return;
-            }
-
-            // Measure before disturbing the strip. A tab the user clicked is arranged already and is
-            // usually in view, and the realization pass below moves the offset whether or not there was
-            // anything to reveal, which lands the strip back near its first tab.
-            var container = tabListView.ContainerFromItem(tab) as FrameworkElement;
-            if (container is not null &&
-                container.ActualWidth > 0 &&
-                GetRevealOffset(container, scrollViewer) is null)
-            {
-                return;
-            }
-
-            // Realize the container for an off-screen (virtualized) tab and force the strip to lay out, so
-            // the measurements below reflect the settled geometry rather than a transient resize state.
-            tabListView.ScrollIntoView(tab, ScrollIntoViewAlignment.Default);
+            // Settle the strip before measuring it, so the offset and the bounds read below belong to the
+            // same arrangement.
             tabListView.UpdateLayout();
 
-            container = tabListView.ContainerFromItem(tab) as FrameworkElement;
-            if (container is null ||
-                container.ActualWidth == 0)
+            if (tabListView.ContainerFromItem(tab) is FrameworkElement container &&
+                container.ActualWidth > 0)
             {
-                // Uno can realize a tab many positions off-screen without arranging it (zero bounds). Its
-                // ScrollIntoView above is the best available fallback; driving the scroll from zero geometry
-                // would only push the strip to the wrong place.
+                ScrollToRevealTab(container, scrollViewer);
+
                 return;
             }
 
-            if (GetRevealOffset(container, scrollViewer) is not double targetOffset)
-            {
-                return;
-            }
+            // A virtualized tab has no bounds to measure, and the strip's own reveal is the only thing that
+            // will realize it. Where it lands is then corrected on the following cycle, once it has settled.
+            tabListView.ScrollIntoView(tab, ScrollIntoViewAlignment.Default);
 
-            double clampedOffset = Math.Clamp(targetOffset, 0, scrollViewer.ScrollableWidth);
-            scrollViewer.ChangeView(clampedOffset, null, null, disableAnimation: true);
+            _ = DispatcherQueue.TryEnqueue(() =>
+            {
+                if (_isShuttingDown)
+                {
+                    return;
+                }
+
+                if (tabListView.ContainerFromItem(tab) is FrameworkElement realized &&
+                    realized.ActualWidth > 0)
+                {
+                    ScrollToRevealTab(realized, scrollViewer);
+                }
+            });
         });
     }
 
     /// <summary>
-    /// The scroll offset that brings a tab container fully into the strip's viewport, or null when the tab is
-    /// already fully visible. A tab whose left edge sits before the viewport is clipped off the leading edge,
-    /// and one whose right edge sits past the viewport width is clipped off the trailing edge. Revealing by
-    /// the minimum that clears the offending edge keeps the rest of the strip where the user left it.
+    /// Scrolls the strip by the least it takes to bring a tab fully into view, and leaves the strip alone
+    /// while the tab is already there. A tab whose leading edge sits before the viewport is clipped off that
+    /// edge, and one whose trailing edge sits past the viewport width is clipped off the other, so revealing
+    /// by the minimum that clears the offending edge keeps the rest of the strip where the user left it.
     /// </summary>
-    private static double? GetRevealOffset(FrameworkElement container, ScrollViewer scrollViewer)
+    private static void ScrollToRevealTab(FrameworkElement container, ScrollViewer scrollViewer)
     {
+        double viewportWidth = scrollViewer.ViewportWidth;
+        if (viewportWidth <= 0)
+        {
+            // The strip has not been arranged, so there is no viewport to measure a tab against.
+            return;
+        }
+
         double tabViewportX = TabViewportLeft(container, scrollViewer);
         double tabWidth = container.ActualWidth;
-        double viewportWidth = scrollViewer.ViewportWidth;
         double currentOffset = scrollViewer.HorizontalOffset;
 
-        if (tabViewportX < 0)
+        double targetOffset;
+        if (tabWidth >= viewportWidth)
         {
-            return currentOffset + tabViewportX;
+            // A tab too wide for the strip cannot be brought fully into view, so its leading edge is the one
+            // to show. The name starts there, while the trailing edge carries only the close button.
+            targetOffset = currentOffset + tabViewportX;
+        }
+        else if (tabViewportX < 0)
+        {
+            targetOffset = currentOffset + tabViewportX;
+        }
+        else if (tabViewportX + tabWidth > viewportWidth)
+        {
+            targetOffset = currentOffset + (tabViewportX + tabWidth - viewportWidth);
+        }
+        else
+        {
+            return;
         }
 
-        if (tabViewportX + tabWidth > viewportWidth)
+        double clampedOffset = Math.Clamp(targetOffset, 0, scrollViewer.ScrollableWidth);
+
+        // Transformed coordinates carry a fraction, so a tab already sitting where it is wanted still measures
+        // a hair off. Scrolling by less than a pixel would move nothing.
+        if (Math.Abs(clampedOffset - currentOffset) < RevealAlignmentTolerance)
         {
-            return currentOffset + (tabViewportX + tabWidth - viewportWidth);
+            return;
         }
 
-        return null;
+        scrollViewer.ChangeView(clampedOffset, null, null, disableAnimation: true);
     }
 
     /// <summary>
@@ -783,7 +823,7 @@ public sealed partial class DocumentSectionView : UserControl
         _ = DispatcherQueue.TryEnqueue(() =>
         {
             AttachTabStripScrollHandlers();
-            UpdateTabStripScrollIndicator();
+            UpdateTabStripOverlays();
         });
     }
 
@@ -861,6 +901,32 @@ public sealed partial class DocumentSectionView : UserControl
 
         AttachTabStripScrollIndicator(scrollViewer);
         AttachTabStripWheelHandler(scrollViewer);
+
+        // The strip scrolls a tab into view whenever that tab takes focus. Revealing is driven from the
+        // selection, so that is turned off.
+        scrollViewer.BringIntoViewOnFocusChange = false;
+    }
+
+    private void OnTabViewSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_isShuttingDown)
+        {
+            return;
+        }
+
+        RevealSelectedTab();
+    }
+
+    private void OnTabStripPresenterSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (_isShuttingDown)
+        {
+            return;
+        }
+
+        // The strip is still mid-arrange while the size change is raised, so the tabs only settle on the
+        // following cycle.
+        _ = DispatcherQueue.TryEnqueue(UpdateTabStripOverlays);
     }
 
     private void AttachTabStripScrollIndicator(ScrollViewer scrollViewer)
@@ -874,7 +940,7 @@ public sealed partial class DocumentSectionView : UserControl
         ScrollIndicator.ScrollRequested += OnScrollIndicatorScrollRequested;
         _scrollIndicatorAttached = true;
 
-        UpdateTabStripScrollIndicator();
+        UpdateTabStripOverlays();
     }
 
     // UNO-BUG: the tab strip's ScrollViewer scrolls horizontal wheel input the wrong way on macOS.
@@ -904,13 +970,83 @@ public sealed partial class DocumentSectionView : UserControl
 
     private void OnTabStripViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
     {
-        UpdateTabStripScrollIndicator();
+        UpdateTabStripOverlays();
     }
 
     private void OnScrollIndicatorScrollRequested(double offset)
     {
         var scrollViewer = GetTabStripScrollViewer();
         scrollViewer?.ChangeView(offset, null, null, disableAnimation: true);
+    }
+
+    // Both overlays are placed from the strip's geometry, so both are refreshed together.
+    private void UpdateTabStripOverlays()
+    {
+        UpdateTabStripScrollIndicator();
+        UpdateActiveDocumentIndicator();
+    }
+
+    /// <summary>
+    /// Places the active document indicator over the tab holding the active document, and hides it when this
+    /// section has no such tab.
+    /// </summary>
+    public void UpdateActiveDocumentIndicator()
+    {
+        if (_isShuttingDown)
+        {
+            return;
+        }
+
+        DocumentTab? activeTab = null;
+        foreach (var tab in GetAllTabs())
+        {
+            if (tab.IsActiveDocument)
+            {
+                activeTab = tab;
+                break;
+            }
+        }
+
+        var scrollViewer = GetTabStripScrollViewer();
+        if (activeTab is null ||
+            activeTab.ActualWidth <= 0 ||
+            scrollViewer is null ||
+            scrollViewer.ActualWidth <= 0 ||
+            MeasureTabStripHeight() <= 0)
+        {
+            ActiveDocumentIndicator.Visibility = Visibility.Collapsed;
+
+            return;
+        }
+
+        var stripBounds = scrollViewer
+            .TransformToVisual(RootGrid)
+            .TransformBounds(new Rect(0, 0, scrollViewer.ActualWidth, scrollViewer.ActualHeight));
+
+        var tabBounds = activeTab
+            .TransformToVisual(RootGrid)
+            .TransformBounds(new Rect(0, 0, activeTab.ActualWidth, activeTab.ActualHeight));
+
+        // The indicator is drawn outside the strip, so the bar is clipped to the strip's own edges.
+        double left = Math.Max(tabBounds.Left + ActiveDocumentIndicatorLeadingInset, stripBounds.Left);
+        double right = Math.Min(tabBounds.Right - ActiveDocumentIndicatorTrailingInset, stripBounds.Right);
+        if (right - left < 1)
+        {
+            ActiveDocumentIndicator.Visibility = Visibility.Collapsed;
+
+            return;
+        }
+
+        double indicatorTop = stripBounds.Top
+            + DocumentTab.StripTopGap
+            - ActiveDocumentIndicator.Height
+            - ActiveDocumentIndicatorGapToTab;
+
+        ActiveDocumentIndicator.Visibility = Visibility.Visible;
+        ActiveDocumentIndicator.Width = right - left;
+        ActiveDocumentIndicator.Margin = new Thickness(left, indicatorTop, 0, 0);
+
+        FocusedDocumentIndicator.Visibility = activeTab.IsFocusedActiveDocument ? Visibility.Visible : Visibility.Collapsed;
     }
 
     /// <summary>
@@ -935,17 +1071,15 @@ public sealed partial class DocumentSectionView : UserControl
             return;
         }
 
-        // The band is pinned to the authored strip height and starts at the top of the section's content, so
-        // the indicator's place down the band is the same in every section. The pixel it keeps below itself
-        // clears the document underneath: on macOS that is a native web view drawn over managed content,
-        // which clips a bar flush with the band's bottom edge.
-        double indicatorTop = stripHeight - ScrollIndicator.Height - 1;
-
         // Where the tabs start across the band depends on the toolbar in the strip header, so the leading
         // edge is the one part of the placement that has to be measured.
         var stripBounds = scrollViewer
             .TransformToVisual(RootGrid)
             .TransformBounds(new Rect(0, 0, scrollViewer.ActualWidth, scrollViewer.ActualHeight));
+
+        // The pixel the bar keeps below itself clears the macOS web view, which clips a bar flush with the
+        // band's bottom edge.
+        double indicatorTop = stripBounds.Top + stripHeight - ScrollIndicator.Height - 1;
 
         ScrollIndicator.Width = stripBounds.Width;
         ScrollIndicator.Margin = new Thickness(stripBounds.Left, indicatorTop, 0, 0);

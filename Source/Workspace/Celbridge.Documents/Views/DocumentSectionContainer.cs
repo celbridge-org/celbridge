@@ -544,11 +544,18 @@ public sealed partial class DocumentSectionContainer
         {
             bool isActiveSection = sectionView.Section == _activeSection;
 
+            bool sectionChanged = false;
             foreach (var tab in sectionView.GetAllTabs())
             {
                 bool isActiveDocument = isActiveSection &&
                     tab.ViewModel.FileResource == _activeDocument;
-                tab.UpdateActiveDocumentState(isActiveDocument, _isPanelFocused);
+                sectionChanged |= tab.UpdateActiveDocumentState(isActiveDocument, _isPanelFocused);
+            }
+
+            // The section draws the indicator over whichever of its tabs is the active document.
+            if (sectionChanged)
+            {
+                sectionView.UpdateActiveDocumentIndicator();
             }
         }
     }

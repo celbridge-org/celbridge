@@ -8,24 +8,13 @@
     xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
     xmlns:services="using:Celbridge.UserInterface.Services"
     DataContext="{x:Bind ViewModel}"
+    VerticalContentAlignment="Stretch"
     DoubleTapped="DocumentTab_DoubleTapped"
     Tapped="DocumentTab_Tapped"
     DragStarting="DocumentTab_DragStarting">
 
     <muxc:TabViewItem.Resources>
         <services:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
-
-        <!-- The two selection indicator bars sit one over the other and have to line up exactly, so their
-             geometry is declared once here. The bottom margin stops short of the strip's bottom edge so the
-             scroll indicator can sit below it rather than across it while the strip overflows. -->
-        <Style x:Key="SelectionIndicatorStyle" TargetType="Border">
-            <Setter Property="Height" Value="3" />
-            <Setter Property="CornerRadius" Value="1.5" />
-            <Setter Property="HorizontalAlignment" Value="Stretch" />
-            <Setter Property="VerticalAlignment" Value="Bottom" />
-            <Setter Property="Margin" Value="0,0,-36,-1" />
-            <Setter Property="Visibility" Value="Collapsed" />
-        </Style>
     </muxc:TabViewItem.Resources>
 
     <muxc:TabViewItem.ContextFlyout>
@@ -56,17 +45,18 @@
     </muxc:TabViewItem.ContextFlyout>
 
     <muxc:TabViewItem.Header>
-        <Grid Margin="0,-4,0,2">
+        <Grid>
             <!-- Attention flash overlay, pulsed to the accent color by FlashAttention. Behind the label and not hit-testable. -->
             <Border x:Name="AttentionOverlay"
                     Background="{ThemeResource AccentBrush}"
                     CornerRadius="4"
                     Opacity="0"
                     IsHitTestVisible="False"
-                    Margin="0,0,-36,-4" />
+                    Margin="0,0,-36,0" />
 
             <!-- Tab content -->
-            <StackPanel Orientation="Horizontal" Margin="0,4,0,4">
+            <StackPanel Orientation="Horizontal"
+                        VerticalAlignment="Center">
                 <!-- Ordinary document tabs show a file-type icon. A tab a utility editor opens shows that
                      editor's manifest glyph in the tab's own text colour. Every file-type icon is held
                      inside a luminance band that excludes that colour, so an untinted glyph is what marks
@@ -85,22 +75,20 @@
                                Margin="0"
                                Visibility="{x:Bind ViewModel.IsUtilityEditor, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
 
-                <TextBlock Text="{x:Bind ViewModel.DocumentName, Mode=OneWay}"
-                           Margin="4,0,0,0"
-                           ToolTipService.ToolTip="{x:Bind ViewModel.TabTooltip, Mode=OneWay}"
-                           ToolTipService.Placement="Bottom" />
-            </StackPanel>
-            
-            <!-- Selection indicator. The neutral bar marks the active document. The accent bar over it marks
-                 the documents panel holding the keyboard, so the bar reads as accent only while the document
-                 shortcuts are live. -->
-            <Border x:Name="SelectionIndicator"
-                    Style="{StaticResource SelectionIndicatorStyle}"
-                    Background="{ThemeResource ButtonActiveBackgroundBrush}" />
+                <!-- The hidden copy holds the label at the width it takes when the tab is selected and drawn
+                     at the heavier weight, so selecting a tab does not widen it. -->
+                <Grid Margin="4,0,0,0">
+                    <TextBlock Text="{x:Bind ViewModel.DocumentName, Mode=OneWay}"
+                               FontWeight="SemiBold"
+                               Opacity="0"
+                               IsHitTestVisible="False"
+                               AutomationProperties.AccessibilityView="Raw" />
 
-            <Border x:Name="FocusedSelectionIndicator"
-                    Style="{StaticResource SelectionIndicatorStyle}"
-                    Background="{ThemeResource AccentContrastBrush}" />
+                    <TextBlock Text="{x:Bind ViewModel.DocumentName, Mode=OneWay}"
+                               ToolTipService.ToolTip="{x:Bind ViewModel.TabTooltip, Mode=OneWay}"
+                               ToolTipService.Placement="Bottom" />
+                </Grid>
+            </StackPanel>
         </Grid>
     </muxc:TabViewItem.Header>
 
