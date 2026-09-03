@@ -326,13 +326,6 @@ public class DocumentsService : IDocumentsService, IDisposable
         var writableState = await operationService.GetWritableStateAsync(fileResource);
         documentView.SetWritableState(writableState);
 
-        var loadResult = await documentView.LoadContent();
-        if (loadResult.IsFailure)
-        {
-            return Result.Fail($"Failed to load content for document view: '{fileResource}'")
-                .WithErrors(loadResult);
-        }
-
         // IDocumentView is an interface, so the implicit T -> Result<T> conversion does not apply.
         return documentView.OkResult();
     }
