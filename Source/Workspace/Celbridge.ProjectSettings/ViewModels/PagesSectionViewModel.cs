@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
 using Celbridge.Packages;
-using Celbridge.Projects;
 using Celbridge.Resources;
+using Celbridge.Utilities;
 
 namespace Celbridge.ProjectSettings.ViewModels;
 

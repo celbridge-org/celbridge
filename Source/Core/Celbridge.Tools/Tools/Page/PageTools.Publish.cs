@@ -2,8 +2,6 @@ using System.IO.Compression;
 using System.Text.Json;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
-using Tomlyn;
-using Tomlyn.Model;
 using MemoryStream = System.IO.MemoryStream;
 using Path = System.IO.Path;
 
@@ -202,37 +200,15 @@ public partial class PageTools
         {
             return Result.Fail($"Failed to read page manifest: {readResult.FirstErrorMessage}");
         }
-        var tomlContent = readResult.Value;
 
-        TomlTable? tomlTable;
-        try
+        var parseResult = PageManifestParser.ParsePublishPath(readResult.Value);
+        if (parseResult.IsFailure)
         {
-            tomlTable = TomlSerializer.Deserialize<TomlTable>(tomlContent);
-        }
-        catch (TomlException exception)
-        {
-            return Result.Fail($"Invalid TOML in page manifest: {exception.Message}");
+            return Result<string>.Fail($"{parseResult.FirstErrorMessage}: {manifestPath}")
+                .WithErrors(parseResult);
         }
 
-        if (tomlTable is null)
-        {
-            return Result.Fail($"Page manifest '{PageConstants.ManifestFileName}' is empty or not a valid TOML table.");
-        }
-
-        if (!tomlTable.TryGetValue("publish", out var publishSection)
-            || publishSection is not TomlTable publishTable)
-        {
-            return Result.Fail($"Page manifest is missing the required [publish] section in '{PageConstants.ManifestFileName}'.");
-        }
-
-        if (!publishTable.TryGetValue("path", out var pathValue)
-            || pathValue is not string pathString
-            || string.IsNullOrWhiteSpace(pathString))
-        {
-            return Result.Fail($"Page manifest is missing a required 'path' field in the [publish] section.");
-        }
-
-        return pathString.Trim();
+        return parseResult;
     }
 
     // Zips the whole folder, including pages.toml. The current server reads the

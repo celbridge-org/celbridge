@@ -1,6 +1,4 @@
-using Celbridge.Projects;
-
-namespace Celbridge.Tests.Projects;
+namespace Celbridge.Tests.Utilities;
 
 /// <summary>
 /// Unit tests for PageManifestParser, which reads the [publish].path from a page's pages.toml manifest.
