@@ -34,7 +34,6 @@ public static class ServiceConfiguration
         services.AddSingleton<IHostWindowFocus, HostWindowFocus>();
         services.AddSingleton<IFocusReconciler, FocusReconciler>();
         services.AddSingleton<IWorkspaceWrapper, WorkspaceWrapper>();
-        services.AddSingleton<IUndoService, UndoService>();
         services.AddSingleton<IKeyboardShortcutService, KeyboardShortcutService>();
         services.AddSingleton<IShortcutHintService, ShortcutHintService>();
         services.AddSingleton<ISpotlightService, SpotlightService>();

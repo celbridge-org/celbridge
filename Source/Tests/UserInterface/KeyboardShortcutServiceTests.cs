@@ -1,6 +1,5 @@
 using Celbridge.Messaging;
 using Celbridge.Messaging.Services;
-using Celbridge.Platform;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Services;
 using Windows.System;
@@ -15,7 +14,6 @@ namespace Celbridge.Tests.UserInterface;
 public class KeyboardShortcutServiceTests
 {
     private IMessengerService _messengerService = null!;
-    private IPlatformInfo _platformInfo = null!;
     private KeyboardShortcutService _shortcutService = null!;
     private object _recipient = null!;
 
@@ -23,8 +21,7 @@ public class KeyboardShortcutServiceTests
     public void Setup()
     {
         _messengerService = new MessengerService();
-        _platformInfo = Substitute.For<IPlatformInfo>();
-        _shortcutService = new KeyboardShortcutService(_messengerService, _platformInfo);
+        _shortcutService = new KeyboardShortcutService(_messengerService);
         _recipient = new object();
     }
 
@@ -59,48 +56,17 @@ public class KeyboardShortcutServiceTests
     }
 
     [Test]
-    public void CommandZ_RequestsUndo()
-    {
-        var undoRequested = false;
-        _messengerService.Register<UndoRequestedMessage>(_recipient, (r, m) => undoRequested = true);
-
-        var handled = _shortcutService.HandleShortcut(VirtualKey.Z, control: true, shift: false, alt: false);
-
-        handled.Should().BeTrue();
-        undoRequested.Should().BeTrue();
-    }
-
-    [Test]
     public void UnmodifiedKey_RequestsNothing()
     {
         // Every character typed into a hosted editor reaches the table as a managed key event, so an
         // unmodified key must never match a shortcut.
         var closeRequested = false;
-        var undoRequested = false;
         _messengerService.Register<CloseActiveDocumentRequestedMessage>(_recipient, (r, m) => closeRequested = true);
-        _messengerService.Register<UndoRequestedMessage>(_recipient, (r, m) => undoRequested = true);
 
         var closeHandled = _shortcutService.HandleShortcut(VirtualKey.W, control: false, shift: false, alt: false);
-        var undoHandled = _shortcutService.HandleShortcut(VirtualKey.Z, control: false, shift: false, alt: false);
 
         closeHandled.Should().BeFalse();
-        undoHandled.Should().BeFalse();
         closeRequested.Should().BeFalse();
-        undoRequested.Should().BeFalse();
-    }
-
-    [Test]
-    public void ControlY_RequestsRedoOnlyWhereTheHeadTreatsItAsRedo()
-    {
-        _platformInfo.TreatsCtrlYAsRedo.Returns(false);
-
-        var redoRequested = false;
-        _messengerService.Register<RedoRequestedMessage>(_recipient, (r, m) => redoRequested = true);
-
-        var handled = _shortcutService.HandleShortcut(VirtualKey.Y, control: true, shift: false, alt: false);
-
-        handled.Should().BeFalse();
-        redoRequested.Should().BeFalse();
     }
 
     [Test]

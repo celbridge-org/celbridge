@@ -85,8 +85,9 @@ public partial class MainPage : Page
         var focusServiceForKeyMonitor = ServiceLocator.AcquireService<IFocusService>();
         var webViewFocusRegistry = ServiceLocator.AcquireService<IWebViewFocusRegistry>();
         var commandService = ServiceLocator.AcquireService<ICommandService>();
+        var managedFocus = ServiceLocator.AcquireService<IManagedFocus>();
         MacOSKeyEventMonitor.Start(
-            focusServiceForKeyMonitor, webViewFocusRegistry, _messengerService, commandService, _logger);
+            focusServiceForKeyMonitor, managedFocus, webViewFocusRegistry, _messengerService, commandService, _logger);
 
         // Undo native first-responder resigns caused by managed-focus housekeeping, which would otherwise
         // deactivate the focused web surface (hidden caret, beeping keys). macOS-only. A no-op elsewhere.
@@ -118,7 +119,7 @@ public partial class MainPage : Page
         var rootContent = mainWindow.Content;
         Guard.IsNotNull(rootContent);
 
-        // Register with handledEventsToo so app shortcuts (undo / redo) are received even when the
+        // Register with handledEventsToo so the app shortcuts (close document) are received even when the
         // focused control (the Explorer tree, a document, or a toolbar) marks the key event handled before
         // it bubbles to the root. A plain KeyDown += handler is skipped for already-handled events.
         rootContent.AddHandler(
@@ -197,7 +198,7 @@ public partial class MainPage : Page
 
     private bool OnKeyDown(VirtualKey key)
     {
-        // The command modifier folds in Cmd on macOS, so Cmd+Z / Cmd+Shift+Z drive undo/redo there.
+        // The command modifier folds in Cmd on macOS.
         var control = EditKeyboard.IsCommandModifierDown();
         var shift = EditKeyboard.IsShiftDown();
         var alt = EditKeyboard.IsAltDown();

@@ -1,5 +1,6 @@
 using Celbridge.DataTransfer;
 using Celbridge.Explorer.Models;
+using Celbridge.Resources;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
@@ -57,6 +58,8 @@ public sealed partial class ResourceTree : IEditTarget
             EditIntent.Delete => ViewModel.GetSelectedResources().Count > 0,
             EditIntent.Paste => true,
             EditIntent.SelectAll => true,
+            EditIntent.Undo => _operationService.CanUndo,
+            EditIntent.Redo => _operationService.CanRedo,
             EditIntent.Duplicate => selectedItem is not null && !selectedItem.IsProjectFolder,
             EditIntent.Rename => selectedItem is not null && !selectedItem.IsProjectFolder,
             _ => false
@@ -97,6 +100,14 @@ public sealed partial class ResourceTree : IEditTarget
             case EditIntent.Rename:
                 HandleRename(selectedItem);
                 break;
+
+            case EditIntent.Undo:
+                _commandService.Execute<IUndoResourceCommand>();
+                break;
+
+            case EditIntent.Redo:
+                _commandService.Execute<IRedoResourceCommand>();
+                break;
         }
     }
 
@@ -106,7 +117,7 @@ public sealed partial class ResourceTree : IEditTarget
         return false;
     }
 
-    private static EditIntent? ResolveEditIntent(VirtualKey key)
+    private EditIntent? ResolveEditIntent(VirtualKey key)
     {
         // Delete is modifier-agnostic so the macOS native Cmd+Backspace shortcut deletes the selection
         // just as plain Backspace and Delete do.
@@ -125,9 +136,22 @@ public sealed partial class ResourceTree : IEditTarget
             return null;
         }
 
-        if (EditKeyboard.IsShiftDown())
+        var shift = EditKeyboard.IsShiftDown();
+
+        if (key == VirtualKey.Z)
+        {
+            return shift ? EditIntent.Redo : EditIntent.Undo;
+        }
+
+        if (shift)
         {
             return null;
+        }
+
+        if (key == VirtualKey.Y
+            && _platformInfo.TreatsCtrlYAsRedo)
+        {
+            return EditIntent.Redo;
         }
 
         return key switch

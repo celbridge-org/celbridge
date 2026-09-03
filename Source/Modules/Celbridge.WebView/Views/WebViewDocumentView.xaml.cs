@@ -523,6 +523,142 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
 
         ViewModel.NotifyNavigationCompleted(e.IsSuccess);
         UpdateNavigationState();
+
+        // Runs after the navigation state settles so the probe reads the address the page committed to,
+        // and only for the external-URL role, which owns the placeholder that reports a page that did not
+        // load.
+        if (e.IsSuccess
+            && Options.Role == WebViewDocumentRole.ExternalUrl)
+        {
+            _ = ProbeLoadedContentAsync();
+        }
+    }
+
+    // Reports the shape of the document the navigation actually produced. A load that delivers no body
+    // still reaches its completion as a success, so the document arrives committed, focusable and running
+    // its document-start scripts with nothing in it. The WebView has no signal for that, and the tab is
+    // left showing a blank rectangle with no way back.
+    private const string LoadedContentProbeScript = """
+        (function () {
+            var root = document.documentElement;
+            var entry = performance.getEntriesByType('navigation')[0];
+
+            return JSON.stringify({
+                readyState: document.readyState,
+                htmlLength: root ? root.outerHTML.length : 0,
+                headChildCount: document.head ? document.head.childElementCount : 0,
+                bodyChildCount: document.body ? document.body.childElementCount : 0,
+                encodedBodySize: entry ? entry.encodedBodySize : -1,
+                transferSize: entry ? entry.transferSize : -1,
+                redirectCount: entry ? entry.redirectCount : -1
+            });
+        })()
+        """;
+
+    // A document with no content of its own still serialises the html, head and body the parser implies,
+    // which is a little over 40 characters. Anything longer carries something the response put there.
+    private const int EmptyDocumentHtmlLength = 128;
+
+    private async Task ProbeLoadedContentAsync()
+    {
+        var coreWebView = _webView?.CoreWebView2;
+        if (coreWebView is null)
+        {
+            return;
+        }
+
+        // The blank page a document rests on between addresses is empty by design.
+        var probedUrl = ViewModel.CurrentUrl;
+        if (string.IsNullOrEmpty(probedUrl)
+            || probedUrl.StartsWith("about:", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        try
+        {
+            var result = await _webViewAdapter.EvalAsync(coreWebView, LoadedContentProbeScript);
+
+            // The probe reports on a completion that has already happened, so a navigation started while it
+            // was in flight owns the document now and this verdict is about a page that has been left.
+            if (ViewModel.IsNavigating
+                || !string.Equals(ViewModel.CurrentUrl, probedUrl, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            if (!TryReadEmptyDocumentProbe(result, out var probe))
+            {
+                return;
+            }
+
+            _logger.LogWarning(
+                "Navigation for {Resource} completed at {Url} but produced an empty document: {Probe}",
+                FileResource,
+                probedUrl,
+                probe);
+
+            // Reported as the failure it is, so the document shows the load-failed placeholder and its
+            // reload rather than a blank page the user cannot tell from a slow one.
+            ViewModel.NotifyNavigationCompleted(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Could not probe the content loaded by {Resource}", FileResource);
+        }
+    }
+
+    // True when the probe reports a document the response left empty, with the probe's own reading passed
+    // back for the log. A result that cannot be read is no verdict: the page keeps the success it was given.
+    private static bool TryReadEmptyDocumentProbe(string result, out string probe)
+    {
+        probe = string.Empty;
+
+        if (string.IsNullOrEmpty(result))
+        {
+            return false;
+        }
+
+        using var evaluated = JsonDocument.Parse(result);
+
+        // The evaluation hands back the JSON encoding of the script's value, so the JSON the script built
+        // arrives as a string on the heads that encode it and as the object itself on those that do not.
+        var payload = evaluated.RootElement.ValueKind == JsonValueKind.String
+            ? evaluated.RootElement.GetString() ?? string.Empty
+            : result;
+
+        using var document = JsonDocument.Parse(payload);
+        var root = document.RootElement;
+        if (root.ValueKind != JsonValueKind.Object)
+        {
+            return false;
+        }
+
+        if (!TryReadNumber(root, "htmlLength", out var htmlLength)
+            || !TryReadNumber(root, "headChildCount", out var headChildCount)
+            || !TryReadNumber(root, "bodyChildCount", out var bodyChildCount))
+        {
+            return false;
+        }
+
+        if (htmlLength > EmptyDocumentHtmlLength
+            || headChildCount > 0
+            || bodyChildCount > 0)
+        {
+            return false;
+        }
+
+        probe = payload;
+        return true;
+
+        static bool TryReadNumber(JsonElement element, string name, out int value)
+        {
+            value = 0;
+
+            return element.TryGetProperty(name, out var property)
+                && property.ValueKind == JsonValueKind.Number
+                && property.TryGetInt32(out value);
+        }
     }
 
     private void CoreWebView2_NavigationStarting(CoreWebView2 sender, CoreWebView2NavigationStartingEventArgs args)

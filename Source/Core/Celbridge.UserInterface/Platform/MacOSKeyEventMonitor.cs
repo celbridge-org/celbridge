@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Celbridge.Commands;
 using Celbridge.Logging;
+using Celbridge.UserInterface.Services;
 using Celbridge.WebHost;
 using Celbridge.Workspace;
 using static Celbridge.Utilities.Platform.ObjectiveCRuntime;
@@ -40,6 +41,7 @@ internal static class MacOSKeyEventMonitor
     private static IntPtr _monitor;
     private static IntPtr _monitorBlock;
     private static IFocusService? _focusService;
+    private static IManagedFocus? _managedFocus;
     private static IWebViewFocusRegistry? _webViewFocusRegistry;
     private static IMessengerService? _messengerService;
     private static ICommandService? _commandService;
@@ -47,6 +49,7 @@ internal static class MacOSKeyEventMonitor
 
     public static void Start(
         IFocusService focusService,
+        IManagedFocus managedFocus,
         IWebViewFocusRegistry webViewFocusRegistry,
         IMessengerService messengerService,
         ICommandService commandService,
@@ -64,6 +67,7 @@ internal static class MacOSKeyEventMonitor
 
         _started = true;
         _focusService = focusService;
+        _managedFocus = managedFocus;
         _webViewFocusRegistry = webViewFocusRegistry;
         _messengerService = messengerService;
         _commandService = commandService;
@@ -143,6 +147,24 @@ internal static class MacOSKeyEventMonitor
                 return IntPtr.Zero;
             }
 
+            // Uno's canvas reports a Command chord handled before any managed key event is raised, so an
+            // edit verb for a managed panel such as the Explorer is delivered to its edit target from here.
+            if (isCommand
+                && _webViewFocusRegistry?.HasFocusedSurface != true
+                && TryPerformEditChord(nsEvent, keyCode, modifierFlags))
+            {
+                return IntPtr.Zero;
+            }
+
+            // Uno's canvas also consumes Command+Z and Command+Shift+Z outright, so a focused managed text
+            // control never sees them although it handles the other editing chords itself.
+            if (isCommand
+                && _webViewFocusRegistry?.HasFocusedSurface != true
+                && TryPerformTextControlChord(nsEvent, keyCode, modifierFlags))
+            {
+                return IntPtr.Zero;
+            }
+
             // Only act while a document is focused. Tab still navigates the managed panels (Explorer, Search,
             // and so on) everywhere else, the close shortcuts must not close a hidden document from another
             // panel, and Command+F falls through to the Find menu item, which drives the same document.
@@ -217,14 +239,12 @@ internal static class MacOSKeyEventMonitor
     // the chord was acted on, in which case the key must not also reach the page.
     private static bool TryHandleWebSurfaceCommandChord(IntPtr nsEvent, ulong keyCode, ulong modifierFlags)
     {
-        var shortcutCharacter = ResolveShortcutCharacter(nsEvent, keyCode);
-
-        var editIntent = ResolveEditIntent(shortcutCharacter, modifierFlags);
-        if (editIntent is not null
-            && MacOSEditCommands.Perform(editIntent.Value, _focusService, _commandService) != EditRouting.ResponderChain)
+        if (TryPerformEditChord(nsEvent, keyCode, modifierFlags))
         {
             return true;
         }
+
+        var shortcutCharacter = ResolveShortcutCharacter(nsEvent, keyCode);
 
         // The close and find chords are handled below rather than by the menubar, so they are not offered
         // to it: one owner each, whether or not a menu item happens to carry the same key equivalent.
@@ -235,6 +255,35 @@ internal static class MacOSKeyEventMonitor
         }
 
         return TryPerformMenuKeyEquivalent(nsEvent);
+    }
+
+    // Routes the edit verb a chord names to the focused surface's edit target. Returns whether the surface
+    // answered for it, in which case the key must not also reach the page or the menubar.
+    private static bool TryPerformEditChord(IntPtr nsEvent, ulong keyCode, ulong modifierFlags)
+    {
+        var shortcutCharacter = ResolveShortcutCharacter(nsEvent, keyCode);
+
+        var editIntent = ResolveEditIntent(shortcutCharacter, modifierFlags);
+        if (editIntent is null)
+        {
+            return false;
+        }
+
+        return MacOSEditCommands.Perform(editIntent.Value, _focusService, _commandService) != EditRouting.ResponderChain;
+    }
+
+    // Hands undo or redo to the managed text control holding focus. Returns whether it performed the verb.
+    private static bool TryPerformTextControlChord(IntPtr nsEvent, ulong keyCode, ulong modifierFlags)
+    {
+        var shortcutCharacter = ResolveShortcutCharacter(nsEvent, keyCode);
+
+        var editIntent = ResolveEditIntent(shortcutCharacter, modifierFlags);
+        if (editIntent is not (EditIntent.Undo or EditIntent.Redo))
+        {
+            return false;
+        }
+
+        return _managedFocus?.TryPerformTextEditing(editIntent.Value) == true;
     }
 
     // The edit verb a Command chord names, or null for a chord naming none.
