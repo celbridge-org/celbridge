@@ -764,6 +764,63 @@ Open with default application instead?</value>
   <data name="DocumentTab_CloseAllShortcutControl" xml:space="preserve">
     <value>Ctrl+Shift+W</value>
   </data>
+  <data name="Shortcut_UndoCommand" xml:space="preserve">
+    <value>⌘Z</value>
+  </data>
+  <data name="Shortcut_UndoControl" xml:space="preserve">
+    <value>Ctrl+Z</value>
+  </data>
+  <data name="Shortcut_RedoCommand" xml:space="preserve">
+    <value>⇧⌘Z</value>
+  </data>
+  <data name="Shortcut_RedoControl" xml:space="preserve">
+    <value>Ctrl+Shift+Z</value>
+  </data>
+  <data name="Shortcut_RedoCtrlY" xml:space="preserve">
+    <value>Ctrl+Y</value>
+  </data>
+  <data name="Shortcut_CutCommand" xml:space="preserve">
+    <value>⌘X</value>
+  </data>
+  <data name="Shortcut_CutControl" xml:space="preserve">
+    <value>Ctrl+X</value>
+  </data>
+  <data name="Shortcut_CopyCommand" xml:space="preserve">
+    <value>⌘C</value>
+  </data>
+  <data name="Shortcut_CopyControl" xml:space="preserve">
+    <value>Ctrl+C</value>
+  </data>
+  <data name="Shortcut_PasteCommand" xml:space="preserve">
+    <value>⌘V</value>
+  </data>
+  <data name="Shortcut_PasteControl" xml:space="preserve">
+    <value>Ctrl+V</value>
+  </data>
+  <data name="Shortcut_SelectAllCommand" xml:space="preserve">
+    <value>⌘A</value>
+  </data>
+  <data name="Shortcut_SelectAllControl" xml:space="preserve">
+    <value>Ctrl+A</value>
+  </data>
+  <data name="Shortcut_DuplicateCommand" xml:space="preserve">
+    <value>⌘D</value>
+  </data>
+  <data name="Shortcut_DuplicateControl" xml:space="preserve">
+    <value>Ctrl+D</value>
+  </data>
+  <data name="Shortcut_DeleteCommand" xml:space="preserve">
+    <value>⌫</value>
+  </data>
+  <data name="Shortcut_DeleteControl" xml:space="preserve">
+    <value>Del</value>
+  </data>
+  <data name="Shortcut_RenameCommand" xml:space="preserve">
+    <value>F2</value>
+  </data>
+  <data name="Shortcut_RenameControl" xml:space="preserve">
+    <value>F2</value>
+  </data>
   <data name="DocumentTab_CloseTabTooltip" xml:space="preserve">
     <value>Close tab ({0})</value>
   </data>

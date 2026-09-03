@@ -1,8 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.ContextMenu;
-using Celbridge.Platform;
 using Celbridge.UserInterface;
-using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -16,7 +14,7 @@ public class DeleteMenuOption : IMenuOption<ExplorerMenuContext>
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly IPlatformInfo _platformInfo;
+    private readonly IShortcutHintService _shortcutHintService;
 
     public int Priority => 4;
     public string GroupId => nameof(ExplorerMenuGroup.EditActions);
@@ -25,12 +23,12 @@ public class DeleteMenuOption : IMenuOption<ExplorerMenuContext>
         IStringLocalizer stringLocalizer,
         ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper,
-        IPlatformInfo platformInfo)
+        IShortcutHintService shortcutHintService)
     {
         _stringLocalizer = stringLocalizer;
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
-        _platformInfo = platformInfo;
+        _shortcutHintService = shortcutHintService;
     }
 
     public MenuItemDisplayInfo GetDisplayInfo(ExplorerMenuContext context)
@@ -38,7 +36,7 @@ public class DeleteMenuOption : IMenuOption<ExplorerMenuContext>
         return new MenuItemDisplayInfo(
             _stringLocalizer.GetString("ResourceTree_Delete"),
             Icon: IconSymbol.Delete,
-            ShortcutHint: EditShortcutHint.For(EditIntent.Delete, _platformInfo));
+            ShortcutHint: _shortcutHintService.GetText(EditIntent.Delete));
     }
 
     public MenuItemState GetState(ExplorerMenuContext context)

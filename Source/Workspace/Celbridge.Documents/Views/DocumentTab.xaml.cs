@@ -41,6 +41,7 @@ public partial class DocumentTab : TabViewItem
     private readonly ICommandService _commandService;
     private readonly IMessengerService _messengerService;
     private readonly IPlatformInfo _platformInfo;
+    private readonly IShortcutHintService _shortcutHintService;
 
     // How long after handling a double tap a second one is treated as the duplicate event rather than a
     // new gesture. Wide enough to cover the duplicate, which trails by a few milliseconds, and well short
@@ -119,6 +120,7 @@ public partial class DocumentTab : TabViewItem
         _commandService = ServiceLocator.AcquireService<ICommandService>();
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
+        _shortcutHintService = ServiceLocator.AcquireService<IShortcutHintService>();
         ViewModel = ServiceLocator.AcquireService<DocumentTabViewModel>();
 
         // The context menu opens over the document area, where a hosted web view would take the click too.
@@ -171,21 +173,14 @@ public partial class DocumentTab : TabViewItem
     // labels matching the shortcuts handled in KeyboardShortcutService.
     private void ApplyCloseShortcutHints()
     {
-        bool usesCommandModifier = _platformInfo.CommandModifier == CommandModifierKey.Command;
-        string closeAllHintKey = usesCommandModifier ? "DocumentTab_CloseAllShortcutCommand" : "DocumentTab_CloseAllShortcutControl";
-
         CloseMenuItem.KeyboardAcceleratorTextOverride = GetCloseShortcutHint();
-        CloseAllMenuItem.KeyboardAcceleratorTextOverride = _stringLocalizer.GetString(closeAllHintKey);
+        CloseAllMenuItem.KeyboardAcceleratorTextOverride =
+            _shortcutHintService.GetText("DocumentTab_CloseAllShortcut");
     }
 
-    // The display form of the close-document shortcut for the current platform: the Command-glyph form on macOS,
-    // the "Ctrl" form on Windows. Matches the shortcut handled in KeyboardShortcutService.
     private string GetCloseShortcutHint()
     {
-        bool usesCommandModifier = _platformInfo.CommandModifier == CommandModifierKey.Command;
-        string closeHintKey = usesCommandModifier ? "DocumentTab_CloseShortcutCommand" : "DocumentTab_CloseShortcutControl";
-
-        return _stringLocalizer.GetString(closeHintKey);
+        return _shortcutHintService.GetText("DocumentTab_CloseShortcut");
     }
 
     protected override void OnApplyTemplate()

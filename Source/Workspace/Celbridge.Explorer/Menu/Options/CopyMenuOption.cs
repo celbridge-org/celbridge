@@ -1,8 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.ContextMenu;
-using Celbridge.Platform;
 using Celbridge.UserInterface;
-using Celbridge.UserInterface.Helpers;
 using Celbridge.DataTransfer;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
@@ -17,7 +15,7 @@ public class CopyMenuOption : IMenuOption<ExplorerMenuContext>
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly IPlatformInfo _platformInfo;
+    private readonly IShortcutHintService _shortcutHintService;
 
     public int Priority => 2;
     public string GroupId => nameof(ExplorerMenuGroup.EditActions);
@@ -26,12 +24,12 @@ public class CopyMenuOption : IMenuOption<ExplorerMenuContext>
         IStringLocalizer stringLocalizer,
         ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper,
-        IPlatformInfo platformInfo)
+        IShortcutHintService shortcutHintService)
     {
         _stringLocalizer = stringLocalizer;
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
-        _platformInfo = platformInfo;
+        _shortcutHintService = shortcutHintService;
     }
 
     public MenuItemDisplayInfo GetDisplayInfo(ExplorerMenuContext context)
@@ -39,7 +37,7 @@ public class CopyMenuOption : IMenuOption<ExplorerMenuContext>
         return new MenuItemDisplayInfo(
             _stringLocalizer.GetString("ResourceTree_Copy"),
             Icon: IconSymbol.Copy,
-            ShortcutHint: EditShortcutHint.For(EditIntent.Copy, _platformInfo));
+            ShortcutHint: _shortcutHintService.GetText(EditIntent.Copy));
     }
 
     public MenuItemState GetState(ExplorerMenuContext context)

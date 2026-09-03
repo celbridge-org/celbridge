@@ -3,7 +3,6 @@ using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Platform;
 using Celbridge.Settings;
-using Celbridge.UserInterface.Helpers;
 using Celbridge.UserInterface.Views.Controls;
 using Celbridge.UserInterface.ViewModels.Controls;
 using Celbridge.Workspace;
@@ -192,7 +191,7 @@ public class MainMenu
     private MenuFlyoutSubItem CreateEditSubItem()
     {
         var focusService = ServiceLocator.AcquireService<IFocusService>();
-        var platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
+        var shortcutHintService = ServiceLocator.AcquireService<IShortcutHintService>();
         var activeTarget = focusService.EditTarget;
 
         var editSubItem = new MenuFlyoutSubItem
@@ -208,15 +207,11 @@ public class MainMenu
             var editItem = new MenuFlyoutItem
             {
                 Text = _stringLocalizer.GetString(labelKey),
-                IsEnabled = isEnabled
+                IsEnabled = isEnabled,
+
+                // Display only. The focused surface handles the chord itself.
+                KeyboardAcceleratorTextOverride = shortcutHintService.GetText(intent)
             };
-
-            // Display only. The focused surface handles the chord itself.
-            if (EditShortcutHint.For(intent, platformInfo) is string shortcutHint)
-            {
-                editItem.KeyboardAcceleratorTextOverride = shortcutHint;
-            }
-
             editItem.Click += (sender, e) => PerformEdit(intent);
 
             editSubItem.Items.Add(editItem);

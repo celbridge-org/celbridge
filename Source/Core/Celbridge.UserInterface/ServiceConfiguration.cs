@@ -36,6 +36,7 @@ public static class ServiceConfiguration
         services.AddSingleton<IWorkspaceWrapper, WorkspaceWrapper>();
         services.AddSingleton<IUndoService, UndoService>();
         services.AddSingleton<IKeyboardShortcutService, KeyboardShortcutService>();
+        services.AddSingleton<IShortcutHintService, ShortcutHintService>();
         services.AddSingleton<ISpotlightService, SpotlightService>();
         services.AddSingleton<ISpotlightRegistry, SpotlightRegistry>();
         services.AddSingleton<IResourceDragCoordinator, ResourceDragCoordinator>();
