@@ -52,7 +52,7 @@ internal static class EditorManifestLoader
     // The sections a manifest declares, and the fields each one defines. A key outside these sets is
     // reported as an unknown field. [options] is absent because its keys are the editor's own, passed
     // through to the editor rather than interpreted here.
-    private static readonly IReadOnlySet<string> RootKeys = new HashSet<string>(StringComparer.Ordinal)
+    private static readonly IReadOnlySet<string> KnownRootKeys = new HashSet<string>(StringComparer.Ordinal)
     {
         EditorSection,
         FileTypesSection,
@@ -62,7 +62,7 @@ internal static class EditorManifestLoader
         ConfigSection
     };
 
-    private static readonly IReadOnlySet<string> EditorKeys = new HashSet<string>(StringComparer.Ordinal)
+    private static readonly IReadOnlySet<string> KnownEditorKeys = new HashSet<string>(StringComparer.Ordinal)
     {
         IdKey,
         TypeKey,
@@ -74,7 +74,7 @@ internal static class EditorManifestLoader
         ActivationKey
     };
 
-    private static readonly IReadOnlySet<string> FileTypeKeys = new HashSet<string>(StringComparer.Ordinal)
+    private static readonly IReadOnlySet<string> KnownFileTypeKeys = new HashSet<string>(StringComparer.Ordinal)
     {
         ExtensionKey,
         FromCatalogKey,
@@ -84,7 +84,7 @@ internal static class EditorManifestLoader
         IconScaleKey
     };
 
-    private static readonly IReadOnlySet<string> TemplateKeys = new HashSet<string>(StringComparer.Ordinal)
+    private static readonly IReadOnlySet<string> KnownTemplateKeys = new HashSet<string>(StringComparer.Ordinal)
     {
         IdKey,
         DisplayNameKey,
@@ -92,7 +92,7 @@ internal static class EditorManifestLoader
         DefaultKey
     };
 
-    private static readonly IReadOnlySet<string> UtilityKeys = new HashSet<string>(StringComparer.Ordinal)
+    private static readonly IReadOnlySet<string> KnownUtilityKeys = new HashSet<string>(StringComparer.Ordinal)
     {
         ResourceExtensionKey,
         IconKey,
@@ -100,7 +100,7 @@ internal static class EditorManifestLoader
         DockAreaKey
     };
 
-    private static readonly IReadOnlySet<string> ConfigKeys = new HashSet<string>(StringComparer.Ordinal)
+    private static readonly IReadOnlySet<string> KnownConfigKeys = new HashSet<string>(StringComparer.Ordinal)
     {
         KeyKey,
         TypeKey,
@@ -256,7 +256,7 @@ internal static class EditorManifestLoader
             {
                 foreach (var fileTypeTable in fileTypesArray)
                 {
-                    CollectUnknownFields(fileTypeTable, FileTypeKeys, FileTypesSection, unknownFields);
+                    CollectUnknownFields(fileTypeTable, KnownFileTypeKeys, FileTypesSection, unknownFields);
 
                     var fileTypeDisplayName = TomlTableReader.GetString(fileTypeTable, DisplayNameKey);
                     if (string.IsNullOrEmpty(fileTypeDisplayName))
@@ -466,29 +466,23 @@ internal static class EditorManifestLoader
     // a fixed shape. [[file-types]] entries are collected as they are parsed instead.
     private static void CollectUnknownManifestFields(TomlTable root, TomlTable editorTable, List<string> unknownFields)
     {
-        foreach (var key in root.Keys)
-        {
-            if (!RootKeys.Contains(key))
-            {
-                unknownFields.Add(key);
-            }
-        }
+        unknownFields.AddRange(ConfigSchemaHelper.FindUnknownKeys(root.Keys, KnownRootKeys));
 
-        CollectUnknownFields(editorTable, EditorKeys, EditorSection, unknownFields);
+        CollectUnknownFields(editorTable, KnownEditorKeys, EditorSection, unknownFields);
 
         if (root.TryGetValue(TemplatesSection, out var templatesObject) &&
             templatesObject is TomlTableArray templatesArray)
         {
             foreach (var templateTable in templatesArray)
             {
-                CollectUnknownFields(templateTable, TemplateKeys, TemplatesSection, unknownFields);
+                CollectUnknownFields(templateTable, KnownTemplateKeys, TemplatesSection, unknownFields);
             }
         }
 
         if (root.TryGetValue(UtilitySection, out var utilityObject) &&
             utilityObject is TomlTable utilityTable)
         {
-            CollectUnknownFields(utilityTable, UtilityKeys, UtilitySection, unknownFields);
+            CollectUnknownFields(utilityTable, KnownUtilityKeys, UtilitySection, unknownFields);
         }
 
         if (root.TryGetValue(ConfigSection, out var configObject) &&
@@ -496,7 +490,7 @@ internal static class EditorManifestLoader
         {
             foreach (var configTable in configArray)
             {
-                CollectUnknownFields(configTable, ConfigKeys, ConfigSection, unknownFields);
+                CollectUnknownFields(configTable, KnownConfigKeys, ConfigSection, unknownFields);
             }
         }
     }
@@ -510,12 +504,9 @@ internal static class EditorManifestLoader
         string sectionName,
         List<string> unknownFields)
     {
-        foreach (var key in table.Keys)
+        foreach (var key in ConfigSchemaHelper.FindUnknownKeys(table.Keys, sectionKeys))
         {
-            if (!sectionKeys.Contains(key))
-            {
-                unknownFields.Add($"{sectionName}.{key}");
-            }
+            unknownFields.Add($"{sectionName}.{key}");
         }
     }
 
