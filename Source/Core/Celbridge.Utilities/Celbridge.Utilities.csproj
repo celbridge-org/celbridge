@@ -25,5 +25,9 @@
   <ItemGroup>
     <ProjectReference Include="..\Celbridge.Foundation\Celbridge.Foundation.csproj" />
   </ItemGroup>
-  
+
+  <ItemGroup>
+    <PackageReference Include="Tomlyn" />
+  </ItemGroup>
+
 </Project>
