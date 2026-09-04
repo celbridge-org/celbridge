@@ -432,6 +432,25 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         MacOSWebViewInterop.SetCustomUserAgent(nativeHandle, userAgent);
     }
 
+    public string DescribeNativeSurface(CoreWebView2 coreWebView2)
+    {
+        if (!OperatingSystem.IsMacOS())
+        {
+            return string.Empty;
+        }
+
+        if (!MacOSWebViewInterop.TryGetNativeWebViewHandle(coreWebView2, out var nativeHandle, out _))
+        {
+            return "native=unresolved";
+        }
+
+        var (width, height) = MacOSWebViewInterop.GetFrameSize(nativeHandle);
+        var window = MacOSWebViewInterop.HasWindow(nativeHandle) ? "yes" : "no";
+        var processId = MacOSWebViewInterop.GetWebContentProcessId(nativeHandle);
+
+        return $"window={window} frame={width:F0}x{height:F0} pid={processId}";
+    }
+
     public void SetZoomControlEnabled(CoreWebView2 coreWebView2, bool enabled)
     {
         // The Skia heads' managed WebView2 surface does not implement zoom control, and user zoom is not

@@ -67,6 +67,11 @@ public static class MacOSWebViewInterop
     [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
     private static extern void SendMessageVoidCGRect(IntPtr receiver, IntPtr selector, CGRect rect);
 
+    // The same aggregate coming back: the ARM64 ABI returns a CGRect in the floating-point registers, so
+    // objc_msgSend itself carries it and no stret variant is involved.
+    [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
+    private static extern CGRect SendMessageReturnCGRect(IntPtr receiver, IntPtr selector);
+
     // The WKFindConfiguration setters take a single BOOL, a shape the shared runtime does not carry, so this
     // declaration stays local.
     [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
@@ -112,11 +117,17 @@ public static class MacOSWebViewInterop
     /// pointer. Returns false with the type name walked through in 'detail' when the shape does not
     /// match the validated Uno runtime (the signal that the version pin needs re-verification).
     /// </summary>
+    // Resolved once: the walk runs on every diagnostic line, and both fields are fixed for the process.
+    private static readonly FieldInfo? NativeWebViewField =
+        typeof(CoreWebView2).GetField("_nativeWebView", BindingFlags.NonPublic | BindingFlags.Instance);
+
+    private static readonly ConditionalWeakTable<Type, FieldInfo?> WebViewFieldsByType = new();
+
     public static bool TryGetNativeWebViewHandle(CoreWebView2 coreWebView, out IntPtr handle, out string detail)
     {
         handle = IntPtr.Zero;
 
-        var nativeField = typeof(CoreWebView2).GetField("_nativeWebView", BindingFlags.NonPublic | BindingFlags.Instance);
+        var nativeField = NativeWebViewField;
         if (nativeField is null)
         {
             detail = "CoreWebView2._nativeWebView field not found";
@@ -135,7 +146,10 @@ public static class MacOSWebViewInterop
 
         // _webview is an Uno-internal field, so its name is coupled to the Uno runtime version: re-verify it
         // on an Uno bump. A mismatch returns false with the walked type name in 'detail' rather than crashing.
-        var webViewField = FindFieldInHierarchy(nativeWebViewType, "_webview");
+        var webViewField = WebViewFieldsByType.GetValue(
+            nativeWebViewType,
+            type => FindFieldInHierarchy(type, "_webview"));
+
         if (webViewField is null)
         {
             detail += " (no _webview field)";
@@ -406,6 +420,59 @@ public static class MacOSWebViewInterop
         }
 
         SendMessageVoid(window, GetSelector("makeFirstResponder:"), webView);
+    }
+
+    /// <summary>
+    /// Whether the native WKWebView is currently in a window. Uno attaches it to the window only while its
+    /// control is in the visual tree, so a load started outside one runs on a surface the platform cannot
+    /// see.
+    /// </summary>
+    public static bool HasWindow(IntPtr webView)
+    {
+        return webView != IntPtr.Zero
+            && SendMessage(webView, WindowSelector) != IntPtr.Zero;
+    }
+
+    // Registered once: the diagnostics read these on every navigation and every attach, and a selector is
+    // fixed for the process.
+    private static readonly IntPtr WindowSelector = GetSelector("window");
+    private static readonly IntPtr FrameSelector = GetSelector("frame");
+    private static readonly IntPtr RespondsToSelectorSelector = GetSelector("respondsToSelector:");
+    private static readonly IntPtr WebProcessIdentifierSelector = GetSelector("_webProcessIdentifier");
+
+    /// <summary>
+    /// The process id of the WebContent process rendering the view, or 0 when WebKit does not expose it. A
+    /// page whose id changes between two readings has had its process replaced, which is what WebKit does
+    /// to a page under memory pressure and what leaves it blank.
+    /// </summary>
+    public static long GetWebContentProcessId(IntPtr webView)
+    {
+        if (webView == IntPtr.Zero)
+        {
+            return 0;
+        }
+
+        if (SendMessage(webView, RespondsToSelectorSelector, WebProcessIdentifierSelector) == IntPtr.Zero)
+        {
+            return 0;
+        }
+
+        // pid_t is 32 bits, so only the low word is defined by the return.
+        return (int)SendMessageReturnNint(webView, WebProcessIdentifierSelector);
+    }
+
+    /// <summary>
+    /// The native view's frame size in points, which is what its page reads as its viewport.
+    /// </summary>
+    public static (double Width, double Height) GetFrameSize(IntPtr webView)
+    {
+        if (webView == IntPtr.Zero)
+        {
+            return (0, 0);
+        }
+
+        var frame = SendMessageReturnCGRect(webView, FrameSelector);
+        return (frame.Width, frame.Height);
     }
 
     /// <summary>

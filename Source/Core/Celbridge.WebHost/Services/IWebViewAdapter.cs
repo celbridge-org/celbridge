@@ -159,6 +159,13 @@ public interface IWebViewAdapter
     void SetDevToolsEnabled(CoreWebView2 coreWebView2, bool enabled, string targetName);
 
     /// <summary>
+    /// Describes the native surface behind the page for the log: on the macOS Skia head, whether the
+    /// WKWebView currently sits in a window, which is what decides whether a load it starts runs on a
+    /// surface the platform can see. Empty where the head has no such state to report.
+    /// </summary>
+    string DescribeNativeSurface(CoreWebView2 coreWebView2);
+
+    /// <summary>
     /// Begins (or restarts) a whole-page find for the given term, selecting and scrolling to the first match.
     /// Drives the native WKWebView findString on macOS. Inert where ProvidesBuiltInFind is true (the Windows
     /// heads), whose backend supplies its own find bar. Match progress is reported through

@@ -16,7 +16,6 @@ public sealed partial class ProjectSwitcher : UserControl
     // commands below them stay on screen however many projects the history holds.
     private const int MaxRecentProjectsShown = 5;
 
-    private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
 
     // The recent project rows built on the last open, kept so they can be removed before the next one.
@@ -40,7 +39,6 @@ public sealed partial class ProjectSwitcher : UserControl
     public ProjectSwitcher()
     {
         // The menu's labels are bound one-time, so the localizer has to be in place before the XAML loads.
-        _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _projectHealthService = ServiceLocator.AcquireService<IProjectHealthService>();
         ViewModel = ServiceLocator.AcquireService<ProjectSwitcherViewModel>();
@@ -65,8 +63,6 @@ public sealed partial class ProjectSwitcher : UserControl
         ProjectMenuFlyout.Opening += OnProjectMenuFlyoutOpening;
 
         ApplyTooltips();
-
-        _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
     }
 
     private void OnProjectSwitcher_Unloaded(object sender, RoutedEventArgs e)
@@ -77,8 +73,6 @@ public sealed partial class ProjectSwitcher : UserControl
 
         Loaded -= OnProjectSwitcher_Loaded;
         Unloaded -= OnProjectSwitcher_Unloaded;
-
-        _messengerService.UnregisterAll(this);
     }
 
     private void OnProjectMenuFlyoutOpening(object? sender, object e)
@@ -245,19 +239,8 @@ public sealed partial class ProjectSwitcher : UserControl
 
     private void ApplyTooltips()
     {
-        UpdateWorkspaceTooltip();
-    }
-
-    private void UpdateWorkspaceTooltip()
-    {
-        // The button is collapsed while no project is loaded, so the path is always set by the time it shows.
-        ToolTipService.SetToolTip(WorkspaceButton, ViewModel.ProjectFilePath);
+        ToolTipService.SetToolTip(WorkspaceButton, _stringLocalizer.GetString("TitleBar_SwitchProjectTooltip"));
         ToolTipService.SetPlacement(WorkspaceButton, PlacementMode.Bottom);
-    }
-
-    private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage message)
-    {
-        UpdateWorkspaceTooltip();
     }
 
     private void WorkspaceButton_Click(object sender, RoutedEventArgs e)
