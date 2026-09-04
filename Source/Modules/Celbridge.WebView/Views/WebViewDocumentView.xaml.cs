@@ -8,6 +8,7 @@ using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Platform;
 using Celbridge.Projects;
+using Celbridge.Settings;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.WebHost;
@@ -69,6 +70,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
 
     // Where the page was last told to go, held until the committed address catches up with it.
     private string _pendingNavigationUrl = string.Empty;
+
+    private WebViewLoadDiagnostics? _diagnostics;
 
     // Set on successful registration with the bridge. Only populated for the
     // HtmlViewer role. .webview (external URL) documents do not register and the
@@ -187,7 +190,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
 
         // Paired with the completion below, so a page that never arrives can be told from one that arrived
         // and failed, and from one the policy declined.
-        _logger.LogDebug("Navigating {Resource} to {Url}", FileResource, uri.AbsoluteUri);
+        Diagnostics.LogNavigation("Navigating", Surface, uri.AbsoluteUri);
 
         _webView.Source = uri;
     }
@@ -218,6 +221,11 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
         {
             _webView = await _webViewFactory.AcquireAsync();
             AppWebViewContainer.Children.Add(_webView);
+
+            // Attach and detach are what a tab switch does to the surface, so both are logged with the state
+            // they leave it in. A navigation that starts on its own after one is the page being reloaded.
+            _webView.Loaded += WebView_Loaded;
+            _webView.Unloaded += WebView_Unloaded;
 
             // The DOM focus callbacks only reach a page that loads the client script. An external-URL page
             // relies on the registry's native click monitor instead.
@@ -395,6 +403,9 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
 
         if (_webView is not null)
         {
+            _webView.Loaded -= WebView_Loaded;
+            _webView.Unloaded -= WebView_Unloaded;
+
             _webViewAdapter.CloseWebView(_webView, AppWebViewContainer);
 
             _webView = null;
@@ -510,63 +521,39 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
 
         if (e.IsSuccess)
         {
-            _logger.LogDebug("Navigation completed for {Resource} at {Url}", FileResource, ViewModel.CurrentUrl);
+            Diagnostics.LogNavigation("Navigation completed", Surface, ViewModel.CurrentUrl);
         }
         else
         {
-            _logger.LogWarning(
-                "Navigation failed for {Resource} at {Url} with status {Status}",
-                FileResource,
-                ViewModel.CurrentUrl,
-                e.WebErrorStatus);
+            Diagnostics.LogNavigationFailed(Surface, ViewModel.CurrentUrl, e.WebErrorStatus);
         }
 
         ViewModel.NotifyNavigationCompleted(e.IsSuccess);
         UpdateNavigationState();
 
-        // Runs after the navigation state settles so the probe reads the address the page committed to,
-        // and only for the external-URL role, which owns the placeholder that reports a page that did not
-        // load.
-        if (e.IsSuccess
-            && Options.Role == WebViewDocumentRole.ExternalUrl)
+        // Runs after the navigation state settles so the probe reads the address the page committed to.
+        if (e.IsSuccess)
         {
             _ = ProbeLoadedContentAsync();
         }
     }
 
-    // Reports the shape of the document the navigation actually produced. A load that delivers no body
-    // still reaches its completion as a success, so the document arrives committed, focusable and running
-    // its document-start scripts with nothing in it. The WebView has no signal for that, and the tab is
-    // left showing a blank rectangle with no way back.
-    private const string LoadedContentProbeScript = """
-        (function () {
-            var root = document.documentElement;
-            var entry = performance.getEntriesByType('navigation')[0];
+    // The load diagnostics shared with the custom editor controller: the surface a load runs against, and
+    // the probe of what a completed navigation actually produced.
+    private WebViewLoadDiagnostics Diagnostics => _diagnostics ??= new WebViewLoadDiagnostics(
+        _webViewAdapter,
+        _serviceProvider.GetRequiredService<IFeatureFlags>(),
+        _logger);
 
-            return JSON.stringify({
-                readyState: document.readyState,
-                htmlLength: root ? root.outerHTML.length : 0,
-                headChildCount: document.head ? document.head.childElementCount : 0,
-                bodyChildCount: document.body ? document.body.childElementCount : 0,
-                encodedBodySize: entry ? entry.encodedBodySize : -1,
-                transferSize: entry ? entry.transferSize : -1,
-                redirectCount: entry ? entry.redirectCount : -1
-            });
-        })()
-        """;
-
-    // A document with no content of its own still serialises the html, head and body the parser implies,
-    // which is a little over 40 characters. Anything longer carries something the response put there.
-    private const int EmptyDocumentHtmlLength = 128;
+    // Only the external-URL role treats an empty document as a failed load: it owns the placeholder that
+    // reports one, and a project-served page can legitimately be empty.
+    private WebViewSurface Surface => new(
+        FileResource.ToString(),
+        _webView,
+        TreatEmptyDocumentAsFailure: Options.Role == WebViewDocumentRole.ExternalUrl);
 
     private async Task ProbeLoadedContentAsync()
     {
-        var coreWebView = _webView?.CoreWebView2;
-        if (coreWebView is null)
-        {
-            return;
-        }
-
         // The blank page a document rests on between addresses is empty by design.
         var probedUrl = ViewModel.CurrentUrl;
         if (string.IsNullOrEmpty(probedUrl)
@@ -575,94 +562,57 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
             return;
         }
 
-        try
+        var probe = await Diagnostics.ProbeAsync(Surface);
+        if (probe is null)
         {
-            var result = await _webViewAdapter.EvalAsync(coreWebView, LoadedContentProbeScript);
-
-            // The probe reports on a completion that has already happened, so a navigation started while it
-            // was in flight owns the document now and this verdict is about a page that has been left.
-            if (ViewModel.IsNavigating
-                || !string.Equals(ViewModel.CurrentUrl, probedUrl, StringComparison.Ordinal))
-            {
-                return;
-            }
-
-            if (!TryReadEmptyDocumentProbe(result, out var probe))
-            {
-                return;
-            }
-
-            _logger.LogWarning(
-                "Navigation for {Resource} completed at {Url} but produced an empty document: {Probe}",
-                FileResource,
-                probedUrl,
-                probe);
-
-            // Reported as the failure it is, so the document shows the load-failed placeholder and its
-            // reload rather than a blank page the user cannot tell from a slow one.
-            ViewModel.NotifyNavigationCompleted(false);
+            return;
         }
-        catch (Exception ex)
+
+        // The probe reports on a completion that has already happened, so a navigation started while it was
+        // in flight owns the document now and this verdict is about a page that has been left.
+        if (ViewModel.IsNavigating
+            || !string.Equals(ViewModel.CurrentUrl, probedUrl, StringComparison.Ordinal))
         {
-            _logger.LogDebug(ex, "Could not probe the content loaded by {Resource}", FileResource);
+            return;
+        }
+
+        var surface = Surface;
+        Diagnostics.LogProbe(surface, probedUrl, probe);
+
+        if (probe.IsEmpty && surface.TreatEmptyDocumentAsFailure)
+        {
+            // Reported as the failure it is, so the document shows the load-failed placeholder and its reload
+            // rather than a blank page the user cannot tell from a slow one.
+            ViewModel.NotifyNavigationCompleted(false);
         }
     }
 
-    // True when the probe reports a document the response left empty, with the probe's own reading passed
-    // back for the log. A result that cannot be read is no verdict: the page keeps the success it was given.
-    private static bool TryReadEmptyDocumentProbe(string result, out string probe)
+    private void WebView_Loaded(object sender, RoutedEventArgs e)
     {
-        probe = string.Empty;
+        _ = Diagnostics.LogSurfaceAsync("WebView attached", Surface);
 
-        if (string.IsNullOrEmpty(result))
-        {
-            return false;
-        }
+        // A document that loaded while detached raised no navigation events, so its completion was never
+        // probed. Attach is the first moment the host hears from it again.
+        _ = ProbeLoadedContentAsync();
+    }
 
-        using var evaluated = JsonDocument.Parse(result);
+    private void WebView_Unloaded(object sender, RoutedEventArgs e)
+    {
+        _ = Diagnostics.LogSurfaceAsync("WebView detached", Surface);
 
-        // The evaluation hands back the JSON encoding of the script's value, so the JSON the script built
-        // arrives as a string on the heads that encode it and as the object itself on those that do not.
-        var payload = evaluated.RootElement.ValueKind == JsonValueKind.String
-            ? evaluated.RootElement.GetString() ?? string.Empty
-            : result;
-
-        using var document = JsonDocument.Parse(payload);
-        var root = document.RootElement;
-        if (root.ValueKind != JsonValueKind.Object)
-        {
-            return false;
-        }
-
-        if (!TryReadNumber(root, "htmlLength", out var htmlLength)
-            || !TryReadNumber(root, "headChildCount", out var headChildCount)
-            || !TryReadNumber(root, "bodyChildCount", out var bodyChildCount))
-        {
-            return false;
-        }
-
-        if (htmlLength > EmptyDocumentHtmlLength
-            || headChildCount > 0
-            || bodyChildCount > 0)
-        {
-            return false;
-        }
-
-        probe = payload;
-        return true;
-
-        static bool TryReadNumber(JsonElement element, string name, out int value)
-        {
-            value = 0;
-
-            return element.TryGetProperty(name, out var property)
-                && property.ValueKind == JsonValueKind.Number
-                && property.TryGetInt32(out value);
-        }
+        // Unloaded fires before Uno has taken the native view apart, so the state the surface is left in
+        // while the tab is away is only readable once that work has run.
+        DispatcherQueue.TryEnqueue(
+            Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
+            () => { _ = Diagnostics.LogSurfaceAsync("WebView detached, settled", Surface); });
     }
 
     private void CoreWebView2_NavigationStarting(CoreWebView2 sender, CoreWebView2NavigationStartingEventArgs args)
     {
+        // A start with no Navigating line before it is the page reloading on its own, which is what a
+        // redirect looks like and what a re-attach must not.
+        Diagnostics.LogNavigation("Navigation starting", Surface, args.Uri);
+
         // Reset the tool bridge's content-ready gate so webview_* tool calls block
         // until the new navigation completes. Cross-origin navigations (e.g. an
         // attacker-controlled redirect from project content) reset support here too.

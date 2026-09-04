@@ -109,10 +109,9 @@ public interface IDocumentsService
     ResourceKey GetSelectedDocument(DocumentSection section);
 
     /// <summary>
-    /// Creates a document view for the given file resource, with its file resource and writable state
-    /// already set, but LoadContent() not yet called. When editorId is non-empty, uses that specific
-    /// editor instead of the default resolution chain. Fails if the resource does not exist.
-    /// The caller must attach the view to the visual tree and then call LoadContent() itself.
+    /// Creates a document view for the given file resource. When editorId is
+    /// non-empty, uses that specific editor instead of the default resolution
+    /// chain. Fails if the resource does not exist.
     /// </summary>
     Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource, EditorId editorId = default);
 
