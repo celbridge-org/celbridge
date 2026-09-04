@@ -882,21 +882,6 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         targetSectionForNew.RefreshSelectedTab();
         UpdateAllTabDisplayNames();
 
-        // Loaded after the view is attached to the tab, so a WebView2's Source is set while the control is
-        // already parented in the live visual tree.
-        var loadResult = await documentView.LoadContent();
-        if (loadResult.IsFailure)
-        {
-            RemoveTabFromSection(targetSectionForNew, documentTab);
-
-            // UpdateAllTabDisplayNames() above may have disambiguated a sibling tab against this one, so
-            // names are resolved again now that it is gone.
-            UpdateAllTabDisplayNames();
-
-            return Result<OpenDocumentOutcome>.Fail($"Failed to load content for document view: '{fileResource}'")
-                .WithErrors(loadResult);
-        }
-
         // Announce after the view exists so listeners can act on a fully opened document, whether or not
         // its tab is the active one. The view model owns both halves of the open/close pair.
         documentTab.ViewModel.NotifyDocumentOpened();
@@ -1228,24 +1213,12 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
             }
             var newDocumentView = createResult.Value;
 
-            // Resource (and possibly extension) changed. Attach the new view before loading it, so its
-            // navigation starts already parented in the live visual tree.
-            documentTab.ViewModel.DocumentView = newDocumentView;
-            documentTab.Content = newDocumentView;
-
-            var loadResult = await newDocumentView.LoadContent();
-            if (loadResult.IsFailure)
-            {
-                // Roll back to the old view, which is still intact.
-                documentTab.ViewModel.DocumentView = oldDocumentView;
-                documentTab.Content = oldDocumentView;
-                return Result.Fail($"Failed to load content for document view: '{newResource}'")
-                    .WithErrors(loadResult);
-            }
-
             // Clean up the old DocumentView state
             await oldDocumentView.PrepareToClose();
 
+            // Resource (and possibly extension) changed. Refresh content and label.
+            documentTab.ViewModel.DocumentView = newDocumentView;
+            documentTab.Content = newDocumentView;
             UpdateEditorDisplayName(documentTab, newDocumentView.EditorId);
 
             // At this point there should be no remaining references to oldDocumentView, so it should go
