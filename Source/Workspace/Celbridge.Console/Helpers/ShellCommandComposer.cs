@@ -29,7 +29,11 @@ public static class ShellCommandComposer
         return family != ConsoleShellFamily.Cmd;
     }
 
-    public static ComposedStartup Compose(ConsoleShellFamily family, ConsoleStartupInvocation command, string? readyMarker = null)
+    public static ComposedStartup Compose(
+        ConsoleShellFamily family,
+        ConsoleStartupInvocation command,
+        string? readyMarker = null,
+        string? workingDirectory = null)
     {
         var hasExecutable = !string.IsNullOrWhiteSpace(command.Executable);
 
@@ -73,6 +77,14 @@ public static class ShellCommandComposer
             line = "& " + line;
         }
 
+        // An injected command runs as soon as the shell is up, before its own startup has necessarily
+        // finished syncing its provider location to the process directory CreateProcess was given. Setting
+        // the location explicitly, right before the command, does not depend on that sync having happened.
+        if (!string.IsNullOrWhiteSpace(workingDirectory))
+        {
+            line = BuildChangeDirectory(family, workingDirectory) + line;
+        }
+
         string? scanMarker = null;
         if (readyMarker is not null)
         {
@@ -82,6 +94,21 @@ public static class ShellCommandComposer
         }
 
         return new ComposedStartup(line, scanMarker);
+    }
+
+    // Navigates to the resolved working directory right before the command, in the shell's own syntax
+    // rather than relying on it having already picked up the process directory CreateProcess was started
+    // with.
+    private static string BuildChangeDirectory(ConsoleShellFamily family, string workingDirectory)
+    {
+        var quotedPath = Quote(family, workingDirectory);
+
+        return family switch
+        {
+            ConsoleShellFamily.PowerShell => $"Set-Location -LiteralPath {quotedPath}; ",
+            ConsoleShellFamily.Cmd => $"cd /d {quotedPath} & ",
+            _ => $"cd {quotedPath}; "
+        };
     }
 
     // The reveal injected before the command: clears the screen and emits the marker. The prefix's source
@@ -142,6 +169,16 @@ public static class ShellCommandComposer
             return token;
         }
 
+        return Quote(family, token);
+    }
+
+    // Quotes for the shell's dialect whether or not the text strictly needs it. A path always takes this
+    // route rather than going through NeedsQuoting, whose safe set is drawn for command tokens and passes
+    // characters a folder name can legitimately hold. A comma is the one that bites: PowerShell reads an
+    // unquoted one in argument position as an array separator, which hands Set-Location a path made of
+    // the parts joined by a space.
+    private static string Quote(ConsoleShellFamily family, string token)
+    {
         switch (family)
         {
             case ConsoleShellFamily.PowerShell:

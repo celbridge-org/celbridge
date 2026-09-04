@@ -184,4 +184,70 @@ public class ShellCommandComposerTests
         composed.Line.Should().BeEmpty();
         composed.ScanMarker.Should().BeNull();
     }
+
+    [Test]
+    public void Compose_WorkingDirectory_SetsTheLocationBeforeTheCommand()
+    {
+        var command = Command("celbridge-py");
+
+        ShellCommandComposer.Compose(ConsoleShellFamily.PowerShell, command, workingDirectory: @"C:\Projects\Demo").Line
+            .Should().Be(@"Set-Location -LiteralPath 'C:\Projects\Demo'; celbridge-py");
+        ShellCommandComposer.Compose(ConsoleShellFamily.Posix, command, workingDirectory: "/home/demo").Line
+            .Should().Be("cd '/home/demo'; celbridge-py");
+        ShellCommandComposer.Compose(ConsoleShellFamily.Cmd, command, workingDirectory: @"C:\Projects\Demo").Line
+            .Should().Be("cd /d \"C:\\Projects\\Demo\" & celbridge-py");
+    }
+
+    [Test]
+    public void Compose_WorkingDirectory_QuotesAPathWithSpaces()
+    {
+        var command = Command("celbridge-py");
+
+        ShellCommandComposer.Compose(ConsoleShellFamily.PowerShell, command, workingDirectory: @"C:\My Projects\Demo").Line
+            .Should().Be(@"Set-Location -LiteralPath 'C:\My Projects\Demo'; celbridge-py");
+        ShellCommandComposer.Compose(ConsoleShellFamily.Posix, command, workingDirectory: "/home/demo user").Line
+            .Should().Be("cd '/home/demo user'; celbridge-py");
+        ShellCommandComposer.Compose(ConsoleShellFamily.Cmd, command, workingDirectory: @"C:\My Projects\Demo").Line
+            .Should().Be("cd /d \"C:\\My Projects\\Demo\" & celbridge-py");
+    }
+
+    [Test]
+    public void Compose_WorkingDirectory_QuotesAPathCarryingACharacterNeedsQuotingCallsSafe()
+    {
+        // A comma is safe in a command token but not in a path: unquoted, PowerShell reads it in argument
+        // position as an array separator and Set-Location is handed the parts joined by a space.
+        var command = Command("celbridge-py");
+
+        ShellCommandComposer.Compose(ConsoleShellFamily.PowerShell, command, workingDirectory: @"C:\Projects,2026\Demo").Line
+            .Should().Be(@"Set-Location -LiteralPath 'C:\Projects,2026\Demo'; celbridge-py");
+    }
+
+    [Test]
+    public void Compose_WorkingDirectory_ComesAfterTheReadyMarkerReveal()
+    {
+        var command = Command("celbridge-py");
+
+        ShellCommandComposer.Compose(ConsoleShellFamily.PowerShell, command, "READY-1234", @"C:\Projects\Demo").Line
+            .Should().Be(@"Clear-Host; Write-Host -NoNewline ('READY' + '-1234'); Set-Location -LiteralPath 'C:\Projects\Demo'; celbridge-py");
+    }
+
+    [Test]
+    public void Compose_NoWorkingDirectory_InjectsNoLocationChange()
+    {
+        var command = Command("celbridge-py");
+
+        ShellCommandComposer.Compose(ConsoleShellFamily.PowerShell, command).Line
+            .Should().Be("celbridge-py");
+        ShellCommandComposer.Compose(ConsoleShellFamily.PowerShell, command, workingDirectory: "   ").Line
+            .Should().Be("celbridge-py");
+    }
+
+    [Test]
+    public void Compose_WorkingDirectory_PlainShellIsUnaffected()
+    {
+        // No command is injected for a plain shell, so there is nothing to navigate before.
+        var composed = ShellCommandComposer.Compose(ConsoleShellFamily.PowerShell, ConsoleStartupInvocation.None, workingDirectory: @"C:\Projects\Demo");
+
+        composed.Line.Should().BeEmpty();
+    }
 }
