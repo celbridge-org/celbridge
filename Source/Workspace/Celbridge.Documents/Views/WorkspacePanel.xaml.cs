@@ -883,15 +883,14 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         UpdateAllTabDisplayNames();
 
         // Loaded after the view is attached to the tab, so a WebView2's Source is set while the control is
-        // already parented in the live visual tree rather than while it is still hosted only in its own
-        // detached container.
+        // already parented in the live visual tree.
         var loadResult = await documentView.LoadContent();
         if (loadResult.IsFailure)
         {
             RemoveTabFromSection(targetSectionForNew, documentTab);
 
             // UpdateAllTabDisplayNames() above may have disambiguated a sibling tab against this one, so
-            // resolve names again now that it is gone, the same as a normal tab close does.
+            // names are resolved again now that it is gone.
             UpdateAllTabDisplayNames();
 
             return Result<OpenDocumentOutcome>.Fail($"Failed to load content for document view: '{fileResource}'")
@@ -1237,8 +1236,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
             var loadResult = await newDocumentView.LoadContent();
             if (loadResult.IsFailure)
             {
-                // Roll back to the old view, which is still intact and working, rather than leaving the
-                // tab on a new view that failed to load.
+                // Roll back to the old view, which is still intact.
                 documentTab.ViewModel.DocumentView = oldDocumentView;
                 documentTab.Content = oldDocumentView;
                 return Result.Fail($"Failed to load content for document view: '{newResource}'")

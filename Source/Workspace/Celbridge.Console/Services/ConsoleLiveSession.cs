@@ -19,13 +19,6 @@ internal sealed class ConsoleLiveSession : IDisposable
     // grouping a burst of stdin does not take the two for one paste.
     private const int SubmitKeyDelayMs = 100;
 
-    // Prefixes the ready marker the injected command emits once it has cleared the screen. The random
-    // per-launch suffix guards against a stale marker from a previous launch arriving late on the old
-    // pty's stream. What stops the shell's own echo of the injected line matching is that the marker's
-    // source text differs from its output (an escape sequence on POSIX, a split literal on PowerShell),
-    // not this suffix.
-    private const string ReadyMarkerPrefix = "CELBRIDGE-CONSOLE-READY-";
-
     // How long the marker scan waits without any output before revealing what the runtime is printing.
     // Measured from the last output rather than from injection, because the expensive part of a launch
     // happens after the command is typed: a first run resolves an interpreter and installs packages, which
@@ -44,6 +37,7 @@ internal sealed class ConsoleLiveSession : IDisposable
     private readonly object _streamLock = new();
     private readonly DiagnosticSequenceScanner _diagnosticScanner = new();
     private StartupMarkerScanner? _markerScanner;
+    private bool _markerPersistsOnScreen;
     private bool _markerSeen;
     private bool _markerRevealed;
     private IConsoleView? _attachedView;
@@ -129,9 +123,8 @@ internal sealed class ConsoleLiveSession : IDisposable
         }
     }
 
-    // The session is scanning for a marker that has neither arrived nor been given up on, so its output so
-    // far is shell-startup noise and an attaching view should still cover the terminal. Caller holds
-    // _streamLock.
+    // The output so far is shell-startup noise, so an attaching view should still cover the terminal.
+    // Caller holds _streamLock.
     private bool StartupPending => _markerScanner is not null && !_markerSeen && !_markerRevealed;
 
     public void Rekey(ResourceKey newResource)
@@ -231,18 +224,11 @@ internal sealed class ConsoleLiveSession : IDisposable
         var shell = ConsoleShell.Resolve();
         var shellCommandLine = new CommandLineBuilder(shell.Executable).ToString();
 
-        string? readyMarker = null;
-        if (ShellCommandComposer.SupportsReadyMarker(shell.Family))
-        {
-            readyMarker = ReadyMarkerPrefix + Guid.NewGuid().ToString("N").Substring(0, 8);
-        }
-
         var workingDirectory = ConsoleWorkingFolder.Resolve(config.WorkingDirectory, projectFolderPath);
 
         var composedStartup = ShellCommandComposer.Compose(
             shell.Family,
             startupInvocation,
-            readyMarker: readyMarker,
             workingDirectory: workingDirectory);
         var injectedCommandLine = composedStartup.Line;
         var hasInjectedLine = !string.IsNullOrEmpty(injectedCommandLine);
@@ -292,6 +278,7 @@ internal sealed class ConsoleLiveSession : IDisposable
         // Gate input before the pty starts, so nothing typed can reach the shell prompt ahead of the
         // injected lines. The marker scanner keeps the buffer clean of the shell-startup noise.
         _startupInjectionPending = injectedLines.Count > 0;
+        _markerPersistsOnScreen = composedStartup.MarkerPersistsOnScreen;
         _markerSeen = false;
         _markerRevealed = false;
         if (composedStartup.ScanMarker is not null)
@@ -388,19 +375,16 @@ internal sealed class ConsoleLiveSession : IDisposable
 
     public void Resize(int cols, int rows)
     {
-        // A view reports no size until a layout pass has arranged it, which a tab that has never been shown
-        // never gets, and the active tab of a project reload does not get until the workspace has finished
-        // rebuilding. The launch size stands until a real one arrives: applying an empty one collapses the
-        // pty to a single row and the output already on its screen is lost to the reflow.
+        // A view reports no size until a layout pass has arranged it. Applying an empty size collapses the
+        // pty to a single row and loses the output already on its screen to the reflow.
         if (cols > 0 &&
             rows > 0)
         {
             _terminal?.SetSize(cols, rows);
         }
 
-        // A deferred reveal waits for this first size before injecting, so the revealed prompt is drawn at
-        // the width it will be shown at. The resize itself redraws the pre-reveal prompt, which the marker
-        // scan still discards.
+        // A deferred reveal waits for this first size, so the revealed prompt is drawn at the width it will
+        // be shown at.
         List<string>? deferredInjectionLines;
         lock (_gateLock)
         {
@@ -504,9 +488,7 @@ internal sealed class ConsoleLiveSession : IDisposable
         _markerTimeout.Change(MarkerSilenceTimeoutMs, Timeout.Infinite);
     }
 
-    // The window exists only to reveal a session whose marker never arrives, so a marker that does arrive
-    // retires it rather than leaving a callback to wake up and find nothing to do. Caller holds
-    // _streamLock.
+    // Caller holds _streamLock.
     private void StopMarkerSilenceTimer()
     {
         _markerTimeout?.Dispose();
@@ -530,8 +512,7 @@ internal sealed class ConsoleLiveSession : IDisposable
         IConsoleView? attachedView;
         lock (_streamLock)
         {
-            // The marker can land while this callback is waiting on the lock, which leaves nothing for the
-            // reveal to do.
+            // The marker can land while this callback is waiting on the lock.
             if (_markerScanner is null ||
                 _markerSeen ||
                 _markerRevealed)
@@ -551,8 +532,7 @@ internal sealed class ConsoleLiveSession : IDisposable
         attachedView?.OnStartupComplete();
     }
 
-    // The process has exited, so nothing further will be forwarded and the scan has no more stream to
-    // watch. Release what it held back, so the session's last output is not swallowed along with it.
+    // The process has exited, so the scan has no more stream to watch and what it held back is released.
     private void ReleaseMarkerScan()
     {
         IConsoleView? attachedView;
@@ -569,8 +549,7 @@ internal sealed class ConsoleLiveSession : IDisposable
             _markerScanner = null;
             attachedView = _attachedView;
 
-            // A session whose marker arrived has already revealed. What the scan was holding by then is a
-            // partial match against the real output, not startup noise.
+            // A session whose marker arrived has already revealed.
             completeStartup = !_markerSeen;
 
             if (held.Length > 0)
@@ -646,14 +625,7 @@ internal sealed class ConsoleLiveSession : IDisposable
 
             if (_markerScanner is not null)
             {
-                // Pre-marker output is the shell-startup noise the reveal is meant to hide: not buffered,
-                // not forwarded. The chunk containing the marker contributes only its remainder. Once the
-                // silence window has revealed the session, that noise flows instead, but the scan runs on
-                // so the marker is still consumed rather than printed.
-                //
-                // The scan also runs on past the marker itself. A marker written as screen text stays in
-                // the terminal's buffer, so every reflow of those rows puts it back on the stream, and a
-                // session that stopped scanning would print it as output.
+                // Pre-marker output is shell-startup noise, neither buffered nor forwarded.
                 var (text, found) = _markerScanner.Push(forwarded);
                 markerPending = !found && StartupPending;
 
@@ -662,11 +634,17 @@ internal sealed class ConsoleLiveSession : IDisposable
                     _markerSeen = true;
                     startupCompleted = !_markerRevealed;
                     StopMarkerSilenceTimer();
+
+                    // A marker that stays in the terminal's screen buffer comes back on every reflow of the
+                    // rows it sits on, so the scan runs on to strip those later copies.
+                    if (!_markerPersistsOnScreen)
+                    {
+                        _markerScanner = null;
+                    }
                 }
                 forwarded = text;
 
-                // Output means the launch is still progressing, so the silence window starts again. Once
-                // the marker has arrived there is no window left to restart.
+                // Output means the launch is still progressing, so the silence window starts again.
                 ArmMarkerSilenceTimer();
             }
 

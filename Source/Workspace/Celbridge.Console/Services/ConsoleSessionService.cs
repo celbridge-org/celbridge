@@ -15,10 +15,8 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
 {
     private const string ConsoleFileExtension = ".console";
 
-    // A headless session has no view to measure, so it starts at a nominal size and is resized to the real
-    // one as soon as a view has been arranged and can report it. A view that attaches before a layout pass
-    // has reached it is still headless in this sense. Only output produced before that first size is
-    // affected, and the terminal reflows it on the resize.
+    // A headless session has no view to measure, so it starts at this nominal size and is resized once a
+    // view has been arranged and can report a real one.
     private const int DefaultCols = 120;
     private const int DefaultRows = 30;
 

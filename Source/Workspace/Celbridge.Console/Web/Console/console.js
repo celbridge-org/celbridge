@@ -71,15 +71,11 @@ term.open(terminalElement);
 terminalElement.querySelector('.xterm-helper-textarea')?.setAttribute('name', 'terminal-input');
 
 // The terminal's minimum width, mirroring #terminal-view in console.css. A viewport narrower than this
-// cannot be one the page was laid out into, which is what isArranged() reads it for.
+// cannot be one the page was laid out into.
 const TERMINAL_MIN_WIDTH = 360;
 
-// True once a layout pass has given this page a viewport a document surface actually has. A WebView that
-// has not been arranged hands its page a viewport a few dozen pixels across, which happens both for a
-// document restored into a background tab and, for as long as the workspace takes to rebuild, for the
-// active tab of a project reload. The page is not hidden in that second case, so what marks the
-// measurement as unreal is the viewport being narrower than the terminal's own minimum: the layout the
-// page declares does not fit in it.
+// True once a layout pass has given this page a real viewport. A WebView that has not been arranged hands
+// its page a viewport a few dozen pixels across, narrower than the terminal's own minimum.
 function isArranged() {
     return !document.hidden &&
         document.documentElement.clientWidth >= TERMINAL_MIN_WIDTH &&
@@ -87,10 +83,8 @@ function isArranged() {
         terminalElement.clientHeight > 0;
 }
 
-// Fits the terminal to its box, and reports whether that box was one worth measuring. Fitting to an
-// unarranged viewport yields a couple of dozen columns and a row or two, and the session applies whatever
-// size it is told to the live pty, which destroys the output already on its screen. The resize that
-// follows the first real layout pass fits it properly.
+// Fits the terminal to its box, and reports whether that box was one worth measuring. A size taken from
+// an unarranged viewport is applied to the live pty and destroys the output already on its screen.
 function fitTerminal() {
     if (!isArranged()) {
         return false;
@@ -287,9 +281,8 @@ term.attachCustomKeyEventHandler((event) => {
 
 window.addEventListener('resize', refitTerminal);
 
-// A tab shown for the first time arranges its WebView, which is where a page restored into a background tab
-// gets its real viewport. The resize that follows covers the usual case, but the visibility change is the
-// event that actually says the measurement is now worth taking.
+// A tab shown for the first time arranges its WebView, which is where a page restored into a background
+// tab gets its real viewport.
 document.addEventListener('visibilitychange', refitTerminal);
 
 // The terminal is always visible. The settings form is a sidebar beside it. Refit the terminal whenever the
@@ -323,9 +316,8 @@ function setSettingsVisible(visible) {
     }
 }
 
-// The sidebar keeps a reasonable minimum width, so dragging the splitter can never shrink it or the
-// terminal below their minimums (a narrow window is handled by flex-shrink in console.css). SPLITTER_WIDTH
-// mirrors --cel-splitter-width in celbridge-tokens.css.
+// The sidebar keeps a minimum width, so dragging the splitter can never shrink it or the terminal below
+// their minimums. SPLITTER_WIDTH mirrors --cel-splitter-width in celbridge-tokens.css.
 const SIDEBAR_MIN_WIDTH = 240;
 const SPLITTER_WIDTH = 8;
 // Mirrors #settings-view width in console.css. Tracked in sidebarWidth so the width persists as view state
@@ -348,9 +340,8 @@ function splitterWidth() {
 }
 
 function clampSidebarWidth(width) {
-    // The clamp needs a real viewport to fit the sidebar into. A page that has not been arranged reports
-    // one a few dozen pixels across, which leaves no room for a sidebar at all, so a width restored at
-    // that moment would collapse to the minimum and be persisted back as the user's setting.
+    // The clamp needs a real viewport to fit the sidebar into. An unarranged page leaves no room for one,
+    // so a width restored at that moment would collapse to the minimum and be persisted as the setting.
     if (!isArranged()) {
         return Math.max(SIDEBAR_MIN_WIDTH, width);
     }
@@ -812,8 +803,7 @@ async function waitForStableSize() {
 }
 
 // The terminal size an attach or reopen carries. Zero means the view has not been arranged, which leaves
-// the session at its launch size rather than shrinking the pty to a viewport no layout pass produced. The
-// refit that follows the first real one reports the size in its place.
+// the session at its launch size until a refit reports a real one.
 function terminalSize(isSized) {
     if (!isSized) {
         return { cols: 0, rows: 0 };
@@ -869,9 +859,7 @@ function applyAttachResult(result) {
     term.focus();
 }
 
-// Attaches this view to the live session, which has been running since the document opened. Where the view
-// has been arranged, the terminal size sent here is the first accurate one the session has had, a headless
-// launch having guessed. Where it has not, the guess stands until a layout pass produces a real one.
+// Attaches this view to the live session, which has been running since the document opened.
 async function attachSession() {
     if (requestInFlight) {
         return;

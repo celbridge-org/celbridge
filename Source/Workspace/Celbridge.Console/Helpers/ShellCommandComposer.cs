@@ -2,51 +2,45 @@ namespace Celbridge.Console.Helpers;
 
 /// <summary>
 /// A composed shell startup line and the exact marker bytes the host scans the output stream for. A null
-/// ScanMarker means the line emits no marker, so the session reveals on its timer instead.
+/// ScanMarker means the line emits no marker. MarkerPersistsOnScreen means the marker was written into a
+/// screen cell, which a terminal that models a screen puts back on the stream when it reflows those rows.
 /// </summary>
-public sealed record ComposedStartup(string Line, string? ScanMarker);
+public sealed record ComposedStartup(string Line, string? ScanMarker, bool MarkerPersistsOnScreen = false);
 
 /// <summary>
 /// Composes a startup command into a single line safe to inject at a shell prompt, quoting each token for
-/// the target shell's dialect. Given a ready marker the line also clears the screen and emits the marker
-/// before running the command, so the shell wipes its own startup noise (banner, prompt, the echoed line)
-/// and the document knows the exact moment the screen is ready to reveal. A shell whose marker is invisible
-/// still gets the clear-and-mark reveal with no command, so a plain shell also starts on a clean screen.
+/// the target shell's dialect. The line clears the screen and emits the shell family's ready marker before
+/// running the command, wiping the shell's own startup noise and marking the point at which the screen is
+/// ready to be revealed.
 /// </summary>
 public static class ShellCommandComposer
 {
-    // Private OSC identifier carrying the POSIX ready marker. Any number the terminal does not itself
-    // handle works: the host consumes the sequence before xterm.js sees it, and a leaked marker renders as
-    // nothing rather than visible text.
-    private const string PosixReadyMarkerOscCode = "7000";
+    // The marker a PowerShell console emits. The reader decodes UTF-8 with a stateful decoder and hands on
+    // whole characters, so a single-character marker never arrives split across two chunks. The composed
+    // line writes it from its code point, so the shell's echo of that line cannot match the scan.
+    private const char PowerShellReadyMarker = '\u2404';
 
-    /// <summary>
-    /// Whether a shell family can emit a ready marker. Cmd has no concise way to write a string whose
-    /// source text differs from its output, so a cmd console reveals on the document's timer instead.
-    /// </summary>
-    public static bool SupportsReadyMarker(ConsoleShellFamily family)
-    {
-        return family != ConsoleShellFamily.Cmd;
-    }
+    // Private OSC identifier carrying the POSIX ready marker, and the text it carries. Any number the
+    // terminal does not itself handle works, as such a sequence renders as nothing if it reaches one.
+    private const string PosixReadyMarkerOscCode = "7000";
+    private const string PosixReadyMarkerText = "CELBRIDGE-CONSOLE-READY";
 
     public static ComposedStartup Compose(
         ConsoleShellFamily family,
         ConsoleStartupInvocation command,
-        string? readyMarker = null,
         string? workingDirectory = null)
     {
         var hasExecutable = !string.IsNullOrWhiteSpace(command.Executable);
+        var reveal = BuildReveal(family);
 
         // A plain shell injects no command, but a shell whose marker is invisible still clears the startup
         // noise and marks the ready point so the buffer begins on a clean prompt. A visible-marker shell
         // cannot reveal here without leaving the cursor mid-line, so it reveals nothing.
         if (!hasExecutable)
         {
-            if (readyMarker is not null &&
-                family == ConsoleShellFamily.Posix)
+            if (family == ConsoleShellFamily.Posix)
             {
-                var revealOnly = BuildReveal(family, readyMarker);
-                return new ComposedStartup(revealOnly.Prefix.TrimEnd(), revealOnly.ScanMarker);
+                return new ComposedStartup(reveal.Prefix.TrimEnd(), reveal.ScanMarker, reveal.PersistsOnScreen);
             }
 
             return new ComposedStartup(string.Empty, null);
@@ -77,28 +71,18 @@ public static class ShellCommandComposer
             line = "& " + line;
         }
 
-        // An injected command runs as soon as the shell is up, before its own startup has necessarily
-        // finished syncing its provider location to the process directory CreateProcess was given. Setting
-        // the location explicitly, right before the command, does not depend on that sync having happened.
+        // An injected command can run before the shell has synced its own location to the process directory
+        // CreateProcess was given.
         if (!string.IsNullOrWhiteSpace(workingDirectory))
         {
             line = BuildChangeDirectory(family, workingDirectory) + line;
         }
 
-        string? scanMarker = null;
-        if (readyMarker is not null)
-        {
-            var reveal = BuildReveal(family, readyMarker);
-            line = reveal.Prefix + line;
-            scanMarker = reveal.ScanMarker;
-        }
+        line = reveal.Prefix + line;
 
-        return new ComposedStartup(line, scanMarker);
+        return new ComposedStartup(line, reveal.ScanMarker, reveal.PersistsOnScreen);
     }
 
-    // Navigates to the resolved working directory right before the command, in the shell's own syntax
-    // rather than relying on it having already picked up the process directory CreateProcess was started
-    // with.
     private static string BuildChangeDirectory(ConsoleShellFamily family, string workingDirectory)
     {
         var quotedPath = Quote(family, workingDirectory);
@@ -111,50 +95,48 @@ public static class ShellCommandComposer
         };
     }
 
-    // The reveal injected before the command: clears the screen and emits the marker. The prefix's source
-    // text never contains the scan marker, so the shell's echo of the injected line cannot match it. POSIX
-    // emits an invisible escape sequence whose printf source differs from its output; PowerShell splits the
-    // marker across two concatenated literals.
-    private static (string Prefix, string? ScanMarker) BuildReveal(ConsoleShellFamily family, string readyMarker)
+    // The reveal injected before the command: clears the screen and emits the marker.
+    private static (string Prefix, string? ScanMarker, bool PersistsOnScreen) BuildReveal(ConsoleShellFamily family)
     {
         switch (family)
         {
             case ConsoleShellFamily.PowerShell:
             {
-                var splitIndex = readyMarker.Length / 2;
-                var head = readyMarker.Substring(0, splitIndex);
-                var tail = readyMarker.Substring(splitIndex);
-                var prefix = $"Clear-Host; Write-Host -NoNewline ('{head}' + '{tail}'); ";
-                return (prefix, readyMarker);
+                // Write-Host puts the marker in a screen cell, and ConPTY reserialises those cells on every
+                // reflow, so the marker comes back on the stream for as long as it is on screen.
+                var prefix = $"Clear-Host; Write-Host -NoNewline ([char]0x{(int)PowerShellReadyMarker:x4}); ";
+                return (prefix, PowerShellReadyMarker.ToString(), true);
             }
 
             case ConsoleShellFamily.Cmd:
-                return ("cls & ", null);
+                // Cmd cannot concisely write a string whose source text differs from its output, so it
+                // emits no marker.
+                return ("cls & ", null, false);
 
             default:
             {
-                // Invisible, cursor-neutral OSC carrying the marker: leaves the shell at column 0 so a
+                // Invisible, cursor-neutral OSC carrying the marker. It leaves the shell at column 0, so a
                 // reveal with no following command does not trip zsh's partial-line indicator.
-                var prefix = $"clear; printf '{PosixMarkerPrintfSource(readyMarker)}'; ";
-                return (prefix, PosixMarkerStreamBytes(readyMarker));
+                var prefix = $"clear; printf '{PosixMarkerPrintfSource()}'; ";
+                return (prefix, PosixMarkerStreamBytes(), false);
             }
         }
     }
 
     // The OSC marker as printf source text: backslash-escaped ESC and BEL, so its literal form differs from
     // the bytes printf writes.
-    private static string PosixMarkerPrintfSource(string readyMarker)
+    private static string PosixMarkerPrintfSource()
     {
-        return $"\\033]{PosixReadyMarkerOscCode};{readyMarker}\\007";
+        return $"\\033]{PosixReadyMarkerOscCode};{PosixReadyMarkerText}\\007";
     }
 
     // The OSC marker as it appears in the output stream: real ESC and BEL bytes, which is what the host
     // scans for.
-    private static string PosixMarkerStreamBytes(string readyMarker)
+    private static string PosixMarkerStreamBytes()
     {
         var escape = (char)27;
         var bell = (char)7;
-        return $"{escape}]{PosixReadyMarkerOscCode};{readyMarker}{bell}";
+        return $"{escape}]{PosixReadyMarkerOscCode};{PosixReadyMarkerText}{bell}";
     }
 
     private static string QuoteToken(ConsoleShellFamily family, string token)
@@ -172,17 +154,14 @@ public static class ShellCommandComposer
         return Quote(family, token);
     }
 
-    // Quotes for the shell's dialect whether or not the text strictly needs it. A path always takes this
-    // route rather than going through NeedsQuoting, whose safe set is drawn for command tokens and passes
-    // characters a folder name can legitimately hold. A comma is the one that bites: PowerShell reads an
-    // unquoted one in argument position as an array separator, which hands Set-Location a path made of
-    // the parts joined by a space.
+    // Quotes for the shell's dialect whether or not the text strictly needs it. Paths always take this
+    // route: PowerShell reads an unquoted comma in argument position as an array separator.
     private static string Quote(ConsoleShellFamily family, string token)
     {
         switch (family)
         {
             case ConsoleShellFamily.PowerShell:
-                // Single quotes are literal in PowerShell; an embedded quote doubles.
+                // Single quotes are literal in PowerShell. An embedded quote doubles.
                 return "'" + token.Replace("'", "''") + "'";
 
             case ConsoleShellFamily.Posix:
@@ -190,7 +169,7 @@ public static class ShellCommandComposer
                 return "'" + token.Replace("'", "'\\''") + "'";
 
             default:
-                // cmd has no literal quoting; double quotes cover spaces and redirection characters.
+                // cmd has no literal quoting. Double quotes cover spaces and redirection characters.
                 return "\"" + token + "\"";
         }
     }
