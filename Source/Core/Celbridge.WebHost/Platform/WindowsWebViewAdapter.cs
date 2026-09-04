@@ -152,6 +152,13 @@ public sealed class WindowsWebViewAdapter : IWebViewAdapter
         coreWebView2.Settings.UserAgent = $"{coreWebView2.Settings.UserAgent} {applicationToken}";
     }
 
+    public string DescribeNativeSurface(CoreWebView2 coreWebView2)
+    {
+        // The packaged WebView2 hosts its content in a child window that is in place from initialization
+        // on, so there is no attach state to report.
+        return string.Empty;
+    }
+
     public void SetZoomControlEnabled(CoreWebView2 coreWebView2, bool enabled)
     {
         coreWebView2.Settings.IsZoomControlEnabled = enabled;

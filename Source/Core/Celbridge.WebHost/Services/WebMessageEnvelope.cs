@@ -23,17 +23,7 @@ internal static class WebMessageEnvelope
     {
         try
         {
-            using var document = JsonDocument.Parse(message);
-            var root = document.RootElement;
-
-            // The page posts the envelope as a JS string, so the WebView2 heads deliver it wrapped in a JSON
-            // string literal. The macOS head hands over the envelope itself.
-            if (root.ValueKind != JsonValueKind.String)
-            {
-                return ReadNotification(root, methods);
-            }
-
-            var envelope = root.GetString();
+            var envelope = UnwrapPageJson(message);
             if (string.IsNullOrEmpty(envelope))
             {
                 return null;
@@ -42,6 +32,32 @@ internal static class WebMessageEnvelope
             using var envelopeDocument = JsonDocument.Parse(envelope);
 
             return ReadNotification(envelopeDocument.RootElement, methods);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// The JSON a page produced, unwrapped from the encoding its head applied. A page hands JSON over as a JS
+    /// string, which the WebView2 heads deliver wrapped in a JSON string literal while the macOS head delivers
+    /// the text itself. Returns null when the text is not JSON at all.
+    /// </summary>
+    public static string? UnwrapPageJson(string? text)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(text);
+
+            return document.RootElement.ValueKind == JsonValueKind.String
+                ? document.RootElement.GetString()
+                : text;
         }
         catch (JsonException)
         {

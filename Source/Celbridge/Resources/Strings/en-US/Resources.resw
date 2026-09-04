@@ -1004,6 +1004,12 @@ Open with default application instead?</value>
   <data name="ProjectSettings_FeatureFlag_WebAccessTools_Description" xml:space="preserve">
     <value>Built-in web fetch and web search tools for agents.</value>
   </data>
+  <data name="ProjectSettings_FeatureFlag_WebViewLoadDiagnostics_Title" xml:space="preserve">
+    <value>WebView Load Diagnostics</value>
+  </data>
+  <data name="ProjectSettings_FeatureFlag_WebViewLoadDiagnostics_Description" xml:space="preserve">
+    <value>Records how each web page loads in the log. A page that loads blank is always reported; this adds the surrounding detail.</value>
+  </data>
   <data name="ProjectSettings_FeatureFlag_WebViewDevTools_Title" xml:space="preserve">
     <value>WebView Developer Tools</value>
   </data>

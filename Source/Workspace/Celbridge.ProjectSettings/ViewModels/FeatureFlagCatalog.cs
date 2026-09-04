@@ -22,5 +22,6 @@ internal static class FeatureFlagCatalog
         new(FeatureFlagConstants.WebViewDevTools, "ProjectSettings_FeatureFlag_WebViewDevTools_Title", "ProjectSettings_FeatureFlag_WebViewDevTools_Description"),
         new(FeatureFlagConstants.WebViewDevToolsEval, "ProjectSettings_FeatureFlag_WebViewDevToolsEval_Title", "ProjectSettings_FeatureFlag_WebViewDevToolsEval_Description"),
         new(FeatureFlagConstants.AnswerDialog, "ProjectSettings_FeatureFlag_AnswerDialog_Title", "ProjectSettings_FeatureFlag_AnswerDialog_Description"),
+        new(FeatureFlagConstants.WebViewLoadDiagnostics, "ProjectSettings_FeatureFlag_WebViewLoadDiagnostics_Title", "ProjectSettings_FeatureFlag_WebViewLoadDiagnostics_Description"),
     };
 }

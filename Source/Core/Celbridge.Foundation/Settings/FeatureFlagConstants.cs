@@ -37,4 +37,10 @@ public static class FeatureFlagConstants
     /// Enables the built-in WebFetch and WebSearch tools for coding agents.
     /// </summary>
     public const string WebAccessTools = "web-access-tools";
+
+    /// <summary>
+    /// Narrates every navigation and attach of a hosted page into the log. A page that loads blank is
+    /// reported whether or not this is enabled; what it adds is the surrounding timeline.
+    /// </summary>
+    public const string WebViewLoadDiagnostics = "webview-load-diagnostics";
 }
