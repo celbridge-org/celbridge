@@ -248,7 +248,7 @@
           "css": "--cel-section-stack-threshold",
           "value": "387px",
           "published": true,
-          "comment": "The width at which the switcher fits its nav beside the section rather than above it: the nav column, the gutter between them, and the document minimum below which a section stops being legible. A container query prelude cannot read a custom property, so celbridge.css writes the number out and this declares it. It is compared against the container's own CSS pixels and so is not divided by the page zoom: a page the engine renders larger stacks at a wider panel, which is what the larger type wants."
+          "comment": "The width at which the switcher fits its nav beside the section rather than above it: the nav column, the gutter between them, and the document minimum below which a section stops being legible. A container query prelude cannot read a custom property, so the switcher resolves its layout in JavaScript instead and reads this token with getComputedStyle. It is compared against the container's own CSS pixels and so is not divided by the page zoom: a page the engine renders larger stacks at a wider panel, which is what the larger type wants."
         }
       }
     },

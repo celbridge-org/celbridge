@@ -51,12 +51,6 @@ public sealed partial class DockedUtilityDocumentView : DocumentView
         return Result.Ok();
     }
 
-    // The save tick flushes the panel view, not this tab, so the two never race.
-    protected override async Task<Result> SaveDocumentContentAsync()
-    {
-        return await _controller.SaveContentAsync();
-    }
-
     public override IEditTarget EditTarget => _controller;
 
     // The Utility Panel owns the controller and its view model, and keeps using both after this tab closes.

@@ -71,8 +71,12 @@ public class WorkspaceItemSaver
             failedSaves.Add(new FailedResource(item.FileResource, saveResult.MessageChain));
 
             // A failed save against a cache that still reads Writable suggests an external attribute flip
-            // slipped past the watcher.
-            updateResourcesRequired = true;
+            // slipped past the watcher. The rebuild below covers the project tree, so only a resource in it
+            // has anything to gain from one.
+            if (item.FileResource.Root == ResourceKey.DefaultRoot)
+            {
+                updateResourcesRequired = true;
+            }
         }
 
         if (updateResourcesRequired)

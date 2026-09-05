@@ -587,8 +587,12 @@ for (const field of formFields) {
     }
 }
 
+// The host mirrors the writable state as its enum name, so Writable is the only editable value. A view
+// state that has not been seeded yet leaves the form editable.
 function isDocumentWritable() {
-    return client.viewState.current?.writable !== false;
+    const writable = client.viewState.current?.writable;
+
+    return writable === undefined || writable === 'Writable';
 }
 
 // A read-only document disables the settings form so no edit marks the document dirty. The switcher's
@@ -606,7 +610,13 @@ function applyWritableState() {
 
 client.viewState.onChanged(() => applyWritableState());
 
-reopenSettingsButton.addEventListener('click', () => { reopenSession(); });
+// Reopening from settings shows the terminal first. A reopen measures the terminal for the size it gives the
+// new pty and paints a failed start into it, and neither works while it is the hidden half of the row.
+reopenSettingsButton.addEventListener('click', () => {
+    setSettingsVisible(false);
+    reopenSession();
+});
+
 reopenTerminalButton.addEventListener('click', () => { reopenSession(); });
 
 // The pip flags a config error, a config that diverges from the launched session, or a session that never
@@ -869,7 +879,8 @@ async function main() {
             // Ack the reload so the host's external-change handshake does not time out.
             client.document.notifyContentLoaded(ContentLoadedReason.ExternalReload);
         },
-        // Persist the selected section and its scroll position so they survive a reopen.
+        // Persist the selected section and its scroll position so they survive a reopen. Which surface was
+        // showing is deliberately not persisted: a reopen comes back to the terminal.
         onRequestState: () => JSON.stringify({
             activeSection: settingsSwitcher.selected(),
             scrollTop: settingsSwitcher.scrollTop(),

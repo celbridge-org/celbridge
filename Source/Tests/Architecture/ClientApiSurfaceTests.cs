@@ -3,12 +3,12 @@ using System.Text.RegularExpressions;
 namespace Celbridge.Tests.Architecture;
 
 /// <summary>
-/// Guards the client library's public JavaScript surface, the `cel.*` API that package editors are written
-/// against. Packages live outside this repository, so no scan of call sites can tell whether removing a
-/// method breaks one: an editor that calls a method the bundle no longer exports throws at module scope and
-/// renders blank, with nothing in the host to say why. The snapshot below is the contract. Removing or
-/// renaming an entry fails this test, which is the moment to ask who is calling it and to say so in the
-/// release notes; adding one is a one-line update.
+/// Guards the client library's public JavaScript surface: the `cel.*` API and the shared `ui/` modules that
+/// package editors are written against. Packages live outside this repository, so no scan of call sites can
+/// tell whether a removal breaks one. An editor that calls a method the bundle no longer exports, or imports
+/// a module it no longer serves, throws at module scope and renders blank, with nothing in the host to say
+/// why. The snapshots below are the contract. Removing or renaming an entry fails these tests, which is the
+/// moment to ask who is calling it and to say so in the release notes. Adding one is a one-line update.
 /// </summary>
 [TestFixture]
 public class ClientApiSurfaceTests
@@ -72,18 +72,42 @@ public class ClientApiSurfaceTests
         }
     };
 
+    // The shared UI modules a package imports directly, by the functions each one exports. These are
+    // reached as `/assets/celbridge-client/ui/<module>.js` rather than through cel.*, so a module removed
+    // or renamed here breaks an editor's import the same way a removed method breaks a call. Keep each
+    // list alphabetical.
+    private static readonly Dictionary<string, string[]> PublishedClientUiModules = new(StringComparer.Ordinal)
+    {
+        ["ui/card-list.js"] = new[]
+        {
+            "createCardList",
+            "placementForPointer"
+        },
+        ["ui/find-bar.js"] = new[]
+        {
+            "createFindBar"
+        },
+        ["ui/icon-field.js"] = new[]
+        {
+            "createIconField",
+            "hasIconGlyph",
+            "resolveIconClass",
+            "toIconClass"
+        },
+        ["ui/section-switcher.js"] = new[]
+        {
+            "attachSectionSwitcher"
+        },
+        ["ui/splitter.js"] = new[]
+        {
+            "attachSplitter"
+        }
+    };
+
     [Test]
     public void ThePublishedClientApiIsUnchanged()
     {
-        var sourceFolder = ArchitectureHelpers.FindSourceFolder();
-        var clientFolder = Path.Combine(
-            sourceFolder,
-            "Core",
-            "Celbridge.WebHost",
-            "Web",
-            "celbridge-client");
-
-        Directory.Exists(clientFolder).Should().BeTrue("the client library must be locatable from the test binary");
+        var clientFolder = FindClientFolder();
 
         var differences = new List<string>();
         foreach (var (relativePath, publishedMethods) in PublishedClientApi)
@@ -111,6 +135,69 @@ public class ClientApiSurfaceTests
         differences.Sort(StringComparer.Ordinal);
         string.Join(Environment.NewLine, differences).Should().BeEmpty(
             "the cel.* surface is what package editors are written against, and a package that calls a removed method renders blank with no host-side error; update PublishedClientApi deliberately, and treat a removal as a breaking change for package authors");
+    }
+
+    [Test]
+    public void ThePublishedClientUiSurfaceIsUnchanged()
+    {
+        var clientFolder = FindClientFolder();
+
+        var differences = new List<string>();
+        foreach (var (relativePath, publishedFunctions) in PublishedClientUiModules)
+        {
+            var filePath = Path.Combine(clientFolder, relativePath.Replace('/', Path.DirectorySeparatorChar));
+            if (!File.Exists(filePath))
+            {
+                differences.Add($"{relativePath}: the module is gone, so every import of it fails");
+                continue;
+            }
+
+            var exportedFunctions = ReadExportedFunctions(filePath);
+
+            foreach (var function in publishedFunctions.Except(exportedFunctions, StringComparer.Ordinal))
+            {
+                differences.Add($"{relativePath}: {function} is published but no longer exported");
+            }
+
+            foreach (var function in exportedFunctions.Except(publishedFunctions, StringComparer.Ordinal))
+            {
+                differences.Add($"{relativePath}: {function} is exported but not published");
+            }
+        }
+
+        differences.Sort(StringComparer.Ordinal);
+        string.Join(Environment.NewLine, differences).Should().BeEmpty(
+            "a package imports these modules by path, so a removed module throws at import and renders the editor blank; update PublishedClientUiModules deliberately, and treat a removal as a breaking change for package authors");
+    }
+
+    private static string FindClientFolder()
+    {
+        var sourceFolder = ArchitectureHelpers.FindSourceFolder();
+        var clientFolder = Path.Combine(
+            sourceFolder,
+            "Core",
+            "Celbridge.WebHost",
+            "Web",
+            "celbridge-client");
+
+        Directory.Exists(clientFolder).Should().BeTrue("the client library must be locatable from the test binary");
+
+        return clientFolder;
+    }
+
+    // Functions a module publishes to importers: declared at the top level with the export keyword.
+    private static HashSet<string> ReadExportedFunctions(string filePath)
+    {
+        var contents = File.ReadAllText(filePath);
+        var functions = new HashSet<string>(StringComparer.Ordinal);
+        var pattern = @"^export\s+(?:async\s+)?function\s+([a-zA-Z][a-zA-Z0-9]*)\s*\(";
+
+        foreach (Match match in Regex.Matches(contents, pattern, RegexOptions.Multiline))
+        {
+            functions.Add(match.Groups[1].Value);
+        }
+
+        return functions;
     }
 
     // Keywords that read exactly like a method declaration once indented: `if (ready) {`, `for (...) {`.

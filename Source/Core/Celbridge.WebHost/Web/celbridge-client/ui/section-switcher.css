@@ -56,6 +56,9 @@
     grid-column: 2;
     grid-row: 1;
     display: flex;
+    /* The switcher clips what overflows it, so a strip carrying more rows than fit across takes a second
+       line rather than putting them past the edge with no way to reach them. */
+    flex-wrap: wrap;
     gap: 4px;
     /* Lines the strip up with the heading in the block below it. */
     padding: 0 var(--cel-section-inset) 8px;
@@ -86,6 +89,8 @@
 .cel-section-switcher[data-layout="inline"] > .cel-section-nav {
     grid-column: 1;
     flex-direction: column;
+    /* A column that wrapped would build a second column outside the width the rows are sized to. */
+    flex-wrap: nowrap;
     gap: var(--cel-section-row-gap);
     width: var(--cel-section-nav-width);
     /* Lines the first row up with the section heading beside it. */

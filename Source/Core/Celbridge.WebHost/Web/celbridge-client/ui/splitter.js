@@ -23,7 +23,8 @@ export function attachSplitter(splitterElement, options = {}) {
     const { onDragStart, onDrag, onReset, isEnabled } = options;
     let dragging = false;
     let startX = 0;
-    let lastResetTime = 0;
+    // Never reads as a recent reset, so the debounce cannot swallow a drag in the page's first half second.
+    let lastResetTime = Number.NEGATIVE_INFINITY;
 
     function isDebouncingReset() {
         return performance.now() - lastResetTime < resetDebounceMs;

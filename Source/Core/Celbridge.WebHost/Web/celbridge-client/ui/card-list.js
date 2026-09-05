@@ -343,9 +343,14 @@ export function createCardList(options) {
             snapshotCard.style.transform = '';
         }
 
-        dragState.card.classList.remove('dragging');
+        const draggedCard = dragState.card;
+        draggedCard.classList.remove('dragging');
         listElement.classList.remove('reordering');
         dragState = null;
+
+        // Reordering moves the card in the DOM, which blurs it, so the focus the grab took is put back. It
+        // marks the card once the drag's own accent is gone, and it is what the reorder keys act on next.
+        draggedCard.querySelector('summary').focus();
     }
 
     function populate(items) {

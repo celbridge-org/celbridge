@@ -59,9 +59,8 @@ public class DesignTokenCoverageTests
         // settings surface takes its name from the section showing. The name carries the native
         // PanelHeader height for a package whose panel does have one to line up.
         "--cel-panel-header-height",
-        // The width at which the section switcher stacks its nav above its content. A container query
-        // prelude cannot read a custom property, so celbridge.css writes the number out and this name
-        // declares it for the other side.
+        // The width at which the section switcher stacks its nav above its content. The switcher reads it
+        // with getComputedStyle rather than through var(), which is the only form the scan matches.
         "--cel-section-stack-threshold"
     ];
 
@@ -304,6 +303,40 @@ public class DesignTokenCoverageTests
             PublishedTokenNames,
             "a published token is part of the contribution contract, so adding, renaming or removing one "
             + "has to be matched here");
+    }
+
+    [Test]
+    public void TheSectionSwitcherStackFallback_MatchesItsToken()
+    {
+        var source = LoadTokenSource();
+
+        var thresholdToken = source.Tokens
+            .Single(candidate => candidate.CssPropertyName == "--cel-section-stack-threshold");
+
+        var declaredValue = thresholdToken.ThemeInvariantValue;
+        declaredValue.Should().NotBeNull("the stack threshold is one width in both themes");
+
+        var sourceFolder = ArchitectureHelpers.FindSourceFolder();
+        var modulePath = Path.Combine(
+            sourceFolder,
+            "Core",
+            "Celbridge.WebHost",
+            "Web",
+            "celbridge-client",
+            "ui",
+            "section-switcher.js");
+
+        var fallback = Regex.Match(
+            ArchitectureHelpers.ReadSourceFile(modulePath),
+            @"STACK_THRESHOLD_FALLBACK = (\d+)");
+
+        fallback.Success.Should().BeTrue(
+            "the switcher carries a fallback for a page served without the generated stylesheet");
+
+        $"{fallback.Groups[1].Value}px".Should().Be(
+            declaredValue,
+            "the fallback stands in for --cel-section-stack-threshold on a page that cannot read it, so the "
+            + "two are one number written twice and would otherwise drift apart silently");
     }
 
     private static DesignTokenSource LoadTokenSource()
