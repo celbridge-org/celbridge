@@ -4,30 +4,10 @@ html, body {
     overflow: hidden;
 }
 
-/* Theme via [data-theme] attribute (WebView2 doesn't reliably re-evaluate prefers-color-scheme). The accent,
-   toolbar-foreground and toolbar-surface colors derive from the shared tokens (celbridge-tokens.css, linked
-   before this file), so they are single-sourced with the native palette and need no per-theme override
-   here. The toolbar takes the chrome role, so it reads as one band with the native tab strip above it and
-   steps off the Monaco canvas below. The remaining tokens are the editor's own translucent divider and
-   button-overlay colors, which have no shared equivalent and stay defined per theme below. */
-:root {
-    --accent-color: var(--cel-accent);
-    --toolbar-btn-fg: var(--cel-text-primary);
-    --toolbar-bg: var(--cel-chrome-bg);
-    --divider-base-color: rgba(0, 0, 0, 0.0803);
-    --toolbar-border: rgba(0, 0, 0, 0.0803);
-    --toolbar-btn-hover-bg: rgba(0, 0, 0, 0.0402);
-    --toolbar-btn-active-bg: rgba(0, 120, 212, 0.12);
-    --toolbar-btn-disabled-fg: rgba(0, 0, 0, 0.36);
-}
-
-[data-theme="dark"] {
-    --divider-base-color: rgba(255, 255, 255, 0.0837);
-    --toolbar-border: rgba(255, 255, 255, 0.0837);
-    --toolbar-btn-hover-bg: rgba(255, 255, 255, 0.0605);
-    --toolbar-btn-active-bg: rgba(96, 205, 255, 0.18);
-    --toolbar-btn-disabled-fg: rgba(255, 255, 255, 0.3628);
-}
+/* Every colour in the editor's own chrome comes from the shared tokens in celbridge-tokens.css, linked
+   before this file, so it holds the same value as the native chrome and follows the html[data-theme] the
+   client mirrors from the host. WebView2 does not reliably re-evaluate prefers-color-scheme, which is why
+   the theme is an attribute rather than a media query. */
 
 #editor-root {
     display: flex;
@@ -83,7 +63,7 @@ html, body {
     left: 50%;
     width: 1px;
     transform: translateX(-50%);
-    background-color: var(--divider-base-color);
+    background-color: var(--cel-divider-subtle);
     pointer-events: none;
 }
 
@@ -97,7 +77,7 @@ html, body {
     left: 50%;
     width: 4px;
     transform: translateX(-50%);
-    background-color: var(--accent-color);
+    background-color: var(--cel-accent);
     opacity: 0;
     transition: opacity 200ms ease-out 200ms;
     pointer-events: none;
@@ -118,7 +98,7 @@ html, body {
    DraggingLineThickness. */
 #divider.dragging::before {
     width: 4px;
-    background-color: var(--accent-color);
+    background-color: var(--cel-accent);
 }
 
 #preview-pane {
