@@ -239,11 +239,34 @@ describe('createCardList', () => {
         expect([...document.getElementById('cards').children].every((card) => !card.open)).toBe(true);
     });
 
+    it('moves the card element itself on a drop, so a control in its body keeps its state', () => {
+        const dragged = cardAt(0);
+        // Stands in for state that lives on the element rather than in the entry, such as the shortcut
+        // card's icon picker.
+        dragged.querySelector('.card-name').value = 'in progress';
+
+        startDrag(dragged);
+        dragToRowTop(ROW_PITCH * 2);
+        window.dispatchEvent(new window.PointerEvent('pointerup', { bubbles: true }));
+
+        expect(cardAt(2)).toBe(dragged);
+        expect(cardAt(2).querySelector('.card-name').value).toBe('in progress');
+    });
+
     it('does not toggle a card open when its grip is pressed', () => {
         const clickEvent = new window.MouseEvent('click', { bubbles: true, cancelable: true });
         cardAt(0).querySelector('.cel-card-grip').dispatchEvent(clickEvent);
 
         expect(clickEvent.defaultPrevented).toBe(true);
+    });
+
+    it('focuses the card whose grip is pressed, so the reorder keys act on the one it found', () => {
+        cardAt(0).open = true;
+
+        // The press only collapses the list, so this is the card marked without a drag having started.
+        startDrag(cardAt(1));
+
+        expect(document.activeElement).toBe(cardAt(1).querySelector('summary'));
     });
 
     it('reorders the list live as the pointer crosses each row', () => {

@@ -220,17 +220,19 @@
 
     <!-- One runner the console's session type provides. Its fields are text rather than inputs: they come from
          the type, not the file, so there is nothing to edit. The switch is the one thing that is writable,
-         recording the runner's extensions under disabled_built_in_runners. It sits outside .cel-card-actions so it
-         still reads while the card is collapsed, since it shows state rather than offering an action. -->
+         recording the runner's extensions under disabled_built_in_runners. It goes in .cel-card-actions, which
+         keeps everything but a delete button reachable on a collapsed card. -->
     <template id="built-in-runner-template">
         <details class="cel-expander built-in-card">
             <summary>
                 <span class="cel-card-title"></span>
                 <span class="built-in-badge" data-loc-key="Console_Runner_BuiltIn"></span>
-                <button class="built-in-switch" type="button" role="switch"
-                        data-loc-key="Console_Runner_BuiltInEnabled" data-loc-attr="title,aria-label">
-                    <span class="built-in-switch-thumb"></span>
-                </button>
+                <span class="cel-card-actions">
+                    <button class="built-in-switch" type="button" role="switch"
+                            data-loc-key="Console_Runner_BuiltInEnabled" data-loc-attr="title,aria-label">
+                        <span class="built-in-switch-thumb"></span>
+                    </button>
+                </span>
             </summary>
             <div class="cel-expander-body">
                 <div class="field">

@@ -15,6 +15,7 @@
            <i class="cel-card-icon …"></i>          optional glyph
            <span class="cel-card-title"></span>
            <span class="cel-card-actions">
+             <button …>                             actions that read on a collapsed card
              <button class="cel-icon-button cel-card-delete" …>
    */
 .cel-card-list .cel-expander {
@@ -39,8 +40,9 @@
     white-space: nowrap;
 }
 
-/* Inset from the chevron by more than the summary's own gap: the whole summary toggles the card, so a
-   delete sitting beside the chevron is in the path of a near-miss. */
+/* Inset from the chevron by more than the summary's own gap: the whole summary toggles the card, so an
+   action sitting beside the chevron is in the path of a near-miss. That matters most for an action that is
+   live while the card is collapsed, where the row it shares is the one the user is aiming at. */
 .cel-card-actions {
     flex: 0 0 auto;
     display: flex;
@@ -48,9 +50,10 @@
     margin-right: 8px;
 }
 
-/* Actions show only on an open card, so deleting an entry takes expanding it first. Anything that should
-   read while the card is collapsed is identity rather than an action, and belongs in .cel-card-icon. */
-.cel-expander:not([open]) .cel-card-actions {
+/* Delete shows only on an open card, so an entry cannot be removed without its contents having been on
+   screen first, which is worth having while there is no undo behind it. The rest of the group stays
+   reachable on a collapsed card: an action that opens what the entry names needs no expand of its own. */
+.cel-expander:not([open]) .cel-card-delete {
     display: none;
 }
 
@@ -74,6 +77,11 @@
     touch-action: none;
 }
 
+/* A single card has nothing to reorder against, so it carries no grip. */
+.cel-card-list .cel-expander:only-child .cel-card-grip {
+    display: none;
+}
+
 .cel-card-list.reorder-disabled .cel-card-grip {
     opacity: 0.5;
     cursor: default;
@@ -86,14 +94,21 @@
     user-select: none;
 }
 
-/* The card being held takes an accent border, which reads across the full width of the row and stays clear of
-   where the pointer sits. Deliberately not dimmed: opacity would fade the border doing the work, and it
-   applies to the whole subtree so the accent grip would go with it. Swapping a border to the accent colour is
-   how the rest of the app marks an active control, so this borrows an idiom rather than inventing one. */
+/* The card being held and the card the keyboard is on both take an accent ring, which reads across the full
+   width of the row and stays clear of where the pointer sits. It is a ring drawn over the card at the card's
+   own corner radius rather than a recolouring of the border, so a marked card's edge reads the same weight
+   as an unmarked one and a card list is free to restyle that border. Marking the focused card is what gives
+   Alt+Up and Alt+Down a visible subject, and it is what a card falls back to when it stops being held.
+   Deliberately not dimmed: opacity applies to the whole subtree, so the accent grip would fade with it. */
+.cel-card-list .cel-expander.dragging,
+.cel-card-list .cel-expander:focus-within {
+    outline: 1px solid var(--cel-accent);
+    outline-offset: -1px;
+}
+
+/* Lifted over its neighbours, since the held card follows the pointer and so spends most of a drag
+   straddling two rows. Stacking it above them is also what makes it read as picked up. */
 .cel-card-list .cel-expander.dragging {
-    border-color: var(--cel-accent);
-    /* Lifted over its neighbours, since it follows the pointer and so spends most of a drag straddling two
-       rows. Stacking it above them is also what makes it read as picked up. */
     position: relative;
     z-index: 1;
 }

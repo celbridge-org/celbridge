@@ -205,13 +205,10 @@ html, body {
     display: none;
 }
 
-/* Inset from the chevron to match .cel-card-actions, so the switch is not in the path of a near-miss. */
 .built-in-switch {
-    flex: 0 0 auto;
     position: relative;
     width: 32px;
     height: 18px;
-    margin-right: 8px;
     padding: 0;
     border: 1px solid var(--cel-text-secondary);
     border-radius: 9px;

@@ -160,6 +160,11 @@ export function createCardList(options) {
             return;
         }
 
+        // A press marks its card, so one that only collapses the list still shows which card it found, and
+        // the reorder keys act on that card without a further click. The gesture suppresses the press the
+        // browser would otherwise focus the header with, so the focus is taken here instead.
+        card.querySelector('summary').focus();
+
         // A drag can only run against a collapsed list, since uniform rows are what make the placement below
         // work. Collapsing as part of the grab would shorten everything above the grabbed row and slide it
         // out from under the pointer, so the first press on a grip while anything is open only tidies the
