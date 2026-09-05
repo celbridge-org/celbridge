@@ -63,8 +63,7 @@ public interface IUtilityService
     EditorId? GetDockedUtilityId(ResourceKey resource);
 
     /// <summary>
-    /// The utilities, as items the workspace save tick can flush. A utility docked into a document tab is
-    /// listed here too, because its panel view stays its owner wherever it is presented.
+    /// The utilities as saveable workspace items. A utility docked into a document tab is included.
     /// </summary>
     IReadOnlyList<ISaveableWorkspaceItem> GetSaveableItems();
 

@@ -8,9 +8,7 @@ namespace Celbridge.Documents.Views;
 /// Document view for a utility docked as a document: a utility whose presentation has moved from the Utility
 /// Panel into a document tab. It borrows the utility's persistent CustomEditorController (owned by its
 /// CustomUtilityView) rather than creating one, so the utility keeps a single WebView as it moves between
-/// areas, and reads its state from the controller's view model so the utility has one dirty state wherever
-/// it is presented. Its panel view stays the owner: the panel is what the save tick flushes, and the
-/// documents panel reparents the WebView back to it on close rather than tearing the controller down.
+/// areas.
 /// </summary>
 public sealed partial class DockedUtilityDocumentView : DocumentView
 {
@@ -53,8 +51,7 @@ public sealed partial class DockedUtilityDocumentView : DocumentView
         return Result.Ok();
     }
 
-    // Saving goes through the borrowed controller, so a close that flushes this tab writes the utility's
-    // content. The save tick asks the panel view instead, so the two never race.
+    // The save tick flushes the panel view, not this tab, so the two never race.
     protected override async Task<Result> SaveDocumentContentAsync()
     {
         return await _controller.SaveContentAsync();
@@ -62,8 +59,7 @@ public sealed partial class DockedUtilityDocumentView : DocumentView
 
     public override IEditTarget EditTarget => _controller;
 
-    // The Utility Panel owns the controller and its view model, and keeps using both after this tab closes,
-    // so neither the edit target nor the view model is released here.
+    // The Utility Panel owns the controller and its view model, and keeps using both after this tab closes.
     protected override bool ClearsEditTargetOnClose => false;
 
     public override void FocusDocument()

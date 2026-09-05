@@ -1059,8 +1059,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         {
             foreach (var documentTab in sectionView.GetAllTabs())
             {
-                // A docked utility is presented in a tab but still owned by its panel view, which lists it
-                // for the save tick wherever it is presented. Listing it here too would save it twice.
+                // A docked utility is listed by its panel view, so listing it here too would save it twice.
                 if (documentTab.ViewModel.IsDockedUtility)
                 {
                     continue;

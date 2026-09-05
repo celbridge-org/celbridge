@@ -12,8 +12,7 @@ export default defineConfig({
                 fileURLToPath(new URL('./tests/fixtures/document-api-stub.js', import.meta.url)),
             '/assets/celbridge-client/localization.js':
                 fileURLToPath(new URL('./tests/fixtures/localization-stub.js', import.meta.url)),
-            // The splitter gesture talks to nothing but the DOM, so tests run the shared module itself
-            // rather than a stub of it.
+            // The splitter gesture talks to nothing but the DOM, so it runs as-is under jsdom.
             '/assets/celbridge-client/ui/splitter.js':
                 fileURLToPath(new URL(
                     '../../../../Core/Celbridge.WebHost/Web/celbridge-client/ui/splitter.js',

@@ -241,8 +241,7 @@ describe('createCardList', () => {
 
     it('moves the card element itself on a drop, so a control in its body keeps its state', () => {
         const dragged = cardAt(0);
-        // Stands in for state that lives on the element rather than in the entry, such as the shortcut
-        // card's icon picker.
+        // Stands in for state that lives on the element rather than in the entry.
         dragged.querySelector('.card-name').value = 'in progress';
 
         startDrag(dragged);

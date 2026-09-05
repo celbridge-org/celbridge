@@ -98,8 +98,7 @@ public interface IDocumentsPanel
     Task<Result> CloseDocument(ResourceKey fileResource, CloseDocumentOptions? options = null);
 
     /// <summary>
-    /// The open documents, as items the workspace save tick can flush. A utility docked into a document tab
-    /// is left out: its panel view stays its owner and lists it instead.
+    /// The open documents as saveable workspace items. A utility docked into a document tab is not included.
     /// </summary>
     IReadOnlyList<ISaveableWorkspaceItem> GetSaveableItems();
 

@@ -4,8 +4,7 @@ using Celbridge.Logging;
 namespace Celbridge.WorkspaceUI.Services;
 
 /// <summary>
-/// Flushes the workspace items that are due to be saved. The open documents and the utilities buffer their
-/// edits the same way, so one pass over both applies one save policy to them.
+/// Flushes the workspace items that are due to be saved.
 /// </summary>
 public class WorkspaceItemSaver
 {
@@ -60,20 +59,19 @@ public class WorkspaceItemSaver
                 continue;
             }
 
-            // A save failure against an item whose cached state is not Writable is the expected outcome of
-            // the read-only gate in LocalResourceFileSystem. Log it for diagnostics but do not notify,
-            // otherwise every auto-save tick on a locked file with buffered changes would spam the user.
+            // A non-writable item failing to save is expected, and notifying would spam the user on every
+            // auto-save tick against a locked file with buffered changes.
             if (item.WritableState != WritableState.Writable)
             {
                 _logger.LogDebug($"Skipped save for non-writable workspace item: '{item.FileResource}'");
                 continue;
             }
 
-            // MessageChain is the outer-first reason, which the toast cuts to its first line.
+            // MessageChain is the outer-first reason.
             failedSaves.Add(new FailedResource(item.FileResource, saveResult.MessageChain));
 
             // A failed save against a cache that still reads Writable suggests an external attribute flip
-            // slipped past the watcher. Schedule a resource update so the cache catches up.
+            // slipped past the watcher.
             updateResourcesRequired = true;
         }
 

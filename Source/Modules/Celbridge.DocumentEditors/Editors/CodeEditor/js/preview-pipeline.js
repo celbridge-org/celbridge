@@ -114,8 +114,6 @@ export class PreviewPipeline {
         }
     }
 
-    // The divider only resizes while Split is the active mode. A drag converts the pointer delta into the
-    // editor pane's share of the split root, measured from the width the pane had when the drag started.
     #attachDivider(dividerElement) {
         let dragStartWidth = 0;
 

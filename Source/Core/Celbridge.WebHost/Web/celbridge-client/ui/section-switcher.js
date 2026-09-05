@@ -1,9 +1,9 @@
 // Behaviour for the shared `.cel-section-switcher` settings surface (styled by ui/section-switcher.css),
 // mirroring the native SettingsSectionSwitcher. Mark up a `.cel-section-nav-item` row, a
 // `.cel-section-header` and a child of `.cel-section-content` per section, each carrying the same
-// `data-section` id, then call attachSectionSwitcher() to drive them. The helper owns `aria-selected`, the roving tabindex, the arrow
-// keys, which header and section are showing, each section's scroll position, and which of the two layouts
-// the surface is in.
+// `data-section` id, then call attachSectionSwitcher() to drive them. The helper owns `aria-selected`, the
+// roving tabindex, the arrow keys, which header and section are showing, each section's scroll position, and
+// which of the two layouts the surface is in.
 //
 //   const switcher = attachSectionSwitcher(rootElement, {
 //     onChange(sectionId) { /* the selection moved */ },
@@ -50,8 +50,7 @@ export function attachSectionSwitcher(rootElement, options = {}) {
     const headers = Array.from(rootElement.querySelectorAll('.cel-section-header'));
     const sections = contentElement ? Array.from(contentElement.children) : [];
 
-    // Each section's scroll offset, so it survives another section showing, and survives the whole surface
-    // being hidden, which destroys the scroll box and takes the offset with it.
+    // Each section's scroll offset, keyed by section id.
     const scrollOffsets = new Map();
 
     // A layout named in the markup is the author's, so the measurement never overrides it.
@@ -89,7 +88,7 @@ export function attachSectionSwitcher(rootElement, options = {}) {
             const isSelected = item === target;
             item.setAttribute('aria-selected', isSelected ? 'true' : 'false');
             // Roving tabindex: only the selected row is in the tab order, so Tab steps over the nav as one
-            // control and the arrow keys move within it.
+            // control.
             item.tabIndex = isSelected ? 0 : -1;
         }
 
@@ -137,8 +136,7 @@ export function attachSectionSwitcher(rootElement, options = {}) {
         return 'stacked';
     }
 
-    // A hidden surface reports no width, which is not a measurement of anything, so the layout it was last
-    // laid out in stands until it is on screen again.
+    // A hidden surface reports no width, so the last resolved layout stands until it is on screen again.
     function applyLayout(width) {
         if (width <= 0) {
             return;
@@ -168,8 +166,7 @@ export function attachSectionSwitcher(rootElement, options = {}) {
 
     if (navElement) {
         navElement.addEventListener('keydown', (event) => {
-            // Both axes move the selection, because the nav is a column in one layout and a strip in the
-            // other, and the surface can change layout under the user's hands.
+            // Both axes move the selection: the nav is a column in one layout and a strip in the other.
             if (event.key === 'ArrowLeft' ||
                 event.key === 'ArrowUp') {
                 selectByOffset(-1);
@@ -221,8 +218,6 @@ export function attachSectionSwitcher(rootElement, options = {}) {
         }
     }
 
-    // Applied from the markup only when it asks for it, so attaching never enables a control the surface
-    // disabled for a reason of its own.
     if (rootElement.dataset.readonly === 'true') {
         setReadOnly(true);
     }

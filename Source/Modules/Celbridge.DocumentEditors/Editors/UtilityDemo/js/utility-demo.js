@@ -1,7 +1,7 @@
-// Utility demo: a small per-project surface built on the shared section switcher, the component the console
-// settings surface is also built on. Its notes are persisted as a JSON state blob in the utils: root through
-// the standard document save contract. Served over the loopback file server, so the shared client is
-// addressed root-relative under /assets/ (resolved against the page's own loopback origin).
+// Utility demo: a small per-project surface built on the shared section switcher. Its notes are persisted as
+// a JSON state blob in the utils: root through the standard document save contract. Served over the loopback
+// file server, so the shared client is addressed root-relative under /assets/ (resolved against the page's
+// own loopback origin).
 
 import celbridge from '/assets/celbridge-client/celbridge.js';
 import { ContentLoadedReason } from '/assets/celbridge-client/api/document-api.js';
@@ -36,8 +36,7 @@ function parseText(content) {
     }
 }
 
-// The host resets the document's save timer on every notification, so the wait before the write is already
-// a trailing debounce and each edit can report as it happens.
+// The host resets the document's save timer on every notification, so the write is already debounced.
 function notifyChanged() {
     if (suppressChangeNotifications) {
         return;
@@ -48,8 +47,7 @@ function notifyChanged() {
 
 notesInput.addEventListener('input', notifyChanged);
 
-// The host's dialog rather than the browser's: nothing in the application handles a JavaScript alert(), so a
-// bare one risks being a silent no-op on the macOS head.
+// A bare JavaScript alert() is unhandled and silently does nothing on the macOS head.
 async function showNotes() {
     try {
         await client.dialog.alert('Notes', notesInput.value || 'Nothing saved yet.');

@@ -144,8 +144,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     private CelbridgeHost? Host { get; set; }
 
     /// <summary>
-    /// The view model the controller reports content changes to. A view presenting a controller it borrows
-    /// reads its state from here, so a borrowed editor has one dirty state rather than one per view.
+    /// The view model the controller reports content changes to.
     /// </summary>
     public CustomDocumentViewModel ViewModel => _viewModel;
 

@@ -1,8 +1,7 @@
 namespace Celbridge.Workspace;
 
 /// <summary>
-/// A workspace item the save tick can flush: an open document, or a utility. Both buffer their edits and
-/// write them out once a save timer expires, so the tick treats them the same way.
+/// A workspace item that buffers edits and writes them to its file resource when its save timer expires.
 /// </summary>
 public interface ISaveableWorkspaceItem
 {
@@ -22,9 +21,8 @@ public interface ISaveableWorkspaceItem
     WritableState WritableState { get; }
 
     /// <summary>
-    /// The item may use a save timer to avoid writing to disk too frequently.
-    /// Returns true when the timer has expired, and the file should now be saved.
-    /// Fails if HasUnsavedChanges is false.
+    /// Advances the item's save timer. Returns true when the timer has expired and the file should now be
+    /// saved. Fails if HasUnsavedChanges is false.
     /// </summary>
     Result<bool> UpdateSaveTimer(double deltaTime);
 

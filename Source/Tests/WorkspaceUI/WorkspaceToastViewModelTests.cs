@@ -315,7 +315,6 @@ public class WorkspaceToastViewModelTests
     [Test]
     public void AOneItemSaveFailure_NamesItAndItsReasonWithNoReportAction()
     {
-        // An auto-save the user did not ask for, so it reports as a notification rather than a dialog.
         SendSaveFailure(new FailedResource(new ResourceKey("project:notes.txt"), "the file is locked"));
 
         _viewModel.ToastSeverity.Should().Be(InfoBarSeverity.Error);
@@ -327,8 +326,6 @@ public class WorkspaceToastViewModelTests
     [Test]
     public void SeveralItemSaveFailures_CountThemWithNoReportAction()
     {
-        // Several failing at once share one systemic cause, so a report would repeat the same reason per
-        // row and the count is what the line has to say.
         SendSaveFailure(
             new FailedResource(new ResourceKey("project:notes.txt"), "the file is locked"),
             new FailedResource(new ResourceKey("project:data.json"), "the file is locked"));

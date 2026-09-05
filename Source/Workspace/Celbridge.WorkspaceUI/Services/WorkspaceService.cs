@@ -114,8 +114,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
             }
         }
 
-        // The documents panel and the Utility Panel each hold their own items, and this is what owns both,
-        // so the tick gathers them here and applies one save policy to the lot.
         var saveableItems = new List<ISaveableWorkspaceItem>();
         saveableItems.AddRange(DocumentsService.GetSaveableItems());
         saveableItems.AddRange(UtilityService.GetSaveableItems());

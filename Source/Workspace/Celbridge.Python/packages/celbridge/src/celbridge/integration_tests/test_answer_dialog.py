@@ -59,8 +59,7 @@ class TestAnswerDialog:
         assert "before.txt" not in names
 
     def test_duplicate_dialog_receives_payload(self, app, explorer, file):
-        # Duplicate asks for the copy's name when it shows a dialog, rather than generating
-        # one as its silent form does.
+        # Duplicate asks for the copy's name when it shows a dialog.
         explorer.create_file("TestAnswerDialog/source.txt")
 
         outcome = app.answer_dialog(INPUT_TEXT, "chosen_copy.txt")

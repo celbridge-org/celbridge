@@ -104,8 +104,6 @@ public partial class WorkspaceToastViewModel : ObservableObject
         };
     }
 
-    // No report action either way. One failure is fully expressed by the line, and several share the one
-    // systemic cause (a locked folder, a full disk), so a report would print the same reason per row.
     private WorkspaceNotification ComposeSaveFailureNotification(WorkspaceItemSaveFailedMessage message)
     {
         var failedItems = message.FailedItems;

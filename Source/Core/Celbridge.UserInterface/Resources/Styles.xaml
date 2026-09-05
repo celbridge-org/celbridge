@@ -32,8 +32,7 @@
 
   <!-- The settings section switcher's metrics, mirroring the cel-section-* design tokens so the native
        control and the .cel-section-switcher web component hold the same shape. Keep the two in sync when
-       either changes. The inset carries both the heading block's padding and the section content's, which
-       stay equal so a section's content lines up with the heading above it. -->
+       either changes. The inset is taken by both the heading block and the section content. -->
   <x:Double x:Key="SectionNavWidth">150</x:Double>
   <x:Double x:Key="SectionInset">16</x:Double>
   <x:Double x:Key="SectionFooterGap">40</x:Double>

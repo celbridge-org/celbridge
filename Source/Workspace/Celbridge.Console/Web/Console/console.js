@@ -136,8 +136,7 @@ const reopenSettingsButton = document.getElementById('reopen-settings');
 const builtInRunnerList = document.getElementById('runner-built-in');
 const builtInRunnerTemplate = document.getElementById('built-in-runner-template');
 
-// The settings surface: the shared section switcher owns which section is showing, its scroll position,
-// the notice slot and the read-only state of the controls inside it.
+// The settings surface.
 const settingsSwitcher = attachSectionSwitcher(document.getElementById('settings-switcher'));
 
 // State. currentConfig mirrors the settings form / .console file. launchedConfig is the config the live
@@ -267,9 +266,7 @@ window.addEventListener('resize', refitTerminal);
 // tab gets its real viewport.
 document.addEventListener('visibilitychange', refitTerminal);
 
-// Refit the terminal whenever the space it occupies changes, coalesced to one fit per frame. The settings
-// surface replaces the terminal rather than sharing the row with it, so the space changes on a window
-// resize and on the return from settings.
+// Refit the terminal whenever the space it occupies changes, coalesced to one fit per frame.
 let refitPending = false;
 function refitTerminal() {
     if (refitPending) {
@@ -286,9 +283,8 @@ settingsToggle.addEventListener('click', () => {
     setSettingsVisible(settingsView.classList.contains('hidden'));
 });
 
-// Settings and the terminal take turns filling the content row. Hiding the terminal leaves it no size to
-// fit to, which fitTerminal() already declines to measure, so the pty holds the size it was left at until
-// the terminal is back on screen.
+// Settings and the terminal take turns filling the content row. A hidden terminal has no size to fit to,
+// which fitTerminal() declines to measure, so the pty holds the size it was left at.
 function setSettingsVisible(visible) {
     settingsView.classList.toggle('hidden', !visible);
     terminalView.classList.toggle('hidden', visible);
@@ -542,11 +538,9 @@ function renderShortcutRail() {
     }
 }
 
-// Injects a shortcut's text into the pty. Submitted through console/submit rather than written as raw
-// input, so the host owns how an invocation is entered and confirmed at the prompt. A terminal app that
-// reads a burst of stdin as one paste treats a carriage return inside it as a newline, so the submit key
-// cannot travel with the text. A shortcut types into the session, so pressing one leaves the settings
-// surface for the terminal, which is also what focuses it.
+// Injects a shortcut's text into the pty. Submitted through console/submit rather than as raw input, so the
+// host owns how an invocation is entered at the prompt. The submit key cannot travel with the text: an app
+// that reads a burst of stdin as one paste would treat a carriage return inside it as a newline.
 function injectShortcut(text) {
     if (!text) {
         return;
@@ -597,10 +591,9 @@ function isDocumentWritable() {
     return client.viewState.current?.writable !== false;
 }
 
-// A read-only document disables the settings form so no edit marks the document dirty. The terminal stays
-// interactive and Reopen stays available, since neither writes the file, and the switcher leaves its footer
-// alone for that reason. Its blanket pass over the sections runs first, so the card lists below it decide
-// the final state of the controls they own.
+// A read-only document disables the settings form so no edit marks the document dirty. The switcher's
+// blanket pass over the sections runs first, so the card lists below decide the final state of the controls
+// they own.
 function applyWritableState() {
     const writable = isDocumentWritable();
     settingsSwitcher.setReadOnly(!writable);
@@ -617,8 +610,7 @@ reopenSettingsButton.addEventListener('click', () => { reopenSession(); });
 reopenTerminalButton.addEventListener('click', () => { reopenSession(); });
 
 // The pip flags a config error, a config that diverges from the launched session, or a session that never
-// started. The last of those reports itself in the terminal view, which is hidden while settings are open,
-// so the pip is what carries it there rather than forcing a view switch.
+// started.
 function updateAttention() {
     const diverged = launchedConfig !== null && !configsEqual(currentConfig, launchedConfig);
     const needsAttention = diverged || configError !== null || sessionStartFailed;
@@ -877,9 +869,7 @@ async function main() {
             // Ack the reload so the host's external-change handshake does not time out.
             client.document.notifyContentLoaded(ContentLoadedReason.ExternalReload);
         },
-        // Persist the selected section and its scroll position so they survive a reopen. Whether settings
-        // were open is deliberately not persisted: a console is a terminal whose session starts with the
-        // document, so restoring into a full-viewport settings screen would hide a live one.
+        // Persist the selected section and its scroll position so they survive a reopen.
         onRequestState: () => JSON.stringify({
             activeSection: settingsSwitcher.selected(),
             scrollTop: settingsSwitcher.scrollTop(),

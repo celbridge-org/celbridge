@@ -116,7 +116,6 @@ public sealed partial class SettingsSectionSwitcher : UserControl
     {
         this.InitializeComponent();
 
-        // The metrics are Doubles, so the typed values the layout properties take are built here.
         var resources = Application.Current.Resources;
 
         var panelCornerRadius = (double)resources["PanelCornerRadius"];

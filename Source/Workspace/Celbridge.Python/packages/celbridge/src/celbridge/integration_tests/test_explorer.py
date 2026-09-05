@@ -127,9 +127,8 @@ class TestExplorer:
         with pytest.raises(CelError):
             explorer.duplicate("TestExplorer/not_here.txt")
 
-    # explorer.rename always opens the rename dialog, so its happy path is covered in
-    # test_answer_dialog.py where the dialog can be answered. The key check below runs
-    # before the dialog opens, so it needs none.
+    # explorer.rename always opens the rename dialog. The key check below runs before
+    # the dialog opens, so it needs no answer.
     def test_rename_invalid_resource_key(self, explorer):
         with pytest.raises(CelError):
             explorer.rename("\\backslash\\not\\allowed")

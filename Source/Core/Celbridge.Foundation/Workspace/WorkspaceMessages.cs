@@ -6,8 +6,8 @@ namespace Celbridge.Workspace;
 public record PendingSaveCountMessage(int Count);
 
 /// <summary>
-/// Broadcast when the save tick could not write one or more workspace items, each with the reason its
-/// save reported. The user did not ask for the save, so this tells them rather than asking them anything.
+/// Sent when the save tick could not write one or more workspace items, each with the reason its save
+/// reported.
 /// </summary>
 public record WorkspaceItemSaveFailedMessage(IReadOnlyList<FailedResource> FailedItems);
 
