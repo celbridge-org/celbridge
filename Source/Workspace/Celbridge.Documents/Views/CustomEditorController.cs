@@ -143,6 +143,12 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     // The Celbridge host for JSON-RPC communication with the WebView.
     private CelbridgeHost? Host { get; set; }
 
+    /// <summary>
+    /// The view model the controller reports content changes to. A view presenting a controller it borrows
+    /// reads its state from here, so a borrowed editor has one dirty state rather than one per view.
+    /// </summary>
+    public CustomDocumentViewModel ViewModel => _viewModel;
+
     public CustomEditorController(
         IServiceProvider serviceProvider,
         CustomDocumentViewModel viewModel,

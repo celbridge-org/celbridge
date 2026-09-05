@@ -193,7 +193,7 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
         return true;
     }
 
-    public async Task<Result> SaveDocument()
+    public async Task<Result> SaveAsync()
     {
         return await ViewModel.SaveConfigAsync();
     }

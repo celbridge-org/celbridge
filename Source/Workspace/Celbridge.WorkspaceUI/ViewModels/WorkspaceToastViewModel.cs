@@ -67,6 +67,7 @@ public partial class WorkspaceToastViewModel : ObservableObject
         _messengerService.Register<ProjectLoadNotificationMessage>(this, OnProjectLoadNotification);
         _messengerService.Register<ResourceOperationFailedMessage>(this, OnResourceOperationFailed);
         _messengerService.Register<EditorNotificationMessage>(this, OnEditorNotification);
+        _messengerService.Register<WorkspaceItemSaveFailedMessage>(this, OnWorkspaceItemSaveFailed);
     }
 
     private void OnProjectLoadNotification(object recipient, ProjectLoadNotificationMessage message)
@@ -78,6 +79,12 @@ public partial class WorkspaceToastViewModel : ObservableObject
     private void OnResourceOperationFailed(object recipient, ResourceOperationFailedMessage message)
     {
         _dispatcher.TryEnqueue(() => Show(ComposeOperationNotification(message)));
+    }
+
+    private void OnWorkspaceItemSaveFailed(object recipient, WorkspaceItemSaveFailedMessage message)
+    {
+        // Raised from the workspace update loop, which does not run on the UI thread.
+        _dispatcher.TryEnqueue(() => Show(ComposeSaveFailureNotification(message)));
     }
 
     private void OnEditorNotification(object recipient, EditorNotificationMessage message)
@@ -95,6 +102,32 @@ public partial class WorkspaceToastViewModel : ObservableObject
         {
             Action = message.Action
         };
+    }
+
+    // No report action either way. One failure is fully expressed by the line, and several share the one
+    // systemic cause (a locked folder, a full disk), so a report would print the same reason per row.
+    private WorkspaceNotification ComposeSaveFailureNotification(WorkspaceItemSaveFailedMessage message)
+    {
+        var failedItems = message.FailedItems;
+
+        if (failedItems.Count == 1)
+        {
+            var failedItem = failedItems[0];
+            var reason = ToSingleLine(failedItem.Message);
+
+            return Compose(
+                ReportSeverity.Error,
+                "Toast_SaveFailed_Single",
+                action: null,
+                failedItem.Resource.ResourceName,
+                reason);
+        }
+
+        return Compose(
+            ReportSeverity.Error,
+            "Toast_SaveFailed_Multiple",
+            action: null,
+            failedItems.Count);
     }
 
     private WorkspaceNotification ComposeLoadNotification(ProjectLoadReportSummary summary)

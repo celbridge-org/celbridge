@@ -1,67 +1,26 @@
-// Process utility document for Celbridge WebView integration.
-// A persistent per-project surface that lives in the Utility Panel and can be docked into a document tab. It
-// demonstrates the long-running "process" pattern. Its notes are persisted as a JSON state blob in the utils:
-// root through the standard document save contract. Served over the loopback file server, so the shared client
-// is addressed root-relative under /assets/ (resolved against the page's own loopback origin).
+// Utility demo: a small per-project surface built on the shared section switcher, the component the console
+// settings surface is also built on. Its notes are persisted as a JSON state blob in the utils: root through
+// the standard document save contract. Served over the loopback file server, so the shared client is
+// addressed root-relative under /assets/ (resolved against the page's own loopback origin).
 
 import celbridge from '/assets/celbridge-client/celbridge.js';
 import { ContentLoadedReason } from '/assets/celbridge-client/api/document-api.js';
-import { attachSplitter } from '/assets/celbridge-client/ui/splitter.js';
-import { attachNavTabs } from '/assets/celbridge-client/ui/nav-tabs.js';
+import { attachSectionSwitcher } from '/assets/celbridge-client/ui/section-switcher.js';
 
 const client = celbridge;
 
-const inputEl = document.getElementById('process-input');
+const notesInput = document.getElementById('notes-input');
+const showNotesButton = document.getElementById('show-notes');
 
-// Demonstrate the shared splitter: drag the divider to resize the left pane. Double-click to reset.
-const demoSplit = document.querySelector('.demo-split');
-const demoLeftPane = document.querySelector('.demo-pane-left');
-const demoSplitter = document.getElementById('demo-splitter');
-let demoDragStartWidth = 0;
-attachSplitter(demoSplitter, {
-    onDragStart() {
-        demoDragStartWidth = demoLeftPane.getBoundingClientRect().width;
-    },
-    onDrag(deltaX) {
-        const maxWidth = demoSplit.getBoundingClientRect().width - 80 - 8;
-        demoLeftPane.style.width = Math.max(80, Math.min(demoDragStartWidth + deltaX, maxWidth)) + 'px';
-    },
-    onReset() {
-        demoLeftPane.style.width = '45%';
-    },
-});
-
-// Demonstrate the shared inspector rail and nav tab strip: the rail's settings button toggles the inspector
-// panel, and the tab strip switches which of the panel's sections is shown.
-const inspectorPanel = document.getElementById('inspector-panel');
-const inspectorToggle = document.getElementById('inspector-toggle');
-const inspectorSections = Array.from(document.querySelectorAll('.inspector-section'));
-const inspectorHeaders = Array.from(document.querySelectorAll('.cel-section-header'));
-
-attachNavTabs(document.getElementById('inspector-tabs'), {
-    onChange(sectionId) {
-        for (const section of inspectorSections) {
-            section.classList.toggle('hidden', section.dataset.section !== sectionId);
-        }
-        for (const header of inspectorHeaders) {
-            header.classList.toggle('hidden', header.dataset.section !== sectionId);
-        }
-    },
-});
-
-inspectorToggle.addEventListener('click', () => {
-    const visible = inspectorPanel.classList.toggle('hidden') === false;
-    inspectorToggle.classList.toggle('selected', visible);
-});
+const switcher = attachSectionSwitcher(document.getElementById('demo-switcher'));
 
 // Gates change notifications while the document is read-only or being loaded by the framework, so a
 // non-user write does not schedule an auto-save.
 let suppressChangeNotifications = false;
-let notifyTimer = null;
 
 function applyReadOnlyState(readOnly) {
     suppressChangeNotifications = readOnly;
-    inputEl.readOnly = readOnly;
+    notesInput.readOnly = readOnly;
 }
 
 function parseText(content) {
@@ -77,20 +36,29 @@ function parseText(content) {
     }
 }
 
-function scheduleNotifyChanged() {
+// The host resets the document's save timer on every notification, so the wait before the write is already
+// a trailing debounce and each edit can report as it happens.
+function notifyChanged() {
     if (suppressChangeNotifications) {
         return;
     }
-    if (notifyTimer !== null) {
-        clearTimeout(notifyTimer);
-    }
-    notifyTimer = setTimeout(() => {
-        notifyTimer = null;
-        client.document.notifyChanged();
-    }, 500);
+
+    client.document.notifyChanged();
 }
 
-inputEl.addEventListener('input', scheduleNotifyChanged);
+notesInput.addEventListener('input', notifyChanged);
+
+// The host's dialog rather than the browser's: nothing in the application handles a JavaScript alert(), so a
+// bare one risks being a silent no-op on the macOS head.
+async function showNotes() {
+    try {
+        await client.dialog.alert('Notes', notesInput.value || 'Nothing saved yet.');
+    } catch (e) {
+        console.error('[UtilityDemo] Failed to show the notes:', e);
+    }
+}
+
+showNotesButton.addEventListener('click', () => { showNotes(); });
 
 client.viewState.onChanged((viewState) => {
     if (viewState.writable) {
@@ -102,48 +70,46 @@ async function initializeEditor() {
     try {
         await client.initializeDocument({
             onContent: (content) => {
-                inputEl.value = parseText(content);
+                notesInput.value = parseText(content);
             },
             onRequestSave: async () => {
-                const payload = JSON.stringify({ text: inputEl.value });
+                const payload = JSON.stringify({ text: notesInput.value });
                 try {
                     await client.document.save(payload);
                 } catch (e) {
-                    console.error('[Process] Failed to save:', e);
+                    console.error('[UtilityDemo] Failed to save:', e);
                 }
             },
             onExternalChange: async () => {
                 try {
                     const { content } = await client.document.load();
-                    inputEl.value = parseText(content);
+                    notesInput.value = parseText(content);
                 } catch (e) {
-                    console.error('[Process] Failed to reload content:', e);
+                    console.error('[UtilityDemo] Failed to reload content:', e);
                 }
 
                 client.document.notifyContentLoaded(ContentLoadedReason.ExternalReload);
             },
             onRequestState: () => JSON.stringify({
-                scrollTop: inputEl.scrollTop,
-                selectionStart: inputEl.selectionStart,
-                selectionEnd: inputEl.selectionEnd
+                activeSection: switcher.selected(),
+                scrollTop: switcher.scrollTop()
             }),
             onRestoreState: (stateJson) => {
                 try {
                     const state = JSON.parse(stateJson);
-                    if (typeof state.selectionStart === 'number' && typeof state.selectionEnd === 'number') {
-                        inputEl.selectionStart = state.selectionStart;
-                        inputEl.selectionEnd = state.selectionEnd;
+                    if (typeof state.activeSection === 'string') {
+                        switcher.select(state.activeSection);
                     }
-                    if (typeof state.scrollTop === 'number') {
-                        inputEl.scrollTop = state.scrollTop;
+                    if (typeof state.scrollTop === 'number' && state.scrollTop > 0) {
+                        switcher.setScrollTop(state.scrollTop);
                     }
                 } catch (e) {
-                    console.error('[Process] Failed to restore state:', e);
+                    console.error('[UtilityDemo] Failed to restore state:', e);
                 }
             }
         });
     } catch (e) {
-        console.error('[Process] Failed to initialize:', e);
+        console.error('[UtilityDemo] Failed to initialize:', e);
     }
 }
 

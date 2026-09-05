@@ -13,6 +13,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 {
     private readonly ILogger<WorkspaceService> _logger;
     private readonly IMessengerService _messengerService;
+    private readonly WorkspaceItemSaver _workspaceItemSaver;
 
     public IWorkspaceSettingsService WorkspaceSettings { get; }
     public IBindableWorkspaceSettings BindableWorkspaceSettings { get; }
@@ -40,6 +41,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     {
         _logger = logger;
         _messengerService = messengerService;
+        _workspaceItemSaver = serviceProvider.GetRequiredService<WorkspaceItemSaver>();
 
         // Create instances of the required sub-services
 
@@ -112,15 +114,27 @@ public class WorkspaceService : IWorkspaceService, IDisposable
             }
         }
 
-        var saveDocumentsResult = await DocumentsService.SaveModifiedDocuments(deltaTime);
-        if (saveDocumentsResult.IsFailure)
+        // The documents panel and the Utility Panel each hold their own items, and this is what owns both,
+        // so the tick gathers them here and applies one save policy to the lot.
+        var saveableItems = new List<ISaveableWorkspaceItem>();
+        saveableItems.AddRange(DocumentsService.GetSaveableItems());
+        saveableItems.AddRange(UtilityService.GetSaveableItems());
+
+        int pendingSaveCount = 0;
+
+        var saveItemsResult = await _workspaceItemSaver.SaveModifiedItemsAsync(saveableItems, deltaTime);
+        if (saveItemsResult.IsFailure)
         {
             failed = true;
-            _logger.LogError($"Failed to save modified documents. {saveDocumentsResult.DiagnosticReport}");
+            _logger.LogError($"Failed to save modified workspace items. {saveItemsResult.DiagnosticReport}");
+        }
+        else
+        {
+            pendingSaveCount = saveItemsResult.Value;
         }
 
-        // Tick the utilities' save timers alongside the documents (their views persist the same way).
-        await UtilityService.SaveModifiedUtilities(deltaTime);
+        var pendingSaveMessage = new PendingSaveCountMessage(pendingSaveCount);
+        _messengerService.Send(pendingSaveMessage);
 
         // Flush any pending Workspace-scope setting writes (panel sizes, search
         // options, last new-file extension). These are set on the UI thread but
@@ -136,8 +150,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
                 _logger.LogError($"Failed to flush workspace settings. {flushResult.DiagnosticReport}");
             }
         }
-
-        // Todo: Clear save icon on the status bar if there are no pending saves
 
         if (failed)
         {

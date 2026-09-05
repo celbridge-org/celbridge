@@ -82,13 +82,6 @@ public partial class WorkspacePanelViewModel : ObservableObject
         });
     }
 
-    public void UpdatePendingSaveCount(int pendingSaveCount)
-    {
-        // Notify the StatusPanelViewModel about the current number of pending document saves.
-        var message = new PendingDocumentSaveMessage(pendingSaveCount);
-        _messengerService.Send(message);
-    }
-
     public void OnDocumentLayoutChanged()
     {
         // Notify that the document layout has changed (documents opened, closed, or moved).

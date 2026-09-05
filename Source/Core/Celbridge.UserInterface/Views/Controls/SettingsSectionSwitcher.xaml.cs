@@ -57,10 +57,10 @@ public sealed partial class SettingsSection : ObservableObject
 /// </summary>
 public sealed partial class SettingsSectionSwitcher : UserControl
 {
-    // The inset around a section's content, matching the heading band above it.
-    private const double SectionContentInset = 16;
-
     private readonly Dictionary<SettingsSection, ScrollViewer> _sectionContainers = new();
+
+    // The inset around a section's content, which the heading band above it also takes.
+    private readonly double _sectionInset;
 
     /// <summary>
     /// The sections to show, in rail order.
@@ -116,8 +116,20 @@ public sealed partial class SettingsSectionSwitcher : UserControl
     {
         this.InitializeComponent();
 
-        double panelCornerRadius = (double)Application.Current.Resources["PanelCornerRadius"];
+        // The metrics are Doubles, so the typed values the layout properties take are built here.
+        var resources = Application.Current.Resources;
+
+        var panelCornerRadius = (double)resources["PanelCornerRadius"];
         SectionArea.CornerRadius = new CornerRadius(panelCornerRadius);
+
+        var navWidth = (double)resources["SectionNavWidth"];
+        NavColumn.Width = new GridLength(navWidth);
+
+        var footerGap = (double)resources["SectionFooterGap"];
+        RailFooterPresenter.Margin = new Thickness(0, footerGap, 0, 0);
+
+        _sectionInset = (double)resources["SectionInset"];
+        SectionHeader.Padding = new Thickness(_sectionInset);
     }
 
     /// <summary>
@@ -173,7 +185,7 @@ public sealed partial class SettingsSectionSwitcher : UserControl
 
             var sectionContainer = new ScrollViewer
             {
-                Padding = new Thickness(SectionContentInset),
+                Padding = new Thickness(_sectionInset),
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
                 HorizontalScrollMode = ScrollMode.Disabled,
                 HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,

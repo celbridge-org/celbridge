@@ -1,6 +1,17 @@
 namespace Celbridge.Workspace;
 
 /// <summary>
+/// A message that indicates the current number of workspace items waiting for their save timer.
+/// </summary>
+public record PendingSaveCountMessage(int Count);
+
+/// <summary>
+/// Broadcast when the save tick could not write one or more workspace items, each with the reason its
+/// save reported. The user did not ask for the save, so this tells them rather than asking them anything.
+/// </summary>
+public record WorkspaceItemSaveFailedMessage(IReadOnlyList<FailedResource> FailedItems);
+
+/// <summary>
 /// Sent when the workspace service has been created.
 /// The WorkspaceService has the same lifetime as the loaded workspace.
 /// </summary>

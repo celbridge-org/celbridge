@@ -33,136 +33,145 @@
                 </div>
             </div>
 
-            <div id="splitter" class="cel-splitter hidden"></div>
-
+            <!-- Settings replace the terminal rather than sitting beside it, so opening them never resizes
+                 the pty and rewraps whatever is on its screen. -->
             <div id="settings-view" class="hidden">
-                <div class="settings-title" data-loc-key="Console_Settings_Heading"></div>
+                <div id="settings-switcher" class="cel-section-switcher">
 
-                <div class="cel-nav-tabs">
-                    <div id="settings-tabs" class="cel-nav-tab-strip" role="tablist">
-                        <button class="cel-nav-tab" type="button" role="tab" data-section="session" aria-selected="true"
-                                data-loc-key="Console_Group_Session" data-loc-attr="title,aria-label">
-                            <span class="cel-nav-tab-icon"><i class="bi bi-terminal"></i></span>
+                    <div class="cel-section-nav" role="tablist">
+                        <button class="cel-section-nav-item" type="button" role="tab" data-section="session"
+                                aria-selected="true" data-loc-key="Console_Group_Session" data-loc-attr="title,aria-label">
+                            <span class="cel-section-nav-icon"><i class="bi bi-terminal"></i></span>
+                            <span class="cel-section-nav-label" data-loc-key="Console_Group_Session"></span>
                         </button>
-                        <button class="cel-nav-tab" type="button" role="tab" data-section="automation"
-                                data-loc-key="Console_Group_Automation" data-loc-attr="title,aria-label">
-                            <span class="cel-nav-tab-icon"><i class="bi bi-lightning-charge"></i></span>
+                        <button class="cel-section-nav-item" type="button" role="tab" data-section="shortcuts"
+                                data-loc-key="Console_Group_Shortcuts" data-loc-attr="title,aria-label">
+                            <span class="cel-section-nav-icon"><i class="bi bi-lightning-charge"></i></span>
+                            <span class="cel-section-nav-label" data-loc-key="Console_Group_Shortcuts"></span>
+                        </button>
+                        <button class="cel-section-nav-item" type="button" role="tab" data-section="runners"
+                                data-loc-key="Console_Group_Runners" data-loc-attr="title,aria-label">
+                            <span class="cel-section-nav-icon"><i class="bi bi-play-fill"></i></span>
+                            <span class="cel-section-nav-label" data-loc-key="Console_Group_Runners"></span>
+                        </button>
+                        <button class="cel-section-nav-item" type="button" role="tab" data-section="triggers"
+                                data-loc-key="Console_Group_Triggers" data-loc-attr="title,aria-label">
+                            <span class="cel-section-nav-icon"><i class="bi bi-arrow-repeat"></i></span>
+                            <span class="cel-section-nav-label" data-loc-key="Console_Group_Triggers"></span>
                         </button>
                     </div>
 
-                    <!-- One header per section, all present with the active one shown, mirroring how the
-                         native settings panel toggles between its section views. -->
-                    <div class="cel-section-header" data-section="session">
-                        <h1 data-loc-key="Console_Group_Session"></h1>
-                        <p data-loc-key="Console_Desc_Session"></p>
+                    <div class="cel-section-area">
+
+                        <div class="cel-section-header" data-section="session">
+                            <h1 data-loc-key="Console_Group_Session"></h1>
+                            <p data-loc-key="Console_Desc_Session"></p>
+                        </div>
+                        <div class="cel-section-header" data-section="shortcuts" hidden>
+                            <h1 data-loc-key="Console_Group_Shortcuts"></h1>
+                            <p data-loc-key="Console_Desc_Shortcuts"></p>
+                        </div>
+                        <div class="cel-section-header" data-section="runners" hidden>
+                            <h1 data-loc-key="Console_Group_Runners"></h1>
+                            <p data-loc-key="Console_Desc_Runners"></p>
+                        </div>
+                        <div class="cel-section-header" data-section="triggers" hidden>
+                            <h1 data-loc-key="Console_Group_Triggers"></h1>
+                            <p data-loc-key="Console_Desc_Triggers"></p>
+                        </div>
+
+                        <div class="cel-section-notice" hidden></div>
+
+                        <div class="cel-section-content">
+
+                            <section class="settings-section" data-section="session">
+                                <label class="field">
+                                    <span class="field-label" data-loc-key="Console_Field_Type"></span>
+                                    <select id="session-type">
+                                        <option value="shell" data-loc-key="Console_Type_Shell"></option>
+                                        <option value="python" data-loc-key="Console_Type_Python"></option>
+                                    </select>
+                                </label>
+
+                                <label class="field" id="executable-field">
+                                    <span class="field-label" data-loc-key="Console_Field_Executable"></span>
+                                    <input id="executable" type="text" spellcheck="false" data-loc-key="Console_Placeholder_Executable" data-loc-attr="placeholder">
+                                    <span class="field-hint" data-loc-key="Console_Hint_Executable"></span>
+                                </label>
+
+                                <label class="field hidden" id="python-version-field">
+                                    <span class="field-label" data-loc-key="Console_Field_PythonVersion"></span>
+                                    <input id="python-version" type="text" spellcheck="false" data-loc-key="Console_Placeholder_PythonVersion" data-loc-attr="placeholder">
+                                    <span class="field-hint" data-loc-key="Console_Hint_PythonVersion"></span>
+                                </label>
+
+                                <label class="field" id="arguments-field">
+                                    <span class="field-label" data-loc-key="Console_Field_Arguments"></span>
+                                    <textarea id="arguments" rows="2" spellcheck="false" data-loc-key="Console_Placeholder_Arguments" data-loc-attr="placeholder"></textarea>
+                                    <span class="field-hint" data-loc-key="Console_Hint_Arguments"></span>
+                                </label>
+
+                                <label class="field hidden" id="dependencies-field">
+                                    <span class="field-label" data-loc-key="Console_Field_Dependencies"></span>
+                                    <textarea id="dependencies" rows="3" spellcheck="false" data-loc-key="Console_Placeholder_Dependencies" data-loc-attr="placeholder"></textarea>
+                                    <span class="field-hint" data-loc-key="Console_Hint_Dependencies"></span>
+                                </label>
+
+                                <label class="field">
+                                    <span class="field-label" data-loc-key="Console_Field_WorkingDirectory"></span>
+                                    <input id="working-directory" type="text" spellcheck="false" data-loc-key="Console_Placeholder_WorkingDirectory" data-loc-attr="placeholder">
+                                    <span class="field-hint" data-loc-key="Console_Hint_WorkingDirectory"></span>
+                                </label>
+
+                                <label class="field">
+                                    <span class="field-label" data-loc-key="Console_Field_Environment"></span>
+                                    <textarea id="environment" rows="4" spellcheck="false" data-loc-key="Console_Placeholder_Environment" data-loc-attr="placeholder"></textarea>
+                                    <span class="field-hint" data-loc-key="Console_Hint_Environment"></span>
+                                </label>
+
+                                <label class="field">
+                                    <span class="field-label" data-loc-key="Console_Field_StartupScript"></span>
+                                    <textarea id="startup-script" rows="3" spellcheck="false" data-loc-key="Console_Placeholder_StartupScript" data-loc-attr="placeholder"></textarea>
+                                    <span class="field-hint" data-loc-key="Console_Hint_StartupScript"></span>
+                                </label>
+                            </section>
+
+                            <section class="settings-section" data-section="shortcuts" hidden>
+                                <div id="shortcut-cards" class="cel-card-list"></div>
+                                <p id="shortcut-empty" class="card-list-empty" data-loc-key="Console_Empty_Shortcuts"></p>
+                                <button id="add-shortcut" type="button" class="add-card-button">
+                                    <i class="bi bi-plus-lg"></i><span data-loc-key="Console_Add_Shortcut"></span>
+                                </button>
+                            </section>
+
+                            <section class="settings-section" data-section="runners" hidden>
+                                <!-- Built-in runners sit below the console's own because the whole section is one
+                                     precedence chain read top to bottom: FindRunner takes the first match, so a
+                                     card above shadows one below it for the extensions they share. -->
+                                <div id="runner-cards" class="cel-card-list"></div>
+                                <div id="runner-built-in" class="cel-card-list built-in-list"></div>
+                                <p id="runner-empty" class="card-list-empty" data-loc-key="Console_Empty_Runners"></p>
+                                <button id="add-runner" type="button" class="add-card-button">
+                                    <i class="bi bi-plus-lg"></i><span data-loc-key="Console_Add_Runner"></span>
+                                </button>
+                            </section>
+
+                            <section class="settings-section" data-section="triggers" hidden>
+                                <div id="trigger-cards" class="cel-card-list"></div>
+                                <p id="trigger-empty" class="card-list-empty" data-loc-key="Console_Empty_Triggers"></p>
+                                <button id="add-trigger" type="button" class="add-card-button">
+                                    <i class="bi bi-plus-lg"></i><span data-loc-key="Console_Add_Trigger"></span>
+                                </button>
+                            </section>
+
+                        </div>
                     </div>
-                    <div class="cel-section-header hidden" data-section="automation">
-                        <h1 data-loc-key="Console_Group_Automation"></h1>
-                        <p data-loc-key="Console_Desc_Automation"></p>
+
+                    <div class="cel-section-footer">
+                        <p data-loc-key="Console_ReopenCaption"></p>
+                        <button id="reopen-settings" type="button" data-loc-key="Console_ReopenSession" data-loc-title="Console_Reopen_Tooltip"></button>
                     </div>
 
-                    <div id="config-error" class="config-error hidden"></div>
-                </div>
-
-                <div id="settings-scroll" class="settings-scroll">
-
-                    <section class="settings-section" data-section="session">
-                        <label class="field">
-                            <span class="field-label" data-loc-key="Console_Field_Type"></span>
-                            <select id="session-type">
-                                <option value="shell" data-loc-key="Console_Type_Shell"></option>
-                                <option value="python" data-loc-key="Console_Type_Python"></option>
-                            </select>
-                        </label>
-
-                        <label class="field" id="executable-field">
-                            <span class="field-label" data-loc-key="Console_Field_Executable"></span>
-                            <input id="executable" type="text" spellcheck="false" data-loc-key="Console_Placeholder_Executable" data-loc-attr="placeholder">
-                            <span class="field-hint" data-loc-key="Console_Hint_Executable"></span>
-                        </label>
-
-                        <label class="field hidden" id="python-version-field">
-                            <span class="field-label" data-loc-key="Console_Field_PythonVersion"></span>
-                            <input id="python-version" type="text" spellcheck="false" data-loc-key="Console_Placeholder_PythonVersion" data-loc-attr="placeholder">
-                            <span class="field-hint" data-loc-key="Console_Hint_PythonVersion"></span>
-                        </label>
-
-                        <label class="field" id="arguments-field">
-                            <span class="field-label" data-loc-key="Console_Field_Arguments"></span>
-                            <textarea id="arguments" rows="2" spellcheck="false" data-loc-key="Console_Placeholder_Arguments" data-loc-attr="placeholder"></textarea>
-                            <span class="field-hint" data-loc-key="Console_Hint_Arguments"></span>
-                        </label>
-
-                        <label class="field hidden" id="dependencies-field">
-                            <span class="field-label" data-loc-key="Console_Field_Dependencies"></span>
-                            <textarea id="dependencies" rows="3" spellcheck="false" data-loc-key="Console_Placeholder_Dependencies" data-loc-attr="placeholder"></textarea>
-                            <span class="field-hint" data-loc-key="Console_Hint_Dependencies"></span>
-                        </label>
-
-                        <label class="field">
-                            <span class="field-label" data-loc-key="Console_Field_WorkingDirectory"></span>
-                            <input id="working-directory" type="text" spellcheck="false" data-loc-key="Console_Placeholder_WorkingDirectory" data-loc-attr="placeholder">
-                            <span class="field-hint" data-loc-key="Console_Hint_WorkingDirectory"></span>
-                        </label>
-
-                        <label class="field">
-                            <span class="field-label" data-loc-key="Console_Field_Environment"></span>
-                            <textarea id="environment" rows="4" spellcheck="false" data-loc-key="Console_Placeholder_Environment" data-loc-attr="placeholder"></textarea>
-                            <span class="field-hint" data-loc-key="Console_Hint_Environment"></span>
-                        </label>
-
-                        <label class="field">
-                            <span class="field-label" data-loc-key="Console_Field_StartupScript"></span>
-                            <textarea id="startup-script" rows="3" spellcheck="false" data-loc-key="Console_Placeholder_StartupScript" data-loc-attr="placeholder"></textarea>
-                            <span class="field-hint" data-loc-key="Console_Hint_StartupScript"></span>
-                        </label>
-                    </section>
-
-                    <!-- Every way of getting a command into this console: keyed on a file extension, on a
-                         file changing, or on a button press. Each entry is a card, so the list is edited
-                         through the cards rather than through a delimited text format. -->
-                    <section class="settings-section hidden" data-section="automation">
-
-                        <div class="card-list-group">
-                            <h2 class="card-list-title" data-loc-key="Console_Field_Runners"></h2>
-                            <p class="card-list-hint" data-loc-key="Console_Hint_Runners"></p>
-                            <!-- Built-in runners sit below the console's own because the whole section is one
-                                 precedence chain read top to bottom: FindRunner takes the first match, so a
-                                 card above shadows one below it for the extensions they share. -->
-                            <div id="runner-cards" class="cel-card-list"></div>
-                            <div id="runner-built-in" class="cel-card-list built-in-list"></div>
-                            <p id="runner-empty" class="card-list-empty" data-loc-key="Console_Empty_Runners"></p>
-                            <button id="add-runner" type="button" class="add-card-button">
-                                <i class="bi bi-plus-lg"></i><span data-loc-key="Console_Add_Runner"></span>
-                            </button>
-                        </div>
-
-                        <div class="card-list-group">
-                            <h2 class="card-list-title" data-loc-key="Console_Field_Triggers"></h2>
-                            <p class="card-list-hint" data-loc-key="Console_Hint_Triggers"></p>
-                            <div id="trigger-cards" class="cel-card-list"></div>
-                            <p id="trigger-empty" class="card-list-empty" data-loc-key="Console_Empty_Triggers"></p>
-                            <button id="add-trigger" type="button" class="add-card-button">
-                                <i class="bi bi-plus-lg"></i><span data-loc-key="Console_Add_Trigger"></span>
-                            </button>
-                        </div>
-
-                        <div class="card-list-group">
-                            <h2 class="card-list-title" data-loc-key="Console_Field_Shortcuts"></h2>
-                            <p class="card-list-hint" data-loc-key="Console_Hint_Shortcuts"></p>
-                            <div id="shortcut-cards" class="cel-card-list"></div>
-                            <p id="shortcut-empty" class="card-list-empty" data-loc-key="Console_Empty_Shortcuts"></p>
-                            <button id="add-shortcut" type="button" class="add-card-button">
-                                <i class="bi bi-plus-lg"></i><span data-loc-key="Console_Add_Shortcut"></span>
-                            </button>
-                        </div>
-
-                    </section>
-
-                </div>
-                <div class="cel-panel-footer">
-                    <p data-loc-key="Console_ReopenCaption"></p>
-                    <button id="reopen-settings" type="button" data-loc-key="Console_ReopenSession" data-loc-title="Console_Reopen_Tooltip"></button>
                 </div>
             </div>
         </div>

@@ -63,10 +63,10 @@ public interface IUtilityService
     EditorId? GetDockedUtilityId(ResourceKey resource);
 
     /// <summary>
-    /// Ticks each utility's save timer and flushes the ones that are due. Called on the workspace update loop.
-    /// Per-utility save failures are logged, not propagated.
+    /// The utilities, as items the workspace save tick can flush. A utility docked into a document tab is
+    /// listed here too, because its panel view stays its owner wherever it is presented.
     /// </summary>
-    Task SaveModifiedUtilities(double deltaTime);
+    IReadOnlyList<ISaveableWorkspaceItem> GetSaveableItems();
 
     /// <summary>
     /// Saves any pending changes in the utilities and releases them. Called on workspace unload.

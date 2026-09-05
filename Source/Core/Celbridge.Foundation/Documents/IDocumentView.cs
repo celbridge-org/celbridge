@@ -5,21 +5,15 @@ namespace Celbridge.Documents;
 /// <summary>
 /// Interface for interacting with a document view.
 /// </summary>
-public interface IDocumentView
+public interface IDocumentView : ISaveableWorkspaceItem
 {
-    /// <summary>
-    /// Gets the file resource key for this document.
-    /// Returns an empty ResourceKey if SetFileResource has not been called.
-    /// </summary>
-    ResourceKey FileResource { get; }
-
     /// <summary>
     /// Id of the factory that produced this view. Immutable for the view's lifetime.
     /// </summary>
     EditorId EditorId { get; }
 
     /// <summary>
-    /// Sets the file resource for the document view.
+    /// Sets the file resource for the document view. FileResource is empty until this is called.
     /// Fails if the resource does not exist in the resource registry or in the file system.
     /// </summary>
     Task<Result> SetFileResource(ResourceKey fileResource);
@@ -28,28 +22,6 @@ public interface IDocumentView
     /// Load the document content into the document view using the previously set file resource.
     /// </summary>
     Task<Result> LoadContent();
-
-    /// <summary>
-    /// Flag that indicates if the document view has been modified and requires saving.
-    /// </summary>
-    bool HasUnsavedChanges { get; }
-
-    /// <summary>
-    /// The document view may use a save timer to avoid writing to disk too frequently.
-    /// Returns true when the timer has expired, and the file should now be saved.
-    /// Fails if HasUnsavedChanges is false.
-    /// </summary>
-    Result<bool> UpdateSaveTimer(double deltaTime);
-
-    /// <summary>
-    /// Save the document content from the document view using the previously set file resource.
-    /// </summary>
-    Task<Result> SaveDocument();
-
-    /// <summary>
-    /// The document's writable state, or the reason it is non-editable.
-    /// </summary>
-    WritableState WritableState { get; }
 
     /// <summary>
     /// Sets the document's writable state.

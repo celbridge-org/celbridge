@@ -6,7 +6,6 @@
     "Console_Template_Python": "Python Console",
 
     "Console_Settings_Title": "Settings",
-    "Console_Settings_Heading": "Console Settings",
     "Console_Reopen": "Reopen Console",
     "Console_ReopenSession": "Reopen Console",
     "Console_Reopen_Tooltip": "Close and reopen the console session.",
@@ -18,10 +17,14 @@
     "Console_InvalidConfig": "Invalid .console configuration.",
 
     "Console_Group_Session": "Session",
-    "Console_Group_Automation": "Automation",
+    "Console_Group_Shortcuts": "Shortcuts",
+    "Console_Group_Runners": "Runners",
+    "Console_Group_Triggers": "Triggers",
 
     "Console_Desc_Session": "Choose what this console launches, the environment it launches into, and what it runs on open.",
-    "Console_Desc_Automation": "Ways to run a command in this console, keyed on a file extension, a file changing, or a button press.",
+    "Console_Desc_Shortcuts": "Buttons on the console rail that type a command into the session.",
+    "Console_Desc_Runners": "Run a file in this console from the Explorer Run menu.",
+    "Console_Desc_Triggers": "Run a command in this console when a matching file in the project changes.",
 
     "Console_Field_Type": "Type",
     "Console_Field_Executable": "Executable",
@@ -31,9 +34,6 @@
     "Console_Field_WorkingDirectory": "Working Directory",
     "Console_Field_Environment": "Environment Variables",
     "Console_Field_StartupScript": "Startup Script",
-    "Console_Field_Runners": "Runners",
-    "Console_Field_Triggers": "Triggers",
-    "Console_Field_Shortcuts": "Shortcuts",
 
     "Console_Field_RunnerExtensions": "Extensions",
     "Console_Field_RunnerCommand": "Command",
@@ -80,9 +80,6 @@
     "Console_Hint_WorkingDirectory": "Relative to the project root. Blank uses the root.",
     "Console_Hint_StartupScript": "Runs once the session is ready. Example: import numpy as np",
     "Console_Hint_Environment": "Injected before launch. Example: PYTHONWARNINGS=default",
-    "Console_Hint_Runners": "Run a file in this console from the Explorer Run menu.",
-    "Console_Hint_Triggers": "Run a command in this console when a matching file in the project changes.",
-    "Console_Hint_Shortcuts": "Buttons on the console rail that type a command into the session.",
     "Console_Hint_RunnerExtensions": "Example: .py, .ipy",
     "Console_Hint_RunnerCommand": "{resource} is the path of the file being run. Example: %run \"{resource}\"",
     "Console_Hint_TriggerPattern": "Matched against project paths. Examples: data/**/*.xlsx, *.py",

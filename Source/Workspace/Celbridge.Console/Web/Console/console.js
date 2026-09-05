@@ -6,8 +6,7 @@
 import celbridge from '/assets/celbridge-client/celbridge.js';
 import { ContentLoadedReason } from '/assets/celbridge-client/api/document-api.js';
 import { t, applyLocalization } from '/assets/celbridge-client/localization.js';
-import { attachSplitter } from '/assets/celbridge-client/ui/splitter.js';
-import { attachNavTabs } from '/assets/celbridge-client/ui/nav-tabs.js';
+import { attachSectionSwitcher } from '/assets/celbridge-client/ui/section-switcher.js';
 import { createCardList } from '/assets/celbridge-client/ui/card-list.js';
 import { createIconField, resolveIconClass } from '/assets/celbridge-client/ui/icon-field.js';
 import { parseConsoleToml, serializeConsoleToml, defaultConsoleConfig } from './console-toml.js';
@@ -116,14 +115,11 @@ const pip = document.getElementById('pip');
 const shortcutRail = document.getElementById('shortcut-rail');
 const shortcutSeparator = document.getElementById('shortcut-separator');
 const terminalView = document.getElementById('terminal-view');
-const splitter = document.getElementById('splitter');
 const settingsView = document.getElementById('settings-view');
-const settingsScroll = document.getElementById('settings-scroll');
 const sessionStarting = document.getElementById('session-starting');
 const sessionFailed = document.getElementById('session-failed');
 const sessionFailedMessage = document.getElementById('session-failed-message');
 const reopenTerminalButton = document.getElementById('reopen-terminal');
-const configErrorElement = document.getElementById('config-error');
 const sessionTypeSelect = document.getElementById('session-type');
 const executableField = document.getElementById('executable-field');
 const executableInput = document.getElementById('executable');
@@ -140,30 +136,16 @@ const reopenSettingsButton = document.getElementById('reopen-settings');
 const builtInRunnerList = document.getElementById('runner-built-in');
 const builtInRunnerTemplate = document.getElementById('built-in-runner-template');
 
-// The settings sections and their headers, selected by the shared nav tab strip. Both are present in the
-// markup with only the active one shown, mirroring how the native settings panel toggles its section views.
-const settingsSections = Array.from(settingsScroll.querySelectorAll('.settings-section'));
-const sectionHeaders = Array.from(settingsView.querySelectorAll('.cel-section-header'));
-
-function showSection(sectionId) {
-    for (const section of settingsSections) {
-        section.classList.toggle('hidden', section.dataset.section !== sectionId);
-    }
-    for (const header of sectionHeaders) {
-        header.classList.toggle('hidden', header.dataset.section !== sectionId);
-    }
-    settingsScroll.scrollTop = 0;
-}
-
-const navTabs = attachNavTabs(document.getElementById('settings-tabs'), {
-    onChange: (sectionId) => showSection(sectionId),
-});
+// The settings surface: the shared section switcher owns which section is showing, its scroll position,
+// the notice slot and the read-only state of the controls inside it.
+const settingsSwitcher = attachSectionSwitcher(document.getElementById('settings-switcher'));
 
 // State. currentConfig mirrors the settings form / .console file. launchedConfig is the config the live
 // session was started from, so the pip can flag "changed, needs a reopen".
 let currentConfig = defaultConsoleConfig();
 let launchedConfig = null;
 let configError = null;
+let sessionStartFailed = false;
 // The runners each session type provides, keyed by type id, as the host reports them on attach. Empty until
 // then, so the built-in list simply renders nothing on the first populate.
 let builtInRunnersByType = {};
@@ -285,8 +267,9 @@ window.addEventListener('resize', refitTerminal);
 // tab gets its real viewport.
 document.addEventListener('visibilitychange', refitTerminal);
 
-// The terminal is always visible. The settings form is a sidebar beside it. Refit the terminal whenever the
-// space it occupies changes (sidebar toggled or resized, window resized), coalesced to one fit per frame.
+// Refit the terminal whenever the space it occupies changes, coalesced to one fit per frame. The settings
+// surface replaces the terminal rather than sharing the row with it, so the space changes on a window
+// resize and on the return from settings.
 let refitPending = false;
 function refitTerminal() {
     if (refitPending) {
@@ -299,74 +282,25 @@ function refitTerminal() {
     });
 }
 
-// Settings sidebar toggle.
 settingsToggle.addEventListener('click', () => {
     setSettingsVisible(settingsView.classList.contains('hidden'));
 });
 
+// Settings and the terminal take turns filling the content row. Hiding the terminal leaves it no size to
+// fit to, which fitTerminal() already declines to measure, so the pty holds the size it was left at until
+// the terminal is back on screen.
 function setSettingsVisible(visible) {
     settingsView.classList.toggle('hidden', !visible);
-    splitter.classList.toggle('hidden', !visible);
+    terminalView.classList.toggle('hidden', visible);
     // The rail capsule tracks the panel being open, not focused: the terminal holds focus most of the time,
     // so a focus-following capsule would read as "closed" while the panel is plainly on screen.
     settingsToggle.classList.toggle('selected', visible);
-    refitTerminal();
+
     if (!visible) {
+        refitTerminal();
         term.focus();
     }
 }
-
-// The sidebar keeps a minimum width, so dragging the splitter can never shrink it or the terminal below
-// their minimums. SPLITTER_WIDTH mirrors --cel-splitter-width in celbridge-tokens.css.
-const SIDEBAR_MIN_WIDTH = 240;
-const SPLITTER_WIDTH = 8;
-// Mirrors #settings-view width in console.css. Tracked in sidebarWidth so the width persists as view state
-// even while the sidebar is hidden (a hidden element reports no layout width to read back).
-const DEFAULT_SIDEBAR_WIDTH = 460;
-let sidebarWidth = DEFAULT_SIDEBAR_WIDTH;
-
-// The token divides its declared width by the engine's page zoom, so the band is SPLITTER_WIDTH CSS pixels
-// wide only where the engine and the host render at the same scale. This arithmetic is all in CSS pixels.
-function splitterWidth() {
-    const pageZoom = Number.parseFloat(
-        getComputedStyle(document.documentElement).getPropertyValue('--cel-page-zoom'));
-
-    if (!Number.isFinite(pageZoom) ||
-        pageZoom <= 0) {
-        return SPLITTER_WIDTH;
-    }
-
-    return SPLITTER_WIDTH / pageZoom;
-}
-
-function clampSidebarWidth(width) {
-    // The clamp needs a real viewport to fit the sidebar into. An unarranged page leaves no room for one,
-    // so a width restored at that moment would collapse to the minimum and be persisted as the setting.
-    if (!isArranged()) {
-        return Math.max(SIDEBAR_MIN_WIDTH, width);
-    }
-
-    const maxWidth = Math.max(SIDEBAR_MIN_WIDTH, window.innerWidth - TERMINAL_MIN_WIDTH - splitterWidth());
-    return Math.max(SIDEBAR_MIN_WIDTH, Math.min(width, maxWidth));
-}
-
-// Applies a sidebar width (clamped) and records it so it can be persisted as view state.
-function applySidebarWidth(width) {
-    sidebarWidth = clampSidebarWidth(width);
-    settingsView.style.width = sidebarWidth + 'px';
-}
-
-// The settings sidebar sits to the right of the terminal, so dragging the splitter left widens it.
-let sidebarDragStartWidth = 0;
-attachSplitter(splitter, {
-    onDragStart() {
-        sidebarDragStartWidth = settingsView.getBoundingClientRect().width;
-    },
-    onDrag(deltaX) {
-        applySidebarWidth(sidebarDragStartWidth - deltaX);
-        refitTerminal();
-    },
-});
 
 // Settings form. The executable field is shown only for the shell type. The dependency field only for the
 // Python types. The other fields apply to every type.
@@ -608,16 +542,17 @@ function renderShortcutRail() {
     }
 }
 
-// Injects a shortcut's text into the pty: clear any partial input (Ctrl+U) then submit with a return.
-// Submitted through console/submit rather than written as raw input, so the host owns how an invocation is
-// entered and confirmed at the prompt. A terminal app that reads a burst of stdin as one paste treats a
-// carriage return inside it as a newline, so the submit key cannot travel with the text.
+// Injects a shortcut's text into the pty. Submitted through console/submit rather than written as raw
+// input, so the host owns how an invocation is entered and confirmed at the prompt. A terminal app that
+// reads a burst of stdin as one paste treats a carriage return inside it as a newline, so the submit key
+// cannot travel with the text. A shortcut types into the session, so pressing one leaves the settings
+// surface for the terminal, which is also what focuses it.
 function injectShortcut(text) {
     if (!text) {
         return;
     }
+    setSettingsVisible(false);
     client.sendNotification('console/submit', { invocation: text });
-    term.focus();
 }
 
 function onFormInput() {
@@ -663,13 +598,12 @@ function isDocumentWritable() {
 }
 
 // A read-only document disables the settings form so no edit marks the document dirty. The terminal stays
-// interactive and Reopen stays available, since neither writes the file. The blanket pass runs first so the
-// per-card refinement below it decides the final state of the move buttons.
+// interactive and Reopen stays available, since neither writes the file, and the switcher leaves its footer
+// alone for that reason. Its blanket pass over the sections runs first, so the card lists below it decide
+// the final state of the controls they own.
 function applyWritableState() {
     const writable = isDocumentWritable();
-    for (const field of formFields) {
-        field.disabled = !writable;
-    }
+    settingsSwitcher.setReadOnly(!writable);
 
     runnerCards.refreshState();
     triggerCards.refreshState();
@@ -682,22 +616,19 @@ client.viewState.onChanged(() => applyWritableState());
 reopenSettingsButton.addEventListener('click', () => { reopenSession(); });
 reopenTerminalButton.addEventListener('click', () => { reopenSession(); });
 
-// The pip flags either a config error or a config that diverges from the launched session.
+// The pip flags a config error, a config that diverges from the launched session, or a session that never
+// started. The last of those reports itself in the terminal view, which is hidden while settings are open,
+// so the pip is what carries it there rather than forcing a view switch.
 function updateAttention() {
     const diverged = launchedConfig !== null && !configsEqual(currentConfig, launchedConfig);
-    const needsAttention = diverged || configError !== null;
+    const needsAttention = diverged || configError !== null || sessionStartFailed;
     pip.classList.toggle('hidden', !needsAttention);
 
     // The Reopen button stays enabled so the session can be restarted at any time. The accent colour appears
     // only when a reopen is needed to apply changed launch settings. The footer caption explains it.
     reopenSettingsButton.classList.toggle('cel-accent', diverged);
 
-    if (configError) {
-        configErrorElement.textContent = configError;
-        configErrorElement.classList.remove('hidden');
-    } else {
-        configErrorElement.classList.add('hidden');
-    }
+    settingsSwitcher.setNotice(configError);
 }
 
 // Session lifecycle.
@@ -705,10 +636,14 @@ function showSessionFailed(message) {
     hideStartingVeil();
     sessionFailedMessage.textContent = message;
     sessionFailed.classList.remove('hidden');
+    sessionStartFailed = true;
+    updateAttention();
 }
 
 function hideSessionFailed() {
     sessionFailed.classList.add('hidden');
+    sessionStartFailed = false;
+    updateAttention();
 }
 
 // The starting veil covers the terminal from launch until the shell reports its screen clear, hiding the
@@ -942,31 +877,23 @@ async function main() {
             // Ack the reload so the host's external-change handshake does not time out.
             client.document.notifyContentLoaded(ContentLoadedReason.ExternalReload);
         },
-        // Persist the settings sidebar's open state and width, the selected section, and the scroll position
-        // so they survive a reopen.
+        // Persist the selected section and its scroll position so they survive a reopen. Whether settings
+        // were open is deliberately not persisted: a console is a terminal whose session starts with the
+        // document, so restoring into a full-viewport settings screen would hide a live one.
         onRequestState: () => JSON.stringify({
-            settingsOpen: !settingsView.classList.contains('hidden'),
-            sidebarWidth,
-            activeSection: navTabs.selected(),
-            scrollTop: settingsScroll.scrollTop,
+            activeSection: settingsSwitcher.selected(),
+            scrollTop: settingsSwitcher.scrollTop(),
         }),
         onRestoreState: (stateJson) => {
             try {
                 const state = JSON.parse(stateJson);
-                if (typeof state.sidebarWidth === 'number' && state.sidebarWidth > 0) {
-                    applySidebarWidth(state.sidebarWidth);
-                }
-                // Select the section before showing the sidebar, so the scroll height is correct when the
-                // scroll position is applied below. An unknown id leaves the default section selected.
+                // An unknown id leaves the default section selected.
                 if (typeof state.activeSection === 'string') {
-                    navTabs.select(state.activeSection);
+                    settingsSwitcher.select(state.activeSection);
                 }
-                if (state.settingsOpen) {
-                    setSettingsVisible(true);
-                    // scrollTop only takes on a laid-out element, so apply it after the sidebar is shown.
-                    if (typeof state.scrollTop === 'number' && state.scrollTop > 0) {
-                        requestAnimationFrame(() => { settingsScroll.scrollTop = state.scrollTop; });
-                    }
+                // The switcher holds the offset until the surface is on screen to apply it to.
+                if (typeof state.scrollTop === 'number' && state.scrollTop > 0) {
+                    settingsSwitcher.setScrollTop(state.scrollTop);
                 }
             } catch {
                 // Ignore malformed state. Fall back to the defaults.

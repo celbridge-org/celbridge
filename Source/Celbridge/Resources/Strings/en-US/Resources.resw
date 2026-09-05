@@ -213,6 +213,12 @@
   <data name="ProjectFile_CannotChangeExtension" xml:space="preserve">
     <value>The project file must keep its {0} extension.</value>
   </data>
+  <data name="Toast_SaveFailed_Single" xml:space="preserve">
+    <value>Could not save '{0}': {1}</value>
+  </data>
+  <data name="Toast_SaveFailed_Multiple" xml:space="preserve">
+    <value>Could not save {0} files</value>
+  </data>
   <data name="Toast_OperationFailed_Delete_Single" xml:space="preserve">
     <value>Could not delete '{0}': {1}</value>
   </data>
@@ -681,14 +687,8 @@
   <data name="Documents_OpenDocumentFailedTitle" xml:space="preserve">
     <value>Open Document Failed</value>
   </data>
-  <data name="Documents_SaveDocumentFailedTitle" xml:space="preserve">
-    <value>Save Document Failed</value>
-  </data>
   <data name="Documents_OpenDocumentFailedGeneric" xml:space="preserve">
     <value>An error occurred while attempting to open '{0}'.</value>
-  </data>
-  <data name="Documents_SaveDocumentFailedGeneric" xml:space="preserve">
-    <value>An error occurred while attempting to save '{0}'.</value>
   </data>
   <data name="Documents_ApplyRangeEditsFailedTitle" xml:space="preserve">
     <value>Text Replace Failed</value>

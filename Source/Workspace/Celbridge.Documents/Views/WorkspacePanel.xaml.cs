@@ -1051,96 +1051,29 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         }
     }
 
-    public async Task<Result> SaveModifiedDocuments(double deltaTime)
+    public IReadOnlyList<ISaveableWorkspaceItem> GetSaveableItems()
     {
-        int savedCount = 0;
-        int pendingSaveCount = 0;
-        List<ResourceKey> failedSaves = new();
-        bool updateResourcesRequired = false;
+        var items = new List<ISaveableWorkspaceItem>();
 
         foreach (var sectionView in SectionContainer.GetAllSections())
         {
             foreach (var documentTab in sectionView.GetAllTabs())
             {
+                // A docked utility is presented in a tab but still owned by its panel view, which lists it
+                // for the save tick wherever it is presented. Listing it here too would save it twice.
+                if (documentTab.ViewModel.IsDockedUtility)
+                {
+                    continue;
+                }
+
                 var documentView = documentTab.Content as IDocumentView;
                 Guard.IsNotNull(documentView);
 
-                if (documentView.HasUnsavedChanges)
-                {
-                    var updateResult = documentView.UpdateSaveTimer(deltaTime);
-                    Guard.IsTrue(updateResult.IsSuccess); // Should never fail
-
-                    var shouldSave = updateResult.Value;
-                    if (!shouldSave)
-                    {
-                        pendingSaveCount++;
-                        continue;
-                    }
-
-                    var saveResult = await documentView.SaveDocument();
-                    if (saveResult.IsFailure)
-                    {
-                        // A save failure against a document whose cached state is
-                        // not Writable is the expected outcome of the read-only
-                        // gate in LocalResourceFileSystem. Log it for diagnostics
-                        // but do not surface an alert, otherwise every auto-save
-                        // tick on a locked file with buffered changes would spam
-                        // the user.
-                        if (documentView.WritableState == WritableState.Writable)
-                        {
-                            failedSaves.Add(documentTab.ViewModel.FileResource);
-
-                            // A failed save against a cache that still reads Writable
-                            // suggests an external attribute flip slipped past the
-                            // watcher. Schedule a resource update so the cache catches up.
-                            updateResourcesRequired = true;
-                        }
-                        else
-                        {
-                            _logger.LogDebug($"Skipped save for non-writable document: '{documentTab.ViewModel.FileResource}'");
-                        }
-                    }
-                    else
-                    {
-                        savedCount++;
-                    }
-                }
+                items.Add(documentView);
             }
         }
 
-        if (updateResourcesRequired)
-        {
-            // Debounced inside the resource service so a burst of failures from
-            // many open files collapses into one project-tree rebuild.
-            _commandService.Execute<IUpdateResourcesCommand>();
-        }
-
-        if (failedSaves.Count > 0)
-        {
-            // Log the error with all failed files
-            var errorMessage = $"Failed to save the following documents: {string.Join(", ", failedSaves)}";
-            _logger.LogError(errorMessage);
-
-            // Show localized alert to the user with just the first file name
-            // Multiple simultaneous failures are extremely unlikely
-            var firstFailedFile = failedSaves[0].ToString();
-            var alertTitle = _stringLocalizer.GetString("Documents_SaveDocumentFailedTitle");
-            var alertMessage = _stringLocalizer.GetString("Documents_SaveDocumentFailedGeneric", firstFailedFile);
-
-            // Fire-and-forget to avoid blocking the save loop
-            _ = _dialogService.ShowAlertDialogAsync(alertTitle, alertMessage);
-
-            return Result.Fail(errorMessage);
-        }
-
-        if (savedCount > 0)
-        {
-            _logger.LogDebug($"Saved {savedCount} modified documents");
-        }
-
-        ViewModel.UpdatePendingSaveCount(pendingSaveCount);
-
-        return Result.Ok();
+        return items;
     }
 
     public Result ActivateDocument(ResourceKey fileResource)

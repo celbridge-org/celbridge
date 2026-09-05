@@ -12,7 +12,7 @@ namespace Celbridge.Documents.Views;
 /// Hosts a custom utility in the Utility Panel, adapting the shared CustomEditorController to
 /// panel chrome.
 /// </summary>
-public sealed partial class CustomUtilityView : UserControl
+public sealed partial class CustomUtilityView : UserControl, ISaveableWorkspaceItem
 {
     private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;

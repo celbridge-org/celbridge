@@ -113,8 +113,26 @@ class TestExplorer:
         names = [i["name"] for i in items]
         assert "to_delete.txt" not in names
 
-    # NOTE: explorer.rename and explorer.duplicate are interactive (show dialogs)
-    # and cannot be tested in an automated script.
+    def test_duplicate(self, explorer, file):
+        # Silent by default: the tool generates the unique name rather than asking for one.
+        explorer.create_file("TestExplorer/original.txt")
+        explorer.duplicate("TestExplorer/original.txt")
+
+        items = file.list_contents("TestExplorer")
+        names = [i["name"] for i in items]
+        assert "original.txt" in names
+        assert "original - Copy.txt" in names
+
+    def test_duplicate_missing_resource(self, explorer):
+        with pytest.raises(CelError):
+            explorer.duplicate("TestExplorer/not_here.txt")
+
+    # explorer.rename always opens the rename dialog, so its happy path is covered in
+    # test_answer_dialog.py where the dialog can be answered. The key check below runs
+    # before the dialog opens, so it needs none.
+    def test_rename_invalid_resource_key(self, explorer):
+        with pytest.raises(CelError):
+            explorer.rename("\\backslash\\not\\allowed")
 
     def test_create_file_invalid_resource_key(self, explorer):
         with pytest.raises(CelError):

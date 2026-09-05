@@ -89,6 +89,14 @@
           "value": "6px",
           "published": true,
           "comment": "Rounding on a flat icon button, mirroring the IconButtonCornerRadius resource in Celbridge.UserInterface/Resources/Styles.xaml. Keep the two in sync when either changes. A step beyond the control radius, which a button carrying no border reads better at."
+        },
+
+        "radius-panel": {
+          "targets": ["css"],
+          "css": "--cel-radius-panel",
+          "value": "14px",
+          "published": true,
+          "comment": "Rounding on a region carved out of the chrome surface, mirroring the PanelCornerRadius resource in Celbridge.UserInterface/Resources/Styles.xaml. Keep the two in sync when either changes."
         }
       }
     },
@@ -188,7 +196,65 @@
     },
 
     {
-      "comment": "Grab band of a splitter dividing two panes of one document, mirroring the GrabAreaSize set on the native Splitter where it does the same job (WebViewDocumentView.xaml). Console.js carries a third copy for its drag arithmetic. Keep the three in sync when any changes. Wider than the 7px workspace gutter because a band inside a document has no field behind it to widen the target.",
+      "comment": "The channel between two panels, mirroring the GutterSize resource in Celbridge.UserInterface/Resources/Styles.xaml. Keep the two in sync when either changes. A layout reserving a matching gap reads this rather than repeating the value.",
+      "tokens": {
+        "gutter": {
+          "targets": ["css"],
+          "css": "--cel-gutter",
+          "value": "calc(7px / var(--cel-page-zoom))",
+          "published": true
+        }
+      }
+    },
+
+    {
+      "comment": [
+        "The settings section switcher's metrics, held once for the two implementations of it: the .cel-section-switcher component in celbridge.css, and SettingsSectionSwitcher.xaml through the matching resources in Celbridge.UserInterface/Resources/Styles.xaml. Keep the two in sync when either changes.",
+        "The inset carries the header block's padding and the section content's, which stay equal so a section's content lines up with the heading above it."
+      ],
+      "tokens": {
+        "section-nav-width": {
+          "targets": ["css"],
+          "css": "--cel-section-nav-width",
+          "value": "calc(150px / var(--cel-page-zoom))",
+          "published": true
+        },
+        "section-inset": {
+          "targets": ["css"],
+          "css": "--cel-section-inset",
+          "value": "calc(16px / var(--cel-page-zoom))",
+          "published": true
+        },
+        "section-footer-gap": {
+          "targets": ["css"],
+          "css": "--cel-section-footer-gap",
+          "value": "calc(40px / var(--cel-page-zoom))",
+          "published": true
+        },
+        "section-row-gap": {
+          "targets": ["css"],
+          "css": "--cel-section-row-gap",
+          "value": "calc(2px / var(--cel-page-zoom))",
+          "published": true
+        },
+        "section-row-padding": {
+          "targets": ["css"],
+          "css": "--cel-section-row-padding",
+          "value": "calc(12px / var(--cel-page-zoom))",
+          "published": true
+        },
+        "section-stack-threshold": {
+          "targets": ["css"],
+          "css": "--cel-section-stack-threshold",
+          "value": "387px",
+          "published": true,
+          "comment": "The width at which the switcher fits its nav beside the section rather than above it: the nav column, the gutter between them, and the document minimum below which a section stops being legible. A container query prelude cannot read a custom property, so celbridge.css writes the number out and this declares it. It is compared against the container's own CSS pixels and so is not divided by the page zoom: a page the engine renders larger stacks at a wider panel, which is what the larger type wants."
+        }
+      }
+    },
+
+    {
+      "comment": "Grab band of a splitter dividing two panes of one document, mirroring the GrabAreaSize set on the native Splitter where it does the same job (WebViewDocumentView.xaml). Keep the two in sync when either changes. Wider than the workspace gutter because a band inside a document has no field behind it to widen the target.",
       "tokens": {
         "splitter-width": {
           "targets": ["css"],
@@ -384,6 +450,14 @@
           "dark": "#EF5350",
           "published": true,
           "comment": "The counterpart to warning-text at the next severity up, drawn from the same palette so the two read as one scale."
+        },
+        "notice-background": {
+          "targets": ["css"],
+          "css": "--cel-notice-bg",
+          "light": "rgba(255, 160, 0, 0.15)",
+          "dark": "rgba(255, 202, 40, 0.18)",
+          "published": true,
+          "comment": "Fill behind a notice pinned in a settings section, outlined and read against warning-text. A tint of that colour rather than a tone of its own, so the callout reads as the same severity the text does."
         },
         "caution": {
           "targets": ["css"],

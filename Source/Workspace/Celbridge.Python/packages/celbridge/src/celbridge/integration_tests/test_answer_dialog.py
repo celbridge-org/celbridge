@@ -4,12 +4,13 @@ Skipped (whole class) when the `answer-dialog` flag is off — it defaults off i
 shipping builds; set `answer-dialog = true` under `[features]` in the .celbridge.
 
 Coverage boundary: Confirmation and InputText are exercised here because
-`explorer.delete(showDialog=True)` and `explorer.rename` reliably surface
-those dialogs through MCP. Alert and ResourcePicker have no clean MCP
-trigger (Alert is reached only via error paths like rename-on-readonly;
-ResourcePicker fires only from JS contribution `PickFile`/`PickImage`
-calls), so their schedule-to-broadcast contract is covered by C# unit
-tests in DialogServiceAnswerTests rather than here.
+`explorer.delete(showDialog=True)`, `explorer.rename` and
+`explorer.duplicate(showDialog=True)` reliably surface those dialogs through
+MCP. Alert and ResourcePicker have no clean MCP trigger (Alert is reached only
+via error paths like rename-on-readonly; ResourcePicker fires only from JS
+contribution `PickFile`/`PickImage` calls), so their schedule-to-broadcast
+contract is covered by C# unit tests in DialogServiceAnswerTests rather than
+here.
 """
 import pytest
 
@@ -56,6 +57,21 @@ class TestAnswerDialog:
         names = [i["name"] for i in items]
         assert "after.txt" in names
         assert "before.txt" not in names
+
+    def test_duplicate_dialog_receives_payload(self, app, explorer, file):
+        # Duplicate asks for the copy's name when it shows a dialog, rather than generating
+        # one as its silent form does.
+        explorer.create_file("TestAnswerDialog/source.txt")
+
+        outcome = app.answer_dialog(INPUT_TEXT, "chosen_copy.txt")
+        assert outcome == "ok"
+
+        explorer.duplicate("TestAnswerDialog/source.txt", showDialog=True)
+
+        items = file.list_contents("TestAnswerDialog")
+        names = [i["name"] for i in items]
+        assert "source.txt" in names
+        assert "chosen_copy.txt" in names
 
     def test_re_schedule_overwrites(self, app, explorer, file):
         explorer.create_file("TestAnswerDialog/before.txt")

@@ -30,6 +30,16 @@
        tab strip. Set this to 0 to square every corner off. -->
   <x:Double x:Key="PanelCornerRadius">14</x:Double>
 
+  <!-- The settings section switcher's metrics, mirroring the cel-section-* design tokens so the native
+       control and the .cel-section-switcher web component hold the same shape. Keep the two in sync when
+       either changes. The inset carries both the heading block's padding and the section content's, which
+       stay equal so a section's content lines up with the heading above it. -->
+  <x:Double x:Key="SectionNavWidth">150</x:Double>
+  <x:Double x:Key="SectionInset">16</x:Double>
+  <x:Double x:Key="SectionFooterGap">40</x:Double>
+  <x:Double x:Key="SectionRowGap">2</x:Double>
+  <Thickness x:Key="SectionRowPadding">12,0</Thickness>
+
   <!-- The type scale, mirroring the type tokens in the web client's celbridge-tokens.css; keep the two in
        sync when either changes. Small carries panel titles, field labels and supporting prose. Base carries
        input, button and body text, and is the WinUI default. Heading carries the section heading. Reference
@@ -203,7 +213,7 @@
     <Setter Property="CheckedForeground" Value="{ThemeResource AccentTextBrush}"/>
     <Setter Property="HorizontalAlignment" Value="Stretch"/>
     <Setter Property="HorizontalContentAlignment" Value="Left"/>
-    <Setter Property="Padding" Value="12,0"/>
+    <Setter Property="Padding" Value="{StaticResource SectionRowPadding}"/>
   </Style>
 
   <!-- The accent fill is reserved for a checked toggle, so a control with no selected state never takes it.

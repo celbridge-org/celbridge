@@ -3,11 +3,6 @@ using Celbridge.Reports;
 namespace Celbridge.Documents;
 
 /// <summary>
-/// A message that indicates the current number of pending document saves.
-/// </summary>
-public record PendingDocumentSaveMessage(int PendingSaveCount);
-
-/// <summary>
 /// A notification that the document layout has changed (documents opened, closed, or moved).
 /// Receivers should query IDocumentsService for current state if needed.
 /// </summary>
@@ -31,7 +26,7 @@ public record DocumentResourceChangedMessage(ResourceKey OldResource, ResourceKe
 
 /// <summary>
 /// A message sent when a document save operation has completed.
-/// Automatically sent by DocumentView.SaveDocument() after a successful save.
+/// Automatically sent by DocumentView.SaveAsync() after a successful save.
 /// </summary>
 public record DocumentSaveCompletedMessage(ResourceKey DocumentResource);
 

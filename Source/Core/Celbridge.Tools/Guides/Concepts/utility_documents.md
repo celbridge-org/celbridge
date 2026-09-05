@@ -113,4 +113,4 @@ A utility persists through the standard editable-save path: the WebView calls `c
 
 | Utility | Path | Demonstrates |
 |---|---|---|
-| Utility Demo | `Source/Modules/Celbridge.DocumentEditors/Editors/UtilityDemo/` | A utility backed by a JSON state blob, with a template seeding its default state, and the reference for the shared styling tokens |
+| Utility Demo | `Source/Modules/Celbridge.DocumentEditors/Editors/UtilityDemo/` | A utility backed by a JSON state blob, with a template seeding its default state |

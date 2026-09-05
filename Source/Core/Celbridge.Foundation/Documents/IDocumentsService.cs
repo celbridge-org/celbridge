@@ -1,3 +1,5 @@
+using Celbridge.Workspace;
+
 namespace Celbridge.Documents;
 
 /// <summary>
@@ -90,6 +92,12 @@ public interface IDocumentsService
     /// This is a cached snapshot that is safe to read from any thread.
     /// </summary>
     IReadOnlyList<DocumentSection> VisibleSections { get; }
+
+    /// <summary>
+    /// The open documents, as items the workspace save tick can flush. A utility docked into a document tab
+    /// is left out: its panel view stays its owner and lists it instead.
+    /// </summary>
+    IReadOnlyList<ISaveableWorkspaceItem> GetSaveableItems();
 
     /// <summary>
     /// Returns a snapshot of all open documents with their addresses and editor IDs.
@@ -186,13 +194,6 @@ public interface IDocumentsService
     /// Fails if the specified document is not opened.
     /// </summary>
     Result ActivateDocument(ResourceKey fileResource);
-
-    /// <summary>
-    /// Save any modified documents to disk.
-    /// This method is called on a timer to save modified documents at regular intervals.
-    /// Delta time is the time since this method was last called.
-    /// </summary>
-    Task<Result> SaveModifiedDocuments(double deltaTime);
 
     /// <summary>
     /// Stores the open documents and their addresses in persistent storage. These documents are

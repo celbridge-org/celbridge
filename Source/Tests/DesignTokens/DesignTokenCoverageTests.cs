@@ -54,7 +54,15 @@ public class DesignTokenCoverageTests
         "--cel-button-active-bg",
         // Every host command icon is the medium step. The larger name stays for a package whose surface
         // wants a more prominent glyph than the host chrome uses.
-        "--cel-icon-size-large"
+        "--cel-icon-size-large",
+        // No web surface carries a panel title of its own: a document tab names its document, and a
+        // settings surface takes its name from the section showing. The name carries the native
+        // PanelHeader height for a package whose panel does have one to line up.
+        "--cel-panel-header-height",
+        // The width at which the section switcher stacks its nav above its content. A container query
+        // prelude cannot read a custom property, so celbridge.css writes the number out and this name
+        // declares it for the other side.
+        "--cel-section-stack-threshold"
     ];
 
     // WinUI keys the chrome reads directly, each for a role the palette has nothing of its own to say
@@ -111,10 +119,12 @@ public class DesignTokenCoverageTests
         "--cel-font-ui",
         "--cel-font-weight-regular",
         "--cel-font-weight-strong",
+        "--cel-gutter",
         "--cel-icon-button-size",
         "--cel-icon-size-large",
         "--cel-icon-size-medium",
         "--cel-icon-size-small",
+        "--cel-notice-bg",
         "--cel-page-zoom",
         "--cel-panel-edge",
         "--cel-panel-header-height",
@@ -122,10 +132,17 @@ public class DesignTokenCoverageTests
         "--cel-radius-button",
         "--cel-radius-card",
         "--cel-radius-control",
+        "--cel-radius-panel",
         "--cel-rail-button-size",
         "--cel-rail-item-size",
         "--cel-rail-width",
         "--cel-search-highlight",
+        "--cel-section-footer-gap",
+        "--cel-section-inset",
+        "--cel-section-nav-width",
+        "--cel-section-row-gap",
+        "--cel-section-row-padding",
+        "--cel-section-stack-threshold",
         "--cel-selection-bg",
         "--cel-splitter-width",
         "--cel-text-primary",
