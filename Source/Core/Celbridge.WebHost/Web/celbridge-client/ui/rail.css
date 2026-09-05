@@ -1,0 +1,83 @@
+/* One of the shared components celbridge.css links. Link it beside celbridge-tokens.css to take this
+   component on its own, without the bare-element control rules. */
+
+/* Vertical icon rail, mirroring the workspace utility rail (UtilityPanel.xaml and UtilityButton.xaml): a
+   fixed-width strip of square buttons, each filling with a hover or selection tone, and
+   hairline separators between groups. An editor uses it as an inspector rail down the right of its content,
+   with .cel-rail-right moving the border to that edge:
+     <div class="cel-rail cel-rail-right">
+       <button class="cel-rail-button selected" type="button" title="Settings">
+         <i class="bi bi-sliders"></i><span class="cel-rail-pip"></span>
+       </button>
+       <div class="cel-rail-separator"></div>
+       <button class="cel-rail-button" type="button" title="Run tests"><i class="bi bi-play-fill"></i></button>
+     </div>
+   Add `selected` to the button whose surface is showing. Unlike the workspace rail, whose fill drops to a
+   neutral tone while its panel is unfocused, an editor rail's fill stays accent for as long as the surface is
+   open: with several rails and panels on screen at once, "this panel is open" is the more useful signal. */
+.cel-rail {
+    /* Declared here rather than left to the reset in celbridge.css, so the edge stays inside the rail's
+       width on a page that links this sheet without it. */
+    box-sizing: border-box;
+    flex: 0 0 var(--cel-rail-width);
+    display: flex;
+    flex-direction: column;
+    width: var(--cel-rail-width);
+    background: var(--cel-chrome-bg);
+    border-right: 1px solid var(--cel-divider-subtle);
+}
+
+.cel-rail-right {
+    border-right: none;
+    border-left: 1px solid var(--cel-divider-subtle);
+}
+
+.cel-rail-separator {
+    flex: 0 0 auto;
+    height: 1px;
+    margin: 4px 8px;
+    background: var(--cel-divider);
+}
+
+/* A square button centred in the rail, so the gap it leaves either side matches the gap above and below it,
+   and the fill it takes when hovered or selected is the whole button. The cell pitch is the button plus those
+   gaps, which is what --cel-rail-item-size names. */
+.cel-rail-button {
+    position: relative;
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--cel-rail-button-size);
+    height: var(--cel-rail-button-size);
+    margin: calc((var(--cel-rail-item-size) - var(--cel-rail-button-size)) / 2) auto;
+    padding: 0;
+    font-size: var(--cel-icon-size-medium);
+    line-height: 1;
+    background: transparent;
+    border: none;
+    border-radius: var(--cel-radius-button);
+    color: var(--cel-text-primary);
+    cursor: pointer;
+}
+
+.cel-rail-button:hover {
+    background: var(--cel-button-hover-bg);
+}
+
+.cel-rail-button.selected {
+    background: var(--cel-accent);
+    color: var(--cel-accent-text);
+}
+
+/* Caution pip on the glyph's corner, positioned off the centred icon box the way the native rail
+   button's pip is. */
+.cel-rail-pip {
+    position: absolute;
+    top: 4px;
+    right: 2px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--cel-caution);
+}

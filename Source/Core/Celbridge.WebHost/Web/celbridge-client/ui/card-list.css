@@ -1,0 +1,116 @@
+/* One of the shared components celbridge.css links. Link it beside celbridge-tokens.css to take this
+   component on its own, without the bare-element control rules. */
+
+@import url('/assets/celbridge-client/ui/expander.css');
+@import url('/assets/celbridge-client/ui/icon-button.css');
+
+/* Card list: a setting that is a list of records, one .cel-expander card per entry, driven by
+   createCardList() from ui/card-list.js. The card header carries the entry's name, with its controls
+   right-aligned before the expander's chevron; the entry's fields are one expand away.
+
+     <div class="cel-card-list">…</div>   the list element, one card per entry
+       <details class="cel-expander">
+         <summary>
+           <span class="cel-card-grip">…</span>     drag handle, when the list is reorderable
+           <i class="cel-card-icon …"></i>          optional glyph
+           <span class="cel-card-title"></span>
+           <span class="cel-card-actions">
+             <button class="cel-icon-button cel-card-delete" …>
+   */
+.cel-card-list .cel-expander {
+    margin-bottom: 8px;
+}
+
+.cel-card-list .cel-expander > summary {
+    gap: 8px;
+}
+
+.cel-card-icon {
+    flex: 0 0 auto;
+    font-size: var(--cel-icon-size-medium);
+    line-height: 1;
+}
+
+.cel-card-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Inset from the chevron by more than the summary's own gap: the whole summary toggles the card, so a
+   delete sitting beside the chevron is in the path of a near-miss. */
+.cel-card-actions {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 2px;
+    margin-right: 8px;
+}
+
+/* Actions show only on an open card, so deleting an entry takes expanding it first. Anything that should
+   read while the card is collapsed is identity rather than an action, and belongs in .cel-card-icon. */
+.cel-expander:not([open]) .cel-card-actions {
+    display: none;
+}
+
+/* Smaller than the standard icon button, so several of them do not stretch the card header. */
+.cel-card-actions .cel-icon-button {
+    width: 24px;
+    height: 24px;
+    font-size: var(--cel-icon-size-small);
+}
+
+/* Drag handle for a reorderable card. A drag starts here rather than anywhere on the header, so clicking the
+   header still expands the card and the body's inputs keep their own text selection. */
+.cel-card-grip {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    color: var(--cel-text-secondary);
+    /* The pointing finger the card header already takes, so the header reads as one row. A grab or grabbing
+       hand is drawn by the browser rather than the system, and the host shows those as a plain arrow. */
+    cursor: pointer;
+    touch-action: none;
+}
+
+.cel-card-list.reorder-disabled .cel-card-grip {
+    opacity: 0.5;
+    cursor: default;
+}
+
+/* Suppressing selection is what actually stops WebKit starting a native text drag mid-gesture, so the
+   prefixed property is kept for the WKWebView the macOS head runs on. */
+.cel-card-list.reordering {
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+/* The card being held takes an accent border, which reads across the full width of the row and stays clear of
+   where the pointer sits. Deliberately not dimmed: opacity would fade the border doing the work, and it
+   applies to the whole subtree so the accent grip would go with it. Swapping a border to the accent colour is
+   how the rest of the app marks an active control, so this borrows an idiom rather than inventing one. */
+.cel-card-list .cel-expander.dragging {
+    border-color: var(--cel-accent);
+    /* Lifted over its neighbours, since it follows the pointer and so spends most of a drag straddling two
+       rows. Stacking it above them is also what makes it read as picked up. */
+    position: relative;
+    z-index: 1;
+}
+
+.cel-card-list .cel-expander.dragging .cel-card-grip {
+    color: var(--cel-accent-contrast);
+}
+
+/* Carries the FLIP slide that card-list.js sets up when a drag displaces a row. Scoped to the drag, so cards
+   never animate while the list is being populated or edited, and excluding the dragged card, which tracks the
+   pointer and must not lag behind it. */
+.cel-card-list.reordering .cel-expander:not(.dragging) {
+    transition: transform 160ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cel-card-list.reordering .cel-expander:not(.dragging) {
+        transition: none;
+    }
+}

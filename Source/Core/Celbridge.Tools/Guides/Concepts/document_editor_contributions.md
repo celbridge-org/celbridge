@@ -111,7 +111,7 @@ Link the shared stylesheet to inherit the host's fonts and colors, so a WebView 
 
 It defines design tokens as CSS custom properties. Both it and the native app's theme dictionaries are generated from one source (`Source/Core/Celbridge.DesignTokens/DesignTokens.json`), so a token holds the same value on either side. Theme switching is automatic: the client mirrors the host theme onto `html[data-theme]` on every state snapshot, so tokens re-resolve with no editor JS — do not subscribe to `appState.theme` to swap a stylesheet or toggle a class. Build surfaces from the tokens, or key your own rules on `[data-theme="dark"]` for anything a token does not cover.
 
-An editor that hand-styles its own chrome (the CodeEditor is the precedent) can link `/assets/celbridge-client/celbridge-tokens.css` instead — the same tokens with none of the bare-element control rules — so it gets the host palette without the generic button/input styling leaking into its surface.
+An editor that hand-styles its own chrome (the CodeEditor is the precedent) can link `/assets/celbridge-client/celbridge-tokens.css` instead — the same tokens with none of the bare-element control rules — so it gets the host palette without the generic button/input styling leaking into its surface. It can still take a shared component whole, because each one is also served on its own under `/assets/celbridge-client/ui/`: the CodeEditor links `ui/splitter.css` for the divider between its editor and preview panes and styles the rest by hand.
 
 Core tokens:
 
@@ -134,7 +134,7 @@ Most editors can ignore `--cel-page-zoom`. On Windows the web engine folds the a
 
 The stylesheet also imports the Cascadia Mono face and applies the UI font, base text color, and content background to `body`. It gives common form controls — `<button>`, `<select>`, `<textarea>`, text `<input>`, checkboxes/radios, and range sliders — an approximate native Fluent look with no markup beyond the plain element; add `class="cel-accent"` to a button for the filled accent (primary) variant. Text-level elements are themed too: `<a>` links take the accent color, `<code>`/`<pre>`/`<kbd>` use the mono font, and placeholders, `::selection`, and `<hr>` follow the theme. These are bare-element rules with the lowest specificity, so an editor overrides any of them by id or class. Larger components (tables, dialogs, cards) are intentionally not pre-styled — build them from the tokens. Icons are opt-in: link `/assets/bootstrap-icons/bootstrap-icons.css` and use the `bi` classes (the same icon font the native chrome uses).
 
-Shared components sit above the bare-element rules, each mirroring a native control so a WebView surface reads as a peer of the XAML panels beside it: `.cel-expander` (a collapsible card), `.cel-splitter` (a draggable divider, driven by `attachSplitter()` from `ui/splitter.js`, which the CodeEditor uses between its toolbar panes), `.field` (a settings form row, covered below), and the section switcher below. The console editor's settings surface is the reference for the rest — a real settings panel with real settings in it, built from these components and nothing else.
+Shared components sit above the bare-element rules, each mirroring a native control so a WebView surface reads as a peer of the XAML panels beside it: `.cel-expander` (a collapsible card), `.cel-splitter` (a draggable divider, driven by `attachSplitter()` from `ui/splitter.js`), `.field` (a settings form row, covered below), and the section switcher below. `celbridge.css` links all of them, and each is also `ui/<component>.css` on its own, importing whatever its component is built on so that one link is enough. What a sheet on its own cannot carry is the native look of a form control inside the component, because that look is the bare-element rules themselves. The console editor's settings surface is the reference for the rest — a real settings panel with real settings in it, built from these components and nothing else.
 
 ### The settings surface
 
@@ -244,7 +244,7 @@ Displaced rows slide to their new positions with a FLIP transition (measure, reo
 
 All of this is decoration layered on a gesture that never reads the rows, so no transform in flight can influence where the next slot lands.
 
-`ui/card-list.js` in the shared client implements this as `createCardList()`, and `celbridge.css` styles it. The list element takes `.cel-card-list`; the card template supplies `.cel-card-grip`, `.cel-card-icon`, `.cel-card-title`, `.cel-card-actions` and `.cel-card-delete`, of which the grip and the delete button are the two the module drives.
+`ui/card-list.js` in the shared client implements this as `createCardList()`, and `ui/card-list.css` styles it. The list element takes `.cel-card-list`; the card template supplies `.cel-card-grip`, `.cel-card-icon`, `.cel-card-title`, `.cel-card-actions` and `.cel-card-delete`, of which the grip and the delete button are the two the module drives.
 
 ```javascript
 import { createCardList } from '/assets/celbridge-client/ui/card-list.js';

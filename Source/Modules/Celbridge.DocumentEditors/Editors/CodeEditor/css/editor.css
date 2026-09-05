@@ -44,61 +44,12 @@ html, body {
     overflow: hidden;
 }
 
+/* The band between the panes is the shared .cel-splitter, linked from ui/splitter.css, which carries its
+   fill, its leading edge and the accent it takes under the pointer. What is left here is the editor's own:
+   the divider exists in Split mode and nowhere else, and paints above the panes either side of it. */
 #divider {
-    flex: 0 0 8px;
-    position: relative;
-    cursor: col-resize;
-    user-select: none;
     display: none;
-    background-color: transparent;
     z-index: 100;
-}
-
-/* Persistent thin divider line, matches DividerBrush */
-#divider::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 50%;
-    width: 1px;
-    transform: translateX(-50%);
-    background-color: var(--cel-divider-subtle);
-    pointer-events: none;
-}
-
-/* Accent-colored overlay, fades in on hover, held during drag.
-   Matches the XAML Splitter's 200ms-delay 200ms-fade animation. */
-#divider::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 50%;
-    width: 4px;
-    transform: translateX(-50%);
-    background-color: var(--cel-accent);
-    opacity: 0;
-    transition: opacity 200ms ease-out 200ms;
-    pointer-events: none;
-}
-
-#divider:hover::after,
-#divider.dragging::after {
-    opacity: 1;
-}
-
-/* During drag, suppress the fade timing so the accent line stays solid
-   even when the pointer momentarily leaves the 8px grab area. */
-#divider.dragging::after {
-    transition: opacity 0ms;
-}
-
-/* During drag, thicken the base line to 4px to match the Splitter's
-   DraggingLineThickness. */
-#divider.dragging::before {
-    width: 4px;
-    background-color: var(--cel-accent);
 }
 
 #preview-pane {

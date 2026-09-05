@@ -1,8 +1,8 @@
 // Splitter drag gesture for a horizontal (column) split, matching the native WinUI Splitter. Put a
-// `.cel-splitter` element (styled by celbridge.css) between two flex panes and call attachSplitter() to make
-// it draggable. Uses pointer capture so a drag survives the pointer briefly leaving the thin grab area, and
-// toggles a `dragging` class on the element for the accent/thicken styling. The class is not required:
-// an editor that links only the tokens sheet attaches the gesture to a divider it styles itself.
+// `.cel-splitter` element (styled by ui/splitter.css) between two flex panes and call attachSplitter() to
+// make it draggable. Uses pointer capture so a drag survives the pointer briefly leaving the thin grab
+// area, and toggles a `dragging` class on the element for the accent styling. The class is not required:
+// an editor that styles its own divider attaches the gesture to that instead.
 //
 //   attachSplitter(splitterElement, {
 //     onDragStart() { /* capture the pane's current size */ },

@@ -6,7 +6,7 @@
 // are injected, so it carries no dependency on the rest of the client.
 //
 // The card template supplies the structural classes the module drives (`.cel-card-grip`, `.cel-card-delete`)
-// and celbridge.css styles them, along with `.cel-card-list` on the list element.
+// and ui/card-list.css styles them, along with `.cel-card-list` on the list element.
 //
 //   const list = createCardList({
 //     listElement, emptyElement, addButton, template,

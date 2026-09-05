@@ -1,0 +1,256 @@
+/* One of the shared components celbridge.css links. Link it beside celbridge-tokens.css to take this
+   component on its own, without the bare-element control rules. */
+
+/* Section switcher: the surface a settings panel with more than one topic is built on, mirroring the native
+   SettingsSectionSwitcher.xaml. A nav of section rows sits beside the selected section, which is carved out
+   of the surface behind it and headed by its name and description. Use as:
+
+     <div class="cel-section-switcher">
+       <div class="cel-section-nav" role="tablist">
+         <button class="cel-section-nav-item" type="button" role="tab" data-section="session"
+                 aria-selected="true" title="Session" aria-label="Session">
+           <span class="cel-section-nav-icon"><i class="bi bi-terminal"></i></span>
+           <span class="cel-section-nav-label">Session</span>
+         </button>
+         ...one row per section...
+       </div>
+       <div class="cel-section-area">
+         <div class="cel-section-header" data-section="session"><h1>Session</h1><p>What it covers.</p></div>
+         ...one header per section...
+         <div class="cel-section-notice" hidden></div>
+         <div class="cel-section-content">
+           <section data-section="session">...</section>
+           ...one section per row...
+         </div>
+       </div>
+       <div class="cel-section-footer">...an action belonging to the whole surface...</div>
+     </div>
+
+   Drive it with attachSectionSwitcher() from ui/section-switcher.js, which owns the selection, which header
+   and section are showing, aria-selected, the roving tabindex and the arrow keys, and which of the two
+   layouts is in force. The switcher fills the box it is given, so the surface around it supplies the height
+   and the margin, the way the native consumers set Margin="12" and fill their panel.
+
+   The two layouts are held on the root as data-layout. `inline` is the native layout: a labelled nav column
+   beside the carved section. `stacked` puts the nav above the content as an icon strip, over a section that
+   drops its border, and pins the footer below the content instead. The module chooses between them from the
+   switcher's own width unless the markup names one. */
+.cel-section-switcher {
+    display: grid;
+    /* The nav column carries the rows only in the inline layout. The stacked layout puts every child in the
+       second column, leaving the first with nothing to size it, so it collapses. The gutter between the two
+       is a margin rather than a column gap for the same reason: a gap is still drawn beside an empty track. */
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    height: 100%;
+    min-height: 0;
+    /* A surface too short for its own chrome lays out as best it can and is cut off here, rather than
+       spilling past its box and giving the page a scrollbar. Clip rather than hidden, so this never becomes
+       a scroll container that focus can shift. */
+    overflow: clip;
+}
+
+/* Stacked is what the rules below describe, so markup renders as the narrow layout before the module has
+   measured it. The inline layout is the delta, keyed on the attribute the module writes. */
+.cel-section-nav {
+    grid-column: 2;
+    grid-row: 1;
+    display: flex;
+    gap: 4px;
+    /* Lines the strip up with the heading in the block below it. */
+    padding: 0 var(--cel-section-inset) 8px;
+}
+
+.cel-section-area {
+    grid-column: 2;
+    grid-row: 2;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background: var(--cel-content-bg);
+    /* The header block is a fixed band, so a section area too short to hold it would otherwise let the
+       header paint over whatever the grid put below it. */
+    overflow: hidden;
+}
+
+.cel-section-footer {
+    grid-column: 2;
+    grid-row: 3;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px var(--cel-section-inset);
+    border-top: 1px solid var(--cel-divider-subtle);
+}
+
+.cel-section-switcher[data-layout="inline"] > .cel-section-nav {
+    grid-column: 1;
+    flex-direction: column;
+    gap: var(--cel-section-row-gap);
+    width: var(--cel-section-nav-width);
+    /* Lines the first row up with the section heading beside it. */
+    padding: 14px 0 0;
+}
+
+.cel-section-switcher[data-layout="inline"] > .cel-section-area {
+    grid-row: 1 / 4;
+    margin-left: var(--cel-gutter);
+    border: 1px solid var(--cel-panel-edge);
+    /* The clip the base rule already applies is what holds the header divider and the section's scrollbar
+       inside these corners. */
+    border-radius: var(--cel-radius-panel);
+}
+
+/* Grouped with the nav rows rather than pinned to the bottom of the column, as the native rail footer is. */
+.cel-section-switcher[data-layout="inline"] > .cel-section-footer {
+    grid-column: 1;
+    grid-row: 2 / 4;
+    align-self: start;
+    /* The nav column is sized by what sits in it, so the footer takes the nav's width rather than letting a
+       caption of its own widen the column the rows were measured for. */
+    width: var(--cel-section-nav-width);
+    margin-top: var(--cel-section-footer-gap);
+    padding: 0;
+    border-top: none;
+}
+
+/* A row in the nav, mirroring RailButtonStyle: a glyph beside a label, taking the accent fill when selected.
+   Icon-only in the stacked layout, where the row's tooltip carries the name it drops. */
+.cel-section-nav-item {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: var(--cel-icon-button-size);
+    height: var(--cel-icon-button-size);
+    padding: 0;
+    font-family: var(--cel-font-ui);
+    font-size: var(--cel-font-size-base);
+    color: var(--cel-text-primary);
+    background: transparent;
+    border: none;
+    border-radius: var(--cel-radius-button);
+    cursor: pointer;
+}
+
+.cel-section-switcher[data-layout="inline"] .cel-section-nav-item {
+    justify-content: flex-start;
+    width: 100%;
+    height: auto;
+    min-height: var(--cel-icon-button-size);
+    padding: 0 var(--cel-section-row-padding);
+    text-align: left;
+}
+
+.cel-section-nav-item:hover {
+    background: var(--cel-button-hover-bg);
+}
+
+.cel-section-nav-item[aria-selected="true"] {
+    background: var(--cel-accent);
+    color: var(--cel-accent-text);
+}
+
+/* The row carries no border to recolour and a selected row is already an accent fill, so the focus ring is
+   drawn outside the row, in the accent tone chosen to be read rather than filled with. */
+.cel-section-nav-item:focus-visible {
+    outline: 1px solid var(--cel-accent-contrast);
+    outline-offset: 1px;
+}
+
+.cel-section-nav-icon {
+    position: relative;
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    font-size: var(--cel-icon-size-medium);
+    line-height: 1;
+}
+
+.cel-section-nav-label {
+    display: none;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cel-section-switcher[data-layout="inline"] .cel-section-nav-label {
+    display: block;
+}
+
+/* Reports that this section has something to look at; the detail belongs in the section itself. Place it
+   inside .cel-section-nav-icon, whose corner it sits on. */
+.cel-section-nav-pip {
+    position: absolute;
+    top: -2px;
+    right: -7px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--cel-caution);
+}
+
+/* The selected section's name and description, over the hairline that separates them from the section. */
+.cel-section-header {
+    flex: 0 0 auto;
+    padding: var(--cel-section-inset);
+    border-bottom: 1px solid var(--cel-divider);
+}
+
+.cel-section-header h1 {
+    margin: 0 0 2px;
+    font-size: var(--cel-font-size-heading);
+    font-weight: var(--cel-font-weight-strong);
+}
+
+.cel-section-header p {
+    margin: 0;
+    font-size: var(--cel-font-size-small);
+    color: var(--cel-text-secondary);
+}
+
+/* Something the whole surface has to say, pinned below the header so it stays visible from whichever section
+   is showing: a file that would not parse, a setting that cannot be honoured. */
+.cel-section-notice {
+    flex: 0 0 auto;
+    margin: var(--cel-section-inset) var(--cel-section-inset) 0;
+    padding: 8px 10px;
+    background: var(--cel-notice-bg);
+    border: 1px solid var(--cel-warning-text);
+    border-radius: var(--cel-radius-control);
+    white-space: pre-wrap;
+}
+
+/* Each section scrolls on its own, so its scroll position is its own to keep while another one is showing. */
+.cel-section-content {
+    flex: 1 1 auto;
+    display: flex;
+    min-height: 0;
+}
+
+.cel-section-content > * {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: auto;
+    padding: var(--cel-section-inset);
+}
+
+.cel-section-footer p {
+    margin: 0;
+    font-size: var(--cel-font-size-small);
+    color: var(--cel-text-secondary);
+}
+
+/* Capped and centred under the content, but filling the nav column beside it. */
+.cel-section-footer button {
+    width: 100%;
+    max-width: 240px;
+    align-self: center;
+}
+
+.cel-section-switcher[data-layout="inline"] .cel-section-footer button {
+    max-width: none;
+    align-self: stretch;
+}

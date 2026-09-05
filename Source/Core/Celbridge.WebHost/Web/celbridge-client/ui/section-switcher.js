@@ -1,7 +1,7 @@
-// Behaviour for the shared `.cel-section-switcher` settings surface (styled by celbridge.css), mirroring the
-// native SettingsSectionSwitcher. Mark up a `.cel-section-nav-item` row, a `.cel-section-header` and a child
-// of `.cel-section-content` per section, each carrying the same `data-section` id, then call
-// attachSectionSwitcher() to drive them. The helper owns `aria-selected`, the roving tabindex, the arrow
+// Behaviour for the shared `.cel-section-switcher` settings surface (styled by ui/section-switcher.css),
+// mirroring the native SettingsSectionSwitcher. Mark up a `.cel-section-nav-item` row, a
+// `.cel-section-header` and a child of `.cel-section-content` per section, each carrying the same
+// `data-section` id, then call attachSectionSwitcher() to drive them. The helper owns `aria-selected`, the roving tabindex, the arrow
 // keys, which header and section are showing, each section's scroll position, and which of the two layouts
 // the surface is in.
 //
