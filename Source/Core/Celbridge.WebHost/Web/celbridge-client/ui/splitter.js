@@ -1,7 +1,8 @@
 // Splitter drag gesture for a horizontal (column) split, matching the native WinUI Splitter. Put a
 // `.cel-splitter` element (styled by celbridge.css) between two flex panes and call attachSplitter() to make
 // it draggable. Uses pointer capture so a drag survives the pointer briefly leaving the thin grab area, and
-// toggles a `dragging` class on the element for the accent/thicken styling.
+// toggles a `dragging` class on the element for the accent/thicken styling. The class is not required:
+// an editor that links only the tokens sheet attaches the gesture to a divider it styles itself.
 //
 //   attachSplitter(splitterElement, {
 //     onDragStart() { /* capture the pane's current size */ },
@@ -9,6 +10,10 @@
 //     onReset() { /* optional: double-click resets, e.g. to 50/50 */ },
 //     isEnabled() { return true; /* optional: skip the gesture while false */ },
 //   });
+
+// The gesture is ignored for this long after a reset, so the drag delta trailing the double click that
+// raised it cannot resize straight back over the reset.
+const resetDebounceMs = 500;
 
 export function attachSplitter(splitterElement, options = {}) {
     if (!splitterElement) {
@@ -18,9 +23,17 @@ export function attachSplitter(splitterElement, options = {}) {
     const { onDragStart, onDrag, onReset, isEnabled } = options;
     let dragging = false;
     let startX = 0;
+    let lastResetTime = 0;
+
+    function isDebouncingReset() {
+        return performance.now() - lastResetTime < resetDebounceMs;
+    }
 
     function onPointerMove(event) {
         if (!dragging) {
+            return;
+        }
+        if (isDebouncingReset()) {
             return;
         }
         if (typeof onDrag === 'function') {
@@ -52,6 +65,9 @@ export function attachSplitter(splitterElement, options = {}) {
         if (typeof isEnabled === 'function' && !isEnabled()) {
             return;
         }
+        if (isDebouncingReset()) {
+            return;
+        }
         dragging = true;
         startX = event.clientX;
         if (typeof onDragStart === 'function') {
@@ -69,6 +85,9 @@ export function attachSplitter(splitterElement, options = {}) {
     });
 
     if (typeof onReset === 'function') {
-        splitterElement.addEventListener('dblclick', () => onReset());
+        splitterElement.addEventListener('dblclick', () => {
+            lastResetTime = performance.now();
+            onReset();
+        });
     }
 }

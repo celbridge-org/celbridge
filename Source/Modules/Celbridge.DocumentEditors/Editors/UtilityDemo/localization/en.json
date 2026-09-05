@@ -1,5 +1,5 @@
 {
     "UtilityDemo_Package": "Utility Demo",
     "UtilityDemo_DisplayName": "Utility Demo Editor",
-    "UtilityDemo_Description": "Reference utility for the host UI font and styled controls"
+    "UtilityDemo_Description": "A utility that keeps notes with the project as a JSON state blob"
 }
