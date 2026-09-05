@@ -1012,7 +1012,17 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
         if (completedTask != requestStateTask)
         {
-            _logger.LogWarning("Editor did not return state within {Seconds}s; closing without preserving editor state.", EditorStateRequestTimeoutSeconds);
+            // A bound channel with nothing pending means the page received the request and did not service it.
+            var channelState = "direct transport";
+            if (_proxyChannel is not null)
+            {
+                channelState = $"bound {_proxyChannel.IsBound}, pending outbound {_proxyChannel.PendingOutboundCount}";
+            }
+
+            _logger.LogWarning(
+                "Editor did not return state within {Seconds}s; closing without preserving editor state. File: {File}, channel {ChannelState}",
+                EditorStateRequestTimeoutSeconds, _viewModel.FilePath, channelState);
+
             ObserveAbandonedRequest(requestStateTask);
             return null;
         }

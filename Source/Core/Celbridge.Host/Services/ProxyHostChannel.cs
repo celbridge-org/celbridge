@@ -41,6 +41,34 @@ public sealed class ProxyHostChannel : IHostChannel, IDisposable
         _logger = ServiceLocator.AcquireService<ILogger<ProxyHostChannel>>();
     }
 
+    /// <summary>
+    /// Whether a transport is bound.
+    /// </summary>
+    public bool IsBound
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _boundChannel is not null;
+            }
+        }
+    }
+
+    /// <summary>
+    /// The number of outbound messages buffered while no transport is bound.
+    /// </summary>
+    public int PendingOutboundCount
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _pendingOutbound.Count;
+            }
+        }
+    }
+
     public void PostMessage(string json)
     {
         IHostChannel? boundChannel;
