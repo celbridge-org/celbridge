@@ -15,8 +15,8 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
 {
     private const string ConsoleFileExtension = ".console";
 
-    // A headless session has no view to measure, so it starts at this nominal size and is resized once a
-    // view has been arranged and can report a real one.
+    // The size a console falls back to when no view reports one in time. A console whose document is open
+    // but whose view never arranges still has to run.
     private const int DefaultCols = 120;
     private const int DefaultRows = 30;
 
@@ -26,7 +26,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
     private readonly ILogger<ConsoleSessionService> _logger;
 
     private readonly object _sessionsLock = new();
-    private readonly Dictionary<ResourceKey, ConsoleLiveSession> _sessions = new();
+    private readonly Dictionary<ResourceKey, ConsoleSession> _sessions = new();
 
     // Maps a bound transport connection to the session that launched it. Only sessions whose client has
     // connected appear here.
@@ -82,26 +82,46 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
 
     public async Task EnsureStartedAsync(ResourceKey resource)
     {
-        // Every console shares one cel-proxy listener, so the first launch starts it and the rest reuse
-        // the port.
-        var rpcPort = _proxyListener.EnsureStarted();
+        var session = GetOrCreateSession(resource);
+        if (session is null)
+        {
+            return;
+        }
 
-        ConsoleLiveSession session;
+        await StartSessionAsync(session, resource);
+    }
+
+    // The session object for a console, created if it has none yet. Separate from the launch because a launch
+    // waits for a view's size, so a caller reports that size through the session before awaiting the launch.
+    private ConsoleSession? GetOrCreateSession(ResourceKey resource)
+    {
         lock (_sessionsLock)
         {
             if (_disposed)
             {
-                return;
+                return null;
             }
 
-            if (!_sessions.TryGetValue(resource, out var existingSession))
+            if (!_sessions.TryGetValue(resource, out var session))
             {
-                existingSession = new ConsoleLiveSession(_serviceProvider, _workspaceWrapper, resource);
-                existingSession.StateChanged += OnSessionStateChanged;
-                _sessions[resource] = existingSession;
+                session = new ConsoleSession(_serviceProvider, _workspaceWrapper, resource);
+                session.StateChanged += OnSessionStateChanged;
+                _sessions[resource] = session;
             }
-            session = existingSession;
 
+            return session;
+        }
+    }
+
+    // Launches the session if it has not been launched already, and waits for that launch.
+    private async Task StartSessionAsync(ConsoleSession session, ResourceKey resource)
+    {
+        // Every console shares one cel-proxy listener, so the first launch starts it and the rest reuse
+        // the port.
+        var rpcPort = _proxyListener.EnsureStarted();
+
+        lock (_sessionsLock)
+        {
             session.StartTask ??= session.StartAsync(DefaultCols, DefaultRows, rpcPort);
         }
 
@@ -117,32 +137,37 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
 
     public async Task<ConsoleAttachSnapshot> AttachAsync(ResourceKey resource, IConsoleView attachedView, int cols, int rows)
     {
-        await EnsureStartedAsync(resource);
-
-        ConsoleLiveSession? session;
-        lock (_sessionsLock)
-        {
-            _sessions.TryGetValue(resource, out session);
-        }
-
+        var session = GetOrCreateSession(resource);
         if (session is null)
         {
-            return new ConsoleAttachSnapshot(
-                ConsoleSessionRunState.Failed,
-                "The console session is not available.",
-                false,
-                string.Empty,
-                null);
+            return UnavailableSnapshot();
         }
 
+        // Reported before the launch is awaited. The launch holds the pty until a view reports a size, so
+        // awaiting it first would leave the launch and the attach waiting on each other.
+        session.Resize(cols, rows);
+
+        await StartSessionAsync(session, resource);
+
+        // Applied again now the pty exists. A launch that timed out waiting created it at the fallback size.
         session.Resize(cols, rows);
 
         return session.Attach(attachedView);
     }
 
+    private static ConsoleAttachSnapshot UnavailableSnapshot()
+    {
+        return new ConsoleAttachSnapshot(
+            ConsoleSessionRunState.Failed,
+            "The console session is not available.",
+            false,
+            string.Empty,
+            null);
+    }
+
     public void Detach(ResourceKey resource, IConsoleView attachedView)
     {
-        ConsoleLiveSession? session;
+        ConsoleSession? session;
         lock (_sessionsLock)
         {
             _sessions.TryGetValue(resource, out session);
@@ -168,25 +193,18 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
 
         if (previousView is null)
         {
-            await EnsureStartedAsync(resource);
-
-            ConsoleLiveSession? session;
-            lock (_sessionsLock)
-            {
-                _sessions.TryGetValue(resource, out session);
-            }
-
+            var session = GetOrCreateSession(resource);
             if (session is null)
             {
-                return new ConsoleAttachSnapshot(
-                    ConsoleSessionRunState.Failed,
-                    "The console session is not available.",
-                    false,
-                    string.Empty,
-                    null);
+                return UnavailableSnapshot();
             }
 
             session.Resize(cols, rows);
+
+            await StartSessionAsync(session, resource);
+
+            session.Resize(cols, rows);
+
             return new ConsoleAttachSnapshot(session.State, session.Error, false, string.Empty, session.LaunchedConfigToml);
         }
 
@@ -195,7 +213,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
 
     public void Input(ResourceKey resource, string data)
     {
-        ConsoleLiveSession? session;
+        ConsoleSession? session;
         lock (_sessionsLock)
         {
             _sessions.TryGetValue(resource, out session);
@@ -206,7 +224,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
 
     public void Resize(ResourceKey resource, int cols, int rows)
     {
-        ConsoleLiveSession? session;
+        ConsoleSession? session;
         lock (_sessionsLock)
         {
             _sessions.TryGetValue(resource, out session);
@@ -217,7 +235,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
 
     public void EndSession(ResourceKey resource)
     {
-        ConsoleLiveSession? session;
+        ConsoleSession? session;
         lock (_sessionsLock)
         {
             if (_sessions.TryGetValue(resource, out session))
@@ -237,7 +255,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         Guid boundSessionId;
         lock (_sessionsLock)
         {
-            ConsoleLiveSession? match = null;
+            ConsoleSession? match = null;
             foreach (var session in _sessions.Values)
             {
                 if (session.SessionId == sessionToken)
@@ -299,7 +317,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
 
     public IReadOnlyList<ConsoleRunTarget> GetRunTargets(string fileExtension)
     {
-        var runningSessions = new List<ConsoleLiveSession>();
+        var runningSessions = new List<ConsoleSession>();
         lock (_sessionsLock)
         {
             foreach (var session in _sessions.Values)
@@ -386,7 +404,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
 
     public void SubmitInvocation(ResourceKey resource, string invocation)
     {
-        ConsoleLiveSession? session;
+        ConsoleSession? session;
         lock (_sessionsLock)
         {
             _sessions.TryGetValue(resource, out session);
@@ -397,9 +415,9 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
 
     // A session that can still accept an invocation. A session that bound a client and then lost it is a
     // live shell whose REPL has exited, so its prompt is no longer the one the invocation was written for.
-    private Result<ConsoleLiveSession> FindSubmittableSession(Guid sessionId)
+    private Result<ConsoleSession> FindSubmittableSession(Guid sessionId)
     {
-        ConsoleLiveSession? target = null;
+        ConsoleSession? target = null;
         lock (_sessionsLock)
         {
             foreach (var session in _sessions.Values)
@@ -414,12 +432,12 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
 
         if (target is null)
         {
-            return Result<ConsoleLiveSession>.Fail($"No console session {sessionId}");
+            return Result<ConsoleSession>.Fail($"No console session {sessionId}");
         }
 
         if (target.HasStaleRunners)
         {
-            return Result<ConsoleLiveSession>.Fail($"Console '{target.Resource}' has lost its client connection");
+            return Result<ConsoleSession>.Fail($"Console '{target.Resource}' has lost its client connection");
         }
 
         return target;
@@ -427,7 +445,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
 
     private void OnSessionStateChanged(object? sender, ConsoleSessionRunState state)
     {
-        if (sender is not ConsoleLiveSession session)
+        if (sender is not ConsoleSession session)
         {
             return;
         }
@@ -438,7 +456,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
 
     // A released session is terminally gone, so its state change is broadcast for per-session bookkeeping
     // (a pending Python fingerprint, for instance) before its handler is detached.
-    private void ReleaseSession(ConsoleLiveSession session)
+    private void ReleaseSession(ConsoleSession session)
     {
         if (session.State != ConsoleSessionRunState.Ended &&
             session.State != ConsoleSessionRunState.Failed)
@@ -508,7 +526,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
     // into a single run, so every match is scheduled here and the collapsing happens there.
     private void ScheduleTriggers(ResourceKey resource)
     {
-        List<ConsoleLiveSession> sessions;
+        List<ConsoleSession> sessions;
         lock (_sessionsLock)
         {
             if (_disposed)
@@ -569,7 +587,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
 
     public void Dispose()
     {
-        List<ConsoleLiveSession> sessions;
+        List<ConsoleSession> sessions;
         lock (_sessionsLock)
         {
             if (_disposed)

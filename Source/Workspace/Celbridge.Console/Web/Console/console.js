@@ -710,20 +710,28 @@ function clearVeilTimers() {
     }
 }
 
+// How long the attach waits for the view to be arranged. A view that takes a moment to lay out is worth
+// waiting for. One that never lays out is not.
+const ARRANGE_TIMEOUT_MS = 4000;
+
 // The pty is created at the terminal's measured size, so measure only once the layout has settled. On
 // application startup the WebView is still being laid out when this script runs, and a resize that lands
 // after the shell has painted makes ConPTY reflow its buffer, which shows up as a block of blank lines.
 async function waitForStableSize() {
+    let waiting = true;
+
     const settled = (async () => {
         let previousWidth = -1;
         let previousHeight = -1;
 
-        for (let frame = 0; frame < 30; frame++) {
+        // The size the attach carries is the size the host creates the pty at, so this runs until the view
+        // is arranged and the size it reports is the one it will be read at.
+        while (waiting) {
             await new Promise((resolve) => requestAnimationFrame(resolve));
 
             const width = terminalView.clientWidth;
             const height = terminalView.clientHeight;
-            if (width > 0 && height > 0 && width === previousWidth && height === previousHeight) {
+            if (isArranged() && width > 0 && height > 0 && width === previousWidth && height === previousHeight) {
                 return;
             }
 
@@ -734,9 +742,10 @@ async function waitForStableSize() {
 
     // Animation frames stop entirely while the document is hidden, so the measurement can never be what
     // gates the launch: a timer keeps the session starting even when the frames never arrive.
-    const deadline = new Promise((resolve) => setTimeout(resolve, 500));
+    const deadline = new Promise((resolve) => setTimeout(resolve, ARRANGE_TIMEOUT_MS));
 
     await Promise.race([settled, deadline]);
+    waiting = false;
 }
 
 // The terminal size an attach or reopen carries. Zero means the view has not been arranged, which leaves

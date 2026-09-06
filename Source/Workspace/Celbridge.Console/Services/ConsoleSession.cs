@@ -10,7 +10,7 @@ namespace Celbridge.Console.Services;
 /// pty, injects the startup lines, consumes the ready marker so its scrollback starts on a clean screen,
 /// buffers output while no view is attached, and forwards output live to the attached view.
 /// </summary>
-internal sealed class ConsoleLiveSession : IDisposable
+internal sealed class ConsoleSession : IDisposable
 {
     // Carriage return, the submit key at a shell or REPL prompt.
     private const string SubmitKey = "\r";
@@ -27,8 +27,11 @@ internal sealed class ConsoleLiveSession : IDisposable
 
     private readonly IServiceProvider _serviceProvider;
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly ILogger<ConsoleLiveSession> _logger;
+    private readonly ILogger<ConsoleSession> _logger;
     private readonly ConsoleOutputBuffer _outputBuffer = new();
+
+    // The size a view reports for this session, which the launch waits on before it creates the pty.
+    private readonly PendingViewSize _pendingViewSize = new();
 
     private readonly object _gateLock = new();
     private readonly List<string> _bufferedInjections = new();
@@ -49,7 +52,7 @@ internal sealed class ConsoleLiveSession : IDisposable
     private int? _trackedProcessId;
     private bool _disposed;
 
-    public ConsoleLiveSession(
+    public ConsoleSession(
         IServiceProvider serviceProvider,
         IWorkspaceWrapper workspaceWrapper,
         ResourceKey resource)
@@ -57,7 +60,7 @@ internal sealed class ConsoleLiveSession : IDisposable
         _serviceProvider = serviceProvider;
         _workspaceWrapper = workspaceWrapper;
         Resource = resource;
-        _logger = serviceProvider.GetRequiredService<ILogger<ConsoleLiveSession>>();
+        _logger = serviceProvider.GetRequiredService<ILogger<ConsoleSession>>();
     }
 
     public ResourceKey Resource { get; private set; }
@@ -132,7 +135,11 @@ internal sealed class ConsoleLiveSession : IDisposable
         Resource = newResource;
     }
 
-    public async Task StartAsync(int cols, int rows, int rpcPort)
+    // How long a launch waits for a view to report the size it will be read at before starting at the
+    // fallback size anyway.
+    private const int ViewSizeTimeoutMs = 5000;
+
+    public async Task StartAsync(int fallbackCols, int fallbackRows, int rpcPort)
     {
         var registry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
@@ -218,7 +225,7 @@ internal sealed class ConsoleLiveSession : IDisposable
 
         var startupInvocation = invocationResult.Value;
 
-        // Every session runs the platform shell; the session type only decides what is injected into it.
+        // Every session runs the platform shell. The session type only decides what is injected into it.
         // The injected line clears the shell-startup noise and emits the ready marker, so the buffer
         // begins on a clean screen.
         var shell = ConsoleShell.Resolve();
@@ -246,7 +253,7 @@ internal sealed class ConsoleLiveSession : IDisposable
         var terminal = _serviceProvider.GetRequiredService<ITerminal>();
         terminal.OutputReceived += OnTerminalOutput;
         terminal.ProcessExited += OnTerminalProcessExited;
-        terminal.SetSize(cols, rows);
+        terminal.SetSize(fallbackCols, fallbackRows);
 
         var environmentCopy = new Dictionary<string, string>(environment);
 
@@ -286,6 +293,17 @@ internal sealed class ConsoleLiveSession : IDisposable
             _markerScanner = new StartupMarkerScanner(composedStartup.ScanMarker);
         }
 
+        // Held until a view reports the size it will be read at, so the shell paints into a view that is
+        // already attached. Output painted before then reaches the view as a replayed byte log, where the
+        // repaint the prompt draws over its own banner renders a second time against an empty screen.
+        var reportedSize = await _pendingViewSize.WaitAsync(ViewSizeTimeoutMs);
+        if (reportedSize is not null)
+        {
+            terminal.SetSize(reportedSize.Cols, reportedSize.Rows);
+        }
+
+        var startedAtViewSize = reportedSize is not null;
+
         try
         {
             terminal.Start(shellCommandLine, workingDirectory, environmentCopy);
@@ -313,7 +331,8 @@ internal sealed class ConsoleLiveSession : IDisposable
             // the wrong width, and zsh's PROMPT_SP fill would leave a stray marker glyph when the view
             // renders at its own width. A command console injects immediately: its own output takes over
             // after the marker, so no shell prompt is drawn at the guessed width.
-            var deferUntilSized = string.IsNullOrWhiteSpace(startupInvocation.Executable) &&
+            var deferUntilSized = !startedAtViewSize &&
+                string.IsNullOrWhiteSpace(startupInvocation.Executable) &&
                 composedStartup.ScanMarker is not null;
 
             if (deferUntilSized)
@@ -375,6 +394,9 @@ internal sealed class ConsoleLiveSession : IDisposable
 
     public void Resize(int cols, int rows)
     {
+        // The launch waits on the first size a view reports, which is what a resize carries.
+        _pendingViewSize.Report(cols, rows);
+
         // A view reports no size until a layout pass has arranged it. Applying an empty size collapses the
         // pty to a single row and loses the output already on its screen to the reflow.
         if (cols > 0 &&
@@ -667,6 +689,7 @@ internal sealed class ConsoleLiveSession : IDisposable
         {
             attachedView?.OnStartupComplete();
         }
+
         if (forwarded.Length > 0)
         {
             attachedView?.OnOutput(forwarded);
@@ -737,7 +760,7 @@ internal sealed class ConsoleLiveSession : IDisposable
             }
             catch (Exception exception)
             {
-                // One unusable pattern drops its own trigger; the rest of the console still launches.
+                // One unusable pattern drops its own trigger. The rest of the console still launches.
                 _logger.LogWarning(exception, "Ignoring console trigger with an invalid pattern '{Pattern}'", trigger.Pattern);
             }
         }
