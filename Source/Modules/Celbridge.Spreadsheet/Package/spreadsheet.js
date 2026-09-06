@@ -280,9 +280,16 @@ function initializeSpreadsheet() {
     } catch (e) {
         const container = document.getElementById('gc-designer-container');
         // The container size is logged because a WebView that loads while unarranged reports a zero viewport.
+        // The rest is state nothing else can recover: this package blocks DevTools and the webview_* tools to
+        // keep the license keys out of reach, so the log is the only account of a failure here. The keys
+        // themselves are never reported, only that the constructor was reached with them applied.
         client.log.error('[Spreadsheet] Designer construction failed'
             + ' (container ' + (container ? container.clientWidth + 'x' + container.clientHeight : 'missing')
-            + ', viewport ' + window.innerWidth + 'x' + window.innerHeight + ')', e);
+            + ', viewport ' + window.innerWidth + 'x' + window.innerHeight
+            + ', readyState ' + document.readyState
+            + ', stylesheets ' + document.styleSheets.length
+            + ', spreadjs ' + (GC?.Spread?.Sheets?.version ?? 'unknown')
+            + ', designer ' + typeof GC?.Spread?.Sheets?.Designer?.Designer + ')', e);
         return false;
     }
 }
