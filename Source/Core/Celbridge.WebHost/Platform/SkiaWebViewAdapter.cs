@@ -22,22 +22,8 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     private bool _checkedInactiveSelection;
     private bool _reportedRemoteInspection;
 
-    // Live hosted web views and when each was last woken. Touched from the UI thread only.
-    private readonly List<KeepAliveEntry> _keepAliveWebViews = new();
-    private DispatcherTimer? _keepAliveTimer;
-
-    private sealed class KeepAliveEntry
-    {
-        public KeepAliveEntry(CoreWebView2 webView)
-        {
-            WebView = webView;
-            LastWokenUtc = DateTime.UtcNow;
-        }
-
-        public CoreWebView2 WebView { get; }
-
-        public DateTime LastWokenUtc { get; set; }
-    }
+    // The wake loop running for each live hosted web view, keyed by the view it wakes.
+    private readonly Dictionary<CoreWebView2, CancellationTokenSource> _keepAliveLoops = new();
 
     // The find methods receive only a CoreWebView2, so sessions are keyed by it to recover per-find state.
     private readonly Dictionary<CoreWebView2, FindSession> _findSessions = new();
@@ -98,12 +84,13 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
                     PinNativeWebView(nativeWebViewHandle);
                     KeepSelectionWhileUnfocused(nativeWebViewHandle);
                     ApplyInitialViewportSize(nativeWebViewHandle);
-                    RegisterForKeepAlive(webView.CoreWebView2);
                 }
                 else
                 {
                     _logger.LogDebug("Native WKWebView handle not resolvable after init ({Detail}); pinning deferred to first resolution", detail);
                 }
+
+                RegisterForKeepAlive(webView.CoreWebView2);
 
                 // UNO-BUG: the script message handler is registered on every Loaded and never removed.
                 // The second load of a control then aborts the process inside WebKit. This control sees a
@@ -143,124 +130,76 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     private const double MinimumViewportHeight = 768;
 
     // How long a hosted page may go without being woken. A hidden page's event loop stops entirely after
-    // roughly seven minutes.
-    private const int KeepAliveIntervalSeconds = 180;
+    // roughly seven minutes, so a page that has gone quiet is running again well inside the timeouts that
+    // wait on it.
+    private const int KeepAliveIntervalSeconds = 30;
 
-    // How often the rotation looks for an overdue page.
-    private const int KeepAliveTickSeconds = 5;
+    // Spread added to every wake, so pages registered together do not settle into waking in the same instant.
+    private const int KeepAliveJitterSeconds = 5;
 
-    // Wakes this hosted web view on a rotation. WebKit stops a hidden page's event loop after a few minutes,
-    // so it services no host RPC until the user activates it, and evaluating a trivial script restarts it.
+    // Wakes this hosted web view until it is closed. WebKit stops a hidden page's event loop after a few
+    // minutes, so it services no host RPC until the user activates it, and evaluating a trivial script
+    // restarts it.
     private void RegisterForKeepAlive(CoreWebView2 coreWebView2)
     {
-        if (FindKeepAliveEntry(coreWebView2) is not null)
+        CancellationTokenSource cancellationTokenSource;
+
+        lock (_keepAliveLoops)
         {
-            return;
+            if (_keepAliveLoops.ContainsKey(coreWebView2))
+            {
+                return;
+            }
+
+            cancellationTokenSource = new CancellationTokenSource();
+            _keepAliveLoops.Add(coreWebView2, cancellationTokenSource);
         }
 
-        _keepAliveWebViews.Add(new KeepAliveEntry(coreWebView2));
-        StartKeepAliveTimer();
+        _ = KeepPageAwakeAsync(coreWebView2, cancellationTokenSource.Token);
     }
 
     private void UnregisterFromKeepAlive(CoreWebView2 coreWebView2)
     {
-        var entry = FindKeepAliveEntry(coreWebView2);
-        if (entry is null)
-        {
-            return;
-        }
+        CancellationTokenSource? cancellationTokenSource;
 
-        _keepAliveWebViews.Remove(entry);
-
-        if (_keepAliveWebViews.Count == 0)
+        lock (_keepAliveLoops)
         {
-            _keepAliveTimer?.Stop();
-        }
-    }
-
-    private KeepAliveEntry? FindKeepAliveEntry(CoreWebView2 coreWebView2)
-    {
-        foreach (var entry in _keepAliveWebViews)
-        {
-            if (entry.WebView == coreWebView2)
+            if (!_keepAliveLoops.Remove(coreWebView2, out cancellationTokenSource))
             {
-                return entry;
+                return;
             }
         }
 
-        return null;
+        cancellationTokenSource.Cancel();
+        cancellationTokenSource.Dispose();
     }
 
-    // The tick never changes and a running timer is left alone, so a burst of document opens and closes
-    // cannot keep restarting the countdown and starve the wake.
-    private void StartKeepAliveTimer()
+    // The delay must resume on the UI thread, where the script evaluation has to run, so the awaits here
+    // are never configured away from the dispatcher.
+    private async Task KeepPageAwakeAsync(CoreWebView2 coreWebView2, CancellationToken cancellationToken)
     {
-        if (_keepAliveTimer is null)
+        while (true)
         {
-            _keepAliveTimer = new DispatcherTimer
+            try
             {
-                Interval = TimeSpan.FromSeconds(KeepAliveTickSeconds)
-            };
-            _keepAliveTimer.Tick += OnKeepAliveTick;
+                var jitter = TimeSpan.FromMilliseconds(Random.Shared.Next(0, KeepAliveJitterSeconds * 1000));
+                await Task.Delay(TimeSpan.FromSeconds(KeepAliveIntervalSeconds) + jitter, cancellationToken);
 
-            _logger.LogDebug(
-                "Waking each hosted page every {Seconds}s so hidden pages keep running",
-                KeepAliveIntervalSeconds);
-        }
-
-        if (!_keepAliveTimer.IsEnabled)
-        {
-            _keepAliveTimer.Start();
-        }
-    }
-
-    // At most one view is woken per tick, so the web content processes never resume together.
-    private void OnKeepAliveTick(object? sender, object e)
-    {
-        if (_keepAliveWebViews.Count == 0)
-        {
-            _keepAliveTimer?.Stop();
-            return;
-        }
-
-        var now = DateTime.UtcNow;
-        var dueAfter = TimeSpan.FromSeconds(KeepAliveIntervalSeconds);
-
-        KeepAliveEntry? mostOverdue = null;
-        foreach (var entry in _keepAliveWebViews)
-        {
-            if (now - entry.LastWokenUtc < dueAfter)
-            {
-                continue;
+                await EvalAsync(coreWebView2, "0");
             }
-
-            if (mostOverdue is null
-                || entry.LastWokenUtc < mostOverdue.LastWokenUtc)
+            catch (OperationCanceledException)
             {
-                mostOverdue = entry;
+                return;
             }
-        }
-
-        if (mostOverdue is null)
-        {
-            return;
-        }
-
-        mostOverdue.LastWokenUtc = now;
-
-        _ = WakePageAsync(mostOverdue.WebView);
-    }
-
-    // A view torn down between the tick and this call throws here, which is not an error.
-    private async Task WakePageAsync(CoreWebView2 coreWebView2)
-    {
-        try
-        {
-            await EvalAsync(coreWebView2, "0");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogDebug(ex, "Could not wake a hosted page");
+            catch (ObjectDisposedException)
+            {
+                // The view was torn down without reaching CloseWebView, so there is nothing left to wake.
+                return;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Could not wake a hosted page");
+            }
         }
     }
 
@@ -290,6 +229,12 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     // tab until the tab is shown again.
     private void PinNativeWebView(IntPtr nativeWebViewHandle)
     {
+        if (nativeWebViewHandle == IntPtr.Zero)
+        {
+            _logger.LogWarning("Cannot pin a null native WKWebView handle, so this web view keeps neither its native view nor its background page activity");
+            return;
+        }
+
         var applied = MacOSWebViewInterop.RetainNativeWebView(nativeWebViewHandle);
         if (applied is null)
         {

@@ -1012,16 +1012,18 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
         if (completedTask != requestStateTask)
         {
-            // A bound channel with nothing pending means the page received the request and did not service it.
-            var channelState = "direct transport";
-            if (_proxyChannel is not null)
-            {
-                channelState = $"bound {_proxyChannel.IsBound}, pending outbound {_proxyChannel.PendingOutboundCount}";
-            }
+            // Outbound messages are buffered only while no transport is bound, so a bound channel always
+            // reports nothing pending.
+            var proxyChannel = _proxyChannel;
+            var transportState = proxyChannel?.GetTransportState();
 
             _logger.LogWarning(
-                "Editor did not return state within {Seconds}s; closing without preserving editor state. File: {File}, channel {ChannelState}",
-                EditorStateRequestTimeoutSeconds, _viewModel.FilePath, channelState);
+                "Editor did not return state within {Seconds}s; closing without preserving editor state. File: {File}, proxy channel {HasProxyChannel}, transport bound {IsBound}, pending outbound {PendingOutbound}",
+                EditorStateRequestTimeoutSeconds,
+                _viewModel.FilePath,
+                proxyChannel is not null,
+                transportState?.IsBound,
+                transportState?.PendingOutboundCount);
 
             ObserveAbandonedRequest(requestStateTask);
             return null;

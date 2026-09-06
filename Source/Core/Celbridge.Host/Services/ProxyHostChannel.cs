@@ -42,30 +42,14 @@ public sealed class ProxyHostChannel : IHostChannel, IDisposable
     }
 
     /// <summary>
-    /// Whether a transport is bound.
+    /// Whether a transport is bound, and how many outbound messages are buffered waiting for one. Both are
+    /// read under the same lock, so the pair always describes one instant.
     /// </summary>
-    public bool IsBound
+    public (bool IsBound, int PendingOutboundCount) GetTransportState()
     {
-        get
+        lock (_gate)
         {
-            lock (_gate)
-            {
-                return _boundChannel is not null;
-            }
-        }
-    }
-
-    /// <summary>
-    /// The number of outbound messages buffered while no transport is bound.
-    /// </summary>
-    public int PendingOutboundCount
-    {
-        get
-        {
-            lock (_gate)
-            {
-                return _pendingOutbound.Count;
-            }
+            return (_boundChannel is not null, _pendingOutbound.Count);
         }
     }
 

@@ -223,14 +223,16 @@ public class WebViewFactory : IWebViewFactory, IDisposable
         _logger.LogDebug("WebViewFactory shutdown complete");
     }
 
-    private static void CloseWebView(WebView2? webView)
+    // Closed through the adapter rather than WebView2.Close, which reaches neither the macOS native
+    // teardown nor the per-view state the adapter holds while a view is alive.
+    private void CloseWebView(WebView2? webView)
     {
         if (webView == null)
             return;
 
         try
         {
-            webView.Close();
+            _webViewAdapter.CloseWebView(webView, container: null);
         }
         catch
         {
