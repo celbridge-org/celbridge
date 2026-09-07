@@ -7,10 +7,9 @@ using Celbridge.WorkspaceUI.Services;
 namespace Celbridge.Tests.WorkspaceUI;
 
 /// <summary>
-/// The save tick runs about sixty times a second against every open document and utility. These tests pin
-/// what it reports and how it retries: an item waiting for its timer is reported as saving while one that
-/// cannot be written is reported as failing, the failing set is sent only when it changes, and the
-/// attempts back off.
+/// The save pass runs against every open document and utility. These tests pin what it reports and how it
+/// retries: an item waiting for its timer is reported as saving while one that cannot be written is
+/// reported as failing, the failing set is sent only when it changes, and the attempts back off.
 /// </summary>
 [TestFixture]
 public class WorkspaceItemSaverTests
@@ -234,18 +233,121 @@ public class WorkspaceItemSaverTests
         _pendingSaveCounts.Should().Equal(0);
     }
 
+    [Test]
+    public async Task SaveModifiedItems_DoesNotCountABlockedItemAsPending_WhileItWaitsToRetry()
+    {
+        var item = new FakeWorkspaceItem { SaveSucceeds = false };
+        var items = new[] { item };
+
+        await _workspaceItemSaver.SaveModifiedItemsAsync(items, TickDelta);
+
+        // The failure scheduled a wait, and the item is no longer due, so it is neither saving nor retrying.
+        item.IsDueToSave = false;
+        await _workspaceItemSaver.SaveModifiedItemsAsync(items, TickDelta);
+
+        _pendingSaveCounts.Should().Equal(new[] { 0, 0 }, "a blocked item is reported as failing, not as saving");
+    }
+
+    [Test]
+    public async Task SaveModifiedItems_BacksOffANonWritableItem()
+    {
+        var item = new FakeWorkspaceItem
+        {
+            SaveSucceeds = false,
+            WritableState = WritableState.Locked
+        };
+        var items = new[] { item };
+
+        await _workspaceItemSaver.SaveModifiedItemsAsync(items, TickDelta);
+        await _workspaceItemSaver.SaveModifiedItemsAsync(items, TickDelta);
+
+        item.SaveCount.Should().Be(1, "a locked file waits rather than being written on every pass");
+
+        await _workspaceItemSaver.SaveModifiedItemsAsync(items, PastFirstRetryDelta);
+
+        item.SaveCount.Should().Be(2);
+    }
+
+    [Test]
+    public async Task SaveModifiedItems_WithdrawsTheFailure_WhenTheItemTurnsNonWritable()
+    {
+        var item = new FakeWorkspaceItem { SaveSucceeds = false };
+        var items = new[] { item };
+
+        await _workspaceItemSaver.SaveModifiedItemsAsync(items, TickDelta);
+
+        // The resource update the first failure asked for reports the file as read-only.
+        item.WritableState = WritableState.Locked;
+        await _workspaceItemSaver.SaveModifiedItemsAsync(items, PastFirstRetryDelta);
+
+        _failureReports.Select(report => report.Count).Should().Equal(new[] { 1, 0 },
+            "a file that turns read-only ends up reported the same way as one that was read-only all along");
+    }
+
+    [Test]
+    public async Task SaveModifiedItems_GoesOnRequestingAResourceUpdate_WhileASaveKeepsFailing()
+    {
+        // The writable cache is what turns the warning into a read-only editor, so one rebuild that misses
+        // the change must not be the only attempt.
+        var item = new FakeWorkspaceItem { SaveSucceeds = false };
+        var items = new[] { item };
+
+        await _workspaceItemSaver.SaveModifiedItemsAsync(items, TickDelta);
+        await _workspaceItemSaver.SaveModifiedItemsAsync(items, PastFirstRetryDelta);
+
+        _commandService.ReceivedWithAnyArgs(2).Execute<IUpdateResourcesCommand>();
+    }
+
+    [Test]
+    public async Task SaveModifiedItems_ReportsAFailure_WhenTheSaveThrows()
+    {
+        var item = new FakeWorkspaceItem { SaveThrows = true };
+        var items = new[] { item };
+
+        var result = await _workspaceItemSaver.SaveModifiedItemsAsync(items, TickDelta);
+
+        result.IsFailure.Should().BeTrue("an editor that throws is a failed save, not a stopped pass");
+        _failureReports.Select(report => report.Count).Should().Equal(1);
+    }
+
+    [Test]
+    public async Task SaveModifiedItems_RetriesOnTheItemsOwnCadence_WhenItIsNotDueOnEveryPass()
+    {
+        var item = new FakeWorkspaceItem { SaveSucceeds = false, SaveDelay = 1.0 };
+        var items = new[] { item };
+
+        await _workspaceItemSaver.SaveModifiedItemsAsync(items, TickDelta);
+        item.SaveCount.Should().Be(1);
+
+        // Half a second on, neither the item's timer nor the wait has expired.
+        await _workspaceItemSaver.SaveModifiedItemsAsync(items, 0.5);
+        item.SaveCount.Should().Be(1);
+
+        // A second later both have, so the item is written again.
+        await _workspaceItemSaver.SaveModifiedItemsAsync(items, 1.0);
+        item.SaveCount.Should().Be(2);
+    }
+
     private sealed class FakeWorkspaceItem : IWorkspaceItem
     {
+        private double _saveTimer;
+
         public ResourceKey FileResource { get; init; } = new ResourceKey("test.md");
 
         public bool HasUnsavedChanges { get; set; } = true;
 
         public WritableState WritableState { get; set; } = WritableState.Writable;
 
-        // Whether the tick finds the item due to be written.
+        // Whether the pass finds the item due to be written. Ignored once SaveDelay is set.
         public bool IsDueToSave { get; set; } = true;
 
+        // The cadence the item comes due on, re-arming after each due pass as a document does. Left at
+        // zero, IsDueToSave decides instead, which keeps the reporting tests independent of timing.
+        public double SaveDelay { get; init; }
+
         public bool SaveSucceeds { get; set; }
+
+        public bool SaveThrows { get; set; }
 
         public int SaveCount { get; private set; }
 
@@ -256,7 +358,20 @@ public class WorkspaceItemSaverTests
                 return Result<bool>.Fail("The item has no unsaved changes.");
             }
 
-            return IsDueToSave;
+            if (SaveDelay <= 0)
+            {
+                return IsDueToSave;
+            }
+
+            _saveTimer -= deltaTime;
+            if (_saveTimer > 0)
+            {
+                return false;
+            }
+
+            _saveTimer = SaveDelay;
+
+            return true;
         }
 
         public async Task<Result> SaveAsync()
@@ -264,6 +379,11 @@ public class WorkspaceItemSaverTests
             await Task.CompletedTask;
 
             SaveCount++;
+
+            if (SaveThrows)
+            {
+                throw new InvalidOperationException("Simulated save exception");
+            }
 
             if (!SaveSucceeds)
             {

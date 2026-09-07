@@ -4,34 +4,26 @@ using Celbridge.Logging;
 namespace Celbridge.WorkspaceUI.Services;
 
 /// <summary>
-/// The backoff for a resource whose save failed: how long the current wait is, and how much of that wait
-/// is left before the next attempt.
+/// What is known about a resource whose last save failed: the current wait before the next attempt, how
+/// much of that wait is left, why the attempt failed, and whether the failure is reported to the user.
 /// </summary>
-internal sealed record SaveRetry(double Delay, double Remaining);
+internal sealed record SaveFailure(double Delay, double Remaining, string Reason, bool IsReported);
 
 /// <summary>
 /// Flushes the workspace items that are due to be saved.
 /// </summary>
 public class WorkspaceItemSaver
 {
-    // How long a failed save waits before it is attempted again. The wait doubles with each failure up to
-    // the maximum, so an item that cannot be written settles into one attempt every fifteen seconds.
-    private const double InitialRetryDelay = 1.0;
-    private const double MaximumRetryDelay = 15.0;
-
     private readonly ILogger<WorkspaceItemSaver> _logger;
     private readonly ICommandService _commandService;
     private readonly IMessengerService _messengerService;
 
-    // The resources that cannot be written. A non-writable resource is left out, because its editor
-    // already shows it as read-only.
-    private readonly HashSet<ResourceKey> _failingResources = new();
+    // Every resource whose last save failed. A non-writable resource is held here so a locked file backs
+    // off on the same schedule as any other, but it is not reported, because its editor already shows it
+    // as read-only.
+    private readonly Dictionary<ResourceKey, SaveFailure> _saveFailures = new();
 
-    // The wait before each resource whose save failed is attempted again. Held for non-writable resources
-    // too, so a locked file backs off on the same schedule.
-    private readonly Dictionary<ResourceKey, SaveRetry> _saveRetries = new();
-
-    private bool _failingResourcesChanged;
+    private bool _reportedFailuresChanged;
 
     public WorkspaceItemSaver(
         ILogger<WorkspaceItemSaver> logger,
@@ -41,6 +33,14 @@ public class WorkspaceItemSaver
         _logger = logger;
         _commandService = commandService;
         _messengerService = messengerService;
+    }
+
+    /// <summary>
+    /// The resources that cannot be written, for a caller that starts observing after they were reported.
+    /// </summary>
+    public IReadOnlyList<ResourceKey> GetFailingResources()
+    {
+        return CollectReportedFailures();
     }
 
     /// <summary>
@@ -57,7 +57,7 @@ public class WorkspaceItemSaver
 
         int savedCount = 0;
         int pendingSaveCount = 0;
-        List<FailedResource> newFailures = new();
+        List<ResourceKey> newlyReportedResources = new();
         bool updateResourcesRequired = false;
 
         foreach (var item in items)
@@ -78,7 +78,7 @@ public class WorkspaceItemSaver
             {
                 // An item that is only waiting for its timer is counted as saving. One whose last attempt
                 // failed is reported as failing instead, so the two states never read as each other.
-                if (!_saveRetries.ContainsKey(item.FileResource))
+                if (!_saveFailures.ContainsKey(item.FileResource))
                 {
                     pendingSaveCount++;
                 }
@@ -91,7 +91,7 @@ public class WorkspaceItemSaver
                 continue;
             }
 
-            var saveResult = await item.SaveAsync();
+            var saveResult = await SaveItemAsync(item);
             if (saveResult.IsSuccess)
             {
                 savedCount++;
@@ -99,26 +99,18 @@ public class WorkspaceItemSaver
                 continue;
             }
 
-            ScheduleRetry(item.FileResource);
+            var reasonChanged = ScheduleRetry(item.FileResource, saveResult.MessageChain);
 
             // A non-writable item failing to save is expected, and reporting it would repeat what the
-            // editor already shows by dimming itself.
+            // editor already shows by dimming itself. One already reported stops being reported here, so a
+            // resource that turns non-writable ends up in the same state as one that was already
+            // non-writable when it was edited.
             if (item.WritableState != WritableState.Writable)
             {
+                StopReportingFailure(item.FileResource);
                 _logger.LogDebug($"Skipped save for non-writable workspace item: '{item.FileResource}'");
                 continue;
             }
-
-            if (!_failingResources.Add(item.FileResource))
-            {
-                continue;
-            }
-
-            _failingResourcesChanged = true;
-
-            // MessageChain is the outer-first reason. It carries developer English, so the log is where
-            // it belongs.
-            newFailures.Add(new FailedResource(item.FileResource, saveResult.MessageChain));
 
             // A failed save against a cache that still reads Writable suggests an external attribute flip
             // slipped past the watcher. The rebuild below covers the project tree, so only a resource in it
@@ -127,6 +119,19 @@ public class WorkspaceItemSaver
             {
                 updateResourcesRequired = true;
             }
+
+            // MessageChain is the outer-first reason and is not localized, so it belongs in the log rather
+            // than in anything the user sees. A reason that differs from the last attempt's is logged
+            // again, so a file that starts failing for a second reason says so.
+            if (reasonChanged)
+            {
+                _logger.LogError($"Failed to save workspace item '{item.FileResource}'. {saveResult.MessageChain}");
+            }
+
+            if (ReportFailure(item.FileResource))
+            {
+                newlyReportedResources.Add(item.FileResource);
+            }
         }
 
         DropStateForClosedItems(items);
@@ -134,7 +139,7 @@ public class WorkspaceItemSaver
         var pendingSaveMessage = new PendingSaveCountMessage(pendingSaveCount);
         _messengerService.Send(pendingSaveMessage);
 
-        SendFailingResourcesIfChanged();
+        SendReportedFailuresIfChanged();
 
         if (updateResourcesRequired)
         {
@@ -148,90 +153,148 @@ public class WorkspaceItemSaver
             _logger.LogDebug($"Saved {savedCount} modified workspace items");
         }
 
-        if (newFailures.Count == 0)
+        if (newlyReportedResources.Count == 0)
         {
             return Result.Ok();
         }
 
-        // The reason for each failure appears here and nowhere else.
-        var failureDescriptions = newFailures.Select(newFailure => $"'{newFailure.Resource}' ({newFailure.Message})");
-        var errorMessage = $"Failed to save the following workspace items: {string.Join(", ", failureDescriptions)}";
-        _logger.LogError(errorMessage);
+        var resourceNames = newlyReportedResources.Select(resource => $"'{resource}'");
 
-        return Result.Fail(errorMessage);
+        return Result.Fail($"Failed to save the following workspace items: {string.Join(", ", resourceNames)}");
     }
 
-    // Sends the resources that cannot be written whenever that set gains or loses one.
-    private void SendFailingResourcesIfChanged()
+    // Writes the item, turning an exception into a failed result so one editor cannot stop the save pass.
+    private async Task<Result> SaveItemAsync(IWorkspaceItem item)
     {
-        if (!_failingResourcesChanged)
+        try
+        {
+            return await item.SaveAsync();
+        }
+        catch (Exception exception)
+        {
+            return Result.Fail($"An exception occurred while saving workspace item: '{item.FileResource}'")
+                .WithException(exception);
+        }
+    }
+
+    // Starts reporting a resource to the user. Returns false when it is already reported.
+    private bool ReportFailure(ResourceKey resource)
+    {
+        var failure = _saveFailures[resource];
+        if (failure.IsReported)
+        {
+            return false;
+        }
+
+        _saveFailures[resource] = failure with { IsReported = true };
+        _reportedFailuresChanged = true;
+
+        return true;
+    }
+
+    // Stops reporting a resource to the user, leaving its wait in place so it goes on backing off.
+    private void StopReportingFailure(ResourceKey resource)
+    {
+        if (!_saveFailures.TryGetValue(resource, out var failure) ||
+            !failure.IsReported)
         {
             return;
         }
 
-        _failingResourcesChanged = false;
+        _saveFailures[resource] = failure with { IsReported = false };
+        _reportedFailuresChanged = true;
+    }
 
-        var failingResources = new List<ResourceKey>(_failingResources);
+    // Drops everything held about a resource, so a later failure is reported and backs off afresh.
+    private void ForgetFailure(ResourceKey resource)
+    {
+        if (_saveFailures.Remove(resource, out var failure) &&
+            failure.IsReported)
+        {
+            _reportedFailuresChanged = true;
+        }
+    }
 
-        var failuresChangedMessage = new WorkspaceItemSaveFailuresChangedMessage(failingResources);
+    // Sends the reported resources whenever that set gains or loses one.
+    private void SendReportedFailuresIfChanged()
+    {
+        if (!_reportedFailuresChanged)
+        {
+            return;
+        }
+
+        _reportedFailuresChanged = false;
+
+        var failuresChangedMessage = new WorkspaceItemSaveFailuresChangedMessage(CollectReportedFailures());
         _messengerService.Send(failuresChangedMessage);
+    }
+
+    private List<ResourceKey> CollectReportedFailures()
+    {
+        var reportedResources = new List<ResourceKey>();
+
+        foreach (var saveFailure in _saveFailures)
+        {
+            if (saveFailure.Value.IsReported)
+            {
+                reportedResources.Add(saveFailure.Key);
+            }
+        }
+
+        return reportedResources;
     }
 
     // Counts down the wait before each resource whose save failed is attempted again.
     private void AdvanceRetryWaits(double deltaTime)
     {
-        if (_saveRetries.Count == 0)
+        if (_saveFailures.Count == 0)
         {
             return;
         }
 
-        foreach (var resource in _saveRetries.Keys.ToList())
+        foreach (var resource in _saveFailures.Keys.ToList())
         {
-            var retry = _saveRetries[resource];
-            _saveRetries[resource] = retry with { Remaining = retry.Remaining - deltaTime };
+            var failure = _saveFailures[resource];
+            _saveFailures[resource] = failure with { Remaining = failure.Remaining - deltaTime };
         }
     }
 
     // Whether the resource is still waiting out the backoff from its last failed save.
     private bool IsWaitingToRetry(ResourceKey resource)
     {
-        if (!_saveRetries.TryGetValue(resource, out var retry))
+        if (!_saveFailures.TryGetValue(resource, out var failure))
         {
             return false;
         }
 
-        return retry.Remaining > 0;
+        return failure.Remaining > 0;
     }
 
     // Starts the next wait for a resource whose save failed, doubling the previous wait up to the maximum.
-    private void ScheduleRetry(ResourceKey resource)
+    // Returns true when this attempt failed for a different reason than the one before it.
+    private bool ScheduleRetry(ResourceKey resource, string reason)
     {
-        var delay = InitialRetryDelay;
-        if (_saveRetries.TryGetValue(resource, out var previousRetry))
+        var delay = SaveConstants.InitialRetryDelay;
+        var reasonChanged = true;
+        var isReported = false;
+
+        if (_saveFailures.TryGetValue(resource, out var previousFailure))
         {
-            delay = Math.Min(previousRetry.Delay * 2, MaximumRetryDelay);
+            delay = Math.Min(previousFailure.Delay * 2, SaveConstants.MaximumRetryDelay);
+            reasonChanged = previousFailure.Reason != reason;
+            isReported = previousFailure.IsReported;
         }
 
-        _saveRetries[resource] = new SaveRetry(delay, delay);
-    }
+        _saveFailures[resource] = new SaveFailure(delay, delay, reason, isReported);
 
-    // Forgets a resource that holds nothing unwritten, so a later failure is reported and backs off afresh.
-    private void ForgetFailure(ResourceKey resource)
-    {
-        if (_failingResources.Remove(resource))
-        {
-            _failingResourcesChanged = true;
-        }
-
-        _saveRetries.Remove(resource);
+        return reasonChanged;
     }
 
     // Forgets the resources that are no longer open, so one that fails again after being reopened is
     // reported again.
     private void DropStateForClosedItems(IReadOnlyList<IWorkspaceItem> items)
     {
-        if (_failingResources.Count == 0 &&
-            _saveRetries.Count == 0)
+        if (_saveFailures.Count == 0)
         {
             return;
         }
@@ -242,17 +305,11 @@ public class WorkspaceItemSaver
             openResources.Add(item.FileResource);
         }
 
-        var closedFailureCount = _failingResources.RemoveWhere(resource => !openResources.Contains(resource));
-        if (closedFailureCount > 0)
-        {
-            _failingResourcesChanged = true;
-        }
-
-        foreach (var resource in _saveRetries.Keys.ToList())
+        foreach (var resource in _saveFailures.Keys.ToList())
         {
             if (!openResources.Contains(resource))
             {
-                _saveRetries.Remove(resource);
+                ForgetFailure(resource);
             }
         }
     }

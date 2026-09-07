@@ -8,9 +8,6 @@ namespace Celbridge.Documents.ViewModels;
 
 public abstract partial class DocumentViewModel : ObservableObject
 {
-    // Delay before saving the document after the most recent change
-    protected const double SaveDelay = 1.0; // Seconds
-
     private IMessengerService? _messengerService;
     private ILogger<DocumentViewModel>? _logger;
 
@@ -43,7 +40,7 @@ public abstract partial class DocumentViewModel : ObservableObject
     public virtual void OnDataChanged()
     {
         HasUnsavedChanges = true;
-        SaveTimer = SaveDelay;
+        SaveTimer = SaveConstants.SaveDelay;
     }
 
     /// <summary>
@@ -64,7 +61,7 @@ public abstract partial class DocumentViewModel : ObservableObject
 
         // Restarted so content that is still unwritten comes due again after another delay. A save that
         // succeeds clears HasUnsavedChanges, which ends the cycle at the guard above.
-        SaveTimer = SaveDelay;
+        SaveTimer = SaveConstants.SaveDelay;
 
         return true;
     }
@@ -150,7 +147,7 @@ public abstract partial class DocumentViewModel : ObservableObject
 
     /// <summary>
     /// Saves text content as UTF-8 (no BOM) to the file at FilePath.
-    /// Callers are responsible for managing HasUnsavedChanges and SaveTimer.
+    /// Callers are responsible for clearing HasUnsavedChanges once the write has succeeded.
     /// </summary>
     protected async Task<Result> SaveTextToFileAsync(string text)
     {
@@ -160,7 +157,7 @@ public abstract partial class DocumentViewModel : ObservableObject
 
     /// <summary>
     /// Decodes base64 content and saves the raw bytes to the file at FilePath.
-    /// Callers are responsible for managing HasUnsavedChanges and SaveTimer.
+    /// Callers are responsible for clearing HasUnsavedChanges once the write has succeeded.
     /// Returns failure if the content is not valid base64.
     /// </summary>
     protected async Task<Result> SaveBinaryToFileAsync(string base64Content)

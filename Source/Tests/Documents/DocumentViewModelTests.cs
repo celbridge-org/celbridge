@@ -355,15 +355,24 @@ public class DocumentViewModelTests
 
         public async Task<Result> SaveDocumentContent(string text)
         {
+            // Cleared before the write so an edit made while it is in flight is not counted as written,
+            // and restored when the write fails, as the real editors do.
             HasUnsavedChanges = false;
             SaveTimer = 0;
-            return await SaveTextToFileAsync(text);
+
+            var saveResult = await SaveTextToFileAsync(text);
+            if (saveResult.IsFailure)
+            {
+                HasUnsavedChanges = true;
+            }
+
+            return saveResult;
         }
 
         public void OnTextChanged()
         {
             HasUnsavedChanges = true;
-            SaveTimer = SaveDelay;
+            SaveTimer = SaveConstants.SaveDelay;
         }
 
         protected override IResourceFileSystem GetFileSystem() => _resourceFileSystem;

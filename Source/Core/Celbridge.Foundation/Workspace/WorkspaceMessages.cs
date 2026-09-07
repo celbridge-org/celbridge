@@ -7,15 +7,13 @@ public record PendingSaveCountMessage(int Count);
 
 /// <summary>
 /// Sent when the set of workspace items that cannot be written changes, carrying every resource currently
-/// in that state. An empty list means every item is writing again. The reason a write failed is developer
-/// text, so it is logged rather than carried here.
+/// in that state. An empty list means every item is writing again.
 /// </summary>
 public record WorkspaceItemSaveFailuresChangedMessage(IReadOnlyList<ResourceKey> FailingResources);
 
 /// <summary>
 /// Sent when a workspace item closed while holding content that could not be written, so that content
-/// was discarded. The reason the write reported is developer text, so it is logged rather than carried
-/// here.
+/// was discarded.
 /// </summary>
 public record WorkspaceItemSaveDiscardedMessage(ResourceKey Resource);
 

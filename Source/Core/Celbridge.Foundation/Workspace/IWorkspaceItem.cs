@@ -12,7 +12,8 @@ public interface IWorkspaceItem
     ResourceKey FileResource { get; }
 
     /// <summary>
-    /// Whether the item holds edits that have not been written to its file resource yet.
+    /// Whether the item holds edits that have not been written to its file resource yet. Stays true when a
+    /// write fails, so the content is attempted again.
     /// </summary>
     bool HasUnsavedChanges { get; }
 

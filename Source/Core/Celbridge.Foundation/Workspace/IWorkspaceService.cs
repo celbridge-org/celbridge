@@ -88,4 +88,9 @@ public interface IWorkspaceService
     /// Update the workspace state, for example by saving any pending workspace or document changes to disk.
     /// </summary>
     Task<Result> UpdateWorkspaceAsync(double deltaTime);
+
+    /// <summary>
+    /// The resources that cannot be written, for a caller that starts observing after they were reported.
+    /// </summary>
+    IReadOnlyList<ResourceKey> GetFailingSaveResources();
 }

@@ -322,6 +322,7 @@ public class WorkspaceToastViewModelTests
         _viewModel.ToastMessage.Should().Contain("Toast_SaveDiscarded");
         _viewModel.ToastMessage.Should().Contain("notes.txt");
         _viewModel.ToastSeverity.Should().Be(InfoBarSeverity.Error);
+        _viewModel.IsActionVisible.Should().BeFalse("there is no report to open for a discarded save");
     }
 
     private void SendOperationFailure(ResourceOperationType operationType, params string[] failedItems)

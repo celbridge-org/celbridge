@@ -32,7 +32,6 @@ public partial class DocumentTabViewModel : ObservableObject
     private readonly ILogger<DocumentTabViewModel> _logger;
     private readonly IResourceRegistry _resourceRegistry;
     private readonly IStringLocalizer _stringLocalizer;
-    private readonly IDispatcher _dispatcher;
 
     [ObservableProperty]
     private ResourceKey _fileResource;
@@ -160,6 +159,8 @@ public partial class DocumentTabViewModel : ObservableObject
     partial void OnFileResourceChanged(ResourceKey oldValue, ResourceKey newValue)
     {
         OnPropertyChanged(nameof(FileName));
+
+        RefreshSaveFailure();
     }
 
     public IDocumentView? DocumentView { get; set; }
@@ -172,15 +173,13 @@ public partial class DocumentTabViewModel : ObservableObject
         ICommandService commandService,
         ILogger<DocumentTabViewModel> logger,
         IWorkspaceWrapper workspaceWrapper,
-        IStringLocalizer stringLocalizer,
-        IDispatcher dispatcher)
+        IStringLocalizer stringLocalizer)
     {
         _messengerService = messengerService;
         _commandService = commandService;
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;
         _stringLocalizer = stringLocalizer;
-        _dispatcher = dispatcher;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
         // Reordering a TabViewItem adds it in the new position before removing it from the old, so Unloaded
@@ -195,18 +194,20 @@ public partial class DocumentTabViewModel : ObservableObject
 
     private void OnSaveFailuresChanged(object recipient, WorkspaceItemSaveFailuresChangedMessage message)
     {
-        var isFailing = false;
-        foreach (var failingResource in message.FailingResources)
+        HasSaveFailure = message.FailingResources.Contains(FileResource);
+    }
+
+    // The failing set is only sent when it changes, so a tab opened onto a resource that is already failing
+    // never receives that message and has to read the current state instead.
+    private void RefreshSaveFailure()
+    {
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
-            if (failingResource == FileResource)
-            {
-                isFailing = true;
-                break;
-            }
+            return;
         }
 
-        // Raised from the workspace update loop, which does not run on the UI thread.
-        _dispatcher.TryEnqueue(() => HasSaveFailure = isFailing);
+        var failingResources = _workspaceWrapper.WorkspaceService.GetFailingSaveResources();
+        HasSaveFailure = failingResources.Contains(FileResource);
     }
 
     partial void OnHasSaveFailureChanged(bool value)
@@ -345,9 +346,13 @@ public partial class DocumentTabViewModel : ObservableObject
                 _logger.LogWarning(saveResult, $"Saving document failed during close. Discarding unsaved edits for file resource: '{FileResource}'");
 
                 // The edits go with the view, and this is the last point the user can be told they are
-                // gone. The auto-save notification they saw earlier said only that a write had failed.
-                var discardedMessage = new WorkspaceItemSaveDiscardedMessage(FileResource);
-                _messengerService.Send(discardedMessage);
+                // gone. A docked utility keeps its view and its content when the tab closes, so it has
+                // lost nothing to report.
+                if (!IsDockedUtility)
+                {
+                    var discardedMessage = new WorkspaceItemSaveDiscardedMessage(FileResource);
+                    _messengerService.Send(discardedMessage);
+                }
 
                 // If the cached writable state still reads Writable, an external attribute change
                 // probably slipped past the watcher. Schedule a resource update so the cache catches

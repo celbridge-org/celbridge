@@ -11,10 +11,6 @@ namespace Celbridge.WorkspaceUI.Services;
 
 public class WorkspaceService : IWorkspaceService, IDisposable
 {
-    // How often the save pass runs. Item save delays are measured in seconds, so this is the precision a
-    // save lands with.
-    private const double SavePassInterval = 0.1;
-
     private readonly ILogger<WorkspaceService> _logger;
     private readonly IMessengerService _messengerService;
     private readonly WorkspaceItemSaver _workspaceItemSaver;
@@ -103,6 +99,8 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         }
     }
 
+    public IReadOnlyList<ResourceKey> GetFailingSaveResources() => _workspaceItemSaver.GetFailingResources();
+
     public async Task<Result> UpdateWorkspaceAsync(double deltaTime)
     {
         bool failed = false;
@@ -121,7 +119,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         }
 
         _timeSinceSavePass += deltaTime;
-        if (_timeSinceSavePass >= SavePassInterval)
+        if (_timeSinceSavePass >= SaveConstants.SavePassInterval)
         {
             // The pass is given the time accumulated since it last ran, so save timers and retry waits
             // count real time.

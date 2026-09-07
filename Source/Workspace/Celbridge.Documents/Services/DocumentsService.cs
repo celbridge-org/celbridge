@@ -51,15 +51,28 @@ public class DocumentsService : IDocumentsService, IDisposable
 
             try
             {
-                var saveResult = await workspaceItem.SaveAsync();
+                // Race the write against a hard timeout and abandon it on timeout, so an editor that
+                // never answers cannot hold the workspace open.
+                var saveTask = workspaceItem.SaveAsync();
+                var timeoutTask = Task.Delay(TimeSpan.FromSeconds(SaveConstants.UnloadFlushTimeout));
+                var completedTask = await Task.WhenAny(saveTask, timeoutTask);
+
+                if (completedTask != saveTask)
+                {
+                    _logger.LogError($"Document did not write within {SaveConstants.UnloadFlushTimeout}s, so its unsaved content was discarded: '{workspaceItem.FileResource}'");
+                    AbandonedTaskObserver.Observe(saveTask);
+                    continue;
+                }
+
+                var saveResult = await saveTask;
                 if (saveResult.IsFailure)
                 {
-                    _logger.LogError($"Failed to write unsaved content for document: '{workspaceItem.FileResource}'. {saveResult.DiagnosticReport}");
+                    _logger.LogError($"Failed to write unsaved content, so it was discarded: '{workspaceItem.FileResource}'. {saveResult.DiagnosticReport}");
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"An exception occurred while writing unsaved content for document: '{workspaceItem.FileResource}'");
+                _logger.LogError(ex, $"An exception occurred while writing unsaved content, so it was discarded: '{workspaceItem.FileResource}'");
             }
         }
     }

@@ -11,7 +11,6 @@ public partial class TitleBarViewModel : ObservableObject
     private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IStringLocalizer _stringLocalizer;
-    private readonly IDispatcher _dispatcher;
 
     [ObservableProperty]
     private bool _isSaving;
@@ -28,13 +27,11 @@ public partial class TitleBarViewModel : ObservableObject
     public TitleBarViewModel(
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
-        IStringLocalizer stringLocalizer,
-        IDispatcher dispatcher)
+        IStringLocalizer stringLocalizer)
     {
         _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
         _stringLocalizer = stringLocalizer;
-        _dispatcher = dispatcher;
     }
 
     public void OnLoaded()
@@ -61,26 +58,24 @@ public partial class TitleBarViewModel : ObservableObject
     {
         IsWorkspaceLoaded = false;
 
-        // The failures belonged to the workspace that is going away.
-        HasSaveFailures = false;
-        SaveFailureMessage = string.Empty;
+        // The save state belonged to the workspace that is going away.
+        IsSaving = false;
+        ApplySaveFailures(Array.Empty<ResourceKey>());
     }
 
     private void OnSaveFailuresChanged(object recipient, WorkspaceItemSaveFailuresChangedMessage message)
     {
-        var failingResources = message.FailingResources;
-        var failureMessage = ComposeSaveFailureMessage(failingResources);
-
-        // Raised from the workspace update loop, which does not run on the UI thread.
-        _dispatcher.TryEnqueue(() =>
-        {
-            HasSaveFailures = failingResources.Count > 0;
-            SaveFailureMessage = failureMessage;
-        });
+        ApplySaveFailures(message.FailingResources);
     }
 
-    // One failing resource is named, which is all the user needs to find it. Several are a count, since
-    // the names do not fit a tooltip and each one carries its own marker on its tab.
+    private void ApplySaveFailures(IReadOnlyList<ResourceKey> failingResources)
+    {
+        HasSaveFailures = failingResources.Count > 0;
+        SaveFailureMessage = ComposeSaveFailureMessage(failingResources);
+    }
+
+    // One failing resource is named, which is all the user needs to find it. Several are a count, since the
+    // names do not fit a tooltip.
     private string ComposeSaveFailureMessage(IReadOnlyList<ResourceKey> failingResources)
     {
         if (failingResources.Count == 0)
@@ -98,8 +93,7 @@ public partial class TitleBarViewModel : ObservableObject
 
     private void OnPendingSaveCount(object recipient, PendingSaveCountMessage message)
     {
-        // Raised from the workspace update loop, which does not run on the UI thread.
-        _dispatcher.TryEnqueue(() => IsSaving = message.Count > 0);
+        IsSaving = message.Count > 0;
     }
 }
 
