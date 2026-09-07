@@ -49,12 +49,13 @@ public class DocumentToolTests
     {
         var activeResource = new ResourceKey("notes/readme.md");
         var snapshot = new DocumentStateSnapshot(
-            activeResource,
             new List<DocumentSection> { DocumentSection.MainLeft },
             new List<OpenDocumentInfo>
             {
                 new(activeResource, new DocumentAddress(0, DocumentSection.MainLeft, 0), EditorId.Empty)
-            });
+            },
+            new Dictionary<DocumentSection, ResourceKey>(),
+            activeResource);
         StubGetStateSnapshot(snapshot);
 
         var tools = new DocumentTools(_services);
@@ -77,13 +78,18 @@ public class DocumentToolTests
         var activeResource = new ResourceKey("src/main.py");
         var otherResource = new ResourceKey("tests/test_main.py");
         var snapshot = new DocumentStateSnapshot(
-            activeResource,
             new List<DocumentSection> { DocumentSection.MainLeft, DocumentSection.MainRight },
             new List<OpenDocumentInfo>
             {
                 new(activeResource, new DocumentAddress(0, DocumentSection.MainLeft, 0), EditorId.Empty),
                 new(otherResource, new DocumentAddress(0, DocumentSection.MainRight, 0), EditorId.Empty)
-            });
+            },
+            new Dictionary<DocumentSection, ResourceKey>
+            {
+                [DocumentSection.MainLeft] = activeResource,
+                [DocumentSection.MainRight] = otherResource
+            },
+            activeResource);
         StubGetStateSnapshot(snapshot);
 
         var tools = new DocumentTools(_services);
@@ -91,6 +97,11 @@ public class DocumentToolTests
 
         root.GetProperty("visibleSections").EnumerateArray().Select(section => section.GetString()).Should().Equal("main_left", "main_right");
         root.GetProperty("openDocuments").GetArrayLength().Should().Be(2);
+
+        // Each section reports what it is showing, while only one of them is the active document.
+        var selectedDocuments = root.GetProperty("selectedDocuments");
+        selectedDocuments.GetProperty("main_left").GetString().Should().Be("project:src/main.py");
+        selectedDocuments.GetProperty("main_right").GetString().Should().Be("project:tests/test_main.py");
 
         var documents = root.GetProperty("openDocuments");
         var activeDoc = documents.EnumerateArray().First(d => d.GetProperty("isActive").GetBoolean());
@@ -107,12 +118,13 @@ public class DocumentToolTests
     {
         var resource = new ResourceKey("packages/widget/index.html");
         var snapshot = new DocumentStateSnapshot(
-            resource,
             new List<DocumentSection> { DocumentSection.MainLeft },
             new List<OpenDocumentInfo>
             {
                 new(resource, new DocumentAddress(0, DocumentSection.MainLeft, 0), new EditorId("celbridge.html-viewer"))
-            });
+            },
+            new Dictionary<DocumentSection, ResourceKey>(),
+            resource);
         StubGetStateSnapshot(snapshot);
 
         var tools = new DocumentTools(_services);
@@ -127,12 +139,13 @@ public class DocumentToolTests
     {
         var resource = new ResourceKey("notes/readme.md");
         var snapshot = new DocumentStateSnapshot(
-            resource,
             new List<DocumentSection> { DocumentSection.MainLeft },
             new List<OpenDocumentInfo>
             {
                 new(resource, new DocumentAddress(0, DocumentSection.MainLeft, 0), EditorId.Empty)
-            });
+            },
+            new Dictionary<DocumentSection, ResourceKey>(),
+            resource);
         StubGetStateSnapshot(snapshot);
 
         var tools = new DocumentTools(_services);
@@ -146,9 +159,10 @@ public class DocumentToolTests
     public async Task GetState_NoDocumentsOpen()
     {
         var snapshot = new DocumentStateSnapshot(
-            ResourceKey.Empty,
             new List<DocumentSection> { DocumentSection.MainLeft },
-            new List<OpenDocumentInfo>());
+            new List<OpenDocumentInfo>(),
+            new Dictionary<DocumentSection, ResourceKey>(),
+            ResourceKey.Empty);
         StubGetStateSnapshot(snapshot);
 
         var tools = new DocumentTools(_services);

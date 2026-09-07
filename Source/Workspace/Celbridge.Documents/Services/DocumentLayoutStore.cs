@@ -13,7 +13,7 @@ public class DocumentLayoutStore
 {
     private const string OpenDocumentAddressesKey = "OpenDocumentAddresses";
     private const string ActiveDocumentKey = "ActiveDocument";
-    private const string SectionSelectionsKey = "SectionSelections";
+    private const string SelectedDocumentsKey = "SelectedDocuments";
     private const string AreaSplitRatiosKey = "AreaSplitRatios";
     private const string DocumentEditorStatesKey = "DocumentEditorStates";
 
@@ -64,7 +64,7 @@ public class DocumentLayoutStore
 
             await propertyBag.SetPropertyAsync(OpenDocumentAddressesKey, openDocumentAddresses);
 
-            await StoreSectionSelectionsAsync();
+            await StoreSelectedDocumentsAsync();
         }
         catch (Exception ex)
         {
@@ -83,7 +83,7 @@ public class DocumentLayoutStore
             var activeDocument = DocumentsPanel.ActiveDocument;
             await propertyBag.SetPropertyAsync(ActiveDocumentKey, activeDocument.ToString());
 
-            await StoreSectionSelectionsAsync();
+            await StoreSelectedDocumentsAsync();
         }
         catch (Exception ex)
         {
@@ -92,23 +92,23 @@ public class DocumentLayoutStore
     }
 
     // A section keeps its own selected tab.
-    private async Task StoreSectionSelectionsAsync()
+    private async Task StoreSelectedDocumentsAsync()
     {
         try
         {
             var propertyBag = GetPropertyBag();
 
-            var sectionSelections = new Dictionary<string, string>();
+            var selectedDocuments = new Dictionary<string, string>();
             foreach (var section in DocumentLayoutHelper.AllSections)
             {
-                var selectedDocument = DocumentsPanel.GetSectionSelection(section);
+                var selectedDocument = DocumentsPanel.GetSelectedDocument(section);
                 if (!selectedDocument.IsEmpty)
                 {
-                    sectionSelections[section.ToToken()] = selectedDocument.ToString();
+                    selectedDocuments[section.ToToken()] = selectedDocument.ToString();
                 }
             }
 
-            await propertyBag.SetPropertyAsync(SectionSelectionsKey, sectionSelections);
+            await propertyBag.SetPropertyAsync(SelectedDocumentsKey, selectedDocuments);
         }
         catch (Exception ex)
         {
@@ -268,7 +268,7 @@ public class DocumentLayoutStore
 
         // Section selections are applied before the active document, so the active document wins the
         // selection in the section that holds it.
-        RestoreSectionSelections(storedLayout.SectionSelections);
+        RestoreSelectedDocuments(storedLayout.SelectedDocuments);
 
         RestoreActiveDocument(storedLayout.ActiveDocument);
     }
@@ -278,7 +278,7 @@ public class DocumentLayoutStore
         List<StoredDocumentAddress>? OpenDocumentAddresses,
         Dictionary<string, string>? EditorStates,
         string? ActiveDocument,
-        Dictionary<string, string>? SectionSelections);
+        Dictionary<string, string>? SelectedDocuments);
 
     private async Task<StoredLayout> LoadStoredLayoutAsync()
     {
@@ -296,10 +296,10 @@ public class DocumentLayoutStore
         var activeDocument = await TryLoadPropertyAsync<string>(
             propertyBag, ActiveDocumentKey);
 
-        var sectionSelections = await TryLoadPropertyAsync<Dictionary<string, string>>(
-            propertyBag, SectionSelectionsKey);
+        var selectedDocuments = await TryLoadPropertyAsync<Dictionary<string, string>>(
+            propertyBag, SelectedDocumentsKey);
 
-        return new StoredLayout(areaSplitRatios, openDocumentAddresses, editorStates, activeDocument, sectionSelections);
+        return new StoredLayout(areaSplitRatios, openDocumentAddresses, editorStates, activeDocument, selectedDocuments);
     }
 
     // Reads one stored value, treating one that cannot be read as absent. Layout written by an
@@ -408,14 +408,14 @@ public class DocumentLayoutStore
         }
     }
 
-    private void RestoreSectionSelections(IReadOnlyDictionary<string, string>? sectionSelections)
+    private void RestoreSelectedDocuments(IReadOnlyDictionary<string, string>? selectedDocuments)
     {
-        if (sectionSelections is null)
+        if (selectedDocuments is null)
         {
             return;
         }
 
-        foreach (var (sectionToken, resource) in sectionSelections)
+        foreach (var (sectionToken, resource) in selectedDocuments)
         {
             if (!DocumentSectionTokens.TryParse(sectionToken, out var section))
             {
@@ -428,7 +428,7 @@ public class DocumentLayoutStore
                 continue;
             }
 
-            DocumentsPanel.SetSectionSelection(section, fileResource);
+            DocumentsPanel.SetSelectedDocument(section, fileResource);
         }
     }
 

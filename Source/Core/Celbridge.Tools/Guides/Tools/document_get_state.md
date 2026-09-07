@@ -27,11 +27,12 @@ The Focus and Presentation layout modes give the active document's area the whol
 
 A JSON object with these fields:
 
-- `activeDocument` (string) — resource key of the active document, or empty when no document is active.
 - `visibleSections` (array of string) — the section names currently on screen, in reading order.
 - `openDocuments` (array) — every open document tab, including tabs in a collapsed area. Each entry has:
   - `resource` (string) — the document's resource key.
   - `section` (string) — which section the tab lives in, as one of the names above.
   - `tabOrder` (int) — position within that section's tab strip.
-  - `isActive` (bool) — `true` for the active tab in its section.
+  - `isActive` (bool) — `true` for the one active document.
   - `editorId` (string) — the bound editor id (e.g. `"celbridge.code"`), or empty when no editor is bound yet.
+- `selectedDocuments` (object) — the document each section is currently showing, keyed by section name. A section holding no documents is omitted, and a section whose area is hidden still reports its selection.
+- `activeDocument` (string) — resource key of the active document, or empty when no document is active. It is one of the selected documents above: the one the user is working in.

@@ -18,18 +18,6 @@ public interface IDocumentsPanel
     ResourceKey ActiveDocument { get; set; }
 
     /// <summary>
-    /// The document the section currently has selected, or Empty when it holds none. A hidden section
-    /// still reports its selection.
-    /// </summary>
-    ResourceKey GetSectionSelection(DocumentSection section);
-
-    /// <summary>
-    /// Selects a document within its own section without making it the active document. A resource that is
-    /// not open in that section is ignored.
-    /// </summary>
-    void SetSectionSelection(DocumentSection section, ResourceKey fileResource);
-
-    /// <summary>
     /// The smallest width the panel can be laid out at, composed from the areas it is currently
     /// presenting and the channels between them.
     /// </summary>
@@ -90,6 +78,12 @@ public interface IDocumentsPanel
     /// keeps its own selection, so this is not the same as the active document.
     /// </summary>
     ResourceKey GetSelectedDocument(DocumentSection section);
+
+    /// <summary>
+    /// Selects a document within its own section without making it the active document. A resource that is
+    /// not open in that section is ignored.
+    /// </summary>
+    void SetSelectedDocument(DocumentSection section, ResourceKey fileResource);
 
     /// <summary>
     /// Gets the document view for an already-opened document.
