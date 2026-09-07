@@ -257,9 +257,7 @@ public class DocumentLayoutStore
             return;
         }
 
-        await RestoreDocumentsAsync(
-            storedLayout.OpenDocumentAddresses,
-            storedLayout.EditorStates);
+        await RestoreDocumentsAsync(storedLayout.OpenDocumentAddresses, storedLayout.EditorStates);
 
         // A document whose file has gone since the last session leaves the section it was restoring into
         // empty, so fold away any split that ended up with nothing in it.
@@ -410,7 +408,6 @@ public class DocumentLayoutStore
         }
     }
 
-
     private void RestoreSectionSelections(IReadOnlyDictionary<string, string>? sectionSelections)
     {
         if (sectionSelections is null)
@@ -427,6 +424,7 @@ public class DocumentLayoutStore
 
             if (!ResourceKey.TryCreate(resource, out var fileResource))
             {
+                _logger.LogWarning($"Invalid resource key '{resource}' found for a previously selected document");
                 continue;
             }
 
