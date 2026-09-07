@@ -515,37 +515,9 @@ public class UtilityService : IUtilityService, IDisposable
         _messengerService.Send(new FlashDocumentMessage(fileResource));
     }
 
-    // Ticks each utility's save timer and flushes the ones that are due. A save failure on a writable utility
-    // is logged. The expected read-only failure is suppressed so a locked backing file does not spam the log
-    // on every tick.
-    public async Task SaveModifiedUtilities(double deltaTime)
+    public IReadOnlyList<ISaveableWorkspaceItem> GetSaveableItems()
     {
-        foreach (var utility in _utilities)
-        {
-            if (!utility.HasUnsavedChanges)
-            {
-                continue;
-            }
-
-            var updateResult = utility.UpdateSaveTimer(deltaTime);
-            if (updateResult.IsFailure)
-            {
-                continue;
-            }
-
-            var shouldSave = updateResult.Value;
-            if (!shouldSave)
-            {
-                continue;
-            }
-
-            var saveResult = await utility.SaveAsync();
-            if (saveResult.IsFailure
-                && utility.WritableState == WritableState.Writable)
-            {
-                _logger.LogError(saveResult, $"Failed to save utility: '{utility.FileResource}'");
-            }
-        }
+        return new List<ISaveableWorkspaceItem>(_utilities);
     }
 
     public async Task TeardownUtilitiesAsync()

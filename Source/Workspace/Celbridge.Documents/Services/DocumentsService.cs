@@ -37,6 +37,8 @@ public class DocumentsService : IDocumentsService, IDisposable
             : ResourceKey.Empty;
 
     // Reads TabView-backed state, so callers must be on the UI thread.
+    public IReadOnlyList<ISaveableWorkspaceItem> GetSaveableItems() => DocumentsPanel.GetSaveableItems();
+
     public IReadOnlyList<OpenDocumentInfo> GetOpenDocuments() => DocumentsPanel.GetOpenDocuments();
 
     public OpenDocumentInfo? FindOpenDocument(ResourceKey fileResource)
@@ -562,18 +564,6 @@ public class DocumentsService : IDocumentsService, IDisposable
         }
 
         _logger.LogTrace($"Activated document for file resource '{fileResource}'");
-
-        return Result.Ok();
-    }
-
-    public async Task<Result> SaveModifiedDocuments(double deltaTime)
-    {
-        var saveResult = await DocumentsPanel.SaveModifiedDocuments(deltaTime);
-        if (saveResult.IsFailure)
-        {
-            return Result.Fail("Failed to save modified documents")
-                .WithErrors(saveResult);
-        }
 
         return Result.Ok();
     }

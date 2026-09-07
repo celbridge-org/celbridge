@@ -6,7 +6,7 @@
 // are injected, so it carries no dependency on the rest of the client.
 //
 // The card template supplies the structural classes the module drives (`.cel-card-grip`, `.cel-card-delete`)
-// and celbridge.css styles them, along with `.cel-card-list` on the list element.
+// and ui/card-list.css styles them, along with `.cel-card-list` on the list element.
 //
 //   const list = createCardList({
 //     listElement, emptyElement, addButton, template,
@@ -159,6 +159,9 @@ export function createCardList(options) {
         if (!isWritable()) {
             return;
         }
+
+        // The gesture suppresses the press that would otherwise focus the header, so focus is taken here.
+        card.querySelector('summary').focus();
 
         // A drag can only run against a collapsed list, since uniform rows are what make the placement below
         // work. Collapsing as part of the grab would shorten everything above the grabbed row and slide it
@@ -340,9 +343,14 @@ export function createCardList(options) {
             snapshotCard.style.transform = '';
         }
 
-        dragState.card.classList.remove('dragging');
+        const draggedCard = dragState.card;
+        draggedCard.classList.remove('dragging');
         listElement.classList.remove('reordering');
         dragState = null;
+
+        // Reordering moves the card in the DOM, which blurs it, so the focus the grab took is put back. It
+        // marks the card once the drag's own accent is gone, and it is what the reorder keys act on next.
+        draggedCard.querySelector('summary').focus();
     }
 
     function populate(items) {

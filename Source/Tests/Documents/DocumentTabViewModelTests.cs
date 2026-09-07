@@ -88,7 +88,7 @@ public class DocumentTabViewModelTests
         var documentView = Substitute.For<IDocumentView>();
         documentView.CanClose().Returns(Task.FromResult(true));
         documentView.HasUnsavedChanges.Returns(true);
-        documentView.SaveDocument().Returns(Task.FromResult<Result>(Result.Fail("simulated save failure")));
+        documentView.SaveAsync().Returns(Task.FromResult<Result>(Result.Fail("simulated save failure")));
 
         var viewModel = CreateViewModel(new ResourceKey("locked.md"), documentView);
 
@@ -105,7 +105,7 @@ public class DocumentTabViewModelTests
         var documentView = Substitute.For<IDocumentView>();
         documentView.CanClose().Returns(Task.FromResult(true));
         documentView.HasUnsavedChanges.Returns(true);
-        documentView.SaveDocument().Returns(Task.FromResult<Result>(Result.Ok()));
+        documentView.SaveAsync().Returns(Task.FromResult<Result>(Result.Ok()));
 
         var viewModel = CreateViewModel(new ResourceKey("writable.md"), documentView);
 
@@ -129,7 +129,7 @@ public class DocumentTabViewModelTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().Be(CloseDocumentOutcome.Cancelled);
-        await documentView.DidNotReceive().SaveDocument();
+        await documentView.DidNotReceive().SaveAsync();
         await documentView.DidNotReceive().PrepareToClose();
     }
 
@@ -142,7 +142,7 @@ public class DocumentTabViewModelTests
         var documentView = Substitute.For<IDocumentView>();
         documentView.CanClose().Returns(Task.FromResult(true));
         documentView.HasUnsavedChanges.Returns(true);
-        documentView.SaveDocument().Returns(Task.FromResult<Result>(Result.Fail("simulated save failure")));
+        documentView.SaveAsync().Returns(Task.FromResult<Result>(Result.Fail("simulated save failure")));
         documentView.WritableState.Returns(WritableState.Writable);
 
         var viewModel = CreateViewModel(new ResourceKey("stale.md"), documentView);
@@ -158,7 +158,7 @@ public class DocumentTabViewModelTests
         var documentView = Substitute.For<IDocumentView>();
         documentView.CanClose().Returns(Task.FromResult(true));
         documentView.HasUnsavedChanges.Returns(true);
-        documentView.SaveDocument().Returns(Task.FromResult<Result>(Result.Fail("simulated save failure")));
+        documentView.SaveAsync().Returns(Task.FromResult<Result>(Result.Fail("simulated save failure")));
         documentView.WritableState.Returns(WritableState.Locked);
 
         var viewModel = CreateViewModel(new ResourceKey("locked.md"), documentView);

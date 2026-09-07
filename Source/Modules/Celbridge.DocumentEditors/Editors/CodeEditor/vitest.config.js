@@ -11,7 +11,12 @@ export default defineConfig({
             '/assets/celbridge-client/api/document-api.js':
                 fileURLToPath(new URL('./tests/fixtures/document-api-stub.js', import.meta.url)),
             '/assets/celbridge-client/localization.js':
-                fileURLToPath(new URL('./tests/fixtures/localization-stub.js', import.meta.url))
+                fileURLToPath(new URL('./tests/fixtures/localization-stub.js', import.meta.url)),
+            // The splitter gesture talks to nothing but the DOM, so it runs as-is under jsdom.
+            '/assets/celbridge-client/ui/splitter.js':
+                fileURLToPath(new URL(
+                    '../../../../Core/Celbridge.WebHost/Web/celbridge-client/ui/splitter.js',
+                    import.meta.url))
         }
     }
 });

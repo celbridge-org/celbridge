@@ -9,7 +9,7 @@
 
 import { PreviewController } from './preview-controller.js';
 import { ViewModeController, ViewMode } from './view-mode-controller.js';
-import { attachDividerDrag } from './divider-drag.js';
+import { attachSplitter } from '/assets/celbridge-client/ui/splitter.js';
 import { updateViewModeButtons, syncSnippetButtonForViewMode } from './toolbar.js';
 
 export class PreviewPipeline {
@@ -49,7 +49,7 @@ export class PreviewPipeline {
             }
         });
 
-        attachDividerDrag(panes.dividerElement, this.#viewModeController);
+        this.#attachDivider(panes.dividerElement);
 
         editorController.onContentChanged(() => {
             this.#previewController.render(editorController.getValue());
@@ -112,6 +112,27 @@ export class PreviewPipeline {
         if (typeof state.previewScrollPercentage === 'number') {
             this.#previewController.setScrollPercentage(state.previewScrollPercentage);
         }
+    }
+
+    #attachDivider(dividerElement) {
+        let dragStartWidth = 0;
+
+        attachSplitter(dividerElement, {
+            isEnabled: () => this.#viewModeController.isSplitMode(),
+            onDragStart: () => {
+                dragStartWidth = this.#viewModeController.getEditorPaneWidth();
+            },
+            onDrag: (deltaX) => {
+                const totalWidth = this.#viewModeController.getSplitRootWidth();
+                if (totalWidth <= 0) {
+                    return;
+                }
+                this.#viewModeController.setFlexShare((dragStartWidth + deltaX) / totalWidth);
+            },
+            onReset: () => {
+                this.#viewModeController.setFlexShare(0.5);
+            }
+        });
     }
 }
 

@@ -12,138 +12,76 @@
 </head>
 
 <body>
-    <div id="demo-app">
-    <div id="process-container">
-        <h1 id="process-title">Utility Demo</h1>
-        <p id="process-blurb">
-            A utility surface: live in the Utility Panel, or dock it into a document tab.
-            Its notes persist per project under the utils: root. The controls below are
-            styled entirely by the shared stylesheet.
-        </p>
-        <div id="process-controls">
-            <input id="process-name" type="text" placeholder="Name" aria-label="Name">
-            <select id="process-mode" aria-label="Mode">
-                <option>Watch</option>
-                <option>Build</option>
-                <option>Test</option>
-            </select>
-            <label>
-                <input id="process-verbose" type="checkbox">
-                Verbose
-            </label>
-            <label>
-                Level
-                <input id="process-level" type="range" min="0" max="100" value="50">
-            </label>
-            <button id="process-add" type="button">Add</button>
-            <button id="process-run" class="cel-accent" type="button">Run</button>
-            <button id="process-stop" type="button" disabled>Stop</button>
-        </div>
-        <textarea id="process-input" spellcheck="false"></textarea>
-        <details class="cel-expander">
-            <summary>Expander card</summary>
-            <div class="cel-expander-body">
-                <p>
-                    A collapsible <code>.cel-expander</code> from the shared stylesheet, matching the native
-                    WinUI Expander in the settings panels. Wrap content in <code>.cel-expander-body</code>,
-                    and add the <code>open</code> attribute to start expanded.
-                </p>
-            </div>
-        </details>
-        <div class="demo-split">
-            <div class="demo-pane demo-pane-left">Drag the divider</div>
-            <div class="cel-splitter" id="demo-splitter"></div>
-            <div class="demo-pane demo-pane-right">Resizable panes</div>
-        </div>
-        <div class="demo-panel">
-            <div class="demo-panel-body">
-                <p>A scrolling body paired with a pinned action footer, the pattern the console settings
-                    panel uses.</p>
-                <p>The shared <code>.cel-panel-footer</code> supplies the divider, the caption, and the
-                    capped, centred action button.</p>
-                <p>Scroll this area &mdash; the footer below stays put.</p>
-                <p>Keep reading and it still never moves.</p>
-                <p>One more line so the body overflows and scrolls.</p>
-            </div>
-            <div class="cel-panel-footer">
-                <p>Some settings take effect after an action.</p>
-                <button type="button">Action</button>
-            </div>
-        </div>
-        <hr>
-        <p id="process-footer">
-            Every control here is styled by <code>celbridge.css</code>.
-            <a href="#">Learn more</a>.
-        </p>
-    </div>
+    <!-- A small utility built on the shared section switcher, the component the console settings surface is
+         also built on. A utility reparents this page between the Utility Panel and a document tab, so it is
+         the surface that renders in both of the switcher's layouts and the transition between them. -->
+    <div id="demo-switcher" class="cel-section-switcher">
 
-    <!-- Illustrates the shared .cel-nav-tabs component: an icon tab strip over the active section's name and
-         description, with the sections themselves in the scrolling area below. -->
-    <div id="inspector-panel" class="hidden">
-        <div class="inspector-title">Inspector</div>
-        <div class="cel-nav-tabs">
-            <div id="inspector-tabs" class="cel-nav-tab-strip" role="tablist">
-                <button class="cel-nav-tab" type="button" role="tab" data-section="general" aria-selected="true"
-                        title="General" aria-label="General">
-                    <span class="cel-nav-tab-icon"><i class="bi bi-info-circle"></i></span>
-                </button>
-                <button class="cel-nav-tab" type="button" role="tab" data-section="appearance"
-                        title="Appearance" aria-label="Appearance">
-                    <span class="cel-nav-tab-icon">
-                        <i class="bi bi-palette"></i>
-                        <span class="cel-nav-tab-pip" title="This section needs attention"></span>
-                    </span>
-                </button>
-                <button class="cel-nav-tab" type="button" role="tab" data-section="advanced"
-                        title="Advanced" aria-label="Advanced">
-                    <span class="cel-nav-tab-icon"><i class="bi bi-gear"></i></span>
-                </button>
+        <div class="cel-section-nav" role="tablist">
+            <button class="cel-section-nav-item" type="button" role="tab" data-section="notes"
+                    aria-selected="true" title="Notes" aria-label="Notes">
+                <span class="cel-section-nav-icon"><i class="bi bi-pencil"></i></span>
+                <span class="cel-section-nav-label">Notes</span>
+            </button>
+            <button class="cel-section-nav-item" type="button" role="tab" data-section="storage"
+                    title="Storage" aria-label="Storage">
+                <span class="cel-section-nav-icon"><i class="bi bi-info-circle"></i></span>
+                <span class="cel-section-nav-label">Storage</span>
+            </button>
+        </div>
+
+        <div class="cel-section-area">
+
+            <div class="cel-section-header" data-section="notes">
+                <h1>Notes</h1>
+                <p>Text kept with this project, saved through the document contract.</p>
+            </div>
+            <div class="cel-section-header" data-section="storage" hidden>
+                <h1>Storage</h1>
+                <p>Where the text on the other section is kept.</p>
             </div>
 
-            <div class="cel-section-header" data-section="general">
-                <h1>General</h1>
-                <p>The active section's name and description, below the tab strip.</p>
-            </div>
-            <div class="cel-section-header hidden" data-section="appearance">
-                <h1>Appearance</h1>
-                <p>A tab carries a pip when its section has something to look at.</p>
-            </div>
-            <div class="cel-section-header hidden" data-section="advanced">
-                <h1>Advanced</h1>
-                <p>Arrow keys move between tabs once the strip has focus.</p>
+            <div class="cel-section-content">
+
+                <section data-section="notes">
+                    <label class="field">
+                        <span class="field-label">Notes</span>
+                        <textarea id="notes-input" rows="10" spellcheck="false"
+                                  placeholder="Anything worth keeping with the project"></textarea>
+                        <span class="field-hint">Saved a moment after you stop typing, and again when the
+                            project closes.</span>
+                    </label>
+                </section>
+
+                <section data-section="storage" hidden>
+                    <div class="field">
+                        <span class="field-label">Resource</span>
+                        <p class="storage-value">utils:</p>
+                        <span class="field-hint">A utility's state is a file under the project's utils: root,
+                            one per contribution, created from the editor's template on first open.</span>
+                    </div>
+                    <div class="field">
+                        <span class="field-label">Content</span>
+                        <p class="storage-value">{"text": "..."}</p>
+                        <span class="field-hint">The JSON envelope onRequestSave writes, after an edit calls
+                            document.notifyChanged().</span>
+                    </div>
+                    <div class="field">
+                        <span class="field-label">View state</span>
+                        <p class="storage-value">{"activeSection": "...", "scrollTop": 0}</p>
+                        <span class="field-hint">Which section is showing survives a reload, and survives the
+                            utility being docked into a document tab and undocked again.</span>
+                    </div>
+                </section>
+
             </div>
         </div>
 
-        <div id="inspector-scroll">
-            <section class="inspector-section" data-section="general">
-                <p>Each tab is an icon with a tooltip, so the strip stays a fixed width however many
-                    sections a panel has.</p>
-            </section>
-            <section class="inspector-section hidden" data-section="appearance">
-                <p>Only one section shows at a time, which keeps a deep panel navigable without
-                    scroll-hunting through collapsed cards.</p>
-            </section>
-            <section class="inspector-section hidden" data-section="advanced">
-                <p>The selected section is worth persisting as view state, so it survives a reload.</p>
-            </section>
+        <div class="cel-section-footer">
+            <p>The dialog is the host's, so it reaches a native one on either head.</p>
+            <button id="show-notes" type="button">Show Notes</button>
         </div>
-    </div>
 
-    <!-- Illustrates the shared .cel-rail component: an inspector rail down the right edge, with the settings
-         toggle pinned at the top and icon-only action buttons below it. -->
-    <div class="cel-rail cel-rail-right">
-        <button id="inspector-toggle" class="cel-rail-button" type="button" title="Inspector" aria-label="Inspector">
-            <i class="bi bi-sliders"></i>
-            <span class="cel-rail-pip"></span>
-        </button>
-        <div class="cel-rail-separator"></div>
-        <button class="cel-rail-button" type="button" title="Run" aria-label="Run">
-            <i class="bi bi-play-fill"></i>
-        </button>
-        <button class="cel-rail-button" type="button" title="Stop" aria-label="Stop">
-            <i class="bi bi-stop-fill"></i>
-        </button>
-    </div>
     </div>
 
     <script type="module" src="js/utility-demo.js"></script>

@@ -292,7 +292,7 @@ public partial class DocumentTabViewModel : ObservableObject
 
         if (DocumentView.HasUnsavedChanges)
         {
-            var saveResult = await DocumentView.SaveDocument();
+            var saveResult = await DocumentView.SaveAsync();
             if (saveResult.IsFailure)
             {
                 // A non-editable document (locked file, read-only attribute) or any other

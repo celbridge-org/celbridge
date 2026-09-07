@@ -1,0 +1,61 @@
+/* One of the shared components celbridge.css links. Link it beside celbridge-tokens.css to take this
+   component on its own, without the bare-element control rules. */
+
+/* Settings form field: a label, the control it names, and an optional hint or warning below it. Use as:
+     <label class="field">
+       <span class="field-label">Working directory</span>
+       <input type="text" placeholder="Relative to the project folder">
+       <span class="field-hint">A relative path resolves against the project folder.</span>
+     </label>
+   The control stretches to the field width, which is capped for legibility on a wide panel. */
+.field {
+    display: block;
+    margin-bottom: 12px;
+    max-width: 640px;
+}
+
+/* The last field in a card body sits on the body's own padding. */
+.cel-expander-body .field:last-child {
+    margin-bottom: 0;
+}
+
+.field-label {
+    display: block;
+    font-size: var(--cel-font-size-small);
+    font-weight: var(--cel-font-weight-strong);
+    color: var(--cel-text-primary);
+    margin-bottom: 4px;
+}
+
+/* Explains a field's expected syntax below its control, for the fields that need one. */
+.field-hint {
+    display: block;
+    font-size: var(--cel-font-size-small);
+    color: var(--cel-text-secondary);
+    margin-top: 4px;
+}
+
+/* Flags a setting the panel will not be able to honour, below the field that produced it. */
+.field-warning {
+    display: block;
+    font-size: var(--cel-font-size-small);
+    color: var(--cel-warning-text);
+    margin-top: 4px;
+}
+
+.field input,
+.field textarea {
+    width: 100%;
+}
+
+.field textarea {
+    resize: vertical;
+}
+
+/* The browser default placeholder is dim enough that an empty field reads as disabled. Lift it to the
+   secondary text colour (matching the labels and hints) and cancel the UA opacity so it stays legible. */
+.field input::placeholder,
+.field textarea::placeholder {
+    color: var(--cel-text-secondary);
+    opacity: 1;
+}

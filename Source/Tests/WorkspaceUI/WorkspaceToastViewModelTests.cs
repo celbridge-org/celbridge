@@ -4,6 +4,7 @@ using Celbridge.Documents;
 using Celbridge.Projects;
 using Celbridge.Reports;
 using Celbridge.Resources;
+using Celbridge.Workspace;
 using Celbridge.WorkspaceUI.ViewModels;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Xaml.Controls;
@@ -26,6 +27,7 @@ public class WorkspaceToastViewModelTests
     private MessageHandler<object, ProjectLoadNotificationMessage>? _loadHandler;
     private MessageHandler<object, ResourceOperationFailedMessage>? _operationHandler;
     private MessageHandler<object, EditorNotificationMessage>? _editorHandler;
+    private MessageHandler<object, WorkspaceItemSaveFailedMessage>? _saveFailureHandler;
 
     private WorkspaceToastViewModel _viewModel = null!;
 
@@ -55,6 +57,12 @@ public class WorkspaceToastViewModelTests
                 Arg.Any<object>(),
                 Arg.Any<MessageHandler<object, EditorNotificationMessage>>()))
             .Do(call => _editorHandler = call.Arg<MessageHandler<object, EditorNotificationMessage>>());
+
+        _messengerService
+            .When(service => service.Register(
+                Arg.Any<object>(),
+                Arg.Any<MessageHandler<object, WorkspaceItemSaveFailedMessage>>()))
+            .Do(call => _saveFailureHandler = call.Arg<MessageHandler<object, WorkspaceItemSaveFailedMessage>>());
 
         // The view model marshals onto the UI thread; run inline so the assertions see the result.
         _dispatcher.TryEnqueue(Arg.Any<Action>()).Returns(call =>
@@ -302,6 +310,34 @@ public class WorkspaceToastViewModelTests
         SendLoadNotification(ReportSeverity.Warning, issueCount: 3);
 
         _viewModel.ActionLabel.Should().Be("Toast_ViewReportButton");
+    }
+
+    [Test]
+    public void AOneItemSaveFailure_NamesItAndItsReasonWithNoReportAction()
+    {
+        SendSaveFailure(new FailedResource(new ResourceKey("project:notes.txt"), "the file is locked"));
+
+        _viewModel.ToastSeverity.Should().Be(InfoBarSeverity.Error);
+        _viewModel.ToastMessage.Should().Contain("notes.txt");
+        _viewModel.ToastMessage.Should().Contain("the file is locked");
+        _viewModel.IsActionVisible.Should().BeFalse();
+    }
+
+    [Test]
+    public void SeveralItemSaveFailures_CountThemWithNoReportAction()
+    {
+        SendSaveFailure(
+            new FailedResource(new ResourceKey("project:notes.txt"), "the file is locked"),
+            new FailedResource(new ResourceKey("project:data.json"), "the file is locked"));
+
+        _viewModel.ToastMessage.Should().Contain("Toast_SaveFailed_Multiple");
+        _viewModel.ToastMessage.Should().Contain("2");
+        _viewModel.IsActionVisible.Should().BeFalse();
+    }
+
+    private void SendSaveFailure(params FailedResource[] failedItems)
+    {
+        _saveFailureHandler!.Invoke(this, new WorkspaceItemSaveFailedMessage(failedItems));
     }
 
     private void SendOperationFailure(ResourceOperationType operationType, params string[] failedItems)

@@ -1,4 +1,3 @@
-using Celbridge.Documents;
 using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.ViewModels.Controls;
@@ -29,7 +28,7 @@ public partial class TitleBarViewModel : ObservableObject
     {
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
         _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloaded);
-        _messengerService.Register<PendingDocumentSaveMessage>(this, OnPendingDocumentSaveMessage);
+        _messengerService.Register<PendingSaveCountMessage>(this, OnPendingSaveCount);
 
         IsWorkspaceLoaded = _workspaceWrapper.IsWorkspaceLoaded;
     }
@@ -49,9 +48,9 @@ public partial class TitleBarViewModel : ObservableObject
         IsWorkspaceLoaded = false;
     }
 
-    private void OnPendingDocumentSaveMessage(object recipient, PendingDocumentSaveMessage message)
+    private void OnPendingSaveCount(object recipient, PendingSaveCountMessage message)
     {
-        IsSaving = message.PendingSaveCount > 0;
+        IsSaving = message.Count > 0;
     }
 }
 

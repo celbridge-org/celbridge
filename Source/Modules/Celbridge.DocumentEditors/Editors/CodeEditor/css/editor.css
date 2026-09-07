@@ -4,30 +4,10 @@ html, body {
     overflow: hidden;
 }
 
-/* Theme via [data-theme] attribute (WebView2 doesn't reliably re-evaluate prefers-color-scheme). The accent,
-   toolbar-foreground and toolbar-surface colors derive from the shared tokens (celbridge-tokens.css, linked
-   before this file), so they are single-sourced with the native palette and need no per-theme override
-   here. The toolbar takes the chrome role, so it reads as one band with the native tab strip above it and
-   steps off the Monaco canvas below. The remaining tokens are the editor's own translucent divider and
-   button-overlay colors, which have no shared equivalent and stay defined per theme below. */
-:root {
-    --accent-color: var(--cel-accent);
-    --toolbar-btn-fg: var(--cel-text-primary);
-    --toolbar-bg: var(--cel-chrome-bg);
-    --divider-base-color: rgba(0, 0, 0, 0.0803);
-    --toolbar-border: rgba(0, 0, 0, 0.0803);
-    --toolbar-btn-hover-bg: rgba(0, 0, 0, 0.0402);
-    --toolbar-btn-active-bg: rgba(0, 120, 212, 0.12);
-    --toolbar-btn-disabled-fg: rgba(0, 0, 0, 0.36);
-}
-
-[data-theme="dark"] {
-    --divider-base-color: rgba(255, 255, 255, 0.0837);
-    --toolbar-border: rgba(255, 255, 255, 0.0837);
-    --toolbar-btn-hover-bg: rgba(255, 255, 255, 0.0605);
-    --toolbar-btn-active-bg: rgba(96, 205, 255, 0.18);
-    --toolbar-btn-disabled-fg: rgba(255, 255, 255, 0.3628);
-}
+/* Every colour in the editor's own chrome comes from the shared tokens in celbridge-tokens.css, linked
+   before this file, so it holds the same value as the native chrome and follows the html[data-theme] the
+   client mirrors from the host. WebView2 does not reliably re-evaluate prefers-color-scheme, which is why
+   the theme is an attribute rather than a media query. */
 
 #editor-root {
     display: flex;
@@ -64,61 +44,12 @@ html, body {
     overflow: hidden;
 }
 
+/* The band between the panes is the shared .cel-splitter, linked from ui/splitter.css, which carries its
+   fill, its leading edge and the accent it takes under the pointer. What is left here is the editor's own:
+   the divider exists in Split mode and nowhere else, and paints above the panes either side of it. */
 #divider {
-    flex: 0 0 8px;
-    position: relative;
-    cursor: col-resize;
-    user-select: none;
     display: none;
-    background-color: transparent;
     z-index: 100;
-}
-
-/* Persistent thin divider line, matches DividerBrush */
-#divider::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 50%;
-    width: 1px;
-    transform: translateX(-50%);
-    background-color: var(--divider-base-color);
-    pointer-events: none;
-}
-
-/* Accent-colored overlay, fades in on hover, held during drag.
-   Matches the XAML Splitter's 200ms-delay 200ms-fade animation. */
-#divider::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 50%;
-    width: 4px;
-    transform: translateX(-50%);
-    background-color: var(--accent-color);
-    opacity: 0;
-    transition: opacity 200ms ease-out 200ms;
-    pointer-events: none;
-}
-
-#divider:hover::after,
-#divider.dragging::after {
-    opacity: 1;
-}
-
-/* During drag, suppress the fade timing so the accent line stays solid
-   even when the pointer momentarily leaves the 8px grab area. */
-#divider.dragging::after {
-    transition: opacity 0ms;
-}
-
-/* During drag, thicken the base line to 4px to match the Splitter's
-   DraggingLineThickness. */
-#divider.dragging::before {
-    width: 4px;
-    background-color: var(--accent-color);
 }
 
 #preview-pane {

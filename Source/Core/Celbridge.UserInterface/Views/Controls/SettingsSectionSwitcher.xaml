@@ -14,7 +14,8 @@
        carved out of the workspace, with the gutter as the channel between them. -->
   <Grid ColumnSpacing="{StaticResource GutterSize}">
     <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="150"/>
+      <!-- Width is set in code-behind from SectionNavWidth, which is a Double. -->
+      <ColumnDefinition x:Name="NavColumn"/>
       <ColumnDefinition Width="*"/>
     </Grid.ColumnDefinitions>
 
@@ -27,7 +28,7 @@
                   VerticalAlignment="Top">
       <ItemsControl.ItemsPanel>
         <ItemsPanelTemplate>
-          <StackPanel Spacing="2"/>
+          <StackPanel Spacing="{StaticResource SectionRowGap}"/>
         </ItemsPanelTemplate>
       </ItemsControl.ItemsPanel>
       <ItemsControl.ItemTemplate>
@@ -62,9 +63,9 @@
     </ItemsControl>
 
       <!-- Whatever the surface wants to sit under its rail, grouped with the section rows rather than
-           pinned to the bottom of the column. Empty in a surface that supplies none. -->
-      <ContentPresenter x:Name="RailFooterPresenter"
-                        Margin="0,40,0,0"/>
+           pinned to the bottom of the column. Empty in a surface that supplies none. The gap above it is
+           set in code-behind from SectionFooterGap, which is a Double. -->
+      <ContentPresenter x:Name="RailFooterPresenter"/>
 
     </StackPanel>
 
@@ -80,9 +81,10 @@
           <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Border BorderBrush="{ThemeResource DividerBrush}"
-                BorderThickness="0,0,0,1"
-                Padding="16">
+        <!-- Padding is set in code-behind from SectionInset, which is a Double. -->
+        <Border x:Name="SectionHeader"
+                BorderBrush="{ThemeResource DividerBrush}"
+                BorderThickness="0,0,0,1">
           <StackPanel Spacing="2">
             <TextBlock x:Name="SectionLabel"
                        Style="{StaticResource SectionHeadingTextStyle}"/>

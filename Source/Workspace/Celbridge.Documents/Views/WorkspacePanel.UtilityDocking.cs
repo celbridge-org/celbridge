@@ -44,9 +44,9 @@ public sealed partial class WorkspacePanel
         // and close announcements and sends its close back to the panel.
         documentTab.ViewModel.IsDockedUtility = true;
 
-        var dockedView = new DockedUtilityDocumentView(_serviceProvider, _messengerService, panelView.Controller);
+        // The view reads its resource from the utility's own view model, which the panel already bound.
+        var dockedView = new DockedUtilityDocumentView(_messengerService, panelView.Controller);
         dockedView.EditorId = editorId;
-        dockedView.Bind(resource, filePath);
 
         var tabOrder = placement.TabOrder;
         if (tabOrder is not null)

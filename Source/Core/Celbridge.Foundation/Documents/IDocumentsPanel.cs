@@ -1,3 +1,5 @@
+using Celbridge.Workspace;
+
 namespace Celbridge.Documents;
 
 /// <summary>
@@ -96,9 +98,9 @@ public interface IDocumentsPanel
     Task<Result> CloseDocument(ResourceKey fileResource, CloseDocumentOptions? options = null);
 
     /// <summary>
-    /// Save any modified documents to disk.
-    /// </summary>    
-    Task<Result> SaveModifiedDocuments(double deltaTime);
+    /// The open documents as saveable workspace items. A utility docked into a document tab is not included.
+    /// </summary>
+    IReadOnlyList<ISaveableWorkspaceItem> GetSaveableItems();
 
     /// <summary>
     /// Activates an opened document in the documents panel, making it the active tab.

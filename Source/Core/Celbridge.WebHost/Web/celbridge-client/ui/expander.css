@@ -1,0 +1,62 @@
+/* One of the shared components celbridge.css links. Link it beside celbridge-tokens.css to take this
+   component on its own, without the bare-element control rules. */
+
+/* Expander card, matching the native WinUI Expander in the settings panels: a bordered, rounded card with a
+   filled, clickable header row, a chevron on the right that rotates, a hover highlight, and a padded body.
+   Use as:
+     <details class="cel-expander"><summary>Header</summary>
+       <div class="cel-expander-body">...</div>
+     </details>
+   Add the `open` attribute to start expanded. */
+.cel-expander {
+    border: 1px solid var(--cel-panel-edge);
+    border-radius: var(--cel-radius-control);
+    overflow: hidden;
+}
+
+.cel-expander > summary {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    font-weight: 600;
+    padding: 10px 12px;
+    background: var(--cel-expander-header-bg);
+    list-style: none;
+}
+
+.cel-expander > summary::-webkit-details-marker {
+    display: none;
+}
+
+.cel-expander > summary:hover {
+    background: var(--cel-control-hover-bg);
+}
+
+/* A CSS chevron (a rotated square corner): points down when collapsed, up when the card is open. */
+.cel-expander > summary::after {
+    content: "";
+    margin-left: auto;
+    width: 0.4em;
+    height: 0.4em;
+    border: solid var(--cel-text-primary);
+    border-width: 0 1px 1px 0;
+    transform: translateY(-2px) rotate(45deg);
+    transition: transform 0.15s ease;
+}
+
+.cel-expander[open] > summary::after {
+    transform: translateY(1px) rotate(-135deg);
+}
+
+
+/* The header and body fills are close enough that the change alone does not read as a boundary. */
+.cel-expander[open] > summary {
+    border-bottom: 1px solid var(--cel-divider-subtle);
+}
+
+/* The expanded content is recessed below the panel, so the header reads as a raised bar over an inset body. */
+.cel-expander-body {
+    padding: 12px;
+    background: var(--cel-expander-content-bg);
+}

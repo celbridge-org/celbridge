@@ -1,14 +1,17 @@
+/* The document's chrome strip, matching the WebView document's URL bar (WebViewDocumentView.xaml): the
+   chrome fill under a divider hairline, at the same inset, so it reads as one band with the native tab strip
+   above it and steps off the Monaco canvas below. Groups sit further apart than the buttons within a group. */
 #toolbar {
     flex: 0 0 auto;
     display: flex;
     align-items: center;
-    gap: 4px;
-    padding: 4px 6px;
-    background-color: var(--toolbar-bg);
-    border-bottom: 1px solid var(--toolbar-border);
+    gap: 6px;
+    padding: 4px 8px;
+    background-color: var(--cel-chrome-bg);
+    border-bottom: 1px solid var(--cel-divider);
     font-family: var(--cel-font-ui);
-    font-size: 13px;
-    color: var(--toolbar-btn-fg);
+    font-size: var(--cel-font-size-base);
+    color: var(--cel-text-primary);
 }
 
 #toolbar[hidden] {
@@ -18,7 +21,7 @@
 .toolbar-panel {
     display: flex;
     align-items: center;
-    gap: 2px;
+    gap: 4px;
 }
 
 .toolbar-panel[hidden] {
@@ -28,68 +31,74 @@
 .toolbar-separator {
     width: 1px;
     height: 20px;
-    background-color: var(--toolbar-border);
-    margin: 0 4px;
+    background-color: var(--cel-divider);
 }
 
 .toolbar-separator[hidden] {
     display: none;
 }
 
+/* Mirrors the native flat icon button (IconButtonBaseStyle in Styles.xaml): a transparent square that tints
+   on hover and press, dims when disabled, and fills with the accent while it is the active view mode. The
+   square, its rounding and the glyph inside it are sized from the tokens, so a button here matches one in
+   the chrome above it. */
 .toolbar-btn {
     box-sizing: border-box;
-    width: 32px;
-    height: 28px;
+    width: var(--cel-icon-button-size);
+    height: var(--cel-icon-button-size);
     display: inline-flex;
     align-items: center;
     justify-content: center;
     padding: 0;
-    border: 1px solid transparent;
-    border-radius: 4px;
+    border: none;
+    border-radius: var(--cel-radius-button);
     background-color: transparent;
-    color: var(--toolbar-btn-fg);
+    color: var(--cel-text-primary);
+    font-size: var(--cel-icon-size-medium);
+    line-height: 1;
     cursor: pointer;
 }
 
 .toolbar-btn:hover:not(:disabled) {
-    background-color: var(--toolbar-btn-hover-bg);
+    background-color: var(--cel-button-hover-bg);
 }
 
-.toolbar-btn.active {
-    background-color: var(--toolbar-btn-active-bg);
-    border-color: var(--accent-color);
+.toolbar-btn:active:not(:disabled) {
+    background-color: var(--cel-button-active-bg);
+}
+
+/* The accent holds through hover and press, as the native checked states do, so the active mode never reads
+   as though the pointer had deselected it. */
+.toolbar-btn.active,
+.toolbar-btn.active:hover,
+.toolbar-btn.active:active {
+    background-color: var(--cel-accent);
+    color: var(--cel-accent-text);
 }
 
 .toolbar-btn:focus-visible {
-    outline: 2px solid var(--accent-color);
+    outline: 2px solid var(--cel-accent);
     outline-offset: 1px;
 }
 
 .toolbar-btn:disabled {
-    color: var(--toolbar-btn-disabled-fg);
+    opacity: 0.5;
     cursor: default;
 }
 
-/* Bootstrap Icons sized to match the Segoe Fluent Icons used in the Celbridge
-   chrome (tab strip, sidebar toggle, app toolbar). Notes uses 16px because it
-   is a dedicated editor surface; CodeEditor's toolbar sits under the chrome
-   and should blend in. */
-.toolbar-btn .bi {
-    font-size: 14px;
-    line-height: 1;
-}
-
+/* A flyout over the document rather than a band of chrome, so it takes the panel edge that bounds a floating
+   object and a shadow to lift it off the canvas. */
 .snippet-menu {
     position: fixed;
     z-index: 1000;
     min-width: 180px;
     padding: 4px 0;
-    background-color: var(--toolbar-bg);
-    border: 1px solid var(--toolbar-border);
-    border-radius: 4px;
+    background-color: var(--cel-chrome-bg);
+    border: 1px solid var(--cel-panel-edge);
+    border-radius: var(--cel-radius-control);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
     font-family: var(--cel-font-ui);
-    font-size: 13px;
+    font-size: var(--cel-font-size-base);
 }
 
 .snippet-menu[hidden] {
@@ -102,23 +111,23 @@
     padding: 6px 12px;
     border: none;
     background: transparent;
-    color: var(--toolbar-btn-fg);
+    color: var(--cel-text-primary);
     font: inherit;
     text-align: left;
     cursor: pointer;
 }
 
 .snippet-menu-item:hover {
-    background-color: var(--toolbar-btn-hover-bg);
+    background-color: var(--cel-button-hover-bg);
 }
 
 .snippet-menu-item:focus-visible {
-    outline: 2px solid var(--accent-color);
+    outline: 2px solid var(--cel-accent);
     outline-offset: -2px;
 }
 
 .snippet-menu-separator {
     height: 1px;
     margin: 4px 0;
-    background-color: var(--toolbar-border);
+    background-color: var(--cel-divider);
 }

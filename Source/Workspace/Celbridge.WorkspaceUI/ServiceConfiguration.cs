@@ -32,6 +32,7 @@ public static class ServiceConfiguration
         services.AddTransient<IWorkspaceView, WorkspaceView>();
         services.AddTransient<IDataTransferService, DataTransferService>();
         services.AddTransient<WorkspaceLoader>();
+        services.AddTransient<WorkspaceItemSaver>();
 
         //
         // Register panels

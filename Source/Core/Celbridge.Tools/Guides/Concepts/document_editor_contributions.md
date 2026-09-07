@@ -111,7 +111,7 @@ Link the shared stylesheet to inherit the host's fonts and colors, so a WebView 
 
 It defines design tokens as CSS custom properties. Both it and the native app's theme dictionaries are generated from one source (`Source/Core/Celbridge.DesignTokens/DesignTokens.json`), so a token holds the same value on either side. Theme switching is automatic: the client mirrors the host theme onto `html[data-theme]` on every state snapshot, so tokens re-resolve with no editor JS — do not subscribe to `appState.theme` to swap a stylesheet or toggle a class. Build surfaces from the tokens, or key your own rules on `[data-theme="dark"]` for anything a token does not cover.
 
-An editor that hand-styles its own chrome (the CodeEditor is the precedent) can link `/assets/celbridge-client/celbridge-tokens.css` instead — the same tokens with none of the bare-element control rules — so it gets the host palette without the generic button/input styling leaking into its surface.
+An editor that hand-styles its own chrome (the CodeEditor is the precedent) can link `/assets/celbridge-client/celbridge-tokens.css` instead — the same tokens with none of the bare-element control rules — so it gets the host palette without the generic button/input styling leaking into its surface. It can still take a shared component whole, because each one is also served on its own under `/assets/celbridge-client/ui/`: the CodeEditor links `ui/splitter.css` for the divider between its editor and preview panes and styles the rest by hand.
 
 Core tokens:
 
@@ -134,38 +134,55 @@ Most editors can ignore `--cel-page-zoom`. On Windows the web engine folds the a
 
 The stylesheet also imports the Cascadia Mono face and applies the UI font, base text color, and content background to `body`. It gives common form controls — `<button>`, `<select>`, `<textarea>`, text `<input>`, checkboxes/radios, and range sliders — an approximate native Fluent look with no markup beyond the plain element; add `class="cel-accent"` to a button for the filled accent (primary) variant. Text-level elements are themed too: `<a>` links take the accent color, `<code>`/`<pre>`/`<kbd>` use the mono font, and placeholders, `::selection`, and `<hr>` follow the theme. These are bare-element rules with the lowest specificity, so an editor overrides any of them by id or class. Larger components (tables, dialogs, cards) are intentionally not pre-styled — build them from the tokens. Icons are opt-in: link `/assets/bootstrap-icons/bootstrap-icons.css` and use the `bi` classes (the same icon font the native chrome uses).
 
-Shared components sit above the bare-element rules, each mirroring a native control so a WebView surface reads as a peer of the XAML panels beside it: `.cel-expander` (a collapsible card), `.cel-splitter` (a draggable divider, driven by `attachSplitter()` from `ui/splitter.js`), `.cel-panel-footer` (a pinned caption-and-action row), `.field` (a settings form row, covered below), and the two navigation components below. The Utility Demo utility is the reference for all of them — the UI font, host-styled controls, a bordered input, and each shared component in use.
+Shared components sit above the bare-element rules, each mirroring a native control so a WebView surface reads as a peer of the XAML panels beside it: `.cel-expander` (a collapsible card), `.cel-splitter` (a draggable divider, driven by `attachSplitter()` from `ui/splitter.js`), `.field` (a settings form row, covered below), and the section switcher below. `celbridge.css` links all of them, and each is also `ui/<component>.css` on its own, importing whatever its component is built on so that one link is enough. What a sheet on its own cannot carry is the native look of a form control inside the component, because that look is the bare-element rules themselves. The console editor's settings surface is the reference for the rest — a real settings panel with real settings in it, built from these components and nothing else.
 
-### Panel navigation
+### The settings surface
 
-A panel whose content divides into sections uses `.cel-nav-tabs`: a strip of icon tabs over an accent underline, above the active section's name and description. This is the standard across utility panels and document inspectors — do not build a section hierarchy out of stacked collapsible cards, which hides the panel's shape and makes a deep panel a scroll hunt.
+A panel whose content divides into sections uses `.cel-section-switcher`, mirroring the native `SettingsSectionSwitcher`: a nav of named section rows beside the selected section, which is carved out of the surface behind it and headed by its name and description. This is the standard across utility panels and document inspectors — do not build a section hierarchy out of stacked collapsible cards, which hides the panel's shape and makes a deep panel a scroll hunt.
 
 ```html
-<div class="cel-nav-tabs">
-  <div id="tabs" class="cel-nav-tab-strip" role="tablist">
-    <button class="cel-nav-tab" type="button" role="tab" data-section="session" aria-selected="true" title="Session">
-      <span class="cel-nav-tab-icon"><i class="bi bi-terminal"></i></span>
+<div class="cel-section-switcher">
+  <div class="cel-section-nav" role="tablist">
+    <button class="cel-section-nav-item" type="button" role="tab" data-section="session"
+            aria-selected="true" title="Session" aria-label="Session">
+      <span class="cel-section-nav-icon"><i class="bi bi-terminal"></i></span>
+      <span class="cel-section-nav-label">Session</span>
     </button>
-    <!-- ... one button per section ... -->
+    <!-- ... one row per section ... -->
   </div>
-  <div class="cel-section-header" data-section="session"><h1>Session</h1><p>What this section covers.</p></div>
-  <!-- ... one header per section, all but the active one hidden ... -->
+  <div class="cel-section-area">
+    <div class="cel-section-header" data-section="session"><h1>Session</h1><p>What this section covers.</p></div>
+    <!-- ... one header per section, all but the selected one hidden ... -->
+    <div class="cel-section-notice" hidden></div>
+    <div class="cel-section-content">
+      <section data-section="session"><!-- ... --></section>
+      <!-- ... one section per row ... -->
+    </div>
+  </div>
+  <div class="cel-section-footer"><!-- an action belonging to the whole surface --></div>
 </div>
 ```
 
-Drive it with `attachNavTabs()` from `ui/nav-tabs.js`, which owns `aria-selected`, the roving tabindex, and arrow-key navigation, and reports the selected section id:
+Drive it with `attachSectionSwitcher()` from `ui/section-switcher.js`, which owns the selection, which header and section are showing, `aria-selected`, the roving tabindex, the arrow keys, each section's scroll position, and which layout the surface is in:
 
 ```javascript
-import { attachNavTabs } from '/assets/celbridge-client/ui/nav-tabs.js';
+import { attachSectionSwitcher } from '/assets/celbridge-client/ui/section-switcher.js';
 
-const tabs = attachNavTabs(document.getElementById('tabs'), {
-    onChange(sectionId) { /* show that section */ },
-});
-tabs.select('environment');   // e.g. when restoring view state
-tabs.selected();              // persist this in onRequestState()
+const switcher = attachSectionSwitcher(document.getElementById('switcher'));
+
+switcher.select('environment');   // e.g. when restoring view state
+switcher.selected();              // persist this in onRequestState(), with switcher.scrollTop()
+switcher.setNotice(message);      // show the notice slot, or hide it with an empty message
+switcher.setReadOnly(true);       // disable every control inside the sections
 ```
 
-Each tab is an icon with a tooltip, not a text label, so the strip stays a fixed width however many sections a panel has; the section name below it is what names the selection. Add a `<span class="cel-nav-tab-pip">` inside a tab's icon to flag that its section needs attention.
+The surface around the switcher supplies its height and its margin, the way the native consumers set `Margin="12"` and fill their panel.
+
+**Two layouts.** The switcher picks one from its own width and writes it to `data-layout` on the root. `inline` is the native layout: a labelled nav column beside the carved section. `stacked` puts the nav above the content as an icon strip, over a section that drops its border, and pins the footer below the content instead. The markup is the same in both — a row carries a glyph and a label, and `stacked` drops the label to the tooltip the row needs either way — so a panel written once survives being docked into a document tab and undocked back into a 300px utility panel. Write `data-layout="inline"` or `data-layout="stacked"` on the root to hold one of them.
+
+**The slots.** `.cel-section-notice` is pinned below the header and above the scrolling content, so what it says stays visible from whichever section is showing: a file that would not parse, a setting that cannot be honoured. `.cel-section-footer` carries an action belonging to the whole surface rather than to one section. It sits outside the sections and is deliberately not disabled by `setReadOnly()`, because a footer action operates on the surface, not on the file — which is what keeps the console's Reopen Console available on a read-only document.
+
+Add a `<span class="cel-section-nav-pip">` inside a row's `.cel-section-nav-icon` to flag that its section needs attention. Give a section its own row, header and section element, all carrying the same `data-section` id; a panel whose section set is not known ahead of time generates all three before attaching. The rows are named sections rather than icon tabs, so name them the way a settings category is named.
 
 ### Settings form fields
 
@@ -211,15 +228,15 @@ Settings goes above the action buttons, inverting the workspace rail's ordering,
 
 Rail buttons are icon-only with a tooltip, so a button whose action has no natural glyph still needs a fallback icon rather than a text label. Add `selected` to the button whose surface is showing; the accent fills that button for as long as the surface is open. This deliberately differs from the workspace utility rail, whose selected button drops to a neutral fill while its panel is unfocused — with several rails and panels on screen at once, "this panel is open" is the more useful signal, and an editor's own content usually holds focus anyway. `.cel-rail-right` moves the rail's border to the window edge; omit it for a rail on the left.
 
-The console editor is the reference: its shortcut buttons render into the rail below the settings toggle, and its settings panel is a `.cel-nav-tabs` hierarchy.
+The console editor is the reference: its shortcut buttons render into the rail below the settings toggle, and the toggle opens a `.cel-section-switcher` surface. A rail action switches away from that surface: pressing a console shortcut closes the settings and types into the terminal, because the action belongs to the content the settings configure.
 
 ### Editing a list of entries
 
-A setting that is a list of records — the console's script runners, triggers and shortcuts — is edited as one `.cel-expander` card per entry, matching how the native Packages and Pages panels render their lists. The card header carries just the entry's name; its fields are one expand away, so the header stays scannable. Add belongs on the list, below it. Delete belongs in the card header but only shows while that card is open, which keeps a collapsed list free of destructive controls and means an entry cannot be deleted without its contents having been on screen first — worth having while there is no undo behind it. A newly added card opens on add, so deleting one added by mistake still costs a single click.
+A setting that is a list of records — the console's script runners, triggers and shortcuts — is edited as one `.cel-expander` card per entry, matching how the native Packages and Pages panels render their lists. The card header carries just the entry's name; its fields are one expand away, so the header stays scannable. Add belongs on the list, below it. Delete belongs in the card header but only shows while that card is open, which keeps a collapsed list free of destructive controls and means an entry cannot be deleted without its contents having been on screen first — worth having while there is no undo behind it. A newly added card opens on add, so deleting one added by mistake still costs a single click. Any other action in the header stays reachable whatever state the card is in — the rule is about destruction rather than expansion, so a button that opens what the entry names needs no expand of its own.
 
-Lists reorder by dragging a `.cel-card-grip` handle in the header, with Alt+Up / Alt+Down on the focused header as the keyboard equivalent. This is on by default, and worth leaving on even where the order looks cosmetic: a card list is a list the user curates, its file order is what gets persisted, and one list that reorders next to another that does not reads as a bug. Order is also load-bearing more often than it first appears — the console resolves a file's runner by taking the first one whose extensions match. Do not use move-up / move-down buttons: chevrons read as a second expander control, and clicking one while a card is expanded jumps the layout out from under the user. A drag runs only against a collapsed list. Pressing the handle while any card is open therefore collapses the list and starts no drag; the user presses again to actually drag, and the cards stay collapsed afterwards. The extra press buys an exact grab: collapsing as part of the grab would shorten everything above the grabbed row and slide it out from under the pointer, by as much as a few hundred pixels, and no amount of scroll compensation reliably gets it back — the panel is often already at the top of its scroll range. Splitting the two makes the collapse a visible, understandable step rather than a mysterious offset.
+Lists reorder by dragging a `.cel-card-grip` handle in the header, with Alt+Up / Alt+Down on the focused header as the keyboard equivalent. A list of one entry carries no grip, since there is nothing to reorder it against. This is on by default, and worth leaving on even where the order looks cosmetic: a card list is a list the user curates, its file order is what gets persisted, and one list that reorders next to another that does not reads as a bug. Order is also load-bearing more often than it first appears — the console resolves a file's runner by taking the first one whose extensions match. Do not use move-up / move-down buttons: chevrons read as a second expander control, and clicking one while a card is expanded jumps the layout out from under the user. A drag runs only against a collapsed list. Pressing the handle while any card is open therefore collapses the list and starts no drag; the user presses again to actually drag, and the cards stay collapsed afterwards. The extra press buys an exact grab: collapsing as part of the grab would shorten everything above the grabbed row and slide it out from under the pointer, by as much as a few hundred pixels, and no amount of scroll compensation reliably gets it back — the panel is often already at the top of its scroll range. Splitting the two makes the collapse a visible, understandable step rather than a mysterious offset.
 
-The list then reorders live under the pointer, and Escape (or the browser cancelling the pointer) restores the order it started in.
+The list then reorders live under the pointer, and Escape (or the browser cancelling the pointer) restores the order it started in. The card the pointer is holding and the card the keyboard is on both take an accent ring, drawn over the card at its own corner radius rather than recolouring its border, so marking a card leaves its edge reading the same weight and the reorder keys always have a visible subject.
 
 Collapsing is what makes the live reorder tractable: uniform rows give the list a single row pitch, so the target slot can come from how far the pointer has travelled in whole pitches rather than from hit-testing the rows themselves. That one-way dependency is the important part — a reorder driven by the rows' live positions feeds its own output back into its next input, and the list oscillates as the row you just moved lands back under the cursor. Report the change once on release, not per slot, or every pixel of drag marks the document dirty and re-renders whatever the order drives.
 
@@ -227,7 +244,7 @@ Displaced rows slide to their new positions with a FLIP transition (measure, reo
 
 All of this is decoration layered on a gesture that never reads the rows, so no transform in flight can influence where the next slot lands.
 
-`ui/card-list.js` in the shared client implements this as `createCardList()`, and `celbridge.css` styles it. The list element takes `.cel-card-list`; the card template supplies `.cel-card-grip`, `.cel-card-icon`, `.cel-card-title`, `.cel-card-actions` and `.cel-card-delete`, of which the grip and the delete button are the two the module drives.
+`ui/card-list.js` in the shared client implements this as `createCardList()`, and `ui/card-list.css` styles it. The list element takes `.cel-card-list`; the card template supplies `.cel-card-grip`, `.cel-card-icon`, `.cel-card-title`, `.cel-card-actions` and `.cel-card-delete`, of which the grip and the delete button are the two the module drives.
 
 ```javascript
 import { createCardList } from '/assets/celbridge-client/ui/card-list.js';

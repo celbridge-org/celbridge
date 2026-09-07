@@ -138,7 +138,7 @@ public abstract partial class DocumentView : UserControl, IDocumentView
     /// <summary>
     /// Saves the document and sends a DocumentSaveCompletedMessage on success.
     /// </summary>
-    public async Task<Result> SaveDocument()
+    public async Task<Result> SaveAsync()
     {
         var result = await SaveDocumentContentAsync();
         if (result.IsSuccess)

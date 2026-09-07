@@ -1,0 +1,52 @@
+/* One of the shared components celbridge.css links. Link it beside celbridge-tokens.css to take this
+   component on its own, without the bare-element control rules. */
+
+/* Splitter: a draggable divider between two flex panes, matching the native WinUI Splitter — a filled band
+   at rest that fades in a 4px accent on hover and holds it solid while dragging. Place a `.cel-splitter`
+   between two flex children and drive the resize with attachSplitter() from ui/splitter.js (which toggles
+   the `dragging` class used below).
+
+   The band takes chrome rather than the gutter tone: a gutter separates two workspace panels, and this
+   separates two panes of one document, so the difference in tone is what tells them apart. It edges its
+   leading side, which faces the main pane whose content the host does not control. The trailing side faces
+   a panel of ours that the band already reads against. */
+.cel-splitter {
+    /* Declared here rather than left to the reset in celbridge.css, so the edge stays inside the band's
+       width on a page that links this sheet without it. */
+    box-sizing: border-box;
+    flex: 0 0 var(--cel-splitter-width, 8px);
+    position: relative;
+    /* The resize cursor the native Splitter asks for, SizeWestEast on Windows and resizeLeftRightCursor
+       on macOS. Not col-resize, which reads as the better fit for a column split but is a cursor the
+       browser draws itself rather than a system one, so a host mapping the web view's cursor onto a
+       shape has nothing to map it to and falls back to the arrow. */
+    cursor: ew-resize;
+    user-select: none;
+    touch-action: none;
+    background: var(--cel-chrome-bg);
+    border-left: 1px solid var(--cel-panel-edge);
+}
+
+/* Accent overlay: fades in on hover (matching the Splitter's 200ms fade), held solid while dragging. */
+.cel-splitter::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 4px;
+    transform: translateX(-50%);
+    background: var(--cel-accent);
+    opacity: 0;
+    transition: opacity 200ms ease-out 200ms;
+    pointer-events: none;
+}
+
+.cel-splitter:hover::after,
+.cel-splitter.dragging::after {
+    opacity: 1;
+}
+
+.cel-splitter.dragging::after {
+    transition: opacity 0ms;
+}
