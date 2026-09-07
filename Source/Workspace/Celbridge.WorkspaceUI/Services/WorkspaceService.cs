@@ -11,6 +11,10 @@ namespace Celbridge.WorkspaceUI.Services;
 
 public class WorkspaceService : IWorkspaceService, IDisposable
 {
+    // How often the save pass runs. Item save delays are measured in seconds, so this is the precision a
+    // save lands with.
+    private const double SavePassInterval = 0.1;
+
     private readonly ILogger<WorkspaceService> _logger;
     private readonly IMessengerService _messengerService;
     private readonly WorkspaceItemSaver _workspaceItemSaver;
@@ -32,6 +36,8 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IDocumentsPanel DocumentsPanel { get; private set; } = null!;
 
     private bool _workspaceStateIsDirty;
+
+    private double _timeSinceSavePass;
 
     public WorkspaceService(
         IServiceProvider serviceProvider,
@@ -114,25 +120,25 @@ public class WorkspaceService : IWorkspaceService, IDisposable
             }
         }
 
-        var workspaceItems = new List<IWorkspaceItem>();
-        workspaceItems.AddRange(DocumentsService.GetWorkspaceItems());
-        workspaceItems.AddRange(UtilityService.GetWorkspaceItems());
-
-        int pendingSaveCount = 0;
-
-        var saveItemsResult = await _workspaceItemSaver.SaveModifiedItemsAsync(workspaceItems, deltaTime);
-        if (saveItemsResult.IsFailure)
+        _timeSinceSavePass += deltaTime;
+        if (_timeSinceSavePass >= SavePassInterval)
         {
-            failed = true;
-            _logger.LogError($"Failed to save modified workspace items. {saveItemsResult.DiagnosticReport}");
-        }
-        else
-        {
-            pendingSaveCount = saveItemsResult.Value;
-        }
+            // The pass is given the time accumulated since it last ran, so save timers and retry waits
+            // count real time.
+            var savePassDelta = _timeSinceSavePass;
+            _timeSinceSavePass = 0;
 
-        var pendingSaveMessage = new PendingSaveCountMessage(pendingSaveCount);
-        _messengerService.Send(pendingSaveMessage);
+            var workspaceItems = new List<IWorkspaceItem>();
+            workspaceItems.AddRange(DocumentsService.GetWorkspaceItems());
+            workspaceItems.AddRange(UtilityService.GetWorkspaceItems());
+
+            var saveItemsResult = await _workspaceItemSaver.SaveModifiedItemsAsync(workspaceItems, savePassDelta);
+            if (saveItemsResult.IsFailure)
+            {
+                failed = true;
+                _logger.LogError($"Failed to save modified workspace items. {saveItemsResult.DiagnosticReport}");
+            }
+        }
 
         // Flush any pending Workspace-scope setting writes (panel sizes, search
         // options, last new-file extension). These are set on the UI thread but

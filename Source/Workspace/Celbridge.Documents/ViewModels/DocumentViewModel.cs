@@ -56,17 +56,17 @@ public abstract partial class DocumentViewModel : ObservableObject
             return Result<bool>.Fail($"Document does not have unsaved changes: {FileResource}");
         }
 
+        SaveTimer -= deltaTime;
         if (SaveTimer > 0)
         {
-            SaveTimer -= deltaTime;
-            if (SaveTimer <= 0)
-            {
-                SaveTimer = 0;
-                return true;
-            }
+            return false;
         }
 
-        return false;
+        // Restarted so content that is still unwritten comes due again after another delay. A save that
+        // succeeds clears HasUnsavedChanges, which ends the cycle at the guard above.
+        SaveTimer = SaveDelay;
+
+        return true;
     }
 
     /// <summary>

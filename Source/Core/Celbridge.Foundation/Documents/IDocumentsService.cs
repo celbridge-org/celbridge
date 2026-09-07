@@ -99,6 +99,12 @@ public interface IDocumentsService
     IReadOnlyList<IWorkspaceItem> GetWorkspaceItems();
 
     /// <summary>
+    /// Writes the content of every open document that still holds unsaved changes. A document that cannot
+    /// be written is logged and skipped, so the flush always completes.
+    /// </summary>
+    Task FlushModifiedDocumentsAsync();
+
+    /// <summary>
     /// Returns a snapshot of all open documents with their addresses and editor IDs.
     /// This is a cached snapshot that is safe to read from any thread.
     /// </summary>

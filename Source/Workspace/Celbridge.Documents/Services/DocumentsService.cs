@@ -40,6 +40,30 @@ public class DocumentsService : IDocumentsService, IDisposable
     // Reads TabView-backed state, so callers must be on the UI thread.
     public IReadOnlyList<IWorkspaceItem> GetWorkspaceItems() => DocumentsPanel.GetWorkspaceItems();
 
+    public async Task FlushModifiedDocumentsAsync()
+    {
+        foreach (var workspaceItem in GetWorkspaceItems())
+        {
+            if (!workspaceItem.HasUnsavedChanges)
+            {
+                continue;
+            }
+
+            try
+            {
+                var saveResult = await workspaceItem.SaveAsync();
+                if (saveResult.IsFailure)
+                {
+                    _logger.LogError($"Failed to write unsaved content for document: '{workspaceItem.FileResource}'. {saveResult.DiagnosticReport}");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"An exception occurred while writing unsaved content for document: '{workspaceItem.FileResource}'");
+            }
+        }
+    }
+
     public IReadOnlyList<OpenDocumentInfo> GetOpenDocuments() => DocumentsPanel.GetOpenDocuments();
 
     public OpenDocumentInfo? FindOpenDocument(ResourceKey fileResource)

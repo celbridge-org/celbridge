@@ -4,6 +4,7 @@ using Celbridge.Messaging;
 using Celbridge.Messaging.Services;
 using Celbridge.Resources;
 using Celbridge.Workspace;
+using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Tests.Documents;
 
@@ -23,6 +24,8 @@ public class DocumentTabViewModelTests
     private IResourceOperationService _resourceOperations = null!;
     private IResourceService _resourceService = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
+    private IStringLocalizer _stringLocalizer = null!;
+    private IDispatcher _dispatcher = null!;
     private readonly List<DocumentTabViewModel> _createdViewModels = new();
 
     [SetUp]
@@ -56,6 +59,18 @@ public class DocumentTabViewModelTests
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
+
+        _stringLocalizer = Substitute.For<IStringLocalizer>();
+        _stringLocalizer[Arg.Any<string>(), Arg.Any<object[]>()].Returns(call =>
+            new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+
+        // The view model marshals onto the UI thread; run inline so the assertions see the result.
+        _dispatcher = Substitute.For<IDispatcher>();
+        _dispatcher.TryEnqueue(Arg.Any<Action>()).Returns(call =>
+        {
+            call.Arg<Action>().Invoke();
+            return true;
+        });
     }
 
     [TearDown]
@@ -73,7 +88,13 @@ public class DocumentTabViewModelTests
 
     private DocumentTabViewModel CreateViewModel(ResourceKey fileResource, IDocumentView? documentView = null)
     {
-        var viewModel = new DocumentTabViewModel(_messengerService, _commandService, _logger, _workspaceWrapper)
+        var viewModel = new DocumentTabViewModel(
+            _messengerService,
+            _commandService,
+            _logger,
+            _workspaceWrapper,
+            _stringLocalizer,
+            _dispatcher)
         {
             FileResource = fileResource,
             DocumentView = documentView!,

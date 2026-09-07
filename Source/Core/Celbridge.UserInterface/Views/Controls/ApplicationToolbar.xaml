@@ -44,16 +44,30 @@
         <local:ProjectToolbar x:Name="ProjectToolbar"
                                  Grid.Column="1"/>
 
-        <!-- Save Icon - positioned to the left of layout toolbar -->
-        <controls:Icon x:Name="SaveIcon"
-                       Grid.Column="3"
-                       Visibility="{x:Bind ViewModel.IsWorkspaceLoaded, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                       HorizontalAlignment="Right"
-                       VerticalAlignment="Center"
-                       Margin="0,0,16,0"
-                       Opacity="{x:Bind ViewModel.IsSaving, Mode=OneWay, Converter={StaticResource BoolToOpacityConverter}}"
-                       FontSize="{StaticResource IconSizeMedium}"
-                       Symbol="Save"/>
+        <!-- Save status - positioned to the left of layout toolbar. The warning stays up for as long as
+             anything is failing to save, while the save glyph only marks a write in progress. -->
+        <StackPanel Grid.Column="3"
+                    Orientation="Horizontal"
+                    Visibility="{x:Bind ViewModel.IsWorkspaceLoaded, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Center"
+                    Margin="0,0,16,0">
+
+            <controls:Icon x:Name="SaveFailureIcon"
+                           Visibility="{x:Bind ViewModel.HasSaveFailures, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                           ToolTipService.ToolTip="{x:Bind ViewModel.SaveFailureMessage, Mode=OneWay}"
+                           VerticalAlignment="Center"
+                           Margin="0,0,8,0"
+                           FontSize="{StaticResource IconSizeMedium}"
+                           Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                           Symbol="Warning"/>
+
+            <controls:Icon x:Name="SaveIcon"
+                           VerticalAlignment="Center"
+                           Opacity="{x:Bind ViewModel.IsSaving, Mode=OneWay, Converter={StaticResource BoolToOpacityConverter}}"
+                           FontSize="{StaticResource IconSizeMedium}"
+                           Symbol="Save"/>
+        </StackPanel>
 
         <!-- Layout Toolbar - positioned on the right side of the toolbar -->
         <local:LayoutToolbar x:Name="LayoutToolbar"

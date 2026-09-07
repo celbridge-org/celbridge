@@ -186,6 +186,43 @@ public class DocumentViewModelTests
     }
 
     [Test]
+    public void UpdateSaveTimer_ReportsNoSaveIsDue_BeforeTheDelayElapses()
+    {
+        _vm.OnTextChanged();
+
+        var result = _vm.UpdateSaveTimer(0.5);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().BeFalse();
+    }
+
+    [Test]
+    public void UpdateSaveTimer_ComesDueAgain_WhenTheContentIsStillUnwritten()
+    {
+        _vm.OnTextChanged();
+
+        var firstResult = _vm.UpdateSaveTimer(1.0);
+
+        firstResult.Value.Should().BeTrue();
+        _vm.SaveTimer.Should().Be(1.0);
+
+        // The save did not clear the unsaved changes, so the document comes due again on the next delay.
+        var secondResult = _vm.UpdateSaveTimer(1.0);
+
+        secondResult.Value.Should().BeTrue();
+    }
+
+    [Test]
+    public void UpdateSaveTimer_Fails_WhenTheDocumentHasNoUnsavedChanges()
+    {
+        _vm.HasUnsavedChanges = false;
+
+        var result = _vm.UpdateSaveTimer(1.0);
+
+        result.IsFailure.Should().BeTrue();
+    }
+
+    [Test]
     public void ResourceChanged_TriggersReload_WhenFileChangedExternally()
     {
         // With no prior load/save the hash is null, so any change is treated as external
