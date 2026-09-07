@@ -94,9 +94,9 @@ public interface IDocumentsService
     IReadOnlyList<DocumentSection> VisibleSections { get; }
 
     /// <summary>
-    /// The open documents as saveable workspace items. A utility docked into a document tab is not included.
+    /// The open documents as workspace items. A utility docked into a document tab is not included.
     /// </summary>
-    IReadOnlyList<ISaveableWorkspaceItem> GetSaveableItems();
+    IReadOnlyList<IWorkspaceItem> GetWorkspaceItems();
 
     /// <summary>
     /// Returns a snapshot of all open documents with their addresses and editor IDs.

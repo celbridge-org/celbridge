@@ -27,7 +27,7 @@ public class WorkspaceItemSaver
     /// for theirs. Delta time is the time since this method was last called.
     /// </summary>
     public async Task<Result<int>> SaveModifiedItemsAsync(
-        IReadOnlyList<ISaveableWorkspaceItem> items,
+        IReadOnlyList<IWorkspaceItem> items,
         double deltaTime)
     {
         int savedCount = 0;

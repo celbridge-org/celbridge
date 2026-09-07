@@ -114,13 +114,13 @@ public class WorkspaceService : IWorkspaceService, IDisposable
             }
         }
 
-        var saveableItems = new List<ISaveableWorkspaceItem>();
-        saveableItems.AddRange(DocumentsService.GetSaveableItems());
-        saveableItems.AddRange(UtilityService.GetSaveableItems());
+        var workspaceItems = new List<IWorkspaceItem>();
+        workspaceItems.AddRange(DocumentsService.GetWorkspaceItems());
+        workspaceItems.AddRange(UtilityService.GetWorkspaceItems());
 
         int pendingSaveCount = 0;
 
-        var saveItemsResult = await _workspaceItemSaver.SaveModifiedItemsAsync(saveableItems, deltaTime);
+        var saveItemsResult = await _workspaceItemSaver.SaveModifiedItemsAsync(workspaceItems, deltaTime);
         if (saveItemsResult.IsFailure)
         {
             failed = true;

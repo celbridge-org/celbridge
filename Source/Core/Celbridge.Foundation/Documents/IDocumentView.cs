@@ -5,7 +5,7 @@ namespace Celbridge.Documents;
 /// <summary>
 /// Interface for interacting with a document view.
 /// </summary>
-public interface IDocumentView : ISaveableWorkspaceItem
+public interface IDocumentView : IWorkspaceItem
 {
     /// <summary>
     /// Id of the factory that produced this view. Immutable for the view's lifetime.

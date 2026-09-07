@@ -515,9 +515,9 @@ public class UtilityService : IUtilityService, IDisposable
         _messengerService.Send(new FlashDocumentMessage(fileResource));
     }
 
-    public IReadOnlyList<ISaveableWorkspaceItem> GetSaveableItems()
+    public IReadOnlyList<IWorkspaceItem> GetWorkspaceItems()
     {
-        return new List<ISaveableWorkspaceItem>(_utilities);
+        return new List<IWorkspaceItem>(_utilities);
     }
 
     public async Task TeardownUtilitiesAsync()

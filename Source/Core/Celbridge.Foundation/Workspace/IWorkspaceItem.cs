@@ -1,9 +1,10 @@
 namespace Celbridge.Workspace;
 
 /// <summary>
-/// A workspace item that buffers edits and writes them to its file resource when its save timer expires.
+/// A document or utility open in the workspace. An item holding unsaved changes is written to its file
+/// resource when its save timer expires.
 /// </summary>
-public interface ISaveableWorkspaceItem
+public interface IWorkspaceItem
 {
     /// <summary>
     /// The file resource the item's content is stored in.
