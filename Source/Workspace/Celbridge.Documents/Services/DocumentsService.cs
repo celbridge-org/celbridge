@@ -278,6 +278,28 @@ public class DocumentsService : IDocumentsService, IDisposable
         _messengerService.Register<DocumentLayoutChangedMessage>(this, OnDocumentLayoutChangedMessage);
         _messengerService.Register<ActiveDocumentChangedMessage>(this, OnActiveDocumentChangedMessage);
         _messengerService.Register<AreaLayoutChangedMessage>(this, OnAreaLayoutChangedMessage);
+
+        RepairHostedViewClip();
+    }
+
+    // UNO-BUG: the Skia canvas paints over the native views restored into the panel instead of leaving them
+    // through, so a restored document shows nothing until the visual tree changes. Cycling the panel's
+    // visibility recomputes the clip against arranged geometry. Both states are applied in one dispatcher
+    // turn, so the collapsed panel is never presented.
+    private void RepairHostedViewClip()
+    {
+        if (!OperatingSystem.IsMacOS()
+            || DocumentsPanel is not Microsoft.UI.Xaml.FrameworkElement panel)
+        {
+            return;
+        }
+
+        panel.Visibility = Microsoft.UI.Xaml.Visibility.Collapsed;
+        panel.UpdateLayout();
+        panel.Visibility = Microsoft.UI.Xaml.Visibility.Visible;
+        panel.UpdateLayout();
+
+        _logger.LogDebug("Repaired the hosted view clip after restoring the documents panel");
     }
 
     private void OnActiveDocumentChangedMessage(object recipient, ActiveDocumentChangedMessage message)

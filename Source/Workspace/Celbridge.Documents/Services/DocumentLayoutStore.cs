@@ -13,6 +13,7 @@ public class DocumentLayoutStore
 {
     private const string OpenDocumentAddressesKey = "OpenDocumentAddresses";
     private const string ActiveDocumentKey = "ActiveDocument";
+    private const string SectionSelectionsKey = "SectionSelections";
     private const string AreaSplitRatiosKey = "AreaSplitRatios";
     private const string DocumentEditorStatesKey = "DocumentEditorStates";
 
@@ -62,6 +63,8 @@ public class DocumentLayoutStore
                 .ToList();
 
             await propertyBag.SetPropertyAsync(OpenDocumentAddressesKey, openDocumentAddresses);
+
+            await StoreSectionSelectionsAsync();
         }
         catch (Exception ex)
         {
@@ -79,10 +82,38 @@ public class DocumentLayoutStore
             // reports Empty until the workspace page finishes loading, and this runs before that.
             var activeDocument = DocumentsPanel.ActiveDocument;
             await propertyBag.SetPropertyAsync(ActiveDocumentKey, activeDocument.ToString());
+
+            await StoreSectionSelectionsAsync();
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to store the active document");
+        }
+    }
+
+    // A section keeps its own selected tab, so every section restores showing what the user left it
+    // showing.
+    private async Task StoreSectionSelectionsAsync()
+    {
+        try
+        {
+            var propertyBag = GetPropertyBag();
+
+            var sectionSelections = new Dictionary<string, string>();
+            foreach (var section in DocumentLayoutHelper.AllSections)
+            {
+                var selectedDocument = DocumentsPanel.GetSectionSelection(section);
+                if (!selectedDocument.IsEmpty)
+                {
+                    sectionSelections[section.ToToken()] = selectedDocument.ToString();
+                }
+            }
+
+            await propertyBag.SetPropertyAsync(SectionSelectionsKey, sectionSelections);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to store the section selections");
         }
     }
 
@@ -227,7 +258,9 @@ public class DocumentLayoutStore
             return;
         }
 
-        await RestoreDocumentsAsync(storedLayout.OpenDocumentAddresses, storedLayout.EditorStates);
+        await RestoreDocumentsAsync(
+            storedLayout.OpenDocumentAddresses,
+            storedLayout.EditorStates);
 
         // A document whose file has gone since the last session leaves the section it was restoring into
         // empty, so fold away any split that ended up with nothing in it.
@@ -236,6 +269,10 @@ public class DocumentLayoutStore
             DocumentsPanel.ReconcileAreaSplit(area);
         }
 
+        // Section selections are applied before the active document, so the active document wins the
+        // selection in the section that holds it.
+        RestoreSectionSelections(storedLayout.SectionSelections);
+
         RestoreActiveDocument(storedLayout.ActiveDocument);
     }
 
@@ -243,7 +280,8 @@ public class DocumentLayoutStore
         Dictionary<string, StoredAreaSplitRatio>? AreaSplitRatios,
         List<StoredDocumentAddress>? OpenDocumentAddresses,
         Dictionary<string, string>? EditorStates,
-        string? ActiveDocument);
+        string? ActiveDocument,
+        Dictionary<string, string>? SectionSelections);
 
     private async Task<StoredLayout> LoadStoredLayoutAsync()
     {
@@ -261,7 +299,10 @@ public class DocumentLayoutStore
         var activeDocument = await TryLoadPropertyAsync<string>(
             propertyBag, ActiveDocumentKey);
 
-        return new StoredLayout(areaSplitRatios, openDocumentAddresses, editorStates, activeDocument);
+        var sectionSelections = await TryLoadPropertyAsync<Dictionary<string, string>>(
+            propertyBag, SectionSelectionsKey);
+
+        return new StoredLayout(areaSplitRatios, openDocumentAddresses, editorStates, activeDocument, sectionSelections);
     }
 
     // Reads one stored value, treating one that cannot be read as absent. Layout written by an
@@ -367,6 +408,30 @@ public class DocumentLayoutStore
                 _logger.LogWarning(openResult, $"Failed to open previously open document '{fileResource}'");
                 await StoreDocumentEditorStateAsync(fileResource, null);
             }
+        }
+    }
+
+
+    private void RestoreSectionSelections(IReadOnlyDictionary<string, string>? sectionSelections)
+    {
+        if (sectionSelections is null)
+        {
+            return;
+        }
+
+        foreach (var (sectionToken, resource) in sectionSelections)
+        {
+            if (!DocumentSectionTokens.TryParse(sectionToken, out var section))
+            {
+                continue;
+            }
+
+            if (!ResourceKey.TryCreate(resource, out var fileResource))
+            {
+                continue;
+            }
+
+            DocumentsPanel.SetSectionSelection(section, fileResource);
         }
     }
 

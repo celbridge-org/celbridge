@@ -42,6 +42,31 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
 
     public IReadOnlyList<DocumentSection> VisibleSections => SectionContainer.Areas.VisibleSections;
 
+    /// <summary>
+    /// The document each section holding documents currently has selected.
+    /// </summary>
+    public ResourceKey GetSectionSelection(DocumentSection section)
+    {
+        var sectionView = SectionContainer.GetSection(section);
+        return sectionView?.GetSelectedDocument() ?? ResourceKey.Empty;
+    }
+
+    /// <summary>
+    /// Selects a document within its own section without making it the active document. A resource that is
+    /// not open in that section is ignored.
+    /// </summary>
+    public void SetSectionSelection(DocumentSection section, ResourceKey fileResource)
+    {
+        var sectionView = SectionContainer.GetSection(section);
+        var documentTab = sectionView?.GetDocumentTab(fileResource);
+        if (documentTab is null)
+        {
+            return;
+        }
+
+        sectionView!.SelectTab(documentTab);
+    }
+
     public ResourceKey ActiveDocument
     {
         get => SectionContainer.ActiveDocument;
