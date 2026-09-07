@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.Utilities;
 using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Commands;
@@ -11,9 +12,10 @@ public class GetDocumentStateCommand : CommandBase, IGetDocumentStateCommand
 
     public DocumentStateSnapshot ResultValue { get; private set; }
         = new DocumentStateSnapshot(
-            ResourceKey.Empty,
             new[] { DocumentSection.MainLeft },
-            Array.Empty<OpenDocumentInfo>());
+            Array.Empty<OpenDocumentInfo>(),
+            new Dictionary<DocumentSection, ResourceKey>(),
+            ResourceKey.Empty);
 
     public GetDocumentStateCommand(IWorkspaceWrapper workspaceWrapper)
     {
@@ -30,7 +32,17 @@ public class GetDocumentStateCommand : CommandBase, IGetDocumentStateCommand
         var visibleSections = documentsService.VisibleSections;
         var openDocuments = documentsService.GetOpenDocuments();
 
-        ResultValue = new DocumentStateSnapshot(activeDocument, visibleSections, openDocuments);
+        var selectedDocuments = new Dictionary<DocumentSection, ResourceKey>();
+        foreach (var section in DocumentLayoutHelper.AllSections)
+        {
+            var selectedDocument = documentsService.GetSelectedDocument(section);
+            if (!selectedDocument.IsEmpty)
+            {
+                selectedDocuments[section] = selectedDocument;
+            }
+        }
+
+        ResultValue = new DocumentStateSnapshot(visibleSections, openDocuments, selectedDocuments, activeDocument);
 
         return Result.Ok();
     }

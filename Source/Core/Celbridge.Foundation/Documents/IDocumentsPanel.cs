@@ -82,6 +82,12 @@ public interface IDocumentsPanel
     ResourceKey GetSelectedDocument(DocumentSection section);
 
     /// <summary>
+    /// Selects a document within its own section without making it the active document. A resource that is
+    /// not open in that section is ignored.
+    /// </summary>
+    void SetSelectedDocument(DocumentSection section, ResourceKey fileResource);
+
+    /// <summary>
     /// Gets the document view for an already-opened document.
     /// Returns null if the document is not open.
     /// </summary>

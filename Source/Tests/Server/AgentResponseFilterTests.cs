@@ -232,6 +232,7 @@ public class AgentResponseFilterTests
         _documentStateProvider.Result = new DocumentStateResult(
             ActiveDocument: "/Notes/README.md",
             VisibleSections: new List<string> { "main_left" },
+            SelectedDocuments: new Dictionary<string, string> { ["main_left"] = "/Notes/README.md" },
             OpenDocuments: new List<OpenDocumentEntry>
             {
                 new OpenDocumentEntry("/Notes/README.md", "main_left", 0, true, "markdown"),
@@ -619,7 +620,7 @@ public class AgentResponseFilterTests
     private sealed class FakeDocumentStateProvider : IDocumentStateProvider
     {
         public Result<DocumentStateResult> Result { get; set; } =
-            new DocumentStateResult("", new List<string> { "main_left" }, new List<OpenDocumentEntry>());
+            new DocumentStateResult(new List<string> { "main_left" }, new List<OpenDocumentEntry>(), new Dictionary<string, string>(), "");
 
         public Task<Result<DocumentStateResult>> GetStateAsync() => Task.FromResult(Result);
     }

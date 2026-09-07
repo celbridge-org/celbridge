@@ -42,6 +42,18 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
 
     public IReadOnlyList<DocumentSection> VisibleSections => SectionContainer.Areas.VisibleSections;
 
+    public void SetSelectedDocument(DocumentSection section, ResourceKey fileResource)
+    {
+        var sectionView = SectionContainer.GetSection(section);
+        var documentTab = sectionView?.GetDocumentTab(fileResource);
+        if (documentTab is null)
+        {
+            return;
+        }
+
+        sectionView!.SelectTab(documentTab);
+    }
+
     public ResourceKey ActiveDocument
     {
         get => SectionContainer.ActiveDocument;

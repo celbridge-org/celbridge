@@ -13,6 +13,7 @@ public class DocumentLayoutStore
 {
     private const string OpenDocumentAddressesKey = "OpenDocumentAddresses";
     private const string ActiveDocumentKey = "ActiveDocument";
+    private const string SelectedDocumentsKey = "SelectedDocuments";
     private const string AreaSplitRatiosKey = "AreaSplitRatios";
     private const string DocumentEditorStatesKey = "DocumentEditorStates";
 
@@ -62,6 +63,8 @@ public class DocumentLayoutStore
                 .ToList();
 
             await propertyBag.SetPropertyAsync(OpenDocumentAddressesKey, openDocumentAddresses);
+
+            await StoreSelectedDocumentsAsync();
         }
         catch (Exception ex)
         {
@@ -79,10 +82,37 @@ public class DocumentLayoutStore
             // reports Empty until the workspace page finishes loading, and this runs before that.
             var activeDocument = DocumentsPanel.ActiveDocument;
             await propertyBag.SetPropertyAsync(ActiveDocumentKey, activeDocument.ToString());
+
+            await StoreSelectedDocumentsAsync();
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to store the active document");
+        }
+    }
+
+    // A section keeps its own selected tab.
+    private async Task StoreSelectedDocumentsAsync()
+    {
+        try
+        {
+            var propertyBag = GetPropertyBag();
+
+            var selectedDocuments = new Dictionary<string, string>();
+            foreach (var section in DocumentLayoutHelper.AllSections)
+            {
+                var selectedDocument = DocumentsPanel.GetSelectedDocument(section);
+                if (!selectedDocument.IsEmpty)
+                {
+                    selectedDocuments[section.ToToken()] = selectedDocument.ToString();
+                }
+            }
+
+            await propertyBag.SetPropertyAsync(SelectedDocumentsKey, selectedDocuments);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to store the section selections");
         }
     }
 
@@ -236,6 +266,10 @@ public class DocumentLayoutStore
             DocumentsPanel.ReconcileAreaSplit(area);
         }
 
+        // Section selections are applied before the active document, so the active document wins the
+        // selection in the section that holds it.
+        RestoreSelectedDocuments(storedLayout.SelectedDocuments);
+
         RestoreActiveDocument(storedLayout.ActiveDocument);
     }
 
@@ -243,7 +277,8 @@ public class DocumentLayoutStore
         Dictionary<string, StoredAreaSplitRatio>? AreaSplitRatios,
         List<StoredDocumentAddress>? OpenDocumentAddresses,
         Dictionary<string, string>? EditorStates,
-        string? ActiveDocument);
+        string? ActiveDocument,
+        Dictionary<string, string>? SelectedDocuments);
 
     private async Task<StoredLayout> LoadStoredLayoutAsync()
     {
@@ -261,7 +296,10 @@ public class DocumentLayoutStore
         var activeDocument = await TryLoadPropertyAsync<string>(
             propertyBag, ActiveDocumentKey);
 
-        return new StoredLayout(areaSplitRatios, openDocumentAddresses, editorStates, activeDocument);
+        var selectedDocuments = await TryLoadPropertyAsync<Dictionary<string, string>>(
+            propertyBag, SelectedDocumentsKey);
+
+        return new StoredLayout(areaSplitRatios, openDocumentAddresses, editorStates, activeDocument, selectedDocuments);
     }
 
     // Reads one stored value, treating one that cannot be read as absent. Layout written by an
@@ -367,6 +405,30 @@ public class DocumentLayoutStore
                 _logger.LogWarning(openResult, $"Failed to open previously open document '{fileResource}'");
                 await StoreDocumentEditorStateAsync(fileResource, null);
             }
+        }
+    }
+
+    private void RestoreSelectedDocuments(IReadOnlyDictionary<string, string>? selectedDocuments)
+    {
+        if (selectedDocuments is null)
+        {
+            return;
+        }
+
+        foreach (var (sectionToken, resource) in selectedDocuments)
+        {
+            if (!DocumentSectionTokens.TryParse(sectionToken, out var section))
+            {
+                continue;
+            }
+
+            if (!ResourceKey.TryCreate(resource, out var fileResource))
+            {
+                _logger.LogWarning($"Invalid resource key '{resource}' found for a previously selected document");
+                continue;
+            }
+
+            DocumentsPanel.SetSelectedDocument(section, fileResource);
         }
     }
 

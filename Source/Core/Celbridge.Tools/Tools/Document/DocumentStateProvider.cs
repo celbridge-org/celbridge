@@ -7,9 +7,10 @@ namespace Celbridge.Tools;
 /// Result returned by document_get_state with the visual state of the document editor.
 /// </summary>
 public record class DocumentStateResult(
-    string ActiveDocument,
     List<string> VisibleSections,
-    List<OpenDocumentEntry> OpenDocuments);
+    List<OpenDocumentEntry> OpenDocuments,
+    Dictionary<string, string> SelectedDocuments,
+    string ActiveDocument);
 
 /// <summary>
 /// An open document entry within the document_get_state result.
@@ -67,14 +68,18 @@ internal sealed class DocumentStateProvider : IDocumentStateProvider
             .Select(section => section.ToToken())
             .ToList();
 
+        var selectedDocuments = snapshot.SelectedDocuments
+            .ToDictionary(entry => entry.Key.ToToken(), entry => entry.Value.ToString());
+
         // An empty active document key (no document open) serialises as the
         // empty string rather than the canonical "project:" form, so the
         // response field is a clean signal that nothing is active.
         var activeDocumentString = activeDocument.IsEmpty ? string.Empty : activeDocument.ToString();
 
         return new DocumentStateResult(
-            activeDocumentString,
             visibleSections,
-            documents);
+            documents,
+            selectedDocuments,
+            activeDocumentString);
     }
 }
