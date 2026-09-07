@@ -282,10 +282,10 @@ public class DocumentsService : IDocumentsService, IDisposable
         RepairHostedViewClip();
     }
 
-    // UNO-BUG: the Skia canvas paints over the native views restored into the panel instead of leaving them
-    // through, so a restored document shows nothing until the visual tree changes. Cycling the panel's
-    // visibility recomputes the clip against arranged geometry. Both states are applied in one dispatcher
-    // turn, so the collapsed panel is never presented.
+    // UNO-BUG: the Skia canvas covers the native views restored into the panel, so a restored document
+    // shows nothing until the visual tree changes. Cycling the panel's visibility recomputes the clip
+    // against arranged geometry. Both states are applied in one dispatcher turn, so the collapsed panel is
+    // never presented.
     private void RepairHostedViewClip()
     {
         if (!OperatingSystem.IsMacOS()

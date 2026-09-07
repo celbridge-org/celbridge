@@ -18,8 +18,8 @@ public interface IDocumentsPanel
     ResourceKey ActiveDocument { get; set; }
 
     /// <summary>
-    /// The document the section currently has selected, or Empty when it holds none. A section keeps its
-    /// selection while its area is hidden, so a hidden section still reports one.
+    /// The document the section currently has selected, or Empty when it holds none. A hidden section
+    /// still reports its selection.
     /// </summary>
     ResourceKey GetSectionSelection(DocumentSection section);
 

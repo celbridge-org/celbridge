@@ -91,8 +91,7 @@ public class DocumentLayoutStore
         }
     }
 
-    // A section keeps its own selected tab, so every section restores showing what the user left it
-    // showing.
+    // A section keeps its own selected tab.
     private async Task StoreSectionSelectionsAsync()
     {
         try
