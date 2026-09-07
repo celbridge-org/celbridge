@@ -137,6 +137,9 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     // Spread added to every wake, so pages registered together do not settle into waking in the same instant.
     private const int KeepAliveJitterSeconds = 5;
 
+    // How often a page that keeps missing its wake repeats the report.
+    private const int FailuresPerReport = 10;
+
     // Wakes this hosted web view until it is closed. WebKit stops a hidden page's event loop after a few
     // minutes, so it services no host RPC until the user activates it, and evaluating a trivial script
     // restarts it.
@@ -178,6 +181,9 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     // are never configured away from the dispatcher.
     private async Task KeepPageAwakeAsync(CoreWebView2 coreWebView2, CancellationToken cancellationToken)
     {
+        var consecutiveFailures = 0;
+        long lastWebContentProcessId = 0;
+
         while (true)
         {
             try
@@ -186,6 +192,31 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
                 await Task.Delay(TimeSpan.FromSeconds(KeepAliveIntervalSeconds) + jitter, cancellationToken);
 
                 await EvalAsync(coreWebView2, "0");
+
+                if (consecutiveFailures > 0)
+                {
+                    _logger.LogInformation(
+                        "A hosted page is responding again after {FailureCount} missed wake(s)",
+                        consecutiveFailures);
+                    consecutiveFailures = 0;
+                }
+
+                // WebKit replaces the process rendering a page when it terminates it, so an id that changes
+                // between wakes dates the moment the page lost its content.
+                var webContentProcessId = ReadWebContentProcessId(coreWebView2);
+                if (webContentProcessId != 0)
+                {
+                    if (lastWebContentProcessId != 0
+                        && webContentProcessId != lastWebContentProcessId)
+                    {
+                        _logger.LogWarning(
+                            "The WebContent process behind a hosted page was replaced: {PreviousProcessId} -> {ProcessId}",
+                            lastWebContentProcessId,
+                            webContentProcessId);
+                    }
+
+                    lastWebContentProcessId = webContentProcessId;
+                }
             }
             catch (OperationCanceledException)
             {
@@ -198,9 +229,31 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
             }
             catch (Exception ex)
             {
-                _logger.LogDebug(ex, "Could not wake a hosted page");
+                consecutiveFailures++;
+
+                // A page that misses every wake would otherwise report itself on each one.
+                if (consecutiveFailures == 1
+                    || consecutiveFailures % FailuresPerReport == 0)
+                {
+                    _logger.LogWarning(
+                        ex,
+                        "A hosted page has missed {FailureCount} consecutive wake(s)",
+                        consecutiveFailures);
+                }
             }
         }
+    }
+
+    // Zero when the head or the platform does not report one.
+    private long ReadWebContentProcessId(CoreWebView2 coreWebView2)
+    {
+        if (!OperatingSystem.IsMacOS()
+            || !MacOSWebViewInterop.TryGetNativeWebViewHandle(coreWebView2, out var nativeHandle, out _))
+        {
+            return 0;
+        }
+
+        return MacOSWebViewInterop.GetWebContentProcessId(nativeHandle);
     }
 
     // UNO-BUG: the native frame is arranged only while the control is in the visual tree.
