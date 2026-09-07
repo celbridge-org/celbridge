@@ -48,7 +48,27 @@ export class LogAPI {
      * @param {Error} [error] - Appended with its stack when supplied.
      */
     error(message, error = null) {
-        const detail = error && error.stack ? `${message}: ${error.stack}` : message;
+        if (error === null || error === undefined) {
+            this.#write('error', message);
+            return;
+        }
+
+        // WebKit's Error.stack carries only the frames, so an error reported through the stack alone reaches
+        // the log without the one line that says what went wrong. V8 prefixes the stack with the same text,
+        // which is why it is only added when the stack does not already open with it.
+        const name = error.name ?? 'Error';
+        const reason = error.message ? `${name}: ${error.message}` : name;
+        const stack = error.stack ?? '';
+
+        let detail;
+        if (!stack) {
+            detail = `${message}: ${reason}`;
+        } else if (stack.startsWith(name)) {
+            detail = `${message}: ${stack}`;
+        } else {
+            detail = `${message}: ${reason}\n${stack}`;
+        }
+
         this.#write('error', detail);
     }
 

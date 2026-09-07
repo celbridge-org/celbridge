@@ -41,6 +41,18 @@ public sealed class ProxyHostChannel : IHostChannel, IDisposable
         _logger = ServiceLocator.AcquireService<ILogger<ProxyHostChannel>>();
     }
 
+    /// <summary>
+    /// Whether a transport is bound, and how many outbound messages are buffered waiting for one. Both are
+    /// read under the same lock, so the pair always describes one instant.
+    /// </summary>
+    public (bool IsBound, int PendingOutboundCount) GetTransportState()
+    {
+        lock (_gate)
+        {
+            return (_boundChannel is not null, _pendingOutbound.Count);
+        }
+    }
+
     public void PostMessage(string json)
     {
         IHostChannel? boundChannel;

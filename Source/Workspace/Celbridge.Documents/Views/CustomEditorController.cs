@@ -1017,7 +1017,19 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
         if (completedTask != requestStateTask)
         {
-            _logger.LogWarning("Editor did not return state within {Seconds}s; closing without preserving editor state.", EditorStateRequestTimeoutSeconds);
+            // Outbound messages are buffered only while no transport is bound, so a bound channel always
+            // reports nothing pending.
+            var proxyChannel = _proxyChannel;
+            var transportState = proxyChannel?.GetTransportState();
+
+            _logger.LogWarning(
+                "Editor did not return state within {Seconds}s; closing without preserving editor state. File: {File}, proxy channel {HasProxyChannel}, transport bound {IsBound}, pending outbound {PendingOutbound}",
+                EditorStateRequestTimeoutSeconds,
+                _viewModel.FilePath,
+                proxyChannel is not null,
+                transportState?.IsBound,
+                transportState?.PendingOutboundCount);
+
             ObserveAbandonedRequest(requestStateTask);
             return null;
         }

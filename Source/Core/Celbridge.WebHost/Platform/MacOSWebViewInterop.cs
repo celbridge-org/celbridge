@@ -182,26 +182,28 @@ public static class MacOSWebViewInterop
     /// side's owning reference while managed code keeps the raw handle; a later reattach or message then
     /// crashes on the freed view. Pinning the view turns those touches into calls on a live object. The
     /// WebContent renderer is still reclaimed by CloseNativeWebView, so what leaks is the view shell only.
+    /// Returns the background page activity preferences applied to a newly pinned view, or null when
+    /// nothing was pinned.
     /// </summary>
     // UNO-BUG: MacOSNativeElement disposes the native view on Unloaded while the handle stays in use.
-    public static void RetainNativeWebView(IntPtr webView)
+    public static IReadOnlyList<string>? RetainNativeWebView(IntPtr webView)
     {
         if (webView == IntPtr.Zero)
         {
-            return;
+            return null;
         }
 
         lock (_pinnedWebViews)
         {
             if (!_pinnedWebViews.Add(webView))
             {
-                return;
+                return null;
             }
         }
 
         SendMessage(webView, GetSelector("retain"));
 
-        EnableBackgroundPageActivity(webView);
+        return EnableBackgroundPageActivity(webView);
     }
 
     /// <summary>
@@ -238,7 +240,7 @@ public static class MacOSWebViewInterop
     /// preferences that were applied, for diagnostics. Private SPI, each guarded by respondsToSelector: so an
     /// OS that drops one degrades rather than crashing.
     /// </summary>
-    public static IReadOnlyList<string> EnableBackgroundPageActivity(IntPtr webView)
+    private static IReadOnlyList<string> EnableBackgroundPageActivity(IntPtr webView)
     {
         var applied = new List<string>();
 
