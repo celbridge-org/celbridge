@@ -38,26 +38,20 @@ html, body {
     overflow: hidden;
 }
 
-/* The content and the inspector rail divide the document between them, the rail down the left of a wide one
-   and across the top of a narrow one. Nothing overlaps in either arrangement. The rail leads the content on
-   the side the workspace utility rail leads from, so the console's two levels of navigation read in one
-   direction: the settings button, then the section nav of the surface it opens. */
+/* The content and the inspector rail divide the document between them, the rail down the left of a wide
+   console and across the top of a narrow one. */
 #app {
     display: flex;
     height: 100vh;
     width: 100vw;
 }
 
-/* Stacked, the rail lays out along the top and the content takes the row below it, mirroring the section
-   switcher's own two layouts. A rail in a column would take width a narrow console has run out of, where a
-   strip takes height it has to spare, since a document narrow enough to stack is a tall one. */
 #app[data-rail="stacked"] {
     flex-direction: column;
 }
 
-/* The settings surface fills the document, and the only thing the rail does over it is lead back to the
-   terminal, which the close in the section area's corner does instead. So the rail goes, the surface takes
-   the width or the height it was holding, and the section nav is the only navigation on screen. */
+/* The close in the section area's corner is the way back to the terminal, so the rail has nothing left to do
+   over the settings surface. */
 #app[data-surface="settings"] > .cel-rail {
     display: none;
 }
@@ -71,8 +65,6 @@ html, body {
     min-height: 0;
 }
 
-/* The shortcut group sits after the settings button and scrolls once it outgrows the rail, so growth pushes
-   away from the settings button rather than moving it. */
 #shortcut-rail {
     display: flex;
     flex: 0 1 auto;
@@ -82,9 +74,8 @@ html, body {
     scrollbar-width: none;
 }
 
-/* The shortcut group is the console's own container, so the shared horizontal variant cannot turn it: laid
-   along the strip the shortcuts keep the order they are defined in, reading away from the settings button
-   the way they read down from it in the column. */
+/* Turned with the rail. The shared horizontal variant cannot reach this group, which is the console's own
+   container rather than part of the component. */
 #app[data-rail="stacked"] #shortcut-rail {
     flex-direction: row;
     min-width: 0;
@@ -105,8 +96,7 @@ html, body {
     background: var(--console-terminal-bg);
 }
 
-/* Inset on every side. The rail no longer sits against the terminal's last column, so nothing else stops
-   the text at the document's edge. */
+/* Inset on every side, so the terminal's text never runs to the document's edge. */
 #terminal {
     position: absolute;
     inset: 0;
@@ -191,10 +181,7 @@ html, body {
     margin-bottom: 0;
 }
 
-/* The way back to the terminal, in the corner a panel's close sits in, and in the same corner in both of the
-   switcher's layouts. It reads as the counterpart of the rail button that opened the surface, which is off
-   screen for as long as the surface is up. The footer is left to the one action that belongs there, since a
-   second full-width button beside Reopen Console only competes with it. */
+/* Positions the close below, so it lands in the same corner in both of the switcher's layouts. */
 #settings-switcher .cel-section-area {
     position: relative;
 }
@@ -205,8 +192,8 @@ html, body {
     right: var(--cel-section-inset);
 }
 
-/* The header block reserves the corner rather than wrapping its description underneath the button: the
-   button's own inset, its width, and a gap the size of the inset between it and the text. */
+/* Reserves the corner for the close button: the button's inset, its width, and a gap the size of the inset
+   between it and the text. */
 #settings-switcher .cel-section-header {
     padding-right: calc(var(--cel-section-inset) * 2 + var(--cel-icon-button-size));
 }

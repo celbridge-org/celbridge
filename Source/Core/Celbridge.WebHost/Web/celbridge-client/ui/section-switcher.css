@@ -60,9 +60,8 @@
        line rather than putting them past the edge with no way to reach them. */
     flex-wrap: wrap;
     gap: 4px;
-    /* Lines the strip up with the heading in the block below it, and stops short of it: the header's own
-       inset is most of the distance to the heading, so the strip adds a little rather than a second gap of
-       its own. */
+    /* Lines the strip up with the heading in the block below it. The header's own inset carries most of
+       the gap down to that heading, so the strip adds only a little. */
     padding: 0 var(--cel-section-inset) 4px;
 }
 

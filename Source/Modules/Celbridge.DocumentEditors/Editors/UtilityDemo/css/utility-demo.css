@@ -7,7 +7,6 @@ body {
     height: 100%;
 }
 
-/* The switcher fills the utility and is inset from its edge by the margin every settings surface keeps. */
 body {
     padding: var(--cel-settings-inset);
 }

@@ -18,15 +18,9 @@
     <script src="lib/addon-web-links.js"></script>
 </head>
 <body>
-    <!-- The surface showing is held here, and the terminal is the one a console opens on. The rail
-         arrangement is not: the stylesheet's own rules are the column, so the page lays out that way
-         before console.js has measured it, and naming it here would pin it against the measurement. -->
+    <!-- The surface showing is held here, and the terminal is the one a console opens on. -->
     <div id="app" data-surface="terminal">
-        <!-- Inspector rail: down the left of the content, or across the top of a narrow console. It leads
-             the content in the markup as well as on screen, so the two levels of navigation read in one
-             direction and reach focus in that order: this button, then the settings surface's own section
-             nav. The settings button leads the shortcut buttons in both arrangements, so its position stays
-             fixed as the user adds and removes shortcuts from the panel it opens. -->
+        <!-- Inspector rail: down the left of the content, or across the top of a narrow console. -->
         <div class="cel-rail">
             <button id="open-settings" class="cel-rail-button" type="button" data-loc-key="Console_Settings_Title" data-loc-attr="title,aria-label">
                 <i class="bi bi-sliders"></i>
@@ -80,8 +74,7 @@
 
                     <div class="cel-section-area">
 
-                        <!-- One close for the whole surface rather than one per section header, so it sits
-                             over the header block rather than inside any one of them. -->
+                        <!-- One close shared by every section, sitting over the header block. -->
                         <button id="close-settings" class="cel-icon-button" type="button"
                                 data-loc-key="Console_ReturnToConsole" data-loc-attr="title,aria-label">
                             <i class="bi bi-x-lg"></i>

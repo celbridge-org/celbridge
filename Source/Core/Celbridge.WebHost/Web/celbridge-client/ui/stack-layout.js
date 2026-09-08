@@ -12,7 +12,7 @@
 //
 // The threshold is read from the element's computed style rather than through var(), because the comparison
 // happens here rather than in a rule. `fallback` stands in where the generated stylesheet has not been
-// served, so the two are one number written twice and DesignTokenCoverageTests holds them together.
+// served. The two are one number written twice, so keep them in step.
 //
 // The resolved name is written to the element's dataset under `attribute`, which is what the stylesheet
 // keys on. A name already there when this is called is the author's and is never overridden, so markup can

@@ -24,10 +24,6 @@
     display: flex;
     flex-direction: column;
     width: var(--cel-rail-width);
-    /* No fill of its own. An editor's rail sits inside a document, which is a region carved out of the
-       chrome surface and painted with the content tone, so a chrome band here pastes a piece of the field
-       back inside the carving, and the part of the rail no button reaches reads as a slab. The divider is
-       what bounds it. The workspace utility rail this mirrors is chrome because it is the field. */
     border-right: 1px solid var(--cel-divider-subtle);
 }
 
@@ -36,9 +32,8 @@
     border-left: 1px solid var(--cel-divider-subtle);
 }
 
-/* The rail turned on its side, for an editor too narrow to give it a column: a strip across the top of the
-   content, its buttons reading away from the first one rather than down from it. The rail's own metrics turn
-   with it, so a consumer adds this class and nothing else. */
+/* The rail turned on its side: a strip across the top of the content, for an editor too narrow to give it a
+   column. The rail's own metrics turn with it, so a consumer adds this class and nothing else. */
 .cel-rail-horizontal {
     flex: 0 0 var(--cel-rail-width);
     flex-direction: row;
