@@ -29,7 +29,7 @@
    Drive it with attachSectionSwitcher() from ui/section-switcher.js, which owns the selection, which header
    and section are showing, aria-selected, the roving tabindex and the arrow keys, and which of the two
    layouts is in force. The switcher fills the box it is given, so the surface around it supplies the height
-   and the margin, the way the native consumers set Margin="12" and fill their panel.
+   and the margin: --cel-settings-inset, which the native consumers take as SettingsSurfaceMargin.
 
    The two layouts are held on the root as data-layout. `inline` is the native layout: a labelled nav column
    beside the carved section. `stacked` puts the nav above the content as an icon strip, over a section that

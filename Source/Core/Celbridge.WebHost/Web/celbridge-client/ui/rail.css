@@ -4,8 +4,8 @@
 /* Vertical icon rail, mirroring the workspace utility rail (UtilityPanel.xaml and UtilityButton.xaml): a
    fixed-width strip of square buttons, each filling with a hover or selection tone, and
    hairline separators between groups. An editor uses it as an inspector rail down the left of its content,
-   the side the workspace rail is on, with .cel-rail-right moving the rail and its border to the opposite
-   edge instead:
+   the side the workspace rail is on. Which edge it sits on is decided by where the markup puts it; add
+   .cel-rail-right to move its hairline to the other side for a rail on the right:
      <div class="cel-rail">
        <button class="cel-rail-button selected" type="button" title="Settings">
          <i class="bi bi-sliders"></i><span class="cel-rail-pip"></span>

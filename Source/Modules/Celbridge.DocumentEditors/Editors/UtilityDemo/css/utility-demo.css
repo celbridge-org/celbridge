@@ -7,10 +7,9 @@ body {
     height: 100%;
 }
 
-/* The switcher fills the utility and is inset from its edge, the way both native settings surfaces set
-   Margin="12" and fill their panel. */
+/* The switcher fills the utility and is inset from its edge by the margin every settings surface keeps. */
 body {
-    padding: var(--cel-panel-inset);
+    padding: var(--cel-settings-inset);
 }
 
 #notes-input {

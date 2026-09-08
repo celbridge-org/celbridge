@@ -113,6 +113,10 @@ if (terminalRows) {
 // --cel-rail-stack-threshold. Used where the generated stylesheet has not been served.
 const RAIL_STACK_FALLBACK = 400;
 
+// The narrowest a laid-out document can be, mirroring WorkspaceConstants.DocumentMinWidth and
+// --cel-document-min-width. A WebView that has not been arranged reports a viewport far below it.
+const DOCUMENT_MIN_WIDTH = 230;
+
 // DOM references.
 const appElement = document.getElementById('app');
 const openSettingsButton = document.getElementById('open-settings');
@@ -151,6 +155,9 @@ let currentConfig = defaultConsoleConfig();
 let launchedConfig = null;
 let configError = null;
 let sessionStartFailed = false;
+// What the terminal's failure overlay is saying, so the settings surface can say it too while the
+// terminal is the hidden half of the row.
+let sessionFailedText = '';
 // The runners each session type provides, keyed by type id, as the host reports them on attach. Empty until
 // then, so the built-in list simply renders nothing on the first populate.
 let builtInRunnersByType = {};
@@ -287,10 +294,10 @@ function refitTerminal() {
 
 // The rail lays out down the left of a wide console and across the top of a narrow one.
 function updateRailArrangement() {
-    // A hidden document reports no width, so the last resolved arrangement stands until it is on screen
-    // again.
+    // A hidden or unarranged document reports a width no real document could have, so the last resolved
+    // arrangement stands until it is on screen.
     const width = appElement.clientWidth;
-    if (width <= 0) {
+    if (width < DOCUMENT_MIN_WIDTH) {
         return;
     }
 
@@ -309,7 +316,9 @@ function updateRailArrangement() {
     refitTerminal();
 }
 
-new ResizeObserver(() => updateRailArrangement()).observe(appElement);
+if (typeof ResizeObserver === 'function') {
+    new ResizeObserver(() => updateRailArrangement()).observe(appElement);
+}
 
 updateRailArrangement();
 
@@ -592,7 +601,6 @@ function injectShortcut(text) {
     if (!text) {
         return;
     }
-    setSettingsVisible(false);
     client.sendNotification('console/submit', { invocation: text });
 }
 
@@ -677,7 +685,8 @@ function updateAttention() {
     // only when a reopen is needed to apply changed launch settings. The footer caption explains it.
     reopenSettingsButton.classList.toggle('cel-accent', diverged);
 
-    settingsSwitcher.setNotice(configError);
+    // One slot, so a parse error wins: it is the one the surface showing it can also fix.
+    settingsSwitcher.setNotice(configError || sessionFailedText);
 }
 
 // Session lifecycle.
@@ -686,12 +695,14 @@ function showSessionFailed(message) {
     sessionFailedMessage.textContent = message;
     sessionFailed.classList.remove('hidden');
     sessionStartFailed = true;
+    sessionFailedText = message;
     updateAttention();
 }
 
 function hideSessionFailed() {
     sessionFailed.classList.add('hidden');
     sessionStartFailed = false;
+    sessionFailedText = '';
     updateAttention();
 }
 

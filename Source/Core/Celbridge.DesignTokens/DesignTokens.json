@@ -174,7 +174,7 @@
           "css": "--cel-rail-stack-threshold",
           "value": "400px",
           "published": true,
-          "comment": "The width at which an editor lays its rail down the side of its content rather than across the top of it, mirroring how --cel-section-stack-threshold decides the settings switcher's two layouts. The console is its only consumer, so the value is the terminal's own minimum plus the rail band beside it: below the two together, a rail in a column would take width the content has already run out of, where a strip along the top costs height a narrow document has to spare. Read with getComputedStyle rather than through var(), because the editor resolves the arrangement in JavaScript and writes it to an attribute the stylesheet keys on. It is compared against the editor's own CSS pixels and so is not divided by the page zoom."
+          "comment": "The width at which an editor lays its rail down the side of its content rather than across the top of it, mirroring how --cel-section-stack-threshold decides the settings switcher's two layouts. The console is its only consumer, and the value is where its terminal stops being able to spare a column beside it: below that a rail in a column takes width the content has run out of, where a strip along the top costs height a narrow document has to spare. Read with getComputedStyle rather than through var(), because the editor resolves the arrangement in JavaScript and writes it to an attribute the stylesheet keys on. Like --cel-section-stack-threshold it is compared against the editor's own CSS pixels and so is not divided by the page zoom, which stacks sooner where the engine renders larger -- the arrangement larger type wants."
         }
       }
     },

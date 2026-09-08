@@ -64,7 +64,12 @@ public class DesignTokenCoverageTests
         "--cel-section-stack-threshold",
         // The width below which an editor's rail stacks across the top of its content. The console reads
         // it with getComputedStyle, which the scan does not match.
-        "--cel-rail-stack-threshold"
+        "--cel-rail-stack-threshold",
+        // The inset a native settings panel keeps between its edge and its scrolling content. No web
+        // surface takes it: a settings surface is inset from its holder by --cel-settings-inset, and the
+        // inset within a section is --cel-section-inset. The name carries the native value for a package
+        // whose own panel scrolls its content the same way.
+        "--cel-panel-inset"
     ];
 
     // WinUI keys the chrome reads directly, each for a role the palette has nothing of its own to say
