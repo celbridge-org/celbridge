@@ -22,6 +22,9 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     private bool _checkedInactiveSelection;
     private bool _reportedRemoteInspection;
 
+    // The wake loop running for each live hosted web view, keyed by the view it wakes.
+    private readonly Dictionary<CoreWebView2, CancellationTokenSource> _keepAliveLoops = new();
+
     // The find methods receive only a CoreWebView2, so sessions are keyed by it to recover per-find state.
     private readonly Dictionary<CoreWebView2, FindSession> _findSessions = new();
 
@@ -73,14 +76,12 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
 
             // Pin the native WKWebView for the process lifetime and keep it schedulable while hidden. Uno's
             // native element disposes the view on every Unloaded and later touches the stale handle, which is
-            // a use-after-free. The handle may not be resolvable yet at this point, so the other adapter entry
-            // points that resolve it also pin (RetainNativeWebView is idempotent).
+            // a use-after-free.
             if (OperatingSystem.IsMacOS() && webView.CoreWebView2 is not null)
             {
                 if (MacOSWebViewInterop.TryGetNativeWebViewHandle(webView.CoreWebView2, out var nativeWebViewHandle, out var detail))
                 {
-                    MacOSWebViewInterop.RetainNativeWebView(nativeWebViewHandle);
-                    CheckBackgroundPageActivityOnce(nativeWebViewHandle);
+                    PinNativeWebView(nativeWebViewHandle);
                     KeepSelectionWhileUnfocused(nativeWebViewHandle);
                     ApplyInitialViewportSize(nativeWebViewHandle);
                 }
@@ -89,11 +90,12 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
                     _logger.LogDebug("Native WKWebView handle not resolvable after init ({Detail}); pinning deferred to first resolution", detail);
                 }
 
+                RegisterForKeepAlive(webView.CoreWebView2);
+
                 // UNO-BUG: the script message handler is registered on every Loaded and never removed.
-                // Uno registers its script message handler on every Loaded and never removes it, so the
-                // second load of a control aborts the process inside WebKit. This control sees a second
-                // load as soon as it leaves the init host for its real container, so drop the handler on
-                // every Unloaded and let Uno's next Loaded register it again.
+                // The second load of a control then aborts the process inside WebKit. This control sees a
+                // second load as soon as it leaves the init host for its real container, so drop the handler
+                // on every Unloaded and let Uno's next Loaded register it again.
                 webView.Unloaded -= WebView_Unloaded;
                 webView.Unloaded += WebView_Unloaded;
             }
@@ -127,12 +129,85 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     private const double MinimumViewportWidth = 1024;
     private const double MinimumViewportHeight = 768;
 
+    // How long a hosted page may go without being woken. A hidden page's event loop stops entirely after
+    // roughly seven minutes, so a page that has gone quiet is running again well inside the timeouts that
+    // wait on it.
+    private const int KeepAliveIntervalSeconds = 30;
+
+    // Spread added to every wake, so pages registered together do not settle into waking in the same instant.
+    private const int KeepAliveJitterSeconds = 5;
+
+    // Wakes this hosted web view until it is closed. WebKit stops a hidden page's event loop after a few
+    // minutes, so it services no host RPC until the user activates it, and evaluating a trivial script
+    // restarts it.
+    private void RegisterForKeepAlive(CoreWebView2 coreWebView2)
+    {
+        CancellationTokenSource cancellationTokenSource;
+
+        lock (_keepAliveLoops)
+        {
+            if (_keepAliveLoops.ContainsKey(coreWebView2))
+            {
+                return;
+            }
+
+            cancellationTokenSource = new CancellationTokenSource();
+            _keepAliveLoops.Add(coreWebView2, cancellationTokenSource);
+        }
+
+        _ = KeepPageAwakeAsync(coreWebView2, cancellationTokenSource.Token);
+    }
+
+    private void UnregisterFromKeepAlive(CoreWebView2 coreWebView2)
+    {
+        CancellationTokenSource? cancellationTokenSource;
+
+        lock (_keepAliveLoops)
+        {
+            if (!_keepAliveLoops.Remove(coreWebView2, out cancellationTokenSource))
+            {
+                return;
+            }
+        }
+
+        cancellationTokenSource.Cancel();
+        cancellationTokenSource.Dispose();
+    }
+
+    // The delay must resume on the UI thread, where the script evaluation has to run, so the awaits here
+    // are never configured away from the dispatcher.
+    private async Task KeepPageAwakeAsync(CoreWebView2 coreWebView2, CancellationToken cancellationToken)
+    {
+        while (true)
+        {
+            try
+            {
+                var jitter = TimeSpan.FromMilliseconds(Random.Shared.Next(0, KeepAliveJitterSeconds * 1000));
+                await Task.Delay(TimeSpan.FromSeconds(KeepAliveIntervalSeconds) + jitter, cancellationToken);
+
+                await EvalAsync(coreWebView2, "0");
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            catch (ObjectDisposedException)
+            {
+                // The view was torn down without reaching CloseWebView, so there is nothing left to wake.
+                return;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Could not wake a hosted page");
+            }
+        }
+    }
+
     // UNO-BUG: the native frame is arranged only while the control is in the visual tree.
-    // Gives the native view a usable frame before anything loads into it. Uno arranges the frame only while
-    // the control is in the visual tree, so a surface that loads while it is not (a document restored into a
-    // background tab, a utility running from project load) reports a zero-sized window to its page: layout
-    // collapses, and a page that derives geometry from the viewport at startup divides by zero and stays
-    // broken even after the real arrange arrives.
+    // A surface that loads while it is not (a document restored into a background tab, a utility running
+    // from project load) reports a zero-sized window to its page: layout collapses, and a page that derives
+    // geometry from the viewport at startup divides by zero and stays broken even after the real arrange
+    // arrives.
     private void ApplyInitialViewportSize(IntPtr nativeWebViewHandle)
     {
         var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
@@ -151,10 +226,29 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     }
 
     // WebKit suspends a hidden page's process, which stalls host-to-editor RPC for a background document
-    // tab until the tab is shown again. RetainNativeWebView turns that suppression off through private SPI,
-    // so this reports once per session whether the SPI still exists: losing it silently brings the stall back.
-    private void CheckBackgroundPageActivityOnce(IntPtr nativeWebViewHandle)
+    // tab until the tab is shown again.
+    private void PinNativeWebView(IntPtr nativeWebViewHandle)
     {
+        if (nativeWebViewHandle == IntPtr.Zero)
+        {
+            _logger.LogWarning("Cannot pin a null native WKWebView handle, so this web view keeps neither its native view nor its background page activity");
+            return;
+        }
+
+        var applied = MacOSWebViewInterop.RetainNativeWebView(nativeWebViewHandle);
+        if (applied is null)
+        {
+            return;
+        }
+
+        if (applied.Count < MacOSWebViewInterop.BackgroundPageActivityPreferenceCount)
+        {
+            _logger.LogWarning(
+                "WebKit did not accept every background page activity preference for this web view, so its document may stop servicing host RPC while it is a background tab. Applied: {Applied}",
+                applied.Count == 0 ? "none" : string.Join(", ", applied));
+            return;
+        }
+
         if (_checkedBackgroundActivity)
         {
             return;
@@ -162,16 +256,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
 
         _checkedBackgroundActivity = true;
 
-        var applied = MacOSWebViewInterop.EnableBackgroundPageActivity(nativeWebViewHandle);
-        if (applied.Count == MacOSWebViewInterop.BackgroundPageActivityPreferenceCount)
-        {
-            _logger.LogDebug("Background page activity preferences applied: {Applied}", string.Join(", ", applied));
-            return;
-        }
-
-        _logger.LogWarning(
-            "WebKit no longer exposes every background page activity preference, so background documents may stop servicing host RPC. Applied: {Applied}",
-            applied.Count == 0 ? "none" : string.Join(", ", applied));
+        _logger.LogDebug("Background page activity preferences applied: {Applied}", string.Join(", ", applied));
     }
 
     // Managed focus moves resign the web view's first responder status, and WebKit discards the page's
@@ -214,6 +299,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         if (webView.CoreWebView2 is not null)
         {
             _findSessions.Remove(webView.CoreWebView2);
+            UnregisterFromKeepAlive(webView.CoreWebView2);
         }
 
         container?.Children.Remove(webView);
@@ -237,7 +323,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         {
             if (MacOSWebViewInterop.TryGetNativeWebViewHandle(webView.CoreWebView2, out var nativeHandle, out var detail))
             {
-                MacOSWebViewInterop.RetainNativeWebView(nativeHandle);
+                PinNativeWebView(nativeHandle);
                 MacOSWebViewInterop.MakeWebViewFirstResponder(nativeHandle);
             }
             else
@@ -351,10 +437,10 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     public void PostMessageToWeb(CoreWebView2 coreWebView2, string json)
     {
         // UNO-BUG: PostWebMessageAsString is unimplemented on the Skia WebView2.
-        // PostWebMessageAsString does not deliver on the Uno Skia WebView2 (the C#->JS half of web messaging is
-        // unimplemented). Push the message by invoking a JS dispatch function via ExecuteScriptAsync, which the
-        // client transport registers. The JS->C# direction (chrome.webview.postMessage -> WebMessageReceived)
-        // works and is unchanged. Serializing the JSON yields a safely-escaped JS string literal.
+        // The C#->JS half of web messaging never delivers, so push the message by invoking a JS dispatch
+        // function via ExecuteScriptAsync, which the client transport registers. The JS->C# direction
+        // (chrome.webview.postMessage -> WebMessageReceived) works. Serializing the JSON yields a
+        // safely-escaped JS string literal.
         var encodedJson = JsonSerializer.Serialize(json);
         var script = $"window.__hostReceiveMessage && window.__hostReceiveMessage({encodedJson});";
 
@@ -384,7 +470,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         if (OperatingSystem.IsMacOS()
             && MacOSWebViewInterop.TryGetNativeWebViewHandle(coreWebView2, out var nativeHandle, out _))
         {
-            MacOSWebViewInterop.RetainNativeWebView(nativeHandle);
+            PinNativeWebView(nativeHandle);
             MacOSWebViewInterop.AddUserScriptAtDocumentStart(nativeHandle, script);
         }
 
@@ -424,7 +510,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
             return;
         }
 
-        MacOSWebViewInterop.RetainNativeWebView(nativeHandle);
+        PinNativeWebView(nativeHandle);
 
         _safariVersion ??= ResolveSafariVersion();
 
@@ -474,7 +560,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
             return;
         }
 
-        MacOSWebViewInterop.RetainNativeWebView(nativeHandle);
+        PinNativeWebView(nativeHandle);
 
         var inspectable = MacOSWebViewInterop.SetInspectable(nativeHandle, enabled);
 
@@ -533,7 +619,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
                 $"Could not reach the native WKWebView handle to load HTML: {detail}");
         }
 
-        MacOSWebViewInterop.RetainNativeWebView(nativeHandle);
+        PinNativeWebView(nativeHandle);
         MacOSWebViewInterop.LoadHtmlString(nativeHandle, html, baseUrl);
     }
 
@@ -561,7 +647,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
             return;
         }
 
-        MacOSWebViewInterop.RetainNativeWebView(nativeHandle);
+        PinNativeWebView(nativeHandle);
 
         var session = new FindSession(term, options.CaseSensitive, options.OnMatchStateChanged);
         _findSessions[coreWebView2] = session;
