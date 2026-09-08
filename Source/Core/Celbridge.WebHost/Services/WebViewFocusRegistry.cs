@@ -540,10 +540,19 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
     private void OnNativeFocusSignal(CoreWebView2 coreWebView)
     {
         // Arrives from the native click monitor on the UI thread when a click lands inside this surface.
-        if (_registrations.TryGetValue(coreWebView, out var registration))
+        if (!_registrations.TryGetValue(coreWebView, out var registration))
         {
-            Report(registration);
+            return;
         }
+
+        // A click inside the surface that already holds the keyboard changes nothing. Held here rather
+        // than in the monitor because this is where the surface holding focus is actually known.
+        if (ReferenceEquals(_focusedRegistration, registration))
+        {
+            return;
+        }
+
+        Report(registration);
     }
 
     public bool IsRegisteredWebSurface(DependencyObject element)

@@ -16,6 +16,8 @@ export class EditorController {
     #isInitialized = false;
     #isReloadingExternally = false;
     #readOnly = false;
+    // The view mode has hidden the editor behind the preview, so nothing here is the user's edit target.
+    #isHidden = false;
     // The ranges the last getSelectedText read, so the cut that follows clears exactly those.
     #copiedRanges = null;
     #pendingNavigation = null;
@@ -57,6 +59,25 @@ export class EditorController {
         if (this.#editor) {
             this.#editor.layout();
         }
+    }
+
+    /**
+     * Records whether the view mode has taken the editor off screen, and reports edit availability again.
+     * A hidden editor claims no edit verb, so one performed while the preview fills the pane acts on the
+     * focused control there instead of on source the user cannot see.
+     * @param {boolean} hidden
+     */
+    setHidden(hidden) {
+        this.#isHidden = hidden === true;
+        this.#notifyEditAvailability();
+    }
+
+    /**
+     * Reports edit availability again, for a focus change this page cannot observe itself. Focus moving
+     * into the preview iframe raises no event in this document, so the preview reports it.
+     */
+    refreshEditAvailability() {
+        this.#notifyEditAvailability();
     }
 
     setLanguage(language) {
@@ -121,7 +142,13 @@ export class EditorController {
             return;
         }
 
-        this.#editor.executeEdits('insert', edits);
+        // Leave a caret after each insertion rather than Monaco's default of selecting what was written,
+        // so a second paste inserts again instead of replacing what the first one put there. The inverse
+        // operations carry where the text actually landed, which the edits themselves cannot say once an
+        // earlier one has shifted the document.
+        this.#editor.executeEdits('insert', edits, (inverseEditOperations) =>
+            inverseEditOperations.map(
+                (operation) => monaco.Selection.fromPositions(operation.range.getEndPosition())));
         this.#editor.focus();
     }
 
@@ -635,10 +662,43 @@ export class EditorController {
         this.#editor.onDidChangeCursorSelection(() => this.#notifyEditAvailability());
         this.#editor.onDidFocusEditorText(() => this.#notifyEditAvailability());
         this.#editor.onDidBlurEditorText(() => this.#notifyEditAvailability());
+
+        // Monaco raises nothing for the keyboard moving to a control outside the editor, so the page's own
+        // focus changes drive the report as well.
+        document.addEventListener('focusin', () => this.#notifyEditAvailability());
+    }
+
+    // Whether an edit verb belongs to the platform rather than the host: the keyboard is in one of the
+    // page's own text controls (the find widget, or the preview's find bar inside its iframe), or the
+    // editor is off screen, where a verb would act on text the user cannot see.
+    #platformOwnsEditing() {
+        if (this.#editor.hasTextFocus()) {
+            return false;
+        }
+
+        if (this.#isHidden) {
+            return true;
+        }
+
+        const activeElement = document.activeElement;
+        if (activeElement === null) {
+            return false;
+        }
+
+        return activeElement.tagName === 'IFRAME'
+            || activeElement.tagName === 'INPUT'
+            || activeElement.tagName === 'TEXTAREA'
+            || activeElement.isContentEditable === true;
     }
 
     #notifyEditAvailability() {
         if (!this.#shouldNotifyHost()) {
+            return;
+        }
+
+        // Claiming nothing leaves the verb to the platform, which edits the focused field itself.
+        if (this.#platformOwnsEditing()) {
+            celbridge.input.notifyEditAvailability({});
             return;
         }
 

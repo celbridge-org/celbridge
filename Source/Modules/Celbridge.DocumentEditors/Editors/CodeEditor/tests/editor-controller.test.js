@@ -56,7 +56,15 @@ function installMonacoStub(editor) {
             setModelLanguage: vi.fn(),
             setTheme: vi.fn()
         },
-        EditorOption: { lineHeight: 0 }
+        EditorOption: { lineHeight: 0 },
+        Selection: {
+            fromPositions: (position) => ({
+                startLineNumber: position.lineNumber,
+                startColumn: position.column,
+                endLineNumber: position.lineNumber,
+                endColumn: position.column
+            })
+        }
     };
 }
 
@@ -266,6 +274,55 @@ describe('EditorController edit availability', () => {
 
         expect(reportedAvailability()).toMatchObject({ canCopy: true, canCut: true });
     });
+
+    it('claims nothing while one of the page\'s own text controls holds the keyboard', () => {
+        editor.hasTextFocus.mockReturnValue(false);
+        const findInput = document.createElement('input');
+        document.body.appendChild(findInput);
+
+        findInput.focus();
+
+        expect(reportedAvailability()).toEqual({});
+
+        findInput.remove();
+    });
+
+    it('keeps its claim while a button holds the keyboard, so the menu still copies a selection', () => {
+        editor.hasTextFocus.mockReturnValue(false);
+        editor.getSelection.mockReturnValue({ isEmpty: () => false });
+        const toolbarButton = document.createElement('button');
+        document.body.appendChild(toolbarButton);
+
+        toolbarButton.focus();
+
+        expect(reportedAvailability()).toMatchObject({
+            canCopy: true,
+            hostMediatedClipboard: true
+        });
+
+        toolbarButton.remove();
+    });
+
+    it('claims nothing once the preview has taken the editor off screen', () => {
+        editor.hasTextFocus.mockReturnValue(false);
+
+        controller.setHidden(true);
+
+        expect(reportedAvailability()).toEqual({});
+    });
+
+    it('claims the verbs again when the editor comes back on screen', () => {
+        editor.hasTextFocus.mockReturnValue(false);
+        editor.getSelection.mockReturnValue({ isEmpty: () => false });
+
+        controller.setHidden(true);
+        controller.setHidden(false);
+
+        expect(reportedAvailability()).toMatchObject({
+            canPaste: true,
+            hostMediatedClipboard: true
+        });
+    });
 });
 
 describe('EditorController clipboard text', () => {
@@ -349,7 +406,7 @@ describe('EditorController clipboard text', () => {
         expect(editor.executeEdits).toHaveBeenCalledWith('insert', [{
             range: { startLineNumber: 2, startColumn: 1, endLineNumber: 3, endColumn: 1 },
             text: ''
-        }]);
+        }], expect.any(Function));
     });
 
     it('clears what the copy read, not where the caret has since moved', () => {
@@ -363,7 +420,7 @@ describe('EditorController clipboard text', () => {
         expect(editor.executeEdits).toHaveBeenCalledWith('insert', [{
             range: { startLineNumber: 2, startColumn: 1, endLineNumber: 3, endColumn: 1 },
             text: ''
-        }]);
+        }], expect.any(Function));
     });
 
     it('leaves the line alone when Monaco does not take it either', () => {
@@ -381,7 +438,7 @@ describe('EditorController clipboard text', () => {
         expect(editor.executeEdits).toHaveBeenCalledWith('insert', [
             { range: { startLineNumber: 1, startColumn: 1, endLineNumber: 1, endColumn: 1 }, text: 'one' },
             { range: { startLineNumber: 2, startColumn: 1, endLineNumber: 2, endColumn: 1 }, text: 'two' }
-        ]);
+        ], expect.any(Function));
     });
 
     it('gives every cursor the whole text when the counts differ', () => {
@@ -401,6 +458,36 @@ describe('EditorController clipboard text', () => {
         expect(editor.executeEdits).toHaveBeenCalledWith('insert', [{
             range: { startLineNumber: 2, startColumn: 3, endLineNumber: 2, endColumn: 3 },
             text: 'x'
-        }]);
+        }], expect.any(Function));
+    });
+
+    it('leaves a caret after the inserted text rather than selecting it', () => {
+        editor.getSelections.mockReturnValue([at(1, 1, 1, 5)]);
+
+        controller.insertText('hello');
+
+        const endCursorState = editor.executeEdits.mock.calls[0][2];
+        const inserted = { range: { getEndPosition: () => ({ lineNumber: 1, column: 6 }) } };
+
+        expect(endCursorState([inserted])).toEqual([
+            { startLineNumber: 1, startColumn: 6, endLineNumber: 1, endColumn: 6 }
+        ]);
+    });
+
+    it('leaves a caret after every insertion when several cursors are writing', () => {
+        editor.getSelections.mockReturnValue([at(1, 1), at(2, 1)]);
+
+        controller.insertText('one\ntwo');
+
+        const endCursorState = editor.executeEdits.mock.calls[0][2];
+        const inserted = [
+            { range: { getEndPosition: () => ({ lineNumber: 1, column: 4 }) } },
+            { range: { getEndPosition: () => ({ lineNumber: 2, column: 4 }) } }
+        ];
+
+        expect(endCursorState(inserted)).toEqual([
+            { startLineNumber: 1, startColumn: 4, endLineNumber: 1, endColumn: 4 },
+            { startLineNumber: 2, startColumn: 4, endLineNumber: 2, endColumn: 4 }
+        ]);
     });
 });

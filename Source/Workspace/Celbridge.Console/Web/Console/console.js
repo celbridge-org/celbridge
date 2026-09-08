@@ -206,14 +206,24 @@ client.onNotification('console/startupComplete', () => {
 term.onData((data) => client.sendNotification('console/input', { data }));
 term.onResize(({ cols, rows }) => client.sendNotification('console/resize', { cols, rows }));
 
+// Whether the terminal is the view on screen. The settings form replaces it, and its fields are ordinary
+// controls the platform edits itself.
+function isTerminalShowing() {
+    return !terminalView.classList.contains('hidden');
+}
+
 // Reports which edit verbs the console can perform: copy needs a selection, paste and select-all are
-// always available. Sent on focus and selection change so the host Edit menu enables correctly.
+// always available. Sent on focus, selection change and view switch so the host Edit menu enables
+// correctly. The console claims nothing while the settings form is showing, so an edit verb acts on the
+// focused field rather than on the hidden terminal.
 function reportEditAvailability() {
+    const terminalShowing = isTerminalShowing();
+
     client.input.notifyEditAvailability({
-        canCopy: term.hasSelection(),
-        canPaste: true,
-        canSelectAll: true,
-        hostMediatedClipboard: true,
+        canCopy: terminalShowing && term.hasSelection(),
+        canPaste: terminalShowing,
+        canSelectAll: terminalShowing,
+        hostMediatedClipboard: terminalShowing,
     });
 }
 
@@ -222,14 +232,23 @@ term.onSelectionChange(reportEditAvailability);
 
 // Host-mediated clipboard: the host fetches the selection for copy and pushes clipboard text for paste,
 // because the WebView's own JS clipboard is blocked on the Skia WKWebView. Paste writes the text straight
-// to the pty as input. Select-all runs here.
-client.onRequest('editor/getSelectedText', () => term.getSelection());
+// to the pty as input. Select-all runs here. Each verb is refused with the settings form showing, so a
+// report still in flight cannot send clipboard text to the hidden pty.
+client.onRequest('editor/getSelectedText', () => (isTerminalShowing() ? term.getSelection() : ''));
 client.onNotification('editor/insertText', (params) => {
+    if (!isTerminalShowing()) {
+        return;
+    }
+
     if (params && typeof params.text === 'string' && params.text !== '') {
         client.sendNotification('console/input', { data: params.text });
     }
 });
 client.onNotification('input/performEdit', (params) => {
+    if (!isTerminalShowing()) {
+        return;
+    }
+
     if (params && params.command === 'selectAll') {
         term.selectAll();
     }
@@ -316,6 +335,10 @@ function setSettingsVisible(visible) {
     terminalView.classList.toggle('hidden', visible);
     // Takes the rail off screen while the surface is up, which the stylesheet keys on.
     appElement.dataset.surface = visible ? 'settings' : 'terminal';
+
+    // Reported here rather than at the end, so the surface the settings replace stops claiming the
+    // clipboard on the way in as well as on the way out.
+    reportEditAvailability();
 
     if (visible) {
         // Hiding the rail destroys the focus the settings button was holding.
