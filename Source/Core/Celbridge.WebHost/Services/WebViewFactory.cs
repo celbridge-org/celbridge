@@ -1,4 +1,5 @@
 using Celbridge.Logging;
+using Celbridge.WebHost.Platform;
 using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.WebHost.Services;
@@ -247,6 +248,8 @@ public class WebViewFactory : IWebViewFactory, IDisposable
         // This fixes a visual bug where the WebView2 control would show a white background briefly when
         // switching between tabs. Similar issue described here: https://github.com/MicrosoftEdge/WebView2Feedback/issues/1412
         webView.DefaultBackgroundColor = Colors.Transparent;
+
+        MacOSHostedViewOpacityRepair.RepairOnAttach(webView);
 
         await _webViewAdapter.EnsureCoreWebView2Async(webView);
 
