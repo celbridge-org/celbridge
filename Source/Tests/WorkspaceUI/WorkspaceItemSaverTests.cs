@@ -25,7 +25,7 @@ public class WorkspaceItemSaverTests
     private WorkspaceItemSaver _workspaceItemSaver = null!;
 
     private List<int> _pendingSaveCounts = null!;
-    private List<IReadOnlyList<ResourceKey>> _failureReports = null!;
+    private List<IReadOnlyList<ResourceKey>> _retryReports = null!;
 
     [SetUp]
     public void Setup()
@@ -34,7 +34,7 @@ public class WorkspaceItemSaverTests
         _commandService = Substitute.For<ICommandService>();
 
         _pendingSaveCounts = new List<int>();
-        _failureReports = new List<IReadOnlyList<ResourceKey>>();
+        _retryReports = new List<IReadOnlyList<ResourceKey>>();
 
         // Capture the messages so a test can read what the tick reported.
         _messengerService
@@ -42,13 +42,14 @@ public class WorkspaceItemSaverTests
             .Do(call => _pendingSaveCounts.Add(call.Arg<PendingSaveCountMessage>().Count));
 
         _messengerService
-            .When(service => service.Send(Arg.Any<WorkspaceItemSaveFailuresChangedMessage>()))
-            .Do(call => _failureReports.Add(call.Arg<WorkspaceItemSaveFailuresChangedMessage>().FailingResources));
+            .When(service => service.Send(Arg.Any<WorkspaceItemSaveRetriesChangedMessage>()))
+            .Do(call => _retryReports.Add(call.Arg<WorkspaceItemSaveRetriesChangedMessage>().RetryingResources));
 
         _workspaceItemSaver = new WorkspaceItemSaver(
             Substitute.For<ILogger<WorkspaceItemSaver>>(),
             _commandService,
-            _messengerService);
+            _messengerService,
+            new SaveRetryTracker());
     }
 
     [Test]
@@ -61,7 +62,7 @@ public class WorkspaceItemSaverTests
         result.IsSuccess.Should().BeTrue();
         item.SaveCount.Should().Be(1);
         _pendingSaveCounts.Should().Equal(0);
-        _failureReports.Should().BeEmpty();
+        _retryReports.Should().BeEmpty();
     }
 
     [Test]
@@ -76,7 +77,7 @@ public class WorkspaceItemSaverTests
     }
 
     [Test]
-    public async Task SaveModifiedItems_ReportsAFailingItemAsFailingRatherThanSaving()
+    public async Task SaveModifiedItems_ReportsARetryingItemAsRetryingRatherThanSaving()
     {
         var item = new FakeWorkspaceItem { SaveSucceeds = false };
 
@@ -87,8 +88,8 @@ public class WorkspaceItemSaverTests
             new[] { 0 },
             "an item that cannot be written is not in the middle of being saved");
 
-        _failureReports.Should().HaveCount(1);
-        _failureReports[0].Should().ContainSingle()
+        _retryReports.Should().HaveCount(1);
+        _retryReports[0].Should().ContainSingle()
             .Which.Should().Be(item.FileResource);
     }
 
@@ -116,13 +117,13 @@ public class WorkspaceItemSaverTests
             new[] { 1, 1 },
             "a document that cannot be written must not stop the workspace reporting that another one is saving");
 
-        _failureReports.Should().HaveCount(1);
-        _failureReports[0].Should().ContainSingle()
+        _retryReports.Should().HaveCount(1);
+        _retryReports[0].Should().ContainSingle()
             .Which.Should().Be(blockedItem.FileResource);
     }
 
     [Test]
-    public async Task SaveModifiedItems_ReportsTheFailingSetOnlyWhenItChanges()
+    public async Task SaveModifiedItems_ReportsTheRetryingSetOnlyWhenItChanges()
     {
         var item = new FakeWorkspaceItem { SaveSucceeds = false };
         var items = new[] { item };
@@ -133,7 +134,7 @@ public class WorkspaceItemSaverTests
         firstResult.IsFailure.Should().BeTrue();
         secondResult.IsSuccess.Should().BeTrue("the failure has already been reported");
         item.SaveCount.Should().Be(2, "a failed save is attempted again");
-        _failureReports.Should().HaveCount(1);
+        _retryReports.Should().HaveCount(1);
     }
 
     [Test]
@@ -170,7 +171,7 @@ public class WorkspaceItemSaverTests
     }
 
     [Test]
-    public async Task SaveModifiedItems_ClearsTheFailingSet_WhenASaveSucceeds()
+    public async Task SaveModifiedItems_ClearsTheRetryingSet_WhenASaveSucceeds()
     {
         var item = new FakeWorkspaceItem { SaveSucceeds = false };
         var items = new[] { item };
@@ -184,11 +185,11 @@ public class WorkspaceItemSaverTests
         item.SaveSucceeds = false;
         await _workspaceItemSaver.SaveModifiedItemsAsync(items, TickDelta);
 
-        _failureReports.Select(report => report.Count).Should().Equal(1, 0, 1);
+        _retryReports.Select(report => report.Count).Should().Equal(1, 0, 1);
     }
 
     [Test]
-    public async Task SaveModifiedItems_ClearsTheFailingSet_WhenTheItemIsClosed()
+    public async Task SaveModifiedItems_ClearsTheRetryingSet_WhenTheItemIsClosed()
     {
         var item = new FakeWorkspaceItem { SaveSucceeds = false };
 
@@ -196,11 +197,11 @@ public class WorkspaceItemSaverTests
         await _workspaceItemSaver.SaveModifiedItemsAsync(Array.Empty<IWorkspaceItem>(), TickDelta);
         await _workspaceItemSaver.SaveModifiedItemsAsync(new[] { item }, TickDelta);
 
-        _failureReports.Select(report => report.Count).Should().Equal(1, 0, 1);
+        _retryReports.Select(report => report.Count).Should().Equal(1, 0, 1);
     }
 
     [Test]
-    public async Task SaveModifiedItems_ClearsTheFailingSet_WhenAReloadClearsTheItem()
+    public async Task SaveModifiedItems_ClearsTheRetryingSet_WhenAReloadClearsTheItem()
     {
         var item = new FakeWorkspaceItem { SaveSucceeds = false };
         var items = new[] { item };
@@ -215,7 +216,7 @@ public class WorkspaceItemSaverTests
         await _workspaceItemSaver.SaveModifiedItemsAsync(items, TickDelta);
 
         item.SaveCount.Should().Be(2, "the retry wait went with the failure");
-        _failureReports.Select(report => report.Count).Should().Equal(1, 0, 1);
+        _retryReports.Select(report => report.Count).Should().Equal(1, 0, 1);
     }
 
     [Test]
@@ -230,7 +231,7 @@ public class WorkspaceItemSaverTests
         var result = await _workspaceItemSaver.SaveModifiedItemsAsync(new[] { item }, TickDelta);
 
         result.IsSuccess.Should().BeTrue();
-        _failureReports.Should().BeEmpty("the editor already shows a read-only file as read-only");
+        _retryReports.Should().BeEmpty("the editor already shows a read-only file as read-only");
         _pendingSaveCounts.Should().Equal(0);
     }
 
@@ -281,7 +282,7 @@ public class WorkspaceItemSaverTests
         item.WritableState = WritableState.Locked;
         await _workspaceItemSaver.SaveModifiedItemsAsync(items, PastFirstRetryDelta);
 
-        _failureReports.Select(report => report.Count).Should().Equal(new[] { 1, 0 },
+        _retryReports.Select(report => report.Count).Should().Equal(new[] { 1, 0 },
             "a file that turns read-only ends up reported the same way as one that was read-only all along");
     }
 
@@ -306,7 +307,7 @@ public class WorkspaceItemSaverTests
         var result = await _workspaceItemSaver.SaveModifiedItemsAsync(items, TickDelta);
 
         result.IsFailure.Should().BeTrue("an editor that throws is a failed save, not a stopped pass");
-        _failureReports.Select(report => report.Count).Should().Equal(1);
+        _retryReports.Select(report => report.Count).Should().Equal(1);
     }
 
     [Test]

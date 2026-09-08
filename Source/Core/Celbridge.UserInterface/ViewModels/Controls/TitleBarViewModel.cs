@@ -19,10 +19,10 @@ public partial class TitleBarViewModel : ObservableObject
     private bool _isWorkspaceLoaded;
 
     [ObservableProperty]
-    private bool _hasSaveFailures;
+    private bool _hasSaveRetries;
 
     [ObservableProperty]
-    private string _saveFailureMessage = string.Empty;
+    private string _saveRetryMessage = string.Empty;
 
     public TitleBarViewModel(
         IMessengerService messengerService,
@@ -39,7 +39,7 @@ public partial class TitleBarViewModel : ObservableObject
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
         _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloaded);
         _messengerService.Register<PendingSaveCountMessage>(this, OnPendingSaveCount);
-        _messengerService.Register<WorkspaceItemSaveFailuresChangedMessage>(this, OnSaveFailuresChanged);
+        _messengerService.Register<WorkspaceItemSaveRetriesChangedMessage>(this, OnSaveRetriesChanged);
 
         IsWorkspaceLoaded = _workspaceWrapper.IsWorkspaceLoaded;
     }
@@ -60,33 +60,33 @@ public partial class TitleBarViewModel : ObservableObject
 
         // The save state belonged to the workspace that is going away.
         IsSaving = false;
-        ApplySaveFailures(Array.Empty<ResourceKey>());
+        ApplySaveRetries(Array.Empty<ResourceKey>());
     }
 
-    private void OnSaveFailuresChanged(object recipient, WorkspaceItemSaveFailuresChangedMessage message)
+    private void OnSaveRetriesChanged(object recipient, WorkspaceItemSaveRetriesChangedMessage message)
     {
-        ApplySaveFailures(message.FailingResources);
+        ApplySaveRetries(message.RetryingResources);
     }
 
-    private void ApplySaveFailures(IReadOnlyList<ResourceKey> failingResources)
+    private void ApplySaveRetries(IReadOnlyList<ResourceKey> retryingResources)
     {
-        HasSaveFailures = failingResources.Count > 0;
-        SaveFailureMessage = ComposeSaveFailureMessage(failingResources);
+        HasSaveRetries = retryingResources.Count > 0;
+        SaveRetryMessage = ComposeSaveRetryMessage(retryingResources);
     }
 
-    private string ComposeSaveFailureMessage(IReadOnlyList<ResourceKey> failingResources)
+    private string ComposeSaveRetryMessage(IReadOnlyList<ResourceKey> retryingResources)
     {
-        if (failingResources.Count == 0)
+        if (retryingResources.Count == 0)
         {
             return string.Empty;
         }
 
-        if (failingResources.Count == 1)
+        if (retryingResources.Count == 1)
         {
-            return _stringLocalizer.GetString("SaveStatus_Failed_Single", failingResources[0].ResourceName);
+            return _stringLocalizer.GetString("SaveStatus_Failed_Single", retryingResources[0].ResourceName);
         }
 
-        return _stringLocalizer.GetString("SaveStatus_Failed_Multiple", failingResources.Count);
+        return _stringLocalizer.GetString("SaveStatus_Failed_Multiple", retryingResources.Count);
     }
 
     private void OnPendingSaveCount(object recipient, PendingSaveCountMessage message)

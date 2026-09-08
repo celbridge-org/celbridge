@@ -61,7 +61,7 @@
                      file cannot be written. -->
                 <Grid>
                     <StackPanel Orientation="Horizontal"
-                                Visibility="{x:Bind ViewModel.HasSaveFailure, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverted}">
+                                Visibility="{x:Bind ViewModel.IsSaveRetrying, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverted}">
                         <!-- Ordinary document tabs show a file-type icon. A tab a utility editor opens
                              shows that editor's manifest glyph in the tab's own text colour. File-type
                              icons sit inside a luminance band that excludes that colour, so an untinted
@@ -81,9 +81,9 @@
                                        Visibility="{x:Bind ViewModel.IsUtilityEditor, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
                     </StackPanel>
 
-                    <controls:Icon x:Name="SaveFailureIcon"
+                    <controls:Icon x:Name="SaveRetryIcon"
                                    Symbol="Warning"
-                                   Visibility="{x:Bind ViewModel.HasSaveFailure, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                   Visibility="{x:Bind ViewModel.IsSaveRetrying, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
                                    ToolTipService.ToolTip="{x:Bind ViewModel.TabTooltip, Mode=OneWay}"
                                    ToolTipService.Placement="Bottom"
                                    FontSize="16"

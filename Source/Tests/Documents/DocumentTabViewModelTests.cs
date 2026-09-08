@@ -56,7 +56,7 @@ public class DocumentTabViewModelTests
 
         _workspaceService = Substitute.For<IWorkspaceService>();
         _workspaceService.ResourceService.Returns(_resourceService);
-        _workspaceService.GetFailingSaveResources().Returns(Array.Empty<ResourceKey>());
+        _workspaceService.GetRetryingResources().Returns(Array.Empty<ResourceKey>());
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(_workspaceService);
@@ -275,15 +275,15 @@ public class DocumentTabViewModelTests
     }
 
     [Test]
-    public void NewTab_ShowsASaveFailure_WhenTheResourceIsAlreadyFailing()
+    public void NewTab_ShowsTheWarning_WhenTheResourceIsAlreadyRetrying()
     {
         var fileResource = new ResourceKey("locked.md");
         _workspaceWrapper.IsWorkspaceLoaded.Returns(true);
-        _workspaceService.GetFailingSaveResources().Returns(new[] { fileResource });
+        _workspaceService.GetRetryingResources().Returns(new[] { fileResource });
 
         var viewModel = CreateViewModel(fileResource);
 
-        viewModel.HasSaveFailure.Should().BeTrue("the failing set is only sent when it changes");
+        viewModel.IsSaveRetrying.Should().BeTrue("the failing set is only sent when it changes");
     }
 
     [Test]
@@ -291,7 +291,7 @@ public class DocumentTabViewModelTests
     {
         var fileResource = new ResourceKey("locked.md");
         _workspaceWrapper.IsWorkspaceLoaded.Returns(true);
-        _workspaceService.GetFailingSaveResources().Returns(new[] { fileResource });
+        _workspaceService.GetRetryingResources().Returns(new[] { fileResource });
 
         var viewModel = CreateViewModel(fileResource);
         viewModel.FilePath = "C:/project/locked.md";

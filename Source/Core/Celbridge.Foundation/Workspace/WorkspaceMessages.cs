@@ -6,10 +6,10 @@ namespace Celbridge.Workspace;
 public record PendingSaveCountMessage(int Count);
 
 /// <summary>
-/// Sent when the set of workspace items that cannot be written changes, carrying every resource currently
-/// in that state. An empty list means every item is writing again.
+/// Sent when the set of workspace items waiting to be written again changes, carrying every resource
+/// currently in that state. An empty list means every item is writing again.
 /// </summary>
-public record WorkspaceItemSaveFailuresChangedMessage(IReadOnlyList<ResourceKey> FailingResources);
+public record WorkspaceItemSaveRetriesChangedMessage(IReadOnlyList<ResourceKey> RetryingResources);
 
 /// <summary>
 /// Sent when a workspace item closed while holding content that could not be written, so that content

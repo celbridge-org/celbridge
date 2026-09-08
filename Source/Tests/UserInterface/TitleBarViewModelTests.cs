@@ -19,7 +19,7 @@ public class TitleBarViewModelTests
     private MessageHandler<object, WorkspaceLoadedMessage>? _workspaceLoadedHandler;
     private MessageHandler<object, WorkspaceUnloadedMessage>? _workspaceUnloadedHandler;
     private MessageHandler<object, PendingSaveCountMessage>? _pendingSaveCountHandler;
-    private MessageHandler<object, WorkspaceItemSaveFailuresChangedMessage>? _saveFailuresHandler;
+    private MessageHandler<object, WorkspaceItemSaveRetriesChangedMessage>? _saveRetriesHandler;
 
     private TitleBarViewModel _viewModel = null!;
 
@@ -50,8 +50,8 @@ public class TitleBarViewModelTests
         _messengerService
             .When(service => service.Register(
                 Arg.Any<object>(),
-                Arg.Any<MessageHandler<object, WorkspaceItemSaveFailuresChangedMessage>>()))
-            .Do(call => _saveFailuresHandler = call.Arg<MessageHandler<object, WorkspaceItemSaveFailuresChangedMessage>>());
+                Arg.Any<MessageHandler<object, WorkspaceItemSaveRetriesChangedMessage>>()))
+            .Do(call => _saveRetriesHandler = call.Arg<MessageHandler<object, WorkspaceItemSaveRetriesChangedMessage>>());
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
 
@@ -68,38 +68,38 @@ public class TitleBarViewModelTests
     }
 
     [Test]
-    public void SaveFailures_NameTheResource_WhenOneItemIsFailing()
+    public void SaveRetries_NameTheResource_WhenOneItemIsRetrying()
     {
         _viewModel.OnLoaded();
 
-        SendFailingResources(new ResourceKey("project:notes.txt"));
+        SendRetryingResources(new ResourceKey("project:notes.txt"));
 
-        _viewModel.HasSaveFailures.Should().BeTrue();
-        _viewModel.SaveFailureMessage.Should().Be("SaveStatus_Failed_Single(notes.txt)");
+        _viewModel.HasSaveRetries.Should().BeTrue();
+        _viewModel.SaveRetryMessage.Should().Be("SaveStatus_Failed_Single(notes.txt)");
     }
 
     [Test]
-    public void SaveFailures_ShowTheCount_WhenSeveralItemsAreFailing()
+    public void SaveRetries_ShowTheCount_WhenSeveralItemsAreRetrying()
     {
         _viewModel.OnLoaded();
 
-        SendFailingResources(new ResourceKey("project:notes.txt"), new ResourceKey("project:data.json"));
+        SendRetryingResources(new ResourceKey("project:notes.txt"), new ResourceKey("project:data.json"));
 
-        _viewModel.HasSaveFailures.Should().BeTrue();
-        _viewModel.SaveFailureMessage.Should().Be("SaveStatus_Failed_Multiple(2)",
+        _viewModel.HasSaveRetries.Should().BeTrue();
+        _viewModel.SaveRetryMessage.Should().Be("SaveStatus_Failed_Multiple(2)",
             "the names do not fit a tooltip");
     }
 
     [Test]
-    public void SaveFailures_Clear_WhenTheFailingSetEmpties()
+    public void SaveRetries_Clear_WhenTheRetryingSetEmpties()
     {
         _viewModel.OnLoaded();
 
-        SendFailingResources(new ResourceKey("project:notes.txt"));
-        SendFailingResources();
+        SendRetryingResources(new ResourceKey("project:notes.txt"));
+        SendRetryingResources();
 
-        _viewModel.HasSaveFailures.Should().BeFalse();
-        _viewModel.SaveFailureMessage.Should().BeEmpty();
+        _viewModel.HasSaveRetries.Should().BeFalse();
+        _viewModel.SaveRetryMessage.Should().BeEmpty();
     }
 
     [Test]
@@ -107,14 +107,14 @@ public class TitleBarViewModelTests
     {
         _viewModel.OnLoaded();
 
-        SendFailingResources(new ResourceKey("project:notes.txt"));
+        SendRetryingResources(new ResourceKey("project:notes.txt"));
         _pendingSaveCountHandler!.Invoke(this, new PendingSaveCountMessage(1));
 
         _workspaceUnloadedHandler!.Invoke(this, new WorkspaceUnloadedMessage());
 
         _viewModel.IsSaving.Should().BeFalse("the save state belonged to the workspace that went away");
-        _viewModel.HasSaveFailures.Should().BeFalse();
-        _viewModel.SaveFailureMessage.Should().BeEmpty();
+        _viewModel.HasSaveRetries.Should().BeFalse();
+        _viewModel.SaveRetryMessage.Should().BeEmpty();
     }
 
     [Test]
@@ -122,17 +122,17 @@ public class TitleBarViewModelTests
     {
         _viewModel.OnLoaded();
 
-        SendFailingResources(new ResourceKey("project:notes.txt"));
+        SendRetryingResources(new ResourceKey("project:notes.txt"));
         _workspaceUnloadedHandler!.Invoke(this, new WorkspaceUnloadedMessage());
 
         _workspaceLoadedHandler!.Invoke(this, new WorkspaceLoadedMessage());
 
-        _viewModel.HasSaveFailures.Should().BeFalse();
-        _viewModel.SaveFailureMessage.Should().BeEmpty();
+        _viewModel.HasSaveRetries.Should().BeFalse();
+        _viewModel.SaveRetryMessage.Should().BeEmpty();
     }
 
-    private void SendFailingResources(params ResourceKey[] failingResources)
+    private void SendRetryingResources(params ResourceKey[] retryingResources)
     {
-        _saveFailuresHandler!.Invoke(this, new WorkspaceItemSaveFailuresChangedMessage(failingResources));
+        _saveRetriesHandler!.Invoke(this, new WorkspaceItemSaveRetriesChangedMessage(retryingResources));
     }
 }

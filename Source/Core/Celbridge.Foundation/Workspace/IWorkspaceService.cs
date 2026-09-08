@@ -96,7 +96,7 @@ public interface IWorkspaceService
     Task FlushModifiedItemsAsync();
 
     /// <summary>
-    /// The resources that cannot be written.
+    /// Every resource whose last write failed and is waiting to be attempted again.
     /// </summary>
-    IReadOnlyList<ResourceKey> GetFailingSaveResources();
+    IReadOnlyList<ResourceKey> GetRetryingResources();
 }

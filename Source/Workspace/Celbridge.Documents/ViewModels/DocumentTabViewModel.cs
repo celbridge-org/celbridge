@@ -46,7 +46,7 @@ public partial class DocumentTabViewModel : ObservableObject
     private string _editorDisplayName = string.Empty;
 
     [ObservableProperty]
-    private bool _hasSaveFailure;
+    private bool _isSaveRetrying;
 
     /// <summary>
     /// True when this tab borrows a utility's live view rather than holding a document of its own. Such a
@@ -107,7 +107,7 @@ public partial class DocumentTabViewModel : ObservableObject
         {
             var description = ComposeTabDescription();
 
-            if (!HasSaveFailure)
+            if (!IsSaveRetrying)
             {
                 return description;
             }
@@ -160,7 +160,7 @@ public partial class DocumentTabViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(FileName));
 
-        RefreshSaveFailure();
+        RefreshSaveState();
     }
 
     public IDocumentView? DocumentView { get; set; }
@@ -189,28 +189,28 @@ public partial class DocumentTabViewModel : ObservableObject
 
         _messengerService.Register<ResourceRegistryUpdatedMessage>(this, OnResourceRegistryUpdatedMessage);
         _messengerService.Register<ResourceKeyChangedMessage>(this, OnResourceKeyChangedMessage);
-        _messengerService.Register<WorkspaceItemSaveFailuresChangedMessage>(this, OnSaveFailuresChanged);
+        _messengerService.Register<WorkspaceItemSaveRetriesChangedMessage>(this, OnSaveRetriesChanged);
     }
 
-    private void OnSaveFailuresChanged(object recipient, WorkspaceItemSaveFailuresChangedMessage message)
+    private void OnSaveRetriesChanged(object recipient, WorkspaceItemSaveRetriesChangedMessage message)
     {
-        HasSaveFailure = message.FailingResources.Contains(FileResource);
+        IsSaveRetrying = message.RetryingResources.Contains(FileResource);
     }
 
-    // The failing set is only sent when it changes, so a tab opened onto an already-failing resource
-    // must read the current state.
-    private void RefreshSaveFailure()
+    private void RefreshSaveState()
     {
         if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return;
         }
 
-        var failingResources = _workspaceWrapper.WorkspaceService.GetFailingSaveResources();
-        HasSaveFailure = failingResources.Contains(FileResource);
+        // The retrying set is only sent when it changes, so a tab that appears later has missed it and
+        // reads the current set instead.
+        var retryingResources = _workspaceWrapper.WorkspaceService.GetRetryingResources();
+        IsSaveRetrying = retryingResources.Contains(FileResource);
     }
 
-    partial void OnHasSaveFailureChanged(bool value)
+    partial void OnIsSaveRetryingChanged(bool value)
     {
         OnPropertyChanged(nameof(TabTooltip));
     }

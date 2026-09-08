@@ -99,7 +99,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         }
     }
 
-    public IReadOnlyList<ResourceKey> GetFailingSaveResources() => _workspaceItemSaver.GetFailingResources();
+    public IReadOnlyList<ResourceKey> GetRetryingResources() => _workspaceItemSaver.GetRetryingResources();
 
     public Task FlushModifiedItemsAsync()
     {
