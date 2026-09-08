@@ -443,20 +443,21 @@ public static class MacOSWebViewInterop
     private static readonly IntPtr WebProcessIdentifierSelector = GetSelector("_webProcessIdentifier");
 
     /// <summary>
-    /// The process id of the WebContent process rendering the view, or 0 when WebKit does not expose it. A
-    /// page whose id changes between two readings has had its process replaced, which is what WebKit does
-    /// to a page under memory pressure and what leaves it blank.
+    /// The process id of the WebContent process rendering the view, 0 when no process is rendering it, or
+    /// -1 when WebKit does not expose the id at all. A page whose id changes between two readings has had
+    /// its process replaced, which is what WebKit does to a page under memory pressure and what leaves it
+    /// blank.
     /// </summary>
     public static long GetWebContentProcessId(IntPtr webView)
     {
         if (webView == IntPtr.Zero)
         {
-            return 0;
+            return -1;
         }
 
         if (SendMessage(webView, RespondsToSelectorSelector, WebProcessIdentifierSelector) == IntPtr.Zero)
         {
-            return 0;
+            return -1;
         }
 
         // pid_t is 32 bits, so only the low word is defined by the return.

@@ -65,4 +65,9 @@ public interface IDocumentView : IWorkspaceItem
     /// Restores previously saved editor state from an opaque JSON string.
     /// </summary>
     Task RestoreEditorStateAsync(string state);
+
+    /// <summary>
+    /// What the host knows about this document's hosted page still working.
+    /// </summary>
+    DocumentHealth GetHealth();
 }

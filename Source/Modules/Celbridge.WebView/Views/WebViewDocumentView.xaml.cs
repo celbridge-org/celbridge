@@ -56,6 +56,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
     private readonly IWebViewFocusRegistry _webViewFocusRegistry;
 
     private WebView2? _webView;
+
+    private int _processFailures;
     // Set on the first initialization attempt, so LoadContent and Loaded share a single run.
     private Task? _initializeWebViewTask;
     // Host RPC channel. Only created for the HtmlViewer role. External-URL documents run without one.
@@ -280,6 +282,11 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
             _webView.CoreWebView2.NavigationStarting -= CoreWebView2_NavigationStarting;
             _webView.CoreWebView2.NavigationStarting += CoreWebView2_NavigationStarting;
 
+            // Raised only by the packaged Windows head's WebView2. The Skia heads report a dead renderer
+            // through the web view adapter instead.
+            _webView.CoreWebView2.ProcessFailed -= CoreWebView2_ProcessFailed;
+            _webView.CoreWebView2.ProcessFailed += CoreWebView2_ProcessFailed;
+
             AttachNavigationPolicy(_webView.CoreWebView2);
 
             TryNavigate();
@@ -394,6 +401,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
             _webView.CoreWebView2.HistoryChanged -= CoreWebView2_HistoryChanged;
             _webView.CoreWebView2.NavigationCompleted -= CoreWebView2_NavigationCompleted;
             _webView.CoreWebView2.NavigationStarting -= CoreWebView2_NavigationStarting;
+            _webView.CoreWebView2.ProcessFailed -= CoreWebView2_ProcessFailed;
 
             if (_navigationPolicy is not null)
             {
@@ -495,6 +503,15 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
     private void CoreWebView2_HistoryChanged(object? sender, object e)
     {
         UpdateNavigationState();
+    }
+
+    private void CoreWebView2_ProcessFailed(object? sender, CoreWebView2ProcessFailedEventArgs e)
+    {
+        _processFailures++;
+
+        _logger.LogError(
+            "WebView ProcessFailed: Kind={Kind}, Reason={Reason}, ExitCode={ExitCode}",
+            e.ProcessFailedKind, e.Reason, e.ExitCode);
     }
 
     private void CoreWebView2_NavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
@@ -1253,6 +1270,18 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
         var editorState = new WebViewEditorState(ViewModel.IsSettingsOpen, sectionKey);
 
         return JsonSerializer.Serialize(editorState, EditorStateSerializerOptions);
+    }
+
+    public override DocumentHealth GetHealth()
+    {
+        var coreWebView2 = _webView?.CoreWebView2;
+        if (coreWebView2 is null)
+        {
+            return new DocumentHealth(0, _processFailures);
+        }
+
+        var pageHealth = _webViewAdapter.GetHostedPageHealth(coreWebView2);
+        return pageHealth with { ProcessFailures = pageHealth.ProcessFailures + _processFailures };
     }
 
     public override async Task RestoreEditorStateAsync(string state)

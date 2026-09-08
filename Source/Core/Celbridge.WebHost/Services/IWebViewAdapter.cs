@@ -1,3 +1,4 @@
+using Celbridge.Documents;
 using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.WebHost;
@@ -76,6 +77,12 @@ public interface IWebViewAdapter
     /// so that control stops acting on the keys the pipeline still routes to it.
     /// </summary>
     void FocusWebView(WebView2 webView);
+
+    /// <summary>
+    /// What the host has observed about this hosted page still working. Healthy where the head does not
+    /// wake its pages, which is where nothing is observed rather than where nothing is wrong.
+    /// </summary>
+    DocumentHealth GetHostedPageHealth(CoreWebView2 coreWebView2);
 
     /// <summary>
     /// Evaluates a JavaScript expression and returns the JSON-encoded result. On the Skia heads common

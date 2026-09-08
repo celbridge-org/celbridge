@@ -141,8 +141,25 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
     private WebViewLoadDiagnostics? _diagnostics;
 
+    // Counted for the lifetime of the controller, so a page that has died and recovered still reports it.
+    private int _processFailures;
+
     // The Celbridge host for JSON-RPC communication with the WebView.
     private CelbridgeHost? Host { get; set; }
+
+    public DocumentHealth GetHealth()
+    {
+        var coreWebView2 = WebView?.CoreWebView2;
+        if (coreWebView2 is null)
+        {
+            return new DocumentHealth(0, _processFailures);
+        }
+
+        // The adapter observes the hosted page, this controller observes the control in front of it, and
+        // each head reports through whichever of the two works there.
+        var pageHealth = _webViewAdapter.GetHostedPageHealth(coreWebView2);
+        return pageHealth with { ProcessFailures = pageHealth.ProcessFailures + _processFailures };
+    }
 
     /// <summary>
     /// The view model the controller reports content changes to.
@@ -426,8 +443,12 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             args.Handled = true;
         };
 
+        // Raised only by the packaged Windows head's WebView2. The Skia heads report a dead renderer
+        // through the web view adapter instead.
         WebView.CoreWebView2.ProcessFailed += (s, args) =>
         {
+            _processFailures++;
+
             _logger.LogError(
                 "WebView ProcessFailed: Kind={Kind}, Reason={Reason}, ExitCode={ExitCode}",
                 args.ProcessFailedKind, args.Reason, args.ExitCode);
@@ -1023,13 +1044,17 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             var proxyChannel = _proxyChannel;
             var transportState = proxyChannel?.GetTransportState();
 
+            var health = GetHealth();
+
             _logger.LogWarning(
-                "Editor did not return state within {Seconds}s; closing without preserving editor state. File: {File}, proxy channel {HasProxyChannel}, transport bound {IsBound}, pending outbound {PendingOutbound}",
+                "Editor did not return state within {Seconds}s; closing without preserving editor state. File: {File}, proxy channel {HasProxyChannel}, transport bound {IsBound}, pending outbound {PendingOutbound}, missed wakes {WakeFailures}, process failures {ProcessFailures}",
                 EditorStateRequestTimeoutSeconds,
                 _viewModel.FilePath,
                 proxyChannel is not null,
                 transportState?.IsBound,
-                transportState?.PendingOutboundCount);
+                transportState?.PendingOutboundCount,
+                health.WakeFailures,
+                health.ProcessFailures);
 
             AbandonedTaskObserver.Observe(requestStateTask);
             return null;

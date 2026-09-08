@@ -9,6 +9,7 @@ public record class DocumentStateSnapshot(
     IReadOnlyList<DocumentSection> VisibleSections,
     IReadOnlyList<OpenDocumentInfo> OpenDocuments,
     IReadOnlyDictionary<DocumentSection, ResourceKey> SelectedDocuments,
+    IReadOnlyDictionary<ResourceKey, DocumentHealth> UnhealthyDocuments,
     ResourceKey ActiveDocument);
 
 /// <summary>

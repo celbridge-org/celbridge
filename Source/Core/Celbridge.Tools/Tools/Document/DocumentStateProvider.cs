@@ -10,7 +10,16 @@ public record class DocumentStateResult(
     List<string> VisibleSections,
     List<OpenDocumentEntry> OpenDocuments,
     Dictionary<string, string> SelectedDocuments,
+    List<UnhealthyDocumentEntry> UnhealthyDocuments,
     string ActiveDocument);
+
+/// <summary>
+/// A document whose hosted page has stopped responding, within the document_get_state result.
+/// </summary>
+public record class UnhealthyDocumentEntry(
+    string Resource,
+    int WakeFailures,
+    int ProcessFailures);
 
 /// <summary>
 /// An open document entry within the document_get_state result.
@@ -76,10 +85,18 @@ internal sealed class DocumentStateProvider : IDocumentStateProvider
         // response field is a clean signal that nothing is active.
         var activeDocumentString = activeDocument.IsEmpty ? string.Empty : activeDocument.ToString();
 
+        var unhealthyDocuments = snapshot.UnhealthyDocuments
+            .Select(entry => new UnhealthyDocumentEntry(
+                entry.Key.ToString(),
+                entry.Value.WakeFailures,
+                entry.Value.ProcessFailures))
+            .ToList();
+
         return new DocumentStateResult(
             visibleSections,
             documents,
             selectedDocuments,
+            unhealthyDocuments,
             activeDocumentString);
     }
 }

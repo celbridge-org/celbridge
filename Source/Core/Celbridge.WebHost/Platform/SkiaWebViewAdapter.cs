@@ -1,6 +1,8 @@
 using System.Text.Json;
+using Celbridge.Documents;
 using Celbridge.Logging;
 using Celbridge.UserInterface;
+using Celbridge.WebHost.Services;
 using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.WebHost.Platform;
@@ -24,6 +26,9 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
 
     // The wake loop running for each live hosted web view, keyed by the view it wakes.
     private readonly Dictionary<CoreWebView2, CancellationTokenSource> _keepAliveLoops = new();
+
+    // What the wake loop has observed about each hosted view, read by callers reporting a document's health.
+    private readonly HostedPageHealthTracker<CoreWebView2> _pageHealth = new();
 
     // The find methods receive only a CoreWebView2, so sessions are keyed by it to recover per-find state.
     private readonly Dictionary<CoreWebView2, FindSession> _findSessions = new();
@@ -137,6 +142,13 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     // Spread added to every wake, so pages registered together do not settle into waking in the same instant.
     private const int KeepAliveJitterSeconds = 5;
 
+    // How often a page that keeps missing its wake repeats the report.
+    private const int FailuresPerReport = 10;
+
+    // How long a wake may go unanswered before it counts as missed. A page that is running answers in
+    // milliseconds, so this only has to outlast a page busy with its own work.
+    private const int WakeTimeoutSeconds = 10;
+
     // Wakes this hosted web view until it is closed. WebKit stops a hidden page's event loop after a few
     // minutes, so it services no host RPC until the user activates it, and evaluating a trivial script
     // restarts it.
@@ -155,6 +167,8 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
             _keepAliveLoops.Add(coreWebView2, cancellationTokenSource);
         }
 
+        _pageHealth.Track(coreWebView2);
+
         _ = KeepPageAwakeAsync(coreWebView2, cancellationTokenSource.Token);
     }
 
@@ -170,6 +184,8 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
             }
         }
 
+        _pageHealth.Untrack(coreWebView2);
+
         cancellationTokenSource.Cancel();
         cancellationTokenSource.Dispose();
     }
@@ -178,29 +194,127 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     // are never configured away from the dispatcher.
     private async Task KeepPageAwakeAsync(CoreWebView2 coreWebView2, CancellationToken cancellationToken)
     {
-        while (true)
+        try
         {
-            try
+            while (true)
             {
-                var jitter = TimeSpan.FromMilliseconds(Random.Shared.Next(0, KeepAliveJitterSeconds * 1000));
-                await Task.Delay(TimeSpan.FromSeconds(KeepAliveIntervalSeconds) + jitter, cancellationToken);
+                try
+                {
+                    var jitter = TimeSpan.FromMilliseconds(Random.Shared.Next(0, KeepAliveJitterSeconds * 1000));
+                    await Task.Delay(TimeSpan.FromSeconds(KeepAliveIntervalSeconds) + jitter, cancellationToken);
 
-                await EvalAsync(coreWebView2, "0");
-            }
-            catch (OperationCanceledException)
-            {
-                return;
-            }
-            catch (ObjectDisposedException)
-            {
-                // The view was torn down without reaching CloseWebView, so there is nothing left to wake.
-                return;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug(ex, "Could not wake a hosted page");
+                    await WakePageAsync(coreWebView2, cancellationToken);
+
+                    var clearedFailures = _pageHealth.RecordWakeSucceeded(coreWebView2);
+                    if (clearedFailures > 0)
+                    {
+                        _logger.LogInformation(
+                            "A hosted page is responding again after {FailureCount} missed wake(s)",
+                            clearedFailures);
+                    }
+
+                    ObserveWebContentProcess(coreWebView2);
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
+                catch (ObjectDisposedException)
+                {
+                    // The view was torn down without reaching CloseWebView, so there is nothing left to wake.
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    var consecutiveFailures = _pageHealth.RecordWakeFailed(coreWebView2);
+
+                    // A page that misses every wake would otherwise report itself on each one.
+                    if (consecutiveFailures == 1
+                        || consecutiveFailures % FailuresPerReport == 0)
+                    {
+                        _logger.LogWarning(
+                            ex,
+                            "A hosted page has missed {FailureCount} consecutive wake(s)",
+                            consecutiveFailures);
+                    }
+
+                    // A dead renderer faults the wake rather than answering it, so the process is read on
+                    // the failure path too.
+                    ObserveWebContentProcess(coreWebView2);
+                }
             }
         }
+        finally
+        {
+            _pageHealth.Untrack(coreWebView2);
+        }
+    }
+
+    // Faults are the signal here, so this deliberately bypasses EvalAsync, which reports a page that
+    // faulted and a page that returned undefined identically.
+    private async Task WakePageAsync(CoreWebView2 coreWebView2, CancellationToken cancellationToken)
+    {
+        var wakeTask = coreWebView2.ExecuteScriptAsync("0").AsTask(cancellationToken);
+        var timeoutTask = Task.Delay(TimeSpan.FromSeconds(WakeTimeoutSeconds), cancellationToken);
+
+        if (await Task.WhenAny(wakeTask, timeoutTask) == timeoutTask)
+        {
+            // WebKit runs the completion handler on the page's own run loop, so a page whose loop has
+            // stopped never answers and never faults. Without this the loop would await it forever and
+            // silently stop waking the page.
+            ObserveAbandonedTask(wakeTask);
+            throw new TimeoutException($"The page did not answer a wake within {WakeTimeoutSeconds}s");
+        }
+
+        await wakeTask;
+    }
+
+    // Reads which process is rendering the page and reports what changed since the last reading.
+    private void ObserveWebContentProcess(CoreWebView2 coreWebView2)
+    {
+        var change = _pageHealth.RecordProcessId(coreWebView2, ReadWebContentProcessId(coreWebView2));
+
+        switch (change)
+        {
+            case HostedPageProcessChange.Gone:
+                _logger.LogWarning("The WebContent process behind a hosted page is no longer running");
+                break;
+
+            case HostedPageProcessChange.Relaunched:
+                _logger.LogInformation("WebKit relaunched the WebContent process behind a hosted page");
+                break;
+
+            case HostedPageProcessChange.Replaced:
+                _logger.LogWarning("The WebContent process behind a hosted page was replaced");
+                break;
+        }
+    }
+
+    private static void ObserveAbandonedTask(Task task)
+    {
+        _ = task.ContinueWith(
+            static abandonedTask => { _ = abandonedTask.Exception; },
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted,
+            TaskScheduler.Default);
+    }
+
+    public DocumentHealth GetHostedPageHealth(CoreWebView2 coreWebView2)
+    {
+        return _pageHealth.GetHealth(coreWebView2);
+    }
+
+    // Negative when the head or the platform does not report one, which a page with no running renderer
+    // reports as zero and must not be confused with.
+    private long ReadWebContentProcessId(CoreWebView2 coreWebView2)
+    {
+        if (!OperatingSystem.IsMacOS()
+            || !MacOSWebViewInterop.TryGetNativeWebViewHandle(coreWebView2, out var nativeHandle, out _))
+        {
+            return -1;
+        }
+
+        return MacOSWebViewInterop.GetWebContentProcessId(nativeHandle);
     }
 
     // UNO-BUG: the native frame is arranged only while the control is in the visual tree.
