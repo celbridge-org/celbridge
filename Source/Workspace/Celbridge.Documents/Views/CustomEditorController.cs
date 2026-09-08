@@ -2,6 +2,7 @@ using System.Text.Json;
 using Celbridge.Commands;
 using Celbridge.DataTransfer;
 using Celbridge.Dialog;
+using Celbridge.Documents.Helpers;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Host;
 using Celbridge.Localization;
@@ -1030,7 +1031,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
                 transportState?.IsBound,
                 transportState?.PendingOutboundCount);
 
-            ObserveAbandonedRequest(requestStateTask);
+            AbandonedTaskObserver.Observe(requestStateTask);
             return null;
         }
 
@@ -1043,17 +1044,6 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             // Editor did not register a document/requestState handler.
             return null;
         }
-    }
-
-    // Swallows the eventual fault of an abandoned host->editor request (it faults when the WebView is
-    // torn down) so it does not surface as an unobserved task exception.
-    private static void ObserveAbandonedRequest(Task task)
-    {
-        _ = task.ContinueWith(
-            static abandonedTask => { _ = abandonedTask.Exception; },
-            CancellationToken.None,
-            TaskContinuationOptions.OnlyOnFaulted,
-            TaskScheduler.Default);
     }
 
     public async Task RestoreEditorStateAsync(string state)
@@ -1072,7 +1062,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         {
             // Best-effort restore. An unresponsive editor should not stall the caller. Abandon and move on.
             _logger.LogWarning("Editor did not acknowledge restoreState within {Seconds}s; continuing.", EditorStateRequestTimeoutSeconds);
-            ObserveAbandonedRequest(restoreStateTask);
+            AbandonedTaskObserver.Observe(restoreStateTask);
             return;
         }
 

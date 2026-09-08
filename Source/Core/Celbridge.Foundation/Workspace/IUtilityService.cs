@@ -63,9 +63,9 @@ public interface IUtilityService
     EditorId? GetDockedUtilityId(ResourceKey resource);
 
     /// <summary>
-    /// The utilities as saveable workspace items. A utility docked into a document tab is included.
+    /// The utilities as workspace items. A utility docked into a document tab is included.
     /// </summary>
-    IReadOnlyList<ISaveableWorkspaceItem> GetSaveableItems();
+    IReadOnlyList<IWorkspaceItem> GetWorkspaceItems();
 
     /// <summary>
     /// Saves any pending changes in the utilities and releases them. Called on workspace unload.

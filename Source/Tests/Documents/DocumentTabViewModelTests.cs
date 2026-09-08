@@ -4,6 +4,7 @@ using Celbridge.Messaging;
 using Celbridge.Messaging.Services;
 using Celbridge.Resources;
 using Celbridge.Workspace;
+using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Tests.Documents;
 
@@ -23,6 +24,8 @@ public class DocumentTabViewModelTests
     private IResourceOperationService _resourceOperations = null!;
     private IResourceService _resourceService = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
+    private IStringLocalizer _stringLocalizer = null!;
+    private IWorkspaceService _workspaceService = null!;
     private readonly List<DocumentTabViewModel> _createdViewModels = new();
 
     [SetUp]
@@ -51,11 +54,21 @@ public class DocumentTabViewModelTests
         _resourceService.FileSystem.Returns(_resourceFileSystem);
         _resourceService.Operations.Returns(_resourceOperations);
 
-        var workspaceService = Substitute.For<IWorkspaceService>();
-        workspaceService.ResourceService.Returns(_resourceService);
+        _workspaceService = Substitute.For<IWorkspaceService>();
+        _workspaceService.ResourceService.Returns(_resourceService);
+        _workspaceService.GetRetryingResources().Returns(Array.Empty<ResourceKey>());
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
-        _workspaceWrapper.WorkspaceService.Returns(workspaceService);
+        _workspaceWrapper.WorkspaceService.Returns(_workspaceService);
+
+        // The composed value carries the arguments, so a test can tell which values reached the template.
+        _stringLocalizer = Substitute.For<IStringLocalizer>();
+        _stringLocalizer[Arg.Any<string>(), Arg.Any<object[]>()].Returns(call =>
+        {
+            var name = call.Arg<string>();
+            var arguments = call.Arg<object[]>();
+            return new LocalizedString(name, $"{name}({string.Join(", ", arguments)})");
+        });
     }
 
     [TearDown]
@@ -73,7 +86,12 @@ public class DocumentTabViewModelTests
 
     private DocumentTabViewModel CreateViewModel(ResourceKey fileResource, IDocumentView? documentView = null)
     {
-        var viewModel = new DocumentTabViewModel(_messengerService, _commandService, _logger, _workspaceWrapper)
+        var viewModel = new DocumentTabViewModel(
+            _messengerService,
+            _commandService,
+            _logger,
+            _workspaceWrapper,
+            _stringLocalizer)
         {
             FileResource = fileResource,
             DocumentView = documentView!,
@@ -223,5 +241,86 @@ public class DocumentTabViewModelTests
         _messengerService.Send(new ResourceRegistryUpdatedMessage());
 
         documentView.DidNotReceive().SetWritableState(Arg.Any<WritableState>());
+    }
+
+    [Test]
+    public async Task CloseDocument_AnnouncesDiscardedEdits_WhenSaveFails()
+    {
+        var fileResource = new ResourceKey("locked.md");
+        var viewModel = CreateViewModel(fileResource, CreateUnwritableDocumentView());
+
+        var discardedResources = RecordDiscardedResources(out var probe);
+
+        await viewModel.CloseDocument(forceClose: false);
+
+        _messengerService.UnregisterAll(probe);
+
+        discardedResources.Should().Equal(new[] { fileResource },
+            "the edits went with the view, so this is the last chance to say so");
+    }
+
+    [Test]
+    public async Task CloseDocument_DoesNotAnnounceDiscardedEdits_ForADockedUtility()
+    {
+        var viewModel = CreateViewModel(new ResourceKey("locked.md"), CreateUnwritableDocumentView());
+        viewModel.IsDockedUtility = true;
+
+        var discardedResources = RecordDiscardedResources(out var probe);
+
+        await viewModel.CloseDocument(forceClose: false);
+
+        _messengerService.UnregisterAll(probe);
+
+        discardedResources.Should().BeEmpty("a docked utility keeps its view and its content when the tab closes");
+    }
+
+    [Test]
+    public void NewTab_ShowsTheWarning_WhenTheResourceIsAlreadyRetrying()
+    {
+        var fileResource = new ResourceKey("locked.md");
+        _workspaceWrapper.IsWorkspaceLoaded.Returns(true);
+        _workspaceService.GetRetryingResources().Returns(new[] { fileResource });
+
+        var viewModel = CreateViewModel(fileResource);
+
+        viewModel.IsSaveRetrying.Should().BeTrue("the failing set is only sent when it changes");
+    }
+
+    [Test]
+    public void TabTooltip_SaysTheFileCouldNotBeSaved_WhenTheResourceIsFailing()
+    {
+        var fileResource = new ResourceKey("locked.md");
+        _workspaceWrapper.IsWorkspaceLoaded.Returns(true);
+        _workspaceService.GetRetryingResources().Returns(new[] { fileResource });
+
+        var viewModel = CreateViewModel(fileResource);
+        viewModel.FilePath = "C:/project/locked.md";
+
+        viewModel.TabTooltip.Should()
+            .StartWith("DocumentTab_Tooltip_SaveFailed(")
+            .And.Contain("C:/project/locked.md");
+    }
+
+    private static IDocumentView CreateUnwritableDocumentView()
+    {
+        var documentView = Substitute.For<IDocumentView>();
+        documentView.CanClose().Returns(Task.FromResult(true));
+        documentView.HasUnsavedChanges.Returns(true);
+        documentView.SaveAsync().Returns(Task.FromResult<Result>(Result.Fail("simulated save failure")));
+        documentView.WritableState.Returns(WritableState.Locked);
+
+        return documentView;
+    }
+
+    private List<ResourceKey> RecordDiscardedResources(out object probe)
+    {
+        var discardedResources = new List<ResourceKey>();
+
+        probe = new object();
+        _messengerService.Register<WorkspaceItemSaveDiscardedMessage>(
+            probe,
+            (object _, WorkspaceItemSaveDiscardedMessage message) => discardedResources.Add(message.Resource));
+
+        return discardedResources;
     }
 }

@@ -67,7 +67,7 @@ public partial class WorkspaceToastViewModel : ObservableObject
         _messengerService.Register<ProjectLoadNotificationMessage>(this, OnProjectLoadNotification);
         _messengerService.Register<ResourceOperationFailedMessage>(this, OnResourceOperationFailed);
         _messengerService.Register<EditorNotificationMessage>(this, OnEditorNotification);
-        _messengerService.Register<WorkspaceItemSaveFailedMessage>(this, OnWorkspaceItemSaveFailed);
+        _messengerService.Register<WorkspaceItemSaveDiscardedMessage>(this, OnWorkspaceItemSaveDiscarded);
     }
 
     private void OnProjectLoadNotification(object recipient, ProjectLoadNotificationMessage message)
@@ -81,10 +81,10 @@ public partial class WorkspaceToastViewModel : ObservableObject
         _dispatcher.TryEnqueue(() => Show(ComposeOperationNotification(message)));
     }
 
-    private void OnWorkspaceItemSaveFailed(object recipient, WorkspaceItemSaveFailedMessage message)
+    private void OnWorkspaceItemSaveDiscarded(object recipient, WorkspaceItemSaveDiscardedMessage message)
     {
-        // Raised from the workspace update loop, which does not run on the UI thread.
-        _dispatcher.TryEnqueue(() => Show(ComposeSaveFailureNotification(message)));
+        // Raised from the document close path, which does not always run on the UI thread.
+        _dispatcher.TryEnqueue(() => Show(ComposeSaveDiscardedNotification(message)));
     }
 
     private void OnEditorNotification(object recipient, EditorNotificationMessage message)
@@ -104,28 +104,13 @@ public partial class WorkspaceToastViewModel : ObservableObject
         };
     }
 
-    private WorkspaceNotification ComposeSaveFailureNotification(WorkspaceItemSaveFailedMessage message)
+    private WorkspaceNotification ComposeSaveDiscardedNotification(WorkspaceItemSaveDiscardedMessage message)
     {
-        var failedItems = message.FailedItems;
-
-        if (failedItems.Count == 1)
-        {
-            var failedItem = failedItems[0];
-            var reason = ToSingleLine(failedItem.Message);
-
-            return Compose(
-                ReportSeverity.Error,
-                "Toast_SaveFailed_Single",
-                action: null,
-                failedItem.Resource.ResourceName,
-                reason);
-        }
-
         return Compose(
             ReportSeverity.Error,
-            "Toast_SaveFailed_Multiple",
+            "Toast_SaveDiscarded",
             action: null,
-            failedItems.Count);
+            message.Resource.ResourceName);
     }
 
     private WorkspaceNotification ComposeLoadNotification(ProjectLoadReportSummary summary)

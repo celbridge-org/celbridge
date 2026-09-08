@@ -493,7 +493,7 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
 
     public async Task<Result> SaveDocumentContent()
     {
-        // Don't immediately try to save again if the save fails.
+        // Cleared before the write so an edit made while it is in flight is not counted as written.
         HasUnsavedChanges = false;
         SaveTimer = 0;
 
@@ -507,7 +507,13 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
             Bookmarks = bookmarks
         };
 
-        return await SaveTextToFileAsync(content.ToToml());
+        var saveResult = await SaveTextToFileAsync(content.ToToml());
+        if (saveResult.IsFailure)
+        {
+            HasUnsavedChanges = true;
+        }
+
+        return saveResult;
     }
 
     /// <summary>

@@ -223,10 +223,18 @@ public class CommandService : ICommandService
 
             // To avoid race conditions, application and workspace state is updated while there are no
             // executing commands. This ensures that no commands run until pending saves complete.
-            var updateResult = await ExecuteWithWatchdogAsync(UpdateApplicationAsync(), "Application update");
-            if (updateResult.IsFailure)
+            try
             {
-                _logger.LogError(updateResult, "Failed to update application");
+                var updateResult = await ExecuteWithWatchdogAsync(UpdateApplicationAsync(), "Application update");
+                if (updateResult.IsFailure)
+                {
+                    _logger.LogError(updateResult, "Failed to update application");
+                }
+            }
+            catch (Exception ex)
+            {
+                // The loop task is not awaited, so an exception that escapes here is never observed.
+                _logger.LogError(ex, "An exception occurred while updating the application.");
             }
 
             // An open dialog is the user being asked a question, so the queue waits for the answer. Only

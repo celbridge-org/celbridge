@@ -104,9 +104,9 @@ public interface IDocumentsPanel
     Task<Result> CloseDocument(ResourceKey fileResource, CloseDocumentOptions? options = null);
 
     /// <summary>
-    /// The open documents as saveable workspace items. A utility docked into a document tab is not included.
+    /// The open documents as workspace items. A utility docked into a document tab is not included.
     /// </summary>
-    IReadOnlyList<ISaveableWorkspaceItem> GetSaveableItems();
+    IReadOnlyList<IWorkspaceItem> GetWorkspaceItems();
 
     /// <summary>
     /// Activates an opened document in the documents panel, making it the active tab.

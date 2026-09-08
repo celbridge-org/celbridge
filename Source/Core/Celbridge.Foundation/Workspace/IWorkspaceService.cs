@@ -88,4 +88,15 @@ public interface IWorkspaceService
     /// Update the workspace state, for example by saving any pending workspace or document changes to disk.
     /// </summary>
     Task<Result> UpdateWorkspaceAsync(double deltaTime);
+
+    /// <summary>
+    /// Writes the content of every open workspace item that still holds unsaved changes. An item that does
+    /// not write within the flush timeout is abandoned and its content is discarded.
+    /// </summary>
+    Task FlushModifiedItemsAsync();
+
+    /// <summary>
+    /// Every resource whose last write failed and is waiting to be attempted again.
+    /// </summary>
+    IReadOnlyList<ResourceKey> GetRetryingResources();
 }
