@@ -1,3 +1,4 @@
+using Celbridge.Documents;
 using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.WebHost;
@@ -78,10 +79,10 @@ public interface IWebViewAdapter
     void FocusWebView(WebView2 webView);
 
     /// <summary>
-    /// How many consecutive keep-alive wakes this hosted page has missed. Zero where the head does not wake
-    /// its pages.
+    /// What the host has observed about this hosted page still working. Healthy where the head does not
+    /// wake its pages, which is where nothing is observed rather than where nothing is wrong.
     /// </summary>
-    int GetWakeFailureCount(CoreWebView2 coreWebView2);
+    DocumentHealth GetHostedPageHealth(CoreWebView2 coreWebView2);
 
     /// <summary>
     /// Evaluates a JavaScript expression and returns the JSON-encoded result. On the Skia heads common

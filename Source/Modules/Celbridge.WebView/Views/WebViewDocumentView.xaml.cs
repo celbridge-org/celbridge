@@ -282,6 +282,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
             _webView.CoreWebView2.NavigationStarting -= CoreWebView2_NavigationStarting;
             _webView.CoreWebView2.NavigationStarting += CoreWebView2_NavigationStarting;
 
+            // Raised only by the packaged Windows head's WebView2. The Skia heads report a dead renderer
+            // through the web view adapter instead.
             _webView.CoreWebView2.ProcessFailed -= CoreWebView2_ProcessFailed;
             _webView.CoreWebView2.ProcessFailed += CoreWebView2_ProcessFailed;
 
@@ -1273,9 +1275,13 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
     public override DocumentHealth GetHealth()
     {
         var coreWebView2 = _webView?.CoreWebView2;
-        return coreWebView2 is null
-            ? DocumentHealth.Healthy
-            : new DocumentHealth(_webViewAdapter.GetWakeFailureCount(coreWebView2), _processFailures);
+        if (coreWebView2 is null)
+        {
+            return new DocumentHealth(0, _processFailures);
+        }
+
+        var pageHealth = _webViewAdapter.GetHostedPageHealth(coreWebView2);
+        return pageHealth with { ProcessFailures = pageHealth.ProcessFailures + _processFailures };
     }
 
     public override async Task RestoreEditorStateAsync(string state)

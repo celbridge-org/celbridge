@@ -2,6 +2,7 @@
 // build never links against the WinAppSDK WebView2 surface.
 #if WINDOWS
 using System.Text.Json;
+using Celbridge.Documents;
 using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.WebHost.Platform;
@@ -45,7 +46,9 @@ public sealed class WindowsWebViewAdapter : IWebViewAdapter
         webView.Focus(FocusState.Programmatic);
     }
 
-    public int GetWakeFailureCount(CoreWebView2 coreWebView2) => 0;
+    // The packaged Windows head raises CoreWebView2.ProcessFailed, which the document views count for
+    // themselves, and it does not wake its pages.
+    public DocumentHealth GetHostedPageHealth(CoreWebView2 coreWebView2) => DocumentHealth.Healthy;
 
     public async Task<string> EvalAsync(CoreWebView2 coreWebView2, string expression)
     {

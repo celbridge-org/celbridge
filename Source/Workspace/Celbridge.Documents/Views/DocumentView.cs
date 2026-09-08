@@ -7,9 +7,6 @@ namespace Celbridge.Documents.Views;
 
 public abstract partial class DocumentView : UserControl, IDocumentView
 {
-    // A document with no hosted page has nothing that can stop responding.
-    public virtual DocumentHealth GetHealth() => DocumentHealth.Healthy;
-
     private IResourceRegistry? _resourceRegistry;
     private IResourceFileSystem? _resourceFileSystem;
 
@@ -195,6 +192,9 @@ public abstract partial class DocumentView : UserControl, IDocumentView
     {
         return Task.CompletedTask;
     }
+
+    // A document with no hosted page has nothing that can stop responding.
+    public virtual DocumentHealth GetHealth() => DocumentHealth.Healthy;
 
     // Registers a hosted web surface with the focus registry using the Documents-panel contract the web-view
     // document editors share. releaseFocus drops the surface's caret when focus leaves it, and grantDomFocus

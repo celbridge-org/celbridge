@@ -144,16 +144,22 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     // Counted for the lifetime of the controller, so a page that has died and recovered still reports it.
     private int _processFailures;
 
+    // The Celbridge host for JSON-RPC communication with the WebView.
+    private CelbridgeHost? Host { get; set; }
+
     public DocumentHealth GetHealth()
     {
         var coreWebView2 = WebView?.CoreWebView2;
-        var wakeFailures = coreWebView2 is null ? 0 : _webViewAdapter.GetWakeFailureCount(coreWebView2);
+        if (coreWebView2 is null)
+        {
+            return new DocumentHealth(0, _processFailures);
+        }
 
-        return new DocumentHealth(wakeFailures, _processFailures);
+        // The adapter observes the hosted page, this controller observes the control in front of it, and
+        // each head reports through whichever of the two works there.
+        var pageHealth = _webViewAdapter.GetHostedPageHealth(coreWebView2);
+        return pageHealth with { ProcessFailures = pageHealth.ProcessFailures + _processFailures };
     }
-
-    // The Celbridge host for JSON-RPC communication with the WebView.
-    private CelbridgeHost? Host { get; set; }
 
     /// <summary>
     /// The view model the controller reports content changes to.
@@ -437,6 +443,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             args.Handled = true;
         };
 
+        // Raised only by the packaged Windows head's WebView2. The Skia heads report a dead renderer
+        // through the web view adapter instead.
         WebView.CoreWebView2.ProcessFailed += (s, args) =>
         {
             _processFailures++;
