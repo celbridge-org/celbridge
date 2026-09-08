@@ -313,9 +313,7 @@ new ResizeObserver(() => updateRailArrangement()).observe(appElement);
 
 updateRailArrangement();
 
-settingsToggle.addEventListener('click', () => {
-    setSettingsVisible(settingsView.classList.contains('hidden'));
-});
+settingsToggle.addEventListener('click', () => setSettingsVisible(true));
 
 // Settings and the terminal take turns filling the content row. A hidden terminal has no size to fit to,
 // which fitTerminal() declines to measure, so the pty holds the size it was left at.
