@@ -100,7 +100,7 @@ public interface IDocumentsService
 
     /// <summary>
     /// Writes the content of every open document that still holds unsaved changes. A document that cannot
-    /// be written is logged and skipped, so the flush always completes.
+    /// be written is skipped.
     /// </summary>
     Task FlushModifiedDocumentsAsync();
 

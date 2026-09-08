@@ -51,8 +51,6 @@ public class DocumentsService : IDocumentsService, IDisposable
 
             try
             {
-                // Race the write against a hard timeout and abandon it on timeout, so an editor that
-                // never answers cannot hold the workspace open.
                 var saveTask = workspaceItem.SaveAsync();
                 var timeoutTask = Task.Delay(TimeSpan.FromSeconds(SaveConstants.UnloadFlushTimeout));
                 var completedTask = await Task.WhenAny(saveTask, timeoutTask);

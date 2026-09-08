@@ -7,8 +7,7 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.Tests.UserInterface;
 
 /// <summary>
-/// Tests for the save indicators in the application toolbar. One failing resource is named so the user can
-/// find it, several are a count, and the state belongs to the workspace that reported it.
+/// Tests for the save indicators in the application toolbar.
 /// </summary>
 [TestFixture]
 public class TitleBarViewModelTests

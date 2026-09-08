@@ -197,8 +197,8 @@ public partial class DocumentTabViewModel : ObservableObject
         HasSaveFailure = message.FailingResources.Contains(FileResource);
     }
 
-    // The failing set is only sent when it changes, so a tab opened onto a resource that is already failing
-    // never receives that message and has to read the current state instead.
+    // The failing set is only sent when it changes, so a tab opened onto an already-failing resource
+    // must read the current state.
     private void RefreshSaveFailure()
     {
         if (!_workspaceWrapper.IsWorkspaceLoaded)
@@ -345,9 +345,8 @@ public partial class DocumentTabViewModel : ObservableObject
                 // Discard the unsaved edits and proceed to teardown.
                 _logger.LogWarning(saveResult, $"Saving document failed during close. Discarding unsaved edits for file resource: '{FileResource}'");
 
-                // The edits go with the view, and this is the last point the user can be told they are
-                // gone. A docked utility keeps its view and its content when the tab closes, so it has
-                // lost nothing to report.
+                // A docked utility keeps its view and its content when the tab closes, so nothing is
+                // discarded.
                 if (!IsDockedUtility)
                 {
                     var discardedMessage = new WorkspaceItemSaveDiscardedMessage(FileResource);

@@ -90,7 +90,7 @@ public interface IWorkspaceService
     Task<Result> UpdateWorkspaceAsync(double deltaTime);
 
     /// <summary>
-    /// The resources that cannot be written, for a caller that starts observing after they were reported.
+    /// The resources that cannot be written.
     /// </summary>
     IReadOnlyList<ResourceKey> GetFailingSaveResources();
 }

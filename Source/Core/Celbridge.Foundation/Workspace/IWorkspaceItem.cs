@@ -1,8 +1,7 @@
 namespace Celbridge.Workspace;
 
 /// <summary>
-/// A document or utility open in the workspace. An item holding unsaved changes is written to its file
-/// resource when its save timer expires.
+/// A document or utility open in the workspace.
 /// </summary>
 public interface IWorkspaceItem
 {
@@ -13,7 +12,7 @@ public interface IWorkspaceItem
 
     /// <summary>
     /// Whether the item holds edits that have not been written to its file resource yet. Stays true when a
-    /// write fails, so the content is attempted again.
+    /// write fails.
     /// </summary>
     bool HasUnsavedChanges { get; }
 

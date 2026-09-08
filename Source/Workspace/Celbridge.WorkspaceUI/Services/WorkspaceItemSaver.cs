@@ -4,8 +4,8 @@ using Celbridge.Logging;
 namespace Celbridge.WorkspaceUI.Services;
 
 /// <summary>
-/// What is known about a resource whose last save failed: the current wait before the next attempt, how
-/// much of that wait is left, why the attempt failed, and whether the failure is reported to the user.
+/// What is known about a resource whose last save failed. Delay is the full wait before the next attempt,
+/// Remaining is how much of that wait is left.
 /// </summary>
 internal sealed record SaveFailure(double Delay, double Remaining, string Reason, bool IsReported);
 
@@ -18,9 +18,8 @@ public class WorkspaceItemSaver
     private readonly ICommandService _commandService;
     private readonly IMessengerService _messengerService;
 
-    // Every resource whose last save failed. A non-writable resource is held here so a locked file backs
-    // off on the same schedule as any other, but it is not reported, because its editor already shows it
-    // as read-only.
+    // Every resource whose last save failed. A non-writable resource is held here so that it backs off
+    // like any other, but it is not reported.
     private readonly Dictionary<ResourceKey, SaveFailure> _saveFailures = new();
 
     private bool _reportedFailuresChanged;
@@ -36,7 +35,7 @@ public class WorkspaceItemSaver
     }
 
     /// <summary>
-    /// The resources that cannot be written, for a caller that starts observing after they were reported.
+    /// The resources that cannot be written.
     /// </summary>
     public IReadOnlyList<ResourceKey> GetFailingResources()
     {
@@ -45,9 +44,8 @@ public class WorkspaceItemSaver
 
     /// <summary>
     /// Ticks each item's save timer, writes the ones that are due, and reports the items still waiting to
-    /// be written and those that cannot be. A write that fails is reported once, not again on the attempts
-    /// that follow it, and those attempts back off. Delta time is the time since this method was last
-    /// called.
+    /// be written and those that cannot be. A failed write is reported once and its retries back off.
+    /// Delta time is the time since this method was last called.
     /// </summary>
     public async Task<Result> SaveModifiedItemsAsync(
         IReadOnlyList<IWorkspaceItem> items,
@@ -64,8 +62,6 @@ public class WorkspaceItemSaver
         {
             if (!item.HasUnsavedChanges)
             {
-                // Whether a save wrote the item or a reload replaced its content, it holds nothing
-                // unwritten now, so any failure it was carrying is over.
                 ForgetFailure(item.FileResource);
                 continue;
             }
@@ -77,7 +73,7 @@ public class WorkspaceItemSaver
             if (!shouldSave)
             {
                 // An item that is only waiting for its timer is counted as saving. One whose last attempt
-                // failed is reported as failing instead, so the two states never read as each other.
+                // failed is reported as failing instead.
                 if (!_saveFailures.ContainsKey(item.FileResource))
                 {
                     pendingSaveCount++;
@@ -101,10 +97,7 @@ public class WorkspaceItemSaver
 
             var reasonChanged = ScheduleRetry(item.FileResource, saveResult.MessageChain);
 
-            // A non-writable item failing to save is expected, and reporting it would repeat what the
-            // editor already shows by dimming itself. One already reported stops being reported here, so a
-            // resource that turns non-writable ends up in the same state as one that was already
-            // non-writable when it was edited.
+            // A non-writable item failing to save is expected, so the failure is not reported to the user.
             if (item.WritableState != WritableState.Writable)
             {
                 StopReportingFailure(item.FileResource);
@@ -120,9 +113,7 @@ public class WorkspaceItemSaver
                 updateResourcesRequired = true;
             }
 
-            // MessageChain is the outer-first reason and is not localized, so it belongs in the log rather
-            // than in anything the user sees. A reason that differs from the last attempt's is logged
-            // again, so a file that starts failing for a second reason says so.
+            // Logged only when the reason changes, so a file that goes on failing does not fill the log.
             if (reasonChanged)
             {
                 _logger.LogError($"Failed to save workspace item '{item.FileResource}'. {saveResult.MessageChain}");

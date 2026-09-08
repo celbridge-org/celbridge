@@ -7,9 +7,7 @@ using Celbridge.WorkspaceUI.Services;
 namespace Celbridge.Tests.WorkspaceUI;
 
 /// <summary>
-/// The save pass runs against every open document and utility. These tests pin what it reports and how it
-/// retries: an item waiting for its timer is reported as saving while one that cannot be written is
-/// reported as failing, the failing set is sent only when it changes, and the attempts back off.
+/// Tests for the save pass that runs against every open document and utility.
 /// </summary>
 [TestFixture]
 public class WorkspaceItemSaverTests
@@ -287,8 +285,6 @@ public class WorkspaceItemSaverTests
     [Test]
     public async Task SaveModifiedItems_GoesOnRequestingAResourceUpdate_WhileASaveKeepsFailing()
     {
-        // The writable cache is what turns the warning into a read-only editor, so one rebuild that misses
-        // the change must not be the only attempt.
         var item = new FakeWorkspaceItem { SaveSucceeds = false };
         var items = new[] { item };
 
@@ -342,7 +338,7 @@ public class WorkspaceItemSaverTests
         public bool IsDueToSave { get; set; } = true;
 
         // The cadence the item comes due on, re-arming after each due pass as a document does. Left at
-        // zero, IsDueToSave decides instead, which keeps the reporting tests independent of timing.
+        // zero, IsDueToSave decides instead.
         public double SaveDelay { get; init; }
 
         public bool SaveSucceeds { get; set; }

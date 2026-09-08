@@ -65,8 +65,7 @@ public partial class WorkspaceViewModel : ObservableObject
             // Save editor states before closing documents, while editors are still alive.
             await _workspaceService.DocumentsService.StoreDocumentEditorStates();
 
-            // Write anything the save tick has not reached. The tick stops with the workspace and closing
-            // a document does not write it, so this is the last chance to get the content to disk.
+            // Write anything the save tick has not reached.
             await _workspaceService.DocumentsService.FlushModifiedDocumentsAsync();
 
             // Close all open documents and clean up their WebView2 resources.

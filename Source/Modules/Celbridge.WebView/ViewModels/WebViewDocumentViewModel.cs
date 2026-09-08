@@ -493,8 +493,7 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
 
     public async Task<Result> SaveDocumentContent()
     {
-        // Cleared before the write so an edit made while it is in flight is not counted as written. The
-        // save timer goes with it, and the saver's backoff decides when a failed write is tried again.
+        // Cleared before the write so an edit made while it is in flight is not counted as written.
         HasUnsavedChanges = false;
         SaveTimer = 0;
 
@@ -511,7 +510,6 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
         var saveResult = await SaveTextToFileAsync(content.ToToml());
         if (saveResult.IsFailure)
         {
-            // The content is still held only in the view, so the item is due to be written again.
             HasUnsavedChanges = true;
         }
 

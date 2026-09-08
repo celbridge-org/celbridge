@@ -121,8 +121,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         _timeSinceSavePass += deltaTime;
         if (_timeSinceSavePass >= SaveConstants.SavePassInterval)
         {
-            // The pass is given the time accumulated since it last ran, so save timers and retry waits
-            // count real time.
             var savePassDelta = _timeSinceSavePass;
             _timeSinceSavePass = 0;
 

@@ -44,8 +44,7 @@
         <local:ProjectToolbar x:Name="ProjectToolbar"
                                  Grid.Column="1"/>
 
-        <!-- Save status - positioned to the left of layout toolbar. The warning stays up for as long as
-             anything is failing to save, while the save glyph only marks a write in progress. -->
+        <!-- Save status - positioned to the left of layout toolbar -->
         <StackPanel Grid.Column="3"
                     Orientation="Horizontal"
                     Visibility="{x:Bind ViewModel.IsWorkspaceLoaded, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"

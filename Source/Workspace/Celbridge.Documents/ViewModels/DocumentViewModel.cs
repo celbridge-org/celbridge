@@ -59,8 +59,7 @@ public abstract partial class DocumentViewModel : ObservableObject
             return false;
         }
 
-        // Restarted so content that is still unwritten comes due again after another delay. A save that
-        // succeeds clears HasUnsavedChanges, which ends the cycle at the guard above.
+        // Restarted so content that is still unwritten comes due again after another delay.
         SaveTimer = SaveConstants.SaveDelay;
 
         return true;

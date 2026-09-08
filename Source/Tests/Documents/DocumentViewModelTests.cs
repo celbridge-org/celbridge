@@ -355,8 +355,8 @@ public class DocumentViewModelTests
 
         public async Task<Result> SaveDocumentContent(string text)
         {
-            // Cleared before the write so an edit made while it is in flight is not counted as written,
-            // and restored when the write fails, as the real editors do.
+            // Cleared before the write so an edit made while it is in flight is not counted as written, as
+            // the real editors do.
             HasUnsavedChanges = false;
             SaveTimer = 0;
 

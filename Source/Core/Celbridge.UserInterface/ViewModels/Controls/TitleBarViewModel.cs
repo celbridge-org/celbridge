@@ -74,8 +74,6 @@ public partial class TitleBarViewModel : ObservableObject
         SaveFailureMessage = ComposeSaveFailureMessage(failingResources);
     }
 
-    // One failing resource is named, which is all the user needs to find it. Several are a count, since the
-    // names do not fit a tooltip.
     private string ComposeSaveFailureMessage(IReadOnlyList<ResourceKey> failingResources)
     {
         if (failingResources.Count == 0)

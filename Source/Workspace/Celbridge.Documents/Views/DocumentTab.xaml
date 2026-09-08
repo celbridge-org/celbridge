@@ -57,16 +57,15 @@
             <!-- Tab content -->
             <StackPanel Orientation="Horizontal"
                         VerticalAlignment="Center">
-                <!-- The identity glyph and the warning share one slot, so a file that cannot be written
-                     shows the warning in place of its icon and the tab keeps its width. The tooltip names
-                     the item either way. -->
+                <!-- The identity glyph and the warning share one slot, so the tab keeps its width when a
+                     file cannot be written. -->
                 <Grid>
                     <StackPanel Orientation="Horizontal"
                                 Visibility="{x:Bind ViewModel.HasSaveFailure, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverted}">
-                        <!-- Ordinary document tabs show a file-type icon. A tab a utility editor opens shows that
-                             editor's manifest glyph in the tab's own text colour. Every file-type icon is held
-                             inside a luminance band that excludes that colour, so an untinted glyph is what marks
-                             the tab as a utility. -->
+                        <!-- Ordinary document tabs show a file-type icon. A tab a utility editor opens
+                             shows that editor's manifest glyph in the tab's own text colour. File-type
+                             icons sit inside a luminance band that excludes that colour, so an untinted
+                             glyph marks the tab as a utility. -->
                         <controls:FileIcon x:Name="ResourceIcon"
                                            Source="{x:Bind ViewModel.FileName, Mode=OneWay}"
                                            Size="18"
