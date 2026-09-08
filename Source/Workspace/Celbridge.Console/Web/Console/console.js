@@ -109,7 +109,13 @@ if (terminalRows) {
     document.documentElement.style.setProperty('--console-terminal-line-height', rowLineHeight);
 }
 
+// The width below which the rail lays out across the top of the content rather than down its side,
+// mirroring --cel-rail-stack-threshold. Used where the generated stylesheet has not been served, which
+// leaves the console measuring against nothing.
+const RAIL_STACK_FALLBACK = 400;
+
 // DOM references.
+const appElement = document.getElementById('app');
 const settingsToggle = document.getElementById('settings-toggle');
 const pip = document.getElementById('pip');
 const shortcutRail = document.getElementById('shortcut-rail');
@@ -132,6 +138,7 @@ const dependenciesInput = document.getElementById('dependencies');
 const workingDirectoryInput = document.getElementById('working-directory');
 const startupScriptInput = document.getElementById('startup-script');
 const environmentInput = document.getElementById('environment');
+const closeSettingsButton = document.getElementById('close-settings');
 const reopenSettingsButton = document.getElementById('reopen-settings');
 const builtInRunnerList = document.getElementById('runner-built-in');
 const builtInRunnerTemplate = document.getElementById('built-in-runner-template');
@@ -279,6 +286,40 @@ function refitTerminal() {
     });
 }
 
+// The rail lays out down the left of a wide console and across the top of a narrow one, the way the section
+// switcher moves its nav for the same reason. Either arrangement takes its band out of the document before
+// the content is measured, so nothing the terminal draws is ever covered.
+function updateRailArrangement() {
+    // A hidden document reports no width, so the last resolved arrangement stands until it is on screen
+    // again.
+    const width = appElement.clientWidth;
+    if (width <= 0) {
+        return;
+    }
+
+    const declaredThreshold = getComputedStyle(appElement).getPropertyValue('--cel-rail-stack-threshold');
+    let threshold = Number.parseFloat(declaredThreshold);
+    if (!Number.isFinite(threshold) || threshold <= 0) {
+        threshold = RAIL_STACK_FALLBACK;
+    }
+
+    const arrangement = width >= threshold ? 'inline' : 'stacked';
+    if (appElement.dataset.rail === arrangement) {
+        return;
+    }
+
+    appElement.dataset.rail = arrangement;
+    // The arrangement moves the rail's band between the row the terminal is in and the column above it, so
+    // the terminal has resized in both directions.
+    refitTerminal();
+}
+
+// The console measures its own width rather than being told it, the way the section switcher resolves its
+// own layout.
+new ResizeObserver(() => updateRailArrangement()).observe(appElement);
+
+updateRailArrangement();
+
 settingsToggle.addEventListener('click', () => {
     setSettingsVisible(settingsView.classList.contains('hidden'));
 });
@@ -288,15 +329,30 @@ settingsToggle.addEventListener('click', () => {
 function setSettingsVisible(visible) {
     settingsView.classList.toggle('hidden', !visible);
     terminalView.classList.toggle('hidden', visible);
-    // The rail capsule tracks the panel being open, not focused: the terminal holds focus most of the time,
-    // so a focus-following capsule would read as "closed" while the panel is plainly on screen.
-    settingsToggle.classList.toggle('selected', visible);
+    // Takes the rail off screen while the surface is up, which the stylesheet keys on.
+    appElement.dataset.surface = visible ? 'settings' : 'terminal';
 
-    if (!visible) {
-        refitTerminal();
-        term.focus();
+    if (visible) {
+        // Hiding the rail destroys the focus the toggle was holding, so the surface takes it rather than
+        // leaving the keyboard on the document body.
+        settingsView.querySelector('.cel-section-nav-item[aria-selected="true"]')?.focus();
+        return;
     }
+
+    refitTerminal();
+    term.focus();
 }
+
+closeSettingsButton.addEventListener('click', () => setSettingsVisible(false));
+
+// The surface fills the document and names its way out, so it answers the key that means the same thing.
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' &&
+        !settingsView.classList.contains('hidden')) {
+        setSettingsVisible(false);
+        event.preventDefault();
+    }
+});
 
 // Settings form. The executable field is shown only for the shell type. The dependency field only for the
 // Python types. The other fields apply to every type.

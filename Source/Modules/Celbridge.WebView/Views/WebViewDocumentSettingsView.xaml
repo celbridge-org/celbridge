@@ -6,7 +6,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     Background="Transparent">
 
-    <controls:SettingsSectionSwitcher Margin="12"
+    <controls:SettingsSectionSwitcher Margin="{StaticResource SettingsSurfaceMargin}"
                                       Sections="{x:Bind ViewModel.Sections, Mode=OneWay}"
                                       SelectedSection="{x:Bind ViewModel.SelectedSection, Mode=TwoWay}">
 

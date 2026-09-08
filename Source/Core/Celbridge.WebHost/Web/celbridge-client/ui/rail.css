@@ -3,9 +3,10 @@
 
 /* Vertical icon rail, mirroring the workspace utility rail (UtilityPanel.xaml and UtilityButton.xaml): a
    fixed-width strip of square buttons, each filling with a hover or selection tone, and
-   hairline separators between groups. An editor uses it as an inspector rail down the right of its content,
-   with .cel-rail-right moving the border to that edge:
-     <div class="cel-rail cel-rail-right">
+   hairline separators between groups. An editor uses it as an inspector rail down the left of its content,
+   the side the workspace rail is on, with .cel-rail-right moving the rail and its border to the opposite
+   edge instead:
+     <div class="cel-rail">
        <button class="cel-rail-button selected" type="button" title="Settings">
          <i class="bi bi-sliders"></i><span class="cel-rail-pip"></span>
        </button>
@@ -23,7 +24,10 @@
     display: flex;
     flex-direction: column;
     width: var(--cel-rail-width);
-    background: var(--cel-chrome-bg);
+    /* No fill of its own. An editor's rail sits inside a document, which is a region carved out of the
+       chrome surface and painted with the content tone, so a chrome band here pastes a piece of the field
+       back inside the carving, and the part of the rail no button reaches reads as a slab. The divider is
+       what bounds it. The workspace utility rail this mirrors is chrome because it is the field. */
     border-right: 1px solid var(--cel-divider-subtle);
 }
 

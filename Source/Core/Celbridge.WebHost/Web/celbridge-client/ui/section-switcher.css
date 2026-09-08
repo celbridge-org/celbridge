@@ -60,8 +60,10 @@
        line rather than putting them past the edge with no way to reach them. */
     flex-wrap: wrap;
     gap: 4px;
-    /* Lines the strip up with the heading in the block below it. */
-    padding: 0 var(--cel-section-inset) 8px;
+    /* Lines the strip up with the heading in the block below it, and stops short of it: the header's own
+       inset is most of the distance to the heading, so the strip adds a little rather than a second gap of
+       its own. */
+    padding: 0 var(--cel-section-inset) 4px;
 }
 
 .cel-section-area {
@@ -202,6 +204,13 @@
     flex: 0 0 auto;
     padding: var(--cel-section-inset);
     border-bottom: 1px solid var(--cel-divider);
+}
+
+/* Stacked, the nav strip is already directly above the heading, so the inset that holds the heading off the
+   top of a carved section is a second gap rather than the first one. The horizontal inset is untouched:
+   that is the one the section content lines its own left edge up with. */
+.cel-section-switcher[data-layout="stacked"] .cel-section-header {
+    padding-top: 8px;
 }
 
 .cel-section-header h1 {

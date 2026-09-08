@@ -16,7 +16,7 @@
 
     <controls:SettingsSectionSwitcher
         x:Name="SectionSwitcher"
-        Margin="12"
+        Margin="{StaticResource SettingsSurfaceMargin}"
         Visibility="{x:Bind ViewModel.HasSections, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
         Sections="{x:Bind ViewModel.Sections, Mode=OneWay}"
         SelectedSection="{x:Bind ViewModel.SelectedSection, Mode=TwoWay}">
