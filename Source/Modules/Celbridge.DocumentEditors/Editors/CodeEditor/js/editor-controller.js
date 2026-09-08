@@ -142,7 +142,13 @@ export class EditorController {
             return;
         }
 
-        this.#editor.executeEdits('insert', edits);
+        // Leave a caret after each insertion rather than Monaco's default of selecting what was written,
+        // so a second paste inserts again instead of replacing what the first one put there. The inverse
+        // operations carry where the text actually landed, which the edits themselves cannot say once an
+        // earlier one has shifted the document.
+        this.#editor.executeEdits('insert', edits, (inverseEditOperations) =>
+            inverseEditOperations.map(
+                (operation) => monaco.Selection.fromPositions(operation.range.getEndPosition())));
         this.#editor.focus();
     }
 
