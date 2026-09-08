@@ -265,10 +265,10 @@ public class WorkspaceItemSaver
 
     // Forgets the resources that are no longer open, so one that fails again after being reopened is
     // reported again.
-    private void DropStateForClosedItems(IReadOnlyList<IWorkspaceItem> items)
+    private void DropStateForClosedItems(IReadOnlyList<IWorkspaceItem> openItems)
     {
         var openResources = new HashSet<ResourceKey>();
-        foreach (var item in items)
+        foreach (var item in openItems)
         {
             openResources.Add(item.FileResource);
         }
