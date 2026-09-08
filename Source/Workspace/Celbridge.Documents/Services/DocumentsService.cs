@@ -1,6 +1,5 @@
 using Celbridge.Commands;
 using Celbridge.Documents.Helpers;
-using Celbridge.Documents.Platform;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Modules;
@@ -281,8 +280,6 @@ public class DocumentsService : IDocumentsService, IDisposable
         _messengerService.Register<DocumentLayoutChangedMessage>(this, OnDocumentLayoutChangedMessage);
         _messengerService.Register<ActiveDocumentChangedMessage>(this, OnActiveDocumentChangedMessage);
         _messengerService.Register<AreaLayoutChangedMessage>(this, OnAreaLayoutChangedMessage);
-
-        MacOSHostedViewClipRepair.Repair(DocumentsPanel);
     }
 
     private void OnActiveDocumentChangedMessage(object recipient, ActiveDocumentChangedMessage message)
