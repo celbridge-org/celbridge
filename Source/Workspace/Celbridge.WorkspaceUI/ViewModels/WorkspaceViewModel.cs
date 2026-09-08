@@ -66,7 +66,7 @@ public partial class WorkspaceViewModel : ObservableObject
             await _workspaceService.DocumentsService.StoreDocumentEditorStates();
 
             // Write anything the save tick has not reached.
-            await _workspaceService.DocumentsService.FlushModifiedDocumentsAsync();
+            await _workspaceService.FlushModifiedItemsAsync();
 
             // Close all open documents and clean up their WebView2 resources.
             _workspaceService.DocumentsPanel.Shutdown();

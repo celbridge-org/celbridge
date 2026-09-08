@@ -90,6 +90,12 @@ public interface IWorkspaceService
     Task<Result> UpdateWorkspaceAsync(double deltaTime);
 
     /// <summary>
+    /// Writes the content of every open workspace item that still holds unsaved changes. An item that does
+    /// not write within the flush timeout is abandoned and its content is discarded.
+    /// </summary>
+    Task FlushModifiedItemsAsync();
+
+    /// <summary>
     /// The resources that cannot be written.
     /// </summary>
     IReadOnlyList<ResourceKey> GetFailingSaveResources();

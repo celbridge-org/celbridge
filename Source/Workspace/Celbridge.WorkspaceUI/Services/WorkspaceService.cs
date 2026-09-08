@@ -101,6 +101,20 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
     public IReadOnlyList<ResourceKey> GetFailingSaveResources() => _workspaceItemSaver.GetFailingResources();
 
+    public Task FlushModifiedItemsAsync()
+    {
+        return _workspaceItemSaver.FlushModifiedItemsAsync(CollectWorkspaceItems(), SaveConstants.UnloadFlushTimeout);
+    }
+
+    private List<IWorkspaceItem> CollectWorkspaceItems()
+    {
+        var workspaceItems = new List<IWorkspaceItem>();
+        workspaceItems.AddRange(DocumentsService.GetWorkspaceItems());
+        workspaceItems.AddRange(UtilityService.GetWorkspaceItems());
+
+        return workspaceItems;
+    }
+
     public async Task<Result> UpdateWorkspaceAsync(double deltaTime)
     {
         bool failed = false;
@@ -124,9 +138,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
             var savePassDelta = _timeSinceSavePass;
             _timeSinceSavePass = 0;
 
-            var workspaceItems = new List<IWorkspaceItem>();
-            workspaceItems.AddRange(DocumentsService.GetWorkspaceItems());
-            workspaceItems.AddRange(UtilityService.GetWorkspaceItems());
+            var workspaceItems = CollectWorkspaceItems();
 
             var saveItemsResult = await _workspaceItemSaver.SaveModifiedItemsAsync(workspaceItems, savePassDelta);
             if (saveItemsResult.IsFailure)

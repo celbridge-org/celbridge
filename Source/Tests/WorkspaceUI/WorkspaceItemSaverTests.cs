@@ -17,6 +17,9 @@ public class WorkspaceItemSaverTests
     // Longer than the one second wait a first failure schedules, so a tick of this length retries.
     private const double PastFirstRetryDelta = 1.5;
 
+    // Short enough that a stalled write does not slow the suite.
+    private const double FlushTimeout = 0.1;
+
     private IMessengerService _messengerService = null!;
     private ICommandService _commandService = null!;
     private WorkspaceItemSaver _workspaceItemSaver = null!;
@@ -324,6 +327,61 @@ public class WorkspaceItemSaverTests
         item.SaveCount.Should().Be(2);
     }
 
+    [Test]
+    public async Task FlushModifiedItems_WritesEveryItemHoldingUnsavedChanges()
+    {
+        var document = new FakeWorkspaceItem { FileResource = new ResourceKey("project:notes.txt"), SaveSucceeds = true };
+        var utility = new FakeWorkspaceItem { FileResource = new ResourceKey("project:panel.toml"), SaveSucceeds = true };
+
+        await _workspaceItemSaver.FlushModifiedItemsAsync(new[] { document, utility }, FlushTimeout);
+
+        document.SaveCount.Should().Be(1);
+        utility.SaveCount.Should().Be(1, "a utility is written by the same flush as a document");
+    }
+
+    [Test]
+    public async Task FlushModifiedItems_SkipsAnItemWithNothingUnwritten()
+    {
+        var item = new FakeWorkspaceItem { HasUnsavedChanges = false, SaveSucceeds = true };
+
+        await _workspaceItemSaver.FlushModifiedItemsAsync(new[] { item }, FlushTimeout);
+
+        item.SaveCount.Should().Be(0);
+    }
+
+    [Test]
+    public async Task FlushModifiedItems_AbandonsAnItemThatDoesNotWriteInTime()
+    {
+        var stalledItem = new FakeWorkspaceItem { FileResource = new ResourceKey("project:stalled.txt"), SaveHangs = true };
+        var nextItem = new FakeWorkspaceItem { FileResource = new ResourceKey("project:notes.txt"), SaveSucceeds = true };
+
+        await _workspaceItemSaver.FlushModifiedItemsAsync(new[] { stalledItem, nextItem }, FlushTimeout);
+
+        nextItem.SaveCount.Should().Be(1, "one editor that never answers must not hold the workspace open");
+    }
+
+    [Test]
+    public async Task FlushModifiedItems_ContinuesAfterAnItemThrows()
+    {
+        var throwingItem = new FakeWorkspaceItem { FileResource = new ResourceKey("project:throws.txt"), SaveThrows = true };
+        var nextItem = new FakeWorkspaceItem { FileResource = new ResourceKey("project:notes.txt"), SaveSucceeds = true };
+
+        await _workspaceItemSaver.FlushModifiedItemsAsync(new[] { throwingItem, nextItem }, FlushTimeout);
+
+        nextItem.SaveCount.Should().Be(1);
+    }
+
+    [Test]
+    public async Task FlushModifiedItems_ContinuesAfterAFailedWrite()
+    {
+        var failingItem = new FakeWorkspaceItem { FileResource = new ResourceKey("project:locked.txt"), SaveSucceeds = false };
+        var nextItem = new FakeWorkspaceItem { FileResource = new ResourceKey("project:notes.txt"), SaveSucceeds = true };
+
+        await _workspaceItemSaver.FlushModifiedItemsAsync(new[] { failingItem, nextItem }, FlushTimeout);
+
+        nextItem.SaveCount.Should().Be(1);
+    }
+
     private sealed class FakeWorkspaceItem : IWorkspaceItem
     {
         private double _saveTimer;
@@ -344,6 +402,9 @@ public class WorkspaceItemSaverTests
         public bool SaveSucceeds { get; set; }
 
         public bool SaveThrows { get; set; }
+
+        // Whether the write never completes, as an editor that has stopped answering does.
+        public bool SaveHangs { get; init; }
 
         public int SaveCount { get; private set; }
 
@@ -375,6 +436,11 @@ public class WorkspaceItemSaverTests
             await Task.CompletedTask;
 
             SaveCount++;
+
+            if (SaveHangs)
+            {
+                await Task.Delay(Timeout.Infinite);
+            }
 
             if (SaveThrows)
             {

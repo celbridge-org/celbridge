@@ -40,41 +40,6 @@ public class DocumentsService : IDocumentsService, IDisposable
     // Reads TabView-backed state, so callers must be on the UI thread.
     public IReadOnlyList<IWorkspaceItem> GetWorkspaceItems() => DocumentsPanel.GetWorkspaceItems();
 
-    public async Task FlushModifiedDocumentsAsync()
-    {
-        foreach (var workspaceItem in GetWorkspaceItems())
-        {
-            if (!workspaceItem.HasUnsavedChanges)
-            {
-                continue;
-            }
-
-            try
-            {
-                var saveTask = workspaceItem.SaveAsync();
-                var timeoutTask = Task.Delay(TimeSpan.FromSeconds(SaveConstants.UnloadFlushTimeout));
-                var completedTask = await Task.WhenAny(saveTask, timeoutTask);
-
-                if (completedTask != saveTask)
-                {
-                    _logger.LogError($"Document did not write within {SaveConstants.UnloadFlushTimeout}s, so its unsaved content was discarded: '{workspaceItem.FileResource}'");
-                    AbandonedTaskObserver.Observe(saveTask);
-                    continue;
-                }
-
-                var saveResult = await saveTask;
-                if (saveResult.IsFailure)
-                {
-                    _logger.LogError($"Failed to write unsaved content, so it was discarded: '{workspaceItem.FileResource}'. {saveResult.DiagnosticReport}");
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"An exception occurred while writing unsaved content, so it was discarded: '{workspaceItem.FileResource}'");
-            }
-        }
-    }
-
     public IReadOnlyList<OpenDocumentInfo> GetOpenDocuments() => DocumentsPanel.GetOpenDocuments();
 
     public OpenDocumentInfo? FindOpenDocument(ResourceKey fileResource)

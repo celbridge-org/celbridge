@@ -43,6 +43,37 @@ public class WorkspaceItemSaver
     }
 
     /// <summary>
+    /// Writes every item that still holds unsaved changes, allowing each one the timeout in seconds to
+    /// write. An item that has not written by then is abandoned and its unsaved content is lost.
+    /// </summary>
+    public async Task FlushModifiedItemsAsync(IReadOnlyList<IWorkspaceItem> items, double timeout)
+    {
+        foreach (var item in items)
+        {
+            if (!item.HasUnsavedChanges)
+            {
+                continue;
+            }
+
+            var saveTask = SaveItemAsync(item);
+            var timeoutTask = Task.Delay(TimeSpan.FromSeconds(timeout));
+            var completedTask = await Task.WhenAny(saveTask, timeoutTask);
+
+            if (completedTask != saveTask)
+            {
+                _logger.LogError($"Workspace item did not write within {timeout}s, so its unsaved content was discarded: '{item.FileResource}'");
+                continue;
+            }
+
+            var saveResult = await saveTask;
+            if (saveResult.IsFailure)
+            {
+                _logger.LogError($"Failed to write unsaved content, so it was discarded: '{item.FileResource}'. {saveResult.DiagnosticReport}");
+            }
+        }
+    }
+
+    /// <summary>
     /// Ticks each item's save timer, writes the ones that are due, and reports the items still waiting to
     /// be written and those that cannot be. A failed write is reported once and its retries back off.
     /// Delta time is the time since this method was last called.

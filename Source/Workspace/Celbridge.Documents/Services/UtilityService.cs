@@ -520,26 +520,16 @@ public class UtilityService : IUtilityService, IDisposable
         return new List<IWorkspaceItem>(_utilities);
     }
 
-    public async Task TeardownUtilitiesAsync()
+    public Task TeardownUtilitiesAsync()
     {
         foreach (var utility in _utilities)
         {
-            try
-            {
-                if (utility.HasUnsavedChanges)
-                {
-                    await utility.SaveAsync();
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to flush utility during teardown");
-            }
-
             utility.Teardown();
         }
 
         _utilities.Clear();
+
+        return Task.CompletedTask;
     }
 
     public void Dispose()
