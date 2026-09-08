@@ -68,7 +68,7 @@ Relay the combined summaries grouped by file so the user can review the edits in
 
 ## Conventions to enforce
 
-Pass this whole section to the subagent. It applies to all in-repo prose a future reader meets without the surrounding conversation: `//`, `///`, `/** */`, XAML `<!-- -->`, Python docstrings, and any touched markdown.
+Pass this whole section to the subagent. It applies to all in-repo prose a future reader meets without the surrounding conversation: `//`, `///`, `/** */`, CSS `/* */`, XAML and HTML `<!-- -->`, Python docstrings, and any touched markdown.
 
 ### Mechanics
 - **Full stops, never semicolons, in English prose.** C# statement terminators are unaffected. This is the most-corrected rule, and the most common slip is leaving a pre-existing semicolon on a line you reflowed for another reason.

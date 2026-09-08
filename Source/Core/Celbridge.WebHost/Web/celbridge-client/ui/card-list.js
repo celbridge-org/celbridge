@@ -206,7 +206,8 @@ export function createCardList(options) {
         window.addEventListener('pointermove', onDragMove);
         window.addEventListener('pointerup', dropDrag);
         window.addEventListener('pointercancel', cancelDrag);
-        window.addEventListener('keydown', onDragKeyDown);
+        // Capture, so a drag claims Escape ahead of any ambient handler the page has on document.
+        window.addEventListener('keydown', onDragKeyDown, true);
     }
 
     function onDragMove(event) {
@@ -334,7 +335,7 @@ export function createCardList(options) {
         window.removeEventListener('pointermove', onDragMove);
         window.removeEventListener('pointerup', dropDrag);
         window.removeEventListener('pointercancel', cancelDrag);
-        window.removeEventListener('keydown', onDragKeyDown);
+        window.removeEventListener('keydown', onDragKeyDown, true);
 
         // A slide still in flight ends here: the DOM order is already final, so the card snaps the last few
         // pixels rather than animating on after the gesture is over.

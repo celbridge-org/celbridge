@@ -167,6 +167,14 @@
           "css": "--cel-rail-button-size",
           "value": "calc(32px / var(--cel-page-zoom))",
           "published": true
+        },
+
+        "rail-stack-threshold": {
+          "targets": ["css"],
+          "css": "--cel-rail-stack-threshold",
+          "value": "400px",
+          "published": true,
+          "comment": "The width at which an editor lays its rail down the side of its content rather than across the top of it, mirroring how --cel-section-stack-threshold decides the settings switcher's two layouts. The console is its only consumer, and the value is where its terminal stops being able to spare a column beside it: below that a rail in a column takes width the content has run out of, where a strip along the top costs height a narrow document has to spare. Read with getComputedStyle rather than through var(), because the editor resolves the arrangement in JavaScript and writes it to an attribute the stylesheet keys on. Like --cel-section-stack-threshold it is compared against the editor's own CSS pixels and so is not divided by the page zoom, which stacks sooner where the engine renders larger -- the arrangement larger type wants."
         }
       }
     },
@@ -190,6 +198,18 @@
           "targets": ["css"],
           "css": "--cel-panel-inset",
           "value": "calc(12px / var(--cel-page-zoom))",
+          "published": true
+        }
+      }
+    },
+
+    {
+      "comment": "The margin a settings surface keeps from the edge of whatever holds it, mirroring the SettingsSurfaceMargin resource in Celbridge.UserInterface/Resources/Styles.xaml. Keep the two in sync when either changes. It is clearance for the section area's rounded corners rather than a reading margin, so it is the smallest gap that keeps those corners off the edge they sit against.",
+      "tokens": {
+        "settings-inset": {
+          "targets": ["css"],
+          "css": "--cel-settings-inset",
+          "value": "calc(8px / var(--cel-page-zoom))",
           "published": true
         }
       }
@@ -222,7 +242,7 @@
         "section-inset": {
           "targets": ["css"],
           "css": "--cel-section-inset",
-          "value": "calc(16px / var(--cel-page-zoom))",
+          "value": "calc(8px / var(--cel-page-zoom))",
           "published": true
         },
         "section-footer-gap": {

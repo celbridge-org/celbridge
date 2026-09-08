@@ -29,7 +29,7 @@
    Drive it with attachSectionSwitcher() from ui/section-switcher.js, which owns the selection, which header
    and section are showing, aria-selected, the roving tabindex and the arrow keys, and which of the two
    layouts is in force. The switcher fills the box it is given, so the surface around it supplies the height
-   and the margin, the way the native consumers set Margin="12" and fill their panel.
+   and the margin: --cel-settings-inset, which the native consumers take as SettingsSurfaceMargin.
 
    The two layouts are held on the root as data-layout. `inline` is the native layout: a labelled nav column
    beside the carved section. `stacked` puts the nav above the content as an icon strip, over a section that
@@ -60,8 +60,9 @@
        line rather than putting them past the edge with no way to reach them. */
     flex-wrap: wrap;
     gap: 4px;
-    /* Lines the strip up with the heading in the block below it. */
-    padding: 0 var(--cel-section-inset) 8px;
+    /* Lines the strip up with the heading in the block below it. The header's own inset carries most of
+       the gap down to that heading, so the strip adds only a little. */
+    padding: 0 var(--cel-section-inset) 4px;
 }
 
 .cel-section-area {
@@ -93,8 +94,9 @@
     flex-wrap: nowrap;
     gap: var(--cel-section-row-gap);
     width: var(--cel-section-nav-width);
-    /* Lines the first row up with the section heading beside it. */
-    padding: 14px 0 0;
+    /* Lines the first row up with the section heading beside it. A row is taller than the heading text,
+       so the rows start slightly above the inset the heading is drawn at. */
+    padding: calc(var(--cel-section-inset) - 2px) 0 0;
 }
 
 .cel-section-switcher[data-layout="inline"] > .cel-section-area {

@@ -18,7 +18,18 @@
     <script src="lib/addon-web-links.js"></script>
 </head>
 <body>
-    <div id="app">
+    <!-- The surface showing is held here, and the terminal is the one a console opens on. -->
+    <div id="app" data-surface="terminal">
+        <!-- Inspector rail: down the left of the content, or across the top of a narrow console. -->
+        <div class="cel-rail">
+            <button id="open-settings" class="cel-rail-button" type="button" data-loc-key="Console_Settings_Title" data-loc-attr="title,aria-label">
+                <i class="bi bi-sliders"></i>
+                <span id="pip" class="cel-rail-pip hidden"></span>
+            </button>
+            <div id="shortcut-separator" class="cel-rail-separator hidden"></div>
+            <div id="shortcut-rail"></div>
+        </div>
+
         <div id="content">
             <div id="terminal-view">
                 <div id="terminal"></div>
@@ -62,6 +73,12 @@
                     </div>
 
                     <div class="cel-section-area">
+
+                        <!-- One close shared by every section, sitting over the header block. -->
+                        <button id="close-settings" class="cel-icon-button" type="button"
+                                data-loc-key="Console_ReturnToConsole" data-loc-attr="title,aria-label">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
 
                         <div class="cel-section-header" data-section="session">
                             <h1 data-loc-key="Console_Group_Session"></h1>
@@ -174,17 +191,6 @@
 
                 </div>
             </div>
-        </div>
-
-        <!-- Inspector rail: the settings toggle sits above the shortcut buttons, so its position stays fixed
-             as the user adds and removes shortcuts from the panel that button opens. -->
-        <div class="cel-rail cel-rail-right">
-            <button id="settings-toggle" class="cel-rail-button" type="button" data-loc-key="Console_Settings_Title" data-loc-attr="title,aria-label">
-                <i class="bi bi-sliders"></i>
-                <span id="pip" class="cel-rail-pip hidden"></span>
-            </button>
-            <div id="shortcut-separator" class="cel-rail-separator hidden"></div>
-            <div id="shortcut-rail"></div>
         </div>
     </div>
 
