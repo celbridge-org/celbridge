@@ -266,6 +266,55 @@ describe('EditorController edit availability', () => {
 
         expect(reportedAvailability()).toMatchObject({ canCopy: true, canCut: true });
     });
+
+    it('claims nothing while one of the page\'s own text controls holds the keyboard', () => {
+        editor.hasTextFocus.mockReturnValue(false);
+        const findInput = document.createElement('input');
+        document.body.appendChild(findInput);
+
+        findInput.focus();
+
+        expect(reportedAvailability()).toEqual({});
+
+        findInput.remove();
+    });
+
+    it('keeps its claim while a button holds the keyboard, so the menu still copies a selection', () => {
+        editor.hasTextFocus.mockReturnValue(false);
+        editor.getSelection.mockReturnValue({ isEmpty: () => false });
+        const toolbarButton = document.createElement('button');
+        document.body.appendChild(toolbarButton);
+
+        toolbarButton.focus();
+
+        expect(reportedAvailability()).toMatchObject({
+            canCopy: true,
+            hostMediatedClipboard: true
+        });
+
+        toolbarButton.remove();
+    });
+
+    it('claims nothing once the preview has taken the editor off screen', () => {
+        editor.hasTextFocus.mockReturnValue(false);
+
+        controller.setHidden(true);
+
+        expect(reportedAvailability()).toEqual({});
+    });
+
+    it('claims the verbs again when the editor comes back on screen', () => {
+        editor.hasTextFocus.mockReturnValue(false);
+        editor.getSelection.mockReturnValue({ isEmpty: () => false });
+
+        controller.setHidden(true);
+        controller.setHidden(false);
+
+        expect(reportedAvailability()).toMatchObject({
+            canPaste: true,
+            hostMediatedClipboard: true
+        });
+    });
 });
 
 describe('EditorController clipboard text', () => {

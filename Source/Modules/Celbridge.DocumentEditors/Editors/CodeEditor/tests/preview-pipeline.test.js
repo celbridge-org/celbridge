@@ -14,6 +14,8 @@ function firePointerEvent(target, type, init = {}) {
 function createEditorController() {
     return {
         layout: vi.fn(),
+        setHidden: vi.fn(),
+        refreshEditAvailability: vi.fn(),
         getValue: vi.fn().mockReturnValue(''),
         scrollToSourceLine: vi.fn(),
         onContentChanged: vi.fn(),
@@ -25,6 +27,8 @@ describe('PreviewPipeline divider', () => {
     let divider;
     let splitRoot;
     let pipeline;
+    let editorController;
+    let iframe;
 
     beforeEach(() => {
         splitRoot = document.createElement('div');
@@ -32,6 +36,7 @@ describe('PreviewPipeline divider', () => {
         divider = document.createElement('div');
         const previewPane = document.createElement('div');
         const previewIframe = document.createElement('iframe');
+        iframe = previewIframe;
         splitRoot.append(editorPane, divider, previewPane);
         previewPane.appendChild(previewIframe);
         document.body.appendChild(splitRoot);
@@ -43,8 +48,9 @@ describe('PreviewPipeline divider', () => {
         divider.setPointerCapture = vi.fn();
         divider.releasePointerCapture = vi.fn();
 
+        editorController = createEditorController();
         pipeline = new PreviewPipeline({
-            editorController: createEditorController(),
+            editorController,
             panes: {
                 splitRoot,
                 editorPane,
@@ -95,4 +101,12 @@ describe('PreviewPipeline divider', () => {
         divider.dispatchEvent(new Event('dblclick'));
         expect(pipeline.viewModeController.getFlexShare()).toBeCloseTo(0.5, 10);
     });
+    it('reports edit availability when focus moves into the preview', () => {
+        iframe.dispatchEvent(new Event('load'));
+
+        iframe.contentDocument.dispatchEvent(new Event('focusin'));
+
+        expect(editorController.refreshEditAvailability).toHaveBeenCalled();
+    });
+
 });

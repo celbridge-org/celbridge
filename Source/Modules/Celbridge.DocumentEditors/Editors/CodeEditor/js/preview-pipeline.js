@@ -35,7 +35,17 @@ export class PreviewPipeline {
             onModeChanged: (mode) => {
                 updateViewModeButtons(mode);
                 syncSnippetButtonForViewMode(mode);
+                editorController.setHidden(mode === ViewMode.Preview);
             }
+        });
+
+        // Focus entering the preview raises no focus event in this document, so the editor would keep
+        // claiming the clipboard while the preview's find bar holds the keyboard. Reattached on each shell
+        // load, which replaces the iframe's document.
+        panes.previewIframe?.addEventListener('load', () => {
+            panes.previewIframe.contentDocument?.addEventListener(
+                'focusin',
+                () => editorController.refreshEditAvailability());
         });
 
         this.#previewController = new PreviewController(panes.previewIframe, {

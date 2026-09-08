@@ -54,7 +54,6 @@ internal class MacOSWebViewFocusMonitor : IWebViewFocusMonitor
     private static bool _monitorInstalled;
     private static IntPtr _monitor;
     private static IntPtr _monitorBlock;
-    private static IntPtr _lastMatchedHandle;
     private static DispatcherQueue? _dispatcherQueue;
     private static ILogger? _logger;
 
@@ -104,13 +103,6 @@ internal class MacOSWebViewFocusMonitor : IWebViewFocusMonitor
         }
 
         _callbacksByHandle.Remove(handle);
-
-        // Forget the dedup state for the removed view so a pooled web view that is reacquired for a
-        // new document reports its first click.
-        if (_lastMatchedHandle == handle)
-        {
-            _lastMatchedHandle = IntPtr.Zero;
-        }
     }
 
     private static void EnsureMonitorInstalled()
@@ -175,18 +167,15 @@ internal class MacOSWebViewFocusMonitor : IWebViewFocusMonitor
         {
             var matchedHandle = FindClickedRegisteredWebView(nsEvent);
 
-            // Report transitions only: repeated clicks inside the same web view stay quiet, and a click
-            // that lands anywhere else resets the state so returning to the view reports again.
-            if (matchedHandle != _lastMatchedHandle)
+            // Every click inside a registered web view is signalled. Whether it is a change of focus is
+            // the registry's to decide: focus can leave a surface with no click at all (a shortcut opening
+            // the find bar, Tab, a programmatic move), and a monitor comparing this click against the last
+            // one would stay silent on the click that brings the keyboard back.
+            if (matchedHandle != IntPtr.Zero
+                && _callbacksByHandle.TryGetValue(matchedHandle, out var callback))
             {
-                _lastMatchedHandle = matchedHandle;
-
-                if (matchedHandle != IntPtr.Zero
-                    && _callbacksByHandle.TryGetValue(matchedHandle, out var callback))
-                {
-                    // Defer so the callback's UI work runs after AppKit finishes dispatching the click.
-                    _dispatcherQueue?.TryEnqueue(() => callback());
-                }
+                // Defer so the callback's UI work runs after AppKit finishes dispatching the click.
+                _dispatcherQueue?.TryEnqueue(() => callback());
             }
         }
         catch (Exception exception)
