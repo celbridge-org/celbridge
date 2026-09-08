@@ -109,9 +109,8 @@ if (terminalRows) {
     document.documentElement.style.setProperty('--console-terminal-line-height', rowLineHeight);
 }
 
-// The width below which the rail lays out across the top of the content rather than down its side,
-// mirroring --cel-rail-stack-threshold. Used where the generated stylesheet has not been served, which
-// leaves the console measuring against nothing.
+// The width below which the rail lays out across the top of the content, mirroring
+// --cel-rail-stack-threshold. Used where the generated stylesheet has not been served.
 const RAIL_STACK_FALLBACK = 400;
 
 // DOM references.
@@ -286,9 +285,7 @@ function refitTerminal() {
     });
 }
 
-// The rail lays out down the left of a wide console and across the top of a narrow one, the way the section
-// switcher moves its nav for the same reason. Either arrangement takes its band out of the document before
-// the content is measured, so nothing the terminal draws is ever covered.
+// The rail lays out down the left of a wide console and across the top of a narrow one.
 function updateRailArrangement() {
     // A hidden document reports no width, so the last resolved arrangement stands until it is on screen
     // again.
@@ -309,13 +306,9 @@ function updateRailArrangement() {
     }
 
     appElement.dataset.rail = arrangement;
-    // The arrangement moves the rail's band between the row the terminal is in and the column above it, so
-    // the terminal has resized in both directions.
     refitTerminal();
 }
 
-// The console measures its own width rather than being told it, the way the section switcher resolves its
-// own layout.
 new ResizeObserver(() => updateRailArrangement()).observe(appElement);
 
 updateRailArrangement();
@@ -333,8 +326,7 @@ function setSettingsVisible(visible) {
     appElement.dataset.surface = visible ? 'settings' : 'terminal';
 
     if (visible) {
-        // Hiding the rail destroys the focus the toggle was holding, so the surface takes it rather than
-        // leaving the keyboard on the document body.
+        // Hiding the rail destroys the focus the toggle was holding.
         settingsView.querySelector('.cel-section-nav-item[aria-selected="true"]')?.focus();
         return;
     }
@@ -345,7 +337,6 @@ function setSettingsVisible(visible) {
 
 closeSettingsButton.addEventListener('click', () => setSettingsVisible(false));
 
-// The surface fills the document and names its way out, so it answers the key that means the same thing.
 document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' &&
         !settingsView.classList.contains('hidden')) {

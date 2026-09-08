@@ -40,9 +40,7 @@
   <Thickness x:Key="SectionRowPadding">12,0</Thickness>
 
   <!-- The margin a settings surface keeps from the edge of whatever holds it, mirroring the
-       cel-settings-inset design token. Keep the two in sync when either changes. It is clearance for the
-       section area's rounded corners rather than a reading margin, so it is the smallest gap that keeps
-       those corners off the edge they sit against. -->
+       cel-settings-inset design token. Keep the two in sync when either changes. -->
   <Thickness x:Key="SettingsSurfaceMargin">8</Thickness>
 
   <!-- The type scale, mirroring the type tokens in the web client's celbridge-tokens.css; keep the two in

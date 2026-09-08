@@ -62,8 +62,8 @@ public class DesignTokenCoverageTests
         // The width at which the section switcher stacks its nav above its content. The switcher reads it
         // with getComputedStyle rather than through var(), which is the only form the scan matches.
         "--cel-section-stack-threshold",
-        // The width at which an editor lays its rail down the side of its content rather than across the
-        // top. The console reads it the same way, and for the same reason.
+        // The width below which an editor's rail stacks across the top of its content. The console reads
+        // it with getComputedStyle, which the scan does not match.
         "--cel-rail-stack-threshold"
     ];
 
@@ -328,9 +328,6 @@ public class DesignTokenCoverageTests
             @"RAIL_STACK_FALLBACK = (\d+)");
     }
 
-    // A width a module resolves in JavaScript is read out of the computed style rather than through var(),
-    // so the module carries the same number a second time for a page served without the generated
-    // stylesheet. The pair would otherwise drift apart silently.
     private static void AssertFallbackMatchesToken(
         string cssPropertyName,
         string[] modulePathSegments,
