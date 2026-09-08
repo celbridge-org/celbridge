@@ -7,6 +7,7 @@ import celbridge from '/assets/celbridge-client/celbridge.js';
 import { ContentLoadedReason } from '/assets/celbridge-client/api/document-api.js';
 import { t, applyLocalization } from '/assets/celbridge-client/localization.js';
 import { attachSectionSwitcher } from '/assets/celbridge-client/ui/section-switcher.js';
+import { attachStackLayout } from '/assets/celbridge-client/ui/stack-layout.js';
 import { createCardList } from '/assets/celbridge-client/ui/card-list.js';
 import { createIconField, resolveIconClass } from '/assets/celbridge-client/ui/icon-field.js';
 import { parseConsoleToml, serializeConsoleToml, defaultConsoleConfig } from './console-toml.js';
@@ -119,6 +120,7 @@ const DOCUMENT_MIN_WIDTH = 230;
 
 // DOM references.
 const appElement = document.getElementById('app');
+const railElement = appElement.querySelector('.cel-rail');
 const openSettingsButton = document.getElementById('open-settings');
 const pip = document.getElementById('pip');
 const shortcutRail = document.getElementById('shortcut-rail');
@@ -292,35 +294,18 @@ function refitTerminal() {
     });
 }
 
-// The rail lays out down the left of a wide console and across the top of a narrow one.
-function updateRailArrangement() {
-    // A hidden or unarranged document reports a width no real document could have, so the last resolved
-    // arrangement stands until it is on screen.
-    const width = appElement.clientWidth;
-    if (width < DOCUMENT_MIN_WIDTH) {
-        return;
-    }
-
-    const declaredThreshold = getComputedStyle(appElement).getPropertyValue('--cel-rail-stack-threshold');
-    let threshold = Number.parseFloat(declaredThreshold);
-    if (!Number.isFinite(threshold) || threshold <= 0) {
-        threshold = RAIL_STACK_FALLBACK;
-    }
-
-    const arrangement = width >= threshold ? 'inline' : 'stacked';
-    if (appElement.dataset.rail === arrangement) {
-        return;
-    }
-
-    appElement.dataset.rail = arrangement;
-    refitTerminal();
-}
-
-if (typeof ResizeObserver === 'function') {
-    new ResizeObserver(() => updateRailArrangement()).observe(appElement);
-}
-
-updateRailArrangement();
+// The rail lays out down the left of a wide console and across the top of a narrow one. A fixed rail takes
+// its width out of the row the terminal shares with it, so the terminal has resized either way.
+attachStackLayout(appElement, {
+    property: '--cel-rail-stack-threshold',
+    fallback: RAIL_STACK_FALLBACK,
+    attribute: 'rail',
+    minimumWidth: DOCUMENT_MIN_WIDTH,
+    onChange(arrangement) {
+        railElement.classList.toggle('cel-rail-horizontal', arrangement === 'stacked');
+        refitTerminal();
+    },
+});
 
 openSettingsButton.addEventListener('click', () => setSettingsVisible(true));
 

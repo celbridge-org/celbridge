@@ -22,6 +22,8 @@
 // `stacked` where it does not, measured against --cel-section-stack-threshold. Markup naming one of them
 // holds it, and the module then only keeps aria-orientation in step.
 
+import { attachStackLayout } from './stack-layout.js';
+
 // Used where the stylesheet has not been served, which leaves the switcher measuring against nothing.
 const STACK_THRESHOLD_FALLBACK = 387;
 
@@ -52,9 +54,6 @@ export function attachSectionSwitcher(rootElement, options = {}) {
 
     // Each section's scroll offset, keyed by section id.
     const scrollOffsets = new Map();
-
-    // A layout named in the markup is the author's, so the measurement never overrides it.
-    const authoredLayout = rootElement.dataset.layout || 'auto';
 
     let selectedId = null;
     let lastWidth = 0;
@@ -115,41 +114,6 @@ export function attachSectionSwitcher(rootElement, options = {}) {
         nextItem.focus();
     }
 
-    function resolveLayout(width) {
-        if (authoredLayout === 'inline' ||
-            authoredLayout === 'stacked') {
-            return authoredLayout;
-        }
-
-        const declaredThreshold = getComputedStyle(rootElement)
-            .getPropertyValue('--cel-section-stack-threshold');
-        let threshold = Number.parseFloat(declaredThreshold);
-        if (!Number.isFinite(threshold) ||
-            threshold <= 0) {
-            threshold = STACK_THRESHOLD_FALLBACK;
-        }
-
-        if (width >= threshold) {
-            return 'inline';
-        }
-
-        return 'stacked';
-    }
-
-    // A hidden surface reports no width, so the last resolved layout stands until it is on screen again.
-    function applyLayout(width) {
-        if (width <= 0) {
-            return;
-        }
-
-        const layout = resolveLayout(width);
-        rootElement.dataset.layout = layout;
-
-        if (navElement) {
-            navElement.setAttribute('aria-orientation', layout === 'inline' ? 'vertical' : 'horizontal');
-        }
-    }
-
     for (const item of navItems) {
         item.addEventListener('click', () => select(sectionIdOf(item), true));
     }
@@ -188,25 +152,26 @@ export function attachSectionSwitcher(rootElement, options = {}) {
         });
     }
 
-    // The observer is also what reports the surface coming back on screen, which is where each section's
-    // scroll offset has to be put back: hiding the surface destroyed the scroll boxes holding them.
-    if (typeof ResizeObserver === 'function') {
-        const resizeObserver = new ResizeObserver((entries) => {
-            for (const entry of entries) {
-                const width = entry.contentRect.width;
-                applyLayout(width);
-
-                if (width > 0 &&
-                    lastWidth === 0) {
-                    applyScrollOffset();
-                }
-
-                lastWidth = width;
+    // The layout follows the switcher's own width. The observer behind it is also what reports the surface
+    // coming back on screen, which is where each section's scroll offset has to be put back: hiding the
+    // surface destroyed the scroll boxes holding them.
+    attachStackLayout(rootElement, {
+        property: '--cel-section-stack-threshold',
+        fallback: STACK_THRESHOLD_FALLBACK,
+        onChange(layout) {
+            if (navElement) {
+                navElement.setAttribute('aria-orientation', layout === 'inline' ? 'vertical' : 'horizontal');
             }
-        });
+        },
+        onMeasure(width) {
+            if (width > 0 &&
+                lastWidth === 0) {
+                applyScrollOffset();
+            }
 
-        resizeObserver.observe(rootElement);
-    }
+            lastWidth = width;
+        },
+    });
 
     function setReadOnly(isReadOnly) {
         rootElement.dataset.readonly = isReadOnly ? 'true' : 'false';
@@ -229,7 +194,6 @@ export function attachSectionSwitcher(rootElement, options = {}) {
         select(sectionIdOf(initialItem), true);
     }
 
-    applyLayout(rootElement.getBoundingClientRect().width);
 
     return {
         select(sectionId) {

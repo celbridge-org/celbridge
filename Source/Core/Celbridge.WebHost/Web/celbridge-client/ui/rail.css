@@ -36,6 +36,29 @@
     border-left: 1px solid var(--cel-divider-subtle);
 }
 
+/* The rail turned on its side, for an editor too narrow to give it a column: a strip across the top of the
+   content, its buttons reading away from the first one rather than down from it. The rail's own metrics turn
+   with it, so a consumer adds this class and nothing else. */
+.cel-rail-horizontal {
+    flex: 0 0 var(--cel-rail-width);
+    flex-direction: row;
+    width: auto;
+    height: var(--cel-rail-width);
+    border-right: none;
+    border-left: none;
+    border-bottom: 1px solid var(--cel-divider-subtle);
+}
+
+.cel-rail-horizontal .cel-rail-button {
+    margin: auto calc((var(--cel-rail-item-size) - var(--cel-rail-button-size)) / 2);
+}
+
+.cel-rail-horizontal .cel-rail-separator {
+    width: 1px;
+    height: auto;
+    margin: 8px 4px;
+}
+
 .cel-rail-separator {
     flex: 0 0 auto;
     height: 1px;

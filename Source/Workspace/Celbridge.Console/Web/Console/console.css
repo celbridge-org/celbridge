@@ -71,18 +71,6 @@ html, body {
     min-height: 0;
 }
 
-/* The strip is the rail turned on its side. Nothing reorders: the markup already leads with the settings
-   button, which anchors it to the document's left corner with the shortcut group growing away from it, the
-   same relationship the column has top to bottom. The horizontal arrangement is the console's until a second
-   editor wants it, so it lives here rather than in the shared ui/rail.css. */
-#app[data-rail="stacked"] > .cel-rail {
-    flex-direction: row;
-    width: auto;
-    height: var(--cel-rail-width);
-    border-right: none;
-    border-bottom: 1px solid var(--cel-divider-subtle);
-}
-
 /* The shortcut group sits after the settings button and scrolls once it outgrows the rail, so growth pushes
    away from the settings button rather than moving it. */
 #shortcut-rail {
@@ -94,26 +82,15 @@ html, body {
     scrollbar-width: none;
 }
 
-/* Laid along the strip, the shortcuts keep the order they are defined in, reading away from the settings
-   button the way they read down from it in the column. */
+/* The shortcut group is the console's own container, so the shared horizontal variant cannot turn it: laid
+   along the strip the shortcuts keep the order they are defined in, reading away from the settings button
+   the way they read down from it in the column. */
 #app[data-rail="stacked"] #shortcut-rail {
     flex-direction: row;
     min-width: 0;
     min-height: auto;
     overflow-x: auto;
     overflow-y: hidden;
-}
-
-/* The rail's own metrics turn with it: a button centred across the strip rather than along the column, and
-   a separator drawn across the strip's short axis. */
-#app[data-rail="stacked"] .cel-rail-button {
-    margin: auto calc((var(--cel-rail-item-size) - var(--cel-rail-button-size)) / 2);
-}
-
-#app[data-rail="stacked"] .cel-rail-separator {
-    width: 1px;
-    height: auto;
-    margin: 8px 4px;
 }
 
 .hidden {

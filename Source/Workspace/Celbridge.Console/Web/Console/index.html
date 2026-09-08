@@ -18,10 +18,10 @@
     <script src="lib/addon-web-links.js"></script>
 </head>
 <body>
-    <!-- The rail arrangement and the surface showing are held here, so the page lays out before console.js
-         has measured it. Inline is the arrangement a console is usually wide enough for, and the terminal
-         is the surface it opens on. -->
-    <div id="app" data-rail="inline" data-surface="terminal">
+    <!-- The surface showing is held here, and the terminal is the one a console opens on. The rail
+         arrangement is not: the stylesheet's own rules are the column, so the page lays out that way
+         before console.js has measured it, and naming it here would pin it against the measurement. -->
+    <div id="app" data-surface="terminal">
         <!-- Inspector rail: down the left of the content, or across the top of a narrow console. It leads
              the content in the markup as well as on screen, so the two levels of navigation read in one
              direction and reach focus in that order: this button, then the settings surface's own section
