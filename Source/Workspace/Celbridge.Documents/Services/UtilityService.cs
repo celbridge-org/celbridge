@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.Community;
 using Celbridge.Documents.Views;
 using Celbridge.Logging;
 using Celbridge.Messaging;
@@ -6,7 +7,6 @@ using Celbridge.Packages;
 using Celbridge.Projects;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
-using Celbridge.Community;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -520,7 +520,7 @@ public class UtilityService : IUtilityService, IDisposable
         return new List<IWorkspaceItem>(_utilities);
     }
 
-    public Task TeardownUtilitiesAsync()
+    public async Task TeardownUtilitiesAsync()
     {
         foreach (var utility in _utilities)
         {
@@ -529,7 +529,9 @@ public class UtilityService : IUtilityService, IDisposable
 
         _utilities.Clear();
 
-        return Task.CompletedTask;
+        await Task.CompletedTask;
+
+        return;
     }
 
     public void Dispose()
