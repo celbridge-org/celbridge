@@ -21,10 +21,10 @@
 
     <StackPanel>
 
-    <!-- Lines the first rail row up with the section heading beside it. Margin rather than Padding,
-         because ItemsControl has no template to bind Padding to. -->
+    <!-- Lines the first rail row up with the section heading beside it. The top margin is set in
+         code-behind from SectionInset, and is a Margin rather than a Padding because ItemsControl has no
+         template to bind Padding to. -->
     <ItemsControl x:Name="RailItems"
-                  Margin="0,14,0,0"
                   VerticalAlignment="Top">
       <ItemsControl.ItemsPanel>
         <ItemsPanelTemplate>

@@ -8,6 +8,7 @@
     "Console_Settings_Title": "Settings",
     "Console_Reopen": "Reopen Console",
     "Console_ReopenSession": "Reopen Console",
+    "Console_ReturnToConsole": "Return to Console",
     "Console_Reopen_Tooltip": "Close and reopen the console session.",
     "Console_ReopenCaption": "Configuration changes take effect when the console is reopened.",
 

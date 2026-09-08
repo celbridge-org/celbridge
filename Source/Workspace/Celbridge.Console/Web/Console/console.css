@@ -38,12 +38,22 @@ html, body {
     overflow: hidden;
 }
 
-/* The content and the inspector rail sit side by side, with the rail pinned to the right edge of the
-   document. */
+/* The content and the inspector rail divide the document between them, the rail down the left of a wide
+   console and across the top of a narrow one. */
 #app {
     display: flex;
     height: 100vh;
     width: 100vw;
+}
+
+#app[data-rail="stacked"] {
+    flex-direction: column;
+}
+
+/* The close in the section area's corner is the way back to the terminal, so the rail has nothing left to do
+   over the settings surface. */
+#app[data-surface="settings"] > .cel-rail {
+    display: none;
 }
 
 /* The terminal and the settings surface take turns filling the row, so opening settings never resizes the
@@ -55,8 +65,6 @@ html, body {
     min-height: 0;
 }
 
-/* The shortcut group sits below the settings button and scrolls once it outgrows the rail, so growth pushes
-   downward into empty space rather than moving the settings button. */
 #shortcut-rail {
     display: flex;
     flex: 0 1 auto;
@@ -64,6 +72,16 @@ html, body {
     min-height: 0;
     overflow-y: auto;
     scrollbar-width: none;
+}
+
+/* Turned with the rail. The shared horizontal variant cannot reach this group, which is the console's own
+   container rather than part of the component. */
+#app[data-rail="stacked"] #shortcut-rail {
+    flex-direction: row;
+    min-width: 0;
+    min-height: auto;
+    overflow-x: auto;
+    overflow-y: hidden;
 }
 
 .hidden {
@@ -78,10 +96,11 @@ html, body {
     background: var(--console-terminal-bg);
 }
 
+/* Inset on every side, so the terminal's text never runs to the document's edge. */
 #terminal {
     position: absolute;
     inset: 0;
-    margin: 8px 0 8px 8px;
+    margin: 8px;
 }
 
 /* Clip the DOM renderer's subpixel sliver past the last column (WebKit rounding). */
@@ -141,12 +160,14 @@ html, body {
 }
 
 /* The settings surface is the shared .cel-section-switcher (celbridge.css), filling the row the terminal
-   would otherwise have, inset from the document edge the way both native settings surfaces are. */
+   would otherwise have, inset from the document edge by the same margin both native settings surfaces keep.
+   The rail is off screen for as long as it shows, so the switcher measures the whole document and resolves
+   its own layout against that. */
 #settings-view {
     flex: 1 1 auto;
     min-width: 0;
     min-height: 0;
-    padding: var(--cel-panel-inset);
+    padding: var(--cel-settings-inset);
 }
 
 /* The fields are the shared .field primitives (celbridge.css). Command-line-ish fields read better in the
@@ -158,6 +179,23 @@ html, body {
 
 .settings-section .field:last-child {
     margin-bottom: 0;
+}
+
+/* Positions the close below, so it lands in the same corner in both of the switcher's layouts. */
+#settings-switcher .cel-section-area {
+    position: relative;
+}
+
+#close-settings {
+    position: absolute;
+    top: var(--cel-section-inset);
+    right: var(--cel-section-inset);
+}
+
+/* Reserves the corner for the close button: the button's inset, its width, and a gap the size of the inset
+   between it and the text. */
+#settings-switcher .cel-section-header {
+    padding-right: calc(var(--cel-section-inset) * 2 + var(--cel-icon-button-size));
 }
 
 /* Stands in for the cards of a list nothing has been added to yet. */

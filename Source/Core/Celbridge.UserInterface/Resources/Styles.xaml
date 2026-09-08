@@ -34,10 +34,14 @@
        control and the .cel-section-switcher web component hold the same shape. Keep the two in sync when
        either changes. The inset is taken by both the heading block and the section content. -->
   <x:Double x:Key="SectionNavWidth">150</x:Double>
-  <x:Double x:Key="SectionInset">16</x:Double>
+  <x:Double x:Key="SectionInset">8</x:Double>
   <x:Double x:Key="SectionFooterGap">40</x:Double>
   <x:Double x:Key="SectionRowGap">2</x:Double>
   <Thickness x:Key="SectionRowPadding">12,0</Thickness>
+
+  <!-- The margin a settings surface keeps from the edge of whatever holds it, mirroring the
+       cel-settings-inset design token. Keep the two in sync when either changes. -->
+  <Thickness x:Key="SettingsSurfaceMargin">8</Thickness>
 
   <!-- The type scale, mirroring the type tokens in the web client's celbridge-tokens.css; keep the two in
        sync when either changes. Small carries panel titles, field labels and supporting prose. Base carries

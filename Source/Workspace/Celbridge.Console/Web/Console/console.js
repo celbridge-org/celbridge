@@ -7,6 +7,7 @@ import celbridge from '/assets/celbridge-client/celbridge.js';
 import { ContentLoadedReason } from '/assets/celbridge-client/api/document-api.js';
 import { t, applyLocalization } from '/assets/celbridge-client/localization.js';
 import { attachSectionSwitcher } from '/assets/celbridge-client/ui/section-switcher.js';
+import { attachStackLayout } from '/assets/celbridge-client/ui/stack-layout.js';
 import { createCardList } from '/assets/celbridge-client/ui/card-list.js';
 import { createIconField, resolveIconClass } from '/assets/celbridge-client/ui/icon-field.js';
 import { parseConsoleToml, serializeConsoleToml, defaultConsoleConfig } from './console-toml.js';
@@ -109,8 +110,18 @@ if (terminalRows) {
     document.documentElement.style.setProperty('--console-terminal-line-height', rowLineHeight);
 }
 
+// The width below which the rail lays out across the top of the content, mirroring
+// --cel-rail-stack-threshold. Used where the generated stylesheet has not been served.
+const RAIL_STACK_FALLBACK = 400;
+
+// The narrowest a laid-out document can be, mirroring WorkspaceConstants.DocumentMinWidth and
+// --cel-document-min-width. A WebView that has not been arranged reports a viewport far below it.
+const DOCUMENT_MIN_WIDTH = 230;
+
 // DOM references.
-const settingsToggle = document.getElementById('settings-toggle');
+const appElement = document.getElementById('app');
+const railElement = appElement.querySelector('.cel-rail');
+const openSettingsButton = document.getElementById('open-settings');
 const pip = document.getElementById('pip');
 const shortcutRail = document.getElementById('shortcut-rail');
 const shortcutSeparator = document.getElementById('shortcut-separator');
@@ -132,6 +143,7 @@ const dependenciesInput = document.getElementById('dependencies');
 const workingDirectoryInput = document.getElementById('working-directory');
 const startupScriptInput = document.getElementById('startup-script');
 const environmentInput = document.getElementById('environment');
+const closeSettingsButton = document.getElementById('close-settings');
 const reopenSettingsButton = document.getElementById('reopen-settings');
 const builtInRunnerList = document.getElementById('runner-built-in');
 const builtInRunnerTemplate = document.getElementById('built-in-runner-template');
@@ -145,6 +157,9 @@ let currentConfig = defaultConsoleConfig();
 let launchedConfig = null;
 let configError = null;
 let sessionStartFailed = false;
+// What the terminal's failure overlay is saying, so the settings surface can say it too while the
+// terminal is the hidden half of the row.
+let sessionFailedText = '';
 // The runners each session type provides, keyed by type id, as the host reports them on attach. Empty until
 // then, so the built-in list simply renders nothing on the first populate.
 let builtInRunnersByType = {};
@@ -298,26 +313,54 @@ function refitTerminal() {
     });
 }
 
-settingsToggle.addEventListener('click', () => {
-    setSettingsVisible(settingsView.classList.contains('hidden'));
+// The rail lays out down the left of a wide console and across the top of a narrow one. A fixed rail takes
+// its width out of the row the terminal shares with it, so the terminal has resized either way.
+attachStackLayout(appElement, {
+    property: '--cel-rail-stack-threshold',
+    fallback: RAIL_STACK_FALLBACK,
+    attribute: 'rail',
+    minimumWidth: DOCUMENT_MIN_WIDTH,
+    onChange(arrangement) {
+        railElement.classList.toggle('cel-rail-horizontal', arrangement === 'stacked');
+        refitTerminal();
+    },
 });
+
+openSettingsButton.addEventListener('click', () => setSettingsVisible(true));
 
 // Settings and the terminal take turns filling the content row. A hidden terminal has no size to fit to,
 // which fitTerminal() declines to measure, so the pty holds the size it was left at.
 function setSettingsVisible(visible) {
     settingsView.classList.toggle('hidden', !visible);
     terminalView.classList.toggle('hidden', visible);
-    // The rail capsule tracks the panel being open, not focused: the terminal holds focus most of the time,
-    // so a focus-following capsule would read as "closed" while the panel is plainly on screen.
-    settingsToggle.classList.toggle('selected', visible);
+    // Takes the rail off screen while the surface is up, which the stylesheet keys on.
+    appElement.dataset.surface = visible ? 'settings' : 'terminal';
 
-    if (!visible) {
-        refitTerminal();
-        term.focus();
+    // Reported here rather than at the end, so the surface the settings replace stops claiming the
+    // clipboard on the way in as well as on the way out.
+    reportEditAvailability();
+
+    if (visible) {
+        // Hiding the rail destroys the focus the settings button was holding.
+        settingsView.querySelector('.cel-section-nav-item[aria-selected="true"]')?.focus();
+        return;
     }
 
-    reportEditAvailability();
+    refitTerminal();
+    term.focus();
 }
+
+closeSettingsButton.addEventListener('click', () => setSettingsVisible(false));
+
+document.addEventListener('keydown', (event) => {
+    // Escape belongs to whatever gesture is in progress first: a card drag cancels itself with it.
+    if (event.key === 'Escape' &&
+        !event.defaultPrevented &&
+        !settingsView.classList.contains('hidden')) {
+        setSettingsVisible(false);
+        event.preventDefault();
+    }
+});
 
 // Settings form. The executable field is shown only for the shell type. The dependency field only for the
 // Python types. The other fields apply to every type.
@@ -566,7 +609,6 @@ function injectShortcut(text) {
     if (!text) {
         return;
     }
-    setSettingsVisible(false);
     client.sendNotification('console/submit', { invocation: text });
 }
 
@@ -651,7 +693,8 @@ function updateAttention() {
     // only when a reopen is needed to apply changed launch settings. The footer caption explains it.
     reopenSettingsButton.classList.toggle('cel-accent', diverged);
 
-    settingsSwitcher.setNotice(configError);
+    // One slot, so a parse error wins: it is the one the surface showing it can also fix.
+    settingsSwitcher.setNotice(configError || sessionFailedText);
 }
 
 // Session lifecycle.
@@ -660,12 +703,14 @@ function showSessionFailed(message) {
     sessionFailedMessage.textContent = message;
     sessionFailed.classList.remove('hidden');
     sessionStartFailed = true;
+    sessionFailedText = message;
     updateAttention();
 }
 
 function hideSessionFailed() {
     sessionFailed.classList.add('hidden');
     sessionStartFailed = false;
+    sessionFailedText = '';
     updateAttention();
 }
 

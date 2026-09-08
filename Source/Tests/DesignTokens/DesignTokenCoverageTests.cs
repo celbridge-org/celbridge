@@ -61,7 +61,15 @@ public class DesignTokenCoverageTests
         "--cel-panel-header-height",
         // The width at which the section switcher stacks its nav above its content. The switcher reads it
         // with getComputedStyle rather than through var(), which is the only form the scan matches.
-        "--cel-section-stack-threshold"
+        "--cel-section-stack-threshold",
+        // The width below which an editor's rail stacks across the top of its content. The console reads
+        // it with getComputedStyle, which the scan does not match.
+        "--cel-rail-stack-threshold",
+        // The inset a native settings panel keeps between its edge and its scrolling content. No web
+        // surface takes it: a settings surface is inset from its holder by --cel-settings-inset, and the
+        // inset within a section is --cel-section-inset. The name carries the native value for a package
+        // whose own panel scrolls its content the same way.
+        "--cel-panel-inset"
     ];
 
     // WinUI keys the chrome reads directly, each for a role the palette has nothing of its own to say
@@ -134,6 +142,7 @@ public class DesignTokenCoverageTests
         "--cel-radius-panel",
         "--cel-rail-button-size",
         "--cel-rail-item-size",
+        "--cel-rail-stack-threshold",
         "--cel-rail-width",
         "--cel-search-highlight",
         "--cel-section-footer-gap",
@@ -143,6 +152,7 @@ public class DesignTokenCoverageTests
         "--cel-section-row-padding",
         "--cel-section-stack-threshold",
         "--cel-selection-bg",
+        "--cel-settings-inset",
         "--cel-splitter-width",
         "--cel-text-primary",
         "--cel-text-secondary",
@@ -308,35 +318,49 @@ public class DesignTokenCoverageTests
     [Test]
     public void TheSectionSwitcherStackFallback_MatchesItsToken()
     {
+        AssertFallbackMatchesToken(
+            "--cel-section-stack-threshold",
+            ["Core", "Celbridge.WebHost", "Web", "celbridge-client", "ui", "section-switcher.js"],
+            @"STACK_THRESHOLD_FALLBACK = (\d+)");
+    }
+
+    [Test]
+    public void TheConsoleRailStackFallback_MatchesItsToken()
+    {
+        AssertFallbackMatchesToken(
+            "--cel-rail-stack-threshold",
+            ["Workspace", "Celbridge.Console", "Web", "Console", "console.js"],
+            @"RAIL_STACK_FALLBACK = (\d+)");
+    }
+
+    private static void AssertFallbackMatchesToken(
+        string cssPropertyName,
+        string[] modulePathSegments,
+        string fallbackPattern)
+    {
         var source = LoadTokenSource();
 
         var thresholdToken = source.Tokens
-            .Single(candidate => candidate.CssPropertyName == "--cel-section-stack-threshold");
+            .Single(candidate => candidate.CssPropertyName == cssPropertyName);
 
         var declaredValue = thresholdToken.ThemeInvariantValue;
-        declaredValue.Should().NotBeNull("the stack threshold is one width in both themes");
+        declaredValue.Should().NotBeNull($"{cssPropertyName} is one width in both themes");
 
         var sourceFolder = ArchitectureHelpers.FindSourceFolder();
-        var modulePath = Path.Combine(
-            sourceFolder,
-            "Core",
-            "Celbridge.WebHost",
-            "Web",
-            "celbridge-client",
-            "ui",
-            "section-switcher.js");
+        var modulePath = Path.Combine(sourceFolder, Path.Combine(modulePathSegments));
 
         var fallback = Regex.Match(
             ArchitectureHelpers.ReadSourceFile(modulePath),
-            @"STACK_THRESHOLD_FALLBACK = (\d+)");
+            fallbackPattern);
 
         fallback.Success.Should().BeTrue(
-            "the switcher carries a fallback for a page served without the generated stylesheet");
+            $"the module resolving {cssPropertyName} carries a fallback for a page served without the "
+            + "generated stylesheet");
 
         $"{fallback.Groups[1].Value}px".Should().Be(
             declaredValue,
-            "the fallback stands in for --cel-section-stack-threshold on a page that cannot read it, so the "
-            + "two are one number written twice and would otherwise drift apart silently");
+            $"the fallback stands in for {cssPropertyName} on a page that cannot read it, so the two are "
+            + "one number written twice and would otherwise drift apart silently");
     }
 
     private static DesignTokenSource LoadTokenSource()

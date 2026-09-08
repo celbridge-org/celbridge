@@ -176,7 +176,7 @@ switcher.setNotice(message);      // show the notice slot, or hide it with an em
 switcher.setReadOnly(true);       // disable every control inside the sections
 ```
 
-The surface around the switcher supplies its height and its margin, the way the native consumers set `Margin="12"` and fill their panel.
+The surface around the switcher supplies its height and its margin: `--cel-settings-inset`, which the native consumers take as `SettingsSurfaceMargin`.
 
 **Two layouts.** The switcher picks one from its own width and writes it to `data-layout` on the root. `inline` is the native layout: a labelled nav column beside the carved section. `stacked` puts the nav above the content as an icon strip, over a section that drops its border, and pins the footer below the content instead. The markup is the same in both — a row carries a glyph and a label, and `stacked` drops the label to the tooltip the row needs either way — so a panel written once survives being docked into a document tab and undocked back into a 300px utility panel. Write `data-layout="inline"` or `data-layout="stacked"` on the root to hold one of them.
 
@@ -212,11 +212,11 @@ The native XAML settings panels use tooltips for this instead, and an editor pan
 
 ### Inspector rail
 
-An editor that needs a side panel puts it behind `.cel-rail`, a vertical icon rail down the right edge of its content, mirroring the workspace utility rail. The settings button sits at the top, the editor's own action buttons below it, separated by a `.cel-rail-separator`; the settings button uses `bi-sliders`, the same glyph as the workspace Project Settings button, and toggles the panel.
+An editor that needs a side panel puts it behind `.cel-rail`, a vertical icon rail down the left edge of its content, mirroring the workspace utility rail in position as well as appearance. The settings button sits at the top, the editor's own action buttons below it, separated by a `.cel-rail-separator`; the settings button uses `bi-sliders`, the same glyph as the workspace Project Settings button, and opens the panel. Put the rail ahead of the content in the markup: an editor whose panel has section navigation of its own has two levels of it on screen at once, and leading with the rail is what makes them read in one direction and reach focus in that order.
 
 ```html
-<div class="cel-rail cel-rail-right">
-  <button class="cel-rail-button selected" type="button" title="Settings">
+<div class="cel-rail">
+  <button class="cel-rail-button" type="button" title="Settings">
     <i class="bi bi-sliders"></i><span class="cel-rail-pip"></span>
   </button>
   <div class="cel-rail-separator"></div>
@@ -226,9 +226,15 @@ An editor that needs a side panel puts it behind `.cel-rail`, a vertical icon ra
 
 Settings goes above the action buttons, inverting the workspace rail's ordering, because an editor's action buttons are usually configured from the panel that settings button opens — below them, its position would shift every time the user adds or removes one. Above them it is fixed, and a growing action group overflows downward into empty space instead. The separator is what carries the family resemblance to the workspace rail, not the ordering.
 
-Rail buttons are icon-only with a tooltip, so a button whose action has no natural glyph still needs a fallback icon rather than a text label. Add `selected` to the button whose surface is showing; the accent fills that button for as long as the surface is open. This deliberately differs from the workspace utility rail, whose selected button drops to a neutral fill while its panel is unfocused — with several rails and panels on screen at once, "this panel is open" is the more useful signal, and an editor's own content usually holds focus anyway. `.cel-rail-right` moves the rail's border to the window edge; omit it for a rail on the left.
+Rail buttons are icon-only with a tooltip, so a button whose action has no natural glyph still needs a fallback icon rather than a text label. Add `selected` to the button whose surface is showing, where that surface leaves the rail on screen; the accent fills that button for as long as it is open. This deliberately differs from the workspace utility rail, whose selected button drops to a neutral fill while its panel is unfocused — with several rails and panels on screen at once, "this panel is open" is the more useful signal, and an editor's own content usually holds focus anyway. Which edge the rail sits on is decided by where the markup puts it, not by a class; add `.cel-rail-right` to move its hairline to the other side for a rail on the right.
 
-The console editor is the reference: its shortcut buttons render into the rail below the settings toggle, and the toggle opens a `.cel-section-switcher` surface. A rail action switches away from that surface: pressing a console shortcut closes the settings and types into the terminal, because the action belongs to the content the settings configure.
+The console editor is the reference: its shortcut buttons render into the rail below the settings toggle, and the toggle opens a `.cel-section-switcher` surface that fills the editor.
+
+A panel that fills the editor takes the rail off screen with it, so it has to carry its own way back: leaving belongs to the whole surface, and the chrome carrying the toggle in can be hidden. Put it in the section area's top corner, as a `.cel-icon-button` close over the header block — one for the surface rather than one per section header, with the headers reserving its width — so it lands in the same place in both of the switcher's layouts and reads as a panel close rather than another action. Answer Escape with it. The footer slot is the alternative, and where the native WebView document settings puts Return to Page, but only where the footer is otherwise free: an editor whose footer already carries an action puts a second full-width button in competition with it. The rail is then not a second navigation competing with the panel's section nav, and the panel measures the width the rail was holding. Everything the rail was signalling has to be on the surface instead, and the notice slot is one slot: the console fills it with a parse failure, falls back to a dead session's message when there is no parse failure to show, and accents its footer button for a config needing a reopen -- all three in place of the attention pip the hidden rail carried. A rail that stays on screen over a panel keeps its actions live, and a rail action then switches away from the panel — pressing a shortcut would close the settings and type into the terminal, because the action belongs to the content the settings configure.
+
+A rail in a column costs its width at every width the document is given, which at `--cel-document-min-width` is most of what a narrow editor has. Below `--cel-rail-stack-threshold` the console lays its rail across the top of its content instead — the arrangement the section switcher moves its own nav into at its own threshold, and for the same reason: a document narrow enough to stack is a tall one, so a strip spends height the editor has to spare rather than columns it has run out of. Turning the rail's own `flex-direction` is the whole of the change, because the markup already leads with the settings button. It anchors the strip's left corner exactly as it anchors the column's top, the action group grows away from it either way, and the group's own buttons keep the order they are declared in.
+
+Neither arrangement overlaps the content, which is worth holding to. A rail floating over an editor's content reads well until that content cannot be moved out from under it: the console's terminal scrolls, but a full-screen program on its alternate buffer has no scrollback, so whatever it draws in the corner the rail wants stays covered for as long as it runs. The editor resolves the arrangement from its own width with a `ResizeObserver` and writes it to an attribute its stylesheet keys on. `.cel-rail` itself is a column, so the horizontal arrangement is the editor's own treatment until a second one wants it.
 
 ### Editing a list of entries
 

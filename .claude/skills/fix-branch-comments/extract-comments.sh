@@ -13,17 +13,20 @@ set -uo pipefail
 
 BASE=$(git merge-base "${1:-main}" HEAD) || exit 1
 
-KEEP='[.](cs|xaml|py|js|ts|md)$'
-DROP='(^|/)(obj|bin|node_modules)/|[.]g[.]cs$|[.]designer[.]cs$|[.]min[.]js$|package-lock[.]json$'
+KEEP='[.](cs|xaml|py|js|ts|md|css|html)$'
+# Vendored trees are listed the way eslint.config.js lists them, since a re-vendor is a wholesale diff
+# nobody wants a comment review of.
+DROP='(^|/)(obj|bin|node_modules|lib|fixtures|bootstrap-icons)/|(^|/)min/vs/|[.]g[.]cs$|[.]designer[.]cs$|[.]min[.](js|css)$|package-lock[.]json$'
 
 # The comment opener differs by language, and matching the wrong one produces
 # noise that reads like a finding: # is a heading in markdown and a preprocessor
 # directive in C#, neither of which is a comment.
 opener_for() {
   case "$1" in
-    *.md | *.xaml) printf '%s' '^[[:space:]]*<!--' ;;
-    *.py)          printf '%s' '^[[:space:]]*#' ;;
-    *)             printf '%s' '^[[:space:]]*(///|//)' ;;
+    *.md | *.xaml | *.html) printf '%s' '^[[:space:]]*<!--' ;;
+    *.css)                  printf '%s' '^[[:space:]]*/[*]' ;;
+    *.py)                   printf '%s' '^[[:space:]]*#' ;;
+    *)                      printf '%s' '^[[:space:]]*(///|//)' ;;
   esac
 }
 export -f opener_for
@@ -32,8 +35,9 @@ export -f opener_for
 # and then again in the working tree is counted once at its current text.
 git diff -U0 "$BASE" -- . | awk -v keep="$KEEP" -v drop="$DROP" '
   function opener_for(path) {
-    if (path ~ /[.](md|xaml)$/) return "^[ \t]*<!--"
-    if (path ~ /[.]py$/)        return "^[ \t]*#"
+    if (path ~ /[.](md|xaml|html)$/) return "^[ \t]*<!--"
+    if (path ~ /[.]css$/)           return "^[ \t]*/[*]"
+    if (path ~ /[.]py$/)            return "^[ \t]*#"
     return "^[ \t]*(///|//)"
   }
   /^\+\+\+ b\// {
