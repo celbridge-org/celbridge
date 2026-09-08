@@ -35,4 +35,5 @@ A JSON object with these fields:
   - `isActive` (bool) — `true` for the one active document.
   - `editorId` (string) — the bound editor id (e.g. `"celbridge.code"`), or empty when no editor is bound yet.
 - `selectedDocuments` (object) — the document each section is currently showing, keyed by section name. A section holding no documents is omitted, and a section whose area is hidden still reports its selection.
+- `unhealthyDocuments` (array) — the open documents whose hosted page has stopped responding, omitted entries being healthy. Each entry has `resource`, `wakeFailures` (consecutive keep-alive wakes missed, macOS only) and `processFailures` (times the process rendering the page died). A document listed here may be showing stale or blank content, and its editor state may not be saveable.
 - `activeDocument` (string) — resource key of the active document, or empty when no document is active. It is one of the selected documents above: the one the user is working in.

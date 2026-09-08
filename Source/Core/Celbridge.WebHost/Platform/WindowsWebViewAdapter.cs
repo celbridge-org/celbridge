@@ -45,6 +45,8 @@ public sealed class WindowsWebViewAdapter : IWebViewAdapter
         webView.Focus(FocusState.Programmatic);
     }
 
+    public int GetWakeFailureCount(CoreWebView2 coreWebView2) => 0;
+
     public async Task<string> EvalAsync(CoreWebView2 coreWebView2, string expression)
     {
         return await coreWebView2.ExecuteScriptAsync(expression);

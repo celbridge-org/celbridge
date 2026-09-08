@@ -78,6 +78,12 @@ public interface IWebViewAdapter
     void FocusWebView(WebView2 webView);
 
     /// <summary>
+    /// How many consecutive keep-alive wakes this hosted page has missed. Zero where the head does not wake
+    /// its pages.
+    /// </summary>
+    int GetWakeFailureCount(CoreWebView2 coreWebView2);
+
+    /// <summary>
     /// Evaluates a JavaScript expression and returns the JSON-encoded result. On the Skia heads common
     /// WKWebView eval faults (script errors, undefined results) are normalized to "null".
     /// </summary>

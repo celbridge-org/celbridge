@@ -1255,6 +1255,14 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
         return JsonSerializer.Serialize(editorState, EditorStateSerializerOptions);
     }
 
+    public override DocumentHealth GetHealth()
+    {
+        var coreWebView2 = _webView?.CoreWebView2;
+        return coreWebView2 is null
+            ? DocumentHealth.Healthy
+            : new DocumentHealth(_webViewAdapter.GetWakeFailureCount(coreWebView2), 0);
+    }
+
     public override async Task RestoreEditorStateAsync(string state)
     {
         await Task.CompletedTask;

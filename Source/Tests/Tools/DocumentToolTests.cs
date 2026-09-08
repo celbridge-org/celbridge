@@ -55,6 +55,7 @@ public class DocumentToolTests
                 new(activeResource, new DocumentAddress(0, DocumentSection.MainLeft, 0), EditorId.Empty)
             },
             new Dictionary<DocumentSection, ResourceKey>(),
+            new Dictionary<ResourceKey, DocumentHealth>(),
             activeResource);
         StubGetStateSnapshot(snapshot);
 
@@ -70,6 +71,39 @@ public class DocumentToolTests
         var firstDocument = openDocuments[0];
         firstDocument.GetProperty("resource").GetString().Should().Be("project:notes/readme.md");
         firstDocument.GetProperty("isActive").GetBoolean().Should().BeTrue();
+
+        // A workspace with nothing wrong reports an empty list rather than omitting the field.
+        root.GetProperty("unhealthyDocuments").GetArrayLength().Should().Be(0);
+    }
+
+    [Test]
+    public async Task GetState_ReportsUnhealthyDocuments()
+    {
+        var resource = new ResourceKey("notes/readme.md");
+        var snapshot = new DocumentStateSnapshot(
+            new List<DocumentSection> { DocumentSection.MainLeft },
+            new List<OpenDocumentInfo>
+            {
+                new(resource, new DocumentAddress(0, DocumentSection.MainLeft, 0), EditorId.Empty)
+            },
+            new Dictionary<DocumentSection, ResourceKey>(),
+            new Dictionary<ResourceKey, DocumentHealth>
+            {
+                [resource] = new DocumentHealth(WakeFailures: 3, ProcessFailures: 1)
+            },
+            resource);
+        StubGetStateSnapshot(snapshot);
+
+        var tools = new DocumentTools(_services);
+        var root = ParseResult(await tools.GetState());
+
+        var unhealthyDocuments = root.GetProperty("unhealthyDocuments");
+        unhealthyDocuments.GetArrayLength().Should().Be(1);
+
+        var entry = unhealthyDocuments[0];
+        entry.GetProperty("resource").GetString().Should().Be("project:notes/readme.md");
+        entry.GetProperty("wakeFailures").GetInt32().Should().Be(3);
+        entry.GetProperty("processFailures").GetInt32().Should().Be(1);
     }
 
     [Test]
@@ -89,6 +123,7 @@ public class DocumentToolTests
                 [DocumentSection.MainLeft] = activeResource,
                 [DocumentSection.MainRight] = otherResource
             },
+            new Dictionary<ResourceKey, DocumentHealth>(),
             activeResource);
         StubGetStateSnapshot(snapshot);
 
@@ -124,6 +159,7 @@ public class DocumentToolTests
                 new(resource, new DocumentAddress(0, DocumentSection.MainLeft, 0), new EditorId("celbridge.html-viewer"))
             },
             new Dictionary<DocumentSection, ResourceKey>(),
+            new Dictionary<ResourceKey, DocumentHealth>(),
             resource);
         StubGetStateSnapshot(snapshot);
 
@@ -145,6 +181,7 @@ public class DocumentToolTests
                 new(resource, new DocumentAddress(0, DocumentSection.MainLeft, 0), EditorId.Empty)
             },
             new Dictionary<DocumentSection, ResourceKey>(),
+            new Dictionary<ResourceKey, DocumentHealth>(),
             resource);
         StubGetStateSnapshot(snapshot);
 
@@ -162,6 +199,7 @@ public class DocumentToolTests
             new List<DocumentSection> { DocumentSection.MainLeft },
             new List<OpenDocumentInfo>(),
             new Dictionary<DocumentSection, ResourceKey>(),
+            new Dictionary<ResourceKey, DocumentHealth>(),
             ResourceKey.Empty);
         StubGetStateSnapshot(snapshot);
 

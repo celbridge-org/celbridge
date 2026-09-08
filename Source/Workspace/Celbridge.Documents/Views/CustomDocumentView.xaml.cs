@@ -101,6 +101,8 @@ public sealed partial class CustomDocumentView : DocumentView
         return _controller.RestoreEditorStateAsync(state);
     }
 
+    public override DocumentHealth GetHealth() => _controller.GetHealth();
+
     public override async Task PrepareToClose()
     {
         _messengerService.UnregisterAll(this);

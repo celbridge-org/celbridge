@@ -140,6 +140,17 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
     private WebViewLoadDiagnostics? _diagnostics;
 
+    // Counted for the lifetime of the controller, so a page that has died and recovered still reports it.
+    private int _processFailures;
+
+    public DocumentHealth GetHealth()
+    {
+        var coreWebView2 = WebView?.CoreWebView2;
+        var wakeFailures = coreWebView2 is null ? 0 : _webViewAdapter.GetWakeFailureCount(coreWebView2);
+
+        return new DocumentHealth(wakeFailures, _processFailures);
+    }
+
     // The Celbridge host for JSON-RPC communication with the WebView.
     private CelbridgeHost? Host { get; set; }
 
@@ -427,6 +438,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
         WebView.CoreWebView2.ProcessFailed += (s, args) =>
         {
+            _processFailures++;
+
             _logger.LogError(
                 "WebView ProcessFailed: Kind={Kind}, Reason={Reason}, ExitCode={ExitCode}",
                 args.ProcessFailedKind, args.Reason, args.ExitCode);
@@ -1022,13 +1035,17 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             var proxyChannel = _proxyChannel;
             var transportState = proxyChannel?.GetTransportState();
 
+            var health = GetHealth();
+
             _logger.LogWarning(
-                "Editor did not return state within {Seconds}s; closing without preserving editor state. File: {File}, proxy channel {HasProxyChannel}, transport bound {IsBound}, pending outbound {PendingOutbound}",
+                "Editor did not return state within {Seconds}s; closing without preserving editor state. File: {File}, proxy channel {HasProxyChannel}, transport bound {IsBound}, pending outbound {PendingOutbound}, missed wakes {WakeFailures}, process failures {ProcessFailures}",
                 EditorStateRequestTimeoutSeconds,
                 _viewModel.FilePath,
                 proxyChannel is not null,
                 transportState?.IsBound,
-                transportState?.PendingOutboundCount);
+                transportState?.PendingOutboundCount,
+                health.WakeFailures,
+                health.ProcessFailures);
 
             ObserveAbandonedRequest(requestStateTask);
             return null;

@@ -7,6 +7,9 @@ namespace Celbridge.Documents.Views;
 
 public abstract partial class DocumentView : UserControl, IDocumentView
 {
+    // A document with no hosted page has nothing that can stop responding.
+    public virtual DocumentHealth GetHealth() => DocumentHealth.Healthy;
+
     private IResourceRegistry? _resourceRegistry;
     private IResourceFileSystem? _resourceFileSystem;
 

@@ -256,4 +256,6 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
     {
         await Task.CompletedTask;
     }
+
+    public DocumentHealth GetHealth() => DocumentHealth.Healthy;
 }

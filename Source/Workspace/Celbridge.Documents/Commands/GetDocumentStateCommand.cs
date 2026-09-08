@@ -15,6 +15,7 @@ public class GetDocumentStateCommand : CommandBase, IGetDocumentStateCommand
             new[] { DocumentSection.MainLeft },
             Array.Empty<OpenDocumentInfo>(),
             new Dictionary<DocumentSection, ResourceKey>(),
+            new Dictionary<ResourceKey, DocumentHealth>(),
             ResourceKey.Empty);
 
     public GetDocumentStateCommand(IWorkspaceWrapper workspaceWrapper)
@@ -27,6 +28,7 @@ public class GetDocumentStateCommand : CommandBase, IGetDocumentStateCommand
         await Task.CompletedTask;
 
         var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
+        var documentsPanel = _workspaceWrapper.WorkspaceService.DocumentsPanel;
 
         var activeDocument = documentsService.ActiveDocument;
         var visibleSections = documentsService.VisibleSections;
@@ -42,7 +44,24 @@ public class GetDocumentStateCommand : CommandBase, IGetDocumentStateCommand
             }
         }
 
-        ResultValue = new DocumentStateSnapshot(visibleSections, openDocuments, selectedDocuments, activeDocument);
+        // Only documents with something to report, so a healthy workspace carries nothing.
+        var unhealthyDocuments = new Dictionary<ResourceKey, DocumentHealth>();
+        foreach (var openDocument in openDocuments)
+        {
+            var documentView = documentsPanel.GetDocumentView(openDocument.FileResource);
+            var health = documentView?.GetHealth() ?? DocumentHealth.Healthy;
+            if (!health.IsHealthy)
+            {
+                unhealthyDocuments[openDocument.FileResource] = health;
+            }
+        }
+
+        ResultValue = new DocumentStateSnapshot(
+            visibleSections,
+            openDocuments,
+            selectedDocuments,
+            unhealthyDocuments,
+            activeDocument);
 
         return Result.Ok();
     }

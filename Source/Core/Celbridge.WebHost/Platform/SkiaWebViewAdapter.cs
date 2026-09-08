@@ -25,6 +25,10 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     // The wake loop running for each live hosted web view, keyed by the view it wakes.
     private readonly Dictionary<CoreWebView2, CancellationTokenSource> _keepAliveLoops = new();
 
+    // Consecutive missed wakes per hosted view, read by callers reporting a document's health. Guarded by
+    // the keep-alive lock.
+    private readonly Dictionary<CoreWebView2, int> _wakeFailures = new();
+
     // The find methods receive only a CoreWebView2, so sessions are keyed by it to recover per-find state.
     private readonly Dictionary<CoreWebView2, FindSession> _findSessions = new();
 
@@ -171,6 +175,8 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
             {
                 return;
             }
+
+            _wakeFailures.Remove(coreWebView2);
         }
 
         cancellationTokenSource.Cancel();
@@ -199,6 +205,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
                         "A hosted page is responding again after {FailureCount} missed wake(s)",
                         consecutiveFailures);
                     consecutiveFailures = 0;
+                    RecordWakeFailures(coreWebView2, consecutiveFailures);
                 }
 
                 // WebKit replaces the process rendering a page when it terminates it, so an id that changes
@@ -230,6 +237,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
             catch (Exception ex)
             {
                 consecutiveFailures++;
+                RecordWakeFailures(coreWebView2, consecutiveFailures);
 
                 // A page that misses every wake would otherwise report itself on each one.
                 if (consecutiveFailures == 1
@@ -241,6 +249,22 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
                         consecutiveFailures);
                 }
             }
+        }
+    }
+
+    public int GetWakeFailureCount(CoreWebView2 coreWebView2)
+    {
+        lock (_keepAliveLoops)
+        {
+            return _wakeFailures.TryGetValue(coreWebView2, out var failures) ? failures : 0;
+        }
+    }
+
+    private void RecordWakeFailures(CoreWebView2 coreWebView2, int failures)
+    {
+        lock (_keepAliveLoops)
+        {
+            _wakeFailures[coreWebView2] = failures;
         }
     }
 
