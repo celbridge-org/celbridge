@@ -4,26 +4,15 @@ namespace Celbridge.WorkspaceUI.Services;
 /// What is known about a resource that is waiting to be written again. Delay is the full wait before the
 /// next attempt, Remaining is how much of that wait is left.
 /// </summary>
-internal sealed record SaveRetry(double Delay, double Remaining, string Reason, bool IsReported);
+internal sealed record SaveRetry(double Delay, double Remaining, string Reason);
 
 /// <summary>
-/// The resources that are waiting to be written again, how long each one waits before the next attempt,
-/// and which of them are reported to the user.
+/// The resources that are waiting to be written again, and how long each one waits before the next
+/// attempt.
 /// </summary>
 public class SaveRetryTracker
 {
-    // A non-writable resource is held here so that it backs off like any other, but it is not reported.
     private readonly Dictionary<ResourceKey, SaveRetry> _saveRetries = new();
-
-    /// <summary>
-    /// Whether the reported resources have changed since they were last cleared.
-    /// </summary>
-    public bool HasReportedChanges { get; private set; }
-
-    public void ClearReportedChanges()
-    {
-        HasReportedChanges = false;
-    }
 
     /// <summary>
     /// Whether the resource is waiting to be written again.
@@ -54,16 +43,14 @@ public class SaveRetryTracker
     {
         var delay = SaveConstants.InitialRetryDelay;
         var reasonChanged = true;
-        var isReported = false;
 
         if (_saveRetries.TryGetValue(resource, out var previousRetry))
         {
             delay = Math.Min(previousRetry.Delay * 2, SaveConstants.MaximumRetryDelay);
             reasonChanged = previousRetry.Reason != reason;
-            isReported = previousRetry.IsReported;
         }
 
-        _saveRetries[resource] = new SaveRetry(delay, delay, reason, isReported);
+        _saveRetries[resource] = new SaveRetry(delay, delay, reason);
 
         return reasonChanged;
     }
@@ -86,47 +73,11 @@ public class SaveRetryTracker
     }
 
     /// <summary>
-    /// Starts reporting a resource to the user. Returns false when it is already reported.
-    /// </summary>
-    public bool StartReporting(ResourceKey resource)
-    {
-        var retry = _saveRetries[resource];
-        if (retry.IsReported)
-        {
-            return false;
-        }
-
-        _saveRetries[resource] = retry with { IsReported = true };
-        HasReportedChanges = true;
-
-        return true;
-    }
-
-    /// <summary>
-    /// Stops reporting a resource to the user, leaving its wait in place so it goes on backing off.
-    /// </summary>
-    public void StopReporting(ResourceKey resource)
-    {
-        if (!_saveRetries.TryGetValue(resource, out var retry) ||
-            !retry.IsReported)
-        {
-            return;
-        }
-
-        _saveRetries[resource] = retry with { IsReported = false };
-        HasReportedChanges = true;
-    }
-
-    /// <summary>
-    /// Drops everything held about a resource, so a later failure is reported and backs off afresh.
+    /// Drops everything held about a resource, so a later failure backs off afresh.
     /// </summary>
     public void Forget(ResourceKey resource)
     {
-        if (_saveRetries.Remove(resource, out var retry) &&
-            retry.IsReported)
-        {
-            HasReportedChanges = true;
-        }
+        _saveRetries.Remove(resource);
     }
 
     /// <summary>
@@ -146,23 +97,5 @@ public class SaveRetryTracker
                 Forget(resource);
             }
         }
-    }
-
-    /// <summary>
-    /// Every resource that is reported to the user.
-    /// </summary>
-    public IReadOnlyList<ResourceKey> GetReported()
-    {
-        var reportedResources = new List<ResourceKey>();
-
-        foreach (var saveRetry in _saveRetries)
-        {
-            if (saveRetry.Value.IsReported)
-            {
-                reportedResources.Add(saveRetry.Key);
-            }
-        }
-
-        return reportedResources;
     }
 }

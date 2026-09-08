@@ -287,6 +287,24 @@ public class WorkspaceItemSaverTests
     }
 
     [Test]
+    public async Task SaveModifiedItems_WithdrawsTheFailure_WhenTheItemTurnsNonWritableWhileWaitingToRetry()
+    {
+        var item = new FakeWorkspaceItem { SaveSucceeds = false };
+        var items = new[] { item };
+
+        await _workspaceItemSaver.SaveModifiedItemsAsync(items, TickDelta);
+
+        // The wait from the first failure has not elapsed, so no second attempt is made.
+        item.WritableState = WritableState.Locked;
+        await _workspaceItemSaver.SaveModifiedItemsAsync(items, TickDelta);
+
+        item.SaveCount.Should().Be(1);
+        _retryReports.Select(report => report.Count).Should().Equal(
+            new[] { 1, 0 },
+            "the report follows the item's current writable state, not the state at its last attempt");
+    }
+
+    [Test]
     public async Task SaveModifiedItems_GoesOnRequestingAResourceUpdate_WhileASaveKeepsFailing()
     {
         var item = new FakeWorkspaceItem { SaveSucceeds = false };

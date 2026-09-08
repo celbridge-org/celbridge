@@ -34,6 +34,9 @@ public class WorkspaceItemSaver
     private readonly IMessengerService _messengerService;
     private readonly SaveRetryTracker _retries;
 
+    // The resources reported to the user as failing, as of the last save pass.
+    private readonly HashSet<ResourceKey> _reportedResources = new();
+
     public WorkspaceItemSaver(
         ILogger<WorkspaceItemSaver> logger,
         ICommandService commandService,
@@ -51,7 +54,7 @@ public class WorkspaceItemSaver
     /// </summary>
     public IReadOnlyList<ResourceKey> GetRetryingResources()
     {
-        return _retries.GetReported();
+        return _reportedResources.ToList();
     }
 
     /// <summary>
@@ -98,7 +101,6 @@ public class WorkspaceItemSaver
 
         int savedCount = 0;
         int pendingSaveCount = 0;
-        List<ResourceKey> newlyReportedResources = new();
         bool updateResourcesRequired = false;
 
         foreach (var item in items)
@@ -139,10 +141,8 @@ public class WorkspaceItemSaver
 
             var reasonChanged = _retries.Schedule(item.FileResource, saveResult.MessageChain);
 
-            // A non-writable item failing to save is expected, so the failure is not reported to the user.
             if (item.WritableState != WritableState.Writable)
             {
-                _retries.StopReporting(item.FileResource);
                 _logger.LogDebug($"Skipped save for non-writable workspace item: '{item.FileResource}'");
                 continue;
             }
@@ -160,11 +160,6 @@ public class WorkspaceItemSaver
             {
                 _logger.LogError($"Failed to save workspace item '{item.FileResource}'. {saveResult.MessageChain}");
             }
-
-            if (_retries.StartReporting(item.FileResource))
-            {
-                newlyReportedResources.Add(item.FileResource);
-            }
         }
 
         DropStateForClosedItems(items);
@@ -172,7 +167,7 @@ public class WorkspaceItemSaver
         var pendingSaveMessage = new PendingSaveCountMessage(pendingSaveCount);
         _messengerService.Send(pendingSaveMessage);
 
-        SendReportedRetriesIfChanged();
+        var newlyReportedResources = UpdateReportedResources(items);
 
         if (updateResourcesRequired)
         {
@@ -227,18 +222,45 @@ public class WorkspaceItemSaver
         }
     }
 
-    // Sends the reported resources whenever that set gains or loses one.
-    private void SendReportedRetriesIfChanged()
+    // Sends the reported resources whenever that set gains or loses one, and returns the resources that
+    // have just started being reported.
+    private List<ResourceKey> UpdateReportedResources(IReadOnlyList<IWorkspaceItem> items)
     {
-        if (!_retries.HasReportedChanges)
+        var reportedResources = CollectReportedResources(items);
+        if (_reportedResources.SetEquals(reportedResources))
         {
-            return;
+            return new List<ResourceKey>();
         }
 
-        _retries.ClearReportedChanges();
+        var newlyReportedResources = reportedResources
+            .Where(resource => !_reportedResources.Contains(resource))
+            .ToList();
 
-        var retriesChangedMessage = new WorkspaceItemSaveRetriesChangedMessage(_retries.GetReported());
+        _reportedResources.Clear();
+        _reportedResources.UnionWith(reportedResources);
+
+        var retriesChangedMessage = new WorkspaceItemSaveRetriesChangedMessage(reportedResources);
         _messengerService.Send(retriesChangedMessage);
+
+        return newlyReportedResources;
+    }
+
+    private List<ResourceKey> CollectReportedResources(IReadOnlyList<IWorkspaceItem> items)
+    {
+        var reportedResources = new List<ResourceKey>();
+
+        foreach (var item in items)
+        {
+            // A non-writable item failing to save is expected, and its editor already shows it as
+            // read-only, so it backs off without being reported.
+            if (_retries.IsRetrying(item.FileResource) &&
+                item.WritableState == WritableState.Writable)
+            {
+                reportedResources.Add(item.FileResource);
+            }
+        }
+
+        return reportedResources;
     }
 
     // Forgets the resources that are no longer open, so one that fails again after being reopened is

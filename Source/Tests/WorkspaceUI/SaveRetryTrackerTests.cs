@@ -5,7 +5,7 @@ using Celbridge.WorkspaceUI.Services;
 namespace Celbridge.Tests.WorkspaceUI;
 
 /// <summary>
-/// Tests for the backoff and reporting held against each resource that is waiting to be written again.
+/// Tests for the backoff held against each resource that is waiting to be written again.
 /// </summary>
 [TestFixture]
 public class SaveRetryTrackerTests
@@ -64,49 +64,14 @@ public class SaveRetryTrackerTests
     }
 
     [Test]
-    public void Schedule_KeepsTheResourceReported()
-    {
-        _tracker.Schedule(Resource, "locked");
-        _tracker.StartReporting(Resource);
-
-        _tracker.Schedule(Resource, "locked");
-
-        _tracker.GetReported().Should().Equal(new[] { Resource });
-    }
-
-    [Test]
-    public void StartReporting_ReturnsFalse_WhenTheResourceIsAlreadyReported()
-    {
-        _tracker.Schedule(Resource, "locked");
-
-        _tracker.StartReporting(Resource).Should().BeTrue();
-        _tracker.StartReporting(Resource).Should().BeFalse();
-    }
-
-    [Test]
-    public void StopReporting_LeavesTheResourceBackingOff()
-    {
-        _tracker.Schedule(Resource, "locked");
-        _tracker.StartReporting(Resource);
-
-        _tracker.StopReporting(Resource);
-
-        _tracker.GetReported().Should().BeEmpty();
-        _tracker.IsRetrying(Resource).Should().BeTrue("a resource that is not reported still backs off");
-        _tracker.IsWaiting(Resource).Should().BeTrue();
-    }
-
-    [Test]
     public void Forget_DropsEverythingHeldAboutTheResource()
     {
         _tracker.Schedule(Resource, "locked");
-        _tracker.StartReporting(Resource);
 
         _tracker.Forget(Resource);
 
         _tracker.IsRetrying(Resource).Should().BeFalse();
         _tracker.IsWaiting(Resource).Should().BeFalse();
-        _tracker.GetReported().Should().BeEmpty();
     }
 
     [Test]
@@ -120,22 +85,5 @@ public class SaveRetryTrackerTests
 
         _tracker.IsRetrying(Resource).Should().BeTrue();
         _tracker.IsRetrying(closedResource).Should().BeFalse();
-    }
-
-    [Test]
-    public void ReportedChanges_AreFlaggedOnlyWhenTheReportedResourcesMove()
-    {
-        _tracker.Schedule(Resource, "locked");
-        _tracker.HasReportedChanges.Should().BeFalse("a scheduled wait reports nothing on its own");
-
-        _tracker.StartReporting(Resource);
-        _tracker.HasReportedChanges.Should().BeTrue();
-
-        _tracker.ClearReportedChanges();
-        _tracker.StartReporting(Resource);
-        _tracker.HasReportedChanges.Should().BeFalse("the resource was already reported");
-
-        _tracker.Forget(Resource);
-        _tracker.HasReportedChanges.Should().BeTrue();
     }
 }
