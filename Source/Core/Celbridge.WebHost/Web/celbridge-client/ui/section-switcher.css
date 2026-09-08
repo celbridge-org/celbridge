@@ -95,8 +95,9 @@
     flex-wrap: nowrap;
     gap: var(--cel-section-row-gap);
     width: var(--cel-section-nav-width);
-    /* Lines the first row up with the section heading beside it. */
-    padding: 14px 0 0;
+    /* Lines the first row up with the section heading beside it. A row is taller than the heading text,
+       so the rows start slightly above the inset the heading is drawn at. */
+    padding: calc(var(--cel-section-inset) - 2px) 0 0;
 }
 
 .cel-section-switcher[data-layout="inline"] > .cel-section-area {
@@ -204,13 +205,6 @@
     flex: 0 0 auto;
     padding: var(--cel-section-inset);
     border-bottom: 1px solid var(--cel-divider);
-}
-
-/* Stacked, the nav strip is already directly above the heading, so the inset that holds the heading off the
-   top of a carved section is a second gap rather than the first one. The horizontal inset is untouched:
-   that is the one the section content lines its own left edge up with. */
-.cel-section-switcher[data-layout="stacked"] .cel-section-header {
-    padding-top: 8px;
 }
 
 .cel-section-header h1 {

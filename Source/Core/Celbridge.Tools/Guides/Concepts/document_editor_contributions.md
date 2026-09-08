@@ -212,7 +212,7 @@ The native XAML settings panels use tooltips for this instead, and an editor pan
 
 ### Inspector rail
 
-An editor that needs a side panel puts it behind `.cel-rail`, a vertical icon rail down the left edge of its content, mirroring the workspace utility rail in position as well as appearance. The settings button sits at the top, the editor's own action buttons below it, separated by a `.cel-rail-separator`; the settings button uses `bi-sliders`, the same glyph as the workspace Project Settings button, and toggles the panel. Put the rail ahead of the content in the markup: an editor whose panel has section navigation of its own has two levels of it on screen at once, and leading with the rail is what makes them read in one direction and reach focus in that order.
+An editor that needs a side panel puts it behind `.cel-rail`, a vertical icon rail down the left edge of its content, mirroring the workspace utility rail in position as well as appearance. The settings button sits at the top, the editor's own action buttons below it, separated by a `.cel-rail-separator`; the settings button uses `bi-sliders`, the same glyph as the workspace Project Settings button, and opens the panel. Put the rail ahead of the content in the markup: an editor whose panel has section navigation of its own has two levels of it on screen at once, and leading with the rail is what makes them read in one direction and reach focus in that order.
 
 ```html
 <div class="cel-rail">

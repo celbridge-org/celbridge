@@ -115,7 +115,7 @@ const RAIL_STACK_FALLBACK = 400;
 
 // DOM references.
 const appElement = document.getElementById('app');
-const settingsToggle = document.getElementById('settings-toggle');
+const openSettingsButton = document.getElementById('open-settings');
 const pip = document.getElementById('pip');
 const shortcutRail = document.getElementById('shortcut-rail');
 const shortcutSeparator = document.getElementById('shortcut-separator');
@@ -313,7 +313,7 @@ new ResizeObserver(() => updateRailArrangement()).observe(appElement);
 
 updateRailArrangement();
 
-settingsToggle.addEventListener('click', () => setSettingsVisible(true));
+openSettingsButton.addEventListener('click', () => setSettingsVisible(true));
 
 // Settings and the terminal take turns filling the content row. A hidden terminal has no size to fit to,
 // which fitTerminal() declines to measure, so the pty holds the size it was left at.
@@ -324,7 +324,7 @@ function setSettingsVisible(visible) {
     appElement.dataset.surface = visible ? 'settings' : 'terminal';
 
     if (visible) {
-        // Hiding the rail destroys the focus the toggle was holding.
+        // Hiding the rail destroys the focus the settings button was holding.
         settingsView.querySelector('.cel-section-nav-item[aria-selected="true"]')?.focus();
         return;
     }
@@ -336,7 +336,9 @@ function setSettingsVisible(visible) {
 closeSettingsButton.addEventListener('click', () => setSettingsVisible(false));
 
 document.addEventListener('keydown', (event) => {
+    // Escape belongs to whatever gesture is in progress first: a card drag cancels itself with it.
     if (event.key === 'Escape' &&
+        !event.defaultPrevented &&
         !settingsView.classList.contains('hidden')) {
         setSettingsVisible(false);
         event.preventDefault();

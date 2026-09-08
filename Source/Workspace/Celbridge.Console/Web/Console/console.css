@@ -41,7 +41,7 @@ html, body {
 /* The content and the inspector rail divide the document between them, the rail down the left of a wide one
    and across the top of a narrow one. Nothing overlaps in either arrangement. The rail leads the content on
    the side the workspace utility rail leads from, so the console's two levels of navigation read in one
-   direction: the settings toggle, then the section nav of the surface it opens. */
+   direction: the settings button, then the section nav of the surface it opens. */
 #app {
     display: flex;
     height: 100vh;
@@ -72,7 +72,7 @@ html, body {
 }
 
 /* The strip is the rail turned on its side. Nothing reorders: the markup already leads with the settings
-   toggle, which anchors it to the document's left corner with the shortcut group growing away from it, the
+   button, which anchors it to the document's left corner with the shortcut group growing away from it, the
    same relationship the column has top to bottom. The horizontal arrangement is the console's until a second
    editor wants it, so it lives here rather than in the shared ui/rail.css. */
 #app[data-rail="stacked"] > .cel-rail {
@@ -95,7 +95,7 @@ html, body {
 }
 
 /* Laid along the strip, the shortcuts keep the order they are defined in, reading away from the settings
-   toggle the way they read down from it in the column. */
+   button the way they read down from it in the column. */
 #app[data-rail="stacked"] #shortcut-rail {
     flex-direction: row;
     min-width: 0;
@@ -224,13 +224,14 @@ html, body {
 
 #close-settings {
     position: absolute;
-    top: 8px;
-    right: 8px;
+    top: var(--cel-section-inset);
+    right: var(--cel-section-inset);
 }
 
-/* The header block reserves the corner rather than wrapping its description underneath the button. */
+/* The header block reserves the corner rather than wrapping its description underneath the button: the
+   button's own inset, its width, and a gap the size of the inset between it and the text. */
 #settings-switcher .cel-section-header {
-    padding-right: calc(var(--cel-section-inset) + var(--cel-icon-button-size));
+    padding-right: calc(var(--cel-section-inset) * 2 + var(--cel-icon-button-size));
 }
 
 /* Stands in for the cards of a list nothing has been added to yet. */

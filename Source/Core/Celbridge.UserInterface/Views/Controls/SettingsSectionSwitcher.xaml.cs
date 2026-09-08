@@ -59,6 +59,10 @@ public sealed partial class SettingsSectionSwitcher : UserControl
 {
     private readonly Dictionary<SettingsSection, ScrollViewer> _sectionContainers = new();
 
+    // How far above the heading's own inset the rail rows start. A row is taller than the heading text, so
+    // the two read as one line only when the rows begin slightly higher.
+    private const double NavRowRise = 2;
+
     // The inset around a section's content, which the heading band above it also takes.
     private readonly double _sectionInset;
 
@@ -129,6 +133,7 @@ public sealed partial class SettingsSectionSwitcher : UserControl
 
         _sectionInset = (double)resources["SectionInset"];
         SectionHeader.Padding = new Thickness(_sectionInset);
+        RailItems.Margin = new Thickness(0, _sectionInset - NavRowRise, 0, 0);
     }
 
     /// <summary>
