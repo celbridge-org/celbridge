@@ -839,11 +839,28 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
     private void WebView_Loaded(object sender, RoutedEventArgs e)
     {
+        RepairHostedViewOpacity();
+
         _ = Diagnostics.LogSurfaceAsync("WebView attached", Surface);
 
         // An editor that loaded while detached raised no navigation events, so its completion was never
         // probed. Attach is the first moment the host hears from it again.
         _ = ProbeLoadedContentAsync();
+    }
+
+    // Uno only sends a hosted view its opacity while handling an opacity change, never on attach, so a view
+    // placed after the last change keeps the alpha it was sent while the document was in a background tab.
+    private void RepairHostedViewOpacity()
+    {
+        // A restored document attaches its view while the workspace is still loading, which is before
+        // IsWorkspaceLoaded turns true.
+        var workspaceWrapper = _serviceProvider.GetRequiredService<IWorkspaceWrapper>();
+        if (!workspaceWrapper.HasWorkspaceService)
+        {
+            return;
+        }
+
+        workspaceWrapper.WorkspaceService.DocumentsPanel.RepairHostedViewOpacity(_viewModel.FileResource);
     }
 
     private void WebView_Unloaded(object sender, RoutedEventArgs e)
