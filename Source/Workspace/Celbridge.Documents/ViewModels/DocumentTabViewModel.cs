@@ -3,6 +3,7 @@ using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Documents.ViewModels;
 
@@ -30,6 +31,7 @@ public partial class DocumentTabViewModel : ObservableObject
     private readonly ICommandService _commandService;
     private readonly ILogger<DocumentTabViewModel> _logger;
     private readonly IResourceRegistry _resourceRegistry;
+    private readonly IStringLocalizer _stringLocalizer;
 
     [ObservableProperty]
     private ResourceKey _fileResource;
@@ -42,6 +44,9 @@ public partial class DocumentTabViewModel : ObservableObject
 
     [ObservableProperty]
     private string _editorDisplayName = string.Empty;
+
+    [ObservableProperty]
+    private bool _isSaveRetrying;
 
     /// <summary>
     /// True when this tab borrows a utility's live view rather than holding a document of its own. Such a
@@ -94,24 +99,36 @@ public partial class DocumentTabViewModel : ObservableObject
     /// <summary>
     /// Tooltip text for the tab. A utility tab shows its manifest description, falling back to its title
     /// when none is declared. An ordinary tab shows its file path plus the editor name when multiple
-    /// editors are available.
+    /// editors are available. A tab whose file cannot be written says so below that.
     /// </summary>
     public string TabTooltip
     {
         get
         {
-            if (IsUtilityEditor)
+            var description = ComposeTabDescription();
+
+            if (!IsSaveRetrying)
             {
-                return string.IsNullOrEmpty(UtilityTooltip) ? DocumentName : UtilityTooltip;
+                return description;
             }
 
-            if (string.IsNullOrEmpty(EditorDisplayName))
-            {
-                return FilePath;
-            }
-
-            return $"{FilePath} - {EditorDisplayName}";
+            return _stringLocalizer.GetString("DocumentTab_Tooltip_SaveFailed", description);
         }
+    }
+
+    private string ComposeTabDescription()
+    {
+        if (IsUtilityEditor)
+        {
+            return string.IsNullOrEmpty(UtilityTooltip) ? DocumentName : UtilityTooltip;
+        }
+
+        if (string.IsNullOrEmpty(EditorDisplayName))
+        {
+            return FilePath;
+        }
+
+        return _stringLocalizer.GetString("DocumentTab_Tooltip_WithEditor", FilePath, EditorDisplayName);
     }
 
     partial void OnFilePathChanged(string? oldValue, string newValue)
@@ -142,6 +159,8 @@ public partial class DocumentTabViewModel : ObservableObject
     partial void OnFileResourceChanged(ResourceKey oldValue, ResourceKey newValue)
     {
         OnPropertyChanged(nameof(FileName));
+
+        RefreshSaveState();
     }
 
     public IDocumentView? DocumentView { get; set; }
@@ -153,12 +172,14 @@ public partial class DocumentTabViewModel : ObservableObject
         IMessengerService messengerService,
         ICommandService commandService,
         ILogger<DocumentTabViewModel> logger,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        IStringLocalizer stringLocalizer)
     {
         _messengerService = messengerService;
         _commandService = commandService;
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;
+        _stringLocalizer = stringLocalizer;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
         // Reordering a TabViewItem adds it in the new position before removing it from the old, so Unloaded
@@ -168,6 +189,30 @@ public partial class DocumentTabViewModel : ObservableObject
 
         _messengerService.Register<ResourceRegistryUpdatedMessage>(this, OnResourceRegistryUpdatedMessage);
         _messengerService.Register<ResourceKeyChangedMessage>(this, OnResourceKeyChangedMessage);
+        _messengerService.Register<WorkspaceItemSaveRetriesChangedMessage>(this, OnSaveRetriesChanged);
+    }
+
+    private void OnSaveRetriesChanged(object recipient, WorkspaceItemSaveRetriesChangedMessage message)
+    {
+        IsSaveRetrying = message.RetryingResources.Contains(FileResource);
+    }
+
+    private void RefreshSaveState()
+    {
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
+        {
+            return;
+        }
+
+        // The retrying set is only sent when it changes, so a tab that appears later has missed it and
+        // reads the current set instead.
+        var retryingResources = _workspaceWrapper.WorkspaceService.GetRetryingResources();
+        IsSaveRetrying = retryingResources.Contains(FileResource);
+    }
+
+    partial void OnIsSaveRetryingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(TabTooltip));
     }
 
     /// <summary>
@@ -299,6 +344,14 @@ public partial class DocumentTabViewModel : ObservableObject
                 // permanently-refused save would otherwise jam the close path forever.
                 // Discard the unsaved edits and proceed to teardown.
                 _logger.LogWarning(saveResult, $"Saving document failed during close. Discarding unsaved edits for file resource: '{FileResource}'");
+
+                // A docked utility keeps its view and its content when the tab closes, so nothing is
+                // discarded.
+                if (!IsDockedUtility)
+                {
+                    var discardedMessage = new WorkspaceItemSaveDiscardedMessage(FileResource);
+                    _messengerService.Send(discardedMessage);
+                }
 
                 // If the cached writable state still reads Writable, an external attribute change
                 // probably slipped past the watcher. Schedule a resource update so the cache catches

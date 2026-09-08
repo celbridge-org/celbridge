@@ -33,6 +33,8 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
     private bool _workspaceStateIsDirty;
 
+    private double _timeSinceSavePass;
+
     public WorkspaceService(
         IServiceProvider serviceProvider,
         ILogger<WorkspaceService> logger,
@@ -97,6 +99,22 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         }
     }
 
+    public IReadOnlyList<ResourceKey> GetRetryingResources() => _workspaceItemSaver.GetRetryingResources();
+
+    public Task FlushModifiedItemsAsync()
+    {
+        return _workspaceItemSaver.FlushModifiedItemsAsync(CollectWorkspaceItems(), SaveConstants.UnloadFlushTimeout);
+    }
+
+    private List<IWorkspaceItem> CollectWorkspaceItems()
+    {
+        var workspaceItems = new List<IWorkspaceItem>();
+        workspaceItems.AddRange(DocumentsService.GetWorkspaceItems());
+        workspaceItems.AddRange(UtilityService.GetWorkspaceItems());
+
+        return workspaceItems;
+    }
+
     public async Task<Result> UpdateWorkspaceAsync(double deltaTime)
     {
         bool failed = false;
@@ -114,25 +132,21 @@ public class WorkspaceService : IWorkspaceService, IDisposable
             }
         }
 
-        var saveableItems = new List<ISaveableWorkspaceItem>();
-        saveableItems.AddRange(DocumentsService.GetSaveableItems());
-        saveableItems.AddRange(UtilityService.GetSaveableItems());
-
-        int pendingSaveCount = 0;
-
-        var saveItemsResult = await _workspaceItemSaver.SaveModifiedItemsAsync(saveableItems, deltaTime);
-        if (saveItemsResult.IsFailure)
+        _timeSinceSavePass += deltaTime;
+        if (_timeSinceSavePass >= SaveConstants.SavePassInterval)
         {
-            failed = true;
-            _logger.LogError($"Failed to save modified workspace items. {saveItemsResult.DiagnosticReport}");
-        }
-        else
-        {
-            pendingSaveCount = saveItemsResult.Value;
-        }
+            var savePassDelta = _timeSinceSavePass;
+            _timeSinceSavePass = 0;
 
-        var pendingSaveMessage = new PendingSaveCountMessage(pendingSaveCount);
-        _messengerService.Send(pendingSaveMessage);
+            var workspaceItems = CollectWorkspaceItems();
+
+            var saveItemsResult = await _workspaceItemSaver.SaveModifiedItemsAsync(workspaceItems, savePassDelta);
+            if (saveItemsResult.IsFailure)
+            {
+                failed = true;
+                _logger.LogError($"Failed to save modified workspace items. {saveItemsResult.DiagnosticReport}");
+            }
+        }
 
         // Flush any pending Workspace-scope setting writes (panel sizes, search
         // options, last new-file extension). These are set on the UI thread but

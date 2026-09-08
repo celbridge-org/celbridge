@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.Community;
 using Celbridge.Documents.Views;
 using Celbridge.Logging;
 using Celbridge.Messaging;
@@ -6,7 +7,6 @@ using Celbridge.Packages;
 using Celbridge.Projects;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
-using Celbridge.Community;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -515,31 +515,23 @@ public class UtilityService : IUtilityService, IDisposable
         _messengerService.Send(new FlashDocumentMessage(fileResource));
     }
 
-    public IReadOnlyList<ISaveableWorkspaceItem> GetSaveableItems()
+    public IReadOnlyList<IWorkspaceItem> GetWorkspaceItems()
     {
-        return new List<ISaveableWorkspaceItem>(_utilities);
+        return new List<IWorkspaceItem>(_utilities);
     }
 
     public async Task TeardownUtilitiesAsync()
     {
         foreach (var utility in _utilities)
         {
-            try
-            {
-                if (utility.HasUnsavedChanges)
-                {
-                    await utility.SaveAsync();
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to flush utility during teardown");
-            }
-
             utility.Teardown();
         }
 
         _utilities.Clear();
+
+        await Task.CompletedTask;
+
+        return;
     }
 
     public void Dispose()

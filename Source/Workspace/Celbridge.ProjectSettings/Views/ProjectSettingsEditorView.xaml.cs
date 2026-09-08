@@ -17,13 +17,10 @@ namespace Celbridge.ProjectSettings.Views;
 /// </summary>
 public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentView
 {
-    // Matches the delay the text document views use, so a burst of edits settles into one write.
-    private const double SaveDelay = 1.0;
-
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ILogger<ProjectSettingsEditorView> _logger;
 
-    private double _saveTimer = SaveDelay;
+    private double _saveTimer = SaveConstants.SaveDelay;
 
     public ProjectSettingsEditorViewModel ViewModel { get; }
 
@@ -188,7 +185,7 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
             return false;
         }
 
-        _saveTimer = SaveDelay;
+        _saveTimer = SaveConstants.SaveDelay;
 
         return true;
     }

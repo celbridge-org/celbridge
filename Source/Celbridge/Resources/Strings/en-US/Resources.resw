@@ -213,11 +213,21 @@
   <data name="ProjectFile_CannotChangeExtension" xml:space="preserve">
     <value>The project file must keep its {0} extension.</value>
   </data>
-  <data name="Toast_SaveFailed_Single" xml:space="preserve">
-    <value>Could not save '{0}': {1}</value>
+  <data name="Toast_SaveDiscarded" xml:space="preserve">
+    <value>Unsaved changes to '{0}' were discarded</value>
   </data>
-  <data name="Toast_SaveFailed_Multiple" xml:space="preserve">
+  <data name="SaveStatus_Failed_Single" xml:space="preserve">
+    <value>Could not save '{0}'</value>
+  </data>
+  <data name="SaveStatus_Failed_Multiple" xml:space="preserve">
     <value>Could not save {0} files</value>
+  </data>
+  <data name="DocumentTab_Tooltip_WithEditor" xml:space="preserve">
+    <value>{0} - {1}</value>
+  </data>
+  <data name="DocumentTab_Tooltip_SaveFailed" xml:space="preserve">
+    <value>{0}
+This file could not be saved</value>
   </data>
   <data name="Toast_OperationFailed_Delete_Single" xml:space="preserve">
     <value>Could not delete '{0}': {1}</value>

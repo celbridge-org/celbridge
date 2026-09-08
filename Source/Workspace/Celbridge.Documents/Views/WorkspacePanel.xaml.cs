@@ -1063,9 +1063,9 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         }
     }
 
-    public IReadOnlyList<ISaveableWorkspaceItem> GetSaveableItems()
+    public IReadOnlyList<IWorkspaceItem> GetWorkspaceItems()
     {
-        var items = new List<ISaveableWorkspaceItem>();
+        var items = new List<IWorkspaceItem>();
 
         foreach (var sectionView in SectionContainer.GetAllSections())
         {

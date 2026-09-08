@@ -38,7 +38,7 @@ public class DocumentsService : IDocumentsService, IDisposable
             : ResourceKey.Empty;
 
     // Reads TabView-backed state, so callers must be on the UI thread.
-    public IReadOnlyList<ISaveableWorkspaceItem> GetSaveableItems() => DocumentsPanel.GetSaveableItems();
+    public IReadOnlyList<IWorkspaceItem> GetWorkspaceItems() => DocumentsPanel.GetWorkspaceItems();
 
     public IReadOnlyList<OpenDocumentInfo> GetOpenDocuments() => DocumentsPanel.GetOpenDocuments();
 
