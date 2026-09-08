@@ -20,13 +20,6 @@ public interface IDocumentsPanel
     ResourceKey ActiveDocument { get; set; }
 
     /// <summary>
-    /// Repairs the opacity of the panel's hosted native views, which is what makes a view that has just
-    /// been placed in the panel paint. Called by a document view as it attaches, the point at which a
-    /// view exists to be sent an opacity.
-    /// </summary>
-    void RepairHostedViewOpacity(ResourceKey fileResource);
-
-    /// <summary>
     /// The smallest width the panel can be laid out at, composed from the areas it is currently
     /// presenting and the channels between them.
     /// </summary>

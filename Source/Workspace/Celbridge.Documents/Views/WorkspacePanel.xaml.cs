@@ -1,6 +1,5 @@
 using Celbridge.Commands;
 using Celbridge.Dialog;
-using Celbridge.Documents.Platform;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
@@ -154,34 +153,6 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
                 FocusActivatedDocument(documentResource);
             }
         }
-    }
-
-    // Every attach places the native view afresh with the alpha it was last sent, so each attach needs its
-    // own repair: a document switched away from and back attaches again, and skipping that one leaves it
-    // showing nothing.
-    public void RepairHostedViewOpacity(ResourceKey fileResource)
-    {
-        if (_isShuttingDown
-            || fileResource.IsEmpty)
-        {
-            return;
-        }
-
-        // Loaded is raised before Uno has put the native view in place, the mirror of the teardown it does
-        // after Unloaded, so the view is only there to be sent an opacity on the cycle that follows.
-        DispatcherQueue.TryEnqueue(
-            Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
-            () =>
-            {
-                if (_isShuttingDown)
-                {
-                    return;
-                }
-
-                _logger.LogDebug("Repairing the hosted view opacity for {Resource}", fileResource);
-
-                MacOSHostedViewOpacityRepair.Repair(this);
-            });
     }
 
     // Opens the collapsed area holding the document that just became active, returning the area being
