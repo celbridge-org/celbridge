@@ -78,7 +78,9 @@ public class ConfigTableHelperTests
         // Tomlyn models a table as IDictionary<string, object>, which is not the read-only interface the
         // signature takes.
         var document = TomlSerializer.Deserialize<TomlTable>("[section]\nkey = \"value\"\n");
-        var section = document["section"];
+        document.Should().NotBeNull();
+
+        var section = document!["section"];
 
         var table = ConfigTableHelper.ReadTable(section);
 
