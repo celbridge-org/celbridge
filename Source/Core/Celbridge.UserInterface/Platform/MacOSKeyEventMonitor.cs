@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Celbridge.Commands;
+using Celbridge.Dialog;
 using Celbridge.Logging;
 using Celbridge.UserInterface.Services;
 using Celbridge.WebHost;
@@ -269,7 +270,15 @@ internal static class MacOSKeyEventMonitor
             return false;
         }
 
-        return MacOSEditCommands.Perform(editIntent.Value, _focusService, _commandService) != EditRouting.ResponderChain;
+        return MacOSEditCommands.Perform(editIntent.Value, _focusService, _commandService, IsDialogOpen())
+            != EditRouting.ResponderChain;
+    }
+
+    // Whether a modal dialog holds the keyboard. Acquired here rather than injected at Start, so the
+    // monitor reads the state at the moment the chord arrives.
+    private static bool IsDialogOpen()
+    {
+        return ServiceLocator.AcquireService<IDialogService>().IsDialogOpen;
     }
 
     // Hands undo or redo to the managed text control holding focus. Returns whether it performed the verb.

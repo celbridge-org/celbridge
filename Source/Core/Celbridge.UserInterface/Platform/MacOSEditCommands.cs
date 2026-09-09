@@ -32,10 +32,19 @@ internal enum EditRouting
 internal static class MacOSEditCommands
 {
     /// <summary>
-    /// Who should perform the verb given the currently focused surface.
+    /// Who should perform the verb given the currently focused surface, and whether a modal dialog holds
+    /// the keyboard.
     /// </summary>
-    public static EditRouting Resolve(EditIntent intent, IFocusService? focusService)
+    public static EditRouting Resolve(EditIntent intent, IFocusService? focusService, bool isDialogOpen)
     {
+        // A dialog owns the keyboard while it is up, so the verb belongs to the control inside it rather
+        // than to the panel behind it, whose edit target the focus service still holds. Leaving it to the
+        // responder chain is what lets the dialog's own text box act on it.
+        if (isDialogOpen)
+        {
+            return EditRouting.ResponderChain;
+        }
+
         var editTarget = focusService?.EditTarget;
         if (editTarget is null)
         {
@@ -61,9 +70,13 @@ internal static class MacOSEditCommands
     /// <summary>
     /// Performs the verb on the focused surface when it owns it. Returns who the verb was routed to.
     /// </summary>
-    public static EditRouting Perform(EditIntent intent, IFocusService? focusService, ICommandService? commandService)
+    public static EditRouting Perform(
+        EditIntent intent,
+        IFocusService? focusService,
+        ICommandService? commandService,
+        bool isDialogOpen)
     {
-        var routing = Resolve(intent, focusService);
+        var routing = Resolve(intent, focusService, isDialogOpen);
 
         if (routing == EditRouting.Surface)
         {

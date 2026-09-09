@@ -34,8 +34,8 @@ public class MacOSEditCommandsTests
         var editTarget = CreateEditTarget(hostMediatedClipboard: true, EditIntent.SelectAll, EditIntent.Copy);
         var focusService = CreateFocusService(editTarget);
 
-        MacOSEditCommands.Resolve(EditIntent.SelectAll, focusService).Should().Be(EditRouting.Surface);
-        MacOSEditCommands.Resolve(EditIntent.Copy, focusService).Should().Be(EditRouting.Surface);
+        MacOSEditCommands.Resolve(EditIntent.SelectAll, focusService, isDialogOpen: false).Should().Be(EditRouting.Surface);
+        MacOSEditCommands.Resolve(EditIntent.Copy, focusService, isDialogOpen: false).Should().Be(EditRouting.Surface);
     }
 
     [TestCase(EditIntent.Cut)]
@@ -45,7 +45,7 @@ public class MacOSEditCommandsTests
     {
         var focusService = CreateFocusService(CreateEditTarget(hostMediatedClipboard: true));
 
-        MacOSEditCommands.Resolve(intent, focusService).Should().Be(EditRouting.Unavailable);
+        MacOSEditCommands.Resolve(intent, focusService, isDialogOpen: false).Should().Be(EditRouting.Unavailable);
     }
 
     [TestCase(EditIntent.Cut)]
@@ -56,7 +56,7 @@ public class MacOSEditCommandsTests
         // A rich text editor needs the responder chain's native clipboard handling, which keeps formatting.
         var focusService = CreateFocusService(CreateEditTarget(hostMediatedClipboard: false));
 
-        MacOSEditCommands.Resolve(intent, focusService).Should().Be(EditRouting.ResponderChain);
+        MacOSEditCommands.Resolve(intent, focusService, isDialogOpen: false).Should().Be(EditRouting.ResponderChain);
     }
 
     [TestCase(EditIntent.Undo)]
@@ -66,14 +66,16 @@ public class MacOSEditCommandsTests
     {
         var focusService = CreateFocusService(CreateEditTarget(hostMediatedClipboard: true));
 
-        MacOSEditCommands.Resolve(intent, focusService).Should().Be(EditRouting.ResponderChain);
+        MacOSEditCommands.Resolve(intent, focusService, isDialogOpen: false).Should().Be(EditRouting.ResponderChain);
     }
 
     [Test]
     public void Resolve_WithNoFocusedSurface_GivesTheVerbToTheResponderChain()
     {
-        MacOSEditCommands.Resolve(EditIntent.Paste, CreateFocusService(null)).Should().Be(EditRouting.ResponderChain);
-        MacOSEditCommands.Resolve(EditIntent.Paste, focusService: null).Should().Be(EditRouting.ResponderChain);
+        MacOSEditCommands.Resolve(EditIntent.Paste, CreateFocusService(null), isDialogOpen: false)
+            .Should().Be(EditRouting.ResponderChain);
+        MacOSEditCommands.Resolve(EditIntent.Paste, focusService: null, isDialogOpen: false)
+            .Should().Be(EditRouting.ResponderChain);
     }
 
     [Test]
@@ -82,7 +84,7 @@ public class MacOSEditCommandsTests
         var focusService = CreateFocusService(CreateEditTarget(hostMediatedClipboard: true, EditIntent.SelectAll));
         var commandService = Substitute.For<ICommandService>();
 
-        MacOSEditCommands.Perform(EditIntent.SelectAll, focusService, commandService)
+        MacOSEditCommands.Perform(EditIntent.SelectAll, focusService, commandService, isDialogOpen: false)
             .Should().Be(EditRouting.Surface);
 
         commandService.ReceivedWithAnyArgs(1).Execute<IPerformEditCommand>();
@@ -94,7 +96,7 @@ public class MacOSEditCommandsTests
         var focusService = CreateFocusService(CreateEditTarget(hostMediatedClipboard: true));
         var commandService = Substitute.For<ICommandService>();
 
-        MacOSEditCommands.Perform(EditIntent.Cut, focusService, commandService)
+        MacOSEditCommands.Perform(EditIntent.Cut, focusService, commandService, isDialogOpen: false)
             .Should().Be(EditRouting.Unavailable);
 
         commandService.DidNotReceiveWithAnyArgs().Execute<IPerformEditCommand>();
@@ -106,7 +108,38 @@ public class MacOSEditCommandsTests
         var focusService = CreateFocusService(CreateEditTarget(hostMediatedClipboard: false));
         var commandService = Substitute.For<ICommandService>();
 
-        MacOSEditCommands.Perform(EditIntent.Paste, focusService, commandService)
+        MacOSEditCommands.Perform(EditIntent.Paste, focusService, commandService, isDialogOpen: false)
+            .Should().Be(EditRouting.ResponderChain);
+
+        commandService.DidNotReceiveWithAnyArgs().Execute<IPerformEditCommand>();
+    }
+
+    [TestCase(EditIntent.SelectAll)]
+    [TestCase(EditIntent.Copy)]
+    [TestCase(EditIntent.Paste)]
+    [TestCase(EditIntent.Undo)]
+    public void Resolve_WhileADialogHoldsTheKeyboard_GivesTheVerbToTheResponderChain(EditIntent intent)
+    {
+        // The focus service still names the panel behind the dialog, whose edit target would otherwise
+        // act on a verb the user aimed at the dialog's own text box.
+        var editTarget = CreateEditTarget(
+            hostMediatedClipboard: true,
+            EditIntent.SelectAll,
+            EditIntent.Copy,
+            EditIntent.Paste,
+            EditIntent.Undo);
+        var focusService = CreateFocusService(editTarget);
+
+        MacOSEditCommands.Resolve(intent, focusService, isDialogOpen: true).Should().Be(EditRouting.ResponderChain);
+    }
+
+    [Test]
+    public void Perform_WhileADialogHoldsTheKeyboard_RunsNothing()
+    {
+        var focusService = CreateFocusService(CreateEditTarget(hostMediatedClipboard: true, EditIntent.SelectAll));
+        var commandService = Substitute.For<ICommandService>();
+
+        MacOSEditCommands.Perform(EditIntent.SelectAll, focusService, commandService, isDialogOpen: true)
             .Should().Be(EditRouting.ResponderChain);
 
         commandService.DidNotReceiveWithAnyArgs().Execute<IPerformEditCommand>();
