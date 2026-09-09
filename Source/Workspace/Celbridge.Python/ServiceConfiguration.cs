@@ -12,7 +12,6 @@ public static class ServiceConfiguration
         services.AddSingleton<IPythonInstaller, PythonInstaller>();
         services.AddSingleton<IPythonLaunchService, PythonLaunchService>();
 
-        services.AddSingleton<IConsoleSessionProvider, PythonSessionProvider>();
         services.AddSingleton<IConsoleEnvironmentContributor, PythonEnvironmentContributor>();
     }
 

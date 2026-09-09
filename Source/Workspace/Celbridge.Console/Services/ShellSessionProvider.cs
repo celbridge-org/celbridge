@@ -1,3 +1,5 @@
+using Celbridge.Utilities;
+
 namespace Celbridge.Console.Services;
 
 /// <summary>
@@ -6,20 +8,27 @@ namespace Celbridge.Console.Services;
 /// </summary>
 public sealed class ShellSessionProvider : IConsoleSessionProvider
 {
-    public string TypeId => "shell";
+    private const string ExecutableKey = "executable";
+    private const string ArgumentsKey = "arguments";
 
-    public IReadOnlyList<ConsoleRunner> BuiltInRunners => Array.Empty<ConsoleRunner>();
+    public ConsoleSessionType SessionType { get; } = new(
+        "shell",
+        OptionKeys: new[] { ExecutableKey, ArgumentsKey },
+        BuiltInRunners: Array.Empty<ConsoleRunner>());
 
     public async Task<Result<ConsoleStartupInvocation>> BuildStartupInvocationAsync(ConsoleSessionContext context)
     {
         await Task.CompletedTask;
 
-        if (string.IsNullOrWhiteSpace(context.Executable))
+        var executable = ConfigTableHelper.ReadText(context.SessionTypeOptions, ExecutableKey);
+        if (string.IsNullOrWhiteSpace(executable))
         {
             return ConsoleStartupInvocation.None;
         }
 
-        var startupInvocation = new ConsoleStartupInvocation(context.Executable, context.Arguments);
+        var arguments = ConfigTableHelper.ReadTextList(context.SessionTypeOptions, ArgumentsKey);
+
+        var startupInvocation = new ConsoleStartupInvocation(executable, arguments);
         return startupInvocation;
     }
 }

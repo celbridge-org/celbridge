@@ -5,20 +5,23 @@ namespace Celbridge.Tests.Localization;
 
 /// <summary>
 /// Each WebView editor localizes its UI at runtime from localization/{locale}.json, keyed by data-loc-key
-/// / data-loc-title in its index.html. A key with no en.json entry renders as the raw key name in the UI
-/// (plus a console warning). This test asserts every such key resolves, for every web app copied into the
+/// / data-loc-title in the markup it renders. A key with no en.json entry renders as the raw key name in the
+/// UI (plus a console warning). This test asserts every such key resolves, for every web app copied into the
 /// test output, so a missing entry fails the build instead of shipping a visible gap.
 /// </summary>
 [TestFixture]
 public class WebLocalizationCoverageTests
 {
-    private sealed record WebApp(string Name, string IndexHtmlPath, string EnJsonPath);
+    private sealed record WebApp(string Name, string FolderPath, string EnJsonPath);
 
     private static readonly Regex LocKeyRegex =
         new("data-loc-(?:key|title)=\"([^\"]+)\"", RegexOptions.Compiled);
 
+    // Folders holding code the app did not author. A key in any of those is not markup the editor renders.
+    private static readonly string[] ExcludedFolderNames = { "lib", "node_modules", "tests" };
+
     [Test]
-    public void EveryDataLocKeyInIndexHtml_HasAnEnJsonEntry()
+    public void EveryDataLocKeyInAWebAppsMarkup_HasAnEnJsonEntry()
     {
         var webApps = DiscoverWebApps();
 
@@ -31,18 +34,22 @@ public class WebLocalizationCoverageTests
 
         foreach (var webApp in webApps)
         {
-            var html = File.ReadAllText(webApp.IndexHtmlPath);
-            var usedKeys = LocKeyRegex.Matches(html)
-                .Select(match => match.Groups[1].Value)
-                .Distinct();
-
             var definedKeys = LoadJsonKeys(webApp.EnJsonPath);
 
-            foreach (var key in usedKeys)
+            foreach (var markupPath in MarkupFiles(webApp.FolderPath))
             {
-                if (!definedKeys.Contains(key))
+                var usedKeys = LocKeyRegex.Matches(File.ReadAllText(markupPath))
+                    .Select(match => match.Groups[1].Value)
+                    .Distinct();
+
+                var fileName = Path.GetRelativePath(webApp.FolderPath, markupPath);
+
+                foreach (var key in usedKeys)
                 {
-                    failures.Add($"{webApp.Name}: '{key}' used in index.html has no entry in localization/en.json");
+                    if (!definedKeys.Contains(key))
+                    {
+                        failures.Add($"{webApp.Name}: '{key}' used in {fileName} has no entry in localization/en.json");
+                    }
                 }
             }
         }
@@ -61,11 +68,29 @@ public class WebLocalizationCoverageTests
             var enJsonPath = Path.Combine(folderPath, "localization", "en.json");
             if (File.Exists(enJsonPath))
             {
-                webApps.Add(new WebApp(Path.GetFileName(folderPath), indexHtmlPath, enJsonPath));
+                webApps.Add(new WebApp(Path.GetFileName(folderPath), folderPath, enJsonPath));
             }
         }
 
         return webApps;
+    }
+
+    // The files a web app authors its markup in: the page itself, plus the modules that carry markup of
+    // their own.
+    private static IEnumerable<string> MarkupFiles(string folderPath)
+    {
+        yield return Path.Combine(folderPath, "index.html");
+
+        foreach (var scriptPath in Directory.GetFiles(folderPath, "*.js", SearchOption.AllDirectories))
+        {
+            var segments = Path.GetRelativePath(folderPath, scriptPath)
+                .Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+            if (!segments.Any(segment => ExcludedFolderNames.Contains(segment, StringComparer.OrdinalIgnoreCase)))
+            {
+                yield return scriptPath;
+            }
+        }
     }
 
     private static HashSet<string> LoadJsonKeys(string jsonPath)
