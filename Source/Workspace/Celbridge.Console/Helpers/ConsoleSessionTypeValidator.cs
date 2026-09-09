@@ -15,9 +15,9 @@ public static class ConsoleSessionTypeValidator
     private static readonly Regex TypeIdRegex = new("^[a-z][a-z0-9-]*$", RegexOptions.Compiled);
 
     /// <summary>
-    /// The names the [session] table already defines, which a type id therefore cannot take. The four table
-    /// names among them are what console-toml.js knows as RESERVED_SESSION_TABLES; the scalar keys are here
-    /// too, because a table sharing a name with one of them is a duplicate key rather than a type's table.
+    /// The names the [session] table already defines, which a type id therefore cannot take. The scalar keys
+    /// are here too, because a table sharing a name with one of them is a duplicate key rather than a type's
+    /// table.
     /// </summary>
     private static readonly IReadOnlySet<string> ReservedNames = new HashSet<string>(StringComparer.Ordinal)
     {

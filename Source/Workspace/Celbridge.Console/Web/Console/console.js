@@ -163,7 +163,7 @@ let sessionFailedText = '';
 // then, so the built-in list simply renders nothing on the first populate.
 // The registered session types, in the order the form offers them, each carrying the keys it accepts and
 // the runners it contributes. Null until an attach reports them.
-let sessionTypes = null;
+let hostSessionTypes = null;
 // The ids of the built-in runners switched off for this console. Held apart from the form inputs because a
 // card carries no editable field, so readForm carries this through rather than reading it back out of the DOM.
 let disabledBuiltInRunners = [];
@@ -426,16 +426,16 @@ function localizedTypeString(prefix, type, fallback) {
 }
 
 function findSessionType(typeId) {
-    return (sessionTypes || []).find((sessionType) => sessionType.typeId === typeId) || null;
+    return (hostSessionTypes || []).find((sessionType) => sessionType.typeId === typeId) || null;
 }
 
 // The Type options, offering the types the host reports as registered that this client also has fields for,
 // in the host's order. Before the attach that carries that list, the client's own set stands in, so the
 // control is never empty for a config loaded ahead of it.
 function renderSessionTypeOptions() {
-    const offered = sessionTypes === null
+    const offered = hostSessionTypes === null
         ? clientTypeIds
-        : sessionTypes
+        : hostSessionTypes
             .map((sessionType) => sessionType.typeId)
             .filter((typeId) => clientTypeIds.includes(typeId));
 
@@ -952,7 +952,7 @@ function applyAttachResult(result) {
     // The registered session types are static host knowledge that rides along with the attach. The first
     // attach lands after the form is populated, hence the re-render.
     if (result && Array.isArray(result.sessionTypes)) {
-        sessionTypes = result.sessionTypes;
+        hostSessionTypes = result.sessionTypes;
         renderSessionTypeOptions();
         renderBuiltInRunners();
         applyWritableState();
@@ -962,7 +962,7 @@ function applyAttachResult(result) {
     launchedConfig = null;
     if (result && result.launchedConfigToml) {
         try {
-            launchedConfig = parseConsoleToml(result.launchedConfigToml);
+            launchedConfig = parseConsoleToml(result.launchedConfigToml, clientTypeIds);
         } catch {
             // An unparseable launched config just leaves the pip dark until the next reopen.
         }
@@ -1052,7 +1052,7 @@ async function reopenSession() {
 
 function applyContent(content) {
     try {
-        currentConfig = parseConsoleToml(content);
+        currentConfig = parseConsoleToml(content, clientTypeIds);
         configError = null;
     } catch (error) {
         configError = (error && error.message) || t('Console_InvalidConfig');

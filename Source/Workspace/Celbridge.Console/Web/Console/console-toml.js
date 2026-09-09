@@ -1,10 +1,10 @@
 // Minimal TOML parse/serialise for the constrained .console config shape. It handles the documented shape
 // (single-line string and string-array values under [session], [session.environment] and each type's own
 // [session.<type>] table, plus [[session.runner]], [[session.trigger]] and [[session.shortcut]]
-// array-of-tables). A type table is read without knowing the type: its values are typed by their own TOML
-// syntax, so a key this client has no field for still round-trips through a save. Unknown keys elsewhere
-// are parsed and ignored; a malformed line raises a config error surfaced in the settings view. Comments
-// are not preserved across a save.
+// array-of-tables). The caller names the session types it can edit. A type table's values are typed by
+// their own TOML syntax rather than by the type, but a table named for anything else is ignored, so a save
+// writes the format this client knows rather than carrying settings nothing supports. A malformed line
+// raises a config error surfaced in the settings view. Comments are not preserved across a save.
 
 /**
  * @typedef {Object} ConsoleRunner
@@ -54,9 +54,10 @@ export function defaultConsoleConfig() {
 /**
  * Parses .console TOML into a ConsoleConfig. Throws Error with a human-readable message on malformed input.
  * @param {string} text
+ * @param {string[]} sessionTypeIds the session types this client can edit
  * @returns {ConsoleConfig}
  */
-export function parseConsoleToml(text) {
+export function parseConsoleToml(text, sessionTypeIds) {
     const config = defaultConsoleConfig();
 
     let section = '';
@@ -94,7 +95,7 @@ export function parseConsoleToml(text) {
             }
 
             // The block's content is taken verbatim (no escape processing), so requote it for assignValue.
-            assignValue(config, section, currentTable, blockKey, quote(collected.join('\n')));
+            assignValue(config, section, currentTable, blockKey, quote(collected.join('\n')), sessionTypeIds);
             continue;
         }
 
@@ -125,7 +126,7 @@ export function parseConsoleToml(text) {
 
         const key = parseKey(line.slice(0, equalsIndex).trim());
         const rawValue = line.slice(equalsIndex + 1).trim();
-        assignValue(config, section, currentTable, key, rawValue);
+        assignValue(config, section, currentTable, key, rawValue, sessionTypeIds);
     }
 
     return config;
@@ -208,19 +209,16 @@ export function serializeConsoleToml(config) {
     return lines.join('\n') + '\n';
 }
 
-// The [session.<name>] tables the format defines itself, which therefore cannot name a session type.
-const RESERVED_SESSION_TABLES = new Set(['environment', 'runner', 'trigger', 'shortcut']);
-
-// The type id a [session.<type>] header names, or null when the header is not a type table.
-function readTypeTableId(section) {
+// The type id a [session.<type>] header names, or null when the header is not a type table. Only a type
+// the caller can edit counts, so the tables the format defines itself and a table left behind by another
+// tool are alike not mistaken for one.
+function readTypeTableId(section, sessionTypeIds) {
     if (!section.startsWith('session.')) {
         return null;
     }
 
     const name = section.slice('session.'.length);
-    if (name === '' ||
-        name.includes('.') ||
-        RESERVED_SESSION_TABLES.has(name)) {
+    if (!sessionTypeIds.includes(name)) {
         return null;
     }
 
@@ -261,7 +259,7 @@ function beginArrayTable(config, section) {
     return {};
 }
 
-function assignValue(config, section, currentTable, key, rawValue) {
+function assignValue(config, section, currentTable, key, rawValue, sessionTypeIds) {
     if (section === 'session') {
         if (key === 'type') {
             config.type = parseScalar(rawValue);
@@ -278,7 +276,7 @@ function assignValue(config, section, currentTable, key, rawValue) {
         return;
     }
 
-    const typeId = readTypeTableId(section);
+    const typeId = readTypeTableId(section, sessionTypeIds);
     if (typeId !== null) {
         const options = config.optionsBySessionType[typeId] || (config.optionsBySessionType[typeId] = {});
         options[key] = parseValue(rawValue);
