@@ -338,7 +338,7 @@ function handleTabKey(shift) {
 // cut.
 function getSelectedText() {
     const context = getActiveSheet();
-    if (!context) {
+    if (!context || !gridHoldsKeyboard()) {
         return '';
     }
 
@@ -387,7 +387,7 @@ function getSelectedText() {
 // Applies clipboard text from the host. Empty text is the delete half of a cut, so it clears the selection.
 function insertText(text) {
     const context = getActiveSheet();
-    if (!context || frameworkReadOnly) {
+    if (!context || frameworkReadOnly || !gridHoldsKeyboard()) {
         return;
     }
 
@@ -425,7 +425,7 @@ function insertText(text) {
 // Runs SpreadJS's own commands for the verbs that touch no clipboard.
 function performEdit(command) {
     const context = getActiveSheet();
-    if (!context) {
+    if (!context || !gridHoldsKeyboard()) {
         return;
     }
 
@@ -445,19 +445,46 @@ function performEdit(command) {
     }
 }
 
+// Whether the grid itself holds the keyboard. Only the grid needs the host to carry its clipboard: the
+// Designer's ribbon, name box, dialogs and cell editor are ordinary DOM controls the platform edits, and
+// a claim covering them would send their keys to the cells instead. The grid keeps the claim whenever
+// this cannot be decided, because losing its clipboard is worse than a stray claim on a Designer field.
+function gridHoldsKeyboard() {
+    const context = getActiveSheet();
+    if (context === null) {
+        return false;
+    }
+
+    let host;
+    try {
+        host = context.spread.getHost();
+    } catch {
+        return true;
+    }
+
+    const activeElement = document.activeElement;
+    if (!host || activeElement === null) {
+        return true;
+    }
+
+    return host.contains(activeElement);
+}
+
 // Reports which verbs the host Edit menu should offer. A grid always has an active cell, so copy has
-// something to take even with no range selected.
+// something to take even with no range selected. Sent on every focus change, because which control holds
+// the keyboard is what decides whether the host acts at all.
 function reportEditAvailability() {
-    const available = getActiveSheet() !== null;
+    const gridHasKeyboard = gridHoldsKeyboard();
+    const canMutate = gridHasKeyboard && !frameworkReadOnly;
 
     client.input.notifyEditAvailability({
-        canCopy: available,
-        canCut: available && !frameworkReadOnly,
-        canPaste: available && !frameworkReadOnly,
-        canSelectAll: available,
-        canUndo: available && !frameworkReadOnly,
-        canRedo: available && !frameworkReadOnly,
-        hostMediatedClipboard: true
+        canCopy: gridHasKeyboard,
+        canCut: canMutate,
+        canPaste: canMutate,
+        canSelectAll: gridHasKeyboard,
+        canUndo: canMutate,
+        canRedo: canMutate,
+        hostMediatedClipboard: gridHasKeyboard
     });
 }
 
