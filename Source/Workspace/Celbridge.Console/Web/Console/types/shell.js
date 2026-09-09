@@ -1,6 +1,5 @@
 // The shell session type as the settings form sees it: the icon it shows on the rail, the markup its
-// settings are edited through, and the keys those controls write. A session type is one file here the way
-// it is one provider on the host side.
+// settings are edited through, and the keys those controls write.
 
 export default {
     typeId: 'shell',
@@ -29,8 +28,7 @@ export default {
     `,
 
     // The key each control holds in this type's [session.shell] table, and how its text is read. Only the
-    // fields listed here are read and written, so the table of the type left behind by a switch is never
-    // rewritten from another type's controls.
+    // fields listed here are read and written.
     fields: [
         { id: 'executable', key: 'executable', kind: 'text' },
         { id: 'arguments', key: 'arguments', kind: 'lines' },

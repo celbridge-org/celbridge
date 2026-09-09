@@ -17,8 +17,7 @@ public class WebLocalizationCoverageTests
     private static readonly Regex LocKeyRegex =
         new("data-loc-(?:key|title)=\"([^\"]+)\"", RegexOptions.Compiled);
 
-    // Folders holding code the app did not author: vendored libraries, installed packages, and its own
-    // tests. A key in any of those is not markup the editor renders.
+    // Folders holding code the app did not author. A key in any of those is not markup the editor renders.
     private static readonly string[] ExcludedFolderNames = { "lib", "node_modules", "tests" };
 
     [Test]
@@ -77,7 +76,7 @@ public class WebLocalizationCoverageTests
     }
 
     // The files a web app authors its markup in: the page itself, plus the modules that carry markup of
-    // their own, the way a console session type carries the fields its settings are edited through.
+    // their own.
     private static IEnumerable<string> MarkupFiles(string folderPath)
     {
         yield return Path.Combine(folderPath, "index.html");

@@ -1,6 +1,5 @@
 // The python session type as the settings form sees it: the icon it shows on the rail, the markup its
-// settings are edited through, and the keys those controls write. A session type is one file here the way
-// it is one provider on the host side.
+// settings are edited through, and the keys those controls write.
 
 export default {
     typeId: 'python',
@@ -29,9 +28,7 @@ export default {
     `,
 
     // The key each control holds in this type's [session.python] table, and how its text is read. Only the
-    // fields listed here are read and written, so the table of the type left behind by a switch is never
-    // rewritten from another type's controls. The script is a REPL script rather than a shell script, so
-    // it keeps its own control and its own value.
+    // fields listed here are read and written.
     fields: [
         { id: 'python-version', key: 'python_version', kind: 'text' },
         { id: 'dependencies', key: 'dependencies', kind: 'lines' },

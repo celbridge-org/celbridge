@@ -8,10 +8,8 @@ namespace Celbridge.Tests.Console;
 
 /// <summary>
 /// A session type is defined in two halves: a provider the host registers, and a module under
-/// Web/Console/types/ holding the fields the settings form edits it through. The form offers only a type it
-/// has a module for, so a type registered without one never reaches the Type dropdown. These tests pin the
-/// two halves together, reading the registered types from the DI registrations, so adding a session type
-/// provider without its module fails here rather than showing up as a type the user cannot select.
+/// Web/Console/types/ holding the fields the settings form edits it through. These tests pin the two
+/// halves together.
 /// </summary>
 [TestFixture]
 public class ConsoleSessionTypeCoverageTests
@@ -46,7 +44,7 @@ public class ConsoleSessionTypeCoverageTests
                 .Select(match => match.Groups[1].Value)
                 .ToArray();
 
-            // The script key is accepted in every type's table, so the host owns it rather than the type.
+            // The script key is accepted in every type's table.
             var declaredKeys = sessionType.OptionKeys
                 .Append(ConsoleDocumentConfigParser.ScriptKey)
                 .ToArray();
@@ -60,8 +58,7 @@ public class ConsoleSessionTypeCoverageTests
     [Test]
     public void EveryRegisteredSessionType_NamesItselfInTheConsoleStrings()
     {
-        // The dropdown label and the section description are looked up by a key built from the type id, so
-        // a missing entry renders the raw id instead of being caught by the markup localization sweep.
+        // The dropdown label and the section description are looked up by a key built from the type id.
         var definedKeys = LocalizationKeys();
 
         foreach (var sessionType in RegisteredSessionTypes())
@@ -77,18 +74,13 @@ public class ConsoleSessionTypeCoverageTests
     [Test]
     public void TheSessionTypeDropdown_DeclaresNoOptionsOfItsOwn()
     {
-        // The options are built from the types the host reports, so a hardcoded one would offer a type
-        // nothing is registered for, or hide one that is.
         var html = File.ReadAllText(FindConsoleIndexHtml());
 
         SessionTypeOptionRegex.IsMatch(html).Should().BeFalse(
             "the Type options are built from the host's registered types, not authored in the markup");
     }
 
-    // The session types the console registers, read from the DI registrations rather than from the classes
-    // the assembly happens to hold, so a provider nobody registers is not counted as a type the host offers.
-    // A provider registered from another module would not be seen here, which is the arrangement this test
-    // holds the console to.
+    // The session types the console registers, read from its DI registrations.
     private static IReadOnlyList<ConsoleSessionType> RegisteredSessionTypes()
     {
         var services = new ServiceCollection();
@@ -109,7 +101,7 @@ public class ConsoleSessionTypeCoverageTests
     }
 
     // A provider reports its session type from instance state, so it has to be built to be asked. Nothing
-    // it is constructed with takes part in that, so a substitute stands in for each constructor parameter.
+    // it is constructed with takes part in that.
     private static IConsoleSessionProvider CreateProvider(Type providerType)
     {
         var constructor = providerType.GetConstructors().Single();

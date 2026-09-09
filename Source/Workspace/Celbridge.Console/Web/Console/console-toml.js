@@ -2,9 +2,8 @@
 // (single-line string and string-array values under [session], [session.environment] and each type's own
 // [session.<type>] table, plus [[session.runner]], [[session.trigger]] and [[session.shortcut]]
 // array-of-tables). The caller names the session types it can edit. A type table's values are typed by
-// their own TOML syntax rather than by the type, but a table named for anything else is ignored, so a save
-// writes the format this client knows rather than carrying settings nothing supports. A malformed line
-// raises a config error surfaced in the settings view. Comments are not preserved across a save.
+// their own TOML syntax, and a table named for anything else is ignored. A malformed line raises a config
+// error. Comments are not preserved across a save.
 
 /**
  * @typedef {Object} ConsoleRunner
@@ -159,10 +158,8 @@ export function serializeConsoleToml(config) {
         lines.push(...environmentLines);
     }
 
-    // Every type's table is written, not just the selected one, so switching type does not discard the
-    // settings of the type left behind. Type ids are sorted so the file does not reorder itself on a save.
-    // A table with no keys is left out like any other empty field, so saving the form never adds anything
-    // the console did not set.
+    // Every type's table is written, not just the selected one. Type ids are sorted so the file does not
+    // reorder itself on a save. A table with no keys is left out like any other empty field.
     for (const typeId of Object.keys(config.optionsBySessionType || {}).sort()) {
         const optionLines = [];
         for (const [key, value] of Object.entries(config.optionsBySessionType[typeId] || {})) {
@@ -209,9 +206,8 @@ export function serializeConsoleToml(config) {
     return lines.join('\n') + '\n';
 }
 
-// The type id a [session.<type>] header names, or null when the header is not a type table. Only a type
-// the caller can edit counts, so the tables the format defines itself and a table left behind by another
-// tool are alike not mistaken for one.
+// The type id a [session.<type>] header names, or null when the header is not a type table. Only a type the
+// caller names counts.
 function readTypeTableId(section, sessionTypeIds) {
     if (!section.startsWith('session.')) {
         return null;
@@ -225,8 +221,7 @@ function readTypeTableId(section, sessionTypeIds) {
     return name;
 }
 
-// A value inside a type table, typed by its own TOML syntax rather than by its key, so the table is read
-// without knowing which keys the type defines.
+// A value inside a type table, typed by its own TOML syntax rather than by its key.
 function parseValue(rawValue) {
     if (rawValue.startsWith('[')) {
         return parseArray(rawValue);
@@ -447,9 +442,7 @@ function quoteScript(value) {
     return quote(text);
 }
 
-// A basic string cannot hold a raw newline, so line breaks are escaped rather than emitted. This is what
-// carries a multi-line value that the literal block cannot take, such as a script containing the block
-// delimiter itself.
+// A basic string cannot hold a raw newline, so line breaks are escaped rather than emitted.
 function quote(value) {
     const escaped = String(value)
         .replace(/\\/g, '\\\\')

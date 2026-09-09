@@ -44,9 +44,6 @@ public sealed class PythonSessionProvider : IConsoleSessionProvider
         var pythonVersion = ResolvePythonVersion(context);
         var dependencies = ConfigTableHelper.ReadTextList(context.SessionTypeOptions, DependenciesKey);
 
-        // A python console has no executable to pass arguments to, and raw interpreter flags are not part
-        // of its configuration surface, so the type declares neither. The REPL is configured through the
-        // startup script, which runs as IPython exec_lines.
         var request = new PythonLaunchRequest(
             pythonVersion,
             dependencies);

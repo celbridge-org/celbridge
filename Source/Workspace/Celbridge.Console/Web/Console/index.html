@@ -50,9 +50,8 @@
                 <div id="settings-switcher" class="cel-section-switcher">
 
                     <div class="cel-section-nav" role="tablist">
-                        <!-- Named for the selected session type rather than by a fixed string, so the rail
-                             states the console's type at a glance. Its label, icon and heading are set from
-                             the type, which is why they carry no data-loc-key. -->
+                        <!-- Named for the selected session type. Its label, icon and heading are set from
+                             the type, so they carry no data-loc-key. -->
                         <button id="type-nav-item" class="cel-section-nav-item" type="button" role="tab"
                                 data-section="type" aria-selected="true">
                             <span class="cel-section-nav-icon"><i id="type-nav-icon" class="bi bi-terminal"></i></span>
@@ -113,22 +112,17 @@
 
                         <div class="cel-section-content">
 
-                            <!-- The type and the fields that type owns. A type's fields come from its own
-                                 module rather than from the host: they want their own controls, and they
-                                 are what the type's [session.<type>] table is written from. -->
+                            <!-- The type and the fields that type owns. -->
                             <section class="settings-section" data-section="type">
                                 <label class="field">
                                     <span class="field-label" data-loc-key="Console_Field_Type"></span>
-                                    <!-- Options are built from the types the host reports as registered, so
-                                         the form cannot offer one that nothing would launch. -->
+                                    <!-- Options are built from the types the host reports as registered. -->
                                     <select id="session-type"></select>
                                     <span class="field-hint" data-loc-key="Console_Hint_Type"></span>
                                 </label>
 
                                 <!-- The selected type's fields, injected from its module under types/.
-                                     Only the selected type's controls are in the document, so the section
-                                     reads as that type's own settings rather than as a list with the
-                                     inapplicable rows removed. -->
+                                     Only the selected type's controls are in the document. -->
                                 <div id="type-fields"></div>
                             </section>
 

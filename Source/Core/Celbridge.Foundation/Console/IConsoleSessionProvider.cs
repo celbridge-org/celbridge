@@ -40,10 +40,9 @@ public sealed record ConsoleRunner(
 /// <summary>
 /// The resolved configuration a provider builds a startup command from. WorkingDirectory is as written in
 /// the config and resolves against ProjectFolderPath, and the environment variables already carry the RPC
-/// port and session token. SessionTypeOptions is the document's table for the selected type, holding the keys
-/// that type declares in OptionKeys, so only the provider that owns them needs to know what they mean. The
-/// startup script comes from the same table but is read out of it here, because the host injects it for
-/// every type.
+/// port and session token. SessionTypeOptions is the document's table for the selected type, holding the
+/// keys that type declares in OptionKeys. The startup script comes from the same table and is surfaced as
+/// its own property.
 /// </summary>
 public sealed record ConsoleSessionContext(
     ResourceKey ResourceKey,
@@ -57,9 +56,7 @@ public sealed record ConsoleSessionContext(
 /// <summary>
 /// Everything the host knows about one console session type: the id a .console file names it by in
 /// [session] type, the keys it accepts in its own [session.&lt;type&gt;] table, and the runners it contributes.
-/// OptionKeys is what reports a key the type does not define, and lists only the keys the type itself owns:
-/// the ones every type accepts are the host's, not a type's. This is a value rather than a set of
-/// properties to interrogate a provider for, so the same description reaches the settings form whole.
+/// OptionKeys lists only the keys the type itself owns. The keys every type accepts belong to the host.
 /// </summary>
 public sealed record ConsoleSessionType(
     string TypeId,

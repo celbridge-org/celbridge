@@ -55,8 +55,7 @@ internal sealed record ConsoleSessionSection
 
     public string? WorkingDirectory { get; init; }
 
-    // Built-in runner ids the document opts out of. The key drops the qualifier because a runner the
-    // document declares itself carries no id, so a built-in is the only kind that can be named.
+    // Built-in runner ids the document opts out of.
     public List<string>? DisabledRunners { get; init; }
 
     // Environment variables passed to the session process. The names are the user's own, so they are
@@ -67,8 +66,7 @@ internal sealed record ConsoleSessionSection
     public List<ConsoleTriggerEntry> Trigger { get; init; } = new();
     public List<ConsoleShortcutEntry> Shortcut { get; init; } = new();
 
-    // Holds each type's [session.<type>] table, which the host does not model because only that type's
-    // provider knows what its keys mean, alongside any key the document declares that nothing defines.
+    // Holds each type's [session.<type>] table alongside any key the document declares that nothing defines.
     [TomlExtensionData]
     public Dictionary<string, object?> ExtensionKeys { get; init; } = new();
 }

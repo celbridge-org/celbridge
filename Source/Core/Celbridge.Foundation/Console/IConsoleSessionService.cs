@@ -120,9 +120,7 @@ public interface IConsoleSessionService
     void OnConnectionLost(int connectionId);
 
     /// <summary>
-    /// Returns every registered session type, in registration order, which is the order the settings form
-    /// offers them in. The host is authoritative for which types exist: a client offering a type nothing is
-    /// registered for would write a document that cannot launch.
+    /// Returns every registered session type, in registration order.
     /// </summary>
     IReadOnlyList<ConsoleSessionType> GetSessionTypes();
 

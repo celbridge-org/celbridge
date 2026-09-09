@@ -5,8 +5,8 @@ import {
     serializeConsoleToml,
 } from '../console-toml.js';
 
-// The session types the client has modules for, as console.js passes them. A [session.<type>] table named
-// for anything else is not carried, so the tests name the same set the settings form offers.
+// The session types the client has modules for. A [session.<type>] table named for anything else is not
+// carried.
 const SESSION_TYPE_IDS = ['shell', 'python'];
 
 function parse(text) {

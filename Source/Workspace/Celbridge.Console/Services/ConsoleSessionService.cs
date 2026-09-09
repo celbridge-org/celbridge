@@ -35,8 +35,6 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
     private readonly ConsoleProxyListener _proxyListener;
     private readonly ConsoleTriggerScheduler _triggerScheduler;
 
-    // Collected once: the registered providers are fixed for the process, and every session resolves its
-    // provider and parses its document against the same set.
     private readonly IReadOnlyList<IConsoleSessionProvider> _sessionProviders;
     private readonly IReadOnlyList<ConsoleSessionType> _sessionTypes;
 
@@ -317,8 +315,6 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         return _sessionTypes;
     }
 
-    // A session type whose id a .console file cannot name would have its table read as something else, so
-    // the registered set is checked as the service is built rather than once a document depends on it.
     private static IReadOnlyList<IConsoleSessionProvider> ResolveSessionProviders(IServiceProvider serviceProvider)
     {
         var sessionProviders = serviceProvider.GetServices<IConsoleSessionProvider>().ToList();

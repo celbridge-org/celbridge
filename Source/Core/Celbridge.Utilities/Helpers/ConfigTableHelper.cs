@@ -5,7 +5,7 @@ namespace Celbridge.Utilities;
 /// <summary>
 /// Reads typed values out of a config table held as loosely typed key/value pairs, as a TOML or JSON
 /// deserializer produces for a table whose shape the host does not model. A value of the wrong shape reads
-/// as absent, so a malformed entry falls back to the default rather than failing the document.
+/// as absent.
 /// </summary>
 public static class ConfigTableHelper
 {
@@ -59,8 +59,7 @@ public static class ConfigTableHelper
     }
 
     /// <summary>
-    /// Returns the value read as a nested table, or null when it is not one. Deserializers model a table as
-    /// a dictionary keyed by string, so anything else is a scalar or an array.
+    /// Returns the value read as a nested table, or null when it is not one.
     /// </summary>
     public static IReadOnlyDictionary<string, object?>? ReadTable(object? value)
     {

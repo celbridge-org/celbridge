@@ -362,20 +362,17 @@ document.addEventListener('keydown', (event) => {
 });
 
 // The session types this client can edit, in the order the Type control offers them. A type is one module
-// under types/, carrying the icon its rail row shows and the fields the form edits it through, so a type
-// adds those from one file plus its Console_Type_<Id> and Console_Desc_<Id> strings.
+// under types/, carrying the icon its rail row shows and the fields the form edits it through.
 const typeModules = new Map([shellType, pythonType].map((typeModule) => [typeModule.typeId, typeModule]));
 
-// A type needs a module to be offered: without one there would be no fields to set.
+// A type needs a module to be offered.
 const clientTypeIds = Array.from(typeModules.keys());
 
 // The selected type's fields, resolved from the markup applyType injected. Each entry pairs a control with
 // the key it holds in the type's [session.<type>] table.
 let typeFields = [];
 
-// The type section is one slot the selected type fills, not a section per type. Keeping its id stable is
-// what lets the switcher attach once, the restored active section survive a type change, and the selection
-// stay put while the label, icon, heading and fields swap underneath.
+// The type section is one slot the selected type fills, not a section per type.
 function applyType(type) {
     const label = typeLabel(type);
     const typeModule = typeModules.get(type) || null;
@@ -388,9 +385,6 @@ function applyType(type) {
     typeSectionTitle.textContent = label;
     typeSectionDescription.textContent = localizedTypeString('Console_Desc_', type, '');
 
-    // Replaced rather than updated, so the controls start blank instead of holding what the config before
-    // this one put in them. A type with no module injects nothing, leaving the section as the Type control
-    // under the notice naming the type this client cannot edit.
     typeFieldsElement.innerHTML = typeModule ? typeModule.markup : '';
     applyLocalization(typeFieldsElement);
 
@@ -408,8 +402,7 @@ function applyType(type) {
     }
 }
 
-// A type with no string of its own shows its raw id, which is what a config naming a type this client
-// cannot edit carries. Naming it is what makes the read-only notice legible.
+// A type with no string of its own shows its raw id.
 function typeLabel(type) {
     return localizedTypeString('Console_Type_', type, type);
 }
@@ -428,8 +421,7 @@ function findSessionType(typeId) {
 }
 
 // The Type options, offering the types the host reports as registered that this client also has fields for,
-// in the host's order. Before the attach that carries that list, the client's own set stands in, so the
-// control is never empty for a config loaded ahead of it.
+// in the host's order. Before the attach that carries that list, the client's own set stands in.
 function renderSessionTypeOptions() {
     const offered = hostSessionTypes === null
         ? clientTypeIds
@@ -450,15 +442,13 @@ function renderSessionTypeOptions() {
     sessionTypeSelect.value = selected;
 }
 
-// True when the document names a type this client has no fields for, which makes the form read-only: a save
-// built from controls that never showed the type's settings would drop them.
+// True when the document names a type this client has no fields for, which makes the form read-only.
 function isUnknownSessionType() {
     return !clientTypeIds.includes(currentConfig.type || 'shell');
 }
 
 // A stored option value as its control shows it. A value is typed by the TOML it was written as, not by the
-// field, so one of the wrong shape shows blank: that is what the host reads it as, and the form would
-// otherwise promise a setting the session does not launch with.
+// field, so one of the wrong shape shows blank.
 function fieldText(value, kind) {
     if (kind === 'lines') {
         if (!Array.isArray(value)) {
@@ -479,8 +469,8 @@ function populateForm(config) {
     const type = config.type || 'shell';
     const options = (config.optionsBySessionType || {})[type] || {};
 
-    // Rebuilt here rather than at load, so the option labels are localized: the strings arrive with the
-    // host handshake, which is also what delivers the first config.
+    // The option labels need the localized strings, which arrive with the host handshake that also delivers
+    // the first config.
     renderSessionTypeOptions();
 
     sessionTypeSelect.value = type;
@@ -549,12 +539,11 @@ function setBuiltInRunnerDisabled(id, disabled) {
 
 function readForm() {
     // The config's own type stands in when the control holds no selection, which is what a type the host
-    // does not offer leaves behind. Reading 'shell' off a blank control would retype the console silently.
+    // does not offer leaves behind.
     const type = sessionTypeSelect.value || currentConfig.type || 'shell';
 
-    // Every type's table is carried forward and only the selected type's is rewritten, so switching type
-    // does not discard the settings of the type left behind. An empty field writes no key, matching what
-    // parsing a file that omits it gives, which is what keeps the divergence check honest.
+    // Every type's table is carried forward and only the selected type's is rewritten. An empty field
+    // writes no key, matching what parsing a file that omits it gives.
     const optionsBySessionType = { ...(currentConfig.optionsBySessionType || {}) };
     const options = {};
     for (const field of typeFields) {
@@ -757,9 +746,7 @@ function onFormInput() {
     updateAttention();
 }
 
-// Re-renders the form from the config already loaded, with the new type selected. Each type's options sit
-// in its own table and nothing else in the document depends on the type, so the type being left keeps its
-// settings and switching back brings them into view again.
+// Re-renders the form from the config already loaded, with the new type selected.
 sessionTypeSelect.addEventListener('change', () => {
     populateForm({ ...currentConfig, type: sessionTypeSelect.value });
     applyWritableState();
@@ -785,10 +772,7 @@ function isDocumentWritable() {
     return writable === undefined || writable === 'Writable';
 }
 
-// Whether an edit is allowed to reach the document. A type this client has no fields for is read-only too,
-// because a save built from controls that never showed the type's settings would drop them. Every control
-// asks this rather than isDocumentWritable, so the card lists cannot re-enable what the blanket pass below
-// disabled.
+// Whether an edit is allowed to reach the document. A type this client has no fields for is read-only too.
 function isFormEditable() {
     return isDocumentWritable() && !isUnknownSessionType();
 }
@@ -972,8 +956,7 @@ let requestInFlight = false;
 // terminal, and the state decides between the veil, the failed overlay, and a live prompt.
 function applyAttachResult(result) {
     // The registered session types are static host knowledge that rides along with the attach. The first
-    // attach lands after the form is populated, hence the re-render. applyWritableState renders the built-in
-    // runners, and the attention pass below covers both branches.
+    // attach lands after the form is populated, hence the re-render.
     if (result && Array.isArray(result.sessionTypes)) {
         hostSessionTypes = result.sessionTypes;
         renderSessionTypeOptions();

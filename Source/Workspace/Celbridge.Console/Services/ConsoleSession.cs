@@ -30,8 +30,7 @@ internal sealed class ConsoleSession : IDisposable
     private readonly ILogger<ConsoleSession> _logger;
     private readonly ConsoleOutputBuffer _outputBuffer = new();
 
-    // The registered providers, collected and checked once by the session service. The session types are
-    // projected from them, so the parser and the provider lookup read the one registration.
+    // The registered providers, collected and checked once by the session service.
     private readonly IReadOnlyList<IConsoleSessionProvider> _sessionProviders;
     private readonly IReadOnlyList<ConsoleSessionType> _sessionTypes;
 

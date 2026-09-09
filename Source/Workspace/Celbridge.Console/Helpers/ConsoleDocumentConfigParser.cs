@@ -14,10 +14,7 @@ public sealed record ConsoleDocumentTrigger(
 
 /// <summary>
 /// The launch-relevant configuration parsed from a .console file. SessionTypeOptions is the selected type's
-/// [session.&lt;type&gt;] table: a launch only ever runs one type, and preserving the table of a type left
-/// behind by a switch is the settings form's job, since it is what writes the file. StartupScript is read
-/// out of that same table because the host injects it for every type. Shortcuts are not represented: they
-/// are a client-side toolbar the host never consumes.
+/// [session.&lt;type&gt;] table, and StartupScript is read out of that same table.
 /// </summary>
 public sealed record ConsoleDocumentConfig(
     string SessionType,
@@ -50,8 +47,7 @@ public static class ConsoleDocumentConfigParser
     private const string DefaultSessionType = "shell";
 
     /// <summary>
-    /// The startup script key, accepted in every type's table. The host splits it into lines and injects
-    /// them, so it is defined here rather than by each provider.
+    /// The startup script key, accepted in every type's table.
     /// </summary>
     public const string ScriptKey = "script";
 
@@ -62,9 +58,8 @@ public static class ConsoleDocumentConfigParser
     };
 
     /// <summary>
-    /// Parses a .console document. The registered session types are supplied by the caller, so the parser
-    /// reports a key a type does not define without knowing what any type's keys mean. A table named for a
-    /// type that is not registered is reported the same way.
+    /// Parses a .console document against the registered session types supplied by the caller. A key a type
+    /// does not define, or a table named for a type that is not registered, is reported as an unknown field.
     /// </summary>
     public static Result<ConsoleDocumentConfig> Parse(
         string tomlText,
@@ -97,8 +92,6 @@ public static class ConsoleDocumentConfigParser
 
         var session = document.Session;
         var sessionType = ReadText(session?.Type, DefaultSessionType);
-        // A duplicate id is a programming error in a provider, caught as the session service is built. It is
-        // reported rather than thrown here, so every way this method can fail reaches the caller alike.
         var optionKeysBySessionType = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
         foreach (var type in sessionTypes)
         {
@@ -156,10 +149,7 @@ public static class ConsoleDocumentConfigParser
         return items;
     }
 
-    // The selected type's [session.<type>] table. The tables of every other type the document declares are
-    // read only to report their unknown keys: a launch runs one type, and carrying the rest across a save is
-    // the settings form's job. A table for a type that is not registered reads as absent, because the
-    // session fails on the unknown type before its options could matter.
+    // The selected type's [session.<type>] table. A table for a type that is not registered reads as absent.
     private static IReadOnlyDictionary<string, object?> ReadSessionTypeOptions(
         ConsoleSessionSection? session,
         string sessionType,
@@ -278,8 +268,8 @@ public static class ConsoleDocumentConfigParser
     }
 
     // The session bag holds each type's own table alongside anything the document declares that nothing
-    // defines. A table named for a registered type has its keys checked against that type. Every other
-    // entry is unknown, which covers both a stray key and a table named for a type that is not registered.
+    // defines. A table named for a registered type has its keys checked against that type, and every other
+    // entry is unknown.
     private static void AddUnknownSessionKeys(
         Dictionary<string, object?> extensionKeys,
         IReadOnlyDictionary<string, IReadOnlyList<string>> optionKeysBySessionType,

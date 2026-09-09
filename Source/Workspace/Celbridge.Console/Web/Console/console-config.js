@@ -54,8 +54,7 @@ export function configsEqual(a, b) {
     return JSON.stringify(normalizeConfig(a)) === JSON.stringify(normalizeConfig(b));
 }
 
-// The comparable launch-relevant view of a config, shared by the divergence check. Only the selected type's
-// table is carried: editing the table of a type the console is not running changes nothing about it.
+// The comparable launch-relevant view of a config. Only the selected type's table is carried.
 export function buildStartConfig(config) {
     const type = config.type || 'shell';
 

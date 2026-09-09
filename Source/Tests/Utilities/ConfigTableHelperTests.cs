@@ -5,9 +5,7 @@ using Tomlyn.Model;
 namespace Celbridge.Tests.Utilities;
 
 /// <summary>
-/// Covers reading a config table the host does not model, as a TOML deserializer hands it over. A value of
-/// the wrong shape reads as absent rather than failing the document, so these pin which shapes count and
-/// which fall back.
+/// Covers reading a config table the host does not model, as a TOML deserializer hands it over.
 /// </summary>
 [TestFixture]
 public class ConfigTableHelperTests
@@ -52,8 +50,7 @@ public class ConfigTableHelperTests
     [Test]
     public void ReadTextList_AStringValue_IsNotReadAsItsCharacters()
     {
-        // A string is itself enumerable, so a scalar written where an array belongs must read as absent
-        // rather than as one entry per character.
+        // A string is itself enumerable, so it would otherwise read as one entry per character.
         ConfigTableHelper.ReadTextList(Table, "text").Should().BeEmpty();
     }
 
@@ -79,7 +76,7 @@ public class ConfigTableHelperTests
     public void ReadTable_ATomlynTable_IsReturned()
     {
         // Tomlyn models a table as IDictionary<string, object>, which is not the read-only interface the
-        // signature takes, so this is the shape the console parser actually hands over.
+        // signature takes.
         var document = TomlSerializer.Deserialize<TomlTable>("[section]\nkey = \"value\"\n");
         var section = document["section"];
 

@@ -22,8 +22,6 @@ public class ConsoleDocumentConfigParserTests
     [Test]
     public void Parse_ASessionTypeRegisteredTwice_FailsRatherThanThrowing()
     {
-        // A duplicate id is a provider bug the session service catches first, but this method reports every
-        // other failure through its Result, so it reports this one too rather than throwing past the caller.
         var duplicated = new[] { SessionTypes[0], SessionTypes[0] };
 
         var result = ConsoleDocumentConfigParser.Parse("[session]\ntype = \"shell\"", duplicated);
@@ -110,8 +108,7 @@ public class ConsoleDocumentConfigParserTests
     [Test]
     public void Parse_DisabledRunners_MapsToTheHostsQualifiedName()
     {
-        // The document names only built-in runners here, because a runner it declares itself has no id, so
-        // the key drops the qualifier the host's own property keeps.
+        // The document key drops the qualifier the host's own property keeps.
         var toml = string.Join('\n', new[]
         {
             "[session]",
@@ -270,8 +267,6 @@ public class ConsoleDocumentConfigParserTests
     [Test]
     public void Parse_FormatBeforeTheTypeTables_IsReported()
     {
-        // The keys a .console file used before each type took its own table. The console still launches,
-        // and the advisory names what it ignored.
         var toml = string.Join('\n', new[]
         {
             "[session]",
