@@ -1,5 +1,6 @@
 using Celbridge.Console;
 using Celbridge.Logging;
+using Celbridge.Utilities;
 
 namespace Celbridge.Python.Services;
 
@@ -11,6 +12,9 @@ public sealed class PythonSessionProvider : IConsoleSessionProvider
 {
     // Carries the console's startup script to celbridge-py, which runs it as IPython exec_lines.
     private const string StartupScriptVariable = "CELBRIDGE_PYTHON_STARTUP";
+
+    private const string PythonVersionKey = "python_version";
+    private const string DependenciesKey = "dependencies";
 
     private readonly IPythonConfigService _pythonConfigService;
     private readonly IPythonLaunchService _launchService;
@@ -26,21 +30,22 @@ public sealed class PythonSessionProvider : IConsoleSessionProvider
         _logger = logger;
     }
 
-    public string TypeId => "python";
-
-    public IReadOnlyList<ConsoleRunner> BuiltInRunners { get; } = new[]
-    {
-        new ConsoleRunner(new[] { ".py", ".ipy" }, "%run \"{resource}\"", "python"),
-    };
+    public ConsoleSessionType SessionType { get; } = new(
+        "python",
+        OptionKeys: new[] { PythonVersionKey, DependenciesKey },
+        BuiltInRunners: new[]
+        {
+            new ConsoleRunner(new[] { ".py", ".ipy" }, "%run \"{resource}\"", "python"),
+        });
 
     public async Task<Result<ConsoleStartupInvocation>> BuildStartupInvocationAsync(ConsoleSessionContext context)
     {
         var pythonVersion = ResolvePythonVersion(context);
-        var dependencies = context.Dependencies ?? Array.Empty<string>();
+        var dependencies = ConfigTableHelper.ReadTextList(context.SessionTypeOptions, DependenciesKey);
 
         // A python console has no executable to pass arguments to, and raw interpreter flags are not part
-        // of its configuration surface, so context.Arguments is deliberately unused here. The REPL is
-        // configured through the startup script, which runs as IPython exec_lines.
+        // of its configuration surface, so the type declares neither. The REPL is configured through the
+        // startup script, which runs as IPython exec_lines.
         var request = new PythonLaunchRequest(
             pythonVersion,
             dependencies);
@@ -59,7 +64,7 @@ public sealed class PythonSessionProvider : IConsoleSessionProvider
         var handlesStartupScript = !string.IsNullOrWhiteSpace(context.StartupScript);
         if (handlesStartupScript)
         {
-            environment[StartupScriptVariable] = context.StartupScript!;
+            environment[StartupScriptVariable] = context.StartupScript;
         }
 
         var startupInvocation = new ConsoleStartupInvocation(
@@ -74,9 +79,10 @@ public sealed class PythonSessionProvider : IConsoleSessionProvider
     // The version comes from the .console config, or the bundled default when the console field is blank.
     private string ResolvePythonVersion(ConsoleSessionContext context)
     {
-        if (!string.IsNullOrWhiteSpace(context.RuntimeVersion))
+        var pythonVersion = ConfigTableHelper.ReadText(context.SessionTypeOptions, PythonVersionKey);
+        if (!string.IsNullOrWhiteSpace(pythonVersion))
         {
-            return context.RuntimeVersion;
+            return pythonVersion;
         }
 
         return _pythonConfigService.DefaultPythonVersion;

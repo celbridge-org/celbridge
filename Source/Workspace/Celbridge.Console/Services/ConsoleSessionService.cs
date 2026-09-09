@@ -35,6 +35,10 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
     private readonly ConsoleProxyListener _proxyListener;
     private readonly ConsoleTriggerScheduler _triggerScheduler;
 
+    // Collected once: the registered providers are fixed for the process, and every session parses its
+    // document against the same set.
+    private readonly IReadOnlyList<ConsoleSessionType> _sessionTypes;
+
     private bool _disposed;
 
     public ConsoleSessionService(
@@ -47,6 +51,8 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         _workspaceWrapper = workspaceWrapper;
         _messengerService = messengerService;
         _logger = logger;
+
+        _sessionTypes = ResolveSessionTypes(serviceProvider);
 
         _triggerScheduler = new ConsoleTriggerScheduler(FireTrigger);
 
@@ -104,7 +110,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
 
             if (!_sessions.TryGetValue(resource, out var session))
             {
-                session = new ConsoleSession(_serviceProvider, _workspaceWrapper, resource);
+                session = new ConsoleSession(_serviceProvider, _workspaceWrapper, resource, _sessionTypes);
                 session.StateChanged += OnSessionStateChanged;
                 _sessions[resource] = session;
             }
@@ -304,15 +310,28 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         }
     }
 
-    public IReadOnlyDictionary<string, IReadOnlyList<ConsoleRunner>> GetBuiltInRunners()
+    public IReadOnlyList<ConsoleSessionType> GetSessionTypes()
     {
-        var builtInRunners = new Dictionary<string, IReadOnlyList<ConsoleRunner>>();
-        foreach (var provider in _serviceProvider.GetServices<IConsoleSessionProvider>())
+        return _sessionTypes;
+    }
+
+    // A session type whose id a .console file cannot name would have its table read as something else, so
+    // the registered set is checked as the service is built rather than once a document depends on it.
+    private static IReadOnlyList<ConsoleSessionType> ResolveSessionTypes(IServiceProvider serviceProvider)
+    {
+        var sessionTypes = new List<ConsoleSessionType>();
+        foreach (var provider in serviceProvider.GetServices<IConsoleSessionProvider>())
         {
-            builtInRunners[provider.TypeId] = provider.BuiltInRunners;
+            sessionTypes.Add(provider.SessionType);
         }
 
-        return builtInRunners;
+        var validateResult = ConsoleSessionTypeValidator.Validate(sessionTypes);
+        if (validateResult.IsFailure)
+        {
+            throw new InvalidOperationException(validateResult.FirstErrorMessage);
+        }
+
+        return sessionTypes;
     }
 
     public IReadOnlyList<ConsoleRunTarget> GetRunTargets(string fileExtension)

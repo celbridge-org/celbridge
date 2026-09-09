@@ -1,8 +1,10 @@
 // Minimal TOML parse/serialise for the constrained .console config shape. It handles the documented shape
-// (single-line string and string-array values under [session], [session.options], [session.environment],
-// plus [[session.runner]], [[session.trigger]] and [[session.shortcut]] array-of-tables). Unknown keys and
-// sections are parsed and ignored; a malformed line raises a config error surfaced in the settings view.
-// Comments are not preserved across a save.
+// (single-line string and string-array values under [session], [session.environment] and each type's own
+// [session.<type>] table, plus [[session.runner]], [[session.trigger]] and [[session.shortcut]]
+// array-of-tables). A type table is read without knowing the type: its values are typed by their own TOML
+// syntax, so a key this client has no field for still round-trips through a save. Unknown keys elsewhere
+// are parsed and ignored; a malformed line raises a config error surfaced in the settings view. Comments
+// are not preserved across a save.
 
 /**
  * @typedef {Object} ConsoleRunner
@@ -26,12 +28,8 @@
 /**
  * @typedef {Object} ConsoleConfig
  * @property {string} type
- * @property {string} executable
- * @property {string} pythonVersion
- * @property {string[]} arguments
- * @property {string[]} dependencies
  * @property {string} workingDirectory
- * @property {string} startupScript
+ * @property {Object<string,Object<string,(string|string[])>>} optionsBySessionType each type's own table, keyed by type id
  * @property {Object<string,string>} environment
  * @property {ConsoleRunner[]} runners
  * @property {string[]} disabledBuiltInRunners ids of the session type's built-in runners this console leaves out
@@ -43,12 +41,8 @@
 export function defaultConsoleConfig() {
     return {
         type: 'shell',
-        executable: '',
-        pythonVersion: '',
-        arguments: [],
-        dependencies: [],
         workingDirectory: '',
-        startupScript: '',
+        optionsBySessionType: {},
         environment: {},
         runners: [],
         disabledBuiltInRunners: [],
@@ -150,32 +144,8 @@ export function serializeConsoleToml(config) {
     if (config.workingDirectory) {
         lines.push(`working_directory = ${quote(config.workingDirectory)}`);
     }
-    if (config.startupScript) {
-        lines.push(`startup_script = ${quoteScript(config.startupScript)}`);
-    }
     if (config.disabledBuiltInRunners && config.disabledBuiltInRunners.length > 0) {
-        lines.push(`disabled_built_in_runners = [${config.disabledBuiltInRunners.map(quote).join(', ')}]`);
-    }
-
-    // A section with no keys is left out like any other empty field, so saving the form never adds
-    // anything the console did not set.
-    const optionLines = [];
-    if (config.executable) {
-        optionLines.push(`executable = ${quote(config.executable)}`);
-    }
-    if (config.pythonVersion) {
-        optionLines.push(`python_version = ${quote(config.pythonVersion)}`);
-    }
-    if (config.arguments && config.arguments.length > 0) {
-        optionLines.push(`arguments = [${config.arguments.map(quote).join(', ')}]`);
-    }
-    if (config.dependencies && config.dependencies.length > 0) {
-        optionLines.push(`dependencies = [${config.dependencies.map(quote).join(', ')}]`);
-    }
-    if (optionLines.length > 0) {
-        lines.push('');
-        lines.push('[session.options]');
-        lines.push(...optionLines);
+        lines.push(`disabled_runners = [${config.disabledBuiltInRunners.map(quote).join(', ')}]`);
     }
 
     const environmentLines = [];
@@ -186,6 +156,29 @@ export function serializeConsoleToml(config) {
         lines.push('');
         lines.push('[session.environment]');
         lines.push(...environmentLines);
+    }
+
+    // Every type's table is written, not just the selected one, so switching type does not discard the
+    // settings of the type left behind. Type ids are sorted so the file does not reorder itself on a save.
+    // A table with no keys is left out like any other empty field, so saving the form never adds anything
+    // the console did not set.
+    for (const typeId of Object.keys(config.optionsBySessionType || {}).sort()) {
+        const optionLines = [];
+        for (const [key, value] of Object.entries(config.optionsBySessionType[typeId] || {})) {
+            if (Array.isArray(value)) {
+                if (value.length > 0) {
+                    optionLines.push(`${serializeKey(key)} = [${value.map(quote).join(', ')}]`);
+                }
+            } else if (value) {
+                optionLines.push(`${serializeKey(key)} = ${quoteScript(value)}`);
+            }
+        }
+
+        if (optionLines.length > 0) {
+            lines.push('');
+            lines.push(`[session.${serializeKey(typeId)}]`);
+            lines.push(...optionLines);
+        }
     }
 
     for (const runner of config.runners || []) {
@@ -213,6 +206,35 @@ export function serializeConsoleToml(config) {
     }
 
     return lines.join('\n') + '\n';
+}
+
+// The [session.<name>] tables the format defines itself, which therefore cannot name a session type.
+const RESERVED_SESSION_TABLES = new Set(['environment', 'runner', 'trigger', 'shortcut']);
+
+// The type id a [session.<type>] header names, or null when the header is not a type table.
+function readTypeTableId(section) {
+    if (!section.startsWith('session.')) {
+        return null;
+    }
+
+    const name = section.slice('session.'.length);
+    if (name === '' ||
+        name.includes('.') ||
+        RESERVED_SESSION_TABLES.has(name)) {
+        return null;
+    }
+
+    return name;
+}
+
+// A value inside a type table, typed by its own TOML syntax rather than by its key, so the table is read
+// without knowing which keys the type defines.
+function parseValue(rawValue) {
+    if (rawValue.startsWith('[')) {
+        return parseArray(rawValue);
+    }
+
+    return parseScalar(rawValue);
 }
 
 // Appends a fresh element to the array the [[header]] names and returns it, so subsequent keys fill it.
@@ -245,29 +267,21 @@ function assignValue(config, section, currentTable, key, rawValue) {
             config.type = parseScalar(rawValue);
         } else if (key === 'working_directory') {
             config.workingDirectory = parseScalar(rawValue);
-        } else if (key === 'startup_script') {
-            config.startupScript = parseScalar(rawValue);
-        } else if (key === 'disabled_built_in_runners') {
+        } else if (key === 'disabled_runners') {
             config.disabledBuiltInRunners = parseArray(rawValue);
-        }
-        return;
-    }
-
-    if (section === 'session.options') {
-        if (key === 'executable') {
-            config.executable = parseScalar(rawValue);
-        } else if (key === 'python_version') {
-            config.pythonVersion = parseScalar(rawValue);
-        } else if (key === 'arguments') {
-            config.arguments = parseArray(rawValue);
-        } else if (key === 'dependencies') {
-            config.dependencies = parseArray(rawValue);
         }
         return;
     }
 
     if (section === 'session.environment') {
         config.environment[key] = parseScalar(rawValue);
+        return;
+    }
+
+    const typeId = readTypeTableId(section);
+    if (typeId !== null) {
+        const options = config.optionsBySessionType[typeId] || (config.optionsBySessionType[typeId] = {});
+        options[key] = parseValue(rawValue);
         return;
     }
 

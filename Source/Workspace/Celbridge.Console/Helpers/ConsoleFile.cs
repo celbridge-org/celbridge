@@ -3,24 +3,6 @@ using Tomlyn.Serialization;
 namespace Celbridge.Console.Helpers;
 
 /// <summary>
-/// The [session.options] table, holding the settings that vary by session type.
-/// </summary>
-internal sealed record ConsoleOptionsSection
-{
-    // Shell sessions only. Typed into the shell as a command once it starts.
-    public string? Executable { get; init; }
-
-    // Python sessions only. Selects the interpreter uv provisions.
-    public string? PythonVersion { get; init; }
-
-    public List<string>? Arguments { get; init; }
-    public List<string>? Dependencies { get; init; }
-
-    [TomlExtensionData]
-    public Dictionary<string, object?> UnknownKeys { get; init; } = new();
-}
-
-/// <summary>
 /// One [[session.runner]] entry, naming the command that runs a file the Explorer Run menu targets.
 /// </summary>
 internal sealed record ConsoleRunnerEntry
@@ -32,7 +14,7 @@ internal sealed record ConsoleRunnerEntry
     public string? Command { get; init; }
 
     [TomlExtensionData]
-    public Dictionary<string, object?> UnknownKeys { get; init; } = new();
+    public Dictionary<string, object?> ExtensionKeys { get; init; } = new();
 }
 
 /// <summary>
@@ -46,7 +28,7 @@ internal sealed record ConsoleTriggerEntry
     public string? Command { get; init; }
 
     [TomlExtensionData]
-    public Dictionary<string, object?> UnknownKeys { get; init; } = new();
+    public Dictionary<string, object?> ExtensionKeys { get; init; } = new();
 }
 
 /// <summary>
@@ -60,7 +42,7 @@ internal sealed record ConsoleShortcutEntry
     public string? Text { get; init; }
 
     [TomlExtensionData]
-    public Dictionary<string, object?> UnknownKeys { get; init; } = new();
+    public Dictionary<string, object?> ExtensionKeys { get; init; } = new();
 }
 
 /// <summary>
@@ -72,12 +54,10 @@ internal sealed record ConsoleSessionSection
     public string? Type { get; init; }
 
     public string? WorkingDirectory { get; init; }
-    public string? StartupScript { get; init; }
 
-    // Built-in runner ids the document opts out of.
-    public List<string>? DisabledBuiltInRunners { get; init; }
-
-    public ConsoleOptionsSection? Options { get; init; }
+    // Built-in runner ids the document opts out of. The key drops the qualifier because a runner the
+    // document declares itself carries no id, so a built-in is the only kind that can be named.
+    public List<string>? DisabledRunners { get; init; }
 
     // Environment variables passed to the session process. The names are the user's own, so they are
     // held as free-form data rather than checked.
@@ -87,13 +67,15 @@ internal sealed record ConsoleSessionSection
     public List<ConsoleTriggerEntry> Trigger { get; init; } = new();
     public List<ConsoleShortcutEntry> Shortcut { get; init; } = new();
 
+    // Holds each type's [session.<type>] table, which the host does not model because only that type's
+    // provider knows what its keys mean, alongside any key the document declares that nothing defines.
     [TomlExtensionData]
-    public Dictionary<string, object?> UnknownKeys { get; init; } = new();
+    public Dictionary<string, object?> ExtensionKeys { get; init; } = new();
 }
 
 /// <summary>
 /// The shape of a console document (.console), deserialized by Tomlyn. The property names are the
-/// document's known keys under their snake_case spelling, and every other key lands in an UnknownKeys bag
+/// document's known keys under their snake_case spelling, and every other key lands in an ExtensionKeys bag
 /// rather than being dropped. The settings form writes the same file with its own parser
 /// (console-toml.js), so the two must agree on this key set.
 /// </summary>
@@ -102,5 +84,5 @@ internal sealed record ConsoleFile
     public ConsoleSessionSection? Session { get; init; }
 
     [TomlExtensionData]
-    public Dictionary<string, object?> UnknownKeys { get; init; } = new();
+    public Dictionary<string, object?> ExtensionKeys { get; init; } = new();
 }

@@ -132,16 +132,19 @@ const sessionFailed = document.getElementById('session-failed');
 const sessionFailedMessage = document.getElementById('session-failed-message');
 const reopenTerminalButton = document.getElementById('reopen-terminal');
 const sessionTypeSelect = document.getElementById('session-type');
-const executableField = document.getElementById('executable-field');
+const typeNavItem = document.getElementById('type-nav-item');
+const typeNavIcon = document.getElementById('type-nav-icon');
+const typeNavLabel = document.getElementById('type-nav-label');
+const typeSectionTitle = document.getElementById('type-section-title');
+const typeSectionDescription = document.getElementById('type-section-description');
+const typeFieldGroups = Array.from(document.querySelectorAll('.type-fields'));
 const executableInput = document.getElementById('executable');
-const pythonVersionField = document.getElementById('python-version-field');
-const pythonVersionInput = document.getElementById('python-version');
-const argumentsField = document.getElementById('arguments-field');
 const argumentsInput = document.getElementById('arguments');
-const dependenciesField = document.getElementById('dependencies-field');
+const shellScriptInput = document.getElementById('shell-script');
+const pythonVersionInput = document.getElementById('python-version');
 const dependenciesInput = document.getElementById('dependencies');
+const pythonScriptInput = document.getElementById('python-script');
 const workingDirectoryInput = document.getElementById('working-directory');
-const startupScriptInput = document.getElementById('startup-script');
 const environmentInput = document.getElementById('environment');
 const closeSettingsButton = document.getElementById('close-settings');
 const reopenSettingsButton = document.getElementById('reopen-settings');
@@ -162,7 +165,9 @@ let sessionStartFailed = false;
 let sessionFailedText = '';
 // The runners each session type provides, keyed by type id, as the host reports them on attach. Empty until
 // then, so the built-in list simply renders nothing on the first populate.
-let builtInRunnersByType = {};
+// The registered session types, in the order the form offers them, each carrying the keys it accepts and
+// the runners it contributes. Null until an attach reports them.
+let sessionTypes = null;
 // The ids of the built-in runners switched off for this console. Held apart from the form inputs because a
 // card carries no editable field, so readForm carries this through rather than reading it back out of the DOM.
 let disabledBuiltInRunners = [];
@@ -362,27 +367,129 @@ document.addEventListener('keydown', (event) => {
     }
 });
 
-// Settings form. The executable field is shown only for the shell type. The dependency field only for the
-// Python types. The other fields apply to every type.
-function applyTypeVisibility(type) {
-    const isShell = type === 'shell';
-    executableField.classList.toggle('hidden', !isShell);
-    // Arguments are the executable's, so only a shell console has anything to pass them to. A python
-    // console configures its REPL through the startup script instead.
-    argumentsField.classList.toggle('hidden', !isShell);
-    pythonVersionField.classList.toggle('hidden', isShell);
-    dependenciesField.classList.toggle('hidden', isShell);
+// The icon each session type shows on its rail row. The strings come from the localization file, keyed by
+// type id, so a type contributes its whole rail presence from here plus Console_Type_<Id> and
+// Console_Desc_<Id>.
+const typeIcons = {
+    shell: 'bi-terminal',
+    python: 'bi-filetype-py',
+};
+
+// The types this client can edit, in the order their groups are authored. A type needs a group here to be
+// offered: without one there would be no fields to set.
+const clientTypeIds = typeFieldGroups.map((group) => group.dataset.type);
+
+// The type section is one slot the selected type fills, not a section per type. Keeping its id stable is
+// what lets the switcher attach once, the restored active section survive a type change, and the selection
+// stay put while the label, icon, heading and fields swap underneath.
+function applyType(type) {
+    const label = typeLabel(type);
+
+    typeNavLabel.textContent = label;
+    typeNavItem.title = label;
+    typeNavItem.setAttribute('aria-label', label);
+    typeNavIcon.className = `bi ${typeIcons[type] || 'bi-terminal'}`;
+
+    typeSectionTitle.textContent = label;
+    typeSectionDescription.textContent = localizedTypeString('Console_Desc_', type, '');
+
+    for (const group of typeFieldGroups) {
+        group.classList.toggle('hidden', group.dataset.type !== type);
+    }
 }
 
+// A type with no string of its own shows its raw id, which is what a config naming a type this client
+// cannot edit carries. Naming it is what makes the read-only notice legible.
+function typeLabel(type) {
+    return localizedTypeString('Console_Type_', type, type);
+}
+
+// A type id is lowercase and the resource keys are title-cased, so the id is capitalized to name its key.
+// t() returns the key itself when it does not resolve, which is what stands in for "no string defined".
+function localizedTypeString(prefix, type, fallback) {
+    const key = `${prefix}${type.charAt(0).toUpperCase()}${type.slice(1)}`;
+    const value = t(key);
+
+    return value === key ? fallback : value;
+}
+
+function findSessionType(typeId) {
+    return (sessionTypes || []).find((sessionType) => sessionType.typeId === typeId) || null;
+}
+
+// The Type options, offering the types the host reports as registered that this client also has fields for,
+// in the host's order. Before the attach that carries that list, the client's own set stands in, so the
+// control is never empty for a config loaded ahead of it.
+function renderSessionTypeOptions() {
+    const offered = sessionTypes === null
+        ? clientTypeIds
+        : sessionTypes
+            .map((sessionType) => sessionType.typeId)
+            .filter((typeId) => clientTypeIds.includes(typeId));
+
+    const selected = sessionTypeSelect.value;
+    sessionTypeSelect.replaceChildren();
+
+    for (const typeId of offered) {
+        const option = document.createElement('option');
+        option.value = typeId;
+        option.textContent = typeLabel(typeId);
+        sessionTypeSelect.appendChild(option);
+    }
+
+    sessionTypeSelect.value = selected;
+}
+
+// True when the document names a type this client has no fields for, which makes the form read-only: a save
+// built from controls that never showed the type's settings would drop them.
+function isUnknownSessionType() {
+    return !clientTypeIds.includes(currentConfig.type || 'shell');
+}
+
+// The fields each session type owns, naming the key each one holds in the type's [session.<type>] table.
+// A type reads and writes only the fields listed for it, so the table of the type left behind by a switch
+// is never rewritten from another type's controls. Every type has a script, but each keeps its own control
+// and its own value: a shell script and a REPL script are not interchangeable.
+const typeFields = {
+    shell: [
+        { input: executableInput, key: 'executable', kind: 'text' },
+        { input: argumentsInput, key: 'arguments', kind: 'lines' },
+        { input: shellScriptInput, key: 'script', kind: 'script' },
+    ],
+    python: [
+        { input: pythonVersionInput, key: 'python_version', kind: 'text' },
+        { input: dependenciesInput, key: 'dependencies', kind: 'lines' },
+        { input: pythonScriptInput, key: 'script', kind: 'script' },
+    ],
+};
+
 function populateForm(config) {
-    sessionTypeSelect.value = config.type || 'shell';
-    applyTypeVisibility(config.type || 'shell');
-    executableInput.value = config.executable || '';
-    pythonVersionInput.value = config.pythonVersion || '';
-    argumentsInput.value = (config.arguments || []).join('\n');
-    dependenciesInput.value = (config.dependencies || []).join('\n');
+    const type = config.type || 'shell';
+    const options = (config.optionsBySessionType || {})[type] || {};
+
+    // Rebuilt here rather than at load, so the option labels are localized: the strings arrive with the
+    // host handshake, which is also what delivers the first config.
+    renderSessionTypeOptions();
+
+    sessionTypeSelect.value = type;
+    applyType(type);
+
+    // Cleared first, so a control keeps nothing from the config it showed before this one.
+    for (const fields of Object.values(typeFields)) {
+        for (const field of fields) {
+            field.input.value = '';
+        }
+    }
+
+    for (const field of typeFields[type] || []) {
+        if (field.kind === 'lines') {
+            field.input.value = (options[field.key] || []).join('\n');
+        } else {
+            field.input.value = options[field.key] || '';
+        }
+    }
+
     workingDirectoryInput.value = config.workingDirectory || '';
-    startupScriptInput.value = config.startupScript || '';
     environmentInput.value = Object.entries(config.environment || {})
         .map(([name, value]) => `${name}=${value}`)
         .join('\n');
@@ -399,7 +506,7 @@ function populateForm(config) {
 // declares, and re-reads them from the provider on every launch. Switching one off is the exception: the
 // config names it by id, which is what the host resolves against.
 function renderBuiltInRunners() {
-    const runners = builtInRunnersByType[sessionTypeSelect.value] || [];
+    const runners = findSessionType(sessionTypeSelect.value)?.builtInRunners || [];
     builtInRunnerList.replaceChildren();
 
     for (const runner of runners) {
@@ -441,14 +548,38 @@ function setBuiltInRunnerDisabled(id, disabled) {
 }
 
 function readForm() {
+    const type = sessionTypeSelect.value || 'shell';
+
+    // Every type's table is carried forward and only the selected type's is rewritten, so switching type
+    // does not discard the settings of the type left behind. An empty field writes no key, matching what
+    // parsing a file that omits it gives, which is what keeps the divergence check honest.
+    const optionsBySessionType = { ...(currentConfig.optionsBySessionType || {}) };
+    const options = {};
+    for (const field of typeFields[type] || []) {
+        if (field.kind === 'lines') {
+            const values = splitLines(field.input.value);
+            if (values.length > 0) {
+                options[field.key] = values;
+            }
+            continue;
+        }
+
+        const text = field.kind === 'script' ? field.input.value.trimEnd() : field.input.value.trim();
+        if (text !== '') {
+            options[field.key] = text;
+        }
+    }
+
+    if (Object.keys(options).length > 0) {
+        optionsBySessionType[type] = options;
+    } else {
+        delete optionsBySessionType[type];
+    }
+
     return {
-        type: sessionTypeSelect.value || 'shell',
-        executable: executableInput.value.trim(),
-        pythonVersion: pythonVersionInput.value.trim(),
-        arguments: splitLines(argumentsInput.value),
-        dependencies: splitLines(dependenciesInput.value),
+        type,
         workingDirectory: workingDirectoryInput.value.trim(),
-        startupScript: startupScriptInput.value.trimEnd(),
+        optionsBySessionType,
         environment: parseEnvironmentLines(environmentInput.value),
         runners: runnerCards.read(),
         disabledBuiltInRunners: disabledBuiltInRunners.slice(),
@@ -624,24 +755,24 @@ function onFormInput() {
     updateAttention();
 }
 
-// Changing the type resets the console: every other setting is written for the type selected at the time.
+// Re-renders the form from the config already loaded, with the new type selected. Each type's options sit
+// in its own table and nothing else in the document depends on the type, so the type being left keeps its
+// settings and switching back brings them into view again.
 sessionTypeSelect.addEventListener('change', () => {
-    const resetConfig = defaultConsoleConfig();
-    resetConfig.type = sessionTypeSelect.value;
-
-    populateForm(resetConfig);
+    populateForm({ ...currentConfig, type: sessionTypeSelect.value });
     onFormInput();
 });
 
 const formFields = [
     sessionTypeSelect,
     executableInput,
-    pythonVersionInput,
     argumentsInput,
+    shellScriptInput,
+    pythonVersionInput,
     dependenciesInput,
     workingDirectoryInput,
-    startupScriptInput,
     environmentInput,
+    pythonScriptInput,
 ];
 
 for (const field of formFields) {
@@ -662,7 +793,7 @@ function isDocumentWritable() {
 // blanket pass over the sections runs first, so the card lists below decide the final state of the controls
 // they own.
 function applyWritableState() {
-    const writable = isDocumentWritable();
+    const writable = isDocumentWritable() && !isUnknownSessionType();
     settingsSwitcher.setReadOnly(!writable);
 
     runnerCards.refreshState();
@@ -682,11 +813,19 @@ reopenSettingsButton.addEventListener('click', () => {
 
 reopenTerminalButton.addEventListener('click', () => { reopenSession(); });
 
+function unknownTypeText() {
+    if (!isUnknownSessionType()) {
+        return '';
+    }
+
+    return t('Console_UnknownType', currentConfig.type || '');
+}
+
 // The pip flags a config error, a config that diverges from the launched session, or a session that never
 // started.
 function updateAttention() {
     const diverged = launchedConfig !== null && !configsEqual(currentConfig, launchedConfig);
-    const needsAttention = diverged || configError !== null || sessionStartFailed;
+    const needsAttention = diverged || configError !== null || sessionStartFailed || isUnknownSessionType();
     pip.classList.toggle('hidden', !needsAttention);
 
     // The Reopen button stays enabled so the session can be restarted at any time. The accent colour appears
@@ -694,7 +833,7 @@ function updateAttention() {
     reopenSettingsButton.classList.toggle('cel-accent', diverged);
 
     // One slot, so a parse error wins: it is the one the surface showing it can also fix.
-    settingsSwitcher.setNotice(configError || sessionFailedText);
+    settingsSwitcher.setNotice(configError || unknownTypeText() || sessionFailedText);
 }
 
 // Session lifecycle.
@@ -829,11 +968,14 @@ let requestInFlight = false;
 // Renders an attach or reopen outcome: the launched config drives the pip, the replay fills the
 // terminal, and the state decides between the veil, the failed overlay, and a live prompt.
 function applyAttachResult(result) {
-    // The built-in runners are static host knowledge that rides along with the attach, so the settings form can
-    // show them. The first attach lands after the form is populated, hence the re-render.
-    if (result && result.builtInRunners) {
-        builtInRunnersByType = result.builtInRunners;
+    // The registered session types are static host knowledge that rides along with the attach. The first
+    // attach lands after the form is populated, hence the re-render.
+    if (result && Array.isArray(result.sessionTypes)) {
+        sessionTypes = result.sessionTypes;
+        renderSessionTypeOptions();
         renderBuiltInRunners();
+        applyWritableState();
+        updateAttention();
     }
 
     launchedConfig = null;
@@ -935,6 +1077,7 @@ function applyContent(content) {
         configError = (error && error.message) || t('Console_InvalidConfig');
     }
     populateForm(currentConfig);
+    applyWritableState();
     updateAttention();
 }
 

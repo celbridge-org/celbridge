@@ -9,12 +9,8 @@ describe('defaultConsoleConfig', () => {
     it('returns a blank shell config', () => {
         expect(defaultConsoleConfig()).toEqual({
             type: 'shell',
-            executable: '',
-            pythonVersion: '',
-            arguments: [],
-            dependencies: [],
             workingDirectory: '',
-            startupScript: '',
+            optionsBySessionType: {},
             environment: {},
             runners: [],
             disabledBuiltInRunners: [],
@@ -31,22 +27,20 @@ describe('parseConsoleToml', () => {
             'type = "shell"',
             'working_directory = "tools"',
             '',
-            '[session.options]',
-            'executable = "pwsh"',
-            'arguments = ["-NoLogo", "-NoProfile"]',
-            '',
             '[session.environment]',
             'BUILD_CONFIG = "Debug"',
+            '',
+            '[session.shell]',
+            'executable = "pwsh"',
+            'arguments = ["-NoLogo", "-NoProfile"]',
         ].join('\n');
 
         expect(parseConsoleToml(toml)).toEqual({
             type: 'shell',
-            executable: 'pwsh',
-            pythonVersion: '',
-            arguments: ['-NoLogo', '-NoProfile'],
-            dependencies: [],
             workingDirectory: 'tools',
-            startupScript: '',
+            optionsBySessionType: {
+                shell: { executable: 'pwsh', arguments: ['-NoLogo', '-NoProfile'] },
+            },
             environment: { BUILD_CONFIG: 'Debug' },
             runners: [],
             disabledBuiltInRunners: [],
@@ -55,30 +49,54 @@ describe('parseConsoleToml', () => {
         });
     });
 
-    it('parses a startup script written as a multi-line block', () => {
+    it('keeps the table of a type that is not selected', () => {
         const toml = [
             '[session]',
-            "startup_script = '''",
+            'type = "shell"',
+            '',
+            '[session.shell]',
+            'executable = "bash"',
+            '',
+            '[session.python]',
+            'dependencies = ["numpy"]',
+        ].join('\n');
+
+        expect(parseConsoleToml(toml).optionsBySessionType).toEqual({
+            shell: { executable: 'bash' },
+            python: { dependencies: ['numpy'] },
+        });
+    });
+
+    it('keeps a key the client has no field for', () => {
+        const config = parseConsoleToml('[session.shell]\nexecutable = "bash"\nentrypoint = "main"');
+        expect(config.optionsBySessionType.shell.entrypoint).toBe('main');
+        expect(serializeConsoleToml(config)).toContain('entrypoint = "main"');
+    });
+
+    it('parses a script written as a multi-line block', () => {
+        const toml = [
+            '[session.shell]',
+            "script = '''",
             'import numpy as np',
             '# not a comment inside the block',
             "'''",
         ].join('\n');
-        expect(parseConsoleToml(toml).startupScript)
+        expect(parseConsoleToml(toml).optionsBySessionType.shell.script)
             .toBe('import numpy as np\n# not a comment inside the block');
     });
 
-    it('parses a single-line startup script', () => {
-        expect(parseConsoleToml('[session]\nstartup_script = "x = 1"').startupScript).toBe('x = 1');
+    it('parses a single-line script', () => {
+        expect(parseConsoleToml('[session.shell]\nscript = "x = 1"').optionsBySessionType.shell.script).toBe('x = 1');
     });
 
     it('throws on an unterminated block', () => {
-        expect(() => parseConsoleToml("[session]\nstartup_script = '''\noops")).toThrow(/Unterminated/);
+        expect(() => parseConsoleToml("[session.shell]\nscript = '''\noops")).toThrow(/Unterminated/);
     });
 
     it('parses dependencies and python version for a python console', () => {
-        const config = parseConsoleToml('[session.options]\npython_version = "3.13"\ndependencies = ["numpy", "pandas>=2"]');
-        expect(config.pythonVersion).toBe('3.13');
-        expect(config.dependencies).toEqual(['numpy', 'pandas>=2']);
+        const config = parseConsoleToml('[session.python]\npython_version = "3.13"\ndependencies = ["numpy", "pandas>=2"]');
+        expect(config.optionsBySessionType.python.python_version).toBe('3.13');
+        expect(config.optionsBySessionType.python.dependencies).toEqual(['numpy', 'pandas>=2']);
     });
 
     it('parses repeated [[session.runner]] tables', () => {
@@ -99,8 +117,8 @@ describe('parseConsoleToml', () => {
         ]);
     });
 
-    it('parses disabled_built_in_runners', () => {
-        const config = parseConsoleToml('[session]\ntype = "python"\ndisabled_built_in_runners = ["python"]');
+    it('parses disabled_runners', () => {
+        const config = parseConsoleToml('[session]\ntype = "python"\ndisabled_runners = ["python"]');
         expect(config.disabledBuiltInRunners).toEqual(['python']);
     });
 
@@ -142,13 +160,13 @@ describe('parseConsoleToml', () => {
             '[session]',
             'type = "shell"   # inline comment',
             '',
-            '[session.options]',
+            '[session.shell]',
             'executable = "bash"',
         ].join('\n');
 
         const config = parseConsoleToml(toml);
         expect(config.type).toBe('shell');
-        expect(config.executable).toBe('bash');
+        expect(config.optionsBySessionType.shell.executable).toBe('bash');
     });
 
     it('preserves a # that sits inside a quoted value', () => {
@@ -162,13 +180,13 @@ describe('parseConsoleToml', () => {
     });
 
     it('splits array items on commas outside quotes only', () => {
-        const config = parseConsoleToml('[session.options]\narguments = ["-c", "print(\\"a, b\\")"]');
-        expect(config.arguments).toEqual(['-c', 'print("a, b")']);
+        const config = parseConsoleToml('[session.shell]\narguments = ["-c", "print(\\"a, b\\")"]');
+        expect(config.optionsBySessionType.shell.arguments).toEqual(['-c', 'print("a, b")']);
     });
 
     it('keeps a comma inside a single-quoted array item', () => {
-        const config = parseConsoleToml("[session.options]\narguments = ['a, b', 'c']");
-        expect(config.arguments).toEqual(['a, b', 'c']);
+        const config = parseConsoleToml("[session.shell]\narguments = ['a, b', 'c']");
+        expect(config.optionsBySessionType.shell.arguments).toEqual(['a, b', 'c']);
     });
 
     it('parses a quoted environment key', () => {
@@ -184,13 +202,13 @@ describe('parseConsoleToml', () => {
     });
 
     it('unescapes a trailing backslash without consuming the closing quote', () => {
-        const config = parseConsoleToml('[session.options]\nexecutable = "C:\\\\tools\\\\"');
-        expect(config.executable).toBe('C:\\tools\\');
+        const config = parseConsoleToml('[session.shell]\nexecutable = "C:\\\\tools\\\\"');
+        expect(config.optionsBySessionType.shell.executable).toBe('C:\\tools\\');
     });
 
     it('unescapes quotes and backslashes in quoted values', () => {
-        const config = parseConsoleToml('[session.options]\nexecutable = "C:\\\\Program Files\\\\pwsh.exe"');
-        expect(config.executable).toBe('C:\\Program Files\\pwsh.exe');
+        const config = parseConsoleToml('[session.shell]\nexecutable = "C:\\\\Program Files\\\\pwsh.exe"');
+        expect(config.optionsBySessionType.shell.executable).toBe('C:\\Program Files\\pwsh.exe');
     });
 
     it('returns a bare unquoted value verbatim', () => {
@@ -202,8 +220,8 @@ describe('parseConsoleToml', () => {
         expect(() => parseConsoleToml('[session]\ngarbage line')).toThrow();
     });
 
-    it('throws when an array field holds a non-array value', () => {
-        expect(() => parseConsoleToml('[session.options]\narguments = "-NoLogo"')).toThrow();
+    it('throws on an unterminated array in a type table', () => {
+        expect(() => parseConsoleToml('[session.shell]\narguments = ["-NoLogo"')).toThrow();
     });
 });
 
@@ -211,45 +229,61 @@ describe('serializeConsoleToml', () => {
     it('omits empty optional fields', () => {
         const toml = serializeConsoleToml(defaultConsoleConfig());
         expect(toml).toContain('type = "shell"');
-        expect(toml).not.toContain('executable');
-        expect(toml).not.toContain('arguments');
         expect(toml).not.toContain('working_directory');
-        expect(toml).not.toContain('dependencies');
         expect(toml).not.toContain('session.runner');
         expect(toml).not.toContain('session.shortcut');
-        expect(toml).not.toContain('disabled_built_in_runners');
+        expect(toml).not.toContain('disabled_runners');
         // A section with no keys is as empty as an omitted key, so its header goes too.
-        expect(toml).not.toContain('session.options');
+        expect(toml).not.toContain('session.shell');
         expect(toml).not.toContain('session.environment');
     });
 
-    it('round-trips disabled_built_in_runners', () => {
+    it('omits a type table whose keys are all empty', () => {
+        const config = { ...defaultConsoleConfig(), optionsBySessionType: { shell: { executable: '', arguments: [] } } };
+        expect(serializeConsoleToml(config)).not.toContain('session.shell');
+    });
+
+    it('writes the table of a type that is not selected', () => {
+        const config = {
+            ...defaultConsoleConfig(),
+            type: 'shell',
+            optionsBySessionType: { shell: { executable: 'bash' }, python: { dependencies: ['numpy'] } },
+        };
+        const toml = serializeConsoleToml(config);
+        expect(toml).toContain('[session.shell]');
+        expect(toml).toContain('[session.python]');
+        expect(parseConsoleToml(toml).optionsBySessionType.python.dependencies).toEqual(['numpy']);
+    });
+
+    it('round-trips disabled_runners', () => {
         const config = { ...defaultConsoleConfig(), type: 'python', disabledBuiltInRunners: ['python'] };
         const toml = serializeConsoleToml(config);
-        expect(toml).toContain('disabled_built_in_runners = ["python"]');
+        expect(toml).toContain('disabled_runners = ["python"]');
         expect(parseConsoleToml(toml).disabledBuiltInRunners).toEqual(['python']);
     });
 
     it('quotes and comma-joins arguments', () => {
         const config = {
             ...defaultConsoleConfig(),
-            executable: 'pwsh',
-            arguments: ['-NoLogo', '-c', 'echo hi'],
+            optionsBySessionType: { shell: { executable: 'pwsh', arguments: ['-NoLogo', '-c', 'echo hi'] } },
         };
         const toml = serializeConsoleToml(config);
         expect(toml).toContain('arguments = ["-NoLogo", "-c", "echo hi"]');
     });
 
-    it('emits a multi-line startup script as a literal block', () => {
-        const config = { ...defaultConsoleConfig(), startupScript: 'import numpy as np\nx = 1' };
+    it('emits a multi-line script as a literal block', () => {
+        const config = {
+            ...defaultConsoleConfig(),
+            optionsBySessionType: { shell: { script: 'import numpy as np\nx = 1' } },
+        };
         const toml = serializeConsoleToml(config);
-        expect(toml).toContain("startup_script = '''");
-        expect(parseConsoleToml(toml).startupScript).toBe('import numpy as np\nx = 1');
+        expect(toml).toContain("script = '''");
+        expect(parseConsoleToml(toml).optionsBySessionType.shell.script).toBe('import numpy as np\nx = 1');
     });
 
-    it('emits a single-line startup script as a plain string', () => {
-        const config = { ...defaultConsoleConfig(), startupScript: 'x = 1' };
-        expect(serializeConsoleToml(config)).toContain('startup_script = "x = 1"');
+    it('emits a single-line script as a plain string', () => {
+        const config = { ...defaultConsoleConfig(), optionsBySessionType: { shell: { script: 'x = 1' } } };
+        expect(serializeConsoleToml(config)).toContain('script = "x = 1"');
     });
 
     it('emits runner and shortcut tables', () => {
@@ -282,12 +316,15 @@ describe('round-trip', () => {
     it('parse -> serialize -> parse is stable', () => {
         const original = {
             type: 'python',
-            executable: '',
-            pythonVersion: '3.13',
-            arguments: [],
-            dependencies: ['numpy'],
             workingDirectory: 'tools',
-            startupScript: 'import numpy as np\n%load_ext autoreload',
+            optionsBySessionType: {
+                python: {
+                    python_version: '3.13',
+                    dependencies: ['numpy'],
+                    script: 'import numpy as np\n%load_ext autoreload',
+                },
+                shell: { executable: 'pwsh' },
+            },
             environment: { A: '1', B: 'two words' },
             runners: [{ extensions: ['.py', '.ipy'], command: '%run "{resource}"' }],
             disabledBuiltInRunners: ['python'],
@@ -318,8 +355,7 @@ describe('round-trip', () => {
         const original = {
             ...defaultConsoleConfig(),
             workingDirectory: hostileValues[0],
-            executable: hostileValues[3],
-            arguments: hostileValues,
+            optionsBySessionType: { shell: { executable: hostileValues[3], arguments: hostileValues } },
             environment: { HOSTILE: hostileValues[4], 'ODD KEY#1': hostileValues[1] },
             runners: [{ extensions: ['.py'], command: hostileValues[4] }],
             shortcuts: [{ label: hostileValues[0], icon: 'bs-play-fill', text: hostileValues[1] }],

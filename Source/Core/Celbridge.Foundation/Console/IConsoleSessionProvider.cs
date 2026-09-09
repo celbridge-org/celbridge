@@ -40,37 +40,43 @@ public sealed record ConsoleRunner(
 /// <summary>
 /// The resolved configuration a provider builds a startup command from. WorkingDirectory is as written in
 /// the config and resolves against ProjectFolderPath, and the environment variables already carry the RPC
-/// port and session token. Fields a given type does not use are left at their defaults.
+/// port and session token. SessionTypeOptions is the document's table for the selected type, holding the keys
+/// that type declares in OptionKeys, so only the provider that owns them needs to know what they mean. The
+/// startup script comes from the same table but is read out of it here, because the host injects it for
+/// every type.
 /// </summary>
 public sealed record ConsoleSessionContext(
     ResourceKey ResourceKey,
     string TypeId,
-    string Executable,
-    IReadOnlyList<string> Arguments,
     string WorkingDirectory,
     IReadOnlyDictionary<string, string> Environment,
     string ProjectFolderPath,
-    IReadOnlyList<string>? Dependencies = null,
-    string? RuntimeVersion = null,
-    string? StartupScript = null);
+    string StartupScript,
+    IReadOnlyDictionary<string, object?> SessionTypeOptions);
 
 /// <summary>
-/// Builds the startup command for one console session type, keyed by TypeId (e.g. "shell"). Every console
-/// session runs the platform shell in the shared console environment; a session type only decides what
-/// command, if any, is injected into that shell once it is up.
+/// Everything the host knows about one console session type: the id a .console file names it by in
+/// [session] type, the keys it accepts in its own [session.&lt;type&gt;] table, and the runners it contributes.
+/// OptionKeys is what reports a key the type does not define, and lists only the keys the type itself owns:
+/// the ones every type accepts are the host's, not a type's. This is a value rather than a set of
+/// properties to interrogate a provider for, so the same description reaches the settings form whole.
+/// </summary>
+public sealed record ConsoleSessionType(
+    string TypeId,
+    IReadOnlyList<string> OptionKeys,
+    IReadOnlyList<ConsoleRunner> BuiltInRunners);
+
+/// <summary>
+/// Builds the startup command for one console session type. Every console session runs the platform shell
+/// in the shared console environment; a session type only decides what command, if any, is injected into
+/// that shell once it is up.
 /// </summary>
 public interface IConsoleSessionProvider
 {
     /// <summary>
-    /// The session-type key this provider handles, matched against a .console file's [session] type.
+    /// The session type this provider handles, matched to a .console file by its TypeId.
     /// </summary>
-    string TypeId { get; }
-
-    /// <summary>
-    /// The built-in runners this type contributes (file extensions plus a run-command template), or an
-    /// empty list if the type runs nothing by default.
-    /// </summary>
-    IReadOnlyList<ConsoleRunner> BuiltInRunners { get; }
+    ConsoleSessionType SessionType { get; }
 
     /// <summary>
     /// Builds the startup command for a session from its resolved config, or a failure if the config

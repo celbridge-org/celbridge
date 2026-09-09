@@ -120,10 +120,11 @@ public interface IConsoleSessionService
     void OnConnectionLost(int connectionId);
 
     /// <summary>
-    /// Returns the built-in runners each registered session type contributes, keyed by type id. A console's
-    /// own runners layer over these, so the settings form can show what its type already handles.
+    /// Returns every registered session type, in registration order, which is the order the settings form
+    /// offers them in. The host is authoritative for which types exist: a client offering a type nothing is
+    /// registered for would write a document that cannot launch.
     /// </summary>
-    IReadOnlyDictionary<string, IReadOnlyList<ConsoleRunner>> GetBuiltInRunners();
+    IReadOnlyList<ConsoleSessionType> GetSessionTypes();
 
     /// <summary>
     /// Returns the sessions whose effective runners cover a file extension, as Run menu targets sorted by

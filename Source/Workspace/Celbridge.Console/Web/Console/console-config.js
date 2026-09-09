@@ -32,33 +32,37 @@ export function parseExtensionList(text) {
 }
 
 
-// A comparable view of the config for the "needs a reopen" check: the start payload with a stable env
+// A comparable view of the config for the "needs a reopen" check: the start payload with a stable key
 // order. Shortcuts are excluded because they are a live client-side toolbar, not a launch input. Every
 // other field applies on reopen.
 export function normalizeConfig(config) {
     const normalized = buildStartConfig(config);
-    const environment = {};
-    for (const name of Object.keys(normalized.environment).sort()) {
-        environment[name] = normalized.environment[name];
-    }
-    normalized.environment = environment;
+    normalized.environment = sortKeys(normalized.environment);
+    normalized.sessionTypeOptions = sortKeys(normalized.sessionTypeOptions);
     return normalized;
+}
+
+function sortKeys(table) {
+    const sorted = {};
+    for (const name of Object.keys(table).sort()) {
+        sorted[name] = table[name];
+    }
+    return sorted;
 }
 
 export function configsEqual(a, b) {
     return JSON.stringify(normalizeConfig(a)) === JSON.stringify(normalizeConfig(b));
 }
 
-// The comparable launch-relevant view of a config, shared by the divergence check.
+// The comparable launch-relevant view of a config, shared by the divergence check. Only the selected type's
+// table is carried: editing the table of a type the console is not running changes nothing about it.
 export function buildStartConfig(config) {
+    const type = config.type || 'shell';
+
     return {
-        type: config.type || 'shell',
-        executable: config.executable || '',
-        pythonVersion: config.pythonVersion || '',
-        arguments: config.arguments || [],
-        dependencies: config.dependencies || [],
+        type,
         workingDirectory: config.workingDirectory || '',
-        startupScript: config.startupScript || '',
+        sessionTypeOptions: (config.optionsBySessionType || {})[type] || {},
         environment: config.environment || {},
         runners: (config.runners || []).map((runner) => ({
             extensions: runner.extensions || [],

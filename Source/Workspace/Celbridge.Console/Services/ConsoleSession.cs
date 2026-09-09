@@ -30,6 +30,9 @@ internal sealed class ConsoleSession : IDisposable
     private readonly ILogger<ConsoleSession> _logger;
     private readonly ConsoleOutputBuffer _outputBuffer = new();
 
+    // The registered session types, collected and checked once by the session service.
+    private readonly IReadOnlyList<ConsoleSessionType> _sessionTypes;
+
     // The size a view reports for this session, which the launch waits on before it creates the pty.
     private readonly PendingViewSize _pendingViewSize = new();
 
@@ -55,11 +58,13 @@ internal sealed class ConsoleSession : IDisposable
     public ConsoleSession(
         IServiceProvider serviceProvider,
         IWorkspaceWrapper workspaceWrapper,
-        ResourceKey resource)
+        ResourceKey resource,
+        IReadOnlyList<ConsoleSessionType> sessionTypes)
     {
         _serviceProvider = serviceProvider;
         _workspaceWrapper = workspaceWrapper;
         Resource = resource;
+        _sessionTypes = sessionTypes;
         _logger = serviceProvider.GetRequiredService<ILogger<ConsoleSession>>();
     }
 
@@ -152,7 +157,7 @@ internal sealed class ConsoleSession : IDisposable
         }
         var tomlText = readResult.Value;
 
-        var parseResult = ConsoleDocumentConfigParser.Parse(tomlText);
+        var parseResult = ConsoleDocumentConfigParser.Parse(tomlText, _sessionTypes);
         if (parseResult.IsFailure)
         {
             Fail(parseResult.FirstErrorMessage);
@@ -167,10 +172,10 @@ internal sealed class ConsoleSession : IDisposable
                 $"Console document declares keys the host does not define ({string.Join(", ", config.UnknownFields)}): {Resource}");
         }
 
-        var provider = ResolveProvider(config.Type);
+        var provider = ResolveProvider(config.SessionType);
         if (provider is null)
         {
-            Fail($"Unknown console session type '{config.Type}'.");
+            Fail($"Unknown console session type '{config.SessionType}'.");
             return;
         }
 
@@ -178,8 +183,11 @@ internal sealed class ConsoleSession : IDisposable
         // targetable before any view attaches. A fresh token per launch stops a stale client from a
         // previous launch binding to this one.
         SessionId = Guid.NewGuid();
-        TypeId = config.Type;
-        Runners = ConsoleRunTargets.ResolveEffectiveRunners(config.Runners, provider.BuiltInRunners, config.DisabledBuiltInRunners);
+        TypeId = config.SessionType;
+        Runners = ConsoleRunTargets.ResolveEffectiveRunners(
+            config.Runners,
+            provider.SessionType.BuiltInRunners,
+            config.DisabledBuiltInRunners);
         Triggers = ResolveTriggers(config);
         ConnectionId = null;
         HasConnected = false;
@@ -194,15 +202,12 @@ internal sealed class ConsoleSession : IDisposable
 
         var sessionContext = new ConsoleSessionContext(
             Resource,
-            config.Type,
-            config.Executable,
-            config.Arguments,
+            config.SessionType,
             config.WorkingDirectory,
             environment,
             projectFolderPath,
-            config.Dependencies,
-            config.PythonVersion,
-            config.StartupScript);
+            config.StartupScript,
+            config.SessionTypeOptions);
 
         // A provider throw (e.g. file IO while resolving a Python launch) must surface as a failed
         // session, not an unhandled exception on the open path.
@@ -737,7 +742,7 @@ internal sealed class ConsoleSession : IDisposable
     {
         foreach (var candidate in _serviceProvider.GetServices<IConsoleSessionProvider>())
         {
-            if (candidate.TypeId == typeId)
+            if (candidate.SessionType.TypeId == typeId)
             {
                 return candidate;
             }
