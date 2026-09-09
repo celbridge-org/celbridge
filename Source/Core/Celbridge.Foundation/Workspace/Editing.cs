@@ -60,7 +60,8 @@ public record EditAvailability(
     bool CanUndo,
     bool CanRedo,
     bool CanIndent,
-    bool HostMediatedClipboard = false)
+    bool HostMediatedClipboard = false,
+    bool CanHandleTab = false)
 {
     /// <summary>
     /// The default for an editor that has reported nothing yet: nothing is allowed.

@@ -1287,8 +1287,15 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             return true;
         }
 
-        // Other editors handle Tab their own way (the spreadsheet moves the active cell). Editors that do
-        // not act on it ignore the notification, and the key is still swallowed so focus stays in the document.
+        // Other editors handle Tab their own way (the spreadsheet moves the active cell), but only while
+        // the keyboard is on the part of the page that does so. Declining hands the key back to the
+        // registry, which delivers it to the page natively, so a form field inside the surface moves focus
+        // to the next field instead of the surface acting on it.
+        if (!_editAvailability.CanHandleTab)
+        {
+            return false;
+        }
+
         _ = Host?.NotifyTabKeyAsync(shift);
 
         return true;
@@ -1387,7 +1394,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         bool canUndo,
         bool canRedo,
         bool canIndent = false,
-        bool hostMediatedClipboard = false)
+        bool hostMediatedClipboard = false,
+        bool canHandleTab = false)
     {
         _editAvailability = new EditAvailability(
             canCopy,
@@ -1397,7 +1405,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             canUndo,
             canRedo,
             canIndent,
-            hostMediatedClipboard);
+            hostMediatedClipboard,
+            canHandleTab);
     }
 
     private void OnHostChannelRebound(object? sender, EventArgs e)

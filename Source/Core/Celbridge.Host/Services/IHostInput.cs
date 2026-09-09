@@ -62,7 +62,8 @@ public interface IHostInput
         bool canUndo,
         bool canRedo,
         bool canIndent = false,
-        bool hostMediatedClipboard = false)
+        bool hostMediatedClipboard = false,
+        bool canHandleTab = false)
     { }
 
     /// <summary>

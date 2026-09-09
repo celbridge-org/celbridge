@@ -55,6 +55,9 @@ export class InputAPI {
      * @param {boolean} [availability.canRedo]
      * @param {boolean} [availability.canIndent] - Whether the editor indents on Tab, so the host keeps Tab
      *   inside the editor instead of letting it move focus.
+     * @param {boolean} [availability.canHandleTab] - Whether Tab is the editor's to act on, so the host
+     *   sends it over the bridge. Leave this false and Tab goes to the page natively, moving between the
+     *   surface's own form fields.
      * @param {boolean} [availability.hostMediatedClipboard] - Whether the host performs this editor's cut,
      *   copy, and paste, exchanging plain text over `editor/getSelectedText` and `editor/insertText`. Leave
      *   this false to keep the platform's own clipboard, which a rich text editor needs to preserve its
@@ -69,7 +72,8 @@ export class InputAPI {
             canUndo: availability.canUndo === true,
             canRedo: availability.canRedo === true,
             canIndent: availability.canIndent === true,
-            hostMediatedClipboard: availability.hostMediatedClipboard === true
+            hostMediatedClipboard: availability.hostMediatedClipboard === true,
+            canHandleTab: availability.canHandleTab === true
         });
     }
 
