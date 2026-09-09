@@ -333,6 +333,19 @@ describe('serializeConsoleToml', () => {
 });
 
 describe('round-trip', () => {
+    it('round-trips a script holding the block delimiter', () => {
+        // The literal block cannot carry ''' so the value falls back to an escaped basic string, which has
+        // to escape its line breaks: a raw newline inside one is not valid TOML on either parser.
+        const script = "echo a\n'''\necho b";
+        const config = defaultConsoleConfig();
+        config.optionsBySessionType = { shell: { script } };
+
+        const toml = serializeConsoleToml(config);
+
+        expect(toml).toContain('script = "echo a\\n\'\'\'\\necho b"');
+        expect(parse(toml).optionsBySessionType.shell.script).toBe(script);
+    });
+
     it('parse -> serialize -> parse is stable', () => {
         const original = {
             type: 'python',

@@ -271,7 +271,7 @@ public static class ConsoleDocumentConfigParser
     }
 
     // The session bag holds each type's own table alongside anything the document declares that nothing
-    // defines. A table named for a registered type has its keys checked against that type; every other
+    // defines. A table named for a registered type has its keys checked against that type. Every other
     // entry is unknown, which covers both a stray key and a table named for a type that is not registered.
     private static void AddUnknownSessionKeys(
         Dictionary<string, object?> extensionKeys,

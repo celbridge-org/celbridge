@@ -357,16 +357,26 @@ function parseScalar(rawValue) {
     return rawValue;
 }
 
+// The basic-string escapes this format uses, which are the ones quote() emits plus the tab a hand-written
+// file may carry.
+const BASIC_STRING_ESCAPES = {
+    '"': '"',
+    '\\': '\\',
+    n: '\n',
+    r: '\r',
+    t: '\t',
+};
+
 // Unescapes a double-quoted string body in one pass, so an unescaped backslash never pairs with the
-// character an earlier escape produced. Escapes other than \" and \\ pass through verbatim.
+// character an earlier escape produced. An escape outside the table passes through verbatim.
 function unescapeBasicString(inner) {
     let result = '';
     for (let index = 0; index < inner.length; index++) {
         const character = inner[index];
         if (character === '\\' && index + 1 < inner.length) {
-            const next = inner[index + 1];
-            if (next === '"' || next === '\\') {
-                result += next;
+            const escaped = BASIC_STRING_ESCAPES[inner[index + 1]];
+            if (escaped !== undefined) {
+                result += escaped;
                 index++;
                 continue;
             }
@@ -437,8 +447,15 @@ function quoteScript(value) {
     return quote(text);
 }
 
+// A basic string cannot hold a raw newline, so line breaks are escaped rather than emitted. This is what
+// carries a multi-line value that the literal block cannot take, such as a script containing the block
+// delimiter itself.
 function quote(value) {
-    const escaped = String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    const escaped = String(value)
+        .replace(/\\/g, '\\\\')
+        .replace(/"/g, '\\"')
+        .replace(/\r/g, '\\r')
+        .replace(/\n/g, '\\n');
     return `"${escaped}"`;
 }
 

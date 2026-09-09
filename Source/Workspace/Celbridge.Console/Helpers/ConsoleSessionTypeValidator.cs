@@ -11,13 +11,15 @@ namespace Celbridge.Console.Helpers;
 public static class ConsoleSessionTypeValidator
 {
     // Lowercase, starting with a letter, hyphens allowed. A dot would nest the table ([session.a.b]) and a
-    // character outside this set would not be a bare TOML key at all.
-    private static readonly Regex TypeIdRegex = new("^[a-z][a-z0-9-]*$", RegexOptions.Compiled);
+    // character outside this set would not be a bare TOML key at all. The end anchor is \z rather than $,
+    // which would also match before a trailing newline and admit an id no table header can spell.
+    private static readonly Regex TypeIdRegex = new(@"^[a-z][a-z0-9-]*\z", RegexOptions.Compiled);
 
     /// <summary>
     /// The names the [session] table already defines, which a type id therefore cannot take. The scalar keys
-    /// are here too, because a table sharing a name with one of them is a duplicate key rather than a type's
-    /// table.
+    /// sit here alongside the tables, because a table sharing a name with one of them is a duplicate key
+    /// rather than a type's table. The two names holding an underscore cannot be reached while the id rule
+    /// forbids one, and are listed so this stays a complete statement of what the format defines.
     /// </summary>
     private static readonly IReadOnlySet<string> ReservedNames = new HashSet<string>(StringComparer.Ordinal)
     {

@@ -68,7 +68,7 @@ public sealed record ConsoleSessionType(
 
 /// <summary>
 /// Builds the startup command for one console session type. Every console session runs the platform shell
-/// in the shared console environment; a session type only decides what command, if any, is injected into
+/// in the shared console environment. A session type only decides what command, if any, is injected into
 /// that shell once it is up.
 /// </summary>
 public interface IConsoleSessionProvider

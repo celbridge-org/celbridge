@@ -159,8 +159,6 @@ let sessionStartFailed = false;
 // What the terminal's failure overlay is saying, so the settings surface can say it too while the
 // terminal is the hidden half of the row.
 let sessionFailedText = '';
-// The runners each session type provides, keyed by type id, as the host reports them on attach. Empty until
-// then, so the built-in list simply renders nothing on the first populate.
 // The registered session types, in the order the form offers them, each carrying the keys it accepts and
 // the runners it contributes. Null until an attach reports them.
 let hostSessionTypes = null;
@@ -403,7 +401,7 @@ function applyType(type) {
 
     // These controls arrive after the switcher's blanket read-only pass, so each takes the document's state
     // and its dirty-marking listener as it is bound.
-    const readOnly = !isDocumentWritable();
+    const readOnly = !isFormEditable();
     for (const field of typeFields) {
         field.input.disabled = readOnly;
         field.input.addEventListener('input', onFormInput);
@@ -458,6 +456,25 @@ function isUnknownSessionType() {
     return !clientTypeIds.includes(currentConfig.type || 'shell');
 }
 
+// A stored option value as its control shows it. A value is typed by the TOML it was written as, not by the
+// field, so one of the wrong shape shows blank: that is what the host reads it as, and the form would
+// otherwise promise a setting the session does not launch with.
+function fieldText(value, kind) {
+    if (kind === 'lines') {
+        if (!Array.isArray(value)) {
+            return '';
+        }
+
+        return value.filter((entry) => typeof entry === 'string' && entry.trim() !== '').join('\n');
+    }
+
+    if (typeof value !== 'string') {
+        return '';
+    }
+
+    return value;
+}
+
 function populateForm(config) {
     const type = config.type || 'shell';
     const options = (config.optionsBySessionType || {})[type] || {};
@@ -470,11 +487,7 @@ function populateForm(config) {
     applyType(type);
 
     for (const field of typeFields) {
-        if (field.kind === 'lines') {
-            field.input.value = (options[field.key] || []).join('\n');
-        } else {
-            field.input.value = options[field.key] || '';
-        }
+        field.input.value = fieldText(options[field.key], field.kind);
     }
 
     workingDirectoryInput.value = config.workingDirectory || '';
@@ -511,7 +524,7 @@ function renderBuiltInRunners() {
 
         const toggle = card.querySelector('.built-in-switch');
         toggle.setAttribute('aria-checked', String(!isOff));
-        toggle.disabled = !isDocumentWritable();
+        toggle.disabled = !isFormEditable();
 
         // The switch sits inside the summary, whose default action would otherwise toggle the card open.
         toggle.addEventListener('click', (event) => {
@@ -536,7 +549,9 @@ function setBuiltInRunnerDisabled(id, disabled) {
 }
 
 function readForm() {
-    const type = sessionTypeSelect.value || 'shell';
+    // The config's own type stands in when the control holds no selection, which is what a type the host
+    // does not offer leaves behind. Reading 'shell' off a blank control would retype the console silently.
+    const type = sessionTypeSelect.value || currentConfig.type || 'shell';
 
     // Every type's table is carried forward and only the selected type's is rewritten, so switching type
     // does not discard the settings of the type left behind. An empty field writes no key, matching what
@@ -592,7 +607,7 @@ const runnerCards = createCardList({
     focusSelector: '.runner-extensions',
     localize: applyLocalization,
     onChanged: () => onFormInput(),
-    isWritable: isDocumentWritable,
+    isWritable: isFormEditable,
 
     fillCard(card, runner) {
         card.querySelector('.runner-extensions').value = (runner.extensions || []).join(', ');
@@ -625,7 +640,7 @@ const triggerCards = createCardList({
     focusSelector: '.trigger-pattern',
     localize: applyLocalization,
     onChanged: () => onFormInput(),
-    isWritable: isDocumentWritable,
+    isWritable: isFormEditable,
 
     fillCard(card, trigger) {
         card.querySelector('.trigger-pattern').value = trigger.pattern || '';
@@ -659,7 +674,7 @@ const shortcutCards = createCardList({
     focusSelector: '.shortcut-label',
     localize: applyLocalization,
     onChanged: () => onFormInput(),
-    isWritable: isDocumentWritable,
+    isWritable: isFormEditable,
 
     fillCard(card, shortcut) {
         card.querySelector('.shortcut-label').value = shortcut.label || '';
@@ -770,12 +785,19 @@ function isDocumentWritable() {
     return writable === undefined || writable === 'Writable';
 }
 
+// Whether an edit is allowed to reach the document. A type this client has no fields for is read-only too,
+// because a save built from controls that never showed the type's settings would drop them. Every control
+// asks this rather than isDocumentWritable, so the card lists cannot re-enable what the blanket pass below
+// disabled.
+function isFormEditable() {
+    return isDocumentWritable() && !isUnknownSessionType();
+}
+
 // A read-only document disables the settings form so no edit marks the document dirty. The switcher's
 // blanket pass over the sections runs first, so the card lists below decide the final state of the controls
 // they own.
 function applyWritableState() {
-    const writable = isDocumentWritable() && !isUnknownSessionType();
-    settingsSwitcher.setReadOnly(!writable);
+    settingsSwitcher.setReadOnly(!isFormEditable());
 
     runnerCards.refreshState();
     triggerCards.refreshState();

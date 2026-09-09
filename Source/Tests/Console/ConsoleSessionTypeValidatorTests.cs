@@ -58,10 +58,10 @@ public class ConsoleSessionTypeValidatorTests
         result.FirstErrorMessage.Should().Contain("not a valid type id");
     }
 
-    // Each of these is already a key or table under [session], so a type's table would be read as it.
+    // Each of these is already a key or table under [session], so a type's table would be read as it. These
+    // are the reserved names an id could otherwise spell. The two holding an underscore are reserved too but
+    // fail the id rule first, so they cannot reach the message this asserts.
     [TestCase("type")]
-    [TestCase("working_directory")]
-    [TestCase("disabled_runners")]
     [TestCase("environment")]
     [TestCase("runner")]
     [TestCase("trigger")]
@@ -71,7 +71,7 @@ public class ConsoleSessionTypeValidatorTests
         var result = Validate(typeId);
 
         result.IsFailure.Should().BeTrue();
-        result.FirstErrorMessage.Should().Contain(typeId);
+        result.FirstErrorMessage.Should().Contain($"'{typeId}' takes a name the [session] table already defines");
     }
 
     [Test]
