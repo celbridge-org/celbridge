@@ -67,6 +67,7 @@ public static class ServiceConfiguration
         services.AddTransient<ISpotlightCommand, SpotlightCommand>();
         services.AddTransient<IShowLogsCommand, ShowLogsCommand>();
         services.AddTransient<IOpenBrowserCommand, OpenBrowserCommand>();
+        services.AddTransient<ISimulateInputCommand, SimulateInputCommand>();
 
         //
         // Register view models

@@ -4,7 +4,7 @@ Schedules an automated answer for the next modal dialog of the named kind, so a 
 
 The dialog actually displays briefly before auto-closing. This is by design: an integration test exercises the real end-to-end UI flow, screenshots are useful, and the audit trail matches what a real user would have done.
 
-**Debug-only.** The tool is wrapped in `#if DEBUG`, so it does not exist in release builds — `tools/list` does not advertise it and `app_call` returns "denied". Inside debug builds it is also gated by the `answer-dialog` user-level feature flag.
+**Gated by the `answer-dialog` user-level feature flag.** The tool is present in every build and advertised by `tools/list`; with the flag off it refuses the call. Turn the flag on in Project Settings for the project you are automating.
 
 ## When to call it
 
