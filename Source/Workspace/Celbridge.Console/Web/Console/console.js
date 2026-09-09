@@ -17,6 +17,8 @@ import {
     parseExtensionList,
     configsEqual,
 } from './console-config.js';
+import shellType from './types/shell.js';
+import pythonType from './types/python.js';
 
 const client = celbridge;
 
@@ -137,13 +139,7 @@ const typeNavIcon = document.getElementById('type-nav-icon');
 const typeNavLabel = document.getElementById('type-nav-label');
 const typeSectionTitle = document.getElementById('type-section-title');
 const typeSectionDescription = document.getElementById('type-section-description');
-const typeFieldGroups = Array.from(document.querySelectorAll('.type-fields'));
-const executableInput = document.getElementById('executable');
-const argumentsInput = document.getElementById('arguments');
-const shellScriptInput = document.getElementById('shell-script');
-const pythonVersionInput = document.getElementById('python-version');
-const dependenciesInput = document.getElementById('dependencies');
-const pythonScriptInput = document.getElementById('python-script');
+const typeFieldsElement = document.getElementById('type-fields');
 const workingDirectoryInput = document.getElementById('working-directory');
 const environmentInput = document.getElementById('environment');
 const closeSettingsButton = document.getElementById('close-settings');
@@ -367,34 +363,50 @@ document.addEventListener('keydown', (event) => {
     }
 });
 
-// The icon each session type shows on its rail row. The strings come from the localization file, keyed by
-// type id, so a type contributes its whole rail presence from here plus Console_Type_<Id> and
-// Console_Desc_<Id>.
-const typeIcons = {
-    shell: 'bi-terminal',
-    python: 'bi-filetype-py',
-};
+// The session types this client can edit, in the order the Type control offers them. A type is one module
+// under types/, carrying the icon its rail row shows and the fields the form edits it through, so a type
+// adds those from one file plus its Console_Type_<Id> and Console_Desc_<Id> strings.
+const typeModules = new Map([shellType, pythonType].map((typeModule) => [typeModule.typeId, typeModule]));
 
-// The types this client can edit, in the order their groups are authored. A type needs a group here to be
-// offered: without one there would be no fields to set.
-const clientTypeIds = typeFieldGroups.map((group) => group.dataset.type);
+// A type needs a module to be offered: without one there would be no fields to set.
+const clientTypeIds = Array.from(typeModules.keys());
+
+// The selected type's fields, resolved from the markup applyType injected. Each entry pairs a control with
+// the key it holds in the type's [session.<type>] table.
+let typeFields = [];
 
 // The type section is one slot the selected type fills, not a section per type. Keeping its id stable is
 // what lets the switcher attach once, the restored active section survive a type change, and the selection
 // stay put while the label, icon, heading and fields swap underneath.
 function applyType(type) {
     const label = typeLabel(type);
+    const typeModule = typeModules.get(type) || null;
 
     typeNavLabel.textContent = label;
     typeNavItem.title = label;
     typeNavItem.setAttribute('aria-label', label);
-    typeNavIcon.className = `bi ${typeIcons[type] || 'bi-terminal'}`;
+    typeNavIcon.className = `bi ${typeModule?.icon || 'bi-terminal'}`;
 
     typeSectionTitle.textContent = label;
     typeSectionDescription.textContent = localizedTypeString('Console_Desc_', type, '');
 
-    for (const group of typeFieldGroups) {
-        group.classList.toggle('hidden', group.dataset.type !== type);
+    // Replaced rather than updated, so the controls start blank instead of holding what the config before
+    // this one put in them. A type with no module injects nothing, leaving the section as the Type control
+    // under the notice naming the type this client cannot edit.
+    typeFieldsElement.innerHTML = typeModule ? typeModule.markup : '';
+    applyLocalization(typeFieldsElement);
+
+    typeFields = (typeModule?.fields || []).map((field) => ({
+        ...field,
+        input: typeFieldsElement.querySelector(`#${field.id}`),
+    }));
+
+    // These controls arrive after the switcher's blanket read-only pass, so each takes the document's state
+    // and its dirty-marking listener as it is bound.
+    const readOnly = !isDocumentWritable();
+    for (const field of typeFields) {
+        field.input.disabled = readOnly;
+        field.input.addEventListener('input', onFormInput);
     }
 }
 
@@ -446,23 +458,6 @@ function isUnknownSessionType() {
     return !clientTypeIds.includes(currentConfig.type || 'shell');
 }
 
-// The fields each session type owns, naming the key each one holds in the type's [session.<type>] table.
-// A type reads and writes only the fields listed for it, so the table of the type left behind by a switch
-// is never rewritten from another type's controls. Every type has a script, but each keeps its own control
-// and its own value: a shell script and a REPL script are not interchangeable.
-const typeFields = {
-    shell: [
-        { input: executableInput, key: 'executable', kind: 'text' },
-        { input: argumentsInput, key: 'arguments', kind: 'lines' },
-        { input: shellScriptInput, key: 'script', kind: 'script' },
-    ],
-    python: [
-        { input: pythonVersionInput, key: 'python_version', kind: 'text' },
-        { input: dependenciesInput, key: 'dependencies', kind: 'lines' },
-        { input: pythonScriptInput, key: 'script', kind: 'script' },
-    ],
-};
-
 function populateForm(config) {
     const type = config.type || 'shell';
     const options = (config.optionsBySessionType || {})[type] || {};
@@ -474,14 +469,7 @@ function populateForm(config) {
     sessionTypeSelect.value = type;
     applyType(type);
 
-    // Cleared first, so a control keeps nothing from the config it showed before this one.
-    for (const fields of Object.values(typeFields)) {
-        for (const field of fields) {
-            field.input.value = '';
-        }
-    }
-
-    for (const field of typeFields[type] || []) {
+    for (const field of typeFields) {
         if (field.kind === 'lines') {
             field.input.value = (options[field.key] || []).join('\n');
         } else {
@@ -555,7 +543,7 @@ function readForm() {
     // parsing a file that omits it gives, which is what keeps the divergence check honest.
     const optionsBySessionType = { ...(currentConfig.optionsBySessionType || {}) };
     const options = {};
-    for (const field of typeFields[type] || []) {
+    for (const field of typeFields) {
         if (field.kind === 'lines') {
             const values = splitLines(field.input.value);
             if (values.length > 0) {
@@ -763,22 +751,15 @@ sessionTypeSelect.addEventListener('change', () => {
     onFormInput();
 });
 
+// The controls every type shares. A type's own controls are bound as its markup is injected, since they
+// exist only while that type is selected.
 const formFields = [
-    sessionTypeSelect,
-    executableInput,
-    argumentsInput,
-    shellScriptInput,
-    pythonVersionInput,
-    dependenciesInput,
     workingDirectoryInput,
     environmentInput,
-    pythonScriptInput,
 ];
 
 for (const field of formFields) {
-    if (field !== sessionTypeSelect) {
-        field.addEventListener('input', onFormInput);
-    }
+    field.addEventListener('input', onFormInput);
 }
 
 // The host mirrors the writable state as its enum name, so Writable is the only editable value. A view

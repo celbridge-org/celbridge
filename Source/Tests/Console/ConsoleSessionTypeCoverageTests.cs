@@ -1,35 +1,34 @@
 using System.Text.RegularExpressions;
+using Celbridge.Console;
+using Celbridge.Console.Services;
 
 namespace Celbridge.Tests.Console;
 
 /// <summary>
-/// The console settings form offers the session types the host reports as registered, but it can only edit
-/// one it has authored fields for, so a type registered with no group in index.html never reaches the Type
-/// dropdown. These tests pin the two sides together, so adding a session type provider without its fields
-/// fails here rather than showing up as a type the user cannot select.
+/// A session type is defined in two halves: a provider the host registers, and a module under
+/// Web/Console/types/ holding the fields the settings form edits it through. The form offers only a type it
+/// has a module for, so a type registered without one never reaches the Type dropdown. These tests pin the
+/// two halves together, reading the registered types from the providers themselves, so adding a session
+/// type provider without its module fails here rather than showing up as a type the user cannot select.
 /// </summary>
 [TestFixture]
 public class ConsoleSessionTypeCoverageTests
 {
-    // The built-in session types, as their providers declare TypeId.
-    private static readonly string[] RegisteredTypeIds = { "shell", "python" };
-
-    private static readonly Regex TypeGroupRegex =
-        new("class=\"type-fields[^\"]*\" data-type=\"([^\"]+)\"", RegexOptions.Compiled);
-
     private static readonly Regex SessionTypeOptionRegex =
-        new("<select id=\"session-type\">\\s*<option", RegexOptions.Compiled);
+        new(@"<select id=""session-type"">\s*<option", RegexOptions.Compiled);
 
     [Test]
     public void EveryRegisteredSessionType_HasFieldsInTheConsoleSettingsForm()
     {
-        var html = File.ReadAllText(FindConsoleIndexHtml());
+        var typesFolderPath = Path.Combine(Path.GetDirectoryName(FindConsoleIndexHtml())!, "types");
+        Directory.Exists(typesFolderPath).Should().BeTrue("the console type modules should be copied to the test output");
 
-        var groupTypeIds = TypeGroupRegex.Matches(html)
-            .Select(match => match.Groups[1].Value)
+        var moduleTypeIds = Directory
+            .GetFiles(typesFolderPath, "*.js")
+            .Select(path => Path.GetFileNameWithoutExtension(path)!)
             .ToArray();
 
-        groupTypeIds.Should().BeEquivalentTo(RegisteredTypeIds);
+        moduleTypeIds.Should().BeEquivalentTo(RegisteredTypeIds());
     }
 
     [Test]
@@ -41,6 +40,33 @@ public class ConsoleSessionTypeCoverageTests
 
         SessionTypeOptionRegex.IsMatch(html).Should().BeFalse(
             "the Type options are built from the host's registered types, not authored in the markup");
+    }
+
+    // The session types the console registers, read from the providers rather than listed here: a list
+    // would be the thing adding a type has to remember to update, which is what this test exists to catch.
+    private static IReadOnlyList<string> RegisteredTypeIds()
+    {
+        var providerTypes = typeof(ShellSessionProvider).Assembly
+            .GetTypes()
+            .Where(type => type.IsClass && !type.IsAbstract)
+            .Where(type => typeof(IConsoleSessionProvider).IsAssignableFrom(type));
+
+        return providerTypes
+            .Select(CreateProvider)
+            .Select(provider => provider.SessionType.TypeId)
+            .ToList();
+    }
+
+    // A provider reports its session type from instance state, so it has to be built to be asked. Nothing
+    // it is constructed with takes part in that, so a substitute stands in for each constructor parameter.
+    private static IConsoleSessionProvider CreateProvider(Type providerType)
+    {
+        var constructor = providerType.GetConstructors().Single();
+        var arguments = constructor.GetParameters()
+            .Select(parameter => Substitute.For(new[] { parameter.ParameterType }, Array.Empty<object>()))
+            .ToArray();
+
+        return (IConsoleSessionProvider)constructor.Invoke(arguments);
     }
 
     private static string FindConsoleIndexHtml()

@@ -1,8 +1,9 @@
-using Celbridge.Console;
 using Celbridge.Logging;
+using Celbridge.Python;
+using Celbridge.Python.Services;
 using Celbridge.Utilities;
 
-namespace Celbridge.Python.Services;
+namespace Celbridge.Console.Services;
 
 /// <summary>
 /// The python session type: injects a celbridge-py command into the session's shell, starting an IPython

@@ -1,9 +1,9 @@
 using Celbridge.Console;
-using Celbridge.Logging;
+using Celbridge.Console.Services;
 using Celbridge.Python;
 using Celbridge.Python.Services;
 
-namespace Celbridge.Tests.Python;
+namespace Celbridge.Tests.Console;
 
 [TestFixture]
 public class PythonSessionProviderTests

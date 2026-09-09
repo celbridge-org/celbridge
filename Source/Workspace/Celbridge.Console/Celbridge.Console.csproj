@@ -41,6 +41,7 @@
     <ProjectReference Include="..\..\Core\Celbridge.UserInterface\Celbridge.UserInterface.csproj" />
     <ProjectReference Include="..\..\Core\Celbridge.Utilities\Celbridge.Utilities.csproj" />
     <ProjectReference Include="..\..\Core\Celbridge.WebHost\Celbridge.WebHost.csproj" />
+    <ProjectReference Include="..\Celbridge.Python\Celbridge.Python.csproj" />
   </ItemGroup>
 
 </Project>

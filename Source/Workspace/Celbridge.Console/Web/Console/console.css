@@ -181,12 +181,6 @@ html, body {
     margin-bottom: 0;
 }
 
-/* The fields one session type owns. Only the selected type's group shows, so the section reads as that
-   type's own settings rather than as a list with the inapplicable rows removed. */
-.type-fields.hidden {
-    display: none;
-}
-
 /* Positions the close below, so it lands in the same corner in both of the switcher's layouts. */
 #settings-switcher .cel-section-area {
     position: relative;

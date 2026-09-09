@@ -16,7 +16,7 @@
     "Console_SessionEnded": "The console session ended.",
     "Console_StartFailed": "Failed to start the console session.",
     "Console_InvalidConfig": "Invalid .console configuration.",
-    "Console_UnknownType": "This console uses the session type \"{0}\", which this editor cannot edit. The settings are read-only so they are not overwritten.",
+    "Console_UnknownType": "This console has the type \"{0}\", which this editor cannot edit. The settings are read-only so they are not overwritten.",
 
     "Console_Group_Session": "Session",
     "Console_Group_Shortcuts": "Shortcuts",
@@ -31,7 +31,7 @@
     "Console_Desc_Shell": "Run a command in the platform shell, and choose what runs once it is up.",
     "Console_Desc_Python": "Choose the interpreter and packages, and what runs once the REPL is up.",
 
-    "Console_Field_Type": "Type",
+    "Console_Field_Type": "Console Type",
     "Console_Field_Executable": "Executable",
     "Console_Field_PythonVersion": "Python Version",
     "Console_Field_Arguments": "Arguments",
@@ -78,6 +78,7 @@
     "Console_Placeholder_ShortcutLabel": "Shown as the button tooltip",
     "Console_Placeholder_ShortcutText": "Text typed into the console",
 
+    "Console_Hint_Type": "Changes the type of console. Each type keeps its own settings, so switching back restores them.",
     "Console_Hint_Executable": "Quoted for the platform shell, so a path with spaces works everywhere. Blank leaves just the shell.",
     "Console_Hint_PythonVersion": "Blank uses the default. Examples: 3.13, >=3.12",
     "Console_Hint_Arguments": "Passed to the executable, one per line. Example: --watch",

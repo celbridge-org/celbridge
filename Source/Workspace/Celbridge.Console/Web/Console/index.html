@@ -113,56 +113,23 @@
 
                         <div class="cel-section-content">
 
-                            <!-- The type and the fields that type owns. Each type's group is authored here
-                                 rather than described by the host: a type's fields want their own controls,
-                                 and the group is what the type's [session.<type>] table is written from. -->
+                            <!-- The type and the fields that type owns. A type's fields come from its own
+                                 module rather than from the host: they want their own controls, and they
+                                 are what the type's [session.<type>] table is written from. -->
                             <section class="settings-section" data-section="type">
                                 <label class="field">
                                     <span class="field-label" data-loc-key="Console_Field_Type"></span>
                                     <!-- Options are built from the types the host reports as registered, so
                                          the form cannot offer one that nothing would launch. -->
                                     <select id="session-type"></select>
+                                    <span class="field-hint" data-loc-key="Console_Hint_Type"></span>
                                 </label>
 
-                                <div class="type-fields" data-type="shell">
-                                    <label class="field">
-                                        <span class="field-label" data-loc-key="Console_Field_Executable"></span>
-                                        <input id="executable" type="text" spellcheck="false" data-loc-key="Console_Placeholder_Executable" data-loc-attr="placeholder">
-                                        <span class="field-hint" data-loc-key="Console_Hint_Executable"></span>
-                                    </label>
-
-                                    <label class="field">
-                                        <span class="field-label" data-loc-key="Console_Field_Arguments"></span>
-                                        <textarea id="arguments" rows="2" spellcheck="false" data-loc-key="Console_Placeholder_Arguments" data-loc-attr="placeholder"></textarea>
-                                        <span class="field-hint" data-loc-key="Console_Hint_Arguments"></span>
-                                    </label>
-
-                                    <label class="field">
-                                        <span class="field-label" data-loc-key="Console_Field_Script"></span>
-                                        <textarea id="shell-script" rows="3" spellcheck="false" data-loc-key="Console_Placeholder_Script" data-loc-attr="placeholder"></textarea>
-                                        <span class="field-hint" data-loc-key="Console_Hint_ShellScript"></span>
-                                    </label>
-                                </div>
-
-                                <div class="type-fields hidden" data-type="python">
-                                    <label class="field">
-                                        <span class="field-label" data-loc-key="Console_Field_PythonVersion"></span>
-                                        <input id="python-version" type="text" spellcheck="false" data-loc-key="Console_Placeholder_PythonVersion" data-loc-attr="placeholder">
-                                        <span class="field-hint" data-loc-key="Console_Hint_PythonVersion"></span>
-                                    </label>
-
-                                    <label class="field">
-                                        <span class="field-label" data-loc-key="Console_Field_Dependencies"></span>
-                                        <textarea id="dependencies" rows="3" spellcheck="false" data-loc-key="Console_Placeholder_Dependencies" data-loc-attr="placeholder"></textarea>
-                                        <span class="field-hint" data-loc-key="Console_Hint_Dependencies"></span>
-                                    </label>
-
-                                    <label class="field">
-                                        <span class="field-label" data-loc-key="Console_Field_Script"></span>
-                                        <textarea id="python-script" rows="3" spellcheck="false" data-loc-key="Console_Placeholder_Script" data-loc-attr="placeholder"></textarea>
-                                        <span class="field-hint" data-loc-key="Console_Hint_PythonScript"></span>
-                                    </label>
-                                </div>
+                                <!-- The selected type's fields, injected from its module under types/.
+                                     Only the selected type's controls are in the document, so the section
+                                     reads as that type's own settings rather than as a list with the
+                                     inapplicable rows removed. -->
+                                <div id="type-fields"></div>
                             </section>
 
                             <section class="settings-section" data-section="session" hidden>
