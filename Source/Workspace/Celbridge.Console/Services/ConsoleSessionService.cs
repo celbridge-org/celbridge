@@ -35,8 +35,9 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
     private readonly ConsoleProxyListener _proxyListener;
     private readonly ConsoleTriggerScheduler _triggerScheduler;
 
-    // Collected once: the registered providers are fixed for the process, and every session parses its
-    // document against the same set.
+    // Collected once: the registered providers are fixed for the process, and every session resolves its
+    // provider and parses its document against the same set.
+    private readonly IReadOnlyList<IConsoleSessionProvider> _sessionProviders;
     private readonly IReadOnlyList<ConsoleSessionType> _sessionTypes;
 
     private bool _disposed;
@@ -52,7 +53,8 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         _messengerService = messengerService;
         _logger = logger;
 
-        _sessionTypes = ResolveSessionTypes(serviceProvider);
+        _sessionProviders = ResolveSessionProviders(serviceProvider);
+        _sessionTypes = _sessionProviders.Select(provider => provider.SessionType).ToList();
 
         _triggerScheduler = new ConsoleTriggerScheduler(FireTrigger);
 
@@ -110,7 +112,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
 
             if (!_sessions.TryGetValue(resource, out var session))
             {
-                session = new ConsoleSession(_serviceProvider, _workspaceWrapper, resource, _sessionTypes);
+                session = new ConsoleSession(_serviceProvider, _workspaceWrapper, resource, _sessionProviders);
                 session.StateChanged += OnSessionStateChanged;
                 _sessions[resource] = session;
             }
@@ -317,13 +319,10 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
 
     // A session type whose id a .console file cannot name would have its table read as something else, so
     // the registered set is checked as the service is built rather than once a document depends on it.
-    private static IReadOnlyList<ConsoleSessionType> ResolveSessionTypes(IServiceProvider serviceProvider)
+    private static IReadOnlyList<IConsoleSessionProvider> ResolveSessionProviders(IServiceProvider serviceProvider)
     {
-        var sessionTypes = new List<ConsoleSessionType>();
-        foreach (var provider in serviceProvider.GetServices<IConsoleSessionProvider>())
-        {
-            sessionTypes.Add(provider.SessionType);
-        }
+        var sessionProviders = serviceProvider.GetServices<IConsoleSessionProvider>().ToList();
+        var sessionTypes = sessionProviders.Select(provider => provider.SessionType).ToList();
 
         var validateResult = ConsoleSessionTypeValidator.Validate(sessionTypes);
         if (validateResult.IsFailure)
@@ -331,7 +330,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
             throw new InvalidOperationException(validateResult.FirstErrorMessage);
         }
 
-        return sessionTypes;
+        return sessionProviders;
     }
 
     public IReadOnlyList<ConsoleRunTarget> GetRunTargets(string fileExtension)

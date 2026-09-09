@@ -20,6 +20,19 @@ public class ConsoleDocumentConfigParserTests
     }
 
     [Test]
+    public void Parse_ASessionTypeRegisteredTwice_FailsRatherThanThrowing()
+    {
+        // A duplicate id is a provider bug the session service catches first, but this method reports every
+        // other failure through its Result, so it reports this one too rather than throwing past the caller.
+        var duplicated = new[] { SessionTypes[0], SessionTypes[0] };
+
+        var result = ConsoleDocumentConfigParser.Parse("[session]\ntype = \"shell\"", duplicated);
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("registered more than once");
+    }
+
+    [Test]
     public void Parse_EmptyText_YieldsTheDefaultShellConfig()
     {
         var result = Parse(string.Empty);

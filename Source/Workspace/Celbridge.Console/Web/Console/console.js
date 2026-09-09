@@ -498,7 +498,6 @@ function populateForm(config) {
     runnerCards.populate(config.runners);
     triggerCards.populate(config.triggers);
     shortcutCards.populate(config.shortcuts);
-    renderBuiltInRunners();
     renderShortcutRail();
 }
 
@@ -763,6 +762,7 @@ function onFormInput() {
 // settings and switching back brings them into view again.
 sessionTypeSelect.addEventListener('change', () => {
     populateForm({ ...currentConfig, type: sessionTypeSelect.value });
+    applyWritableState();
     onFormInput();
 });
 
@@ -972,13 +972,12 @@ let requestInFlight = false;
 // terminal, and the state decides between the veil, the failed overlay, and a live prompt.
 function applyAttachResult(result) {
     // The registered session types are static host knowledge that rides along with the attach. The first
-    // attach lands after the form is populated, hence the re-render.
+    // attach lands after the form is populated, hence the re-render. applyWritableState renders the built-in
+    // runners, and the attention pass below covers both branches.
     if (result && Array.isArray(result.sessionTypes)) {
         hostSessionTypes = result.sessionTypes;
         renderSessionTypeOptions();
-        renderBuiltInRunners();
         applyWritableState();
-        updateAttention();
     }
 
     launchedConfig = null;

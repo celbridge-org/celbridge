@@ -30,7 +30,9 @@ internal sealed class ConsoleSession : IDisposable
     private readonly ILogger<ConsoleSession> _logger;
     private readonly ConsoleOutputBuffer _outputBuffer = new();
 
-    // The registered session types, collected and checked once by the session service.
+    // The registered providers, collected and checked once by the session service. The session types are
+    // projected from them, so the parser and the provider lookup read the one registration.
+    private readonly IReadOnlyList<IConsoleSessionProvider> _sessionProviders;
     private readonly IReadOnlyList<ConsoleSessionType> _sessionTypes;
 
     // The size a view reports for this session, which the launch waits on before it creates the pty.
@@ -59,12 +61,13 @@ internal sealed class ConsoleSession : IDisposable
         IServiceProvider serviceProvider,
         IWorkspaceWrapper workspaceWrapper,
         ResourceKey resource,
-        IReadOnlyList<ConsoleSessionType> sessionTypes)
+        IReadOnlyList<IConsoleSessionProvider> sessionProviders)
     {
         _serviceProvider = serviceProvider;
         _workspaceWrapper = workspaceWrapper;
         Resource = resource;
-        _sessionTypes = sessionTypes;
+        _sessionProviders = sessionProviders;
+        _sessionTypes = sessionProviders.Select(provider => provider.SessionType).ToList();
         _logger = serviceProvider.GetRequiredService<ILogger<ConsoleSession>>();
     }
 
@@ -740,7 +743,7 @@ internal sealed class ConsoleSession : IDisposable
 
     private IConsoleSessionProvider? ResolveProvider(string typeId)
     {
-        foreach (var candidate in _serviceProvider.GetServices<IConsoleSessionProvider>())
+        foreach (var candidate in _sessionProviders)
         {
             if (candidate.SessionType.TypeId == typeId)
             {

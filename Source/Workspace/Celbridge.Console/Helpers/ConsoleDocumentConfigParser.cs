@@ -97,10 +97,17 @@ public static class ConsoleDocumentConfigParser
 
         var session = document.Session;
         var sessionType = ReadText(session?.Type, DefaultSessionType);
-        var optionKeysBySessionType = sessionTypes.ToDictionary(
-            type => type.TypeId,
-            type => type.OptionKeys,
-            StringComparer.Ordinal);
+        // A duplicate id is a programming error in a provider, caught as the session service is built. It is
+        // reported rather than thrown here, so every way this method can fail reaches the caller alike.
+        var optionKeysBySessionType = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
+        foreach (var type in sessionTypes)
+        {
+            if (!optionKeysBySessionType.TryAdd(type.TypeId, type.OptionKeys))
+            {
+                return Result<ConsoleDocumentConfig>.Fail(
+                    $"Console session type '{type.TypeId}' is registered more than once.");
+            }
+        }
         var sessionTypeOptions = ReadSessionTypeOptions(session, sessionType, optionKeysBySessionType);
 
         var config = new ConsoleDocumentConfig(
