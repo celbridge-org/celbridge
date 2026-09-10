@@ -290,7 +290,7 @@ function initializeSpreadsheet() {
             + ', viewport ' + window.innerWidth + 'x' + window.innerHeight
             + ', readyState ' + document.readyState
             + ', stylesheets ' + document.styleSheets.length
-            + ', spreadjs ' + (GC?.Spread?.Sheets?.version ?? 'unknown')
+            + ', core symbols ' + (GC?.Spread?.Sheets ? Object.keys(GC.Spread.Sheets).length : 'no GC')
             + ', designer ' + typeof GC?.Spread?.Sheets?.Designer?.Designer + ')', e);
         return false;
     }
