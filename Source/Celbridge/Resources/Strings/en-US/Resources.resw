@@ -557,7 +557,7 @@ This file could not be saved</value>
     <value>File Explorer</value>
   </data>
   <data name="ResourceTree_OpenApplication" xml:space="preserve">
-    <value>Open with Application</value>
+    <value>Open in Application</value>
   </data>
   <data name="WebView_UrlBar_BackTooltip" xml:space="preserve">
     <value>Go Back</value>
@@ -855,14 +855,14 @@ Open with default application instead?</value>
   <data name="DocumentTab_UnsplitAll" xml:space="preserve">
     <value>Unsplit All</value>
   </data>
-  <data name="DocumentTab_SelectFile" xml:space="preserve">
-    <value>Select File</value>
-  </data>
   <data name="DocumentTab_CopyResourceKey" xml:space="preserve">
     <value>Copy Resource Key</value>
   </data>
   <data name="DocumentTab_CopyFilePath" xml:space="preserve">
     <value>Copy File Path</value>
+  </data>
+  <data name="DocumentTab_RevealInExplorer" xml:space="preserve">
+    <value>Reveal in Explorer</value>
   </data>
   <data name="DocumentTab_OpenFileManager" xml:space="preserve">
     <value>Open in {0}</value>
@@ -1111,7 +1111,7 @@ Open with default application instead?</value>
     <value>Open the manifest file</value>
   </data>
   <data name="ProjectSettings_RevealManifestTooltip" xml:space="preserve">
-    <value>Show the manifest file in the Explorer</value>
+    <value>Reveal in Explorer</value>
   </data>
   <data name="ProjectSettings_ContributionType_Document" xml:space="preserve">
     <value>Document Editor</value>

@@ -202,7 +202,7 @@ public partial class WorkspacePanelViewModel : ObservableObject
         return resourceRegistry.ResolveResourcePath(fileResource);
     }
 
-    public void SelectFileForTab(ResourceKey fileResource)
+    public void RevealInExplorerForTab(ResourceKey fileResource)
     {
         _commandService.Execute<ISelectResourceCommand>(command =>
         {
