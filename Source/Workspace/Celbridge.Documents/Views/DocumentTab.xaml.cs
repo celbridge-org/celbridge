@@ -378,9 +378,13 @@ public partial class DocumentTab : TabViewItem
         CopyResourceKeyMenuItem.Visibility = fileActionsVisibility;
         CopyFilePathMenuItem.Visibility = fileActionsVisibility;
         OpenSeparator.Visibility = fileActionsVisibility;
-        RevealInExplorerMenuItem.Visibility = fileActionsVisibility;
         OpenFileExplorerMenuItem.Visibility = fileActionsVisibility;
         OpenApplicationMenuItem.Visibility = fileActionsVisibility;
+
+        // A document opened from a resource root the Explorer does not show cannot be revealed there. The
+        // rest of the group still resolves to a real path, so only this option goes.
+        bool canReveal = !isUtility && ViewModel.CanRevealInExplorer;
+        RevealInExplorerMenuItem.Visibility = canReveal ? Visibility.Visible : Visibility.Collapsed;
 
         // A view that has hidden the chrome carrying its own controls has no way back, so the shared menu
         // offers one. The view supplies the text, so this menu never names a particular kind of chrome.

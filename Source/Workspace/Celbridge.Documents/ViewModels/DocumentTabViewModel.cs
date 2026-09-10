@@ -97,6 +97,12 @@ public partial class DocumentTabViewModel : ObservableObject
     public string FileName => FileResource.ResourceName;
 
     /// <summary>
+    /// True when this tab's file can be revealed in the Explorer. The Explorer shows the project tree, so
+    /// a document opened from any other resource root has nothing to reveal.
+    /// </summary>
+    public bool CanRevealInExplorer => FileResource.Root == ResourceKey.DefaultRoot;
+
+    /// <summary>
     /// Tooltip text for the tab. A utility tab shows its manifest description, falling back to its title
     /// when none is declared. An ordinary tab shows its file path plus the editor name when multiple
     /// editors are available. A tab whose file cannot be written says so below that.
