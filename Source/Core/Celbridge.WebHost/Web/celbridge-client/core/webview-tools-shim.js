@@ -147,6 +147,21 @@
             pushConsoleEntry('error', [message], stack);
             reportToHostLog(message, stack);
         });
+        // A resource that fails to load fires an error event at its element rather than at the window, and
+        // that event does not bubble, so only a capture-phase listener sees it. Reported with the URL: a
+        // script that never loads is otherwise silent here, and only surfaces much later as a missing
+        // global. Uncaught exceptions reach this listener too, targeted at the window, and are left to the
+        // handler above.
+        window.addEventListener('error', function (event) {
+            var target = event && event.target;
+            if (!target || target === window || !target.tagName) {
+                return;
+            }
+            var url = target.src || target.href || '';
+            var message = 'failed to load ' + target.tagName.toLowerCase() + (url ? ' ' + url : '');
+            pushConsoleEntry('error', [message], null);
+            reportToHostLog(message, null);
+        }, true);
         window.addEventListener('unhandledrejection', function (event) {
             var reason = event && event.reason;
             var message;

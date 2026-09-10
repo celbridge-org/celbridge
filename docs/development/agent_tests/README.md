@@ -76,6 +76,17 @@ session. Real key presses are the point: a shortcut delivered any other way test
 takes. Everything else — opening documents, reading page state, inspecting the log — has cheaper and more
 reliable routes that the project's own tooling provides.
 
+Two things a run reliably trips over:
+
+**Escape may not arrive.** Desktop automation reports success for Escape and can deliver nothing. Several
+cases turn on it, so send it with `app_simulate_input` instead and treat a missing Escape as a limit of the
+harness, not a defect — unless an equivalent route shows the app is at fault.
+
+**A modal dialog holds the command queue.** Every queued tool waits until the dialog is answered, so a run
+that raises one unexpectedly appears to hang. Answer it — `Escape` cancels and `Return` accepts through
+`app_simulate_input`, which runs outside the queue — or schedule `app_answer_dialog` before the step that
+raises it.
+
 ## Evidence
 
 Most of the cost of a run is spent telling a real failure from a bad observation. Three rules, each of
@@ -85,6 +96,13 @@ which has produced a wrong verdict before:
 perfectly healthy, so a screenshot can show the previous layout, the wrong theme, or a control that is not
 really there. Assert on values read out of the page, the contents of a file, the clipboard, or the app
 log. Use a screenshot to find something, not to prove something.
+
+The application's own chrome — find bar, address bar, Search field, dialog fields — is the awkward case:
+it is neither in the accessibility tree nor reachable by `webview_eval`. Read one of those fields by
+putting a sentinel on the clipboard, then selecting all and copying **in the field**: the clipboard now
+holds the field's text, and a sentinel that survived means the copy never happened. The menu bar is
+readable directly — asking to press a menu item reports whether it is enabled, which beats reading a
+greyed label off a screenshot.
 
 **Confirm the precondition separately from the result.** A shortcut that "does nothing" usually means the
 click before it did not land, the surface never took focus, or the clipboard held something other than

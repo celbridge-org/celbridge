@@ -24,6 +24,11 @@ bar.
 Returning focus to the page after using the chrome is the case that has failed, so reach the find bar by
 its shortcut as well as by clicking.
 
+These cases need a page with several text fields, and a `.webview` document takes an http or https address
+only — a `file://` one fails to open. Serve a small page of your own over loopback and point the document
+at that. Making the page report its field values, focus and selection to the same server also gives a way
+to read page state back, which the `webview_*` tools do not offer for these documents.
+
 ## Not covered
 
 Navigation, history and page rendering.

@@ -217,7 +217,7 @@ internal static class MacOSKeyEventMonitor
             // document with no find of its own leaves the key to the page, where the editors run their own.
             if (IsFindShortcut(shortcutCharacter, modifierFlags))
             {
-                if (ActiveDocumentFind.GetActiveFindableDocument()?.TryBeginFind() == true)
+                if (ActiveDocumentResolver.GetActiveDocumentView()?.TryBeginFind() == true)
                 {
                     return IntPtr.Zero;
                 }

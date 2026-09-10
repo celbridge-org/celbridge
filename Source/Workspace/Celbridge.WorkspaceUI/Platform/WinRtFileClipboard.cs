@@ -44,6 +44,10 @@ public sealed class WinRtFileClipboard : IFileClipboard
                 : DataPackageOperation.Copy
         };
         dataPackage.SetStorageItems(storageItems);
+
+        // Carry the paths as text as well, so a paste into a text surface yields them instead of nothing.
+        dataPackage.SetText(string.Join(Environment.NewLine, files.Select(file => file.Path)));
+
         Clipboard.SetContent(dataPackage);
         Clipboard.Flush();
 

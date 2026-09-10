@@ -276,6 +276,7 @@ function initializeSpreadsheet() {
 
         window.designer = designer;
 
+        routeClipboardCommandsThroughHost(designer.getWorkbook());
         listenForChanges();
         return true;
     } catch (e) {
@@ -438,6 +439,29 @@ function insertText(text) {
         pasteOption: GC.Spread.Sheets.ClipboardPasteOptions.all,
         pastedRanges: [new GC.Spread.Sheets.Range(row, column, 1, 1)]
     });
+}
+
+// SpreadJS reaches the system clipboard through the browser, which the macOS WebView refuses, so the
+// Designer's own Cut, Copy and Paste — in its context menu and its ribbon — silently do nothing. Point the
+// three commands every one of those routes ends at back at the host, which is where the keyboard shortcuts
+// for the same verbs already go, so a verb reached either way produces the same result. The host answers
+// through editor/getSelectedText and editor/insertText, which run clipboardPaste rather than these
+// commands, so a paste cannot re-enter here.
+function routeClipboardCommandsThroughHost(workbook) {
+    const commandManager = workbook.commandManager();
+
+    for (const verb of ['cut', 'copy', 'paste']) {
+        commandManager.register(verb, {
+            canUndo: false,
+            execute: () => {
+                client.input.requestEdit(verb).catch((error) => {
+                    client.log.error('[Spreadsheet] The host refused a ' + verb + ' request', error);
+                });
+
+                return true;
+            }
+        });
+    }
 }
 
 // Runs SpreadJS's own commands for the verbs that touch no clipboard.

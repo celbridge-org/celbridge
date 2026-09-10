@@ -1275,6 +1275,23 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         }
     }
 
+    // True when the editor has reported a find of its own. The host does not draw a find bar for a custom
+    // editor: the editor runs its own, and this is how the host learns it exists.
+    public bool CanFind => _editAvailability.CanFind;
+
+    public bool TryBeginFind()
+    {
+        if (!CanFind
+            || Host is null)
+        {
+            return false;
+        }
+
+        _ = Host.NotifyBeginFindAsync();
+
+        return true;
+    }
+
     public bool TryHandleTabKey(bool shift)
     {
         // A code editor with text focus indents or outdents. It reports that over the bridge, so a read-only
@@ -1395,7 +1412,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         bool canRedo,
         bool canIndent = false,
         bool hostMediatedClipboard = false,
-        bool canHandleTab = false)
+        bool canHandleTab = false,
+        bool canFind = false)
     {
         _editAvailability = new EditAvailability(
             canCopy,
@@ -1406,7 +1424,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             canRedo,
             canIndent,
             hostMediatedClipboard,
-            canHandleTab);
+            canHandleTab,
+            canFind);
     }
 
     private void OnHostChannelRebound(object? sender, EventArgs e)

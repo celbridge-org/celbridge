@@ -70,4 +70,16 @@ public interface IDocumentView : IWorkspaceItem
     /// What the host knows about this document's hosted page still working.
     /// </summary>
     DocumentHealth GetHealth();
+
+    /// <summary>
+    /// True when the document can currently begin a find of its own (its content is ready). Drives the
+    /// enabled state of the host's find affordance.
+    /// </summary>
+    bool CanFind { get; }
+
+    /// <summary>
+    /// Begins a find session, revealing and focusing the document's find affordance. Returns false when the
+    /// document has no find of its own, or is not ready to start one.
+    /// </summary>
+    bool TryBeginFind();
 }

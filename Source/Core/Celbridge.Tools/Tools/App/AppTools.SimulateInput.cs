@@ -22,11 +22,11 @@ public partial class AppTools
             return ToolResponse.Error("The key operation requires a key name, e.g. \"Escape\".");
         }
 
-        var pressResult = await ExecuteCommandAsync<ISimulateInputCommand>(command =>
-        {
-            command.Key = key;
-            command.Modifiers = modifiers;
-        });
+        // The service delivers the press straight to the UI thread, so it still lands while a modal dialog
+        // holds the command queue — which is when a caller most needs it.
+        var inputSimulationService = GetRequiredService<IInputSimulationService>();
+
+        var pressResult = await inputSimulationService.PressKeyAsync(key, modifiers);
         if (pressResult.IsFailure)
         {
             return ToolResponse.Error(pressResult);

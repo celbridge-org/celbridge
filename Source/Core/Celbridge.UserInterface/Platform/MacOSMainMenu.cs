@@ -381,7 +381,7 @@ internal static class MacOSMainMenu
 
     private static MacMenuItemState FindCommandState()
     {
-        var canFind = ActiveDocumentFind.GetActiveFindableDocument()?.CanFind ?? false;
+        var canFind = ActiveDocumentResolver.GetActiveDocumentView()?.CanFind ?? false;
 
         return canFind ? MacMenuItemState.Enabled : MacMenuItemState.Disabled;
     }
@@ -503,7 +503,7 @@ internal static class MacOSMainMenu
                 break;
 
             case TagFind:
-                ActiveDocumentFind.GetActiveFindableDocument()?.TryBeginFind();
+                ActiveDocumentResolver.GetActiveDocumentView()?.TryBeginFind();
                 break;
 
             case TagLayoutDefault:

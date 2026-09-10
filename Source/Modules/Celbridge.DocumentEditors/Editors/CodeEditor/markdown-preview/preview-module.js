@@ -383,6 +383,15 @@ function loadIframeShell(iframe) {
 }
 
 /**
+ * Opens the preview's find bar, for the host's Find menu item while the preview is the visible pane.
+ * @returns {boolean} False when this preview has no bar of its own, so the caller can fall back to the
+ * editor's.
+ */
+export function beginFind() {
+    return previewFind ? previewFind.open() : false;
+}
+
+/**
  * Sets the base path used to resolve relative resources (images, links) in the markdown.
  */
 export function setBasePath(basePath) {

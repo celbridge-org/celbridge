@@ -18,7 +18,8 @@ menu, and the project settings form.
 | A dialog with several controls | Tab | focus moves within the dialog | 2 |
 | The Search field | paste, select all | each acts on the field, and the Explorer selection is untouched | 2 |
 | A field in the project settings document | paste, select all | each acts on the field | 2 |
-| A document focused, then the Edit menu opened | inspect | the verbs offered match what that document can actually do | 2 |
+| A locked resource open as a document | paste, cut | refused, and the document is unchanged on disk | 2 |
+| A document focused, then the Edit menu opened | list the items and their enabled state, then reach each offered verb by its shortcut on the same document | the two agree: an offered verb works, and one that is greyed out does nothing by shortcut either | 2 |
 | A dialog open | inspect the Edit menu | the verbs are not offered to the surface behind the dialog | 3 |
 | A dialog open | shortcuts for close and find | they do not act on the document behind it | 3 |
 | Focus on a toolbar or other chrome | copy | the verb still reaches the surface the user was last editing | 3 |

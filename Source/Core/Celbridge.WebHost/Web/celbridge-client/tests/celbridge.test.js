@@ -454,6 +454,27 @@ describe('Celbridge', () => {
             expect(activeElement.focus).not.toHaveBeenCalled();
         });
 
+        it('leaves focus alone when the page has focused something else since the release', () => {
+            const { simulateNotification } = createTestClient();
+
+            const editorBody = { blur: vi.fn(), focus: vi.fn() };
+            const popoverInput = { blur: vi.fn(), focus: vi.fn() };
+            globalThis.document = {
+                body: {},
+                activeElement: editorBody,
+                contains: () => true
+            };
+
+            simulateNotification('input/releaseFocus', {});
+
+            // The page opened a popover and focused its field while the surface was away.
+            globalThis.document.activeElement = popoverInput;
+
+            simulateNotification('input/grantFocus', {});
+
+            expect(editorBody.focus).not.toHaveBeenCalled();
+        });
+
         it('does nothing on input/grantFocus when no element was released', () => {
             const { simulateNotification } = createTestClient();
 

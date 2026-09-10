@@ -17,6 +17,9 @@ automation used to run the agent test plans reports success for Escape and deliv
 "cancel the current edit" impossible to exercise. Reach for this tool only for that kind of gap, not as a
 general substitute for driving the UI.
 
+It runs outside the command queue, so it still works while a modal dialog is open — which is when a caller
+most needs it, because an open dialog holds every queued tool until it is answered.
+
 ## Operations
 
 ### `key`
@@ -54,14 +57,23 @@ Returns `ok` on success. Fails when the operation or key name is not recognised 
 names), when the platform is not macOS, or when the application has no key window to receive the press —
 which usually means the app is not frontmost.
 
-## Limits
+## Answering a modal dialog
 
-It cannot dismiss the application's own modal dialogs. The operation runs as a command, and a modal
-Celbridge dialog blocks the command queue until it is answered, so the call times out instead of
-returning. Schedule the answer with `app_answer_dialog` before opening such a dialog. A dialog drawn by a
-hosted page — a SpreadJS Designer dialog, say — is not modal to the host and takes the key press normally.
+The application's own dialogs answer to the keyboard, so `Escape` cancels the open dialog and `Return`
+accepts it — no separate operation, and the same route a user takes. Both are worth reaching for when a
+dialog appears unexpectedly and is holding the command queue.
+
+`app_answer_dialog` is still the better choice when the answer can be scheduled before the dialog opens,
+or when the dialog needs a value rather than a button.
+
+A dialog drawn by a hosted page — a SpreadJS Designer dialog, say — is not modal to the host and takes the
+key press the same way.
 
 ## Notes
 
 The press goes to whatever currently holds the keyboard, exactly as a real one would. Establish focus
 first, and read the resulting state back rather than assuming the press landed where you meant it to.
+
+The application must hold the keyboard: the call fails with "no key window to receive the key press" when
+the app is not the active one, or when its window is frontmost without being key. Activating the app, or
+clicking into its window, resolves it.

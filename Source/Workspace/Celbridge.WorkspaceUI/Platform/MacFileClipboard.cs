@@ -15,6 +15,9 @@ public sealed class MacFileClipboard : IFileClipboard
     // The uniform type identifier NSPasteboard uses for a file URL (NSPasteboardTypeFileURL).
     private const string FileUrlType = "public.file-url";
 
+    // The uniform type identifier NSPasteboard uses for plain text (NSPasteboardTypeString).
+    private const string StringType = "public.utf8-plain-text";
+
     private readonly object _writeLock = new();
     private nint _lastWriteChangeCount = -1;
     private DataTransferMode _lastWriteMode;
@@ -55,7 +58,10 @@ public sealed class MacFileClipboard : IFileClipboard
 
             SendMessageReturnBool(pasteboard, GetSelector("writeObjects:"), urlArray);
 
-            // Remember which write the mode belongs to, keyed by the pasteboard's change count.
+            WriteTextRepresentation(pasteboard, files);
+
+            // Remember which write the mode belongs to, keyed by the pasteboard's change count. Read after
+            // every write, because adding a type advances the count.
             lock (_writeLock)
             {
                 _lastWriteChangeCount = SendMessageReturnNint(pasteboard, GetSelector("changeCount"));
@@ -69,6 +75,24 @@ public sealed class MacFileClipboard : IFileClipboard
             return Result.Fail("Failed to write files to the macOS clipboard")
                 .WithException(ex);
         }
+    }
+
+    // Gives the copied files a plain-text representation as well, so a paste into a text surface yields
+    // their paths instead of nothing. The legacy pasteboard accessors attach it to the first item, next to
+    // its file URL, which is the shape Finder writes.
+    private static void WriteTextRepresentation(IntPtr pasteboard, IReadOnlyList<ClipboardFile> files)
+    {
+        var text = string.Join(Environment.NewLine, files.Select(file => file.Path));
+        if (string.IsNullOrEmpty(text))
+        {
+            return;
+        }
+
+        var stringType = CreateNSString(StringType);
+        var types = SendMessage(GetClass("NSArray"), GetSelector("arrayWithObject:"), stringType);
+
+        SendMessage(pasteboard, GetSelector("addTypes:owner:"), types, IntPtr.Zero);
+        SendMessage(pasteboard, GetSelector("setString:forType:"), CreateNSString(text), stringType);
     }
 
     public DataTransferMode? GetFileTransferMode()

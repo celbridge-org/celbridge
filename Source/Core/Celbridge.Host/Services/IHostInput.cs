@@ -20,6 +20,9 @@ public static class InputRpcMethods
     // own way (e.g. the spreadsheet moves the active cell). The code editor uses PerformEdit for indenting.
     public const string TabKey = "input/tabKey";
 
+    // Host to client. Asks the editor to reveal and focus its own find UI, for the host Find menu item.
+    public const string BeginFind = "input/beginFind";
+
     // Client to host. Reports which edit verbs the editor can currently perform.
     public const string EditAvailabilityChanged = "input/editAvailabilityChanged";
 
@@ -63,7 +66,8 @@ public interface IHostInput
         bool canRedo,
         bool canIndent = false,
         bool hostMediatedClipboard = false,
-        bool canHandleTab = false)
+        bool canHandleTab = false,
+        bool canFind = false)
     { }
 
     /// <summary>
@@ -105,4 +109,11 @@ public static class HostInputExtensions
     /// </summary>
     public static Task NotifyTabKeyAsync(this CelbridgeHost host, bool shift)
         => host.Rpc.NotifyWithParameterObjectAsync(InputRpcMethods.TabKey, new { shift });
+
+    /// <summary>
+    /// Asks the editor to open its own find UI, so the host's Find menu item reaches the same find the
+    /// editor runs on Command+F. Sent only to an editor that reports canFind.
+    /// </summary>
+    public static Task NotifyBeginFindAsync(this CelbridgeHost host)
+        => host.Rpc.NotifyAsync(InputRpcMethods.BeginFind);
 }

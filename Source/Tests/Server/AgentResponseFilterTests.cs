@@ -1,5 +1,8 @@
 using System.Text.Json;
+using Celbridge.Dialog;
+using Celbridge.Projects;
 using Celbridge.Server.Services;
+using Celbridge.Validators;
 using Celbridge.Tools;
 using ModelContextProtocol.Protocol;
 
@@ -28,6 +31,7 @@ public class AgentResponseFilterTests
     private FakeGuides _guides = null!;
     private FakeAppStateProvider _appStateProvider = null!;
     private FakeDocumentStateProvider _documentStateProvider = null!;
+    private FakeDialogService _dialogService = null!;
     private AgentResponseFilter _filter = null!;
 
     [SetUp]
@@ -57,7 +61,9 @@ public class AgentResponseFilterTests
         };
         _appStateProvider = new FakeAppStateProvider();
         _documentStateProvider = new FakeDocumentStateProvider();
-        _filter = new AgentResponseFilter(_monitor, _guides, _appStateProvider, _documentStateProvider);
+        _dialogService = new FakeDialogService();
+        _filter = new AgentResponseFilter(
+            _monitor, _guides, _appStateProvider, _documentStateProvider, _dialogService);
     }
 
     // ApplyAutoAttachAsync - first-use behaviour
@@ -127,6 +133,30 @@ public class AgentResponseFilterTests
     }
 
     // Proxy connections
+
+    [Test]
+    public async Task ApplyAutoAttachAsync_DialogOpen_SkipsSessionStateAndAttachesItOnALaterCall()
+    {
+        // The open-documents snapshot runs as a command, and a modal dialog holds the command queue. A
+        // tool called to answer that dialog must not wait for it.
+        _dialogService.IsDialogOpen = true;
+        var session = new AgentSessionState("session-1");
+
+        var duringDialog = await _filter.ApplyAutoAttachAsync(
+            BuildSuccess("simulate input result"), session, "app_simulate_input");
+
+        duringDialog.AttachedNames.Should().NotContain(AgentResponseFilter.AppStateBlockName);
+        duringDialog.AttachedNames.Should().NotContain(AgentResponseFilter.DocumentStateBlockName);
+        session.WasGuideRead(AgentResponseFilter.SessionStateMarker).Should().BeFalse();
+
+        _dialogService.IsDialogOpen = false;
+
+        var afterDialog = await _filter.ApplyAutoAttachAsync(
+            BuildSuccess("later result"), session, "app_simulate_input");
+
+        afterDialog.AttachedNames.Should().Contain(AgentResponseFilter.AppStateBlockName);
+        afterDialog.AttachedNames.Should().Contain(AgentResponseFilter.DocumentStateBlockName);
+    }
 
     [Test]
     public async Task ApplyAutoAttachAsync_ProxyConnection_ReturnsBareResult()
@@ -624,5 +654,35 @@ public class AgentResponseFilterTests
             new DocumentStateResult(new List<string> { "main_left" }, new List<OpenDocumentEntry>(), new Dictionary<string, string>(), new List<UnhealthyDocumentEntry>(), "");
 
         public Task<Result<DocumentStateResult>> GetStateAsync() => Task.FromResult(Result);
+    }
+
+    // Only IsDialogOpen is read by the filter; showing a dialog from a test would be meaningless.
+    private sealed class FakeDialogService : IDialogService
+    {
+        public bool IsDialogOpen { get; set; }
+
+        public Task ShowAlertDialogAsync(string titleText, string messageText) => throw new NotSupportedException();
+
+        public Task<Result<bool>> ShowConfirmationDialogAsync(string titleText, string messageText, ConfirmationDialogOptions? options = null) => throw new NotSupportedException();
+
+        public IProgressDialogToken AcquireProgressDialog(string titleText) => throw new NotSupportedException();
+
+        public Task ShowSettingsDialogAsync(string sectionKey) => throw new NotSupportedException();
+
+        public Task<Result<NewProjectConfig>> ShowNewProjectDialogAsync() => throw new NotSupportedException();
+
+        public Task<Result<string>> ShowInputTextDialogAsync(string titleText, string messageText, string defaultText, Range selectionRange, IValidator validator, string? submitButtonKey = null) => throw new NotSupportedException();
+
+        public Task<Result<string>> ShowSecretInputDialogAsync(string titleText, string headerText, string? submitButtonKey = null) => throw new NotSupportedException();
+
+        public Task<Result<NewFileConfig>> ShowNewFileDialogAsync(string defaultFileName, Range selectionRange, IValidator validator) => throw new NotSupportedException();
+
+        public Task<Result<ResourceKey>> ShowResourcePickerDialogAsync(IReadOnlyList<string> extensions, string? title = null, bool showPreview = false) => throw new NotSupportedException();
+
+        public Task<Result<string>> ShowIconPickerDialogAsync(string searchText = "") => throw new NotSupportedException();
+
+        public Task<Result<ChoiceDialogResult>> ShowChoiceDialogAsync(string titleText, string messageText, IReadOnlyList<string> options, int defaultIndex = 0, ChoiceDialogCheckbox? checkbox = null, string? primaryButtonText = null, string? secondaryButtonText = null) => throw new NotSupportedException();
+
+        public void ScheduleAnswer(DialogKind dialogKind, string payload = "", int delayMs = 250) => throw new NotSupportedException();
     }
 }

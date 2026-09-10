@@ -22,6 +22,7 @@ The grid, the cell editor, the name box and formula bar, and the Designer's dial
 | The cell editor, mid-edit | Escape | the edit is abandoned and the cell keeps its previous value | 2 |
 | The name box or formula bar | paste | text enters that field; no cell changes | 2 |
 | The grid | Tab | the active cell advances; Shift+Tab moves back | 2 |
+| A cell, with text put on the clipboard somewhere outside the grid | cut, copy and paste from the Designer's own context menu and ribbon | each does what the keyboard shortcut for that verb does | 2 |
 | A Designer dialog with several fields | Tab | focus moves to the next control; the grid selection does not move | 2 |
 | A Designer dialog | Escape | the dialog closes and the grid selection does not move | 2 |
 | The cell editor | select all | the selection covers the editor's text, not the sheet | 3 |
@@ -39,3 +40,13 @@ an edit reaches, not what the spreadsheet does with it afterwards.
 
 Diagnostics inside this package are reachable in a debug build only; a release build blocks them
 deliberately, so run this plan against a debug build.
+
+The Designer draws its own context menu and ribbon, and the clipboard verbs there are a different path
+from the keyboard: SpreadJS reaches the clipboard through the browser, which the WebView refuses, so those
+buttons went to the host instead. Copy something outside the grid before testing them — a copy made inside
+the grid can be pasted from SpreadJS's own memory, which hides the case that breaks.
+
+The Designer's name box keeps whatever was typed into it after Escape, rather than showing the active
+cell's reference again. The key does reach the page and the grid is unaffected; the box corrects itself on
+the next selection. It is the Designer's own behaviour, so judge these cases on the grid and the cell
+editor, not on what the name box displays.
