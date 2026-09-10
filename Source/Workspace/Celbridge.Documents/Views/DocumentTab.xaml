@@ -28,12 +28,11 @@
             <MenuFlyoutItem x:Name="MoveToPrimarySectionMenuItem" Click="ContextMenu_MoveToPrimarySection" />
             <MenuFlyoutItem x:Name="MoveToSecondarySectionMenuItem" Click="ContextMenu_MoveToSecondarySection" />
             <MenuFlyoutItem x:Name="UnsplitAreaMenuItem" Click="ContextMenu_UnsplitArea" />
-            <MenuFlyoutSeparator x:Name="SelectFileSeparator" />
-            <MenuFlyoutItem x:Name="SelectFileMenuItem" Click="ContextMenu_SelectFile" />
             <MenuFlyoutSeparator x:Name="CopySeparator" />
             <MenuFlyoutItem x:Name="CopyResourceKeyMenuItem" Click="ContextMenu_CopyResourceKey" />
             <MenuFlyoutItem x:Name="CopyFilePathMenuItem" Click="ContextMenu_CopyFilePath" />
             <MenuFlyoutSeparator x:Name="OpenSeparator" />
+            <MenuFlyoutItem x:Name="RevealInExplorerMenuItem" Click="ContextMenu_RevealInExplorer" />
             <MenuFlyoutItem x:Name="OpenFileExplorerMenuItem" Click="ContextMenu_OpenFileExplorer" />
             <MenuFlyoutItem x:Name="OpenApplicationMenuItem" Click="ContextMenu_OpenApplication" />
             <MenuFlyoutSeparator x:Name="RestoreChromeSeparator" />

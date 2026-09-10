@@ -21,6 +21,7 @@ public static class ServiceConfiguration
 
         services.AddSingleton<IBundledPackageProvider, ConsoleBundledPackageProvider>();
         services.AddSingleton<IConsoleSessionProvider, ShellSessionProvider>();
+        services.AddSingleton<IConsoleSessionProvider, PythonSessionProvider>();
         services.AddSingleton<ICustomEditorChannelProvider, ConsoleSessionChannelProvider>();
         services.AddTransient<IConsoleProcessOwner, ConsoleProcessOwner>();
         services.AddTransient<IConsoleSessionService, ConsoleSessionService>();

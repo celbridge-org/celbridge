@@ -17,4 +17,4 @@ A JSON object with these fields:
 - `focusedPanel` (string) — the currently focused workspace panel (`Documents`, `Explorer`, `Inspector`, `Console`, etc., or `None`).
 - `layoutMode` (object) — `{areaVisibility}`, which maps each workspace area token (`utility`, `main`, `bottom`, `side`) to whether that area is on screen. `main` is always `true`. Area visibility is stored per project, so a project that has not customised its layout reports the workspace defaults rather than any global preference.
 
-Python dependencies are declared per console: read a `.console` file directly with `file_read` — the `[session.options].dependencies` array carries that console's list.
+Python dependencies are declared per console: read a `.console` file directly with `file_read` — the `[session.python].dependencies` array carries that console's list.

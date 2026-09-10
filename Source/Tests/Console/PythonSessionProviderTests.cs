@@ -1,9 +1,9 @@
 using Celbridge.Console;
-using Celbridge.Logging;
+using Celbridge.Console.Services;
 using Celbridge.Python;
 using Celbridge.Python.Services;
 
-namespace Celbridge.Tests.Python;
+namespace Celbridge.Tests.Console;
 
 [TestFixture]
 public class PythonSessionProviderTests
@@ -42,18 +42,27 @@ public class PythonSessionProviderTests
     private static ConsoleSessionContext MakeContext(
         string? runtimeVersion = null,
         IReadOnlyDictionary<string, string>? environment = null,
-        string? startupScript = null)
+        string? startupScript = null,
+        IReadOnlyList<string>? dependencies = null)
     {
+        var typeOptions = new Dictionary<string, object?>();
+        if (runtimeVersion is not null)
+        {
+            typeOptions["python_version"] = runtimeVersion;
+        }
+        if (dependencies is not null)
+        {
+            typeOptions["dependencies"] = dependencies;
+        }
+
         return new ConsoleSessionContext(
             ResourceKey.Empty,
             "python",
             string.Empty,
-            Array.Empty<string>(),
-            string.Empty,
             environment ?? new Dictionary<string, string>(),
             ProjectRoot,
-            RuntimeVersion: runtimeVersion,
-            StartupScript: startupScript);
+            startupScript ?? string.Empty,
+            typeOptions);
     }
 
     [Test]
@@ -109,6 +118,24 @@ public class PythonSessionProviderTests
         var invocation = result.Value;
         invocation.HandlesStartupScript.Should().BeFalse();
         invocation.Environment.Should().NotContainKey("CELBRIDGE_PYTHON_STARTUP");
+    }
+
+    [Test]
+    public async Task BuildStartupInvocation_Dependencies_ReachTheLaunchRequest()
+    {
+        var result = await _provider.BuildStartupInvocationAsync(
+            MakeContext(dependencies: new[] { "numpy", "pandas>=2" }));
+
+        result.IsFailure.Should().BeFalse();
+        _capturedRequest!.Dependencies.Should().Equal("numpy", "pandas>=2");
+    }
+
+    [Test]
+    public void PythonProvider_ReportsItsSessionType()
+    {
+        _provider.SessionType.TypeId.Should().Be("python");
+        _provider.SessionType.OptionKeys.Should().Equal("python_version", "dependencies");
+        _provider.SessionType.BuiltInRunners.Should().HaveCount(1);
     }
 
     [Test]

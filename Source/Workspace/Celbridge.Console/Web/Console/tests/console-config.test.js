@@ -47,14 +47,11 @@ describe('parseExtensionList', () => {
 });
 
 describe('normalizeConfig', () => {
-    it('keeps runners, drops only shortcuts, and sorts env keys', () => {
+    it('keeps runners, drops only shortcuts, and sorts env and option keys', () => {
         const config = {
             type: 'python',
-            executable: '',
-            pythonVersion: '3.13',
-            arguments: [],
-            dependencies: ['numpy'],
             workingDirectory: '',
+            optionsBySessionType: { python: { python_version: '3.13', dependencies: ['numpy'] } },
             environment: { B: '2', A: '1' },
             runners: [{ extensions: ['.py'], command: 'x' }],
             shortcuts: [{ label: 'L', icon: '', text: 't' }],
@@ -63,6 +60,7 @@ describe('normalizeConfig', () => {
         expect(normalized.runners).toEqual([{ extensions: ['.py'], command: 'x' }]);
         expect(normalized).not.toHaveProperty('shortcuts');
         expect(Object.keys(normalized.environment)).toEqual(['A', 'B']);
+        expect(Object.keys(normalized.sessionTypeOptions)).toEqual(['dependencies', 'python_version']);
     });
 });
 
@@ -70,15 +68,11 @@ describe('configsEqual', () => {
     it('ignores shortcuts and env order', () => {
         const base = {
             type: 'python',
-            executable: '',
-            arguments: [],
             environment: { A: '1', B: '2' },
             runners: [{ extensions: ['.py'], command: 'x' }],
         };
         const other = {
             type: 'python',
-            executable: '',
-            arguments: [],
             environment: { B: '2', A: '1' },
             runners: [{ extensions: ['.py'], command: 'x' }],
             shortcuts: [{ label: 'L', icon: '', text: 't' }],
@@ -87,9 +81,15 @@ describe('configsEqual', () => {
     });
 
     it('is false when a launch-affecting field differs', () => {
-        const a = { type: 'shell', executable: 'pwsh' };
-        const b = { type: 'shell', executable: 'bash' };
+        const a = { type: 'shell', optionsBySessionType: { shell: { executable: 'pwsh' } } };
+        const b = { type: 'shell', optionsBySessionType: { shell: { executable: 'bash' } } };
         expect(configsEqual(a, b)).toBe(false);
+    });
+
+    it('ignores the table of a type that is not selected', () => {
+        const a = { type: 'shell', optionsBySessionType: { shell: { executable: 'bash' }, python: { dependencies: ['numpy'] } } };
+        const b = { type: 'shell', optionsBySessionType: { shell: { executable: 'bash' } } };
+        expect(configsEqual(a, b)).toBe(true);
     });
 
     it('is false when the runners differ (they need a reopen now)', () => {
@@ -107,12 +107,8 @@ describe('buildStartConfig', () => {
         });
         expect(built).toEqual({
             type: 'python',
-            executable: '',
-            pythonVersion: '',
-            arguments: [],
-            dependencies: [],
             workingDirectory: '',
-            startupScript: '',
+            sessionTypeOptions: {},
             environment: {},
             runners: [{ extensions: ['.py'], command: '%run "{resource}"' }],
             disabledBuiltInRunners: [],
@@ -129,20 +125,19 @@ describe('buildStartConfig', () => {
         ]);
     });
 
-    it('carries the startup script through to the payload', () => {
-        const built = buildStartConfig({ startupScript: 'import numpy as np\nx = 1' });
-        expect(built.startupScript).toBe('import numpy as np\nx = 1');
+    it('carries the script of the selected type through to the payload', () => {
+        const built = buildStartConfig({
+            type: 'shell',
+            optionsBySessionType: { shell: { script: 'import numpy as np\nx = 1' } },
+        });
+        expect(built.sessionTypeOptions.script).toBe('import numpy as np\nx = 1');
     });
 
     it('defaults an empty config to a blank shell payload', () => {
         expect(buildStartConfig({})).toEqual({
             type: 'shell',
-            executable: '',
-            pythonVersion: '',
-            arguments: [],
-            dependencies: [],
             workingDirectory: '',
-            startupScript: '',
+            sessionTypeOptions: {},
             environment: {},
             runners: [],
             disabledBuiltInRunners: [],

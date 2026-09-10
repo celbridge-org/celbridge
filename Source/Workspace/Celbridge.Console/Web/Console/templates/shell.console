@@ -1,4 +1,4 @@
 # A shell console running the platform default shell. An executable set in the settings view is typed
-# into the shell as a command once it starts.
+# into the shell as a command once it starts, quoted for whichever shell the platform provides.
 [session]
 type = "shell"

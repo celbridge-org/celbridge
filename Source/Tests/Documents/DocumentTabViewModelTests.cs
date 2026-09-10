@@ -9,9 +9,9 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.Tests.Documents;
 
 /// <summary>
-/// Tests for DocumentTabViewModel close-path behaviour. The save-failure tolerance is
-/// load-bearing for locked or otherwise read-only documents, where the save will never
-/// succeed and the close path must still complete.
+/// Tests for DocumentTabViewModel close-path behaviour and the menu predicates derived from its file
+/// resource. The save-failure tolerance is load-bearing for locked or otherwise read-only documents,
+/// where the save will never succeed and the close path must still complete.
 /// </summary>
 [TestFixture]
 public class DocumentTabViewModelTests
@@ -299,6 +299,24 @@ public class DocumentTabViewModelTests
         viewModel.TabTooltip.Should()
             .StartWith("DocumentTab_Tooltip_SaveFailed(")
             .And.Contain("C:/project/locked.md");
+    }
+
+    [Test]
+    public void CanRevealInExplorer_IsTrue_ForProjectResource()
+    {
+        var viewModel = CreateViewModel(new ResourceKey("docs/notes.md"));
+
+        viewModel.CanRevealInExplorer.Should().BeTrue();
+    }
+
+    [Test]
+    public void CanRevealInExplorer_IsFalse_ForNonProjectRoot()
+    {
+        // The Explorer shows the project tree, so a document opened from any other root has nothing to
+        // reveal and the menu option is hidden.
+        var viewModel = CreateViewModel(new ResourceKey("temp:community.webview"));
+
+        viewModel.CanRevealInExplorer.Should().BeFalse();
     }
 
     private static IDocumentView CreateUnwritableDocumentView()

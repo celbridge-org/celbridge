@@ -35,6 +35,9 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
     private readonly ConsoleProxyListener _proxyListener;
     private readonly ConsoleTriggerScheduler _triggerScheduler;
 
+    private readonly IReadOnlyList<IConsoleSessionProvider> _sessionProviders;
+    private readonly IReadOnlyList<ConsoleSessionType> _sessionTypes;
+
     private bool _disposed;
 
     public ConsoleSessionService(
@@ -47,6 +50,9 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         _workspaceWrapper = workspaceWrapper;
         _messengerService = messengerService;
         _logger = logger;
+
+        _sessionProviders = ResolveSessionProviders(serviceProvider);
+        _sessionTypes = _sessionProviders.Select(provider => provider.SessionType).ToList();
 
         _triggerScheduler = new ConsoleTriggerScheduler(FireTrigger);
 
@@ -104,7 +110,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
 
             if (!_sessions.TryGetValue(resource, out var session))
             {
-                session = new ConsoleSession(_serviceProvider, _workspaceWrapper, resource);
+                session = new ConsoleSession(_serviceProvider, _workspaceWrapper, resource, _sessionProviders);
                 session.StateChanged += OnSessionStateChanged;
                 _sessions[resource] = session;
             }
@@ -304,15 +310,23 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         }
     }
 
-    public IReadOnlyDictionary<string, IReadOnlyList<ConsoleRunner>> GetBuiltInRunners()
+    public IReadOnlyList<ConsoleSessionType> GetSessionTypes()
     {
-        var builtInRunners = new Dictionary<string, IReadOnlyList<ConsoleRunner>>();
-        foreach (var provider in _serviceProvider.GetServices<IConsoleSessionProvider>())
+        return _sessionTypes;
+    }
+
+    private static IReadOnlyList<IConsoleSessionProvider> ResolveSessionProviders(IServiceProvider serviceProvider)
+    {
+        var sessionProviders = serviceProvider.GetServices<IConsoleSessionProvider>().ToList();
+        var sessionTypes = sessionProviders.Select(provider => provider.SessionType).ToList();
+
+        var validateResult = ConsoleSessionTypeValidator.Validate(sessionTypes);
+        if (validateResult.IsFailure)
         {
-            builtInRunners[provider.TypeId] = provider.BuiltInRunners;
+            throw new InvalidOperationException(validateResult.FirstErrorMessage);
         }
 
-        return builtInRunners;
+        return sessionProviders;
     }
 
     public IReadOnlyList<ConsoleRunTarget> GetRunTargets(string fileExtension)

@@ -13,14 +13,20 @@ public class ShellSessionProviderTests
         string executable = "",
         IReadOnlyList<string>? arguments = null)
     {
+        var typeOptions = new Dictionary<string, object?>
+        {
+            ["executable"] = executable,
+            ["arguments"] = arguments ?? Array.Empty<string>(),
+        };
+
         return new ConsoleSessionContext(
             ResourceKey.Empty,
             "shell",
-            executable,
-            arguments ?? Array.Empty<string>(),
             string.Empty,
             new Dictionary<string, string>(),
-            ProjectRoot);
+            ProjectRoot,
+            string.Empty,
+            typeOptions);
     }
 
     [Test]
@@ -60,11 +66,31 @@ public class ShellSessionProviderTests
     }
 
     [Test]
+    public async Task BuildStartupInvocation_NoOptionsTable_InjectsNothing()
+    {
+        var provider = new ShellSessionProvider();
+        var context = new ConsoleSessionContext(
+            ResourceKey.Empty,
+            "shell",
+            string.Empty,
+            new Dictionary<string, string>(),
+            ProjectRoot,
+            string.Empty,
+            new Dictionary<string, object?>());
+
+        var result = await provider.BuildStartupInvocationAsync(context);
+
+        result.IsFailure.Should().BeFalse();
+        result.Value.Should().Be(ConsoleStartupInvocation.None);
+    }
+
+    [Test]
     public void ShellProvider_ReportsShellTypeWithNoRunners()
     {
         var provider = new ShellSessionProvider();
 
-        provider.TypeId.Should().Be("shell");
-        provider.BuiltInRunners.Should().BeEmpty();
+        provider.SessionType.TypeId.Should().Be("shell");
+        provider.SessionType.BuiltInRunners.Should().BeEmpty();
+        provider.SessionType.OptionKeys.Should().Equal("executable", "arguments");
     }
 }

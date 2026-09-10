@@ -1,8 +1,9 @@
 // Minimal TOML parse/serialise for the constrained .console config shape. It handles the documented shape
-// (single-line string and string-array values under [session], [session.options], [session.environment],
-// plus [[session.runner]], [[session.trigger]] and [[session.shortcut]] array-of-tables). Unknown keys and
-// sections are parsed and ignored; a malformed line raises a config error surfaced in the settings view.
-// Comments are not preserved across a save.
+// (single-line string and string-array values under [session], [session.environment] and each type's own
+// [session.<type>] table, plus [[session.runner]], [[session.trigger]] and [[session.shortcut]]
+// array-of-tables). The caller names the session types it can edit. A type table's values are typed by
+// their own TOML syntax, and a table named for anything else is ignored. A malformed line raises a config
+// error. Comments are not preserved across a save.
 
 /**
  * @typedef {Object} ConsoleRunner
@@ -26,12 +27,8 @@
 /**
  * @typedef {Object} ConsoleConfig
  * @property {string} type
- * @property {string} executable
- * @property {string} pythonVersion
- * @property {string[]} arguments
- * @property {string[]} dependencies
  * @property {string} workingDirectory
- * @property {string} startupScript
+ * @property {Object<string,Object<string,(string|string[])>>} optionsBySessionType each type's own table, keyed by type id
  * @property {Object<string,string>} environment
  * @property {ConsoleRunner[]} runners
  * @property {string[]} disabledBuiltInRunners ids of the session type's built-in runners this console leaves out
@@ -43,12 +40,8 @@
 export function defaultConsoleConfig() {
     return {
         type: 'shell',
-        executable: '',
-        pythonVersion: '',
-        arguments: [],
-        dependencies: [],
         workingDirectory: '',
-        startupScript: '',
+        optionsBySessionType: {},
         environment: {},
         runners: [],
         disabledBuiltInRunners: [],
@@ -60,9 +53,10 @@ export function defaultConsoleConfig() {
 /**
  * Parses .console TOML into a ConsoleConfig. Throws Error with a human-readable message on malformed input.
  * @param {string} text
+ * @param {string[]} sessionTypeIds the session types this client can edit
  * @returns {ConsoleConfig}
  */
-export function parseConsoleToml(text) {
+export function parseConsoleToml(text, sessionTypeIds) {
     const config = defaultConsoleConfig();
 
     let section = '';
@@ -100,7 +94,7 @@ export function parseConsoleToml(text) {
             }
 
             // The block's content is taken verbatim (no escape processing), so requote it for assignValue.
-            assignValue(config, section, currentTable, blockKey, quote(collected.join('\n')));
+            assignValue(config, section, currentTable, blockKey, quote(collected.join('\n')), sessionTypeIds);
             continue;
         }
 
@@ -131,7 +125,7 @@ export function parseConsoleToml(text) {
 
         const key = parseKey(line.slice(0, equalsIndex).trim());
         const rawValue = line.slice(equalsIndex + 1).trim();
-        assignValue(config, section, currentTable, key, rawValue);
+        assignValue(config, section, currentTable, key, rawValue, sessionTypeIds);
     }
 
     return config;
@@ -150,32 +144,8 @@ export function serializeConsoleToml(config) {
     if (config.workingDirectory) {
         lines.push(`working_directory = ${quote(config.workingDirectory)}`);
     }
-    if (config.startupScript) {
-        lines.push(`startup_script = ${quoteScript(config.startupScript)}`);
-    }
     if (config.disabledBuiltInRunners && config.disabledBuiltInRunners.length > 0) {
-        lines.push(`disabled_built_in_runners = [${config.disabledBuiltInRunners.map(quote).join(', ')}]`);
-    }
-
-    // A section with no keys is left out like any other empty field, so saving the form never adds
-    // anything the console did not set.
-    const optionLines = [];
-    if (config.executable) {
-        optionLines.push(`executable = ${quote(config.executable)}`);
-    }
-    if (config.pythonVersion) {
-        optionLines.push(`python_version = ${quote(config.pythonVersion)}`);
-    }
-    if (config.arguments && config.arguments.length > 0) {
-        optionLines.push(`arguments = [${config.arguments.map(quote).join(', ')}]`);
-    }
-    if (config.dependencies && config.dependencies.length > 0) {
-        optionLines.push(`dependencies = [${config.dependencies.map(quote).join(', ')}]`);
-    }
-    if (optionLines.length > 0) {
-        lines.push('');
-        lines.push('[session.options]');
-        lines.push(...optionLines);
+        lines.push(`disabled_runners = [${config.disabledBuiltInRunners.map(quote).join(', ')}]`);
     }
 
     const environmentLines = [];
@@ -186,6 +156,27 @@ export function serializeConsoleToml(config) {
         lines.push('');
         lines.push('[session.environment]');
         lines.push(...environmentLines);
+    }
+
+    // Every type's table is written, not just the selected one. Type ids are sorted so the file does not
+    // reorder itself on a save. A table with no keys is left out like any other empty field.
+    for (const typeId of Object.keys(config.optionsBySessionType || {}).sort()) {
+        const optionLines = [];
+        for (const [key, value] of Object.entries(config.optionsBySessionType[typeId] || {})) {
+            if (Array.isArray(value)) {
+                if (value.length > 0) {
+                    optionLines.push(`${serializeKey(key)} = [${value.map(quote).join(', ')}]`);
+                }
+            } else if (value) {
+                optionLines.push(`${serializeKey(key)} = ${quoteScript(value)}`);
+            }
+        }
+
+        if (optionLines.length > 0) {
+            lines.push('');
+            lines.push(`[session.${serializeKey(typeId)}]`);
+            lines.push(...optionLines);
+        }
     }
 
     for (const runner of config.runners || []) {
@@ -215,6 +206,30 @@ export function serializeConsoleToml(config) {
     return lines.join('\n') + '\n';
 }
 
+// The type id a [session.<type>] header names, or null when the header is not a type table. Only a type the
+// caller names counts.
+function readTypeTableId(section, sessionTypeIds) {
+    if (!section.startsWith('session.')) {
+        return null;
+    }
+
+    const name = section.slice('session.'.length);
+    if (!sessionTypeIds.includes(name)) {
+        return null;
+    }
+
+    return name;
+}
+
+// A value inside a type table, typed by its own TOML syntax rather than by its key.
+function parseValue(rawValue) {
+    if (rawValue.startsWith('[')) {
+        return parseArray(rawValue);
+    }
+
+    return parseScalar(rawValue);
+}
+
 // Appends a fresh element to the array the [[header]] names and returns it, so subsequent keys fill it.
 // Unknown array tables get a throwaway object so their keys are parsed and ignored.
 function beginArrayTable(config, section) {
@@ -239,35 +254,27 @@ function beginArrayTable(config, section) {
     return {};
 }
 
-function assignValue(config, section, currentTable, key, rawValue) {
+function assignValue(config, section, currentTable, key, rawValue, sessionTypeIds) {
     if (section === 'session') {
         if (key === 'type') {
             config.type = parseScalar(rawValue);
         } else if (key === 'working_directory') {
             config.workingDirectory = parseScalar(rawValue);
-        } else if (key === 'startup_script') {
-            config.startupScript = parseScalar(rawValue);
-        } else if (key === 'disabled_built_in_runners') {
+        } else if (key === 'disabled_runners') {
             config.disabledBuiltInRunners = parseArray(rawValue);
-        }
-        return;
-    }
-
-    if (section === 'session.options') {
-        if (key === 'executable') {
-            config.executable = parseScalar(rawValue);
-        } else if (key === 'python_version') {
-            config.pythonVersion = parseScalar(rawValue);
-        } else if (key === 'arguments') {
-            config.arguments = parseArray(rawValue);
-        } else if (key === 'dependencies') {
-            config.dependencies = parseArray(rawValue);
         }
         return;
     }
 
     if (section === 'session.environment') {
         config.environment[key] = parseScalar(rawValue);
+        return;
+    }
+
+    const typeId = readTypeTableId(section, sessionTypeIds);
+    if (typeId !== null) {
+        const options = config.optionsBySessionType[typeId] || (config.optionsBySessionType[typeId] = {});
+        options[key] = parseValue(rawValue);
         return;
     }
 
@@ -345,16 +352,26 @@ function parseScalar(rawValue) {
     return rawValue;
 }
 
+// The basic-string escapes this format uses, which are the ones quote() emits plus the tab a hand-written
+// file may carry.
+const BASIC_STRING_ESCAPES = {
+    '"': '"',
+    '\\': '\\',
+    n: '\n',
+    r: '\r',
+    t: '\t',
+};
+
 // Unescapes a double-quoted string body in one pass, so an unescaped backslash never pairs with the
-// character an earlier escape produced. Escapes other than \" and \\ pass through verbatim.
+// character an earlier escape produced. An escape outside the table passes through verbatim.
 function unescapeBasicString(inner) {
     let result = '';
     for (let index = 0; index < inner.length; index++) {
         const character = inner[index];
         if (character === '\\' && index + 1 < inner.length) {
-            const next = inner[index + 1];
-            if (next === '"' || next === '\\') {
-                result += next;
+            const escaped = BASIC_STRING_ESCAPES[inner[index + 1]];
+            if (escaped !== undefined) {
+                result += escaped;
                 index++;
                 continue;
             }
@@ -425,8 +442,13 @@ function quoteScript(value) {
     return quote(text);
 }
 
+// A basic string cannot hold a raw newline, so line breaks are escaped rather than emitted.
 function quote(value) {
-    const escaped = String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    const escaped = String(value)
+        .replace(/\\/g, '\\\\')
+        .replace(/"/g, '\\"')
+        .replace(/\r/g, '\\r')
+        .replace(/\n/g, '\\n');
     return `"${escaped}"`;
 }
 

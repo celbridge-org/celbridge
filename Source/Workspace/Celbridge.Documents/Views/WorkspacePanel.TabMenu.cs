@@ -43,8 +43,8 @@ public sealed partial class WorkspacePanel
             case DocumentTabMenuAction.CopyFilePath:
                 CopyFilePathForTab(tab);
                 break;
-            case DocumentTabMenuAction.SelectFile:
-                SelectFileForTab(tab);
+            case DocumentTabMenuAction.RevealInExplorer:
+                RevealInExplorerForTab(tab);
                 break;
             case DocumentTabMenuAction.OpenFileExplorer:
                 OpenFileExplorerForTab(tab);
@@ -230,9 +230,9 @@ public sealed partial class WorkspacePanel
         }
     }
 
-    private void SelectFileForTab(DocumentTab tab)
+    private void RevealInExplorerForTab(DocumentTab tab)
     {
-        ViewModel.SelectFileForTab(tab.ViewModel.FileResource);
+        ViewModel.RevealInExplorerForTab(tab.ViewModel.FileResource);
     }
 
     private void CopyResourceKeyForTab(DocumentTab tab)

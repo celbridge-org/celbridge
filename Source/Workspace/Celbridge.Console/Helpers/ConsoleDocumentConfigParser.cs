@@ -13,25 +13,22 @@ public sealed record ConsoleDocumentTrigger(
     string Command);
 
 /// <summary>
-/// The launch-relevant configuration parsed from a .console file. Shortcuts are not represented: they are
-/// a client-side toolbar the host never consumes.
+/// The launch-relevant configuration parsed from a .console file. SessionTypeOptions is the selected type's
+/// [session.&lt;type&gt;] table, and StartupScript is read out of that same table.
 /// </summary>
 public sealed record ConsoleDocumentConfig(
-    string Type,
-    string Executable,
-    string PythonVersion,
-    IReadOnlyList<string> Arguments,
-    IReadOnlyList<string> Dependencies,
+    string SessionType,
     string WorkingDirectory,
     string StartupScript,
     IReadOnlyDictionary<string, string> Environment,
+    IReadOnlyDictionary<string, object?> SessionTypeOptions,
     IReadOnlyList<ConsoleRunner> Runners,
     IReadOnlyList<string> DisabledBuiltInRunners,
     IReadOnlyList<ConsoleDocumentTrigger> Triggers)
 {
     /// <summary>
     /// Keys the document declared that the host does not define, each named by its section (for example
-    /// "session.startup-script"). The document still launches, so this is advisory.
+    /// "session.shell.entrypoint"). The document still launches, so this is advisory.
     /// </summary>
     public IReadOnlyList<string> UnknownFields { get; init; } = Array.Empty<string>();
 }
@@ -43,12 +40,16 @@ public sealed record ConsoleDocumentConfig(
 public static class ConsoleDocumentConfigParser
 {
     private const string SessionSection = "session";
-    private const string OptionsSection = "session.options";
     private const string RunnerSection = "session.runner";
     private const string TriggerSection = "session.trigger";
     private const string ShortcutSection = "session.shortcut";
 
     private const string DefaultSessionType = "shell";
+
+    /// <summary>
+    /// The startup script key, accepted in every type's table.
+    /// </summary>
+    public const string ScriptKey = "script";
 
     // Document keys are the snake_case spelling of the model's property names.
     private static readonly TomlSerializerOptions DocumentOptions = new()
@@ -56,7 +57,13 @@ public static class ConsoleDocumentConfigParser
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
     };
 
-    public static Result<ConsoleDocumentConfig> Parse(string tomlText)
+    /// <summary>
+    /// Parses a .console document against the registered session types supplied by the caller. A key a type
+    /// does not define, or a table named for a type that is not registered, is reported as an unknown field.
+    /// </summary>
+    public static Result<ConsoleDocumentConfig> Parse(
+        string tomlText,
+        IReadOnlyList<ConsoleSessionType> sessionTypes)
     {
         // Tomlyn rejects bare-\r line terminators, so normalize before parsing.
         var text = LineEndingHelper.ConvertLineEndings(tomlText ?? string.Empty, "\n");
@@ -84,22 +91,29 @@ public static class ConsoleDocumentConfigParser
         }
 
         var session = document.Session;
-        var options = session?.Options;
+        var sessionType = ReadText(session?.Type, DefaultSessionType);
+        var optionKeysBySessionType = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
+        foreach (var type in sessionTypes)
+        {
+            if (!optionKeysBySessionType.TryAdd(type.TypeId, type.OptionKeys))
+            {
+                return Result<ConsoleDocumentConfig>.Fail(
+                    $"Console session type '{type.TypeId}' is registered more than once.");
+            }
+        }
+        var sessionTypeOptions = ReadSessionTypeOptions(session, sessionType, optionKeysBySessionType);
 
         var config = new ConsoleDocumentConfig(
-            ReadText(session?.Type, DefaultSessionType),
-            ReadText(options?.Executable),
-            ReadText(options?.PythonVersion),
-            ReadTextList(options?.Arguments),
-            ReadTextList(options?.Dependencies),
+            sessionType,
             ReadText(session?.WorkingDirectory),
-            ReadText(session?.StartupScript),
+            ConfigTableHelper.ReadText(sessionTypeOptions, ScriptKey),
             ReadEnvironment(session),
+            sessionTypeOptions,
             ReadRunners(session),
-            ReadTextList(session?.DisabledBuiltInRunners),
+            ReadTextList(session?.DisabledRunners),
             ReadTriggers(session))
         {
-            UnknownFields = CollectUnknownFields(document)
+            UnknownFields = CollectUnknownFields(document, optionKeysBySessionType)
         };
 
         return config;
@@ -133,6 +147,23 @@ public static class ConsoleDocumentConfigParser
         }
 
         return items;
+    }
+
+    // The selected type's [session.<type>] table. A table for a type that is not registered reads as absent.
+    private static IReadOnlyDictionary<string, object?> ReadSessionTypeOptions(
+        ConsoleSessionSection? session,
+        string sessionType,
+        IReadOnlyDictionary<string, IReadOnlyList<string>> optionKeysBySessionType)
+    {
+        var noOptions = new Dictionary<string, object?>();
+        if (session is null ||
+            !optionKeysBySessionType.ContainsKey(sessionType) ||
+            !session.ExtensionKeys.TryGetValue(sessionType, out var value))
+        {
+            return noOptions;
+        }
+
+        return ConfigTableHelper.ReadTable(value) ?? noOptions;
     }
 
     private static IReadOnlyDictionary<string, string> ReadEnvironment(ConsoleSessionSection? session)
@@ -202,11 +233,13 @@ public static class ConsoleDocumentConfigParser
 
     // Every key the document declares that the host does not define, named by its section. The names
     // under [session.environment] are the user's own, so they never appear here.
-    private static IReadOnlyList<string> CollectUnknownFields(ConsoleFile document)
+    private static IReadOnlyList<string> CollectUnknownFields(
+        ConsoleFile document,
+        IReadOnlyDictionary<string, IReadOnlyList<string>> optionKeysBySessionType)
     {
         var unknownFields = new List<string>();
 
-        unknownFields.AddRange(document.UnknownKeys.Keys);
+        unknownFields.AddRange(document.ExtensionKeys.Keys);
 
         var session = document.Session;
         if (session is null)
@@ -214,38 +247,72 @@ public static class ConsoleDocumentConfigParser
             return unknownFields.AsReadOnly();
         }
 
-        AddUnknownKeys(session.UnknownKeys, SessionSection, unknownFields);
-        AddUnknownKeys(session.Options?.UnknownKeys, OptionsSection, unknownFields);
+        AddUnknownSessionKeys(session.ExtensionKeys, optionKeysBySessionType, unknownFields);
 
         foreach (var entry in session.Runner)
         {
-            AddUnknownKeys(entry.UnknownKeys, RunnerSection, unknownFields);
+            AddUnknownKeys(entry.ExtensionKeys, RunnerSection, unknownFields);
         }
 
         foreach (var entry in session.Trigger)
         {
-            AddUnknownKeys(entry.UnknownKeys, TriggerSection, unknownFields);
+            AddUnknownKeys(entry.ExtensionKeys, TriggerSection, unknownFields);
         }
 
         foreach (var entry in session.Shortcut)
         {
-            AddUnknownKeys(entry.UnknownKeys, ShortcutSection, unknownFields);
+            AddUnknownKeys(entry.ExtensionKeys, ShortcutSection, unknownFields);
         }
 
         return unknownFields.AsReadOnly();
     }
 
+    // The session bag holds each type's own table alongside anything the document declares that nothing
+    // defines. A table named for a registered type has its keys checked against that type, and every other
+    // entry is unknown.
+    private static void AddUnknownSessionKeys(
+        Dictionary<string, object?> extensionKeys,
+        IReadOnlyDictionary<string, IReadOnlyList<string>> optionKeysBySessionType,
+        List<string> unknownFields)
+    {
+        foreach (var entry in extensionKeys)
+        {
+            if (!optionKeysBySessionType.TryGetValue(entry.Key, out var optionKeys))
+            {
+                unknownFields.Add($"{SessionSection}.{entry.Key}");
+                continue;
+            }
+
+            var table = ConfigTableHelper.ReadTable(entry.Value);
+            if (table is null)
+            {
+                unknownFields.Add($"{SessionSection}.{entry.Key}");
+                continue;
+            }
+
+            var knownKeys = new HashSet<string>(optionKeys, StringComparer.Ordinal)
+            {
+                ScriptKey
+            };
+
+            foreach (var unknownKey in ConfigSchemaHelper.FindUnknownKeys(table.Keys, knownKeys))
+            {
+                unknownFields.Add($"{SessionSection}.{entry.Key}.{unknownKey}");
+            }
+        }
+    }
+
     private static void AddUnknownKeys(
-        Dictionary<string, object?>? unknownKeys,
+        Dictionary<string, object?>? extensionKeys,
         string sectionName,
         List<string> unknownFields)
     {
-        if (unknownKeys is null)
+        if (extensionKeys is null)
         {
             return;
         }
 
-        foreach (var key in unknownKeys.Keys)
+        foreach (var key in extensionKeys.Keys)
         {
             unknownFields.Add($"{sectionName}.{key}");
         }
