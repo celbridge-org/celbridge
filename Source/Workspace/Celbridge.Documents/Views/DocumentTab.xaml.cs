@@ -26,7 +26,7 @@ public enum DocumentTabMenuAction
     UnsplitArea,
     CopyResourceKey,
     CopyFilePath,
-    SelectFile,
+    RevealInExplorer,
     OpenFileExplorer,
     OpenApplication,
     RestoreChrome,
@@ -150,7 +150,7 @@ public partial class DocumentTab : TabViewItem
         ApplyMoveMenuLabels();
         CopyResourceKeyMenuItem.Text = _stringLocalizer.GetString("DocumentTab_CopyResourceKey");
         CopyFilePathMenuItem.Text = _stringLocalizer.GetString("DocumentTab_CopyFilePath");
-        SelectFileMenuItem.Text = _stringLocalizer.GetString("DocumentTab_SelectFile");
+        RevealInExplorerMenuItem.Text = _stringLocalizer.GetString("DocumentTab_RevealInExplorer");
         string fileManagerName = _stringLocalizer.GetString(_platformInfo.FileManagerNameStringKey);
         OpenFileExplorerMenuItem.Text = _stringLocalizer.GetString("DocumentTab_OpenFileManager", fileManagerName);
         OpenApplicationMenuItem.Text = _stringLocalizer.GetString("DocumentTab_OpenApplication");
@@ -278,9 +278,9 @@ public partial class DocumentTab : TabViewItem
         ContextMenuActionRequested?.Invoke(this, DocumentTabMenuAction.UnsplitArea);
     }
 
-    private void ContextMenu_SelectFile(object sender, RoutedEventArgs e)
+    private void ContextMenu_RevealInExplorer(object sender, RoutedEventArgs e)
     {
-        ContextMenuActionRequested?.Invoke(this, DocumentTabMenuAction.SelectFile);
+        ContextMenuActionRequested?.Invoke(this, DocumentTabMenuAction.RevealInExplorer);
     }
 
     private void ContextMenu_CopyResourceKey(object sender, RoutedEventArgs e)
@@ -374,12 +374,11 @@ public partial class DocumentTab : TabViewItem
         // backing file. The close and move options remain.
         bool isUtility = ViewModel.IsDockedUtility;
         var fileActionsVisibility = isUtility ? Visibility.Collapsed : Visibility.Visible;
-        SelectFileSeparator.Visibility = fileActionsVisibility;
-        SelectFileMenuItem.Visibility = fileActionsVisibility;
         CopySeparator.Visibility = fileActionsVisibility;
         CopyResourceKeyMenuItem.Visibility = fileActionsVisibility;
         CopyFilePathMenuItem.Visibility = fileActionsVisibility;
         OpenSeparator.Visibility = fileActionsVisibility;
+        RevealInExplorerMenuItem.Visibility = fileActionsVisibility;
         OpenFileExplorerMenuItem.Visibility = fileActionsVisibility;
         OpenApplicationMenuItem.Visibility = fileActionsVisibility;
 
