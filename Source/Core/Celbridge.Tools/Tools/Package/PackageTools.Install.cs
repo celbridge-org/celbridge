@@ -18,7 +18,7 @@ public partial class PackageTools
     /// <summary>Install a workshop package version or alias into a destination folder (default packages/).</summary>
     [McpServerTool(Name = "package_install", Destructive = true)]
     [ToolAlias("package.install")]
-    [RelatedGuides("packages_overview", "resource_keys", "silent_vs_interactive")]
+    [RelatedGuides("workshop", "resource_keys", "silent_vs_interactive")]
     public async partial Task<CallToolResult> Install(
         string packageName,
         string version = PackageConstants.LatestAlias,

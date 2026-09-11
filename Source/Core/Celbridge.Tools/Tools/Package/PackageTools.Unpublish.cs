@@ -15,7 +15,7 @@ public partial class PackageTools
     /// <summary>Unpublish a whole package and all its versions from the workshop.</summary>
     [McpServerTool(Name = "package_unpublish", Destructive = true)]
     [ToolAlias("package.unpublish")]
-    [RelatedGuides("packages_overview")]
+    [RelatedGuides("workshop")]
     public async partial Task<CallToolResult> Unpublish(string packageName)
     {
         if (!IsWorkshopEnabled)

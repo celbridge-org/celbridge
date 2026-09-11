@@ -34,7 +34,7 @@ In practice this means: do not open every webview tool with "See `webview_devtoo
 - **No `<param>` / `<returns>` XML tags.** Those belong on the C# tool method, not in the guide body. The MCP source generator already exposes parameter descriptions to the agent; the guide is for what the parameter shape and signature do not say.
 - **No emojis.** No decorative dividers, no section-marker comments.
 - **Plain prose, present tense.** Short paragraphs. Backticks for parameter names, tool names, and short literals; fenced blocks for multi-line examples.
-- **CRLF line endings** (Windows project convention).
+- **LF line endings**, as enforced repo-wide by `.gitattributes`.
 - **Use full stops in English prose**, not semicolons. (C# statement terminators are unaffected.)
 
 ## Per-kind structure

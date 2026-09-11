@@ -47,7 +47,7 @@ The dot-form alias matches the MCP tool name after swapping the first underscore
 
 ## Command semantics
 
-All tools that modify application state execute sequentially and wait for completion before returning. State is always fully applied when the tool call returns. You do not need to poll, you do not need to wait, and concurrent tool calls produce a defined order. Tools that drive user-facing dialogs (e.g. `package_publish` with `confirmWithUser: true`) wait for the user's response before returning — see `silent_vs_interactive` for which ones do.
+All tools that modify application state execute sequentially and wait for completion before returning. State is always fully applied when the tool call returns. You do not need to poll, you do not need to wait, and concurrent tool calls produce a defined order. Tools that drive user-facing dialogs (e.g. `explorer_rename` with `showDialog: true`) wait for the user's response before returning — see `silent_vs_interactive` for which ones do.
 
 ## Python proxy conventions
 
@@ -89,7 +89,7 @@ These auto-attach the first time you call a tool in their namespace, but you can
 - `explorer` — create / move / rename / delete files and folders, manipulate the resource tree.
 - `file` — read, write, search, and edit file contents.
 - `guides` — re-fetch guides after context auto-compaction.
-- `package` — build, install, archive, publish Celbridge packages.
+- `package` — inspect the project's installed packages, and archive or extract package folders.
 - `spreadsheet` — read and write `.xlsx` workbooks. Read this before any spreadsheet call.
 - `webview` — devtools-style automation of HTML and contribution editors.
 

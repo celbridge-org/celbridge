@@ -18,4 +18,4 @@ The `app` namespace covers application-level concerns that are not tied to a spe
 - `app_show_alert` — show a modal alert dialog and wait for the user to dismiss it.
 - `app_simulate_input` *(debug builds only)* — performs a test-automation input operation the calling harness cannot deliver itself; the `key` operation posts a named key press into the app's own event queue. macOS only.
 - `app_spotlight` — highlight a named UI landmark with a callout to show the user where it is; an empty target clears the current spotlight.
-- `app_answer_dialog` *(gated by `answer-dialog`)* — schedules an automated answer for the next modal dialog, so a script can drive a flow that would otherwise block on user interaction. Used by integration tests for the always-prompt admin tools (`package_delete`, `package_unpublish`) and the dialog-driven `explorer_rename`.
+- `app_answer_dialog` *(gated by `answer-dialog`)* — schedules an automated answer for the next modal dialog, so a script can drive a flow that would otherwise block on user interaction. Used by integration tests for the dialog-driven tools such as `explorer_rename`.
