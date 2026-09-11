@@ -13,8 +13,9 @@ public partial class PackageTools
 {
     /// <summary>Delete a published package version from the workshop, removing its content permanently.</summary>
     [McpServerTool(Name = "package_delete", Destructive = true)]
+    [WorkshopTool]
     [ToolAlias("package.delete")]
-    [RelatedGuides("packages_overview")]
+    [RelatedGuides("workshop")]
     public async partial Task<CallToolResult> Delete(string packageName, string version)
     {
         if (!PackageName.IsValid(packageName))

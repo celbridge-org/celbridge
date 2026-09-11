@@ -14,8 +14,9 @@ public partial class PackageTools
 {
     /// <summary>List all packages available in the connected workshop.</summary>
     [McpServerTool(Name = "package_list", ReadOnly = true)]
+    [WorkshopTool]
     [ToolAlias("package.list")]
-    [RelatedGuides("packages_overview")]
+    [RelatedGuides("workshop")]
     public async partial Task<CallToolResult> List()
     {
         var packageApiClient = GetRequiredService<IPackageApiClient>();

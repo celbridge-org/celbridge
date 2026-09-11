@@ -42,13 +42,12 @@ A single tool method is exposed under three names — the MCP form, the Python f
 | MCP tool name (in `tools/list`) | `<namespace>_<snake_method>` | `file_replace` |
 | Python REPL proxy (`cel.*`) | `cel.<namespace>.<snake_method>(...)` | `cel.file.replace(...)` |
 | JavaScript call site (in a package) | `cel.<namespace>.<camelMethod>(...)` | `cel.file.replace(...)` |
-| `[permissions] tools` manifest entry | `<namespace>.<snake_method>` | `"file.replace"` |
 
-The dot-form alias used in manifests matches the MCP tool name after swapping the first underscore for a dot. The JavaScript proxy converts the method portion to camelCase at the call site automatically; the manifest does **not**.
+The dot-form alias matches the MCP tool name after swapping the first underscore for a dot. The JavaScript proxy converts the method portion to camelCase at the call site automatically.
 
 ## Command semantics
 
-All tools that modify application state execute sequentially and wait for completion before returning. State is always fully applied when the tool call returns. You do not need to poll, you do not need to wait, and concurrent tool calls produce a defined order. Tools that drive user-facing dialogs (e.g. `package_publish` with `confirmWithUser: true`) wait for the user's response before returning — see `silent_vs_interactive` for which ones do.
+All tools that modify application state execute sequentially and wait for completion before returning. State is always fully applied when the tool call returns. You do not need to poll, you do not need to wait, and concurrent tool calls produce a defined order. Tools that drive user-facing dialogs (e.g. `explorer_rename` with `showDialog: true`) wait for the user's response before returning — see `silent_vs_interactive` for which ones do.
 
 ## Python proxy conventions
 
@@ -69,14 +68,7 @@ Type `help(cel)` to list the namespaces, or `help(cel.file)` to see the methods 
 
 ## JavaScript proxy conventions
 
-Package extensions run inside a WebView hosted by an editor contribution (declared in `package.toml` under `[contributes].editors`). Before writing any JS that calls `cel.*`, declare the tools your package needs in `package.toml` under `[permissions].tools`:
-
-```toml
-[permissions]
-tools = ["document.*", "file.*", "app.get_state"]
-```
-
-The manifest uses the **alias form** — `namespace.snake_case_method`. The JS proxy converts the method portion to camelCase at the call site; the manifest does **not**.
+Package extensions run inside a WebView hosted by an editor contribution (declared in `package.toml` under `[contributes].editors`). The tools a package can call need no declaration — the host decides what it offers, and the proxy is built from that list.
 
 ```javascript
 import celbridge from '/assets/celbridge-client/celbridge.js';
@@ -86,7 +78,7 @@ const tree = await cel.file.getTree("");
 
 - **Arguments are positional and camelCase.** Extra arguments throw `CEL_TOOL_INVALID_ARGS`.
 - **Errors throw `CelToolError`** with `{ code, tool, message }`.
-- **Calling a namespace not covered by `[permissions] tools`** throws `TypeError: Cannot read properties of undefined`. Fix the manifest, not the call site.
+- **Calling a tool the host withholds** (the `webview.*` namespace, or a namespace behind a disabled feature flag) throws `TypeError: Cannot read properties of undefined`, because the proxy is built from the tools the host returned.
 
 ## Domain prep — namespace guides
 
@@ -97,7 +89,7 @@ These auto-attach the first time you call a tool in their namespace, but you can
 - `explorer` — create / move / rename / delete files and folders, manipulate the resource tree.
 - `file` — read, write, search, and edit file contents.
 - `guides` — re-fetch guides after context auto-compaction.
-- `package` — build, install, archive, publish Celbridge packages.
+- `package` — inspect the project's installed packages, and archive or extract package folders.
 - `spreadsheet` — read and write `.xlsx` workbooks. Read this before any spreadsheet call.
 - `webview` — devtools-style automation of HTML and contribution editors.
 

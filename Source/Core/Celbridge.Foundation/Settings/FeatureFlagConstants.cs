@@ -1,3 +1,5 @@
+using System.Collections.Frozen;
+
 namespace Celbridge.Settings;
 
 /// <summary>
@@ -43,4 +45,20 @@ public static class FeatureFlagConstants
     /// reported whether or not this is enabled; what it adds is the surrounding timeline.
     /// </summary>
     public const string WebViewLoadDiagnostics = "webview-load-diagnostics";
+
+    /// <summary>
+    /// The workshop: the package_* and page_* tools, and the Workshop section of Application Settings.
+    /// An experimental feature that needs a configured workshop server, so the build opts in rather than
+    /// the user. Non-overridable.
+    /// </summary>
+    public const string Workshop = "workshop";
+
+    /// <summary>
+    /// The flags a project cannot override. They are read from appsettings.json only, and are absent from
+    /// the Feature Flags section, because the surfaces they gate exist before any project is loaded and so
+    /// cannot follow a project's choice. That fixes them for the lifetime of the build, which also inverts
+    /// the default: one of these is off unless the build turns it on.
+    /// </summary>
+    public static readonly FrozenSet<string> NonOverridableFlags =
+        new[] { Workshop }.ToFrozenSet(StringComparer.Ordinal);
 }

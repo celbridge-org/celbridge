@@ -104,6 +104,51 @@ public class ClientApiSurfaceTests
         }
     };
 
+    // Functions the api/ modules export to importers, alongside the classes above. A package can
+    // import these by name, so a removal breaks it the same way a removed method does. Keep each
+    // list alphabetical.
+    private static readonly Dictionary<string, string[]> PublishedClientApiFunctions = new(StringComparer.Ordinal)
+    {
+        ["api/tools-api.js"] = new[]
+        {
+            "buildCelProxy",
+            "jsonRpcCodeForCelCode"
+        }
+    };
+
+    [Test]
+    public void ThePublishedClientApiFunctionsAreUnchanged()
+    {
+        var clientFolder = FindClientFolder();
+
+        var differences = new List<string>();
+        foreach (var (relativePath, publishedFunctions) in PublishedClientApiFunctions)
+        {
+            var filePath = Path.Combine(clientFolder, relativePath.Replace('/', Path.DirectorySeparatorChar));
+            if (!File.Exists(filePath))
+            {
+                differences.Add($"{relativePath}: the module is gone, so every function it published is gone with it");
+                continue;
+            }
+
+            var exportedFunctions = ReadExportedFunctions(filePath);
+
+            foreach (var function in publishedFunctions.Except(exportedFunctions, StringComparer.Ordinal))
+            {
+                differences.Add($"{relativePath}: {function} is published but no longer exported");
+            }
+
+            foreach (var function in exportedFunctions.Except(publishedFunctions, StringComparer.Ordinal))
+            {
+                differences.Add($"{relativePath}: {function} is exported but not published");
+            }
+        }
+
+        differences.Sort(StringComparer.Ordinal);
+        string.Join(Environment.NewLine, differences).Should().BeEmpty(
+            "a package can import these by name, so treat a removal as a breaking change for package authors and update PublishedClientApiFunctions deliberately");
+    }
+
     [Test]
     public void ThePublishedClientApiIsUnchanged()
     {

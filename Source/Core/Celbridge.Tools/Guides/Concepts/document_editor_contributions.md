@@ -13,9 +13,6 @@ title = "My Editor"
 
 [contributes]
 editors = ["my-editor.editor.toml"]
-
-[permissions]
-tools = ["document.*", "file.*"]
 ```
 
 `packages/my-editor/my-editor.editor.toml`:
@@ -425,7 +422,7 @@ Apply at every framework-driven `setContent` site.
 
 - **Localization** — `t('MyEditor_Editor_Name')` after `await client.initialize()`; strings live in `localization/<locale>.json` next to `index.html`.
 - **Secrets** — bundled-package descriptors can inject `client.secrets.<name>`. Non-bundled packages see an empty map.
-- **`[permissions] tools`** — every `cel.*` call must be declared under `[permissions].tools` in alias form (`"document.save"`). See `agent_instructions`.
+- **`cel.*` tools** — available without declaration; the proxy is built from what the host offers. See `agent_instructions`.
 
 ## Reference contributions
 

@@ -7,7 +7,8 @@ namespace Celbridge.Tests.ProjectSettings;
 /// <summary>
 /// Keeps FeatureFlagCatalog (the Project Settings UI metadata) in sync with FeatureFlagConstants (the
 /// canonical flag names), so adding a flag to one without the other fails the build rather than silently
-/// leaving a gap in the panel.
+/// leaving a gap in the panel. Non-overridable flags are the exception: the panel sets a project
+/// override, which one of those ignores, so listing it would offer the user a toggle that does nothing.
 /// </summary>
 [TestFixture]
 public class FeatureFlagCatalogTests
@@ -22,12 +23,30 @@ public class FeatureFlagCatalogTests
     }
 
     [Test]
-    public void Catalog_CoversEveryKnownFeatureFlag()
+    public void Catalog_CoversEveryRuntimeFeatureFlag()
     {
-        var constantNames = GetConstantFlagNames();
+        var runtimeNames = GetConstantFlagNames()
+            .Where(flagName => !FeatureFlagConstants.NonOverridableFlags.Contains(flagName))
+            .ToList();
         var catalogNames = FeatureFlagCatalog.Descriptors.Select(descriptor => descriptor.FlagName).ToList();
 
-        catalogNames.Should().BeEquivalentTo(constantNames);
+        catalogNames.Should().BeEquivalentTo(runtimeNames);
+    }
+
+    [Test]
+    public void Catalog_ExcludesNonOverridableFlags()
+    {
+        var catalogNames = FeatureFlagCatalog.Descriptors.Select(descriptor => descriptor.FlagName).ToList();
+
+        catalogNames.Should().NotIntersectWith(FeatureFlagConstants.NonOverridableFlags);
+    }
+
+    [Test]
+    public void NonOverridableFlags_AreDeclaredFlagNames()
+    {
+        var constantNames = GetConstantFlagNames();
+
+        FeatureFlagConstants.NonOverridableFlags.Should().BeSubsetOf(constantNames);
     }
 
     [Test]

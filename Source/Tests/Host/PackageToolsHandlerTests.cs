@@ -9,7 +9,7 @@ namespace Celbridge.Tests.Host;
 public class PackageToolsHandlerTests
 {
     [Test]
-    public async Task ListToolsAsync_FiltersByAllowlist()
+    public async Task ListToolsAsync_ReturnsEveryToolTheBridgeOffers()
     {
         var bridge = new StubToolBridge
         {
@@ -20,15 +20,15 @@ public class PackageToolsHandlerTests
                 Descriptor("file_read",       "file.read")
             }
         };
-        var handler = new PackageToolsHandler(bridge, new[] { "app.*", "document.open" });
+        var handler = new PackageToolsHandler(bridge);
 
         var result = await handler.ListToolsAsync();
 
-        result.Select(t => t.Alias).Should().BeEquivalentTo("app.get_state", "document.open");
+        result.Select(t => t.Alias).Should().BeEquivalentTo("app.get_state", "document.open", "file.read");
     }
 
     [Test]
-    public async Task ListToolsAsync_HidesWebViewNamespaceEvenWhenAllowlistMatches()
+    public async Task ListToolsAsync_HidesWebViewNamespace()
     {
         var bridge = new StubToolBridge
         {
@@ -39,7 +39,7 @@ public class PackageToolsHandlerTests
                 Descriptor("webview_reload",  "webview.reload")
             }
         };
-        var handler = new PackageToolsHandler(bridge, new[] { "*" });
+        var handler = new PackageToolsHandler(bridge);
 
         var result = await handler.ListToolsAsync();
 
@@ -47,10 +47,10 @@ public class PackageToolsHandlerTests
     }
 
     [Test]
-    public void CallToolAsync_WebViewNamespace_ThrowsDeniedRegardlessOfAllowlist()
+    public void CallToolAsync_WebViewNamespace_ThrowsDenied()
     {
         var bridge = new StubToolBridge();
-        var handler = new PackageToolsHandler(bridge, new[] { "*" });
+        var handler = new PackageToolsHandler(bridge);
 
         Func<Task> act = () => handler.CallToolAsync("webview.eval", (JsonElement?)null);
 
@@ -67,7 +67,7 @@ public class PackageToolsHandlerTests
     public void CallToolAsync_WebViewMcpStyleName_ThrowsDenied()
     {
         var bridge = new StubToolBridge();
-        var handler = new PackageToolsHandler(bridge, new[] { "*" });
+        var handler = new PackageToolsHandler(bridge);
 
         Func<Task> act = () => handler.CallToolAsync("webview_eval", (JsonElement?)null);
 
@@ -79,13 +79,13 @@ public class PackageToolsHandlerTests
     }
 
     [Test]
-    public async Task CallToolAsync_AllowedTool_ReturnsBridgeResult()
+    public async Task CallToolAsync_ReturnsBridgeResult()
     {
         var bridge = new StubToolBridge
         {
             CallResult = new ToolCallResult(true, string.Empty, "0.2.5")
         };
-        var handler = new PackageToolsHandler(bridge, new[] { "app.*" });
+        var handler = new PackageToolsHandler(bridge);
 
         var result = await handler.CallToolAsync("app.get_state", (JsonElement?)null);
 
@@ -95,27 +95,10 @@ public class PackageToolsHandlerTests
     }
 
     [Test]
-    public void CallToolAsync_DeniedTool_ThrowsLocalRpcExceptionWithDeniedCode()
-    {
-        var bridge = new StubToolBridge();
-        var handler = new PackageToolsHandler(bridge, new[] { "app.*" });
-
-        Func<Task> act = () => handler.CallToolAsync("file.read", (JsonElement?)null);
-
-        act.Should()
-            .ThrowAsync<LocalRpcException>()
-            .Result
-            .Which
-            .ErrorCode.Should().Be(ToolRpcErrorCodes.ToolDenied);
-
-        bridge.LastCallName.Should().BeNull();
-    }
-
-    [Test]
     public void CallToolAsync_EmptyName_ThrowsInvalidArgs()
     {
         var bridge = new StubToolBridge();
-        var handler = new PackageToolsHandler(bridge, new[] { "*" });
+        var handler = new PackageToolsHandler(bridge);
 
         Func<Task> act = () => handler.CallToolAsync("", (JsonElement?)null);
 
@@ -133,7 +116,7 @@ public class PackageToolsHandlerTests
         {
             CallThrows = new InvalidOperationException("boom")
         };
-        var handler = new PackageToolsHandler(bridge, new[] { "*" });
+        var handler = new PackageToolsHandler(bridge);
 
         Func<Task> act = () => handler.CallToolAsync("app.get_state", (JsonElement?)null);
 
@@ -142,13 +125,6 @@ public class PackageToolsHandlerTests
             .Result
             .Which
             .ErrorCode.Should().Be(ToolRpcErrorCodes.ToolFailed);
-    }
-
-    [Test]
-    public void AllowedPatterns_IsSurfaced()
-    {
-        var handler = new PackageToolsHandler(new StubToolBridge(), new[] { "app.*", "file.read" });
-        handler.AllowedPatterns.Should().Equal("app.*", "file.read");
     }
 
     private static ToolDescriptor Descriptor(string name, string alias)

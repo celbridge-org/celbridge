@@ -11,7 +11,7 @@ The dialog actually displays briefly before auto-closing. This is by design: an 
 Right before triggering the call that opens the modal dialog. Order matters:
 
 1. Call `app_answer_dialog(dialogKind, payload?, delayMs?)` to schedule the answer.
-2. Call the tool that triggers the dialog (e.g. `package_unpublish`, `explorer_rename`).
+2. Call the tool that triggers the dialog (e.g. `explorer_rename`, `explorer_delete`).
 
 The delay timer starts when the matching dialog is displayed, not when this call returns — so it's fine for agent timing to vary between the schedule and the dialog appearing.
 
@@ -19,7 +19,7 @@ The delay timer starts when the matching dialog is displayed, not when this call
 
 - `dialogKind` (required string) — identifies which dialog kind the answer is for. The schedule only fires when a dialog of this kind appears; if a different dialog appears first, the schedule stays pending and the unexpected dialog blocks on the user. Valid values:
   - `"Alert"` — info-only OK prompts (e.g. an error notice surfaced after a failed operation).
-  - `"Confirmation"` — yes/no prompts (e.g. `package_delete`).
+  - `"Confirmation"` — yes/no prompts (e.g. `explorer_delete`).
   - `"InputText"` — single-string text-entry prompts (e.g. `explorer_rename`).
   - `"ResourcePicker"` — file-resource pickers (e.g. JS contribution `PickFile` / `PickImage`).
 - `payload` (optional string, default `""`) — the content the dialog should receive:
@@ -42,7 +42,7 @@ The schedule itself is fire-and-forget: the tool returns immediately after recor
 ### Python (`cel.app.answer_dialog`)
 
 ```python
-# Confirm the next package_unpublish prompt.
+# Confirm the next explorer_delete prompt.
 cel.app.answer_dialog("Confirmation")
 package.unpublish("test-integration-pkg")
 

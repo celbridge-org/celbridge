@@ -22,21 +22,18 @@ public static class ToolRpcErrorCodes
 }
 
 /// <summary>
-/// Per-WebView RPC target for tools/list and tools/call, gated by a package's
-/// [permissions] tools allowlist.
+/// Per-WebView RPC target for tools/list and tools/call. This is the single chokepoint between a
+/// package editor and the tool surface, and the seam a privilege model plugs into. The only tools it
+/// withholds are the ones no package may reach regardless of what it declares.
 /// </summary>
 public sealed class PackageToolsHandler
 {
     private readonly IMcpToolBridge _bridge;
-    private readonly IReadOnlyList<string> _allowedPatterns;
 
-    public PackageToolsHandler(IMcpToolBridge bridge, IReadOnlyList<string> allowedPatterns)
+    public PackageToolsHandler(IMcpToolBridge bridge)
     {
         _bridge = bridge;
-        _allowedPatterns = allowedPatterns;
     }
-
-    public IReadOnlyList<string> AllowedPatterns => _allowedPatterns;
 
     [JsonRpcMethod(ToolRpcMethods.ListTools)]
     public async Task<IReadOnlyList<ToolDescriptor>> ListToolsAsync()
@@ -51,10 +48,10 @@ public sealed class PackageToolsHandler
                 continue;
             }
 
-            if (ToolAllowlist.IsAllowed(tool.Alias, _allowedPatterns))
-            {
-                filtered.Add(tool);
-            }
+            // Descriptions are prose written for an agent choosing a tool. The cel.* proxy keys off
+            // the alias and the parameter list, so sending them would multiply the payload every
+            // editor loads at startup for text nothing on the page reads.
+            filtered.Add(tool with { Description = string.Empty });
         }
 
         return filtered;
@@ -71,21 +68,12 @@ public sealed class PackageToolsHandler
             };
         }
 
-        // The webview_* namespace is reserved for the MCP path. Blocking it here
-        // (regardless of the package's permitted tools) closes the
-        // cross-document attack vector where a custom editor's JS could
-        // call webview.eval against another open document.
+        // The webview_* namespace is reserved for the MCP path. Blocking it here closes the
+        // cross-document attack vector where a custom editor's JS could call webview.eval against
+        // another open document.
         if (IsCustomEditorRestricted(name))
         {
             throw new LocalRpcException($"Tool '{name}' is not accessible from custom editors")
-            {
-                ErrorCode = ToolRpcErrorCodes.ToolDenied
-            };
-        }
-
-        if (!ToolAllowlist.IsAllowed(name, _allowedPatterns))
-        {
-            throw new LocalRpcException($"Tool '{name}' is not declared under [permissions] tools in the package manifest")
             {
                 ErrorCode = ToolRpcErrorCodes.ToolDenied
             };

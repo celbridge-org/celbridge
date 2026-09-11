@@ -1,3 +1,4 @@
+using Celbridge.Settings;
 using Celbridge.Tools;
 using TextContentBlock = ModelContextProtocol.Protocol.TextContentBlock;
 
@@ -83,6 +84,17 @@ public class ToolResponseTests
         text.Should().Be("The 'webview-dev-tools' feature flag is disabled. Enable it in the user .celbridge config to use this tool.");
         result.Meta![ToolResponse.TroubleshooterMetaKey]!.GetValue<string>()
             .Should().Be("troubleshoot_feature_flag");
+    }
+
+    [Test]
+    public void FeatureFlagDisabled_ForANonOverridableFlag_PointsAtTheBuildRatherThanTheConfig()
+    {
+        var nonOverridableFlag = FeatureFlagConstants.Workshop;
+
+        var result = ToolResponse.FeatureFlagDisabled(nonOverridableFlag);
+
+        var text = ((TextContentBlock)result.Content!.Single()).Text;
+        text.Should().Be($"The '{nonOverridableFlag}' feature flag is disabled. It is fixed at build time, so this build cannot use this tool.");
     }
 
     [Test]

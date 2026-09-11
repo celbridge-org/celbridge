@@ -18,6 +18,7 @@ public partial class PageTools
 {
     /// <summary>Inspect a published workshop page by its served path: its URL, publisher, and content hash.</summary>
     [McpServerTool(Name = "page_info", ReadOnly = true)]
+    [WorkshopTool]
     [ToolAlias("page.info")]
     [RelatedGuides("pages_overview")]
     public async partial Task<CallToolResult> Info(string path)
