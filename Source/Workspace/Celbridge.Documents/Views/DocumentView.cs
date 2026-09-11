@@ -159,6 +159,11 @@ public abstract partial class DocumentView : UserControl, IDocumentView
         throw new NotImplementedException();
     }
 
+    public virtual void SetExpectedLayoutSize(double width, double height)
+    {
+        // A view whose content is laid out by the platform needs no size until it is shown.
+    }
+
     public virtual async Task<Result> NavigateToLocation(string location)
     {
         // Default implementation does nothing - subclasses can override for document-specific navigation

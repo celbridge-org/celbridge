@@ -72,23 +72,31 @@ const terminalElement = document.getElementById('terminal');
 term.open(terminalElement);
 terminalElement.querySelector('.xterm-helper-textarea')?.setAttribute('name', 'terminal-input');
 
-// The terminal's minimum width, mirroring #terminal-view in console.css. A viewport narrower than this
-// cannot be one the page was laid out into.
-const TERMINAL_MIN_WIDTH = 360;
-
-// True once a layout pass has given this page a real viewport. A WebView that has not been arranged hands
-// its page a viewport a few dozen pixels across, narrower than the terminal's own minimum.
+// True once this view has been arranged and is on screen, which is when the viewport it reports is the one
+// it will be read at. An unarranged view is handed a viewport the page cannot tell from a real layout, so
+// the host reports which of the two this is.
 function isArranged() {
     return !document.hidden &&
-        document.documentElement.clientWidth >= TERMINAL_MIN_WIDTH &&
+        client.viewState.current?.isArranged === 'true';
+}
+
+// Set once the session has been told a size, which is what decides whether an unarranged measurement counts.
+let hasReportedSize = false;
+
+// Whether a measurement taken now is worth acting on. An arranged view's always is, and a view still waiting
+// to be shown gets one, for the size its session launches at: the host lays an unshown surface out at the
+// size its section will give it. Past the launch only an arranged view counts, so a measurement taken
+// against geometry the layout has moved on from cannot reach the pty, where a resize costs the screen the
+// output already painted on it.
+function canMeasure() {
+    return (isArranged() || !hasReportedSize) &&
         terminalElement.clientWidth > 0 &&
         terminalElement.clientHeight > 0;
 }
 
-// Fits the terminal to its box, and reports whether that box was one worth measuring. A size taken from
-// an unarranged viewport is applied to the live pty and destroys the output already on its screen.
+// Fits the terminal to its box, and reports whether that box was one worth measuring.
 function fitTerminal() {
-    if (!isArranged()) {
+    if (!canMeasure()) {
         return false;
     }
 
@@ -117,7 +125,7 @@ if (terminalRows) {
 const RAIL_STACK_FALLBACK = 400;
 
 // The narrowest a laid-out document can be, mirroring WorkspaceConstants.DocumentMinWidth and
-// --cel-document-min-width. A WebView that has not been arranged reports a viewport far below it.
+// --cel-document-min-width.
 const DOCUMENT_MIN_WIDTH = 230;
 
 // DOM references.
@@ -203,7 +211,36 @@ client.onNotification('console/startupComplete', () => {
 });
 
 term.onData((data) => client.sendNotification('console/input', { data }));
-term.onResize(({ cols, rows }) => client.sendNotification('console/resize', { cols, rows }));
+
+// A resize the session asked for is not one to report back: the session is already at that size, and the
+// launch treats the first size a view reports as the size the view was measured at.
+let adoptingSessionSize = false;
+
+term.onResize(({ cols, rows }) => {
+    if (adoptingSessionSize) {
+        return;
+    }
+
+    hasReportedSize = true;
+    client.sendNotification('console/resize', { cols, rows });
+});
+
+// Renders the replay at the size the session painted it at, rather than rewrapping every line it holds to
+// whatever size this terminal happens to be.
+function adoptSessionSize(cols, rows) {
+    if (cols <= 0 ||
+        rows <= 0 ||
+        (cols === term.cols && rows === term.rows)) {
+        return;
+    }
+
+    adoptingSessionSize = true;
+    try {
+        term.resize(cols, rows);
+    } finally {
+        adoptingSessionSize = false;
+    }
+}
 
 // Whether the terminal is the view on screen. The settings form replaces it, and its fields are ordinary
 // controls the platform edits itself.
@@ -295,8 +332,8 @@ term.attachCustomKeyEventHandler((event) => {
 
 window.addEventListener('resize', refitTerminal);
 
-// A tab shown for the first time arranges its WebView, which is where a page restored into a background
-// tab gets its real viewport.
+// A page hidden with the tab it is in has no size to fit to, so the terminal is fitted again once the tab
+// it is shown in has been arranged.
 document.addEventListener('visibilitychange', refitTerminal);
 
 // Refit the terminal whenever the space it occupies changes, coalesced to one fit per frame.
@@ -789,7 +826,13 @@ function applyWritableState() {
     renderBuiltInRunners();
 }
 
-client.viewState.onChanged(() => applyWritableState());
+client.viewState.onChanged(() => {
+    applyWritableState();
+
+    // Being arranged is what makes a measurement worth taking, and a view shown again is arranged after the
+    // page is back on screen, so the visibility change alone comes too early to fit on.
+    refitTerminal();
+});
 
 // Reopening from settings shows the terminal first. A reopen measures the terminal for the size it gives the
 // new pty and paints a failed start into it, and neither works while it is the hidden half of the row.
@@ -902,13 +945,25 @@ function clearVeilTimers() {
     }
 }
 
-// How long the attach waits for the view to be arranged. A view that takes a moment to lay out is worth
-// waiting for. One that never lays out is not.
+// How long the attach waits for the view's size to settle before launching the session at whatever it has.
 const ARRANGE_TIMEOUT_MS = 4000;
 
-// The pty is created at the terminal's measured size, so measure only once the layout has settled. On
-// application startup the WebView is still being laid out when this script runs, and a resize that lands
-// after the shell has painted makes ConPTY reflow its buffer, which shows up as a block of blank lines.
+// How often the size is sampled while the page is off screen, where there are no animation frames to sample
+// on.
+const HIDDEN_SAMPLE_MS = 100;
+
+// The next moment worth measuring at. A hidden page's animation frames are paused, and its geometry only
+// changes when the host sizes its surface for the layout it will be given, so a short interval samples it.
+function nextSizeSample() {
+    if (document.hidden) {
+        return new Promise((resolve) => setTimeout(resolve, HIDDEN_SAMPLE_MS));
+    }
+
+    return new Promise((resolve) => requestAnimationFrame(resolve));
+}
+
+// The pty is created at the terminal's measured size, so measure only once the layout has settled. A resize
+// that lands after the shell has painted costs the screen the output already on it.
 async function waitForStableSize() {
     let waiting = true;
 
@@ -916,14 +971,14 @@ async function waitForStableSize() {
         let previousWidth = -1;
         let previousHeight = -1;
 
-        // The size the attach carries is the size the host creates the pty at, so this runs until the view
-        // is arranged and the size it reports is the one it will be read at.
+        // The size the attach carries is the size the host creates the pty at, so this runs until the size
+        // the view reports has stopped changing.
         while (waiting) {
-            await new Promise((resolve) => requestAnimationFrame(resolve));
+            await nextSizeSample();
 
             const width = terminalView.clientWidth;
             const height = terminalView.clientHeight;
-            if (isArranged() && width > 0 && height > 0 && width === previousWidth && height === previousHeight) {
+            if (canMeasure() && width > 0 && height > 0 && width === previousWidth && height === previousHeight) {
                 return;
             }
 
@@ -932,16 +987,16 @@ async function waitForStableSize() {
         }
     })();
 
-    // Animation frames stop entirely while the document is hidden, so the measurement can never be what
-    // gates the launch: a timer keeps the session starting even when the frames never arrive.
+    // The measurement can never be what gates the launch: a timer keeps the session starting even when the
+    // size never settles.
     const deadline = new Promise((resolve) => setTimeout(resolve, ARRANGE_TIMEOUT_MS));
 
     await Promise.race([settled, deadline]);
     waiting = false;
 }
 
-// The terminal size an attach or reopen carries. Zero means the view has not been arranged, which leaves
-// the session at its launch size until a refit reports a real one.
+// The terminal size an attach or reopen carries. Zero means there was no box to measure, which leaves the
+// session at its launch size until a refit reports a real one.
 function terminalSize(isSized) {
     if (!isSized) {
         return { cols: 0, rows: 0 };
@@ -979,6 +1034,7 @@ function applyAttachResult(result) {
     }
 
     if (result.replay) {
+        adoptSessionSize(result.cols, result.rows);
         term.write(result.replay);
     }
 
@@ -1012,6 +1068,7 @@ async function attachSession() {
     // a first run includes installing the runtime's toolchain.
     await waitForStableSize();
     const isSized = fitTerminal();
+    hasReportedSize = true;
     term.reset();
 
     try {

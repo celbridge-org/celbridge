@@ -70,6 +70,14 @@ public interface IWebViewAdapter
     void CloseWebView(WebView2 webView, Panel? container);
 
     /// <summary>
+    /// Sets the geometry the hosted page reads as its viewport, which on the Skia heads the platform only
+    /// arranges while the control is in the visual tree. Callers pass the size the control has been arranged
+    /// at, or the size it will be arranged at once it is shown. No-op where the platform keeps the two in
+    /// step itself.
+    /// </summary>
+    void SetViewportSize(WebView2 webView, double width, double height);
+
+    /// <summary>
     /// Gives the hosted web content keyboard focus, reproducing what a click inside the view establishes.
     /// Managed focus does this on the Windows heads. On the macOS Skia head managed focus routes keys
     /// through the managed pipeline, where they never reach the web content, so the native WKWebView is

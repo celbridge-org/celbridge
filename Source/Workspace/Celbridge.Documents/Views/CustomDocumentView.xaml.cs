@@ -86,6 +86,11 @@ public sealed partial class CustomDocumentView : DocumentView
         return await _controller.InitializeAsync(ResolvedEditor);
     }
 
+    public override void SetExpectedLayoutSize(double width, double height)
+    {
+        _controller.SetExpectedLayoutSize(width, height);
+    }
+
     public override async Task<Result> NavigateToLocation(string location)
     {
         return await _controller.NavigateToLocationAsync(location);

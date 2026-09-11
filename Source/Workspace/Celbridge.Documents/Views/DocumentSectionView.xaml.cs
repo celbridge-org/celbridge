@@ -256,6 +256,7 @@ public sealed partial class DocumentSectionView : UserControl
         }
 
         RevealSelectedTab();
+        UpdateExpectedDocumentSizes();
 
         // The strip is still mid-arrange while its size change is raised, so its leading edge only settles on
         // the following cycle.
@@ -915,6 +916,42 @@ public sealed partial class DocumentSectionView : UserControl
         }
 
         RevealSelectedTab();
+        UpdateExpectedDocumentSizes();
+    }
+
+    /// <summary>
+    /// Tells the documents in this section's background tabs the size they will be laid out at when they are
+    /// shown, which is the size the shown document has. A background tab is never laid out, so a document
+    /// that sizes its content before it is shown has nothing else to measure against.
+    /// </summary>
+    public void UpdateExpectedDocumentSizes()
+    {
+        if (TabView.SelectedItem is not DocumentTab selectedTab
+            || selectedTab.Content is not FrameworkElement selectedContent)
+        {
+            return;
+        }
+
+        var width = selectedContent.ActualWidth;
+        var height = selectedContent.ActualHeight;
+        if (width <= 0 ||
+            height <= 0)
+        {
+            return;
+        }
+
+        foreach (var tab in GetAllTabs())
+        {
+            if (ReferenceEquals(tab, selectedTab))
+            {
+                continue;
+            }
+
+            if (tab.Content is IDocumentView documentView)
+            {
+                documentView.SetExpectedLayoutSize(width, height);
+            }
+        }
     }
 
     private void OnTabStripPresenterSizeChanged(object sender, SizeChangedEventArgs e)

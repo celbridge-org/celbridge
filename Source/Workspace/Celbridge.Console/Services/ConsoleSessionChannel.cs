@@ -111,6 +111,8 @@ internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSess
             snapshot.Error,
             snapshot.StartupPending,
             snapshot.Replay,
+            snapshot.Cols,
+            snapshot.Rows,
             snapshot.LaunchedConfigToml,
             sessionTypes);
     }

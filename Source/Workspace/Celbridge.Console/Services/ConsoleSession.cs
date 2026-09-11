@@ -50,6 +50,11 @@ internal sealed class ConsoleSession : IDisposable
     private IConsoleView? _attachedView;
 
     private ITerminal? _terminal;
+
+    // The size the pty is running at, and so the size the buffered output was painted at. An attaching view
+    // renders the replay at it rather than at its own, which would rewrap output painted for another width.
+    private TerminalSize _terminalSize = new(0, 0);
+
     private StartupInjector? _startupInjector;
     private List<string>? _deferredInjectionLines;
     private Timer? _markerTimeout;
@@ -77,6 +82,11 @@ internal sealed class ConsoleSession : IDisposable
     public string? Error { get; private set; }
 
     public string? LaunchedConfigToml { get; private set; }
+
+    /// <summary>
+    /// The size the pty is running at, which is the size its buffered output was painted at.
+    /// </summary>
+    public TerminalSize TerminalSize => _terminalSize;
 
     /// <summary>
     /// Regenerated on each launch and seeded into the session environment as the handshake token, so a
@@ -260,7 +270,7 @@ internal sealed class ConsoleSession : IDisposable
         var terminal = _serviceProvider.GetRequiredService<ITerminal>();
         terminal.OutputReceived += OnTerminalOutput;
         terminal.ProcessExited += OnTerminalProcessExited;
-        terminal.SetSize(fallbackCols, fallbackRows);
+        SetTerminalSize(terminal, fallbackCols, fallbackRows);
 
         var environmentCopy = new Dictionary<string, string>(environment);
 
@@ -306,7 +316,7 @@ internal sealed class ConsoleSession : IDisposable
         var reportedSize = await _pendingViewSize.WaitAsync(ViewSizeTimeoutMs);
         if (reportedSize is not null)
         {
-            terminal.SetSize(reportedSize.Cols, reportedSize.Rows);
+            SetTerminalSize(terminal, reportedSize.Cols, reportedSize.Rows);
         }
 
         var startedAtViewSize = reportedSize is not null;
@@ -374,6 +384,8 @@ internal sealed class ConsoleSession : IDisposable
                 Error,
                 StartupPending,
                 _outputBuffer.Snapshot(),
+                _terminalSize.Cols,
+                _terminalSize.Rows,
                 LaunchedConfigToml);
         }
     }
@@ -407,9 +419,10 @@ internal sealed class ConsoleSession : IDisposable
         // A view reports no size until a layout pass has arranged it. Applying an empty size collapses the
         // pty to a single row and loses the output already on its screen to the reflow.
         if (cols > 0 &&
-            rows > 0)
+            rows > 0 &&
+            _terminal is not null)
         {
-            _terminal?.SetSize(cols, rows);
+            SetTerminalSize(_terminal, cols, rows);
         }
 
         // A deferred reveal waits for this first size, so the revealed prompt is drawn at the width it will
@@ -426,6 +439,20 @@ internal sealed class ConsoleSession : IDisposable
         {
             _startupInjector = StartupInjector.Begin(_terminal, deferredInjectionLines, CompleteStartup);
         }
+    }
+
+    // A size the pty already has is not applied again: a backend that acts on the request redraws, and a
+    // redraw of a screen the shell has painted leaves the prompt that was on it behind.
+    private void SetTerminalSize(ITerminal terminal, int cols, int rows)
+    {
+        if (_terminalSize.Cols == cols &&
+            _terminalSize.Rows == rows)
+        {
+            return;
+        }
+
+        terminal.SetSize(cols, rows);
+        _terminalSize = new TerminalSize(cols, rows);
     }
 
     public void InjectInvocation(string invocation)

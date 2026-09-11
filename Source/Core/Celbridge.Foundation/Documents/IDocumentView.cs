@@ -29,6 +29,13 @@ public interface IDocumentView : IWorkspaceItem
     void SetWritableState(WritableState state);
 
     /// <summary>
+    /// Tells the view the size it will be laid out at once it is shown. A document in a background tab is
+    /// never laid out, so a view that sizes its content before it is shown has nothing else to go on.
+    /// Views that take their size from the layout alone ignore this.
+    /// </summary>
+    void SetExpectedLayoutSize(double width, double height);
+
+    /// <summary>
     /// Navigate to a specific location within the document.
     /// </summary>
     Task<Result> NavigateToLocation(string location);

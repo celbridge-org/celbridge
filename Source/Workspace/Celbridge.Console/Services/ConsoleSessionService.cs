@@ -168,6 +168,8 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
             "The console session is not available.",
             false,
             string.Empty,
+            0,
+            0,
             null);
     }
 
@@ -211,7 +213,14 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
 
             session.Resize(cols, rows);
 
-            return new ConsoleAttachSnapshot(session.State, session.Error, false, string.Empty, session.LaunchedConfigToml);
+            return new ConsoleAttachSnapshot(
+                session.State,
+                session.Error,
+                false,
+                string.Empty,
+                session.TerminalSize.Cols,
+                session.TerminalSize.Rows,
+                session.LaunchedConfigToml);
         }
 
         return await AttachAsync(resource, previousView, cols, rows);

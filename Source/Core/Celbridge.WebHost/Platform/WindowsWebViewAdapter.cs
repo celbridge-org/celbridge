@@ -40,6 +40,11 @@ public sealed class WindowsWebViewAdapter : IWebViewAdapter
         webView.Close();
     }
 
+    public void SetViewportSize(WebView2 webView, double width, double height)
+    {
+        // The packaged WebView2 is arranged by XAML, so its page's viewport already follows the control.
+    }
+
     public void FocusWebView(WebView2 webView)
     {
         // The packaged WebView2 integrates with XAML focus, so managed focus reaches the web content.

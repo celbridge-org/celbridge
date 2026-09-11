@@ -15,13 +15,16 @@ public enum ConsoleSessionRunState
 /// <summary>
 /// What an attaching console view needs to render a live session: its state, the failure reason when it
 /// failed, whether the startup phase is still pending (keep the starting veil up), the buffered output to
-/// replay, and the raw .console text the session launched from (for the settings form's divergence check).
+/// replay, the terminal size that output was painted at, and the raw .console text the session launched
+/// from (for the settings form's divergence check).
 /// </summary>
 public sealed record ConsoleAttachSnapshot(
     ConsoleSessionRunState State,
     string? Error,
     bool StartupPending,
     string Replay,
+    int Cols,
+    int Rows,
     string? LaunchedConfigToml);
 
 /// <summary>

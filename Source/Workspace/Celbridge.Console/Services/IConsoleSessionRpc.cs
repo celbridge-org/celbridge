@@ -5,14 +5,17 @@ namespace Celbridge.Console.Services;
 /// <summary>
 /// The outcome of a console/attach or console/reopen request: the session's run state
 /// ("starting" | "running" | "ended" | "failed"), the failure reason when failed, whether the startup
-/// phase is still pending (keep the starting veil up), the buffered output to replay, the raw .console
-/// text the session launched from, and every registered session type with its built-in runners.
+/// phase is still pending (keep the starting veil up), the buffered output to replay, the terminal size
+/// that output was painted at, the raw .console text the session launched from, and every registered
+/// session type with its built-in runners.
 /// </summary>
 public sealed record ConsoleAttachResult(
     string State,
     string? Error,
     bool StartupPending,
     string Replay,
+    int Cols,
+    int Rows,
     string? LaunchedConfigToml,
     IReadOnlyList<ConsoleSessionType> SessionTypes);
 
