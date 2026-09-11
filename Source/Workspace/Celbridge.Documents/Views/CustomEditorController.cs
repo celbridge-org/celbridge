@@ -713,6 +713,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             _webViewAdapter.CloseWebView(WebView, _webViewContainer);
 
             WebView = null;
+            _isArranged = false;
         }
 
         if (_proxyChannel is not null)
@@ -852,19 +853,6 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         // An editor that loaded while detached raised no navigation events, so its completion was never
         // probed. Attach is the first moment the host hears from it again.
         _ = ProbeLoadedContentAsync();
-    }
-
-    // A surface in a background tab is never laid out, so its page is laid out against the size its section
-    // will give it.
-    public void SetExpectedLayoutSize(double width, double height)
-    {
-        if (_isArranged
-            || WebView is null)
-        {
-            return;
-        }
-
-        _webViewAdapter.SetViewportSize(WebView, width, height);
     }
 
     private void WebView_SizeChanged(object sender, SizeChangedEventArgs e)

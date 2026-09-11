@@ -17,6 +17,7 @@ import {
     parseExtensionList,
     configsEqual,
 } from './console-config.js';
+import { isAdoptableSize } from './terminal-sizing.js';
 import shellType from './types/shell.js';
 import pythonType from './types/python.js';
 
@@ -79,14 +80,11 @@ function isArranged() {
         client.viewState.current?.isArranged === 'true';
 }
 
-let hasReportedSize = false;
-
-// Whether a measurement taken now is worth acting on. An unarranged view counts until the session has been
-// given a size, since the host lays an unshown surface out at the size its section will give it. Past that
-// only an arranged view counts, so geometry the layout has moved on from cannot resize the pty, where a
-// resize costs the screen the output already painted on it.
+// Whether a measurement taken now is worth acting on. Only an arranged view's is: an unarranged one is
+// measuring geometry no layout pass produced, and applying it resizes the pty, which costs the screen the
+// output already painted on it.
 function canMeasure() {
-    return (isArranged() || !hasReportedSize) &&
+    return isArranged() &&
         terminalElement.clientWidth > 0 &&
         terminalElement.clientHeight > 0;
 }
@@ -217,15 +215,12 @@ term.onResize(({ cols, rows }) => {
         return;
     }
 
-    hasReportedSize = true;
     client.sendNotification('console/resize', { cols, rows });
 });
 
 // Resizes the terminal to the size the session painted its buffered output at, so nothing is rewrapped.
 function adoptSessionSize(cols, rows) {
-    if (cols <= 0 ||
-        rows <= 0 ||
-        (cols === term.cols && rows === term.rows)) {
+    if (!isAdoptableSize(cols, rows, term.cols, term.rows)) {
         return;
     }
 
@@ -1056,7 +1051,6 @@ async function attachSession() {
     // a first run includes installing the runtime's toolchain.
     await waitForStableSize();
     const isSized = fitTerminal();
-    hasReportedSize = true;
     term.reset();
 
     try {

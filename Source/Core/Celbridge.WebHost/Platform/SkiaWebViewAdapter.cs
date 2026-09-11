@@ -88,7 +88,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
                 {
                     PinNativeWebView(nativeWebViewHandle);
                     KeepSelectionWhileUnfocused(nativeWebViewHandle);
-                    ApplyInitialViewportSize(nativeWebViewHandle);
+                    ApplyInitialViewportSize(webView);
                 }
                 else
                 {
@@ -363,7 +363,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     // from project load) reports a zero-sized window to its page: layout collapses, and a page that derives
     // geometry from the viewport at startup divides by zero and stays broken even after the real arrange
     // arrives. The placeholder is the size of the window, so a page cannot tell it from a real layout.
-    private void ApplyInitialViewportSize(IntPtr nativeWebViewHandle)
+    private void ApplyInitialViewportSize(WebView2 webView)
     {
         var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
 
@@ -377,7 +377,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
             height = Math.Max(windowContent.ActualHeight, MinimumViewportHeight);
         }
 
-        MacOSWebViewInterop.SetViewportSize(nativeWebViewHandle, width, height);
+        SetViewportSize(webView, width, height);
     }
 
     public void SetViewportSize(WebView2 webView, double width, double height)

@@ -71,7 +71,7 @@ public class PendingViewSizeTests
     }
 
     [Test]
-    public async Task Report_KeepsTheFirstSize_WhenAViewReportsAgain()
+    public async Task WaitAsync_ReturnsTheSizeTheReportsSettleOn()
     {
         var pendingViewSize = new PendingViewSize();
 
@@ -81,8 +81,36 @@ public class PendingViewSizeTests
         var size = await pendingViewSize.WaitAsync(WaitTimeoutMs);
 
         size.Should().Be(
+            new TerminalSize(100, 40),
+            "a view reports again as its layout settles, and the pty is created at the size it settles on");
+    }
+
+    [Test]
+    public async Task WaitAsync_KeepsWaitingWhileAViewIsStillReporting()
+    {
+        var pendingViewSize = new PendingViewSize();
+        pendingViewSize.Report(75, 26);
+
+        var waiting = pendingViewSize.WaitAsync(WaitTimeoutMs);
+
+        // Inside the settle window, so this size replaces the one the wait would otherwise have returned.
+        await Task.Delay(100);
+        pendingViewSize.Report(170, 47);
+
+        (await waiting).Should().Be(new TerminalSize(170, 47));
+    }
+
+    [Test]
+    public async Task WaitAsync_ReturnsTheLatestSize_WhenReportsAreStillChangingAtTheTimeout()
+    {
+        var pendingViewSize = new PendingViewSize();
+        pendingViewSize.Report(75, 26);
+
+        var waiting = pendingViewSize.WaitAsync(TimeoutTestMs);
+
+        (await waiting).Should().Be(
             new TerminalSize(75, 26),
-            "the launch is waiting for a size to build the pty with, not for the latest one");
+            "a launch cannot wait past its timeout for a size that has not settled");
     }
 
     [Test]

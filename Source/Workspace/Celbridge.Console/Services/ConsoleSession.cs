@@ -413,16 +413,21 @@ internal sealed class ConsoleSession : IDisposable
         _pendingViewSize.Report(cols, rows);
 
         // A view reports no size until a layout pass has arranged it. Applying an empty size collapses the
-        // pty to a single row and loses the output already on its screen to the reflow.
-        if (cols > 0 &&
-            rows > 0 &&
-            _terminal is not null)
+        // pty to a single row and loses the output already on its screen to the reflow, and a reveal drawn
+        // at that point would be drawn at the launch size the deferral exists to avoid.
+        if (cols <= 0 ||
+            rows <= 0)
+        {
+            return;
+        }
+
+        if (_terminal is not null)
         {
             SetTerminalSize(_terminal, cols, rows);
         }
 
-        // A deferred reveal waits for this first size, so the revealed prompt is drawn at the width it will
-        // be shown at.
+        // A deferred reveal waits for this first real size, so the revealed prompt is drawn at the width it
+        // will be shown at.
         List<string>? deferredInjectionLines;
         lock (_gateLock)
         {

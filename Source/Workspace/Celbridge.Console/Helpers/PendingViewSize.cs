@@ -7,13 +7,23 @@ public sealed record TerminalSize(int Cols, int Rows);
 
 /// <summary>
 /// The terminal size a console view reports, held for a launch that has to know it before it creates the pty.
-/// The first size reported is the one every waiter receives, so a launch and the view it is waiting for can
-/// arrive in either order.
+/// A launch and the view it is waiting for can arrive in either order. A view reports again as its layout
+/// settles, so the wait returns the size those reports settle on rather than the first of them.
 /// </summary>
 public sealed class PendingViewSize
 {
-    private readonly TaskCompletionSource<TerminalSize> _reported =
+    // How long reports must stop for before the size counts as settled. A view that is still being laid out,
+    // or one being laid out against the size its section will give it, reports again within this window, and
+    // a pty created at a size the layout has already moved on from has to be resized once the view is shown,
+    // which costs the screen the output painted on it.
+    private const int SettleMs = 250;
+
+    private readonly object _lock = new();
+
+    private readonly TaskCompletionSource _reported =
         new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    private TerminalSize? _reportedSize;
 
     /// <summary>
     /// Records the size a view reports. A view that has not been arranged yet reports no size at all, which
@@ -27,20 +37,46 @@ public sealed class PendingViewSize
             return;
         }
 
-        _reported.TrySetResult(new TerminalSize(cols, rows));
+        lock (_lock)
+        {
+            _reportedSize = new TerminalSize(cols, rows);
+        }
+
+        _reported.TrySetResult();
     }
 
     /// <summary>
-    /// Waits for a view to report a size, returning null when none arrives within the timeout.
+    /// Waits for a view to report a size and for its reports to settle, returning null when none arrives
+    /// within the timeout. A size still changing when the timeout runs out is returned as it stands.
     /// </summary>
     public async Task<TerminalSize?> WaitAsync(int timeoutMs)
     {
-        var completed = await Task.WhenAny(_reported.Task, Task.Delay(timeoutMs));
-        if (completed != _reported.Task)
+        var deadline = Task.Delay(timeoutMs);
+
+        var firstReport = await Task.WhenAny(_reported.Task, deadline);
+        if (firstReport == deadline)
         {
             return null;
         }
 
-        return await _reported.Task;
+        while (true)
+        {
+            TerminalSize? sizeBeforeSettling;
+            lock (_lock)
+            {
+                sizeBeforeSettling = _reportedSize;
+            }
+
+            var settled = await Task.WhenAny(Task.Delay(SettleMs), deadline);
+
+            lock (_lock)
+            {
+                if (settled == deadline ||
+                    _reportedSize == sizeBeforeSettling)
+                {
+                    return _reportedSize;
+                }
+            }
+        }
     }
 }
