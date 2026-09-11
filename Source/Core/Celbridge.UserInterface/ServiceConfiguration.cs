@@ -41,6 +41,7 @@ public static class ServiceConfiguration
         services.AddSingleton<IResourceDragCoordinator, ResourceDragCoordinator>();
         services.AddSingleton<IApplicationShell, ApplicationShell>();
         services.AddSingleton<MainMenuUtils>();
+        services.AddSingleton<IInputSimulationService, InputSimulationService>();
 
         // LayoutManager is a single implementation that exposes two interfaces:
         // IWindowModeService (window mode) and ILayoutService (surface visibility).

@@ -196,6 +196,11 @@ public abstract partial class DocumentView : UserControl, IDocumentView
     // A document with no hosted page has nothing that can stop responding.
     public virtual DocumentHealth GetHealth() => DocumentHealth.Healthy;
 
+    // A document with no find of its own offers the host none, and leaves the find shortcut to its content.
+    public virtual bool CanFind => false;
+
+    public virtual bool TryBeginFind() => false;
+
     // Registers a hosted web surface with the focus registry using the Documents-panel contract the web-view
     // document editors share. releaseFocus drops the surface's caret when focus leaves it, and grantDomFocus
     // hands it back.

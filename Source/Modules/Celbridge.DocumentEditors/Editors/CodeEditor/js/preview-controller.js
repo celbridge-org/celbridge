@@ -53,6 +53,14 @@ export class PreviewController {
         log('preview: module loaded');
     }
 
+    // Opens the preview's find bar. Returns false when the renderer is not loaded or offers no find, so
+    // the caller can fall back to the editor's.
+    beginFind() {
+        return this.#module && typeof this.#module.beginFind === 'function'
+            ? this.#module.beginFind()
+            : false;
+    }
+
     setBasePath(basePath) {
         this.#pendingBasePath = basePath ?? '';
         if (this.#module) {

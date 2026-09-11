@@ -255,4 +255,9 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
     }
 
     public DocumentHealth GetHealth() => DocumentHealth.Healthy;
+
+    // The settings form has no find of its own, so the host offers none.
+    public bool CanFind => false;
+
+    public bool TryBeginFind() => false;
 }

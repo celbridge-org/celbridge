@@ -160,6 +160,15 @@ async function initialize() {
         editorController.performEdit(params?.command);
     });
 
+    // The host's Find menu item lands here, so it opens the same find Command+F does.
+    celbridge.onNotification('input/beginFind', () => {
+        if (previewPipeline?.beginFind()) {
+            return;
+        }
+
+        editorController.beginFind();
+    });
+
     // Host-mediated clipboard: the host fetches the selection for copy/cut and pushes text for
     // paste / cut-delete, because the WebView's own JS clipboard write is blocked on the Skia WKWebView.
     celbridge.onRequest('editor/getSelectedText', () => editorController.getSelectedText());

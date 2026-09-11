@@ -254,7 +254,8 @@ function initializeSpreadsheet() {
 
     // Fast-fail when either key is missing so SpreadJS never runs on empty strings.
     if (!licenseKey || !designerLicenseKey) {
-        // Reported to the host log: DevTools are blocked for this package, so console output is unreachable.
+        // Reported to the host log: a release build blocks DevTools for this package, so console output is
+        // unreachable there.
         client.log.error('[Spreadsheet] SpreadJS license keys missing from injected secrets. ' +
             'Expected `spreadjs_license_key` and `spreadjs_designer_license_key`. ' +
             'Got: license=' + (licenseKey ? 'present' : 'missing') +
@@ -275,20 +276,21 @@ function initializeSpreadsheet() {
 
         window.designer = designer;
 
+        routeClipboardCommandsThroughHost(designer.getWorkbook());
         listenForChanges();
         return true;
     } catch (e) {
         const container = document.getElementById('gc-designer-container');
         // The container size is logged because a WebView that loads while unarranged reports a zero viewport.
-        // The rest is state nothing else can recover: this package blocks DevTools and the webview_* tools to
-        // keep the license keys out of reach, so the log is the only account of a failure here. The keys
+        // The rest is state nothing else can recover: a release build blocks DevTools and the webview_* tools
+        // to keep the license keys out of reach, so the log is the only account of a failure there. The keys
         // themselves are never reported, only that the constructor was reached with them applied.
         client.log.error('[Spreadsheet] Designer construction failed'
             + ' (container ' + (container ? container.clientWidth + 'x' + container.clientHeight : 'missing')
             + ', viewport ' + window.innerWidth + 'x' + window.innerHeight
             + ', readyState ' + document.readyState
             + ', stylesheets ' + document.styleSheets.length
-            + ', spreadjs ' + (GC?.Spread?.Sheets?.version ?? 'unknown')
+            + ', core symbols ' + (GC?.Spread?.Sheets ? Object.keys(GC.Spread.Sheets).length : 'no GC')
             + ', designer ' + typeof GC?.Spread?.Sheets?.Designer?.Designer + ')', e);
         return false;
     }
@@ -338,8 +340,19 @@ function handleTabKey(shift) {
 // cut.
 function getSelectedText() {
     const context = getActiveSheet();
-    if (!context) {
+    if (!context || !gridHoldsKeyboard()) {
         return '';
+    }
+
+    const editor = cellEditorElement();
+    if (editor !== null) {
+        copiedRange = null;
+
+        if (editor.isContentEditable) {
+            return (document.getSelection()?.toString()) ?? '';
+        }
+
+        return editor.value.slice(editor.selectionStart, editor.selectionEnd);
     }
 
     const sheet = context.sheet;
@@ -387,7 +400,13 @@ function getSelectedText() {
 // Applies clipboard text from the host. Empty text is the delete half of a cut, so it clears the selection.
 function insertText(text) {
     const context = getActiveSheet();
-    if (!context || frameworkReadOnly) {
+    if (!context || frameworkReadOnly || !gridHoldsKeyboard()) {
+        return;
+    }
+
+    const editor = cellEditorElement();
+    if (editor !== null) {
+        replaceEditorSelection(editor, text);
         return;
     }
 
@@ -422,16 +441,45 @@ function insertText(text) {
     });
 }
 
+// SpreadJS reaches the system clipboard through the browser, which the macOS WebView refuses, so the
+// Designer's own Cut, Copy and Paste — in its context menu and its ribbon — silently do nothing. Point the
+// three commands every one of those routes ends at back at the host, which is where the keyboard shortcuts
+// for the same verbs already go, so a verb reached either way produces the same result. The host answers
+// through editor/getSelectedText and editor/insertText, which run clipboardPaste rather than these
+// commands, so a paste cannot re-enter here.
+function routeClipboardCommandsThroughHost(workbook) {
+    const commandManager = workbook.commandManager();
+
+    for (const verb of ['cut', 'copy', 'paste']) {
+        commandManager.register(verb, {
+            canUndo: false,
+            execute: () => {
+                client.input.requestEdit(verb).catch((error) => {
+                    client.log.error('[Spreadsheet] The host refused a ' + verb + ' request', error);
+                });
+
+                return true;
+            }
+        });
+    }
+}
+
 // Runs SpreadJS's own commands for the verbs that touch no clipboard.
 function performEdit(command) {
     const context = getActiveSheet();
-    if (!context) {
+    if (!context || !gridHoldsKeyboard()) {
         return;
     }
 
     const { spread, sheet } = context;
 
     if (command === 'selectAll') {
+        const editor = cellEditorElement();
+        if (editor !== null) {
+            selectEditorContents(editor);
+            return;
+        }
+
         // SpreadJS's selectAll acts on the cell editor's text, not the grid, so select every cell as a range.
         sheet.setSelection(0, 0, sheet.getRowCount(), sheet.getColumnCount());
         return;
@@ -445,19 +493,109 @@ function performEdit(command) {
     }
 }
 
+// The cell editor's own text element while a cell is being edited, or null when the grid itself holds the
+// keyboard. The platform will not paste into this element, so the page applies the verb to it directly
+// rather than acting on the cells behind it.
+function cellEditorElement() {
+    const context = getActiveSheet();
+    if (context === null || !context.sheet.isEditing?.()) {
+        return null;
+    }
+
+    const element = document.activeElement;
+    if (element === null) {
+        return null;
+    }
+
+    const isTextInput = (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA')
+        && typeof element.selectionStart === 'number';
+
+    if (isTextInput || element.isContentEditable) {
+        return element;
+    }
+
+    return null;
+}
+
+// Replaces the selection in the cell editor with the given text, leaving a caret after it. execCommand is
+// what keeps the editor's own undo stack and its input listeners in step; the splice is the fallback.
+function replaceEditorSelection(element, text) {
+    element.focus();
+
+    if (document.execCommand('insertText', false, text)) {
+        return;
+    }
+
+    if (typeof element.selectionStart !== 'number') {
+        return;
+    }
+
+    const start = element.selectionStart;
+    const end = element.selectionEnd;
+    element.value = element.value.slice(0, start) + text + element.value.slice(end);
+
+    const caret = start + text.length;
+    element.setSelectionRange(caret, caret);
+    element.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+// Selects everything in the cell editor. SpreadJS's editor is a contenteditable div rather than an input,
+// so the selection is placed over its contents rather than through select().
+function selectEditorContents(element) {
+    if (!element.isContentEditable) {
+        element.select?.();
+        return;
+    }
+
+    const range = document.createRange();
+    range.selectNodeContents(element);
+
+    const selection = document.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+}
+
+// Whether the grid itself holds the keyboard. Only the grid needs the host to carry its clipboard: the
+// Designer's ribbon, name box, dialogs and cell editor are ordinary DOM controls the platform edits, and
+// a claim covering them would send their keys to the cells instead. The grid keeps the claim whenever
+// this cannot be decided, because losing its clipboard is worse than a stray claim on a Designer field.
+function gridHoldsKeyboard() {
+    const context = getActiveSheet();
+    if (context === null) {
+        return false;
+    }
+
+    let host;
+    try {
+        host = context.spread.getHost();
+    } catch {
+        return true;
+    }
+
+    const activeElement = document.activeElement;
+    if (!host || activeElement === null) {
+        return true;
+    }
+
+    return host.contains(activeElement);
+}
+
 // Reports which verbs the host Edit menu should offer. A grid always has an active cell, so copy has
-// something to take even with no range selected.
+// something to take even with no range selected. Sent on every focus change, because which control holds
+// the keyboard is what decides whether the host acts at all.
 function reportEditAvailability() {
-    const available = getActiveSheet() !== null;
+    const gridHasKeyboard = gridHoldsKeyboard();
+    const canMutate = gridHasKeyboard && !frameworkReadOnly;
 
     client.input.notifyEditAvailability({
-        canCopy: available,
-        canCut: available && !frameworkReadOnly,
-        canPaste: available && !frameworkReadOnly,
-        canSelectAll: available,
-        canUndo: available && !frameworkReadOnly,
-        canRedo: available && !frameworkReadOnly,
-        hostMediatedClipboard: true
+        canCopy: gridHasKeyboard,
+        canCut: canMutate,
+        canPaste: canMutate,
+        canSelectAll: gridHasKeyboard,
+        canUndo: canMutate,
+        canRedo: canMutate,
+        hostMediatedClipboard: gridHasKeyboard,
+        canHandleTab: gridHasKeyboard
     });
 }
 
@@ -577,7 +715,8 @@ async function initializeEditor() {
             }
         });
     } catch (e) {
-        // Reported to the host log: DevTools are blocked for this package, so console output is unreachable.
+        // Reported to the host log: a release build blocks DevTools for this package, so console output is
+        // unreachable there.
         client.log.error('[Spreadsheet] Failed to initialize', e);
     }
 }

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
+using Celbridge.Dialog;
 using Celbridge.Tools;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
@@ -23,17 +24,20 @@ internal sealed class AgentResponseFilter
     private readonly IGuides _guides;
     private readonly IAppStateProvider _appStateProvider;
     private readonly IDocumentStateProvider _documentStateProvider;
+    private readonly IDialogService _dialogService;
 
     public AgentResponseFilter(
         AgentMonitor monitor,
         IGuides guides,
         IAppStateProvider appStateProvider,
-        IDocumentStateProvider documentStateProvider)
+        IDocumentStateProvider documentStateProvider,
+        IDialogService dialogService)
     {
         _monitor = monitor;
         _guides = guides;
         _appStateProvider = appStateProvider;
         _documentStateProvider = documentStateProvider;
+        _dialogService = dialogService;
     }
 
     private static readonly JsonSerializerOptions StateSnapshotJsonOptions = new()
@@ -156,7 +160,11 @@ internal sealed class AgentResponseFilter
         var prefix = new List<ContentBlock>();
         var attachedNames = new List<string>();
 
-        if (_monitor.TryMarkServed(session, SessionStateMarker))
+        // The open-documents half of the snapshot runs as a command, and the command queue waits for an
+        // open dialog to be answered. Left unmarked, so the snapshot attaches to a later call instead of
+        // holding up this one — which is what a tool called to answer that dialog needs.
+        if (!_dialogService.IsDialogOpen
+            && _monitor.TryMarkServed(session, SessionStateMarker))
         {
             var stateBlocks = await BuildSessionStateBlocksAsync();
             foreach (var entry in stateBlocks)

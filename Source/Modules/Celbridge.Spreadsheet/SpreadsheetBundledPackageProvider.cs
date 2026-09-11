@@ -55,15 +55,23 @@ public sealed class SpreadsheetBundledPackageProvider : IBundledPackageProvider
             [SpreadJSDesignerLicenseKeyName] = SpreadsheetLicenseKeys.DesignerLicenseKey,
         };
 
+        // The licence secrets are injected into the page, so a release build keeps DevTools and the
+        // webview_* tools away from it. A debug build is the developer's own machine, where reaching the
+        // page is what makes the integration workable.
+#if DEBUG
+        const bool devToolsBlocked = false;
+#else
+        const bool devToolsBlocked = true;
+#endif
+
         return new[]
         {
-            // SpreadJS's licence is domain-locked, so its page loads under a synthetic origin. The
-            // descriptor supplies the licence secrets and blocks DevTools.
+            // SpreadJS's licence is domain-locked, so its page loads under a synthetic origin.
             new BundledPackageDescriptor
             {
                 Folder = packageFolder,
                 Secrets = secrets,
-                DevToolsBlocked = true,
+                DevToolsBlocked = devToolsBlocked,
             }
         };
     }
