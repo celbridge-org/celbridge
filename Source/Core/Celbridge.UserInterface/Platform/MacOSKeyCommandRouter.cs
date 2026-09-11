@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using Celbridge.UserInterface.Services;
 using Celbridge.WebHost;
 using Windows.System;
 using static Celbridge.Utilities.Platform.ObjectiveCRuntime;
@@ -17,8 +18,9 @@ namespace Celbridge.UserInterface.Platform;
 /// surface holds focus the underlying key event is delivered to its native web view, because the key never
 /// reached the page; otherwise the command is absorbed, since the managed pipeline has already acted on the
 /// key and AppKit's default would end the responder chain in noResponder: and beep. Introduced by Uno.Sdk
-/// 6.5.36 to 6.6.29: the 6.5 native library contains none of that text-input machinery. Remove this once
-/// Uno delivers editing keys to the native first responder itself. macOS-only.
+/// 6.5.36 to 6.6.29: the 6.5 native library contains none of that text-input machinery. Remove the
+/// forwarding once Uno delivers editing keys to the native first responder itself; the caret commands
+/// answer a separate gap and outlive that fix. macOS-only.
 /// </summary>
 // UNO-BUG: Uno 6.6 diverts editing keys away from the native first responder.
 internal static class MacOSKeyCommandRouter
@@ -36,6 +38,9 @@ internal static class MacOSKeyCommandRouter
     // NSEventTypeKeyDown == 10.
     private const long EventTypeKeyDown = 10;
 
+    [DllImport(LibObjC, EntryPoint = "sel_getName")]
+    private static extern IntPtr GetSelectorName(IntPtr selector);
+
     [DllImport(LibObjC, EntryPoint = "class_addMethod")]
     [return: MarshalAs(UnmanagedType.I1)]
     private static extern bool class_addMethod(IntPtr classHandle, IntPtr selector, IntPtr implementation, string types);
@@ -45,6 +50,26 @@ internal static class MacOSKeyCommandRouter
     private const ulong ReturnKeyCode = 36;
 
     private static IWebViewFocusRegistry? _webViewFocusRegistry;
+    private static IManagedFocus? _managedFocus;
+
+    // The caret motions AppKit names for the chords macOS users press for the ends of a line and of the
+    // document, with the shifted forms that extend the selection instead of moving. The left and right
+    // spellings are the layout-direction-aware ones AppKit sends for Command+Left and Command+Right.
+    private static readonly Dictionary<string, (CaretMotion Motion, bool ExtendSelection)> CaretCommands = new()
+    {
+        ["moveToBeginningOfLine:"] = (CaretMotion.LineStart, false),
+        ["moveToLeftEndOfLine:"] = (CaretMotion.LineStart, false),
+        ["moveToEndOfLine:"] = (CaretMotion.LineEnd, false),
+        ["moveToRightEndOfLine:"] = (CaretMotion.LineEnd, false),
+        ["moveToBeginningOfDocument:"] = (CaretMotion.DocumentStart, false),
+        ["moveToEndOfDocument:"] = (CaretMotion.DocumentEnd, false),
+        ["moveToBeginningOfLineAndModifySelection:"] = (CaretMotion.LineStart, true),
+        ["moveToLeftEndOfLineAndModifySelection:"] = (CaretMotion.LineStart, true),
+        ["moveToEndOfLineAndModifySelection:"] = (CaretMotion.LineEnd, true),
+        ["moveToRightEndOfLineAndModifySelection:"] = (CaretMotion.LineEnd, true),
+        ["moveToBeginningOfDocumentAndModifySelection:"] = (CaretMotion.DocumentStart, true),
+        ["moveToEndOfDocumentAndModifySelection:"] = (CaretMotion.DocumentEnd, true)
+    };
 
     // The timestamp of the last key event forwarded to a web view. A key the page leaves unhandled comes
     // back through this chain, so the same event is absorbed on its second arrival rather than re-forwarded.
@@ -77,6 +102,15 @@ internal static class MacOSKeyCommandRouter
     public static void SetFocusRegistry(IWebViewFocusRegistry webViewFocusRegistry)
     {
         _webViewFocusRegistry = webViewFocusRegistry;
+    }
+
+    /// <summary>
+    /// Supplies the focus the caret commands act through, enabling the caret path. Until it is set a command
+    /// no web surface takes is absorbed.
+    /// </summary>
+    public static void SetManagedFocus(IManagedFocus managedFocus)
+    {
+        _managedFocus = managedFocus;
     }
 
     /// <summary>
@@ -164,10 +198,42 @@ internal static class MacOSKeyCommandRouter
         // the command on any failure: the pre-forward behaviour (a silently dropped key) beats a crash.
         try
         {
-            ForwardCurrentKeyEvent(expectedKeyCode: null);
+            if (ForwardCurrentKeyEvent(expectedKeyCode: null))
+            {
+                return;
+            }
+
+            TryMoveCaret(selector);
         }
         catch
         {
         }
+    }
+
+    // UNO-BUG: TextBox binds the Windows caret keys only, so the macOS chords for the ends of a line and of
+    // the document reach no control.
+    // Applies a caret command no web surface took to the focused managed text control.
+    private static void TryMoveCaret(IntPtr selector)
+    {
+        var managedFocus = _managedFocus;
+        if (managedFocus is null)
+        {
+            return;
+        }
+
+        var selectorNamePointer = GetSelectorName(selector);
+        if (selectorNamePointer == IntPtr.Zero)
+        {
+            return;
+        }
+
+        var selectorName = Marshal.PtrToStringUTF8(selectorNamePointer);
+        if (selectorName is null
+            || !CaretCommands.TryGetValue(selectorName, out var command))
+        {
+            return;
+        }
+
+        managedFocus.TryMoveCaret(command.Motion, command.ExtendSelection);
     }
 }

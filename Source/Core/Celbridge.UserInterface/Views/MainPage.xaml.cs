@@ -100,6 +100,7 @@ public partial class MainPage : Page
         // Route the editing keys Uno diverts away from the native first responder (Backspace, Enter,
         // arrows) into the focused web surface instead of dropping them. macOS-only. A no-op elsewhere.
         MacOSKeyCommandRouter.SetFocusRegistry(webViewFocusRegistry);
+        MacOSKeyCommandRouter.SetManagedFocus(ServiceLocator.AcquireService<IManagedFocus>());
 
         // Register for layout mode changes
         _messengerService.Register<LayoutModeChangedMessage>(this, OnLayoutModeChanged);

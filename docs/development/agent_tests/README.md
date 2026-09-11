@@ -55,6 +55,13 @@ dialogs. Every case therefore has two halves: the focused control received the e
 behind it did not. Checking only the first half passes while the bug is present, which is how several of
 these shipped.
 
+**Caret motion uses the platform's own chords.** A text surface has to answer the chords the platform's
+users actually press, not only the ones its toolkit came with. On macOS that means Command+Left and
+Command+Right for the ends of a line, and Command+Up and Command+Down for the ends of the document; End
+and Home exist but are bound to scrolling, so a caret that stays put on those two is correct there and a
+caret that stays put on the Command chords is not. A surface that hosts a web page inherits this from the
+page; the application's own fields have to be checked, because they are where it has broken.
+
 **Tab belongs to whoever holds the keyboard.** In a form it moves to the next field. In a surface that
 acts on Tab itself it does that instead: the cell advances, the line indents, the shell completes.
 

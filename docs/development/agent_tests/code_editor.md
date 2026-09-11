@@ -18,6 +18,7 @@ source, split and preview view modes.
 | Editor text | undo | the last edit reverts | 2 |
 | Editor text | Tab | the line indents; Shift+Tab outdents | 2 |
 | A find widget with more than one field | Tab | focus moves within the widget; the document is not indented | 2 |
+| Editor text, caret mid-line | the platform's end-of-line and start-of-line chords | the caret moves to each end of the line | 2 |
 | Preview mode, the preview's find bar | paste | text enters the find field; the source is unchanged | 2 |
 | Split mode, the editor text | paste | text enters the document | 2 |
 | Split mode, the preview's find bar | paste | text enters the find field; the source is unchanged | 3 |
