@@ -453,7 +453,8 @@ function blurActiveElement() {
 
 /**
  * Restores focus to the element blurActiveElement released, so a surface handed the keyboard back has a
- * focused element again. No-ops when nothing was released or the element has left the document.
+ * focused element again. No-ops when nothing was released, the element has left the document, or the page
+ * has since focused something of its own.
  */
 function restoreBlurredElement() {
     if (typeof document === 'undefined') {
@@ -467,6 +468,14 @@ function restoreBlurredElement() {
     if (typeof document.contains === 'function' && !document.contains(element)) {
         return;
     }
+
+    // Only fill a vacancy. A grant can arrive after the page has opened a popover and focused its field,
+    // and restoring the old element then takes the keyboard back out of the control the user is typing in.
+    const active = document.activeElement;
+    if (active && active !== document.body && active !== element) {
+        return;
+    }
+
     element.focus();
 }
 

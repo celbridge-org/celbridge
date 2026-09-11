@@ -83,6 +83,16 @@ export class PreviewPipeline {
         this.#previewController.setRenderer(rendererUrl);
     }
 
+    // Opens the find that belongs to the visible pane: the preview's own bar in Preview mode, and
+    // otherwise the editor's, which is what Command+F reaches in each mode.
+    beginFind() {
+        if (this.#viewModeController.getMode() !== ViewMode.Preview) {
+            return false;
+        }
+
+        return this.#previewController.beginFind();
+    }
+
     handleInitialContent(content, resourceKey) {
         const basePath = extractParentPath(resourceKey ?? '');
         this.#previewController.setBasePath(basePath);

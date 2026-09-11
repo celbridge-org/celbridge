@@ -36,7 +36,7 @@ internal sealed record WebViewEditorState(bool SettingsOpen, string SettingsSect
 /// external-URL role presents a browser-style URL bar above the page and a
 /// resizable settings panel over it.
 /// </summary>
-public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFindableDocument, IWebViewFindTarget, IDocumentChromeOwner
+public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWebViewFindTarget, IDocumentChromeOwner
 {
     // How long the settled download indicator stays visible before fading out.
     private static readonly TimeSpan DownloadIndicatorDismissDelay = TimeSpan.FromSeconds(10);
@@ -1394,11 +1394,11 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IFin
     // True when the host find bar can drive this document: the page is the thing on screen, the WebView is
     // live, and its backend has no find UI of its own (the Windows Chromium heads do, so they report false
     // and keep their built-in bar).
-    public bool CanFind => ViewModel.IsPageOnScreen
+    public override bool CanFind => ViewModel.IsPageOnScreen
         && !_webViewAdapter.ProvidesBuiltInFind
         && _webView?.CoreWebView2 is not null;
 
-    public bool TryBeginFind()
+    public override bool TryBeginFind()
     {
         if (!CanFind)
         {

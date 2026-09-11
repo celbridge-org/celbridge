@@ -169,6 +169,10 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
 
         _pageHealth.Track(coreWebView2);
 
+        // A navigation is where WebKit swaps the prewarmed process for the page's own, so the process
+        // reading starts again from there and only a change with no navigation behind it is reported.
+        coreWebView2.NavigationStarting += OnNavigationStarting_RecordNavigation;
+
         _ = KeepPageAwakeAsync(coreWebView2, cancellationTokenSource.Token);
     }
 
@@ -185,6 +189,8 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         }
 
         _pageHealth.Untrack(coreWebView2);
+
+        coreWebView2.NavigationStarting -= OnNavigationStarting_RecordNavigation;
 
         cancellationTokenSource.Cancel();
         cancellationTokenSource.Dispose();
@@ -269,24 +275,59 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         await wakeTask;
     }
 
-    // Reads which process is rendering the page and reports what changed since the last reading.
+    private void OnNavigationStarting_RecordNavigation(CoreWebView2 sender, CoreWebView2NavigationStartingEventArgs args)
+    {
+        _pageHealth.RecordNavigation(sender, args.Uri);
+    }
+
+    // Reads which process is rendering the page and reports what changed since the last reading. The page is
+    // named, because a report that names none leaves the reader guessing which of the open documents it is.
     private void ObserveWebContentProcess(CoreWebView2 coreWebView2)
     {
         var change = _pageHealth.RecordProcessId(coreWebView2, ReadWebContentProcessId(coreWebView2));
+        if (change == HostedPageProcessChange.None)
+        {
+            return;
+        }
+
+        var pageUrl = DescribePageUrl(coreWebView2);
 
         switch (change)
         {
             case HostedPageProcessChange.Gone:
-                _logger.LogWarning("The WebContent process behind a hosted page is no longer running");
+                _logger.LogWarning("The WebContent process behind {PageUrl} is no longer running", pageUrl);
                 break;
 
             case HostedPageProcessChange.Relaunched:
-                _logger.LogInformation("WebKit relaunched the WebContent process behind a hosted page");
+                _logger.LogInformation("WebKit relaunched the WebContent process behind {PageUrl}", pageUrl);
                 break;
 
             case HostedPageProcessChange.Replaced:
-                _logger.LogWarning("The WebContent process behind a hosted page was replaced");
+                _logger.LogWarning(
+                    "The WebContent process behind {PageUrl} was replaced without a navigation", pageUrl);
                 break;
+        }
+    }
+
+    private string DescribePageUrl(CoreWebView2 coreWebView2)
+    {
+        // A page whose renderer has gone reports no address of its own, so the one recorded when it
+        // navigated is the fallback, and only a page that never navigated goes unnamed.
+        var address = _pageHealth.GetAddress(coreWebView2);
+        if (!string.IsNullOrEmpty(address))
+        {
+            return address;
+        }
+
+        try
+        {
+            var source = coreWebView2.Source;
+
+            return string.IsNullOrEmpty(source) ? "a hosted page" : source;
+        }
+        catch (Exception)
+        {
+            return "a hosted page";
         }
     }
 

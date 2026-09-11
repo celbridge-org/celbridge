@@ -98,7 +98,14 @@ public sealed class SyntheticOriginEditorLoader : ICustomEditorLoader
         // Rewrite the page's relative resource references to absolute loopback URLs. loadHTMLString does not
         // honour a <base> element, so the lib and entry script URLs are made absolute against the package's
         // loopback /package/ route.
+        //
+        // The lib scripts are marked crossorigin so their exceptions reach the host log with a message, file
+        // and line rather than a bare "Script error.". That makes each one a CORS request, which the file
+        // server answers only because LoadAsync registered this origin as a cross-origin reader. The entry
+        // script needs no attribute (a module is always fetched with CORS), and a stylesheet reports its
+        // failures either way.
         var entryHtml = readResult.Value
+            .Replace("<script src=\"lib/", $"<script crossorigin=\"anonymous\" src=\"{packageBaseUrl}lib/")
             .Replace("\"lib/", $"\"{packageBaseUrl}lib/")
             .Replace("\"spreadsheet.js\"", $"\"{packageBaseUrl}spreadsheet.js\"");
 

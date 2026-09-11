@@ -128,10 +128,10 @@ public interface IDocumentsService
     DocumentViewType GetDocumentViewType(ResourceKey fileResource);
 
     /// <summary>
-    /// Returns the active document's view as a findable document when it owns a host find bar, otherwise null
-    /// (including when no workspace is loaded).
+    /// Returns the view of the active document, or null when there is none (including when no workspace is
+    /// loaded).
     /// </summary>
-    IFindableDocument? GetActiveFindableDocument();
+    IDocumentView? GetActiveDocumentView();
 
     /// <summary>
     /// Determines if a file resource can be opened as a document in the editor.

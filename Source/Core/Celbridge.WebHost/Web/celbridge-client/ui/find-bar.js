@@ -195,6 +195,18 @@ class FindBar {
         this.#updateCount();
     }
 
+    // Opens the bar and focuses its input, for a find offered outside this document (the host's Find menu
+    // item). Returns false where the bar was never installed, so the caller can fall back.
+    open() {
+        if (!this.#supported) {
+            return false;
+        }
+
+        this.#reveal();
+
+        return true;
+    }
+
     close() {
         this.#open = false;
         this.#hasActiveFind = false;

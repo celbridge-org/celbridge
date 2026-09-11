@@ -116,6 +116,12 @@ public sealed partial class CustomDocumentView : DocumentView
 
     public override IEditTarget EditTarget => _controller;
 
+    // The editor page owns the find UI, so the host's Find affordance drives it over the bridge rather
+    // than drawing a find bar of its own.
+    public override bool CanFind => _controller.CanFind;
+
+    public override bool TryBeginFind() => _controller.TryBeginFind();
+
     public override void FocusDocument()
     {
         _controller.FocusWebView();

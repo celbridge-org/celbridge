@@ -252,6 +252,19 @@ export class EditorController {
         }
     }
 
+    // Opens Monaco's own find widget, the same one Command+F opens, so the host's Find menu item and the
+    // shortcut reach one find.
+    beginFind() {
+        if (!this.#editor) {
+            return false;
+        }
+
+        this.#editor.focus();
+        this.#editor.trigger('celbridge', 'actions.find', null);
+
+        return true;
+    }
+
     scrollToPercentage(percentage) {
         if (!this.#editor) {
             return;
@@ -483,6 +496,10 @@ export class EditorController {
         this.#isInitialized = true;
         log('editor: initializeHost complete');
 
+        // Report once the host will listen, so a document nobody has clicked into still offers the verbs it
+        // can perform. Everything after this is driven by a focus or selection change.
+        this.#notifyEditAvailability();
+
         // Apply any navigation that arrived before content was loaded
         if (this.#pendingNavigation) {
             const nav = this.#pendingNavigation;
@@ -696,9 +713,10 @@ export class EditorController {
             return;
         }
 
-        // Claiming nothing leaves the verb to the platform, which edits the focused field itself.
+        // Claiming nothing leaves the verb to the platform, which edits the focused field itself. Find is
+        // the exception: the platform has no find to route to, and this document always has one.
         if (this.#platformOwnsEditing()) {
-            celbridge.input.notifyEditAvailability({});
+            celbridge.input.notifyEditAvailability({ canFind: true });
             return;
         }
 
@@ -719,7 +737,8 @@ export class EditorController {
             // Only claim Tab while the editor text has focus, so Tab still moves between the fields of the
             // find widget or any other control hosted in the same WebView.
             canIndent: this.#editor.hasTextFocus() && canMutate,
-            hostMediatedClipboard: true
+            hostMediatedClipboard: true,
+            canFind: true
         });
     }
 

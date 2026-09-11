@@ -109,6 +109,13 @@
     <ProjectReference Include="..\Workspace\Celbridge.Workspace\Celbridge.Workspace.csproj" />
   </ItemGroup>
 
+  <!-- Documentation, shown in the IDE only. Globbed so a new document needs no project edit. -->
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)..\..\docs\**\*.md"
+          Link="docs\%(RecursiveDir)%(Filename)%(Extension)"
+          Visible="true" />
+  </ItemGroup>
+
   <!-- Modules -->
   <ItemGroup>
     <ProjectReference Include="..\Modules\Celbridge.DocumentEditors\Celbridge.DocumentEditors.csproj" />

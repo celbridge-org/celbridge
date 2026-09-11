@@ -264,7 +264,7 @@ internal static class MacOSMainMenu
         // here stays pickable while one is open. Grey the whole bar out for the dialog's lifetime,
         // leaving Quit alone. AppKit re-asks on each open, so this needs no invalidation.
         if (tag != TagQuit &&
-            ServiceLocator.AcquireService<IDialogService>().IsDialogOpen)
+            IsDialogOpen())
         {
             return MacMenuItemState.Disabled;
         }
@@ -343,7 +343,7 @@ internal static class MacOSMainMenu
 
     private static MacMenuItemState EditVerbState(EditIntent intent)
     {
-        return MacOSEditCommands.Resolve(intent, EditVerbFocusService()) switch
+        return MacOSEditCommands.Resolve(intent, EditVerbFocusService(), IsDialogOpen()) switch
         {
             EditRouting.Surface => MacMenuItemState.Enabled,
             EditRouting.Unavailable => MacMenuItemState.Disabled,
@@ -355,11 +355,20 @@ internal static class MacOSMainMenu
     {
         var commandService = ServiceLocator.AcquireService<ICommandService>();
 
-        var routing = MacOSEditCommands.Perform(shortcut.Intent, EditVerbFocusService(), commandService);
+        var routing = MacOSEditCommands.Perform(
+            shortcut.Intent,
+            EditVerbFocusService(),
+            commandService,
+            IsDialogOpen());
         if (routing == EditRouting.ResponderChain)
         {
             MacOSMenuInterop.SendActionToResponderChain(shortcut.SelectorName);
         }
+    }
+
+    private static bool IsDialogOpen()
+    {
+        return ServiceLocator.AcquireService<IDialogService>().IsDialogOpen;
     }
 
     // The focus service, or null while a native panel such as a file picker holds the keyboard.
@@ -372,7 +381,7 @@ internal static class MacOSMainMenu
 
     private static MacMenuItemState FindCommandState()
     {
-        var canFind = ActiveDocumentFind.GetActiveFindableDocument()?.CanFind ?? false;
+        var canFind = ActiveDocumentResolver.GetActiveDocumentView()?.CanFind ?? false;
 
         return canFind ? MacMenuItemState.Enabled : MacMenuItemState.Disabled;
     }
@@ -494,7 +503,7 @@ internal static class MacOSMainMenu
                 break;
 
             case TagFind:
-                ActiveDocumentFind.GetActiveFindableDocument()?.TryBeginFind();
+                ActiveDocumentResolver.GetActiveDocumentView()?.TryBeginFind();
                 break;
 
             case TagLayoutDefault:

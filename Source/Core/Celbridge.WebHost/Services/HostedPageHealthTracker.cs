@@ -29,6 +29,7 @@ internal sealed class HostedPageHealthTracker<TPage>
         public int WakeFailures;
         public int ProcessFailures;
         public long ProcessId = UnknownProcessId;
+        public string Address = string.Empty;
     }
 
     private readonly object _lock = new();
@@ -81,6 +82,36 @@ internal sealed class HostedPageHealthTracker<TPage>
             }
 
             return ++counters.WakeFailures;
+        }
+    }
+
+    /// <summary>
+    /// Records where the page is navigating and forgets which process was rendering it, so the next reading
+    /// is a fresh baseline. WebKit swaps the prewarmed process for the page's own on the first real load,
+    /// and a swap the navigation asked for is not a renderer failing. The address is kept because a page
+    /// whose renderer has gone can no longer report one, and that is when naming it matters most.
+    /// </summary>
+    public void RecordNavigation(TPage page, string? address)
+    {
+        lock (_lock)
+        {
+            if (_pages.TryGetValue(page, out var counters))
+            {
+                counters.ProcessId = UnknownProcessId;
+                counters.Address = address ?? string.Empty;
+            }
+        }
+    }
+
+    /// <summary>
+    /// The address this page last navigated to, or an empty string when it has not navigated or is not
+    /// tracked.
+    /// </summary>
+    public string GetAddress(TPage page)
+    {
+        lock (_lock)
+        {
+            return _pages.TryGetValue(page, out var counters) ? counters.Address : string.Empty;
         }
     }
 

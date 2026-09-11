@@ -62,6 +62,66 @@ public class ManagedFocus : IManagedFocus
         }
     }
 
+    public bool TryMoveCaret(CaretMotion motion, bool extendSelection)
+    {
+        if (GetFocusedElement() is not TextBox textBox)
+        {
+            return false;
+        }
+
+        var text = textBox.Text ?? string.Empty;
+
+        // The caret sits at the far end of the selection from the anchor, which is where a shifted chord
+        // grows or shrinks the selection from.
+        var anchor = Math.Clamp(textBox.SelectionStart, 0, text.Length);
+        var caret = Math.Clamp(anchor + textBox.SelectionLength, 0, text.Length);
+        var target = ResolveCaretTarget(text, caret, motion);
+
+        if (extendSelection)
+        {
+            textBox.SelectionStart = Math.Min(anchor, target);
+            textBox.SelectionLength = Math.Abs(target - anchor);
+        }
+        else
+        {
+            textBox.SelectionStart = target;
+            textBox.SelectionLength = 0;
+        }
+
+        return true;
+    }
+
+    // The offset a motion lands on. The line motions bound to the line holding the caret, so they stop at a
+    // line break rather than running to the ends of a multi-line box.
+    internal static int ResolveCaretTarget(string text, int caret, CaretMotion motion)
+    {
+        switch (motion)
+        {
+            case CaretMotion.DocumentStart:
+                return 0;
+
+            case CaretMotion.DocumentEnd:
+                return text.Length;
+
+            case CaretMotion.LineStart:
+                return caret == 0 ? 0 : text.LastIndexOf('\n', caret - 1) + 1;
+
+            case CaretMotion.LineEnd:
+                var lineBreak = text.IndexOf('\n', caret);
+                if (lineBreak < 0)
+                {
+                    return text.Length;
+                }
+
+                // A CRLF break leaves the caret before the carriage return, which is where the line's text
+                // actually ends.
+                return lineBreak > 0 && text[lineBreak - 1] == '\r' ? lineBreak - 1 : lineBreak;
+
+            default:
+                return caret;
+        }
+    }
+
     public void Yield()
     {
         // Yielding only means something where a web surface's native focus leaves managed focus behind. On

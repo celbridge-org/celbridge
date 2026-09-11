@@ -1,3 +1,4 @@
+using Celbridge.Dialog;
 using Celbridge.Tools;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,17 +15,20 @@ internal class AgentServer : IAgentServer
     private readonly IGuides _guides;
     private readonly IAppStateProvider _appStateProvider;
     private readonly IDocumentStateProvider _documentStateProvider;
+    private readonly IDialogService _dialogService;
 
     public AgentServer(
         AgentMonitor monitor,
         IGuides guides,
         IAppStateProvider appStateProvider,
-        IDocumentStateProvider documentStateProvider)
+        IDocumentStateProvider documentStateProvider,
+        IDialogService dialogService)
     {
         _monitor = monitor;
         _guides = guides;
         _appStateProvider = appStateProvider;
         _documentStateProvider = documentStateProvider;
+        _dialogService = dialogService;
     }
 
     /// <summary>
@@ -43,7 +47,8 @@ internal class AgentServer : IAgentServer
             .WithHttpTransport()
             .WithToolsFromAssembly(typeof(AppTools).Assembly);
 
-        var responseFilter = new AgentResponseFilter(_monitor, _guides, _appStateProvider, _documentStateProvider);
+        var responseFilter = new AgentResponseFilter(
+            _monitor, _guides, _appStateProvider, _documentStateProvider, _dialogService);
         mcpBuilder.WithRequestFilters(filterBuilder => filterBuilder.AddCallToolFilter(responseFilter.CreateFilter()));
     }
 

@@ -262,9 +262,16 @@ describe('EditorController edit availability', () => {
     });
 
     it('reports on a writable state change, not only on a selection change', () => {
+        const reportCount = __capturedEditAvailability.length;
+
         __capturedHandlers.onViewStateChanged({ writable: 'Locked' });
 
+        expect(__capturedEditAvailability).toHaveLength(reportCount + 1);
+    });
+
+    it('reports once initialized, so a document nobody has clicked into still offers its verbs', () => {
         expect(__capturedEditAvailability).toHaveLength(1);
+        expect(reportedAvailability()).toMatchObject({ canFind: true });
     });
 
     it('offers cut with nothing selected, because it takes the cursor line', () => {
@@ -275,14 +282,15 @@ describe('EditorController edit availability', () => {
         expect(reportedAvailability()).toMatchObject({ canCopy: true, canCut: true });
     });
 
-    it('claims nothing while one of the page\'s own text controls holds the keyboard', () => {
+    it('claims no edit verb while one of the page\'s own text controls holds the keyboard', () => {
         editor.hasTextFocus.mockReturnValue(false);
         const findInput = document.createElement('input');
         document.body.appendChild(findInput);
 
         findInput.focus();
 
-        expect(reportedAvailability()).toEqual({});
+        // Find is not a verb the platform can route to a text control, and the document still offers one.
+        expect(reportedAvailability()).toEqual({ canFind: true });
 
         findInput.remove();
     });
@@ -303,12 +311,13 @@ describe('EditorController edit availability', () => {
         toolbarButton.remove();
     });
 
-    it('claims nothing once the preview has taken the editor off screen', () => {
+    it('claims no edit verb once the preview has taken the editor off screen', () => {
         editor.hasTextFocus.mockReturnValue(false);
 
         controller.setHidden(true);
 
-        expect(reportedAvailability()).toEqual({});
+        // The preview runs a find bar of its own, so the host's Find stays on offer.
+        expect(reportedAvailability()).toEqual({ canFind: true });
     });
 
     it('claims the verbs again when the editor comes back on screen', () => {
