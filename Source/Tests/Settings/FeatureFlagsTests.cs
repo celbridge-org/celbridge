@@ -124,54 +124,61 @@ public class FeatureFlagsTests
 
     #endregion
 
-    #region Build-Time Flag Tests
+    #region Non-Overridable Flag Tests
 
     [Test]
-    public void IsEnabled_BuildTimeFlagNotConfigured_DefaultsToDisabled()
+    public void Workshop_IsANonOverridableFlag()
     {
-        var buildTimeFlag = FeatureFlagConstants.BuildTimeFlags.First();
-
-        _featureFlags.IsEnabled(buildTimeFlag).Should().BeFalse("a build-time flag is off unless the build turns it on");
+        FeatureFlagConstants.NonOverridableFlags.Should().Contain(FeatureFlagConstants.Workshop,
+            "the cases below use it as the worked example of a non-overridable flag");
     }
 
     [Test]
-    public void IsEnabled_BuildTimeFlagEnabledInConfig_ReturnsTrue()
+    public void IsEnabled_NonOverridableFlagNotConfigured_DefaultsToDisabled()
     {
-        var buildTimeFlag = FeatureFlagConstants.BuildTimeFlags.First();
+        var nonOverridableFlag = FeatureFlagConstants.Workshop;
+
+        _featureFlags.IsEnabled(nonOverridableFlag).Should().BeFalse("a non-overridable flag is off unless the build turns it on");
+    }
+
+    [Test]
+    public void IsEnabled_NonOverridableFlagEnabledInConfig_ReturnsTrue()
+    {
+        var nonOverridableFlag = FeatureFlagConstants.Workshop;
         var featureFlags = BuildFeatureFlags(new Dictionary<string, string?>
         {
-            [$"FeatureFlags:{buildTimeFlag}"] = "true"
+            [$"FeatureFlags:{nonOverridableFlag}"] = "true"
         });
 
-        featureFlags.IsEnabled(buildTimeFlag).Should().BeTrue();
+        featureFlags.IsEnabled(nonOverridableFlag).Should().BeTrue();
     }
 
     [Test]
-    public void ApplyProjectOverrides_BuildTimeFlag_IsIgnored()
+    public void ApplyProjectOverrides_NonOverridableFlag_IsIgnored()
     {
-        var buildTimeFlag = FeatureFlagConstants.BuildTimeFlags.First();
+        var nonOverridableFlag = FeatureFlagConstants.Workshop;
         var overrides = new Dictionary<string, bool>
         {
-            [buildTimeFlag] = true
+            [nonOverridableFlag] = true
         };
 
         _featureFlags.ApplyProjectOverrides(overrides);
 
-        _featureFlags.IsEnabled(buildTimeFlag).Should().BeFalse("a project cannot turn on a flag fixed at build time");
+        _featureFlags.IsEnabled(nonOverridableFlag).Should().BeFalse("a project cannot turn on a flag fixed at build time");
     }
 
     [Test]
-    public void ApplyProjectOverrides_BuildTimeFlagEnabledByTheBuild_CannotBeDisabled()
+    public void ApplyProjectOverrides_NonOverridableFlagEnabledByTheBuild_CannotBeDisabled()
     {
-        var buildTimeFlag = FeatureFlagConstants.BuildTimeFlags.First();
+        var nonOverridableFlag = FeatureFlagConstants.Workshop;
         var featureFlags = BuildFeatureFlags(new Dictionary<string, string?>
         {
-            [$"FeatureFlags:{buildTimeFlag}"] = "true"
+            [$"FeatureFlags:{nonOverridableFlag}"] = "true"
         });
 
-        featureFlags.ApplyProjectOverrides(new Dictionary<string, bool> { [buildTimeFlag] = false });
+        featureFlags.ApplyProjectOverrides(new Dictionary<string, bool> { [nonOverridableFlag] = false });
 
-        featureFlags.IsEnabled(buildTimeFlag).Should().BeTrue("a project cannot turn off a flag fixed at build time");
+        featureFlags.IsEnabled(nonOverridableFlag).Should().BeTrue("a project cannot turn off a flag fixed at build time");
     }
 
     private FeatureFlags BuildFeatureFlags(Dictionary<string, string?> configData)

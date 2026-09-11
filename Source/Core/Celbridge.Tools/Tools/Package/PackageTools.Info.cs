@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Celbridge.Settings;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
@@ -34,15 +33,11 @@ public partial class PackageTools
 {
     /// <summary>Inspect a workshop package: its versions and aliases.</summary>
     [McpServerTool(Name = "package_info", ReadOnly = true)]
+    [WorkshopTool]
     [ToolAlias("package.info")]
     [RelatedGuides("workshop")]
     public async partial Task<CallToolResult> Info(string packageName)
     {
-        if (!IsWorkshopEnabled)
-        {
-            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.Workshop);
-        }
-
         if (!PackageName.IsValid(packageName))
         {
             return ToolResponse.Error(InvalidPackageNameError(packageName));

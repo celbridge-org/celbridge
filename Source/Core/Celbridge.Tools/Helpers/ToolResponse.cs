@@ -125,12 +125,12 @@ public static class ToolResponse
             HelperTroubleshooters[nameof(InvalidResourceKey)]);
 
     /// <summary>
-    /// Standardised response for tools whose feature flag is disabled. A build-time flag names the
+    /// Standardised response for tools whose feature flag is disabled. A non-overridable flag names the
     /// build rather than the config, because nothing the user can edit turns it on.
     /// </summary>
     public static CallToolResult FeatureFlagDisabled(string flagName)
     {
-        var remedy = FeatureFlagConstants.BuildTimeFlags.Contains(flagName)
+        var remedy = FeatureFlagConstants.NonOverridableFlags.Contains(flagName)
             ? "It is fixed at build time, so this build cannot use this tool."
             : "Enable it in the user .celbridge config to use this tool.";
 

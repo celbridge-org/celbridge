@@ -87,14 +87,14 @@ public class ToolResponseTests
     }
 
     [Test]
-    public void FeatureFlagDisabled_ForABuildTimeFlag_PointsAtTheBuildRatherThanTheConfig()
+    public void FeatureFlagDisabled_ForANonOverridableFlag_PointsAtTheBuildRatherThanTheConfig()
     {
-        var buildTimeFlag = FeatureFlagConstants.BuildTimeFlags.First();
+        var nonOverridableFlag = FeatureFlagConstants.Workshop;
 
-        var result = ToolResponse.FeatureFlagDisabled(buildTimeFlag);
+        var result = ToolResponse.FeatureFlagDisabled(nonOverridableFlag);
 
         var text = ((TextContentBlock)result.Content!.Single()).Text;
-        text.Should().Be($"The '{buildTimeFlag}' feature flag is disabled. It is fixed at build time, so this build cannot use this tool.");
+        text.Should().Be($"The '{nonOverridableFlag}' feature flag is disabled. It is fixed at build time, so this build cannot use this tool.");
     }
 
     [Test]

@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Celbridge.Settings;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
@@ -14,15 +13,11 @@ public partial class PackageTools
 {
     /// <summary>Unpublish a whole package and all its versions from the workshop.</summary>
     [McpServerTool(Name = "package_unpublish", Destructive = true)]
+    [WorkshopTool]
     [ToolAlias("package.unpublish")]
     [RelatedGuides("workshop")]
     public async partial Task<CallToolResult> Unpublish(string packageName)
     {
-        if (!IsWorkshopEnabled)
-        {
-            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.Workshop);
-        }
-
         if (!PackageName.IsValid(packageName))
         {
             return ToolResponse.Error(InvalidPackageNameError(packageName));

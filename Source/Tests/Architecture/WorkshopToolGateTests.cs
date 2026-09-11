@@ -1,25 +1,23 @@
-using System.Text.RegularExpressions;
+using System.Reflection;
+using Celbridge.Tools;
+using ModelContextProtocol.Server;
 
 namespace Celbridge.Tests.Architecture;
 
 /// <summary>
-/// Guards the workshop feature flag's coverage of the package_* and page_* tool namespaces. The flag is
-/// off in shipping builds, so a tool that talks to the workshop without the guard would reach a server the
-/// build has not opted into. Adding a workshop tool means adding the guard; adding a local-only one means
-/// naming it below, so either way the decision is deliberate.
+/// Keeps the workshop feature flag's coverage of the package_* and page_* namespaces honest. The flag
+/// is off in shipping builds, so a tool that reaches the workshop without the [WorkshopTool] marker
+/// would be offered and callable in a build that never opted in. Adding a workshop tool means adding
+/// the marker; adding a local-only one means naming it below, so either way the decision is deliberate.
 /// </summary>
 [TestFixture]
 public class WorkshopToolGateTests
 {
-    // The tool folders whose namespaces the workshop flag covers, relative to the Source folder.
-    private static readonly string[] ToolFolders =
-    {
-        Path.Combine("Core", "Celbridge.Tools", "Tools", "Package"),
-        Path.Combine("Core", "Celbridge.Tools", "Tools", "Page")
-    };
+    // The namespaces the workshop flag covers, by MCP tool-name prefix.
+    private static readonly string[] GatedNamespacePrefixes = { "package_", "page_" };
 
-    // Tools in those namespaces that never reach the workshop: zip and unzip inside the project tree, and
-    // a report on what the project already has installed. They stay available in every build.
+    // Tools in those namespaces that never reach the workshop: zip and unzip inside the project tree,
+    // and a report on what the project already has installed. They stay available in every build.
     private static readonly string[] LocalOnlyTools =
     {
         "package_archive",
@@ -27,46 +25,27 @@ public class WorkshopToolGateTests
         "package_unarchive"
     };
 
-    private static readonly Regex ToolNamePattern = new(
-        @"\[McpServerTool\(Name = ""(?<name>[a-z_]+)""",
-        RegexOptions.Compiled);
-
-    private const string WorkshopGuard = "if (!IsWorkshopEnabled)";
-
     [Test]
-    public void EveryWorkshopTool_IsGatedOnTheWorkshopFlag()
+    public void EveryWorkshopTool_CarriesTheMarker()
     {
-        var ungated = new List<string>();
-
-        foreach (var (toolName, source) in EnumerateTools())
-        {
-            if (LocalOnlyTools.Contains(toolName))
-            {
-                continue;
-            }
-
-            if (!source.Contains(WorkshopGuard, StringComparison.Ordinal))
-            {
-                ungated.Add(toolName);
-            }
-        }
+        var ungated = DiscoverTools()
+            .Where(tool => !LocalOnlyTools.Contains(tool.ToolName) && !tool.IsWorkshopTool)
+            .Select(tool => tool.ToolName)
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToList();
 
         ungated.Should().BeEmpty(
-            "every package_* and page_* tool that reaches the workshop must return FeatureFlagDisabled when the flag is off");
+            "a package_* or page_* tool that reaches the workshop must carry [WorkshopTool] so it is withheld when the flag is off");
     }
 
     [Test]
-    public void LocalOnlyTools_AreNotGated()
+    public void LocalOnlyTools_DoNotCarryTheMarker()
     {
-        var gated = new List<string>();
-
-        foreach (var (toolName, source) in EnumerateTools())
-        {
-            if (LocalOnlyTools.Contains(toolName) && source.Contains(WorkshopGuard, StringComparison.Ordinal))
-            {
-                gated.Add(toolName);
-            }
-        }
+        var gated = DiscoverTools()
+            .Where(tool => LocalOnlyTools.Contains(tool.ToolName) && tool.IsWorkshopTool)
+            .Select(tool => tool.ToolName)
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToList();
 
         gated.Should().BeEmpty("a tool that never reaches the workshop should not be withheld by the workshop flag");
     }
@@ -74,35 +53,53 @@ public class WorkshopToolGateTests
     [Test]
     public void LocalOnlyTools_AllExist()
     {
-        var toolNames = EnumerateTools().Select(tool => tool.ToolName).ToList();
+        var toolNames = DiscoverTools().Select(tool => tool.ToolName).ToList();
 
         toolNames.Should().Contain(LocalOnlyTools, "a stale exemption would silently excuse a tool that no longer exists");
     }
 
-    private static IReadOnlyList<(string ToolName, string Source)> EnumerateTools()
+    [Test]
+    public void TheMarker_IsOnlyUsedInTheGatedNamespaces()
     {
-        var sourceFolder = ArchitectureHelpers.FindSourceFolder();
-        sourceFolder.Should().NotBeEmpty();
+        var strays = DiscoverAllTools()
+            .Where(tool => tool.IsWorkshopTool && !GatedNamespacePrefixes.Any(prefix => tool.ToolName.StartsWith(prefix, StringComparison.Ordinal)))
+            .Select(tool => tool.ToolName)
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToList();
 
-        var tools = new List<(string, string)>();
+        strays.Should().BeEmpty("the workshop flag is documented as covering package_* and page_* only");
+    }
 
-        foreach (var relativeFolder in ToolFolders)
+    private record ToolMarker(string ToolName, bool IsWorkshopTool);
+
+    private static IReadOnlyList<ToolMarker> DiscoverTools()
+    {
+        var tools = DiscoverAllTools()
+            .Where(tool => GatedNamespacePrefixes.Any(prefix => tool.ToolName.StartsWith(prefix, StringComparison.Ordinal)))
+            .ToList();
+
+        tools.Should().NotBeEmpty("the package_* and page_* tools should be discoverable by reflection");
+
+        return tools;
+    }
+
+    private static IReadOnlyList<ToolMarker> DiscoverAllTools()
+    {
+        var tools = new List<ToolMarker>();
+
+        foreach (var type in typeof(AppTools).Assembly.GetTypes())
         {
-            var folder = Path.Combine(sourceFolder, relativeFolder);
-            Directory.Exists(folder).Should().BeTrue($"tool folder not found: {folder}");
-
-            foreach (var filePath in Directory.EnumerateFiles(folder, "*.cs"))
+            foreach (var method in type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static))
             {
-                var source = ArchitectureHelpers.ReadSourceFile(filePath);
-
-                foreach (Match match in ToolNamePattern.Matches(source))
+                var toolName = method.GetCustomAttribute<McpServerToolAttribute>()?.Name;
+                if (string.IsNullOrEmpty(toolName))
                 {
-                    tools.Add((match.Groups["name"].Value, source));
+                    continue;
                 }
+
+                tools.Add(new ToolMarker(toolName, method.GetCustomAttribute<WorkshopToolAttribute>() is not null));
             }
         }
-
-        tools.Should().NotBeEmpty();
 
         return tools;
     }

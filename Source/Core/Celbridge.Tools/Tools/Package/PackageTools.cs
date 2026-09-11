@@ -15,10 +15,6 @@ public partial class PackageTools : AgentToolBase
 
     private ILogger<PackageTools> Logger => _logger ??= GetRequiredService<ILogger<PackageTools>>();
 
-    // Every tool that reaches the workshop server is gated on the build-time workshop flag, so a build
-    // that did not opt in refuses the call rather than failing at the connection.
-    private bool IsWorkshopEnabled => GetRequiredService<IFeatureFlags>().IsEnabled(FeatureFlagConstants.Workshop);
-
     private static string InvalidPackageNameError(string packageName)
     {
         return $"Invalid package name: '{packageName}'. " +

@@ -1,6 +1,5 @@
 using System.IO.Compression;
 using System.Text.Json;
-using Celbridge.Settings;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Tomlyn;
@@ -28,15 +27,11 @@ public partial class PackageTools
 {
     /// <summary>Publish a package folder to the workshop as a new version, named from its manifest.</summary>
     [McpServerTool(Name = "package_publish", Destructive = true)]
+    [WorkshopTool]
     [ToolAlias("package.publish")]
     [RelatedGuides("resource_keys", "workshop", "packages_overview", "silent_vs_interactive", "document_editor_contributions", "utility_documents")]
     public async partial Task<CallToolResult> Publish(string resource, string summary = "", bool confirmWithUser = true)
     {
-        if (!IsWorkshopEnabled)
-        {
-            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.Workshop);
-        }
-
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
             return ToolResponse.InvalidResourceKey(resource);

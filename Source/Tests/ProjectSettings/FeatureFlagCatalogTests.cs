@@ -7,8 +7,8 @@ namespace Celbridge.Tests.ProjectSettings;
 /// <summary>
 /// Keeps FeatureFlagCatalog (the Project Settings UI metadata) in sync with FeatureFlagConstants (the
 /// canonical flag names), so adding a flag to one without the other fails the build rather than silently
-/// leaving a gap in the panel. Build-time flags are the exception: the panel sets a project override,
-/// which one of those ignores, so listing it would offer the user a toggle that does nothing.
+/// leaving a gap in the panel. Non-overridable flags are the exception: the panel sets a project
+/// override, which one of those ignores, so listing it would offer the user a toggle that does nothing.
 /// </summary>
 [TestFixture]
 public class FeatureFlagCatalogTests
@@ -26,7 +26,7 @@ public class FeatureFlagCatalogTests
     public void Catalog_CoversEveryRuntimeFeatureFlag()
     {
         var runtimeNames = GetConstantFlagNames()
-            .Where(flagName => !FeatureFlagConstants.BuildTimeFlags.Contains(flagName))
+            .Where(flagName => !FeatureFlagConstants.NonOverridableFlags.Contains(flagName))
             .ToList();
         var catalogNames = FeatureFlagCatalog.Descriptors.Select(descriptor => descriptor.FlagName).ToList();
 
@@ -34,19 +34,19 @@ public class FeatureFlagCatalogTests
     }
 
     [Test]
-    public void Catalog_ExcludesBuildTimeFlags()
+    public void Catalog_ExcludesNonOverridableFlags()
     {
         var catalogNames = FeatureFlagCatalog.Descriptors.Select(descriptor => descriptor.FlagName).ToList();
 
-        catalogNames.Should().NotIntersectWith(FeatureFlagConstants.BuildTimeFlags);
+        catalogNames.Should().NotIntersectWith(FeatureFlagConstants.NonOverridableFlags);
     }
 
     [Test]
-    public void BuildTimeFlags_AreDeclaredFlagNames()
+    public void NonOverridableFlags_AreDeclaredFlagNames()
     {
         var constantNames = GetConstantFlagNames();
 
-        FeatureFlagConstants.BuildTimeFlags.Should().BeSubsetOf(constantNames);
+        FeatureFlagConstants.NonOverridableFlags.Should().BeSubsetOf(constantNames);
     }
 
     [Test]

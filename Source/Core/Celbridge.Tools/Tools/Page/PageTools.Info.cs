@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Celbridge.Settings;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
@@ -19,15 +18,11 @@ public partial class PageTools
 {
     /// <summary>Inspect a published workshop page by its served path: its URL, publisher, and content hash.</summary>
     [McpServerTool(Name = "page_info", ReadOnly = true)]
+    [WorkshopTool]
     [ToolAlias("page.info")]
     [RelatedGuides("pages_overview")]
     public async partial Task<CallToolResult> Info(string path)
     {
-        if (!IsWorkshopEnabled)
-        {
-            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.Workshop);
-        }
-
         if (string.IsNullOrWhiteSpace(path))
         {
             return ToolResponse.Error("A page path is required, for example 'my-site/home'.");

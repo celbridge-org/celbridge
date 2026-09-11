@@ -316,8 +316,10 @@ export class ToolsAPI {
         }
 
         const tools = Array.isArray(response) ? response : response?.tools;
+        // An alias is what buildCelProxy keys a method off, so a descriptor without one has no
+        // callable path and is dropped rather than reported by list().
         const named = Array.isArray(tools)
-            ? tools.filter(tool => typeof tool?.alias === 'string')
+            ? tools.filter(tool => typeof tool?.alias === 'string' && tool.alias.length > 0)
             : [];
 
         this.setDescriptors(named);

@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Celbridge.Projects;
-using Celbridge.Settings;
 using Celbridge.Utilities;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
@@ -17,6 +16,7 @@ public partial class PackageTools
 {
     /// <summary>Install a workshop package version or alias into a destination folder (default packages/).</summary>
     [McpServerTool(Name = "package_install", Destructive = true)]
+    [WorkshopTool]
     [ToolAlias("package.install")]
     [RelatedGuides("workshop", "resource_keys", "silent_vs_interactive")]
     public async partial Task<CallToolResult> Install(
@@ -25,11 +25,6 @@ public partial class PackageTools
         string destination = "",
         bool confirmWithUser = true)
     {
-        if (!IsWorkshopEnabled)
-        {
-            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.Workshop);
-        }
-
         if (!PackageName.IsValid(packageName))
         {
             return ToolResponse.Error(InvalidPackageNameError(packageName));

@@ -26,10 +26,9 @@ public class FeatureFlags : IFeatureFlags
 
     public bool IsEnabled(string featureName)
     {
-        // A build-time flag is fixed for the lifetime of the build, so a project override is ignored
-        // rather than applied. The surfaces these gate are live before a project is loaded, which is
-        // what makes a per-project answer wrong.
-        if (!FeatureFlagConstants.BuildTimeFlags.Contains(featureName) &&
+        // The surfaces a non-overridable flag gates are live before a project is loaded, so there is no
+        // project whose answer they could follow.
+        if (!FeatureFlagConstants.NonOverridableFlags.Contains(featureName) &&
             _projectOverrides.TryGetValue(featureName, out var overrideValue))
         {
             return overrideValue;
@@ -45,9 +44,9 @@ public class FeatureFlags : IFeatureFlags
 
         if (string.IsNullOrEmpty(value))
         {
-            // An unconfigured feature is enabled, and only an explicit "false" disables it. A build-time
-            // flag inverts that: the build has to name it to turn it on.
-            return !FeatureFlagConstants.BuildTimeFlags.Contains(featureName);
+            // An unconfigured feature is enabled, and only an explicit "false" disables it. A
+            // non-overridable flag inverts that: the build has to name it to turn it on.
+            return !FeatureFlagConstants.NonOverridableFlags.Contains(featureName);
         }
 
         return !bool.TryParse(value, out var result) || result;

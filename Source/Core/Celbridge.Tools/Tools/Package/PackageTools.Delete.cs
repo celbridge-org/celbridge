@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Celbridge.Settings;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
@@ -14,15 +13,11 @@ public partial class PackageTools
 {
     /// <summary>Delete a published package version from the workshop, removing its content permanently.</summary>
     [McpServerTool(Name = "package_delete", Destructive = true)]
+    [WorkshopTool]
     [ToolAlias("package.delete")]
     [RelatedGuides("workshop")]
     public async partial Task<CallToolResult> Delete(string packageName, string version)
     {
-        if (!IsWorkshopEnabled)
-        {
-            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.Workshop);
-        }
-
         if (!PackageName.IsValid(packageName))
         {
             return ToolResponse.Error(InvalidPackageNameError(packageName));

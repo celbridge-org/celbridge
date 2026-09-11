@@ -48,7 +48,10 @@ public sealed class PackageToolsHandler
                 continue;
             }
 
-            filtered.Add(tool);
+            // Descriptions are prose written for an agent choosing a tool. The cel.* proxy keys off
+            // the alias and the parameter list, so sending them would multiply the payload every
+            // editor loads at startup for text nothing on the page reads.
+            filtered.Add(tool with { Description = string.Empty });
         }
 
         return filtered;

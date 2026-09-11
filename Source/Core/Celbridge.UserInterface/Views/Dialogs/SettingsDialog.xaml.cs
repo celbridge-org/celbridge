@@ -58,7 +58,7 @@ public sealed partial class SettingsDialog : ContentDialog, ISettingsDialog
         };
 
         // The Workshop connection configures a feature this build may not have, and the dialog opens
-        // with no project loaded, so the answer comes from the build-time flag rather than a project.
+        // with no project loaded, so the flag is read without a project to override it.
         var featureFlags = ServiceLocator.AcquireService<IFeatureFlags>();
         if (featureFlags.IsEnabled(FeatureFlagConstants.Workshop))
         {

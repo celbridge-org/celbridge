@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Celbridge.Settings;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
@@ -14,15 +13,11 @@ public partial class PackageTools
 {
     /// <summary>Remove a workshop package alias; the version it pointed at is unaffected.</summary>
     [McpServerTool(Name = "package_remove_alias")]
+    [WorkshopTool]
     [ToolAlias("package.remove_alias")]
     [RelatedGuides("workshop")]
     public async partial Task<CallToolResult> RemoveAlias(string packageName, string alias)
     {
-        if (!IsWorkshopEnabled)
-        {
-            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.Workshop);
-        }
-
         if (!PackageName.IsValid(packageName))
         {
             return ToolResponse.Error(InvalidPackageNameError(packageName));
