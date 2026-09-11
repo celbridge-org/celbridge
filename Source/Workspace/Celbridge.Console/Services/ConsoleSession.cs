@@ -51,8 +51,7 @@ internal sealed class ConsoleSession : IDisposable
 
     private ITerminal? _terminal;
 
-    // The size the pty is running at, and so the size the buffered output was painted at. An attaching view
-    // renders the replay at it rather than at its own, which would rewrap output painted for another width.
+    // The size the pty is running at, and so the size the buffered output was painted at.
     private TerminalSize _terminalSize = new(0, 0);
 
     private StartupInjector? _startupInjector;
@@ -83,9 +82,6 @@ internal sealed class ConsoleSession : IDisposable
 
     public string? LaunchedConfigToml { get; private set; }
 
-    /// <summary>
-    /// The size the pty is running at, which is the size its buffered output was painted at.
-    /// </summary>
     public TerminalSize TerminalSize => _terminalSize;
 
     /// <summary>

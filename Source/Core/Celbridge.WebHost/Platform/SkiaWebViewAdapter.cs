@@ -362,8 +362,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     // A surface that loads while it is not (a document restored into a background tab, a utility running
     // from project load) reports a zero-sized window to its page: layout collapses, and a page that derives
     // geometry from the viewport at startup divides by zero and stays broken even after the real arrange
-    // arrives. The placeholder is the size of the window, so a page cannot tell it from a real layout: the
-    // host reports which of the two a page has through the arranged view state.
+    // arrives. The placeholder is the size of the window, so a page cannot tell it from a real layout.
     private void ApplyInitialViewportSize(IntPtr nativeWebViewHandle)
     {
         var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
@@ -383,8 +382,8 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
 
     public void SetViewportSize(WebView2 webView, double width, double height)
     {
-        // Uno pushes the frame on its own arrange pass, a beat after the control has its size. The page can
-        // measure inside that gap, so the caller's size is applied rather than waiting for Uno to catch up.
+        // Uno pushes the frame on its own arrange pass, a beat after the control has its size, and the page
+        // can measure inside that gap.
         if (!OperatingSystem.IsMacOS()
             || width <= 0
             || height <= 0

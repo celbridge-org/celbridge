@@ -921,8 +921,7 @@ public sealed partial class DocumentSectionView : UserControl
 
     /// <summary>
     /// Tells the documents in this section's background tabs the size they will be laid out at when they are
-    /// shown, which is the size the shown document has. A background tab is never laid out, so a document
-    /// that sizes its content before it is shown has nothing else to measure against.
+    /// shown, which is the size the shown document has.
     /// </summary>
     public void UpdateExpectedDocumentSizes()
     {

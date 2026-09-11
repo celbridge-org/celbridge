@@ -70,10 +70,9 @@ public interface IWebViewAdapter
     void CloseWebView(WebView2 webView, Panel? container);
 
     /// <summary>
-    /// Sets the geometry the hosted page reads as its viewport, which on the Skia heads the platform only
-    /// arranges while the control is in the visual tree. Callers pass the size the control has been arranged
-    /// at, or the size it will be arranged at once it is shown. No-op where the platform keeps the two in
-    /// step itself.
+    /// Sets the geometry the hosted page reads as its viewport. Callers pass the size the control has been
+    /// arranged at, or the size it will be arranged at once it is shown. No-op on platforms that keep the
+    /// page's viewport in step with the control.
     /// </summary>
     void SetViewportSize(WebView2 webView, double width, double height);
 

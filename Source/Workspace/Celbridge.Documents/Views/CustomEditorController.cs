@@ -89,8 +89,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
     private IDisposable? _appStateConnection;
 
-    // This editor's own state store (writability, whether the surface has been arranged), mirrored to its
-    // WebView over the viewState channel.
+    // This editor's own state store, mirrored to its WebView over the viewState channel.
     private IStateStore? _viewState;
     private IDisposable? _viewStateConnection;
     private bool _isArranged;
@@ -524,8 +523,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         // The preview find bar is built only where the WebView backend has no find bar of its own. Where it
         // does (Chromium's WebView2), the package stays hands-off and Ctrl+F reaches the built-in bar.
         _viewState.SetValue("providesBuiltInFind", _webViewAdapter.ProvidesBuiltInFind ? "true" : "false");
-        // A page that measures its viewport before the host has arranged this surface is reading a
-        // placeholder, so whether it has been arranged is reported rather than left for the page to guess.
+        // A page that measures its viewport before this surface is arranged is reading a placeholder.
         _viewState.SetValue("isArranged", _isArranged ? "true" : "false");
         _viewStateConnection = _viewState.RegisterConnection(
             snapshot => capturedHost.Rpc.NotifyWithParameterObjectAsync(StateRpcMethods.ViewStateChanged, snapshot));
@@ -856,9 +854,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         _ = ProbeLoadedContentAsync();
     }
 
-    // A surface in a background tab is never laid out, so its page has no layout of its own to measure. The
-    // size its section will give it is the one to lay the page out against, and is what an editor that sizes
-    // itself before it is shown reads.
+    // A surface in a background tab is never laid out, so its page is laid out against the size its section
+    // will give it.
     public void SetExpectedLayoutSize(double width, double height)
     {
         if (_isArranged
@@ -875,9 +872,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         ReportArranged();
     }
 
-    // Being laid out is what makes the viewport this surface's page measures the one it will be read at, so
-    // the page is told then and not before. Reported on the transition only: the state store pushes to the
-    // page on every set.
+    // The viewport this surface's page measures is only the one it will be read at once the surface is laid
+    // out. Reported on the transition only, since the state store pushes to the page on every set.
     private void ReportArranged()
     {
         if (_isArranged

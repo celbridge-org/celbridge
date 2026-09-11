@@ -886,8 +886,8 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         documentTab.ViewModel.DocumentView = documentView;
         documentTab.Content = documentView;
 
-        // A document opened into a tab that is not shown is never laid out, so the section hands it the size
-        // it will have when it is. The tab is inserted before the view exists, hence the call here.
+        // A tab that is not shown is never laid out, so the section hands its document the size it will have
+        // when it is. The tab is inserted before the view exists, hence the call here.
         targetSectionForNew.UpdateExpectedDocumentSizes();
 
         UpdateEditorDisplayName(documentTab, documentView.EditorId);
