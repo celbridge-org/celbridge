@@ -4,6 +4,7 @@ The `page` namespace publishes, lists, inspects, and unpublishes static web page
 
 ## Must-knows
 
+- **This namespace is behind the `workshop` build-time feature flag.** Every page tool reaches the workshop server, and returns a feature-flag error when the build did not opt in. The flag is off by default and cannot be turned on from a project's config. See `troubleshoot_feature_flag`.
 - **Pages are publish-only.** There is no pull or install of a page, by design. The served site is the rendered output, not the original bundle, and the workshop keeps no recoverable copy. If you need a versioned, pullable site, wrap the content in a package and publish that — the package is the versioned artifact, the page is its deployment.
 - **The served path comes from the manifest.** `page_publish` reads `[publish].path` from `pages.toml`; the local folder name does not matter and there is no separate path argument.
 - **Pages are decoupled from packages.** Publishing or unpublishing a page never touches a package, and vice versa.

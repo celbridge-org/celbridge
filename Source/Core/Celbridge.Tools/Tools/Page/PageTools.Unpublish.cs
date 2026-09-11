@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Celbridge.Settings;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
@@ -17,6 +18,11 @@ public partial class PageTools
     [RelatedGuides("pages_overview", "silent_vs_interactive")]
     public async partial Task<CallToolResult> Unpublish(string path, bool confirmWithUser = true)
     {
+        if (!IsWorkshopEnabled)
+        {
+            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.Workshop);
+        }
+
         if (string.IsNullOrWhiteSpace(path))
         {
             return ToolResponse.Error("A page path is required, for example 'my-site/home'.");

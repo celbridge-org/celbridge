@@ -12,6 +12,10 @@ public partial class PageTools : AgentToolBase
 {
     public PageTools(IApplicationServiceProvider services) : base(services) { }
 
+    // Every tool that reaches the workshop server is gated on the build-time workshop flag, so a build
+    // that did not opt in refuses the call rather than failing at the connection.
+    private bool IsWorkshopEnabled => GetRequiredService<IFeatureFlags>().IsEnabled(FeatureFlagConstants.Workshop);
+
     private async Task<bool> ConfirmActionAsync(string title, string message)
     {
         var confirmResultWrapper = await ExecuteCommandAsync<IConfirmActionCommand, ConfirmActionResult>(command =>

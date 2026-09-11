@@ -107,7 +107,7 @@ A utility persists through the standard editable-save path: the WebView calls `c
 - `app_show_utility` reveals a utility by id wherever it currently lives: it selects a utility's rail tab when it is in the panel, or activates its document tab when it is docked as a document. Pass `area` (an area token, or `"document"` for whichever document area the utility declares) to move it there first, or an empty string to reveal it where it is. The parameter is required, and a move the item cannot make is an error. A utility's id is `package.contribution` (for example `scratchpad.scratchpad`).
 - `app_get_state` reports `activeUtility`, the id of the item the Utility Panel rail is currently showing.
 - `app_spotlight` can point at a utility's button: `{utilityId}-utility-button` for its rail item in the Utility Panel.
-- `utils:` is a registered root, so `file.*` tools can read and write a utility's backing file when the package declares `file.*` under `[permissions] tools`. This is useful for preparing or inspecting a utility's state. The editor's own `client.document.save`/`load` contract needs no permission — it is framework-level, distinct from the `cel.*` tool proxies.
+- `utils:` is a registered root, so `file.*` tools can read and write a utility's backing file. This is useful for preparing or inspecting a utility's state. The editor's own `client.document.save`/`load` contract is framework-level, distinct from the `cel.*` tool proxies.
 
 ## Reference contributions
 

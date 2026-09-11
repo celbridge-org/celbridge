@@ -47,6 +47,8 @@ The header is a `name@version` token (so a quoted entry is self-describing), fol
 
 ## Workshop workflow
 
+The workshop tools sit behind the `workshop` build-time feature flag, which is off by default and cannot be turned on from a project's config. In a build without it, every tool below returns a feature-flag error; `package_status`, `package_archive`, and `package_unarchive` are local to the project tree and stay available.
+
 | Tool | What it does |
 |---|---|
 | `package_list()` | List all packages available in the workshop |
@@ -66,4 +68,4 @@ The header is a `name@version` token (so a quoted entry is self-describing), fol
 
 `package_delete` and `package_unpublish` remove workshop content permanently and **always confirm** — they have no `confirmWithUser` opt-out, because the bytes cannot be recovered through the workshop. They are held to a firmer bar than `package_install`/`package_publish` (which are reversible via trash or re-install) for that reason.
 
-For the JS proxy conventions and `[permissions] tools` declarations packages need at runtime, see `agent_instructions`.
+For the JS proxy conventions packages need at runtime, see `agent_instructions`.

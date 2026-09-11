@@ -16,7 +16,7 @@ function createTestClient(options = {}) {
         // Provide a context so ready() resolves synchronously. These tests exercise the
         // request/response machinery, not the host/getContext bridge fallback (covered
         // separately). Callers can override via options.context.
-        context: { permittedTools: [], secrets: {}, options: {} },
+        context: { secrets: {}, options: {} },
         ...options
     });
 
@@ -50,6 +50,22 @@ function createTestClient(options = {}) {
     return { client, sentMessages, simulateResponse, simulateError, simulateNotification };
 }
 
+/**
+ * Completes the initialize() handshake: the document/initialize reply, then the tools/list reply the
+ * client fetches straight after. Requests a test makes after this start at id 3.
+ */
+async function initializeClient(client, simulateResponse, result = { content: '', metadata: {} }) {
+    const initPromise = client.initialize();
+    simulateResponse(1, result);
+
+    // Let initialize() resume past the handshake so tools/list has been posted before it is answered.
+    await Promise.resolve();
+    await Promise.resolve();
+    simulateResponse(2, []);
+
+    return initPromise;
+}
+
 describe('Celbridge', () => {
     describe('initialization', () => {
         it('should send initialize request with protocol version', async () => {
@@ -79,9 +95,7 @@ describe('Celbridge', () => {
         it('should throw if initialized twice', async () => {
             const { client, simulateResponse } = createTestClient();
 
-            const initPromise = client.initialize();
-            simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
-            await initPromise;
+            await initializeClient(client, simulateResponse);
 
             await expect(client.initialize()).rejects.toThrow('Client already initialized');
         });
@@ -99,14 +113,12 @@ describe('Celbridge', () => {
             expect(sent.method).toBe('host/getContext');
 
             simulateResponse(sent.id, {
-                permittedTools: ['app.*'],
                 secrets: { license: 'abc' },
                 options: { preview_renderer_url: 'https://x/y.js' }
             });
 
             await readyPromise;
 
-            expect(client.tools.allowedPatterns).toEqual(['app.*']);
             expect(client.secrets.license).toBe('abc');
             expect(client.options.preview_renderer_url).toBe('https://x/y.js');
             expect(client.isHosted).toBe(true);
@@ -124,19 +136,17 @@ describe('Celbridge', () => {
             const { client, sentMessages, simulateResponse } = createTestClient();
 
             // Initialize first
-            const initPromise = client.initialize();
-            simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
-            await initPromise;
+            await initializeClient(client, simulateResponse);
 
             // Make two concurrent requests
             const promise1 = client.document.load();
             const promise2 = client.document.save('test content');
 
-            expect(sentMessages).toHaveLength(3);
+            expect(sentMessages).toHaveLength(4);
 
             // Respond out of order
-            simulateResponse(3, { success: true });
-            simulateResponse(2, { content: 'Content here', metadata: {} });
+            simulateResponse(4, { success: true });
+            simulateResponse(3, { content: 'Content here', metadata: {} });
 
             const result1 = await promise1;
             const result2 = await promise2;
@@ -148,12 +158,10 @@ describe('Celbridge', () => {
         it('should handle error responses', async () => {
             const { client, simulateResponse, simulateError } = createTestClient();
 
-            const initPromise = client.initialize();
-            simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
-            await initPromise;
+            await initializeClient(client, simulateResponse);
 
             const loadPromise = client.document.load();
-            simulateError(2, -32603, 'File not found', { path: '/missing.md' });
+            simulateError(3, -32603, 'File not found', { path: '/missing.md' });
 
             await expect(loadPromise).rejects.toMatchObject({
                 message: 'File not found',
@@ -167,9 +175,7 @@ describe('Celbridge', () => {
         it('should timeout requests that do not receive a response', async () => {
             const { client, simulateResponse } = createTestClient({ timeout: 50 });
 
-            const initPromise = client.initialize();
-            simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
-            await initPromise;
+            await initializeClient(client, simulateResponse);
 
             const loadPromise = client.document.load();
 
@@ -181,14 +187,12 @@ describe('Celbridge', () => {
         it('should not timeout if response arrives in time', async () => {
             const { client, simulateResponse } = createTestClient({ timeout: 500 });
 
-            const initPromise = client.initialize();
-            simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
-            await initPromise;
+            await initializeClient(client, simulateResponse);
 
             const loadPromise = client.document.load();
 
             // Respond quickly
-            simulateResponse(2, { content: 'Fast response' });
+            simulateResponse(3, { content: 'Fast response' });
 
             const result = await loadPromise;
             expect(result.content).toBe('Fast response');
@@ -199,14 +203,12 @@ describe('Celbridge', () => {
         it('should send document changed notification', async () => {
             const { client, sentMessages, simulateResponse } = createTestClient();
 
-            const initPromise = client.initialize();
-            simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
-            await initPromise;
+            await initializeClient(client, simulateResponse);
 
             client.document.notifyChanged();
 
-            expect(sentMessages).toHaveLength(2);
-            const notification = JSON.parse(sentMessages[1]);
+            expect(sentMessages).toHaveLength(3);
+            const notification = JSON.parse(sentMessages[2]);
             expect(notification.jsonrpc).toBe('2.0');
             expect(notification.method).toBe('document/changed');
             expect(notification.id).toBeUndefined(); // Notifications have no id
@@ -215,9 +217,7 @@ describe('Celbridge', () => {
         it('should receive and dispatch incoming notifications', async () => {
             const { client, simulateResponse, simulateNotification } = createTestClient();
 
-            const initPromise = client.initialize();
-            simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
-            await initPromise;
+            await initializeClient(client, simulateResponse);
 
             const handler = vi.fn();
             client.document.onExternalChange(handler);
@@ -271,15 +271,13 @@ describe('Celbridge', () => {
                     it('should send load request', async () => {
                         const { client, sentMessages, simulateResponse } = createTestClient();
 
-                        const initPromise = client.initialize();
-                        simulateResponse(1, { content: '', metadata: { locale: 'en' } });
-                        await initPromise;
+                        await initializeClient(client, simulateResponse, { content: '', metadata: { locale: 'en' } });
 
                         const loadPromise = client.document.load();
-                        const sent = JSON.parse(sentMessages[1]);
+                        const sent = JSON.parse(sentMessages[2]);
                         expect(sent.method).toBe('document/load');
 
-            simulateResponse(2, {
+            simulateResponse(3, {
                 content: '# Test',
                 metadata: { filePath: '/test.md', resourceKey: 'test', fileName: 'test.md' }
             });
@@ -292,16 +290,14 @@ describe('Celbridge', () => {
         it('should send save request with content', async () => {
             const { client, sentMessages, simulateResponse } = createTestClient();
 
-            const initPromise = client.initialize();
-            simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
-            await initPromise;
+            await initializeClient(client, simulateResponse);
 
             const savePromise = client.document.save('# New content');
-            const sent = JSON.parse(sentMessages[1]);
+            const sent = JSON.parse(sentMessages[2]);
             expect(sent.method).toBe('document/save');
             expect(sent.params.content).toBe('# New content');
 
-            simulateResponse(2, { success: true });
+            simulateResponse(3, { success: true });
 
             const result = await savePromise;
             expect(result.success).toBe(true);
@@ -312,16 +308,14 @@ describe('Celbridge', () => {
         it('should send pickImage request and return path', async () => {
             const { client, sentMessages, simulateResponse } = createTestClient();
 
-            const initPromise = client.initialize();
-            simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
-            await initPromise;
+            await initializeClient(client, simulateResponse);
 
             const pickPromise = client.dialog.pickImage(['.png', '.jpg']);
-            const sent = JSON.parse(sentMessages[1]);
+            const sent = JSON.parse(sentMessages[2]);
             expect(sent.method).toBe('dialog/pickImage');
             expect(sent.params.extensions).toEqual(['.png', '.jpg']);
 
-            simulateResponse(2, { path: '/images/photo.png' });
+            simulateResponse(3, { path: '/images/photo.png' });
 
             const result = await pickPromise;
             expect(result).toBe('/images/photo.png');
@@ -330,12 +324,10 @@ describe('Celbridge', () => {
         it('should return path when file is selected', async () => {
             const { client, simulateResponse } = createTestClient();
 
-            const initPromise = client.initialize();
-            simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
-            await initPromise;
+            await initializeClient(client, simulateResponse);
 
             const pickPromise = client.dialog.pickFile(['.txt']);
-            simulateResponse(2, { path: '/documents/notes.txt' });
+            simulateResponse(3, { path: '/documents/notes.txt' });
 
             const result = await pickPromise;
             expect(result).toBe('/documents/notes.txt');
@@ -344,12 +336,10 @@ describe('Celbridge', () => {
         it('should return null when dialog is cancelled', async () => {
             const { client, simulateResponse } = createTestClient();
 
-            const initPromise = client.initialize();
-            simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
-            await initPromise;
+            await initializeClient(client, simulateResponse);
 
             const pickPromise = client.dialog.pickFile(['.txt']);
-            simulateResponse(2, { path: null });
+            simulateResponse(3, { path: null });
 
             const result = await pickPromise;
             expect(result).toBeNull();
@@ -358,17 +348,15 @@ describe('Celbridge', () => {
         it('should send alert request', async () => {
             const { client, sentMessages, simulateResponse } = createTestClient();
 
-            const initPromise = client.initialize();
-            simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
-            await initPromise;
+            await initializeClient(client, simulateResponse);
 
             const alertPromise = client.dialog.alert('Title', 'Message');
-            const sent = JSON.parse(sentMessages[1]);
+            const sent = JSON.parse(sentMessages[2]);
             expect(sent.method).toBe('dialog/alert');
             expect(sent.params.title).toBe('Title');
             expect(sent.params.message).toBe('Message');
 
-            simulateResponse(2, {});
+            simulateResponse(3, {});
 
             await alertPromise; // Should resolve without error
         });
@@ -378,14 +366,12 @@ describe('Celbridge', () => {
         it('should send link clicked notification with href', async () => {
             const { client, sentMessages, simulateResponse } = createTestClient();
 
-            const initPromise = client.initialize();
-            simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
-            await initPromise;
+            await initializeClient(client, simulateResponse);
 
             client.input.notifyLinkClicked('/docs/intro.md');
 
-            expect(sentMessages).toHaveLength(2);
-            const notification = JSON.parse(sentMessages[1]);
+            expect(sentMessages).toHaveLength(3);
+            const notification = JSON.parse(sentMessages[2]);
             expect(notification.jsonrpc).toBe('2.0');
             expect(notification.method).toBe('input/linkClicked');
             expect(notification.params.href).toBe('/docs/intro.md');

@@ -6,6 +6,8 @@ The tool you called is gated by a feature flag, and the flag is currently off. T
 
 Feature flags live in the user-level `.celbridge` config, not the project file. Ask the user to enable the named flag — the tool cannot toggle it for them, and the project's `.celbridge` does not override the user setting.
 
+A **build-time flag** is the exception, and its error message says so. It is read from the app's `appsettings.json` when the app starts, a `.celbridge` entry for it is ignored, and it is absent from the Feature Flags section of Project Settings. There is nothing for the user to turn on: choose another approach, or say the build does not have the feature.
+
 To find which flags are currently on, call `app_get_state` and read the `featureFlags` map. Every public flag declared in `FeatureFlagConstants` appears as a `name -> bool` entry. If the relevant flag is `false` and the user has not consented to enabling it, choose a different approach instead — there is no programmatic bypass.
 
 ## Common cases
@@ -14,3 +16,4 @@ To find which flags are currently on, call `app_get_state` and read the `feature
 - **`webview-dev-tools-eval`** is a separate, narrower flag that gates only `webview_eval` because arbitrary JavaScript evaluation is the riskiest webview surface.
 - **`mcp-tools`** gates the broker itself; if it is off, you would not see this error from a tool call (the MCP server would not be running).
 - **`answer-dialog`** gates the `app_answer_dialog` MCP tool, which lets a script answer a modal dialog without a human present. The tool itself only ships in debug builds, so setting the flag in a release build has no effect — `app_answer_dialog` does not appear in `tools/list` regardless. To enable in a debug build, set `answer-dialog = true` in the user-level `.celbridge`.
+- **`workshop`** is a build-time flag gating every `package_*` and `page_*` tool that reaches the workshop server, plus the Workshop section of Application Settings. `package_archive`, `package_unarchive`, and `package_status` are local to the project tree and stay available. Off unless the build turns it on.

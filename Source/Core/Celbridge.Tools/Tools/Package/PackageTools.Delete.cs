@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Celbridge.Settings;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
@@ -17,6 +18,11 @@ public partial class PackageTools
     [RelatedGuides("packages_overview")]
     public async partial Task<CallToolResult> Delete(string packageName, string version)
     {
+        if (!IsWorkshopEnabled)
+        {
+            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.Workshop);
+        }
+
         if (!PackageName.IsValid(packageName))
         {
             return ToolResponse.Error(InvalidPackageNameError(packageName));

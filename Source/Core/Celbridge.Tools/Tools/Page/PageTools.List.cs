@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Celbridge.Settings;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
@@ -22,6 +23,11 @@ public partial class PageTools
     [RelatedGuides("pages_overview")]
     public async partial Task<CallToolResult> List()
     {
+        if (!IsWorkshopEnabled)
+        {
+            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.Workshop);
+        }
+
         var pageApiClient = GetRequiredService<IPageApiClient>();
         var listResult = await pageApiClient.ListPagesAsync();
 

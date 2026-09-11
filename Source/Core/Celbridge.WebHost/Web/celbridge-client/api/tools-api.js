@@ -1,13 +1,10 @@
 // Tools API: MCP tool dispatch wrapper and dynamic `cel.*` proxy for custom editors.
 //
-// Packages declare the tools they need via `[permissions] tools` in package.toml.
-// The client fetches the resolved allowlist over the bridge via `host/getContext`. This module
-// builds a dynamic proxy that exposes only the allowed tools as
-// `celbridge.cel.<namespace>.<tool>(...)`.
+// The client fetches the tools the host offers this editor over the bridge via `tools/list`, and
+// builds a dynamic proxy exposing each one as `celbridge.cel.<namespace>.<tool>(...)`.
 //
-// The host re-enforces the same allowlist on every `tools/call` — the client-side proxy
-// is a convenience that keeps undeclared tools off the API surface, but the host gate is
-// authoritative.
+// The host decides what that list contains and re-checks every `tools/call`, so a tool absent from
+// the proxy is one the host withheld rather than a client-side rule.
 //
 // Calling convention:
 //   - Arguments are positional and camelCase, in parameter declaration order.
@@ -59,46 +56,6 @@ export class CelToolError extends Error {
         this.code = code;
         this.tool = tool;
     }
-}
-
-/**
- * Returns true if the given tool alias is allowed by an allowlist entry.
- * Supported patterns: literal alias ("app.get_state"), namespace wildcard ("app.*"),
- * and a lone "*" which allows all tools. Glob syntax only — no regex.
- * @param {string} alias - The tool alias to check (e.g. "document.open").
- * @param {string} pattern - A single allowlist pattern.
- * @returns {boolean}
- */
-export function matchesToolPattern(alias, pattern) {
-    if (typeof alias !== 'string' || typeof pattern !== 'string') {
-        return false;
-    }
-    if (pattern === '*') {
-        return true;
-    }
-    if (pattern.endsWith('.*')) {
-        const prefix = pattern.slice(0, -1); // keep trailing "."
-        return alias.startsWith(prefix);
-    }
-    return alias === pattern;
-}
-
-/**
- * Returns true if the tool alias is allowed by any pattern in the list.
- * @param {string} alias
- * @param {ReadonlyArray<string>} allowedPatterns
- * @returns {boolean}
- */
-export function isToolAllowed(alias, allowedPatterns) {
-    if (!Array.isArray(allowedPatterns) || allowedPatterns.length === 0) {
-        return false;
-    }
-    for (const pattern of allowedPatterns) {
-        if (matchesToolPattern(alias, pattern)) {
-            return true;
-        }
-    }
-    return false;
 }
 
 /**
@@ -304,15 +261,12 @@ function buildLeafFunction(descriptor, invoke) {
 /**
  * Client-side tools API. Loads tool descriptors from the host during
  * `celbridge.initialize()`, builds a positional `cel.*` proxy, and dispatches
- * calls through JSON-RPC. The host re-enforces the allowlist on every call —
- * this proxy does not bypass that gate.
+ * calls through JSON-RPC. The host re-checks every call, so this proxy does not
+ * widen what the editor can reach.
  */
 export class ToolsAPI {
     /** @type {import('../core/rpc-transport.js').RpcTransport} */
     #transport;
-
-    /** @type {ReadonlyArray<string>} */
-    #allowedPatterns;
 
     /** @type {ReadonlyArray<ToolDescriptor>|null} */
     #descriptors = null;
@@ -322,25 +276,15 @@ export class ToolsAPI {
 
     /**
      * @param {import('../core/rpc-transport.js').RpcTransport} transport
-     * @param {ReadonlyArray<string>} [allowedPatterns] - Glob patterns for allowed tools.
      * @param {ReadonlyArray<ToolDescriptor>} [initialDescriptors] - Pre-supplied descriptors
      *   (tests can pass these to skip the tools/list fetch).
      */
-    constructor(transport, allowedPatterns = [], initialDescriptors = null) {
+    constructor(transport, initialDescriptors = null) {
         this.#transport = transport;
-        this.#allowedPatterns = Array.isArray(allowedPatterns) ? [...allowedPatterns] : [];
 
         if (Array.isArray(initialDescriptors)) {
             this.setDescriptors(initialDescriptors);
         }
-    }
-
-    /**
-     * The resolved allowlist patterns declared by the package manifest.
-     * @returns {ReadonlyArray<string>}
-     */
-    get allowedPatterns() {
-        return this.#allowedPatterns;
     }
 
     /**
@@ -354,22 +298,13 @@ export class ToolsAPI {
     }
 
     /**
-     * Fetches tools/list from the host, filters by the allowlist, and stores
-     * the descriptors so `cel.*` becomes callable. Invoked by Celbridge.initialize().
-     * Safe to call multiple times. Subsequent calls refresh the descriptor list.
-     *
-     * When the allowlist is empty the fetch is skipped — no tool can pass the
-     * gate, so there is nothing to discover. Packages that do not declare
-     * `[permissions] tools` therefore pay no startup round-trip.
+     * Fetches tools/list from the host and stores the descriptors so `cel.*` becomes
+     * callable. Invoked by Celbridge.initialize(). Safe to call multiple times.
+     * Subsequent calls refresh the descriptor list.
      *
      * @returns {Promise<void>}
      */
     async loadDescriptors() {
-        if (this.#allowedPatterns.length === 0) {
-            this.setDescriptors([]);
-            return;
-        }
-
         let response;
         try {
             response = await this.#transport.request('tools/list', {});
@@ -381,11 +316,11 @@ export class ToolsAPI {
         }
 
         const tools = Array.isArray(response) ? response : response?.tools;
-        const filtered = Array.isArray(tools)
-            ? tools.filter(tool => typeof tool?.alias === 'string' && isToolAllowed(tool.alias, this.#allowedPatterns))
+        const named = Array.isArray(tools)
+            ? tools.filter(tool => typeof tool?.alias === 'string')
             : [];
 
-        this.setDescriptors(filtered);
+        this.setDescriptors(named);
     }
 
     /**
@@ -423,14 +358,6 @@ export class ToolsAPI {
      * @returns {Promise<any>} The tool's result value.
      */
     async call(alias, args) {
-        if (!isToolAllowed(alias, this.#allowedPatterns)) {
-            throw new CelToolError(
-                CelToolErrorCode.Denied,
-                alias,
-                `Tool '${alias}' is not declared under [permissions] tools in the package manifest`
-            );
-        }
-
         let response;
         try {
             response = await this.#transport.request('tools/call', {

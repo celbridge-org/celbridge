@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Celbridge.Projects;
+using Celbridge.Settings;
 using Celbridge.Utilities;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
@@ -24,6 +25,11 @@ public partial class PackageTools
         string destination = "",
         bool confirmWithUser = true)
     {
+        if (!IsWorkshopEnabled)
+        {
+            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.Workshop);
+        }
+
         if (!PackageName.IsValid(packageName))
         {
             return ToolResponse.Error(InvalidPackageNameError(packageName));

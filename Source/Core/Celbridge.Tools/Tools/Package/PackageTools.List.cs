@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Celbridge.Settings;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
@@ -18,6 +19,11 @@ public partial class PackageTools
     [RelatedGuides("packages_overview")]
     public async partial Task<CallToolResult> List()
     {
+        if (!IsWorkshopEnabled)
+        {
+            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.Workshop);
+        }
+
         var packageApiClient = GetRequiredService<IPackageApiClient>();
         var listResult = await packageApiClient.ListPackagesAsync();
 

@@ -43,4 +43,22 @@ public static class FeatureFlagConstants
     /// reported whether or not this is enabled; what it adds is the surrounding timeline.
     /// </summary>
     public const string WebViewLoadDiagnostics = "webview-load-diagnostics";
+
+    /// <summary>
+    /// The workshop: the package_* and page_* tools, and the Workshop section of Application Settings.
+    /// An experimental feature that needs a configured workshop server, so the build opts in rather than
+    /// the user. A build-time flag.
+    /// </summary>
+    public const string Workshop = "workshop";
+
+    /// <summary>
+    /// The flags fixed for the lifetime of the build. They are read from appsettings.json only: a project
+    /// override is ignored, and they are absent from the Feature Flags section, because the surfaces they
+    /// gate exist before any project is loaded and so cannot follow a project's choice. Unlike a runtime
+    /// flag, one of these is off unless the build turns it on.
+    /// </summary>
+    public static readonly IReadOnlySet<string> BuildTimeFlags = new HashSet<string>(StringComparer.Ordinal)
+    {
+        Workshop
+    };
 }

@@ -4,6 +4,7 @@ The `package` namespace installs, inspects, publishes, archives, and curates Cel
 
 ## Must-knows
 
+- **The workshop tools are behind the `workshop` build-time feature flag.** Every tool here except `package_status`, `package_archive`, and `package_unarchive` reaches the workshop server, and returns a feature-flag error when the build did not opt in. The flag is off by default and cannot be turned on from a project's config. See `troubleshoot_feature_flag`.
 - **Publishing and installing are interactive by default.** `package_publish` and `package_install` confirm with the user before mutating the workshop or the project. Pass `confirmWithUser: false` only for unattended flows the user has consented to. See `silent_vs_interactive`.
 - **`package_install` requires a loaded project.** Installing without a project loaded fails fast.
 - **Install anywhere, but only `project:` loads.** A package installs into a `{packageName}` subfolder of the destination you choose (default `packages/`). Copies installed to non-loading roots such as `temp:` are inert reference data for comparison and merge workflows.

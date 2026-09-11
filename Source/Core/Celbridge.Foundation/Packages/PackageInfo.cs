@@ -18,7 +18,7 @@ public enum PackageOrigin
 }
 
 /// <summary>
-/// Package identity, permissions, and hosting information.
+/// Package identity and hosting information.
 /// Shared across all contributions from the same package.
 /// </summary>
 public partial record PackageInfo
@@ -34,11 +34,6 @@ public partial record PackageInfo
     /// Optional display name of the package (from the manifest's 'title' key).
     /// </summary>
     public string Title { get; init; } = string.Empty;
-
-    /// <summary>
-    /// Tool allowlist declared under [permissions].tools.
-    /// </summary>
-    public IReadOnlyList<string> PermittedTools { get; init; } = Array.Empty<string>();
 
     /// <summary>
     /// Named secrets supplied by the module that bundles this package. Always empty for non-bundled packages.

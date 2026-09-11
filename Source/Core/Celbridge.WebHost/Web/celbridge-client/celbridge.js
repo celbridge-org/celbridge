@@ -69,8 +69,8 @@ export class Celbridge {
 
     /**
      * Host capability proxy (`cel.*`) and raw tool dispatch (`list`, `call`).
-     * Populated from the package's `[permissions] tools` allowlist, which the
-     * client fetches over the bridge via `host/getContext`.
+     * Populated from the tools the host offers this editor, fetched over the
+     * bridge via `tools/list` during `initialize()`.
      * @type {ToolsAPI}
      */
     tools;
@@ -162,10 +162,10 @@ export class Celbridge {
 
     /**
      * Sets the tools/secrets/options sub-APIs from a normalized capability context.
-     * @param {{ permittedTools: ReadonlyArray<string>, secrets: Readonly<Object<string,string>>, options: Readonly<Object<string,string>> }} context
+     * @param {{ secrets: Readonly<Object<string,string>>, options: Readonly<Object<string,string>> }} context
      */
     #applyContext(context) {
-        this.tools = new ToolsAPI(this.#transport, context.permittedTools);
+        this.tools = new ToolsAPI(this.#transport);
         this.secrets = context.secrets;
         this.options = context.options;
     }
@@ -260,10 +260,9 @@ export class Celbridge {
             throw new Error('Client already initialized');
         }
 
-        // Resolve the capability context first (fetched over the bridge via host/getContext) so the cel.*
-        // tool allowlist is populated before loadDescriptors runs. Without it, an editor that calls
-        // initialize() directly rather than initializeDocument() would see an empty allowlist and no cel.*
-        // tools. A no-op when a context was already provided to the constructor.
+        // Resolve the capability context first (fetched over the bridge via host/getContext) so secrets
+        // and options are in place before the editor runs. A no-op when a context was already provided to
+        // the constructor.
         if (!this.#contextResolved) {
             await this.ready();
         }
@@ -411,21 +410,16 @@ export class Celbridge {
 
 /**
  * Normalizes a raw capability context (from constructor options or the host/getContext
- * response) into frozen `permittedTools`/`secrets`/`options`. A null/empty input yields an
- * empty default (no tools, no secrets, no options).
+ * response) into frozen `secrets`/`options`. A null/empty input yields an empty default
+ * (no secrets, no options).
  * @param {Object|null} raw
- * @returns {{ permittedTools: ReadonlyArray<string>, secrets: Readonly<Object<string, string>>, options: Readonly<Object<string, string>> }}
+ * @returns {{ secrets: Readonly<Object<string, string>>, options: Readonly<Object<string, string>> }}
  */
 function normalizeContext(raw) {
-    const permittedTools = Array.isArray(raw?.permittedTools)
-        ? Object.freeze([...raw.permittedTools])
-        : Object.freeze([]);
-
     const secrets = readStringMap(raw?.secrets);
     const options = readStringMap(raw?.options);
 
     return {
-        permittedTools,
         secrets: Object.freeze(secrets),
         options: Object.freeze(options)
     };

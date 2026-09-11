@@ -12,11 +12,9 @@ public record DocumentMetadata(string FilePath, string ResourceKey, string FileN
 public record InitializeResult(string Content, DocumentMetadata Metadata, string? EditorStateJson = null);
 
 /// <summary>
-/// The host capability context for a custom editor: the resolved tool allowlist, the package's
-/// secrets, and its options.
+/// The host capability context for a custom editor: the package's secrets and its options.
 /// </summary>
 public record CelbridgeContext(
-    IReadOnlyList<string> PermittedTools,
     IReadOnlyDictionary<string, string> Secrets,
     IReadOnlyDictionary<string, string> Options);
 

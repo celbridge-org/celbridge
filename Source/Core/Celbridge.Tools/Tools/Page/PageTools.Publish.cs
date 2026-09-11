@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using System.Text.Json;
+using Celbridge.Settings;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using MemoryStream = System.IO.MemoryStream;
@@ -21,6 +22,11 @@ public partial class PageTools
     [RelatedGuides("pages_overview", "resource_keys", "silent_vs_interactive")]
     public async partial Task<CallToolResult> Publish(string resource = "", bool confirmWithUser = true)
     {
+        if (!IsWorkshopEnabled)
+        {
+            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.Workshop);
+        }
+
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
         if (!workspaceWrapper.IsWorkspaceLoaded)
         {

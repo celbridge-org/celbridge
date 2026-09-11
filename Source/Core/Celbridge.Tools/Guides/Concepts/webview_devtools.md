@@ -59,4 +59,4 @@ Both `webview-dev-tools` and `webview-dev-tools-eval` must be on, because `webvi
 
 ## Available from Python and MCP, not from package JS
 
-The Python proxy runs on behalf of the user (the trust root). The JavaScript proxy runs inside third-party package code, so the host denies any `webview.*` call arriving from a contribution editor regardless of its permitted tools. This blocks a cross-document attack vector. Do not declare `webview.*` in a package's `[permissions] tools`.
+The Python proxy runs on behalf of the user (the trust root). The JavaScript proxy runs inside third-party package code, so the host denies any `webview.*` call arriving from a contribution editor. Nothing a package declares lifts that, which is what makes it a boundary: it blocks the cross-document attack where one editor drives another open document.

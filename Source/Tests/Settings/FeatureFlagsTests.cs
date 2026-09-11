@@ -124,6 +124,67 @@ public class FeatureFlagsTests
 
     #endregion
 
+    #region Build-Time Flag Tests
+
+    [Test]
+    public void IsEnabled_BuildTimeFlagNotConfigured_DefaultsToDisabled()
+    {
+        var buildTimeFlag = FeatureFlagConstants.BuildTimeFlags.First();
+
+        _featureFlags.IsEnabled(buildTimeFlag).Should().BeFalse("a build-time flag is off unless the build turns it on");
+    }
+
+    [Test]
+    public void IsEnabled_BuildTimeFlagEnabledInConfig_ReturnsTrue()
+    {
+        var buildTimeFlag = FeatureFlagConstants.BuildTimeFlags.First();
+        var featureFlags = BuildFeatureFlags(new Dictionary<string, string?>
+        {
+            [$"FeatureFlags:{buildTimeFlag}"] = "true"
+        });
+
+        featureFlags.IsEnabled(buildTimeFlag).Should().BeTrue();
+    }
+
+    [Test]
+    public void ApplyProjectOverrides_BuildTimeFlag_IsIgnored()
+    {
+        var buildTimeFlag = FeatureFlagConstants.BuildTimeFlags.First();
+        var overrides = new Dictionary<string, bool>
+        {
+            [buildTimeFlag] = true
+        };
+
+        _featureFlags.ApplyProjectOverrides(overrides);
+
+        _featureFlags.IsEnabled(buildTimeFlag).Should().BeFalse("a project cannot turn on a flag fixed at build time");
+    }
+
+    [Test]
+    public void ApplyProjectOverrides_BuildTimeFlagEnabledByTheBuild_CannotBeDisabled()
+    {
+        var buildTimeFlag = FeatureFlagConstants.BuildTimeFlags.First();
+        var featureFlags = BuildFeatureFlags(new Dictionary<string, string?>
+        {
+            [$"FeatureFlags:{buildTimeFlag}"] = "true"
+        });
+
+        featureFlags.ApplyProjectOverrides(new Dictionary<string, bool> { [buildTimeFlag] = false });
+
+        featureFlags.IsEnabled(buildTimeFlag).Should().BeTrue("a project cannot turn off a flag fixed at build time");
+    }
+
+    private FeatureFlags BuildFeatureFlags(Dictionary<string, string?> configData)
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(configData)
+            .Build();
+
+        return new FeatureFlags(configuration, _messengerService);
+    }
+
+    #endregion
+
     #region Message Tests
 
     [Test]

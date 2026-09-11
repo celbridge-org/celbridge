@@ -59,11 +59,6 @@ public class BundledPackageManifestTests
 
         editor.Id.Should().Be("report");
         editor.FileTypes.Should().ContainSingle().Which.FileExtension.Should().Be(".report");
-
-        // The editor navigates through these two tools, and an undeclared tool is absent from the
-        // client's proxy rather than failing at the call site.
-        package.Info.PermittedTools.Should().Contain("document.open");
-        package.Info.PermittedTools.Should().Contain("explorer.select");
     }
 
     private static List<string> FindBundledPackageManifests()

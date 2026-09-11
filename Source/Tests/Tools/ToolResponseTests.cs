@@ -1,3 +1,4 @@
+using Celbridge.Settings;
 using Celbridge.Tools;
 using TextContentBlock = ModelContextProtocol.Protocol.TextContentBlock;
 
@@ -83,6 +84,17 @@ public class ToolResponseTests
         text.Should().Be("The 'webview-dev-tools' feature flag is disabled. Enable it in the user .celbridge config to use this tool.");
         result.Meta![ToolResponse.TroubleshooterMetaKey]!.GetValue<string>()
             .Should().Be("troubleshoot_feature_flag");
+    }
+
+    [Test]
+    public void FeatureFlagDisabled_ForABuildTimeFlag_PointsAtTheBuildRatherThanTheConfig()
+    {
+        var buildTimeFlag = FeatureFlagConstants.BuildTimeFlags.First();
+
+        var result = ToolResponse.FeatureFlagDisabled(buildTimeFlag);
+
+        var text = ((TextContentBlock)result.Content!.Single()).Text;
+        text.Should().Be($"The '{buildTimeFlag}' feature flag is disabled. It is fixed at build time, so this build cannot use this tool.");
     }
 
     [Test]

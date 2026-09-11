@@ -498,7 +498,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         var mcpToolBridge = _serviceProvider.GetService<IMcpToolBridge>();
         if (mcpToolBridge is not null)
         {
-            _toolsHandler = new PackageToolsHandler(mcpToolBridge, _contribution.Package.PermittedTools);
+            _toolsHandler = new PackageToolsHandler(mcpToolBridge);
             Host.AddLocalRpcTarget<PackageToolsHandler>(_toolsHandler);
         }
 
@@ -1509,8 +1509,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         }
     }
 
-    // Builds the capability context (permitted tools, secrets, options) that the JS client fetches over the
-    // bridge via host/getContext on every head.
+    // Builds the capability context (secrets, options) that the JS client fetches over the bridge via
+    // host/getContext on every head.
     public CelbridgeContext GetContext()
     {
         return BuildCelbridgeContext();
@@ -1524,7 +1524,6 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         // The editor's effective config (manifest options overlaid with descriptor defaults
         // and its project-config keys) rides the Options channel.
         return new CelbridgeContext(
-            _contribution.Package.PermittedTools,
             _contribution.Package.Secrets,
             _resolvedEditor.Config);
     }
