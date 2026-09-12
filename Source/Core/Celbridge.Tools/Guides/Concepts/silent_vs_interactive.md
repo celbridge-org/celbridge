@@ -9,7 +9,7 @@ Every `file_*`, `document_*`, `explorer_*`, `spreadsheet_*`, `webview_*`, `query
 ## Interactive by default
 
 - `app_show_alert` always surfaces a modal dialog. There is no silent mode.
-- `package_publish`, `package_install`, `explorer_rename`, `explorer_duplicate`, and the dialog forms of `explorer_create_file` / `explorer_create_folder` / `explorer_delete` accept `confirmWithUser` or `showDialog`. When set, the application shows a dialog and the tool waits for the user's response.
+- `explorer_rename`, `explorer_duplicate`, and the dialog forms of `explorer_create_file` / `explorer_create_folder` / `explorer_delete` accept `confirmWithUser` or `showDialog`. When set, the application shows a dialog and the tool waits for the user's response.
 
 ## Why this matters
 

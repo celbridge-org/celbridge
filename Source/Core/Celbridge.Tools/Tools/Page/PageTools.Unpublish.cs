@@ -13,6 +13,7 @@ public partial class PageTools
 {
     /// <summary>Unpublish a page from the workshop, removing its served content.</summary>
     [McpServerTool(Name = "page_unpublish", Destructive = true)]
+    [WorkshopTool]
     [ToolAlias("page.unpublish")]
     [RelatedGuides("pages_overview", "silent_vs_interactive")]
     public async partial Task<CallToolResult> Unpublish(string path, bool confirmWithUser = true)

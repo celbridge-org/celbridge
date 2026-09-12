@@ -1,6 +1,6 @@
 # package_unarchive
 
-Extracts a zip archive that lives somewhere under the project content root into a destination folder. The general-purpose counterpart to `package_archive`; use `package_install` instead when the goal is to install a package from the remote registry.
+Extracts a zip archive that lives somewhere under the project content root into a destination folder. The general-purpose counterpart to `package_archive`.
 
 ## Parameters
 

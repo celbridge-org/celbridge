@@ -124,6 +124,74 @@ public class FeatureFlagsTests
 
     #endregion
 
+    #region Non-Overridable Flag Tests
+
+    [Test]
+    public void Workshop_IsANonOverridableFlag()
+    {
+        FeatureFlagConstants.NonOverridableFlags.Should().Contain(FeatureFlagConstants.Workshop,
+            "the cases below use it as the worked example of a non-overridable flag");
+    }
+
+    [Test]
+    public void IsEnabled_NonOverridableFlagNotConfigured_DefaultsToDisabled()
+    {
+        var nonOverridableFlag = FeatureFlagConstants.Workshop;
+
+        _featureFlags.IsEnabled(nonOverridableFlag).Should().BeFalse("a non-overridable flag is off unless the build turns it on");
+    }
+
+    [Test]
+    public void IsEnabled_NonOverridableFlagEnabledInConfig_ReturnsTrue()
+    {
+        var nonOverridableFlag = FeatureFlagConstants.Workshop;
+        var featureFlags = BuildFeatureFlags(new Dictionary<string, string?>
+        {
+            [$"FeatureFlags:{nonOverridableFlag}"] = "true"
+        });
+
+        featureFlags.IsEnabled(nonOverridableFlag).Should().BeTrue();
+    }
+
+    [Test]
+    public void ApplyProjectOverrides_NonOverridableFlag_IsIgnored()
+    {
+        var nonOverridableFlag = FeatureFlagConstants.Workshop;
+        var overrides = new Dictionary<string, bool>
+        {
+            [nonOverridableFlag] = true
+        };
+
+        _featureFlags.ApplyProjectOverrides(overrides);
+
+        _featureFlags.IsEnabled(nonOverridableFlag).Should().BeFalse("a project cannot turn on a flag fixed at build time");
+    }
+
+    [Test]
+    public void ApplyProjectOverrides_NonOverridableFlagEnabledByTheBuild_CannotBeDisabled()
+    {
+        var nonOverridableFlag = FeatureFlagConstants.Workshop;
+        var featureFlags = BuildFeatureFlags(new Dictionary<string, string?>
+        {
+            [$"FeatureFlags:{nonOverridableFlag}"] = "true"
+        });
+
+        featureFlags.ApplyProjectOverrides(new Dictionary<string, bool> { [nonOverridableFlag] = false });
+
+        featureFlags.IsEnabled(nonOverridableFlag).Should().BeTrue("a project cannot turn off a flag fixed at build time");
+    }
+
+    private FeatureFlags BuildFeatureFlags(Dictionary<string, string?> configData)
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(configData)
+            .Build();
+
+        return new FeatureFlags(configuration, _messengerService);
+    }
+
+    #endregion
+
     #region Message Tests
 
     [Test]

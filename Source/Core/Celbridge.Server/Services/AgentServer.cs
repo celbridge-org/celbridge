@@ -1,4 +1,5 @@
 using Celbridge.Dialog;
+using Celbridge.Settings;
 using Celbridge.Tools;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,19 +17,22 @@ internal class AgentServer : IAgentServer
     private readonly IAppStateProvider _appStateProvider;
     private readonly IDocumentStateProvider _documentStateProvider;
     private readonly IDialogService _dialogService;
+    private readonly IFeatureFlags _featureFlags;
 
     public AgentServer(
         AgentMonitor monitor,
         IGuides guides,
         IAppStateProvider appStateProvider,
         IDocumentStateProvider documentStateProvider,
-        IDialogService dialogService)
+        IDialogService dialogService,
+        IFeatureFlags featureFlags)
     {
         _monitor = monitor;
         _guides = guides;
         _appStateProvider = appStateProvider;
         _documentStateProvider = documentStateProvider;
         _dialogService = dialogService;
+        _featureFlags = featureFlags;
     }
 
     /// <summary>
@@ -49,7 +53,14 @@ internal class AgentServer : IAgentServer
 
         var responseFilter = new AgentResponseFilter(
             _monitor, _guides, _appStateProvider, _documentStateProvider, _dialogService);
-        mcpBuilder.WithRequestFilters(filterBuilder => filterBuilder.AddCallToolFilter(responseFilter.CreateFilter()));
+        var workshopFilter = new WorkshopToolFilter(_featureFlags);
+
+        // The workshop call filter is added after the response filter, so it runs closer to the
+        // handler and a refused tool never reaches guide attachment or the invocation record.
+        mcpBuilder.WithRequestFilters(filterBuilder => filterBuilder
+            .AddCallToolFilter(responseFilter.CreateFilter())
+            .AddCallToolFilter(workshopFilter.CreateCallFilter())
+            .AddListToolsFilter(workshopFilter.CreateListFilter()));
     }
 
     /// <summary>

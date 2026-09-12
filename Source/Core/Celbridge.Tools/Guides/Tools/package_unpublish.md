@@ -17,5 +17,5 @@ A JSON object echoing `packageName` and `unpublished: true`.
 ## Gotchas
 
 - **This removes every version, not just the latest.** To remove a single version and keep the rest, use `package_delete`.
-- **Irreversible through the workshop.** Durability rests on consumers vendoring the content they depend on, not on the workshop retaining it. See `packages_overview`.
+- **Irreversible through the workshop.** Durability rests on consumers vendoring the content they depend on, not on the workshop retaining it.
 - Unpublishing a package does not touch any page; pages are a separate, decoupled subsystem.

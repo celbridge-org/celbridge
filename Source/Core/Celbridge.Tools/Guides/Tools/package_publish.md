@@ -41,7 +41,7 @@ A JSON object:
 
 ## HISTORY.md
 
-After a successful publish, the tool writes a fresh `HISTORY.md` beside the manifest recording the version just assigned (one `# name@version` section per version, newest first, each with a compact metadata line — see `packages_overview`). This makes the source folder match what a consumer who installs that version receives, and lets `package_status` report the right version for it. The file itself is excluded from the upload (matched case-insensitively) — the workshop stays authoritative for publish history.
+After a successful publish, the tool writes a fresh `HISTORY.md` beside the manifest recording the version just assigned (one `# name@version` section per version, newest first, each with a compact metadata line). This makes the source folder match what a consumer who installs that version receives, and lets `package_status` report the right version for it. The file itself is excluded from the upload (matched case-insensitively) — the workshop stays authoritative for publish history.
 
 ## Concurrent publishing
 

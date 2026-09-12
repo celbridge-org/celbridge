@@ -18,6 +18,7 @@ public partial class PageTools
 {
     /// <summary>List all pages published to the connected workshop.</summary>
     [McpServerTool(Name = "page_list", ReadOnly = true)]
+    [WorkshopTool]
     [ToolAlias("page.list")]
     [RelatedGuides("pages_overview")]
     public async partial Task<CallToolResult> List()

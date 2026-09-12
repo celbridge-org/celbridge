@@ -13,7 +13,7 @@ public static class ContextRpcMethods
 public interface IHostContext
 {
     /// <summary>
-    /// Returns the editor's resolved tool allowlist, secrets, and options.
+    /// Returns the editor's secrets and options.
     /// </summary>
     [JsonRpcMethod(ContextRpcMethods.GetContext)]
     CelbridgeContext GetContext();

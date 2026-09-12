@@ -22,14 +22,13 @@ internal sealed class EmptyFileTypeCatalog : IFileTypeCatalog
 }
 
 /// <summary>
-/// Parses a package.toml manifest into a Package: the [package] identity and permissions, plus the
-/// list of editor contributions, each loaded from its referenced *.editor.toml by EditorManifestLoader.
+/// Parses a package.toml manifest into a Package: the [package] identity, plus the list of editor
+/// contributions, each loaded from its referenced *.editor.toml by EditorManifestLoader.
 /// </summary>
 public static class PackageManifestLoader
 {
     private const string PackageSection = "package";
     private const string ContributesSection = "contributes";
-    private const string PermissionsSection = "permissions";
 
     private const string NameKey = "name";
 
@@ -91,12 +90,6 @@ public static class PackageManifestLoader
                 return Result.Fail($"Package has invalid '{NameKey}' value '{packageName}': {packageTomlPath}. Package names must be lowercase ASCII letters and digits with single interior hyphens, at most {PackageConstants.MaxNameLength} characters.");
             }
 
-            var permittedTools = Array.Empty<string>() as IReadOnlyList<string>;
-            if (manifest.Permissions?.Tools is not null)
-            {
-                permittedTools = manifest.Permissions.Tools.AsReadOnly();
-            }
-
             var packageSecrets = secrets ?? EmptySecrets;
 
             // The installed version is recorded in the generated HISTORY.md changelog beside the manifest.
@@ -117,7 +110,6 @@ public static class PackageManifestLoader
                 Name = packageName,
                 Title = packageSection.Title ?? string.Empty,
                 PackageFolder = packageFolder,
-                PermittedTools = permittedTools,
                 Secrets = packageSecrets,
                 DevToolsBlocked = devToolsBlocked,
                 Origin = origin,
@@ -203,7 +195,6 @@ public static class PackageManifestLoader
         unknownFields.AddRange(manifest.UnknownKeys.Keys);
         AddUnknownKeys(manifest.Package?.UnknownKeys, PackageSection, unknownFields);
         AddUnknownKeys(manifest.Contributes?.UnknownKeys, ContributesSection, unknownFields);
-        AddUnknownKeys(manifest.Permissions?.UnknownKeys, PermissionsSection, unknownFields);
 
         return unknownFields.AsReadOnly();
     }

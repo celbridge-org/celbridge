@@ -805,8 +805,10 @@ public class ManifestTests
     }
 
     [Test]
-    public void LoadPackage_WithPermissionsSection_ParsesPermittedTools()
+    public void LoadPackage_StalePermissionsSection_IsRecordedAsAnUnknownField()
     {
+        // [permissions] was the tool allowlist, which the host no longer defines. A manifest that still
+        // declares it loads, and the stale section is reported rather than silently ignored.
         WritePackageToml("""
             [package]
             name = "test-permissions-section"
@@ -821,47 +823,7 @@ public class ManifestTests
         var result = LoadPackage();
 
         result.IsSuccess.Should().BeTrue();
-        var info = result.Value.Info;
-        info.PermittedTools.Should().Equal("app.*", "document.open");
-    }
-
-    [Test]
-    public void LoadPackage_WithoutPermissionsSection_DefaultsToEmpty()
-    {
-        WritePackageToml("""
-            [package]
-            name = "test-no-permissions"
-            title = "NoPermissions"
-
-            [contributes]
-            """);
-
-        var result = LoadPackage();
-
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Info.PermittedTools.Should().BeEmpty();
-    }
-
-    [Test]
-    public void LoadPackage_PermissionsSectionWithNonStringEntry_ReturnsFailure()
-    {
-        // A non-string in the tools list is a mistake in the manifest. Dropping it would silently
-        // withhold a permission the author believes they declared, so the load fails instead.
-        WritePackageToml("""
-            [package]
-            name = "test-mixed"
-            title = "Mixed"
-
-            [permissions]
-            tools = ["app.*", 42, "file.read"]
-
-            [contributes]
-            """);
-
-        var result = LoadPackage();
-
-        result.IsFailure.Should().BeTrue();
-        result.FirstErrorMessage.Should().Contain("String");
+        result.Value.UnknownFields.Should().Equal("permissions");
     }
 
     [Test]

@@ -2,7 +2,7 @@
 
 Creates a zip archive from a file or folder inside the project. When archiving a folder, the archive contains the folder's *contents* at the root, not the folder itself — extracting it back over an empty folder reproduces the original layout.
 
-This is the general-purpose zip tool; it is not limited to Celbridge packages. For the package publish/install round trip, prefer `package_publish` and `package_install`.
+This is the general-purpose zip tool; it is not limited to Celbridge packages.
 
 ## Parameters
 

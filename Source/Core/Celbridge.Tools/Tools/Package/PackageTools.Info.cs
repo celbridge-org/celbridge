@@ -33,8 +33,9 @@ public partial class PackageTools
 {
     /// <summary>Inspect a workshop package: its versions and aliases.</summary>
     [McpServerTool(Name = "package_info", ReadOnly = true)]
+    [WorkshopTool]
     [ToolAlias("package.info")]
-    [RelatedGuides("packages_overview")]
+    [RelatedGuides("workshop")]
     public async partial Task<CallToolResult> Info(string packageName)
     {
         if (!PackageName.IsValid(packageName))

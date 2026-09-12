@@ -5,8 +5,6 @@ import {
     CelToolErrorCode,
     ToolsAPI,
     buildCelProxy,
-    isToolAllowed,
-    matchesToolPattern,
     jsonRpcCodeForCelCode
 } from './api/tools-api.js';
 
@@ -49,42 +47,6 @@ function createTestClient(options = {}) {
 function descriptor(alias, parameters = []) {
     return { name: alias.replace(/\./g, '_'), alias, description: '', parameters };
 }
-
-describe('matchesToolPattern', () => {
-    it('matches literal alias exactly', () => {
-        expect(matchesToolPattern('app.get_state', 'app.get_state')).toBe(true);
-        expect(matchesToolPattern('app.get_state', 'app.version')).toBe(false);
-    });
-
-    it('matches namespace wildcards', () => {
-        expect(matchesToolPattern('app.get_state', 'app.*')).toBe(true);
-        expect(matchesToolPattern('document.open', 'app.*')).toBe(false);
-        expect(matchesToolPattern('app.get_state', 'document.*')).toBe(false);
-    });
-
-    it('star matches all tools', () => {
-        expect(matchesToolPattern('anything.goes', '*')).toBe(true);
-    });
-
-    it('does not treat prefix as wildcard without .*', () => {
-        // "app" is not a valid pattern for "app.get_state"; must be "app.*".
-        expect(matchesToolPattern('app.get_state', 'app')).toBe(false);
-    });
-});
-
-describe('isToolAllowed', () => {
-    it('returns false for empty allowlist', () => {
-        expect(isToolAllowed('app.get_state', [])).toBe(false);
-        expect(isToolAllowed('app.get_state', null)).toBe(false);
-    });
-
-    it('matches any pattern in the list', () => {
-        const allowed = ['document.*', 'app.get_state'];
-        expect(isToolAllowed('document.open', allowed)).toBe(true);
-        expect(isToolAllowed('app.get_state', allowed)).toBe(true);
-        expect(isToolAllowed('file.read', allowed)).toBe(false);
-    });
-});
 
 describe('buildCelProxy', () => {
     it('builds nested namespaces from descriptor aliases with camelCase leaf names', () => {
@@ -288,14 +250,8 @@ describe('buildCelProxy', () => {
 });
 
 describe('ToolsAPI', () => {
-    it('exposes allowedPatterns as a readonly copy', () => {
-        const patterns = ['app.*', 'document.open'];
-        const api = new ToolsAPI({ request: () => Promise.resolve([]) }, patterns);
-        expect(api.allowedPatterns).toEqual(patterns);
-    });
-
     it('cel proxy throws synchronously before descriptors are loaded', () => {
-        const api = new ToolsAPI({ request: () => Promise.resolve([]) }, ['*']);
+        const api = new ToolsAPI({ request: () => Promise.resolve([]) });
         expect(api.isReady).toBe(false);
         expect(() => api.cel).toThrow(CelToolError);
         try {
@@ -309,22 +265,13 @@ describe('ToolsAPI', () => {
     it('accepts initialDescriptors via constructor to skip fetch', () => {
         const api = new ToolsAPI(
             { request: () => Promise.reject(new Error('should not fetch')) },
-            ['*'],
             [descriptor('app.get_state')]
         );
         expect(api.isReady).toBe(true);
         expect(typeof api.cel.app.getState).toBe('function');
     });
 
-    it('call() rejects tools not in the allowlist with CEL_TOOL_DENIED', async () => {
-        const api = new ToolsAPI({ request: () => Promise.resolve({}) }, ['app.*']);
-        await expect(api.call('file.read', {})).rejects.toMatchObject({
-            code: CelToolErrorCode.Denied,
-            tool: 'file.read'
-        });
-    });
-
-    it('call() dispatches allowed tools via tools/call and returns value', async () => {
+    it('call() dispatches tools via tools/call and returns value', async () => {
         const calls = [];
         const transport = {
             request: (method, params) => {
@@ -332,7 +279,7 @@ describe('ToolsAPI', () => {
                 return Promise.resolve({ isSuccess: true, value: '0.2.5' });
             }
         };
-        const api = new ToolsAPI(transport, ['app.*']);
+        const api = new ToolsAPI(transport);
 
         const value = await api.call('app.get_state', { foo: 1 });
 
@@ -348,7 +295,7 @@ describe('ToolsAPI', () => {
                 errorMessage: 'missing arg'
             })
         };
-        const api = new ToolsAPI(transport, ['*']);
+        const api = new ToolsAPI(transport);
 
         await expect(api.call('document.open', {})).rejects.toMatchObject({
             code: CelToolErrorCode.Failed,
@@ -364,14 +311,14 @@ describe('ToolsAPI', () => {
                 return Promise.reject(err);
             }
         };
-        const api = new ToolsAPI(transport, ['*']);
+        const api = new ToolsAPI(transport);
 
         await expect(api.call('missing.tool', {})).rejects.toMatchObject({
             code: CelToolErrorCode.NotFound
         });
     });
 
-    it('loadDescriptors() fetches tools/list and filters by the allowlist', async () => {
+    it('loadDescriptors() fetches tools/list and exposes every tool the host returns', async () => {
         const transport = {
             request: (method) => {
                 expect(method).toBe('tools/list');
@@ -382,19 +329,19 @@ describe('ToolsAPI', () => {
                 ]);
             }
         };
-        const api = new ToolsAPI(transport, ['document.*']);
+        const api = new ToolsAPI(transport);
 
         await api.loadDescriptors();
 
         expect(api.isReady).toBe(true);
         expect(typeof api.cel.document.open).toBe('function');
         expect(typeof api.cel.document.save).toBe('function');
-        expect(api.cel.file).toBeUndefined(); // filtered out by allowlist
+        expect(typeof api.cel.file.read).toBe('function');
     });
 
     it('loadDescriptors() tolerates transport failures with an empty descriptor list', async () => {
         const transport = { request: () => Promise.reject(new Error('no tools/list')) };
-        const api = new ToolsAPI(transport, ['*']);
+        const api = new ToolsAPI(transport);
 
         await api.loadDescriptors();
 
@@ -403,43 +350,36 @@ describe('ToolsAPI', () => {
     });
 
     it('list() throws before descriptors are loaded', () => {
-        const api = new ToolsAPI({ request: () => Promise.resolve([]) }, ['*']);
+        const api = new ToolsAPI({ request: () => Promise.resolve([]) });
         expect(() => api.list()).toThrow(CelToolError);
     });
 });
 
 describe('Celbridge.tools integration', () => {
-    it('defaults to an empty allowlist when no context is provided', () => {
+    it('defaults to an empty context when none is provided', () => {
         const { client } = createTestClient();
-        expect(client.tools.allowedPatterns).toEqual([]);
         expect(client.secrets).toEqual({});
-    });
-
-    it('reads permittedTools from constructor context', () => {
-        const { client } = createTestClient({
-            context: { permittedTools: ['app.get_state'], secrets: {} }
-        });
-        expect(client.tools.allowedPatterns).toEqual(['app.get_state']);
+        expect(client.options).toEqual({});
     });
 
     it('reads and exposes secrets', () => {
         const secrets = { library_license: 'abc123' };
         const { client } = createTestClient({
-            context: { permittedTools: [], secrets }
+            context: { secrets }
         });
         expect(client.secrets.library_license).toBe('abc123');
     });
 
     it('cel accessor throws before initialize() completes', () => {
         const { client } = createTestClient({
-            context: { permittedTools: ['*'], secrets: {} }
+            context: { secrets: {} }
         });
         expect(() => client.cel).toThrow(/not initialized/);
     });
 
     it('cel proxy dispatches via tools/call with positional arguments after initialize()', async () => {
         const { client, sentMessages, simulateResponse } = createTestClient({
-            context: { permittedTools: ['app.get_state'], secrets: {} }
+            context: { secrets: {} }
         });
 
         // Kick off initialize() — it sends document/initialize, then tools/list,
@@ -478,17 +418,25 @@ describe('Celbridge.tools integration', () => {
         await expect(callPromise).resolves.toBe('0.2.5');
     });
 
-    it('denied tool calls reject without hitting the transport', async () => {
-        const { client, sentMessages } = createTestClient({
-            context: { permittedTools: ['app.*'], secrets: {} }
+    it('a host denial surfaces as CEL_TOOL_DENIED', async () => {
+        const { client, sentMessages, simulateError } = createTestClient({
+            context: { secrets: {} }
         });
 
-        await expect(client.tools.call('file.read', {})).rejects.toMatchObject({
+        const callPromise = client.tools.call('webview.eval', {});
+
+        const callMessage = JSON.parse(sentMessages[0]);
+        expect(callMessage.method).toBe('tools/call');
+        simulateError(
+            callMessage.id,
+            jsonRpcCodeForCelCode(CelToolErrorCode.Denied),
+            "Tool 'webview.eval' is not accessible from custom editors");
+
+        await expect(callPromise).rejects.toMatchObject({
             name: 'CelToolError',
             code: CelToolErrorCode.Denied,
-            tool: 'file.read'
+            tool: 'webview.eval'
         });
-        expect(sentMessages).toHaveLength(0);
     });
 });
 
@@ -497,7 +445,7 @@ describe('cel globalThis exposure', () => {
         delete globalThis.cel;
 
         const { client, sentMessages, simulateResponse } = createTestClient({
-            context: { permittedTools: ['app.get_state'], secrets: {} }
+            context: { secrets: {} }
         });
 
         const initPromise = client.initialize();
@@ -527,7 +475,7 @@ describe('cel globalThis exposure', () => {
     it('accessing cel global before initialize() throws via client.cel', () => {
         delete globalThis.cel;
         const { client } = createTestClient({
-            context: { permittedTools: ['*'], secrets: {} }
+            context: { secrets: {} }
         });
 
         expect(() => client.cel).toThrow(/not initialized/);
@@ -544,7 +492,7 @@ describe('cel globalThis exposure', () => {
             onMessage: (handler) => { messageHandler = handler; },
             timeout: 1000,
             exposeCelGlobal: false,
-            context: { permittedTools: [], secrets: {} }
+            context: { secrets: {} }
         });
 
         const initPromise = client.initialize();
@@ -555,9 +503,14 @@ describe('cel globalThis exposure', () => {
             result: { content: '', metadata: { filePath: '', resourceKey: '', fileName: '' } }
         }));
 
+        await Promise.resolve();
+        await Promise.resolve();
+
+        const toolsList = JSON.parse(sentMessages[1]);
+        messageHandler(JSON.stringify({ jsonrpc: '2.0', id: toolsList.id, result: [] }));
+
         await initPromise;
 
-        // With permittedTools=[], no tools/list is sent, so init completes with only the one message.
         expect(globalThis.cel).toBeUndefined();
         expect(client.tools.isReady).toBe(true);
     });

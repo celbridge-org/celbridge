@@ -32,19 +32,6 @@ internal sealed record ManifestContributesSection
 }
 
 /// <summary>
-/// The [permissions] section of a package manifest, declaring what its editors may do at runtime.
-/// </summary>
-internal sealed record ManifestPermissionsSection
-{
-    // Host tools the package's editors may call, in alias form ("document.save"). A trailing wildcard
-    // covers a namespace, and "*" covers every tool.
-    public List<string>? Tools { get; init; }
-
-    [TomlExtensionData]
-    public Dictionary<string, object?> UnknownKeys { get; init; } = new();
-}
-
-/// <summary>
 /// The shape of a package manifest (package.toml), deserialized by Tomlyn. The property names are the
 /// manifest's known keys, and every other key lands in an UnknownKeys bag rather than being dropped.
 /// </summary>
@@ -52,7 +39,6 @@ internal sealed record PackageManifest
 {
     public ManifestPackageSection? Package { get; init; }
     public ManifestContributesSection? Contributes { get; init; }
-    public ManifestPermissionsSection? Permissions { get; init; }
 
     [TomlExtensionData]
     public Dictionary<string, object?> UnknownKeys { get; init; } = new();

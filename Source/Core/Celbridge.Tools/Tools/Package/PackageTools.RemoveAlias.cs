@@ -13,8 +13,9 @@ public partial class PackageTools
 {
     /// <summary>Remove a workshop package alias; the version it pointed at is unaffected.</summary>
     [McpServerTool(Name = "package_remove_alias")]
+    [WorkshopTool]
     [ToolAlias("package.remove_alias")]
-    [RelatedGuides("packages_overview")]
+    [RelatedGuides("workshop")]
     public async partial Task<CallToolResult> RemoveAlias(string packageName, string alias)
     {
         if (!PackageName.IsValid(packageName))
