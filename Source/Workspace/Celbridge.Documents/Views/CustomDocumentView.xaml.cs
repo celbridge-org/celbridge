@@ -61,6 +61,11 @@ public sealed partial class CustomDocumentView : DocumentView
         _controller.SetWritableState(WritableState);
     }
 
+    public override void SetPresentedSize(double width, double height)
+    {
+        _controller.SetPresentedSize(width, height);
+    }
+
     public override async Task<Result> SetFileResource(ResourceKey fileResource)
     {
         var setResult = await base.SetFileResource(fileResource);

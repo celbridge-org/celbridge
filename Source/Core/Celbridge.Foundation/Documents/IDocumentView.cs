@@ -29,6 +29,13 @@ public interface IDocumentView : IWorkspaceItem
     void SetWritableState(WritableState state);
 
     /// <summary>
+    /// Tells the view the size its section presents documents at. A document in a tab that has not been
+    /// shown is never laid out, so a view that sizes its own content has nothing else to measure against.
+    /// Views whose content the platform lays out ignore this.
+    /// </summary>
+    void SetPresentedSize(double width, double height);
+
+    /// <summary>
     /// Navigate to a specific location within the document.
     /// </summary>
     Task<Result> NavigateToLocation(string location);

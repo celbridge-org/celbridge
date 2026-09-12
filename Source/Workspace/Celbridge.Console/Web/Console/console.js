@@ -73,18 +73,13 @@ const terminalElement = document.getElementById('terminal');
 term.open(terminalElement);
 terminalElement.querySelector('.xterm-helper-textarea')?.setAttribute('name', 'terminal-input');
 
-// True once this view has been arranged and is on screen, which is when the viewport it reports is the one
-// it will be read at. An unarranged view is handed a viewport the page cannot tell from a real layout.
-function isArranged() {
-    return !document.hidden &&
-        client.viewState.current?.isArranged === 'true';
-}
-
-// Whether a measurement taken now is worth acting on. Only an arranged view's is: an unarranged one is
-// measuring geometry no layout pass produced, and applying it resizes the pty, which costs the screen the
-// output already painted on it.
+// Whether a measurement taken now is worth acting on. The host gives this surface the geometry its content
+// will be read at, which for a view in a tab that has not been shown is the size its section will present
+// it at, and reports when it has. Without that a page cannot tell a placeholder from a real layout, and a
+// pty created at a placeholder has to be resized once the view is shown, which costs the screen the output
+// already painted on it.
 function canMeasure() {
-    return isArranged() &&
+    return client.viewState.current?.isSized === 'true' &&
         terminalElement.clientWidth > 0 &&
         terminalElement.clientHeight > 0;
 }
@@ -818,7 +813,7 @@ function applyWritableState() {
 client.viewState.onChanged(() => {
     applyWritableState();
 
-    // A view shown again is arranged after the page is back on screen, so a fit only counts from here.
+    // The host reports the geometry this view will be read at, so a fit only counts from here.
     refitTerminal();
 });
 
@@ -1027,7 +1022,9 @@ function applyAttachResult(result) {
         return;
     }
 
-    if (result.startupPending) {
+    // A session that has not launched yet has nothing on its screen to show, and reports no startup phase
+    // until it reaches one.
+    if (result.startupPending || result.state === 'starting') {
         showStartingVeil();
         armVeilTimeout(VEIL_BACKSTOP_MS);
     } else {

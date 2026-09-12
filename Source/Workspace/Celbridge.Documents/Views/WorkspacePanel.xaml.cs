@@ -886,6 +886,10 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         documentTab.ViewModel.DocumentView = documentView;
         documentTab.Content = documentView;
 
+        // A document opened into a tab that is not shown is never laid out, so the section hands it the
+        // size it will have when it is. The tab is inserted before the view exists, hence the call here.
+        targetSectionForNew.UpdatePresentedDocumentSizes();
+
         UpdateEditorDisplayName(documentTab, documentView.EditorId);
 
         // Runs before UpdateAllTabDisplayNames, so a fixed title is not overwritten by disambiguation.
@@ -1163,6 +1167,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
             // Resource (and possibly extension) changed. Refresh content and label.
             documentTab.ViewModel.DocumentView = newDocumentView;
             documentTab.Content = newDocumentView;
+            sectionView.UpdatePresentedDocumentSizes();
             UpdateEditorDisplayName(documentTab, newDocumentView.EditorId);
 
             // At this point there should be no remaining references to oldDocumentView, so it should go

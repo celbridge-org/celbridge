@@ -141,6 +141,17 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         }
     }
 
+    // Launches the session, waiting for that launch only when this caller supplied the size it is waiting
+    // for. A view that has not been arranged supplies none and unblocks the launch moments later over its
+    // own resize notification, so waiting here would hold the caller's request open for the whole of the
+    // launch's wait and time it out.
+    private Task StartSessionForViewAsync(ConsoleSession session, ResourceKey resource, int cols, int rows)
+    {
+        var starting = StartSessionAsync(session, resource);
+
+        return cols > 0 && rows > 0 ? starting : Task.CompletedTask;
+    }
+
     public async Task<ConsoleAttachSnapshot> AttachAsync(ResourceKey resource, IConsoleView attachedView, int cols, int rows)
     {
         var session = GetOrCreateSession(resource);
@@ -153,7 +164,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         // awaiting it first would leave the launch and the attach waiting on each other.
         session.Resize(cols, rows);
 
-        await StartSessionAsync(session, resource);
+        await StartSessionForViewAsync(session, resource, cols, rows);
 
         // Applied again now the pty exists. A launch that timed out waiting created it at the fallback size.
         session.Resize(cols, rows);
@@ -209,7 +220,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
 
             session.Resize(cols, rows);
 
-            await StartSessionAsync(session, resource);
+            await StartSessionForViewAsync(session, resource, cols, rows);
 
             session.Resize(cols, rows);
 

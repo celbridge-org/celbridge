@@ -149,8 +149,11 @@ internal sealed class ConsoleSession : IDisposable
     }
 
     // How long a launch waits for a view to report the size it will be read at before starting at the
-    // fallback size anyway.
-    private const int ViewSizeTimeoutMs = 5000;
+    // fallback size anyway. Every section reports the size it presents documents at, so a view always has
+    // one to report and the wait ends as soon as it settles. The bound is generous because it is only
+    // reached when a view never loads at all, and a pty created at the fallback has to be resized once the
+    // console is shown, which costs the screen the output already painted on it.
+    private const int ViewSizeTimeoutMs = 30000;
 
     public async Task StartAsync(int fallbackCols, int fallbackRows, int rpcPort)
     {

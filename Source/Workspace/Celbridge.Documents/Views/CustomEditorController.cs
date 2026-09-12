@@ -92,7 +92,9 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     // This editor's own state store, mirrored to its WebView over the viewState channel.
     private IStateStore? _viewState;
     private IDisposable? _viewStateConnection;
-    private bool _isArranged;
+    private bool _isSized;
+    private double _presentedWidth;
+    private double _presentedHeight;
 
     // JSON-RPC infrastructure. Teardown detaches the WebView2 channel or disposes the deferred
     // WebSocket channel, depending on the transport the host channel factory selected.
@@ -370,6 +372,9 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             WebView.Unloaded += WebView_Unloaded;
             WebView.SizeChanged += WebView_SizeChanged;
 
+            // The section reports its size before a view exists to take it, so it is applied here too.
+            ApplyViewportSize();
+
             await ConfigureWebViewHostAsync(editorLoader);
 
             _initTcs!.TrySetResult(Result.Ok());
@@ -524,7 +529,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         // does (Chromium's WebView2), the package stays hands-off and Ctrl+F reaches the built-in bar.
         _viewState.SetValue("providesBuiltInFind", _webViewAdapter.ProvidesBuiltInFind ? "true" : "false");
         // A page that measures its viewport before this surface is arranged is reading a placeholder.
-        _viewState.SetValue("isArranged", _isArranged ? "true" : "false");
+        _viewState.SetValue("isSized", _isSized ? "true" : "false");
         _viewStateConnection = _viewState.RegisterConnection(
             snapshot => capturedHost.Rpc.NotifyWithParameterObjectAsync(StateRpcMethods.ViewStateChanged, snapshot));
 
@@ -713,7 +718,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             _webViewAdapter.CloseWebView(WebView, _webViewContainer);
 
             WebView = null;
-            _isArranged = false;
+            _isSized = false;
         }
 
         if (_proxyChannel is not null)
@@ -846,7 +851,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     private void WebView_Loaded(object sender, RoutedEventArgs e)
     {
         // A surface reattached at the size it already had raises no size change of its own.
-        ReportArranged();
+        ApplyViewportSize();
 
         _ = Diagnostics.LogSurfaceAsync("WebView attached", Surface);
 
@@ -857,36 +862,69 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
     private void WebView_SizeChanged(object sender, SizeChangedEventArgs e)
     {
-        ReportArranged();
+        ApplyViewportSize();
     }
 
-    // The viewport this surface's page measures is only the one it will be read at once the surface is laid
-    // out. Reported on the transition only, since the state store pushes to the page on every set.
-    private void ReportArranged()
+    public void SetPresentedSize(double width, double height)
     {
-        if (_isArranged
-            || WebView is null
-            || WebView.ActualWidth <= 0
-            || WebView.ActualHeight <= 0)
+        if (width <= 0 ||
+            height <= 0)
         {
             return;
         }
 
-        // Sized before the page is told its measurement counts, so what it measures is the arranged size.
-        _webViewAdapter.SetViewportSize(WebView, WebView.ActualWidth, WebView.ActualHeight);
+        _presentedWidth = width;
+        _presentedHeight = height;
 
-        _isArranged = true;
-        _viewState?.SetValue("isArranged", "true");
+        ApplyViewportSize();
+    }
+
+    // Gives the surface the geometry its page reads as its viewport: its own once it has been laid out,
+    // and until then the size its section presents documents at. A page handed neither measures a
+    // placeholder it cannot tell from a real layout, so it is told which it has.
+    private void ApplyViewportSize()
+    {
+        if (WebView is null)
+        {
+            return;
+        }
+
+        var width = WebView.ActualWidth;
+        var height = WebView.ActualHeight;
+        if (width <= 0 ||
+            height <= 0)
+        {
+            width = _presentedWidth;
+            height = _presentedHeight;
+        }
+
+        if (width <= 0 ||
+            height <= 0)
+        {
+            return;
+        }
+
+        // Sized before the page is told its measurement counts, so what it measures is that size.
+        _webViewAdapter.SetViewportSize(WebView, width, height);
+
+        // Reported on the transition only, since the state store pushes to the page on every set.
+        if (_isSized)
+        {
+            return;
+        }
+
+        _isSized = true;
+        _viewState?.SetValue("isSized", "true");
     }
 
     private void WebView_Unloaded(object sender, RoutedEventArgs e)
     {
-        // A detached surface keeps the geometry it was left with, which the arrange that follows the next
-        // attach replaces.
-        if (_isArranged)
+        // A detached surface keeps the geometry it was left with, which the next arrange or the next size
+        // its section reports replaces.
+        if (_isSized)
         {
-            _isArranged = false;
-            _viewState?.SetValue("isArranged", "false");
+            _isSized = false;
+            _viewState?.SetValue("isSized", "false");
         }
 
         _ = Diagnostics.LogSurfaceAsync("WebView detached", Surface);

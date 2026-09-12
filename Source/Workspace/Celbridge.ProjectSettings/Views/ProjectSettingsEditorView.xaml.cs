@@ -202,6 +202,11 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
         WritableState = state;
     }
 
+    public void SetPresentedSize(double width, double height)
+    {
+        // This view is laid out by the platform, so it needs no size until it is shown.
+    }
+
     public async Task<Result> NavigateToLocation(string location)
     {
         await Task.CompletedTask;
