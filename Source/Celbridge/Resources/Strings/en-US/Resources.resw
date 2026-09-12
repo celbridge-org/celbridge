@@ -1422,11 +1422,11 @@ Open with default application instead?</value>
   <data name="Template_Empty_Description" xml:space="preserve">
     <value>A blank project with a readme.md file to get you started.</value>
   </data>
-  <data name="Template_Examples_Name" xml:space="preserve">
-    <value>Examples</value>
+  <data name="Template_Python_Name" xml:space="preserve">
+    <value>Python Project</value>
   </data>
-  <data name="Template_Examples_Description" xml:space="preserve">
-    <value>A project containing example scripts demonstrating Celbridge features.</value>
+  <data name="Template_Python_Description" xml:space="preserve">
+    <value>A Python starter project with a console and a hello world script.</value>
   </data>
   <data name="NewProjectDialog_ChooseTemplateTooltip" xml:space="preserve">
     <value>Select a template for your new project</value>
