@@ -17,7 +17,6 @@ import {
     parseExtensionList,
     configsEqual,
 } from './console-config.js';
-import { isAdoptableSize } from './terminal-sizing.js';
 import shellType from './types/shell.js';
 import pythonType from './types/python.js';
 
@@ -214,8 +213,14 @@ term.onResize(({ cols, rows }) => {
 });
 
 // Resizes the terminal to the size the session painted its buffered output at, so nothing is rewrapped.
+// Anything but a positive whole number of cells is not a size a terminal has, and the size it is already at
+// is not worth taking.
 function adoptSessionSize(cols, rows) {
-    if (!isAdoptableSize(cols, rows, term.cols, term.rows)) {
+    if (!Number.isInteger(cols) ||
+        !Number.isInteger(rows) ||
+        cols <= 0 ||
+        rows <= 0 ||
+        (cols === term.cols && rows === term.rows)) {
         return;
     }
 
