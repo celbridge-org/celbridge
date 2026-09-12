@@ -233,11 +233,11 @@ describe('Celbridge', () => {
             const handler = vi.fn();
             client.viewState.onChanged(handler);
 
-            simulateNotification('viewState/changed', { writable: 'Locked' });
+            simulateNotification('viewState/changed', { writable: 'ReadOnlyAttribute' });
 
             expect(handler).toHaveBeenCalledOnce();
-            expect(handler).toHaveBeenCalledWith({ writable: 'Locked' });
-            expect(client.viewState.current).toEqual({ writable: 'Locked' });
+            expect(handler).toHaveBeenCalledWith({ writable: 'ReadOnlyAttribute' });
+            expect(client.viewState.current).toEqual({ writable: 'ReadOnlyAttribute' });
         });
 
         it('cel.viewState replays the latest snapshot to a late subscriber', () => {

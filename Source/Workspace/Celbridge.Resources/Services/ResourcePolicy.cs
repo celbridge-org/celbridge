@@ -15,14 +15,14 @@ internal sealed class CompiledPolicyRule : IPolicyRule
     public ResourceAction GatedActions { get; }
     public string Description { get; }
 
-    public ResourcePathMatcher? Matcher { get; }
+    public ResourcePathMatcher Matcher { get; }
 
     public CompiledPolicyRule(
         PolicyRuleSource source,
         string pattern,
         ResourceAction gatedActions,
         string description,
-        ResourcePathMatcher? matcher)
+        ResourcePathMatcher matcher)
     {
         Source = source;
         Pattern = pattern;
@@ -33,88 +33,25 @@ internal sealed class CompiledPolicyRule : IPolicyRule
 }
 
 /// <summary>
-/// Workspace-scoped policy engine. Compiles the rule set once at construction
-/// and evaluates against it per call. List and Read visibility follow the set
-/// model "(not ignored by the ignore-file, or matched by add) and not matched
-/// by remove", below an immutable system tier. Write is gated by the system
-/// tier and the lock list.
+/// Workspace-scoped policy engine. Access is decided by the system-deny tier
+/// alone, which no project configuration can reach. The project's 'hide' and
+/// 'search-exclude' patterns are compiled alongside it and answer the two
+/// ergonomic questions: what the Explorer draws, and what the indexers walk.
 /// </summary>
 public sealed class ResourcePolicy : IResourcePolicy
 {
     private readonly List<CompiledPolicyRule> _systemDeny;
-    private readonly List<CompiledPolicyRule> _systemAllow;
-    private readonly List<CompiledPolicyRule> _add;
-    private readonly List<CompiledPolicyRule> _remove;
-    private readonly List<CompiledPolicyRule> _lock;
 
-    // Empty until InitializeAsync reads the ignore-file and replaces it, so
-    // Evaluate stays safe to call before initialization runs.
-    private IIgnoreFileMatcher _ignoreFileMatcher;
-    private readonly CompiledPolicyRule _ignoreRule;
+    private readonly ResourcePatternSet _hide;
+    private readonly ResourcePatternSet _searchExclude;
 
-    // Static leading paths of the add patterns, used to decide whether the
-    // registry walk must descend into an ignored folder to reach an add target.
-    // An empty string marks a bare-name add pattern that matches at any depth.
-    private readonly IReadOnlyList<string> _addPrefixes;
-
-    private readonly IReadOnlyList<IPolicyRule> _compiledRules;
-
-    private readonly IProject? _project;
-    private readonly ResourcesSection _resourcesSection;
-    private readonly ILocalFileSystem _fileSystem;
-
-    public IReadOnlyList<IPolicyRule> CompiledRules => _compiledRules;
-
-    public ResourcePolicy(IProjectService projectService, ILocalFileSystem fileSystem)
+    public ResourcePolicy(IProjectService projectService)
     {
-        _fileSystem = fileSystem;
-        _project = projectService.CurrentProject;
-        _resourcesSection = _project?.Config.Resources ?? new ResourcesSection();
+        var resourcesSection = projectService.CurrentProject?.Config.Resources ?? new ResourcesSection();
 
         _systemDeny = BuildSystemDenyRules();
-        _systemAllow = BuildSystemAllowRules();
-        _add = CompileProjectRules(
-            _resourcesSection.Add,
-            PolicyRuleSource.ProjectAdd,
-            ResourceAction.List | ResourceAction.Read,
-            "Pattern from the project '[resources].add' list.");
-        _remove = CompileProjectRules(
-            _resourcesSection.Remove,
-            PolicyRuleSource.ProjectRemove,
-            ResourceAction.List | ResourceAction.Read,
-            "Pattern from the project '[resources].remove' list.");
-        _lock = CompileProjectRules(
-            _resourcesSection.Lock,
-            PolicyRuleSource.ProjectLocked,
-            ResourceAction.Write,
-            "Pattern from the project '[resources].lock' list. The resource is frozen in place.");
-
-        // The ignore-file read happens in InitializeAsync, not here, so
-        // construction does no IO. The baseline is an empty ignore set until then.
-        _ignoreFileMatcher = new IgnoreFileMatcher(Array.Empty<string>());
-        _ignoreRule = new CompiledPolicyRule(
-            source: PolicyRuleSource.IgnoreFile,
-            pattern: string.IsNullOrEmpty(_resourcesSection.IgnoreFile) ? "(disabled)" : _resourcesSection.IgnoreFile,
-            gatedActions: ResourceAction.List | ResourceAction.Read,
-            description: "The resource is excluded by the project ignore-file. Add it to '[resources].add' to make it a resource.",
-            matcher: null);
-
-        _addPrefixes = BuildAddPrefixes(_resourcesSection.Add);
-
-        var combined = new List<IPolicyRule>();
-        combined.AddRange(_systemDeny);
-        combined.AddRange(_systemAllow);
-        combined.Add(_ignoreRule);
-        combined.AddRange(_add);
-        combined.AddRange(_remove);
-        combined.AddRange(_lock);
-        _compiledRules = combined;
-    }
-
-    public async Task<Result> InitializeAsync()
-    {
-        _ignoreFileMatcher = await BuildIgnoreFileMatcherAsync(_project, _resourcesSection, _fileSystem);
-        return Result.Ok();
+        _hide = ResourcePatternSet.Compile(resourcesSection.Hide);
+        _searchExclude = ResourcePatternSet.Compile(resourcesSection.SearchExclude);
     }
 
     public Result Evaluate(ResourceKey resource, ResourceAction action, bool isFolder = false)
@@ -134,116 +71,61 @@ public sealed class ResourcePolicy : IResourcePolicy
             return Result.Ok();
         }
 
-        // System deny rules are non-overridable and apply to both files and
-        // folders regardless of the isFolder hint; the .celbridge and .git
-        // folders must always be inaccessible.
+        // A reserved name is reserved whatever kind of entry sits at that path.
+        // CompileReservedMatcher refuses a folders-only pattern, so the caller's hint
+        // cannot change a system verdict.
         foreach (var rule in _systemDeny)
         {
             if ((rule.GatedActions & action) != action)
             {
                 continue;
             }
-            if (rule.Matcher!.IsMatch(path, isFolder: true)
-                || rule.Matcher!.IsMatch(path, isFolder: false))
+            if (rule.Matcher.IsMatch(path, isFolder))
             {
-                return Fail(resource, action, rule);
+                var error = new PolicyDenialError(resource, action, rule);
+                return Result.Fail(error.Message).WithException(error);
             }
         }
 
-        foreach (var rule in _systemAllow)
-        {
-            if ((rule.GatedActions & action) != action)
-            {
-                continue;
-            }
-            if (rule.Matcher!.IsMatch(path, isFolder: isFolder))
-            {
-                return Result.Ok();
-            }
-        }
-
-        if (action == ResourceAction.Write)
-        {
-            foreach (var rule in _lock)
-            {
-                if (rule.Matcher!.IsMatch(path, isFolder: isFolder))
-                {
-                    return Fail(resource, action, rule);
-                }
-            }
-
-            return Result.Ok();
-        }
-
-        // List and Read share the set model: remove beats add beats the ignore
-        // baseline.
-        foreach (var rule in _remove)
-        {
-            if (rule.Matcher!.IsMatch(path, isFolder: isFolder))
-            {
-                return Fail(resource, action, rule);
-            }
-        }
-
-        foreach (var rule in _add)
-        {
-            if (rule.Matcher!.IsMatch(path, isFolder: isFolder))
-            {
-                return Result.Ok();
-            }
-        }
-
-        if (!_ignoreFileMatcher.IsIgnored(path, isFolder))
-        {
-            return Result.Ok();
-        }
-
-        // The path is ignored and not added back. A folder that an add pattern
-        // can reach below it must still be listable so the registry walk descends
-        // to the add target, even though the folder itself is otherwise ignored.
-        if (action == ResourceAction.List
-            && isFolder
-            && IsAddReachable(path))
-        {
-            return Result.Ok();
-        }
-
-        return Fail(resource, action, _ignoreRule);
+        return Result.Ok();
     }
 
-    private bool IsAddReachable(string folderPath)
+    public bool IsHidden(ResourceKey resource, bool isFolder)
     {
-        foreach (var prefix in _addPrefixes)
-        {
-            if (prefix.Length == 0)
-            {
-                // Bare-name add pattern matches at any depth, so any folder may
-                // contain a match.
-                return true;
-            }
-            if (string.Equals(prefix, folderPath, StringComparison.Ordinal))
-            {
-                return true;
-            }
-            // The add target sits below this folder, so the walk must descend.
-            if (prefix.StartsWith(folderPath + "/", StringComparison.Ordinal))
-            {
-                return true;
-            }
-            // This folder sits at or below the add prefix, so a deeper wildcard
-            // in the pattern may match the folder's descendants.
-            if (folderPath.StartsWith(prefix + "/", StringComparison.Ordinal))
-            {
-                return true;
-            }
-        }
-        return false;
+        return MatchesProjectPatterns(_hide, resource, isFolder);
     }
 
-    private static Result Fail(ResourceKey resource, ResourceAction action, IPolicyRule rule)
+    public bool IsSearchExcluded(ResourceKey resource, bool isFolder)
     {
-        var error = new PolicyDenialError(resource, action, rule);
-        return Result.Fail(error.Message).WithException(error);
+        return MatchesProjectPatterns(_searchExclude, resource, isFolder);
+    }
+
+    // The configured patterns are written against project paths, so a resource
+    // under any other root is never a match.
+    private static bool MatchesProjectPatterns(ResourcePatternSet patterns, ResourceKey resource, bool isFolder)
+    {
+        if (resource.Root != ResourceKey.DefaultRoot)
+        {
+            return false;
+        }
+
+        return patterns.IsMatch(resource.Path, isFolder);
+    }
+
+    // A system rule reserves a name rather than a kind of entry, so a folders-only
+    // pattern would be written and then ignored at evaluation. The rule set is
+    // hardcoded, so this rejects a mistake in this file rather than any user input.
+    internal static ResourcePathMatcher CompileReservedMatcher(string pattern)
+    {
+        var matcher = ResourcePathMatcher.Compile(pattern);
+        if (matcher.Target == PathMatchTarget.FoldersOnly)
+        {
+            throw new ArgumentException(
+                $"A system deny pattern cannot be folders-only: '{pattern}'. Drop the trailing slash, which a system rule does not honour.",
+                nameof(pattern));
+        }
+
+        return matcher;
     }
 
     private static List<CompiledPolicyRule> BuildSystemDenyRules()
@@ -256,141 +138,31 @@ public sealed class ResourcePolicy : IResourcePolicy
         rules.Add(new CompiledPolicyRule(
             source: PolicyRuleSource.SystemDeny,
             pattern: ".celbridge",
-            gatedActions: ResourceAction.Read | ResourceAction.Write | ResourceAction.List,
+            gatedActions: ResourceAction.Read | ResourceAction.Write,
             description: "The project metadata folder is reserved by Celbridge and cannot be addressed as a resource.",
-            matcher: ResourcePathMatcher.Compile(".celbridge")));
+            matcher: CompileReservedMatcher(".celbridge")));
 
         rules.Add(new CompiledPolicyRule(
             source: PolicyRuleSource.SystemDeny,
             pattern: ".celbridge/**",
-            gatedActions: ResourceAction.Read | ResourceAction.Write | ResourceAction.List,
+            gatedActions: ResourceAction.Read | ResourceAction.Write,
             description: "Files under the project metadata folder are reserved by Celbridge.",
-            matcher: ResourcePathMatcher.Compile(".celbridge/**")));
+            matcher: CompileReservedMatcher(".celbridge/**")));
 
-        // The Git metadata folder is never listed in a .gitignore, so it is a
-        // system-deny rather than a built-in ignore entry.
         rules.Add(new CompiledPolicyRule(
             source: PolicyRuleSource.SystemDeny,
             pattern: ".git",
-            gatedActions: ResourceAction.Read | ResourceAction.Write | ResourceAction.List,
+            gatedActions: ResourceAction.Read | ResourceAction.Write,
             description: "The Git metadata folder is reserved and cannot be addressed as a resource.",
-            matcher: ResourcePathMatcher.Compile(".git")));
+            matcher: CompileReservedMatcher(".git")));
 
         rules.Add(new CompiledPolicyRule(
             source: PolicyRuleSource.SystemDeny,
             pattern: ".git/**",
-            gatedActions: ResourceAction.Read | ResourceAction.Write | ResourceAction.List,
+            gatedActions: ResourceAction.Read | ResourceAction.Write,
             description: "Files under the Git metadata folder are reserved.",
-            matcher: ResourcePathMatcher.Compile(".git/**")));
+            matcher: CompileReservedMatcher(".git/**")));
 
-        return rules;
-    }
-
-    private static List<CompiledPolicyRule> BuildSystemAllowRules()
-    {
-        var rules = new List<CompiledPolicyRule>();
-
-        // Celbridge's own file formats are always List, Read and Write allowed so a restrictive
-        // [resources] configuration cannot brick the in-app editors that read them. Generated from the
-        // shared pattern list, so the floor covers exactly the formats the rest of the app treats as
-        // machinery.
-        foreach (var pattern in CelbridgeFileFormats.Patterns)
-        {
-            rules.Add(new CompiledPolicyRule(
-                source: PolicyRuleSource.SystemAllow,
-                pattern: pattern,
-                gatedActions: ResourceAction.Read | ResourceAction.Write | ResourceAction.List,
-                description: $"'{pattern}' is a Celbridge file format and is always visible and writable.",
-                matcher: ResourcePathMatcher.Compile(pattern)));
-        }
-
-        return rules;
-    }
-
-    private static async Task<IIgnoreFileMatcher> BuildIgnoreFileMatcherAsync(
-        IProject? project,
-        ResourcesSection resourcesSection,
-        ILocalFileSystem fileSystem)
-    {
-        // An empty ignore-file name disables the baseline; with no live project
-        // there is no folder to resolve the file against.
-        if (string.IsNullOrEmpty(resourcesSection.IgnoreFile)
-            || project is null)
-        {
-            return new IgnoreFileMatcher(Array.Empty<string>());
-        }
-
-        var ignoreFilePath = Path.Combine(project.ProjectFolderPath, resourcesSection.IgnoreFile);
-        var readResult = await fileSystem.ReadAllTextAsync(ignoreFilePath);
-        if (readResult.IsFailure)
-        {
-            // A missing ignore-file means an empty ignore set, not a fallback to
-            // built-in defaults.
-            return new IgnoreFileMatcher(Array.Empty<string>());
-        }
-
-        var content = readResult.Value;
-        var lines = content.Replace("\r", string.Empty).Split('\n');
-        return new IgnoreFileMatcher(lines);
-    }
-
-    // Computes the static leading path of each add pattern (the segments before
-    // the first wildcard), used to bound the registry walk into ignored folders.
-    // A bare-name pattern that matches at any depth is recorded as an empty
-    // string.
-    private static IReadOnlyList<string> BuildAddPrefixes(IReadOnlyList<string> addPatterns)
-    {
-        var prefixes = new List<string>();
-        foreach (var pattern in addPatterns)
-        {
-            if (string.IsNullOrWhiteSpace(pattern))
-            {
-                continue;
-            }
-
-            var trimmed = pattern.TrimEnd('/');
-            if (!trimmed.Contains('/'))
-            {
-                prefixes.Add(string.Empty);
-                continue;
-            }
-
-            var segments = trimmed.Split('/');
-            var prefixSegments = new List<string>();
-            foreach (var segment in segments)
-            {
-                if (segment.Contains('*'))
-                {
-                    break;
-                }
-                prefixSegments.Add(segment);
-            }
-            prefixes.Add(string.Join("/", prefixSegments));
-        }
-        return prefixes;
-    }
-
-    private static List<CompiledPolicyRule> CompileProjectRules(
-        IReadOnlyList<string> patterns,
-        PolicyRuleSource source,
-        ResourceAction gatedActions,
-        string description)
-    {
-        var rules = new List<CompiledPolicyRule>();
-        foreach (var pattern in patterns)
-        {
-            if (string.IsNullOrWhiteSpace(pattern))
-            {
-                continue;
-            }
-
-            rules.Add(new CompiledPolicyRule(
-                source: source,
-                pattern: pattern,
-                gatedActions: gatedActions,
-                description: description,
-                matcher: ResourcePathMatcher.Compile(pattern)));
-        }
         return rules;
     }
 }

@@ -11,7 +11,7 @@
   Background="{ThemeResource ContentBackgroundBrush}">
 
   <UserControl.Resources>
-    <services:BoolToDimmedOpacityConverter x:Key="BoolToDimmedOpacityConverter"/>
+    <services:InverseBoolToDimmedOpacityConverter x:Key="InverseBoolToDimmedOpacityConverter"/>
 
     <!-- MenuFlyout for context menu -->
     <MenuFlyout x:Name="ResourceContextMenu"/>
@@ -41,18 +41,18 @@
                     FontSize="12"/>
         </Button>
 
-        <!-- Resource icon. Dims with the name when the resource is read-only. -->
+        <!-- Resource icon. Dims with the name when the resource is read-only or hidden. -->
         <local:ResourceIcon Grid.Column="1"
                             Resource="{x:Bind Resource}"
-                            Opacity="{x:Bind IsWritable, Converter={StaticResource BoolToDimmedOpacityConverter}}"
+                            Opacity="{x:Bind IsDimmed, Converter={StaticResource InverseBoolToDimmedOpacityConverter}}"
                             Margin="0,0,8,0"
                             VerticalAlignment="Center"
                             HorizontalAlignment="Left" />
 
-        <!-- Resource name (semi-bold for project folder, dimmed when read-only) -->
+        <!-- Resource name (semi-bold for project folder, dimmed when read-only or hidden) -->
         <TextBlock Grid.Column="2"
                    Text="{x:Bind Name}"
-                   Opacity="{x:Bind IsWritable, Converter={StaticResource BoolToDimmedOpacityConverter}}"
+                   Opacity="{x:Bind IsDimmed, Converter={StaticResource InverseBoolToDimmedOpacityConverter}}"
                    VerticalAlignment="Center"
                    TextTrimming="CharacterEllipsis"
                    FontWeight="{x:Bind IsProjectFolder, Converter={StaticResource ProjectFolderFontWeightConverter}}" />

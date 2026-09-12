@@ -125,11 +125,7 @@ public class ResourceOperationService : IResourceOperationService
         }
         bool isFolder = infoResult.Value.Kind == StorageItemKind.Folder;
 
-        // Moving or renaming a folder relocates every descendant, which changes
-        // the path of any locked resource inside it. Walk the subtree and refuse
-        // the move if any descendant is locked, freezing the locked resource's
-        // path as well as its content.
-        var policyGateResult = await EvaluateStructuralChangeAsync(source, isFolder);
+        var policyGateResult = Policy.Evaluate(source, ResourceAction.Write, isFolder);
         if (policyGateResult.IsFailure)
         {
             return Result.Fail(policyGateResult);
@@ -194,13 +190,12 @@ public class ResourceOperationService : IResourceOperationService
         // The soft-delete path bypasses IResourceFileSystem because TrashService
         // moves files into .celbridge/trash/ directly through the gateway. The
         // policy gate that lives on IResourceFileSystem.DeleteAsync would never
-        // run, so the check is repeated here at the service entry. isFolder is
-        // probed so folder-only locked patterns deny correctly.
+        // run, so the check is repeated here at the service entry.
         var infoResult = await ResourceFileSystem.GetInfoAsync(resource);
         bool isFolder = infoResult.IsSuccess
             && infoResult.Value.Kind == StorageItemKind.Folder;
 
-        var policyGateResult = await EvaluateStructuralChangeAsync(resource, isFolder);
+        var policyGateResult = Policy.Evaluate(resource, ResourceAction.Write, isFolder);
         if (policyGateResult.IsFailure)
         {
             return policyGateResult;
@@ -217,27 +212,6 @@ public class ResourceOperationService : IResourceOperationService
         return result;
     }
 
-    // Evaluates the policy on a structural-change target (delete or move) and,
-    // for folders, on every descendant. A locked descendant blocks the change
-    // because delete moves the whole subtree to trash and move relocates it as
-    // one unit; allowing the parent change while a child is locked would break
-    // the locked resource's frozen-in-place guarantee.
-    private async Task<Result> EvaluateStructuralChangeAsync(ResourceKey resource, bool isFolder)
-    {
-        var directResult = Policy.Evaluate(resource, ResourceAction.Write, isFolder);
-        if (directResult.IsFailure)
-        {
-            return Result.Fail(directResult);
-        }
-
-        if (!isFolder)
-        {
-            return Result.Ok();
-        }
-
-        return await FindLockingDescendantAsync(resource);
-    }
-
     public async Task<WritableState> GetWritableStateAsync(ResourceKey resource)
     {
         // Tree-cached fast path: ProjectTreeBuilder populates IResource.WritableState
@@ -248,84 +222,13 @@ public class ResourceOperationService : IResourceOperationService
             return getResult.Value.WritableState;
         }
 
-        // Live fallback for external keys not in the registry. The info probe is
-        // reused so the priority helper sees both the file kind (for the policy
-        // probe) and the on-disk attributes (for the ReadOnlyAttribute source)
-        // without a second gateway hit.
+        // Live fallback for external keys not in the registry.
         var infoResult = await ResourceFileSystem.GetInfoAsync(resource);
-        bool isFolder = infoResult.IsSuccess
-            && infoResult.Value.Kind == StorageItemKind.Folder;
         var attributes = infoResult.IsSuccess
             ? infoResult.Value.Attributes
             : FileSystemAttributes.None;
 
-        return WritableStatePriority.Compute(resource, isFolder, attributes, Policy, RootHandlerRegistry);
-    }
-
-    public async Task<ResourceLockState> GetLockStateAsync(ResourceKey resource)
-    {
-        var infoResult = await ResourceFileSystem.GetInfoAsync(resource);
-        bool isFolder = infoResult.IsSuccess
-            && infoResult.Value.Kind == StorageItemKind.Folder;
-
-        var directResult = Policy.Evaluate(resource, ResourceAction.Write, isFolder);
-        if (directResult.IsFailure)
-        {
-            return ResourceLockState.Locked;
-        }
-
-        if (!isFolder)
-        {
-            return ResourceLockState.None;
-        }
-
-        // Only a matched lock rule means path-frozen. An enumeration failure
-        // leaves the badge as None rather than implying a lock that cannot be
-        // seen. The structural-change executor, in contrast, fails closed.
-        var descendantResult = await FindLockingDescendantAsync(resource);
-        if (descendantResult.IsFailure
-            && descendantResult.HasException<PolicyDenialError>())
-        {
-            return ResourceLockState.ContainsLocked;
-        }
-
-        return ResourceLockState.None;
-    }
-
-    // Walks a folder's subtree for the first descendant whose own key is
-    // write-locked. Returns Ok when none is found. A locked descendant gives a
-    // failure carrying a PolicyDenialError that names it, and an unreadable
-    // subtree gives a plain failure. Structural-change callers treat both failure
-    // kinds as blocking (fail closed), because a subtree that cannot be read might
-    // hide a locked resource the delete or move would relocate.
-    private async Task<Result> FindLockingDescendantAsync(ResourceKey folder)
-    {
-        var enumerateResult = await ResourceFileSystem.EnumerateFolderAsync(folder);
-        if (enumerateResult.IsFailure)
-        {
-            return Result.Fail($"Cannot verify lock state of folder contents: '{folder}'")
-                .WithErrors(enumerateResult);
-        }
-
-        foreach (var entry in enumerateResult.Value)
-        {
-            var childResult = Policy.Evaluate(entry.Resource, ResourceAction.Write, entry.IsFolder);
-            if (childResult.IsFailure)
-            {
-                return Result.Fail(childResult);
-            }
-
-            if (entry.IsFolder)
-            {
-                var nestedResult = await FindLockingDescendantAsync(entry.Resource);
-                if (nestedResult.IsFailure)
-                {
-                    return nestedResult;
-                }
-            }
-        }
-
-        return Result.Ok();
+        return WritableStatePriority.Compute(resource, attributes, RootHandlerRegistry);
     }
 
     public async Task<Result> CanModifyResourceAsync(ResourceKey resource)
@@ -339,7 +242,7 @@ public class ResourceOperationService : IResourceOperationService
         bool isFolder = infoResult.IsSuccess
             && infoResult.Value.Kind == StorageItemKind.Folder;
 
-        return await EvaluateStructuralChangeAsync(resource, isFolder);
+        return Policy.Evaluate(resource, ResourceAction.Write, isFolder);
     }
 
     public Result CanCreateResource(ResourceKey destination, bool isFolder)
@@ -347,12 +250,6 @@ public class ResourceOperationService : IResourceOperationService
         if (!IsRootWritable(destination))
         {
             return Result.Fail($"Root '{destination.Root}' is read-only.");
-        }
-
-        var listResult = Policy.Evaluate(destination, ResourceAction.List, isFolder);
-        if (listResult.IsFailure)
-        {
-            return listResult;
         }
 
         return Policy.Evaluate(destination, ResourceAction.Write, isFolder);
@@ -365,16 +262,6 @@ public class ResourceOperationService : IResourceOperationService
             return Result.Fail($"Root '{folder.Root}' is read-only.");
         }
 
-        var listResult = Policy.Evaluate(folder, ResourceAction.List, isFolder: true);
-        if (listResult.IsFailure)
-        {
-            return listResult;
-        }
-
-        // A folder whose own key is write-locked (a bare-name lock such as "Data")
-        // blocks every new child. A pattern that locks only descendants (such as
-        // "Data/**") leaves the folder addable; the per-name CanCreateResource
-        // check catches a specific locked child at create time.
         return Policy.Evaluate(folder, ResourceAction.Write, isFolder: true);
     }
 

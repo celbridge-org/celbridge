@@ -322,8 +322,15 @@ public partial class DocumentTabViewModel : ObservableObject
         if (closeInfoResult.IsFailure
             || closeInfoResult.Value.Kind != StorageItemKind.File)
         {
-            // The file no longer exists, so we assume that it was deleted intentionally.
-            // Any pending save changes are discarded.
+            // The file no longer exists, so there is nowhere left to save to and any pending changes
+            // are discarded. An external folder rename arrives here as well as a deliberate delete,
+            // with the document's edits still pending, so the discard is announced rather than silent.
+            if (DocumentView.HasUnsavedChanges
+                && !IsDockedUtility)
+            {
+                var discardedMessage = new WorkspaceItemSaveDiscardedMessage(FileResource);
+                _messengerService.Send(discardedMessage);
+            }
 
             // Clean up the DocumentView state before the document closes
             UnregisterMessageHandlers();

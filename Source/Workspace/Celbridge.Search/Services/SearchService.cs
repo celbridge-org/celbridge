@@ -49,6 +49,17 @@ public class SearchService : ISearchService, IDisposable
     private readonly TextMatcher _textMatcher;
     private readonly SearchResultFormatter _formatter;
     private readonly TextReplacer _textReplacer;
+
+    // Cancelled when the workspace this service belongs to is torn down. A search runs as a sequence of
+    // awaits over the resource layer, so a project reload part way through would otherwise leave it
+    // reaching for a workspace that is no longer there.
+    private readonly CancellationTokenSource _workspaceCancellation = new();
+
+    // Held separately because a token stays usable after its source is disposed, while reading
+    // CancellationTokenSource.Token does not. A search starting inside the teardown window therefore
+    // links against an already-cancelled token rather than throwing ObjectDisposedException.
+    private readonly CancellationToken _workspaceToken;
+
     private bool _disposed;
 
     private IResourceFileSystem ResourceFileSystem => _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
@@ -68,6 +79,7 @@ public class SearchService : ISearchService, IDisposable
         _workspaceWrapper = workspaceWrapper;
         _textBinarySniffer = textBinarySniffer;
         _spotlightService = spotlightService;
+        _workspaceToken = _workspaceCancellation.Token;
         _textMatcher = new TextMatcher();
         _formatter = new SearchResultFormatter();
         _textReplacer = new TextReplacer();
@@ -148,6 +160,10 @@ public class SearchService : ISearchService, IDisposable
         {
             return new SearchResults(searchTerm, fileResults, 0, 0, false, false);
         }
+
+        using var searchCancellation = CancellationTokenSource.CreateLinkedTokenSource(
+            cancellationToken, _workspaceToken);
+        cancellationToken = searchCancellation.Token;
 
         var projectFolder = ResourceRegistry.ProjectFolderPath;
 
@@ -286,6 +302,10 @@ public class SearchService : ISearchService, IDisposable
             {
                 return null;
             }
+
+            // The workspace can go away at any of this method's await points, which takes the resource
+            // layer with it.
+            cancellationToken.ThrowIfCancellationRequested();
 
             // Stream the file via the gateway so reads pick up the same
             // containment validation as writes and large files do not load
@@ -681,6 +701,10 @@ public class SearchService : ISearchService, IDisposable
         {
             if (disposing)
             {
+                // Stops an in-flight search before the workspace reference it searches through is cleared.
+                _workspaceCancellation.Cancel();
+                _workspaceCancellation.Dispose();
+
                 // Dispose managed objects here
                 foreach (var landmarkId in SearchLandmarkIds)
                 {

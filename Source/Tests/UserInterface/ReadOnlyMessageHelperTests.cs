@@ -38,14 +38,6 @@ public class ReadOnlyMessageHelperTests
     }
 
     [Test]
-    public void Locked_ResolvesResource_ReadOnly_Locked_Key()
-    {
-        var message = ReadOnlyMessageHelper.GetReadOnlyMessage(WritableState.Locked, _localizer);
-
-        message.Should().Be("localized:Resource_ReadOnly_Locked");
-    }
-
-    [Test]
     public void ReadOnlyAttribute_ResolvesResource_ReadOnly_ReadOnlyAttribute_Key()
     {
         var message = ReadOnlyMessageHelper.GetReadOnlyMessage(WritableState.ReadOnlyAttribute, _localizer);

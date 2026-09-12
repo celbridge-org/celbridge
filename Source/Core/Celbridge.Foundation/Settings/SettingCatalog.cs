@@ -87,8 +87,16 @@ public static class SettingCatalog
     }
 
     /// <summary>
-    /// Search panel options. Workspace-scoped, so each project remembers its own
-    /// search panel state.
+    /// Explorer tree options.
+    /// </summary>
+    public static class Explorer
+    {
+        public static readonly SettingDescriptor<bool> ShowHiddenFiles =
+            new("Explorer.ShowHiddenFiles", SettingScope.Workspace, false);
+    }
+
+    /// <summary>
+    /// Search panel options.
     /// </summary>
     public static class Search
     {
@@ -103,9 +111,7 @@ public static class SettingCatalog
     }
 
     /// <summary>
-    /// Document editor preferences and history. The previous new-file extension
-    /// is Workspace-scoped, so each project remembers the last file type the
-    /// user created in it.
+    /// Document editor preferences and history.
     /// </summary>
     public static class Editor
     {

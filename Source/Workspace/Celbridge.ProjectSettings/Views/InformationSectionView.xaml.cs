@@ -28,8 +28,6 @@ public sealed partial class InformationSectionView : UserControl
     public string ProjectVersionTooltip => _stringLocalizer.GetString("ProjectSettings_ProjectVersionTooltip");
     public string DescriptionLabel => _stringLocalizer.GetString("ProjectSettings_DescriptionLabel");
     public string DescriptionTooltip => _stringLocalizer.GetString("ProjectSettings_DescriptionTooltip");
-    public string IgnoreFileLabel => _stringLocalizer.GetString("ProjectSettings_IgnoreFileLabel");
-    public string IgnoreFileTooltip => _stringLocalizer.GetString("ProjectSettings_IgnoreFileTooltip");
 
     public InformationSectionView()
     {

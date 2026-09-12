@@ -100,17 +100,6 @@ public class WorkspaceLoader
 
             var resourceService = workspaceService.ResourceService;
 
-            // Initialize the resource policy before the monitor, package scan, and
-            // first registry build, each of which consults the policy engine.
-            var initPolicyResult = await resourceService.Policy.InitializeAsync();
-
-            // InitializeAsync degrades a missing or unreadable ignore-file to an
-            // empty ignore set, so it does not currently fail.
-            if (initPolicyResult.IsFailure)
-            {
-                _logger.LogWarning(initPolicyResult, "Failed to initialize resource policy");
-            }
-
             // Start file system watchers now that the wrapper is fully populated.
             // The monitor cannot be initialized in ResourceService's constructor because
             // it reaches into the workspace via IWorkspaceWrapper, which is only set up

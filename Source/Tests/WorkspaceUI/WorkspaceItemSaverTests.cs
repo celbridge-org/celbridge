@@ -225,7 +225,7 @@ public class WorkspaceItemSaverTests
         var item = new FakeWorkspaceItem
         {
             SaveSucceeds = false,
-            WritableState = WritableState.Locked
+            WritableState = WritableState.ReadOnlyAttribute
         };
 
         var result = await _workspaceItemSaver.SaveModifiedItemsAsync(new[] { item }, TickDelta);
@@ -256,14 +256,14 @@ public class WorkspaceItemSaverTests
         var item = new FakeWorkspaceItem
         {
             SaveSucceeds = false,
-            WritableState = WritableState.Locked
+            WritableState = WritableState.ReadOnlyAttribute
         };
         var items = new[] { item };
 
         await _workspaceItemSaver.SaveModifiedItemsAsync(items, TickDelta);
         await _workspaceItemSaver.SaveModifiedItemsAsync(items, TickDelta);
 
-        item.SaveCount.Should().Be(1, "a locked file waits rather than being written on every pass");
+        item.SaveCount.Should().Be(1, "a read-only file waits rather than being written on every pass");
 
         await _workspaceItemSaver.SaveModifiedItemsAsync(items, PastFirstRetryDelta);
 
@@ -279,7 +279,7 @@ public class WorkspaceItemSaverTests
         await _workspaceItemSaver.SaveModifiedItemsAsync(items, TickDelta);
 
         // The resource update the first failure asked for reports the file as read-only.
-        item.WritableState = WritableState.Locked;
+        item.WritableState = WritableState.ReadOnlyAttribute;
         await _workspaceItemSaver.SaveModifiedItemsAsync(items, PastFirstRetryDelta);
 
         _retryReports.Select(report => report.Count).Should().Equal(new[] { 1, 0 },
@@ -295,7 +295,7 @@ public class WorkspaceItemSaverTests
         await _workspaceItemSaver.SaveModifiedItemsAsync(items, TickDelta);
 
         // The wait from the first failure has not elapsed, so no second attempt is made.
-        item.WritableState = WritableState.Locked;
+        item.WritableState = WritableState.ReadOnlyAttribute;
         await _workspaceItemSaver.SaveModifiedItemsAsync(items, TickDelta);
 
         item.SaveCount.Should().Be(1);

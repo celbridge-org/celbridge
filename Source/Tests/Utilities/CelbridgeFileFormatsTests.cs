@@ -3,8 +3,8 @@ using Celbridge.Utilities;
 namespace Celbridge.Tests.Utilities;
 
 /// <summary>
-/// Covers which file names count as Celbridge's own formats. One list drives the resource policy floor
-/// and the sidecar refusal, so a name landing on the wrong side of it changes both.
+/// Covers which file names count as Celbridge's own formats. The list drives editor resolution and the
+/// sidecar refusal, so a name landing on the wrong side of it changes both.
 /// </summary>
 [TestFixture]
 public class CelbridgeFileFormatsTests

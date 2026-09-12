@@ -39,9 +39,8 @@ public interface IResourceService
     IResourceFileSystem FileSystem { get; }
 
     /// <summary>
-    /// Returns the workspace's resource policy engine. Decides whether a given
-    /// (resource, action) is allowed by the project's [resources] configuration
-    /// and the built-in default rules.
+    /// Returns the workspace's resource policy engine: the compiled view of the
+    /// project's [celbridge.resources] settings, plus the access invariants.
     /// </summary>
     IResourcePolicy Policy { get; }
 

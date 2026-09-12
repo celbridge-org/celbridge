@@ -53,14 +53,14 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
             ViewModel = ViewModel.InformationSection
         };
 
+        var resourcesView = new ResourcesSectionView
+        {
+            ViewModel = ViewModel.ResourcesSection
+        };
+
         var packagesView = new PackagesSectionView
         {
             ViewModel = ViewModel.PackagesSection
-        };
-
-        var pagesView = new PagesSectionView
-        {
-            ViewModel = ViewModel.PagesSection
         };
 
         var documentShortcutsView = new DocumentShortcutsSectionView
@@ -87,18 +87,18 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
                 _stringLocalizer.GetString("ProjectSettings_InformationDescription"),
                 informationView),
             new(
+                "Resources",
+                "bs-files",
+                _stringLocalizer.GetString("ProjectSettings_ResourcesHeader"),
+                _stringLocalizer.GetString("ProjectSettings_ResourcesDescription"),
+                resourcesView),
+            new(
                 "Packages",
                 "bs-box-seam",
                 _stringLocalizer.GetString("ProjectSettings_PackagesHeader"),
                 _stringLocalizer.GetString("ProjectSettings_PackagesDescription"),
                 packagesView,
                 ProjectSettingsLabels.PackagesSectionIssue),
-            new(
-                "Pages",
-                "bs-globe",
-                _stringLocalizer.GetString("ProjectSettings_PagesHeader"),
-                _stringLocalizer.GetString("ProjectSettings_PagesDescription"),
-                pagesView),
             new(
                 "Shortcuts",
                 "bs-pin-angle",

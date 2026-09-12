@@ -20,8 +20,8 @@ public enum PathMatchTarget
 }
 
 /// <summary>
-/// Compiles a glob-style resource path pattern into a reusable matcher for the
-/// resource policy engine.
+/// Compiles a glob-style resource path pattern into a reusable matcher. Several
+/// patterns are evaluated together through ResourcePatternSet.
 /// </summary>
 public sealed class ResourcePathMatcher
 {
@@ -39,6 +39,12 @@ public sealed class ResourcePathMatcher
     /// Whether this pattern restricts matches to folders.
     /// </summary>
     public PathMatchTarget Target => _target;
+
+    /// <summary>
+    /// Whether the pattern names a single segment, so it matches that segment at any
+    /// depth and at any position in the path.
+    /// </summary>
+    public bool MatchesAtAnyDepth => _matchesAtAnyDepth;
 
     private ResourcePathMatcher(string pattern, Regex regex, PathMatchTarget target, bool matchesAtAnyDepth)
     {

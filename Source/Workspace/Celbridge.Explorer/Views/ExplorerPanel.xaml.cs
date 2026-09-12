@@ -50,4 +50,9 @@ public sealed partial class ExplorerPanel : UserControl, IExplorerPanel
     {
         ResourceTree.CollapseAllFolders();
     }
+
+    private void ExplorerToolbar_ShowHiddenFilesClicked(object sender, EventArgs e)
+    {
+        ResourceTree.ToggleShowHiddenFiles();
+    }
 }

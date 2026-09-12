@@ -104,6 +104,27 @@ public class SearchServiceTests
     }
 
     [Test]
+    public async Task SearchAsync_AfterWorkspaceTeardown_StopsRatherThanReachingForTheWorkspace()
+    {
+        // A project reload disposes the workspace-scoped services before the wrapper drops its
+        // reference. A search in flight at that moment must stop, not resume into a workspace that is
+        // about to be gone.
+        await WriteFileAsync("notes.txt", "hello world");
+
+        _searchService.Dispose();
+
+        var result = await _searchService.SearchAsync(
+            "hello",
+            matchCase: false,
+            wholeWord: false,
+            maxResults: null,
+            CancellationToken.None);
+
+        result.WasCancelled.Should().BeTrue();
+        result.FileResults.Should().BeEmpty();
+    }
+
+    [Test]
     public async Task SearchAsync_DefaultExcludesCelContent()
     {
         await WriteFileAsync("photo.png.cel", "title: \"sunset photo\"\n");

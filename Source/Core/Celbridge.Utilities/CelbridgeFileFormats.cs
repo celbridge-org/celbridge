@@ -5,16 +5,13 @@ namespace Celbridge.Utilities;
 
 /// <summary>
 /// The file formats Celbridge's own machinery reads: the project file, package manifests,
-/// per-contribution editor manifests, and page manifests. They carry a role the application depends on rather than being
-/// project content, so the resource policy holds them addressable whatever the project's rules say, and
-/// no sidecar is written beside them.
+/// per-contribution editor manifests, and page manifests. They carry a role the application depends on
+/// rather than being project content, so they resolve to their own editor and no sidecar is written
+/// beside them.
 /// </summary>
 public static class CelbridgeFileFormats
 {
-    /// <summary>
-    /// Resource path patterns matching the formats, for a consumer that compiles them into rules.
-    /// </summary>
-    public static readonly IReadOnlyList<string> Patterns =
+    private static readonly IReadOnlyList<string> Patterns =
     [
         $"*{ProjectConstants.ProjectFileExtension}",
         PackageConstants.ManifestFileName,
@@ -22,7 +19,6 @@ public static class CelbridgeFileFormats
         PageConstants.ManifestFileName,
     ];
 
-    // Compiled once from Patterns, so the predicate and the rules a consumer builds cannot disagree.
     private static readonly IReadOnlyList<ResourcePathMatcher> Matchers =
         Patterns.Select(ResourcePathMatcher.Compile).ToList();
 

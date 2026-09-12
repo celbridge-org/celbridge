@@ -88,12 +88,11 @@ public class ResourceNameValidator : IResourceNameValidator
             }
         }
 
-        // Policy gate: reject a name the resource policy would refuse — one the
-        // ignore-file would immediately hide, a locked destination, or a
-        // read-only root — so the user corrects it inline instead of confirming
-        // a create the operation layer will then deny. Skipped when the name is
-        // already invalid or empty, and when no workspace is loaded to resolve
-        // the parent key.
+        // Policy gate: reject a name the resource policy would refuse, a reserved
+        // path or a read-only root, so the user corrects it inline instead of
+        // confirming a create the operation layer will then deny. Skipped when the
+        // name is already invalid or empty, and when no workspace is loaded to
+        // resolve the parent key.
         if (isValid
             && ParentFolder is not null
             && !string.IsNullOrWhiteSpace(input)

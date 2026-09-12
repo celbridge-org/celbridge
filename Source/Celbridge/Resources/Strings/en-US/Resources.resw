@@ -186,23 +186,17 @@
   <data name="ResourceTree_CannotRename" xml:space="preserve">
     <value>Cannot rename</value>
   </data>
-  <data name="Resource_ReadOnly_Locked" xml:space="preserve">
-    <value>Locked by project configuration. Edit [resources].lock to unlock.</value>
-  </data>
   <data name="Resource_ReadOnly_ReadOnlyAttribute" xml:space="preserve">
     <value>File is read-only on disk.</value>
   </data>
   <data name="Resource_ReadOnly_ReadOnlyRoot" xml:space="preserve">
     <value>Bundled package — read-only by design.</value>
   </data>
-  <data name="Policy_Locked_Single" xml:space="preserve">
-    <value>'{0}' is locked.</value>
+  <data name="Policy_Reserved_Single" xml:space="preserve">
+    <value>'{0}' is reserved by Celbridge and cannot be changed.</value>
   </data>
-  <data name="Policy_Locked_Multiple" xml:space="preserve">
-    <value>{0} items are locked.</value>
-  </data>
-  <data name="Policy_Excluded_Single" xml:space="preserve">
-    <value>'{0}' is excluded by the project configuration.</value>
+  <data name="Policy_Blocked_Multiple" xml:space="preserve">
+    <value>{0} items cannot be changed.</value>
   </data>
   <data name="Policy_ReadOnly_Single" xml:space="preserve">
     <value>'{0}' is in a read-only location.</value>
@@ -882,6 +876,12 @@ Open with default application instead?</value>
   <data name="ResourceTreeToolbar_CollapseFoldersTooltip" xml:space="preserve">
     <value>Collapse All Folders</value>
   </data>
+  <data name="ResourceTreeToolbar_ShowHiddenFilesTooltip" xml:space="preserve">
+    <value>Show Hidden Files</value>
+  </data>
+  <data name="ResourceTreeToolbar_HideHiddenFilesTooltip" xml:space="preserve">
+    <value>Stop Showing Hidden Files</value>
+  </data>
   <data name="ProjectSettings_ConfigErrorTitle" xml:space="preserve">
     <value>This project file could not be read</value>
   </data>
@@ -901,7 +901,34 @@ Open with default application instead?</value>
     <value>Information</value>
   </data>
   <data name="ProjectSettings_InformationDescription" xml:space="preserve">
-    <value>Review project details and set the project version and ignore file.</value>
+    <value>Review project details and set the project version and description.</value>
+  </data>
+  <data name="ProjectSettings_ResourcesHeader" xml:space="preserve">
+    <value>Resources</value>
+  </data>
+  <data name="ProjectSettings_ResourcesDescription" xml:space="preserve">
+    <value>Choose what the Explorer hides and what search skips.</value>
+  </data>
+  <data name="ProjectSettings_ResourcesProtectedNote" xml:space="preserve">
+    <value>The .celbridge and .git folders are always hidden.</value>
+  </data>
+  <data name="ProjectSettings_HideTitle" xml:space="preserve">
+    <value>Hidden in Explorer</value>
+  </data>
+  <data name="ProjectSettings_HideSubtitle" xml:space="preserve">
+    <value>Patterns to leave out of the tree, one per line. Hidden files can still be opened and edited.</value>
+  </data>
+  <data name="ProjectSettings_SearchExcludeTitle" xml:space="preserve">
+    <value>Excluded from search</value>
+  </data>
+  <data name="ProjectSettings_SearchExcludeSubtitle" xml:space="preserve">
+    <value>Patterns for search to skip, one per line. These are also left out of the Explorer tree.</value>
+  </data>
+  <data name="ProjectSettings_PatternPlaceholder" xml:space="preserve">
+    <value>e.g. node_modules</value>
+  </data>
+  <data name="ProjectSettings_InvalidPattern" xml:space="preserve">
+    <value>Patterns use forward slashes and are relative to the project folder. Only * and ** are wildcards, not ? or [ ]. A line cannot start with /, ! or #.</value>
   </data>
   <data name="ProjectSettings_PackagesDescription" xml:space="preserve">
     <value>Enable or disable packages and configure their contributions.</value>
@@ -914,24 +941,6 @@ Open with default application instead?</value>
   </data>
   <data name="ProjectSettings_UnavailableEditorFormat" xml:space="preserve">
     <value>{0} (unavailable)</value>
-  </data>
-  <data name="ProjectSettings_PagesHeader" xml:space="preserve">
-    <value>Pages</value>
-  </data>
-  <data name="ProjectSettings_PagesDescription" xml:space="preserve">
-    <value>Web pages defined in this project and published to your workshop.</value>
-  </data>
-  <data name="ProjectSettings_PagesEmpty" xml:space="preserve">
-    <value>No pages found. Add a folder with a pages.toml manifest to define one.</value>
-  </data>
-  <data name="ProjectSettings_PageLocationLabel" xml:space="preserve">
-    <value>Location</value>
-  </data>
-  <data name="ProjectSettings_PageManifestIssueTitle" xml:space="preserve">
-    <value>Manifest issue</value>
-  </data>
-  <data name="ProjectSettings_PageManifestIssue" xml:space="preserve">
-    <value>The manifest is invalid or does not declare a published path. Open it to fix.</value>
   </data>
   <data name="ProjectSettings_ShortcutsHeader" xml:space="preserve">
     <value>Shortcuts</value>
@@ -1049,12 +1058,6 @@ Open with default application instead?</value>
   </data>
   <data name="ProjectSettings_DescriptionTooltip" xml:space="preserve">
     <value>A description of what this project is for, shown to anyone who opens it.</value>
-  </data>
-  <data name="ProjectSettings_IgnoreFileLabel" xml:space="preserve">
-    <value>Ignore file</value>
-  </data>
-  <data name="ProjectSettings_IgnoreFileTooltip" xml:space="preserve">
-    <value>The ignore file that lists paths to exclude from the project (e.g. .gitignore).</value>
   </data>
   <data name="ProjectSettings_EditorPickerTooltip" xml:space="preserve">
     <value>Choose which editor opens this file type.</value>

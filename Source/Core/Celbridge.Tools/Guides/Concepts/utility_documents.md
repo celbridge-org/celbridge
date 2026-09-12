@@ -89,7 +89,7 @@ A utility is never created as a normal project file — it does not appear in Ne
 
 ## The `utils:` root and state file naming
 
-Utility state lives under the `utils:` root (`.celbridge/utils/`). Like `temp:` and `logs:` it is hidden from the Explorer, text search, and the New File dialog, and is ungoverned by resource policy (no locks, no sidecars). Unlike `temp:`, it is **not wiped on load** — it is the durable home for per-project utility state. `.celbridge/` is gitignored, so the state is local to the machine and never committed. See `resource_keys` for the root itself.
+Utility state lives under the `utils:` root (`.celbridge/utils/`). Like `temp:` and `logs:` it is hidden from the Explorer, text search, and the New File dialog, and takes no sidecars. Unlike `temp:`, it is **not wiped on load** — it is the durable home for per-project utility state. `.celbridge/` is gitignored, so the state is local to the machine and never committed. See `resource_keys` for the root itself.
 
 A utility's backing file is `utils:{package}.{contribution}{resource-extension}` — for a scratchpad utility (package `scratchpad`, contribution `scratchpad`, extension `._scratchpad`), `utils:scratchpad.scratchpad._scratchpad`. The path is derived from the contribution identity, so no extension-uniqueness rules are needed.
 

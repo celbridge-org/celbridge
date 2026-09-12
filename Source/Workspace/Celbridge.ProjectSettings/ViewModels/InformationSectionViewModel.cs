@@ -4,8 +4,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace Celbridge.ProjectSettings.ViewModels;
 
 /// <summary>
-/// Drives the Information section: the read-only Celbridge version plus the user-editable project version,
-/// description, and ignore file. Editing an editable field writes straight through to the .celbridge file.
+/// Drives the Information section: the read-only Celbridge version plus the user-editable project version
+/// and description. Edits are written to the .celbridge file and apply when the project is reloaded.
 /// </summary>
 public partial class InformationSectionViewModel : ProjectSettingsSectionViewModel
 {
@@ -21,9 +21,6 @@ public partial class InformationSectionViewModel : ProjectSettingsSectionViewMod
 
     [ObservableProperty]
     private string _descriptionText = string.Empty;
-
-    [ObservableProperty]
-    private string _ignoreFileText = string.Empty;
 
     public InformationSectionViewModel(ProjectSettingsContext context)
         : base(context)
@@ -42,7 +39,6 @@ public partial class InformationSectionViewModel : ProjectSettingsSectionViewMod
         SchemaVersionText = config.Celbridge.CelbridgeVersion ?? string.Empty;
         ProjectVersionText = config.Celbridge.ProjectVersion ?? string.Empty;
         DescriptionText = config.Celbridge.Description ?? string.Empty;
-        IgnoreFileText = config.Resources.IgnoreFile;
         _suppressCommit = false;
     }
 
@@ -59,14 +55,6 @@ public partial class InformationSectionViewModel : ProjectSettingsSectionViewMod
         if (!_suppressCommit)
         {
             EditConfig(draft => draft.Description = value);
-        }
-    }
-
-    partial void OnIgnoreFileTextChanged(string value)
-    {
-        if (!_suppressCommit)
-        {
-            EditConfig(draft => draft.IgnoreFile = value);
         }
     }
 }

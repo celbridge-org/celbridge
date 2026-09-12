@@ -36,7 +36,9 @@
                              HorizontalAlignment="Stretch"
                              NewFileClicked="ExplorerToolbar_NewFileClicked"
                              NewFolderClicked="ExplorerToolbar_NewFolderClicked"
-                             CollapseFoldersClicked="ExplorerToolbar_CollapseFoldersClicked"/>
+                             CollapseFoldersClicked="ExplorerToolbar_CollapseFoldersClicked"
+                             ShowHiddenFilesClicked="ExplorerToolbar_ShowHiddenFilesClicked"
+                             ShowHiddenFiles="{x:Bind ResourceTree.ViewModel.ShowHiddenFiles, Mode=OneWay}"/>
     </Border>
 
     <!-- Resource Tree -->

@@ -61,13 +61,11 @@ public static class ProjectConfigSerializer
     private static void WriteResourcesTable(StringBuilder builder, ResourcesSection resources)
     {
         builder.Append('\n');
-        builder.Append("# The resource set: the files the ignore-file allows, plus 'add', minus 'remove'.\n");
-        builder.Append("# 'lock' freezes resources so they can't be edited, moved, or deleted.\n");
+        builder.Append("# 'hide' keeps resources out of the Explorer tree. 'search-exclude' also keeps them out of search.\n");
+        builder.Append("# Both take glob patterns. Neither changes what tools can read or write.\n");
         builder.Append("[celbridge.resources]\n");
-        WriteKeyValue(builder, "ignore-file", TomlStringEncoder.EncodeBasicString(resources.IgnoreFile));
-        WriteKeyValue(builder, "add", RenderStringArray(resources.Add));
-        WriteKeyValue(builder, "remove", RenderStringArray(resources.Remove));
-        WriteKeyValue(builder, "lock", RenderStringArray(resources.Lock));
+        WriteKeyValue(builder, "hide", RenderStringArray(resources.Hide));
+        WriteKeyValue(builder, "search-exclude", RenderStringArray(resources.SearchExclude));
     }
 
     // Emits the [[contribution]] override entries, sorted by package then contribution so the same

@@ -1,6 +1,7 @@
 using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
+using Celbridge.Utilities;
 
 namespace Celbridge.Tests.Resources;
 
@@ -9,10 +10,8 @@ public class ResourcePolicyTests
 {
     private const string ProjectFolderPath = @"C:\fake\project";
 
-    // Builds a policy over an in-memory [resources] section and an optional
-    // ignore-file content. When ignoreFileContent is null the ignore-file read
-    // fails, modelling a project with no ignore-file (empty ignore set).
-    private static ResourcePolicy BuildPolicy(ResourcesSection? section = null, string? ignoreFileContent = null)
+    // Builds a policy over an in-memory [celbridge.resources] section.
+    private static ResourcePolicy BuildPolicy(ResourcesSection? section = null)
     {
         var config = new ProjectConfig
         {
@@ -25,235 +24,151 @@ public class ResourcePolicyTests
         var projectService = Substitute.For<IProjectService>();
         projectService.CurrentProject.Returns(project);
 
-        var fileSystem = Substitute.For<ILocalFileSystem>();
-        var readResult = ignoreFileContent is null
-            ? Result<string>.Fail("ignore-file not found")
-            : Result<string>.Ok(ignoreFileContent);
-        fileSystem.ReadAllTextAsync(Arg.Any<string>()).Returns(Task.FromResult(readResult));
-
-        var policy = new ResourcePolicy(projectService, fileSystem);
-        policy.InitializeAsync().GetAwaiter().GetResult();
-        return policy;
+        return new ResourcePolicy(projectService);
     }
 
     [Test]
-    public void DefaultPolicy_AllowsRegularFile()
+    public void Evaluate_AllowsRegularFile()
     {
         var policy = BuildPolicy();
-        var result = policy.Evaluate(new ResourceKey("notes/todo.md"), ResourceAction.List);
-        result.IsSuccess.Should().BeTrue();
+
+        policy.Evaluate(new ResourceKey("notes/todo.md"), ResourceAction.Read).IsSuccess.Should().BeTrue();
+        policy.Evaluate(new ResourceKey("notes/todo.md"), ResourceAction.Write).IsSuccess.Should().BeTrue();
     }
 
     [Test]
-    public void DefaultPolicy_DeniesCelbridgeMetadataFolder()
+    public void Evaluate_DeniesCelbridgeMetadataFolder()
     {
         var policy = BuildPolicy();
-        var result = policy.Evaluate(new ResourceKey(".celbridge"), ResourceAction.List, isFolder: true);
+
+        var result = policy.Evaluate(new ResourceKey(".celbridge"), ResourceAction.Read, isFolder: true);
         result.IsFailure.Should().BeTrue();
         result.HasException<PolicyDenialError>().Should().BeTrue();
+
+        policy.Evaluate(new ResourceKey(".celbridge/state.json"), ResourceAction.Write).IsFailure.Should().BeTrue();
     }
 
     [Test]
-    public void DefaultPolicy_DeniesGitFolder()
+    public void Evaluate_DeniesGitFolder()
     {
-        // .git is system-deny (never written into a .gitignore) so it is hidden
-        // even with no ignore-file present.
         var policy = BuildPolicy();
-        policy.Evaluate(new ResourceKey(".git"), ResourceAction.List, isFolder: true).IsFailure.Should().BeTrue();
+
+        policy.Evaluate(new ResourceKey(".git"), ResourceAction.Read, isFolder: true).IsFailure.Should().BeTrue();
         policy.Evaluate(new ResourceKey(".git/config"), ResourceAction.Read).IsFailure.Should().BeTrue();
     }
 
     [Test]
-    public void DefaultPolicy_WithNoIgnoreFile_AllowsDotFiles()
+    public void Evaluate_IgnoresHideAndSearchExclude()
     {
-        // Phase 4 has no blanket leading-dot rule; visibility comes from the
-        // ignore-file. With none present, useful dotfiles stay visible.
-        var policy = BuildPolicy();
-        policy.Evaluate(new ResourceKey(".editorconfig"), ResourceAction.List).IsSuccess.Should().BeTrue();
-        policy.Evaluate(new ResourceKey("bin"), ResourceAction.List, isFolder: true).IsSuccess.Should().BeTrue();
-    }
-
-    [Test]
-    public void DefaultPolicy_AllowsProjectFile()
-    {
-        var policy = BuildPolicy();
-        var result = policy.Evaluate(new ResourceKey("myproject.celbridge"), ResourceAction.Write);
-        result.IsSuccess.Should().BeTrue();
-    }
-
-    [Test]
-    public void SystemAllow_ProtectsProjectFile_EvenWhenIgnored()
-    {
-        var policy = BuildPolicy(ignoreFileContent: "*.celbridge\n");
-        var result = policy.Evaluate(new ResourceKey("myproject.celbridge"), ResourceAction.Write);
-        result.IsSuccess.Should().BeTrue();
-        policy.Evaluate(new ResourceKey("myproject.celbridge"), ResourceAction.List).IsSuccess.Should().BeTrue();
-    }
-
-    [Test]
-    public void SystemAllow_ProtectsManifests_EvenWhenIgnored()
-    {
-        // An editor manifest always carries a stem, so the floor has to cover "*.editor.toml" rather
-        // than a bare "editor.toml" that no manifest is ever named.
-        var policy = BuildPolicy(ignoreFileContent: "*.toml\n");
-
-        policy.Evaluate(new ResourceKey("packages/acme/package.toml"), ResourceAction.List)
-            .IsSuccess.Should().BeTrue();
-        policy.Evaluate(new ResourceKey("packages/acme/code.editor.toml"), ResourceAction.List)
-            .IsSuccess.Should().BeTrue();
-
-        // An ordinary TOML file carries no role, so the project's own rule still hides it.
-        policy.Evaluate(new ResourceKey("packages/acme/settings.toml"), ResourceAction.List)
-            .IsFailure.Should().BeTrue();
-    }
-
-    [Test]
-    public void IgnoreFile_HidesMatchedPaths()
-    {
-        var policy = BuildPolicy(ignoreFileContent: "bin/\n*.log\n");
-
-        policy.Evaluate(new ResourceKey("notes.md"), ResourceAction.List).IsSuccess.Should().BeTrue();
-        policy.Evaluate(new ResourceKey("bin"), ResourceAction.List, isFolder: true).IsFailure.Should().BeTrue();
-        policy.Evaluate(new ResourceKey("bin/app.exe"), ResourceAction.List).IsFailure.Should().BeTrue();
-        policy.Evaluate(new ResourceKey("run.log"), ResourceAction.List).IsFailure.Should().BeTrue();
-        policy.Evaluate(new ResourceKey("logs/run.log"), ResourceAction.List).IsFailure.Should().BeTrue();
-    }
-
-    [Test]
-    public void IgnoredDirectory_NegatedChild_StaysIgnored()
-    {
-        // gitignore parent-pruning: a file re-included with '!' under an excluded
-        // directory does not resurface, matching git's own behaviour. The Add
-        // list is the supported way to bring it back into the resource set.
-        var policy = BuildPolicy(ignoreFileContent: "build/\n!build/keep.txt\n");
-
-        policy.Evaluate(new ResourceKey("build"), ResourceAction.List, isFolder: true).IsFailure.Should().BeTrue();
-        policy.Evaluate(new ResourceKey("build/keep.txt"), ResourceAction.List).IsFailure.Should().BeTrue();
-    }
-
-    [Test]
-    public void Add_ResurfacesAnIgnoredFile_Granularly()
-    {
-        // The .mcp.json-style granular add: the ignore-file hides every dotfile,
-        // and add brings back exactly one without resurfacing the rest.
+        // The two configured lists are ergonomic, not access control: nothing a project
+        // writes can deny a read or a write.
         var section = new ResourcesSection
         {
-            Add = new[] { ".mcp.json" },
-        };
-        var policy = BuildPolicy(section, ignoreFileContent: ".*\n");
-
-        policy.Evaluate(new ResourceKey(".mcp.json"), ResourceAction.List).IsSuccess.Should().BeTrue();
-        policy.Evaluate(new ResourceKey(".env"), ResourceAction.List).IsFailure.Should().BeTrue();
-    }
-
-    [Test]
-    public void Remove_BeatsAdd()
-    {
-        var section = new ResourcesSection
-        {
-            Add = new[] { "secret.txt" },
-            Remove = new[] { "secret.txt" },
-        };
-        var policy = BuildPolicy(section, ignoreFileContent: "secret.txt\n");
-
-        var result = policy.Evaluate(new ResourceKey("secret.txt"), ResourceAction.List);
-        result.IsFailure.Should().BeTrue();
-        result.HasException<PolicyDenialError>().Should().BeTrue();
-    }
-
-    [Test]
-    public void Remove_DropsAVisibleResource()
-    {
-        var section = new ResourcesSection
-        {
-            Remove = new[] { "drafts" },
+            Hide = new[] { "secret.txt" },
+            SearchExclude = new[] { "node_modules" },
         };
         var policy = BuildPolicy(section);
 
-        policy.Evaluate(new ResourceKey("drafts"), ResourceAction.List, isFolder: true).IsFailure.Should().BeTrue();
-        policy.Evaluate(new ResourceKey("drafts/notes.md"), ResourceAction.List).IsFailure.Should().BeTrue();
-        policy.Evaluate(new ResourceKey("notes.md"), ResourceAction.List).IsSuccess.Should().BeTrue();
+        policy.Evaluate(new ResourceKey("secret.txt"), ResourceAction.Read).IsSuccess.Should().BeTrue();
+        policy.Evaluate(new ResourceKey("secret.txt"), ResourceAction.Write).IsSuccess.Should().BeTrue();
+        policy.Evaluate(new ResourceKey("node_modules/pkg/index.js"), ResourceAction.Write).IsSuccess.Should().BeTrue();
     }
 
     [Test]
-    public void EmptyIgnoreFile_DisablesBaseline()
-    {
-        // ignore-file = "" means nothing is ignored: everything below the system
-        // tier is a candidate resource, even content the default file would hide.
-        var section = new ResourcesSection
-        {
-            IgnoreFile = string.Empty,
-        };
-        var policy = BuildPolicy(section, ignoreFileContent: "bin/\n");
-
-        policy.Evaluate(new ResourceKey("bin"), ResourceAction.List, isFolder: true).IsSuccess.Should().BeTrue();
-        policy.Evaluate(new ResourceKey(".celbridge"), ResourceAction.List, isFolder: true).IsFailure.Should().BeTrue();
-    }
-
-    [Test]
-    public void Lock_DeniesWriteAllowsRead()
-    {
-        var section = new ResourcesSection
-        {
-            Lock = new[] { "assets/**" },
-        };
-        var policy = BuildPolicy(section);
-
-        var writeResult = policy.Evaluate(new ResourceKey("assets/logo.png"), ResourceAction.Write);
-        writeResult.IsFailure.Should().BeTrue();
-        writeResult.HasException<PolicyDenialError>().Should().BeTrue();
-
-        var readResult = policy.Evaluate(new ResourceKey("assets/logo.png"), ResourceAction.Read);
-        readResult.IsSuccess.Should().BeTrue();
-    }
-
-    [Test]
-    public void AddBeneathIgnoredFolder_AllowsFolderDescent()
-    {
-        // ignore-file hides Python/.venv but add targets paths beneath it. The
-        // ignored folder (and its ancestor) must be listable so the registry walk
-        // descends to the add target; a sibling ignored folder stays hidden.
-        var section = new ResourcesSection
-        {
-            Add = new[] { "Python/.venv/**" },
-        };
-        var policy = BuildPolicy(section, ignoreFileContent: "Python/.venv/\nPython/cache/\n");
-
-        policy.Evaluate(new ResourceKey("Python"), ResourceAction.List, isFolder: true).IsSuccess.Should().BeTrue();
-        policy.Evaluate(new ResourceKey("Python/.venv"), ResourceAction.List, isFolder: true).IsSuccess.Should().BeTrue();
-        policy.Evaluate(new ResourceKey("Python/.venv/lib/site.py"), ResourceAction.List).IsSuccess.Should().BeTrue();
-        policy.Evaluate(new ResourceKey("Python/cache"), ResourceAction.List, isFolder: true).IsFailure.Should().BeTrue();
-    }
-
-    [Test]
-    public void RealisticIgnoreFile_HidesNoise_KeepsUsefulDotfiles()
-    {
-        // A realistic specific-noise ignore-file (the shape the templates ship)
-        // excludes build output and OS cruft while leaving useful dotfiles
-        // tracked and visible. There is no blanket leading-dot rule.
-        const string ignoreContent =
-            "bin/\nobj/\nnode_modules/\n__pycache__/\n*.pyc\n.env\n.DS_Store\n";
-        var policy = BuildPolicy(ignoreFileContent: ignoreContent);
-
-        policy.Evaluate(new ResourceKey("bin"), ResourceAction.List, isFolder: true).IsFailure.Should().BeTrue();
-        policy.Evaluate(new ResourceKey("obj"), ResourceAction.List, isFolder: true).IsFailure.Should().BeTrue();
-        policy.Evaluate(new ResourceKey("node_modules"), ResourceAction.List, isFolder: true).IsFailure.Should().BeTrue();
-        policy.Evaluate(new ResourceKey("src/__pycache__"), ResourceAction.List, isFolder: true).IsFailure.Should().BeTrue();
-        policy.Evaluate(new ResourceKey("module.pyc"), ResourceAction.List).IsFailure.Should().BeTrue();
-        policy.Evaluate(new ResourceKey(".env"), ResourceAction.List).IsFailure.Should().BeTrue();
-        policy.Evaluate(new ResourceKey(".DS_Store"), ResourceAction.List).IsFailure.Should().BeTrue();
-
-        policy.Evaluate(new ResourceKey(".editorconfig"), ResourceAction.List).IsSuccess.Should().BeTrue();
-        policy.Evaluate(new ResourceKey(".github/workflows/ci.yml"), ResourceAction.List).IsSuccess.Should().BeTrue();
-        policy.Evaluate(new ResourceKey("src/main.py"), ResourceAction.List).IsSuccess.Should().BeTrue();
-    }
-
-    [Test]
-    public void NonProjectRoot_AlwaysAllowed()
+    public void Evaluate_AllowsNonProjectRoot()
     {
         var policy = BuildPolicy();
 
         policy.Evaluate(new ResourceKey("temp:file.txt"), ResourceAction.Read).IsSuccess.Should().BeTrue();
         policy.Evaluate(new ResourceKey("logs:run.log"), ResourceAction.Write).IsSuccess.Should().BeTrue();
+    }
+
+    [Test]
+    public void IsHidden_MatchesPatternsAndTheirSubtrees()
+    {
+        var section = new ResourcesSection
+        {
+            Hide = new[] { ".gitignore", "drafts" },
+        };
+        var policy = BuildPolicy(section);
+
+        policy.IsHidden(new ResourceKey(".gitignore"), isFolder: false).Should().BeTrue();
+        policy.IsHidden(new ResourceKey("drafts"), isFolder: true).Should().BeTrue();
+        policy.IsHidden(new ResourceKey("drafts/notes.md"), isFolder: false).Should().BeTrue();
+        policy.IsHidden(new ResourceKey("notes.md"), isFolder: false).Should().BeFalse();
+    }
+
+    [Test]
+    public void IsHidden_ReportsFalse_WithNoPatterns()
+    {
+        var policy = BuildPolicy();
+
+        policy.IsHidden(new ResourceKey(".gitignore"), isFolder: false).Should().BeFalse();
+        policy.IsHidden(new ResourceKey("bin"), isFolder: true).Should().BeFalse();
+    }
+
+    [Test]
+    public void IsSearchExcluded_TakesTheWholeSubtree_ForEveryPatternShape()
+    {
+        // A pattern that matches a folder matches everything beneath it, whether it is
+        // written bare, with a leading wildcard, or as a path.
+        var section = new ResourcesSection
+        {
+            SearchExclude = new[] { "bin", "**/cache", "src/obj" },
+        };
+        var policy = BuildPolicy(section);
+
+        policy.IsSearchExcluded(new ResourceKey("bin/app.exe"), isFolder: false).Should().BeTrue();
+        policy.IsSearchExcluded(new ResourceKey("src/bin/app.exe"), isFolder: false).Should().BeTrue();
+        policy.IsSearchExcluded(new ResourceKey("src/cache/entry.bin"), isFolder: false).Should().BeTrue();
+        policy.IsSearchExcluded(new ResourceKey("src/obj/build.log"), isFolder: false).Should().BeTrue();
+
+        policy.IsSearchExcluded(new ResourceKey("src/main.py"), isFolder: false).Should().BeFalse();
+        policy.IsSearchExcluded(new ResourceKey("obj/build.log"), isFolder: false).Should().BeFalse();
+    }
+
+    [Test]
+    public void IsSearchExcluded_FolderOnlyPattern_SkipsAFileOfTheSameName()
+    {
+        var section = new ResourcesSection
+        {
+            SearchExclude = new[] { "dist/" },
+        };
+        var policy = BuildPolicy(section);
+
+        policy.IsSearchExcluded(new ResourceKey("dist"), isFolder: true).Should().BeTrue();
+        policy.IsSearchExcluded(new ResourceKey("dist/bundle.js"), isFolder: false).Should().BeTrue();
+        policy.IsSearchExcluded(new ResourceKey("dist"), isFolder: false).Should().BeFalse();
+    }
+
+    [Test]
+    public void ProjectPatterns_DoNotMatchOtherRoots()
+    {
+        var section = new ResourcesSection
+        {
+            Hide = new[] { "run.log" },
+            SearchExclude = new[] { "run.log" },
+        };
+        var policy = BuildPolicy(section);
+
+        policy.IsHidden(new ResourceKey("logs:run.log"), isFolder: false).Should().BeFalse();
+        policy.IsSearchExcluded(new ResourceKey("logs:run.log"), isFolder: false).Should().BeFalse();
+    }
+
+    [Test]
+    public void ReservedMatcher_RejectsAFoldersOnlyPattern()
+    {
+        // Evaluate passes the caller's isFolder hint straight through, so a trailing slash would be
+        // written into the rule set and then quietly do nothing. It is refused at compile time instead.
+        var compile = () => ResourcePolicy.CompileReservedMatcher(".svn/");
+
+        compile.Should().Throw<ArgumentException>().WithMessage("*folders-only*");
+    }
+
+    [Test]
+    public void ReservedMatcher_AcceptsTheShapesTheRuleSetUses()
+    {
+        ResourcePolicy.CompileReservedMatcher(".git").Target.Should().Be(PathMatchTarget.Any);
+        ResourcePolicy.CompileReservedMatcher(".git/**").Target.Should().Be(PathMatchTarget.Any);
     }
 }

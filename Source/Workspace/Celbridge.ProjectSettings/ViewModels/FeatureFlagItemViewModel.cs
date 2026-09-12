@@ -45,8 +45,8 @@ public sealed record FeatureFlagItemInfo
 
 /// <summary>
 /// One feature flag on the Feature Flags section, with a tri-state control that pins its project override
-/// on or off, or clears it to inherit the application default. Changing it writes straight through to the
-/// .celbridge file.
+/// on or off, or clears it to inherit the application default. Changes are written to the .celbridge
+/// file and apply when the project is reloaded.
 /// </summary>
 public partial class FeatureFlagItemViewModel : ObservableObject
 {

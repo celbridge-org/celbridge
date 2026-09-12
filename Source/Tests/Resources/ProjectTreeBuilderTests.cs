@@ -5,7 +5,7 @@ using Celbridge.Resources.Services;
 namespace Celbridge.Tests.Resources;
 
 /// <summary>
-/// Direct tests for the project tree builder: gateway-driven walk, policy-based
+/// Direct tests for the project tree builder: gateway-driven walk, search-exclude
 /// filtering, folders-before-files ordering, fresh instances on every call.
 /// Targets the builder rather than going through ResourceRegistry so the
 /// project-scope filter rules can be exercised cleanly.
@@ -84,24 +84,25 @@ public class ProjectTreeBuilderTests
     }
 
     [Test]
-    public async Task BuildTree_ExcludesPathsMatchedByIgnoreFile()
+    public async Task BuildTree_ExcludesPathsMatchedBySearchExclude()
     {
-        // Visibility is driven by the ignore-file. Leading-dot names are no longer
-        // hidden by a blanket rule, so a dotfile not listed in the ignore-file
-        // (.editorconfig) stays visible while listed entries (.vscode/) are hidden.
-        File.WriteAllText(Path.Combine(_projectFolderPath, ".gitignore"), ".vscode/\nsecret.txt\n");
+        // Until the resource index lands, search-exclude bounds the walk. Nothing else
+        // narrows it, so a dotfile the project does not exclude stays in the tree.
+        File.WriteAllText(Path.Combine(_projectFolderPath, ".gitignore"), "secret.txt");
         File.WriteAllText(Path.Combine(_projectFolderPath, ".editorconfig"), "x");
         File.WriteAllText(Path.Combine(_projectFolderPath, "secret.txt"), "x");
         File.WriteAllText(Path.Combine(_projectFolderPath, "visible.txt"), "y");
         Directory.CreateDirectory(Path.Combine(_projectFolderPath, ".vscode"));
         Directory.CreateDirectory(Path.Combine(_projectFolderPath, "src"));
 
-        var builder = ProjectTreeBuilderTestHelper.Build(_projectFolderPath, useProjectIgnoreFile: true);
+        var builder = ProjectTreeBuilderTestHelper.Build(
+            _projectFolderPath,
+            searchExcludePatterns: new[] { ".vscode/", "secret.txt" });
         var buildResult = await builder.BuildTreeAsync();
 
         buildResult.IsSuccess.Should().BeTrue();
         var names = buildResult.Value.Children.Select(c => c.Name).ToList();
-        names.Should().Contain(new[] { "src", "visible.txt", ".editorconfig" });
+        names.Should().Contain(new[] { "src", "visible.txt", ".editorconfig", ".gitignore" });
         names.Should().NotContain(new[] { ".vscode", "secret.txt" });
     }
 
@@ -115,24 +116,6 @@ public class ProjectTreeBuilderTests
         buildResult.IsSuccess.Should().BeTrue();
         var file = buildResult.Value.Children.Single(c => c.Name == "notes.txt");
         file.WritableState.Should().Be(WritableState.Writable);
-    }
-
-    [Test]
-    public async Task BuildTree_PopulatesLockedWritableState_ForFileMatchingLockPattern()
-    {
-        File.WriteAllText(Path.Combine(_projectFolderPath, "config.toml"), "x");
-        File.WriteAllText(Path.Combine(_projectFolderPath, "notes.txt"), "y");
-
-        var builder = ProjectTreeBuilderTestHelper.Build(_projectFolderPath, lockPatterns: new[] { "config.toml" });
-        var buildResult = await builder.BuildTreeAsync();
-
-        buildResult.IsSuccess.Should().BeTrue();
-        var configFile = buildResult.Value.Children.Single(c => c.Name == "config.toml");
-        configFile.WritableState.Should().Be(WritableState.Locked);
-
-        // A sibling that does not match the lock pattern stays writable.
-        var notesFile = buildResult.Value.Children.Single(c => c.Name == "notes.txt");
-        notesFile.WritableState.Should().Be(WritableState.Writable);
     }
 
     [Test]
@@ -184,14 +167,15 @@ public class ProjectTreeBuilderTests
     }
 
     [Test]
-    public async Task BuildTree_ExcludesPyCacheFolders_ViaIgnoreFile()
+    public async Task BuildTree_ExcludesPyCacheFolders_ViaSearchExclude()
     {
-        File.WriteAllText(Path.Combine(_projectFolderPath, ".gitignore"), "__pycache__/\n");
         Directory.CreateDirectory(Path.Combine(_projectFolderPath, "scripts", "__pycache__"));
         File.WriteAllText(Path.Combine(_projectFolderPath, "scripts", "__pycache__", "x.pyc"), "");
         File.WriteAllText(Path.Combine(_projectFolderPath, "scripts", "main.py"), "");
 
-        var builder = ProjectTreeBuilderTestHelper.Build(_projectFolderPath, useProjectIgnoreFile: true);
+        var builder = ProjectTreeBuilderTestHelper.Build(
+            _projectFolderPath,
+            searchExcludePatterns: new[] { "__pycache__/" });
         var buildResult = await builder.BuildTreeAsync();
 
         buildResult.IsSuccess.Should().BeTrue();
@@ -201,11 +185,10 @@ public class ProjectTreeBuilderTests
     }
 
     [Test]
-    public async Task BuildTree_AnchoredIgnorePattern_ExcludesOnlyAtThatPath()
+    public async Task BuildTree_AnchoredExcludePattern_ExcludesOnlyAtThatPath()
     {
-        // An anchored ignore pattern (Python/Lib/) excludes only that path. A
+        // A pattern carrying a separator (Python/Lib/) excludes only that path. A
         // "Lib" folder elsewhere stays, because the pattern is rooted, not bare.
-        File.WriteAllText(Path.Combine(_projectFolderPath, ".gitignore"), "Python/Lib/\n");
         Directory.CreateDirectory(Path.Combine(_projectFolderPath, "Python", "Lib"));
         File.WriteAllText(Path.Combine(_projectFolderPath, "Python", "Lib", "pkg.py"), "");
         File.WriteAllText(Path.Combine(_projectFolderPath, "Python", "main.py"), "");
@@ -213,7 +196,9 @@ public class ProjectTreeBuilderTests
         Directory.CreateDirectory(Path.Combine(_projectFolderPath, "OtherProject", "Lib"));
         File.WriteAllText(Path.Combine(_projectFolderPath, "OtherProject", "Lib", "thing.txt"), "");
 
-        var builder = ProjectTreeBuilderTestHelper.Build(_projectFolderPath, useProjectIgnoreFile: true);
+        var builder = ProjectTreeBuilderTestHelper.Build(
+            _projectFolderPath,
+            searchExcludePatterns: new[] { "Python/Lib/" });
         var buildResult = await builder.BuildTreeAsync();
 
         buildResult.IsSuccess.Should().BeTrue();

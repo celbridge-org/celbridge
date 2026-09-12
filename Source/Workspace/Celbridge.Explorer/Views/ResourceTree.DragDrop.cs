@@ -122,10 +122,9 @@ public sealed partial class ResourceTree
     }
 
     // Predicts whether the dragged resources can land in the destination folder:
-    // the folder must accept additions (writable root, visible, not fully locked)
-    // and every dragged item's destination key must itself be a permitted resource
-    // (not hidden by the ignore-file, not locked). Mirrors the gate the move/copy
-    // executor enforces so the no-drop cursor never disagrees with the outcome.
+    // the folder must accept additions, and every dragged item's destination key
+    // must itself be a permitted resource. Mirrors the gate the move/copy executor
+    // enforces so the no-drop cursor never disagrees with the outcome.
     private bool CanDropInto(IFolderResource destFolder, List<IResource>? draggedResources)
     {
         var destFolderKey = _resourceRegistry.GetResourceKey(destFolder);

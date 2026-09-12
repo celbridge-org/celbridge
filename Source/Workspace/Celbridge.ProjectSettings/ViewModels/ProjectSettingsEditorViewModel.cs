@@ -21,8 +21,8 @@ namespace Celbridge.ProjectSettings.ViewModels;
 
 /// <summary>
 /// Coordinates the Project Settings editor: the section rail, the pending-changes state shared by every
-/// section, and the reload gesture. Each section has its own view model, all of which write their edits
-/// straight through to the project file; the running workspace only reflects them after a reload.
+/// section, and the reload gesture. Each section has its own view model, and each writes its edits to
+/// the project file. The running workspace only reflects them after a reload.
 /// </summary>
 public partial class ProjectSettingsEditorViewModel : ObservableObject
 {
@@ -88,9 +88,9 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
     private SettingsSection? _selectedSection;
 
     public InformationSectionViewModel InformationSection { get; }
+    public ResourcesSectionViewModel ResourcesSection { get; }
     public PackagesSectionViewModel PackagesSection { get; }
     public FileEditorsSectionViewModel FileEditorsSection { get; }
-    public PagesSectionViewModel PagesSection { get; }
     public DocumentShortcutsSectionViewModel DocumentShortcutsSection { get; }
     public FeatureFlagsSectionViewModel FeatureFlagsSection { get; }
 
@@ -126,9 +126,9 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
 
         _context = new ProjectSettingsContext(workspaceWrapper, projectService, commandService, MarkPending);
         InformationSection = new InformationSectionViewModel(_context);
+        ResourcesSection = new ResourcesSectionViewModel(_context);
         PackagesSection = new PackagesSectionViewModel(_context, packageLocalization);
         FileEditorsSection = new FileEditorsSectionViewModel(_context, fileTypeCatalog);
-        PagesSection = new PagesSectionViewModel(_context);
         DocumentShortcutsSection = new DocumentShortcutsSectionViewModel(_context, iconService, dialogService);
         FeatureFlagsSection = new FeatureFlagsSectionViewModel(_context, _stringLocalizer);
 
@@ -228,9 +228,9 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
         LoadDraft();
 
         InformationSection.Load();
+        ResourcesSection.Load();
         PackagesSection.Load();
         FileEditorsSection.Load();
-        PagesSection.Load();
         DocumentShortcutsSection.Load();
         FeatureFlagsSection.Load();
 
@@ -251,9 +251,9 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
     private void ReloadSections()
     {
         InformationSection.Load();
+        ResourcesSection.Load();
         PackagesSection.Load();
         FileEditorsSection.Load();
-        PagesSection.Load();
         DocumentShortcutsSection.Load();
         FeatureFlagsSection.Load();
 

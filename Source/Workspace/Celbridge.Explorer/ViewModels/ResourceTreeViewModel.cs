@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using Celbridge.DataTransfer;
+using Celbridge.Explorer.Helpers;
 using Celbridge.Explorer.Models;
 using Celbridge.Logging;
 using Celbridge.Platform;
@@ -19,6 +20,7 @@ public partial class ResourceTreeViewModel : ObservableObject
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IPlatformInfo _platformInfo;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IResourceRegistry _resourceRegistry;
     private readonly IFolderStateService _folderStateService;
     private readonly IDataTransferService _dataTransferService;
@@ -63,6 +65,10 @@ public partial class ResourceTreeViewModel : ObservableObject
     /// </summary>
     public event Action? PostBuildResourceTree;
 
+    private IResourcePolicy ResourcePolicy => _workspaceWrapper.WorkspaceService.ResourceService.Policy;
+
+    private IBindableWorkspaceSettings WorkspaceSettings => _workspaceWrapper.WorkspaceService.BindableWorkspaceSettings;
+
     public ResourceTreeViewModel(
         ILogger<ResourceTreeViewModel> logger,
         IMessengerService messengerService,
@@ -72,6 +78,7 @@ public partial class ResourceTreeViewModel : ObservableObject
         _messengerService = messengerService;
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
+        _workspaceWrapper = workspaceWrapper;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
         _folderStateService = workspaceWrapper.WorkspaceService.ExplorerService.FolderStateService;
         _dataTransferService = workspaceWrapper.WorkspaceService.DataTransferService;
@@ -130,6 +137,23 @@ public partial class ResourceTreeViewModel : ObservableObject
     //
     // Tree population
     //
+
+    /// <summary>
+    /// Whether the tree draws the resources the project's hide patterns match.
+    /// </summary>
+    public bool ShowHiddenFiles => WorkspaceSettings.ShowHiddenFiles;
+
+    /// <summary>
+    /// Shows or stops showing the hidden resources. A view filter over data the tree already holds, so
+    /// nothing reloads.
+    /// </summary>
+    public void ToggleShowHiddenFiles()
+    {
+        WorkspaceSettings.ShowHiddenFiles = !WorkspaceSettings.ShowHiddenFiles;
+        OnPropertyChanged(nameof(ShowHiddenFiles));
+
+        RebuildResourceTree();
+    }
 
     /// <summary>
     /// Rebuilds the flat list from the current resource registry state.
@@ -247,17 +271,46 @@ public partial class ResourceTreeViewModel : ObservableObject
         List<ResourceViewItem> items,
         int indentLevel)
     {
+        var showHiddenFiles = ShowHiddenFiles;
+        var policy = ResourcePolicy;
+
         foreach (var resource in resources)
         {
+            // Undrawn kinds are settled before the key is built, so a project full of sidecars does not
+            // pay for a key and a pattern match on every rebuild.
+            if (!ResourceTreeFilter.IsDrawableKind(resource))
+            {
+                continue;
+            }
+
+            var isFolder = resource is IFolderResource;
+            var resourceKey = _resourceRegistry.GetResourceKey(resource);
+
+            // Hiding is a filter over the tree alone, so a hidden resource is still in the registry and
+            // still readable and writable. Shown hidden rows dim, which makes the toggle a live preview
+            // of the project's hide list.
+            var isHidden = policy.IsHidden(resourceKey, isFolder);
+            if (isHidden
+                && !showHiddenFiles)
+            {
+                continue;
+            }
+
             var readOnlyMessage = ReadOnlyMessageHelper.GetReadOnlyMessage(resource.WritableState, _stringLocalizer);
 
             if (resource is IFolderResource folderResource)
             {
-                var hasChildren = folderResource.Children.Count > 0;
-                var resourceKey = _resourceRegistry.GetResourceKey(folderResource);
+                // Counted over what the tree would draw, so a folder holding only hidden resources does
+                // not offer an expander that opens onto nothing.
+                var hasChildren = ResourceTreeFilter.HasDrawableChildren(
+                    folderResource,
+                    _resourceRegistry,
+                    policy,
+                    showHiddenFiles);
+
                 var isExpanded = _folderStateService.IsExpanded(resourceKey);
 
-                var item = new ResourceViewItem(resource, indentLevel, isExpanded, hasChildren, readOnlyMessage: readOnlyMessage);
+                var item = new ResourceViewItem(resource, indentLevel, isExpanded, hasChildren, isHidden: isHidden, readOnlyMessage: readOnlyMessage);
                 items.Add(item);
 
                 // Only add children if the folder is expanded
@@ -269,15 +322,9 @@ public partial class ResourceTreeViewModel : ObservableObject
                         indentLevel + 1);
                 }
             }
-            else if (resource is IFileResource fileResource)
+            else
             {
-                // .cel files are project metadata sidecars; never shown in the tree.
-                if (fileResource.FileKind is FileKind.Sidecar or FileKind.Orphan or FileKind.InvalidSidecar)
-                {
-                    continue;
-                }
-
-                var item = new ResourceViewItem(resource, indentLevel, false, false, readOnlyMessage: readOnlyMessage);
+                var item = new ResourceViewItem(resource, indentLevel, false, false, isHidden: isHidden, readOnlyMessage: readOnlyMessage);
                 items.Add(item);
             }
         }
