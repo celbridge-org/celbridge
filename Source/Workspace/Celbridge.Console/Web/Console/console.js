@@ -83,6 +83,15 @@ function canMeasure() {
         terminalElement.clientHeight > 0;
 }
 
+// Whether no size is coming. The platform does not lay out a page it is not displaying, and where the host
+// cannot give an unarranged surface a viewport it has none to hand over either, so nothing arrives until
+// the page is shown. Page visibility is what covers every reason for being off screen at once: a tab that
+// is not selected, a collapsed area, a hidden panel.
+function sizeUnavailable() {
+    return document.hidden &&
+        client.viewState.current?.canSizeUnarranged !== 'true';
+}
+
 // Fits the terminal to its box, and reports whether that box was one worth measuring.
 function fitTerminal() {
     if (!canMeasure()) {
@@ -952,6 +961,10 @@ function nextSizeSample() {
 // The pty is created at the terminal's measured size, so measure only once the layout has settled. A resize
 // that lands after the shell has painted costs the screen the output already on it.
 async function waitForStableSize() {
+    if (sizeUnavailable()) {
+        return;
+    }
+
     let waiting = true;
 
     const settled = (async () => {
@@ -960,6 +973,10 @@ async function waitForStableSize() {
 
         while (waiting) {
             await nextSizeSample();
+
+            if (sizeUnavailable()) {
+                return;
+            }
 
             const width = terminalView.clientWidth;
             const height = terminalView.clientHeight;

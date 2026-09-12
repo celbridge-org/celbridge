@@ -24,6 +24,22 @@ public sealed class PendingViewSize
         new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     private TerminalSize? _reportedSize;
+    private bool _sizeUnavailable;
+
+    /// <summary>
+    /// The last size a view reported, or null when none has. Read after the pty exists to pick up a size
+    /// that arrived while it was being created, which found no terminal to apply it to.
+    /// </summary>
+    public TerminalSize? Current
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _reportedSize;
+            }
+        }
+    }
 
     /// <summary>
     /// Records the size a view reports. A view that has not been arranged yet reports no size at all, which
@@ -51,6 +67,11 @@ public sealed class PendingViewSize
     /// </summary>
     public void ReportUnavailable()
     {
+        lock (_lock)
+        {
+            _sizeUnavailable = true;
+        }
+
         _reported.TrySetResult();
     }
 
@@ -74,6 +95,13 @@ public sealed class PendingViewSize
             lock (_lock)
             {
                 sizeBeforeSettling = _reportedSize;
+
+                // No size was reported and none is coming, so there is nothing to settle.
+                if (_sizeUnavailable &&
+                    sizeBeforeSettling is null)
+                {
+                    return null;
+                }
             }
 
             var settled = await Task.WhenAny(Task.Delay(SettleMs), deadline);

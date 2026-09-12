@@ -127,15 +127,47 @@ public class PendingViewSizeTests
     }
 
     [Test]
-    public async Task ReportUnavailable_StillTakesASizeThatArrivesWithTheSettleWindow()
+    public async Task ReportUnavailable_DoesNotWaitOutTheSettleWindow()
+    {
+        var pendingViewSize = new PendingViewSize();
+
+        // The window a stream of changing sizes is settled over. There is no such stream here, so the
+        // wait must not spend it.
+        var settleWindow = Task.Delay(250);
+
+        var waiting = pendingViewSize.WaitAsync(WaitTimeoutMs);
+        pendingViewSize.ReportUnavailable();
+
+        var firstToFinish = await Task.WhenAny(waiting, settleWindow);
+
+        firstToFinish.Should().BeSameAs(waiting,
+            "a console in a tab that has not been shown starts without waiting on a size that is not coming");
+    }
+
+    [Test]
+    public async Task ReportUnavailable_KeepsASizeThatWasAlreadyReported()
     {
         var pendingViewSize = new PendingViewSize();
 
         var waiting = pendingViewSize.WaitAsync(WaitTimeoutMs);
+        pendingViewSize.Report(75, 26);
         pendingViewSize.ReportUnavailable();
+
+        (await waiting).Should().Be(new TerminalSize(75, 26),
+            "a view that reported a size before it went away still says what to create the pty at");
+    }
+
+    [Test]
+    public async Task Current_HoldsASizeReportedAfterTheWaitEnded()
+    {
+        var pendingViewSize = new PendingViewSize();
+
+        var size = await pendingViewSize.WaitAsync(TimeoutTestMs);
         pendingViewSize.Report(75, 26);
 
-        (await waiting).Should().Be(new TerminalSize(75, 26));
+        size.Should().BeNull();
+        pendingViewSize.Current.Should().Be(new TerminalSize(75, 26),
+            "a size that lands while the pty is being created is applied once it exists");
     }
 
     [Test]

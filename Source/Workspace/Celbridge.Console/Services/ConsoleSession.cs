@@ -328,8 +328,6 @@ internal sealed class ConsoleSession : IDisposable
             SetTerminalSize(terminal, reportedSize.Cols, reportedSize.Rows);
         }
 
-        var startedAtViewSize = reportedSize is not null;
-
         try
         {
             terminal.Start(shellCommandLine, workingDirectory, environmentCopy);
@@ -347,6 +345,17 @@ internal sealed class ConsoleSession : IDisposable
         }
 
         _terminal = terminal;
+
+        // A size reported while the pty was being created had no terminal to be applied to, so it is
+        // picked up here rather than waiting on the next resize.
+        var startupSize = _pendingViewSize.Current;
+        if (startupSize is not null)
+        {
+            SetTerminalSize(terminal, startupSize.Cols, startupSize.Rows);
+        }
+
+        var startedAtViewSize = startupSize is not null;
+
         LaunchedConfigToml = tomlText;
         SetState(ConsoleSessionRunState.Running);
 
