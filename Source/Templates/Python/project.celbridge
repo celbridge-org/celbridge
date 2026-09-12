@@ -7,3 +7,8 @@ project-version = "0.1.0"
 [celbridge.resources]
 hide = [".gitignore"]
 search-exclude = ["node_modules", "bin", "obj", "dist", ".venv", "__pycache__"]
+
+[[shortcut]]
+resource = "python.console"
+icon = "bs-terminal"
+area = "bottom"

@@ -24,7 +24,7 @@ public class ProjectTemplateService : IProjectTemplateService
         _templates =
         [
             CreateTemplate(stringLocalizer, "Empty", "bs-file-earmark"),
-            CreateTemplate(stringLocalizer, "Examples", "bs-collection")
+            CreateTemplate(stringLocalizer, "Python", "bs-filetype-py")
         ];
     }
 

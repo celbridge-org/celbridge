@@ -6,7 +6,7 @@ namespace Celbridge.Projects;
 public partial record ProjectTemplate
 {
     /// <summary>
-    /// Unique identifier for the template (e.g., "Empty", "Examples").
+    /// Unique identifier for the template (e.g., "Empty", "Python").
     /// </summary>
     public required string Id { get; init; }
 
