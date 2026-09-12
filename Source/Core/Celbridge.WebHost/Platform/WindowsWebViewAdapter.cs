@@ -22,6 +22,8 @@ public sealed class WindowsWebViewAdapter : IWebViewAdapter
     // left to the heads that lack one (the macOS WKWebView). Ctrl+F reaches Chromium's built-in bar directly.
     public bool ProvidesBuiltInFind => true;
 
+    public bool CanSizeUnarrangedViewport => false;
+
     public bool SupportsLiveBrowsingDataClear => true;
 
     // The profile hangs off a live CoreWebView2, so the clear needs an instance to reach it through.
@@ -40,9 +42,11 @@ public sealed class WindowsWebViewAdapter : IWebViewAdapter
         webView.Close();
     }
 
-    public void SetViewportSize(WebView2 webView, double width, double height)
+    public bool SetViewportSize(WebView2 webView, double width, double height)
     {
-        // The packaged WebView2 is arranged by XAML, so its page's viewport already follows the control.
+        // The packaged WebView2 is arranged by XAML, so its page's viewport already follows the control,
+        // and there is no geometry to give a control XAML has not arranged.
+        return false;
     }
 
     public void FocusWebView(WebView2 webView)

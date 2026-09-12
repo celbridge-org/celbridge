@@ -889,15 +889,10 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             return;
         }
 
-        var width = WebView.ActualWidth;
-        var height = WebView.ActualHeight;
-        if (width <= 0 ||
-            height <= 0)
-        {
-            width = _presentedWidth;
-            height = _presentedHeight;
-        }
+        var isArranged = WebView.ActualWidth > 0 && WebView.ActualHeight > 0;
 
+        var width = isArranged ? WebView.ActualWidth : _presentedWidth;
+        var height = isArranged ? WebView.ActualHeight : _presentedHeight;
         if (width <= 0 ||
             height <= 0)
         {
@@ -905,7 +900,16 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         }
 
         // Sized before the page is told its measurement counts, so what it measures is that size.
-        _webViewAdapter.SetViewportSize(WebView, width, height);
+        var applied = _webViewAdapter.SetViewportSize(WebView, width, height);
+
+        // An arranged surface's page reports the geometry it was arranged at. An unarranged one reports
+        // what the host gave it, and where the host cannot give it any, whatever the platform left it with
+        // - which is not a size to measure against.
+        if (!isArranged &&
+            !applied)
+        {
+            return;
+        }
 
         // Reported on the transition only, since the state store pushes to the page on every set.
         if (_isSized)

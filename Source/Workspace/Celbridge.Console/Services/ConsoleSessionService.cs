@@ -3,6 +3,7 @@ using Celbridge.Documents;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Server;
+using Celbridge.WebHost;
 using Celbridge.Workspace;
 
 namespace Celbridge.Console.Services;
@@ -20,6 +21,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
     private const int DefaultCols = 120;
     private const int DefaultRows = 30;
 
+    private readonly IWebViewAdapter _webViewAdapter;
     private readonly IServiceProvider _serviceProvider;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IMessengerService _messengerService;
@@ -50,6 +52,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         _workspaceWrapper = workspaceWrapper;
         _messengerService = messengerService;
         _logger = logger;
+        _webViewAdapter = ServiceLocator.AcquireService<IWebViewAdapter>();
 
         _sessionProviders = ResolveSessionProviders(serviceProvider);
         _sessionTypes = _sessionProviders.Select(provider => provider.SessionType).ToList();
@@ -163,6 +166,14 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         // Reported before the launch is awaited. The launch holds the pty until a view reports a size, so
         // awaiting it first would leave the launch and the attach waiting on each other.
         session.Resize(cols, rows);
+
+        if ((cols <= 0 || rows <= 0) &&
+            !_webViewAdapter.CanSizeUnarrangedViewport)
+        {
+            // This view has been laid out as far as it is going to be until it is shown, and the host cannot
+            // give it a viewport in the meantime, so there is no size coming for the launch to wait for.
+            session.ReportNoViewSize();
+        }
 
         await StartSessionForViewAsync(session, resource, cols, rows);
 

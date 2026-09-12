@@ -114,6 +114,31 @@ public class PendingViewSizeTests
     }
 
     [Test]
+    public async Task ReportUnavailable_EndsTheWaitWithoutASize()
+    {
+        var pendingViewSize = new PendingViewSize();
+
+        var waiting = pendingViewSize.WaitAsync(WaitTimeoutMs);
+        pendingViewSize.ReportUnavailable();
+
+        (await waiting).Should().BeNull(
+            "a console whose view cannot be sized until it is shown has nothing to wait for, and holding " +
+            "the launch for the timeout would only delay a fallback it is already known to reach");
+    }
+
+    [Test]
+    public async Task ReportUnavailable_StillTakesASizeThatArrivesWithTheSettleWindow()
+    {
+        var pendingViewSize = new PendingViewSize();
+
+        var waiting = pendingViewSize.WaitAsync(WaitTimeoutMs);
+        pendingViewSize.ReportUnavailable();
+        pendingViewSize.Report(75, 26);
+
+        (await waiting).Should().Be(new TerminalSize(75, 26));
+    }
+
+    [Test]
     public async Task Report_SatisfiesAWaitThatAnEmptySizeLeftPending()
     {
         var pendingViewSize = new PendingViewSize();

@@ -1,6 +1,7 @@
 ﻿using Celbridge.Console.Helpers;
 using Celbridge.Logging;
 using Celbridge.Utilities;
+using Celbridge.WebHost;
 using Celbridge.Workspace;
 
 namespace Celbridge.Console.Services;
@@ -25,6 +26,7 @@ internal sealed class ConsoleSession : IDisposable
     // can take far longer than any fixed budget while still making progress.
     private const int MarkerSilenceTimeoutMs = 10000;
 
+    private readonly IWebViewAdapter _webViewAdapter;
     private readonly IServiceProvider _serviceProvider;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ILogger<ConsoleSession> _logger;
@@ -72,6 +74,7 @@ internal sealed class ConsoleSession : IDisposable
         _sessionProviders = sessionProviders;
         _sessionTypes = sessionProviders.Select(provider => provider.SessionType).ToList();
         _logger = serviceProvider.GetRequiredService<ILogger<ConsoleSession>>();
+        _webViewAdapter = ServiceLocator.AcquireService<IWebViewAdapter>();
     }
 
     public ResourceKey Resource { get; private set; }
@@ -149,11 +152,18 @@ internal sealed class ConsoleSession : IDisposable
     }
 
     // How long a launch waits for a view to report the size it will be read at before starting at the
-    // fallback size anyway. Every section reports the size it presents documents at, so a view always has
-    // one to report and the wait ends as soon as it settles. The bound is generous because it is only
-    // reached when a view never loads at all, and a pty created at the fallback has to be resized once the
-    // console is shown, which costs the screen the output already painted on it.
-    private const int ViewSizeTimeoutMs = 30000;
+    // fallback size anyway.
+    //
+    // Where the host can give a surface its viewport before it is arranged, every view has a size to report
+    // and the wait ends as soon as that size settles, so this is only reached by a view that never loads at
+    // all. It is generous there because a pty created at the fallback has to be resized once the console is
+    // shown, which costs the screen the output already painted on it.
+    //
+    // Where it cannot, a view that has not been shown reports no size and says so when it attaches, which
+    // ends the wait without reaching this. It is short there because the only thing left to reach it is a
+    // view that never attaches, and a console in a background tab must not wait on that.
+    private int ViewSizeTimeoutMs =>
+        _webViewAdapter.CanSizeUnarrangedViewport ? 30000 : 5000;
 
     public async Task StartAsync(int fallbackCols, int fallbackRows, int rpcPort)
     {
@@ -408,6 +418,14 @@ internal sealed class ConsoleSession : IDisposable
         }
 
         _terminal?.Write(data);
+    }
+
+    /// <summary>
+    /// Records that this session's view will not report a size, so a launch waiting for one stops waiting.
+    /// </summary>
+    public void ReportNoViewSize()
+    {
+        _pendingViewSize.ReportUnavailable();
     }
 
     public void Resize(int cols, int rows)

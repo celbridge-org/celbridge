@@ -46,6 +46,15 @@ public sealed class PendingViewSize
     }
 
     /// <summary>
+    /// Records that no view will report a size, which ends the wait at once rather than leaving a launch
+    /// holding for a timeout it is already known to reach.
+    /// </summary>
+    public void ReportUnavailable()
+    {
+        _reported.TrySetResult();
+    }
+
+    /// <summary>
     /// Waits for a view to report a size and for its reports to settle, returning null when none arrives
     /// within the timeout. A size still changing when the timeout runs out is returned as it stands.
     /// </summary>

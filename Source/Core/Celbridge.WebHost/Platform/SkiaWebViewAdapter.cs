@@ -48,6 +48,8 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     // WebKitGTK backends have none, so the host find bar drives find through this adapter there.
     public bool ProvidesBuiltInFind => OperatingSystem.IsWindows();
 
+    public bool CanSizeUnarrangedViewport => OperatingSystem.IsMacOS();
+
     // CoreWebView2.Profile is unimplemented on every Skia head. macOS clears through the native
     // WKWebsiteDataStore instead; the Windows and Linux Skia heads have no such path.
     public bool SupportsLiveBrowsingDataClear => OperatingSystem.IsMacOS();
@@ -380,7 +382,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         SetViewportSize(webView, width, height);
     }
 
-    public void SetViewportSize(WebView2 webView, double width, double height)
+    public bool SetViewportSize(WebView2 webView, double width, double height)
     {
         // Uno pushes the frame on its own arrange pass, a beat after the control has its size, and the page
         // can measure inside that gap.
@@ -390,10 +392,12 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
             || webView.CoreWebView2 is not CoreWebView2 coreWebView2
             || !MacOSWebViewInterop.TryGetNativeWebViewHandle(coreWebView2, out var nativeWebViewHandle, out _))
         {
-            return;
+            return false;
         }
 
         MacOSWebViewInterop.SetViewportSize(nativeWebViewHandle, width, height);
+
+        return true;
     }
 
     // WebKit suspends a hidden page's process, which stalls host-to-editor RPC for a background document
