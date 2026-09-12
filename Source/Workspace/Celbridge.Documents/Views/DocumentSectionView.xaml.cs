@@ -64,6 +64,12 @@ public sealed partial class DocumentSectionView : UserControl
     /// Static field to track the tab currently being dragged between sections.
     /// This is set when a drag starts and cleared after the drop is handled.
     /// </summary>
+    // The stock tab strip's content host, and how far into its template to look for it.
+    private const string TabContentPresenterName = "TabContentPresenter";
+    private const int TabContentPresenterSearchDepth = 12;
+
+    private ContentPresenter? _tabContentPresenter;
+
     private static DocumentTab? _draggedTab;
 
     /// <summary>
@@ -127,6 +133,8 @@ public sealed partial class DocumentSectionView : UserControl
 
         TabView.Loaded += OnTabViewLoaded;
         TabView.SelectionChanged += OnTabViewSelectionChanged;
+
+        TabView.SizeChanged += OnTabViewContentSizeChanged;
 
         // A narrower strip moves the scroll indicator and can change whether it is needed at all. It also
         // leaves the selected tab clipped off-screen, so a window resize or a change in the number of
@@ -796,6 +804,84 @@ public sealed partial class DocumentSectionView : UserControl
         TabView.TabItems.Clear();
     }
 
+    /// <summary>
+    /// Tells this section's documents the size they are presented at, which is the box the tab strip's
+    /// content area gives each of them in turn. A document in a tab that has not been shown is never laid
+    /// out, so a view that sizes its own content has nothing else to measure against.
+    /// </summary>
+    public void UpdatePresentedDocumentSizes()
+    {
+        var presenter = TabContentPresenter;
+        if (presenter is null ||
+            presenter.ActualWidth <= 0 ||
+            presenter.ActualHeight <= 0)
+        {
+            return;
+        }
+
+        foreach (var tabItem in TabView.TabItems)
+        {
+            if (tabItem is DocumentTab tab &&
+                tab.Content is IDocumentView documentView)
+            {
+                documentView.SetPresentedSize(presenter.ActualWidth, presenter.ActualHeight);
+            }
+        }
+    }
+
+    // The presenter every document in this section is shown in, whichever tab is selected. It is part of
+    // the tab strip's template, so it only exists once that template has been applied.
+    private ContentPresenter? TabContentPresenter
+    {
+        get
+        {
+            if (_tabContentPresenter is not null)
+            {
+                return _tabContentPresenter;
+            }
+
+            _tabContentPresenter = FindTabContentPresenter(TabView, 0);
+            if (_tabContentPresenter is not null)
+            {
+                _tabContentPresenter.SizeChanged += OnTabViewContentSizeChanged;
+            }
+
+            return _tabContentPresenter;
+        }
+    }
+
+    private static ContentPresenter? FindTabContentPresenter(DependencyObject node, int depth)
+    {
+        if (depth > TabContentPresenterSearchDepth)
+        {
+            return null;
+        }
+
+        var count = VisualTreeHelper.GetChildrenCount(node);
+        for (var i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(node, i);
+            if (child is ContentPresenter presenter &&
+                presenter.Name == TabContentPresenterName)
+            {
+                return presenter;
+            }
+
+            var found = FindTabContentPresenter(child, depth + 1);
+            if (found is not null)
+            {
+                return found;
+            }
+        }
+
+        return null;
+    }
+
+    private void OnTabViewContentSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        UpdatePresentedDocumentSizes();
+    }
+
     private void TabView_TabItemsChanged(TabView sender, IVectorChangedEventArgs args)
     {
         if (_isShuttingDown)
@@ -805,6 +891,9 @@ public sealed partial class DocumentSectionView : UserControl
 
         var documentResources = GetOpenDocuments();
         DocumentsLayoutChanged?.Invoke(this, documentResources);
+
+        // A tab that arrives from another section brings a view sized for that section's box.
+        UpdatePresentedDocumentSizes();
 
         ToolTipService.SetToolTip(TabView, null);
         UpdateEmptySectionVisuals();

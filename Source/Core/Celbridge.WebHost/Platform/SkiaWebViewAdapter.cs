@@ -48,6 +48,8 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     // WebKitGTK backends have none, so the host find bar drives find through this adapter there.
     public bool ProvidesBuiltInFind => OperatingSystem.IsWindows();
 
+    public bool CanSizeUnarrangedViewport => OperatingSystem.IsMacOS();
+
     // CoreWebView2.Profile is unimplemented on every Skia head. macOS clears through the native
     // WKWebsiteDataStore instead; the Windows and Linux Skia heads have no such path.
     public bool SupportsLiveBrowsingDataClear => OperatingSystem.IsMacOS();
@@ -88,7 +90,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
                 {
                     PinNativeWebView(nativeWebViewHandle);
                     KeepSelectionWhileUnfocused(nativeWebViewHandle);
-                    ApplyInitialViewportSize(nativeWebViewHandle);
+                    ApplyInitialViewportSize(webView);
                 }
                 else
                 {
@@ -362,8 +364,8 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     // A surface that loads while it is not (a document restored into a background tab, a utility running
     // from project load) reports a zero-sized window to its page: layout collapses, and a page that derives
     // geometry from the viewport at startup divides by zero and stays broken even after the real arrange
-    // arrives.
-    private void ApplyInitialViewportSize(IntPtr nativeWebViewHandle)
+    // arrives. The placeholder is the size of the window, so a page cannot tell it from a real layout.
+    private void ApplyInitialViewportSize(WebView2 webView)
     {
         var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
 
@@ -377,7 +379,25 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
             height = Math.Max(windowContent.ActualHeight, MinimumViewportHeight);
         }
 
+        SetViewportSize(webView, width, height);
+    }
+
+    public bool SetViewportSize(WebView2 webView, double width, double height)
+    {
+        // Uno pushes the frame on its own arrange pass, a beat after the control has its size, and the page
+        // can measure inside that gap.
+        if (!OperatingSystem.IsMacOS()
+            || width <= 0
+            || height <= 0
+            || webView.CoreWebView2 is not CoreWebView2 coreWebView2
+            || !MacOSWebViewInterop.TryGetNativeWebViewHandle(coreWebView2, out var nativeWebViewHandle, out _))
+        {
+            return false;
+        }
+
         MacOSWebViewInterop.SetViewportSize(nativeWebViewHandle, width, height);
+
+        return true;
     }
 
     // WebKit suspends a hidden page's process, which stalls host-to-editor RPC for a background document

@@ -72,23 +72,20 @@ const terminalElement = document.getElementById('terminal');
 term.open(terminalElement);
 terminalElement.querySelector('.xterm-helper-textarea')?.setAttribute('name', 'terminal-input');
 
-// The terminal's minimum width, mirroring #terminal-view in console.css. A viewport narrower than this
-// cannot be one the page was laid out into.
-const TERMINAL_MIN_WIDTH = 360;
-
-// True once a layout pass has given this page a real viewport. A WebView that has not been arranged hands
-// its page a viewport a few dozen pixels across, narrower than the terminal's own minimum.
-function isArranged() {
-    return !document.hidden &&
-        document.documentElement.clientWidth >= TERMINAL_MIN_WIDTH &&
+// Whether a measurement taken now is worth acting on. The host gives this surface the geometry its content
+// will be read at, which for a view in a tab that has not been shown is the size its section will present
+// it at, and reports when it has. Without that a page cannot tell a placeholder from a real layout, and a
+// pty created at a placeholder has to be resized once the view is shown, which costs the screen the output
+// already painted on it.
+function canMeasure() {
+    return client.viewState.current?.isSized === 'true' &&
         terminalElement.clientWidth > 0 &&
         terminalElement.clientHeight > 0;
 }
 
-// Fits the terminal to its box, and reports whether that box was one worth measuring. A size taken from
-// an unarranged viewport is applied to the live pty and destroys the output already on its screen.
+// Fits the terminal to its box, and reports whether that box was one worth measuring.
 function fitTerminal() {
-    if (!isArranged()) {
+    if (!canMeasure()) {
         return false;
     }
 
@@ -117,7 +114,7 @@ if (terminalRows) {
 const RAIL_STACK_FALLBACK = 400;
 
 // The narrowest a laid-out document can be, mirroring WorkspaceConstants.DocumentMinWidth and
-// --cel-document-min-width. A WebView that has not been arranged reports a viewport far below it.
+// --cel-document-min-width.
 const DOCUMENT_MIN_WIDTH = 230;
 
 // DOM references.
@@ -203,7 +200,37 @@ client.onNotification('console/startupComplete', () => {
 });
 
 term.onData((data) => client.sendNotification('console/input', { data }));
-term.onResize(({ cols, rows }) => client.sendNotification('console/resize', { cols, rows }));
+
+// A resize the session asked for is not one to report back: the session is already at that size.
+let adoptingSessionSize = false;
+
+term.onResize(({ cols, rows }) => {
+    if (adoptingSessionSize) {
+        return;
+    }
+
+    client.sendNotification('console/resize', { cols, rows });
+});
+
+// Resizes the terminal to the size the session painted its buffered output at, so nothing is rewrapped.
+// Anything but a positive whole number of cells is not a size a terminal has, and the size it is already at
+// is not worth taking.
+function adoptSessionSize(cols, rows) {
+    if (!Number.isInteger(cols) ||
+        !Number.isInteger(rows) ||
+        cols <= 0 ||
+        rows <= 0 ||
+        (cols === term.cols && rows === term.rows)) {
+        return;
+    }
+
+    adoptingSessionSize = true;
+    try {
+        term.resize(cols, rows);
+    } finally {
+        adoptingSessionSize = false;
+    }
+}
 
 // Whether the terminal is the view on screen. The settings form replaces it, and its fields are ordinary
 // controls the platform edits itself.
@@ -295,8 +322,7 @@ term.attachCustomKeyEventHandler((event) => {
 
 window.addEventListener('resize', refitTerminal);
 
-// A tab shown for the first time arranges its WebView, which is where a page restored into a background
-// tab gets its real viewport.
+// A page hidden with its tab has no size to fit to.
 document.addEventListener('visibilitychange', refitTerminal);
 
 // Refit the terminal whenever the space it occupies changes, coalesced to one fit per frame.
@@ -789,7 +815,12 @@ function applyWritableState() {
     renderBuiltInRunners();
 }
 
-client.viewState.onChanged(() => applyWritableState());
+client.viewState.onChanged(() => {
+    applyWritableState();
+
+    // The host reports the geometry this view will be read at, so a fit only counts from here.
+    refitTerminal();
+});
 
 // Reopening from settings shows the terminal first. A reopen measures the terminal for the size it gives the
 // new pty and paints a failed start into it, and neither works while it is the hidden half of the row.
@@ -902,13 +933,24 @@ function clearVeilTimers() {
     }
 }
 
-// How long the attach waits for the view to be arranged. A view that takes a moment to lay out is worth
-// waiting for. One that never lays out is not.
+// How long the attach waits for the view's size to settle before launching the session at whatever it has.
 const ARRANGE_TIMEOUT_MS = 4000;
 
-// The pty is created at the terminal's measured size, so measure only once the layout has settled. On
-// application startup the WebView is still being laid out when this script runs, and a resize that lands
-// after the shell has painted makes ConPTY reflow its buffer, which shows up as a block of blank lines.
+// How often the size is sampled while the page is off screen, where there are no animation frames.
+const HIDDEN_SAMPLE_MS = 100;
+
+// The next moment worth measuring at. A hidden page's geometry only changes when the host sizes its
+// surface, so a timer samples it.
+function nextSizeSample() {
+    if (document.hidden) {
+        return new Promise((resolve) => setTimeout(resolve, HIDDEN_SAMPLE_MS));
+    }
+
+    return new Promise((resolve) => requestAnimationFrame(resolve));
+}
+
+// The pty is created at the terminal's measured size, so measure only once the layout has settled. A resize
+// that lands after the shell has painted costs the screen the output already on it.
 async function waitForStableSize() {
     let waiting = true;
 
@@ -916,14 +958,12 @@ async function waitForStableSize() {
         let previousWidth = -1;
         let previousHeight = -1;
 
-        // The size the attach carries is the size the host creates the pty at, so this runs until the view
-        // is arranged and the size it reports is the one it will be read at.
         while (waiting) {
-            await new Promise((resolve) => requestAnimationFrame(resolve));
+            await nextSizeSample();
 
             const width = terminalView.clientWidth;
             const height = terminalView.clientHeight;
-            if (isArranged() && width > 0 && height > 0 && width === previousWidth && height === previousHeight) {
+            if (canMeasure() && width > 0 && height > 0 && width === previousWidth && height === previousHeight) {
                 return;
             }
 
@@ -932,16 +972,14 @@ async function waitForStableSize() {
         }
     })();
 
-    // Animation frames stop entirely while the document is hidden, so the measurement can never be what
-    // gates the launch: a timer keeps the session starting even when the frames never arrive.
+    // A timer keeps the session starting even when the size never settles.
     const deadline = new Promise((resolve) => setTimeout(resolve, ARRANGE_TIMEOUT_MS));
 
     await Promise.race([settled, deadline]);
     waiting = false;
 }
 
-// The terminal size an attach or reopen carries. Zero means the view has not been arranged, which leaves
-// the session at its launch size until a refit reports a real one.
+// The terminal size an attach or reopen carries. Zero means there was no box to measure.
 function terminalSize(isSized) {
     if (!isSized) {
         return { cols: 0, rows: 0 };
@@ -979,6 +1017,7 @@ function applyAttachResult(result) {
     }
 
     if (result.replay) {
+        adoptSessionSize(result.cols, result.rows);
         term.write(result.replay);
     }
 
@@ -988,7 +1027,9 @@ function applyAttachResult(result) {
         return;
     }
 
-    if (result.startupPending) {
+    // A session that has not launched yet has nothing on its screen to show, and reports no startup phase
+    // until it reaches one.
+    if (result.startupPending || result.state === 'starting') {
         showStartingVeil();
         armVeilTimeout(VEIL_BACKSTOP_MS);
     } else {
