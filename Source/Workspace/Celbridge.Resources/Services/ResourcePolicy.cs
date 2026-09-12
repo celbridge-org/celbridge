@@ -71,17 +71,16 @@ public sealed class ResourcePolicy : IResourcePolicy
             return Result.Ok();
         }
 
-        // A reserved name is reserved whatever kind of entry sits at that path, so
-        // every rule is tested as both a file and a folder rather than trusting the
-        // caller's hint.
+        // A reserved name is reserved whatever kind of entry sits at that path.
+        // CompileReservedMatcher refuses a folders-only pattern, so the caller's hint
+        // cannot change a system verdict.
         foreach (var rule in _systemDeny)
         {
             if ((rule.GatedActions & action) != action)
             {
                 continue;
             }
-            if (rule.Matcher.IsMatch(path, isFolder: true)
-                || rule.Matcher.IsMatch(path, isFolder: false))
+            if (rule.Matcher.IsMatch(path, isFolder))
             {
                 var error = new PolicyDenialError(resource, action, rule);
                 return Result.Fail(error.Message).WithException(error);
@@ -113,6 +112,22 @@ public sealed class ResourcePolicy : IResourcePolicy
         return patterns.IsMatch(resource.Path, isFolder);
     }
 
+    // A system rule reserves a name rather than a kind of entry, so a folders-only
+    // pattern would be written and then ignored at evaluation. The rule set is
+    // hardcoded, so this rejects a mistake in this file rather than any user input.
+    internal static ResourcePathMatcher CompileReservedMatcher(string pattern)
+    {
+        var matcher = ResourcePathMatcher.Compile(pattern);
+        if (matcher.Target == PathMatchTarget.FoldersOnly)
+        {
+            throw new ArgumentException(
+                $"A system deny pattern cannot be folders-only: '{pattern}'. Drop the trailing slash, which a system rule does not honour.",
+                nameof(pattern));
+        }
+
+        return matcher;
+    }
+
     private static List<CompiledPolicyRule> BuildSystemDenyRules()
     {
         var rules = new List<CompiledPolicyRule>();
@@ -125,28 +140,28 @@ public sealed class ResourcePolicy : IResourcePolicy
             pattern: ".celbridge",
             gatedActions: ResourceAction.Read | ResourceAction.Write,
             description: "The project metadata folder is reserved by Celbridge and cannot be addressed as a resource.",
-            matcher: ResourcePathMatcher.Compile(".celbridge")));
+            matcher: CompileReservedMatcher(".celbridge")));
 
         rules.Add(new CompiledPolicyRule(
             source: PolicyRuleSource.SystemDeny,
             pattern: ".celbridge/**",
             gatedActions: ResourceAction.Read | ResourceAction.Write,
             description: "Files under the project metadata folder are reserved by Celbridge.",
-            matcher: ResourcePathMatcher.Compile(".celbridge/**")));
+            matcher: CompileReservedMatcher(".celbridge/**")));
 
         rules.Add(new CompiledPolicyRule(
             source: PolicyRuleSource.SystemDeny,
             pattern: ".git",
             gatedActions: ResourceAction.Read | ResourceAction.Write,
             description: "The Git metadata folder is reserved and cannot be addressed as a resource.",
-            matcher: ResourcePathMatcher.Compile(".git")));
+            matcher: CompileReservedMatcher(".git")));
 
         rules.Add(new CompiledPolicyRule(
             source: PolicyRuleSource.SystemDeny,
             pattern: ".git/**",
             gatedActions: ResourceAction.Read | ResourceAction.Write,
             description: "Files under the Git metadata folder are reserved.",
-            matcher: ResourcePathMatcher.Compile(".git/**")));
+            matcher: CompileReservedMatcher(".git/**")));
 
         return rules;
     }

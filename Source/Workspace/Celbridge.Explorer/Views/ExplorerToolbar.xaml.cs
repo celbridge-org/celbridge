@@ -7,6 +7,10 @@ public sealed partial class ExplorerToolbar : UserControl
 {
     private readonly IStringLocalizer _stringLocalizer;
 
+    // The named children the state applies to exist only once InitializeComponent has run, and the
+    // property can be set from markup before then.
+    private bool _initialized;
+
     public static readonly DependencyProperty ShowHiddenFilesProperty = DependencyProperty.Register(
         nameof(ShowHiddenFiles),
         typeof(bool),
@@ -42,6 +46,8 @@ public sealed partial class ExplorerToolbar : UserControl
 
         InitializeComponent();
 
+        _initialized = true;
+
         ApplyShowHiddenFilesState();
     }
 
@@ -56,6 +62,11 @@ public sealed partial class ExplorerToolbar : UserControl
     // The glyph names what the tree is doing now, and the tooltip names what clicking does next.
     private void ApplyShowHiddenFilesState()
     {
+        if (!_initialized)
+        {
+            return;
+        }
+
         ShowHiddenFilesIcon.Symbol = ShowHiddenFiles ? IconSymbol.Visible : IconSymbol.Hidden;
 
         var tooltipKey = ShowHiddenFiles

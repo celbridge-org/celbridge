@@ -54,8 +54,8 @@ public sealed class ProjectConfigDraft
     }
 
     /// <summary>
-    /// Replaces the patterns hidden from the Explorer tree. The section edits the whole list, because
-    /// adding, deleting and editing a row all rewrite it.
+    /// Replaces the patterns hidden from the Explorer tree. The section edits the list as one block of
+    /// text, so every edit rewrites the whole list.
     /// </summary>
     public void SetHidePatterns(IReadOnlyList<string> patterns)
     {
@@ -228,7 +228,7 @@ public sealed class ProjectConfigDraft
                 ProjectVersion = _projectVersion,
                 Description = _description,
             },
-            Resources = _source.Resources with
+            Resources = new ResourcesSection
             {
                 Hide = PopulatedPatterns(_hide),
                 SearchExclude = PopulatedPatterns(_searchExclude),
@@ -247,8 +247,8 @@ public sealed class ProjectConfigDraft
         return ProjectConfigSerializer.Serialize(ToConfig());
     }
 
-    // A blank pattern matches nothing, so it is dropped rather than written as an empty entry. The row the
-    // user is still typing into stays on screen either way.
+    // A blank pattern matches nothing, so it is dropped rather than written as an empty entry. The blank
+    // line the user is still typing into stays in the text box either way.
     private static IReadOnlyList<string> PopulatedPatterns(IReadOnlyList<string> patterns)
     {
         return patterns

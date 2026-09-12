@@ -2,7 +2,7 @@ namespace Celbridge.Resources;
 
 /// <summary>
 /// The actions a caller may attempt against a resource. The policy engine
-/// evaluates one action per call. Read gates content access; Write gates every
+/// evaluates one action per call. Read gates content access. Write gates every
 /// mutating operation.
 /// </summary>
 [Flags]

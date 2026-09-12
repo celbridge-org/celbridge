@@ -1,6 +1,7 @@
 using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
+using Celbridge.Utilities;
 
 namespace Celbridge.Tests.Resources;
 
@@ -152,5 +153,22 @@ public class ResourcePolicyTests
 
         policy.IsHidden(new ResourceKey("logs:run.log"), isFolder: false).Should().BeFalse();
         policy.IsSearchExcluded(new ResourceKey("logs:run.log"), isFolder: false).Should().BeFalse();
+    }
+
+    [Test]
+    public void ReservedMatcher_RejectsAFoldersOnlyPattern()
+    {
+        // Evaluate passes the caller's isFolder hint straight through, so a trailing slash would be
+        // written into the rule set and then quietly do nothing. It is refused at compile time instead.
+        var compile = () => ResourcePolicy.CompileReservedMatcher(".svn/");
+
+        compile.Should().Throw<ArgumentException>().WithMessage("*folders-only*");
+    }
+
+    [Test]
+    public void ReservedMatcher_AcceptsTheShapesTheRuleSetUses()
+    {
+        ResourcePolicy.CompileReservedMatcher(".git").Target.Should().Be(PathMatchTarget.Any);
+        ResourcePolicy.CompileReservedMatcher(".git/**").Target.Should().Be(PathMatchTarget.Any);
     }
 }

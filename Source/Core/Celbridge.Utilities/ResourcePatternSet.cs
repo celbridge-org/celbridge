@@ -9,14 +9,14 @@ public sealed class ResourcePatternSet
 {
     private readonly IReadOnlyList<ResourcePathMatcher> _matchers;
 
-    /// <summary>
-    /// A set with no patterns, which matches nothing.
-    /// </summary>
-    public static ResourcePatternSet Empty { get; } = new(Array.Empty<ResourcePathMatcher>());
+    // A single-segment pattern already matches that segment anywhere in the path, so
+    // only the patterns naming a path need testing against each ancestor prefix.
+    private readonly IReadOnlyList<ResourcePathMatcher> _pathMatchers;
 
     private ResourcePatternSet(IReadOnlyList<ResourcePathMatcher> matchers)
     {
         _matchers = matchers;
+        _pathMatchers = matchers.Where(matcher => !matcher.MatchesAtAnyDepth).ToList();
     }
 
     /// <summary>
@@ -51,9 +51,14 @@ public sealed class ResourcePatternSet
             return false;
         }
 
-        if (MatchesAny(resourcePath, isFolder))
+        if (MatchesAny(_matchers, resourcePath, isFolder))
         {
             return true;
+        }
+
+        if (_pathMatchers.Count == 0)
+        {
+            return false;
         }
 
         // A matched folder takes its subtree with it, so each ancestor prefix is
@@ -68,7 +73,7 @@ public sealed class ResourcePatternSet
             }
 
             var ancestor = resourcePath.Substring(0, slashIndex);
-            if (MatchesAny(ancestor, isFolder: true))
+            if (MatchesAny(_pathMatchers, ancestor, isFolder: true))
             {
                 return true;
             }
@@ -77,9 +82,9 @@ public sealed class ResourcePatternSet
         }
     }
 
-    private bool MatchesAny(string resourcePath, bool isFolder)
+    private static bool MatchesAny(IReadOnlyList<ResourcePathMatcher> matchers, string resourcePath, bool isFolder)
     {
-        foreach (var matcher in _matchers)
+        foreach (var matcher in matchers)
         {
             if (matcher.IsMatch(resourcePath, isFolder))
             {

@@ -11,8 +11,8 @@ namespace Celbridge.Tests.Resources;
 
 /// <summary>
 /// Builds a ProjectTreeBuilder wired to a real LocalResourceFileSystem over the
-/// supplied project folder. By default the [celbridge.resources] settings are empty;
-/// pass searchExcludePatterns to bound the walk. The builder enumerates through the
+/// supplied project folder. By default the [celbridge.resources] settings are empty.
+/// Pass searchExcludePatterns to bound the walk. The builder enumerates through the
 /// gateway, so the helper stands up the resource file system and a registry that
 /// resolves keys to paths under the project folder.
 /// </summary>
