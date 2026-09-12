@@ -42,6 +42,13 @@ public interface IWebViewAdapter
     bool ProvidesBuiltInFind { get; }
 
     /// <summary>
+    /// Whether a surface can be given the geometry its page reads as its viewport before the platform has
+    /// arranged it. Where it cannot, a page that has not been shown has no size to report and reports none
+    /// until it is.
+    /// </summary>
+    bool CanSizeUnarrangedViewport { get; }
+
+    /// <summary>
     /// True when browsing data can be cleared while the application runs, taking effect immediately and
     /// without closing anything. True on the packaged Windows head, through CoreWebView2.Profile, and on the
     /// macOS Skia head, through the native WKWebsiteDataStore. False on the Windows and Linux Skia heads,
@@ -68,6 +75,14 @@ public interface IWebViewAdapter
     /// WKWebView teardown SPI, which the managed Close() does not reach on the Skia head.
     /// </summary>
     void CloseWebView(WebView2 webView, Panel? container);
+
+    /// <summary>
+    /// Sets the geometry the hosted page reads as its viewport, and returns whether it was applied. Callers
+    /// pass the size the control has been arranged at, or the size it will be arranged at once it is shown.
+    /// Returns false where the platform keeps the page's viewport in step with the control itself, in which
+    /// case a page that has not been arranged reports whatever geometry the platform left it with.
+    /// </summary>
+    bool SetViewportSize(WebView2 webView, double width, double height);
 
     /// <summary>
     /// Gives the hosted web content keyboard focus, reproducing what a click inside the view establishes.

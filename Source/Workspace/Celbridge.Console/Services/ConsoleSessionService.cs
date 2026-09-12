@@ -3,6 +3,7 @@ using Celbridge.Documents;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Server;
+using Celbridge.WebHost;
 using Celbridge.Workspace;
 
 namespace Celbridge.Console.Services;
@@ -20,6 +21,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
     private const int DefaultCols = 120;
     private const int DefaultRows = 30;
 
+    private readonly IWebViewAdapter _webViewAdapter;
     private readonly IServiceProvider _serviceProvider;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IMessengerService _messengerService;
@@ -50,6 +52,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         _workspaceWrapper = workspaceWrapper;
         _messengerService = messengerService;
         _logger = logger;
+        _webViewAdapter = ServiceLocator.AcquireService<IWebViewAdapter>();
 
         _sessionProviders = ResolveSessionProviders(serviceProvider);
         _sessionTypes = _sessionProviders.Select(provider => provider.SessionType).ToList();
@@ -141,6 +144,17 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         }
     }
 
+    // Launches the session, waiting for that launch only when this caller supplied the size it is waiting
+    // for. A view that has not been arranged supplies none and unblocks the launch moments later over its
+    // own resize notification, so waiting here would hold the caller's request open for the whole of the
+    // launch's wait and time it out.
+    private Task StartSessionForViewAsync(ConsoleSession session, ResourceKey resource, int cols, int rows)
+    {
+        var starting = StartSessionAsync(session, resource);
+
+        return cols > 0 && rows > 0 ? starting : Task.CompletedTask;
+    }
+
     public async Task<ConsoleAttachSnapshot> AttachAsync(ResourceKey resource, IConsoleView attachedView, int cols, int rows)
     {
         var session = GetOrCreateSession(resource);
@@ -153,7 +167,15 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         // awaiting it first would leave the launch and the attach waiting on each other.
         session.Resize(cols, rows);
 
-        await StartSessionAsync(session, resource);
+        if ((cols <= 0 || rows <= 0) &&
+            !_webViewAdapter.CanSizeUnarrangedViewport)
+        {
+            // This view has been laid out as far as it is going to be until it is shown, and the host cannot
+            // give it a viewport in the meantime, so there is no size coming for the launch to wait for.
+            session.ReportNoViewSize();
+        }
+
+        await StartSessionForViewAsync(session, resource, cols, rows);
 
         // Applied again now the pty exists. A launch that timed out waiting created it at the fallback size.
         session.Resize(cols, rows);
@@ -168,6 +190,8 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
             "The console session is not available.",
             false,
             string.Empty,
+            0,
+            0,
             null);
     }
 
@@ -207,11 +231,18 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
 
             session.Resize(cols, rows);
 
-            await StartSessionAsync(session, resource);
+            await StartSessionForViewAsync(session, resource, cols, rows);
 
             session.Resize(cols, rows);
 
-            return new ConsoleAttachSnapshot(session.State, session.Error, false, string.Empty, session.LaunchedConfigToml);
+            return new ConsoleAttachSnapshot(
+                session.State,
+                session.Error,
+                false,
+                string.Empty,
+                session.TerminalSize.Cols,
+                session.TerminalSize.Rows,
+                session.LaunchedConfigToml);
         }
 
         return await AttachAsync(resource, previousView, cols, rows);
