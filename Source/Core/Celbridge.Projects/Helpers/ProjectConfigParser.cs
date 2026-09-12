@@ -27,6 +27,9 @@ public static class ProjectConfigParser
     private const string FeaturesKey = "features";
     private const string ResourcesKey = "resources";
 
+    private const string HideKey = "hide";
+    private const string SearchExcludeKey = "search-exclude";
+
     private const string DocumentShortcutResourceKey = "resource";
     private const string DocumentShortcutIconKey = "icon";
     private const string DocumentShortcutAreaKey = "area";
@@ -50,10 +53,8 @@ public static class ProjectConfigParser
 
     private static readonly IReadOnlySet<string> KnownResourcesKeys = new HashSet<string>(StringComparer.Ordinal)
     {
-        "ignore-file",
-        "add",
-        "remove",
-        "lock",
+        HideKey,
+        SearchExcludeKey,
     };
 
     private static readonly IReadOnlySet<string> KnownDocumentShortcutKeys = new HashSet<string>(StringComparer.Ordinal)
@@ -338,10 +339,8 @@ public static class ProjectConfigParser
 
                 resourcesSection = resourcesSection with
                 {
-                    IgnoreFile = ReadString(resourcesTable, "ignore-file") ?? resourcesSection.IgnoreFile,
-                    Add = ReadStringList(resourcesTable, "add") ?? resourcesSection.Add,
-                    Remove = ReadStringList(resourcesTable, "remove") ?? resourcesSection.Remove,
-                    Lock = ReadStringList(resourcesTable, "lock") ?? resourcesSection.Lock,
+                    Hide = ReadStringList(resourcesTable, HideKey) ?? resourcesSection.Hide,
+                    SearchExclude = ReadStringList(resourcesTable, SearchExcludeKey) ?? resourcesSection.SearchExclude,
                 };
             }
             else
@@ -558,7 +557,7 @@ public static class ProjectConfigParser
 
     // Returns the string value for the key, or null when the key is absent or
     // not a string. An empty string in the config is returned as-is so callers
-    // can distinguish "set to empty" from "not set" (e.g. ignore-file = "").
+    // can distinguish "set to empty" from "not set".
     private static string? ReadString(TomlTable table, string key)
     {
         if (table.TryGetValue(key, out var value)

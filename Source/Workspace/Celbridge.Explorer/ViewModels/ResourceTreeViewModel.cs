@@ -20,6 +20,8 @@ public partial class ResourceTreeViewModel : ObservableObject
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IPlatformInfo _platformInfo;
     private readonly IResourceRegistry _resourceRegistry;
+    private readonly IResourcePolicy _resourcePolicy;
+    private readonly IBindableWorkspaceSettings _workspaceSettings;
     private readonly IFolderStateService _folderStateService;
     private readonly IDataTransferService _dataTransferService;
 
@@ -73,6 +75,8 @@ public partial class ResourceTreeViewModel : ObservableObject
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        _resourcePolicy = workspaceWrapper.WorkspaceService.ResourceService.Policy;
+        _workspaceSettings = workspaceWrapper.WorkspaceService.BindableWorkspaceSettings;
         _folderStateService = workspaceWrapper.WorkspaceService.ExplorerService.FolderStateService;
         _dataTransferService = workspaceWrapper.WorkspaceService.DataTransferService;
     }
@@ -130,6 +134,23 @@ public partial class ResourceTreeViewModel : ObservableObject
     //
     // Tree population
     //
+
+    /// <summary>
+    /// Whether the tree draws the resources the project's hide patterns match.
+    /// </summary>
+    public bool ShowHiddenFiles => _workspaceSettings.ShowHiddenFiles;
+
+    /// <summary>
+    /// Shows or stops showing the hidden resources. A view filter over data the tree already holds, so
+    /// nothing reloads.
+    /// </summary>
+    public void ToggleShowHiddenFiles()
+    {
+        _workspaceSettings.ShowHiddenFiles = !_workspaceSettings.ShowHiddenFiles;
+        OnPropertyChanged(nameof(ShowHiddenFiles));
+
+        RebuildResourceTree();
+    }
 
     /// <summary>
     /// Rebuilds the flat list from the current resource registry state.
@@ -247,17 +268,30 @@ public partial class ResourceTreeViewModel : ObservableObject
         List<ResourceViewItem> items,
         int indentLevel)
     {
+        var showHiddenFiles = ShowHiddenFiles;
+
         foreach (var resource in resources)
         {
             var readOnlyMessage = ReadOnlyMessageHelper.GetReadOnlyMessage(resource.WritableState, _stringLocalizer);
+            var resourceKey = _resourceRegistry.GetResourceKey(resource);
+            var isFolder = resource is IFolderResource;
+
+            // Hiding is a filter over the tree alone, so a hidden resource is still in the registry and
+            // still readable and writable. Shown hidden rows dim, which makes the toggle a live preview
+            // of the project's hide list.
+            var isHidden = _resourcePolicy.IsHidden(resourceKey, isFolder);
+            if (isHidden
+                && !showHiddenFiles)
+            {
+                continue;
+            }
 
             if (resource is IFolderResource folderResource)
             {
                 var hasChildren = folderResource.Children.Count > 0;
-                var resourceKey = _resourceRegistry.GetResourceKey(folderResource);
                 var isExpanded = _folderStateService.IsExpanded(resourceKey);
 
-                var item = new ResourceViewItem(resource, indentLevel, isExpanded, hasChildren, readOnlyMessage: readOnlyMessage);
+                var item = new ResourceViewItem(resource, indentLevel, isExpanded, hasChildren, isHidden: isHidden, readOnlyMessage: readOnlyMessage);
                 items.Add(item);
 
                 // Only add children if the folder is expanded
@@ -277,7 +311,7 @@ public partial class ResourceTreeViewModel : ObservableObject
                     continue;
                 }
 
-                var item = new ResourceViewItem(resource, indentLevel, false, false, readOnlyMessage: readOnlyMessage);
+                var item = new ResourceViewItem(resource, indentLevel, false, false, isHidden: isHidden, readOnlyMessage: readOnlyMessage);
                 items.Add(item);
             }
         }

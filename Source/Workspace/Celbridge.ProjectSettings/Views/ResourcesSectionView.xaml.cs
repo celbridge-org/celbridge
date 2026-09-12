@@ -2,13 +2,17 @@ using Celbridge.ProjectSettings.ViewModels;
 
 namespace Celbridge.ProjectSettings.Views;
 
-public sealed partial class PagesSectionView : UserControl
+/// <summary>
+/// The Resources section of the Project Settings: the patterns the Explorer hides and the patterns search
+/// skips, each edited as a block of glob patterns, one per line.
+/// </summary>
+public sealed partial class ResourcesSectionView : UserControl
 {
-    private PagesSectionViewModel? _viewModel;
+    private ResourcesSectionViewModel? _viewModel;
 
     // Supplied by the panel that owns this section. Assigning it refreshes the bindings so the section
     // populates once the panel hands over its instance.
-    public PagesSectionViewModel? ViewModel
+    public ResourcesSectionViewModel? ViewModel
     {
         get => _viewModel;
         set
@@ -18,7 +22,7 @@ public sealed partial class PagesSectionView : UserControl
         }
     }
 
-    public PagesSectionView()
+    public ResourcesSectionView()
     {
         InitializeComponent();
     }

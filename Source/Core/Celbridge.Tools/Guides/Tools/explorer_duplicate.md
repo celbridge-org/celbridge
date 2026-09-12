@@ -21,7 +21,7 @@ Silent form: a JSON payload with the new resource key:
 
 Dialog form: `"ok"` on success. If the user cancels the dialog, the result is still success and nothing is duplicated.
 
-Duplicate copies a single resource, so unlike the batch-oriented `explorer_copy` it has no partial-success state: if the duplicate is refused (the parent folder is frozen by `[resources].lock`, sits under a read-only root, or the generated name is hidden by the project's resource policy) the tool returns an error with the reason, and no resource is created.
+Duplicate copies a single resource, so unlike the batch-oriented `explorer_copy` it has no partial-success state: if the duplicate is refused (the parent folder is reserved or sits under a read-only root) the tool returns an error with the reason, and no resource is created.
 
 ## Gotchas
 

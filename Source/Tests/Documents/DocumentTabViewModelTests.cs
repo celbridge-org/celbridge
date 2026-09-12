@@ -108,7 +108,7 @@ public class DocumentTabViewModelTests
         documentView.HasUnsavedChanges.Returns(true);
         documentView.SaveAsync().Returns(Task.FromResult<Result>(Result.Fail("simulated save failure")));
 
-        var viewModel = CreateViewModel(new ResourceKey("locked.md"), documentView);
+        var viewModel = CreateViewModel(new ResourceKey("readonly.md"), documentView);
 
         var result = await viewModel.CloseDocument(forceClose: false);
 
@@ -177,9 +177,9 @@ public class DocumentTabViewModelTests
         documentView.CanClose().Returns(Task.FromResult(true));
         documentView.HasUnsavedChanges.Returns(true);
         documentView.SaveAsync().Returns(Task.FromResult<Result>(Result.Fail("simulated save failure")));
-        documentView.WritableState.Returns(WritableState.Locked);
+        documentView.WritableState.Returns(WritableState.ReadOnlyAttribute);
 
-        var viewModel = CreateViewModel(new ResourceKey("locked.md"), documentView);
+        var viewModel = CreateViewModel(new ResourceKey("readonly.md"), documentView);
 
         await viewModel.CloseDocument(forceClose: false);
 
@@ -260,6 +260,48 @@ public class DocumentTabViewModelTests
     }
 
     [Test]
+    public async Task CloseDocument_AnnouncesDiscardedEdits_WhenTheFileIsGone()
+    {
+        // An external folder rename force-closes the documents inside it, and their edits have nowhere
+        // left to go. Silently dropping them is the one outcome the user cannot recover from.
+        var fileResource = new ResourceKey("renamed/notes.md");
+        var documentView = Substitute.For<IDocumentView>();
+        documentView.CanClose().Returns(Task.FromResult(true));
+        documentView.HasUnsavedChanges.Returns(true);
+        StubFileIsGone();
+
+        var viewModel = CreateViewModel(fileResource, documentView);
+
+        var discardedResources = RecordDiscardedResources(out var probe);
+
+        await viewModel.CloseDocument(forceClose: true);
+
+        _messengerService.UnregisterAll(probe);
+
+        discardedResources.Should().Equal(new[] { fileResource });
+        await documentView.DidNotReceive().SaveAsync();
+    }
+
+    [Test]
+    public async Task CloseDocument_AnnouncesNothing_WhenTheFileIsGoneWithNoPendingEdits()
+    {
+        var documentView = Substitute.For<IDocumentView>();
+        documentView.CanClose().Returns(Task.FromResult(true));
+        documentView.HasUnsavedChanges.Returns(false);
+        StubFileIsGone();
+
+        var viewModel = CreateViewModel(new ResourceKey("deleted.md"), documentView);
+
+        var discardedResources = RecordDiscardedResources(out var probe);
+
+        await viewModel.CloseDocument(forceClose: true);
+
+        _messengerService.UnregisterAll(probe);
+
+        discardedResources.Should().BeEmpty("a deliberate delete of a saved document discards nothing");
+    }
+
+    [Test]
     public async Task CloseDocument_DoesNotAnnounceDiscardedEdits_ForADockedUtility()
     {
         var viewModel = CreateViewModel(new ResourceKey("locked.md"), CreateUnwritableDocumentView());
@@ -325,9 +367,15 @@ public class DocumentTabViewModelTests
         documentView.CanClose().Returns(Task.FromResult(true));
         documentView.HasUnsavedChanges.Returns(true);
         documentView.SaveAsync().Returns(Task.FromResult<Result>(Result.Fail("simulated save failure")));
-        documentView.WritableState.Returns(WritableState.Locked);
+        documentView.WritableState.Returns(WritableState.ReadOnlyAttribute);
 
         return documentView;
+    }
+
+    private void StubFileIsGone()
+    {
+        var missingFileInfo = new StorageItemInfo(StorageItemKind.NotFound, 0, default, FileSystemAttributes.None);
+        _resourceFileSystem.GetInfoAsync(Arg.Any<ResourceKey>()).Returns(Result<StorageItemInfo>.Ok(missingFileInfo));
     }
 
     private List<ResourceKey> RecordDiscardedResources(out object probe)

@@ -29,24 +29,6 @@ public class ResourcePickerItemTests
     }
 
     [Test]
-    public void Locked_ResourceProducesDimmedOpacityAndTooltip()
-    {
-        var resource = Substitute.For<IResource>();
-        resource.WritableState.Returns(WritableState.Locked);
-
-        var item = new ResourcePickerItem(
-            resource,
-            new ResourceKey("Data/frozen.bin"),
-            Icon,
-            readOnlyMessage: "Locked by project configuration.");
-
-        item.IsReadOnly.Should().BeTrue();
-        item.IsWritable.Should().BeFalse();
-        item.TooltipText.Should().Be("Locked by project configuration.");
-        item.ReadOnlyMessage.Should().Be("Locked by project configuration.");
-    }
-
-    [Test]
     public void ReadOnlyAttribute_ResourceProducesDimmedOpacityAndTooltip()
     {
         var resource = Substitute.For<IResource>();
@@ -61,6 +43,7 @@ public class ResourcePickerItemTests
         item.IsReadOnly.Should().BeTrue();
         item.IsWritable.Should().BeFalse();
         item.TooltipText.Should().Be("File is read-only on disk.");
+        item.ReadOnlyMessage.Should().Be("File is read-only on disk.");
     }
 
     [Test]

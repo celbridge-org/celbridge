@@ -13,6 +13,7 @@ public readonly record struct ResourceViewItemAppearance(
     bool HasChildren,
     bool IsExpanded,
     bool IsProjectFolder,
+    bool IsHidden,
     WritableState WritableState,
     string ReadOnlyMessage,
     string ProjectFolderTooltip);
@@ -100,10 +101,17 @@ public partial class ResourceViewItem : ObservableObject
     public bool IsReadOnly => WritableState != WritableState.Writable;
 
     /// <summary>
-    /// Whether the resource accepts edits. Drives the dimmed-opacity binding for
-    /// the icon and name, which dim when the resource is read-only.
+    /// Whether the project's hide patterns match the resource, so the row is only
+    /// on screen because Show Hidden Files is on.
     /// </summary>
-    public bool IsWritable => !IsReadOnly;
+    public bool IsHidden { get; }
+
+    /// <summary>
+    /// Whether the row is drawn set apart from the rest of the tree. Read-only and
+    /// hidden resources both dim, which is the same signal for both: the row is
+    /// there but is not one you are working on.
+    /// </summary>
+    public bool IsDimmed => IsReadOnly || IsHidden;
 
     /// <summary>
     /// Localised explanation of why the resource is read-only. Empty when
@@ -149,6 +157,7 @@ public partial class ResourceViewItem : ObservableObject
         HasChildren,
         IsExpanded,
         IsProjectFolder,
+        IsHidden,
         WritableState,
         ReadOnlyMessage,
         ProjectFolderTooltip);
@@ -162,6 +171,7 @@ public partial class ResourceViewItem : ObservableObject
         bool isExpanded,
         bool hasChildren,
         bool isProjectFolder = false,
+        bool isHidden = false,
         string? displayName = null,
         string? readOnlyMessage = null,
         string? projectFolderTooltip = null)
@@ -171,6 +181,7 @@ public partial class ResourceViewItem : ObservableObject
         _isExpanded = isExpanded;
         HasChildren = hasChildren;
         IsProjectFolder = isProjectFolder;
+        IsHidden = isHidden;
         Name = displayName ?? resource.Name;
         ReadOnlyMessage = readOnlyMessage ?? string.Empty;
         ProjectFolderTooltip = projectFolderTooltip ?? string.Empty;

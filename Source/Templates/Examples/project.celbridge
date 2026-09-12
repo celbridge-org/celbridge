@@ -2,11 +2,8 @@
 celbridge-version = "<application-version>"
 project-version = "0.1.0"
 
-# Includes the files and folders the ignore-file allows, plus 'add', minus 'remove'.
-# 'lock' freezes resources so they can't be edited, moved, or deleted.
-# File patterns are globs, e.g. "Python/.venv/**"
+# 'hide' keeps resources out of the Explorer tree. 'search-exclude' also keeps them out of search.
+# Both take glob patterns, e.g. "Python/.venv/**".
 [celbridge.resources]
-ignore-file = ".gitignore"
-add = []
-remove = [".gitignore"]
-lock = []
+hide = [".gitignore"]
+search-exclude = ["node_modules", "bin", "obj", "dist", ".venv", "__pycache__"]

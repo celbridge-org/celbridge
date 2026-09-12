@@ -60,6 +60,12 @@ public sealed class BindableWorkspaceSettings : IBindableWorkspaceSettings
         set => Set(SettingCatalog.Layout.BottomAreaAlignment, value);
     }
 
+    public bool ShowHiddenFiles
+    {
+        get => Get(SettingCatalog.Explorer.ShowHiddenFiles);
+        set => Set(SettingCatalog.Explorer.ShowHiddenFiles, value);
+    }
+
     public bool SearchMatchCase
     {
         get => Get(SettingCatalog.Search.MatchCase);

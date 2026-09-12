@@ -56,5 +56,7 @@ public enum IconSymbol
     Examples,
     Book,
     Link,
+    Visible,
+    Hidden,
     Exit
 }

@@ -141,10 +141,10 @@ describe('EditorController.handleExternalChange', () => {
         await controller.initializeHost({ onWritableStateChanged });
         expect(__capturedHandlers.onViewStateChanged).toBeTypeOf('function');
 
-        __capturedHandlers.onViewStateChanged({ writable: 'Locked' });
+        __capturedHandlers.onViewStateChanged({ writable: 'ReadOnlyAttribute' });
 
         expect(editor.updateOptions).toHaveBeenCalledWith({ readOnly: true });
-        expect(onWritableStateChanged).toHaveBeenCalledWith({ state: 'Locked', readOnly: true });
+        expect(onWritableStateChanged).toHaveBeenCalledWith({ state: 'ReadOnlyAttribute', readOnly: true });
 
         __capturedHandlers.onViewStateChanged({ writable: 'Writable' });
 
@@ -228,7 +228,7 @@ describe('EditorController edit availability', () => {
     }
 
     it('withholds the mutating verbs while the document is read-only', () => {
-        __capturedHandlers.onViewStateChanged({ writable: 'Locked' });
+        __capturedHandlers.onViewStateChanged({ writable: 'ReadOnlyAttribute' });
 
         expect(reportedAvailability()).toMatchObject({
             canCut: false,
@@ -240,7 +240,7 @@ describe('EditorController edit availability', () => {
     });
 
     it('still offers copy and select all while the document is read-only', () => {
-        __capturedHandlers.onViewStateChanged({ writable: 'Locked' });
+        __capturedHandlers.onViewStateChanged({ writable: 'ReadOnlyAttribute' });
 
         expect(reportedAvailability()).toMatchObject({
             canCopy: true,
@@ -249,7 +249,7 @@ describe('EditorController edit availability', () => {
     });
 
     it('restores the mutating verbs when the document becomes writable', () => {
-        __capturedHandlers.onViewStateChanged({ writable: 'Locked' });
+        __capturedHandlers.onViewStateChanged({ writable: 'ReadOnlyAttribute' });
         __capturedHandlers.onViewStateChanged({ writable: 'Writable' });
 
         expect(reportedAvailability()).toMatchObject({
@@ -264,7 +264,7 @@ describe('EditorController edit availability', () => {
     it('reports on a writable state change, not only on a selection change', () => {
         const reportCount = __capturedEditAvailability.length;
 
-        __capturedHandlers.onViewStateChanged({ writable: 'Locked' });
+        __capturedHandlers.onViewStateChanged({ writable: 'ReadOnlyAttribute' });
 
         expect(__capturedEditAvailability).toHaveLength(reportCount + 1);
     });

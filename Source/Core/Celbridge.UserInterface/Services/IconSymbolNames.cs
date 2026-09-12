@@ -60,6 +60,8 @@ internal static class IconSymbolNames
         { IconSymbol.Examples, "bs-collection" },
         { IconSymbol.Book, "bs-book" },
         { IconSymbol.Link, "bs-link-45deg" },
+        { IconSymbol.Visible, "bs-eye" },
+        { IconSymbol.Hidden, "bs-eye-slash" },
         { IconSymbol.Exit, "bs-box-arrow-right" }
     };
 

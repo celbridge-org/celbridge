@@ -5,8 +5,9 @@
     xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
 
-  <!-- Explorer toolbar actions: new file, new folder, and collapse the tree. Left-aligned so the button group
-       lines up with the panel title above it and the resource tree below it. -->
+  <!-- Explorer toolbar actions: new file, new folder, collapse the tree, and show hidden files.
+       Left-aligned so the button group lines up with the panel title above it and the resource tree
+       below it. -->
   <StackPanel Orientation="Horizontal"
               Spacing="0"
               HorizontalAlignment="Left">
@@ -33,6 +34,16 @@
       <controls:Icon
                 Symbol="Collapse"
                 FontSize="{StaticResource IconSizeMedium}" />
+    </controls:IconButton>
+
+    <!-- The transparent icon-button style is Button-only, so the on state reads from the glyph rather
+         than from a toggle's pressed look. -->
+    <controls:IconButton x:Name="ShowHiddenFilesButton"
+                         AutomationProperties.AutomationId="show-hidden-files-button"
+                         Click="ShowHiddenFilesButton_Click">
+      <controls:Icon x:Name="ShowHiddenFilesIcon"
+                     Symbol="Hidden"
+                     FontSize="{StaticResource IconSizeMedium}" />
     </controls:IconButton>
   </StackPanel>
 </UserControl>

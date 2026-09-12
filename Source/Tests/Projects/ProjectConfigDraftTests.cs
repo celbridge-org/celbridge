@@ -17,10 +17,8 @@ public class ProjectConfigDraftTests
         "project-version = \"0.1.0\"\n" +
         "\n" +
         "[celbridge.resources]\n" +
-        "ignore-file = \".gitignore\"\n" +
-        "add = []\n" +
-        "remove = []\n" +
-        "lock = []\n" +
+        "hide = []\n" +
+        "search-exclude = []\n" +
         "\n" +
         "[[contribution]]\n" +
         "package = \"celbridge.console\"\n" +
@@ -195,10 +193,30 @@ public class ProjectConfigDraftTests
     }
 
     [Test]
-    public void Draft_SetIgnoreFile_UpdatesIgnoreFile()
+    public void Draft_SetHidePatterns_UpdatesHideList()
     {
-        var config = ApplyAndParse(BaseConfig, draft => draft.IgnoreFile = ".customignore");
-        config.Resources.IgnoreFile.Should().Be(".customignore");
+        var patterns = new List<string>
+        {
+            ".gitignore",
+            "drafts/**",
+        };
+
+        var config = ApplyAndParse(BaseConfig, draft => draft.SetHidePatterns(patterns));
+        config.Resources.Hide.Should().Equal(".gitignore", "drafts/**");
+    }
+
+    [Test]
+    public void Draft_SetSearchExcludePatterns_DropsABlankRow()
+    {
+        // A row the user has not typed into yet matches nothing, so it writes no entry.
+        var patterns = new List<string>
+        {
+            "node_modules",
+            "   ",
+        };
+
+        var config = ApplyAndParse(BaseConfig, draft => draft.SetSearchExcludePatterns(patterns));
+        config.Resources.SearchExclude.Should().Equal("node_modules");
     }
 
     [Test]
@@ -248,7 +266,7 @@ public class ProjectConfigDraftTests
             "[[shortcut]]\n" +
             "resource = \"readme.md\"\n";
 
-        var config = ApplyAndParse(sourceConfig, draft => draft.IgnoreFile = ".customignore");
+        var config = ApplyAndParse(sourceConfig, draft => draft.Description = "Unrelated edit.");
 
         config.DocumentShortcuts.Should().ContainSingle();
         config.DocumentShortcuts[0].Resource.Should().Be("readme.md");

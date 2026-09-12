@@ -4,7 +4,6 @@
     <PackageVersion Include="coverlet.collector" Version="10.0.1" />
     <PackageVersion Include="FluentAssertions" Version="8.10.0" />
     <PackageVersion Include="Humanizer" Version="3.0.10" />
-    <PackageVersion Include="Ignore" Version="0.2.1" />
     <PackageVersion Include="JsonPatch.Net" Version="5.0.3" />
     <PackageVersion Include="JsonPointer.Net" Version="7.0.1" />
     <PackageVersion Include="JsonSchema.Net" Version="9.2.2" />

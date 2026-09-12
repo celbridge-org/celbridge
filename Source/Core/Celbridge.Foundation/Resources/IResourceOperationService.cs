@@ -12,31 +12,6 @@ public interface IBatchScope : IDisposable
 }
 
 /// <summary>
-/// The lock state of a resource, used by UI affordances to predict and explain
-/// what a structural change will be permitted to do without executing it.
-/// </summary>
-public enum ResourceLockState
-{
-    /// <summary>
-    /// Neither the resource nor any descendant matches a [resources].lock pattern.
-    /// </summary>
-    None,
-
-    /// <summary>
-    /// The resource's own key matches a [resources].lock pattern; it cannot be
-    /// edited, moved, renamed, or deleted.
-    /// </summary>
-    Locked,
-
-    /// <summary>
-    /// The resource is not itself locked but holds a locked descendant, so its
-    /// path is frozen: it cannot be moved, renamed, or deleted, though siblings
-    /// stay editable.
-    /// </summary>
-    ContainsLocked,
-}
-
-/// <summary>
 /// Whether a resource can be edited, and if not, why. The non-Writable
 /// values name the source.
 /// </summary>
@@ -46,11 +21,6 @@ public enum WritableState
     /// The resource accepts edits.
     /// </summary>
     Writable,
-
-    /// <summary>
-    /// A [resources].lock pattern matches the resource.
-    /// </summary>
-    Locked,
 
     /// <summary>
     /// The underlying file carries the OS read-only attribute.
@@ -125,24 +95,16 @@ public interface IResourceOperationService
     Task<Result> TransferAsync(ResourceKey source, ResourceKey dest, DataTransferMode mode);
 
     /// <summary>
-    /// Resolves the lock state of a resource for UI affordances: not locked, its
-    /// own key is locked, or it is path-frozen by a locked descendant. Shares the
-    /// descendant-lock cascade with the structural-change executor so the UI
-    /// prediction cannot drift from enforcement.
-    /// </summary>
-    Task<ResourceLockState> GetLockStateAsync(ResourceKey resource);
-
-    /// <summary>
-    /// Returns the writable state of the resource. When multiple sources apply,
-    /// the priority order is Locked > ReadOnlyRoot > ReadOnlyAttribute.
+    /// Returns the writable state of the resource. When both sources apply, the
+    /// priority order is ReadOnlyRoot > ReadOnlyAttribute.
     /// </summary>
     Task<WritableState> GetWritableStateAsync(ResourceKey resource);
 
     /// <summary>
     /// Read-only prediction of whether the resource can be deleted, renamed,
     /// moved, or cut. Mirrors the structural-change gate the executor enforces,
-    /// including the descendant-lock cascade and root writability. A failure
-    /// carries the matched PolicyDenialError so the UI can name the rule.
+    /// including root writability. A failure carries the matched
+    /// PolicyDenialError so the UI can name the rule.
     /// </summary>
     Task<Result> CanModifyResourceAsync(ResourceKey resource);
 

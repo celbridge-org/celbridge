@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using Celbridge.Packages;
 using Celbridge.Projects;
+using Celbridge.ProjectSettings.Helpers;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.ProjectSettings.ViewModels;
@@ -86,7 +87,7 @@ public partial class ConfigFieldViewModel : ObservableObject
                 break;
 
             case ConfigValueType.StringList:
-                StringListText = string.Join("\n", ReadStringList(rawValue));
+                StringListText = MultilineText.FormatLines(ReadStringList(rawValue));
                 break;
         }
     }
@@ -197,11 +198,7 @@ public partial class ConfigFieldViewModel : ObservableObject
 
     private static IReadOnlyList<string> ParseStringList(string text)
     {
-        return text
-            .Split('\n')
-            .Select(line => line.Trim())
-            .Where(line => line.Length > 0)
-            .ToList();
+        return MultilineText.ParseLines(text);
     }
 
     // Renders an edit value in the same normalized string form used by the descriptor default, so a

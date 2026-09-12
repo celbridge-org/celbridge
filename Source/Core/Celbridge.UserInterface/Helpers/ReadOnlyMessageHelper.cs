@@ -16,7 +16,6 @@ public static class ReadOnlyMessageHelper
     {
         var key = state switch
         {
-            WritableState.Locked => "Resource_ReadOnly_Locked",
             WritableState.ReadOnlyAttribute => "Resource_ReadOnly_ReadOnlyAttribute",
             WritableState.ReadOnlyRoot => "Resource_ReadOnly_ReadOnlyRoot",
             _ => null,

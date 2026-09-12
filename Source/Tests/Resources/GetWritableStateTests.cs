@@ -9,10 +9,10 @@ using Celbridge.Messaging;
 namespace Celbridge.Tests.Resources;
 
 /// <summary>
-/// Tests the four outcomes of ResourceOperationService.GetWritableStateAsync:
-/// writable, configured lock pattern, OS read-only attribute, and read-only
-/// root. The query is the single source of truth for the editor and at-rest
-/// dimming surfaces, so each source needs its own coverage.
+/// Tests the three outcomes of ResourceOperationService.GetWritableStateAsync:
+/// writable, OS read-only attribute, and read-only root. The query is the single
+/// source of truth for the editor and at-rest dimming surfaces, so each source
+/// needs its own coverage.
 /// </summary>
 [TestFixture]
 public class GetWritableStateTests
@@ -68,18 +68,6 @@ public class GetWritableStateTests
     }
 
     [Test]
-    public async Task ReturnsLocked_ForFileMatchingLockPattern()
-    {
-        var policy = BuildPolicyWithLockPattern("assets/**");
-        _resourceService.Policy.Returns(policy);
-        var operationService = CreateOperationService();
-
-        var state = await operationService.GetWritableStateAsync(new ResourceKey("assets/logo.png"));
-
-        state.Should().Be(WritableState.Locked);
-    }
-
-    [Test]
     public async Task ReturnsReadOnlyRoot_ForFileOnNonWritableRoot()
     {
         var bundledHandler = Substitute.For<IResourceRootHandler>();
@@ -113,9 +101,9 @@ public class GetWritableStateTests
     {
         // ProjectTreeBuilder populates IResource.WritableState during the
         // project walk; the query short-circuits on a registry hit and never
-        // touches the policy, root handlers, or the file system.
+        // touches the root handlers or the file system.
         var cachedResource = new FolderResource("assets", null);
-        cachedResource.WritableState = WritableState.Locked;
+        cachedResource.WritableState = WritableState.ReadOnlyAttribute;
 
         _resourceRegistry.GetResource(Arg.Any<ResourceKey>())
             .Returns(Result<IResource>.Ok(cachedResource));
@@ -124,59 +112,9 @@ public class GetWritableStateTests
 
         var state = await operationService.GetWritableStateAsync(new ResourceKey("assets"));
 
-        state.Should().Be(WritableState.Locked);
+        state.Should().Be(WritableState.ReadOnlyAttribute);
         // The cached path bypasses the gateway entirely.
         await _resourceFileSystem.DidNotReceive().GetInfoAsync(Arg.Any<ResourceKey>());
-    }
-
-    [Test]
-    public async Task LockedTakesPriority_OverReadOnlyAttribute()
-    {
-        // A locked file with the OS read-only bit also set reports Locked.
-        // Locked names a configured policy a user can edit; ReadOnlyAttribute
-        // names ambient state. Locked is the more actionable cause.
-        var policy = BuildPolicyWithLockPattern("assets/**");
-        _resourceService.Policy.Returns(policy);
-
-        var readOnlyFileInfo = new StorageItemInfo(StorageItemKind.File, 0, DateTime.UtcNow, FileSystemAttributes.ReadOnly);
-        _resourceFileSystem.GetInfoAsync(Arg.Any<ResourceKey>())
-            .Returns(Result<StorageItemInfo>.Ok(readOnlyFileInfo));
-
-        var operationService = CreateOperationService();
-
-        var state = await operationService.GetWritableStateAsync(new ResourceKey("assets/logo.png"));
-
-        state.Should().Be(WritableState.Locked);
-    }
-
-    [Test]
-    public void WritableStatePriority_LockedTakesPriority_OverReadOnlyRoot()
-    {
-        // Pinned at the helper so a future refactor that swaps the branch order
-        // is caught. The live fallback can't reach this scenario today
-        // (ResourcePolicy.Evaluate short-circuits non-default roots), but the
-        // helper's contract is the source of truth for priority and a future
-        // policy implementation could produce it.
-        var policy = Substitute.For<IResourcePolicy>();
-        policy.Evaluate(Arg.Any<ResourceKey>(), ResourceAction.Write, Arg.Any<bool>())
-            .Returns(Result.Fail("locked"));
-
-        var bundledHandler = Substitute.For<IResourceRootHandler>();
-        bundledHandler.Capabilities.Returns(new ResourceRootCapabilities(IsWritable: false, IsWatched: false));
-        var rootHandlerRegistry = Substitute.For<IRootHandlerRegistry>();
-        rootHandlerRegistry.RootHandlers.Returns(new Dictionary<string, IResourceRootHandler>
-        {
-            ["bundled"] = bundledHandler,
-        });
-
-        var state = WritableStatePriority.Compute(
-            new ResourceKey("bundled:docs/readme.md"),
-            isFolder: false,
-            attributes: FileSystemAttributes.None,
-            policy,
-            rootHandlerRegistry);
-
-        state.Should().Be(WritableState.Locked);
     }
 
     [Test]
@@ -210,29 +148,5 @@ public class GetWritableStateTests
             _workspaceWrapper,
             Substitute.For<IProjectService>(),
             TestFileSystem.CreateLocal());
-    }
-
-    private static ResourcePolicy BuildPolicyWithLockPattern(string pattern)
-    {
-        var section = new ResourcesSection
-        {
-            Lock = new[] { pattern },
-        };
-        var config = new ProjectConfig { Resources = section };
-
-        var project = Substitute.For<IProject>();
-        project.Config.Returns(config);
-        project.ProjectFolderPath.Returns(@"C:\fake\project");
-
-        var projectService = Substitute.For<IProjectService>();
-        projectService.CurrentProject.Returns(project);
-
-        var fileSystem = Substitute.For<ILocalFileSystem>();
-        fileSystem.ReadAllTextAsync(Arg.Any<string>())
-            .Returns(Task.FromResult(Result<string>.Fail("ignore-file not found")));
-
-        var policy = new ResourcePolicy(projectService, fileSystem);
-        policy.InitializeAsync().GetAwaiter().GetResult();
-        return policy;
     }
 }

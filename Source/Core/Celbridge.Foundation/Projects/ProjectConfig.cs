@@ -117,38 +117,24 @@ public sealed record class CelbridgeSection
 
 /// <summary>
 /// Models the [celbridge.resources] sub-table from the .celbridge project config.
-/// Inputs to the workspace-scoped policy engine. The resource set is computed
-/// as (not ignored by the ignore-file, or matched by Add) and not matched by
-/// Remove. Lock is a separate axis that freezes paths in place.
+/// The two keys bind different audiences: Hide changes what the Explorer draws,
+/// SearchExclude changes what the indexers walk. Neither grants or withholds access.
 /// </summary>
 public sealed record class ResourcesSection
 {
     /// <summary>
-    /// Path to a gitignore-format file (relative to the project root) whose
-    /// matched files are excluded from the resource set. Defaults to ".gitignore".
-    /// An empty string disables the ignore baseline, so every on-disk path below
-    /// the system tier is a candidate resource.
+    /// Patterns matching resources the Explorer leaves out of the tree unless
+    /// Show Hidden Files is on. A hidden resource stays readable and writable.
     /// </summary>
-    public string IgnoreFile { get; init; } = ".gitignore";
+    public IReadOnlyList<string> Hide { get; init; } = Array.Empty<string>();
 
     /// <summary>
-    /// Patterns that add resources back into the set even when the ignore-file
-    /// hides them (e.g. "Python/.venv/**"). Empty by default.
+    /// Patterns matching resources that search, reference scanning and tag
+    /// queries skip. Until the resource index lands these are left out of the
+    /// project tree as well, so the Explorer does not draw them. An excluded
+    /// resource stays readable and writable.
     /// </summary>
-    public IReadOnlyList<string> Add { get; init; } = Array.Empty<string>();
-
-    /// <summary>
-    /// Patterns that drop resources from the set entirely. Takes precedence over
-    /// Add and the ignore baseline. Empty by default.
-    /// </summary>
-    public IReadOnlyList<string> Remove { get; init; } = Array.Empty<string>();
-
-    /// <summary>
-    /// Patterns matching resources frozen in place: content cannot be written
-    /// and neither the resource nor any ancestor folder can be moved, renamed,
-    /// or deleted. Applies to every caller, including the in-app editor.
-    /// </summary>
-    public IReadOnlyList<string> Lock { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> SearchExclude { get; init; } = Array.Empty<string>();
 }
 
 /// <summary>

@@ -17,10 +17,11 @@ public sealed class ProjectConfigDraft
     private readonly Dictionary<string, string> _editorAssociations;
     private readonly Dictionary<string, bool> _features;
     private readonly List<DocumentShortcut> _documentShortcuts;
+    private readonly List<string> _hide;
+    private readonly List<string> _searchExclude;
 
     private string _projectVersion;
     private string _description;
-    private string _ignoreFile;
 
     public ProjectConfigDraft(ProjectConfig source)
     {
@@ -31,12 +32,13 @@ public sealed class ProjectConfigDraft
         _editorAssociations = new Dictionary<string, string>(source.Celbridge.EditorAssociations, StringComparer.Ordinal);
         _features = new Dictionary<string, bool>(source.Features, StringComparer.Ordinal);
         _documentShortcuts = source.DocumentShortcuts.ToList();
+        _hide = source.Resources.Hide.ToList();
+        _searchExclude = source.Resources.SearchExclude.ToList();
 
         // Coerced to empty because an unset key parses as null while the editor binds a text box to it.
         // The serializer skips an empty value, so a field left alone still writes no key.
         _projectVersion = source.Celbridge.ProjectVersion ?? string.Empty;
         _description = source.Celbridge.Description ?? string.Empty;
-        _ignoreFile = source.Resources.IgnoreFile;
     }
 
     public string ProjectVersion
@@ -51,10 +53,23 @@ public sealed class ProjectConfigDraft
         set => _description = value;
     }
 
-    public string IgnoreFile
+    /// <summary>
+    /// Replaces the patterns hidden from the Explorer tree. The section edits the whole list, because
+    /// adding, deleting and editing a row all rewrite it.
+    /// </summary>
+    public void SetHidePatterns(IReadOnlyList<string> patterns)
     {
-        get => _ignoreFile;
-        set => _ignoreFile = value;
+        _hide.Clear();
+        _hide.AddRange(patterns);
+    }
+
+    /// <summary>
+    /// Replaces the patterns the indexers skip.
+    /// </summary>
+    public void SetSearchExcludePatterns(IReadOnlyList<string> patterns)
+    {
+        _searchExclude.Clear();
+        _searchExclude.AddRange(patterns);
     }
 
     /// <summary>
@@ -213,7 +228,11 @@ public sealed class ProjectConfigDraft
                 ProjectVersion = _projectVersion,
                 Description = _description,
             },
-            Resources = _source.Resources with { IgnoreFile = _ignoreFile },
+            Resources = _source.Resources with
+            {
+                Hide = PopulatedPatterns(_hide),
+                SearchExclude = PopulatedPatterns(_searchExclude),
+            },
             Features = new Dictionary<string, bool>(_features, StringComparer.Ordinal),
             ContributionOverrides = populatedOverrides,
             DocumentShortcuts = populatedShortcuts,
@@ -226,6 +245,16 @@ public sealed class ProjectConfigDraft
     public string Serialize()
     {
         return ProjectConfigSerializer.Serialize(ToConfig());
+    }
+
+    // A blank pattern matches nothing, so it is dropped rather than written as an empty entry. The row the
+    // user is still typing into stays on screen either way.
+    private static IReadOnlyList<string> PopulatedPatterns(IReadOnlyList<string> patterns)
+    {
+        return patterns
+            .Select(pattern => pattern.Trim())
+            .Where(pattern => pattern.Length > 0)
+            .ToList();
     }
 
     // The serializer writes raw TOML values, so the typed value the editor supplies is unwrapped here.

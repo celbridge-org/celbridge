@@ -36,7 +36,8 @@
                              HorizontalAlignment="Stretch"
                              NewFileClicked="ExplorerToolbar_NewFileClicked"
                              NewFolderClicked="ExplorerToolbar_NewFolderClicked"
-                             CollapseFoldersClicked="ExplorerToolbar_CollapseFoldersClicked"/>
+                             CollapseFoldersClicked="ExplorerToolbar_CollapseFoldersClicked"
+                             ShowHiddenFilesClicked="ExplorerToolbar_ShowHiddenFilesClicked"/>
     </Border>
 
     <!-- Resource Tree -->

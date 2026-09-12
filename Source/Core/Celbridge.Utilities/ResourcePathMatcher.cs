@@ -20,8 +20,8 @@ public enum PathMatchTarget
 }
 
 /// <summary>
-/// Compiles a glob-style resource path pattern into a reusable matcher for the
-/// resource policy engine.
+/// Compiles a glob-style resource path pattern into a reusable matcher. Several
+/// patterns are evaluated together through ResourcePatternSet.
 /// </summary>
 public sealed class ResourcePathMatcher
 {

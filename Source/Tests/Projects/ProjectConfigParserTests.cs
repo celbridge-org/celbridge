@@ -90,10 +90,8 @@ public class ProjectConfigParserTests
             features = { generative-ai = true, experimental = false }
 
             [celbridge.resources]
-            ignore-file = ".gitignore"
-            add = ["Python/.venv/**"]
-            remove = [".gitignore"]
-            lock = ["assets/**"]
+            hide = [".gitignore"]
+            search-exclude = ["node_modules", "Python/.venv/**"]
 
             [[contribution]]
             package = "acme-notes"
@@ -130,10 +128,8 @@ public class ProjectConfigParserTests
         config.Features["generative-ai"].Should().BeTrue();
         config.Features["experimental"].Should().BeFalse();
 
-        config.Resources.IgnoreFile.Should().Be(".gitignore");
-        config.Resources.Add.Should().Equal("Python/.venv/**");
-        config.Resources.Remove.Should().Equal(".gitignore");
-        config.Resources.Lock.Should().Equal("assets/**");
+        config.Resources.Hide.Should().Equal(".gitignore");
+        config.Resources.SearchExclude.Should().Equal("node_modules", "Python/.venv/**");
 
         // Declaration order in the file is preserved.
         config.ContributionOverrides.Should().HaveCount(2);
@@ -227,7 +223,7 @@ public class ProjectConfigParserTests
             generative-ai = true
 
             [resources]
-            ignore-file = ".customignore"
+            hide = [".customignore"]
             """;
         var configFilePath = WriteConfigFile(content);
 
@@ -238,7 +234,7 @@ public class ProjectConfigParserTests
 
         // The legacy sections are ignored, not parsed from the old location.
         config.Features.Should().BeEmpty();
-        config.Resources.IgnoreFile.Should().Be(".gitignore");
+        config.Resources.Hide.Should().BeEmpty();
         config.ContributionOverrides.Should().BeEmpty();
 
         config.EntryErrors.Should().HaveCount(2);
@@ -255,7 +251,7 @@ public class ProjectConfigParserTests
             celbridge-version = "1.0.0"
 
             [celbridge.resources]
-            ignore-file = ".gitignore"
+            hide = [".gitignore"]
             disabled-packages = ["acme-notes"]
             """;
         var configFilePath = WriteConfigFile(content);
@@ -265,7 +261,7 @@ public class ProjectConfigParserTests
         result.IsSuccess.Should().BeTrue();
         var config = result.Value;
         config.Celbridge.DisabledPackages.Should().BeEmpty();
-        config.Resources.IgnoreFile.Should().Be(".gitignore");
+        config.Resources.Hide.Should().Equal(".gitignore");
         config.EntryErrors.Should().ContainSingle();
         config.EntryErrors[0].EntryName.Should().Be("celbridge.resources");
         config.EntryErrors[0].Message.Should().Contain("Unknown key 'disabled-packages'");

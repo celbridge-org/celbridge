@@ -5,18 +5,14 @@ using Celbridge.Resources.Services;
 namespace Celbridge.Tests.FileSystem;
 
 /// <summary>
-/// Builds a ResourcePolicy with the default-permissive [resources] configuration
-/// for tests that exercise policy-gated services without a live workspace.
+/// Builds a ResourcePolicy with empty [celbridge.resources] settings for tests that
+/// exercise policy-gated services without a live workspace.
 /// </summary>
 internal static class TestResourcePolicy
 {
     public static ResourcePolicy CreateDefault()
     {
-        // With a null CurrentProject the engine has no project folder to resolve
-        // an ignore-file against, so it never touches the file system. Passing
-        // null keeps this helper allocation-free and side-effect free for inlining
-        // inside NSubstitute Returns(...).
-        return new ResourcePolicy(new NullProjectService(), fileSystem: null!);
+        return new ResourcePolicy(new NullProjectService());
     }
 
     // A hand-written stub rather than an NSubstitute mock so CreateDefault

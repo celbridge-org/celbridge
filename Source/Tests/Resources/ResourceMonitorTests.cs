@@ -70,7 +70,7 @@ public class ResourceMonitorTests
         resourceService.RootHandlers.Returns(rootHandlerRegistry);
 
         _policy = Substitute.For<IResourcePolicy>();
-        _policy.Evaluate(Arg.Any<ResourceKey>(), ResourceAction.List, Arg.Any<bool>())
+        _policy.Evaluate(Arg.Any<ResourceKey>(), ResourceAction.Read, Arg.Any<bool>())
             .Returns(Result.Ok());
 
         var workspaceService = Substitute.For<IWorkspaceService>();
@@ -168,14 +168,27 @@ public class ResourceMonitorTests
     }
 
     [Test]
-    public void Changed_PolicyDeniesList_DropsEvent()
+    public void Changed_PolicyDeniesRead_DropsEvent()
     {
         var monitor = InitializeAndGetProjectMonitor();
         var key = StubKey("secret.txt");
-        _policy.Evaluate(key, ResourceAction.List, Arg.Any<bool>())
+        _policy.Evaluate(key, ResourceAction.Read, Arg.Any<bool>())
             .Returns(Result.Fail("denied"));
 
         monitor.RaiseChanged(PathFor("secret.txt"));
+
+        _messengerService.DidNotReceive().Send(Arg.Any<ResourceChangedMessage>());
+    }
+
+    [Test]
+    public void Changed_PathIsSearchExcluded_DropsEvent()
+    {
+        // The tree walk skips the path, so a rebuild would produce the same tree.
+        var monitor = InitializeAndGetProjectMonitor();
+        var key = StubKey("node_modules/pkg/index.js");
+        _policy.IsSearchExcluded(key, Arg.Any<bool>()).Returns(true);
+
+        monitor.RaiseChanged(PathFor("node_modules/pkg/index.js"));
 
         _messengerService.DidNotReceive().Send(Arg.Any<ResourceChangedMessage>());
     }

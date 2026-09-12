@@ -407,9 +407,9 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         });
     }
 
-    // Drops a watcher event when its path cannot be keyed, or when a project-root
-    // key is denied List by the policy engine. Events from non-project roots are
-    // already confined to their backing folder and need no policy check.
+    // Drops a watcher event when its path cannot be keyed, when a project-root key
+    // names a reserved path, or when it names a path the tree walk skips. Events from
+    // non-project roots are already confined to their backing folder and need no check.
     private bool ShouldIgnorePath(IResourceRootHandler handler, string fullPath)
     {
         var keyResult = handler.GetResourceKey(fullPath);
@@ -418,17 +418,24 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
             return true;
         }
 
-        if (handler.RootName == ResourceKey.DefaultRoot)
+        if (handler.RootName != ResourceKey.DefaultRoot)
         {
-            var policy = _workspaceWrapper.WorkspaceService.ResourceService.Policy;
-            var policyResult = policy.Evaluate(keyResult.Value, ResourceAction.List, isFolder: false);
-            if (policyResult.IsFailure)
-            {
-                return true;
-            }
+            return false;
         }
 
-        return false;
+        var resource = keyResult.Value;
+        var policy = _workspaceWrapper.WorkspaceService.ResourceService.Policy;
+
+        var policyResult = policy.Evaluate(resource, ResourceAction.Read, isFolder: false);
+        if (policyResult.IsFailure)
+        {
+            return true;
+        }
+
+        // Search scope bounds the tree walk until the resource index lands, so a write inside
+        // an excluded folder can only schedule a rebuild that produces the same tree. This
+        // check retires with that bound.
+        return policy.IsSearchExcluded(resource, isFolder: false);
     }
 
     private ResourceKey BuildResourceKey(IResourceRootHandler handler, string fullPath)

@@ -13,6 +13,8 @@ public sealed partial class ExplorerPanel : UserControl, IExplorerPanel
 
         InitializeComponent();
 
+        ExplorerToolbar.ShowHiddenFiles = ResourceTree.ShowHiddenFiles;
+
         FocusTracking.SetEditTarget(this, ResourceTree);
     }
 
@@ -49,5 +51,12 @@ public sealed partial class ExplorerPanel : UserControl, IExplorerPanel
     private void ExplorerToolbar_CollapseFoldersClicked(object sender, EventArgs e)
     {
         ResourceTree.CollapseAllFolders();
+    }
+
+    private void ExplorerToolbar_ShowHiddenFilesClicked(object sender, EventArgs e)
+    {
+        ResourceTree.ToggleShowHiddenFiles();
+
+        ExplorerToolbar.ShowHiddenFiles = ResourceTree.ShowHiddenFiles;
     }
 }

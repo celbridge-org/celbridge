@@ -479,6 +479,19 @@ public sealed partial class ResourceTree : UserControl
         });
     }
 
+    /// <summary>
+    /// Whether the tree is drawing the resources the project's hide patterns match.
+    /// </summary>
+    public bool ShowHiddenFiles => ViewModel.ShowHiddenFiles;
+
+    /// <summary>
+    /// Shows or stops showing the hidden resources.
+    /// </summary>
+    public void ToggleShowHiddenFiles()
+    {
+        ViewModel.ToggleShowHiddenFiles();
+    }
+
     public void CollapseAllFolders()
     {
         ViewModel.CollapseAllFolders();

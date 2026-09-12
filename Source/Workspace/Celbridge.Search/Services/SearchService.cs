@@ -49,6 +49,12 @@ public class SearchService : ISearchService, IDisposable
     private readonly TextMatcher _textMatcher;
     private readonly SearchResultFormatter _formatter;
     private readonly TextReplacer _textReplacer;
+
+    // Cancelled when the workspace this service belongs to is torn down. A search runs as a sequence of
+    // awaits over the resource layer, so a project reload part way through would otherwise leave it
+    // reaching for a workspace that is no longer there.
+    private readonly CancellationTokenSource _workspaceCancellation = new();
+
     private bool _disposed;
 
     private IResourceFileSystem ResourceFileSystem => _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
@@ -148,6 +154,10 @@ public class SearchService : ISearchService, IDisposable
         {
             return new SearchResults(searchTerm, fileResults, 0, 0, false, false);
         }
+
+        using var searchCancellation = CancellationTokenSource.CreateLinkedTokenSource(
+            cancellationToken, _workspaceCancellation.Token);
+        cancellationToken = searchCancellation.Token;
 
         var projectFolder = ResourceRegistry.ProjectFolderPath;
 
@@ -286,6 +296,10 @@ public class SearchService : ISearchService, IDisposable
             {
                 return null;
             }
+
+            // The workspace can go away at any of this method's await points, which takes the resource
+            // layer with it.
+            cancellationToken.ThrowIfCancellationRequested();
 
             // Stream the file via the gateway so reads pick up the same
             // containment validation as writes and large files do not load
@@ -681,6 +695,11 @@ public class SearchService : ISearchService, IDisposable
         {
             if (disposing)
             {
+                // Stops an in-flight search before the workspace reference it searches through is cleared.
+                // Cancelled rather than disposed, so a search that starts inside the teardown window sees
+                // an already-cancelled token instead of an ObjectDisposedException.
+                _workspaceCancellation.Cancel();
+
                 // Dispose managed objects here
                 foreach (var landmarkId in SearchLandmarkIds)
                 {

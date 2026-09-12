@@ -369,11 +369,10 @@ Precedent: `Source/Modules/Celbridge.DocumentEditors/Editors/CodeEditor/js/edito
 Writability is not a document handler — it is per-view host state on the `cel.viewState` store, alongside any other state the host replicates per view. Subscribe with `client.viewState.onChanged(viewState => ...)` and read `viewState.writable`. The host seeds the value before the view connects, so a handler registered at startup (after your editor surface exists) receives the current value before content is applied, and again whenever it changes mid-session. `viewState.writable` is one of:
 
 - `"Writable"` — accept edits.
-- `"Locked"` — `[resources].lock` pattern match.
 - `"ReadOnlyAttribute"` — OS read-only bit set.
 - `"ReadOnlyRoot"` — non-writable resource root.
 
-Treat **anything other than `"Writable"`** as read-only. Same representation for all three non-writable states.
+Treat **anything other than `"Writable"`** as read-only. Same representation for both non-writable states.
 
 Read-only-by-design editors simply do not subscribe to `cel.viewState` — there is no writable state to apply, so there is nothing to register. Precedent: `Source/Modules/Celbridge.DocumentEditors/Editors/FileViewer/js/file-viewer.js`.
 

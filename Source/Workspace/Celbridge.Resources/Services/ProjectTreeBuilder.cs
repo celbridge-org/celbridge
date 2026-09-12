@@ -5,8 +5,8 @@ namespace Celbridge.Resources.Services;
 
 /// <summary>
 /// Builds the in-memory project tree by enumerating the project root through the
-/// resource file-system gateway. Visibility filtering lives in the gateway's
-/// policy evaluation, not in the builder.
+/// resource file-system gateway. The walk stops at the project's search-exclude
+/// patterns, so a build folder inside the project costs nothing to maintain.
 /// </summary>
 public sealed class ProjectTreeBuilder : IProjectTreeBuilder
 {
@@ -56,12 +56,18 @@ public sealed class ProjectTreeBuilder : IProjectTreeBuilder
 
         foreach (var folderItem in folderItems)
         {
+            // Search scope bounds the walk until the resource index lands, because every
+            // mutating command re-walks whatever the tree holds. Once the index applies
+            // deltas instead, search-exclude goes back to binding the scanners alone.
+            if (policy.IsSearchExcluded(folderItem.Resource, folderItem.IsFolder))
+            {
+                continue;
+            }
+
             var childName = folderItem.Resource.ResourceName;
             var writableState = WritableStatePriority.Compute(
                 folderItem.Resource,
-                folderItem.IsFolder,
                 folderItem.Attributes,
-                policy,
                 rootHandlerRegistry);
 
             if (folderItem.IsFolder)
@@ -93,16 +99,5 @@ public sealed class ProjectTreeBuilder : IProjectTreeBuilder
         // EnumerateFolderAsync yields folders-first, ordinal order, which matches
         // the tree's required ordering, so no re-sort is needed here.
         return Result.Ok();
-    }
-
-    private static string GetFileExtension(string fileName)
-    {
-        int lastDotIndex = fileName.LastIndexOf('.');
-        if (lastDotIndex < 0)
-        {
-            return string.Empty;
-        }
-
-        return fileName.Substring(lastDotIndex + 1);
     }
 }

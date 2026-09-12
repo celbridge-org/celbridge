@@ -648,13 +648,12 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
 
     public async Task<Result<IReadOnlyList<FolderItem>>> EnumerateFolderAsync(ResourceKey folder)
     {
-        // List access to the folder itself is policy-gated; if the folder is
-        // not visible, the enumeration call resolves to "no such resource"
-        // semantics with a Result.Fail so callers don't mistake a denied
-        // listing for an empty folder.
+        // A reserved folder resolves to "no such resource" semantics with a
+        // Result.Fail so callers don't mistake a denied listing for an empty
+        // folder.
         if (!folder.IsEmpty)
         {
-            var folderPolicy = EvaluatePolicy(folder, ResourceAction.List, isFolder: true);
+            var folderPolicy = EvaluatePolicy(folder, ResourceAction.Read, isFolder: true);
             if (folderPolicy.IsFailure)
             {
                 return Result.Fail(folderPolicy);
@@ -698,7 +697,11 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         {
             var childName = Path.GetFileName(entry.FullPath);
             var childKey = folder.Combine(childName);
-            if (EvaluatePolicy(childKey, ResourceAction.List, isFolder: entry.IsFolder).IsFailure)
+
+            // The reserved folders are the only thing enumeration drops. The project's
+            // hide patterns are a view filter the Explorer applies, so a hidden entry
+            // is still listed here.
+            if (EvaluatePolicy(childKey, ResourceAction.Read, isFolder: entry.IsFolder).IsFailure)
             {
                 continue;
             }
@@ -768,21 +771,12 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         return policy.Evaluate(resource, action, isFolder);
     }
 
-    // Gate for the destination of a create, write, move, or copy. The Write
-    // (lock) check is paired with a List (visibility) check so the operation
-    // refuses to produce a resource the ignore-file would immediately hide,
-    // rather than silently writing a file that never enters the registry. Raw
-    // non-resource writes that intentionally land on a hidden path stay
+    // Gate for the destination of a create, write, move, or copy. Raw
+    // non-resource writes that intentionally land on a reserved path stay
     // available through ILocalFileSystem.
     private Result EvaluateWriteDestination(ResourceKey resource, bool isFolder)
     {
-        var writeResult = EvaluatePolicy(resource, ResourceAction.Write, isFolder);
-        if (writeResult.IsFailure)
-        {
-            return writeResult;
-        }
-
-        return EvaluatePolicy(resource, ResourceAction.List, isFolder);
+        return EvaluatePolicy(resource, ResourceAction.Write, isFolder);
     }
 
     // In production the caller always invokes IsRootWritable after ResolvePath
