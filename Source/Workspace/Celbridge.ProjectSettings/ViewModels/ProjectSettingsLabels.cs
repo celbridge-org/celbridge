@@ -26,9 +26,11 @@ internal static class ProjectSettingsLabels
     public static string StringListPlaceholder => Localizer.GetString("ProjectSettings_StringListPlaceholder");
     public static string EditorPickerTooltip => Localizer.GetString("ProjectSettings_EditorPickerTooltip");
     public static string PackageToggleTooltip => Localizer.GetString("ProjectSettings_PackageToggleTooltip");
-    public static string ContributionToggleTooltip => Localizer.GetString("ProjectSettings_ContributionToggleTooltip");
+    public static string DocumentToggleTooltip => Localizer.GetString("ProjectSettings_ContributionToggleTooltip_Document");
+    public static string UtilityToggleTooltip => Localizer.GetString("ProjectSettings_ContributionToggleTooltip_Utility");
     public static string PackageEnabledLabel => Localizer.GetString("ProjectSettings_PackageEnabledLabel");
-    public static string ContributionEnabledLabel => Localizer.GetString("ProjectSettings_ContributionEnabledLabel");
+    public static string DocumentEnabledLabel => Localizer.GetString("ProjectSettings_ContributionEnabledLabel_Document");
+    public static string UtilityEnabledLabel => Localizer.GetString("ProjectSettings_ContributionEnabledLabel_Utility");
     public static string ManifestLabel => Localizer.GetString("ProjectSettings_ManifestLabel");
     public static string OpenManifestTooltip => Localizer.GetString("ProjectSettings_OpenManifestTooltip");
     public static string RevealManifestTooltip => Localizer.GetString("ProjectSettings_RevealManifestTooltip");

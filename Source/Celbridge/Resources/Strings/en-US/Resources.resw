@@ -1027,19 +1027,25 @@ Open with default application instead?</value>
     <value>WebView Load Diagnostics</value>
   </data>
   <data name="ProjectSettings_FeatureFlag_WebViewLoadDiagnostics_Description" xml:space="preserve">
-    <value>Records how each web page loads in the log. A page that loads blank is always reported; this adds the surrounding detail.</value>
+    <value>Writes a detailed record of each web page load to the log, including the address of every page visited. Failed and blank loads are logged either way.</value>
   </data>
   <data name="ProjectSettings_FeatureFlag_WebViewDevTools_Title" xml:space="preserve">
     <value>WebView Developer Tools</value>
   </data>
   <data name="ProjectSettings_FeatureFlag_WebViewDevTools_Description" xml:space="preserve">
-    <value>Browser developer tools in WebView-based document editors.</value>
+    <value>Browser developer tools for WebView editors, plus the webview agent tools. Agents can read these pages, including their console and network activity, and click and type in them.</value>
   </data>
   <data name="ProjectSettings_FeatureFlag_WebViewDevToolsEval_Title" xml:space="preserve">
     <value>WebView Eval Tool</value>
   </data>
   <data name="ProjectSettings_FeatureFlag_WebViewDevToolsEval_Description" xml:space="preserve">
-    <value>The webview eval tool — arbitrary code execution in a WebView.</value>
+    <value>Lets agents run any JavaScript inside a WebView editor, with the same access to its data as the page itself. Requires WebView Developer Tools.</value>
+  </data>
+  <data name="ProjectSettings_FeatureFlag_OpenCel_Title" xml:space="preserve">
+    <value>Metadata File Editing</value>
+  </data>
+  <data name="ProjectSettings_FeatureFlag_OpenCel_Description" xml:space="preserve">
+    <value>Adds Open metadata file to the Explorer menu, for editing a file's .cel metadata by hand. Metadata that no longer parses is flagged as broken.</value>
   </data>
   <data name="ProjectSettings_FeatureFlag_AnswerDialog_Title" xml:space="preserve">
     <value>Answer Dialog Tool</value>
@@ -1065,11 +1071,20 @@ Open with default application instead?</value>
   <data name="ProjectSettings_PackageToggleTooltip" xml:space="preserve">
     <value>Enable or disable this package for the project.</value>
   </data>
-  <data name="ProjectSettings_ContributionToggleTooltip" xml:space="preserve">
+  <data name="ProjectSettings_ContributionToggleTooltip_Document" xml:space="preserve">
     <value>Enable or disable this editor for the project.</value>
+  </data>
+  <data name="ProjectSettings_ContributionToggleTooltip_Utility" xml:space="preserve">
+    <value>Enable or disable this utility for the project.</value>
   </data>
   <data name="ProjectSettings_PackageEnabledLabel" xml:space="preserve">
     <value>Package Enabled</value>
+  </data>
+  <data name="ProjectSettings_ContributionEnabledLabel_Document" xml:space="preserve">
+    <value>Editor Enabled</value>
+  </data>
+  <data name="ProjectSettings_ContributionEnabledLabel_Utility" xml:space="preserve">
+    <value>Utility Enabled</value>
   </data>
   <data name="ProjectSettings_PackageNameFormat" xml:space="preserve">
     <value>{0} Package</value>
@@ -1097,9 +1112,6 @@ Open with default application instead?</value>
   </data>
   <data name="ProjectSettings_SectionIssue_Packages" xml:space="preserve">
     <value>Some packages have configuration issues.</value>
-  </data>
-  <data name="ProjectSettings_ContributionEnabledLabel" xml:space="preserve">
-    <value>Enabled</value>
   </data>
   <data name="ProjectSettings_BuiltInPackageNameFormat" xml:space="preserve">
     <value>{0} (Built-in)</value>

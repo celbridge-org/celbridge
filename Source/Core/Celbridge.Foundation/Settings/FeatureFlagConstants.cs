@@ -4,7 +4,8 @@ namespace Celbridge.Settings;
 
 /// <summary>
 /// Feature flag names used throughout the application.
-/// These names must match the keys in appsettings.json and .celbridge files.
+/// These names must match the keys in appsettings.json and .celbridge files. A flag missing from
+/// appsettings.json is off, so each one is listed there with an explicit default.
 /// The user-facing titles and descriptions shown on the Project Settings panel live in FeatureFlagCatalog.
 /// </summary>
 public static class FeatureFlagConstants
@@ -16,8 +17,8 @@ public static class FeatureFlagConstants
     public const string McpTools = "mcp-tools";
 
     /// <summary>
-    /// Browser developer tools access in WebView-based document editors.
-    /// Enabled by default so extension authors can debug their custom editors.
+    /// Browser developer tools in WebView-based editors, and the webview_* MCP tools that read and drive
+    /// their pages. Enabled by default so extension authors can debug their custom editors.
     /// </summary>
     public const string WebViewDevTools = "webview-dev-tools";
 
@@ -47,6 +48,12 @@ public static class FeatureFlagConstants
     public const string WebViewLoadDiagnostics = "webview-load-diagnostics";
 
     /// <summary>
+    /// Shows the Open metadata file item on the Explorer context menu, which opens a file's .cel sidecar in
+    /// the code editor for editing by hand.
+    /// </summary>
+    public const string OpenCel = "open-cel";
+
+    /// <summary>
     /// The workshop: the package_* and page_* tools, and the Workshop section of Application Settings.
     /// An experimental feature that needs a configured workshop server, so the build opts in rather than
     /// the user. Non-overridable.
@@ -56,8 +63,7 @@ public static class FeatureFlagConstants
     /// <summary>
     /// The flags a project cannot override. They are read from appsettings.json only, and are absent from
     /// the Feature Flags section, because the surfaces they gate exist before any project is loaded and so
-    /// cannot follow a project's choice. That fixes them for the lifetime of the build, which also inverts
-    /// the default: one of these is off unless the build turns it on.
+    /// cannot follow a project's choice. That fixes them for the lifetime of the build.
     /// </summary>
     public static readonly FrozenSet<string> NonOverridableFlags =
         new[] { Workshop }.ToFrozenSet(StringComparer.Ordinal);

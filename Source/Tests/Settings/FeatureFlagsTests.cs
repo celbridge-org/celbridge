@@ -56,11 +56,22 @@ public class FeatureFlagsTests
     }
 
     [Test]
-    public void IsEnabled_NotConfigured_DefaultsToEnabled()
+    public void IsEnabled_NotConfigured_DefaultsToDisabled()
     {
         var result = _featureFlags.IsEnabled("unknown-feature");
 
-        result.Should().BeTrue("features default to enabled when not configured");
+        result.Should().BeFalse("a flag the build does not list is off");
+    }
+
+    [Test]
+    public void IsEnabled_NonBooleanValue_ReturnsFalse()
+    {
+        var featureFlags = BuildFeatureFlags(new Dictionary<string, string?>
+        {
+            ["FeatureFlags:misconfigured-feature"] = "yes"
+        });
+
+        featureFlags.IsEnabled("misconfigured-feature").Should().BeFalse("a value that is not a boolean resolves to off");
     }
 
     #endregion
@@ -235,7 +246,7 @@ public class FeatureFlagsTests
 
         _featureFlags.IsEnabled("note-editor").Should().BeTrue("project enables note-editor");
         _featureFlags.IsEnabled("mcp-tools").Should().BeFalse("project disables mcp-tools");
-        _featureFlags.IsEnabled("unknown-feature").Should().BeTrue("defaults to enabled for unconfigured features");
+        _featureFlags.IsEnabled("unknown-feature").Should().BeFalse("unconfigured features default to off");
     }
 
     #endregion

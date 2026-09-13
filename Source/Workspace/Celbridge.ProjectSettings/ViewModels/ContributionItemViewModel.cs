@@ -162,11 +162,18 @@ public partial class ContributionItemViewModel : ObservableObject
     /// </summary>
     public string ManifestFileName => _info.ManifestResource?.ResourceName ?? string.Empty;
 
-    public string EnabledLabel => ProjectSettingsLabels.ContributionEnabledLabel;
+    /// <summary>
+    /// The label beside the enable toggle, naming the contribution's type so it reads apart from the
+    /// package's own toggle.
+    /// </summary>
+    public string EnabledLabel => IsUtility ? ProjectSettingsLabels.UtilityEnabledLabel : ProjectSettingsLabels.DocumentEnabledLabel;
 
     public string ManifestLabel => ProjectSettingsLabels.ManifestLabel;
 
-    public string ToggleTooltip => ProjectSettingsLabels.ContributionToggleTooltip;
+    /// <summary>
+    /// The enable toggle's tooltip, naming the contribution's type.
+    /// </summary>
+    public string ToggleTooltip => IsUtility ? ProjectSettingsLabels.UtilityToggleTooltip : ProjectSettingsLabels.DocumentToggleTooltip;
 
     public string OpenManifestTooltip => ProjectSettingsLabels.OpenManifestTooltip;
 

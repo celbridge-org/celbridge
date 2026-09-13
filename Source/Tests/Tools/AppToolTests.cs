@@ -136,6 +136,8 @@ public class AppToolTests
         webViewDevTools.GetBoolean().Should().BeFalse();
         flagsElement.TryGetProperty(FeatureFlagConstants.WebViewDevToolsEval, out var webViewDevToolsEval).Should().BeTrue();
         webViewDevToolsEval.GetBoolean().Should().BeTrue();
+        flagsElement.TryGetProperty(FeatureFlagConstants.OpenCel, out var openCel).Should().BeTrue();
+        openCel.GetBoolean().Should().BeFalse();
     }
 
     private IFeatureFlags WireAppStateDependencies(

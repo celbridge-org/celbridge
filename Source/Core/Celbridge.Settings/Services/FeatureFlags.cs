@@ -42,14 +42,9 @@ public class FeatureFlags : IFeatureFlags
         var section = _configuration.GetSection(FeatureFlagKey);
         var value = section[featureName];
 
-        if (string.IsNullOrEmpty(value))
-        {
-            // An unconfigured feature is enabled, and only an explicit "false" disables it. A
-            // non-overridable flag inverts that: the build has to name it to turn it on.
-            return !FeatureFlagConstants.NonOverridableFlags.Contains(featureName);
-        }
-
-        return !bool.TryParse(value, out var result) || result;
+        // A missing entry, or one that is not a boolean, resolves to off, so a flag the build never
+        // configured exposes nothing.
+        return bool.TryParse(value, out var isEnabled) && isEnabled;
     }
 
     public void ApplyProjectOverrides(IReadOnlyDictionary<string, bool> overrides)

@@ -113,4 +113,4 @@ A utility persists through the standard editable-save path: the WebView calls `c
 
 | Utility | Path | Demonstrates |
 |---|---|---|
-| Utility Demo | `Source/Modules/Celbridge.DocumentEditors/Editors/UtilityDemo/` | A utility backed by a JSON state blob, with a template seeding its default state |
+| Utility Demo | `Source/Modules/Celbridge.DocumentEditors/Editors/UtilityDemo/` | A utility backed by a JSON state blob, with a template seeding its default state. It declares `activation = "optional"`, so a project switches it on in the Packages section of Project Settings |

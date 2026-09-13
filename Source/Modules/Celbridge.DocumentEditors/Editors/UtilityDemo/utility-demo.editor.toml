@@ -1,6 +1,8 @@
 [editor]
 id = "utility-demo"
 type = "utility"
+# Off until a project switches it on in the Packages section of Project Settings.
+activation = "optional"
 entry-point = "index.html"
 display-name = "UtilityDemo_DisplayName"
 description = "UtilityDemo_Description"

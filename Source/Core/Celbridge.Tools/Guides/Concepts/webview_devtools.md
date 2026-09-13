@@ -55,7 +55,7 @@ Any open document editor — text, markdown, HTML viewers, custom contribution e
 
 ## `webview_eval` is gated by an extra feature flag
 
-Both `webview-dev-tools` and `webview-dev-tools-eval` must be on, because `webview_eval` is an arbitrary code execution primitive. If the eval flag is off, the rest of the `webview_*` family may still work.
+Both `webview-dev-tools` and `webview-dev-tools-eval` must be on, because `webview_eval` is an arbitrary code execution primitive. The eval flag is off by default. The user switches it on per project in Project Settings → Feature Flags, and the change applies when the project reloads. If the eval flag is off, the rest of the `webview_*` family may still work.
 
 ## Available from Python and MCP, not from package JS
 

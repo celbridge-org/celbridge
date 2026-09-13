@@ -17,7 +17,7 @@ public interface IFeatureFlags
     /// <summary>
     /// Returns the application-level value for a feature (appsettings.json, or the default when unset),
     /// ignoring any project override. Used to show what a project inheriting the default resolves to.
-    /// An unset feature defaults to enabled, and an unset non-overridable flag to disabled.
+    /// A feature that is unset, or whose value is not a boolean, is disabled.
     /// </summary>
     bool GetApplicationValue(string featureName);
 
