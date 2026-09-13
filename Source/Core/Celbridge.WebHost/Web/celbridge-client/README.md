@@ -30,9 +30,11 @@ celbridge-client/
 │   ├── document-api.js   # Document operations
 │   ├── input-api.js      # Input events (keyboard, link clicks, scroll)
 │   ├── localization-api.js
-│   └── theme-api.js      # Theme events
+│   ├── log-api.js        # Host application log
+│   ├── tools-api.js      # Host capability proxy (cel.*)
+│   └── view-api.js       # Viewport trust: when a page may measure its own box
 ├── core/
-│   └── rpc-transport.js  # JSON-RPC 2.0 transport layer
-└── tests/
-    └── celbridge.test.js # Unit tests
+│   ├── rpc-transport.js  # JSON-RPC 2.0 transport layer
+│   └── state-store.js    # Read-only mirrors of host app and per-view state
+└── tests/                # Unit tests, one file per module
 ```

@@ -12,7 +12,7 @@ const typeIds = readdirSync(typesFolder)
 // write a list field as one line.
 const fieldKinds = ['text', 'lines', 'script'];
 
-const consoleSource = readFileSync(fileURLToPath(new URL('../console.js', import.meta.url)), 'utf8');
+const settingsSource = readFileSync(fileURLToPath(new URL('../console-settings.js', import.meta.url)), 'utf8');
 
 async function loadTypeModule(typeId) {
     const typeModule = await import(`../types/${typeId}.js`);
@@ -35,7 +35,7 @@ describe('session type modules', () => {
 
     it.each(typeIds)('%s is imported by the settings form', (typeId) => {
         // The form builds its type map from a hand-written import list, not from this folder.
-        expect(consoleSource).toContain(`from './types/${typeId}.js'`);
+        expect(settingsSource).toContain(`from './types/${typeId}.js'`);
     });
 
     it.each(typeIds)('%s has a control for every field it declares', async (typeId) => {

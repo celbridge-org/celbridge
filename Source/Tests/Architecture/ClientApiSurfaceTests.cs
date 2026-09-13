@@ -64,6 +64,11 @@ public class ClientApiSurfaceTests
             "loadDescriptors",
             "setDescriptors"
         },
+        ["api/view-api.js"] = new[]
+        {
+            "canMeasure",
+            "waitForStableSize"
+        },
 
         // The state stores behind cel.appState and cel.viewState.
         ["core/state-store.js"] = new[]

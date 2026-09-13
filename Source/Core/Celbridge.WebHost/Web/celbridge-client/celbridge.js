@@ -8,6 +8,7 @@ import { InputAPI } from './api/input-api.js';
 import { createAppStateStore, createViewStateStore } from './core/state-store.js';
 import { LocalizationAPI } from './api/localization-api.js';
 import { LogAPI } from './api/log-api.js';
+import { ViewAPI } from './api/view-api.js';
 import { ToolsAPI } from './api/tools-api.js';
 
 /**
@@ -54,6 +55,13 @@ export class Celbridge {
      * @type {import('./core/state-store.js').Store}
      */
     #viewState;
+
+    /**
+     * Viewport trust for this surface: whether its geometry is one the page can measure against, and a
+     * settle helper for work that has to wait for it.
+     * @type {ViewAPI}
+     */
+    view;
 
     /**
      * Localization events API.
@@ -134,6 +142,7 @@ export class Celbridge {
         this.input = new InputAPI(this.#transport);
         this.#appState = createAppStateStore(this.#transport);
         this.#viewState = createViewStateStore(this.#transport);
+        this.view = new ViewAPI(this.#viewState);
         this.localization = new LocalizationAPI(this.#transport);
         this.log = new LogAPI(this.#transport);
         this.#exposeCelGlobal = options.exposeCelGlobal !== false;
