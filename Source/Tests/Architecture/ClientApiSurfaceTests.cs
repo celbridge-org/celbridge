@@ -13,8 +13,9 @@ namespace Celbridge.Tests.Architecture;
 [TestFixture]
 public class ClientApiSurfaceTests
 {
-    // Every method a package can reach as cel.<area>.<method>, by the module that defines the area. Keep
-    // each list alphabetical. `constructor` and #private members are not part of the surface.
+    // Every member a package can reach as <area>.<member>, by the module that defines the area. Methods and
+    // get accessors both count, since a package cannot tell them apart at the call site. Keep each list
+    // alphabetical. `constructor` and #private members are not part of the surface.
     private static readonly Dictionary<string, string[]> PublishedClientApi = new(StringComparer.Ordinal)
     {
         ["api/dialog-api.js"] = new[]
@@ -60,6 +61,8 @@ public class ClientApiSurfaceTests
         ["api/tools-api.js"] = new[]
         {
             "call",
+            "cel",
+            "isReady",
             "list",
             "loadDescriptors",
             "setDescriptors"
@@ -67,12 +70,16 @@ public class ClientApiSurfaceTests
         ["api/view-api.js"] = new[]
         {
             "canMeasure",
+            "isSized",
+            "onChanged",
+            "sizeUnavailable",
             "waitForStableSize"
         },
 
         // The state stores behind cel.appState and cel.viewState.
         ["core/state-store.js"] = new[]
         {
+            "current",
             "onChanged"
         }
     };
@@ -261,13 +268,14 @@ public class ClientApiSurfaceTests
         "while"
     };
 
-    // Methods declared directly in a class body: four-space indented, optionally async, named without a
-    // leading # (which marks a private member), and opening a body rather than being a bare call.
+    // Members declared directly in a class body: four-space indented, optionally async or a get accessor,
+    // named without a leading # (which marks a private member), and opening a body rather than being a bare
+    // call.
     private static HashSet<string> ReadPublicMethods(string filePath)
     {
         var contents = File.ReadAllText(filePath);
-        var methods = new HashSet<string>(StringComparer.Ordinal);
-        var pattern = @"^ {4}(?:async )?([a-zA-Z][a-zA-Z0-9]*)\s*\([^)]*\)\s*\{";
+        var members = new HashSet<string>(StringComparer.Ordinal);
+        var pattern = @"^ {4}(?:async |get )?([a-zA-Z][a-zA-Z0-9]*)\s*\([^)]*\)\s*\{";
 
         foreach (Match match in Regex.Matches(contents, pattern, RegexOptions.Multiline))
         {
@@ -277,9 +285,9 @@ public class ClientApiSurfaceTests
                 continue;
             }
 
-            methods.Add(name);
+            members.Add(name);
         }
 
-        return methods;
+        return members;
     }
 }

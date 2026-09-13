@@ -1,10 +1,13 @@
 // View API: whether this page can trust the box it is laid out in, and how to wait until it can.
 
-// How long a settle waits for a size to stop changing before the caller acts on whatever it has.
-const SETTLE_TIMEOUT_MS = 4000;
-
-// How often the size is sampled while the page is off screen, where there are no animation frames.
+// How often the size is sampled while the page is off screen, where there are no animation frames. Also the
+// bound on a sample taken while the page is on screen, since a page hidden after its frame is requested
+// runs no frames to release it.
 const HIDDEN_SAMPLE_MS = 100;
+
+// Fallback settle bound for a caller with no budget of its own. A caller whose host holds work open while it
+// waits should pass that budget as timeoutMs rather than inherit this.
+const SETTLE_TIMEOUT_MS = 4000;
 
 /**
  * Viewport trust for a hosted surface. The host gives a surface the geometry its content will be read at and
@@ -46,15 +49,24 @@ export class ViewAPI {
     }
 
     /**
+     * Registers a handler called whenever the host reports state for this view, which is when the answers
+     * above can change. A surface that sizes content off its own box re-measures here, so it follows the
+     * geometry the host gives it rather than measuring once. The handler runs immediately if state has
+     * already arrived.
+     * @param {() => void} handler
+     */
+    onChanged(handler) {
+        this.#viewState.onChanged(() => handler());
+    }
+
+    /**
      * Whether a measurement of an element is worth acting on: the host has reported the surface sized and the
-     * element has a box.
-     * @param {Element} element - The element the page measures its content against.
+     * element has a box. An element that is missing has none, so it reports false rather than throwing.
+     * @param {Element|null} element - The element the page measures its content against.
      * @returns {boolean}
      */
     canMeasure(element) {
-        return this.isSized &&
-            element.clientWidth > 0 &&
-            element.clientHeight > 0;
+        return this.#measures(measureBox(element));
     }
 
     /**
@@ -62,7 +74,7 @@ export class ViewAPI {
      * geometry the surface keeps. Returns immediately when no size is coming, and gives up after the
      * timeout, so a size that never settles cannot hold the caller. Whether what it has is then worth
      * measuring is canMeasure's answer.
-     * @param {Element} element - The element the page measures its content against.
+     * @param {Element|null} element - The element the page measures its content against.
      * @param {Object} [options]
      * @param {number} [options.timeoutMs] - How long to wait before giving up.
      * @returns {Promise<void>}
@@ -72,7 +84,10 @@ export class ViewAPI {
             return;
         }
 
+        const timeoutMs = options.timeoutMs ?? SETTLE_TIMEOUT_MS;
+
         let waiting = true;
+        let deadlineTimer = null;
 
         const settled = (async () => {
             let previousWidth = -1;
@@ -81,32 +96,65 @@ export class ViewAPI {
             while (waiting) {
                 await nextSizeSample();
 
-                if (this.sizeUnavailable) {
+                if (!waiting ||
+                    this.sizeUnavailable) {
                     return;
                 }
 
-                const width = element.clientWidth;
-                const height = element.clientHeight;
-                if (this.isSized &&
-                    width > 0 &&
-                    height > 0 &&
-                    width === previousWidth &&
-                    height === previousHeight) {
+                const box = measureBox(element);
+                if (this.#measures(box) &&
+                    box.width === previousWidth &&
+                    box.height === previousHeight) {
                     return;
                 }
 
-                previousWidth = width;
-                previousHeight = height;
+                previousWidth = box.width;
+                previousHeight = box.height;
             }
         })();
 
         // A timer keeps the caller moving even when the size never settles.
-        const timeoutMs = options.timeoutMs ?? SETTLE_TIMEOUT_MS;
-        const deadline = new Promise((resolve) => setTimeout(resolve, timeoutMs));
+        const deadline = new Promise((resolve) => {
+            deadlineTimer = setTimeout(resolve, timeoutMs);
+        });
 
-        await Promise.race([settled, deadline]);
-        waiting = false;
+        try {
+            await Promise.race([settled, deadline]);
+        } finally {
+            waiting = false;
+            clearTimeout(deadlineTimer);
+        }
     }
+
+    /**
+     * @param {{ width: number, height: number }} box
+     * @returns {boolean}
+     */
+    #measures(box) {
+        return this.isSized &&
+            box.width > 0 &&
+            box.height > 0;
+    }
+}
+
+/**
+ * An element's box, read once so both dimensions come from the same measurement. A missing element measures
+ * as nothing.
+ * @param {Element|null} element
+ * @returns {{ width: number, height: number }}
+ */
+function measureBox(element) {
+    if (!element) {
+        return {
+            width: 0,
+            height: 0,
+        };
+    }
+
+    return {
+        width: element.clientWidth,
+        height: element.clientHeight,
+    };
 }
 
 /**
@@ -120,7 +168,16 @@ function nextSizeSample() {
         return new Promise((resolve) => setTimeout(resolve, HIDDEN_SAMPLE_MS));
     }
 
-    return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+    // The page can be hidden after the frame is requested, and a hidden page runs no frames, so a timer
+    // releases the sample too. Whichever arrives second finds the promise already settled.
+    return new Promise((resolve) => {
+        const timer = setTimeout(resolve, HIDDEN_SAMPLE_MS);
+
+        requestAnimationFrame(() => {
+            clearTimeout(timer);
+            resolve();
+        });
+    });
 }
 
 function isPageHidden() {

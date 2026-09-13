@@ -188,21 +188,24 @@ export function createConsoleSession({ client, term, settings, fitTerminal, wait
         term.focus();
     }
 
-    // Attaches this view to the live session, which has been running since the document opened.
+    // Attaches this view to the live session, which has been running since the document opened. Every step
+    // is inside the guard, so a step that throws paints the failure rather than leaving the latch set and
+    // the veil up with no way to retry.
     async function attach() {
         if (requestInFlight) {
             return;
         }
         requestInFlight = true;
 
-        hideSessionFailed();
-
-        // The pty is created at the terminal's measured size, so measure only once the layout has settled.
-        await waitForTerminalSize();
-        const isSized = fitTerminal();
-        term.reset();
-
         try {
+            hideSessionFailed();
+
+            // The pty is created at the terminal's measured size, so measure only once the layout has
+            // settled.
+            await waitForTerminalSize();
+            const isSized = fitTerminal();
+            term.reset();
+
             const result = await client.sendRequest('console/attach', terminalSize(isSized));
             applyAttachResult(result);
         } catch (error) {
@@ -220,19 +223,19 @@ export function createConsoleSession({ client, term, settings, fitTerminal, wait
         }
         requestInFlight = true;
 
-        hideSessionFailed();
-        showStartingVeil();
-
         try {
-            await settings.save();
-        } catch (error) {
-            console.error('[Console] Failed to flush the config before reopen:', error);
-        }
+            hideSessionFailed();
+            showStartingVeil();
 
-        const isSized = fitTerminal();
-        term.reset();
+            try {
+                await settings.save();
+            } catch (error) {
+                console.error('[Console] Failed to flush the config before reopen:', error);
+            }
 
-        try {
+            const isSized = fitTerminal();
+            term.reset();
+
             const result = await client.sendRequest('console/reopen', terminalSize(isSized));
             applyAttachResult(result);
         } catch (error) {

@@ -97,30 +97,28 @@ const RAIL_STACK_FALLBACK = 400;
 // --cel-document-min-width.
 const DOCUMENT_MIN_WIDTH = 230;
 
+// How long the attach waits for the terminal's size to settle. It sits inside the host's own launch wait
+// (ConsoleSession.ViewSizeTimeoutMs), which holds the pty until a view reports a size, so raising it past
+// that bound would have the launch give up first and create the pty at the fallback size.
+const SIZE_SETTLE_TIMEOUT_MS = 4000;
+
 const appElement = document.getElementById('app');
 const railElement = appElement.querySelector('.cel-rail');
 const openSettingsButton = document.getElementById('open-settings');
 const terminalView = document.getElementById('terminal-view');
 const closeSettingsButton = document.getElementById('close-settings');
+const reopenSettingsButton = document.getElementById('reopen-settings');
 
-const settings = createConsoleSettings({
-    client,
-
-    // Reopening from settings shows the terminal first. A reopen measures the terminal for the size it gives
-    // the new pty and paints a failed start into it, and neither works while it is the hidden half of the
-    // row.
-    onReopen: () => {
-        setSettingsVisible(false);
-        session.reopen();
-    },
-});
+const settings = createConsoleSettings({ client });
 
 const session = createConsoleSession({
     client,
     term,
     settings,
     fitTerminal,
-    waitForTerminalSize: () => client.view.waitForStableSize(terminalElement),
+    waitForTerminalSize: () => client.view.waitForStableSize(terminalElement, {
+        timeoutMs: SIZE_SETTLE_TIMEOUT_MS,
+    }),
 });
 
 function applyTheme(theme) {
@@ -283,6 +281,13 @@ function setSettingsVisible(visible) {
 
 closeSettingsButton.addEventListener('click', () => setSettingsVisible(false));
 
+// Reopening from settings shows the terminal first. A reopen measures the terminal for the size it gives the
+// new pty and paints a failed start into it, and neither works while it is the hidden half of the row.
+reopenSettingsButton.addEventListener('click', () => {
+    setSettingsVisible(false);
+    session.reopen();
+});
+
 document.addEventListener('keydown', (event) => {
     // Escape belongs to whatever gesture is in progress first: a card drag cancels itself with it.
     if (event.key === 'Escape' &&
@@ -293,12 +298,10 @@ document.addEventListener('keydown', (event) => {
     }
 });
 
-client.viewState.onChanged(() => {
-    settings.applyWritableState();
+client.viewState.onChanged(() => settings.applyWritableState());
 
-    // The host reports the geometry this view will be read at, so a fit only counts from here.
-    refitTerminal();
-});
+// The host reports the geometry this view will be read at, so a fit only counts from here.
+client.view.onChanged(refitTerminal);
 
 async function main() {
     await client.initializeDocument({

@@ -28,9 +28,8 @@ const typeModules = new Map([shellType, pythonType].map((typeModule) => [typeMod
 const clientTypeIds = Array.from(typeModules.keys());
 
 // Binds the settings surface to the page. The session reports what it launched from and whether it failed.
-// Nothing else about it reaches here. onReopen is the footer button's verb, which the page owns because a
-// reopen shows the terminal as well as relaunching the session.
-export function createConsoleSettings({ client, onReopen }) {
+// Nothing else about it reaches here.
+export function createConsoleSettings({ client }) {
     const pip = document.getElementById('pip');
     const shortcutRail = document.getElementById('shortcut-rail');
     const shortcutSeparator = document.getElementById('shortcut-separator');
@@ -55,10 +54,9 @@ export function createConsoleSettings({ client, onReopen }) {
     let currentConfig = defaultConsoleConfig();
     let launchedConfig = null;
     let configError = null;
-    let sessionStartFailed = false;
     // What the terminal's failure overlay is saying, so the settings surface can say it too while the
-    // terminal is the hidden half of the row.
-    let sessionFailedText = '';
+    // terminal is the hidden half of the row. Null while a session is running.
+    let sessionFailure = null;
     // The registered session types, in the order the form offers them, each carrying the keys it accepts and
     // the runners it contributes. Null until an attach reports them.
     let hostSessionTypes = null;
@@ -457,8 +455,6 @@ export function createConsoleSettings({ client, onReopen }) {
         field.addEventListener('input', onFormInput);
     }
 
-    reopenSettingsButton.addEventListener('click', () => onReopen());
-
     // The host mirrors the writable state as its enum name, so Writable is the only editable value. A view
     // state that has not been seeded yet leaves the form editable.
     function isDocumentWritable() {
@@ -497,7 +493,7 @@ export function createConsoleSettings({ client, onReopen }) {
     // started.
     function updateAttention() {
         const diverged = launchedConfig !== null && !configsEqual(currentConfig, launchedConfig);
-        const needsAttention = diverged || configError !== null || sessionStartFailed || isUnknownSessionType();
+        const needsAttention = diverged || configError !== null || sessionFailure !== null || isUnknownSessionType();
         pip.classList.toggle('hidden', !needsAttention);
 
         // The Reopen button stays enabled so the session can be restarted at any time. The accent colour
@@ -506,7 +502,7 @@ export function createConsoleSettings({ client, onReopen }) {
         reopenSettingsButton.classList.toggle('cel-accent', diverged);
 
         // One slot, so a parse error wins: it is the one the surface showing it can also fix.
-        settingsSwitcher.setNotice(configError || unknownTypeText() || sessionFailedText);
+        settingsSwitcher.setNotice(configError || unknownTypeText() || sessionFailure);
     }
 
     function applyContent(content) {
@@ -557,8 +553,7 @@ export function createConsoleSettings({ client, onReopen }) {
 
         // What the session's failure overlay is saying, or null once a session is running again.
         setSessionFailure(message) {
-            sessionStartFailed = message !== null;
-            sessionFailedText = message ?? '';
+            sessionFailure = message ?? null;
             updateAttention();
         },
 

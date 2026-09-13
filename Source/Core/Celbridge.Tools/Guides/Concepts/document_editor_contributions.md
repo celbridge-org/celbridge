@@ -376,6 +376,36 @@ Treat **anything other than `"Writable"`** as read-only. Same representation for
 
 Read-only-by-design editors simply do not subscribe to `cel.viewState` — there is no writable state to apply, so there is nothing to register. Precedent: `Source/Modules/Celbridge.DocumentEditors/Editors/FileViewer/js/file-viewer.js`.
 
+## Sizing content off your own box
+
+An editor that sizes something off its own geometry — a terminal's cell grid, a canvas backing store, a
+virtualized row count — cannot measure whenever it likes. The host arranges a surface and gives it the
+geometry its content will be read at, and until it has, a page measuring itself reads a placeholder. Work
+sized against a placeholder is redone when the surface is shown, which costs whatever was already drawn at
+the wrong size. Layout-only styling needs none of this. It applies to work you do once, from a number.
+
+`client.view` answers it:
+
+- `client.view.isSized` reports whether the host has vouched for this surface's geometry.
+- `client.view.canMeasure(element)` adds the element having a box. A missing element measures as `false`
+  rather than throwing.
+- `client.view.sizeUnavailable` reports that no size is coming while the page stays off screen. The platform
+  does not lay out a page it is not displaying, and on the Windows heads the host cannot give an unarranged
+  surface a viewport either. Work that would otherwise wait proceeds without a size.
+- `await client.view.waitForStableSize(element, { timeoutMs })` resolves once the element's box has stopped
+  changing. It returns at once when no size is coming and gives up after `timeoutMs`, so it never holds a
+  caller open. Read `canMeasure(element)` afterwards to learn whether what you have is worth acting on, and
+  pass the budget your own host-side work allows rather than inheriting the default.
+- `client.view.onChanged(handler)` fires whenever the host reports state for this view, which is when the
+  answers above can change. Re-measure there. An editor that measures once stays at the geometry it first
+  saw.
+
+A view in a tab that has not been shown is the case to get right: it is laid out at the size its section
+will present it at, not at zero, and on macOS it can report that size before it is ever displayed.
+
+Precedent: `Source/Workspace/Celbridge.Console/Web/Console/console.js` (`fitTerminal`) and its session
+attach in `console-session.js`.
+
 ## The spurious-update trap
 
 Many editor frameworks emit "update" events for non-edits — TipTap's `setEditable(false)` fires `onUpdate` with a no-op transaction, SpreadJS's command manager fires through `import`, ProseMirror's `replaceWith` fires the same event as a keystroke. Wired naively, these route through `notifyChanged` → auto-save → and on a locked file, either fail loudly or strip the OS read-only attribute and clobber the user's choice.
