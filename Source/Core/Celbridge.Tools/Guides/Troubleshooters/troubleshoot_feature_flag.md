@@ -12,5 +12,4 @@ To find which flags are currently on, call `app_get_state` and read the `feature
 
 - **`webview-dev-tools`** gates every `webview_*` tool. Without it, all webview automation is unavailable.
 - **`webview-dev-tools-eval`** is a separate, narrower flag that gates only `webview_eval` because arbitrary JavaScript evaluation is the riskiest webview surface.
-- **`mcp-tools`** gates the broker itself; if it is off, you would not see this error from a tool call (the MCP server would not be running).
 - **`answer-dialog`** gates the `app_answer_dialog` MCP tool, which lets a script answer a modal dialog without a human present. It is off by default.

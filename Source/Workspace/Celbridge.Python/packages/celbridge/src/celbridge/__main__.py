@@ -216,8 +216,6 @@ def main():
 
     port = _resolve_rpc_port()
 
-    mcp_tools_enabled = os.environ.get('CELBRIDGE_MCP_TOOLS') == '1'
-
     # Always connect to the Celbridge application RPC server. The connection
     # signals to the host that the Python terminal is ready.
     client = RpcClient('127.0.0.1', port)
@@ -237,22 +235,19 @@ def main():
 
     cel = CelProxy(client)
 
-    # Only expose cel in the REPL namespace when MCP tools are enabled.
-    user_namespace = {}
-    if mcp_tools_enabled:
-        # Make cel and its namespaces importable for use in scripts.
-        # e.g. "from celbridge import cel" or "from celbridge import resource"
-        import celbridge
-        celbridge.cel = cel
-        for namespace_name in cel._get_namespace_names():
-            setattr(celbridge, namespace_name, getattr(cel, namespace_name))
+    # Make cel and its namespaces importable for use in scripts.
+    # e.g. "from celbridge import cel" or "from celbridge import resource"
+    import celbridge
+    celbridge.cel = cel
+    for namespace_name in cel._get_namespace_names():
+        setattr(celbridge, namespace_name, getattr(cel, namespace_name))
 
-        user_namespace['cel'] = cel
-        for namespace_name in cel._get_namespace_names():
-            user_namespace[namespace_name] = getattr(cel, namespace_name)
+    user_namespace = {'cel': cel}
+    for namespace_name in cel._get_namespace_names():
+        user_namespace[namespace_name] = getattr(cel, namespace_name)
 
     # Set up the REPL environment (banner, python path)
-    setup_repl(mcp_tools_enabled)
+    setup_repl()
 
     # Get IPython folder from environment variable (set by the host application)
     ipython_folder = os.environ.get('CELBRIDGE_IPYTHON_DIR', '')

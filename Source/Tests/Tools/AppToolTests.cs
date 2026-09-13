@@ -130,8 +130,6 @@ public class AppToolTests
         flagsElement.ValueKind.Should().Be(JsonValueKind.Object);
 
         // Every public string constant on FeatureFlagConstants must be present.
-        flagsElement.TryGetProperty(FeatureFlagConstants.McpTools, out var mcpTools).Should().BeTrue();
-        mcpTools.GetBoolean().Should().BeFalse();
         flagsElement.TryGetProperty(FeatureFlagConstants.WebViewDevTools, out var webViewDevTools).Should().BeTrue();
         webViewDevTools.GetBoolean().Should().BeFalse();
         flagsElement.TryGetProperty(FeatureFlagConstants.WebViewDevToolsEval, out var webViewDevToolsEval).Should().BeTrue();

@@ -9,12 +9,6 @@ namespace Celbridge.Settings;
 public static class FeatureFlagConstants
 {
     /// <summary>
-    /// MCP tool system and cel Python API. When disabled, the MCP server does not start
-    /// and the Python terminal launches without the cel proxy.
-    /// </summary>
-    public const string McpTools = "mcp-tools";
-
-    /// <summary>
     /// Browser developer tools in WebView-based editors, and the webview_* MCP tools that read and drive
     /// their pages. Enabled by default so extension authors can debug their custom editors.
     /// </summary>
@@ -33,11 +27,6 @@ public static class FeatureFlagConstants
     /// off by default in shipping builds.
     /// </summary>
     public const string AnswerDialog = "answer-dialog";
-
-    /// <summary>
-    /// Enables the built-in WebFetch and WebSearch tools for coding agents.
-    /// </summary>
-    public const string WebAccessTools = "web-access-tools";
 
     /// <summary>
     /// Narrates every navigation and attach of a hosted page into the log. A page that loads blank is

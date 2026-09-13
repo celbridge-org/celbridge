@@ -1011,18 +1011,6 @@ Open with default application instead?</value>
   <data name="ProjectSettings_FeatureFlagState_DefaultFormat" xml:space="preserve">
     <value>Default ({0})</value>
   </data>
-  <data name="ProjectSettings_FeatureFlag_McpTools_Title" xml:space="preserve">
-    <value>MCP Tools</value>
-  </data>
-  <data name="ProjectSettings_FeatureFlag_McpTools_Description" xml:space="preserve">
-    <value>MCP tool system and the cel Python API. When off, the MCP server does not start.</value>
-  </data>
-  <data name="ProjectSettings_FeatureFlag_WebAccessTools_Title" xml:space="preserve">
-    <value>Web Access Tools</value>
-  </data>
-  <data name="ProjectSettings_FeatureFlag_WebAccessTools_Description" xml:space="preserve">
-    <value>Built-in web fetch and web search tools for agents.</value>
-  </data>
   <data name="ProjectSettings_FeatureFlag_WebViewLoadDiagnostics_Title" xml:space="preserve">
     <value>WebView Load Diagnostics</value>
   </data>
