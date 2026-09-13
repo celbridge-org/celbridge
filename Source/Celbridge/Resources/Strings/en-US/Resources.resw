@@ -1035,11 +1035,11 @@ Open with default application instead?</value>
   <data name="ProjectSettings_FeatureFlag_OpenCel_Description" xml:space="preserve">
     <value>Adds Open metadata file to the Explorer menu, for editing a file's .cel metadata by hand. Metadata that no longer parses is flagged as broken.</value>
   </data>
-  <data name="ProjectSettings_FeatureFlag_AnswerDialog_Title" xml:space="preserve">
-    <value>Answer Dialog Tool</value>
+  <data name="ProjectSettings_FeatureFlag_NoteEditor_Title" xml:space="preserve">
+    <value>Notes Editor</value>
   </data>
-  <data name="ProjectSettings_FeatureFlag_AnswerDialog_Description" xml:space="preserve">
-    <value>Answers modal dialogs unattended, for test automation.</value>
+  <data name="ProjectSettings_FeatureFlag_NoteEditor_Description" xml:space="preserve">
+    <value>Adds the Notes editor for .note files. It is experimental and may be removed in a later release.</value>
   </data>
   <data name="ProjectSettings_SchemaVersionLabel" xml:space="preserve">
     <value>Celbridge version</value>

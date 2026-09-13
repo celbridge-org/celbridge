@@ -1,7 +1,7 @@
 """End-to-end coverage for app_answer_dialog (test automation).
 
-Skipped (whole class) when the `answer-dialog` flag is off — it defaults off in
-shipping builds; set `answer-dialog = true` under `[features]` in the .celbridge.
+Skipped (whole class) against a Release build, where app_answer_dialog refuses
+every call. Run it against a Debug build.
 
 Coverage boundary: Confirmation and InputText are exercised here because
 `explorer.delete(showDialog=True)`, `explorer.rename` and
@@ -87,8 +87,7 @@ class TestAnswerDialog:
 
     def test_invalid_dialog_kind_raises(self, app):
         # The tool validates dialogKind against the DialogKind enum and returns
-        # an error for an unknown value. This is the tool-level failure path
-        # reachable while the feature is on; the flag-off path is gated out by
-        # the autouse fixture here and covered by C# unit tests instead.
+        # an error for an unknown value. A Release build refuses before it reads
+        # dialogKind, and the autouse fixture skips this class there.
         with pytest.raises(CelError):
             app.answer_dialog("NotARealDialogKind")

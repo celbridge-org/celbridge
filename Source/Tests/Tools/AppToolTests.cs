@@ -71,6 +71,20 @@ public class AppToolTests
     }
 
     [Test]
+    public void GetState_IncludesBuildConfiguration()
+    {
+        WireAppStateDependencies(configuration: "Release");
+        var projectService = Substitute.For<IProjectService>();
+        projectService.CurrentProject.Returns((IProject?)null);
+        _services.GetRequiredService<IProjectService>().Returns(projectService);
+
+        var tools = new AppTools(_services);
+        var root = ParseResult(tools.GetState());
+
+        root.GetProperty("configuration").GetString().Should().Be("Release");
+    }
+
+    [Test]
     public void GetState_DoesNotIncludeAgentDocs()
     {
         // The agentDocs pointer is intentionally absent because the orientation
@@ -136,6 +150,8 @@ public class AppToolTests
         webViewDevToolsEval.GetBoolean().Should().BeTrue();
         flagsElement.TryGetProperty(FeatureFlagConstants.OpenCel, out var openCel).Should().BeTrue();
         openCel.GetBoolean().Should().BeFalse();
+        flagsElement.TryGetProperty(FeatureFlagConstants.NoteEditor, out var noteEditor).Should().BeTrue();
+        noteEditor.GetBoolean().Should().BeFalse();
     }
 
     private IFeatureFlags WireAppStateDependencies(
@@ -143,13 +159,14 @@ public class AppToolTests
         bool contextVisible = false,
         bool inspectorVisible = false,
         bool consoleVisible = false,
-        string appVersion = "0.0.0")
+        string appVersion = "0.0.0",
+        string configuration = "Debug")
     {
         var featureFlags = Substitute.For<IFeatureFlags>();
         featureFlags.IsEnabled(Arg.Any<string>()).Returns(false);
 
         var environmentService = Substitute.For<IAppEnvironment>();
-        var environmentInfo = new EnvironmentInfo(appVersion, "Windows", "Debug");
+        var environmentInfo = new EnvironmentInfo(appVersion, "Windows", configuration);
         environmentService.GetEnvironmentInfo().Returns(environmentInfo);
 
         var focusService = Substitute.For<IFocusService>();

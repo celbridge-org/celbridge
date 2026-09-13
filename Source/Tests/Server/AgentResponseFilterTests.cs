@@ -246,6 +246,7 @@ public class AgentResponseFilterTests
     {
         _appStateProvider.State = new AppStateResult(
             Version: "9.9.9-fake",
+            Configuration: "Debug",
             IsLoaded: true,
             ProjectName: "ProbeProject",
             FeatureFlags: new Dictionary<string, bool>(),
@@ -631,6 +632,7 @@ public class AgentResponseFilterTests
     {
         public AppStateResult State { get; set; } = new AppStateResult(
             Version: "1.0.0-test",
+            Configuration: "Debug",
             IsLoaded: true,
             ProjectName: "TestProject",
             FeatureFlags: new Dictionary<string, bool>(),

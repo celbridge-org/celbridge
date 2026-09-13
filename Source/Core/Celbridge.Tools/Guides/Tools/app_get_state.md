@@ -10,6 +10,7 @@ Early in a session, before any project-scoped work. The response also names the 
 
 A JSON object with these fields:
 
+- `configuration` (string) — the build configuration, `Debug` or `Release`. The test-automation tools `app_answer_dialog` and `app_simulate_input` work only in a `Debug` build.
 - `isLoaded` (bool) — whether a project is currently loaded.
 - `projectName` (string) — the project name, empty when no project is loaded.
 - `featureFlags` (object) — maps every declared flag name to its enabled state for the loaded project. Consult before calling a feature-gated tool.

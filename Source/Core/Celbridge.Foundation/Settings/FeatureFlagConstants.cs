@@ -22,13 +22,6 @@ public static class FeatureFlagConstants
     public const string WebViewDevToolsEval = "webview-dev-tools-eval";
 
     /// <summary>
-    /// Enables the app_answer_dialog MCP tool that lets a script answer a
-    /// modal dialog without a human present. A test-automation capability,
-    /// off by default in shipping builds.
-    /// </summary>
-    public const string AnswerDialog = "answer-dialog";
-
-    /// <summary>
     /// Narrates every navigation and attach of a hosted page into the log. A page that loads blank is
     /// reported whether or not this is enabled; what it adds is the surrounding timeline.
     /// </summary>
@@ -39,4 +32,10 @@ public static class FeatureFlagConstants
     /// the code editor for editing by hand.
     /// </summary>
     public const string OpenCel = "open-cel";
+
+    /// <summary>
+    /// Registers the bundled Notes editor for .note files, with its New File template. Off by default because
+    /// the editor is experimental.
+    /// </summary>
+    public const string NoteEditor = "note-editor";
 }
