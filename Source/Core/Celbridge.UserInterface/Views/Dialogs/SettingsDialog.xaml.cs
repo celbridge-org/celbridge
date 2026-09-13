@@ -1,5 +1,4 @@
 using Celbridge.Dialog;
-using Celbridge.Settings;
 using Celbridge.UserInterface.ViewModels.Dialogs;
 using Celbridge.UserInterface.Views.Controls;
 
@@ -55,27 +54,19 @@ public sealed partial class SettingsDialog : ContentDialog, ISettingsDialog
                 _stringLocalizer.GetString("Settings_Appearance_SectionHeader"),
                 _stringLocalizer.GetString("Settings_Appearance_Description"),
                 new AppearanceSettingsView()),
-        };
-
-        // The Workshop connection configures a feature this build may not have, and the dialog opens
-        // with no project loaded, so the flag is read without a project to override it.
-        var featureFlags = ServiceLocator.AcquireService<IFeatureFlags>();
-        if (featureFlags.IsEnabled(FeatureFlagConstants.Workshop))
-        {
-            sections.Add(new SettingsSection(
+            new(
                 SettingsDialogSections.Workshop,
                 "bs-shop",
                 _stringLocalizer.GetString("Settings_Workshop_SectionHeader"),
                 _stringLocalizer.GetString("Settings_Workshop_Description"),
-                new WorkshopSettingsView()));
-        }
-
-        sections.Add(new SettingsSection(
-            SettingsDialogSections.WebView,
-            "bs-globe",
-            _stringLocalizer.GetString("Settings_WebView_SectionHeader"),
-            _stringLocalizer.GetString("Settings_WebView_Description"),
-            new WebViewSettingsView()));
+                new WorkshopSettingsView()),
+            new(
+                SettingsDialogSections.WebView,
+                "bs-globe",
+                _stringLocalizer.GetString("Settings_WebView_SectionHeader"),
+                _stringLocalizer.GetString("Settings_WebView_Description"),
+                new WebViewSettingsView()),
+        };
 
         return sections;
     }

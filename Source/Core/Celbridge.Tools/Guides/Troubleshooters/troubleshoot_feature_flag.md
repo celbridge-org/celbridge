@@ -6,8 +6,6 @@ The tool you called is gated by a feature flag, and the flag is currently off. T
 
 Each flag has an application default, and a project can override it in the Feature Flags section of Project Settings. Ask the user to switch the named flag on there and reload the project. The tool cannot change a flag itself.
 
-A **non-overridable flag** is the exception, and its error message says so. It is read from the app's `appsettings.json` when the app starts, a `.celbridge` entry for it is ignored, and it is absent from the Feature Flags section of Project Settings. That fixes it for the lifetime of the build, so there is nothing for the user to turn on: choose another approach, or say the build does not have the feature.
-
 To find which flags are currently on, call `app_get_state` and read the `featureFlags` map. Every public flag declared in `FeatureFlagConstants` appears as a `name -> bool` entry. If the relevant flag is `false` and the user has not consented to enabling it, choose a different approach instead — there is no programmatic bypass.
 
 ## Common cases

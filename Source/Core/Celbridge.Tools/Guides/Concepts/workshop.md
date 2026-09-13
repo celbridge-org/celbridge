@@ -2,7 +2,7 @@
 
 The workshop is the server a Celbridge install publishes packages to and installs them from. It is the only part of the package system that leaves the machine: authoring a package, and the manifest that describes one, involve no server and are covered by `packages_overview`. Pages are published to the same workshop under their own manifest and workflow; see `pages_overview`.
 
-**These tools are behind the `workshop` build-time feature flag, which is off by default.** A build that did not opt in returns a feature-flag error from every tool below, and the flag cannot be turned on from a project's config or the Feature Flags section — it is read from the app's `appsettings.json` at startup. If one of these tools is refused, do not retry it: choose another approach, or say the build does not have the feature. The rest of the `package` namespace is local to the project tree and works in every build.
+**Every tool below needs a Workshop connection.** The user adds one in the Workshop section of Settings, with the workshop's URL and a Workshop Key. Without a connection, each tool fails before contacting the workshop, with a message that says where to add one. Ask the user to add the connection rather than retrying. The rest of the `package` namespace is local to the project tree and works without a connection.
 
 **The publisher is the Author set once in Workshop settings**, on the Settings page, not a per-package manifest field. `package_publish` fails if no Author is configured.
 

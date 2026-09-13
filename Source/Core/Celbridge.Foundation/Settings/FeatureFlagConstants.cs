@@ -1,5 +1,3 @@
-using System.Collections.Frozen;
-
 namespace Celbridge.Settings;
 
 /// <summary>
@@ -52,19 +50,4 @@ public static class FeatureFlagConstants
     /// the code editor for editing by hand.
     /// </summary>
     public const string OpenCel = "open-cel";
-
-    /// <summary>
-    /// The workshop: the package_* and page_* tools, and the Workshop section of Application Settings.
-    /// An experimental feature that needs a configured workshop server, so the build opts in rather than
-    /// the user. Non-overridable.
-    /// </summary>
-    public const string Workshop = "workshop";
-
-    /// <summary>
-    /// The flags a project cannot override. They are read from appsettings.json only, and are absent from
-    /// the Feature Flags section, because the surfaces they gate exist before any project is loaded and so
-    /// cannot follow a project's choice. That fixes them for the lifetime of the build.
-    /// </summary>
-    public static readonly FrozenSet<string> NonOverridableFlags =
-        new[] { Workshop }.ToFrozenSet(StringComparer.Ordinal);
 }

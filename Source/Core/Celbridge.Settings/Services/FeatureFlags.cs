@@ -26,10 +26,7 @@ public class FeatureFlags : IFeatureFlags
 
     public bool IsEnabled(string featureName)
     {
-        // The surfaces a non-overridable flag gates are live before a project is loaded, so there is no
-        // project whose answer they could follow.
-        if (!FeatureFlagConstants.NonOverridableFlags.Contains(featureName) &&
-            _projectOverrides.TryGetValue(featureName, out var overrideValue))
+        if (_projectOverrides.TryGetValue(featureName, out var overrideValue))
         {
             return overrideValue;
         }
