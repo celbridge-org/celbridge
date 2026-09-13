@@ -13,6 +13,7 @@ The workshop is the server a Celbridge install publishes packages to and install
 - **Install anywhere, but only `project:` loads.** A package installs into a `{packageName}` subfolder of the destination you choose, default `packages/`.
 - **The package name comes from the manifest.** `package_publish` reads it from `[package].name`; there is no folder-name rule and no separate name argument, so the source folder can live under any readable root including a `temp:` staging area.
 - **The irreversible admin tools always prompt.** `package_delete` (one version) and `package_unpublish` (every version) remove content irreversibly with no `confirmWithUser` opt-out, unlike `package_install` and `package_publish`, which are also destructive but opt-outable for agent workflows.
+- **Not callable from package code.** The host refuses these tools when a package editor's JavaScript calls them, so a package cannot act on the user's workshop account. They work from Python and the MCP transport.
 
 ## Versions and aliases
 

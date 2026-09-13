@@ -11,6 +11,7 @@ The `page` namespace publishes, lists, inspects, and unpublishes static web page
 - **Pages are decoupled from packages.** Publishing or unpublishing a page never touches a package, and vice versa.
 - **Publishing and unpublishing confirm by default.** `page_publish` and `page_unpublish` are outward-facing and prompt before acting; pass `confirmWithUser: false` only for unattended flows the user has consented to. See `silent_vs_interactive`.
 - **`page_publish` requires a loaded project.** The source is a project folder, so a project must be open.
+- **Not callable from package code.** The host refuses page tools when a package editor's JavaScript calls them. They work from Python and the MCP transport.
 
 ## Tools
 

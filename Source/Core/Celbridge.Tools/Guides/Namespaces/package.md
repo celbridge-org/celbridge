@@ -16,4 +16,4 @@ The `package` namespace covers Celbridge packages — the unit of distributable 
 - `package_archive` — archive a folder into a zip file.
 - `package_unarchive` — extract a zip archive into a folder.
 
-The workshop tools in this namespace publish packages to a workshop and install them from one: `package_list`, `package_info`, `package_install`, `package_publish`, `package_set_alias`, `package_remove_alias`, `package_delete` and `package_unpublish`. They need a Workshop connection, and the `workshop` guide covers them.
+The workshop tools in this namespace publish packages to a workshop and install them from one: `package_list`, `package_info`, `package_install`, `package_publish`, `package_set_alias`, `package_remove_alias`, `package_delete` and `package_unpublish`. They need a Workshop connection and are refused when package code calls them. The `workshop` guide covers them.
