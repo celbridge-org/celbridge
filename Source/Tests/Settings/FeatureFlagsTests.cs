@@ -21,7 +21,7 @@ public class FeatureFlagsTests
     {
         var configData = new Dictionary<string, string?>
         {
-            ["FeatureFlags:mcp-tools"] = "true",
+            ["FeatureFlags:webview-dev-tools"] = "true",
             ["FeatureFlags:note-editor"] = "false"
         };
 
@@ -51,7 +51,7 @@ public class FeatureFlagsTests
     [Test]
     public void IsEnabled_EnabledInConfig_ReturnsTrue()
     {
-        var result = _featureFlags.IsEnabled("mcp-tools");
+        var result = _featureFlags.IsEnabled("webview-dev-tools");
 
         result.Should().BeTrue();
     }
@@ -105,12 +105,12 @@ public class FeatureFlagsTests
     {
         var overrides = new Dictionary<string, bool>
         {
-            ["mcp-tools"] = false
+            ["webview-dev-tools"] = false
         };
 
         _featureFlags.ApplyProjectOverrides(overrides);
 
-        _featureFlags.IsEnabled("mcp-tools").Should().BeFalse("project override should disable the feature");
+        _featureFlags.IsEnabled("webview-dev-tools").Should().BeFalse("project override should disable the feature");
     }
 
     [Test]
@@ -123,7 +123,7 @@ public class FeatureFlagsTests
 
         _featureFlags.ApplyProjectOverrides(overrides);
 
-        _featureFlags.IsEnabled("mcp-tools").Should().BeTrue("non-overridden features should use app-level config");
+        _featureFlags.IsEnabled("webview-dev-tools").Should().BeTrue("non-overridden features should use app-level config");
     }
 
     [Test]
@@ -132,14 +132,14 @@ public class FeatureFlagsTests
         var overrides = new Dictionary<string, bool>
         {
             ["note-editor"] = true,
-            ["mcp-tools"] = false
+            ["webview-dev-tools"] = false
         };
 
         _featureFlags.ApplyProjectOverrides(overrides);
         _featureFlags.ClearProjectOverrides();
 
         _featureFlags.IsEnabled("note-editor").Should().BeFalse("should revert to app-level after clearing");
-        _featureFlags.IsEnabled("mcp-tools").Should().BeTrue("should revert to app-level after clearing");
+        _featureFlags.IsEnabled("webview-dev-tools").Should().BeTrue("should revert to app-level after clearing");
     }
 
     #endregion
@@ -180,13 +180,13 @@ public class FeatureFlagsTests
         var overrides = new Dictionary<string, bool>
         {
             ["note-editor"] = true,
-            ["mcp-tools"] = false
+            ["webview-dev-tools"] = false
         };
 
         _featureFlags.ApplyProjectOverrides(overrides);
 
         _featureFlags.IsEnabled("note-editor").Should().BeTrue("project enables note-editor");
-        _featureFlags.IsEnabled("mcp-tools").Should().BeFalse("project disables mcp-tools");
+        _featureFlags.IsEnabled("webview-dev-tools").Should().BeFalse("project disables webview-dev-tools");
         _featureFlags.IsEnabled("unknown-feature").Should().BeFalse("unconfigured features default to off");
     }
 

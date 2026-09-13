@@ -42,6 +42,21 @@ All native interop and operating-system branching is contained in `Platform/` fo
 - **App bootstrap / composition root.** `App.xaml.cs` is the one file outside `Platform/` that still uses `#if WINDOWS` — for the pre-DI log-folder path, the window-icon resizetizer workaround, and WinAppSDK file-activation. It runs before DI exists and is the natural composition root, so these stay inline (the same bootstrap exception the filesystem analyzer allows).
 - **Tests** may assert platform-divergent behaviour directly; the convention governs production code.
 
+## Feature flags
+
+A feature flag switches a capability on or off per project. Flags are declared in `FeatureFlagConstants` and read through `IFeatureFlags`. The Feature Flags section of Project Settings lists every flag, and `app_get_state` reports each declared flag's resolved value to agents without further wiring.
+
+- **Every default is explicit.** Each constant in `FeatureFlagConstants` has a boolean entry in the `FeatureFlags` section of `Source/Celbridge/appsettings.json`. A flag that is missing there, or whose value is not a boolean, resolves to off, so a flag the build never configured exposes nothing. `FeatureFlagDefaultsTests` fails when either list names a flag the other lacks.
+- **Every flag is overridable per project.** A project pins a flag on or off in the `features` inline table of the `[celbridge]` section of its `.celbridge` file, which the Feature Flags section writes. `WorkspaceLoader` applies the overrides when the project loads, before it registers packages, so a change applies after a reload. There is no build-only flag type.
+- **Code reads a flag through `IFeatureFlags`.** Ask `IsEnabled` where the host provides the feature. `project.Config.Features` holds only the project's overrides, and it is read only by `WorkspaceLoader`, which applies them, and by the Feature Flags section, which edits them. A flag that decides what a workspace contains, such as whether a bundled package is registered, is read while the workspace loads.
+- **Every flag has a title and a description.** `FeatureFlagCatalog` lists the flags in display order, each with `ProjectSettings_FeatureFlag_<Name>_Title` and `ProjectSettings_FeatureFlag_<Name>_Description` strings, and `FeatureFlagCatalogTests` fails when a declared flag has no entry. A description is one or two sentences: what the flag turns on, then what that lets an agent do or what it records. The selector already shows the default, so the description does not repeat it. A feature that may change or be removed is described as experimental.
+- **Agent-facing text matches the flag system.** A tool gated by a flag returns `ToolResponse.FeatureFlagDisabled`, which tells the agent to ask the user to switch the flag on in the Feature Flags section of Project Settings and reload the project, and attaches the `troubleshoot_feature_flag` guide. A guide for a gated tool names its flag and the same place to change it.
+- **Removing a flag leaves existing projects loading.** Delete the constant, its `appsettings.json` entry, its catalog row and its strings. An override that names the removed flag stays in the project's `.celbridge` file, and nothing reads it.
+
+### Choosing a flag
+
+A flag is for a real per-project choice. A finished package contribution that should not appear in every project declares `activation = "optional"` in its editor manifest instead. An experimental feature, which may be removed, sits behind a flag that is off by default, checked where the host provides the feature rather than declared in a manifest, so nothing lists it until a project switches the flag on. A test-automation hook is Debug-only, following `app_simulate_input` and `app_answer_dialog`. A capability every project needs is simply on, with no flag.
+
 ## Save Model
 
 Documents auto-save via `DocumentViewModel.OnDataChanged()` → per-view save timer (~1s). There is no user-facing Save command and no "unsaved changes" state; users recover via undo/redo.
