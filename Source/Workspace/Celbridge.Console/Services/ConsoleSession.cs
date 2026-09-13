@@ -346,8 +346,7 @@ internal sealed class ConsoleSession : IDisposable
 
         _terminal = terminal;
 
-        // A size reported while the pty was being created had no terminal to be applied to, so it is
-        // picked up here rather than waiting on the next resize.
+        // A size reported while the pty was being created had no terminal to be applied to.
         var startupSize = _pendingViewSize.Current;
         if (startupSize is not null)
         {

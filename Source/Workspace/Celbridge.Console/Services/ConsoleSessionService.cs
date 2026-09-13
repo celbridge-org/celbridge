@@ -155,9 +155,6 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         if (!hasViewSize &&
             !_webViewAdapter.CanSizeUnarrangedViewport)
         {
-            // This view has been laid out as far as it is going to be until it is shown, and the host
-            // cannot give it a viewport in the meantime, so there is no size coming for the launch to
-            // wait for.
             session.ReportNoViewSize();
         }
 

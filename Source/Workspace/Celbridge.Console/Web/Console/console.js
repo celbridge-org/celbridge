@@ -1,6 +1,6 @@
 // Console document editor. One WebView carries two channels: the standard document content/save channel
 // (the .console TOML edited through the settings form) and a custom console/* RPC channel (the live pty
-// terminal). This file is the terminal itself and the page the two surfaces share; the settings form and the
+// terminal). This file is the terminal itself and the page the two surfaces share. The settings form and the
 // live session are modules of their own.
 
 import celbridge from '/assets/celbridge-client/celbridge.js';

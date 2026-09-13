@@ -27,8 +27,7 @@ public sealed class PendingViewSize
     private bool _sizeUnavailable;
 
     /// <summary>
-    /// The last size a view reported, or null when none has. Read after the pty exists to pick up a size
-    /// that arrived while it was being created, which found no terminal to apply it to.
+    /// The last size a view reported, or null when none has.
     /// </summary>
     public TerminalSize? Current
     {
@@ -96,7 +95,6 @@ public sealed class PendingViewSize
             {
                 sizeBeforeSettling = _reportedSize;
 
-                // No size was reported and none is coming, so there is nothing to settle.
                 if (_sizeUnavailable &&
                     sizeBeforeSettling is null)
                 {

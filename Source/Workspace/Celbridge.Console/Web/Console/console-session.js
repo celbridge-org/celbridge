@@ -6,7 +6,7 @@
 import { t } from '/assets/celbridge-client/localization.js';
 
 // The starting veil covers the terminal from launch until the shell reports its screen clear, hiding the
-// shell-startup phase. The timers are the safety reveal for a shell that never echoes the ready marker.
+// shell-startup phase.
 const VEIL_FADE_MS = 240;
 
 // Backstop for a host that never reports the startup phase ending. The host reveals a quiet session itself
@@ -14,9 +14,7 @@ const VEIL_FADE_MS = 240;
 // is up, which leaves nothing here to measure progress against.
 const VEIL_BACKSTOP_MS = 15000;
 
-// Binds this view to the live session. The terminal is measured through the two callbacks rather than here:
-// what a box is worth measuring is the terminal's business, and all the session needs is the size to launch
-// a pty at.
+// Binds this view to the live session.
 export function createConsoleSession({ client, term, settings, fitTerminal, waitForTerminalSize }) {
     const sessionStarting = document.getElementById('session-starting');
     const sessionFailed = document.getElementById('session-failed');
@@ -65,8 +63,6 @@ export function createConsoleSession({ client, term, settings, fitTerminal, wait
     });
 
     // Resizes the terminal to the size the session painted its buffered output at, so nothing is rewrapped.
-    // Anything but a positive whole number of cells is not a size a terminal has, and the size it is already
-    // at is not worth taking.
     function adoptSessionSize(cols, rows) {
         if (!Number.isInteger(cols) ||
             !Number.isInteger(rows) ||
@@ -109,7 +105,6 @@ export function createConsoleSession({ client, term, settings, fitTerminal, wait
             return;
         }
 
-        // Fade rather than cut: the terminal materializes instead of appearing mid-repaint.
         sessionStarting.classList.add('fading-out');
         veilFadeTimer = setTimeout(() => {
             veilFadeTimer = null;
@@ -202,12 +197,7 @@ export function createConsoleSession({ client, term, settings, fitTerminal, wait
 
         hideSessionFailed();
 
-        // The veil is already up: it is the page's initial state, so the terminal is covered from the first
-        // paint until the attach result decides whether it stays. Attach waits on the session start, which
-        // on a first run includes installing the runtime's toolchain.
-        //
-        // The pty is created at the terminal's measured size, so measure only once the layout has settled. A
-        // resize that lands after the shell has painted costs the screen the output already on it.
+        // The pty is created at the terminal's measured size, so measure only once the layout has settled.
         await waitForTerminalSize();
         const isSized = fitTerminal();
         term.reset();

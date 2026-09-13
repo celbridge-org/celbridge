@@ -131,8 +131,7 @@ public class PendingViewSizeTests
     {
         var pendingViewSize = new PendingViewSize();
 
-        // The window a stream of changing sizes is settled over. There is no such stream here, so the
-        // wait must not spend it.
+        // The window a stream of changing sizes is settled over.
         var settleWindow = Task.Delay(250);
 
         var waiting = pendingViewSize.WaitAsync(WaitTimeoutMs);

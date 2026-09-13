@@ -1,5 +1,5 @@
 // The console's settings surface: the .console file as a form. The selected session type decides which
-// fields the Type section offers and which built-in runners are listed; everything below it is common to
+// fields the Type section offers and which built-in runners are listed. Everything below it is common to
 // every type. The surface also carries the console's status, since a config that has moved on from the one
 // the live session was launched from is only fixable here.
 
@@ -17,8 +17,7 @@ import {
 import shellType from './types/shell.js';
 import pythonType from './types/python.js';
 
-// A shortcut with no icon, or one the bundled icon set does not carry, still needs a glyph to be clickable,
-// so it falls back to the icon the Automation settings tab uses.
+// The glyph for a shortcut with no icon, or one the bundled icon set does not carry.
 const SHORTCUT_FALLBACK_ICON = 'bs-lightning-charge';
 
 // The session types this client can edit, in the order the Type control offers them. A type is one module
@@ -28,8 +27,8 @@ const typeModules = new Map([shellType, pythonType].map((typeModule) => [typeMod
 // A type needs a module to be offered.
 const clientTypeIds = Array.from(typeModules.keys());
 
-// Binds the settings surface to the page. The session reports what it launched from and whether it failed;
-// nothing else about it reaches here. onReopen is the footer button's verb, which the page owns because a
+// Binds the settings surface to the page. The session reports what it launched from and whether it failed.
+// Nothing else about it reaches here. onReopen is the footer button's verb, which the page owns because a
 // reopen shows the terminal as well as relaunching the session.
 export function createConsoleSettings({ client, onReopen }) {
     const pip = document.getElementById('pip');
@@ -63,9 +62,7 @@ export function createConsoleSettings({ client, onReopen }) {
     // The registered session types, in the order the form offers them, each carrying the keys it accepts and
     // the runners it contributes. Null until an attach reports them.
     let hostSessionTypes = null;
-    // The ids of the built-in runners switched off for this console. Held apart from the form inputs because
-    // a card carries no editable field, so readForm carries this through rather than reading it back out of
-    // the DOM.
+    // The ids of the built-in runners switched off for this console.
     let disabledBuiltInRunners = [];
 
     // The selected type's fields, resolved from the markup applyType injected. Each entry pairs a control
@@ -309,7 +306,7 @@ export function createConsoleSettings({ client, onReopen }) {
             return { extensions, command };
         },
 
-        // The collapsed card identifies the runner by the extensions it handles; the command is one expand
+        // The collapsed card identifies the runner by the extensions it handles. The command is one expand
         // away.
         updateHeader(card) {
             const extensions = card.querySelector('.runner-extensions').value.trim();
@@ -398,7 +395,7 @@ export function createConsoleSettings({ client, onReopen }) {
     });
 
     // The per-console shortcuts, rendered as icon-only cells at the top of the inspector rail. Each injects
-    // its text into the pty on click; the tooltip carries the label, falling back to the text it types.
+    // its text into the pty on click. The tooltip carries the label, falling back to the text it types.
     function renderShortcutRail() {
         shortcutRail.replaceChildren();
         const shortcuts = currentConfig.shortcuts || [];
@@ -423,9 +420,7 @@ export function createConsoleSettings({ client, onReopen }) {
         }
     }
 
-    // Injects a shortcut's text into the pty. Submitted through console/submit rather than as raw input, so
-    // the host owns how an invocation is entered at the prompt. The submit key cannot travel with the text:
-    // an app that reads a burst of stdin as one paste would treat a carriage return inside it as a newline.
+    // Injects a shortcut's text into the pty.
     function injectShortcut(text) {
         if (!text) {
             return;
@@ -437,10 +432,9 @@ export function createConsoleSettings({ client, onReopen }) {
         currentConfig = readForm();
         // Editing the form yields a well-formed config, so any prior parse error is cleared.
         configError = null;
-        // Mark the document dirty so the host's save timer flushes the serialised TOML through onRequestSave.
         client.document.notifyChanged();
         // The shortcut rail is pure client-side UI, so it previews live as the user edits. Every other
-        // setting applies on the next reopen, flagged by updateAttention.
+        // setting applies on the next reopen.
         renderShortcutRail();
         updateAttention();
     }
@@ -531,7 +525,7 @@ export function createConsoleSettings({ client, onReopen }) {
         applyContent,
         applyWritableState,
 
-        // Flushes the form to the document. The host's save timer does this on its own; a reopen forces it
+        // Flushes the form to the document. The host's save timer does this on its own. A reopen forces it
         // so the file on disk is what the new session launches from.
         save() {
             return client.document.save(serializeConsoleToml(currentConfig));
@@ -581,8 +575,7 @@ export function createConsoleSettings({ client, onReopen }) {
             settingsView.querySelector('.cel-section-nav-item[aria-selected="true"]')?.focus();
         },
 
-        // Persist the selected section and its scroll position so they survive a reopen. Which surface was
-        // showing is deliberately not persisted: a reopen comes back to the terminal.
+        // Persist the selected section and its scroll position so they survive a reopen.
         requestState() {
             return JSON.stringify({
                 activeSection: settingsSwitcher.selected(),

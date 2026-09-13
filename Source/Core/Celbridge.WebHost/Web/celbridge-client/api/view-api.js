@@ -115,7 +115,8 @@ export class ViewAPI {
  * @returns {Promise<void>}
  */
 function nextSizeSample() {
-    if (isPageHidden() || typeof requestAnimationFrame === 'undefined') {
+    if (isPageHidden() ||
+        typeof requestAnimationFrame === 'undefined') {
         return new Promise((resolve) => setTimeout(resolve, HIDDEN_SAMPLE_MS));
     }
 
