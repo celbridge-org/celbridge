@@ -132,7 +132,7 @@ public static class ToolResponse
     {
         var remedy = FeatureFlagConstants.NonOverridableFlags.Contains(flagName)
             ? "It is fixed at build time, so this build cannot use this tool."
-            : "Ask the user to switch it on in Project Settings → Feature Flags, then reload the project.";
+            : "Ask the user to switch it on in the Feature Flags section of Project Settings, then reload the project.";
 
         return ErrorWithTroubleshooter(
             $"The '{flagName}' feature flag is disabled. {remedy}",

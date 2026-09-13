@@ -4,7 +4,7 @@ The `webview` namespace drives WebView-backed editors: HTML viewers and contribu
 
 ## Must-knows
 
-- **Most tools are gated by feature flags.** `webview_eval` requires `webview-dev-tools` and `webview-dev-tools-eval`, and the rest require `webview-dev-tools`. `webview-dev-tools-eval` is off by default, and the user switches it on per project in Project Settings → Feature Flags. Check `featureFlags` from `app_get_state` before calling.
+- **Most tools are gated by feature flags.** `webview_eval` requires `webview-dev-tools` and `webview-dev-tools-eval`, and the rest require `webview-dev-tools`. `webview-dev-tools-eval` is off by default, and the user switches it on per project in the Feature Flags section of Project Settings. Check `featureFlags` from `app_get_state` before calling.
 - **The right editor must have opened the document.** `document_get_state` returns an `editorId` per open document. If you opened a `.html` expecting the HTML viewer but `editorId` is the code editor, webview tools will not work against it. See `webview_devtools`.
 - **`webview_screenshot` requires the tab to be active.** WebView2 pauses rendering for inactive tabs. Activate via `document_activate` first.
 - **Synthetic events have `isTrusted: false`.** Handlers gated on `event.isTrusted` will not fire from `webview_click`. If a click appears to do nothing, use `webview_eval` to confirm.

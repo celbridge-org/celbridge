@@ -4,7 +4,7 @@ The tool you called is gated by a feature flag, and the flag is currently off. T
 
 ## Recovering
 
-Each flag has an application default, and a project can override it in Project Settings → Feature Flags. Ask the user to switch the named flag on there and reload the project. The tool cannot change a flag itself.
+Each flag has an application default, and a project can override it in the Feature Flags section of Project Settings. Ask the user to switch the named flag on there and reload the project. The tool cannot change a flag itself.
 
 A **non-overridable flag** is the exception, and its error message says so. It is read from the app's `appsettings.json` when the app starts, a `.celbridge` entry for it is ignored, and it is absent from the Feature Flags section of Project Settings. That fixes it for the lifetime of the build, so there is nothing for the user to turn on: choose another approach, or say the build does not have the feature.
 

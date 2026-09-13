@@ -81,7 +81,7 @@ public class ToolResponseTests
 
         result.IsError.Should().BeTrue();
         var text = ((TextContentBlock)result.Content!.Single()).Text;
-        text.Should().Be("The 'webview-dev-tools' feature flag is disabled. Ask the user to switch it on in Project Settings → Feature Flags, then reload the project.");
+        text.Should().Be("The 'webview-dev-tools' feature flag is disabled. Ask the user to switch it on in the Feature Flags section of Project Settings, then reload the project.");
         result.Meta![ToolResponse.TroubleshooterMetaKey]!.GetValue<string>()
             .Should().Be("troubleshoot_feature_flag");
     }
