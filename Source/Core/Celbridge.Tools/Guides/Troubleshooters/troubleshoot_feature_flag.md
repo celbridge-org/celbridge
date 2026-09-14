@@ -4,15 +4,13 @@ The tool you called is gated by a feature flag, and the flag is currently off. T
 
 ## Recovering
 
-Feature flags live in the user-level `.celbridge` config, not the project file. Ask the user to enable the named flag — the tool cannot toggle it for them, and the project's `.celbridge` does not override the user setting.
+Each flag has an application default, and a project can override it in the Features section of Project Settings. Ask the user to switch the flag on there and reload the project. The tool cannot change a flag itself.
 
-A **non-overridable flag** is the exception, and its error message says so. It is read from the app's `appsettings.json` when the app starts, a `.celbridge` entry for it is ignored, and it is absent from the Feature Flags section of Project Settings. That fixes it for the lifetime of the build, so there is nothing for the user to turn on: choose another approach, or say the build does not have the feature.
+The section groups flags by area and gives each one a title for the user, so the flag's name does not appear there. Name the group and the title when you ask, as listed below.
 
 To find which flags are currently on, call `app_get_state` and read the `featureFlags` map. Every public flag declared in `FeatureFlagConstants` appears as a `name -> bool` entry. If the relevant flag is `false` and the user has not consented to enabling it, choose a different approach instead — there is no programmatic bypass.
 
 ## Common cases
 
-- **`webview-dev-tools`** gates every `webview_*` tool. Without it, all webview automation is unavailable.
-- **`webview-dev-tools-eval`** is a separate, narrower flag that gates only `webview_eval` because arbitrary JavaScript evaluation is the riskiest webview surface.
-- **`mcp-tools`** gates the broker itself; if it is off, you would not see this error from a tool call (the MCP server would not be running).
-- **`answer-dialog`** gates the `app_answer_dialog` MCP tool, which lets a script answer a modal dialog without a human present. The tool itself only ships in debug builds, so setting the flag in a release build has no effect — `app_answer_dialog` does not appear in `tools/list` regardless. To enable in a debug build, set `answer-dialog = true` in the user-level `.celbridge`.
+- **`webview-dev-tools`** is Developer Tools in the Web group. It gates every `webview_*` tool. Without it, all webview automation is unavailable.
+- **`webview-dev-tools-eval`** is Run JavaScript in Editors in the Web group. It is a separate, narrower flag that gates only `webview_eval` because arbitrary JavaScript evaluation is the riskiest webview surface.

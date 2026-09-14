@@ -65,18 +65,13 @@ def eval_enabled(app):
 
 @pytest.fixture(scope="session")
 def answer_dialog_available(app):
-    """Skip the suite (or a single test) when the dialog-answer surface is unavailable.
+    """Skip the suite (or a single test) when app_answer_dialog is unavailable.
 
-    The tool ships in every build configuration and is gated by the `answer-dialog`
-    flag, which defaults off in shipping builds. When the flag is off,
-    `app_get_state.featureFlags` reports it disabled and we skip. Enable it with
-    `answer-dialog = true` under `[features]` in the project .celbridge.
+    The tool answers dialogs only in a Debug build of Celbridge and refuses every
+    call in a Release build, so the fixture skips unless `app_get_state` reports
+    the Debug configuration.
     """
     state = app.get_state()
-    feature_flags = state.get("featureFlags", {})
-    if not feature_flags.get("answer-dialog", False):
-        pytest.skip(
-            "Dialog answer feature not enabled — set answer-dialog = true "
-            "under [features] in the project .celbridge"
-        )
+    if state.get("configuration") != "Debug":
+        pytest.skip("app_answer_dialog is available in debug builds only")
     return True

@@ -78,7 +78,7 @@ const tree = await cel.file.getTree("");
 
 - **Arguments are positional and camelCase.** Extra arguments throw `CEL_TOOL_INVALID_ARGS`.
 - **Errors throw `CelToolError`** with `{ code, tool, message }`.
-- **Calling a tool the host withholds** (the `webview.*` namespace, or a namespace behind a disabled feature flag) throws `TypeError: Cannot read properties of undefined`, because the proxy is built from the tools the host returned.
+- **Calling a tool the host withholds** throws a `TypeError`, because the proxy is built from the tools the host returned. The `webview.*` and `page.*` namespaces are withheld whole, so the error reads `Cannot read properties of undefined`. The workshop tools in `package.*` are withheld one by one, so the error reads `... is not a function`.
 
 ## Domain prep — namespace guides
 

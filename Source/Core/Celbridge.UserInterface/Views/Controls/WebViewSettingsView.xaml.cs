@@ -3,7 +3,7 @@ using Celbridge.UserInterface.ViewModels.Controls;
 namespace Celbridge.UserInterface.Views;
 
 /// <summary>
-/// The Web View section of the settings dialog, covering how hosted web content behaves.
+/// The Web section of the settings dialog, covering how hosted web content behaves.
 /// </summary>
 public sealed partial class WebViewSettingsView : UserControl
 {

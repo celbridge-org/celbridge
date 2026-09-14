@@ -1,14 +1,13 @@
 using System.Reflection;
 using Celbridge.ProjectSettings.ViewModels;
 using Celbridge.Settings;
+using Celbridge.Tests.Architecture;
 
 namespace Celbridge.Tests.ProjectSettings;
 
 /// <summary>
-/// Keeps FeatureFlagCatalog (the Project Settings UI metadata) in sync with FeatureFlagConstants (the
-/// canonical flag names), so adding a flag to one without the other fails the build rather than silently
-/// leaving a gap in the panel. Non-overridable flags are the exception: the panel sets a project
-/// override, which one of those ignores, so listing it would offer the user a toggle that does nothing.
+/// Keeps FeatureFlagCatalog (the metadata behind the Features section of Project Settings) in sync with
+/// FeatureFlagConstants (the canonical flag names).
 /// </summary>
 [TestFixture]
 public class FeatureFlagCatalogTests
@@ -22,38 +21,53 @@ public class FeatureFlagCatalogTests
             .ToList();
     }
 
-    [Test]
-    public void Catalog_CoversEveryRuntimeFeatureFlag()
+    private static IReadOnlyList<FeatureFlagDescriptor> GetCatalogFlags()
     {
-        var runtimeNames = GetConstantFlagNames()
-            .Where(flagName => !FeatureFlagConstants.NonOverridableFlags.Contains(flagName))
+        return FeatureFlagCatalog.Groups
+            .SelectMany(group => group.Flags)
             .ToList();
-        var catalogNames = FeatureFlagCatalog.Descriptors.Select(descriptor => descriptor.FlagName).ToList();
-
-        catalogNames.Should().BeEquivalentTo(runtimeNames);
     }
 
     [Test]
-    public void Catalog_ExcludesNonOverridableFlags()
-    {
-        var catalogNames = FeatureFlagCatalog.Descriptors.Select(descriptor => descriptor.FlagName).ToList();
-
-        catalogNames.Should().NotIntersectWith(FeatureFlagConstants.NonOverridableFlags);
-    }
-
-    [Test]
-    public void NonOverridableFlags_AreDeclaredFlagNames()
+    public void Catalog_CoversEveryKnownFeatureFlag()
     {
         var constantNames = GetConstantFlagNames();
+        var catalogNames = GetCatalogFlags().Select(descriptor => descriptor.FlagName).ToList();
 
-        FeatureFlagConstants.NonOverridableFlags.Should().BeSubsetOf(constantNames);
+        catalogNames.Should().BeEquivalentTo(constantNames);
     }
 
     [Test]
     public void Catalog_HasNoDuplicateFlags()
     {
-        var catalogNames = FeatureFlagCatalog.Descriptors.Select(descriptor => descriptor.FlagName).ToList();
+        var catalogNames = GetCatalogFlags().Select(descriptor => descriptor.FlagName).ToList();
 
         catalogNames.Should().OnlyHaveUniqueItems();
+    }
+
+    [Test]
+    public void Catalog_HasNoEmptyGroups()
+    {
+        FeatureFlagCatalog.Groups.Should().OnlyContain(group => group.Flags.Count > 0, "an empty group draws a card with no rows");
+    }
+
+    [Test]
+    public void Catalog_EveryResourceKeyExistsInTheResourceFile()
+    {
+        var keys = FeatureFlagCatalog.Groups
+            .Select(group => group.TitleKey)
+            .Concat(GetCatalogFlags().SelectMany(descriptor => new[] { descriptor.TitleKey, descriptor.DescriptionKey }))
+            .ToList();
+
+        var sourceFolder = ArchitectureHelpers.FindSourceFolder();
+        sourceFolder.Should().NotBeEmpty("the tests locate the repository by walking up to Celbridge.slnx");
+
+        var resourcePath = Path.Combine(sourceFolder, "Celbridge", "Resources", "Strings", "en-US", "Resources.resw");
+        var resourceText = File.ReadAllText(resourcePath);
+
+        foreach (var key in keys)
+        {
+            resourceText.Should().Contain($"name=\"{key}\"", $"the resource file must define '{key}', or the section shows the raw key");
+        }
     }
 }

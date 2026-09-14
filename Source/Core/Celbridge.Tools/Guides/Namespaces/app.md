@@ -12,10 +12,10 @@ The `app` namespace covers application-level concerns that are not tied to a spe
 
 ## Tools
 
-- `app_get_state` — workspace state snapshot (app version, project load, feature flags, focused panel, layout, registered UI automations).
+- `app_get_state` — workspace state snapshot (app version, build configuration, project load, feature flags, focused panel, layout, registered UI automations).
 - `app_log`, `app_log_warning`, `app_log_error` — write a message to the application log at the named severity.
 - `app_refresh_files` — rescan the project's content folder for external changes.
 - `app_show_alert` — show a modal alert dialog and wait for the user to dismiss it.
 - `app_simulate_input` *(debug builds only)* — performs a test-automation input operation the calling harness cannot deliver itself; the `key` operation posts a named key press into the app's own event queue. macOS only.
 - `app_spotlight` — highlight a named UI landmark with a callout to show the user where it is; an empty target clears the current spotlight.
-- `app_answer_dialog` *(gated by `answer-dialog`)* — schedules an automated answer for the next modal dialog, so a script can drive a flow that would otherwise block on user interaction. Used by integration tests for the dialog-driven tools such as `explorer_rename`.
+- `app_answer_dialog` *(debug builds only)* — schedules an automated answer for the next modal dialog, so a script can drive a flow that would otherwise block on user interaction. Used by integration tests for the dialog-driven tools such as `explorer_rename`.

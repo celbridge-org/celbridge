@@ -28,6 +28,20 @@ public static class ToolRpcErrorCodes
 /// </summary>
 public sealed class PackageToolsHandler
 {
+    // The package tools that reach the workshop server with the user's Workshop Key. Every page tool
+    // reaches the workshop, so the page namespace is withheld as a whole.
+    private static readonly HashSet<string> WorkshopPackageTools = new(StringComparer.Ordinal)
+    {
+        "package_list",
+        "package_info",
+        "package_install",
+        "package_publish",
+        "package_set_alias",
+        "package_remove_alias",
+        "package_delete",
+        "package_unpublish",
+    };
+
     private readonly IMcpToolBridge _bridge;
 
     public PackageToolsHandler(IMcpToolBridge bridge)
@@ -43,7 +57,7 @@ public sealed class PackageToolsHandler
 
         foreach (var tool in allTools)
         {
-            if (IsCustomEditorRestricted(tool.Alias))
+            if (IsCustomEditorRestricted(tool.Name))
             {
                 continue;
             }
@@ -68,9 +82,10 @@ public sealed class PackageToolsHandler
             };
         }
 
-        // The webview_* namespace is reserved for the MCP path. Blocking it here closes the
-        // cross-document attack vector where a custom editor's JS could call webview.eval against
-        // another open document.
+        // The webview_* namespace and the workshop tools are reserved for agents and Python. Blocking
+        // webview_* closes the cross-document attack vector where a custom editor's JS could call
+        // webview.eval against another open document. Blocking the workshop tools keeps package code
+        // from publishing, installing or moving aliases with the user's Workshop Key.
         if (IsCustomEditorRestricted(name))
         {
             throw new LocalRpcException($"Tool '{name}' is not accessible from custom editors")
@@ -97,14 +112,29 @@ public sealed class PackageToolsHandler
     }
 
     /// <summary>
-    /// Returns true if the tool name belongs to a namespace that is forbidden inside
-    /// custom editor WebViews. Currently this is the webview_* namespace, which is
-    /// available on the MCP path only. Both MCP-style names (webview_eval) and alias
-    /// dotted names (webview.eval) are matched.
+    /// Returns true if the tool is forbidden inside custom editor WebViews: the webview_* namespace, the
+    /// page_* namespace, and the package_* tools that reach the workshop. Both MCP-style names and alias
+    /// dotted names are matched.
     /// </summary>
     private static bool IsCustomEditorRestricted(string name)
     {
-        return name.StartsWith("webview.", StringComparison.Ordinal)
-            || name.StartsWith("webview_", StringComparison.Ordinal);
+        var mcpName = ToMcpName(name);
+
+        return mcpName.StartsWith("webview_", StringComparison.Ordinal)
+            || mcpName.StartsWith("page_", StringComparison.Ordinal)
+            || WorkshopPackageTools.Contains(mcpName);
+    }
+
+    // An alias is the MCP name with its first underscore swapped for a dot, so swapping it back lets one
+    // check cover both forms.
+    private static string ToMcpName(string name)
+    {
+        var dotIndex = name.IndexOf('.');
+        if (dotIndex < 0)
+        {
+            return name;
+        }
+
+        return $"{name[..dotIndex]}_{name[(dotIndex + 1)..]}";
     }
 }

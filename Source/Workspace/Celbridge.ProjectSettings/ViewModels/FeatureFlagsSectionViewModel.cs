@@ -1,21 +1,34 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using Celbridge.Projects;
 using Celbridge.Settings;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.ProjectSettings.ViewModels;
 
 /// <summary>
-/// Drives the Feature Flags section: every known feature flag with a tri-state control that pins it on or
-/// off for the project, or clears the override to inherit the application default. Edits write straight
-/// through to the .celbridge file.
+/// Drives the Features section: every known feature flag, grouped by area, with an on/off toggle. Edits write
+/// straight through to the .celbridge file.
 /// </summary>
-public class FeatureFlagsSectionViewModel : ProjectSettingsSectionViewModel
+public partial class FeatureFlagsSectionViewModel : ProjectSettingsSectionViewModel
 {
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IFeatureFlags _featureFlags;
 
-    public ObservableCollection<FeatureFlagItemViewModel> FeatureFlags { get; } = new();
+    public ObservableCollection<FeatureFlagGroupViewModel> Groups { get; } = new();
+
+    /// <summary>
+    /// True while the project file sets any flag the section lists.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ResetToDefaultsCommand))]
+    private bool _canResetToDefaults;
+
+    public string ResetButtonText => ProjectSettingsLabels.FeatureFlagsResetButton;
+
+    public string ResetButtonTooltip => ProjectSettingsLabels.FeatureFlagsResetTooltip;
 
     public FeatureFlagsSectionViewModel(ProjectSettingsContext context, IStringLocalizer stringLocalizer)
         : base(context)
@@ -26,49 +39,97 @@ public class FeatureFlagsSectionViewModel : ProjectSettingsSectionViewModel
 
     public override void Load()
     {
-        FeatureFlags.Clear();
+        Groups.Clear();
 
         var config = GetConfig();
         if (config is null)
         {
+            CanResetToDefaults = false;
             return;
         }
 
-        foreach (var descriptor in FeatureFlagCatalog.Descriptors)
+        foreach (var groupDescriptor in FeatureFlagCatalog.Groups)
         {
-            var info = new FeatureFlagItemInfo
+            var flags = new List<FeatureFlagItemViewModel>();
+            foreach (var descriptor in groupDescriptor.Flags)
             {
-                FlagName = descriptor.FlagName,
-                Title = _stringLocalizer.GetString(descriptor.TitleKey),
-                Description = _stringLocalizer.GetString(descriptor.DescriptionKey),
-                ApplicationValue = _featureFlags.GetApplicationValue(descriptor.FlagName),
-                Selection = ResolveSelection(config, descriptor.FlagName),
-            };
+                var info = new FeatureFlagItemInfo
+                {
+                    FlagName = descriptor.FlagName,
+                    Title = _stringLocalizer.GetString(descriptor.TitleKey),
+                    Description = _stringLocalizer.GetString(descriptor.DescriptionKey),
+                    ApplicationValue = _featureFlags.GetApplicationValue(descriptor.FlagName),
+                    ProjectValue = ResolveProjectValue(config, descriptor.FlagName),
+                };
 
-            FeatureFlags.Add(new FeatureFlagItemViewModel(info, SetSelection));
+                var flag = new FeatureFlagItemViewModel(info, SetProjectValue);
+                flag.PropertyChanged += OnFlagPropertyChanged;
+                flags.Add(flag);
+            }
+
+            Groups.Add(new FeatureFlagGroupViewModel(_stringLocalizer.GetString(groupDescriptor.TitleKey), flags));
+        }
+
+        UpdateCanResetToDefaults();
+    }
+
+    [RelayCommand(CanExecute = nameof(CanResetToDefaults))]
+    private void ResetToDefaults()
+    {
+        // Clearing the entries directly also removes one that matches its flag's default, which switching
+        // a toggle would leave in place.
+        EditConfig(draft =>
+        {
+            foreach (var groupDescriptor in FeatureFlagCatalog.Groups)
+            {
+                foreach (var descriptor in groupDescriptor.Flags)
+                {
+                    draft.RemoveFeatureFlag(descriptor.FlagName);
+                }
+            }
+        });
+
+        foreach (var group in Groups)
+        {
+            foreach (var flag in group.Flags)
+            {
+                flag.ShowDefault();
+            }
         }
     }
 
-    // A flag present in the project's features table is pinned on or off; an absent flag inherits the default.
-    private static FeatureFlagSelection ResolveSelection(ProjectConfig config, string flagName)
+    private void OnFlagPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(FeatureFlagItemViewModel.HasProjectValue))
+        {
+            UpdateCanResetToDefaults();
+        }
+    }
+
+    private void UpdateCanResetToDefaults()
+    {
+        CanResetToDefaults = Groups.Any(group => group.Flags.Any(flag => flag.HasProjectValue));
+    }
+
+    private static bool? ResolveProjectValue(ProjectConfig config, string flagName)
     {
         if (config.Features.TryGetValue(flagName, out var value))
         {
-            return value ? FeatureFlagSelection.On : FeatureFlagSelection.Off;
+            return value;
         }
 
-        return FeatureFlagSelection.Default;
+        return null;
     }
 
-    private void SetSelection(string flagName, FeatureFlagSelection selection)
+    private void SetProjectValue(string flagName, bool? value)
     {
-        if (selection == FeatureFlagSelection.Default)
+        if (value is null)
         {
             EditConfig(draft => draft.RemoveFeatureFlag(flagName));
             return;
         }
 
-        var enabled = selection == FeatureFlagSelection.On;
+        var enabled = value.Value;
         EditConfig(draft => draft.SetFeatureFlag(flagName, enabled));
     }
 }

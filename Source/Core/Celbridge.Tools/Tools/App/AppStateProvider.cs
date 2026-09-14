@@ -18,6 +18,7 @@ public record class LayoutModeInfo(IReadOnlyDictionary<string, bool> AreaVisibil
 /// </summary>
 public record class AppStateResult(
     string Version,
+    string Configuration,
     bool IsLoaded,
     string ProjectName,
     IReadOnlyDictionary<string, bool> FeatureFlags,
@@ -80,7 +81,7 @@ internal sealed class AppStateProvider : IAppStateProvider
 
     public AppStateResult GetState()
     {
-        var version = _environmentService.GetEnvironmentInfo().AppVersion;
+        var environmentInfo = _environmentService.GetEnvironmentInfo();
 
         var currentProject = _projectService.CurrentProject;
         var isLoaded = currentProject is not null;
@@ -110,7 +111,8 @@ internal sealed class AppStateProvider : IAppStateProvider
             .ToList();
 
         return new AppStateResult(
-            Version: version,
+            Version: environmentInfo.AppVersion,
+            Configuration: environmentInfo.Configuration,
             IsLoaded: isLoaded,
             ProjectName: projectName,
             FeatureFlags: featureFlags,

@@ -101,24 +101,9 @@ def _capture_launch_command(monkeypatch, tmp_path):
     return captured_command[0]
 
 
-def test_launch_claude_excludes_web_access_by_default(monkeypatch, tmp_path):
-    """With the web-access-tools flag off, no built-in tools are enabled and
-    only the Celbridge MCP tools are allowed."""
-    monkeypatch.delenv("CELBRIDGE_WEB_ACCESS_TOOLS", raising=False)
-
-    command = _capture_launch_command(monkeypatch, tmp_path)
-
-    tools_value = command[command.index("--tools") + 1]
-    allowed_value = command[command.index("--allowedTools") + 1]
-    assert tools_value == ""
-    assert allowed_value == "mcp__celbridge__*"
-
-
-def test_launch_claude_includes_web_access_when_flag_enabled(monkeypatch, tmp_path):
-    """With CELBRIDGE_WEB_ACCESS_TOOLS=1, WebFetch and WebSearch are added to both
-    the available built-in tools and the allowlist; nothing else is enabled."""
-    monkeypatch.setenv("CELBRIDGE_WEB_ACCESS_TOOLS", "1")
-
+def test_launch_claude_enables_and_preapproves_web_access(monkeypatch, tmp_path):
+    """WebFetch and WebSearch are the only built-in tools the session gets, and
+    both are pre-approved alongside the Celbridge MCP tools."""
     command = _capture_launch_command(monkeypatch, tmp_path)
 
     tools_value = command[command.index("--tools") + 1]

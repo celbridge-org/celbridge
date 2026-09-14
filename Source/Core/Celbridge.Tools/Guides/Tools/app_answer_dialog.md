@@ -4,7 +4,7 @@ Schedules an automated answer for the next modal dialog of the named kind, so a 
 
 The dialog actually displays briefly before auto-closing. This is by design: an integration test exercises the real end-to-end UI flow, screenshots are useful, and the audit trail matches what a real user would have done.
 
-**Gated by the `answer-dialog` user-level feature flag.** The tool is present in every build and advertised by `tools/list`; with the flag off it refuses the call. Turn the flag on in Project Settings for the project you are automating.
+**Debug-only.** The tool is declared in every build so its guide stays paired with a registered tool, but in a release build it refuses with "available in debug builds only". There is no feature flag. `app_get_state` reports `configuration` as `Debug` when the tool can answer dialogs.
 
 ## When to call it
 
@@ -33,7 +33,7 @@ Only one schedule is held at a time. A subsequent call overwrites; the schedule 
 
 ## Returns
 
-`"ok"` on success. Errors when the `answer-dialog` feature flag is off.
+`"ok"` on success. Errors in a release build, or when `dialogKind` is not a valid value.
 
 The schedule itself is fire-and-forget: the tool returns immediately after recording the schedule. If no dialog of the scheduled kind ever appears, no broadcast happens. If a dialog of a *different* kind appears first, a warning is logged and the schedule stays pending — the unexpected dialog blocks on the user, which is the right outcome since it wasn't expected by the script.
 

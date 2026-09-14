@@ -100,7 +100,7 @@ class CelProxy:
         agent_namespace = ToolNamespace("agent")
         agent_namespace.claude = launch_claude
         agent_namespace.claude.__doc__ = (
-            "Launch Claude Code CLI with sandboxed access to Celbridge MCP tools.\n"
+            "Launch Claude Code CLI with sandboxed access to Celbridge MCP tools, web fetch and web search.\n"
             "Writes the .mcp.json config and starts Claude in the current terminal."
         )
 

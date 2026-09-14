@@ -4,7 +4,6 @@ using Celbridge.Logging;
 using Celbridge.Platform;
 using Celbridge.Projects;
 using Celbridge.Server;
-using Celbridge.Settings;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
 
@@ -101,10 +100,8 @@ public interface IPythonLaunchService
     string BuildConsolePath(string? basePath);
 
     /// <summary>
-    /// Returns the host-integration environment every console shares (host ports, tool feature flags, the
-    /// project folder, the per-project Python folders, and a PATH carrying the uv tool bin folder),
-    /// creating the folders the variables point at. A celbridge-py launched from any console then behaves
-    /// like a python console session.
+    /// Returns the host-integration environment every console shares, creating the folders the variables
+    /// point at. A celbridge-py launched from any console then behaves like a python console session.
     /// </summary>
     Task<IReadOnlyDictionary<string, string>> BuildConsoleEnvironmentAsync();
 }
@@ -127,7 +124,6 @@ public sealed class PythonLaunchService : IPythonLaunchService
 
     private readonly IAppEnvironment _environmentService;
     private readonly IServerService _serverService;
-    private readonly IFeatureFlags _featureFlags;
     private readonly IPythonConfigService _pythonConfigService;
     private readonly IPythonInstaller _pythonInstaller;
     private readonly ILocalFileSystem _fileSystem;
@@ -146,7 +142,6 @@ public sealed class PythonLaunchService : IPythonLaunchService
     public PythonLaunchService(
         IAppEnvironment environmentService,
         IServerService serverService,
-        IFeatureFlags featureFlags,
         IPythonConfigService pythonConfigService,
         IPythonInstaller pythonInstaller,
         ILocalFileSystem fileSystem,
@@ -156,7 +151,6 @@ public sealed class PythonLaunchService : IPythonLaunchService
     {
         _environmentService = environmentService;
         _serverService = serverService;
-        _featureFlags = featureFlags;
         _pythonConfigService = pythonConfigService;
         _pythonInstaller = pythonInstaller;
         _fileSystem = fileSystem;
@@ -298,8 +292,6 @@ public sealed class PythonLaunchService : IPythonLaunchService
             ["UV_PYTHON_INSTALL_DIR"] = uvPythonInstallDir,
             ["PATH"] = BuildConsolePath(null),
             ["CELBRIDGE_MCP_PORT"] = _serverService.Port.ToString(),
-            ["CELBRIDGE_MCP_TOOLS"] = _featureFlags.IsEnabled(FeatureFlagConstants.McpTools) ? "1" : "0",
-            ["CELBRIDGE_WEB_ACCESS_TOOLS"] = _featureFlags.IsEnabled(FeatureFlagConstants.WebAccessTools) ? "1" : "0",
             ["CELBRIDGE_PROJECT_FOLDER"] = _projectService.CurrentProject!.ProjectFolderPath,
             ["CELBRIDGE_VERSION"] = celbridgeVersion,
             ["CELBRIDGE_IPYTHON_DIR"] = ipythonDir,
