@@ -80,28 +80,13 @@ internal static class ProjectSettingsLabels
 
     public static string PackageVersion(int version) => Localizer.GetString("ProjectSettings_PackageVersionFormat", version);
 
-    public static string FeatureFlagOn => Localizer.GetString("ProjectSettings_FeatureFlagState_On");
+    public static string FeatureFlagDefaultOnTooltip => Localizer.GetString("ProjectSettings_FeatureFlagDefaultOnTooltip");
 
-    public static string FeatureFlagOff => Localizer.GetString("ProjectSettings_FeatureFlagState_Off");
+    public static string FeatureFlagDefaultOffTooltip => Localizer.GetString("ProjectSettings_FeatureFlagDefaultOffTooltip");
 
-    /// <summary>
-    /// The "Default (On)" / "Default (Off)" label for the inherit option, naming the value the flag
-    /// currently resolves to.
-    /// </summary>
-    public static string FeatureFlagDefault(bool applicationValue)
-    {
-        string stateLabel;
-        if (applicationValue)
-        {
-            stateLabel = FeatureFlagOn;
-        }
-        else
-        {
-            stateLabel = FeatureFlagOff;
-        }
+    public static string FeatureFlagsResetButton => Localizer.GetString("ProjectSettings_FeatureFlagsResetButton");
 
-        return Localizer.GetString("ProjectSettings_FeatureFlagState_DefaultFormat", stateLabel);
-    }
+    public static string FeatureFlagsResetTooltip => Localizer.GetString("ProjectSettings_FeatureFlagsResetTooltip");
 
     /// <summary>
     /// Describes a contribution's dropped settings: the one issue named, or the count when there are

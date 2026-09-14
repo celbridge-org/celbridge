@@ -6,10 +6,10 @@ Runs an arbitrary JavaScript expression in the WebView's main world and returns 
 
 `webview_eval` is gated by **two** feature flags, not one:
 
-- `webview-dev-tools` — enables the wider `webview_*` family.
-- `webview-dev-tools-eval` — gates this tool specifically because it is an arbitrary code execution primitive.
+- `webview-dev-tools` — enables the wider `webview_*` family. The user sees it as Developer Tools.
+- `webview-dev-tools-eval` — gates this tool specifically because it is an arbitrary code execution primitive. The user sees it as Run JavaScript in Editors.
 
-`webview-dev-tools-eval` is off by default. If either flag is off, the call fails with an explanatory error. Tell the user which flag is gating the action, that `webview_eval` is gated separately on purpose, and that they can switch it on in the Feature Flags section of Project Settings. Other `webview_*` tools may continue to work when only `webview-dev-tools-eval` is off. Check both flags via `app_get_state` before recommending workarounds.
+Both flags are on by default, and a project can switch either off. If either flag is off, the call fails with an explanatory error. Tell the user which setting is gating the action, that `webview_eval` is gated separately on purpose, and that they can switch it on in the Web group of the Features section of Project Settings. Other `webview_*` tools may continue to work when only `webview-dev-tools-eval` is off. Check both flags via `app_get_state` before recommending workarounds.
 
 ## Parameters
 

@@ -3,17 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace Celbridge.ProjectSettings.ViewModels;
 
 /// <summary>
-/// The project-level state of a feature flag: inherit the application default, or pin it on or off.
-/// </summary>
-public enum FeatureFlagSelection
-{
-    Default = 0,
-    On = 1,
-    Off = 2
-}
-
-/// <summary>
-/// The descriptive fields of one feature flag row, resolved from the catalog and the project config.
+/// The descriptive fields of one feature flag, resolved from the catalog and the project config.
 /// </summary>
 public sealed record FeatureFlagItemInfo
 {
@@ -33,46 +23,46 @@ public sealed record FeatureFlagItemInfo
     public string Description { get; init; } = string.Empty;
 
     /// <summary>
-    /// The value the flag resolves to when the project inherits the default, shown on the Default option.
+    /// The value the flag takes when the project does not set it.
     /// </summary>
     public bool ApplicationValue { get; init; }
 
     /// <summary>
-    /// The project's current state for the flag.
+    /// The value the project's features table sets for the flag, or null when the project leaves it at the
+    /// default.
     /// </summary>
-    public FeatureFlagSelection Selection { get; init; }
+    public bool? ProjectValue { get; init; }
 }
 
 /// <summary>
-/// One feature flag on the Feature Flags section, with a tri-state control that pins its project override
-/// on or off, or clears it to inherit the application default. Changes are written to the .celbridge
-/// file and apply when the project is reloaded.
+/// One feature flag in the Features section, with an on/off toggle. Switching the toggle to the flag's default
+/// clears the project's entry, and switching it away writes the value, so a project file names only the flags
+/// it changes. Changes are written to the .celbridge file and apply when the project is reloaded.
 /// </summary>
 public partial class FeatureFlagItemViewModel : ObservableObject
 {
     private readonly FeatureFlagItemInfo _info;
-    private readonly Action<string, FeatureFlagSelection> _setSelection;
+    private readonly Action<string, bool?> _setProjectValue;
 
-    private bool _initialized;
+    private bool _recordsChanges;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsEffectivelyEnabled))]
-    private int _selectedIndex;
+    private bool _isOn;
 
-    public FeatureFlagItemViewModel(FeatureFlagItemInfo info, Action<string, FeatureFlagSelection> setSelection)
+    /// <summary>
+    /// True while the project file sets this flag, including an entry that matches the default.
+    /// </summary>
+    [ObservableProperty]
+    private bool _hasProjectValue;
+
+    public FeatureFlagItemViewModel(FeatureFlagItemInfo info, Action<string, bool?> setProjectValue)
     {
         _info = info;
-        _setSelection = setSelection;
+        _setProjectValue = setProjectValue;
 
-        StateOptions = new List<string>
-        {
-            ProjectSettingsLabels.FeatureFlagDefault(info.ApplicationValue),
-            ProjectSettingsLabels.FeatureFlagOn,
-            ProjectSettingsLabels.FeatureFlagOff,
-        };
-
-        SelectedIndex = (int)info.Selection;
-        _initialized = true;
+        IsOn = info.ProjectValue ?? info.ApplicationValue;
+        HasProjectValue = info.ProjectValue is not null;
+        _recordsChanges = true;
     }
 
     public string Title => _info.Title;
@@ -80,37 +70,50 @@ public partial class FeatureFlagItemViewModel : ObservableObject
     public string Description => _info.Description;
 
     /// <summary>
-    /// The three selectable states shown in the control: the resolved default, on, and off.
+    /// States the flag's default, shown as the toggle's tooltip.
     /// </summary>
-    public IReadOnlyList<string> StateOptions { get; }
-
-    /// <summary>
-    /// The flag's resolved state: an explicit On or Off selection, otherwise the inherited application
-    /// default. Drives the header dimming so its state reads at a glance while the card is collapsed.
-    /// </summary>
-    public bool IsEffectivelyEnabled
+    public string DefaultTooltip
     {
         get
         {
-            var selection = (FeatureFlagSelection)SelectedIndex;
-            if (selection == FeatureFlagSelection.On)
+            if (_info.ApplicationValue)
             {
-                return true;
-            }
-            if (selection == FeatureFlagSelection.Off)
-            {
-                return false;
+                return ProjectSettingsLabels.FeatureFlagDefaultOnTooltip;
             }
 
-            return _info.ApplicationValue;
+            return ProjectSettingsLabels.FeatureFlagDefaultOffTooltip;
         }
     }
 
-    partial void OnSelectedIndexChanged(int value)
+    /// <summary>
+    /// Returns the toggle to the flag's default without recording a change, for a reset that has already
+    /// cleared the project's entry.
+    /// </summary>
+    public void ShowDefault()
     {
-        if (_initialized)
+        _recordsChanges = false;
+        IsOn = _info.ApplicationValue;
+        HasProjectValue = false;
+        _recordsChanges = true;
+    }
+
+    partial void OnIsOnChanged(bool value)
+    {
+        if (!_recordsChanges)
         {
-            _setSelection(_info.FlagName, (FeatureFlagSelection)value);
+            return;
+        }
+
+        // A value that matches the default is stored as no entry, so the project follows the default.
+        if (value == _info.ApplicationValue)
+        {
+            HasProjectValue = false;
+            _setProjectValue(_info.FlagName, null);
+        }
+        else
+        {
+            HasProjectValue = true;
+            _setProjectValue(_info.FlagName, value);
         }
     }
 }

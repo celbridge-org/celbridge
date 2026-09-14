@@ -128,7 +128,7 @@ public static class ToolResponse
     /// </summary>
     public static CallToolResult FeatureFlagDisabled(string flagName) =>
         ErrorWithTroubleshooter(
-            $"The '{flagName}' feature flag is disabled. Ask the user to switch it on in the Feature Flags section of Project Settings, then reload the project.",
+            $"The '{flagName}' feature flag is disabled. Ask the user to switch it on in the Features section of Project Settings, then reload the project.",
             HelperTroubleshooters[nameof(FeatureFlagDisabled)]);
 
     /// <summary>

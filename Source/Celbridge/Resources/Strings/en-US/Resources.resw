@@ -500,7 +500,7 @@ This file could not be saved</value>
     <value>Workshop Key saved, but the connection couldn't be verified right now.</value>
   </data>
   <data name="Settings_WebView_SectionHeader" xml:space="preserve">
-    <value>Web View</value>
+    <value>Web</value>
   </data>
   <data name="Settings_WebView_Description" xml:space="preserve">
     <value>How web content behaves.</value>
@@ -997,49 +997,61 @@ Open with default application instead?</value>
     <value>Side area</value>
   </data>
   <data name="ProjectSettings_FeatureFlagsHeader" xml:space="preserve">
-    <value>Feature Flags</value>
+    <value>Features</value>
   </data>
   <data name="ProjectSettings_FeatureFlagsDescription" xml:space="preserve">
     <value>Turn advanced features on or off.</value>
   </data>
-  <data name="ProjectSettings_FeatureFlagState_On" xml:space="preserve">
-    <value>On</value>
+  <data name="ProjectSettings_FeatureFlagDefaultOnTooltip" xml:space="preserve">
+    <value>On by default</value>
   </data>
-  <data name="ProjectSettings_FeatureFlagState_Off" xml:space="preserve">
-    <value>Off</value>
+  <data name="ProjectSettings_FeatureFlagDefaultOffTooltip" xml:space="preserve">
+    <value>Off by default</value>
   </data>
-  <data name="ProjectSettings_FeatureFlagState_DefaultFormat" xml:space="preserve">
-    <value>Default ({0})</value>
+  <data name="ProjectSettings_FeatureFlagsResetButton" xml:space="preserve">
+    <value>Reset to Defaults</value>
+  </data>
+  <data name="ProjectSettings_FeatureFlagsResetTooltip" xml:space="preserve">
+    <value>Return every feature in this project to its default</value>
+  </data>
+  <data name="ProjectSettings_FeatureFlagGroup_Web_Title" xml:space="preserve">
+    <value>Web</value>
+  </data>
+  <data name="ProjectSettings_FeatureFlagGroup_Resources_Title" xml:space="preserve">
+    <value>Resources</value>
+  </data>
+  <data name="ProjectSettings_FeatureFlagGroup_Documents_Title" xml:space="preserve">
+    <value>Documents</value>
   </data>
   <data name="ProjectSettings_FeatureFlag_WebViewLoadDiagnostics_Title" xml:space="preserve">
-    <value>WebView Load Diagnostics</value>
+    <value>Page Load Diagnostics</value>
   </data>
   <data name="ProjectSettings_FeatureFlag_WebViewLoadDiagnostics_Description" xml:space="preserve">
-    <value>Writes a detailed record of each web page load to the log, including the address of every page visited. Failed and blank loads are logged either way.</value>
+    <value>Logs a detailed record of every web page load, including each address visited, for tracking down loading problems. Failed and blank loads are logged either way.</value>
   </data>
   <data name="ProjectSettings_FeatureFlag_WebViewDevTools_Title" xml:space="preserve">
-    <value>WebView Developer Tools</value>
+    <value>Developer Tools</value>
   </data>
   <data name="ProjectSettings_FeatureFlag_WebViewDevTools_Description" xml:space="preserve">
-    <value>Browser developer tools for WebView editors, plus the webview agent tools. Agents can read these pages, including their console and network activity, and click and type in them.</value>
+    <value>Browser developer tools for debugging editors and web pages. Agents and Python scripts can also take screenshots of editors, inspect their content, console and network activity, and click and type in them.</value>
   </data>
   <data name="ProjectSettings_FeatureFlag_WebViewDevToolsEval_Title" xml:space="preserve">
-    <value>WebView Eval Tool</value>
+    <value>Run JavaScript in Editors</value>
   </data>
   <data name="ProjectSettings_FeatureFlag_WebViewDevToolsEval_Description" xml:space="preserve">
-    <value>Lets agents run any JavaScript inside a WebView editor, with the same access to its data as the page itself. Requires WebView Developer Tools.</value>
+    <value>Lets agents and Python scripts run any JavaScript in an editor to test or automate it, with full access to its data. Requires Developer Tools.</value>
   </data>
   <data name="ProjectSettings_FeatureFlag_OpenCel_Title" xml:space="preserve">
-    <value>Metadata File Editing</value>
+    <value>Edit Metadata Files</value>
   </data>
   <data name="ProjectSettings_FeatureFlag_OpenCel_Description" xml:space="preserve">
-    <value>Adds Open metadata file to the Explorer menu, for editing a file's .cel metadata by hand. Metadata that no longer parses is flagged as broken.</value>
+    <value>Adds Open metadata file to the Explorer menu, for inspecting or repairing a file's .cel metadata by hand.</value>
   </data>
   <data name="ProjectSettings_FeatureFlag_NoteEditor_Title" xml:space="preserve">
     <value>Notes Editor</value>
   </data>
   <data name="ProjectSettings_FeatureFlag_NoteEditor_Description" xml:space="preserve">
-    <value>Adds the Notes editor for .note files. It is experimental and may be removed in a later release.</value>
+    <value>An experimental editor for .note files, which may be removed in a later release.</value>
   </data>
   <data name="ProjectSettings_SchemaVersionLabel" xml:space="preserve">
     <value>Celbridge version</value>
