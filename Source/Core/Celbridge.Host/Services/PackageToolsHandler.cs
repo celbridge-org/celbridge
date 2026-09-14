@@ -28,8 +28,7 @@ public static class ToolRpcErrorCodes
 /// </summary>
 public sealed class PackageToolsHandler
 {
-    // The package tools that reach the workshop server with the user's Workshop Key. The rest of the
-    // package namespace (status, archive and unarchive) stays local to the project tree. Every page tool
+    // The package tools that reach the workshop server with the user's Workshop Key. Every page tool
     // reaches the workshop, so the page namespace is withheld as a whole.
     private static readonly HashSet<string> WorkshopPackageTools = new(StringComparer.Ordinal)
     {
@@ -114,8 +113,8 @@ public sealed class PackageToolsHandler
 
     /// <summary>
     /// Returns true if the tool is forbidden inside custom editor WebViews: the webview_* namespace, the
-    /// page_* namespace, and the package_* tools that reach the workshop. Both MCP-style names
-    /// (webview_eval) and alias dotted names (webview.eval) are matched.
+    /// page_* namespace, and the package_* tools that reach the workshop. Both MCP-style names and alias
+    /// dotted names are matched.
     /// </summary>
     private static bool IsCustomEditorRestricted(string name)
     {

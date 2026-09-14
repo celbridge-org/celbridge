@@ -5,8 +5,7 @@ namespace Celbridge.DocumentEditors;
 
 /// <summary>
 /// Registers the document-editor packages bundled with this module. They are served over the loopback file
-/// server and driven over the WebSocket host channel, so they run on every head. The Notes editor package is
-/// registered only while the note-editor feature flag is on.
+/// server and driven over the WebSocket host channel, so they run on every head.
 /// </summary>
 public sealed class DocumentEditorsBundledPackageProvider : IBundledPackageProvider
 {

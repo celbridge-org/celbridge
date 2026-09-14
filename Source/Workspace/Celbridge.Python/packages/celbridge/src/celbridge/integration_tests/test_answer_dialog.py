@@ -87,7 +87,6 @@ class TestAnswerDialog:
 
     def test_invalid_dialog_kind_raises(self, app):
         # The tool validates dialogKind against the DialogKind enum and returns
-        # an error for an unknown value. A Release build refuses before it reads
-        # dialogKind, and the autouse fixture skips this class there.
+        # an error for an unknown value.
         with pytest.raises(CelError):
             app.answer_dialog("NotARealDialogKind")

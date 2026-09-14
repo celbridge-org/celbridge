@@ -6,9 +6,7 @@ using Celbridge.Tests.Architecture;
 namespace Celbridge.Tests.Settings;
 
 /// <summary>
-/// Keeps the FeatureFlags section of appsettings.json in step with FeatureFlagConstants. An unlisted flag
-/// resolves to off, so every declared flag must state its default explicitly, and an entry naming no
-/// declared flag is configuration that nothing reads.
+/// Keeps the FeatureFlags section of appsettings.json in step with FeatureFlagConstants.
 /// </summary>
 [TestFixture]
 public class FeatureFlagDefaultsTests

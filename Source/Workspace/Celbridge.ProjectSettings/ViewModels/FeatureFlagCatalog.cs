@@ -16,8 +16,8 @@ internal sealed record FeatureFlagGroupDescriptor(string TitleKey, IReadOnlyList
 
 /// <summary>
 /// The known feature flags shown in the Features section, grouped by area and in display order. Every flag in
-/// FeatureFlagConstants belongs to one group here, which adds the localized title and description shown to the
-/// user. A parity test keeps the two lists in sync.
+/// FeatureFlagConstants belongs to one group here, which adds the localized title and description shown to
+/// the user.
 /// </summary>
 internal static class FeatureFlagCatalog
 {

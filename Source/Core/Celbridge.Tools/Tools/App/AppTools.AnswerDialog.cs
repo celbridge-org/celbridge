@@ -24,8 +24,7 @@ public partial class AppTools
 
         return ToolResponse.Success("ok");
 #else
-        // Test automation is a debug-build facility. The tool stays declared so its guide stays paired
-        // with a registered tool, and refuses when called.
+        // The tool stays declared so its guide stays paired with a registered tool.
         return ToolResponse.Error("app_answer_dialog is available in debug builds only.");
 #endif
     }

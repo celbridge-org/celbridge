@@ -67,8 +67,8 @@ public class PackageToolsHandlerTests
         result.Select(t => t.Alias).Should().BeEquivalentTo("app.get_state", "package.status");
     }
 
-    // A package_* or page_* tool added later has to be classified: withheld because it reaches the
-    // workshop, or added to the local tools here because it stays inside the project tree.
+    // A package_* tool added later has to be classified: withheld because it reaches the workshop, or
+    // added to the local tools here because it stays inside the project tree.
     [Test]
     public async Task ListToolsAsync_WithholdsEveryPackageAndPageToolExceptTheLocalOnes()
     {
@@ -210,8 +210,7 @@ public class PackageToolsHandlerTests
             Parameters: Array.Empty<ToolParameter>());
     }
 
-    // Every MCP tool in the tool assembly, described by its MCP name and the alias the proxies expose it
-    // under.
+    // Every MCP tool in the tool assembly, described by its MCP name and alias.
     private static IReadOnlyList<ToolDescriptor> DiscoverTools()
     {
         var tools = new List<ToolDescriptor>();

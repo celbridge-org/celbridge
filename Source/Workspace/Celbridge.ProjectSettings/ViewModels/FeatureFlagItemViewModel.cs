@@ -3,7 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace Celbridge.ProjectSettings.ViewModels;
 
 /// <summary>
-/// The descriptive fields of one feature flag, resolved from the catalog and the project config.
+/// The descriptive fields of one feature flag.
 /// </summary>
 public sealed record FeatureFlagItemInfo
 {
@@ -36,8 +36,8 @@ public sealed record FeatureFlagItemInfo
 
 /// <summary>
 /// One feature flag in the Features section, with an on/off toggle. Switching the toggle to the flag's default
-/// clears the project's entry, and switching it away writes the value, so a project file names only the flags
-/// it changes. Changes are written to the .celbridge file and apply when the project is reloaded.
+/// clears the project's entry, and switching it away writes the value. Changes are written to the .celbridge
+/// file and apply when the project is reloaded.
 /// </summary>
 public partial class FeatureFlagItemViewModel : ObservableObject
 {

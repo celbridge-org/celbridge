@@ -39,8 +39,6 @@ public class FeatureFlags : IFeatureFlags
         var section = _configuration.GetSection(FeatureFlagKey);
         var value = section[featureName];
 
-        // A missing entry, or one that is not a boolean, resolves to off, so a flag the build never
-        // configured exposes nothing.
         return bool.TryParse(value, out var isEnabled) && isEnabled;
     }
 

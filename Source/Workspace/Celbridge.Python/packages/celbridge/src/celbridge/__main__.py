@@ -236,7 +236,6 @@ def main():
     cel = CelProxy(client)
 
     # Make cel and its namespaces importable for use in scripts.
-    # e.g. "from celbridge import cel" or "from celbridge import resource"
     import celbridge
     celbridge.cel = cel
     for namespace_name in cel._get_namespace_names():

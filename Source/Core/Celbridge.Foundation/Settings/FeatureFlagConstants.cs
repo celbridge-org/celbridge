@@ -2,15 +2,14 @@ namespace Celbridge.Settings;
 
 /// <summary>
 /// Feature flag names used throughout the application.
-/// These names must match the keys in appsettings.json and .celbridge files. A flag missing from
-/// appsettings.json is off, so each one is listed there with an explicit default.
+/// These names must match the keys in appsettings.json and .celbridge files.
 /// The user-facing titles and descriptions shown on the Project Settings panel live in FeatureFlagCatalog.
 /// </summary>
 public static class FeatureFlagConstants
 {
     /// <summary>
     /// Browser developer tools in WebView-based editors, and the webview_* MCP tools that read and drive
-    /// their pages. Enabled by default so extension authors can debug their custom editors.
+    /// their pages. Enabled by default.
     /// </summary>
     public const string WebViewDevTools = "webview-dev-tools";
 
@@ -34,8 +33,7 @@ public static class FeatureFlagConstants
     public const string OpenCel = "open-cel";
 
     /// <summary>
-    /// Registers the bundled Notes editor for .note files, with its New File template. Off by default because
-    /// the editor is experimental.
+    /// Registers the bundled Notes editor for .note files, with its New File template. Off by default.
     /// </summary>
     public const string NoteEditor = "note-editor";
 }

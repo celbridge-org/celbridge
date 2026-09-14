@@ -100,10 +100,8 @@ public interface IPythonLaunchService
     string BuildConsolePath(string? basePath);
 
     /// <summary>
-    /// Returns the host-integration environment every console shares (host ports, the project folder, the
-    /// per-project Python folders, and a PATH carrying the uv tool bin folder),
-    /// creating the folders the variables point at. A celbridge-py launched from any console then behaves
-    /// like a python console session.
+    /// Returns the host-integration environment every console shares, creating the folders the variables
+    /// point at. A celbridge-py launched from any console then behaves like a python console session.
     /// </summary>
     Task<IReadOnlyDictionary<string, string>> BuildConsoleEnvironmentAsync();
 }

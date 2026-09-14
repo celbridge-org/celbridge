@@ -163,8 +163,7 @@ public partial class ContributionItemViewModel : ObservableObject
     public string ManifestFileName => _info.ManifestResource?.ResourceName ?? string.Empty;
 
     /// <summary>
-    /// The label beside the enable toggle, naming the contribution's type so it reads apart from the
-    /// package's own toggle.
+    /// The label beside the enable toggle, naming the contribution's type.
     /// </summary>
     public string EnabledLabel => IsUtility ? ProjectSettingsLabels.UtilityEnabledLabel : ProjectSettingsLabels.DocumentEnabledLabel;
 

@@ -9,9 +9,8 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.ProjectSettings.ViewModels;
 
 /// <summary>
-/// Drives the Features section: every known feature flag, grouped by area, with an on/off toggle. A flag at its
-/// default has no entry in the project's features table, and a flag switched away from it is written there.
-/// Reset to Defaults clears every entry the section lists. Edits write straight through to the .celbridge file.
+/// Drives the Features section: every known feature flag, grouped by area, with an on/off toggle. Edits write
+/// straight through to the .celbridge file.
 /// </summary>
 public partial class FeatureFlagsSectionViewModel : ProjectSettingsSectionViewModel
 {
@@ -21,7 +20,7 @@ public partial class FeatureFlagsSectionViewModel : ProjectSettingsSectionViewMo
     public ObservableCollection<FeatureFlagGroupViewModel> Groups { get; } = new();
 
     /// <summary>
-    /// True while the project file sets any flag the section lists, so a reset has something to clear.
+    /// True while the project file sets any flag the section lists.
     /// </summary>
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ResetToDefaultsCommand))]
@@ -112,7 +111,6 @@ public partial class FeatureFlagsSectionViewModel : ProjectSettingsSectionViewMo
         CanResetToDefaults = Groups.Any(group => group.Flags.Any(flag => flag.HasProjectValue));
     }
 
-    // The value the project's features table sets for a flag, or null when the project leaves it at the default.
     private static bool? ResolveProjectValue(ProjectConfig config, string flagName)
     {
         if (config.Features.TryGetValue(flagName, out var value))

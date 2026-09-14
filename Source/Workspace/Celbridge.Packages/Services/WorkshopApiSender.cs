@@ -111,8 +111,8 @@ internal sealed class WorkshopApiSender : IDisposable
     }
 
     // Reads the key and validates the URL, then assembles the authenticated
-    // request shared by SendAsync and the connection probe. A connection that
-    // was never added fails with a message saying where to add one.
+    // request. A connection that was never added fails with a message saying
+    // where to add one.
     private async Task<Result<HttpRequestMessage>> BuildRequestAsync(HttpMethod method, string relativePath, HttpContent? content = null)
     {
         await Task.CompletedTask;

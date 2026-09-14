@@ -7,8 +7,7 @@ namespace Celbridge.Tests.ProjectSettings;
 
 /// <summary>
 /// Keeps FeatureFlagCatalog (the metadata behind the Features section of Project Settings) in sync with
-/// FeatureFlagConstants (the canonical flag names), so adding a flag to one without the other fails the build
-/// rather than silently leaving a gap in the section.
+/// FeatureFlagConstants (the canonical flag names).
 /// </summary>
 [TestFixture]
 public class FeatureFlagCatalogTests
