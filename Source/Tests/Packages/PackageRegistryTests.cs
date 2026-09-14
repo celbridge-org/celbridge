@@ -320,6 +320,25 @@ public class PackageServiceTests
     }
 
     [Test]
+    public async Task GetBuiltInEditors_ReportPackage_IsPresentWithoutActivationEntry()
+    {
+        // The reconciler skips always-active packages, so the report editor is registered only if it
+        // resolves as a built-in.
+        var bundledDir = CreateBuiltInReportPackage();
+        var bundledPackages = new List<BundledPackageDescriptor>
+        {
+            new() { Folder = bundledDir }
+        };
+        _bundledPackageProvider.GetBundledPackages().Returns(bundledPackages);
+        SetProjectConfig();
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        _service.GetBuiltInEditors().Should().Contain(builtIn => builtIn.EditorId == BuiltInEditors.ReportViewerId);
+        _service.GetResolvedEditors().Should().BeEmpty();
+    }
+
+    [Test]
     public async Task GetBuiltInEditors_OptionalBuiltInPackage_IsPresentWithoutActivationEntry()
     {
         // The spreadsheet package ships in the installer, so its editor is a built-in that the
@@ -963,6 +982,38 @@ public class PackageServiceTests
             [[file-types]]
             extension = ".xlsx"
             display-name = "Spreadsheet_FileType_Xlsx"
+            """);
+
+        return packageDir;
+    }
+
+    /// <summary>
+    /// Creates a bundled package standing in for the real report package, whose "report"
+    /// contribution backs the built-in Report Viewer.
+    /// </summary>
+    private string CreateBuiltInReportPackage()
+    {
+        var packageDir = Path.Combine(_tempProjectFolder, "report-pkg");
+        Directory.CreateDirectory(packageDir);
+
+        File.WriteAllText(Path.Combine(packageDir, "package.toml"), """
+            [package]
+            name = "celbridge-report"
+            title = "Reports"
+
+            [contributes]
+            editors = ["report.editor.toml"]
+            """);
+
+        File.WriteAllText(Path.Combine(packageDir, "report.editor.toml"), """
+            [editor]
+            id = "report"
+            type = "document"
+            display-name = "Report_Editor_Name"
+
+            [[file-types]]
+            extension = ".report"
+            display-name = "Report_FileType_Report"
             """);
 
         return packageDir;
