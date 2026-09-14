@@ -57,7 +57,7 @@ public sealed class PackageToolsHandler
 
         foreach (var tool in allTools)
         {
-            if (IsCustomEditorRestricted(tool.Alias))
+            if (IsCustomEditorRestricted(tool.Name))
             {
                 continue;
             }

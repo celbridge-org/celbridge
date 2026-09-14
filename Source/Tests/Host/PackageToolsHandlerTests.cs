@@ -72,7 +72,12 @@ public class PackageToolsHandlerTests
     [Test]
     public async Task ListToolsAsync_WithholdsEveryPackageAndPageToolExceptTheLocalOnes()
     {
-        var localPackageTools = new[] { "package.archive", "package.status", "package.unarchive" };
+        var localPackageTools = new[]
+        {
+            "package_archive",
+            "package_status",
+            "package_unarchive"
+        };
 
         var packageAndPageTools = DiscoverTools()
             .Where(tool => tool.Name.StartsWith("package_", StringComparison.Ordinal)
@@ -85,7 +90,7 @@ public class PackageToolsHandlerTests
 
         var result = await handler.ListToolsAsync();
 
-        result.Select(t => t.Alias).Should().BeEquivalentTo(localPackageTools);
+        result.Select(t => t.Name).Should().BeEquivalentTo(localPackageTools);
     }
 
     [Test]
@@ -220,13 +225,12 @@ public class PackageToolsHandlerTests
             foreach (var method in type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static))
             {
                 var toolName = method.GetCustomAttribute<ModelContextProtocol.Server.McpServerToolAttribute>()?.Name;
-                var alias = method.GetCustomAttribute<Celbridge.Tools.ToolAliasAttribute>()?.Alias;
-                if (string.IsNullOrEmpty(toolName)
-                    || string.IsNullOrEmpty(alias))
+                if (string.IsNullOrEmpty(toolName))
                 {
                     continue;
                 }
 
+                var alias = method.GetCustomAttribute<Celbridge.Tools.ToolAliasAttribute>()?.Alias ?? string.Empty;
                 tools.Add(Descriptor(toolName, alias));
             }
         }

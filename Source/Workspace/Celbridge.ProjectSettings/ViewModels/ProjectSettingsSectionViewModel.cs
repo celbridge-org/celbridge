@@ -42,9 +42,40 @@ public sealed class ProjectSettingsContext
 
     public void NotifyEdited() => _notifyEdited();
 
-    // The reconciled config (overrides only), falling back to the parsed config before reconcile. The
-    // instance changes only when a discovery pass runs, so its identity signals whether a reload is needed.
+    /// <summary>
+    /// The project file's current content, reconciled against the packages the loaded project discovered.
+    /// Before a draft is loaded this is the loaded config, and before the loaded project has reconciled it
+    /// is the draft as parsed.
+    /// </summary>
     public ProjectConfig? GetConfig()
+    {
+        var draft = Draft;
+        if (draft is null)
+        {
+            return GetLoadedConfig();
+        }
+
+        var draftConfig = draft.ToConfig();
+
+        var packageService = WorkspaceWrapper.WorkspaceService?.PackageService;
+        if (packageService is null
+            || packageService.GetNormalizedConfig() is null)
+        {
+            return draftConfig;
+        }
+
+        var discoveredContributions = packageService.GetAllPackages()
+            .SelectMany(package => package.Editors)
+            .ToList();
+
+        return ProjectConfigReconciler.Reconcile(draftConfig, discoveredContributions).Config;
+    }
+
+    /// <summary>
+    /// The config the running workspace was built from: the reconciled config, falling back to the parsed
+    /// config before reconcile. The instance changes only when a discovery pass runs.
+    /// </summary>
+    public ProjectConfig? GetLoadedConfig()
     {
         var packageService = WorkspaceWrapper.WorkspaceService?.PackageService;
         return packageService?.GetNormalizedConfig() ?? ProjectService.CurrentProject?.Config;
@@ -63,9 +94,9 @@ public enum SectionContentState
 }
 
 /// <summary>
-/// Base for the Project Settings section view models. Each section reads the reconciled config on Load
-/// and mutates the shared draft as the user edits; the draft reaches disk on the editor's save tick, and
-/// the running workspace only reflects it after a reload.
+/// Base for the Project Settings section view models. Each section presents the project file's current
+/// content on Load and mutates the shared draft as the user edits. The draft reaches disk on the editor's save tick, and the running
+/// workspace only reflects it after a reload.
 /// </summary>
 public abstract class ProjectSettingsSectionViewModel : ObservableObject
 {
@@ -179,7 +210,7 @@ public abstract class ProjectSettingsSectionViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Rebuilds the section's state from the reconciled config.
+    /// Rebuilds the section's state from the project file's current content.
     /// </summary>
     public abstract void Load();
 }
