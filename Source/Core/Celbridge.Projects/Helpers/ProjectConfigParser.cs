@@ -33,6 +33,8 @@ public static class ProjectConfigParser
     private const string DocumentShortcutResourceKey = "resource";
     private const string DocumentShortcutIconKey = "icon";
     private const string DocumentShortcutAreaKey = "area";
+    private const string DocumentShortcutRailButtonKey = "rail-button";
+    private const string DocumentShortcutOpenOnLoadKey = "open-on-load";
 
     // The areas a shortcut can open into, spelled out for the error message it produces. The
     // Utility Panel is absent because it holds no document tabs.
@@ -62,6 +64,8 @@ public static class ProjectConfigParser
         DocumentShortcutResourceKey,
         DocumentShortcutIconKey,
         DocumentShortcutAreaKey,
+        DocumentShortcutRailButtonKey,
+        DocumentShortcutOpenOnLoadKey,
     };
 
     /// <summary>
@@ -170,8 +174,8 @@ public static class ProjectConfigParser
             }
         }
 
-        // Utility Rail document shortcuts are declared as [[shortcut]] entries. Entry order is rail
-        // order, so the entries are kept in the order the file lists them.
+        // Document shortcuts are declared as [[shortcut]] entries. Entry order is rail order, so the
+        // entries are kept in the order the file lists them.
         var documentShortcuts = new List<DocumentShortcut>();
         if (root.TryGetValue(DocumentShortcutSectionName, out var documentShortcutObject))
         {
@@ -409,8 +413,8 @@ public static class ProjectConfigParser
         }
 
         var reference = $"{packageName}/{contributionId}";
-        var disabled = ReadBoolFlag(entryTable, ContributionPropertyKeys.Disabled, reference, entryErrors);
-        var enabled = ReadBoolFlag(entryTable, ContributionPropertyKeys.Enabled, reference, entryErrors);
+        var disabled = ReadOptionalBool(entryTable, ContributionPropertyKeys.Disabled, reference, entryErrors) ?? false;
+        var enabled = ReadOptionalBool(entryTable, ContributionPropertyKeys.Enabled, reference, entryErrors) ?? false;
 
         // Every non-reserved key is contribution configuration, kept as its raw TOML value for
         // descriptor type-checking at workspace load.
@@ -487,12 +491,16 @@ public static class ProjectConfigParser
 
         var icon = ReadString(entryTable, DocumentShortcutIconKey);
         var area = ReadDocumentShortcutArea(entryTable, entryName, entryErrors);
+        var hasRailButton = ReadOptionalBool(entryTable, DocumentShortcutRailButtonKey, entryName, entryErrors) ?? true;
+        var openOnLoad = ReadOptionalBool(entryTable, DocumentShortcutOpenOnLoadKey, entryName, entryErrors) ?? false;
 
         return new DocumentShortcut
         {
             Resource = resource,
             Icon = icon ?? string.Empty,
-            Area = area
+            Area = area,
+            HasRailButton = hasRailButton,
+            OpenOnLoad = openOnLoad
         };
     }
 
@@ -532,8 +540,9 @@ public static class ProjectConfigParser
         return area;
     }
 
-    // Reads an optional boolean activation flag, reporting and ignoring a value of any other type.
-    private static bool ReadBoolFlag(
+    // Reads an optional boolean, returning null when the key is absent. A value of any other type is
+    // reported and read as absent, so the caller's default applies.
+    private static bool? ReadOptionalBool(
         TomlTable entryTable,
         string key,
         string reference,
@@ -541,7 +550,7 @@ public static class ProjectConfigParser
     {
         if (!entryTable.TryGetValue(key, out var value))
         {
-            return false;
+            return null;
         }
 
         if (value is bool boolValue)
@@ -552,7 +561,7 @@ public static class ProjectConfigParser
         entryErrors.Add(new ProjectConfigEntryError(
             reference, $"'{key}' must be a boolean. The value was ignored."));
 
-        return false;
+        return null;
     }
 
     // Returns the string value for the key, or null when the key is absent or

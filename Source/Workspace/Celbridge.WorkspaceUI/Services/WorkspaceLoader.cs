@@ -152,8 +152,8 @@ public class WorkspaceLoader
         // rather than opened as a second instance.
         await BuildUtilities();
 
-        // Open previously opened documents in the Documents Panel. A stored utils: entry docks its
-        // already-created utility into the saved tab position.
+        // Open the documents from the previous session, then those the project opens on load. A stored utils:
+        // entry docks its already-created utility into the saved tab position.
         var documentsService = workspaceService.DocumentsService;
         await documentsService.RestorePanelState();
 

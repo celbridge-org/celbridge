@@ -122,6 +122,16 @@ public static class ProjectConfigSerializer
             {
                 WriteKeyValue(builder, "area", TomlStringEncoder.EncodeBasicString(documentShortcut.Area.ToToken()));
             }
+
+            if (!documentShortcut.HasRailButton)
+            {
+                WriteKeyValue(builder, "rail-button", "false");
+            }
+
+            if (documentShortcut.OpenOnLoad)
+            {
+                WriteKeyValue(builder, "open-on-load", "true");
+            }
         }
     }
 

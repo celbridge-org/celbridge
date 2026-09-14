@@ -76,8 +76,8 @@ public interface IDocumentsService
     IDocumentEditorRegistry DocumentEditorRegistry { get; }
 
     /// <summary>
-    /// Restores the state of the documents panel from the previous session. A document that cannot be
-    /// reopened is logged and skipped, so the restore always completes.
+    /// Populates the documents panel for a newly loaded workspace, with the documents open at the end of the
+    /// previous session and those the project opens on load.
     /// </summary>
     Task RestorePanelState();
 

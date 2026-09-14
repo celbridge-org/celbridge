@@ -43,11 +43,11 @@ public class DocumentShortcutViewModelTests
     }
 
     [Test]
-    public void IconName_WithNoIconNamed_IsTheDefaultDocumentIcon()
+    public void IconName_WithNoIconNamed_IsThePin()
     {
         var shortcut = CreateShortcut("readme.md");
 
-        shortcut.IconName.Should().Be("bs-file-earmark");
+        shortcut.IconName.Should().Be("bs-pin-angle");
     }
 
     [Test]
@@ -131,5 +131,18 @@ public class DocumentShortcutViewModelTests
 
         documentShortcut.Resource.Should().Be("readme.md");
         documentShortcut.Icon.Should().Be("bs-book");
+    }
+
+    [Test]
+    public void ToDocumentShortcut_CarriesTheLoadAndRailButtonChoices()
+    {
+        var shortcut = CreateShortcut("readme.md");
+        shortcut.OpenOnLoad = true;
+        shortcut.HasRailButton = false;
+
+        var documentShortcut = shortcut.ToDocumentShortcut();
+
+        documentShortcut.OpenOnLoad.Should().BeTrue();
+        documentShortcut.HasRailButton.Should().BeFalse();
     }
 }

@@ -225,8 +225,8 @@ public class UtilityService : IUtilityService, IDisposable
         return panelView;
     }
 
-    // The document shortcuts the project config declares, in the order it lists them. An entry naming
-    // something that is not a resource key contributes no button.
+    // The rail buttons for the document shortcuts the project config declares, in the order it lists them. A
+    // shortcut with its button turned off, or naming something that is not a resource key, contributes none.
     private List<UtilityRailItem> BuildProjectShortcutItems()
     {
         var projectService = _serviceProvider.GetRequiredService<IProjectService>();
@@ -245,6 +245,11 @@ public class UtilityService : IUtilityService, IDisposable
         for (int i = 0; i < documentShortcuts.Count; i++)
         {
             var documentShortcut = documentShortcuts[i];
+
+            if (!documentShortcut.HasRailButton)
+            {
+                continue;
+            }
 
             if (!ResourceKey.TryCreate(documentShortcut.Resource, out var fileResource))
             {

@@ -62,7 +62,8 @@ internal static class IconSymbolNames
         { IconSymbol.Link, "bs-link-45deg" },
         { IconSymbol.Visible, "bs-eye" },
         { IconSymbol.Hidden, "bs-eye-slash" },
-        { IconSymbol.Exit, "bs-box-arrow-right" }
+        { IconSymbol.Exit, "bs-box-arrow-right" },
+        { IconSymbol.Pin, "bs-pin-angle" }
     };
 
     /// <summary>

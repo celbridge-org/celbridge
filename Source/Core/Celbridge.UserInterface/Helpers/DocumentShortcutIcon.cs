@@ -9,10 +9,10 @@ public static class DocumentShortcutIcon
     /// <summary>
     /// The icon a shortcut naming none is drawn with.
     /// </summary>
-    public const IconSymbol DefaultSymbol = IconSymbol.File;
+    public const IconSymbol DefaultSymbol = IconSymbol.Pin;
 
     /// <summary>
-    /// The icon name for a shortcut: the one it names, or the default document icon when it names none.
+    /// The icon name for a shortcut: the one it names, or the default shortcut icon when it names none.
     /// </summary>
     public static string Resolve(IIconService iconService, string iconName)
     {
