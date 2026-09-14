@@ -123,7 +123,6 @@ public class DocumentsService : IDocumentsService, IDisposable
 
         _layoutStore = new DocumentLayoutStore(
             _workspaceWrapper,
-            _commandService,
             serviceProvider.GetRequiredService<ILogger<DocumentLayoutStore>>());
     }
 
@@ -575,7 +574,13 @@ public class DocumentsService : IDocumentsService, IDisposable
     public Task StoreDocumentEditorState(ResourceKey fileResource, string? state) =>
         _layoutStore.StoreDocumentEditorStateAsync(fileResource, state);
 
-    public Task RestorePanelState() => _layoutStore.RestorePanelStateAsync();
+    public Task RestorePanelState()
+    {
+        var projectService = _serviceProvider.GetRequiredService<IProjectService>();
+        var documentShortcuts = projectService.CurrentProject?.Config.DocumentShortcuts ?? Array.Empty<DocumentShortcut>();
+
+        return _layoutStore.RestorePanelStateAsync(documentShortcuts);
+    }
 
     private Task<Result<IDocumentView>> CreateDocumentViewInternalAsync(ResourceKey fileResource, EditorId editorId = default)
     {

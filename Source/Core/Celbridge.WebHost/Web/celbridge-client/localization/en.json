@@ -9,7 +9,6 @@
     "FindBar_Count": "{0} of {1}",
 
     "IconPicker_FieldLabel": "Icon",
-    "IconPicker_FieldPlaceholder": "bs-book",
     "IconPicker_FieldHint": "Browse to pick an icon, or type its name.",
     "IconPicker_UnknownIcon": "There is no supported icon with this name.",
     "IconPicker_BrowseTooltip": "Choose an icon"

@@ -226,7 +226,7 @@ public class ProjectConfigDraftTests
         // entries keep the order the section set.
         var documentShortcuts = new List<DocumentShortcut>
         {
-            new() { Resource = "docs/guide.md", Icon = "bs-book", Area = WorkspaceArea.Bottom },
+            new() { Resource = "docs/guide.md", Icon = "bs-book", Area = WorkspaceArea.Bottom, HasRailButton = false, OpenOnLoad = true },
             new() { Resource = "readme.md" },
         };
 
@@ -236,9 +236,13 @@ public class ProjectConfigDraftTests
         config.DocumentShortcuts[0].Resource.Should().Be("docs/guide.md");
         config.DocumentShortcuts[0].Icon.Should().Be("bs-book");
         config.DocumentShortcuts[0].Area.Should().Be(WorkspaceArea.Bottom);
+        config.DocumentShortcuts[0].HasRailButton.Should().BeFalse();
+        config.DocumentShortcuts[0].OpenOnLoad.Should().BeTrue();
         config.DocumentShortcuts[1].Resource.Should().Be("readme.md");
         config.DocumentShortcuts[1].Icon.Should().BeEmpty();
         config.DocumentShortcuts[1].Area.Should().Be(WorkspaceArea.Main);
+        config.DocumentShortcuts[1].HasRailButton.Should().BeTrue();
+        config.DocumentShortcuts[1].OpenOnLoad.Should().BeFalse();
     }
 
     [Test]

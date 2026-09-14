@@ -10,9 +10,9 @@ using Celbridge.Utilities;
 namespace Celbridge.ProjectSettings.ViewModels;
 
 /// <summary>
-/// Drives the Shortcuts section: the document shortcut buttons the Utility Rail offers, each opening one
-/// project resource. The cards are the order the rail draws them in, and the workspace picks the changes
-/// up when the project is reloaded.
+/// Drives the Shortcuts section: the project files a shortcut opens as documents, from a Utility Rail
+/// button, when the project loads, or both. The cards are the order the rail draws them in, and the
+/// workspace picks the changes up when the project is reloaded.
 /// </summary>
 public class DocumentShortcutsSectionViewModel : ProjectSettingsSectionViewModel
 {
@@ -106,8 +106,8 @@ public class DocumentShortcutsSectionViewModel : ProjectSettingsSectionViewModel
     }
 
     /// <summary>
-    /// Opens a shortcut's document where its rail button would, so the shortcut can be checked before the
-    /// project is reloaded and the rail gains its button.
+    /// Opens a shortcut's document in the area the shortcut declares, so the shortcut can be checked before
+    /// the project is reloaded.
     /// </summary>
     public void OpenShortcut(DocumentShortcutViewModel shortcut)
     {
@@ -130,7 +130,9 @@ public class DocumentShortcutsSectionViewModel : ProjectSettingsSectionViewModel
         {
             Resource = documentShortcut.Resource,
             Icon = documentShortcut.Icon,
-            Area = documentShortcut.Area
+            Area = documentShortcut.Area,
+            OpenOnLoad = documentShortcut.OpenOnLoad,
+            HasRailButton = documentShortcut.HasRailButton
         };
 
         return shortcut;
@@ -176,7 +178,9 @@ public class DocumentShortcutsSectionViewModel : ProjectSettingsSectionViewModel
         // which carry no edit of their own.
         if (e.PropertyName != nameof(DocumentShortcutViewModel.Resource)
             && e.PropertyName != nameof(DocumentShortcutViewModel.Icon)
-            && e.PropertyName != nameof(DocumentShortcutViewModel.Area))
+            && e.PropertyName != nameof(DocumentShortcutViewModel.Area)
+            && e.PropertyName != nameof(DocumentShortcutViewModel.OpenOnLoad)
+            && e.PropertyName != nameof(DocumentShortcutViewModel.HasRailButton))
         {
             return;
         }

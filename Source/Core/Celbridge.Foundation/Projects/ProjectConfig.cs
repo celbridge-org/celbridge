@@ -49,8 +49,8 @@ public sealed record ContributionOverride
 }
 
 /// <summary>
-/// A Utility Rail button parsed from a [[shortcut]] entry in the .celbridge project config: the resource
-/// the button opens as a document, and the icon it carries. Entry order is rail order.
+/// A project file parsed from a [[shortcut]] entry in the .celbridge project config, which opens as a
+/// document from a Utility Rail button, when the project loads, or both. Entry order is rail order.
 /// </summary>
 public sealed record DocumentShortcut
 {
@@ -60,7 +60,7 @@ public sealed record DocumentShortcut
     public required string Resource { get; init; }
 
     /// <summary>
-    /// Prefixed icon name for the rail button. Empty takes the default document icon.
+    /// Prefixed icon name for the rail button. Empty takes the default shortcut icon.
     /// </summary>
     public string Icon { get; init; } = string.Empty;
 
@@ -69,6 +69,17 @@ public sealed record DocumentShortcut
     /// not already open. Never the Utility Panel, which holds no document tabs.
     /// </summary>
     public WorkspaceArea Area { get; init; } = WorkspaceArea.Main;
+
+    /// <summary>
+    /// True when the shortcut adds a button to the Utility Rail.
+    /// </summary>
+    public bool HasRailButton { get; init; } = true;
+
+    /// <summary>
+    /// True when the document opens each time the project loads, including when it was closed at the end
+    /// of the last session.
+    /// </summary>
+    public bool OpenOnLoad { get; init; }
 }
 
 /// <summary>
@@ -164,7 +175,7 @@ public sealed record class ProjectConfig
     public IReadOnlyList<ContributionOverride> ContributionOverrides { get; init; } = Array.Empty<ContributionOverride>();
 
     /// <summary>
-    /// Utility Rail document shortcuts, from the [[shortcut]] entries, in the order the rail shows them.
+    /// Document shortcuts, from the [[shortcut]] entries, in the order the rail shows them.
     /// </summary>
     public IReadOnlyList<DocumentShortcut> DocumentShortcuts { get; init; } = Array.Empty<DocumentShortcut>();
 

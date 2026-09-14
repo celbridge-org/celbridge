@@ -1,4 +1,3 @@
-using Celbridge.Commands;
 using Celbridge.Logging;
 using Celbridge.Projects;
 using Celbridge.Workspace;
@@ -18,18 +17,15 @@ public class DocumentLayoutStore
     private const string DocumentEditorStatesKey = "DocumentEditorStates";
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly ICommandService _commandService;
     private readonly ILogger<DocumentLayoutStore> _logger;
 
     private IDocumentsPanel DocumentsPanel => _workspaceWrapper.WorkspaceService.DocumentsPanel;
 
     public DocumentLayoutStore(
         IWorkspaceWrapper workspaceWrapper,
-        ICommandService commandService,
         ILogger<DocumentLayoutStore> logger)
     {
         _workspaceWrapper = workspaceWrapper;
-        _commandService = commandService;
         _logger = logger;
     }
 
@@ -231,7 +227,7 @@ public class DocumentLayoutStore
         }
     }
 
-    public async Task RestorePanelStateAsync()
+    public async Task RestorePanelStateAsync(IReadOnlyList<DocumentShortcut> documentShortcuts)
     {
         var storedLayout = await LoadStoredLayoutAsync();
 
@@ -250,14 +246,13 @@ public class DocumentLayoutStore
             }
         }
 
-        if (storedLayout.OpenDocumentAddresses is null
-            || storedLayout.OpenDocumentAddresses.Count == 0)
+        if (storedLayout.OpenDocumentAddresses is not null)
         {
-            await OpenDefaultReadmeAsync();
-            return;
+            await RestoreDocumentsAsync(storedLayout.OpenDocumentAddresses, storedLayout.EditorStates);
         }
 
-        await RestoreDocumentsAsync(storedLayout.OpenDocumentAddresses, storedLayout.EditorStates);
+        // After the restore, so a document the last session left open keeps the place it was restored to.
+        await OpenOnLoadDocumentsAsync(documentShortcuts);
 
         // A document whose file has gone since the last session leaves the section it was restoring into
         // empty, so fold away any split that ended up with nothing in it.
@@ -322,8 +317,6 @@ public class DocumentLayoutStore
         IReadOnlyList<StoredDocumentAddress> storedAddresses,
         IReadOnlyDictionary<string, string>? editorStates)
     {
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-
         foreach (var stored in storedAddresses)
         {
             if (!ResourceKey.TryCreate(stored.Resource, out var fileResource))
@@ -341,23 +334,8 @@ public class DocumentLayoutStore
 
             EnsureAreaSplitForSection(storedSection);
 
-            // Project resources use the registry fast path. Virtual-root keys (utils:, temp:, logs:) are
-            // never in the registry, so the ResolveResourcePath and GetInfoAsync checks below validate
-            // their existence instead.
-            if (fileResource.Root == ResourceKey.DefaultRoot)
+            if (!IsResolvableResource(fileResource))
             {
-                var getResourceResult = resourceRegistry.GetResource(fileResource);
-                if (getResourceResult.IsFailure)
-                {
-                    _logger.LogWarning(getResourceResult, $"Failed to open document because '{fileResource}' resource does not exist.");
-                    continue;
-                }
-            }
-
-            var resolveResult = resourceRegistry.ResolveResourcePath(fileResource);
-            if (resolveResult.IsFailure)
-            {
-                _logger.LogWarning(resolveResult, $"Failed to resolve path for resource: '{fileResource}'");
                 continue;
             }
 
@@ -377,12 +355,8 @@ public class DocumentLayoutStore
                 continue;
             }
 
-            var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
-            var infoResult = await resourceFileSystem.GetInfoAsync(fileResource);
-            if (infoResult.IsFailure
-                || infoResult.Value.Kind != StorageItemKind.File)
+            if (!await IsAccessibleFileAsync(fileResource))
             {
-                _logger.LogWarning($"Cannot access file for resource: '{fileResource}'");
                 continue;
             }
 
@@ -464,30 +438,102 @@ public class DocumentLayoutStore
         DocumentsPanel.ActiveDocument = activeDocument;
     }
 
-    private async Task OpenDefaultReadmeAsync()
+    // Opens the documents the project config marks to open on load, unless the restore already opened them.
+    // Each joins the end of the tab row in the area its shortcut declares, without taking the active document
+    // from the restored session.
+    private async Task OpenOnLoadDocumentsAsync(IReadOnlyList<DocumentShortcut> documentShortcuts)
+    {
+        foreach (var documentShortcut in documentShortcuts)
+        {
+            if (!documentShortcut.OpenOnLoad)
+            {
+                continue;
+            }
+
+            if (!ResourceKey.TryCreate(documentShortcut.Resource, out var fileResource))
+            {
+                _logger.LogWarning($"Invalid resource key '{documentShortcut.Resource}' found in a document shortcut");
+                continue;
+            }
+
+            // A utility is presented by docking it into a tab, never by opening it as a document.
+            if (fileResource.Root == ProjectConstants.UtilsFolder)
+            {
+                _logger.LogWarning($"Document shortcut names utility resource '{fileResource}', which cannot open as a document");
+                continue;
+            }
+
+            var isAlreadyOpen = DocumentsPanel.GetOpenDocuments()
+                .Any(openDocument => openDocument.FileResource == fileResource);
+            if (isAlreadyOpen)
+            {
+                continue;
+            }
+
+            if (!IsResolvableResource(fileResource))
+            {
+                continue;
+            }
+
+            if (!await IsAccessibleFileAsync(fileResource))
+            {
+                continue;
+            }
+
+            // Only the Utility Panel has no document section, and a shortcut never names it.
+            var section = documentShortcut.Area.GetPrimaryDocumentSection() ?? DocumentSection.MainLeft;
+            var address = new DocumentAddress(WindowIndex: 0, Section: section, TabOrder: DocumentAddress.AppendTabOrder);
+
+            var openOptions = new OpenDocumentOptions(
+                Address: address,
+                Activate: false);
+
+            var openResult = await DocumentsPanel.OpenDocument(fileResource, openOptions);
+            if (openResult.IsFailure)
+            {
+                _logger.LogWarning(openResult, $"Failed to open document shortcut '{fileResource}' on load");
+            }
+        }
+    }
+
+    // Whether the resource key resolves to a path. A project resource must also be in the registry, which a
+    // virtual-root key (utils:, temp:, logs:) never is.
+    private bool IsResolvableResource(ResourceKey fileResource)
     {
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var readmeResource = new ResourceKey("readme.md");
 
-        var normalizeResult = resourceRegistry.NormalizeResourceKey(readmeResource);
-        if (normalizeResult.IsFailure)
+        if (fileResource.Root == ResourceKey.DefaultRoot)
         {
-            return;
+            var getResourceResult = resourceRegistry.GetResource(fileResource);
+            if (getResourceResult.IsFailure)
+            {
+                _logger.LogWarning(getResourceResult, $"Failed to open document because '{fileResource}' resource does not exist.");
+                return false;
+            }
         }
-        var normalizedResource = normalizeResult.Value;
 
+        var resolveResult = resourceRegistry.ResolveResourcePath(fileResource);
+        if (resolveResult.IsFailure)
+        {
+            _logger.LogWarning(resolveResult, $"Failed to resolve path for resource: '{fileResource}'");
+            return false;
+        }
+
+        return true;
+    }
+
+    // Whether the resource is a file the resource file system can reach.
+    private async Task<bool> IsAccessibleFileAsync(ResourceKey fileResource)
+    {
         var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
-        var infoResult = await resourceFileSystem.GetInfoAsync(normalizedResource);
+        var infoResult = await resourceFileSystem.GetInfoAsync(fileResource);
         if (infoResult.IsFailure
             || infoResult.Value.Kind != StorageItemKind.File)
         {
-            return;
+            _logger.LogWarning($"Cannot access file for resource: '{fileResource}'");
+            return false;
         }
 
-        _commandService.Execute<IOpenDocumentCommand>(command =>
-        {
-            command.FileResource = normalizedResource;
-            command.ForceReload = false;
-        });
+        return true;
     }
 }

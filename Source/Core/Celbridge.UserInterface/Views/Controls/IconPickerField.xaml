@@ -26,7 +26,6 @@
       <TextBox x:Name="IconTextBox"
                Grid.Column="1"
                IsSpellCheckEnabled="False"
-               PlaceholderText="{x:Bind PlaceholderString}"
                Text="{x:Bind IconName, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
                KeyDown="IconTextBox_KeyDown" />
 

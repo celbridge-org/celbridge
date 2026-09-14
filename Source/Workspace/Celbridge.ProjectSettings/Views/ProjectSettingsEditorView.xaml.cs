@@ -19,6 +19,7 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
 {
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ILogger<ProjectSettingsEditorView> _logger;
+    private readonly IIconService _iconService;
 
     private double _saveTimer = SaveConstants.SaveDelay;
 
@@ -34,6 +35,7 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
     {
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _logger = ServiceLocator.AcquireService<ILogger<ProjectSettingsEditorView>>();
+        _iconService = ServiceLocator.AcquireService<IIconService>();
 
         ViewModel = ServiceLocator.AcquireService<ProjectSettingsEditorViewModel>();
         ViewModel.InitializeSections(BuildSections());
@@ -101,7 +103,7 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
                 ProjectSettingsLabels.PackagesSectionIssue),
             new(
                 "Shortcuts",
-                "bs-pin-angle",
+                _iconService.GetIconName(IconSymbol.Pin),
                 _stringLocalizer.GetString("ProjectSettings_ShortcutsHeader"),
                 _stringLocalizer.GetString("ProjectSettings_ShortcutsDescription"),
                 documentShortcutsView),

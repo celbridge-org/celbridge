@@ -46,7 +46,6 @@ public sealed partial class IconPickerField : UserControl
     }
 
     public string LabelString => _stringLocalizer.GetString("IconPicker_FieldLabel");
-    public string PlaceholderString => _stringLocalizer.GetString("IconPicker_FieldPlaceholder");
     public string HintString => _stringLocalizer.GetString("IconPicker_FieldHint");
     public string UnknownIconString => _stringLocalizer.GetString("IconPicker_UnknownIcon");
     public string BrowseTooltipString => _stringLocalizer.GetString("IconPicker_BrowseTooltip");

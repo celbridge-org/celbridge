@@ -1,5 +1,5 @@
-using Celbridge.Commands;
 using Celbridge.Messaging;
+using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
 using Celbridge.Tests.FileSystem;
@@ -9,17 +9,18 @@ namespace Celbridge.Tests.Documents;
 
 /// <summary>
 /// Covers DocumentLayoutStore: restore-parsing edge cases (corrupted layout,
-/// invalid resource keys, section clamps), the default-readme fallback when no
-/// layout is stored, and the basic settings-writing shape of the Store* methods.
+/// invalid resource keys, section clamps), the documents a project opens on load,
+/// and the basic settings-writing shape of the Store* methods.
 /// </summary>
 [TestFixture]
 public class DocumentLayoutStoreTests
 {
+    private static readonly IReadOnlyList<DocumentShortcut> NoDocumentShortcuts = Array.Empty<DocumentShortcut>();
+
     private IWorkspacePropertyBag _propertyBag = null!;
     private IResourceRegistry _resourceRegistry = null!;
     private IDocumentsPanel _documentsPanel = null!;
     private IUtilityService _utilityService = null!;
-    private ICommandService _commandService = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
     private DocumentLayoutStore _store = null!;
     private string _tempFolder = null!;
@@ -37,7 +38,6 @@ public class DocumentLayoutStoreTests
         _resourceRegistry = Substitute.For<IResourceRegistry>();
         _resourceRegistry.ProjectFolderPath.Returns(_tempFolder);
         _documentsPanel = Substitute.For<IDocumentsPanel>();
-        _commandService = Substitute.For<ICommandService>();
 
         // Default registry behaviour: every key resolves to the accessible temp
         // file and exists in the registry. Individual tests override these
@@ -49,6 +49,9 @@ public class DocumentLayoutStoreTests
 
         _documentsPanel.OpenDocument(Arg.Any<ResourceKey>(), Arg.Any<OpenDocumentOptions?>())
             .Returns(Task.FromResult(Result<OpenDocumentOutcome>.Ok(OpenDocumentOutcome.Opened)));
+
+        // No document is open until a test says one is.
+        _documentsPanel.GetOpenDocuments().Returns(new List<OpenDocumentInfo>());
 
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Registry.Returns(_resourceRegistry);
@@ -82,7 +85,6 @@ public class DocumentLayoutStoreTests
 
         _store = new DocumentLayoutStore(
             _workspaceWrapper,
-            _commandService,
             Substitute.For<ILogger<DocumentLayoutStore>>());
     }
 
@@ -96,51 +98,14 @@ public class DocumentLayoutStoreTests
     }
 
     [Test]
-    public async Task RestorePanelStateAsync_NoStoredLayout_OpensDefaultReadme()
-    {
-        // Empty workspace: settings has no layout key, so we fall back to
-        // opening readme.md if it resolves and is readable.
-        _resourceRegistry.NormalizeResourceKey(Arg.Any<ResourceKey>())
-            .Returns(ci => Result<ResourceKey>.Ok(ci.Arg<ResourceKey>()));
-
-        await _store.RestorePanelStateAsync();
-
-        // ICommandService.Execute has [CallerFilePath]/[CallerLineNumber]
-        // parameters that the compiler fills in at each call site, so the
-        // verification must accept any value for those.
-        _commandService.Received(1).Execute<IOpenDocumentCommand>(
-            Arg.Any<Action<IOpenDocumentCommand>?>(),
-            Arg.Any<string>(),
-            Arg.Any<int>());
-    }
-
-    [Test]
-    public async Task RestorePanelStateAsync_NoStoredLayout_SkipsReadmeWhenItDoesNotResolve()
-    {
-        // No readme.md in the workspace: NormalizeResourceKey fails and the
-        // fallback is a no-op rather than an error.
-        _resourceRegistry.NormalizeResourceKey(Arg.Any<ResourceKey>())
-            .Returns(Result<ResourceKey>.Fail("not found"));
-
-        await _store.RestorePanelStateAsync();
-
-        _commandService.DidNotReceive().Execute<IOpenDocumentCommand>(
-            Arg.Any<Action<IOpenDocumentCommand>?>(),
-            Arg.Any<string>(),
-            Arg.Any<int>());
-    }
-
-    [Test]
     public async Task RestorePanelStateAsync_MalformedLayoutJson_DoesNotThrow()
     {
         // Old format / corrupted settings: GetPropertyAsync throws inside the
         // store, which catches and treats the layout as empty.
         _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("OpenDocumentAddresses")
             .Returns<Task<List<DocumentLayoutStore.StoredDocumentAddress>?>>(_ => throw new InvalidOperationException("bad json"));
-        _resourceRegistry.NormalizeResourceKey(Arg.Any<ResourceKey>())
-            .Returns(Result<ResourceKey>.Fail("not found"));
 
-        Func<Task> act = async () => await _store.RestorePanelStateAsync();
+        Func<Task> act = async () => await _store.RestorePanelStateAsync(NoDocumentShortcuts);
 
         await act.Should().NotThrowAsync();
     }
@@ -157,7 +122,7 @@ public class DocumentLayoutStoreTests
         _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("OpenDocumentAddresses")
             .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
 
-        await _store.RestorePanelStateAsync();
+        await _store.RestorePanelStateAsync(NoDocumentShortcuts);
 
         await _documentsPanel.Received(1).OpenDocument(
             new ResourceKey("notes/readme.md"),
@@ -181,7 +146,7 @@ public class DocumentLayoutStoreTests
         _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("OpenDocumentAddresses")
             .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
 
-        await _store.RestorePanelStateAsync();
+        await _store.RestorePanelStateAsync(NoDocumentShortcuts);
 
         await _documentsPanel.Received(1).OpenDocument(
             new ResourceKey("notes/readme.md"),
@@ -203,7 +168,7 @@ public class DocumentLayoutStoreTests
         _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("OpenDocumentAddresses")
             .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
 
-        await _store.RestorePanelStateAsync();
+        await _store.RestorePanelStateAsync(NoDocumentShortcuts);
 
         await _documentsPanel.DidNotReceive().OpenDocument(Arg.Any<ResourceKey>(), Arg.Any<OpenDocumentOptions?>());
     }
@@ -222,7 +187,7 @@ public class DocumentLayoutStoreTests
         _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("OpenDocumentAddresses")
             .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
 
-        await _store.RestorePanelStateAsync();
+        await _store.RestorePanelStateAsync(NoDocumentShortcuts);
 
         await _utilityService.Received(1).RestoreDockedUtilityAsync(
             utilityResource,
@@ -245,7 +210,7 @@ public class DocumentLayoutStoreTests
         _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("OpenDocumentAddresses")
             .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
 
-        await _store.RestorePanelStateAsync();
+        await _store.RestorePanelStateAsync(NoDocumentShortcuts);
 
         await _documentsPanel.DidNotReceive().OpenDocument(Arg.Any<ResourceKey>(), Arg.Any<OpenDocumentOptions?>());
     }
@@ -263,7 +228,7 @@ public class DocumentLayoutStoreTests
         _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("OpenDocumentAddresses")
             .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
 
-        await _store.RestorePanelStateAsync();
+        await _store.RestorePanelStateAsync(NoDocumentShortcuts);
 
         _documentsPanel.Received(1).SetAreaSplit(DocumentArea.Main, true);
 
@@ -284,7 +249,7 @@ public class DocumentLayoutStoreTests
         _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("OpenDocumentAddresses")
             .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
 
-        await _store.RestorePanelStateAsync();
+        await _store.RestorePanelStateAsync(NoDocumentShortcuts);
 
         foreach (var area in DocumentLayoutHelper.AllAreas)
         {
@@ -311,7 +276,7 @@ public class DocumentLayoutStoreTests
                 [new ResourceKey("other/file.md").ToString()] = "{\"scroll\":1.0}",
             }));
 
-        await _store.RestorePanelStateAsync();
+        await _store.RestorePanelStateAsync(NoDocumentShortcuts);
 
         await _documentsPanel.Received(1).OpenDocument(
             Arg.Any<ResourceKey>(),
@@ -330,7 +295,7 @@ public class DocumentLayoutStoreTests
         _propertyBag.GetPropertyAsync<string>("ActiveDocument")
             .Returns(Task.FromResult<string?>("notes/readme.md"));
 
-        await _store.RestorePanelStateAsync();
+        await _store.RestorePanelStateAsync(NoDocumentShortcuts);
 
         _documentsPanel.Received().ActiveDocument = new ResourceKey("notes/readme.md");
     }
@@ -349,7 +314,7 @@ public class DocumentLayoutStoreTests
         _propertyBag.GetPropertyAsync<string>("ActiveDocument")
             .Returns(Task.FromResult<string?>(null));
 
-        await _store.RestorePanelStateAsync();
+        await _store.RestorePanelStateAsync(NoDocumentShortcuts);
 
         _documentsPanel.Received().ActiveDocument = ResourceKey.Empty;
     }
@@ -363,16 +328,82 @@ public class DocumentLayoutStoreTests
         };
         _propertyBag.GetPropertyAsync<Dictionary<string, DocumentLayoutStore.StoredAreaSplitRatio>>("AreaSplitRatios")
             .Returns(Task.FromResult<Dictionary<string, DocumentLayoutStore.StoredAreaSplitRatio>?>(areaSplitRatios));
-        _resourceRegistry.NormalizeResourceKey(Arg.Any<ResourceKey>())
-            .Returns(Result<ResourceKey>.Fail("not found"));
 
-        await _store.RestorePanelStateAsync();
+        await _store.RestorePanelStateAsync(NoDocumentShortcuts);
 
         _documentsPanel.Received(1).SetAreaSplitRatio(DocumentArea.Main, 0.3);
 
         // Split state is not restored from settings: it follows the documents that restore into each
         // section, so an area only splits when a document lands in its secondary one.
         _documentsPanel.DidNotReceive().SetAreaSplit(DocumentArea.Main, true);
+    }
+
+    [Test]
+    public async Task RestorePanelStateAsync_OpenOnLoadShortcut_OpensInItsAreaWithoutActivating()
+    {
+        // Nothing was open last session, so the document joins the end of the area its shortcut declares. A
+        // shortcut that does not open on load stays closed.
+        var documentShortcuts = new List<DocumentShortcut>
+        {
+            new() { Resource = "notes/todo.md", Area = WorkspaceArea.Bottom, OpenOnLoad = true },
+            new() { Resource = "notes/later.md" },
+        };
+
+        await _store.RestorePanelStateAsync(documentShortcuts);
+
+        await _documentsPanel.Received(1).OpenDocument(
+            new ResourceKey("notes/todo.md"),
+            Arg.Is<OpenDocumentOptions>(options =>
+                options.Activate == false
+                && options.Address!.Section == DocumentSection.BottomLeft
+                && options.Address.TabOrder == DocumentAddress.AppendTabOrder));
+        await _documentsPanel.Received(1).OpenDocument(Arg.Any<ResourceKey>(), Arg.Any<OpenDocumentOptions?>());
+    }
+
+    [Test]
+    public async Task RestorePanelStateAsync_OpenOnLoadShortcutRestoredFromLastSession_KeepsItsPlace()
+    {
+        // Opening the document again for its shortcut would move the restored tab into the declared area.
+        var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
+        {
+            new("notes/readme.md", WindowIndex: 0, Section: "main_right", TabOrder: 0),
+        };
+        _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("OpenDocumentAddresses")
+            .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
+
+        var restoredResource = new ResourceKey("notes/readme.md");
+        var restoredAddress = new DocumentAddress(WindowIndex: 0, Section: DocumentSection.MainRight, TabOrder: 0);
+        _documentsPanel.GetOpenDocuments().Returns(new List<OpenDocumentInfo>
+        {
+            new(restoredResource, restoredAddress, EditorId.Empty),
+        });
+
+        var documentShortcuts = new List<DocumentShortcut>
+        {
+            new() { Resource = "notes/readme.md", OpenOnLoad = true },
+        };
+
+        await _store.RestorePanelStateAsync(documentShortcuts);
+
+        await _documentsPanel.Received(1).OpenDocument(Arg.Any<ResourceKey>(), Arg.Any<OpenDocumentOptions?>());
+        await _documentsPanel.Received(1).OpenDocument(
+            restoredResource,
+            Arg.Is<OpenDocumentOptions>(options => options.Address!.Section == DocumentSection.MainRight));
+    }
+
+    [Test]
+    public async Task RestorePanelStateAsync_NoStoredLayout_StillSetsActiveDocument()
+    {
+        // A document opened for its shortcut may be the only one open, so the panel still chooses an active
+        // document when the last session left nothing open.
+        var documentShortcuts = new List<DocumentShortcut>
+        {
+            new() { Resource = "notes/todo.md", OpenOnLoad = true },
+        };
+
+        await _store.RestorePanelStateAsync(documentShortcuts);
+
+        _documentsPanel.Received().ActiveDocument = ResourceKey.Empty;
     }
 
     [Test]

@@ -58,5 +58,6 @@ public enum IconSymbol
     Link,
     Visible,
     Hidden,
-    Exit
+    Exit,
+    Pin
 }

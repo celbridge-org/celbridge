@@ -943,7 +943,7 @@ Open with default application instead?</value>
     <value>Shortcuts</value>
   </data>
   <data name="ProjectSettings_ShortcutsDescription" xml:space="preserve">
-    <value>Buttons on the Utility Rail that open a file in this project.</value>
+    <value>Files in this project that open from a Utility button or when the project loads.</value>
   </data>
   <data name="ProjectSettings_ShortcutsEmpty" xml:space="preserve">
     <value>No shortcuts yet.</value>
@@ -957,14 +957,11 @@ Open with default application instead?</value>
   <data name="ProjectSettings_ShortcutResourceLabel" xml:space="preserve">
     <value>File</value>
   </data>
-  <data name="ProjectSettings_ShortcutResourcePlaceholder" xml:space="preserve">
-    <value>readme.md</value>
-  </data>
   <data name="ProjectSettings_ShortcutResourceHint" xml:space="preserve">
-    <value>The file the button opens, as a path from the project root.</value>
+    <value>The file to open, as a path from the project root.</value>
   </data>
   <data name="ProjectSettings_ShortcutInvalidResource" xml:space="preserve">
-    <value>This is not a valid file path, so no button is shown for it.</value>
+    <value>This is not a valid file path, so the shortcut is ignored.</value>
   </data>
   <data name="ProjectSettings_ShortcutMissingResource" xml:space="preserve">
     <value>This project has no file at this path yet.</value>
@@ -983,6 +980,24 @@ Open with default application instead?</value>
   </data>
   <data name="ProjectSettings_ShortcutAreaHint" xml:space="preserve">
     <value>Only applies when the file is not already open.</value>
+  </data>
+  <data name="ProjectSettings_ShortcutOpenOnLoadLabel" xml:space="preserve">
+    <value>Open when project loads</value>
+  </data>
+  <data name="ProjectSettings_ShortcutOpenOnLoadHint" xml:space="preserve">
+    <value>Opens the file every time the project loads, even if it was closed in the last session.</value>
+  </data>
+  <data name="ProjectSettings_ShortcutOpenOnLoadTooltip" xml:space="preserve">
+    <value>Off by default</value>
+  </data>
+  <data name="ProjectSettings_ShortcutRailButtonLabel" xml:space="preserve">
+    <value>Show Utility button</value>
+  </data>
+  <data name="ProjectSettings_ShortcutRailButtonHint" xml:space="preserve">
+    <value>Adds a Utility button that opens the file.</value>
+  </data>
+  <data name="ProjectSettings_ShortcutRailButtonTooltip" xml:space="preserve">
+    <value>On by default</value>
   </data>
   <data name="ProjectSettings_WorkspaceArea_Main" xml:space="preserve">
     <value>Main area</value>
@@ -1397,9 +1412,6 @@ Open with default application instead?</value>
   </data>
   <data name="IconPicker_FieldLabel" xml:space="preserve">
     <value>Icon</value>
-  </data>
-  <data name="IconPicker_FieldPlaceholder" xml:space="preserve">
-    <value>bs-book</value>
   </data>
   <data name="IconPicker_FieldHint" xml:space="preserve">
     <value>Browse to pick an icon, or type its name.</value>

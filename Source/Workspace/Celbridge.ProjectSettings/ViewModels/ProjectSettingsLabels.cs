@@ -46,7 +46,6 @@ internal static class ProjectSettingsLabels
     public static string AddShortcut => Localizer.GetString("ProjectSettings_AddShortcut");
     public static string ShortcutUntitled => Localizer.GetString("ProjectSettings_ShortcutUntitled");
     public static string ShortcutResourceLabel => Localizer.GetString("ProjectSettings_ShortcutResourceLabel");
-    public static string ShortcutResourcePlaceholder => Localizer.GetString("ProjectSettings_ShortcutResourcePlaceholder");
     public static string ShortcutResourceHint => Localizer.GetString("ProjectSettings_ShortcutResourceHint");
     public static string ShortcutInvalidResource => Localizer.GetString("ProjectSettings_ShortcutInvalidResource");
     public static string ShortcutMissingResource => Localizer.GetString("ProjectSettings_ShortcutMissingResource");
@@ -55,6 +54,12 @@ internal static class ProjectSettingsLabels
     public static string ShortcutOpenTooltip => Localizer.GetString("ProjectSettings_ShortcutOpenTooltip");
     public static string ShortcutAreaLabel => Localizer.GetString("ProjectSettings_ShortcutAreaLabel");
     public static string ShortcutAreaHint => Localizer.GetString("ProjectSettings_ShortcutAreaHint");
+    public static string ShortcutOpenOnLoadLabel => Localizer.GetString("ProjectSettings_ShortcutOpenOnLoadLabel");
+    public static string ShortcutOpenOnLoadHint => Localizer.GetString("ProjectSettings_ShortcutOpenOnLoadHint");
+    public static string ShortcutOpenOnLoadTooltip => Localizer.GetString("ProjectSettings_ShortcutOpenOnLoadTooltip");
+    public static string ShortcutRailButtonLabel => Localizer.GetString("ProjectSettings_ShortcutRailButtonLabel");
+    public static string ShortcutRailButtonHint => Localizer.GetString("ProjectSettings_ShortcutRailButtonHint");
+    public static string ShortcutRailButtonTooltip => Localizer.GetString("ProjectSettings_ShortcutRailButtonTooltip");
     public static string DocumentTypeLabel => Localizer.GetString("ProjectSettings_ContributionType_Document");
     public static string UtilityTypeLabel => Localizer.GetString("ProjectSettings_ContributionType_Utility");
 

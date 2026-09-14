@@ -7,8 +7,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace Celbridge.ProjectSettings.ViewModels;
 
 /// <summary>
-/// One document shortcut as its settings card and its Utility Rail button present it: the resource the
-/// button opens as a document, and an optional icon named from the bundled icon set.
+/// One document shortcut as its settings card presents it: the resource it opens as a document, where it
+/// opens, whether it opens when the project loads, and its optional Utility Rail button.
 /// </summary>
 public partial class DocumentShortcutViewModel : ObservableObject
 {
@@ -41,6 +41,12 @@ public partial class DocumentShortcutViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(SelectedAreaIndex))]
     private WorkspaceArea _area = WorkspaceArea.Main;
 
+    [ObservableProperty]
+    private bool _openOnLoad;
+
+    [ObservableProperty]
+    private bool _hasRailButton = true;
+
     /// <summary>
     /// The text the collapsed card shows. A shortcut is identified by the file it opens, so that is its
     /// name; text that is not a resource key is shown as typed, so a mistake is visible in the header.
@@ -65,14 +71,14 @@ public partial class DocumentShortcutViewModel : ObservableObject
     }
 
     /// <summary>
-    /// The icon the card and the rail button draw, which is the default document icon while the shortcut
+    /// The icon the card and the rail button draw, which is the default shortcut icon while the shortcut
     /// names none.
     /// </summary>
     public string IconName => DocumentShortcutIcon.Resolve(_iconService, Icon);
 
     /// <summary>
-    /// True when the shortcut names something that is not a resource key, so no button can be built for
-    /// it. A blank resource is unconfigured rather than wrong, so it does not report as invalid.
+    /// True when the shortcut names something that is not a resource key, so there is nothing for it to
+    /// open. A blank resource is unconfigured rather than wrong, so it does not report as invalid.
     /// </summary>
     public bool IsResourceInvalid
     {
@@ -90,7 +96,7 @@ public partial class DocumentShortcutViewModel : ObservableObject
 
     /// <summary>
     /// True when the shortcut names a well-formed resource key that the project does not hold, so the
-    /// card can say so. The button is still built, the file being one the project may yet gain.
+    /// card can say so. The shortcut is still kept, the file being one the project may yet gain.
     /// </summary>
     public bool IsResourceMissing
     {
@@ -181,8 +187,13 @@ public partial class DocumentShortcutViewModel : ObservableObject
     public string BrowseTooltip => ProjectSettingsLabels.ShortcutBrowseTooltip;
     public string AreaLabel => ProjectSettingsLabels.ShortcutAreaLabel;
     public string AreaHint => ProjectSettingsLabels.ShortcutAreaHint;
+    public string OpenOnLoadLabel => ProjectSettingsLabels.ShortcutOpenOnLoadLabel;
+    public string OpenOnLoadHint => ProjectSettingsLabels.ShortcutOpenOnLoadHint;
+    public string OpenOnLoadTooltip => ProjectSettingsLabels.ShortcutOpenOnLoadTooltip;
+    public string RailButtonLabel => ProjectSettingsLabels.ShortcutRailButtonLabel;
+    public string RailButtonHint => ProjectSettingsLabels.ShortcutRailButtonHint;
+    public string RailButtonTooltip => ProjectSettingsLabels.ShortcutRailButtonTooltip;
     public string ResourceLabel => ProjectSettingsLabels.ShortcutResourceLabel;
-    public string ResourcePlaceholder => ProjectSettingsLabels.ShortcutResourcePlaceholder;
     public string ResourceHint => ProjectSettingsLabels.ShortcutResourceHint;
     public string InvalidResourceText => ProjectSettingsLabels.ShortcutInvalidResource;
     public string MissingResourceText => ProjectSettingsLabels.ShortcutMissingResource;
@@ -202,7 +213,9 @@ public partial class DocumentShortcutViewModel : ObservableObject
         {
             Resource = Resource.Trim(),
             Icon = Icon.Trim(),
-            Area = Area
+            Area = Area,
+            HasRailButton = HasRailButton,
+            OpenOnLoad = OpenOnLoad
         };
     }
 }

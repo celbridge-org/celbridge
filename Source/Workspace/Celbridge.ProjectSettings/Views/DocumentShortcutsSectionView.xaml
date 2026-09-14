@@ -15,7 +15,8 @@
                   VerticalAlignment="Center">
         <controls:Icon IconName="{x:Bind IconName, Mode=OneWay}"
                        FontSize="{StaticResource IconSizeMedium}"
-                       VerticalAlignment="Center" />
+                       VerticalAlignment="Center"
+                       Visibility="{x:Bind HasRailButton, Mode=OneWay}" />
         <TextBlock Text="{x:Bind DisplayName, Mode=OneWay}"
                    Style="{StaticResource ListItemTitleTextStyle}"
                    TextTrimming="CharacterEllipsis"
@@ -47,7 +48,6 @@
 
             <TextBox Grid.Column="0"
                      IsSpellCheckEnabled="False"
-                     PlaceholderText="{x:Bind ResourcePlaceholder}"
                      Text="{x:Bind Resource, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
                      KeyDown="CommitField_KeyDown" />
 
@@ -74,11 +74,6 @@
                      Visibility="{x:Bind IsResourceMissing, Mode=OneWay}" />
         </StackPanel>
 
-        <!-- A shortcut with no icon draws the default document icon, so that is what the field previews
-             while it is empty. -->
-        <controls:IconPickerField IconName="{x:Bind Icon, Mode=TwoWay}"
-                                  DefaultSymbol="File" />
-
         <StackPanel Spacing="2">
           <TextBlock Text="{x:Bind AreaLabel}"
                      Style="{StaticResource FieldLabelTextStyle}" />
@@ -90,6 +85,42 @@
                      Style="{StaticResource SupportingTextStyle}"
                      TextWrapping="Wrap" />
         </StackPanel>
+
+        <StackPanel Spacing="2">
+          <TextBlock Text="{x:Bind OpenOnLoadLabel}"
+                     Style="{StaticResource FieldLabelTextStyle}" />
+          <ToggleSwitch HorizontalAlignment="Left"
+                        MinWidth="0"
+                        OnContent=""
+                        OffContent=""
+                        AutomationProperties.Name="{x:Bind OpenOnLoadLabel}"
+                        ToolTipService.ToolTip="{x:Bind OpenOnLoadTooltip}"
+                        IsOn="{x:Bind OpenOnLoad, Mode=TwoWay}" />
+          <TextBlock Text="{x:Bind OpenOnLoadHint}"
+                     Style="{StaticResource SupportingTextStyle}"
+                     TextWrapping="Wrap" />
+        </StackPanel>
+
+        <StackPanel Spacing="2">
+          <TextBlock Text="{x:Bind RailButtonLabel}"
+                     Style="{StaticResource FieldLabelTextStyle}" />
+          <ToggleSwitch HorizontalAlignment="Left"
+                        MinWidth="0"
+                        OnContent=""
+                        OffContent=""
+                        AutomationProperties.Name="{x:Bind RailButtonLabel}"
+                        ToolTipService.ToolTip="{x:Bind RailButtonTooltip}"
+                        IsOn="{x:Bind HasRailButton, Mode=TwoWay}" />
+          <TextBlock Text="{x:Bind RailButtonHint}"
+                     Style="{StaticResource SupportingTextStyle}"
+                     TextWrapping="Wrap" />
+        </StackPanel>
+
+        <!-- A shortcut with no icon draws the default shortcut icon, so that is what the field previews while
+             it is empty. -->
+        <controls:IconPickerField IconName="{x:Bind Icon, Mode=TwoWay}"
+                                  DefaultSymbol="Pin"
+                                  IsEnabled="{x:Bind HasRailButton, Mode=OneWay}" />
 
       </StackPanel>
     </DataTemplate>

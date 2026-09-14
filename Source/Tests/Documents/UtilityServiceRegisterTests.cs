@@ -182,6 +182,37 @@ public class UtilityServiceRegisterTests
     }
 
     [Test]
+    public async Task CreateUtilitiesAsync_ShortcutWithoutARailButton_BuildsNoButton()
+    {
+        // A shortcut that only opens its document on load takes no place on the rail.
+        var project = Substitute.For<IProject>();
+        project.ProjectFilePath.Returns(ProjectFilePath);
+        project.Config.Returns(new ProjectConfig
+        {
+            DocumentShortcuts = new List<DocumentShortcut>
+            {
+                new() { Resource = "Notes.md" },
+                new() { Resource = "Startup.md", HasRailButton = false, OpenOnLoad = true }
+            }
+        });
+
+        var projectService = Substitute.For<IProjectService>();
+        projectService.CurrentProject.Returns(project);
+        _serviceProvider.GetService(typeof(IProjectService)).Returns(projectService);
+
+        var service = CreateService();
+
+        await service.CreateUtilitiesAsync(Array.Empty<ResolvedEditor>());
+
+        var projectItems = service.GetRailItems()
+            .Where(railItem => railItem.Group == RailItemGroup.ProjectItem)
+            .ToList();
+
+        projectItems.Should().ContainSingle();
+        projectItems[0].FileResource.Should().Be(new ResourceKey("Notes.md"));
+    }
+
+    [Test]
     public async Task CreateUtilitiesAsync_BuildsTheShortcutsWithTheirResources()
     {
         var service = CreateService();

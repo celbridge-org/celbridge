@@ -412,6 +412,52 @@ public class ProjectConfigParserTests
     }
 
     [Test]
+    public void ParseFromText_ShortcutFlags_ReadWithTheirDefaults()
+    {
+        // An entry has a rail button unless it turns it off, and opens on load only when it asks to.
+        var content = """
+            [celbridge]
+
+            [[shortcut]]
+            resource = "notes.md"
+            rail-button = false
+            open-on-load = true
+
+            [[shortcut]]
+            resource = "readme.md"
+            """;
+
+        var result = ProjectConfigParser.ParseFromText(content);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.DocumentShortcuts[0].HasRailButton.Should().BeFalse();
+        result.Value.DocumentShortcuts[0].OpenOnLoad.Should().BeTrue();
+        result.Value.DocumentShortcuts[1].HasRailButton.Should().BeTrue();
+        result.Value.DocumentShortcuts[1].OpenOnLoad.Should().BeFalse();
+        result.Value.EntryErrors.Should().BeEmpty();
+    }
+
+    [Test]
+    public void ParseFromText_ShortcutFlagThatIsNotABoolean_IsReportedAndDefaulted()
+    {
+        var content = """
+            [celbridge]
+
+            [[shortcut]]
+            resource = "readme.md"
+            rail-button = "no"
+            """;
+
+        var result = ProjectConfigParser.ParseFromText(content);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.DocumentShortcuts.Should().ContainSingle();
+        result.Value.DocumentShortcuts[0].HasRailButton.Should().BeTrue();
+        result.Value.EntryErrors.Should().ContainSingle();
+        result.Value.EntryErrors[0].Message.Should().Contain("rail-button");
+    }
+
+    [Test]
     public void ParseFromText_ShortcutNamingTheUtilityPanel_FallsBackToTheMainArea()
     {
         // The Utility Panel holds no document tabs, and a bad area still leaves a working shortcut, so it

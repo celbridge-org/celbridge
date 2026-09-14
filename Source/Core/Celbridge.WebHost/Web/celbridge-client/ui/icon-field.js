@@ -74,9 +74,6 @@ export function createIconField(options) {
     input.type = 'text';
     input.spellcheck = false;
     input.value = value;
-    input.placeholder = t('IconPicker_FieldPlaceholder');
-    input.dataset.locKey = 'IconPicker_FieldPlaceholder';
-    input.dataset.locAttr = 'placeholder';
 
     const browseButton = document.createElement('button');
     browseButton.className = 'cel-icon-button cel-icon-field-browse';
