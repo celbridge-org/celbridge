@@ -177,8 +177,9 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
 
         await StartSessionForViewAsync(session, resource, cols, rows);
 
-        // Applied again now the pty exists. A launch that timed out waiting created it at the fallback size.
-        session.Resize(cols, rows);
+        // Now the pty exists, resize it to the latest size the view reported. The size this attach carried
+        // can be out of date by now, because the view may have sent a resize while the launch was running.
+        session.ApplyReportedViewSize();
 
         return session.Attach(attachedView);
     }
@@ -233,7 +234,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
 
             await StartSessionForViewAsync(session, resource, cols, rows);
 
-            session.Resize(cols, rows);
+            session.ApplyReportedViewSize();
 
             return new ConsoleAttachSnapshot(
                 session.State,

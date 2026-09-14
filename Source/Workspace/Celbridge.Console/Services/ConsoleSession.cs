@@ -436,6 +436,22 @@ internal sealed class ConsoleSession : IDisposable
         _pendingViewSize.ReportUnavailable();
     }
 
+    /// <summary>
+    /// Resizes the pty to the latest size the view reported. Does nothing until the pty exists and a size has
+    /// been reported.
+    /// </summary>
+    public void ApplyReportedViewSize()
+    {
+        var reportedSize = _pendingViewSize.Current;
+        if (reportedSize is null ||
+            _terminal is null)
+        {
+            return;
+        }
+
+        SetTerminalSize(_terminal, reportedSize.Cols, reportedSize.Rows);
+    }
+
     public void Resize(int cols, int rows)
     {
         // The launch waits on the first size a view reports, which is what a resize carries.

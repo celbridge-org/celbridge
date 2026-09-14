@@ -60,8 +60,9 @@ export class ViewAPI {
     }
 
     /**
-     * Whether a measurement of an element is worth acting on: the host has reported the surface sized and the
-     * element has a box. An element that is missing has none, so it reports false rather than throwing.
+     * Whether an element's box can be trusted for sizing content. That needs the host to have reported the
+     * surface sized, sizeUnavailable to be false, and the element to have a non-zero box. A hidden page can
+     * still have a placeholder size after the host reports it sized. A missing element returns false.
      * @param {Element|null} element - The element the page measures its content against.
      * @returns {boolean}
      */
@@ -132,6 +133,7 @@ export class ViewAPI {
      */
     #measures(box) {
         return this.isSized &&
+            !this.sizeUnavailable &&
             box.width > 0 &&
             box.height > 0;
     }

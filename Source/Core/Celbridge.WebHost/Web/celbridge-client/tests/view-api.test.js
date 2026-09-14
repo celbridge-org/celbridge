@@ -174,6 +174,23 @@ describe('onChanged', () => {
 });
 
 describe('canMeasure', () => {
+    it('refuses a hidden page the host cannot size, even once the host has reported it sized', () => {
+        setPageHidden(true);
+        const view = new ViewAPI(createViewState({ isSized: 'true', canSizeUnarranged: 'false' }));
+        const measured = createMeasuredElement(STABLE_SIZE);
+
+        // A hidden page can still have a placeholder size after the host reports it sized.
+        expect(view.canMeasure(measured.element)).toBe(false);
+    });
+
+    it('accepts a hidden page the host can size', () => {
+        setPageHidden(true);
+        const view = new ViewAPI(createViewState({ isSized: 'true', canSizeUnarranged: 'true' }));
+        const measured = createMeasuredElement(STABLE_SIZE);
+
+        expect(view.canMeasure(measured.element)).toBe(true);
+    });
+
     it('refuses a box the host has not reported a size for', () => {
         const view = new ViewAPI(createViewState());
         const measured = createMeasuredElement(STABLE_SIZE);

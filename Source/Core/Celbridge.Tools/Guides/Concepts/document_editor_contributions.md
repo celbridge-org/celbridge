@@ -387,8 +387,9 @@ the wrong size. Layout-only styling needs none of this. It applies to work you d
 `client.view` answers it:
 
 - `client.view.isSized` reports whether the host has vouched for this surface's geometry.
-- `client.view.canMeasure(element)` adds the element having a box. A missing element measures as `false`
-  rather than throwing.
+- `client.view.canMeasure(element)` adds the element having a non-zero box and `sizeUnavailable` being
+  false, because a hidden page can still have a placeholder size after the host reports it sized. A missing
+  element returns `false` rather than throwing.
 - `client.view.sizeUnavailable` reports that no size is coming while the page stays off screen. The platform
   does not lay out a page it is not displaying, and on the Windows heads the host cannot give an unarranged
   surface a viewport either. Work that would otherwise wait proceeds without a size.
