@@ -328,8 +328,6 @@ internal sealed class ConsoleSession : IDisposable
             SetTerminalSize(terminal, reportedSize.Cols, reportedSize.Rows);
         }
 
-        var startedAtViewSize = reportedSize is not null;
-
         try
         {
             terminal.Start(shellCommandLine, workingDirectory, environmentCopy);
@@ -347,6 +345,16 @@ internal sealed class ConsoleSession : IDisposable
         }
 
         _terminal = terminal;
+
+        // A size reported while the pty was being created had no terminal to be applied to.
+        var startupSize = _pendingViewSize.Current;
+        if (startupSize is not null)
+        {
+            SetTerminalSize(terminal, startupSize.Cols, startupSize.Rows);
+        }
+
+        var startedAtViewSize = startupSize is not null;
+
         LaunchedConfigToml = tomlText;
         SetState(ConsoleSessionRunState.Running);
 
@@ -426,6 +434,22 @@ internal sealed class ConsoleSession : IDisposable
     public void ReportNoViewSize()
     {
         _pendingViewSize.ReportUnavailable();
+    }
+
+    /// <summary>
+    /// Resizes the pty to the latest size the view reported. Does nothing until the pty exists and a size has
+    /// been reported.
+    /// </summary>
+    public void ApplyReportedViewSize()
+    {
+        var reportedSize = _pendingViewSize.Current;
+        if (reportedSize is null ||
+            _terminal is null)
+        {
+            return;
+        }
+
+        SetTerminalSize(_terminal, reportedSize.Cols, reportedSize.Rows);
     }
 
     public void Resize(int cols, int rows)

@@ -150,9 +150,17 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
     // launch's wait and time it out.
     private Task StartSessionForViewAsync(ConsoleSession session, ResourceKey resource, int cols, int rows)
     {
+        var hasViewSize = cols > 0 && rows > 0;
+
+        if (!hasViewSize &&
+            !_webViewAdapter.CanSizeUnarrangedViewport)
+        {
+            session.ReportNoViewSize();
+        }
+
         var starting = StartSessionAsync(session, resource);
 
-        return cols > 0 && rows > 0 ? starting : Task.CompletedTask;
+        return hasViewSize ? starting : Task.CompletedTask;
     }
 
     public async Task<ConsoleAttachSnapshot> AttachAsync(ResourceKey resource, IConsoleView attachedView, int cols, int rows)
@@ -167,18 +175,11 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         // awaiting it first would leave the launch and the attach waiting on each other.
         session.Resize(cols, rows);
 
-        if ((cols <= 0 || rows <= 0) &&
-            !_webViewAdapter.CanSizeUnarrangedViewport)
-        {
-            // This view has been laid out as far as it is going to be until it is shown, and the host cannot
-            // give it a viewport in the meantime, so there is no size coming for the launch to wait for.
-            session.ReportNoViewSize();
-        }
-
         await StartSessionForViewAsync(session, resource, cols, rows);
 
-        // Applied again now the pty exists. A launch that timed out waiting created it at the fallback size.
-        session.Resize(cols, rows);
+        // Now the pty exists, resize it to the latest size the view reported. The size this attach carried
+        // can be out of date by now, because the view may have sent a resize while the launch was running.
+        session.ApplyReportedViewSize();
 
         return session.Attach(attachedView);
     }
@@ -233,7 +234,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
 
             await StartSessionForViewAsync(session, resource, cols, rows);
 
-            session.Resize(cols, rows);
+            session.ApplyReportedViewSize();
 
             return new ConsoleAttachSnapshot(
                 session.State,

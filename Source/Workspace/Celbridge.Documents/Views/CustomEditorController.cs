@@ -530,6 +530,10 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         _viewState.SetValue("providesBuiltInFind", _webViewAdapter.ProvidesBuiltInFind ? "true" : "false");
         // A page that measures its viewport before this surface is arranged is reading a placeholder.
         _viewState.SetValue("isSized", _isSized ? "true" : "false");
+        // Whether a size can reach a page the platform is not displaying.
+        _viewState.SetValue(
+            "canSizeUnarranged",
+            _webViewAdapter.CanSizeUnarrangedViewport ? "true" : "false");
         _viewStateConnection = _viewState.RegisterConnection(
             snapshot => capturedHost.Rpc.NotifyWithParameterObjectAsync(StateRpcMethods.ViewStateChanged, snapshot));
 
