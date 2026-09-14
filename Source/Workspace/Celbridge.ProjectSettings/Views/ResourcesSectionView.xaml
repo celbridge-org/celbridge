@@ -23,6 +23,8 @@
         <TextBox AcceptsReturn="True"
                  TextWrapping="Wrap"
                  MinHeight="96"
+                 MaxHeight="240"
+                 ScrollViewer.VerticalScrollBarVisibility="Auto"
                  IsSpellCheckEnabled="False"
                  PlaceholderText="{x:Bind ViewModel.PatternPlaceholder, Mode=OneWay}"
                  Text="{x:Bind ViewModel.HidePatternsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
@@ -32,12 +34,6 @@
                    Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                    TextWrapping="Wrap"
                    Visibility="{x:Bind ViewModel.HasInvalidHidePattern, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
-
-        <!-- The invariant floor, stated where someone would look for it after failing to unhide one of
-             the two folders. -->
-        <TextBlock Text="{x:Bind ViewModel.ProtectedNote, Mode=OneWay}"
-                   Style="{StaticResource SupportingTextStyle}"
-                   TextWrapping="Wrap" />
       </StackPanel>
 
       <StackPanel Spacing="8">
@@ -52,6 +48,8 @@
         <TextBox AcceptsReturn="True"
                  TextWrapping="Wrap"
                  MinHeight="96"
+                 MaxHeight="240"
+                 ScrollViewer.VerticalScrollBarVisibility="Auto"
                  IsSpellCheckEnabled="False"
                  PlaceholderText="{x:Bind ViewModel.PatternPlaceholder, Mode=OneWay}"
                  Text="{x:Bind ViewModel.SearchExcludePatternsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />

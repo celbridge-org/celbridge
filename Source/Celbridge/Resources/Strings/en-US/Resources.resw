@@ -909,14 +909,11 @@ Open with default application instead?</value>
   <data name="ProjectSettings_ResourcesDescription" xml:space="preserve">
     <value>Choose what the Explorer hides and what search skips.</value>
   </data>
-  <data name="ProjectSettings_ResourcesProtectedNote" xml:space="preserve">
-    <value>The .celbridge and .git folders are always hidden.</value>
-  </data>
   <data name="ProjectSettings_HideTitle" xml:space="preserve">
     <value>Hidden in Explorer</value>
   </data>
   <data name="ProjectSettings_HideSubtitle" xml:space="preserve">
-    <value>Patterns to leave out of the tree, one per line. Hidden files can still be opened and edited.</value>
+    <value>Patterns to leave out of the tree, one per line. Hidden files can still be opened and edited. The .celbridge and .git folders are always hidden.</value>
   </data>
   <data name="ProjectSettings_SearchExcludeTitle" xml:space="preserve">
     <value>Excluded from search</value>
