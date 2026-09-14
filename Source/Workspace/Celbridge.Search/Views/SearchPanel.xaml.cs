@@ -28,10 +28,10 @@ public sealed partial class SearchPanel : UserControl, ISearchPanel
         ReplaceHistoryFlyout.Opening += OnReplaceHistoryFlyoutOpening;
 
         // A long history list reaches past the panel into the document area, where a hosted web view
-        // would take the click too.
-        var overlayInputSuppressor = ServiceLocator.AcquireService<IOverlayInputSuppressor>();
-        overlayInputSuppressor.SuppressWhileOpen(SearchHistoryFlyout);
-        overlayInputSuppressor.SuppressWhileOpen(ReplaceHistoryFlyout);
+        // would take the click too, and needs the keyboard back once the list closes.
+        var overlayFlyoutSupport = ServiceLocator.AcquireService<IOverlayFlyoutSupport>();
+        overlayFlyoutSupport.Apply(SearchHistoryFlyout);
+        overlayFlyoutSupport.Apply(ReplaceHistoryFlyout);
 
         // The query and replace boxes handle their own editing keys, and the host drives no selection here.
         FocusTracking.SetEditTarget(this, new DisabledEditTarget());

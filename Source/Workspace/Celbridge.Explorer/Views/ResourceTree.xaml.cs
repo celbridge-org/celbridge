@@ -57,9 +57,9 @@ public sealed partial class ResourceTree : UserControl
         ConfigurePointerDrag();
 
         // A context menu opened near the panel edge reaches into the document area, where a hosted web
-        // view would take the click too.
-        var overlayInputSuppressor = ServiceLocator.AcquireService<IOverlayInputSuppressor>();
-        overlayInputSuppressor.SuppressWhileOpen(ResourceContextMenu);
+        // view would take the click too, and needs the keyboard back once the menu closes.
+        var overlayFlyoutSupport = ServiceLocator.AcquireService<IOverlayFlyoutSupport>();
+        overlayFlyoutSupport.Apply(ResourceContextMenu);
 
         Loaded += ResourceTree_Loaded;
         Unloaded += ResourceTree_Unloaded;

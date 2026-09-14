@@ -1,10 +1,18 @@
 using Celbridge.UserInterface.Services;
+using Celbridge.WebHost;
 
 namespace Celbridge.UserInterface.Platform;
 
-internal sealed class OverlayInputSuppressor : IOverlayInputSuppressor
+internal sealed class OverlayFlyoutSupport : IOverlayFlyoutSupport
 {
-    public void SuppressWhileOpen(FlyoutBase flyout)
+    private readonly IFocusReconciler _focusReconciler;
+
+    public OverlayFlyoutSupport(IFocusReconciler focusReconciler)
+    {
+        _focusReconciler = focusReconciler;
+    }
+
+    public void Apply(FlyoutBase flyout)
     {
         // The scope lives in the handlers the flyout itself holds, so nothing outside the flyout keeps it
         // alive and a per-instance flyout (a document tab's context menu) is collected with its owner.
@@ -22,6 +30,11 @@ internal sealed class OverlayInputSuppressor : IOverlayInputSuppressor
         {
             suppressionScope?.Dispose();
             suppressionScope = null;
+
+            // Uno leaves managed focus on the item that was focused inside the flyout, having already taken
+            // that item out of the visual tree, so the keys the user types next reach a menu they have
+            // dismissed. Reconciling gives the keyboard back to whatever should hold it.
+            _focusReconciler.Reconcile();
         };
     }
 }

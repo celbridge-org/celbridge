@@ -30,7 +30,7 @@ public static class ServiceConfiguration
         services.AddSingleton<IUserInterfaceService, UserInterfaceService>();
         services.AddSingleton<ILanguageService, LanguageService>();
         services.AddSingleton<IManagedFocus, ManagedFocus>();
-        services.AddSingleton<IOverlayInputSuppressor, OverlayInputSuppressor>();
+        services.AddSingleton<IOverlayFlyoutSupport, OverlayFlyoutSupport>();
         services.AddSingleton<IHostWindowFocus, HostWindowFocus>();
         services.AddSingleton<IFocusReconciler, FocusReconciler>();
         services.AddSingleton<IWorkspaceWrapper, WorkspaceWrapper>();

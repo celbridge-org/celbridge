@@ -15,7 +15,7 @@ public static class FocusDerivation
     /// <summary>
     /// Maps the focus model to the focus state the reconciler should apply.
     /// </summary>
-    public static DesiredFocus Derive(bool webSurfaceHoldsFocus, bool popupHoldsFocus)
+    public static DesiredFocus Derive(bool webSurfaceHoldsFocus, bool popupHoldsFocus, bool managedFocusIsStranded)
     {
         // An open popup owns the keyboard, whatever the surface underneath it is. A popup reports no
         // panel, so the model still names that surface; yielding managed focus to the placeholder would
@@ -29,9 +29,11 @@ public static class FocusDerivation
 
         // Otherwise two rules cover every case. A web surface holding focus becomes the native focus target
         // and the managed world yields the keyboard to it. Otherwise native focus returns to the host window
-        // and managed focus stays wherever the managed world put it.
+        // and managed focus stays wherever the managed world put it — unless that is an element no longer in
+        // the tree, which holds the keyboard away from everything the user can see and must be given up
+        // whether or not a surface is waiting for it.
         return new DesiredFocus(
             FocusWebSurface: webSurfaceHoldsFocus,
-            YieldManagedFocus: webSurfaceHoldsFocus);
+            YieldManagedFocus: webSurfaceHoldsFocus || managedFocusIsStranded);
     }
 }

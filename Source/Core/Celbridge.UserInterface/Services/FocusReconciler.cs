@@ -29,7 +29,8 @@ public class FocusReconciler : IFocusReconciler
     {
         var desiredFocus = FocusDerivation.Derive(
             _webViewFocusRegistry.HasFocusedSurface,
-            _managedFocus.IsPopupHoldingFocus);
+            _managedFocus.IsPopupHoldingFocus,
+            _managedFocus.IsFocusStranded);
 
         _logger.LogTrace(
             "Focus reconcile: focus web surface {FocusWebSurface}, yield managed focus {YieldManagedFocus}",

@@ -77,4 +77,18 @@ public class FocusReconcilerTests
         _webViewFocusRegistry.Received(2).FocusFocusedSurface();
         _hostWindowFocus.DidNotReceive().FocusHostWindow();
     }
+
+    [Test]
+    public void Reconcile_WithStrandedManagedFocus_YieldsItEvenWithNoSurfaceWaiting()
+    {
+        _webViewFocusRegistry.HasFocusedSurface.Returns(false);
+        _managedFocus.IsFocusStranded.Returns(true);
+
+        _focusReconciler.Reconcile();
+
+        // A dismissed popup leaves managed focus on an element that has left the tree, which goes on taking
+        // the keys until something gives it up.
+        _managedFocus.Received().Yield();
+        _hostWindowFocus.Received().FocusHostWindow();
+    }
 }
