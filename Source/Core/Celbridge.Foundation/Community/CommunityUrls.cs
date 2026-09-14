@@ -14,7 +14,7 @@ public static class CommunityUrls
     /// <summary>
     /// The Celbridge documentation site.
     /// </summary>
-    public const string Learn = "https://celbridge-org.github.io/celbridge-docs/";
+    public const string Learn = "https://learn.celbridge.org/";
 
     /// <summary>
     /// The community discussion forum.
