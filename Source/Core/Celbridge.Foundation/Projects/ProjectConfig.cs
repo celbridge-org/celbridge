@@ -128,22 +128,19 @@ public sealed record class CelbridgeSection
 
 /// <summary>
 /// Models the [celbridge.resources] sub-table from the .celbridge project config.
-/// The two keys bind different audiences: Hide changes what the Explorer draws,
-/// SearchExclude changes what the indexers walk. Neither grants or withholds access.
 /// </summary>
 public sealed record class ResourcesSection
 {
     /// <summary>
     /// Patterns matching resources the Explorer leaves out of the tree unless
-    /// Show Hidden Files is on. A hidden resource stays readable and writable.
+    /// Show Hidden Files is on.
     /// </summary>
     public IReadOnlyList<string> Hide { get; init; } = Array.Empty<string>();
 
     /// <summary>
     /// Patterns matching resources that search, reference scanning and tag
-    /// queries skip. Until the resource index lands these are left out of the
-    /// project tree as well, so the Explorer does not draw them. An excluded
-    /// resource stays readable and writable.
+    /// queries skip. The project tree leaves them out as well, so the Explorer
+    /// does not draw them.
     /// </summary>
     public IReadOnlyList<string> SearchExclude { get; init; } = Array.Empty<string>();
 }
