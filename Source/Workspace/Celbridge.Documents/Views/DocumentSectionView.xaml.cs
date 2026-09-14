@@ -244,6 +244,7 @@ public sealed partial class DocumentSectionView : UserControl
         // on the next dispatcher cycle. The scroll arrows live in that same late template.
         UpdateTabStripBorderLines();
         FixTabStripBandHeight();
+        AlignTabListToBandTop();
         HideTabStripScrollButtons();
         AttachTabStripScrollHandlers();
 
@@ -251,6 +252,7 @@ public sealed partial class DocumentSectionView : UserControl
         {
             UpdateTabStripBorderLines();
             FixTabStripBandHeight();
+            AlignTabListToBandTop();
             HideTabStripScrollButtons();
             AttachTabStripScrollHandlers();
         });
@@ -908,9 +910,11 @@ public sealed partial class DocumentSectionView : UserControl
         _ = DispatcherQueue.TryEnqueue(RevealSelectedTab);
 
         // Opening or closing a tab changes how much there is to scroll, and the indicator is attached late
-        // enough that a section's first tabs can arrive before it exists.
+        // enough that a section's first tabs can arrive before it exists. A section created with its first
+        // document has no tab list to align when it loads either.
         _ = DispatcherQueue.TryEnqueue(() =>
         {
+            AlignTabListToBandTop();
             AttachTabStripScrollHandlers();
             UpdateTabStripOverlays();
         });
@@ -940,6 +944,23 @@ public sealed partial class DocumentSectionView : UserControl
         }
 
         band.Height = WorkspaceConstants.SectionTabStripHeight;
+    }
+
+    /// <summary>
+    /// Holds the tab list against the top of the strip band. The list takes the height of the tabs alone, so
+    /// left to itself it is centred in the band, which splits the gap the tabs hold above themselves and drops
+    /// every tab below the active document indicator drawn in that gap.
+    /// </summary>
+    private void AlignTabListToBandTop()
+    {
+        var tabList = VisualTree.FindDescendant<ListViewBase>(TabView);
+        if (tabList?.ItemsPanelRoot is null)
+        {
+            // The tab list's template has not been applied yet, so try again on the next cycle.
+            return;
+        }
+
+        tabList.ItemsPanelRoot.VerticalAlignment = VerticalAlignment.Top;
     }
 
     /// <summary>
