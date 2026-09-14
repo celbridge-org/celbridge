@@ -1,5 +1,3 @@
-using System.Collections.Frozen;
-
 namespace Celbridge.Settings;
 
 /// <summary>
@@ -10,14 +8,8 @@ namespace Celbridge.Settings;
 public static class FeatureFlagConstants
 {
     /// <summary>
-    /// MCP tool system and cel Python API. When disabled, the MCP server does not start
-    /// and the Python terminal launches without the cel proxy.
-    /// </summary>
-    public const string McpTools = "mcp-tools";
-
-    /// <summary>
-    /// Browser developer tools access in WebView-based document editors.
-    /// Enabled by default so extension authors can debug their custom editors.
+    /// Browser developer tools in WebView-based editors, and the webview_* MCP tools that read and drive
+    /// their pages. Enabled by default.
     /// </summary>
     public const string WebViewDevTools = "webview-dev-tools";
 
@@ -29,36 +21,19 @@ public static class FeatureFlagConstants
     public const string WebViewDevToolsEval = "webview-dev-tools-eval";
 
     /// <summary>
-    /// Enables the app_answer_dialog MCP tool that lets a script answer a
-    /// modal dialog without a human present. A test-automation capability,
-    /// off by default in shipping builds.
-    /// </summary>
-    public const string AnswerDialog = "answer-dialog";
-
-    /// <summary>
-    /// Enables the built-in WebFetch and WebSearch tools for coding agents.
-    /// </summary>
-    public const string WebAccessTools = "web-access-tools";
-
-    /// <summary>
     /// Narrates every navigation and attach of a hosted page into the log. A page that loads blank is
     /// reported whether or not this is enabled; what it adds is the surrounding timeline.
     /// </summary>
     public const string WebViewLoadDiagnostics = "webview-load-diagnostics";
 
     /// <summary>
-    /// The workshop: the package_* and page_* tools, and the Workshop section of Application Settings.
-    /// An experimental feature that needs a configured workshop server, so the build opts in rather than
-    /// the user. Non-overridable.
+    /// Shows the Open metadata file item on the Explorer context menu, which opens a file's .cel sidecar in
+    /// the code editor for editing by hand.
     /// </summary>
-    public const string Workshop = "workshop";
+    public const string OpenCel = "open-cel";
 
     /// <summary>
-    /// The flags a project cannot override. They are read from appsettings.json only, and are absent from
-    /// the Feature Flags section, because the surfaces they gate exist before any project is loaded and so
-    /// cannot follow a project's choice. That fixes them for the lifetime of the build, which also inverts
-    /// the default: one of these is off unless the build turns it on.
+    /// Registers the bundled Notes editor for .note files, with its New File template. Off by default.
     /// </summary>
-    public static readonly FrozenSet<string> NonOverridableFlags =
-        new[] { Workshop }.ToFrozenSet(StringComparer.Ordinal);
+    public const string NoteEditor = "note-editor";
 }

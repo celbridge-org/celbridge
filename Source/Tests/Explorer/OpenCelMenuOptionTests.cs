@@ -2,8 +2,8 @@ using Celbridge.Commands;
 using Celbridge.DataTransfer;
 using Celbridge.Explorer.Menu;
 using Celbridge.Explorer.Menu.Options;
-using Celbridge.Projects;
 using Celbridge.Resources;
+using Celbridge.Settings;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -11,8 +11,8 @@ namespace Celbridge.Tests.Explorer;
 
 /// <summary>
 /// Unit tests for OpenCelMenuOption visibility logic. The menu is the only
-/// power-user surface that exposes .cel sidecars in the UI; it is gated by
-/// the [features].open-cel flag and by the presence of a sidecar on the
+/// power-user surface that exposes .cel sidecars in the UI. It is gated by
+/// the open-cel feature flag and by the presence of a sidecar on the
 /// clicked resource.
 /// </summary>
 [TestFixture]
@@ -20,7 +20,7 @@ public class OpenCelMenuOptionTests
 {
     private IStringLocalizer _stringLocalizer = null!;
     private ICommandService _commandService = null!;
-    private IProjectService _projectService = null!;
+    private IFeatureFlags _featureFlags = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
 
     [SetUp]
@@ -28,7 +28,7 @@ public class OpenCelMenuOptionTests
     {
         _stringLocalizer = Substitute.For<IStringLocalizer>();
         _commandService = Substitute.For<ICommandService>();
-        _projectService = Substitute.For<IProjectService>();
+        _featureFlags = Substitute.For<IFeatureFlags>();
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
     }
 
@@ -37,7 +37,7 @@ public class OpenCelMenuOptionTests
         return new OpenCelMenuOption(
             _stringLocalizer,
             _commandService,
-            _projectService,
+            _featureFlags,
             _workspaceWrapper);
     }
 
@@ -56,20 +56,7 @@ public class OpenCelMenuOptionTests
 
     private void SetFeatureFlag(bool enabled)
     {
-        var features = new Dictionary<string, bool>(StringComparer.Ordinal);
-        if (enabled)
-        {
-            features["open-cel"] = true;
-        }
-
-        var config = new ProjectConfig
-        {
-            Features = features
-        };
-
-        var project = Substitute.For<IProject>();
-        project.Config.Returns(config);
-        _projectService.CurrentProject.Returns(project);
+        _featureFlags.IsEnabled(FeatureFlagConstants.OpenCel).Returns(enabled);
     }
 
     private static IFileResource CreateFileResource(string name, SidecarLink? sidecar)

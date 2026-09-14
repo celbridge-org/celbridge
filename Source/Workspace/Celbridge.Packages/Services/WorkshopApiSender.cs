@@ -16,6 +16,8 @@ internal sealed class WorkshopApiSender : IDisposable
 {
     private const string ApiKeyScheme = "Api-Key";
 
+    private const string NoConnectionMessage = "No Workshop connection is configured. Add one in the Workshop section of Settings.";
+
     // Bound the connection probe so a slow or flaky network resolves to Unreachable in a few seconds rather
     // than pending on the HttpClient default timeout (100 seconds). Scoped to the probe request so it does
     // not shorten legitimately long operations, such as package uploads, that share the same client.
@@ -109,7 +111,8 @@ internal sealed class WorkshopApiSender : IDisposable
     }
 
     // Reads the key and validates the URL, then assembles the authenticated
-    // request shared by SendAsync and the connection probe.
+    // request. A connection that was never added fails with a message saying
+    // where to add one.
     private async Task<Result<HttpRequestMessage>> BuildRequestAsync(HttpMethod method, string relativePath, HttpContent? content = null)
     {
         await Task.CompletedTask;
@@ -117,12 +120,27 @@ internal sealed class WorkshopApiSender : IDisposable
         var keyResult = _settingsService.TryGet(SettingCatalog.Workshop.Key);
         if (keyResult.IsFailure)
         {
+            // Reading fails both when no key is stored and when a stored key
+            // cannot be retrieved, so presence tells the two apart.
+            if (!_settingsService.IsConfigured(SettingCatalog.Workshop.Key))
+            {
+                return Result.Fail(NoConnectionMessage);
+            }
+
             return Result.Fail("Failed to read the Workshop Key from the credential store")
                 .WithErrors(keyResult);
         }
         var workshopKey = keyResult.Value;
 
-        var baseUriResult = ValidateWorkshopUrl(_settingsService.Get(SettingCatalog.Workshop.Url));
+        // An empty URL is a connection that was never entered, which the URL
+        // validation errors would describe as one entered wrongly.
+        var workshopUrl = _settingsService.Get(SettingCatalog.Workshop.Url);
+        if (string.IsNullOrWhiteSpace(workshopUrl))
+        {
+            return Result.Fail(NoConnectionMessage);
+        }
+
+        var baseUriResult = ValidateWorkshopUrl(workshopUrl);
         if (baseUriResult.IsFailure)
         {
             return Result.Fail(baseUriResult);

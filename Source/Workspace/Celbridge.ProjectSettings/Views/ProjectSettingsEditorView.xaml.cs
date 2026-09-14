@@ -113,7 +113,7 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
                 fileEditorsView),
             new(
                 "FeatureFlags",
-                "bs-flag",
+                "bs-toggles",
                 _stringLocalizer.GetString("ProjectSettings_FeatureFlagsHeader"),
                 _stringLocalizer.GetString("ProjectSettings_FeatureFlagsDescription"),
                 featureFlagsView),

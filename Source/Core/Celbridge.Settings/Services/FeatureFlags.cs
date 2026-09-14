@@ -26,10 +26,7 @@ public class FeatureFlags : IFeatureFlags
 
     public bool IsEnabled(string featureName)
     {
-        // The surfaces a non-overridable flag gates are live before a project is loaded, so there is no
-        // project whose answer they could follow.
-        if (!FeatureFlagConstants.NonOverridableFlags.Contains(featureName) &&
-            _projectOverrides.TryGetValue(featureName, out var overrideValue))
+        if (_projectOverrides.TryGetValue(featureName, out var overrideValue))
         {
             return overrideValue;
         }
@@ -42,14 +39,7 @@ public class FeatureFlags : IFeatureFlags
         var section = _configuration.GetSection(FeatureFlagKey);
         var value = section[featureName];
 
-        if (string.IsNullOrEmpty(value))
-        {
-            // An unconfigured feature is enabled, and only an explicit "false" disables it. A
-            // non-overridable flag inverts that: the build has to name it to turn it on.
-            return !FeatureFlagConstants.NonOverridableFlags.Contains(featureName);
-        }
-
-        return !bool.TryParse(value, out var result) || result;
+        return bool.TryParse(value, out var isEnabled) && isEnabled;
     }
 
     public void ApplyProjectOverrides(IReadOnlyDictionary<string, bool> overrides)

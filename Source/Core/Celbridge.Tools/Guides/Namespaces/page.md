@@ -2,7 +2,7 @@
 
 The `page` namespace publishes, lists, inspects, and unpublishes static web pages on the connected workshop. A page is a folder of static content (HTML, JavaScript, CSS, assets) served at a public URL, with a `pages.toml` manifest at its root naming the served path.
 
-**This whole namespace is behind the `workshop` build-time feature flag, which is off by default.** Every page tool reaches the workshop server, so in a build that did not opt in they all return a feature-flag error, and nothing the user or a project can configure turns it on. If a page tool is refused, do not retry it — choose another approach or say the build does not have the feature.
+**Every page tool reaches the workshop, so the whole namespace needs a Workshop connection.** The user adds one in the Workshop section of Settings. Without a connection, each page tool fails before contacting the workshop, with a message that says where to add one. Ask the user to add the connection rather than retrying.
 
 ## Must-knows
 
@@ -11,6 +11,7 @@ The `page` namespace publishes, lists, inspects, and unpublishes static web page
 - **Pages are decoupled from packages.** Publishing or unpublishing a page never touches a package, and vice versa.
 - **Publishing and unpublishing confirm by default.** `page_publish` and `page_unpublish` are outward-facing and prompt before acting; pass `confirmWithUser: false` only for unattended flows the user has consented to. See `silent_vs_interactive`.
 - **`page_publish` requires a loaded project.** The source is a project folder, so a project must be open.
+- **Not callable from package code.** The host refuses page tools when a package editor's JavaScript calls them. They work from Python and the MCP transport.
 
 ## Tools
 

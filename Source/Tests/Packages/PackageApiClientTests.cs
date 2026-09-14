@@ -462,16 +462,46 @@ public class PackageApiClientTests
     }
 
     [Test]
-    public async Task NoStoredKey_FailsWithCredentialError()
+    public async Task NoStoredKey_FailsWithNoConnectionMessage()
     {
         _settingsService.Get(SettingCatalog.Workshop.Url).Returns("https://workshop.example.com");
         _settingsService.TryGet(SettingCatalog.Workshop.Key)
-            .Returns(Result<string>.Fail("No Workshop Key is configured"));
+            .Returns(Result<string>.Fail("Nothing is stored under the Workshop Key"));
+        _settingsService.IsConfigured(SettingCatalog.Workshop.Key).Returns(false);
 
         var result = await _client.ListPackagesAsync();
 
         result.IsFailure.Should().BeTrue();
-        result.MessageChain.Should().Contain("No Workshop Key is configured");
+        result.MessageChain.Should().Contain("No Workshop connection is configured");
+        _messageHandler.Requests.Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task StoredKeyThatCannotBeRead_FailsWithCredentialError()
+    {
+        _settingsService.Get(SettingCatalog.Workshop.Url).Returns("https://workshop.example.com");
+        _settingsService.TryGet(SettingCatalog.Workshop.Key)
+            .Returns(Result<string>.Fail("The credential could not be retrieved"));
+        _settingsService.IsConfigured(SettingCatalog.Workshop.Key).Returns(true);
+
+        var result = await _client.ListPackagesAsync();
+
+        result.IsFailure.Should().BeTrue();
+        result.MessageChain.Should().Contain("credential store");
+        result.MessageChain.Should().NotContain("No Workshop connection is configured");
+        _messageHandler.Requests.Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task EmptyUrl_FailsWithNoConnectionMessage()
+    {
+        SetStoredConnection("", TestWorkshopKey);
+
+        var result = await _client.ListPackagesAsync();
+
+        result.IsFailure.Should().BeTrue();
+        result.MessageChain.Should().Contain("No Workshop connection is configured");
+        result.MessageChain.Should().NotContain("valid absolute URL");
         _messageHandler.Requests.Should().BeEmpty();
     }
 

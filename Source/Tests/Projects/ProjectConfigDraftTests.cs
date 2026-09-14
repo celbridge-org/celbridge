@@ -177,19 +177,19 @@ public class ProjectConfigDraftTests
     [Test]
     public void Draft_SetFeatureFlag_PinsFeature()
     {
-        var config = ApplyAndParse(BaseConfig, draft => draft.SetFeatureFlag("mcp-tools", false));
-        config.Features.Should().ContainKey("mcp-tools");
-        config.Features["mcp-tools"].Should().BeFalse();
+        var config = ApplyAndParse(BaseConfig, draft => draft.SetFeatureFlag("webview-dev-tools", false));
+        config.Features.Should().ContainKey("webview-dev-tools");
+        config.Features["webview-dev-tools"].Should().BeFalse();
     }
 
     [Test]
     public void Draft_RemoveFeatureFlag_ClearsFeature()
     {
-        var pinned = ApplyAndParse(BaseConfig, draft => draft.SetFeatureFlag("mcp-tools", false));
+        var pinned = ApplyAndParse(BaseConfig, draft => draft.SetFeatureFlag("webview-dev-tools", false));
         var text = ProjectConfigSerializer.Serialize(pinned);
 
-        var config = ApplyAndParse(text, draft => draft.RemoveFeatureFlag("mcp-tools"));
-        config.Features.Should().NotContainKey("mcp-tools");
+        var config = ApplyAndParse(text, draft => draft.RemoveFeatureFlag("webview-dev-tools"));
+        config.Features.Should().NotContainKey("webview-dev-tools");
     }
 
     [Test]

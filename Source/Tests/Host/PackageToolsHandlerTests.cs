@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Text.Json;
 using Celbridge.Host;
 using Celbridge.Server;
@@ -47,6 +48,52 @@ public class PackageToolsHandlerTests
     }
 
     [Test]
+    public async Task ListToolsAsync_HidesWorkshopTools()
+    {
+        var bridge = new StubToolBridge
+        {
+            Tools = new[]
+            {
+                Descriptor("app_get_state",   "app.get_state"),
+                Descriptor("package_status",  "package.status"),
+                Descriptor("package_install", "package.install"),
+                Descriptor("page_publish",    "page.publish")
+            }
+        };
+        var handler = new PackageToolsHandler(bridge);
+
+        var result = await handler.ListToolsAsync();
+
+        result.Select(t => t.Alias).Should().BeEquivalentTo("app.get_state", "package.status");
+    }
+
+    // A package_* tool added later has to be classified: withheld because it reaches the workshop, or
+    // added to the local tools here because it stays inside the project tree.
+    [Test]
+    public async Task ListToolsAsync_WithholdsEveryPackageAndPageToolExceptTheLocalOnes()
+    {
+        var localPackageTools = new[]
+        {
+            "package_archive",
+            "package_status",
+            "package_unarchive"
+        };
+
+        var packageAndPageTools = DiscoverTools()
+            .Where(tool => tool.Name.StartsWith("package_", StringComparison.Ordinal)
+                || tool.Name.StartsWith("page_", StringComparison.Ordinal))
+            .ToArray();
+        packageAndPageTools.Should().NotBeEmpty("the package_* and page_* tools should be discoverable by reflection");
+
+        var bridge = new StubToolBridge { Tools = packageAndPageTools };
+        var handler = new PackageToolsHandler(bridge);
+
+        var result = await handler.ListToolsAsync();
+
+        result.Select(t => t.Name).Should().BeEquivalentTo(localPackageTools);
+    }
+
+    [Test]
     public void CallToolAsync_WebViewNamespace_ThrowsDenied()
     {
         var bridge = new StubToolBridge();
@@ -76,6 +123,37 @@ public class PackageToolsHandlerTests
             .Result
             .Which
             .ErrorCode.Should().Be(ToolRpcErrorCodes.ToolDenied);
+    }
+
+    [TestCase("package.publish")]
+    [TestCase("package_set_alias")]
+    [TestCase("page.unpublish")]
+    [TestCase("page_list")]
+    public void CallToolAsync_WorkshopTool_ThrowsDenied(string name)
+    {
+        var bridge = new StubToolBridge();
+        var handler = new PackageToolsHandler(bridge);
+
+        Func<Task> act = () => handler.CallToolAsync(name, (JsonElement?)null);
+
+        act.Should()
+            .ThrowAsync<LocalRpcException>()
+            .Result
+            .Which
+            .ErrorCode.Should().Be(ToolRpcErrorCodes.ToolDenied);
+
+        bridge.LastCallName.Should().BeNull();
+    }
+
+    [Test]
+    public async Task CallToolAsync_LocalPackageTool_ReachesTheBridge()
+    {
+        var bridge = new StubToolBridge();
+        var handler = new PackageToolsHandler(bridge);
+
+        await handler.CallToolAsync("package.status", (JsonElement?)null);
+
+        bridge.LastCallName.Should().Be("package.status");
     }
 
     [Test]
@@ -135,6 +213,31 @@ public class PackageToolsHandlerTests
             Description: string.Empty,
             ReturnType: string.Empty,
             Parameters: Array.Empty<ToolParameter>());
+    }
+
+    // Every MCP tool in the tool assembly, described by its MCP name and alias.
+    private static IReadOnlyList<ToolDescriptor> DiscoverTools()
+    {
+        var tools = new List<ToolDescriptor>();
+
+        foreach (var type in typeof(Celbridge.Tools.AppTools).Assembly.GetTypes())
+        {
+            foreach (var method in type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static))
+            {
+                var toolName = method.GetCustomAttribute<ModelContextProtocol.Server.McpServerToolAttribute>()?.Name;
+                if (string.IsNullOrEmpty(toolName))
+                {
+                    continue;
+                }
+
+                var alias = method.GetCustomAttribute<Celbridge.Tools.ToolAliasAttribute>()?.Alias ?? string.Empty;
+                tools.Add(Descriptor(toolName, alias));
+            }
+        }
+
+        return tools
+            .DistinctBy(tool => tool.Name)
+            .ToList();
     }
 
     private sealed class StubToolBridge : IMcpToolBridge

@@ -46,11 +46,12 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
     // that would rewrite the same bytes is skipped.
     private string _savedConfigText = string.Empty;
 
-    // The config the running workspace was built from, which the draft is compared against to decide
-    // whether a reload would change anything.
+    // The config the running workspace was built from, which the reconciled project file is compared
+    // against to decide whether a reload would change anything.
     private string _loadedConfigText = string.Empty;
 
-    // The config instance the sections were last built from, used to skip a rebuild when nothing changed.
+    // The loaded config instance the sections were last built against, used with the file content to skip
+    // a rebuild when nothing changed.
     private ProjectConfig? _loadedConfig;
 
     // The working copy the sections edit, replaced each time the project file is read.
@@ -203,29 +204,37 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Rebuilds every section from the reconciled config. Skipped while there are pending changes so
-    /// reopening the editor does not discard the user's uncommitted edits.
+    /// Rebuilds every section from the project file. Skipped while the draft holds edits the save tick has
+    /// not written yet, so the rebuild does not discard them.
     /// </summary>
     public void Refresh()
     {
         if (_loaded
-            && HasPendingChanges)
+            && HasUnsavedChanges)
         {
             return;
         }
 
-        // The config instance changes only when a discovery pass runs (initial load or reload), so an
-        // unchanged instance means a rebuild would produce identical sections and only reset the editor's
-        // view state (expander and scroll positions). Skip it so navigating away and back is lossless.
-        var config = _context.GetConfig();
+        var fileConfig = ReadProjectFile();
+        var loadedConfig = _context.GetLoadedConfig();
+
+        // A rebuild resets the editor's view state (expander and scroll positions), so it is skipped when
+        // neither the project file nor the loaded project has changed since the sections were built. The
+        // loaded config instance changes only when a discovery pass runs.
         if (_loaded
-            && ReferenceEquals(config, _loadedConfig))
+            && ReferenceEquals(loadedConfig, _loadedConfig)
+            && string.Equals(SerializeConfig(fileConfig), _savedConfigText, StringComparison.Ordinal))
         {
             return;
         }
-        _loadedConfig = config;
 
-        LoadDraft();
+        _loadedConfig = loadedConfig;
+        _loadedConfigText = SerializeConfig(loadedConfig);
+
+        if (fileConfig is not null)
+        {
+            LoadDraft(fileConfig);
+        }
 
         InformationSection.Load();
         ResourcesSection.Load();
@@ -241,11 +250,11 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Whether the config now differs from the one the running workspace was built from, so a reload
-    /// would change something.
+    /// Whether the project file, reconciled against the loaded packages, differs from the config the running
+    /// workspace was built from, so a reload would change something.
     /// </summary>
     public bool HasPendingChanges => _draft is not null
-        && !string.Equals(_draft.Serialize(), _loadedConfigText, StringComparison.Ordinal);
+        && !string.Equals(SerializeConfig(_context.GetConfig()), _loadedConfigText, StringComparison.Ordinal);
 
     // Rebuilds every section from the draft that just replaced the previous one.
     private void ReloadSections()
@@ -349,29 +358,41 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
         return Result.Ok();
     }
 
-    // Reads the project file into a fresh draft for the sections to edit. The draft is built from the
-    // parsed file rather than the reconciled config, so saving writes back only what the file states
-    // rather than every discovered default folded into it.
-    private void LoadDraft()
+    // Reads and parses the project file. Null when there is no project or the file cannot be read or parsed.
+    private ProjectConfig? ReadProjectFile()
     {
         var projectFilePath = _projectService.CurrentProject?.ProjectFilePath;
         if (string.IsNullOrEmpty(projectFilePath))
         {
-            return;
+            return null;
         }
 
         var parseResult = ProjectConfigParser.ParseFromFile(projectFilePath, _fileSystem);
         if (parseResult.IsFailure)
         {
-            return;
+            return null;
         }
 
-        _draft = new ProjectConfigDraft(parseResult.Value);
+        return parseResult.Value;
+    }
+
+    // Replaces the draft with the project file as parsed, without the defaults reconciling adds, so saving
+    // writes back only what the file states.
+    private void LoadDraft(ProjectConfig fileConfig)
+    {
+        _draft = new ProjectConfigDraft(fileConfig);
         _context.Draft = _draft;
         _savedConfigText = _draft.Serialize();
+    }
 
-        var loadedConfig = _projectService.CurrentProject?.Config;
-        _loadedConfigText = loadedConfig is null ? string.Empty : ProjectConfigSerializer.Serialize(loadedConfig);
+    private static string SerializeConfig(ProjectConfig? config)
+    {
+        if (config is null)
+        {
+            return string.Empty;
+        }
+
+        return ProjectConfigSerializer.Serialize(config);
     }
 
     // Every section edit changes the draft, and the pending state is computed from it.

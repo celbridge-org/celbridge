@@ -1,5 +1,4 @@
 using System.Text.Json.Nodes;
-using Celbridge.Settings;
 using ModelContextProtocol.Protocol;
 
 namespace Celbridge.Tools;
@@ -125,19 +124,12 @@ public static class ToolResponse
             HelperTroubleshooters[nameof(InvalidResourceKey)]);
 
     /// <summary>
-    /// Standardised response for tools whose feature flag is disabled. A non-overridable flag names the
-    /// build rather than the config, because nothing the user can edit turns it on.
+    /// Standardised response for tools whose feature flag is disabled.
     /// </summary>
-    public static CallToolResult FeatureFlagDisabled(string flagName)
-    {
-        var remedy = FeatureFlagConstants.NonOverridableFlags.Contains(flagName)
-            ? "It is fixed at build time, so this build cannot use this tool."
-            : "Enable it in the user .celbridge config to use this tool.";
-
-        return ErrorWithTroubleshooter(
-            $"The '{flagName}' feature flag is disabled. {remedy}",
+    public static CallToolResult FeatureFlagDisabled(string flagName) =>
+        ErrorWithTroubleshooter(
+            $"The '{flagName}' feature flag is disabled. Ask the user to switch it on in the Features section of Project Settings, then reload the project.",
             HelperTroubleshooters[nameof(FeatureFlagDisabled)]);
-    }
 
     /// <summary>
     /// Standardised response for the "resource key parsed but the resource

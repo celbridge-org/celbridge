@@ -2,7 +2,6 @@ using Celbridge.Host;
 using Celbridge.Platform;
 using Celbridge.Messaging;
 using Celbridge.Projects;
-using Celbridge.Settings;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,7 +22,6 @@ public class ServerService : IServerService, IDisposable
     private readonly IMessengerService _messengerService;
     private readonly IProjectService _projectService;
     private readonly IServiceProvider _applicationServices;
-    private readonly IFeatureFlags _featureFlags;
     private readonly AgentMonitor _agentMonitor;
     private readonly IHostChannelBroker _hostChannelBroker;
     private readonly IAppEnvironment _appEnvironment;
@@ -43,7 +41,6 @@ public class ServerService : IServerService, IDisposable
         IMessengerService messengerService,
         IProjectService projectService,
         IServiceProvider applicationServices,
-        IFeatureFlags featureFlags,
         AgentMonitor agentMonitor,
         IHostChannelBroker hostChannelBroker,
         IAppEnvironment appEnvironment,
@@ -54,7 +51,6 @@ public class ServerService : IServerService, IDisposable
         _messengerService = messengerService;
         _projectService = projectService;
         _applicationServices = applicationServices;
-        _featureFlags = featureFlags;
         _agentMonitor = agentMonitor;
         _hostChannelBroker = hostChannelBroker;
         _appEnvironment = appEnvironment;
@@ -63,14 +59,11 @@ public class ServerService : IServerService, IDisposable
 
     public async Task StartAsync()
     {
-        var mcpToolsEnabled = _featureFlags.IsEnabled(FeatureFlagConstants.McpTools);
-
         // The loopback file server hosts all WebView editor content (the /project/, /assets/, and
         // /package/ routes) on every head: SetVirtualHostNameToFolderMapping is a no-op on the macOS
         // Skia head, and the bundled editors are addressed root-relative against the loopback origin
-        // on all heads. The server is therefore a hard dependency for every WebView, independent of
-        // the MCP tools flag, and always starts once a project is loaded. The MCP tools flag only
-        // gates the agent endpoints registered further down.
+        // on all heads. The server is therefore a hard dependency for every WebView, and always starts
+        // once a project is loaded.
 
         if (_webApplication is not null)
         {
@@ -99,17 +92,14 @@ public class ServerService : IServerService, IDisposable
                 : $"http://127.0.0.1:{_persistentPort}";
             builder.WebHost.UseUrls(bindUrl);
 
-            var agentServer = (AgentServer)_agentServer;
-            if (mcpToolsEnabled)
-            {
-                // Make the main application's services available to MCP tool classes.
-                // Tools take IApplicationServiceProvider and resolve what they need.
-                var applicationServiceProvider = new ApplicationServiceProvider(_applicationServices);
-                builder.Services.AddSingleton<IApplicationServiceProvider>(applicationServiceProvider);
+            // Make the main application's services available to MCP tool classes.
+            // Tools take IApplicationServiceProvider and resolve what they need.
+            var applicationServiceProvider = new ApplicationServiceProvider(_applicationServices);
+            builder.Services.AddSingleton<IApplicationServiceProvider>(applicationServiceProvider);
 
-                // Let AgentServer register MCP SDK services
-                agentServer.ConfigureServices(builder.Services);
-            }
+            // Let AgentServer register MCP SDK services
+            var agentServer = (AgentServer)_agentServer;
+            agentServer.ConfigureServices(builder.Services);
 
             _webApplication = builder.Build();
 
@@ -118,10 +108,7 @@ public class ServerService : IServerService, IDisposable
             _webApplication.UseWebSockets();
 
             // Let AgentServer and FileServer configure their endpoints
-            if (mcpToolsEnabled)
-            {
-                agentServer.ConfigureEndpoints(_webApplication);
-            }
+            agentServer.ConfigureEndpoints(_webApplication);
 
             var fileServer = (FileServer)_fileServer;
             fileServer.ConfigureEndpoints(_webApplication);

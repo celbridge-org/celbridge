@@ -21,7 +21,7 @@ public class FeatureFlagsTests
     {
         var configData = new Dictionary<string, string?>
         {
-            ["FeatureFlags:mcp-tools"] = "true",
+            ["FeatureFlags:webview-dev-tools"] = "true",
             ["FeatureFlags:note-editor"] = "false"
         };
 
@@ -37,12 +37,21 @@ public class FeatureFlagsTests
         _featureFlags = new FeatureFlags(configuration, _messengerService);
     }
 
+    private FeatureFlags BuildFeatureFlags(Dictionary<string, string?> configData)
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(configData)
+            .Build();
+
+        return new FeatureFlags(configuration, _messengerService);
+    }
+
     #region App-Level Tests
 
     [Test]
     public void IsEnabled_EnabledInConfig_ReturnsTrue()
     {
-        var result = _featureFlags.IsEnabled("mcp-tools");
+        var result = _featureFlags.IsEnabled("webview-dev-tools");
 
         result.Should().BeTrue();
     }
@@ -56,11 +65,22 @@ public class FeatureFlagsTests
     }
 
     [Test]
-    public void IsEnabled_NotConfigured_DefaultsToEnabled()
+    public void IsEnabled_NotConfigured_DefaultsToDisabled()
     {
         var result = _featureFlags.IsEnabled("unknown-feature");
 
-        result.Should().BeTrue("features default to enabled when not configured");
+        result.Should().BeFalse("a flag the build does not list is off");
+    }
+
+    [Test]
+    public void IsEnabled_NonBooleanValue_ReturnsFalse()
+    {
+        var featureFlags = BuildFeatureFlags(new Dictionary<string, string?>
+        {
+            ["FeatureFlags:misconfigured-feature"] = "yes"
+        });
+
+        featureFlags.IsEnabled("misconfigured-feature").Should().BeFalse("a value that is not a boolean resolves to off");
     }
 
     #endregion
@@ -85,12 +105,12 @@ public class FeatureFlagsTests
     {
         var overrides = new Dictionary<string, bool>
         {
-            ["mcp-tools"] = false
+            ["webview-dev-tools"] = false
         };
 
         _featureFlags.ApplyProjectOverrides(overrides);
 
-        _featureFlags.IsEnabled("mcp-tools").Should().BeFalse("project override should disable the feature");
+        _featureFlags.IsEnabled("webview-dev-tools").Should().BeFalse("project override should disable the feature");
     }
 
     [Test]
@@ -103,7 +123,7 @@ public class FeatureFlagsTests
 
         _featureFlags.ApplyProjectOverrides(overrides);
 
-        _featureFlags.IsEnabled("mcp-tools").Should().BeTrue("non-overridden features should use app-level config");
+        _featureFlags.IsEnabled("webview-dev-tools").Should().BeTrue("non-overridden features should use app-level config");
     }
 
     [Test]
@@ -112,82 +132,14 @@ public class FeatureFlagsTests
         var overrides = new Dictionary<string, bool>
         {
             ["note-editor"] = true,
-            ["mcp-tools"] = false
+            ["webview-dev-tools"] = false
         };
 
         _featureFlags.ApplyProjectOverrides(overrides);
         _featureFlags.ClearProjectOverrides();
 
         _featureFlags.IsEnabled("note-editor").Should().BeFalse("should revert to app-level after clearing");
-        _featureFlags.IsEnabled("mcp-tools").Should().BeTrue("should revert to app-level after clearing");
-    }
-
-    #endregion
-
-    #region Non-Overridable Flag Tests
-
-    [Test]
-    public void Workshop_IsANonOverridableFlag()
-    {
-        FeatureFlagConstants.NonOverridableFlags.Should().Contain(FeatureFlagConstants.Workshop,
-            "the cases below use it as the worked example of a non-overridable flag");
-    }
-
-    [Test]
-    public void IsEnabled_NonOverridableFlagNotConfigured_DefaultsToDisabled()
-    {
-        var nonOverridableFlag = FeatureFlagConstants.Workshop;
-
-        _featureFlags.IsEnabled(nonOverridableFlag).Should().BeFalse("a non-overridable flag is off unless the build turns it on");
-    }
-
-    [Test]
-    public void IsEnabled_NonOverridableFlagEnabledInConfig_ReturnsTrue()
-    {
-        var nonOverridableFlag = FeatureFlagConstants.Workshop;
-        var featureFlags = BuildFeatureFlags(new Dictionary<string, string?>
-        {
-            [$"FeatureFlags:{nonOverridableFlag}"] = "true"
-        });
-
-        featureFlags.IsEnabled(nonOverridableFlag).Should().BeTrue();
-    }
-
-    [Test]
-    public void ApplyProjectOverrides_NonOverridableFlag_IsIgnored()
-    {
-        var nonOverridableFlag = FeatureFlagConstants.Workshop;
-        var overrides = new Dictionary<string, bool>
-        {
-            [nonOverridableFlag] = true
-        };
-
-        _featureFlags.ApplyProjectOverrides(overrides);
-
-        _featureFlags.IsEnabled(nonOverridableFlag).Should().BeFalse("a project cannot turn on a flag fixed at build time");
-    }
-
-    [Test]
-    public void ApplyProjectOverrides_NonOverridableFlagEnabledByTheBuild_CannotBeDisabled()
-    {
-        var nonOverridableFlag = FeatureFlagConstants.Workshop;
-        var featureFlags = BuildFeatureFlags(new Dictionary<string, string?>
-        {
-            [$"FeatureFlags:{nonOverridableFlag}"] = "true"
-        });
-
-        featureFlags.ApplyProjectOverrides(new Dictionary<string, bool> { [nonOverridableFlag] = false });
-
-        featureFlags.IsEnabled(nonOverridableFlag).Should().BeTrue("a project cannot turn off a flag fixed at build time");
-    }
-
-    private FeatureFlags BuildFeatureFlags(Dictionary<string, string?> configData)
-    {
-        var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(configData)
-            .Build();
-
-        return new FeatureFlags(configuration, _messengerService);
+        _featureFlags.IsEnabled("webview-dev-tools").Should().BeTrue("should revert to app-level after clearing");
     }
 
     #endregion
@@ -228,14 +180,14 @@ public class FeatureFlagsTests
         var overrides = new Dictionary<string, bool>
         {
             ["note-editor"] = true,
-            ["mcp-tools"] = false
+            ["webview-dev-tools"] = false
         };
 
         _featureFlags.ApplyProjectOverrides(overrides);
 
         _featureFlags.IsEnabled("note-editor").Should().BeTrue("project enables note-editor");
-        _featureFlags.IsEnabled("mcp-tools").Should().BeFalse("project disables mcp-tools");
-        _featureFlags.IsEnabled("unknown-feature").Should().BeTrue("defaults to enabled for unconfigured features");
+        _featureFlags.IsEnabled("webview-dev-tools").Should().BeFalse("project disables webview-dev-tools");
+        _featureFlags.IsEnabled("unknown-feature").Should().BeFalse("unconfigured features default to off");
     }
 
     #endregion
