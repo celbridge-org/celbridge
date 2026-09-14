@@ -1,3 +1,4 @@
+using Celbridge.Projects;
 using Celbridge.Projects.Services;
 using Celbridge.Python;
 using Celbridge.Tests.FileSystem;
@@ -73,5 +74,33 @@ public class ProjectTemplateServiceTests
         var projectContents = await File.ReadAllTextAsync(projectFilePath);
         projectContents.Should().NotContain("<application-version>");
         projectContents.Should().Contain(_expectedAppVersion);
+    }
+
+    [Test]
+    public async Task CreateFromTemplate_Python_CreatesProjectWithStarterFiles()
+    {
+        var template = _projectTemplateService.GetTemplates().Single(t => t.Id == "Python");
+
+        var projectFolderPath = Path.Combine(_tempRootPath, "MyPythonProject");
+        var projectFilePath = Path.Combine(projectFolderPath, "MyPythonProject.celbridge");
+
+        var result = await _projectTemplateService.CreateFromTemplateAsync(projectFilePath, template);
+
+        result.IsSuccess.Should().BeTrue();
+
+        File.Exists(projectFilePath).Should().BeTrue();
+        File.Exists(Path.Combine(projectFolderPath, "project.celbridge")).Should().BeFalse();
+        File.Exists(Path.Combine(projectFolderPath, "readme.md")).Should().BeTrue();
+        File.Exists(Path.Combine(projectFolderPath, "hello_world.py")).Should().BeTrue();
+        File.Exists(Path.Combine(projectFolderPath, "python.console")).Should().BeTrue();
+
+        var projectContents = await File.ReadAllTextAsync(projectFilePath);
+        projectContents.Should().NotContain("<application-version>");
+
+        // The project file parses cleanly under the current schema and declares the console shortcut.
+        var parseResult = ProjectConfigParser.ParseFromText(projectContents);
+        parseResult.IsSuccess.Should().BeTrue();
+        parseResult.Value.EntryErrors.Should().BeEmpty();
+        parseResult.Value.DocumentShortcuts.Should().ContainSingle(s => s.Resource == "python.console");
     }
 }
