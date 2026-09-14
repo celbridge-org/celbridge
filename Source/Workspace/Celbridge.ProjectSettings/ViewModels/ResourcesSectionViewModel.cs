@@ -33,7 +33,6 @@ public partial class ResourcesSectionViewModel : ProjectSettingsSectionViewModel
     /// </summary>
     public bool HasInvalidSearchExcludePattern => ContainsInvalidPattern(SearchExcludePatternsText);
 
-    public string ProtectedNote => ProjectSettingsLabels.ResourcesProtectedNote;
     public string HideTitle => ProjectSettingsLabels.HideTitle;
     public string HideSubtitle => ProjectSettingsLabels.HideSubtitle;
     public string SearchExcludeTitle => ProjectSettingsLabels.SearchExcludeTitle;

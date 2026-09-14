@@ -65,6 +65,7 @@ public static class BuiltInEditors
     [
         "celbridge-code-editor",
         "celbridge-file-viewer",
+        "celbridge-report",
         "celbridge-spreadsheet",
     ];
 
