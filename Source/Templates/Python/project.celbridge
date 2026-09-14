@@ -12,3 +12,4 @@ search-exclude = ["node_modules", "bin", "obj", "dist", ".venv", "__pycache__"]
 resource = "python.console"
 icon = "bs-terminal"
 area = "bottom"
+open-on-load = true

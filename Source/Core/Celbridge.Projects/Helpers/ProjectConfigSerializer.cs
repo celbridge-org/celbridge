@@ -62,7 +62,7 @@ public static class ProjectConfigSerializer
     {
         builder.Append('\n');
         builder.Append("# 'hide' keeps resources out of the Explorer tree. 'search-exclude' also keeps them out of search.\n");
-        builder.Append("# Both take glob patterns. Neither changes what tools can read or write.\n");
+        builder.Append("# Both take glob patterns, e.g. \"Python/.venv/**\".\n");
         builder.Append("[celbridge.resources]\n");
         WriteKeyValue(builder, "hide", RenderStringArray(resources.Hide));
         WriteKeyValue(builder, "search-exclude", RenderStringArray(resources.SearchExclude));
