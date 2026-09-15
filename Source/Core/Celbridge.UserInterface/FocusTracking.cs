@@ -76,19 +76,21 @@ public static class FocusTracking
             return FocusLocation.Detached;
         }
 
-        // A popup hosts its content in a tree of its own, so the walk below misses the window content.
-        // The popups are asked which content is theirs rather than inferring it from the shape of that
-        // tree, so that focus a dismissed popup left behind reads as reaching neither.
-        var openPopups = VisualTreeHelper.GetOpenPopupsForXamlRoot(xamlRoot);
-
         foreach (var ancestor in VisualTree.GetAncestors(element, includeSelf: true))
         {
             if (ReferenceEquals(ancestor, mainContentRoot))
             {
                 return FocusLocation.MainContent;
             }
+        }
 
-            foreach (var openPopup in openPopups)
+        // A popup hosts its content in a tree of its own, so the walk above misses the window content. The
+        // popups are asked which content is theirs rather than inferring it from the shape of that tree, so
+        // that focus a dismissed popup left behind reads as reaching neither. Asked only once the cheap
+        // walk has ruled out the common case.
+        foreach (var openPopup in VisualTreeHelper.GetOpenPopupsForXamlRoot(xamlRoot))
+        {
+            foreach (var ancestor in VisualTree.GetAncestors(element, includeSelf: true))
             {
                 if (ReferenceEquals(ancestor, openPopup.Child))
                 {
