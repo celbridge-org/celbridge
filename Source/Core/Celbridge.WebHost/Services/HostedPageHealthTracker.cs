@@ -10,6 +10,11 @@ internal enum HostedPageProcessChange
     None,
     Gone,
     Relaunched,
+
+    /// <summary>
+    /// One running renderer gave way to another, which WebKit does to a page it has suspended in the
+    /// background. The page still has a renderer, so nothing has failed.
+    /// </summary>
     Replaced
 }
 
@@ -116,8 +121,8 @@ internal sealed class HostedPageHealthTracker<TPage>
     }
 
     /// <summary>
-    /// Records the process rendering the page, counting a process failure when it goes absent or is replaced.
-    /// A negative id means the platform could not report one and leaves the page's state untouched.
+    /// Records the process rendering the page, counting a process failure when it goes absent. A negative id
+    /// means the platform could not report one and leaves the page's state untouched.
     /// </summary>
     public HostedPageProcessChange RecordProcessId(TPage page, long processId)
     {
@@ -156,7 +161,8 @@ internal sealed class HostedPageHealthTracker<TPage>
                 return HostedPageProcessChange.None;
             }
 
-            counters.ProcessFailures++;
+            // Not a failure: one running renderer gave way to another, which is what WebKit does to a page
+            // it has suspended in the background. Only a renderer observed absent counts.
             return HostedPageProcessChange.Replaced;
         }
     }

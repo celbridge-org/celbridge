@@ -88,8 +88,9 @@ public class PanelFocusTracker
             return;
         }
 
-        var mainContentRoot = element.XamlRoot?.Content;
-        if (mainContentRoot is null)
+        // Focus inside an open popup preserves the previous panel, and focus a dismissed popup left behind
+        // names no panel at all, so neither is reported.
+        if (FocusTracking.GetFocusLocation(element) != FocusLocation.MainContent)
         {
             return;
         }
@@ -106,45 +107,27 @@ public class PanelFocusTracker
 
         // A document's own edit target wins. Outside a document the panel declaration supplies one.
         IEditTarget? editTarget = documentView?.EditTarget;
-        var foundDeclaration = false;
-        var reachedMainContentRoot = false;
-
         DependencyObject? current = element;
         while (current is not null)
         {
-            if (!foundDeclaration)
+            var declaredPanel = FocusTracking.GetPanel(current);
+            if (declaredPanel != FocusPanelId.None)
             {
-                var declaredPanel = FocusTracking.GetPanel(current);
-                if (declaredPanel != FocusPanelId.None)
-                {
-                    panel = declaredPanel;
-                    editTarget ??= FocusTracking.GetEditTarget(current);
-                    foundDeclaration = true;
-                }
-                else if (FocusTracking.GetPreservePanelFocus(current))
-                {
-                    // Focus landed on chrome marked to preserve panel focus. Such an element can hold focus
-                    // transiently (e.g. as the focus placeholder during dialog teardown or a tree rebuild)
-                    // without representing a move off the panel, so preserve the current panel by not
-                    // reporting.
-                    return;
-                }
-            }
-
-            if (ReferenceEquals(current, mainContentRoot))
-            {
-                reachedMainContentRoot = true;
+                panel = declaredPanel;
+                editTarget ??= FocusTracking.GetEditTarget(current);
                 break;
             }
 
-            current = VisualTreeHelper.GetParent(current);
-        }
+            if (FocusTracking.GetPreservePanelFocus(current))
+            {
+                // Focus landed on chrome marked to preserve panel focus. Such an element can hold focus
+                // transiently (e.g. as the focus placeholder during dialog teardown or a tree rebuild)
+                // without representing a move off the panel, so preserve the current panel by not
+                // reporting.
+                return;
+            }
 
-        // An element whose walk never passes the main content root is popup-hosted (flyout,
-        // context menu, ContentDialog). Popups preserve the previous focus, so it is not reported.
-        if (!reachedMainContentRoot)
-        {
-            return;
+            current = VisualTreeHelper.GetParent(current);
         }
 
         // Opening a document gives it the keyboard and protects its panel for a moment. The click that opened

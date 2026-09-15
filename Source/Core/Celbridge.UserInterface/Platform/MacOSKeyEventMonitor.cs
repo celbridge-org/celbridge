@@ -149,7 +149,8 @@ internal static class MacOSKeyEventMonitor
             }
 
             // Uno's canvas reports a Command chord handled before any managed key event is raised, so an
-            // edit verb for a managed panel such as the Explorer is delivered to its edit target from here.
+            // edit verb for a managed panel such as the Explorer, or for a focused text control, is
+            // delivered to its owner from here.
             if (isCommand
                 && _webViewFocusRegistry?.HasFocusedSurface != true
                 && TryPerformEditChord(nsEvent, keyCode, modifierFlags))
@@ -157,11 +158,13 @@ internal static class MacOSKeyEventMonitor
                 return IntPtr.Zero;
             }
 
-            // Uno's canvas also consumes Command+Z and Command+Shift+Z outright, so a focused managed text
-            // control never sees them although it handles the other editing chords itself.
-            if (isCommand
+            var shift = (modifierFlags & MacOSKeyboardModifiers.ShiftFlag) != 0;
+
+            // Uno delivers Tab to the focused text control as text as well as moving focus, which replaces
+            // whatever the user had selected, so focus is moved here and the key is swallowed.
+            if (isTab
                 && _webViewFocusRegistry?.HasFocusedSurface != true
-                && TryPerformTextControlChord(nsEvent, keyCode, modifierFlags))
+                && _managedFocus?.TryMoveFocusFromTextControl(shift) == true)
             {
                 return IntPtr.Zero;
             }
@@ -171,10 +174,8 @@ internal static class MacOSKeyEventMonitor
             // panel, and Command+F falls through to the Find menu item, which drives the same document.
             if (_focusService?.FocusedPanel != FocusPanelId.Documents)
             {
-                return nsEvent;
+                return ReleaseCommandChord(nsEvent, modifierFlags);
             }
-
-            var shift = (modifierFlags & MacOSKeyboardModifiers.ShiftFlag) != 0;
 
             if (isTab)
             {
@@ -222,10 +223,10 @@ internal static class MacOSKeyEventMonitor
                     return IntPtr.Zero;
                 }
 
-                return nsEvent;
+                return ReleaseCommandChord(nsEvent, modifierFlags);
             }
 
-            return nsEvent;
+            return ReleaseCommandChord(nsEvent, modifierFlags);
         }
         catch (Exception exception)
         {
@@ -270,8 +271,48 @@ internal static class MacOSKeyEventMonitor
             return false;
         }
 
-        return MacOSEditCommands.Perform(editIntent.Value, _focusService, _commandService, IsDialogOpen())
-            != EditRouting.ResponderChain;
+        return MacOSEditCommands.Perform(
+            editIntent.Value,
+            _focusService,
+            _managedFocus,
+            _commandService,
+            IsDialogOpen()) != EditRouting.ResponderChain;
+    }
+
+    // Hands a Command chord no owner claimed back to AppKit, unless a managed text control holds the
+    // keyboard and the chord names a character: there Uno turns the chord into that character and types it.
+    // Offering it to the menubar is the key-equivalent phase AppKit would have run next, and the chord is
+    // swallowed either way.
+    private static IntPtr ReleaseCommandChord(IntPtr nsEvent, ulong modifierFlags)
+    {
+        if (!IsPlainCommandChord(modifierFlags)
+            || !NamesCharacter(nsEvent)
+            || _managedFocus?.IsTextControlFocused != true)
+        {
+            return nsEvent;
+        }
+
+        TryPerformMenuKeyEquivalent(nsEvent);
+        return IntPtr.Zero;
+    }
+
+    // Whether the chord's key produces a character. AppKit reports the arrows and the function keys in the
+    // Unicode private use area and the editing keys as control characters, and a chord over one of those
+    // carries an AppKit command the focused control still needs: Command and an arrow are how macOS names
+    // the ends of a line and of the document.
+    private static bool NamesCharacter(IntPtr nsEvent)
+    {
+        var characters = ReadNSString(SendMessage(nsEvent, GetSelector("charactersIgnoringModifiers")));
+        if (characters.Length != 1)
+        {
+            return false;
+        }
+
+        var character = characters[0];
+
+        return character >= ' '
+            && character != '\u007F'
+            && character is < '\uF700' or > '\uF8FF';
     }
 
     // Whether a modal dialog holds the keyboard. Acquired here rather than injected at Start, so the
@@ -279,20 +320,6 @@ internal static class MacOSKeyEventMonitor
     private static bool IsDialogOpen()
     {
         return ServiceLocator.AcquireService<IDialogService>().IsDialogOpen;
-    }
-
-    // Hands undo or redo to the managed text control holding focus. Returns whether it performed the verb.
-    private static bool TryPerformTextControlChord(IntPtr nsEvent, ulong keyCode, ulong modifierFlags)
-    {
-        var shortcutCharacter = ResolveShortcutCharacter(nsEvent, keyCode);
-
-        var editIntent = ResolveEditIntent(shortcutCharacter, modifierFlags);
-        if (editIntent is not (EditIntent.Undo or EditIntent.Redo))
-        {
-            return false;
-        }
-
-        return _managedFocus?.TryPerformTextEditing(editIntent.Value) == true;
     }
 
     // The edit verb a Command chord names, or null for a chord naming none.

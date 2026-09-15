@@ -15,6 +15,15 @@ public static class FocusNavigationHelper
     /// </summary>
     public static void MoveFocusToNextElement(DependencyObject current)
     {
+        MoveFocus(current, backwards: false);
+    }
+
+    /// <summary>
+    /// Moves keyboard focus from the given element along the tab order, forwards or backwards, wrapping at
+    /// either end. Does nothing for an element outside a loaded tree.
+    /// </summary>
+    public static void MoveFocus(DependencyObject current, bool backwards)
+    {
         // UNO-BUG: the FindNextElementOptions overload of TryMoveFocus throws for Next, Previous and None.
         // Neither FocusManager overload can do this on both heads, so neither is used: the packaged WinUI
         // head rejects TryMoveFocus without options ("Catastrophic failure", it wants the options overload
@@ -33,7 +42,8 @@ public static class FocusNavigationHelper
             return;
         }
 
-        var nextTabStop = tabStops[(currentIndex + 1) % tabStops.Count];
+        var step = backwards ? tabStops.Count - 1 : 1;
+        var nextTabStop = tabStops[(currentIndex + step) % tabStops.Count];
 
         nextTabStop.Focus(FocusState.Programmatic);
     }

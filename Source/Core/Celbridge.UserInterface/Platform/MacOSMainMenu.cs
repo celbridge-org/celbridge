@@ -2,6 +2,7 @@ using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Explorer;
 using Celbridge.Settings;
+using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.ViewModels.Controls;
 using Celbridge.Workspace;
 
@@ -260,16 +261,19 @@ internal static class MacOSMainMenu
 
     private static MacMenuItemState QueryState(long tag)
     {
+        var editShortcut = ResolveEditShortcut(tag);
+
         // An in-window dialog covers the hamburger menu but leaves the menu bar live, so every command
         // here stays pickable while one is open. Grey the whole bar out for the dialog's lifetime,
-        // leaving Quit alone. AppKit re-asks on each open, so this needs no invalidation.
-        if (tag != TagQuit &&
-            IsDialogOpen())
+        // leaving Quit alone. AppKit re-asks on each open, so this needs no invalidation. The edit verbs
+        // are left to the resolver below, which routes them to the dialog's own text control.
+        if (tag != TagQuit
+            && editShortcut is null
+            && IsDialogOpen())
         {
             return MacMenuItemState.Disabled;
         }
 
-        var editShortcut = ResolveEditShortcut(tag);
         if (editShortcut is not null)
         {
             return EditVerbState(editShortcut.Intent);
@@ -343,9 +347,9 @@ internal static class MacOSMainMenu
 
     private static MacMenuItemState EditVerbState(EditIntent intent)
     {
-        return MacOSEditCommands.Resolve(intent, EditVerbFocusService(), IsDialogOpen()) switch
+        return MacOSEditCommands.Resolve(intent, EditVerbFocusService(), EditVerbManagedFocus(), IsDialogOpen()) switch
         {
-            EditRouting.Surface => MacMenuItemState.Enabled,
+            EditRouting.Surface or EditRouting.TextControl => MacMenuItemState.Enabled,
             EditRouting.Unavailable => MacMenuItemState.Disabled,
             _ => MacMenuItemState.ResponderChain
         };
@@ -358,6 +362,7 @@ internal static class MacOSMainMenu
         var routing = MacOSEditCommands.Perform(
             shortcut.Intent,
             EditVerbFocusService(),
+            EditVerbManagedFocus(),
             commandService,
             IsDialogOpen());
         if (routing == EditRouting.ResponderChain)
@@ -376,6 +381,14 @@ internal static class MacOSMainMenu
     {
         return MacOSWindowInterop.IsAppWindowKey()
             ? ServiceLocator.AcquireService<IFocusService>()
+            : null;
+    }
+
+    // Managed focus, or null while a native panel such as a file picker holds the keyboard.
+    private static IManagedFocus? EditVerbManagedFocus()
+    {
+        return MacOSWindowInterop.IsAppWindowKey()
+            ? ServiceLocator.AcquireService<IManagedFocus>()
             : null;
     }
 

@@ -1,5 +1,6 @@
 using Celbridge.Logging;
 using Celbridge.Platform;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.Services;
@@ -27,18 +28,22 @@ public class ManagedFocus : IManagedFocus
         _logger = logger;
     }
 
-    public bool IsPopupHoldingFocus
+    public FocusLocation FocusLocation
     {
         get
         {
             var focusedElement = GetFocusedElement();
 
-            return focusedElement is not null
-                && FocusTracking.IsPopupHosted(focusedElement);
+            // Nothing focused is nothing stranded, so it reads as the main content.
+            return focusedElement is null
+                ? FocusLocation.MainContent
+                : FocusTracking.GetFocusLocation(focusedElement);
         }
     }
 
-    public bool TryPerformTextEditing(EditIntent intent)
+    public bool IsTextControlFocused => GetFocusedElement() is TextBox;
+
+    public bool CanPerformTextEditing(EditIntent intent)
     {
         if (GetFocusedElement() is not TextBox textBox)
         {
@@ -47,6 +52,24 @@ public class ManagedFocus : IManagedFocus
 
         // Not gated on CanUndo or CanRedo: Uno reports both false right after typing on the Skia head, while
         // Undo still reverts the text. A chord with nothing to revert is still the control's to swallow.
+        return intent switch
+        {
+            EditIntent.Undo or EditIntent.Redo or EditIntent.SelectAll => true,
+            EditIntent.Paste => !textBox.IsReadOnly,
+            EditIntent.Copy => textBox.SelectionLength > 0,
+            EditIntent.Cut => textBox.SelectionLength > 0 && !textBox.IsReadOnly,
+            _ => false
+        };
+    }
+
+    public bool TryPerformTextEditing(EditIntent intent)
+    {
+        if (GetFocusedElement() is not TextBox textBox
+            || !CanPerformTextEditing(intent))
+        {
+            return false;
+        }
+
         switch (intent)
         {
             case EditIntent.Undo:
@@ -57,9 +80,36 @@ public class ManagedFocus : IManagedFocus
                 textBox.Redo();
                 return true;
 
+            case EditIntent.SelectAll:
+                textBox.SelectAll();
+                return true;
+
+            case EditIntent.Copy:
+                textBox.CopySelectionToClipboard();
+                return true;
+
+            case EditIntent.Cut:
+                textBox.CutSelectionToClipboard();
+                return true;
+
+            case EditIntent.Paste:
+                textBox.PasteFromClipboard();
+                return true;
+
             default:
                 return false;
         }
+    }
+
+    public bool TryMoveFocusFromTextControl(bool backwards)
+    {
+        if (GetFocusedElement() is not TextBox textBox)
+        {
+            return false;
+        }
+
+        FocusNavigationHelper.MoveFocus(textBox, backwards);
+        return true;
     }
 
     public bool TryMoveCaret(CaretMotion motion, bool extendSelection)

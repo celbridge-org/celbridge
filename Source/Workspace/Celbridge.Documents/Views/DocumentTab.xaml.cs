@@ -138,9 +138,8 @@ public partial class DocumentTab : TabViewItem
         _shortcutHintService = ServiceLocator.AcquireService<IShortcutHintService>();
         ViewModel = ServiceLocator.AcquireService<DocumentTabViewModel>();
 
-        // The context menu opens over the document area, where a hosted web view would take the click too.
-        var overlayInputSuppressor = ServiceLocator.AcquireService<IOverlayInputSuppressor>();
-        overlayInputSuppressor.SuppressWhileOpen(TabContextMenu);
+        var overlayFlyoutSupport = ServiceLocator.AcquireService<IOverlayFlyoutSupport>();
+        overlayFlyoutSupport.Apply(TabContextMenu);
 
         CloseMenuItem.Text = _stringLocalizer.GetString("DocumentTab_Close");
         CloseOthersMenuItem.Text = _stringLocalizer.GetString("DocumentTab_CloseOthers");

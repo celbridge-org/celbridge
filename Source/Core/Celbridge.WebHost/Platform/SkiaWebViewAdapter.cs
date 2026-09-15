@@ -305,8 +305,8 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
                 break;
 
             case HostedPageProcessChange.Replaced:
-                _logger.LogWarning(
-                    "The WebContent process behind {PageUrl} was replaced without a navigation", pageUrl);
+                _logger.LogInformation(
+                    "WebKit swapped the WebContent process behind {PageUrl} without a navigation", pageUrl);
                 break;
         }
     }

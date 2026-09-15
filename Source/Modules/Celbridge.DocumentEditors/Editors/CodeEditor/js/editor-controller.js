@@ -697,6 +697,13 @@ export class EditorController {
             return true;
         }
 
+        // A page goes on naming the element it last focused after the window's keyboard moves to the
+        // application's chrome, so the answer below means nothing until the page holds the keyboard again.
+        // The selection the user made is still there, and the verbs that act on it are still the host's.
+        if (!document.hasFocus()) {
+            return false;
+        }
+
         const activeElement = document.activeElement;
         if (activeElement === null) {
             return false;
