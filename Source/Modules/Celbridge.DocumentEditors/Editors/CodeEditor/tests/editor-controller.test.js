@@ -20,7 +20,13 @@ function createMockModel() {
 }
 
 function createMockEditor(model) {
+    // Monaco types through a textarea inside this node, which is what tells the editor's own input from
+    // one of the page's other text controls.
+    const domNode = document.createElement('div');
+    document.body.appendChild(domNode);
+
     return {
+        getDomNode: vi.fn(() => domNode),
         getModel: vi.fn(() => model),
         setValue: vi.fn(),
         getValue: vi.fn(() => ''),
@@ -293,6 +299,24 @@ describe('EditorController edit availability', () => {
         expect(reportedAvailability()).toEqual({ canFind: true });
 
         findInput.remove();
+    });
+
+    it('keeps its claim while its own input holds the keyboard, so a click on the chrome still copies', () => {
+        // The page goes on naming Monaco's textarea once the window's keyboard moves to the application's
+        // chrome, and the selection the user made is still there to copy.
+        editor.hasTextFocus.mockReturnValue(false);
+        editor.getSelection.mockReturnValue({ isEmpty: () => false });
+        const editorInput = document.createElement('textarea');
+        editor.getDomNode().appendChild(editorInput);
+
+        editorInput.focus();
+
+        expect(reportedAvailability()).toMatchObject({
+            canCopy: true,
+            hostMediatedClipboard: true
+        });
+
+        editorInput.remove();
     });
 
     it('keeps its claim while a button holds the keyboard, so the menu still copies a selection', () => {

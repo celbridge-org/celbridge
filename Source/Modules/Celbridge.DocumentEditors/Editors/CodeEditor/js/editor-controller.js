@@ -702,6 +702,13 @@ export class EditorController {
             return false;
         }
 
+        // Monaco types through a textarea of its own, and the page goes on naming the element it last
+        // focused once the window's keyboard moves to the application's chrome.
+        const editorNode = this.#editor.getDomNode?.();
+        if (editorNode != null && editorNode.contains(activeElement)) {
+            return false;
+        }
+
         return activeElement.tagName === 'IFRAME'
             || activeElement.tagName === 'INPUT'
             || activeElement.tagName === 'TEXTAREA'

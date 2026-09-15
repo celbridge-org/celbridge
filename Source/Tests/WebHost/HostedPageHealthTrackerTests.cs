@@ -55,11 +55,12 @@ public class HostedPageHealthTrackerTests
     public void ProcessFailures_SurviveASuccessfulWake()
     {
         _tracker.RecordProcessId(_page, 100);
+        _tracker.RecordProcessId(_page, 0);
         _tracker.RecordProcessId(_page, 200);
 
         _tracker.RecordWakeSucceeded(_page);
 
-        // The wake succeeds against the replacement process, which does not undo the crash it replaced.
+        // The wake succeeds against the relaunched process, which does not undo the death it replaced.
         _tracker.GetHealth(_page).ProcessFailures.Should().Be(1);
     }
 
@@ -80,12 +81,14 @@ public class HostedPageHealthTrackerTests
     }
 
     [Test]
-    public void ReplacedProcess_CountsOneFailure()
+    public void ReplacedProcess_IsReportedWithoutCountingAFailure()
     {
+        // WebKit gives a page it has suspended in the background a new renderer, and the page goes on
+        // working, so the swap is reported without marking the document unhealthy.
         _tracker.RecordProcessId(_page, 100);
 
         _tracker.RecordProcessId(_page, 200).Should().Be(HostedPageProcessChange.Replaced);
-        _tracker.GetHealth(_page).ProcessFailures.Should().Be(1);
+        _tracker.GetHealth(_page).ProcessFailures.Should().Be(0);
     }
 
     [Test]
