@@ -18,8 +18,8 @@ public record RemotePage(
 public interface IPageApiClient
 {
     /// <summary>
-    /// Publishes a page bundle as a new page and returns it. Path is the served
-    /// path declared in the bundle's manifest; author records the publisher.
+    /// Publishes a page bundle at the served path and returns the page. Publishing
+    /// at a path that already has a page replaces it. Author records the publisher.
     /// </summary>
     Task<Result<RemotePage>> PublishPageAsync(byte[] zipData, string path, string? author = null);
 

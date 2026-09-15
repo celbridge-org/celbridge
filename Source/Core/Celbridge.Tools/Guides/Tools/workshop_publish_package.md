@@ -46,7 +46,7 @@ After a successful publish, the tool writes a fresh `HISTORY.md` beside the mani
 
 ## Concurrent publishing
 
-The workshop is a shared rendezvous point with no concurrency guard, so two people starting from the same workshop version and both publishing produce siblings that the linear history presents as a sequence. As a guardrail, if the source folder was installed from a workshop version older than the latest, another version landed after this folder was installed and this publish may overwrite or diverge from it. When this is detected:
+The tool publishes without asking the workshop to check for a newer workshop version, so two people starting from the same workshop version and both publishing produce siblings that the linear history presents as a sequence. As a guardrail, if the source folder was installed from a workshop version older than the latest, another version landed after this folder was installed and this publish may overwrite or diverge from it. When this is detected:
 
 - With `confirmWithUser: true` (default), the confirmation prompt spells out the staleness. It names the installed and latest workshop versions and asks you to continue, so you give informed consent rather than discovering the clash afterward.
 - With `confirmWithUser: false`, the publish still proceeds, because publishing is append-only and the other workshop version is not destroyed. The result's `warning` field reports the clash so an agent can react.

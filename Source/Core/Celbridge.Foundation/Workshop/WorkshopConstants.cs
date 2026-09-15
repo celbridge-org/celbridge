@@ -11,7 +11,7 @@ public static class WorkshopConstants
     public const string HistoryFileName = "HISTORY.md";
 
     /// <summary>
-    /// Name of the server-managed alias that points at a package's highest live workshop version.
+    /// Reserved name that selects a package's highest live workshop version. The workshop refuses it as an alias name.
     /// </summary>
     public const string LatestAlias = "latest";
 

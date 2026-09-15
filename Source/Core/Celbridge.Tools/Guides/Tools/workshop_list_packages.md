@@ -4,20 +4,13 @@ Returns the packages currently published to the connected workshop. Use it to di
 
 ## Returns
 
-A JSON array of objects, one per package:
+A JSON array of objects, one per package, ordered by package name:
 
 - `packageName` (string) — the package's unique name on the workshop.
-- `latestWorkshopVersion` (int or null) — the highest workshop version the server reports for the package. **See the caveat below**: this may name a deleted workshop version when no live one remains, pending a server-side fix. Treat a non-null value as advisory, and confirm with `workshop_get_package_info` before trusting it as installable.
-- `publishedAt` (datetime or null) — UTC timestamp of when the latest workshop version was published.
+- `latestWorkshopVersion` (int or null) — the highest live workshop version, the one `workshop_install_package` installs for `latest`. Deleted workshop versions are skipped, so it is null when the package has no live workshop version.
+- `publishedAt` (datetime or null) — UTC timestamp of when that workshop version was published, or null when `latestWorkshopVersion` is null.
 - `workshopVersionCount` (int) — total number of workshop versions the package has, deleted ones included.
 
-The array is in the order the workshop returns, not sorted alphabetically.
+## Gotchas
 
-## Caveat: `latestWorkshopVersion` after delete or unpublish
-
-Until the server's delete contract is aligned, `latestWorkshopVersion` is **not** filtered to live workshop versions:
-
-- After `workshop_delete_package` removes the highest workshop version, the server may still report it under `latestWorkshopVersion` until the next publish.
-- After `workshop_unpublish_package` removes every workshop version, every entry's `latestWorkshopVersion` is non-null, but installing that version fails because its content has been deleted.
-
-When you need certainty, call `workshop_get_package_info(packageName)` and select the highest `workshopVersion` whose `deleted` is false. The resolver inside `workshop_install_package` already does this for `latest`, so resolving `latest` keeps working, and only a caller reading `workshop_list_packages` directly needs the caveat.
+- A package whose workshop versions have all been deleted with `workshop_delete_package` stays listed, with a null `latestWorkshopVersion` and every deleted workshop version still counted. A package removed with `workshop_unpublish_package` is no longer listed.

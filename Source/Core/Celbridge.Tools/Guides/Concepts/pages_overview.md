@@ -11,11 +11,11 @@ A page folder must contain a `pages.toml` at its root naming the path the site i
 path = "my-site/home"
 ```
 
-The path is multi-segment and becomes a subpath of the served URL. The page ZIP's root is the served site: everything in the folder is published verbatim except `pages.toml` itself, which the workshop reads to learn the path.
+The path is multi-segment and becomes a subpath of the served URL. The page ZIP's root is the served site: everything in the folder is published verbatim except `pages.toml` itself.
 
 ## Publish-only by design
 
-There is **no pull or install of a page**. This is intentional, not a missing feature. A page is a deploy target: rendered static content served at a public URL, replaceable at any time. The page tools publish, list, inspect, and unpublish only. The served site is the rendered output, not the original bundle, and the workshop keeps no recoverable copy of what you uploaded.
+There is **no pull or install of a page**. This is intentional, not a missing feature. A page is a deploy target: rendered static content served at a public URL, replaceable at any time. The page tools publish, list, inspect, and unpublish only. The workshop serves the files from the uploaded bundle but offers no way to download them, and replacing or unpublishing a page deletes its bundle.
 
 The consequence to plan around: **a page published from a folder that is later lost cannot be retrieved.** If you need a versioned, content-addressed, recoverable, and pullable site, wrap the content in a **package** and publish that. The package is the versioned artifact, and the page is just the deployment of its content. Keeping the source folder under version control, or as a package, is the recommended safeguard.
 

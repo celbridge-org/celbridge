@@ -163,14 +163,17 @@ public class PageApiClientTests
     }
 
     [Test]
-    public async Task PublishPage_PathOverlap_Fails()
+    public async Task PublishPage_PathOverlap_NamesTheOverlappingPage()
     {
-        _messageHandler.Responder = _ => new HttpResponseMessage(HttpStatusCode.Conflict);
+        _messageHandler.Responder = _ => JsonResponse(
+            """{"detail":"path overlaps published page 'my-site'"}""",
+            HttpStatusCode.Conflict);
 
         var result = await _client.PublishPageAsync([0x50], "my-site/home");
 
         result.IsFailure.Should().BeTrue();
-        result.MessageChain.Should().Contain("already published");
+        result.MessageChain.Should().Contain("overlaps a page already published");
+        result.MessageChain.Should().Contain("published page 'my-site'");
     }
 
     [Test]

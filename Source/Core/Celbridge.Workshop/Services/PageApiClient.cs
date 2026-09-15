@@ -36,9 +36,8 @@ public class PageApiClient : IPageApiClient, IDisposable
         fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/zip");
         content.Add(fileContent, "file", "page.zip");
 
-        // The publish path is also carried inside the bundle's manifest; sending
-        // it as a field too lets the server read it without parsing the manifest,
-        // so the manifest can later be dropped from the upload.
+        // The workshop takes the publish path from this field in preference to
+        // the manifest inside the bundle.
         if (!string.IsNullOrEmpty(path))
         {
             content.Add(new StringContent(path, Encoding.UTF8), "path");
@@ -58,9 +57,14 @@ public class PageApiClient : IPageApiClient, IDisposable
         using var response = sendResult.Value;
         if (response.StatusCode == HttpStatusCode.Conflict)
         {
+            // Publishing at a path that already has a page replaces that page, so a
+            // conflict means one of the two paths sits inside the other. The error
+            // body names the published page in the way.
+            var conflictBody = await response.Content.ReadAsStringAsync();
             return Result.Fail(
-                "A page is already published at this path. Unpublish the existing page before publishing over it, " +
-                "or change the [publish].path in pages.toml.");
+                $"The path '{path}' overlaps a page already published on the workshop, because one of the two paths " +
+                "sits inside the other. Unpublish that page, or change the [publish].path in pages.toml. " +
+                $"Workshop response: {conflictBody}");
         }
 
         if (!response.IsSuccessStatusCode)

@@ -10,7 +10,7 @@ The name as published on the workshop (lowercase alphanumeric with single hyphen
 
 ### alias
 
-The alias to remove (e.g. `stable`). The `latest` alias is managed by the workshop and is rejected here.
+The alias to remove (e.g. `stable`). `latest` is reserved for the highest live workshop version and is never an alias, so it is rejected here.
 
 ## Returns
 

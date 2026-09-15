@@ -37,7 +37,8 @@ A JSON object:
 
 ## Gotchas
 
-- **The served site excludes `pages.toml`, but the bundle includes it.** The whole folder is zipped, because the server reads the manifest from the bundle, and everything except `pages.toml` is published verbatim.
-- **A path overlap fails.** If a page is already published at the manifest's path, the workshop rejects the publish. Unpublish the existing page first, or change `[publish].path`.
+- **The served site excludes `pages.toml`, but the bundle includes it.** The whole folder is zipped, and everything except the root `pages.toml` is published verbatim.
+- **Publishing at a path that already has a page replaces that page.** The tool does not check for one first, and the replaced content cannot be recovered. Call `workshop_get_page_info` with the path first when it may be taken.
+- **A path that overlaps another page fails.** Two paths overlap when one sits inside the other, as `my-site/home` sits inside `my-site`. `dev/chess24` does not sit inside `dev/chess`, so those two can coexist. The error names the page in the way. Unpublish that page, or change `[publish].path`.
 - **Pages are publish-only and not recoverable.** The workshop keeps no copy of the bundle you can pull back, so keep the source folder. For a versioned, pullable site, wrap the content in a package instead. See `pages_overview`.
 - Symlinks and other reparse points inside the folder are skipped, not followed.

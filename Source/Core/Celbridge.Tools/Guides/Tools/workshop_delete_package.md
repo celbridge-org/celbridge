@@ -1,6 +1,6 @@
 # workshop_delete_package
 
-Deletes a single published workshop version of a package. Its content (the ZIP bytes) is removed permanently and cannot be downloaded again. The workshop version's history entry and content hash are retained, so the number is never reused and a vendored copy stays verifiable, but the bytes are gone. This is a deletion, not the server's hidden tombstone state.
+Deletes a single published workshop version of a package. Its content (the ZIP bytes) is removed permanently and cannot be downloaded again. The workshop version's history entry and content hash are retained, so the number is never reused and a vendored copy stays verifiable, but the bytes are gone.
 
 This is destructive administration and **always prompts for confirmation**. There is no `confirmWithUser` opt-out, unlike `workshop_install_package` and `workshop_publish_package`. The bar is deliberately firmer than `workshop_unpublish_page`, because deleted bytes are not recoverable through the workshop, whereas a page is re-publishable static content.
 

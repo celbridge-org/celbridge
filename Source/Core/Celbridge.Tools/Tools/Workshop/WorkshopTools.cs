@@ -23,13 +23,14 @@ public partial class WorkshopTools : AgentToolBase
             $"Package names must be lowercase alphanumeric with single hyphen separators, 1-{PackageConstants.MaxNameLength} characters.";
     }
 
-    // The 'latest' alias is server-managed, so the curation tools refuse to set
-    // or remove it. Other aliases follow the conservative package-name rule.
+    // 'latest' is reserved for the highest live workshop version, and the workshop
+    // never accepts it as an alias name, so the curation tools refuse to set or
+    // remove it. Other aliases follow the package-name rule.
     private static Result ValidateAlias(string alias)
     {
         if (string.Equals(alias, WorkshopConstants.LatestAlias, StringComparison.OrdinalIgnoreCase))
         {
-            return Result.Fail("The 'latest' alias is managed by the workshop and cannot be set or removed manually.");
+            return Result.Fail("'latest' is reserved for the highest live workshop version and is never an alias, so it cannot be set or removed.");
         }
 
         if (!PackageName.IsValid(alias))

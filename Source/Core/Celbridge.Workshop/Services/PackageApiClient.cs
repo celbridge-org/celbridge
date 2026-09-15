@@ -287,7 +287,8 @@ public class PackageApiClient : IPackageApiClient, IDisposable
             return Result.Fail($"Workshop version {workshopVersion} of package '{packageName}' was not found on the workshop.");
         }
 
-        if (response.StatusCode == HttpStatusCode.Gone)
+        // The workshop answers 400 when the workshop version is already deleted.
+        if (response.StatusCode == HttpStatusCode.BadRequest)
         {
             return Result.Fail($"Workshop version {workshopVersion} of package '{packageName}' has already been deleted.");
         }
@@ -379,13 +380,11 @@ public class PackageApiClient : IPackageApiClient, IDisposable
         [property: JsonPropertyName("latest_version")] VersionSummaryDto? LatestVersion,
         [property: JsonPropertyName("versions_count")] int VersionsCount);
 
-    // The server's wire field is still "tombstoned". The client maps it to a
-    // Deleted flag because Celbridge does not model a dead-but-retained state.
     private record VersionDetailDto(
         [property: JsonPropertyName("version")] int Version,
         [property: JsonPropertyName("author")] string? Author,
         [property: JsonPropertyName("date")] DateTime Date,
-        [property: JsonPropertyName("tombstoned")] bool Deleted,
+        [property: JsonPropertyName("deleted")] bool Deleted,
         [property: JsonPropertyName("content_hash")] string? ContentHash,
         [property: JsonPropertyName("summary")] string? Summary);
 

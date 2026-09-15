@@ -12,7 +12,7 @@ The name as published on the workshop (lowercase alphanumeric with single hyphen
 
 ### alias
 
-The alias to create or move (e.g. `stable`). Same character rule as a package name. The `latest` alias is managed by the workshop and is rejected here.
+The alias to create or move (e.g. `stable`). Same character rule as a package name. `latest` is reserved for the highest live workshop version and is never an alias, so it is rejected here.
 
 ### workshopVersion
 

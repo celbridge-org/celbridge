@@ -1,14 +1,14 @@
 # Workshop versions
 
-A package on the workshop is a container of immutable workshop versions, numbered 1, 2, 3 and so on in publish order. The workshop assigns each number when a version is published, and never reuses one. A workshop version is not the package version, the `package-version` a manifest declares, which the publisher sets and the workshop passes through unchanged. Every parameter and result field in the workshop tools that holds a workshop number is named for it: `workshopVersion`, `latestWorkshopVersion`, `workshopVersions` and `workshopVersionCount`.
+A package on the workshop is a container of immutable workshop versions, numbered 1, 2, 3 and so on in publish order. The workshop assigns each number when a version is published, and never reuses one while the package exists. A workshop version is not the package version, the `package-version` a manifest declares, which the publisher sets and the workshop passes through unchanged. Every parameter and result field in the workshop tools that holds a workshop number is named for it: `workshopVersion`, `latestWorkshopVersion`, `workshopVersions` and `workshopVersionCount`.
 
 ## Aliases
 
-Named aliases such as `latest` and `stable` point at workshop versions. The workshop manages `latest`, and the publisher defines the rest. Curating aliases is non-destructive: `workshop_set_package_alias` and `workshop_remove_package_alias` only repoint or detach a label, and never touch version content. `workshop_get_package_info` returns every workshop version and alias.
+Named aliases such as `stable` point at workshop versions, and the publisher defines every one. `latest` is not an alias. It is a reserved selector that the workshop tools resolve to the highest live workshop version, so it always skips deleted ones. Curating aliases is non-destructive: `workshop_set_package_alias` and `workshop_remove_package_alias` only repoint or detach a label, and never touch version content. `workshop_get_package_info` returns every workshop version and alias.
 
 ## Deleted versions
 
-`workshop_delete_package` deletes one workshop version, which removes its content bytes permanently. The number, date and content hash are retained, so the number is never reused and a vendored copy stays verifiable, but the bytes are gone. Durability rests on consumers vendoring what they depend on, not on the workshop keeping every version available. `workshop_unpublish_package` removes a package and every workshop version.
+`workshop_delete_package` deletes one workshop version, which removes its content bytes permanently. The number, date and content hash are retained, so the number is never reused and a vendored copy stays verifiable, but the bytes are gone. Durability rests on consumers vendoring what they depend on, not on the workshop keeping every version available. `workshop_unpublish_package` removes the package itself and every workshop version, so a later publish under that name starts again at workshop version 1.
 
 ## HISTORY.md
 

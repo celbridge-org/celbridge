@@ -79,11 +79,11 @@ public class PackageApiClientTests
               "name": "my-widget",
               "created_at": "2026-01-10T12:00:00Z",
               "versions": [
-                { "version": 1, "author": "alice", "date": "2026-01-10T12:00:00Z", "tombstoned": true, "content_hash": "aaa111", "summary": "Initial release" },
-                { "version": 2, "author": "bob", "date": "2026-02-01T09:30:00Z", "tombstoned": false, "content_hash": "bbb222", "summary": "Bug fixes" }
+                { "version": 1, "author": "alice", "date": "2026-01-10T12:00:00Z", "deleted": true, "content_hash": "aaa111", "summary": "Initial release" },
+                { "version": 2, "author": "bob", "date": "2026-02-01T09:30:00Z", "deleted": false, "content_hash": "bbb222", "summary": "Bug fixes" }
               ],
               "aliases": [
-                { "alias": "latest", "version": 2 },
+                { "alias": "beta", "version": 2 },
                 { "alias": "stable", "version": 2 }
               ]
             }
@@ -105,7 +105,7 @@ public class PackageApiClientTests
         details.WorkshopVersions[1].Author.Should().Be("bob");
         details.WorkshopVersions[1].ContentHash.Should().Be("bbb222");
         details.Aliases.Should().HaveCount(2);
-        details.Aliases[0].Alias.Should().Be("latest");
+        details.Aliases[0].Alias.Should().Be("beta");
         details.Aliases[0].WorkshopVersion.Should().Be(2);
     }
 
@@ -119,10 +119,10 @@ public class PackageApiClientTests
               "name": "my-widget",
               "created_at": "2026-01-10T12:00:00Z",
               "versions": [
-                { "version": 1, "author": "alice", "date": "2026-01-10T12:00:00Z", "tombstoned": false, "content_hash": "aaa111", "summary": "" }
+                { "version": 1, "author": "alice", "date": "2026-01-10T12:00:00Z", "deleted": false, "content_hash": "aaa111", "summary": "" }
               ],
               "aliases": [
-                { "name": "latest", "version": 1 },
+                { "name": "beta", "version": 1 },
                 { "name": "stable", "version": 1 }
               ]
             }
@@ -133,7 +133,7 @@ public class PackageApiClientTests
         result.IsSuccess.Should().BeTrue();
         var details = result.Value;
         details.Aliases.Should().HaveCount(2);
-        details.Aliases[0].Alias.Should().Be("latest");
+        details.Aliases[0].Alias.Should().Be("beta");
         details.Aliases[1].Alias.Should().Be("stable");
     }
 
@@ -315,7 +315,9 @@ public class PackageApiClientTests
     [Test]
     public async Task DeleteVersion_AlreadyDeleted_Fails()
     {
-        _messageHandler.Responder = _ => new HttpResponseMessage(HttpStatusCode.Gone);
+        _messageHandler.Responder = _ => JsonResponse(
+            """{"detail":"version already deleted"}""",
+            HttpStatusCode.BadRequest);
 
         var result = await _client.DeleteVersionAsync("my-widget", 1);
 

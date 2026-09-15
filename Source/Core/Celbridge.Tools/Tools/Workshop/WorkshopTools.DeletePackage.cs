@@ -44,8 +44,8 @@ public partial class WorkshopTools
         }
         var resolvedWorkshopVersion = resolveResult.Value;
 
-        // Aliases pointing at the deleted workshop version are left dangling (or
-        // repointed by the server, depending on the alias), so the confirmation names them.
+        // The workshop leaves aliases pointing at a deleted workshop version, so the
+        // confirmation names them.
         var danglingAliases = packageDetails.Aliases
             .Where(packageAlias => packageAlias.WorkshopVersion == resolvedWorkshopVersion)
             .Select(packageAlias => packageAlias.Alias)

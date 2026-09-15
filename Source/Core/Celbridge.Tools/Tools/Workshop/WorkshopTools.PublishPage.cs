@@ -212,12 +212,10 @@ public partial class WorkshopTools
         return parseResult;
     }
 
-    // Zips the whole folder, including pages.toml. The current server reads the
-    // publish path from the manifest in the bundle, so it is still uploaded. The
-    // server serves everything else verbatim but does not serve pages.toml, so it
-    // is not exposed at the public URL. The path is now also sent as a separate
-    // form field (see PublishPageAsync), so once the server reads that field the
-    // manifest can be dropped from the upload entirely.
+    // Zips the whole folder, including pages.toml. The workshop takes the publish
+    // path from the form field PublishPageAsync sends, which wins over the
+    // manifest, and serves everything in the bundle except a root pages.toml, so
+    // the manifest is not exposed at the public URL.
     private static async Task<Result<PageArchive>> BuildPageArchiveAsync(ILocalFileSystem fileSystem, string folderPath)
     {
         int entryCount = 0;

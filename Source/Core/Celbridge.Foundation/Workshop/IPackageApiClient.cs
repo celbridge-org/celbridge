@@ -29,7 +29,7 @@ public record RemoteWorkshopVersion(
     string Summary);
 
 /// <summary>
-/// A named pointer at a workshop version of a package (e.g. "latest", "stable").
+/// A named pointer at a workshop version of a package (e.g. "stable").
 /// </summary>
 public record RemotePackageAlias(string Alias, int WorkshopVersion);
 
