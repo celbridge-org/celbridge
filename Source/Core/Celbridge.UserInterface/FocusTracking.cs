@@ -19,8 +19,7 @@ public enum FocusHost
     Popup,
 
     /// <summary>
-    /// Nothing at all. Uno leaves managed focus on a dismissed popup's item after taking that item out of
-    /// the visual tree, so the keyboard can rest on an element the user can no longer see or reach.
+    /// Outside the window's tree entirely, on an element the user can no longer see or reach.
     /// </summary>
     Detached
 }
@@ -108,14 +107,12 @@ public static class FocusTracking
             topmost = ancestor;
         }
 
-        // A popup hosts its content in a tree of its own, so the walk misses the window content but still
-        // reaches the root the window hangs from, by way of the popup root.
+        // A popup hosts its content in a tree of its own, which still hangs from the window's visual root.
         return ReferenceEquals(topmost, GetVisualRoot(mainContentRoot))
             ? FocusHost.Popup
             : FocusHost.Detached;
     }
 
-    // The root the whole window hangs from.
     private static DependencyObject? GetVisualRoot(UIElement mainContentRoot)
     {
         DependencyObject? visualRoot = null;
@@ -151,7 +148,7 @@ public static class FocusTracking
     /// <summary>
     /// Marks a subtree where focus landing preserves the currently focused panel instead of clearing it to
     /// None. Declared on chrome that can transiently receive focus without representing a deliberate move
-    /// off the panel; the Utility Panel rail is the current such element. Never declare it over a control
+    /// off the panel. The Utility Panel rail is the current such element. Never declare it over a control
     /// the user clicks: a focused web surface then keeps the keyboard, and the focus reconcile that follows
     /// the click takes the control's pointer capture before it can raise Click.
     /// </summary>

@@ -31,9 +31,8 @@ internal sealed class OverlayFlyoutSupport : IOverlayFlyoutSupport
             suppressionScope?.Dispose();
             suppressionScope = null;
 
-            // Uno leaves managed focus on the item that was focused inside the flyout, having already taken
-            // that item out of the visual tree, so the keys the user types next reach a menu they have
-            // dismissed. Reconciling gives the keyboard back to whatever should hold it.
+            // Uno leaves managed focus on the flyout item it has already taken out of the visual tree, so
+            // the keys typed next reach a dismissed menu.
             _focusReconciler.Reconcile();
         };
     }

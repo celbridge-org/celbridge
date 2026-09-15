@@ -15,8 +15,7 @@ public enum CaretMotion
 }
 
 /// <summary>
-/// The managed keyboard focus of the window: where it currently rests, and the means to give it up so no
-/// managed control claims keys destined for a focused web surface.
+/// The managed keyboard focus of the window: where it currently rests, and the means to give it up.
 /// </summary>
 public interface IManagedFocus
 {
@@ -27,9 +26,8 @@ public interface IManagedFocus
     bool IsPopupHoldingFocus { get; }
 
     /// <summary>
-    /// True while managed keyboard focus rests on an element that has left the visual tree, which a
-    /// dismissed popup leaves behind on the item that was focused inside it. Keys reach that element
-    /// still, so the item of a menu the user has closed can act on them.
+    /// True while managed keyboard focus rests on an element that has left the visual tree, which the
+    /// keys still reach.
     /// </summary>
     bool IsFocusStranded { get; }
 

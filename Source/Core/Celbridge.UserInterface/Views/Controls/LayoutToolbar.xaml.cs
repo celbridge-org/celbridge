@@ -35,8 +35,6 @@ public sealed partial class LayoutToolbar : UserControl
         _layoutService = ServiceLocator.AcquireService<ILayoutService>();
         _workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
 
-        // The flyout opens over the document area: the hosted web view underneath would take the click
-        // too, and needs the keyboard back once the flyout closes.
         var overlayFlyoutSupport = ServiceLocator.AcquireService<IOverlayFlyoutSupport>();
         overlayFlyoutSupport.Apply(PanelLayoutFlyout);
 

@@ -2,7 +2,7 @@ namespace Celbridge.WebHost;
 
 /// <summary>
 /// The focus state the reconciler should establish. FocusWebSurface makes the focused web surface the
-/// native focus target; YieldManagedFocus moves managed focus onto the placeholder so no managed control
+/// native focus target. YieldManagedFocus moves managed focus onto the placeholder so no managed control
 /// claims keys destined for the page.
 /// </summary>
 public sealed record DesiredFocus(bool FocusWebSurface, bool YieldManagedFocus);
@@ -18,7 +18,7 @@ public static class FocusDerivation
     public static DesiredFocus Derive(bool webSurfaceHoldsFocus, bool popupHoldsFocus, bool managedFocusIsStranded)
     {
         // An open popup owns the keyboard, whatever the surface underneath it is. A popup reports no
-        // panel, so the model still names that surface; yielding managed focus to the placeholder would
+        // panel, so the model still names that surface. Yielding managed focus to the placeholder would
         // pull it out of the popup, and the popup would stop receiving input while still on screen.
         if (popupHoldsFocus)
         {
@@ -29,9 +29,7 @@ public static class FocusDerivation
 
         // Otherwise two rules cover every case. A web surface holding focus becomes the native focus target
         // and the managed world yields the keyboard to it. Otherwise native focus returns to the host window
-        // and managed focus stays wherever the managed world put it — unless that is an element no longer in
-        // the tree, which holds the keyboard away from everything the user can see and must be given up
-        // whether or not a surface is waiting for it.
+        // and managed focus stays wherever the managed world put it, unless it is stranded.
         return new DesiredFocus(
             FocusWebSurface: webSurfaceHoldsFocus,
             YieldManagedFocus: webSurfaceHoldsFocus || managedFocusIsStranded);

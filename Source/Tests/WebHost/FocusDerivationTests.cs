@@ -37,8 +37,6 @@ public class FocusDerivationTests
     [Test]
     public void Derive_ManagedFocusIsStranded_YieldsManagedFocus()
     {
-        // A dismissed popup leaves managed focus on the item that was focused inside it, so the keys the
-        // user types next reach a menu that is no longer on screen.
         var desiredFocus = FocusDerivation.Derive(
             webSurfaceHoldsFocus: false,
             popupHoldsFocus: false,
@@ -51,8 +49,7 @@ public class FocusDerivationTests
     [Test]
     public void Derive_PopupHoldsFocusWhileStranded_LeavesFocusWithThePopup()
     {
-        // One focused element is never both, so this pins the order of the rules rather than a state the
-        // model produces: a popup on screen is what the keys are for.
+        // One focused element is never both, so this pins the precedence of the rules, not a real state.
         var desiredFocus = FocusDerivation.Derive(
             webSurfaceHoldsFocus: true,
             popupHoldsFocus: true,

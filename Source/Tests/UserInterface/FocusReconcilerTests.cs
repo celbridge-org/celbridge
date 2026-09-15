@@ -86,8 +86,6 @@ public class FocusReconcilerTests
 
         _focusReconciler.Reconcile();
 
-        // A dismissed popup leaves managed focus on an element that has left the tree, which goes on taking
-        // the keys until something gives it up.
         _managedFocus.Received().Yield();
         _hostWindowFocus.Received().FocusHostWindow();
     }

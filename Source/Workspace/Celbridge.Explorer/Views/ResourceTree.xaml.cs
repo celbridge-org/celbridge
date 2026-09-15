@@ -56,8 +56,7 @@ public sealed partial class ResourceTree : UserControl
         _listPointerPressedHandler = ResourceListView_PointerPressed;
         ConfigurePointerDrag();
 
-        // A context menu opened near the panel edge reaches into the document area, where a hosted web
-        // view would take the click too, and needs the keyboard back once the menu closes.
+        // A context menu opened near the panel edge reaches into the document area.
         var overlayFlyoutSupport = ServiceLocator.AcquireService<IOverlayFlyoutSupport>();
         overlayFlyoutSupport.Apply(ResourceContextMenu);
 

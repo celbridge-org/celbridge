@@ -47,8 +47,6 @@ public sealed partial class ProjectSwitcher : UserControl
 
         this.DataContext = ViewModel;
 
-        // The menu drops down over the document area: the hosted web view underneath would take the click
-        // too, and needs the keyboard back once the menu closes.
         var overlayFlyoutSupport = ServiceLocator.AcquireService<IOverlayFlyoutSupport>();
         overlayFlyoutSupport.Apply(ProjectMenuFlyout);
 
