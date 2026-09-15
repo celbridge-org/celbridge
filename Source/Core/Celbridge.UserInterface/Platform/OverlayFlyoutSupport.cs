@@ -1,4 +1,5 @@
 using Celbridge.Messaging;
+using Celbridge.Platform;
 using Celbridge.UserInterface.Services;
 using Celbridge.WebHost;
 
@@ -7,12 +8,17 @@ namespace Celbridge.UserInterface.Platform;
 internal sealed class OverlayFlyoutSupport : IOverlayFlyoutSupport
 {
     private readonly IFocusReconciler _focusReconciler;
+    private readonly IPlatformInfo _platformInfo;
 
     private bool _isHostWindowActive = true;
 
-    public OverlayFlyoutSupport(IFocusReconciler focusReconciler, IMessengerService messengerService)
+    public OverlayFlyoutSupport(
+        IFocusReconciler focusReconciler,
+        IPlatformInfo platformInfo,
+        IMessengerService messengerService)
     {
         _focusReconciler = focusReconciler;
+        _platformInfo = platformInfo;
 
         messengerService.Register<MainWindowActivatedMessage>(this, (_, _) => _isHostWindowActive = true);
         messengerService.Register<MainWindowDeactivatedMessage>(this, (_, _) => _isHostWindowActive = false);
@@ -36,6 +42,14 @@ internal sealed class OverlayFlyoutSupport : IOverlayFlyoutSupport
         {
             suppressionScope?.Dispose();
             suppressionScope = null;
+
+            // Both corrections below are for the head where hosted web views take focus and mouse input
+            // natively. Elsewhere a web view takes part in managed focus, the toolkit hands the keyboard
+            // back when a popup closes, and there is nothing to undo.
+            if (!_platformInfo.HostedWebViewFocusIsNative)
+            {
+                return;
+            }
 
             // Uno raises Closed only for the outermost open flyout, so a flyout dismissed underneath
             // another never disposes its own scope. Nothing overlays the web views once the popups are all
