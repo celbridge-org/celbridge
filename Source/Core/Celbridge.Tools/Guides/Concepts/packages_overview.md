@@ -24,12 +24,12 @@ editors = ["my-editor.editor.toml"]
 
 A package name is lowercase ASCII alphanumeric with single interior hyphens as the only separator, 1-64 characters. The manifest carries no author field.
 
-The `package-version` is three dot-separated numbers, such as `1.2.0`, with no `v` prefix and no suffix. A manifest without one is version `1.0.0`. A malformed version stops the package loading, and `package_status` lists it among the load failures. The package version belongs to the package, and is separate from the version numbers the workshop assigns when a package is published.
+The `package-version` is three dot-separated numbers, such as `1.2.0`, with no `v` prefix and no suffix. A manifest without one is version `1.0.0`. A malformed version stops the package loading, and `app_list_packages` lists it among the load failures. The package version belongs to the package, and is separate from the version numbers the workshop assigns when a package is published.
 
 ## Installed packages
 
-`package_status` reports each project package's name, package version, and folder, plus any load failures such as a duplicate-name fault. It reads only the project.
+`app_list_packages` reports each project package's name, package version, and folder, plus any load failures such as a duplicate-name fault, and `app_get_state` carries the same packages as a summary. Both report the packages as the project loaded. A package added, removed or edited on disk during the session shows after the project reloads, so read the `package.toml` and `.celbridge` files to see what a project declares now.
 
-`package_archive` and `package_unarchive` are generic zip and unzip against the project tree, useful for staging or vendoring a package folder by hand.
+`explorer_archive` and `explorer_unarchive` zip and unzip against the project tree, useful for staging or vendoring a package folder by hand.
 
 For the JS proxy conventions packages need at runtime, see `agent_instructions`.

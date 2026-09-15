@@ -54,31 +54,24 @@ public class PackageToolsHandlerTests
         {
             Tools = new[]
             {
-                Descriptor("app_get_state",   "app.get_state"),
-                Descriptor("package_status",  "package.status"),
-                Descriptor("package_install", "package.install"),
-                Descriptor("page_publish",    "page.publish")
+                Descriptor("app_list_packages", "app.list_packages"),
+                Descriptor("explorer_archive",  "explorer.archive"),
+                Descriptor("package_install",   "package.install"),
+                Descriptor("page_publish",      "page.publish")
             }
         };
         var handler = new PackageToolsHandler(bridge);
 
         var result = await handler.ListToolsAsync();
 
-        result.Select(t => t.Alias).Should().BeEquivalentTo("app.get_state", "package.status");
+        result.Select(t => t.Alias).Should().BeEquivalentTo("app.list_packages", "explorer.archive");
     }
 
-    // A package_* tool added later has to be classified: withheld because it reaches the workshop, or
-    // added to the local tools here because it stays inside the project tree.
+    // Every package_* and page_* tool reaches the workshop, so a package_* tool added later fails here until
+    // the handler withholds it.
     [Test]
-    public async Task ListToolsAsync_WithholdsEveryPackageAndPageToolExceptTheLocalOnes()
+    public async Task ListToolsAsync_WithholdsEveryPackageAndPageTool()
     {
-        var localPackageTools = new[]
-        {
-            "package_archive",
-            "package_status",
-            "package_unarchive"
-        };
-
         var packageAndPageTools = DiscoverTools()
             .Where(tool => tool.Name.StartsWith("package_", StringComparison.Ordinal)
                 || tool.Name.StartsWith("page_", StringComparison.Ordinal))
@@ -90,7 +83,7 @@ public class PackageToolsHandlerTests
 
         var result = await handler.ListToolsAsync();
 
-        result.Select(t => t.Name).Should().BeEquivalentTo(localPackageTools);
+        result.Should().BeEmpty();
     }
 
     [Test]
@@ -145,15 +138,17 @@ public class PackageToolsHandlerTests
         bridge.LastCallName.Should().BeNull();
     }
 
-    [Test]
-    public async Task CallToolAsync_LocalPackageTool_ReachesTheBridge()
+    [TestCase("app.list_packages")]
+    [TestCase("explorer.archive")]
+    [TestCase("explorer.unarchive")]
+    public async Task CallToolAsync_PackageListingAndArchiveTools_ReachTheBridge(string name)
     {
         var bridge = new StubToolBridge();
         var handler = new PackageToolsHandler(bridge);
 
-        await handler.CallToolAsync("package.status", (JsonElement?)null);
+        await handler.CallToolAsync(name, (JsonElement?)null);
 
-        bridge.LastCallName.Should().Be("package.status");
+        bridge.LastCallName.Should().Be(name);
     }
 
     [Test]

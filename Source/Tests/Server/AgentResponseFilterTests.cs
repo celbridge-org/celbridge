@@ -249,6 +249,8 @@ public class AgentResponseFilterTests
             Configuration: "Debug",
             IsLoaded: true,
             ProjectName: "ProbeProject",
+            Packages: new List<ProjectPackageSummary> { new ProjectPackageSummary("acme-widget", "2.1.0") },
+            PackageLoadFailureCount: 1,
             FeatureFlags: new Dictionary<string, bool>(),
             FocusedPanel: "Documents",
             ActiveUtility: "",
@@ -275,6 +277,8 @@ public class AgentResponseFilterTests
 
         TextAt(attached.Result.Content!, AppStateBlockIndex).Should().Contain("\"version\": \"9.9.9-fake\"");
         TextAt(attached.Result.Content!, AppStateBlockIndex).Should().Contain("\"projectName\": \"ProbeProject\"");
+        TextAt(attached.Result.Content!, AppStateBlockIndex).Should().Contain("\"packageVersion\": \"2.1.0\"");
+        TextAt(attached.Result.Content!, AppStateBlockIndex).Should().Contain("\"packageLoadFailureCount\": 1");
         TextAt(attached.Result.Content!, DocumentStateBlockIndex).Should().Contain("\"activeDocument\": \"/Notes/README.md\"");
         TextAt(attached.Result.Content!, DocumentStateBlockIndex).Should().Contain("# Open documents");
     }
@@ -635,6 +639,8 @@ public class AgentResponseFilterTests
             Configuration: "Debug",
             IsLoaded: true,
             ProjectName: "TestProject",
+            Packages: new List<ProjectPackageSummary>(),
+            PackageLoadFailureCount: 0,
             FeatureFlags: new Dictionary<string, bool>(),
             FocusedPanel: "None",
             ActiveUtility: "",

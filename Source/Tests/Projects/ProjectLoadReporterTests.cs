@@ -273,6 +273,7 @@ public class ProjectLoadReporterTests
                 new PackageLoadFailure
                 {
                     Folder = @"C:\projects\demo\packages\excel-art",
+                    Origin = PackageOrigin.Project,
                     PackageName = null,
                     Reason = PackageLoadFailureReason.InvalidManifest,
                     Detail = "Package has invalid 'name' value 'Excel Art'"
@@ -280,6 +281,7 @@ public class ProjectLoadReporterTests
                 new PackageLoadFailure
                 {
                     Folder = @"C:\projects\demo\packages\impostor",
+                    Origin = PackageOrigin.Project,
                     PackageName = "celbridge.notes",
                     Reason = PackageLoadFailureReason.ReservedNamePrefix
                 }

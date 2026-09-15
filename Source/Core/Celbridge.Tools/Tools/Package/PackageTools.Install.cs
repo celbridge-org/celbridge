@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Celbridge.Projects;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Path = System.IO.Path;
@@ -65,19 +64,10 @@ public partial class PackageTools
         // copies. Refuse before downloading and name the existing location.
         if (packageFolder.Root == ResourceKey.DefaultRoot)
         {
-            // The registry is only populated at workspace load, so without a
-            // rescan a package installed earlier in this session would not be
-            // seen by the duplicate check below.
-            var projectService = GetRequiredService<IProjectService>();
-            var currentProject = projectService.CurrentProject;
-            if (currentProject is not null)
-            {
-                await workspaceService.PackageService.RescanProjectPackagesAsync(currentProject.ProjectFolderPath);
-            }
-
-            var duplicateCheck = CheckForDuplicateProjectPackage(
+            var duplicateCheck = await CheckForDuplicateProjectPackageAsync(
                 workspaceService.PackageService,
                 resourceRegistry,
+                resourceFileSystem,
                 packageName,
                 packageFolder);
             if (duplicateCheck.IsFailure)
@@ -200,9 +190,13 @@ public partial class PackageTools
         return ToolResponse.Success(json);
     }
 
-    private static Result CheckForDuplicateProjectPackage(
+    // Checks against the packages as the project loaded. A same-name copy whose manifest has since been
+    // removed cannot fault the next load, so it does not block the install. A same-name copy added during
+    // the session is not seen, and shows up as a DuplicateName load failure on the next load.
+    private static async Task<Result> CheckForDuplicateProjectPackageAsync(
         IPackageService packageService,
         IResourceRegistry resourceRegistry,
+        IResourceFileSystem resourceFileSystem,
         string packageName,
         ResourceKey packageFolder)
     {
@@ -231,6 +225,12 @@ public partial class PackageTools
                 continue;
             }
 
+            var isManifestPresent = await IsManifestPresentAsync(resourceRegistry, resourceFileSystem, package.Info.PackageFolder);
+            if (!isManifestPresent)
+            {
+                continue;
+            }
+
             var existingLocation = DescribeFolder(resourceRegistry, package.Info.PackageFolder);
             return Result.Fail(
                 $"Package '{packageName}' is already installed in the project at '{existingLocation}'. " +
@@ -254,6 +254,29 @@ public partial class PackageTools
         }
 
         return folderPath;
+    }
+
+    // A manifest counts as present unless the file system reports it missing, so a package folder that cannot
+    // be checked keeps blocking the install.
+    private static async Task<bool> IsManifestPresentAsync(
+        IResourceRegistry resourceRegistry,
+        IResourceFileSystem resourceFileSystem,
+        string packageFolderPath)
+    {
+        var folderKeyResult = resourceRegistry.GetResourceKey(packageFolderPath);
+        if (folderKeyResult.IsFailure)
+        {
+            return true;
+        }
+
+        var manifestResource = folderKeyResult.Value.Combine(PackageConstants.ManifestFileName);
+        var infoResult = await resourceFileSystem.GetInfoAsync(manifestResource);
+        if (infoResult.IsFailure)
+        {
+            return true;
+        }
+
+        return infoResult.Value.Kind != StorageItemKind.NotFound;
     }
 
     private static async Task<int?> TryReadInstalledVersionAsync(

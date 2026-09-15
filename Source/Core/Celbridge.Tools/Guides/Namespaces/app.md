@@ -1,10 +1,11 @@
 # app
 
-The `app` namespace covers application-level concerns that are not tied to a specific resource: querying workspace state, writing to the application log, refreshing the file system view, highlighting UI landmarks for the user, and showing modal alerts. Most workspace tools require a loaded project, so `app_get_state` is typically the first call on a fresh session.
+The `app` namespace covers application-level concerns that are not tied to a specific resource: querying workspace state and the project's packages, writing to the application log, refreshing the file system view, highlighting UI landmarks for the user, and showing modal alerts. Most workspace tools require a loaded project, so `app_get_state` is typically the first call on a fresh session.
 
 ## Must-knows
 
-- **Call `app_get_state` first.** It reports the running app `version`, whether a project is loaded, the feature-flag map (consult before invoking a feature-gated tool such as `webview_eval`), the focused panel, and the layout-mode visibility flags.
+- **Call `app_get_state` first.** It reports the running app `version`, whether a project is loaded and the packages it loaded, the feature-flag map (consult before invoking a feature-gated tool such as `webview_eval`), the focused panel, and the layout-mode visibility flags.
+- **Packages are reported as the project loaded.** `app_list_packages` and the package summary in `app_get_state` do not change during a session, so a package added, removed or edited on disk shows after the project reloads. See `packages_overview`.
 - **Point at the UI rather than describing it.** When the user asks where something is, or you are orienting a new user, `app_spotlight` highlights a named landmark (a panel or button) with a callout; an empty target clears it. The `workspace_panels` guide maps the UI and `app_spotlight` lists the landmark names.
 - **Logging tools write to the application log file.** `app_log`, `app_log_warning`, and `app_log_error` record messages in the application log; they are not shown to the user. Use them for diagnostics worth keeping in the log.
 - **`app_show_alert` is interactive.** It blocks until the user dismisses the dialog. Use it for genuinely modal confirmations, not status updates.
@@ -12,7 +13,10 @@ The `app` namespace covers application-level concerns that are not tied to a spe
 
 ## Tools
 
-- `app_get_state` — workspace state snapshot (app version, build configuration, project load, feature flags, focused panel, layout, registered UI automations).
+- `app_get_state` — workspace state snapshot (app version, build configuration, project load and packages, feature flags, focused panel, active utility, layout, spotlight landmarks).
+- `app_list_packages` — the project's packages as the project loaded, with their package versions, folders and load failures.
+- `app_list_utilities` — list every utility on the Utility Panel rail with its area and whether it is shown.
+- `app_show_utility` — show a utility by id, revealing it where it is or moving it to a workspace area first.
 - `app_log`, `app_log_warning`, `app_log_error` — write a message to the application log at the named severity.
 - `app_refresh_files` — rescan the project's content folder for external changes.
 - `app_show_alert` — show a modal alert dialog and wait for the user to dismiss it.

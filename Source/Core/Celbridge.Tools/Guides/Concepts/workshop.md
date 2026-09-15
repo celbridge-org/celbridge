@@ -2,7 +2,7 @@
 
 The workshop is the server a Celbridge install publishes packages to and installs them from. It is the only part of the package system that leaves the machine: authoring a package, and the manifest that describes one, involve no server and are covered by `packages_overview`. Pages are published to the same workshop under their own manifest and workflow; see `pages_overview`.
 
-**Every tool below needs a Workshop connection.** The user adds one in the Workshop section of Settings, with the workshop's URL and a Workshop Key. Without a connection, each tool fails before contacting the workshop, with a message that says where to add one. Ask the user to add the connection rather than retrying. The rest of the `package` namespace is local to the project tree and works without a connection.
+**Every tool below needs a Workshop connection.** The user adds one in the Workshop section of Settings, with the workshop's URL and a Workshop Key. Without a connection, each tool fails before contacting the workshop, with a message that says where to add one. Ask the user to add the connection rather than retrying.
 
 **The publisher is the Author set once in Workshop settings**, on the Settings page, not a per-package manifest field. `package_publish` fails if no Author is configured.
 

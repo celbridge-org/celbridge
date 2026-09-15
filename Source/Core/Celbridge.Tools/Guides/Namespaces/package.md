@@ -1,19 +1,20 @@
 # package
 
-The `package` namespace covers Celbridge packages — the unit of distributable functionality (a custom document editor, an asset library, a reusable Python module). A package is a folder with a `package.toml` manifest at its root, discovered on project load.
+The `package` namespace holds the workshop tools for Celbridge packages: they publish packages to a workshop and install them from one. A package is a folder with a `package.toml` manifest at its root, discovered on project load. `app_list_packages` reports the project's packages, and `explorer_archive` and `explorer_unarchive` zip and extract folders.
 
 ## Must-knows
 
-- **`package_status` is the installed-package map.** It reports each project package's name, package version, and folder, plus any load failures such as a duplicate-name fault. Use it to decide where to put a package and to diagnose why one is not loading.
-- **Only packages under `project:` load.** A package folder copied to a non-loading root such as `temp:` is inert reference data, useful for comparison and merge workflows.
+- **Every tool here needs a Workshop connection, and package code cannot call them.** The `workshop` guide covers the connection, the Author a publish records, and the confirmation rules.
+- **Only packages under `project:` load.** A package folder installed to a non-loading root such as `temp:` is inert reference data, useful for comparison and merge workflows.
 - **Packages are not Python packages.** Despite some tooling overlap, this namespace is for Celbridge's own package format. Python dependencies are declared per console, in a `.console` file's `[session.python].dependencies` array.
-- **There is no create tool.** A package is a folder with a `package.toml` manifest; scaffold one by writing the manifest with the file tools. See `packages_overview` for the manifest shape.
-- **`package_archive` and `package_unarchive` are general-purpose zip tools.** They are named for this namespace but have nothing to do with the package format, and work on any folder or archive in the project tree.
+- **There is no create tool.** A package is a folder with a `package.toml` manifest. Scaffold one by writing the manifest with the file tools. See `packages_overview` for the manifest shape.
 
 ## Tools
 
-- `package_status` — report the project's installed packages (name, package version, folder) and any load failures.
-- `package_archive` — archive a folder into a zip file.
-- `package_unarchive` — extract a zip archive into a folder.
-
-The workshop tools in this namespace publish packages to a workshop and install them from one: `package_list`, `package_info`, `package_install`, `package_publish`, `package_set_alias`, `package_remove_alias`, `package_delete` and `package_unpublish`. They need a Workshop connection and are refused when package code calls them. The `workshop` guide covers them.
+- `package_list` — list the packages available in the workshop.
+- `package_info` — inspect a package's versions and aliases.
+- `package_install` — download a version or alias into a destination folder.
+- `package_publish` — publish a package folder as a new version.
+- `package_set_alias`, `package_remove_alias` — point an alias at a version, or remove it.
+- `package_delete` — delete one version permanently.
+- `package_unpublish` — remove a package and every version.

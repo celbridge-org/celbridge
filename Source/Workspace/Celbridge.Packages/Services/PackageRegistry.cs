@@ -31,12 +31,12 @@ public class PackageRegistry
     private List<ResolvedEditor> _resolvedEditors = [];
     private List<ResolvedEditor> _builtInEditors = [];
 
-    // The reconciled, normalized config from the most recent discovery pass. RegisterPackagesAsync
-    // persists it. A rescan leaves it unwritten.
+    // The reconciled, normalized config from the discovery pass at project load, which writes it back to
+    // the project file when discovery is clean.
     private ProjectConfig? _normalizedConfig;
 
-    // Failures from the most recent discovery pass, retained so package_status
-    // can report them after load (the error banner only fires once).
+    // Failures from the discovery pass at project load, retained so app_list_packages and app_get_state can
+    // report them for the rest of the session.
     private IReadOnlyList<PackageLoadFailure> _lastFailures = Array.Empty<PackageLoadFailure>();
     private IReadOnlyList<ContributionIssue> _lastContributionIssues = Array.Empty<ContributionIssue>();
 
@@ -68,7 +68,7 @@ public class PackageRegistry
         _bundledReader = new DirectPackageReader(fileSystem);
     }
 
-    public async Task<PackageDiscoveryReport> DiscoverPackagesAsync(string projectFolderPath, bool persistNormalizedConfig)
+    public async Task<PackageDiscoveryReport> DiscoverPackagesAsync(string projectFolderPath)
     {
         _bundledPackages.Clear();
         _projectPackages.Clear();
@@ -85,7 +85,8 @@ public class PackageRegistry
 
         var resolvedEditorFailures = new List<ResolvedEditorLoadFailure>();
         var resolvedEditorWarnings = new List<ResolvedEditorLoadFailure>();
-        await ResolveResolvedEditorsAsync(persistNormalizedConfig && failures.Count == 0, resolvedEditorFailures, resolvedEditorWarnings);
+        var persistNormalizedConfig = failures.Count == 0;
+        await ResolveResolvedEditorsAsync(persistNormalizedConfig, resolvedEditorFailures, resolvedEditorWarnings);
         ResolveBuiltInEditors();
 
         var contributionIssues = new List<ContributionIssue>();
@@ -718,6 +719,7 @@ public class PackageRegistry
                 failures.Add(new PackageLoadFailure
                 {
                     Folder = descriptor.Folder,
+                    Origin = PackageOrigin.Bundled,
                     PackageName = null,
                     Reason = PackageLoadFailureReason.InvalidManifest,
                     Detail = $"The package manifest file is missing: {manifestPath}"
@@ -738,6 +740,7 @@ public class PackageRegistry
                 failures.Add(new PackageLoadFailure
                 {
                     Folder = descriptor.Folder,
+                    Origin = PackageOrigin.Bundled,
                     PackageName = null,
                     Reason = PackageLoadFailureReason.InvalidManifest,
                     Detail = loadResult.FirstErrorMessage
@@ -755,6 +758,7 @@ public class PackageRegistry
                 failures.Add(new PackageLoadFailure
                 {
                     Folder = descriptor.Folder,
+                    Origin = PackageOrigin.Bundled,
                     PackageName = package.Info.Name,
                     Reason = PackageLoadFailureReason.ReservedExtension,
                     Detail = reservedExtensionCheck.FirstErrorMessage
@@ -779,6 +783,7 @@ public class PackageRegistry
                     failures.Add(new PackageLoadFailure
                     {
                         Folder = member.Info.PackageFolder,
+                        Origin = PackageOrigin.Bundled,
                         PackageName = group.Key,
                         Reason = PackageLoadFailureReason.DuplicateName
                     });
@@ -836,6 +841,7 @@ public class PackageRegistry
                 failures.Add(new PackageLoadFailure
                 {
                     Folder = packageFolder,
+                    Origin = PackageOrigin.Project,
                     PackageName = null,
                     Reason = PackageLoadFailureReason.InvalidManifest,
                     Detail = loadResult.FirstErrorMessage
@@ -853,6 +859,7 @@ public class PackageRegistry
                 failures.Add(new PackageLoadFailure
                 {
                     Folder = packageFolder,
+                    Origin = PackageOrigin.Project,
                     PackageName = package.Info.Name,
                     Reason = PackageLoadFailureReason.ReservedExtension,
                     Detail = reservedExtensionCheck.FirstErrorMessage
@@ -871,6 +878,7 @@ public class PackageRegistry
                 failures.Add(new PackageLoadFailure
                 {
                     Folder = packageFolder,
+                    Origin = PackageOrigin.Project,
                     PackageName = package.Info.Name,
                     Reason = PackageLoadFailureReason.ReservedNamePrefix
                 });
@@ -885,6 +893,7 @@ public class PackageRegistry
                 failures.Add(new PackageLoadFailure
                 {
                     Folder = packageFolder,
+                    Origin = PackageOrigin.Project,
                     PackageName = package.Info.Name,
                     Reason = PackageLoadFailureReason.DuplicateName
                 });
@@ -909,6 +918,7 @@ public class PackageRegistry
                     failures.Add(new PackageLoadFailure
                     {
                         Folder = member.Info.PackageFolder,
+                        Origin = PackageOrigin.Project,
                         PackageName = group.Key,
                         Reason = PackageLoadFailureReason.DuplicateName
                     });

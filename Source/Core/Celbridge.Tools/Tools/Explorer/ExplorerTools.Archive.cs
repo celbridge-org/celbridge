@@ -5,16 +5,16 @@ using ModelContextProtocol.Server;
 namespace Celbridge.Tools;
 
 /// <summary>
-/// Result returned by package_archive with the archive summary.
+/// Result returned by explorer_archive with the archive summary.
 /// </summary>
-public record class PackageArchiveResult(int Entries, long Size, string Archive);
+public record class ExplorerArchiveResult(int Entries, long Size, string Archive);
 
-public partial class PackageTools
+public partial class ExplorerTools
 {
     /// <summary>Zip a file or folder into a project-tree archive (folder contents at archive root).</summary>
-    [McpServerTool(Name = "package_archive")]
-    [ToolAlias("package.archive")]
-    [RelatedGuides("resource_keys", "packages_overview")]
+    [McpServerTool(Name = "explorer_archive")]
+    [ToolAlias("explorer.archive")]
+    [RelatedGuides("resource_keys")]
     public async partial Task<CallToolResult> Archive(
         string resource,
         string archive,
@@ -47,7 +47,7 @@ public partial class PackageTools
         }
 
         var archiveResult = archiveResultWrapper.Value;
-        var result = new PackageArchiveResult(archiveResult.Entries, archiveResult.Size, archiveResult.Archive);
+        var result = new ExplorerArchiveResult(archiveResult.Entries, archiveResult.Size, archiveResult.Archive);
         var json = JsonSerializer.Serialize(result, JsonOptions);
         return ToolResponse.Success(json);
     }

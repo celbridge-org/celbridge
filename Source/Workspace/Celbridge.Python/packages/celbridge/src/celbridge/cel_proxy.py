@@ -134,7 +134,7 @@ class CelProxy:
         "explorer": "File and folder operations in the project tree",
         "file": "Read files, search, and query project structure",
         "guides": "Browse and search the agent guide library",
-        "package": "Archive, publish, and install packages",
+        "package": "Publish and install workshop packages",
         "spreadsheet": "Read, modify, and format .xlsx workbooks",
         "webview": "Devtools-style automation of HTML and contribution editors",
     }

@@ -1,6 +1,6 @@
-# package_unarchive
+# explorer_unarchive
 
-Extracts a zip archive that lives somewhere under the project content root into a destination folder. The general-purpose counterpart to `package_archive`.
+Extracts a zip archive that lives somewhere under the project content root into a destination folder. The counterpart to `explorer_archive`.
 
 ## Parameters
 

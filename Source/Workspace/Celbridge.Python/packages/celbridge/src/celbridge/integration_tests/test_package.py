@@ -20,19 +20,9 @@ author = "Celbridge Integration Tests"
 
 
 @pytest.fixture(autouse=True)
-def workspace(explorer, file):
-    delete_if_exists(explorer, "TestPackage")
-    delete_if_exists(explorer, "TestPackageExtract")
-    delete_if_exists(explorer, "test_archive.zip")
-    delete_if_exists(explorer, "test_archive_filtered.zip")
+def workspace(explorer):
     delete_if_exists(explorer, INTEGRATION_PACKAGE_FOLDER)
-    explorer.create_folder("TestPackage")
-    file.write("TestPackage/file.txt", "archive content\n")
     yield
-    delete_if_exists(explorer, "TestPackage")
-    delete_if_exists(explorer, "TestPackageExtract")
-    delete_if_exists(explorer, "test_archive.zip")
-    delete_if_exists(explorer, "test_archive_filtered.zip")
     delete_if_exists(explorer, INTEGRATION_PACKAGE_FOLDER)
 
 
@@ -53,28 +43,6 @@ def _drop_integration_package_if_published(app, package):
 
 
 class TestPackage:
-
-    def test_archive(self, package):
-        result = package.archive("TestPackage", "test_archive.zip", overwrite=True)
-        assert result["entries"] > 0
-        assert result["size"] > 0
-
-    def test_archive_filtered(self, package):
-        result = package.archive(
-            "TestPackage",
-            "test_archive_filtered.zip",
-            include="*.txt",
-            overwrite=True,
-        )
-        assert result["entries"] >= 1
-
-    def test_unarchive(self, package, explorer):
-        package.archive("TestPackage", "test_archive.zip", overwrite=True)
-        explorer.create_folder("TestPackageExtract")
-        result = package.unarchive(
-            "test_archive.zip", "TestPackageExtract", overwrite=True
-        )
-        assert result["entries"] > 0
 
     def test_list(self, package):
         result = package.list()
@@ -120,18 +88,6 @@ class TestPackage:
             # Whether the body succeeded, raised, or the delete failed, we
             # must leave the workshop clean so the next run can publish again.
             _drop_integration_package_if_published(app, package)
-
-    def test_archive_invalid_source(self, package):
-        with pytest.raises(CelError):
-            package.archive("\\invalid", "test_archive.zip")
-
-    def test_archive_invalid_destination(self, package):
-        with pytest.raises(CelError):
-            package.archive("TestPackage", "\\invalid")
-
-    def test_unarchive_invalid_archive(self, package):
-        with pytest.raises(CelError):
-            package.unarchive("\\invalid", "TestPackageExtract")
 
     def test_install_nonexistent_package(self, package):
         with pytest.raises(CelError):

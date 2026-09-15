@@ -20,6 +20,11 @@ The `explorer` namespace operates on the resource tree: it creates, renames, mov
 - `explorer_duplicate` — silent duplicate with auto-generated name (interactive dialog available via `showDialog: true`).
 - `explorer_delete` — delete a resource. Sends to the system trash where supported.
 
+**Archives.**
+
+- `explorer_archive` — zip a file or folder into an archive, with optional include and exclude patterns.
+- `explorer_unarchive` — extract a zip archive into a folder.
+
 **Selection and tree state.**
 
 - `explorer_select` — focus a resource in the tree (auto-expands ancestors).

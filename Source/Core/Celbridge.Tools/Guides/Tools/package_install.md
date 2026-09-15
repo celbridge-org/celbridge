@@ -35,7 +35,7 @@ Installing over an existing package folder completely replaces its contents — 
 
 ## Gotchas
 
-- Installing into `project:` fails before downloading if another manifest already claims the same package name at a *different* path — move, rename, or remove it first, or reinstall over the existing folder to replace it. Use `package_status` to see what is installed where. Copies under non-loading roots (e.g. `temp:`) are exempt because they never load.
+- Installing into `project:` fails before downloading if a package the project loaded claims the same name at a *different* path and its manifest is still there — move, rename, or remove it first, or reinstall over the existing folder to replace it. Use `app_list_packages` to see what is installed where. The check reads the packages as the project loaded, so a same-name copy added during the session is not caught, and shows up as a `DuplicateName` load failure on the next load. Copies under non-loading roots (e.g. `temp:`) are exempt because they never load.
 - The downloaded zip is staged briefly under `temp:` and removed after extraction, even if the extract fails partway.
 - A package whose versions have all been deleted has no live version, so `latest` cannot resolve and the install fails.
 - `HISTORY.md` is generated metadata, not package content; `package_publish` never uploads it.

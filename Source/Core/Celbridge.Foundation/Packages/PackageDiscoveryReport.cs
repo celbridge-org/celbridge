@@ -40,6 +40,11 @@ public sealed record PackageLoadFailure
     public PackageLoadFailureReason Reason { get; init; }
 
     /// <summary>
+    /// Whether the manifest that failed belongs to a bundled package or lies in the project tree.
+    /// </summary>
+    public required PackageOrigin Origin { get; init; }
+
+    /// <summary>
     /// Optional error detail explaining the failure, carried so diagnostic
     /// surfaces can show the cause without consulting the application log.
     /// Null when the reason alone describes the failure.
