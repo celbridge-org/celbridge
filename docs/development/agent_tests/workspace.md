@@ -21,13 +21,22 @@ menu, the document tab strip and its context menu, and the project settings form
 | A locked resource open as a document | paste, cut | refused, and the document is unchanged on disk | 2 |
 | A dialog's text field, caret mid-text | the platform's end-of-line and start-of-line chords | the caret moves to each end of the field's text | 2 |
 | A document focused, then the Edit menu opened | list the items and their enabled state, then reach each offered verb by its shortcut on the same document | the two agree: an offered verb works, and one that is greyed out does nothing by shortcut either | 2 |
-| A document tab's context menu, just used to split the area | press SPACE | the document stays open and the split remains | 2 |
+| A document tab's context menu, just used to split the area | press SPACE | no item of the dismissed menu runs: the document stays open, the split remains, and the tab has not moved again | 2 |
 | A dialog open | inspect the Edit menu | the verbs are not offered to the surface behind the dialog | 3 |
 | A dialog open | shortcuts for close and find | they do not act on the document behind it | 3 |
 | Focus on a toolbar or other chrome | copy | the verb still reaches the surface the user was last editing | 3 |
-| Any other context menu or toolbar flyout, just used to choose an item | press SPACE | nothing the dismissed menu offers runs | 3 |
+| The Explorer's context menu, just used to copy a path | press SPACE | no item of the dismissed menu runs: no document opens and the tree is unchanged | 3 |
 
 ## Not covered
 
 What the commands themselves do — creating, renaming and deleting resources, or the results of a search.
 The subject here is which surface a keystroke reaches.
+
+A menu nested inside another, such as the submenu a sub-item opens, is not covered: it is not a flyout and
+the host cannot tell when one closes.
+
+## Platform
+
+The rows about a dismissed menu keeping the keyboard apply to the macOS head. The keyboard is handed back
+only where a hosted web view takes native focus of its own, so on the other heads the same sequence is
+expected to leave focus where the toolkit put it.

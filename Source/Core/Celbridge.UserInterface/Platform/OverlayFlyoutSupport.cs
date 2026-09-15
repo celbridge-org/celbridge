@@ -1,3 +1,4 @@
+using Celbridge.Messaging;
 using Celbridge.UserInterface.Services;
 using Celbridge.WebHost;
 
@@ -7,9 +8,14 @@ internal sealed class OverlayFlyoutSupport : IOverlayFlyoutSupport
 {
     private readonly IFocusReconciler _focusReconciler;
 
-    public OverlayFlyoutSupport(IFocusReconciler focusReconciler)
+    private bool _isHostWindowActive = true;
+
+    public OverlayFlyoutSupport(IFocusReconciler focusReconciler, IMessengerService messengerService)
     {
         _focusReconciler = focusReconciler;
+
+        messengerService.Register<MainWindowActivatedMessage>(this, (_, _) => _isHostWindowActive = true);
+        messengerService.Register<MainWindowDeactivatedMessage>(this, (_, _) => _isHostWindowActive = false);
     }
 
     public void Apply(FlyoutBase flyout)
@@ -31,9 +37,28 @@ internal sealed class OverlayFlyoutSupport : IOverlayFlyoutSupport
             suppressionScope?.Dispose();
             suppressionScope = null;
 
+            // Uno raises Closed only for the outermost open flyout, so a flyout dismissed underneath
+            // another never disposes its own scope. Nothing overlays the web views once the popups are all
+            // gone, which is the moment any scope left behind can be dropped.
+            if (flyout.XamlRoot is not null
+                && VisualTreeHelper.GetOpenPopupsForXamlRoot(flyout.XamlRoot).Count == 0)
+            {
+                MacOSWebViewInputSuppressor.ReleaseAll();
+            }
+
+            // A flyout light-dismissed by a click into another application closes with the keyboard
+            // already elsewhere, and driving focus then takes the caret the user left behind.
+            if (!_isHostWindowActive)
+            {
+                return;
+            }
+
             // Uno leaves managed focus on the flyout item it has already taken out of the visual tree, so
-            // the keys typed next reach a dismissed menu.
-            _focusReconciler.Reconcile();
+            // the keys typed next reach a dismissed menu. Queued below Uno's own focus work, which reports
+            // the accompanying focus change after the resign that precedes it.
+            flyout.DispatcherQueue?.TryEnqueue(
+                Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
+                () => _focusReconciler.Reconcile());
         };
     }
 }

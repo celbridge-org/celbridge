@@ -4,27 +4,6 @@ using Celbridge.Workspace;
 namespace Celbridge.UserInterface;
 
 /// <summary>
-/// Where a focused element sits relative to the window's content.
-/// </summary>
-public enum FocusHost
-{
-    /// <summary>
-    /// The window's main content.
-    /// </summary>
-    MainContent,
-
-    /// <summary>
-    /// An open popup: a flyout, a context menu or a content dialog.
-    /// </summary>
-    Popup,
-
-    /// <summary>
-    /// Outside the window's tree entirely, on an element the user can no longer see or reach.
-    /// </summary>
-    Detached
-}
-
-/// <summary>
 /// Attached properties that declare which workspace panel a UI subtree belongs to. The central focus
 /// tracker classifies a focused element by its nearest ancestor carrying FocusTracking.Panel, so panel
 /// roots declare the property once instead of reporting focus themselves.
@@ -88,40 +67,37 @@ public static class FocusTracking
     /// <summary>
     /// Where the element sits relative to the window's content.
     /// </summary>
-    public static FocusHost GetFocusHost(UIElement element)
+    public static FocusLocation GetFocusLocation(UIElement element)
     {
-        var mainContentRoot = element.XamlRoot?.Content;
+        var xamlRoot = element.XamlRoot;
+        var mainContentRoot = xamlRoot?.Content;
         if (mainContentRoot is null)
         {
-            return FocusHost.Detached;
+            return FocusLocation.Detached;
         }
 
-        DependencyObject? topmost = null;
+        // A popup hosts its content in a tree of its own, so the walk below misses the window content.
+        // The popups are asked which content is theirs rather than inferring it from the shape of that
+        // tree, so that focus a dismissed popup left behind reads as reaching neither.
+        var openPopups = VisualTreeHelper.GetOpenPopupsForXamlRoot(xamlRoot);
+
         foreach (var ancestor in VisualTree.GetAncestors(element, includeSelf: true))
         {
             if (ReferenceEquals(ancestor, mainContentRoot))
             {
-                return FocusHost.MainContent;
+                return FocusLocation.MainContent;
             }
 
-            topmost = ancestor;
+            foreach (var openPopup in openPopups)
+            {
+                if (ReferenceEquals(ancestor, openPopup.Child))
+                {
+                    return FocusLocation.Popup;
+                }
+            }
         }
 
-        // A popup hosts its content in a tree of its own, which still hangs from the window's visual root.
-        return ReferenceEquals(topmost, GetVisualRoot(mainContentRoot))
-            ? FocusHost.Popup
-            : FocusHost.Detached;
-    }
-
-    private static DependencyObject? GetVisualRoot(UIElement mainContentRoot)
-    {
-        DependencyObject? visualRoot = null;
-        foreach (var ancestor in VisualTree.GetAncestors(mainContentRoot, includeSelf: true))
-        {
-            visualRoot = ancestor;
-        }
-
-        return visualRoot;
+        return FocusLocation.Detached;
     }
 
     /// <summary>

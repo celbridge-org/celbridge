@@ -20,16 +20,10 @@ public enum CaretMotion
 public interface IManagedFocus
 {
     /// <summary>
-    /// True while managed keyboard focus rests inside an open popup: a flyout, a context menu or a content
-    /// dialog. Answered from the focused element each time it is asked, so it cannot go stale.
+    /// Where managed keyboard focus currently rests. Answered from the focused element each time it is
+    /// asked, so it cannot go stale, and reads as the main content while nothing holds focus.
     /// </summary>
-    bool IsPopupHoldingFocus { get; }
-
-    /// <summary>
-    /// True while managed keyboard focus rests on an element that has left the visual tree, which the
-    /// keys still reach.
-    /// </summary>
-    bool IsFocusStranded { get; }
+    FocusLocation FocusLocation { get; }
 
     /// <summary>
     /// Performs undo or redo on the text editing control that holds managed keyboard focus. Returns true when

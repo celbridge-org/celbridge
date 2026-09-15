@@ -27,9 +27,18 @@ public class ManagedFocus : IManagedFocus
         _logger = logger;
     }
 
-    public bool IsPopupHoldingFocus => GetFocusHost() == FocusHost.Popup;
+    public FocusLocation FocusLocation
+    {
+        get
+        {
+            var focusedElement = GetFocusedElement();
 
-    public bool IsFocusStranded => GetFocusHost() == FocusHost.Detached;
+            // Nothing focused is nothing stranded, so it reads as the main content.
+            return focusedElement is null
+                ? FocusLocation.MainContent
+                : FocusTracking.GetFocusLocation(focusedElement);
+        }
+    }
 
     public bool TryPerformTextEditing(EditIntent intent)
     {
@@ -155,16 +164,6 @@ public class ManagedFocus : IManagedFocus
             _reportedFocusFailure = true;
             _logger.LogWarning("Managed focus could not be yielded, so keys may still reach the previously focused control");
         }
-    }
-
-    private FocusHost GetFocusHost()
-    {
-        var focusedElement = GetFocusedElement();
-
-        // Nothing focused is nothing stranded, so it reads as the main content.
-        return focusedElement is null
-            ? FocusHost.MainContent
-            : FocusTracking.GetFocusHost(focusedElement);
     }
 
     private UIElement? GetFocusedElement()
