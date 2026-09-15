@@ -12,6 +12,10 @@
          instead of the ILocalFileSystem gateway. Opts the project out of the analyzer that forbids that. -->
     <IsBuildTimeTool>true</IsBuildTimeTool>
 
+    <!-- The tool runs as `dotnet <dll>`, so the native apphost is never used. Suppressing it keeps an
+         unsigned Mach-O executable out of the app bundle, which notarization rejects. -->
+    <UseAppHost>false</UseAppHost>
+
     <TokenSourcePath>$(MSBuildThisFileDirectory)DesignTokens.json</TokenSourcePath>
     <GeneratedXamlPath>$(MSBuildThisFileDirectory)..\Celbridge.UserInterface\Resources\ColorTokens.xaml</GeneratedXamlPath>
     <GeneratedCssPath>$(MSBuildThisFileDirectory)..\Celbridge.WebHost\Web\celbridge-client\celbridge-tokens.css</GeneratedCssPath>
