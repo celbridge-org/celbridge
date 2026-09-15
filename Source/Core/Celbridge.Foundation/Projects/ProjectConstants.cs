@@ -11,10 +11,10 @@ public static class ProjectConstants
     public const string ProjectFileExtension = ".celbridge";
 
     /// <summary>
-    /// Oldest project version this build can open. A project below this version is rejected rather
-    /// than upgraded, because no migration steps span the gap to it.
+    /// Oldest Celbridge version whose projects this build can open. A project whose celbridge-version is
+    /// below it is rejected rather than upgraded, because no migration steps span the gap to it.
     /// </summary>
-    public const string MinimumSupportedProjectVersion = "0.3.0";
+    public const string MinimumSupportedCelbridgeVersion = "0.3.0";
 
     /// <summary>
     /// File containing the workspace settings data.

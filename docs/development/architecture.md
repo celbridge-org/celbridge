@@ -42,6 +42,14 @@ All native interop and operating-system branching is contained in `Platform/` fo
 - **App bootstrap / composition root.** `App.xaml.cs` is the one file outside `Platform/` that still uses `#if WINDOWS` — for the pre-DI log-folder path, the window-icon resizetizer workaround, and WinAppSDK file-activation. It runs before DI exists and is the natural composition root, so these stay inline (the same bootstrap exception the filesystem analyzer allows).
 - **Tests** may assert platform-divergent behaviour directly; the convention governs production code.
 
+## Versions
+
+Every version is `MAJOR.MINOR.PATCH`: exactly three dot-separated non-negative integers without leading zeros. There is no `v` prefix, no pre-release or build suffix, and no four-part form. `SemanticVersion` in `Celbridge.Foundation/Core` is the one place the rule lives, so code parses, compares and formats a version through it rather than through `System.Version` or string handling of its own.
+
+- **Each version has one name.** The application version is the running build's, reported by `IAppEnvironment`. The Celbridge version is `celbridge-version` in a `.celbridge` file, the version of Celbridge that last opened the project. The project version is `project-version`, the project's own version for the user's tracking. Code, reports and settings use these names, and never call one version by another's name.
+- **An optional version defaults to `1.0.0`.** `project-version` is optional, and a missing or empty value is `SemanticVersion.Default`. Read an optional version through `SemanticVersion.ParseOptional`, and report a malformed value the way its file reports other errors: a malformed `project-version` is a configuration entry error, the key is ignored, and the project still loads. Templates do not write an optional version, so a project sets one only to use another value.
+- **`celbridge-version` is required.** It shares the format but not the default, because migration reads it to know what a project file contains. A missing, empty or malformed value, a four-part one included, is an invalid version, and migration asks the user to correct the file rather than open the project as current. The `<application-version>` placeholder the templates write is its one special value: `ProjectTemplateService` replaces it when it creates a project, and a file that keeps it literally counts as current.
+
 ## Feature flags
 
 A feature flag switches a capability on or off per project. Flags are declared in `FeatureFlagConstants` and read through `IFeatureFlags`. Users meet them in the Features section of Project Settings, grouped by area under titles written for users, while code, project files and agents use the flag names. `app_get_state` reports each declared flag's resolved value to agents without further wiring.

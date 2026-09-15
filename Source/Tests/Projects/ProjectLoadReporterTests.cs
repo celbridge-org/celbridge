@@ -120,7 +120,7 @@ public class ProjectLoadReporterTests
 
         var facts = GetSectionFacts(report, "Summary");
         facts["Resources"].Should().Be("412 files in 37 folders");
-        facts["Project version"].Should().Be("0.2.7");
+        facts["Celbridge version"].Should().Be("0.2.7");
         facts["Application version"].Should().Be("1.0.0");
         facts["Migration status"].Should().Be("Complete");
         facts["Outcome"].Should().Be("Loaded");

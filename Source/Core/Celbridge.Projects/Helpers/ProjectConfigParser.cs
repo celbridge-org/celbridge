@@ -357,12 +357,30 @@ public static class ProjectConfigParser
         return new CelbridgeSection
         {
             CelbridgeVersion = ReadString(celbridgeTable, CelbridgeVersionKey),
-            ProjectVersion = ReadString(celbridgeTable, ProjectVersionKey),
+            ProjectVersion = ReadProjectVersion(celbridgeTable, entryErrors),
             Description = ReadString(celbridgeTable, DescriptionKey),
             DataFolder = ReadDataFolder(celbridgeTable, entryErrors),
             DisabledPackages = disabledPackages,
             EditorAssociations = editorAssociations
         };
+    }
+
+    // A malformed version is reported and dropped, which leaves the project at the default version.
+    private static string? ReadProjectVersion(TomlTable celbridgeTable, List<ProjectConfigEntryError> entryErrors)
+    {
+        var projectVersion = ReadString(celbridgeTable, ProjectVersionKey);
+
+        var parseResult = SemanticVersion.ParseOptional(projectVersion);
+        if (parseResult.IsFailure)
+        {
+            entryErrors.Add(new ProjectConfigEntryError(
+                CelbridgeSectionName,
+                $"'{ProjectVersionKey}': {parseResult.FirstErrorMessage} The key was ignored."));
+
+            return null;
+        }
+
+        return projectVersion;
     }
 
     // An unusable name is dropped rather than applied, leaving project data where it already sits. The

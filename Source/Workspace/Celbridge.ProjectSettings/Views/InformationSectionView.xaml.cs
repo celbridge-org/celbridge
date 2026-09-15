@@ -22,10 +22,11 @@ public sealed partial class InformationSectionView : UserControl
         }
     }
 
-    public string SchemaVersionLabel => _stringLocalizer.GetString("ProjectSettings_SchemaVersionLabel");
-    public string SchemaVersionTooltip => _stringLocalizer.GetString("ProjectSettings_SchemaVersionTooltip");
+    public string CelbridgeVersionLabel => _stringLocalizer.GetString("ProjectSettings_CelbridgeVersionLabel");
+    public string CelbridgeVersionTooltip => _stringLocalizer.GetString("ProjectSettings_CelbridgeVersionTooltip");
     public string ProjectVersionLabel => _stringLocalizer.GetString("ProjectSettings_ProjectVersionLabel");
     public string ProjectVersionTooltip => _stringLocalizer.GetString("ProjectSettings_ProjectVersionTooltip");
+    public string InvalidProjectVersionText => _stringLocalizer.GetString("ProjectSettings_InvalidProjectVersion");
     public string DescriptionLabel => _stringLocalizer.GetString("ProjectSettings_DescriptionLabel");
     public string DescriptionTooltip => _stringLocalizer.GetString("ProjectSettings_DescriptionTooltip");
 

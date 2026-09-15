@@ -78,6 +78,59 @@ public class ProjectConfigParserTests
     }
 
     [Test]
+    public void ParseFromText_ProjectVersion_IsRead()
+    {
+        var content = """
+            [celbridge]
+            project-version = "2.1.0"
+            """;
+
+        var result = ProjectConfigParser.ParseFromText(content);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Celbridge.ProjectVersion.Should().Be("2.1.0");
+        result.Value.EntryErrors.Should().BeEmpty();
+    }
+
+    [Test]
+    public void ParseFromText_NoProjectVersion_IsNotAnError()
+    {
+        // The key is optional, and a project that sets none has the default version.
+        var content = """
+            [celbridge]
+            celbridge-version = "1.0.0"
+            """;
+
+        var result = ProjectConfigParser.ParseFromText(content);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Celbridge.ProjectVersion.Should().BeNull();
+        result.Value.EntryErrors.Should().BeEmpty();
+    }
+
+    [Test]
+    public void ParseFromText_MalformedProjectVersion_IsIgnoredWithAnEntryError()
+    {
+        // A malformed version does not stop the project loading. The key is reported and ignored, and the rest
+        // of the file still applies.
+        var content = """
+            [celbridge]
+            project-version = "1.2"
+            description = "A project for testing."
+            """;
+
+        var result = ProjectConfigParser.ParseFromText(content);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Celbridge.ProjectVersion.Should().BeNull();
+        result.Value.Celbridge.Description.Should().Be("A project for testing.");
+        result.Value.EntryErrors.Should().ContainSingle();
+        result.Value.EntryErrors[0].EntryName.Should().Be("celbridge");
+        result.Value.EntryErrors[0].Message.Should().Be(
+            "'project-version': '1.2' is not a three-part version such as 1.0.0. The key was ignored.");
+    }
+
+    [Test]
     public void ParseFromFile_ValidV2Config_ParsesAllSections()
     {
         var content = """

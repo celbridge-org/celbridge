@@ -1065,7 +1065,7 @@ Open with default application instead?</value>
   <data name="ProjectSettings_FeatureFlag_NoteEditor_Description" xml:space="preserve">
     <value>An experimental editor for .note files, which may be removed in a later release.</value>
   </data>
-  <data name="ProjectSettings_SchemaVersionLabel" xml:space="preserve">
+  <data name="ProjectSettings_CelbridgeVersionLabel" xml:space="preserve">
     <value>Celbridge version</value>
   </data>
   <data name="ProjectSettings_ProjectVersionLabel" xml:space="preserve">
@@ -1146,11 +1146,14 @@ Open with default application instead?</value>
   <data name="ProjectSettings_ContributionType_Utility" xml:space="preserve">
     <value>Utility</value>
   </data>
-  <data name="ProjectSettings_SchemaVersionTooltip" xml:space="preserve">
+  <data name="ProjectSettings_CelbridgeVersionTooltip" xml:space="preserve">
     <value>The version of Celbridge that last opened this project. Updated automatically.</value>
   </data>
   <data name="ProjectSettings_ProjectVersionTooltip" xml:space="preserve">
     <value>A version number you can set to track your project, for your own use.</value>
+  </data>
+  <data name="ProjectSettings_InvalidProjectVersion" xml:space="preserve">
+    <value>This is not a three-part version such as 1.0.0, so it is not saved.</value>
   </data>
   <data name="ProjectSettings_StringListPlaceholder" xml:space="preserve">
     <value>One value per line</value>
@@ -1844,8 +1847,8 @@ Open with default application instead?</value>
   <data name="Report_ProjectLoad_Fact_EditorsResolved" xml:space="preserve">
     <value>Editors resolved</value>
   </data>
-  <data name="Report_ProjectLoad_Fact_ProjectVersion" xml:space="preserve">
-    <value>Project version</value>
+  <data name="Report_ProjectLoad_Fact_CelbridgeVersion" xml:space="preserve">
+    <value>Celbridge version</value>
   </data>
   <data name="Report_ProjectLoad_Fact_ApplicationVersion" xml:space="preserve">
     <value>Application version</value>

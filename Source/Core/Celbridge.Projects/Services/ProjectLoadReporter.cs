@@ -227,7 +227,7 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
         {
             if (!string.IsNullOrEmpty(migrationResult.OldVersion))
             {
-                items.Add(CreateFact("Report_ProjectLoad_Fact_ProjectVersion", migrationResult.OldVersion));
+                items.Add(CreateFact("Report_ProjectLoad_Fact_CelbridgeVersion", migrationResult.OldVersion));
             }
             if (!string.IsNullOrEmpty(migrationResult.NewVersion))
             {
