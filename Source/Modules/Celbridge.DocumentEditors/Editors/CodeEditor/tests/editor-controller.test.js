@@ -20,13 +20,7 @@ function createMockModel() {
 }
 
 function createMockEditor(model) {
-    // Monaco types through a textarea inside this node, which is what tells the editor's own input from
-    // one of the page's other text controls.
-    const domNode = document.createElement('div');
-    document.body.appendChild(domNode);
-
     return {
-        getDomNode: vi.fn(() => domNode),
         getModel: vi.fn(() => model),
         setValue: vi.fn(),
         getValue: vi.fn(() => ''),
@@ -301,22 +295,27 @@ describe('EditorController edit availability', () => {
         findInput.remove();
     });
 
-    it('keeps its claim while its own input holds the keyboard, so a click on the chrome still copies', () => {
-        // The page goes on naming Monaco's textarea once the window's keyboard moves to the application's
-        // chrome, and the selection the user made is still there to copy.
+    it('keeps its claim once the page has lost the keyboard, so a click on the chrome still copies', () => {
+        // The page goes on naming the text control it last focused after the keyboard moves to the
+        // application's chrome, and the selection the user made is still there to copy.
         editor.hasTextFocus.mockReturnValue(false);
         editor.getSelection.mockReturnValue({ isEmpty: () => false });
-        const editorInput = document.createElement('textarea');
-        editor.getDomNode().appendChild(editorInput);
+        const findInput = document.createElement('input');
+        document.body.appendChild(findInput);
+        findInput.focus();
 
-        editorInput.focus();
+        // The keyboard leaves the page for the application's chrome, which the page hears as a focus
+        // change with its own last-focused element still named.
+        const hasFocus = vi.spyOn(document, 'hasFocus').mockReturnValue(false);
+        document.dispatchEvent(new Event('focusin'));
 
         expect(reportedAvailability()).toMatchObject({
             canCopy: true,
             hostMediatedClipboard: true
         });
 
-        editorInput.remove();
+        hasFocus.mockRestore();
+        findInput.remove();
     });
 
     it('keeps its claim while a button holds the keyboard, so the menu still copies a selection', () => {
