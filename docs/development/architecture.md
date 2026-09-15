@@ -2,7 +2,7 @@
 
 ## Solution layout
 
-- `Source/Core/` — application-level services and infrastructure. `Celbridge.Foundation` holds the abstractions everything else is written against, `Celbridge.Utilities` the shared concrete helpers; the other Core projects cover commands, logging, messaging, settings, projects, the filesystem gateway, the loopback web host and MCP server, and the shared XAML UI layer
+- `Source/Core/` — application-level services and infrastructure. `Celbridge.Foundation` holds the abstractions everything else is written against, `Celbridge.Utilities` the shared concrete helpers, and `Celbridge.Workshop` the clients for the experimental workshop server. The other Core projects cover commands, logging, messaging, settings, projects, the filesystem gateway, the loopback web host and MCP server, and the shared XAML UI layer
 - `Source/Workspace/` — services and panels that exist only while a project is open (documents, explorer, console, search, Python, the workspace shell)
 - `Source/Modules/` — the WebView-hosted document editors and their web assets
 - `Source/Celbridge/` — the application head, plus `Source/Tests/` (the single .NET test project) and `Source/Templates/` (the project templates bundled into the app)

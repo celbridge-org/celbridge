@@ -106,6 +106,7 @@
     <ProjectReference Include="..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
     <ProjectReference Include="..\Core\Celbridge.Utilities\Celbridge.Utilities.csproj" />
     <ProjectReference Include="..\Core\Celbridge.WebHost\Celbridge.WebHost.csproj" />
+    <ProjectReference Include="..\Core\Celbridge.Workshop\Celbridge.Workshop.csproj" />
     <ProjectReference Include="..\Workspace\Celbridge.Workspace\Celbridge.Workspace.csproj" />
   </ItemGroup>
 

@@ -12,7 +12,7 @@ The resource key of the file or folder.
 
 When `true` and the resource is a file, reads the bytes once and returns a lowercase-hex SHA-256 in the result's `hash` field. When `false` (or for folders), `hash` is `null` and no bytes are read. The default is `false` because hashing a large file is expensive — opt in only when you actually need to compare content (e.g. walking two trees during a three-way merge and identifying which files differ without reading each one).
 
-The hash format matches the rest of the codebase (`RemotePackageVersion.contentHash`, `HISTORY.md`'s short fingerprint): compare two `hash` strings with ordinary equality.
+The hash format matches the rest of the codebase (`RemoteWorkshopVersion.contentHash`, `HISTORY.md`'s short fingerprint): compare two `hash` strings with ordinary equality.
 
 The hash is captured after the rest of the metadata snapshot. In the microsecond gap between the two reads a file could in principle change so that `size` and `hash` disagree; for session-mid agent usage this is acceptable.
 

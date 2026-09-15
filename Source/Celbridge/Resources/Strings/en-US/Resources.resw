@@ -1584,58 +1584,58 @@ Open with default application instead?</value>
   <data name="SearchPanel_ClearHistoryText" xml:space="preserve">
     <value>Clear Recent</value>
   </data>
-  <data name="Package_PublishConfirm_Title" xml:space="preserve">
+  <data name="Workshop_PublishPackageConfirm_Title" xml:space="preserve">
     <value>Publish Package</value>
   </data>
-  <data name="Package_PublishConfirm_Message" xml:space="preserve">
-    <value>Publish package '{0}' to the workshop as a new version?</value>
+  <data name="Workshop_PublishPackageConfirm_Message" xml:space="preserve">
+    <value>Publish a new workshop version of package '{0}'?</value>
   </data>
-  <data name="Package_PublishStaleConfirm_Message" xml:space="preserve">
-    <value>Publish '{0}'? Version {1} is installed but the latest is now {2} — publishing may overwrite newer work.</value>
+  <data name="Workshop_PublishPackageStaleConfirm_Message" xml:space="preserve">
+    <value>Publish '{0}'? Workshop version {1} is installed but the latest is now {2} — publishing may overwrite newer work.</value>
   </data>
-  <data name="Package_PublishUnreadableRecordConfirm_Message" xml:space="preserve">
-    <value>Publish '{0}'? Its install record (HISTORY.md) can't be read, so it may be behind the latest version.</value>
+  <data name="Workshop_PublishPackageUnreadableRecordConfirm_Message" xml:space="preserve">
+    <value>Publish '{0}'? Its install record (HISTORY.md) can't be read, so it may be behind the latest workshop version.</value>
   </data>
-  <data name="Package_InstallConfirm_Title" xml:space="preserve">
+  <data name="Workshop_InstallPackageConfirm_Title" xml:space="preserve">
     <value>Install Package</value>
   </data>
-  <data name="Package_InstallConfirm_Message" xml:space="preserve">
-    <value>Install package '{0}' version {1} into '{2}'?</value>
+  <data name="Workshop_InstallPackageConfirm_Message" xml:space="preserve">
+    <value>Install workshop version {1} of package '{0}' into '{2}'?</value>
   </data>
-  <data name="Package_ReplaceConfirm_Title" xml:space="preserve">
+  <data name="Workshop_ReplacePackageConfirm_Title" xml:space="preserve">
     <value>Replace Package</value>
   </data>
-  <data name="Package_ReplaceConfirm_Message" xml:space="preserve">
-    <value>'{0}' already contains package '{1}' (version {2}). Installing version {3} replaces its contents, moving the current files to the trash. Continue?</value>
+  <data name="Workshop_ReplacePackageConfirm_Message" xml:space="preserve">
+    <value>'{0}' already contains package '{1}' (workshop version {2}). Installing workshop version {3} replaces its contents, moving the current files to the trash. Continue?</value>
   </data>
-  <data name="Package_ReplaceConfirm_MessageUnknownVersion" xml:space="preserve">
-    <value>'{0}' already contains package '{1}'. Installing version {2} replaces its contents, moving the current files to the trash. Continue?</value>
+  <data name="Workshop_ReplacePackageConfirm_MessageUnknownVersion" xml:space="preserve">
+    <value>'{0}' already contains package '{1}'. Installing workshop version {2} replaces its contents, moving the current files to the trash. Continue?</value>
   </data>
-  <data name="Package_DeleteConfirm_Title" xml:space="preserve">
-    <value>Delete Package Version</value>
+  <data name="Workshop_DeletePackageConfirm_Title" xml:space="preserve">
+    <value>Delete Workshop Version</value>
   </data>
-  <data name="Package_DeleteConfirm_Message" xml:space="preserve">
-    <value>Delete version {0} of package '{1}' from the workshop? Its content will be permanently removed and cannot be recovered.</value>
+  <data name="Workshop_DeletePackageConfirm_Message" xml:space="preserve">
+    <value>Delete workshop version {0} of package '{1}'? Its content will be permanently removed and cannot be recovered.</value>
   </data>
-  <data name="Package_DeleteConfirm_MessageWithAliases" xml:space="preserve">
-    <value>Delete version {0} of package '{1}' from the workshop? Its content will be permanently removed and cannot be recovered. These aliases will be left pointing at the deleted version: {2}.</value>
+  <data name="Workshop_DeletePackageConfirm_MessageWithAliases" xml:space="preserve">
+    <value>Delete workshop version {0} of package '{1}'? Its content will be permanently removed and cannot be recovered. These aliases will be left pointing at the deleted workshop version: {2}.</value>
   </data>
-  <data name="Package_UnpublishConfirm_Title" xml:space="preserve">
+  <data name="Workshop_UnpublishPackageConfirm_Title" xml:space="preserve">
     <value>Unpublish Package</value>
   </data>
-  <data name="Package_UnpublishConfirm_Message" xml:space="preserve">
-    <value>Unpublish package '{0}' from the workshop? The package and all its versions will be permanently removed and cannot be recovered.</value>
+  <data name="Workshop_UnpublishPackageConfirm_Message" xml:space="preserve">
+    <value>Unpublish package '{0}' from the workshop? The package and all its workshop versions will be permanently removed and cannot be recovered.</value>
   </data>
-  <data name="Page_PublishConfirm_Title" xml:space="preserve">
+  <data name="Workshop_PublishPageConfirm_Title" xml:space="preserve">
     <value>Publish Page</value>
   </data>
-  <data name="Page_PublishConfirm_Message" xml:space="preserve">
+  <data name="Workshop_PublishPageConfirm_Message" xml:space="preserve">
     <value>Publish this folder as a page at '{0}'? It will be served publicly on the workshop.</value>
   </data>
-  <data name="Page_UnpublishConfirm_Title" xml:space="preserve">
+  <data name="Workshop_UnpublishPageConfirm_Title" xml:space="preserve">
     <value>Unpublish Page</value>
   </data>
-  <data name="Page_UnpublishConfirm_Message" xml:space="preserve">
+  <data name="Workshop_UnpublishPageConfirm_Message" xml:space="preserve">
     <value>Unpublish the page at '{0}' from the workshop? It will no longer be served.</value>
   </data>
   <data name="Workshop_PublishBlocked_Title" xml:space="preserve">

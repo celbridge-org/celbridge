@@ -54,10 +54,10 @@ public class PackageToolsHandlerTests
         {
             Tools = new[]
             {
-                Descriptor("app_list_packages", "app.list_packages"),
-                Descriptor("explorer_archive",  "explorer.archive"),
-                Descriptor("package_install",   "package.install"),
-                Descriptor("page_publish",      "page.publish")
+                Descriptor("app_list_packages",        "app.list_packages"),
+                Descriptor("explorer_archive",         "explorer.archive"),
+                Descriptor("workshop_install_package", "workshop.install_package"),
+                Descriptor("workshop_publish_page",    "workshop.publish_page")
             }
         };
         var handler = new PackageToolsHandler(bridge);
@@ -67,18 +67,15 @@ public class PackageToolsHandlerTests
         result.Select(t => t.Alias).Should().BeEquivalentTo("app.list_packages", "explorer.archive");
     }
 
-    // Every package_* and page_* tool reaches the workshop, so a package_* tool added later fails here until
-    // the handler withholds it.
     [Test]
-    public async Task ListToolsAsync_WithholdsEveryPackageAndPageTool()
+    public async Task ListToolsAsync_WithholdsEveryWorkshopTool()
     {
-        var packageAndPageTools = DiscoverTools()
-            .Where(tool => tool.Name.StartsWith("package_", StringComparison.Ordinal)
-                || tool.Name.StartsWith("page_", StringComparison.Ordinal))
+        var workshopTools = DiscoverTools()
+            .Where(tool => tool.Name.StartsWith("workshop_", StringComparison.Ordinal))
             .ToArray();
-        packageAndPageTools.Should().NotBeEmpty("the package_* and page_* tools should be discoverable by reflection");
+        workshopTools.Should().NotBeEmpty("the workshop_* tools should be discoverable by reflection");
 
-        var bridge = new StubToolBridge { Tools = packageAndPageTools };
+        var bridge = new StubToolBridge { Tools = workshopTools };
         var handler = new PackageToolsHandler(bridge);
 
         var result = await handler.ListToolsAsync();
@@ -118,10 +115,10 @@ public class PackageToolsHandlerTests
             .ErrorCode.Should().Be(ToolRpcErrorCodes.ToolDenied);
     }
 
-    [TestCase("package.publish")]
-    [TestCase("package_set_alias")]
-    [TestCase("page.unpublish")]
-    [TestCase("page_list")]
+    [TestCase("workshop.publish_package")]
+    [TestCase("workshop_set_package_alias")]
+    [TestCase("workshop.unpublish_page")]
+    [TestCase("workshop_list_pages")]
     public void CallToolAsync_WorkshopTool_ThrowsDenied(string name)
     {
         var bridge = new StubToolBridge();

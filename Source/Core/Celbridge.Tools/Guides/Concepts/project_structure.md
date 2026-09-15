@@ -25,7 +25,7 @@ my-project/
 - **`document_*`** — open files in the editor area as tabs and inspect tab state.
 - **`spreadsheet_*`** — target `.xlsx` workbooks; bypass the editor when reading and modifying cell data.
 - **`webview_*`** — drive WebView devtools against an open contribution editor or HTML viewer document.
-- **`package_*`** — scaffold, publish, and install packages from the registry.
+- **`workshop_*`** — publish packages and pages to a workshop, and install packages from one.
 
 ## The `.celbridge` project file
 

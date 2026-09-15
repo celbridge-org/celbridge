@@ -78,7 +78,7 @@ const tree = await cel.file.getTree("");
 
 - **Arguments are positional and camelCase.** Extra arguments throw `CEL_TOOL_INVALID_ARGS`.
 - **Errors throw `CelToolError`** with `{ code, tool, message }`.
-- **Calling a tool the host withholds** throws a `TypeError`, because the proxy is built from the tools the host returned. The `webview.*` and `page.*` namespaces are withheld whole, so the error reads `Cannot read properties of undefined`. The workshop tools in `package.*` are withheld one by one, so the error reads `... is not a function`.
+- **Calling a tool the host withholds** throws a `TypeError`, because the proxy is built from the tools the host returned. The `webview.*` and `workshop.*` namespaces are withheld whole, so the error reads `Cannot read properties of undefined`.
 
 ## Domain prep — namespace guides
 
@@ -89,9 +89,9 @@ These auto-attach the first time you call a tool in their namespace, but you can
 - `explorer` — create / move / rename / delete files and folders, zip and extract archives, manipulate the resource tree.
 - `file` — read, write, search, and edit file contents.
 - `guides` — re-fetch guides after context auto-compaction.
-- `package` — publish packages to a workshop and install them from one.
 - `spreadsheet` — read and write `.xlsx` workbooks. Read this before any spreadsheet call.
 - `webview` — devtools-style automation of HTML and contribution editors.
+- `workshop` — publish packages and pages to a workshop, and install packages from one.
 
 Fetch any of them with `guides_read(["<namespace>"])`.
 
