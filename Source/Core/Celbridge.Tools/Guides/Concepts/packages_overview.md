@@ -14,18 +14,21 @@ Every package folder must contain a `package.toml` at its root with at minimum a
 [package]
 name = "my-widget"        # identifier
 title = "My Widget"       # display name
+package-version = "1.2.0" # the package's own version
 
 [contributes]
 editors = ["my-editor.editor.toml"]
 ```
 
-**Required:** `name`. **Optional:** `title` — the package's display name (the product), shown in Project Settings. Name it distinctly from its editors' `display-name` values, which name each editor for what it *is* (e.g. a `Scratchpad` package shipping a `Scratchpad Editor`), so a single-editor package does not read the same name twice. The `[contributes].editors` array lists the editor manifests (`*.editor.toml`) provided by the package. Every editor declares a `type`: `"document"` editors edit matching files (read `document_editor_contributions` for the manifest, handler, and read-only contract); `"utility"` editors are workspace fixtures that own state files under the hidden `utils:` root (read `utility_documents`).
+**Required:** `name`. **Optional:** `title` and `package-version`. The `title` is the package's display name (the product), shown in Project Settings. Name it distinctly from its editors' `display-name` values, which name each editor for what it *is* (e.g. a `Scratchpad` package shipping a `Scratchpad Editor`), so a single-editor package does not read the same name twice. The `[contributes].editors` array lists the editor manifests (`*.editor.toml`) provided by the package. Every editor declares a `type`: `"document"` editors edit matching files (read `document_editor_contributions` for the manifest, handler, and read-only contract); `"utility"` editors are workspace fixtures that own state files under the hidden `utils:` root (read `utility_documents`).
 
-A package name is lowercase ASCII alphanumeric with single interior hyphens as the only separator, 1-64 characters. The manifest carries no author field and no version field.
+A package name is lowercase ASCII alphanumeric with single interior hyphens as the only separator, 1-64 characters. The manifest carries no author field.
+
+The `package-version` is three dot-separated numbers, such as `1.2.0`, with no `v` prefix and no suffix. A manifest without one is version `1.0.0`. A malformed version stops the package loading, and `package_status` lists it among the load failures. The package version belongs to the package, and is separate from the version numbers the workshop assigns when a package is published.
 
 ## Installed packages
 
-`package_status` reports each project package's name, version, and folder, plus any load failures such as a duplicate-name fault. It reads only the project.
+`package_status` reports each project package's name, package version, and folder, plus any load failures such as a duplicate-name fault. It reads only the project.
 
 `package_archive` and `package_unarchive` are generic zip and unzip against the project tree, useful for staging or vendoring a package folder by hand.
 

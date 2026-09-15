@@ -17,7 +17,7 @@ The workshop is the server a Celbridge install publishes packages to and install
 
 ## Versions and aliases
 
-A package is a container of immutable, server-numbered versions (1, 2, 3, ...). There is no version field in a manifest: the workshop assigns the number when a version is published.
+A package on the workshop is a container of immutable, server-numbered versions (1, 2, 3, ...). The workshop assigns each number when the version is published. These workshop versions are not the package version, the `package-version` a manifest declares, which the publisher sets and the workshop passes through unchanged.
 
 Named **aliases** (`latest`, `stable`, ...) point at versions. `latest` is managed by the workshop; the rest are publisher-defined, and curating them is non-destructive — `package_set_alias` and `package_remove_alias` only repoint or detach a label, never touching version content. `package_info` returns both lists.
 
@@ -25,7 +25,7 @@ A version can be **deleted**, which removes its content bytes permanently. The v
 
 ## History
 
-Installing a package writes its workshop history to a generated `HISTORY.md` beside the manifest, newest first, and `package_publish` writes the same file for the version it assigns. This is metadata about the workshop rather than package content: it is excluded from uploads, and the workshop stays authoritative. `package_status` reads the installed version out of it.
+Installing a package writes its workshop history to a generated `HISTORY.md` beside the manifest, newest first, and `package_publish` writes the same file for the version it assigns. This is metadata about the workshop rather than package content: it is excluded from uploads, and the workshop stays authoritative. Only the workshop tools read it back: `package_install` names the installed version when it replaces a folder, and `package_publish` checks whether the folder is behind the workshop's latest version.
 
 Each entry is shaped for grep and fragment reasoning:
 

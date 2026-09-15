@@ -76,12 +76,12 @@ public partial class PackageTools
         }
         var packageSource = locateResult.Value;
 
-        var nameResult = await ReadManifestPackageNameAsync(fileSystem, packageSource.ManifestPath);
-        if (nameResult.IsFailure)
+        var manifestResult = await ValidateManifestAsync(fileSystem, packageSource.ManifestPath);
+        if (manifestResult.IsFailure)
         {
-            return ToolResponse.Error(nameResult);
+            return ToolResponse.Error(manifestResult);
         }
-        var packageName = nameResult.Value;
+        var packageName = manifestResult.Value;
 
         var packageApiClient = GetRequiredService<IPackageApiClient>();
 
@@ -329,7 +329,9 @@ public partial class PackageTools
         return new PackageSource(folderResource, folderPath, manifestPath);
     }
 
-    private static async Task<Result<string>> ReadManifestPackageNameAsync(ILocalFileSystem fileSystem, string manifestPath)
+    // Reads the package name from the manifest. A manifest the loader would reject for its name or its
+    // package-version is refused, so a publish never uploads a package that fails to load once installed.
+    private static async Task<Result<string>> ValidateManifestAsync(ILocalFileSystem fileSystem, string manifestPath)
     {
         var readResult = await fileSystem.ReadAllTextAsync(manifestPath);
         if (readResult.IsFailure)
@@ -371,6 +373,20 @@ public partial class PackageTools
             return Result.Fail(
                 $"Package manifest declares an invalid name '{nameString}'. " +
                 $"Package names must be lowercase alphanumeric with single hyphen separators, 1-{PackageConstants.MaxNameLength} characters.");
+        }
+
+        if (packageTable.TryGetValue("package-version", out var versionValue))
+        {
+            if (versionValue is not string versionString)
+            {
+                return Result.Fail($"'package-version' must be a string such as \"{SemanticVersion.Default}\".");
+            }
+
+            var versionResult = SemanticVersion.ParseOptional(versionString);
+            if (versionResult.IsFailure)
+            {
+                return Result.Fail($"'package-version': {versionResult.FirstErrorMessage}");
+            }
         }
 
         return nameString;

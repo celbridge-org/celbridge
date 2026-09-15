@@ -25,6 +25,7 @@ Before uploading, the tool verifies that:
 - An **Author** is set in Workshop settings (it is recorded as the version's publisher).
 - `resource` resolves to a `package.toml` manifest (or a folder containing one).
 - The manifest is valid TOML with a `[package]` section whose `name` is a valid package name.
+- Any `package-version` in that section is a three-part version such as `1.2.0`, because a malformed one would stop the package loading once installed.
 - The `summary`, if given, is within the 512-character cap.
 
 If any check fails, no upload is attempted.
@@ -41,7 +42,7 @@ A JSON object:
 
 ## HISTORY.md
 
-After a successful publish, the tool writes a fresh `HISTORY.md` beside the manifest recording the version just assigned (one `# name@version` section per version, newest first, each with a compact metadata line). This makes the source folder match what a consumer who installs that version receives, and lets `package_status` report the right version for it. The file itself is excluded from the upload (matched case-insensitively) — the workshop stays authoritative for publish history.
+After a successful publish, the tool writes a fresh `HISTORY.md` beside the manifest recording the version just assigned (one `# name@version` section per version, newest first, each with a compact metadata line). This makes the source folder match what a consumer who installs that version receives. The file itself is excluded from the upload (matched case-insensitively) — the workshop stays authoritative for publish history.
 
 ## Concurrent publishing
 

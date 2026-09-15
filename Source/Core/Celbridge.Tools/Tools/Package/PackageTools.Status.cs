@@ -6,11 +6,9 @@ using ModelContextProtocol.Server;
 namespace Celbridge.Tools;
 
 /// <summary>
-/// A loaded project package in the package_status result. Version is null when
-/// it cannot be read from the package's HISTORY.md (e.g. a hand-authored package
-/// that was never installed from a workshop).
+/// A loaded project package in the package_status result, with the package version its manifest declares.
 /// </summary>
-public record class PackageStatusEntry(string Name, int? Version, string Folder);
+public record class PackageStatusEntry(string Name, string PackageVersion, string Folder);
 
 /// <summary>
 /// A package that failed to load in the package_status result, with the folder
@@ -28,7 +26,7 @@ public record class PackageStatusResult(
 
 public partial class PackageTools
 {
-    /// <summary>Report the project's installed packages, their versions and folders, and any load failures.</summary>
+    /// <summary>Report the project's installed packages, their package versions and folders, and any load failures.</summary>
     [McpServerTool(Name = "package_status", ReadOnly = true)]
     [ToolAlias("package.status")]
     [RelatedGuides("packages_overview")]
@@ -58,7 +56,6 @@ public partial class PackageTools
             }
         }
         var resourceRegistry = resourceService.Registry;
-        var resourceFileSystem = resourceService.FileSystem;
 
         var packages = new List<PackageStatusEntry>();
         foreach (var package in packageService.GetAllPackages())
@@ -77,8 +74,8 @@ public partial class PackageTools
             }
             var folderKey = folderKeyResult.Value;
 
-            var version = await TryReadInstalledVersionAsync(resourceFileSystem, folderKey);
-            packages.Add(new PackageStatusEntry(package.Info.Name, version, folderKey.ToString()));
+            var packageVersion = package.Info.PackageVersion.ToString();
+            packages.Add(new PackageStatusEntry(package.Info.Name, packageVersion, folderKey.ToString()));
         }
 
         packages.Sort((left, right) => string.Compare(left.Name, right.Name, StringComparison.Ordinal));

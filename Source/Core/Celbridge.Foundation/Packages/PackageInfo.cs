@@ -59,8 +59,8 @@ public partial record PackageInfo
     public string PackageFolder { get; init; } = string.Empty;
 
     /// <summary>
-    /// Installed version read from the package's HISTORY.md changelog, or null when no parseable version is
-    /// recorded (bundled packages and hand-authored project packages).
+    /// The package's own version, from the manifest's package-version, or SemanticVersion.Default when the
+    /// manifest sets none.
     /// </summary>
-    public int? Version { get; init; }
+    public SemanticVersion PackageVersion { get; init; } = SemanticVersion.Default;
 }

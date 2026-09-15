@@ -1,13 +1,12 @@
 using Celbridge.Packages;
 using Celbridge.Tools;
-using Celbridge.Utilities;
 
 namespace Celbridge.Tests.Tools;
 
 /// <summary>
 /// Tests for PackageHistoryHelper — the HISTORY.md changelog rendered on install
-/// and publish, the installed-reference read-back that package_status and the
-/// replace confirmation rely on, and the stale-base publish check.
+/// and publish, the installed-reference read-back that the replace confirmation
+/// relies on, and the stale-base publish check.
 /// </summary>
 [TestFixture]
 public class PackageHistoryHelperTests
@@ -39,7 +38,7 @@ public class PackageHistoryHelperTests
         var markdown = PackageHistoryHelper.Format(PackageName, versions, installedVersion: 3).Value;
 
         markdown.Should().StartWith("# sample-package@3");
-        PackageHistoryHelper.TryReadInstalledVersion(markdown).Should().Be(3);
+        PackageHistoryHelper.TryReadInstalledReference(markdown)!.Version.Should().Be(3);
     }
 
     [Test]
@@ -157,15 +156,15 @@ public class PackageHistoryHelperTests
     }
 
     [Test]
-    public void TryReadInstalledVersion_ReturnsNull_WhenFirstLineIsNotAVersionHeading()
+    public void TryReadInstalledReference_ReturnsNull_WhenFirstLineIsNotAVersionHeading()
     {
-        PackageHistoryHelper.TryReadInstalledVersion("Some hand-authored notes.\r\n").Should().BeNull();
+        PackageHistoryHelper.TryReadInstalledReference("Some hand-authored notes.\r\n").Should().BeNull();
     }
 
     [Test]
-    public void TryReadInstalledVersion_ReturnsNull_ForEmptyContent()
+    public void TryReadInstalledReference_ReturnsNull_ForEmptyContent()
     {
-        PackageHistoryHelper.TryReadInstalledVersion(string.Empty).Should().BeNull();
+        PackageHistoryHelper.TryReadInstalledReference(string.Empty).Should().BeNull();
     }
 
     [Test]

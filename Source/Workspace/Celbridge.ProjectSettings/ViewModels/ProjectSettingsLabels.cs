@@ -82,7 +82,7 @@ internal static class ProjectSettingsLabels
 
     public static string PackageName(string name) => Localizer.GetString("ProjectSettings_PackageNameFormat", name);
 
-    public static string PackageVersion(int version) => Localizer.GetString("ProjectSettings_PackageVersionFormat", version);
+    public static string PackageVersion(string version) => Localizer.GetString("ProjectSettings_PackageVersionFormat", version);
 
     public static string FeatureFlagDefaultOnTooltip => Localizer.GetString("ProjectSettings_FeatureFlagDefaultOnTooltip");
 

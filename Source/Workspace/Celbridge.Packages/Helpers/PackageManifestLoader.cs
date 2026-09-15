@@ -1,5 +1,3 @@
-using Celbridge.Utilities;
-
 namespace Celbridge.Packages.Helpers;
 
 /// <summary>
@@ -31,6 +29,7 @@ public static class PackageManifestLoader
     private const string ContributesSection = "contributes";
 
     private const string NameKey = "name";
+    private const string PackageVersionKey = "package-version";
 
     private static readonly IReadOnlyDictionary<string, string> EmptySecrets = new Dictionary<string, string>();
 
@@ -90,20 +89,15 @@ public static class PackageManifestLoader
                 return Result.Fail($"Package has invalid '{NameKey}' value '{packageName}': {packageTomlPath}. Package names must be lowercase ASCII letters and digits with single interior hyphens, at most {PackageConstants.MaxNameLength} characters.");
             }
 
-            var packageSecrets = secrets ?? EmptySecrets;
-
-            // The installed version is recorded in the generated HISTORY.md changelog beside the manifest.
-            // Only project packages carry one; a hand-authored or absent file leaves the version unknown.
-            int? packageVersion = null;
-            if (origin == PackageOrigin.Project)
+            // A manifest that sets no version is the default version, and a malformed one fails the package.
+            var packageVersionResult = SemanticVersion.ParseOptional(packageSection.PackageVersion);
+            if (packageVersionResult.IsFailure)
             {
-                var historyPath = Path.Combine(packageFolder, PackageConstants.HistoryFileName);
-                var historyResult = reader.ReadAllText(historyPath);
-                if (historyResult.IsSuccess)
-                {
-                    packageVersion = PackageHistoryReader.TryReadInstalledVersion(historyResult.Value);
-                }
+                return Result.Fail($"'{PackageVersionKey}': {packageVersionResult.FirstErrorMessage}");
             }
+            var packageVersion = packageVersionResult.Value;
+
+            var packageSecrets = secrets ?? EmptySecrets;
 
             var packageInfo = new PackageInfo
             {
@@ -113,7 +107,7 @@ public static class PackageManifestLoader
                 Secrets = packageSecrets,
                 DevToolsBlocked = devToolsBlocked,
                 Origin = origin,
-                Version = packageVersion
+                PackageVersion = packageVersion
             };
 
             var editorsResult = LoadEditors(manifest, packageInfo, packageTomlPath, packageFolder, reader, fileTypeCatalog);

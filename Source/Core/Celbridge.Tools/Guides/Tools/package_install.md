@@ -31,7 +31,7 @@ A JSON object:
 
 ## Reinstalling replaces
 
-Installing over an existing package folder completely replaces its contents — there is no merge. The replaced files are moved to the resource trash first, so even a silent reinstall is recoverable with undo. The installed version's workshop history is written to `HISTORY.md` beside the manifest (newest first); that file is how the installed version is later determined.
+Installing over an existing package folder completely replaces its contents — there is no merge. The replaced files are moved to the resource trash first, so even a silent reinstall is recoverable with undo. The installed version's workshop history is written to `HISTORY.md` beside the manifest (newest first). The workshop tools read it back to tell which version a folder was installed from, and it has no effect on the manifest's `package-version`.
 
 ## Gotchas
 
