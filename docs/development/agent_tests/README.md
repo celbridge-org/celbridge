@@ -116,6 +116,10 @@ click before it did not land, the surface never took focus, or the clipboard hel
 what you expected. Establish and verify the starting state, then act, then read the result. When a case
 fails, check the precondition again before reporting it.
 
+An action that appears to have done nothing deserves a screenshot before it is written down as a
+negative. Some read tools answer while a dialog is open, so they report the state from before the action
+and read as "nothing happened" when what actually happened is a dialog waiting for an answer.
+
 **Distinguish "the app is wrong" from "the input never arrived".** Synthetic input is not perfectly
 reliable on every head: clicks can register as hover, and a control that ignores one can be perfectly
 healthy. Before reporting a negative, show that an equivalent action through a different route does work.

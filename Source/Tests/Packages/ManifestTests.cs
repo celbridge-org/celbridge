@@ -172,6 +172,77 @@ public class ManifestTests
     }
 
     [Test]
+    public void LoadPackage_PackageVersion_PopulatesInfo()
+    {
+        WritePackageToml("""
+            [package]
+            name = "my-widget"
+            package-version = "2.1.0"
+
+            [contributes]
+            """);
+
+        var result = LoadPackage();
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Info.PackageVersion.Should().Be(new SemanticVersion(2, 1, 0));
+        result.Value.UnknownFields.Should().BeEmpty();
+    }
+
+    [Test]
+    public void LoadPackage_PackageVersionOmitted_IsTheDefaultVersion()
+    {
+        WritePackageToml("""
+            [package]
+            name = "my-widget"
+
+            [contributes]
+            """);
+
+        var result = LoadPackage();
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Info.PackageVersion.Should().Be(SemanticVersion.Default);
+    }
+
+    [Test]
+    public void LoadPackage_MalformedPackageVersion_ReturnsFailure()
+    {
+        WritePackageToml("""
+            [package]
+            name = "my-widget"
+            package-version = "2.1"
+
+            [contributes]
+            """);
+
+        var result = LoadPackage();
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Be("'package-version': '2.1' is not a three-part version such as 1.0.0.");
+    }
+
+    [Test]
+    public void LoadPackage_VersionKey_IsRecordedAsAnUnknownField()
+    {
+        // 'version' is not a manifest field, so a manifest that carries one loads at the default version
+        // and the key is reported rather than read.
+        WritePackageToml("""
+            [package]
+            name = "my-widget"
+            version = 3
+
+            [contributes]
+            """);
+
+        var result = LoadPackage();
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.UnknownFields.Should().Equal("package.version");
+        result.Value.Info.PackageVersion.Should().Be(SemanticVersion.Default);
+    }
+
+    [Test]
     public void LoadPackage_MissingPackageName_ReturnsFailure()
     {
         WritePackageToml("""

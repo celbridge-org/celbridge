@@ -73,7 +73,13 @@ public class ProjectTemplateServiceTests
         // The version placeholder in the template's project file is substituted from the environment.
         var projectContents = await File.ReadAllTextAsync(projectFilePath);
         projectContents.Should().NotContain("<application-version>");
-        projectContents.Should().Contain(_expectedAppVersion);
+
+        // The project records the Celbridge version that created it and sets no project version, so it has
+        // the default version until the user sets one.
+        var parseResult = ProjectConfigParser.ParseFromText(projectContents);
+        parseResult.IsSuccess.Should().BeTrue();
+        parseResult.Value.Celbridge.CelbridgeVersion.Should().Be(_expectedAppVersion);
+        parseResult.Value.Celbridge.ProjectVersion.Should().BeNull();
     }
 
     [Test]
@@ -97,10 +103,12 @@ public class ProjectTemplateServiceTests
         var projectContents = await File.ReadAllTextAsync(projectFilePath);
         projectContents.Should().NotContain("<application-version>");
 
-        // The project file parses cleanly under the current schema and declares the console shortcut.
+        // The project file parses cleanly under the current schema, sets no project version, and declares
+        // the console shortcut.
         var parseResult = ProjectConfigParser.ParseFromText(projectContents);
         parseResult.IsSuccess.Should().BeTrue();
         parseResult.Value.EntryErrors.Should().BeEmpty();
+        parseResult.Value.Celbridge.ProjectVersion.Should().BeNull();
         parseResult.Value.DocumentShortcuts.Should().ContainSingle(s => s.Resource == "python.console");
     }
 }

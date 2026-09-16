@@ -14,6 +14,9 @@ internal sealed partial record ManifestPackageSection
     // Localization key naming the product, shown in Project Settings.
     public string? Title { get; init; }
 
+    // The package's own version, in the three-part form. A manifest that sets none is the default version.
+    public string? PackageVersion { get; init; }
+
     [TomlExtensionData]
     public Dictionary<string, object?> UnknownKeys { get; init; } = new();
 }

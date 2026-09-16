@@ -1,3 +1,4 @@
+using Celbridge.UserInterface;
 using Celbridge.UserInterface.Services;
 using Celbridge.WebHost;
 
@@ -26,7 +27,7 @@ public class FocusReconcilerTests
     public void Reconcile_WithPopupHoldingFocus_LeavesTheKeyboardWithThePopup()
     {
         _webViewFocusRegistry.HasFocusedSurface.Returns(true);
-        _managedFocus.IsPopupHoldingFocus.Returns(true);
+        _managedFocus.FocusLocation.Returns(FocusLocation.Popup);
 
         _focusReconciler.Reconcile();
 
@@ -76,5 +77,22 @@ public class FocusReconcilerTests
         _managedFocus.Received(2).Yield();
         _webViewFocusRegistry.Received(2).FocusFocusedSurface();
         _hostWindowFocus.DidNotReceive().FocusHostWindow();
+    }
+
+    [Test]
+    public void Reconcile_WithDetachedManagedFocus_YieldsItEvenWithNoSurfaceWaiting()
+    {
+        _webViewFocusRegistry.HasFocusedSurface.Returns(false);
+        _managedFocus.FocusLocation.Returns(FocusLocation.Detached);
+
+        _focusReconciler.Reconcile();
+
+        Received.InOrder(() =>
+        {
+            _managedFocus.Yield();
+            _hostWindowFocus.FocusHostWindow();
+        });
+        _hostWindowFocus.Received(1).FocusHostWindow();
+        _webViewFocusRegistry.DidNotReceive().FocusFocusedSurface();
     }
 }

@@ -34,9 +34,10 @@ public sealed record PackageItemInfo
     public ResourceKey? ManifestResource { get; init; }
 
     /// <summary>
-    /// Installed package version, or null when the package records no parseable version.
+    /// The package version shown beside the name, or null for a row that shows none: a bundled package, or
+    /// a project package at the default version.
     /// </summary>
-    public int? Version { get; init; }
+    public string? Version { get; init; }
 }
 
 /// <summary>
@@ -77,18 +78,18 @@ public partial class PackageItemViewModel : ObservableObject
     public string DisplayName => _info.DisplayName;
 
     /// <summary>
-    /// Whether the package records a version to show beside its name.
+    /// Whether the package has a version to show beside its name.
     /// </summary>
     public bool HasVersion => _info.Version is not null;
 
     /// <summary>
-    /// The version shown beside the package name (e.g. "v3"), or empty when none is recorded.
+    /// The version shown beside the package name (e.g. "v1.2.0"), or empty when there is none.
     /// </summary>
     public string VersionText
     {
         get
         {
-            if (_info.Version is int version)
+            if (_info.Version is string version)
             {
                 return ProjectSettingsLabels.PackageVersion(version);
             }

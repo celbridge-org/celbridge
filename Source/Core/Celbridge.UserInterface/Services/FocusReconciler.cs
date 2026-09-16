@@ -27,12 +27,17 @@ public class FocusReconciler : IFocusReconciler
 
     public void Reconcile()
     {
+        // Read once: the two rules below are arms of one classification, and a second read could observe
+        // a different focused element.
+        var managedFocusLocation = _managedFocus.FocusLocation;
+
         var desiredFocus = FocusDerivation.Derive(
             _webViewFocusRegistry.HasFocusedSurface,
-            _managedFocus.IsPopupHoldingFocus);
+            managedFocusLocation);
 
         _logger.LogTrace(
-            "Focus reconcile: focus web surface {FocusWebSurface}, yield managed focus {YieldManagedFocus}",
+            "Focus reconcile: managed focus in {ManagedFocusLocation}, focus web surface {FocusWebSurface}, yield managed focus {YieldManagedFocus}",
+            managedFocusLocation,
             desiredFocus.FocusWebSurface,
             desiredFocus.YieldManagedFocus);
 

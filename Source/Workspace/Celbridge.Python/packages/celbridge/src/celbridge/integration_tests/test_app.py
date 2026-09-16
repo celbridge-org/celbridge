@@ -24,6 +24,23 @@ class TestApp:
         parts = version.split(".")
         assert len(parts) == 3, f"Expected 3-part version, got: {version}"
 
+    def test_list_packages(self, app):
+        result = app.list_packages()
+        assert isinstance(result["packages"], list)
+        assert isinstance(result["failures"], list)
+        for entry in result["packages"]:
+            assert isinstance(entry["name"], str)
+            assert len(entry["packageVersion"].split(".")) == 3
+            assert entry["folder"].startswith("project:")
+
+    def test_get_state_summarizes_the_listed_packages(self, app):
+        state = app.get_state()
+        listed = app.list_packages()
+        summary = [(p["name"], p["packageVersion"]) for p in state["packages"]]
+        expected = [(p["name"], p["packageVersion"]) for p in listed["packages"]]
+        assert summary == expected
+        assert state["packageLoadFailureCount"] == len(listed["failures"])
+
     def test_log(self, app):
         app.log("Integration test: log message")
 

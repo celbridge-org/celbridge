@@ -1,4 +1,3 @@
-using Celbridge.Packages;
 using Celbridge.Settings;
 using Celbridge.Settings.Services;
 using Celbridge.Tests.Helpers;
@@ -6,6 +5,7 @@ using Celbridge.Tests.Settings;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.UserInterface.ViewModels.Controls;
+using Celbridge.Workshop;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 

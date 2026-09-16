@@ -78,20 +78,20 @@ const tree = await cel.file.getTree("");
 
 - **Arguments are positional and camelCase.** Extra arguments throw `CEL_TOOL_INVALID_ARGS`.
 - **Errors throw `CelToolError`** with `{ code, tool, message }`.
-- **Calling a tool the host withholds** throws a `TypeError`, because the proxy is built from the tools the host returned. The `webview.*` and `page.*` namespaces are withheld whole, so the error reads `Cannot read properties of undefined`. The workshop tools in `package.*` are withheld one by one, so the error reads `... is not a function`.
+- **Calling a tool the host withholds** throws a `TypeError`, because the proxy is built from the tools the host returned. The `webview.*` and `workshop.*` namespaces are withheld whole, so the error reads `Cannot read properties of undefined`.
 
 ## Domain prep — namespace guides
 
 These auto-attach the first time you call a tool in their namespace, but you can also fetch them explicitly when planning ahead of a domain you have not entered yet:
 
-- `app` — application state, logging, alerts, refresh.
+- `app` — application state, the project's packages, logging, alerts, refresh.
 - `document` — open / close / activate editor tabs and snapshot editor state.
-- `explorer` — create / move / rename / delete files and folders, manipulate the resource tree.
+- `explorer` — create / move / rename / delete files and folders, zip and extract archives, manipulate the resource tree.
 - `file` — read, write, search, and edit file contents.
 - `guides` — re-fetch guides after context auto-compaction.
-- `package` — inspect the project's installed packages, and archive or extract package folders.
 - `spreadsheet` — read and write `.xlsx` workbooks. Read this before any spreadsheet call.
 - `webview` — devtools-style automation of HTML and contribution editors.
+- `workshop` — publish packages and pages to a workshop, and install packages from one.
 
 Fetch any of them with `guides_read(["<namespace>"])`.
 

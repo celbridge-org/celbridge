@@ -44,6 +44,9 @@ internal static class MacOSWebViewInputSuppressor
     // one closing must not re-enable input for the outer one.
     private static int _suppressionCount;
 
+    // Bumped by ReleaseAll so the scopes it drops cannot decrement the count they no longer contribute to.
+    private static int _releaseGeneration;
+
     public static unsafe void Start(Logging.ILogger logger)
     {
         if (!OperatingSystem.IsMacOS())
@@ -92,6 +95,17 @@ internal static class MacOSWebViewInputSuppressor
         return new SuppressionScope();
     }
 
+    /// <summary>
+    /// Drops every suppression at once, for a caller that knows nothing is overlaying the WebViews any
+    /// more. Scopes taken before the release stop counting down, so one whose owner never disposed it
+    /// cannot take the count below zero afterwards.
+    /// </summary>
+    public static void ReleaseAll()
+    {
+        Interlocked.Increment(ref _releaseGeneration);
+        Volatile.Write(ref _suppressionCount, 0);
+    }
+
     [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]
     private static IntPtr HitTestHook(IntPtr self, IntPtr selector, CGPoint point)
     {
@@ -107,10 +121,13 @@ internal static class MacOSWebViewInputSuppressor
 
     private sealed class SuppressionScope : IDisposable
     {
+        private readonly int _generation;
+
         private bool _disposed;
 
         public SuppressionScope()
         {
+            _generation = Volatile.Read(ref _releaseGeneration);
             Interlocked.Increment(ref _suppressionCount);
         }
 
@@ -122,7 +139,11 @@ internal static class MacOSWebViewInputSuppressor
             }
 
             _disposed = true;
-            Interlocked.Decrement(ref _suppressionCount);
+
+            if (Volatile.Read(ref _releaseGeneration) == _generation)
+            {
+                Interlocked.Decrement(ref _suppressionCount);
+            }
         }
     }
 }

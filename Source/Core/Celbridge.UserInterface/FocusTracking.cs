@@ -65,27 +65,41 @@ public static class FocusTracking
     }
 
     /// <summary>
-    /// Whether the element is hosted in a popup (a flyout, context menu or content dialog) rather than in
-    /// the window's main content. A popup hosts its content in a tree of its own, so the walk towards the
-    /// root never passes the XamlRoot's content.
+    /// Where the element sits relative to the window's content.
     /// </summary>
-    public static bool IsPopupHosted(UIElement element)
+    public static FocusLocation GetFocusLocation(UIElement element)
     {
-        var mainContentRoot = element.XamlRoot?.Content;
+        var xamlRoot = element.XamlRoot;
+        var mainContentRoot = xamlRoot?.Content;
         if (mainContentRoot is null)
         {
-            return false;
+            return FocusLocation.Detached;
         }
 
         foreach (var ancestor in VisualTree.GetAncestors(element, includeSelf: true))
         {
             if (ReferenceEquals(ancestor, mainContentRoot))
             {
-                return false;
+                return FocusLocation.MainContent;
             }
         }
 
-        return true;
+        // A popup hosts its content in a tree of its own, so the walk above misses the window content. The
+        // popups are asked which content is theirs rather than inferring it from the shape of that tree, so
+        // that focus a dismissed popup left behind reads as reaching neither. Asked only once the cheap
+        // walk has ruled out the common case.
+        foreach (var openPopup in VisualTreeHelper.GetOpenPopupsForXamlRoot(xamlRoot))
+        {
+            foreach (var ancestor in VisualTree.GetAncestors(element, includeSelf: true))
+            {
+                if (ReferenceEquals(ancestor, openPopup.Child))
+                {
+                    return FocusLocation.Popup;
+                }
+            }
+        }
+
+        return FocusLocation.Detached;
     }
 
     /// <summary>
@@ -112,7 +126,7 @@ public static class FocusTracking
     /// <summary>
     /// Marks a subtree where focus landing preserves the currently focused panel instead of clearing it to
     /// None. Declared on chrome that can transiently receive focus without representing a deliberate move
-    /// off the panel; the Utility Panel rail is the current such element. Never declare it over a control
+    /// off the panel. The Utility Panel rail is the current such element. Never declare it over a control
     /// the user clicks: a focused web surface then keeps the keyboard, and the focus reconcile that follows
     /// the click takes the control's pointer capture before it can raise Click.
     /// </summary>

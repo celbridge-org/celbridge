@@ -15,22 +15,39 @@ public enum CaretMotion
 }
 
 /// <summary>
-/// The managed keyboard focus of the window: whether a popup currently holds it, and the means to give it
-/// up so no managed control claims keys destined for a focused web surface.
+/// The managed keyboard focus of the window: where it currently rests, and the means to give it up.
 /// </summary>
 public interface IManagedFocus
 {
     /// <summary>
-    /// True while managed keyboard focus rests inside a popup: a flyout, a context menu or a content
-    /// dialog. Answered from the focused element each time it is asked, so it cannot go stale.
+    /// Where managed keyboard focus currently rests. Answered from the focused element each time it is
+    /// asked, so it cannot go stale, and reads as the main content while nothing holds focus.
     /// </summary>
-    bool IsPopupHoldingFocus { get; }
+    FocusLocation FocusLocation { get; }
 
     /// <summary>
-    /// Performs undo or redo on the text editing control that holds managed keyboard focus. Returns true when
-    /// such a control took the verb, and false for any other verb or when no text control has focus.
+    /// Whether a text editing control holds managed keyboard focus.
+    /// </summary>
+    bool IsTextControlFocused { get; }
+
+    /// <summary>
+    /// Whether the text editing control holding managed keyboard focus can perform the verb right now.
+    /// False when no text control has focus.
+    /// </summary>
+    bool CanPerformTextEditing(EditIntent intent);
+
+    /// <summary>
+    /// Performs a standard edit verb on the text editing control that holds managed keyboard focus. Returns
+    /// true when such a control took the verb, and false for a verb it does not offer or when no text
+    /// control has focus.
     /// </summary>
     bool TryPerformTextEditing(EditIntent intent);
+
+    /// <summary>
+    /// Moves managed keyboard focus off the focused text editing control to the next or previous tab stop,
+    /// as a Tab press would. Returns false when no text control has focus.
+    /// </summary>
+    bool TryMoveFocusFromTextControl(bool backwards);
 
     /// <summary>
     /// Moves the caret in the text editing control that holds managed keyboard focus. Returns true when such

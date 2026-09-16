@@ -19,16 +19,11 @@ public interface IPackageService
     /// <summary>
     /// Discovers all packages (bundled module packages and project packages), resolves the
     /// project's declared contributions against the activated packages, and registers all
-    /// package behaviors (e.g. custom document editor factories).
+    /// package behaviors (e.g. custom document editor factories). This pass runs as the project
+    /// loads and nothing rediscovers packages afterwards, so the service describes the packages as
+    /// the project loaded.
     /// </summary>
     Task RegisterPackagesAsync(string projectFolderPath);
-
-    /// <summary>
-    /// Re-runs project-package discovery against the on-disk state, refreshing the discovered packages and
-    /// the load failures. Does not fire PackagesInitializedMessage, rewrite the project load report, or
-    /// re-register editor contributions.
-    /// </summary>
-    Task RescanProjectPackagesAsync(string projectFolderPath);
 
     /// <summary>
     /// Gets document type entries for the available editors (declared contributions and built-ins)
@@ -43,7 +38,7 @@ public interface IPackageService
     IReadOnlyList<Package> GetAllPackages();
 
     /// <summary>
-    /// Returns the package load failures from the most recent discovery pass.
+    /// Returns the package load failures from both bundled and project sources, each recording its origin.
     /// Empty before the first discovery.
     /// </summary>
     IReadOnlyList<PackageLoadFailure> GetLoadFailures();

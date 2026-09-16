@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.Platform;
@@ -14,46 +15,61 @@ internal enum EditRouting
     Surface,
 
     /// <summary>
-    /// Nobody. The focused surface owns the verb but cannot perform it right now, so the responder chain
-    /// must not act on it.
+    /// The text control holding managed keyboard focus.
+    /// </summary>
+    TextControl,
+
+    /// <summary>
+    /// Nobody. The owner of the verb cannot perform it right now, so the responder chain must not act on it.
     /// </summary>
     Unavailable,
 
     /// <summary>
-    /// The AppKit responder chain, because no focused surface handles the verb.
+    /// The AppKit responder chain, because nothing focused handles the verb.
     /// </summary>
     ResponderChain
 }
 
 /// <summary>
-/// Routes a standard edit verb to the surface that owns it. A surface that does not handle the verb leaves
-/// it to the AppKit responder chain. macOS-only.
+/// Routes a standard edit verb to the surface that owns it. A verb nothing focused owns is left to the
+/// AppKit responder chain. macOS-only.
 /// </summary>
 internal static class MacOSEditCommands
 {
     /// <summary>
-    /// Who should perform the verb given the currently focused surface, and whether a modal dialog holds
-    /// the keyboard.
+    /// Who should perform the verb given the currently focused surface and text control, and whether a modal
+    /// dialog holds the keyboard.
     /// </summary>
-    public static EditRouting Resolve(EditIntent intent, IFocusService? focusService, bool isDialogOpen)
+    public static EditRouting Resolve(
+        EditIntent intent,
+        IFocusService? focusService,
+        IManagedFocus? managedFocus,
+        bool isDialogOpen)
     {
         // A dialog owns the keyboard while it is up, so the verb belongs to the control inside it rather
-        // than to the panel behind it, whose edit target the focus service still holds. Leaving it to the
-        // responder chain is what lets the dialog's own text box act on it.
+        // than to the panel behind it, whose edit target the focus service still holds.
         if (isDialogOpen)
         {
-            return EditRouting.ResponderChain;
+            return ResolveTextControl(intent, managedFocus);
         }
 
         var editTarget = focusService?.EditTarget;
         if (editTarget is null)
         {
-            return EditRouting.ResponderChain;
+            return ResolveTextControl(intent, managedFocus);
         }
 
         if (editTarget.CanPerformEdit(intent))
         {
             return EditRouting.Surface;
+        }
+
+        // A focused text control answers for the verbs the panel's own edit target does not, so a field in
+        // the chrome of a panel can still be edited.
+        var textControlRouting = ResolveTextControl(intent, managedFocus);
+        if (textControlRouting != EditRouting.ResponderChain)
+        {
+            return textControlRouting;
         }
 
         // The host mediates this surface's clipboard, so AppKit's own cut: or paste: would change the page
@@ -68,21 +84,43 @@ internal static class MacOSEditCommands
     }
 
     /// <summary>
-    /// Performs the verb on the focused surface when it owns it. Returns who the verb was routed to.
+    /// Performs the verb on whichever of the focused surface and the focused text control owns it. Returns
+    /// who the verb was routed to.
     /// </summary>
     public static EditRouting Perform(
         EditIntent intent,
         IFocusService? focusService,
+        IManagedFocus? managedFocus,
         ICommandService? commandService,
         bool isDialogOpen)
     {
-        var routing = Resolve(intent, focusService, isDialogOpen);
+        var routing = Resolve(intent, focusService, managedFocus, isDialogOpen);
 
-        if (routing == EditRouting.Surface)
+        switch (routing)
         {
-            commandService?.Execute<IPerformEditCommand>(command => command.Intent = intent);
+            case EditRouting.Surface:
+                commandService?.Execute<IPerformEditCommand>(command => command.Intent = intent);
+                break;
+
+            case EditRouting.TextControl:
+                managedFocus?.TryPerformTextEditing(intent);
+                break;
         }
 
         return routing;
+    }
+
+    // A text control holding the keyboard owns every standard verb, so one it cannot perform right now is
+    // unavailable, and the responder chain must not be offered it.
+    private static EditRouting ResolveTextControl(EditIntent intent, IManagedFocus? managedFocus)
+    {
+        if (managedFocus?.IsTextControlFocused != true)
+        {
+            return EditRouting.ResponderChain;
+        }
+
+        return managedFocus.CanPerformTextEditing(intent)
+            ? EditRouting.TextControl
+            : EditRouting.Unavailable;
     }
 }

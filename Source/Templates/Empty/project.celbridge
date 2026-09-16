@@ -1,6 +1,5 @@
 [celbridge]
 celbridge-version = "<application-version>"
-project-version = "0.1.0"
 
 # 'hide' keeps resources out of the Explorer tree. 'search-exclude' also keeps them out of search.
 # Both take glob patterns, e.g. "Python/.venv/**".

@@ -89,12 +89,14 @@ public sealed record DocumentShortcut
 public sealed record class CelbridgeSection
 {
     /// <summary>
-    /// Schema version of the project config, driving versioned migrations.
+    /// The version of Celbridge that last opened the project, which migration reads to know what the file
+    /// contains.
     /// </summary>
     public string? CelbridgeVersion { get; init; }
 
     /// <summary>
-    /// The project's own version.
+    /// The project's own version as the file states it, or null when the file sets none or a malformed one.
+    /// A missing or empty project version is SemanticVersion.Default.
     /// </summary>
     public string? ProjectVersion { get; init; }
 

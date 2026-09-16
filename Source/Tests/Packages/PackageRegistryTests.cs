@@ -17,6 +17,7 @@ namespace Celbridge.Tests.Packages;
 public class PackageServiceTests
 {
     private string _tempProjectFolder = null!;
+    private string _tempBundledFolder = null!;
     private PackageService _service = null!;
     private IBundledPackageProvider _bundledPackageProvider = null!;
     private IMessengerService _messengerService = null!;
@@ -30,6 +31,9 @@ public class PackageServiceTests
     {
         _tempProjectFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(PackageServiceTests));
         Directory.CreateDirectory(_tempProjectFolder);
+
+        // A folder outside the project for bundled packages that the project scan must not also discover.
+        _tempBundledFolder = Path.Combine(Path.GetTempPath(), "Celbridge", $"{nameof(PackageServiceTests)}Bundled");
 
         var logger = Substitute.For<ILogger<PackageRegistry>>();
         _messengerService = Substitute.For<IMessengerService>();
@@ -123,6 +127,11 @@ public class PackageServiceTests
         if (Directory.Exists(_tempProjectFolder))
         {
             Directory.Delete(_tempProjectFolder, true);
+        }
+
+        if (Directory.Exists(_tempBundledFolder))
+        {
+            Directory.Delete(_tempBundledFolder, true);
         }
     }
 
@@ -644,6 +653,7 @@ public class PackageServiceTests
             .ToList();
         duplicateFailures.Should().HaveCount(2);
         duplicateFailures.Should().OnlyContain(failure => failure.PackageName == "dup-tool");
+        duplicateFailures.Should().OnlyContain(failure => failure.Origin == PackageOrigin.Project);
     }
 
     [Test]
@@ -654,6 +664,28 @@ public class PackageServiceTests
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
         _service.GetLoadFailures().Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task GetLoadFailures_RecordsTheOriginOfEachFailure()
+    {
+        var badProjectDir = Path.Combine(_tempProjectFolder, "packages", "bad");
+        Directory.CreateDirectory(badProjectDir);
+        File.WriteAllText(Path.Combine(badProjectDir, "package.toml"), "{ invalid toml }");
+
+        var badBundledDir = Path.Combine(_tempBundledFolder, "bad-bundled");
+        Directory.CreateDirectory(badBundledDir);
+        File.WriteAllText(Path.Combine(badBundledDir, "package.toml"), "{ invalid toml }");
+        _bundledPackageProvider.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = badBundledDir } });
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        var failures = _service.GetLoadFailures();
+        failures.Should().HaveCount(2);
+        failures.Should().ContainSingle(failure => failure.Folder == badProjectDir)
+            .Which.Origin.Should().Be(PackageOrigin.Project);
+        failures.Should().ContainSingle(failure => failure.Folder == badBundledDir)
+            .Which.Origin.Should().Be(PackageOrigin.Bundled);
     }
 
     [Test]
