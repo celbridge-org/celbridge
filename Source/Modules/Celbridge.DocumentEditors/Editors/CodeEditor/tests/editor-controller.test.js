@@ -295,6 +295,29 @@ describe('EditorController edit availability', () => {
         findInput.remove();
     });
 
+    it('keeps its claim once the page has lost the keyboard, so a click on the chrome still copies', () => {
+        // The page goes on naming the text control it last focused after the keyboard moves to the
+        // application's chrome, and the selection the user made is still there to copy.
+        editor.hasTextFocus.mockReturnValue(false);
+        editor.getSelection.mockReturnValue({ isEmpty: () => false });
+        const findInput = document.createElement('input');
+        document.body.appendChild(findInput);
+        findInput.focus();
+
+        // The keyboard leaves the page for the application's chrome, which the page hears as a focus
+        // change with its own last-focused element still named.
+        const hasFocus = vi.spyOn(document, 'hasFocus').mockReturnValue(false);
+        document.dispatchEvent(new Event('focusin'));
+
+        expect(reportedAvailability()).toMatchObject({
+            canCopy: true,
+            hostMediatedClipboard: true
+        });
+
+        hasFocus.mockRestore();
+        findInput.remove();
+    });
+
     it('keeps its claim while a button holds the keyboard, so the menu still copies a selection', () => {
         editor.hasTextFocus.mockReturnValue(false);
         editor.getSelection.mockReturnValue({ isEmpty: () => false });

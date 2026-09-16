@@ -14,9 +14,8 @@ public sealed partial class ProjectToolbar : UserControl
 
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
 
-        // The menu opens over the document area, where a hosted web view would take the click too.
-        var overlayInputSuppressor = ServiceLocator.AcquireService<IOverlayInputSuppressor>();
-        overlayInputSuppressor.SuppressWhileOpen(MainMenuFlyout);
+        var overlayFlyoutSupport = ServiceLocator.AcquireService<IOverlayFlyoutSupport>();
+        overlayFlyoutSupport.Apply(MainMenuFlyout);
 
         Loaded += OnProjectToolbar_Loaded;
         Unloaded += OnProjectToolbar_Unloaded;

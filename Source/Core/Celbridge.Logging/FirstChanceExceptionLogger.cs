@@ -27,17 +27,22 @@ public static class FirstChanceExceptionLogger
         "StreamJsonRpc.RemoteMethodNotFoundException",
     };
 
-    // Socket errors that mean the peer went away rather than that anything failed. Every client that
-    // holds a loopback connection produces one of these when it closes: a console document, a WebView
-    // navigating away, a Python session exiting. The read that was waiting on the connection throws once
-    // per await boundary as it unwinds, so a single ordinary close logs a burst of them.
-    private static readonly HashSet<SocketError> DisconnectSocketErrors = new()
+    // Socket errors that mean the peer is not there rather than that anything failed. A peer that goes
+    // away produces one when a held loopback connection closes: a console document, a WebView navigating
+    // away, a Python session exiting. A peer that was never there produces one per address the host name
+    // resolves to, which is what the hot-reload client meets at every launch with no dev server running.
+    // The read or connect that was waiting throws once per await boundary as it unwinds, so one of these
+    // logs a burst.
+    private static readonly HashSet<SocketError> AbsentPeerSocketErrors = new()
     {
         SocketError.ConnectionReset,
         SocketError.ConnectionAborted,
         SocketError.Shutdown,
         SocketError.OperationAborted,
         SocketError.Interrupted,
+        SocketError.ConnectionRefused,
+        SocketError.HostUnreachable,
+        SocketError.NetworkUnreachable,
     };
 
     private static int _installed;
@@ -87,7 +92,7 @@ public static class FirstChanceExceptionLogger
                 return;
             }
 
-            if (IsExpectedDisconnect(exception))
+            if (IsAbsentPeer(exception))
             {
                 return;
             }
@@ -108,23 +113,20 @@ public static class FirstChanceExceptionLogger
         }
     }
 
-    // A socket stream reports a dropped connection as an IOException wrapping the SocketException that
-    // carries the reason, so the reason is what is matched rather than the exception type. Any other
-    // IOException still logs, since a real IO failure is worth seeing.
-    private static bool IsExpectedDisconnect(Exception exception)
+    // The reason a connection failed rides on a SocketException the transport wraps, once for a socket
+    // stream's IOException and twice for a web socket's connect, so the chain is walked for it. An
+    // exception carrying no socket error still logs, since a real IO failure is worth seeing.
+    private static bool IsAbsentPeer(Exception exception)
     {
-        Exception? candidate = exception;
-        if (exception is IOException)
+        for (Exception? candidate = exception; candidate is not null; candidate = candidate.InnerException)
         {
-            candidate = exception.InnerException;
+            if (candidate is SocketException socketException)
+            {
+                return AbsentPeerSocketErrors.Contains(socketException.SocketErrorCode);
+            }
         }
 
-        if (candidate is not SocketException socketException)
-        {
-            return false;
-        }
-
-        return DisconnectSocketErrors.Contains(socketException.SocketErrorCode);
+        return false;
     }
 
     // First stack frame that isn't framework or this logger. Async state-machine
