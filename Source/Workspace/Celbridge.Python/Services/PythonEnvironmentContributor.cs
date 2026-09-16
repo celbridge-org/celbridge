@@ -4,9 +4,9 @@ namespace Celbridge.Python.Services;
 
 /// <summary>
 /// Gives every console the shared Python host-integration environment (host ports, tool feature flags,
-/// version, per-project folders) and puts the project's uv tool bin folder on its PATH, so the installed
-/// celbridge-py command starts a fully-featured cel-connected REPL from any console type or a terminal a
-/// console spawns.
+/// version, per-project folders) and puts the app's uv and the project's uv tool bin folder on its PATH,
+/// so the installed celbridge-py command starts a fully-featured cel-connected REPL from any console type
+/// or a terminal a console spawns, and a typed uv is the one the app installed.
 /// </summary>
 public sealed class PythonEnvironmentContributor : IConsoleEnvironmentContributor
 {

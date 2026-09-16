@@ -93,9 +93,10 @@ public interface IPythonLaunchService
     Task<Result<PythonStartupResult>> BuildStartupAsync(PythonLaunchRequest request);
 
     /// <summary>
-    /// Returns a PATH value with the project's uv tool bin folder prepended to the given base (or to the
-    /// resolved child-process base PATH when null), so the installed celbridge-py command resolves in any
-    /// console. Already-prepended input is returned unchanged.
+    /// Returns a PATH value with the app's Python support folder and the project's uv tool bin folder
+    /// prepended to the given base (or to the resolved child-process base PATH when null), so uv, uvx and
+    /// the installed celbridge-py command all resolve in any console. A folder already on the given base
+    /// keeps its position.
     /// </summary>
     string BuildConsolePath(string? basePath);
 
@@ -264,12 +265,30 @@ public sealed class PythonLaunchService : IPythonLaunchService
 
     public string BuildConsolePath(string? basePath)
     {
-        var uvBinFolder = Path.Combine(ProjectPythonFolder, UVBinFolderName);
         var resolvedBase = string.IsNullOrEmpty(basePath) ? ResolveChildProcessBasePath() : basePath;
 
-        return resolvedBase.Contains(uvBinFolder, StringComparison.OrdinalIgnoreCase)
-            ? resolvedBase
-            : uvBinFolder + Path.PathSeparator + resolvedBase;
+        // The support folder holds uv and uvx. It goes ahead of whatever uv the user's own PATH offers, so
+        // a console runs the version the app installed: the one celbridge-py re-execs through and the one
+        // the project's caches and interpreter installs were built by.
+        var consolePath = PrependPathFolder(resolvedBase, _pythonInstaller.PythonFolderPath);
+
+        return PrependPathFolder(consolePath, Path.Combine(ProjectPythonFolder, UVBinFolderName));
+    }
+
+    // Compares whole entries rather than searching the text, so a folder that is a prefix of another entry
+    // still gets prepended, and a folder already present is not added a second time.
+    private static string PrependPathFolder(string path, string folder)
+    {
+        if (string.IsNullOrEmpty(path))
+        {
+            return folder;
+        }
+
+        var isPresent = path
+            .Split(Path.PathSeparator)
+            .Any(entry => string.Equals(entry, folder, StringComparison.OrdinalIgnoreCase));
+
+        return isPresent ? path : folder + Path.PathSeparator + path;
     }
 
     public async Task<IReadOnlyDictionary<string, string>> BuildConsoleEnvironmentAsync()
@@ -290,12 +309,12 @@ public sealed class PythonLaunchService : IPythonLaunchService
         var environment = new Dictionary<string, string>
         {
             ["UV_PYTHON_INSTALL_DIR"] = uvPythonInstallDir,
+            ["UV_CACHE_DIR"] = Path.Combine(projectPythonFolder, UVCacheFolderName),
             ["PATH"] = BuildConsolePath(null),
             ["CELBRIDGE_MCP_PORT"] = _serverService.Port.ToString(),
             ["CELBRIDGE_PROJECT_FOLDER"] = _projectService.CurrentProject!.ProjectFolderPath,
             ["CELBRIDGE_VERSION"] = celbridgeVersion,
             ["CELBRIDGE_IPYTHON_DIR"] = ipythonDir,
-            ["CELBRIDGE_UV_CACHE_DIR"] = Path.Combine(projectPythonFolder, UVCacheFolderName),
         };
 
         // The bootstrapper variables: where a typed celbridge-py finds uv and the celbridge wheel when its
@@ -502,7 +521,6 @@ public sealed class PythonLaunchService : IPythonLaunchService
             "tool",
             "install",
             "--force",
-            "--cache-dir", uvCacheDir,
             "--python", pythonVersion,
             "--managed-python",
             celbridgeWheelPath,
@@ -517,6 +535,7 @@ public sealed class PythonLaunchService : IPythonLaunchService
         processStartInfo.Environment["UV_TOOL_DIR"] = uvToolsFolder;
         processStartInfo.Environment["UV_TOOL_BIN_DIR"] = uvBinFolder;
         processStartInfo.Environment["UV_PYTHON_INSTALL_DIR"] = uvPythonInstallDir;
+        processStartInfo.Environment["UV_CACHE_DIR"] = uvCacheDir;
 
         var installTimer = Stopwatch.StartNew();
 

@@ -96,12 +96,10 @@ def test_build_bootstrap_command_builds_full_uv_run_command():
     environ = {
         "CELBRIDGE_UV": "/apps/python/uv",
         "CELBRIDGE_WHEEL": "/apps/python/celbridge-0.1.0-py3-none-any.whl",
-        "CELBRIDGE_UV_CACHE_DIR": "/project/.celbridge/python/uv_cache",
     }
     command = _build_bootstrap_command(resolved, environ)
     assert command == [
         "/apps/python/uv", "run",
-        "--cache-dir", "/project/.celbridge/python/uv_cache",
         "--offline",
         "--no-project",
         "--python", "3.13",
@@ -114,7 +112,7 @@ def test_build_bootstrap_command_builds_full_uv_run_command():
 
 
 def test_build_bootstrap_command_omits_absent_options():
-    """Test that cache dir, offline, and python version are omitted when not provided."""
+    """Test that offline and python version are omitted when not provided."""
     resolved = ResolvedLaunch(None, ["requests"], False, [])
     environ = {
         "CELBRIDGE_UV": "/apps/python/uv",
@@ -145,12 +143,10 @@ def test_build_probe_command_forces_offline_with_a_no_op_payload():
     environ = {
         "CELBRIDGE_UV": "/apps/python/uv",
         "CELBRIDGE_WHEEL": "/apps/python/celbridge-0.1.0-py3-none-any.whl",
-        "CELBRIDGE_UV_CACHE_DIR": "/project/.celbridge/python/uv_cache",
     }
     command = _build_probe_command(resolved, environ)
     assert command == [
         "/apps/python/uv", "run",
-        "--cache-dir", "/project/.celbridge/python/uv_cache",
         "--offline",
         "--no-project",
         "--python", "3.13",

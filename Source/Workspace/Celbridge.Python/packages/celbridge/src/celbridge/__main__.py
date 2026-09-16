@@ -93,7 +93,11 @@ def _resolve_launch(environ, arguments) -> ResolvedLaunch:
 
 
 def _build_uv_run_command(resolved: ResolvedLaunch, environ, payload):
-    """Build the uv run command that runs payload in the launch's environment."""
+    """Build the uv run command that runs payload in the launch's environment.
+
+    uv reads its own UV_CACHE_DIR and UV_PYTHON_INSTALL_DIR from the inherited environment, so the
+    project's cache and interpreter installs need no flags here.
+    """
     uv_path = environ.get('CELBRIDGE_UV')
     wheel_path = environ.get('CELBRIDGE_WHEEL')
     if not uv_path or not wheel_path:
@@ -103,10 +107,6 @@ def _build_uv_run_command(resolved: ResolvedLaunch, environ, payload):
         )
 
     command = [uv_path, 'run']
-
-    cache_dir = environ.get('CELBRIDGE_UV_CACHE_DIR')
-    if cache_dir:
-        command.extend(['--cache-dir', cache_dir])
 
     if resolved.offline:
         command.append('--offline')
