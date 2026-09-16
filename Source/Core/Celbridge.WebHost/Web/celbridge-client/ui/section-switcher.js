@@ -25,7 +25,7 @@
 import { attachStackLayout } from './stack-layout.js';
 
 // Used where the stylesheet has not been served, which leaves the switcher measuring against nothing.
-const STACK_THRESHOLD_FALLBACK = 387;
+const STACK_THRESHOLD_FALLBACK = 397;
 
 export function attachSectionSwitcher(rootElement, options = {}) {
     if (!rootElement) {

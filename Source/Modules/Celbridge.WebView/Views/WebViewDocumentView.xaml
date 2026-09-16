@@ -32,7 +32,8 @@
 
     </documents:DocumentView.Resources>
 
-    <Grid x:Name="LayoutRoot">
+    <Grid x:Name="LayoutRoot"
+          KeyDown="LayoutRoot_KeyDown">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -111,6 +112,15 @@
                             Orientation="Horizontal"
                             Spacing="4"
                             VerticalAlignment="Center">
+                    <!-- The glyph and tooltip are set in code-behind. -->
+                    <controls:IconButton x:Name="BookmarkPageButton"
+                                         VerticalAlignment="Center"
+                                         IsEnabled="{x:Bind ViewModel.HasNavigablePage, Mode=OneWay}"
+                                         Click="BookmarkPageButton_Click">
+                        <controls:Icon x:Name="BookmarkPageIcon"
+                                       Symbol="Star"
+                                       FontSize="{StaticResource IconSizeMedium}" />
+                    </controls:IconButton>
                     <controls:IconButton x:Name="DownloadIndicatorButton"
                                          VerticalAlignment="Center"
                                          Visibility="{x:Bind ViewModel.IsDownloadIndicatorVisible, Mode=OneWay}"
@@ -210,54 +220,55 @@
                 Grid.Row="3"
                 Background="{ThemeResource ContentBackgroundBrush}"
                 Visibility="Collapsed">
-            <StackPanel HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
-                        MaxWidth="360"
-                        Spacing="12">
-                <!-- Sized for an empty state rather than from the icon scale, which sizes glyphs sitting
-                     in controls. -->
-                <controls:Icon IconName="bs-globe"
-                               FontSize="48"
+            <!-- A tab stop, so a document with nothing else to focus still takes the keyboard. Its accessible name
+                 is set in code-behind. -->
+            <ContentControl x:Name="PlaceholderContent"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            IsTabStop="True"
+                            UseSystemFocusVisuals="True">
+                <StackPanel MaxWidth="360"
+                            Spacing="12">
+                    <!-- Sized for an empty state rather than from the icon scale, which sizes glyphs sitting
+                         in controls. -->
+                    <controls:Icon IconName="bs-globe"
+                                   FontSize="48"
+                                   HorizontalAlignment="Center"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   Visibility="{x:Bind ViewModel.IsEmptyStateVisible, Mode=OneWay}" />
+
+                    <!-- Names whichever way in the document offers: the URL bar, the bookmarks bar, both, or the
+                         settings when it has neither. The text is set in code-behind. -->
+                    <TextBlock x:Name="PlaceholderHint"
                                HorizontalAlignment="Center"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               TextAlignment="Center"
+                               TextWrapping="Wrap"
+                               Style="{StaticResource SupportingTextStyle}"
                                Visibility="{x:Bind ViewModel.IsEmptyStateVisible, Mode=OneWay}" />
 
-                <TextBlock Text="{x:Bind PlaceholderAddressHintString}"
-                           HorizontalAlignment="Center"
-                           TextAlignment="Center"
-                           TextWrapping="Wrap"
-                           Style="{StaticResource SupportingTextStyle}"
-                           Visibility="{x:Bind ViewModel.IsAddressHintVisible, Mode=OneWay}" />
+                    <!-- The address bar names the page that failed, so this reports the failure and what to do
+                         about it rather than repeating the address. -->
+                    <controls:Icon IconName="bs-exclamation-triangle"
+                                   FontSize="48"
+                                   HorizontalAlignment="Center"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   Visibility="{x:Bind ViewModel.IsLoadFailedVisible, Mode=OneWay}" />
 
-                <TextBlock Text="{x:Bind PlaceholderSettingsHintString}"
-                           HorizontalAlignment="Center"
-                           TextAlignment="Center"
-                           TextWrapping="Wrap"
-                           Style="{StaticResource SupportingTextStyle}"
-                           Visibility="{x:Bind ViewModel.IsSettingsHintVisible, Mode=OneWay}" />
-
-                <!-- The address bar names the page that failed, so this reports the failure and what to do
-                     about it rather than repeating the address. -->
-                <controls:Icon IconName="bs-exclamation-triangle"
-                               FontSize="48"
+                    <TextBlock Text="{x:Bind PlaceholderLoadFailedString}"
                                HorizontalAlignment="Center"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               TextAlignment="Center"
+                               TextWrapping="Wrap"
+                               Style="{StaticResource FieldLabelTextStyle}"
                                Visibility="{x:Bind ViewModel.IsLoadFailedVisible, Mode=OneWay}" />
 
-                <TextBlock Text="{x:Bind PlaceholderLoadFailedString}"
-                           HorizontalAlignment="Center"
-                           TextAlignment="Center"
-                           TextWrapping="Wrap"
-                           Style="{StaticResource FieldLabelTextStyle}"
-                           Visibility="{x:Bind ViewModel.IsLoadFailedVisible, Mode=OneWay}" />
-
-                <TextBlock Text="{x:Bind PlaceholderLoadFailedHintString}"
-                           HorizontalAlignment="Center"
-                           TextAlignment="Center"
-                           TextWrapping="Wrap"
-                           Style="{StaticResource SupportingTextStyle}"
-                           Visibility="{x:Bind ViewModel.IsLoadFailedVisible, Mode=OneWay}" />
-            </StackPanel>
+                    <TextBlock Text="{x:Bind PlaceholderLoadFailedHintString}"
+                               HorizontalAlignment="Center"
+                               TextAlignment="Center"
+                               TextWrapping="Wrap"
+                               Style="{StaticResource SupportingTextStyle}"
+                               Visibility="{x:Bind ViewModel.IsLoadFailedVisible, Mode=OneWay}" />
+                </StackPanel>
+            </ContentControl>
         </Border>
 
         <!-- Takes the content row in place of the page rather than sitting beside it, so opening the

@@ -181,23 +181,6 @@ html, body {
     margin-bottom: 0;
 }
 
-/* Positions the close below, so it lands in the same corner in both of the switcher's layouts. */
-#settings-switcher .cel-section-area {
-    position: relative;
-}
-
-#close-settings {
-    position: absolute;
-    top: var(--cel-section-inset);
-    right: var(--cel-section-inset);
-}
-
-/* Reserves the corner for the close button: the button's inset, its width, and a gap the size of the inset
-   between it and the text. */
-#settings-switcher .cel-section-header {
-    padding-right: calc(var(--cel-section-inset) * 2 + var(--cel-icon-button-size));
-}
-
 /* Stands in for the cards of a list nothing has been added to yet. */
 .card-list-empty {
     margin: 0 0 8px;

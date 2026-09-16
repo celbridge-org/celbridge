@@ -571,6 +571,12 @@ This file could not be saved</value>
   <data name="WebView_UrlBar_AddressPlaceholder" xml:space="preserve">
     <value>e.g. https://example.com</value>
   </data>
+  <data name="WebView_UrlBar_BookmarkPageTooltip" xml:space="preserve">
+    <value>Bookmark This Page</value>
+  </data>
+  <data name="WebView_UrlBar_EditBookmarkTooltip" xml:space="preserve">
+    <value>Edit Bookmark</value>
+  </data>
   <data name="WebView_UrlBar_OpenInBrowserTooltip" xml:space="preserve">
     <value>Open in System Browser</value>
   </data>
@@ -612,6 +618,12 @@ This file could not be saved</value>
   </data>
   <data name="WebView_Placeholder_AddressHint" xml:space="preserve">
     <value>Enter a web address above to open a page.</value>
+  </data>
+  <data name="WebView_Placeholder_AddressOrBookmarkHint" xml:space="preserve">
+    <value>Enter a web address or choose a bookmark above to open a page.</value>
+  </data>
+  <data name="WebView_Placeholder_BookmarkHint" xml:space="preserve">
+    <value>Choose a bookmark above to open a page.</value>
   </data>
   <data name="WebView_Placeholder_SettingsHint" xml:space="preserve">
     <value>Set a Home URL in Web View Settings to open a page.</value>
@@ -669,6 +681,9 @@ This file could not be saved</value>
   </data>
   <data name="WebView_Settings_BookmarkOpenTooltip" xml:space="preserve">
     <value>Open this bookmark</value>
+  </data>
+  <data name="WebView_Settings_BookmarkSetAsHome" xml:space="preserve">
+    <value>Set as Home</value>
   </data>
   <data name="WebView_Settings_BookmarkUntitled" xml:space="preserve">
     <value>Untitled bookmark</value>

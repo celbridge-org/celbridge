@@ -24,15 +24,19 @@ public sealed partial class WebViewDocumentSettingsView : UserControl
     public const string BookmarksSectionKey = "Bookmarks";
 
     private readonly IStringLocalizer _stringLocalizer;
+    private readonly IIconService _iconService;
 
     private WebViewDocumentViewModel? _documentViewModel;
+
+    // Null until the sections are built.
+    private WebViewBookmarksSectionView? _bookmarksView;
 
     public WebViewDocumentSettingsViewModel ViewModel { get; }
 
     public string ReturnToPageString => _stringLocalizer.GetString("WebView_Settings_ReturnToPage");
 
     /// <summary>
-    /// Raised when the user leaves the settings from the rail footer.
+    /// Raised when the user leaves the settings with the close button over the section heading.
     /// </summary>
     public event EventHandler? ReturnToPageRequested;
 
@@ -45,11 +49,14 @@ public sealed partial class WebViewDocumentSettingsView : UserControl
     public WebViewDocumentSettingsView()
     {
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
+        _iconService = ServiceLocator.AcquireService<IIconService>();
 
         // The view model backs x:Bind paths, so it must exist before InitializeComponent evaluates them.
         ViewModel = ServiceLocator.AcquireService<WebViewDocumentSettingsViewModel>();
 
         InitializeComponent();
+
+        SectionSwitcher.CloseRequested += SectionSwitcher_CloseRequested;
     }
 
     /// <summary>
@@ -79,6 +86,23 @@ public sealed partial class WebViewDocumentSettingsView : UserControl
         ViewModel.SelectSection(sectionKey);
     }
 
+    /// <summary>
+    /// Opens the given bookmark's card in the Bookmarks section and brings it into view. Select that
+    /// section first.
+    /// </summary>
+    public void RevealBookmark(WebViewBookmarkViewModel bookmark)
+    {
+        _bookmarksView?.RevealBookmark(bookmark);
+    }
+
+    /// <summary>
+    /// Gives the keyboard to the section rail, and reports whether it took it.
+    /// </summary>
+    public bool FocusRail()
+    {
+        return SectionSwitcher.FocusRail();
+    }
+
     // The sections in rail order. The keys are persisted, so changing one drops the section a returning
     // user had open.
     private List<SettingsSection> BuildSections(WebViewDocumentViewModel viewModel)
@@ -88,7 +112,7 @@ public sealed partial class WebViewDocumentSettingsView : UserControl
             ViewModel = viewModel
         };
 
-        var bookmarksView = new WebViewBookmarksSectionView
+        _bookmarksView = new WebViewBookmarksSectionView
         {
             ViewModel = viewModel
         };
@@ -110,10 +134,10 @@ public sealed partial class WebViewDocumentSettingsView : UserControl
                 homeView),
             new(
                 BookmarksSectionKey,
-                "bs-bookmark",
+                _iconService.GetIconName(IconSymbol.Star),
                 _stringLocalizer.GetString("WebView_Settings_BookmarksHeader"),
                 _stringLocalizer.GetString("WebView_Settings_BookmarksDescription"),
-                bookmarksView),
+                _bookmarksView),
             new(
                 "Appearance",
                 "bs-palette",
@@ -131,7 +155,7 @@ public sealed partial class WebViewDocumentSettingsView : UserControl
         return sections;
     }
 
-    private void ReturnToPageButton_Click(object sender, RoutedEventArgs e)
+    private void SectionSwitcher_CloseRequested(object? sender, EventArgs e)
     {
         ReturnToPageRequested?.Invoke(this, EventArgs.Empty);
     }

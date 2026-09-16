@@ -289,6 +289,16 @@ public class WebViewDocumentViewModelTests
     }
 
     [Test]
+    public void CanSetCurrentPageAsHome_OnTheHomePageWithATrailingSlash_IsFalse()
+    {
+        var viewModel = CreateViewModel();
+        viewModel.SourceUrl = "https://example.com";
+        viewModel.CurrentUrl = "https://example.com/";
+
+        viewModel.CanSetCurrentPageAsHome.Should().BeFalse();
+    }
+
+    [Test]
     public async Task LoadContent_WithBookmarks_DoesNotMarkUnsavedChanges()
     {
         // The bookmarks arriving from disk are not edits, so a document that is only opened must not be
@@ -361,6 +371,20 @@ public class WebViewDocumentViewModelTests
         viewModel.HasUnsavedChanges.Should().BeTrue();
     }
 
+    [TestCase("https://example.com/docs", true)]
+    [TestCase("http://localhost:5173/", true)]
+    [TestCase("", false)]
+    [TestCase("about:blank", false)]
+    [TestCase("data:text/html,hello", false)]
+    [TestCase("blob:https://example.com/3f1c", false)]
+    public void HasNavigablePage_IsTrueOnlyForAWebAddress(string pageUrl, bool expected)
+    {
+        var viewModel = CreateViewModel();
+        viewModel.CurrentUrl = pageUrl;
+
+        viewModel.HasNavigablePage.Should().Be(expected);
+    }
+
     [Test]
     public void CanAddBookmarkFromCurrentPage_WithNoMatchingBookmark_IsTrue()
     {
@@ -407,6 +431,202 @@ public class WebViewDocumentViewModelTests
         viewModel.CanAddBookmarkFromCurrentPage.Should().BeTrue();
     }
 
+    // A leading "www." is dropped unless nothing with a dot would remain, other subdomains are kept, a port is kept
+    // where it is not the scheme's default, and an internationalized domain is named in Unicode.
+    [TestCase("https://www.example.com/docs", "example.com")]
+    [TestCase("https://example.com/docs", "example.com")]
+    [TestCase("https://WWW.Example.com/", "example.com")]
+    [TestCase("https://docs.example.com/", "docs.example.com")]
+    [TestCase("https://www.com/", "www.com")]
+    [TestCase("http://localhost:5173/", "localhost:5173")]
+    [TestCase("https://example.com:443/", "example.com")]
+    [TestCase("https://www.example.com:8443/", "example.com:8443")]
+    [TestCase("https://xn--bcher-kva.de/", "bücher.de")]
+    [TestCase("https://www.xn--bcher-kva.de/", "bücher.de")]
+    public void AddBookmarkFromCurrentPage_NamesTheBookmarkAfterItsSite(string pageUrl, string expectedName)
+    {
+        var viewModel = CreateViewModel();
+        viewModel.CurrentUrl = pageUrl;
+
+        var bookmark = viewModel.AddBookmarkFromCurrentPage();
+
+        bookmark.Should().NotBeNull();
+        bookmark!.Name.Should().Be(expectedName);
+    }
+
+    [Test]
+    public void AddBookmarkFromCurrentPage_LeavesCredentialsInTheAddressOutOfTheName()
+    {
+        var viewModel = CreateViewModel();
+        viewModel.CurrentUrl = "https://user:secret@www.example.com/";
+
+        var bookmark = viewModel.AddBookmarkFromCurrentPage();
+
+        bookmark.Should().NotBeNull();
+        bookmark!.Name.Should().Be("example.com");
+    }
+
+    [Test]
+    public void IsCurrentPageBookmarked_WithAMatchingBookmark_IsTrue()
+    {
+        var viewModel = CreateViewModel();
+        viewModel.CurrentUrl = "https://example.com/docs";
+        viewModel.Bookmarks.Add(viewModel.CreateBookmark(new WebViewBookmark("https://example.com/docs")));
+
+        viewModel.IsCurrentPageBookmarked.Should().BeTrue();
+    }
+
+    [Test]
+    public void IsCurrentPageBookmarked_WithNoMatchingBookmark_IsFalse()
+    {
+        var viewModel = CreateViewModel();
+        viewModel.CurrentUrl = "https://example.com/docs";
+        viewModel.Bookmarks.Add(viewModel.CreateBookmark(new WebViewBookmark("https://example.com/other")));
+
+        viewModel.IsCurrentPageBookmarked.Should().BeFalse();
+    }
+
+    [Test]
+    public void FindBookmarkForCurrentPage_ReturnsTheBookmarkPointingAtThePage()
+    {
+        var viewModel = CreateViewModel();
+        viewModel.CurrentUrl = "https://example.com/docs";
+        viewModel.Bookmarks.Add(viewModel.CreateBookmark(new WebViewBookmark("https://example.com/other")));
+        var match = viewModel.CreateBookmark(new WebViewBookmark("https://example.com/docs"));
+        viewModel.Bookmarks.Add(match);
+
+        viewModel.FindBookmarkForCurrentPage().Should().BeSameAs(match);
+    }
+
+    [Test]
+    public void FindBookmarkForCurrentPage_WithNoMatchingBookmark_ReturnsNull()
+    {
+        var viewModel = CreateViewModel();
+        viewModel.CurrentUrl = "https://example.com/docs";
+        viewModel.Bookmarks.Add(viewModel.CreateBookmark(new WebViewBookmark("https://example.com/other")));
+
+        viewModel.FindBookmarkForCurrentPage().Should().BeNull();
+    }
+
+    [Test]
+    public void FindBookmarkForCurrentPage_AfterTheBookmarkIsRepointed_ReturnsNull()
+    {
+        var viewModel = CreateViewModel();
+        viewModel.CurrentUrl = "https://example.com/docs";
+        var bookmark = viewModel.CreateBookmark(new WebViewBookmark("https://example.com/docs"));
+        viewModel.Bookmarks.Add(bookmark);
+
+        bookmark.Url = "https://example.com/other";
+
+        viewModel.FindBookmarkForCurrentPage().Should().BeNull();
+        viewModel.IsCurrentPageBookmarked.Should().BeFalse();
+    }
+
+    [Test]
+    public async Task SetBookmarkAsHome_AdoptsTheBookmarksUrl()
+    {
+        StubWebViewFile(
+            """
+            source_url = "https://example.com"
+
+            [[bookmarks]]
+            url = "https://example.com/docs"
+            """);
+
+        var viewModel = CreateViewModel();
+        await viewModel.LoadContent();
+        var bookmark = viewModel.Bookmarks[0];
+
+        bookmark.CanSetAsHome.Should().BeTrue();
+
+        viewModel.SetBookmarkAsHome(bookmark);
+
+        viewModel.SourceUrl.Should().Be("https://example.com/docs");
+        bookmark.IsHome.Should().BeTrue();
+        bookmark.CanSetAsHome.Should().BeFalse();
+        viewModel.HasUnsavedChanges.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task LoadContent_MarksTheBookmarkForTheHomeUrl_WithoutMarkingUnsavedChanges()
+    {
+        // The flag is worked out from the Home URL, so setting it on load is not an edit.
+        StubWebViewFile(
+            """
+            source_url = "https://example.com/docs"
+
+            [[bookmarks]]
+            url = "https://example.com/docs"
+
+            [[bookmarks]]
+            url = "https://example.com/blog"
+            """);
+
+        var viewModel = CreateViewModel();
+        await viewModel.LoadContent();
+
+        viewModel.Bookmarks[0].IsHome.Should().BeTrue();
+        viewModel.Bookmarks[1].IsHome.Should().BeFalse();
+        viewModel.HasUnsavedChanges.Should().BeFalse();
+    }
+
+    [Test]
+    public void IsHome_FollowsTheHomeUrl()
+    {
+        var viewModel = CreateViewModel();
+        var docs = viewModel.CreateBookmark(new WebViewBookmark("https://example.com/docs"));
+        var blog = viewModel.CreateBookmark(new WebViewBookmark("https://example.com/blog"));
+        viewModel.Bookmarks.Add(docs);
+        viewModel.Bookmarks.Add(blog);
+
+        viewModel.SourceUrl = "https://example.com/docs";
+
+        docs.IsHome.Should().BeTrue();
+        blog.IsHome.Should().BeFalse();
+
+        viewModel.SourceUrl = "https://example.com/blog";
+
+        docs.IsHome.Should().BeFalse();
+        blog.IsHome.Should().BeTrue();
+    }
+
+    [Test]
+    public void IsHome_ForABookmarkDifferingFromTheHomeUrlByATrailingSlash_IsTrue()
+    {
+        var viewModel = CreateViewModel();
+        viewModel.SourceUrl = "https://example.com";
+
+        var bookmark = viewModel.CreateBookmark(new WebViewBookmark("https://example.com/"));
+        viewModel.Bookmarks.Add(bookmark);
+
+        bookmark.IsHome.Should().BeTrue();
+    }
+
+    [Test]
+    public void IsHome_AfterTheBookmarkIsRepointed_IsFalse()
+    {
+        var viewModel = CreateViewModel();
+        viewModel.SourceUrl = "https://example.com/docs";
+        var bookmark = viewModel.CreateBookmark(new WebViewBookmark("https://example.com/docs"));
+        viewModel.Bookmarks.Add(bookmark);
+
+        bookmark.Url = "https://example.com/other";
+
+        bookmark.IsHome.Should().BeFalse();
+        bookmark.CanSetAsHome.Should().BeTrue();
+    }
+
+    [Test]
+    public void CanSetAsHome_ForABookmarkWithNoUsableUrl_IsFalse()
+    {
+        var viewModel = CreateViewModel();
+        var bookmark = viewModel.CreateBookmark(new WebViewBookmark(string.Empty));
+        viewModel.Bookmarks.Add(bookmark);
+
+        bookmark.IsHome.Should().BeFalse();
+        bookmark.CanSetAsHome.Should().BeFalse();
+    }
+
     [Test]
     public void ToolbarBookmarks_LeavesOutAnEntryThatCannotBeNavigatedTo()
     {
@@ -443,6 +663,86 @@ public class WebViewDocumentViewModelTests
         viewModel.IsSettingsOpen = true;
 
         viewModel.IsBookmarksBarVisible.Should().BeTrue();
+    }
+
+    [Test]
+    public void IsPageOnScreen_WithAPageShowing_IsTrue()
+    {
+        var viewModel = CreateViewModel();
+        viewModel.Role = WebViewDocumentRole.ExternalUrl;
+        viewModel.CurrentUrl = "https://example.com/";
+
+        viewModel.IsPageOnScreen.Should().BeTrue();
+    }
+
+    [Test]
+    public void IsPageOnScreen_WhileTheSettingsAreOpen_IsFalse()
+    {
+        var viewModel = CreateViewModel();
+        viewModel.Role = WebViewDocumentRole.ExternalUrl;
+        viewModel.CurrentUrl = "https://example.com/";
+
+        viewModel.IsSettingsOpen = true;
+
+        viewModel.IsPageOnScreen.Should().BeFalse();
+    }
+
+    [TestCase("")]
+    [TestCase("about:blank")]
+    public void IsPageOnScreen_WithNoPage_IsFalse(string currentUrl)
+    {
+        var viewModel = CreateViewModel();
+        viewModel.Role = WebViewDocumentRole.ExternalUrl;
+        viewModel.CurrentUrl = currentUrl;
+
+        viewModel.IsPageOnScreen.Should().BeFalse();
+    }
+
+    [Test]
+    public void IsPageOnScreen_AfterTheNavigationFailed_IsFalse()
+    {
+        var viewModel = CreateViewModel();
+        viewModel.Role = WebViewDocumentRole.ExternalUrl;
+        viewModel.CurrentUrl = "https://example.com/";
+
+        viewModel.NotifyNavigationStarted();
+        viewModel.NotifyNavigationCompleted(isSuccess: false);
+
+        viewModel.IsPageOnScreen.Should().BeFalse();
+    }
+
+    [Test]
+    public void IsPageOnScreen_ForTheHtmlViewer_IsTrue()
+    {
+        // The viewer has no placeholder or settings, so its page is always what the document shows.
+        var viewModel = CreateViewModel();
+        viewModel.Role = WebViewDocumentRole.HtmlViewer;
+
+        viewModel.IsPageOnScreen.Should().BeTrue();
+    }
+
+    [Test]
+    public void HasWayToNavigate_WithOnlyABookmarksBar_IsTrue()
+    {
+        // A document that hides its URL bar and has no Home URL can still open a page from its bookmarks.
+        var viewModel = CreateViewModel();
+        viewModel.Role = WebViewDocumentRole.ExternalUrl;
+        viewModel.ShowUrlBar = false;
+        viewModel.Bookmarks.Add(viewModel.CreateBookmark(new WebViewBookmark("https://example.com")));
+
+        viewModel.HasWayToNavigate.Should().BeTrue();
+    }
+
+    [Test]
+    public void HasWayToNavigate_WithBookmarksButTheBarHidden_IsFalse()
+    {
+        var viewModel = CreateViewModel();
+        viewModel.Role = WebViewDocumentRole.ExternalUrl;
+        viewModel.ShowUrlBar = false;
+        viewModel.ShowBookmarksBar = false;
+        viewModel.Bookmarks.Add(viewModel.CreateBookmark(new WebViewBookmark("https://example.com")));
+
+        viewModel.HasWayToNavigate.Should().BeFalse();
     }
 
     [Test]
