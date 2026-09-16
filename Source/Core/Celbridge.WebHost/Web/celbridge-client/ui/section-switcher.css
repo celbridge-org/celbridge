@@ -15,6 +15,10 @@
          ...one row per section...
        </div>
        <div class="cel-section-area">
+         ...an optional close, ahead of the headers...
+         <button class="cel-icon-button cel-section-close" type="button" title="Close" aria-label="Close">
+           <i class="bi bi-x-lg"></i>
+         </button>
          <div class="cel-section-header" data-section="session"><h1>Session</h1><p>What it covers.</p></div>
          ...one header per section...
          <div class="cel-section-notice" hidden></div>
@@ -28,8 +32,9 @@
 
    Drive it with attachSectionSwitcher() from ui/section-switcher.js, which owns the selection, which header
    and section are showing, aria-selected, the roving tabindex and the arrow keys, and which of the two
-   layouts is in force. The switcher fills the box it is given, so the surface around it supplies the height
-   and the margin: --cel-settings-inset, which the native consumers take as SettingsSurfaceMargin.
+   layouts is in force. The close is the surface's to wire, click and Escape both, since only the surface
+   knows what leaving it means. The switcher fills the box it is given, so the surface around it supplies the
+   height and the margin: --cel-settings-inset, which the native consumers take as SettingsSurfaceMargin.
 
    The two layouts are held on the root as data-layout. `inline` is the native layout: a labelled nav column
    beside the carved section. `stacked` puts the nav above the content as an icon strip, over a section that
@@ -66,6 +71,8 @@
 }
 
 .cel-section-area {
+    /* Positions the close, so it lands in the same corner in both layouts. */
+    position: relative;
     grid-column: 2;
     grid-row: 2;
     display: flex;
@@ -216,6 +223,20 @@
     margin: 0;
     font-size: var(--cel-font-size-small);
     color: var(--cel-text-secondary);
+}
+
+/* One close for every section, in the corner of the header block, mirroring the native switcher's
+   CloseButtonTooltip. A surface that can be left places it in .cel-section-area ahead of the headers. */
+.cel-section-close {
+    position: absolute;
+    top: var(--cel-section-inset);
+    right: var(--cel-section-inset);
+}
+
+/* Reserves the corner for the close: the button's inset, its width, and a gap the size of the inset between
+   it and the text. Keyed on the close coming first, so a surface without one keeps the full width. */
+.cel-section-close ~ .cel-section-header {
+    padding-right: calc(var(--cel-section-inset) * 2 + var(--cel-icon-button-size));
 }
 
 /* Something the whole surface has to say, pinned below the header so it stays visible from whichever section

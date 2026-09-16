@@ -887,9 +887,30 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
 
     private void SettingsSurface_ReturnToPageRequested(object? sender, EventArgs e)
     {
+        ReturnToPage();
+    }
+
+    // Escape leaves the settings from anywhere in the document, the URL and bookmarks bars included, the way
+    // the close button over the section heading does. A control that gives Escape a meaning of its own, such
+    // as the address box abandoning an edit, handles it first.
+    private void LayoutRoot_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key != VirtualKey.Escape
+            || !ViewModel.IsSettingsVisible)
+        {
+            return;
+        }
+
+        ReturnToPage();
+
+        e.Handled = true;
+    }
+
+    private void ReturnToPage()
+    {
         ViewModel.CloseSettings();
 
-        // The button that asked has just collapsed with the settings, so the keyboard has nowhere to go.
+        // Focus was in the settings or the chrome above them, and the page is what the user returns to.
         GiveFocusToWebContent();
     }
 

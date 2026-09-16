@@ -85,13 +85,32 @@
         <Border x:Name="SectionHeader"
                 BorderBrush="{ThemeResource DividerBrush}"
                 BorderThickness="0,0,0,1">
-          <StackPanel Spacing="2">
-            <TextBlock x:Name="SectionLabel"
-                       Style="{StaticResource SectionHeadingTextStyle}"/>
-            <TextBlock x:Name="SectionDescription"
-                       Style="{StaticResource SupportingTextStyle}"
-                       TextWrapping="Wrap"/>
-          </StackPanel>
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Spacing="2">
+              <TextBlock x:Name="SectionLabel"
+                         Style="{StaticResource SectionHeadingTextStyle}"/>
+              <TextBlock x:Name="SectionDescription"
+                         Style="{StaticResource SupportingTextStyle}"
+                         TextWrapping="Wrap"/>
+            </StackPanel>
+
+            <!-- One close for every section, in the corner of the heading band. Collapsed until the surface
+                 names it, which is also what keeps a surface without one from giving the heading less room.
+                 The gap to the heading is set in code-behind from SectionInset, which is a Double. -->
+            <controls:IconButton x:Name="CloseButton"
+                                 Grid.Column="1"
+                                 VerticalAlignment="Top"
+                                 Visibility="Collapsed"
+                                 Click="CloseButton_Click">
+              <controls:Icon Symbol="Close"
+                             FontSize="{StaticResource IconSizeMedium}"/>
+            </controls:IconButton>
+          </Grid>
         </Border>
 
         <!-- Every section is realized here and hidden rather than swapped in, so its scroll position and

@@ -36,7 +36,7 @@ public sealed partial class WebViewDocumentSettingsView : UserControl
     public string ReturnToPageString => _stringLocalizer.GetString("WebView_Settings_ReturnToPage");
 
     /// <summary>
-    /// Raised when the user leaves the settings from the rail footer.
+    /// Raised when the user leaves the settings with the close button over the section heading.
     /// </summary>
     public event EventHandler? ReturnToPageRequested;
 
@@ -55,6 +55,8 @@ public sealed partial class WebViewDocumentSettingsView : UserControl
         ViewModel = ServiceLocator.AcquireService<WebViewDocumentSettingsViewModel>();
 
         InitializeComponent();
+
+        SectionSwitcher.CloseRequested += SectionSwitcher_CloseRequested;
     }
 
     /// <summary>
@@ -145,7 +147,7 @@ public sealed partial class WebViewDocumentSettingsView : UserControl
         return sections;
     }
 
-    private void ReturnToPageButton_Click(object sender, RoutedEventArgs e)
+    private void SectionSwitcher_CloseRequested(object? sender, EventArgs e)
     {
         ReturnToPageRequested?.Invoke(this, EventArgs.Empty);
     }

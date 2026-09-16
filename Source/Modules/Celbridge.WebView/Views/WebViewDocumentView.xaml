@@ -32,7 +32,8 @@
 
     </documents:DocumentView.Resources>
 
-    <Grid x:Name="LayoutRoot">
+    <Grid x:Name="LayoutRoot"
+          KeyDown="LayoutRoot_KeyDown">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
