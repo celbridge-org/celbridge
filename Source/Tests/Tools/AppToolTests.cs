@@ -1,7 +1,9 @@
 using System.Text.Json;
 using Celbridge.Messaging;
+using Celbridge.Packages;
 using Celbridge.Platform;
 using Celbridge.Projects;
+using Celbridge.Resources;
 using Celbridge.Server;
 using Celbridge.Settings;
 using Celbridge.Tools;
@@ -156,6 +158,158 @@ public class AppToolTests
         noteEditor.GetBoolean().Should().BeFalse();
     }
 
+    [Test]
+    public void ListPackages_ReportsProjectPackagesByName_AndProjectFailures()
+    {
+        WireProjectPackages();
+
+        var tools = new AppTools(_services);
+        var root = ParseResult(tools.ListPackages());
+
+        // The bundled package and the bundled load failure are not part of the project's state.
+        var packages = root.GetProperty("packages");
+        packages.GetArrayLength().Should().Be(2);
+        packages[0].GetProperty("name").GetString().Should().Be("acme-alpha");
+        packages[0].GetProperty("packageVersion").GetString().Should().Be("1.0.0");
+        packages[0].GetProperty("folder").GetString().Should().Be("project:packages/acme-alpha");
+        packages[1].GetProperty("name").GetString().Should().Be("acme-beta");
+        packages[1].GetProperty("packageVersion").GetString().Should().Be("2.1.0");
+
+        var failures = root.GetProperty("failures");
+        failures.GetArrayLength().Should().Be(1);
+        failures[0].GetProperty("folder").GetString().Should().Be("project:packages/acme-broken");
+        failures[0].GetProperty("reason").GetString().Should().Be("InvalidManifest");
+        failures[0].GetProperty("detail").GetString().Should().Be("'package-version': '2.1' is not a three-part version such as 1.0.0.");
+    }
+
+    [Test]
+    public void ListPackages_NoProjectLoaded_ReturnsAnError()
+    {
+        var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
+        workspaceWrapper.IsWorkspaceLoaded.Returns(false);
+        _services.GetRequiredService<IWorkspaceWrapper>().Returns(workspaceWrapper);
+
+        var tools = new AppTools(_services);
+        var result = tools.ListPackages();
+
+        result.IsError.Should().BeTrue();
+    }
+
+    [Test]
+    public void GetState_ProjectLoaded_SummarizesTheListedPackages()
+    {
+        WireAppStateDependencies();
+        WireProjectPackages();
+        var projectService = Substitute.For<IProjectService>();
+        var project = Substitute.For<IProject>();
+        project.ProjectName.Returns("MyProject");
+        projectService.CurrentProject.Returns(project);
+        _services.GetRequiredService<IProjectService>().Returns(projectService);
+
+        var tools = new AppTools(_services);
+        var state = ParseResult(tools.GetState());
+        var listed = ParseResult(tools.ListPackages());
+
+        var summary = state.GetProperty("packages");
+        var listedPackages = listed.GetProperty("packages");
+        summary.GetArrayLength().Should().Be(2);
+        summary.GetArrayLength().Should().Be(listedPackages.GetArrayLength());
+        for (var index = 0; index < summary.GetArrayLength(); index++)
+        {
+            summary[index].GetProperty("name").GetString()
+                .Should().Be(listedPackages[index].GetProperty("name").GetString());
+            summary[index].GetProperty("packageVersion").GetString()
+                .Should().Be(listedPackages[index].GetProperty("packageVersion").GetString());
+        }
+
+        state.GetProperty("packageLoadFailureCount").GetInt32()
+            .Should().Be(listed.GetProperty("failures").GetArrayLength());
+    }
+
+    [Test]
+    public void GetState_NoProjectLoaded_ReportsAnEmptyPackageSummary()
+    {
+        WireAppStateDependencies();
+        var projectService = Substitute.For<IProjectService>();
+        projectService.CurrentProject.Returns((IProject?)null);
+        _services.GetRequiredService<IProjectService>().Returns(projectService);
+
+        var tools = new AppTools(_services);
+        var root = ParseResult(tools.GetState());
+
+        root.GetProperty("packages").GetArrayLength().Should().Be(0);
+        root.GetProperty("packageLoadFailureCount").GetInt32().Should().Be(0);
+    }
+
+    // A loaded workspace whose registry holds two project packages out of name order, a bundled package, a load
+    // failure in the project tree and a bundled load failure. Paths under the project folder resolve to project:
+    // keys.
+    private void WireProjectPackages()
+    {
+        var projectFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(AppToolTests));
+        var alphaFolder = Path.Combine(projectFolder, "packages", "acme-alpha");
+        var betaFolder = Path.Combine(projectFolder, "packages", "acme-beta");
+        var bundledFolder = Path.Combine(Path.GetTempPath(), "Celbridge", $"{nameof(AppToolTests)}Bundled");
+
+        var packageService = Substitute.For<IPackageService>();
+        packageService.GetAllPackages().Returns(
+        [
+            CreatePackage("celbridge-acme", PackageOrigin.Bundled, Path.Combine(bundledFolder, "celbridge-acme"), SemanticVersion.Default),
+            CreatePackage("acme-beta", PackageOrigin.Project, betaFolder, new SemanticVersion(2, 1, 0)),
+            CreatePackage("acme-alpha", PackageOrigin.Project, alphaFolder, SemanticVersion.Default),
+        ]);
+        packageService.GetLoadFailures().Returns(
+        [
+            new PackageLoadFailure
+            {
+                Folder = Path.Combine(bundledFolder, "celbridge-broken"),
+                Reason = PackageLoadFailureReason.InvalidManifest,
+                Origin = PackageOrigin.Bundled
+            },
+            new PackageLoadFailure
+            {
+                Folder = Path.Combine(projectFolder, "packages", "acme-broken"),
+                Reason = PackageLoadFailureReason.InvalidManifest,
+                Detail = "'package-version': '2.1' is not a three-part version such as 1.0.0.",
+                Origin = PackageOrigin.Project
+            },
+        ]);
+
+        var resourceRegistry = Substitute.For<IResourceRegistry>();
+        resourceRegistry.GetResourceKey(Arg.Any<string>()).Returns(callInfo =>
+        {
+            var path = callInfo.Arg<string>();
+            var relativePath = Path.GetRelativePath(projectFolder, path).Replace(Path.DirectorySeparatorChar, '/');
+            return Result<ResourceKey>.Ok(new ResourceKey(relativePath));
+        });
+
+        var resourceService = Substitute.For<IResourceService>();
+        resourceService.Registry.Returns(resourceRegistry);
+
+        var workspaceService = Substitute.For<IWorkspaceService>();
+        workspaceService.PackageService.Returns(packageService);
+        workspaceService.ResourceService.Returns(resourceService);
+
+        var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
+        workspaceWrapper.IsWorkspaceLoaded.Returns(true);
+        workspaceWrapper.WorkspaceService.Returns(workspaceService);
+        _services.GetRequiredService<IWorkspaceWrapper>().Returns(workspaceWrapper);
+    }
+
+    private static Package CreatePackage(string name, PackageOrigin origin, string packageFolder, SemanticVersion packageVersion)
+    {
+        return new Package
+        {
+            Info = new PackageInfo
+            {
+                Name = name,
+                Origin = origin,
+                PackageFolder = packageFolder,
+                PackageVersion = packageVersion
+            }
+        };
+    }
+
     private IFeatureFlags WireAppStateDependencies(
         FocusPanelId focusedPanel = FocusPanelId.None,
         bool contextVisible = false,
@@ -187,11 +341,16 @@ public class AppToolTests
         _services.GetRequiredService<IFocusService>().Returns(focusService);
         _services.GetRequiredService<ILayoutService>().Returns(layoutService);
 
+        // No workspace is loaded until a test wires one, so the package summary starts empty.
+        var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
+        workspaceWrapper.IsWorkspaceLoaded.Returns(false);
+        _services.GetRequiredService<IWorkspaceWrapper>().Returns(workspaceWrapper);
+
         // AppTools.GetState resolves IAppStateProvider. Build a real provider
         // that wraps the substituted underlying services so the existing
         // JSON-shape assertions continue to exercise the full build path. The
-        // factory re-resolves IProjectService at call time so tests that
-        // override the project service after WireAppStateDependencies returns
+        // factory re-resolves IProjectService and IWorkspaceWrapper at call time
+        // so tests that override either after WireAppStateDependencies returns
         // (most of them) see their override.
         var spotlightRegistry = Substitute.For<ISpotlightRegistry>();
         spotlightRegistry.GetLandmarks().Returns(new List<LandmarkDescriptor>());
@@ -200,6 +359,7 @@ public class AppToolTests
             _ => new AppStateProvider(
                 environmentService,
                 _services.GetRequiredService<IProjectService>(),
+                _services.GetRequiredService<IWorkspaceWrapper>(),
                 featureFlags,
                 focusService,
                 layoutService,

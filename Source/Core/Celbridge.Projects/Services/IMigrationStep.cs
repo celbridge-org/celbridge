@@ -8,9 +8,9 @@ namespace Celbridge.Projects.Services;
 public interface IMigrationStep
 {
     /// <summary>
-    /// The target version this migration step upgrades to (e.g., "0.1.5").
+    /// The Celbridge version this migration step upgrades a project to (e.g., 0.1.5).
     /// </summary>
-    Version TargetVersion { get; }
+    SemanticVersion TargetVersion { get; }
 
     /// <summary>
     /// Apply the migration changes to upgrade the project to the target version.

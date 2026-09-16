@@ -159,14 +159,14 @@ public class ProjectMigrationServiceTests
     }
 
     [Test]
-    public async Task CheckMigrationAsync_NewerProjectVersion_ReturnsIncompatibleVersion()
+    public async Task CheckMigrationAsync_NewerCelbridgeVersion_ReturnsIncompatibleVersion()
     {
         // Arrange
         var appVersion = "1.0.0";
-        var projectVersion = "2.0.0";
+        var celbridgeVersion = "2.0.0";
         _mockEnvironmentService = MigrationTestHelper.CreateMockEnvironmentService(appVersion);
         var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, _registry, _fileSystem);
-        var projectPath = MigrationTestHelper.CreateTempProjectFile(projectVersion);
+        var projectPath = MigrationTestHelper.CreateTempProjectFile(celbridgeVersion);
 
         try
         {
@@ -185,7 +185,7 @@ public class ProjectMigrationServiceTests
     }
 
     [Test]
-    public async Task CheckMigrationAsync_EmptyProjectVersion_ReturnsInvalidVersion()
+    public async Task CheckMigrationAsync_EmptyCelbridgeVersion_ReturnsInvalidVersion()
     {
         // Arrange
         _mockEnvironmentService = MigrationTestHelper.CreateMockEnvironmentService("1.0.0");
@@ -231,14 +231,46 @@ public class ProjectMigrationServiceTests
     }
 
     [Test]
+    public async Task CheckMigrationAsync_FourPartCelbridgeVersion_ReturnsInvalidVersion()
+    {
+        // A four-part version is not read as its first three parts. The project asks for the value to be
+        // corrected, and neither the check nor an upgrade rewrites it.
+        var celbridgeVersion = "1.0.0.0";
+        _mockEnvironmentService = MigrationTestHelper.CreateMockEnvironmentService("1.0.0");
+        var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, _registry, _fileSystem);
+        var projectPath = MigrationTestHelper.CreateTempProjectFile(celbridgeVersion);
+
+        try
+        {
+            // Act
+            var checkResult = await service.CheckMigrationAsync(projectPath);
+            var upgradeResult = await service.PerformMigrationUpgradeAsync(projectPath);
+
+            // Assert
+            checkResult.Status.Should().Be(MigrationStatus.InvalidVersion);
+            checkResult.OperationResult.IsFailure.Should().BeTrue();
+            checkResult.OperationResult.MessageChain.Should().Contain("celbridge-version");
+
+            upgradeResult.Status.Should().Be(MigrationStatus.InvalidVersion);
+
+            var unchangedVersion = MigrationTestHelper.ReadVersionFromFile(projectPath);
+            unchangedVersion.Should().Be(celbridgeVersion);
+        }
+        finally
+        {
+            MigrationTestHelper.CleanupTempFile(projectPath);
+        }
+    }
+
+    [Test]
     public async Task CheckMigrationAsync_OlderVersion_ReturnsUpgradeRequired()
     {
         // Arrange
         var appVersion = "1.0.1";
-        var projectVersion = "1.0.0";
+        var celbridgeVersion = "1.0.0";
         _mockEnvironmentService = MigrationTestHelper.CreateMockEnvironmentService(appVersion);
         var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, _registry, _fileSystem);
-        var projectPath = MigrationTestHelper.CreateTempProjectFile(projectVersion);
+        var projectPath = MigrationTestHelper.CreateTempProjectFile(celbridgeVersion);
 
         try
         {
@@ -248,12 +280,12 @@ public class ProjectMigrationServiceTests
             // Assert - Should return UpgradeRequired
             result.Status.Should().Be(MigrationStatus.UpgradeRequired);
             result.OperationResult.IsSuccess.Should().BeTrue();
-            result.OldVersion.Should().Be(projectVersion);
+            result.OldVersion.Should().Be(celbridgeVersion);
             result.NewVersion.Should().Be(appVersion);
 
             // Verify file was NOT updated (only checking, not upgrading)
             var updatedVersion = MigrationTestHelper.ReadVersionFromFile(projectPath);
-            updatedVersion.Should().Be(projectVersion);
+            updatedVersion.Should().Be(celbridgeVersion);
         }
         finally
         {
@@ -266,10 +298,10 @@ public class ProjectMigrationServiceTests
     {
         // Arrange
         var appVersion = "1.0.1";
-        var projectVersion = "1.0.0";
+        var celbridgeVersion = "1.0.0";
         _mockEnvironmentService = MigrationTestHelper.CreateMockEnvironmentService(appVersion);
         var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, _registry, _fileSystem);
-        var projectPath = MigrationTestHelper.CreateTempProjectFile(projectVersion);
+        var projectPath = MigrationTestHelper.CreateTempProjectFile(celbridgeVersion);
 
         try
         {
@@ -279,7 +311,7 @@ public class ProjectMigrationServiceTests
             // Assert
             result.Status.Should().Be(MigrationStatus.Complete);
             result.OperationResult.IsSuccess.Should().BeTrue();
-            result.OldVersion.Should().Be(projectVersion);
+            result.OldVersion.Should().Be(celbridgeVersion);
             result.NewVersion.Should().Be(appVersion);
 
             // Verify file was updated
@@ -299,10 +331,10 @@ public class ProjectMigrationServiceTests
         // version, so it is rejected rather than offered an upgrade that would only
         // rewrite its version number.
         var appVersion = "0.3.0";
-        var projectVersion = "0.2.7";
+        var celbridgeVersion = "0.2.7";
         _mockEnvironmentService = MigrationTestHelper.CreateMockEnvironmentService(appVersion);
         var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, _registry, _fileSystem);
-        var projectPath = MigrationTestHelper.CreateTempProjectFile(projectVersion);
+        var projectPath = MigrationTestHelper.CreateTempProjectFile(celbridgeVersion);
 
         try
         {
@@ -315,7 +347,7 @@ public class ProjectMigrationServiceTests
 
             // The file is left untouched so the project still opens in the version that created it.
             var unchangedVersion = MigrationTestHelper.ReadVersionFromFile(projectPath);
-            unchangedVersion.Should().Be(projectVersion);
+            unchangedVersion.Should().Be(celbridgeVersion);
         }
         finally
         {
@@ -329,10 +361,10 @@ public class ProjectMigrationServiceTests
         // The floor is inclusive: a project exactly at the minimum supported version still
         // upgrades normally.
         var appVersion = "0.4.0";
-        var projectVersion = ProjectConstants.MinimumSupportedProjectVersion;
+        var celbridgeVersion = ProjectConstants.MinimumSupportedCelbridgeVersion;
         _mockEnvironmentService = MigrationTestHelper.CreateMockEnvironmentService(appVersion);
         var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, _registry, _fileSystem);
-        var projectPath = MigrationTestHelper.CreateTempProjectFile(projectVersion);
+        var projectPath = MigrationTestHelper.CreateTempProjectFile(celbridgeVersion);
 
         try
         {
@@ -342,7 +374,7 @@ public class ProjectMigrationServiceTests
             // Assert
             result.Status.Should().Be(MigrationStatus.UpgradeRequired);
             result.OperationResult.IsSuccess.Should().BeTrue();
-            result.OldVersion.Should().Be(projectVersion);
+            result.OldVersion.Should().Be(celbridgeVersion);
             result.NewVersion.Should().Be(appVersion);
         }
         finally
@@ -351,11 +383,3 @@ public class ProjectMigrationServiceTests
         }
     }
 }
-
-
-
-
-
-
-
-

@@ -71,7 +71,7 @@ public class MigrationStepRegistry : IMigrationStepRegistry
     /// Get all migration steps that need to be executed to bring a project from
     /// the specified version up to the target version (or latest if no target specified).
     /// </summary>
-    public List<IMigrationStep> GetRequiredSteps(Version currentVersion, Version targetVersion)
+    public List<IMigrationStep> GetRequiredSteps(SemanticVersion currentVersion, SemanticVersion targetVersion)
     {
         if (!_initialized)
         {

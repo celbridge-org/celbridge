@@ -1,5 +1,6 @@
 using Celbridge.Packages;
 using Celbridge.Projects;
+using Celbridge.Workshop;
 
 namespace Celbridge.Utilities;
 

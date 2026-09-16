@@ -25,10 +25,10 @@ public class PackageService : IPackageService
 
     public async Task RegisterPackagesAsync(string projectFolderPath)
     {
-        // Persisting discovery: DiscoverPackagesAsync writes the normalized config back only when
-        // discovery is clean (so a package that failed to load never nukes its own config on disk) and
-        // the config parsed cleanly. Both gates are applied inside the reconcile.
-        var report = await _registry.DiscoverPackagesAsync(projectFolderPath, persistNormalizedConfig: true);
+        // DiscoverPackagesAsync writes the normalized config back only when discovery is clean (so a package
+        // that failed to load never nukes its own config on disk) and the config parsed cleanly. Both gates
+        // are applied inside the reconcile.
+        var report = await _registry.DiscoverPackagesAsync(projectFolderPath);
 
         // Flushed here as well as at the end of the load, so a load that never reaches the end still
         // leaves the package outcome on disk. Every flush during a load writes the same file.
@@ -37,12 +37,6 @@ public class PackageService : IPackageService
 
         // Failures reach the user through the load report recorded above, not from here.
         _messengerService.Send(new PackagesInitializedMessage());
-    }
-
-    public async Task RescanProjectPackagesAsync(string projectFolderPath)
-    {
-        // A rescan refreshes the in-memory registry but never rewrites the project file.
-        await _registry.DiscoverPackagesAsync(projectFolderPath, persistNormalizedConfig: false);
     }
 
     public IReadOnlyList<Package> GetAllPackages()

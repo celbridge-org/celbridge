@@ -14,6 +14,11 @@ namespace Celbridge.Tools;
 public record class LayoutModeInfo(IReadOnlyDictionary<string, bool> AreaVisibility);
 
 /// <summary>
+/// A project package in the app_get_state package summary, with the package version its manifest declares.
+/// </summary>
+public record class ProjectPackageSummary(string Name, string PackageVersion);
+
+/// <summary>
 /// Result returned by app_get_state, describing the current app and workspace state.
 /// </summary>
 public record class AppStateResult(
@@ -21,6 +26,8 @@ public record class AppStateResult(
     string Configuration,
     bool IsLoaded,
     string ProjectName,
+    IReadOnlyList<ProjectPackageSummary> Packages,
+    int PackageLoadFailureCount,
     IReadOnlyDictionary<string, bool> FeatureFlags,
     string FocusedPanel,
     string ActiveUtility,
@@ -44,6 +51,7 @@ internal sealed class AppStateProvider : IAppStateProvider
 
     private readonly IAppEnvironment _environmentService;
     private readonly IProjectService _projectService;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IFeatureFlags _featureFlags;
     private readonly IFocusService _focusService;
     private readonly ILayoutService _layoutService;
@@ -57,6 +65,7 @@ internal sealed class AppStateProvider : IAppStateProvider
     public AppStateProvider(
         IAppEnvironment environmentService,
         IProjectService projectService,
+        IWorkspaceWrapper workspaceWrapper,
         IFeatureFlags featureFlags,
         IFocusService focusService,
         ILayoutService layoutService,
@@ -65,6 +74,7 @@ internal sealed class AppStateProvider : IAppStateProvider
     {
         _environmentService = environmentService;
         _projectService = projectService;
+        _workspaceWrapper = workspaceWrapper;
         _featureFlags = featureFlags;
         _focusService = focusService;
         _layoutService = layoutService;
@@ -86,6 +96,27 @@ internal sealed class AppStateProvider : IAppStateProvider
         var currentProject = _projectService.CurrentProject;
         var isLoaded = currentProject is not null;
         var projectName = currentProject?.ProjectName ?? "";
+
+        // The summary filters and orders the registry's packages and failures the way app_list_packages does,
+        // so the two report the same packages.
+        var packages = new List<ProjectPackageSummary>();
+        var packageLoadFailureCount = 0;
+        if (_workspaceWrapper.IsWorkspaceLoaded)
+        {
+            var packageService = _workspaceWrapper.WorkspaceService.PackageService;
+
+            var projectPackages = packageService.GetAllPackages()
+                .Where(package => package.Info.Origin == PackageOrigin.Project)
+                .OrderBy(package => package.Info.Name, StringComparer.Ordinal);
+            foreach (var package in projectPackages)
+            {
+                var packageVersion = package.Info.PackageVersion.ToString();
+                packages.Add(new ProjectPackageSummary(package.Info.Name, packageVersion));
+            }
+
+            packageLoadFailureCount = packageService.GetLoadFailures()
+                .Count(failure => failure.Origin == PackageOrigin.Project);
+        }
 
         var featureFlags = new Dictionary<string, bool>(KnownFeatureFlagNames.Count);
         foreach (var flagName in KnownFeatureFlagNames)
@@ -115,6 +146,8 @@ internal sealed class AppStateProvider : IAppStateProvider
             Configuration: environmentInfo.Configuration,
             IsLoaded: isLoaded,
             ProjectName: projectName,
+            Packages: packages,
+            PackageLoadFailureCount: packageLoadFailureCount,
             FeatureFlags: featureFlags,
             FocusedPanel: focusedPanel,
             ActiveUtility: activeUtility,

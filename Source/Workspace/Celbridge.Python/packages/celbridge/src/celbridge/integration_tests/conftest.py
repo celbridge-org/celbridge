@@ -33,8 +33,8 @@ def document():
 
 
 @pytest.fixture(scope="session")
-def package():
-    return celbridge.package
+def workshop():
+    return celbridge.workshop
 
 
 @pytest.fixture(scope="session")

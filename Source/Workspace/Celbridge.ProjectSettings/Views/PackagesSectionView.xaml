@@ -196,7 +196,7 @@
 
             <StackPanel Grid.Column="0" VerticalAlignment="Center">
               <TextBlock Text="{x:Bind DisplayName}" Style="{StaticResource ListItemTitleTextStyle}" TextTrimming="CharacterEllipsis"/>
-              <!-- The package id, with the installed version appended when the package records one. -->
+              <!-- The package id, with the package version appended when a project package is not at the default version. -->
               <StackPanel Orientation="Horizontal">
                 <TextBlock Text="{x:Bind NameLabel}" Style="{StaticResource SupportingTextStyle}" TextTrimming="CharacterEllipsis"/>
                 <TextBlock Text="{x:Bind VersionText}"

@@ -8,12 +8,14 @@ using Tomlyn.Parsing;
 namespace Celbridge.Projects.Services;
 
 /// <summary>
-/// Result of parsing a project file for version information.
+/// Result of parsing a project file for version information. Root is the parsed TOML.
+/// RecordedCelbridgeVersion is the celbridge-version the project file records, which is the version of
+/// Celbridge that last opened the project. CurrentApplicationVersion is the running build's version.
 /// </summary>
 internal record ProjectVersionInfo(
     TomlTable Root,
-    string ProjectVersion,
-    string ApplicationVersion);
+    string RecordedCelbridgeVersion,
+    string CurrentApplicationVersion);
 
 /// <summary>
 /// Reason for a project parse failure.
@@ -40,6 +42,32 @@ internal record ParseResult
 
     public static ParseResult Failure(ParseFailureReason reason, Result operationResult) =>
         new() { IsSuccess = false, FailureReason = reason, OperationResult = operationResult };
+}
+
+/// <summary>
+/// Represents the result of comparing a project's recorded Celbridge version with the current application version.
+/// </summary>
+internal enum VersionComparisonState
+{
+    /// <summary>
+    /// The recorded Celbridge version matches the current application version - no migration needed.
+    /// </summary>
+    SameVersion,
+
+    /// <summary>
+    /// The recorded Celbridge version is older than the current application version - migration needed.
+    /// </summary>
+    OlderVersion,
+
+    /// <summary>
+    /// The recorded Celbridge version is newer than the current application version - cannot open project.
+    /// </summary>
+    NewerVersion,
+
+    /// <summary>
+    /// The recorded Celbridge version is invalid - cannot open project.
+    /// </summary>
+    InvalidVersion
 }
 
 public class ProjectMigrationService : IProjectMigrationService
@@ -76,7 +104,7 @@ public class ProjectMigrationService : IProjectMigrationService
         }
 
         var versionInfo = parseResult.VersionInfo!;
-        return ResolveMigrationStatus(versionInfo.ProjectVersion, versionInfo.ApplicationVersion);
+        return ResolveMigrationStatus(versionInfo.RecordedCelbridgeVersion, versionInfo.CurrentApplicationVersion);
     }
 
     public async Task<MigrationResult> PerformMigrationUpgradeAsync(string projectFilePath)
@@ -91,7 +119,7 @@ public class ProjectMigrationService : IProjectMigrationService
         }
 
         var versionInfo = parseResult.VersionInfo!;
-        return await MigrateProjectAsync(projectFilePath, versionInfo.ProjectVersion, versionInfo.ApplicationVersion, versionInfo.Root);
+        return await MigrateProjectAsync(projectFilePath, versionInfo.RecordedCelbridgeVersion, versionInfo.CurrentApplicationVersion, versionInfo.Root);
     }
 
     private async Task<ParseResult> ParseProjectVersionInfoAsync(string projectFilePath)
@@ -137,19 +165,19 @@ public class ProjectMigrationService : IProjectMigrationService
                     Result.Fail("Failed to deserialize project TOML file"));
             }
 
-            // Get project version from [celbridge].celbridge-version property
-            var projectVersion = string.Empty;
+            // Get the project's Celbridge version from the [celbridge].celbridge-version property
+            var recordedCelbridgeVersion = string.Empty;
             if (JsonPointerToml.TryResolve(root, "/celbridge/celbridge-version", out var versionNode, out _) &&
                 versionNode is string existingVersion)
             {
-                projectVersion = existingVersion;
+                recordedCelbridgeVersion = existingVersion;
             }
 
             // Get current application version
             var envInfo = _environmentService.GetEnvironmentInfo();
-            var applicationVersion = envInfo.AppVersion;
+            var currentApplicationVersion = envInfo.AppVersion;
 
-            return ParseResult.Success(new ProjectVersionInfo(root, projectVersion, applicationVersion));
+            return ParseResult.Success(new ProjectVersionInfo(root, recordedCelbridgeVersion, currentApplicationVersion));
         }
         catch (Exception ex)
         {
@@ -160,13 +188,13 @@ public class ProjectMigrationService : IProjectMigrationService
         }
     }
 
-    private MigrationResult ResolveMigrationStatus(string projectVersion, string applicationVersion)
+    private MigrationResult ResolveMigrationStatus(string recordedCelbridgeVersion, string currentApplicationVersion)
     {
         // The sentinel value "<application-version>" means "use current version" without updating the file.
-        bool usingSentinelVersion = projectVersion == ApplicationVersionSentinel;
+        bool usingSentinelVersion = recordedCelbridgeVersion == ApplicationVersionSentinel;
 
         // Compare versions to determine if migration is needed
-        var versionState = CompareVersions(projectVersion, applicationVersion);
+        var versionState = CompareVersions(recordedCelbridgeVersion, currentApplicationVersion);
 
         switch (versionState)
         {
@@ -176,16 +204,16 @@ public class ProjectMigrationService : IProjectMigrationService
                     if (usingSentinelVersion)
                     {
                         _logger.LogInformation(
-                            "Project version is sentinel '<application-version>' - treating as current version without updating file: {CurrentVersion}",
-                            applicationVersion);
+                            "Celbridge version is sentinel '<application-version>' - treating as current version without updating file: {CurrentVersion}",
+                            currentApplicationVersion);
 
                         // Return the same app version for both old and new to suppress the upgrade notification banner
-                        return MigrationResult.WithVersions(MigrationStatus.Complete, Result.Ok(), applicationVersion, applicationVersion);
+                        return MigrationResult.WithVersions(MigrationStatus.Complete, Result.Ok(), currentApplicationVersion, currentApplicationVersion);
                     }
 
-                    _logger.LogDebug("Project version matches application version: {Version}", applicationVersion);
+                    _logger.LogDebug("Celbridge version matches application version: {Version}", currentApplicationVersion);
 
-                    return MigrationResult.WithVersions(MigrationStatus.Complete, Result.Ok(), applicationVersion, applicationVersion);
+                    return MigrationResult.WithVersions(MigrationStatus.Complete, Result.Ok(), currentApplicationVersion, currentApplicationVersion);
                 }
 
             case VersionComparisonState.OlderVersion:
@@ -193,30 +221,30 @@ public class ProjectMigrationService : IProjectMigrationService
                     // Below the supported floor there are no migration steps to run, so an upgrade would
                     // rewrite the version number and leave the contents untouched. Reject instead, rather
                     // than report a success the project did not get.
-                    if (IsBelowMinimumSupportedVersion(projectVersion))
+                    if (IsBelowMinimumSupportedVersion(recordedCelbridgeVersion))
                     {
                         var errorResult = Result.Fail(
-                            $"This project was created with Celbridge v{projectVersion}, which v{applicationVersion} cannot open. " +
-                            $"Projects from before v{ProjectConstants.MinimumSupportedProjectVersion} are not supported. " +
+                            $"This project was created with Celbridge v{recordedCelbridgeVersion}, which v{currentApplicationVersion} cannot open. " +
+                            $"Projects from before v{ProjectConstants.MinimumSupportedCelbridgeVersion} are not supported. " +
                             $"Open it with the version of Celbridge that created it, or start a new project.");
 
                         return MigrationResult.FromStatus(MigrationStatus.IncompatibleVersion, errorResult);
                     }
 
                     _logger.LogInformation(
-                        "Project upgrade required: project version {ProjectVersion}, current version {CurrentVersion}",
-                        projectVersion,
-                        applicationVersion);
+                        "Project upgrade required: recorded Celbridge version {RecordedCelbridgeVersion}, current application version {CurrentApplicationVersion}",
+                        recordedCelbridgeVersion,
+                        currentApplicationVersion);
 
                     // Return UpgradeRequired status - caller must get user confirmation before calling PerformMigrationUpgradeAsync
-                    return MigrationResult.WithVersions(MigrationStatus.UpgradeRequired, Result.Ok(), projectVersion, applicationVersion);
+                    return MigrationResult.WithVersions(MigrationStatus.UpgradeRequired, Result.Ok(), recordedCelbridgeVersion, currentApplicationVersion);
                 }
 
             case VersionComparisonState.NewerVersion:
                 {
                     var errorResult = Result.Fail(
-                        $"This project was created with a newer version of Celbridge (v{projectVersion}). " +
-                        $"Your current Celbridge version is v{applicationVersion}. " +
+                        $"This project was created with a newer version of Celbridge (v{recordedCelbridgeVersion}). " +
+                        $"Your current Celbridge version is v{currentApplicationVersion}. " +
                         $"Please upgrade Celbridge or correct the version number in the .celbridge file.");
 
                     return MigrationResult.FromStatus(MigrationStatus.IncompatibleVersion, errorResult);
@@ -224,10 +252,7 @@ public class ProjectMigrationService : IProjectMigrationService
 
             case VersionComparisonState.InvalidVersion:
                 {
-                    var errorResult = Result.Fail(
-                        $"Project version '{projectVersion}' or application version '{applicationVersion}' is not in a recognized format. " +
-                        $"Please correct the version number in the .celbridge file and reload the project.");
-                    return MigrationResult.FromStatus(MigrationStatus.InvalidVersion, errorResult);
+                    return CreateInvalidVersionResult(recordedCelbridgeVersion, currentApplicationVersion);
                 }
 
             default:
@@ -238,33 +263,36 @@ public class ProjectMigrationService : IProjectMigrationService
         }
     }
 
-    private async Task<MigrationResult> MigrateProjectAsync(string projectFilePath, string projectVersion, string applicationVersion, TomlTable root)
+    private async Task<MigrationResult> MigrateProjectAsync(string projectFilePath, string recordedCelbridgeVersion, string currentApplicationVersion, TomlTable root)
     {
         // Perform migration using step-based approach
         _logger.LogInformation($"Starting project migration for: {projectFilePath}");
 
-        var projectVer = new Version(NormalizeVersion(projectVersion));
-        var applicationVer = new Version(applicationVersion);
+        if (!SemanticVersion.TryParse(recordedCelbridgeVersion, out var parsedRecordedVersion) ||
+            !SemanticVersion.TryParse(currentApplicationVersion, out var parsedCurrentVersion))
+        {
+            return CreateInvalidVersionResult(recordedCelbridgeVersion, currentApplicationVersion);
+        }
 
         // Get the list of steps required to migrate from current version to application version
-        var requiredSteps = _migrationRegistry.GetRequiredSteps(projectVer, applicationVer);
+        var requiredSteps = _migrationRegistry.GetRequiredSteps(parsedRecordedVersion, parsedCurrentVersion);
 
         if (requiredSteps.Count == 0)
         {
             _logger.LogInformation("No migration steps required");
 
             // We still need to update the version number if it differs
-            if (projectVersion != applicationVersion)
+            if (recordedCelbridgeVersion != currentApplicationVersion)
             {
-                var writeResult = await WriteApplicationVersionAsync(projectFilePath, projectVersion, applicationVersion);
+                var writeResult = await WriteCelbridgeVersionAsync(projectFilePath, currentApplicationVersion);
                 if (writeResult.IsFailure)
                 {
-                    var errorResult = Result.Fail($"Failed to write application version to project file: '{projectFilePath}'");
+                    var errorResult = Result.Fail($"Failed to write the Celbridge version to project file: '{projectFilePath}'");
                     return MigrationResult.FromStatus(MigrationStatus.Failed, errorResult);
                 }
             }
 
-            return MigrationResult.WithVersions(MigrationStatus.Complete, Result.Ok(), projectVersion, applicationVersion);
+            return MigrationResult.WithVersions(MigrationStatus.Complete, Result.Ok(), recordedCelbridgeVersion, currentApplicationVersion);
         }
 
         _logger.LogInformation($"Executing {requiredSteps.Count} migration steps");
@@ -295,13 +323,13 @@ public class ProjectMigrationService : IProjectMigrationService
             ProjectFolderPath = projectFolderPath,
             Configuration = root,
             Logger = _logger,
-            OriginalVersion = projectVersion,
+            RecordedCelbridgeVersion = parsedRecordedVersion,
             WriteProjectFileAsync = writeProjectFileAsync,
             FileSystem = _fileSystem
         };
 
         // Execute migration steps in order
-        string currentVersion = projectVersion;
+        string currentVersion = recordedCelbridgeVersion;
         foreach (var step in requiredSteps)
         {
             _logger.LogInformation($"Applying migration step: {step.GetType().Name} (Target: {step.TargetVersion})");
@@ -316,7 +344,7 @@ public class ProjectMigrationService : IProjectMigrationService
 
             // Update the celbridge-version in the config file to reflect the new version after each step
             var stepVersionString = step.TargetVersion.ToString();
-            var versionUpdateResult = await WriteApplicationVersionAsync(projectFilePath, currentVersion, stepVersionString);
+            var versionUpdateResult = await WriteCelbridgeVersionAsync(projectFilePath, stepVersionString);
             if (versionUpdateResult.IsFailure)
             {
                 var errorResult = Result.Fail($"Failed to update version after migration step {step.GetType().Name}")
@@ -341,171 +369,104 @@ public class ProjectMigrationService : IProjectMigrationService
 
         // Update the celbridge-version in the config file to reflect the current application version
         // Only modify the file if it's not already at the required version
-        var finalVersion = applicationVersion;
+        var finalVersion = currentApplicationVersion;
         if (currentVersion != finalVersion)
         {
-            var writeResult = await WriteApplicationVersionAsync(projectFilePath, currentVersion, finalVersion);
+            var writeResult = await WriteCelbridgeVersionAsync(projectFilePath, finalVersion);
             if (writeResult.IsFailure)
             {
-                var errorResult = Result.Fail($"Failed to write final application version to project file: '{projectFilePath}'");
+                var errorResult = Result.Fail($"Failed to write the final Celbridge version to project file: '{projectFilePath}'");
                 return MigrationResult.FromStatus(MigrationStatus.Failed, errorResult);
             }
         }
 
-        _logger.LogInformation($"Project migration completed successfully: {projectVersion} >> {finalVersion}");
+        _logger.LogInformation($"Project migration completed successfully: {recordedCelbridgeVersion} >> {finalVersion}");
 
-        return MigrationResult.WithVersions(MigrationStatus.Complete, Result.Ok(), projectVersion, finalVersion);
+        return MigrationResult.WithVersions(MigrationStatus.Complete, Result.Ok(), recordedCelbridgeVersion, finalVersion);
     }
 
-    /// <summary>
-    /// Compares two version strings in the format "major.minor.patch". The sentinel value
-    /// "<application-version>" for projectVersion is treated as "use current version".
-    /// </summary>
     // Only called for a project already known to be older than the application, so the version string has
     // already parsed once. A parse failure here is still treated as below the floor: an unreadable version
     // cannot be shown to be supported.
-    private bool IsBelowMinimumSupportedVersion(string projectVersion)
+    private static bool IsBelowMinimumSupportedVersion(string recordedCelbridgeVersion)
     {
-        try
+        if (!SemanticVersion.TryParse(recordedCelbridgeVersion, out var parsedRecordedVersion) ||
+            !SemanticVersion.TryParse(ProjectConstants.MinimumSupportedCelbridgeVersion, out var minimumVersion))
         {
-            var projectVer = new Version(NormalizeVersion(projectVersion));
-            var minimumVer = new Version(NormalizeVersion(ProjectConstants.MinimumSupportedProjectVersion));
+            return true;
+        }
 
-            return projectVer < minimumVer;
-        }
-        catch (ArgumentException)
-        {
-            return true;
-        }
-        catch (FormatException)
-        {
-            return true;
-        }
+        return parsedRecordedVersion < minimumVersion;
     }
 
-    private VersionComparisonState CompareVersions(string projectVersion, string applicationVersion)
+    // Compares the project's recorded Celbridge version with the current application version. The <application-version>
+    // sentinel counts as the current version.
+    private VersionComparisonState CompareVersions(string recordedCelbridgeVersion, string currentApplicationVersion)
     {
         // Handle the sentinel value "<application-version>" meaning "use current version"
-        if (projectVersion == ApplicationVersionSentinel)
+        if (recordedCelbridgeVersion == ApplicationVersionSentinel)
         {
-            _logger.LogInformation("Project version '<application-version>' - using current application version");
+            _logger.LogInformation("Celbridge version '<application-version>' - using current application version");
             return VersionComparisonState.SameVersion;
         }
 
-        // Handle null or whitespace-only project version - we can't safely upgrade in this case.
-        if (string.IsNullOrWhiteSpace(projectVersion))
+        // Handle null or whitespace-only Celbridge version - we can't safely upgrade in this case.
+        if (string.IsNullOrWhiteSpace(recordedCelbridgeVersion))
         {
-            _logger.LogError("Project version is empty - cannot determine compatibility");
+            _logger.LogError("Celbridge version is empty - cannot determine compatibility");
             return VersionComparisonState.InvalidVersion;
         }
 
         // Handle empty/null application version - this should never happen, but fail safely
-        if (string.IsNullOrWhiteSpace(applicationVersion))
+        if (string.IsNullOrWhiteSpace(currentApplicationVersion))
         {
             _logger.LogError("Application version is empty - cannot determine compatibility");
             return VersionComparisonState.InvalidVersion;
         }
 
-        try
+        if (!SemanticVersion.TryParse(recordedCelbridgeVersion, out var parsedRecordedVersion) ||
+            !SemanticVersion.TryParse(currentApplicationVersion, out var parsedCurrentVersion))
         {
-            // Normalize versions to 3-part format (major.minor.patch)
-            var normalizedProjectVersion = NormalizeVersion(projectVersion);
-            var normalizedAppVersion = NormalizeVersion(applicationVersion);
-
-            var projectVer = new Version(normalizedProjectVersion);
-            var appVer = new Version(normalizedAppVersion);
-
-            int comparison = projectVer.CompareTo(appVer);
-
-            if (comparison < 0)
-            {
-                return VersionComparisonState.OlderVersion;
-            }
-            else if (comparison > 0)
-            {
-                return VersionComparisonState.NewerVersion;
-            }
-            else
-            {
-                return VersionComparisonState.SameVersion;
-            }
-        }
-        catch (ArgumentException ex)
-        {
-            // Version string format is invalid
             _logger.LogWarning(
-                ex,
-                "Failed to parse version strings - ProjectVersion: '{ProjectVersion}', ApplicationVersion: '{ApplicationVersion}'",
-                projectVersion,
-                applicationVersion);
+                "Failed to parse version strings - RecordedCelbridgeVersion: '{RecordedCelbridgeVersion}', CurrentApplicationVersion: '{CurrentApplicationVersion}'",
+                recordedCelbridgeVersion,
+                currentApplicationVersion);
             return VersionComparisonState.InvalidVersion;
         }
-        catch (Exception ex)
+
+        int comparison = parsedRecordedVersion.CompareTo(parsedCurrentVersion);
+
+        if (comparison < 0)
         {
-            // Unexpected error during version comparison
-            _logger.LogError(
-                ex,
-                "Unexpected error comparing versions - ProjectVersion: '{ProjectVersion}', ApplicationVersion: '{ApplicationVersion}'",
-                projectVersion,
-                applicationVersion);
-            return VersionComparisonState.InvalidVersion;
+            return VersionComparisonState.OlderVersion;
         }
-    }
-
-    /// <summary>
-    /// Normalize a version string to 3-part format (major.minor.patch).
-    /// 4-part versions are truncated to 3-part format (for legacy compatibility).
-    /// </summary>
-    private string NormalizeVersion(string versionString)
-    {
-        var parts = versionString.Split('.');
-
-        if (parts.Length == 3)
+        else if (comparison > 0)
         {
-            // Modern 3-part format - validate and return
-            if (!int.TryParse(parts[0], out int major) || major < 0 ||
-                !int.TryParse(parts[1], out int minor) || minor < 0 ||
-                !int.TryParse(parts[2], out int patch) || patch < 0)
-            {
-                throw new ArgumentException(
-                    $"Version string '{versionString}' contains invalid numeric parts. All parts must be non-negative integers.");
-            }
-
-            return $"{major}.{minor}.{patch}";
-        }
-        else if (parts.Length == 4)
-        {
-            // Legacy 4-part format - truncate to 3-part
-            if (!int.TryParse(parts[0], out int major) || major < 0 ||
-                !int.TryParse(parts[1], out int minor) || minor < 0 ||
-                !int.TryParse(parts[2], out int patch) || patch < 0)
-            {
-                throw new ArgumentException(
-                    $"Version string '{versionString}' contains invalid numeric parts. All parts must be non-negative integers.");
-            }
-
-            var normalized3Part = $"{major}.{minor}.{patch}";
-
-            _logger.LogInformation(
-                "Legacy 4-part version '{Version}' detected. Truncating to 3-part format: {NormalizedVersion}",
-                versionString,
-                normalized3Part);
-
-            return normalized3Part;
+            return VersionComparisonState.NewerVersion;
         }
         else
         {
-            throw new ArgumentException(
-                $"Version string must have exactly 3 or 4 parts, but '{versionString}' has {parts.Length} parts.");
+            return VersionComparisonState.SameVersion;
         }
     }
 
-    private async Task<Result> WriteApplicationVersionAsync(string projectFilePath, string projectVersion, string applicationVersion)
+    private static MigrationResult CreateInvalidVersionResult(string recordedCelbridgeVersion, string currentApplicationVersion)
+    {
+        var errorResult = Result.Fail(
+            $"Celbridge version '{recordedCelbridgeVersion}' or application version '{currentApplicationVersion}' is not a three-part version such as {SemanticVersion.Default}. " +
+            $"Please correct the celbridge-version value in the .celbridge file and reload the project.");
+
+        return MigrationResult.FromStatus(MigrationStatus.InvalidVersion, errorResult);
+    }
+
+    // Writes the given version into the project file's celbridge-version key. The value is the version the
+    // project has reached, which during migration is a step's target rather than the current application version.
+    private async Task<Result> WriteCelbridgeVersionAsync(string projectFilePath, string version)
     {
         var readResult = await _fileSystem.ReadAllTextAsync(projectFilePath);
         if (readResult.IsFailure)
         {
-            return Result.Fail("Failed to read project file when updating application version")
+            return Result.Fail("Failed to read project file when updating the Celbridge version")
                 .WithErrors(readResult);
         }
 
@@ -528,7 +489,7 @@ public class ProjectMigrationService : IProjectMigrationService
             updatedText = Regex.Replace(
                 updatedText,
                 pattern,
-                $"{leadingWhitespace}celbridge-version = \"{applicationVersion}\"",
+                $"{leadingWhitespace}celbridge-version = \"{version}\"",
                 RegexOptions.Multiline);
         }
         else
@@ -547,11 +508,11 @@ public class ProjectMigrationService : IProjectMigrationService
             var writeResult = await _fileSystem.WriteAllTextAsync(projectFilePath, updatedText);
             if (writeResult.IsFailure)
             {
-                return Result.Fail("Failed to write application version to project file")
+                return Result.Fail("Failed to write the Celbridge version to project file")
                     .WithErrors(writeResult);
             }
 
-            _logger.LogInformation("Updated project file with application version {ApplicationVersion}", applicationVersion);
+            _logger.LogInformation("Updated project file with Celbridge version {CelbridgeVersion}", version);
         }
 
         return Result.Ok();

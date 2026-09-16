@@ -81,10 +81,18 @@ public class PackagesSectionViewModel : ProjectSettingsSectionViewModel
             var isEnabled = !disabledPackages.Contains(name);
 
             ResourceKey? manifestResource = null;
+            string? version = null;
             if (package.Info.Origin == PackageOrigin.Project)
             {
                 var manifestPath = System.IO.Path.Combine(package.Info.PackageFolder, PackageConstants.ManifestFileName);
                 manifestResource = ResolveManifestResource(manifestPath);
+
+                // A package at the default version shows none, so a version that differs from it stands out.
+                // Bundled manifests declare no version.
+                if (package.Info.PackageVersion != SemanticVersion.Default)
+                {
+                    version = package.Info.PackageVersion.ToString();
+                }
             }
 
             var packageInfo = new PackageItemInfo
@@ -93,7 +101,7 @@ public class PackagesSectionViewModel : ProjectSettingsSectionViewModel
                 NameLabel = PackageNameLabel(package),
                 DisplayName = PackageDisplayName(package),
                 ManifestResource = manifestResource,
-                Version = package.Info.Version,
+                Version = version,
             };
 
             var packageItem = new PackageItemViewModel(packageInfo, isEnabled, SetPackageDisabled, OpenManifest, RevealManifest);

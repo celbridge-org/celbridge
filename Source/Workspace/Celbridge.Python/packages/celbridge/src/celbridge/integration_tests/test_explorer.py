@@ -18,6 +18,11 @@ def workspace(explorer, document):
     delete_if_exists(explorer, "TestExplorer")
 
 
+def _create_archive_source(explorer, file):
+    explorer.create_folder("TestExplorer/archive_source")
+    file.write("TestExplorer/archive_source/file.txt", "archive content\n")
+
+
 class TestExplorer:
 
     def test_create_file(self, explorer, file):
@@ -126,6 +131,48 @@ class TestExplorer:
     def test_duplicate_missing_resource(self, explorer):
         with pytest.raises(CelError):
             explorer.duplicate("TestExplorer/not_here.txt")
+
+    def test_archive(self, explorer, file):
+        _create_archive_source(explorer, file)
+        result = explorer.archive(
+            "TestExplorer/archive_source", "TestExplorer/test_archive.zip", overwrite=True
+        )
+        assert result["entries"] > 0
+        assert result["size"] > 0
+
+    def test_archive_filtered(self, explorer, file):
+        _create_archive_source(explorer, file)
+        result = explorer.archive(
+            "TestExplorer/archive_source",
+            "TestExplorer/test_archive_filtered.zip",
+            include="*.txt",
+            overwrite=True,
+        )
+        assert result["entries"] >= 1
+
+    def test_unarchive(self, explorer, file):
+        _create_archive_source(explorer, file)
+        explorer.archive(
+            "TestExplorer/archive_source", "TestExplorer/test_archive.zip", overwrite=True
+        )
+        explorer.create_folder("TestExplorer/archive_extract")
+        result = explorer.unarchive(
+            "TestExplorer/test_archive.zip", "TestExplorer/archive_extract", overwrite=True
+        )
+        assert result["entries"] > 0
+
+    def test_archive_invalid_source(self, explorer):
+        with pytest.raises(CelError):
+            explorer.archive("\\invalid", "TestExplorer/test_archive.zip")
+
+    def test_archive_invalid_destination(self, explorer, file):
+        _create_archive_source(explorer, file)
+        with pytest.raises(CelError):
+            explorer.archive("TestExplorer/archive_source", "\\invalid")
+
+    def test_unarchive_invalid_archive(self, explorer):
+        with pytest.raises(CelError):
+            explorer.unarchive("\\invalid", "TestExplorer/archive_extract")
 
     # explorer.rename always opens the rename dialog. The key check below runs before
     # the dialog opens, so it needs no answer.

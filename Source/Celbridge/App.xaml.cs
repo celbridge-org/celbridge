@@ -314,6 +314,7 @@ public partial class App : Application
         UserInterface.ServiceConfiguration.ConfigureServices(services);
         Utilities.ServiceConfiguration.ConfigureServices(services);
         WebHost.ServiceConfiguration.ConfigureServices(services);
+        Workshop.ServiceConfiguration.ConfigureServices(services);
         Workspace.ServiceConfiguration.ConfigureServices(services);
     }
 

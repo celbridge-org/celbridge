@@ -54,43 +54,33 @@ public class PackageToolsHandlerTests
         {
             Tools = new[]
             {
-                Descriptor("app_get_state",   "app.get_state"),
-                Descriptor("package_status",  "package.status"),
-                Descriptor("package_install", "package.install"),
-                Descriptor("page_publish",    "page.publish")
+                Descriptor("app_list_packages",        "app.list_packages"),
+                Descriptor("explorer_archive",         "explorer.archive"),
+                Descriptor("workshop_install_package", "workshop.install_package"),
+                Descriptor("workshop_publish_page",    "workshop.publish_page")
             }
         };
         var handler = new PackageToolsHandler(bridge);
 
         var result = await handler.ListToolsAsync();
 
-        result.Select(t => t.Alias).Should().BeEquivalentTo("app.get_state", "package.status");
+        result.Select(t => t.Alias).Should().BeEquivalentTo("app.list_packages", "explorer.archive");
     }
 
-    // A package_* tool added later has to be classified: withheld because it reaches the workshop, or
-    // added to the local tools here because it stays inside the project tree.
     [Test]
-    public async Task ListToolsAsync_WithholdsEveryPackageAndPageToolExceptTheLocalOnes()
+    public async Task ListToolsAsync_WithholdsEveryWorkshopTool()
     {
-        var localPackageTools = new[]
-        {
-            "package_archive",
-            "package_status",
-            "package_unarchive"
-        };
-
-        var packageAndPageTools = DiscoverTools()
-            .Where(tool => tool.Name.StartsWith("package_", StringComparison.Ordinal)
-                || tool.Name.StartsWith("page_", StringComparison.Ordinal))
+        var workshopTools = DiscoverTools()
+            .Where(tool => tool.Name.StartsWith("workshop_", StringComparison.Ordinal))
             .ToArray();
-        packageAndPageTools.Should().NotBeEmpty("the package_* and page_* tools should be discoverable by reflection");
+        workshopTools.Should().NotBeEmpty("the workshop_* tools should be discoverable by reflection");
 
-        var bridge = new StubToolBridge { Tools = packageAndPageTools };
+        var bridge = new StubToolBridge { Tools = workshopTools };
         var handler = new PackageToolsHandler(bridge);
 
         var result = await handler.ListToolsAsync();
 
-        result.Select(t => t.Name).Should().BeEquivalentTo(localPackageTools);
+        result.Should().BeEmpty();
     }
 
     [Test]
@@ -125,10 +115,10 @@ public class PackageToolsHandlerTests
             .ErrorCode.Should().Be(ToolRpcErrorCodes.ToolDenied);
     }
 
-    [TestCase("package.publish")]
-    [TestCase("package_set_alias")]
-    [TestCase("page.unpublish")]
-    [TestCase("page_list")]
+    [TestCase("workshop.publish_package")]
+    [TestCase("workshop_set_package_alias")]
+    [TestCase("workshop.unpublish_page")]
+    [TestCase("workshop_list_pages")]
     public void CallToolAsync_WorkshopTool_ThrowsDenied(string name)
     {
         var bridge = new StubToolBridge();
@@ -145,15 +135,17 @@ public class PackageToolsHandlerTests
         bridge.LastCallName.Should().BeNull();
     }
 
-    [Test]
-    public async Task CallToolAsync_LocalPackageTool_ReachesTheBridge()
+    [TestCase("app.list_packages")]
+    [TestCase("explorer.archive")]
+    [TestCase("explorer.unarchive")]
+    public async Task CallToolAsync_PackageListingAndArchiveTools_ReachTheBridge(string name)
     {
         var bridge = new StubToolBridge();
         var handler = new PackageToolsHandler(bridge);
 
-        await handler.CallToolAsync("package.status", (JsonElement?)null);
+        await handler.CallToolAsync(name, (JsonElement?)null);
 
-        bridge.LastCallName.Should().Be("package.status");
+        bridge.LastCallName.Should().Be(name);
     }
 
     [Test]
