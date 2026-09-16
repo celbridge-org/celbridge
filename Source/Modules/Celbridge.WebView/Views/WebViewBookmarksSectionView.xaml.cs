@@ -42,6 +42,15 @@ public sealed partial class WebViewBookmarksSectionView : UserControl
         BookmarkCards.AddRequested += BookmarkCards_AddRequested;
     }
 
+    /// <summary>
+    /// Opens the given bookmark's card and brings it into view, for a caller that arrived here to look at
+    /// that one bookmark.
+    /// </summary>
+    public void RevealBookmark(WebViewBookmarkViewModel bookmark)
+    {
+        BookmarkCards.ExpandCard(bookmark);
+    }
+
     private void BookmarkCards_AddRequested(object? sender, EventArgs e)
     {
         if (ViewModel is null)
@@ -69,7 +78,18 @@ public sealed partial class WebViewBookmarksSectionView : UserControl
         }
 
         // The card list only opens what its own add button asked for, so an entry added from here says so.
-        BookmarkCards.ExpandCard(bookmark);
+        RevealBookmark(bookmark);
+    }
+
+    private void SetAsHomeButton_Click(object sender, RoutedEventArgs e)
+    {
+        var setAsHomeButton = (FrameworkElement)sender;
+        if (setAsHomeButton.DataContext is not WebViewBookmarkViewModel bookmark)
+        {
+            return;
+        }
+
+        ViewModel?.SetBookmarkAsHome(bookmark);
     }
 
     private void OpenBookmarkButton_Click(object sender, RoutedEventArgs e)

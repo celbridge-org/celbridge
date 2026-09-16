@@ -62,6 +62,12 @@
         <!-- A bookmark with no icon draws no glyph, so the field previews none while it is empty. -->
         <controls:IconPickerField IconName="{x:Bind Icon, Mode=TwoWay}" />
 
+        <!-- Disabled for the bookmark Home already opens, and for one with no page to open. -->
+        <Button Content="{x:Bind SetAsHomeText}"
+                HorizontalAlignment="Left"
+                IsEnabled="{x:Bind CanSetAsHome, Mode=OneWay}"
+                Click="SetAsHomeButton_Click" />
+
       </StackPanel>
     </DataTemplate>
 

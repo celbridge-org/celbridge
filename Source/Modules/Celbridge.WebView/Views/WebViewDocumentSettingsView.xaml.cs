@@ -24,8 +24,12 @@ public sealed partial class WebViewDocumentSettingsView : UserControl
     public const string BookmarksSectionKey = "Bookmarks";
 
     private readonly IStringLocalizer _stringLocalizer;
+    private readonly IIconService _iconService;
 
     private WebViewDocumentViewModel? _documentViewModel;
+
+    // Held so a bookmark can be revealed in it. Null until the sections are built.
+    private WebViewBookmarksSectionView? _bookmarksView;
 
     public WebViewDocumentSettingsViewModel ViewModel { get; }
 
@@ -45,6 +49,7 @@ public sealed partial class WebViewDocumentSettingsView : UserControl
     public WebViewDocumentSettingsView()
     {
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
+        _iconService = ServiceLocator.AcquireService<IIconService>();
 
         // The view model backs x:Bind paths, so it must exist before InitializeComponent evaluates them.
         ViewModel = ServiceLocator.AcquireService<WebViewDocumentSettingsViewModel>();
@@ -79,6 +84,15 @@ public sealed partial class WebViewDocumentSettingsView : UserControl
         ViewModel.SelectSection(sectionKey);
     }
 
+    /// <summary>
+    /// Opens the given bookmark's card in the Bookmarks section and brings it into view. Select that
+    /// section first: a card opened in a section that is not showing is not what the user is looking at.
+    /// </summary>
+    public void RevealBookmark(WebViewBookmarkViewModel bookmark)
+    {
+        _bookmarksView?.RevealBookmark(bookmark);
+    }
+
     // The sections in rail order. The keys are persisted, so changing one drops the section a returning
     // user had open.
     private List<SettingsSection> BuildSections(WebViewDocumentViewModel viewModel)
@@ -88,7 +102,7 @@ public sealed partial class WebViewDocumentSettingsView : UserControl
             ViewModel = viewModel
         };
 
-        var bookmarksView = new WebViewBookmarksSectionView
+        _bookmarksView = new WebViewBookmarksSectionView
         {
             ViewModel = viewModel
         };
@@ -110,10 +124,10 @@ public sealed partial class WebViewDocumentSettingsView : UserControl
                 homeView),
             new(
                 BookmarksSectionKey,
-                "bs-bookmark",
+                _iconService.GetIconName(IconSymbol.Star),
                 _stringLocalizer.GetString("WebView_Settings_BookmarksHeader"),
                 _stringLocalizer.GetString("WebView_Settings_BookmarksDescription"),
-                bookmarksView),
+                _bookmarksView),
             new(
                 "Appearance",
                 "bs-palette",

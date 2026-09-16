@@ -101,8 +101,6 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
     private string OpenInBrowserTooltipString => _stringLocalizer.GetString("WebView_UrlBar_OpenInBrowserTooltip");
     private string SettingsTooltipString => _stringLocalizer.GetString("WebView_UrlBar_SettingsTooltip");
     private string ManageBookmarksTooltipString => _stringLocalizer.GetString("WebView_Bookmarks_ManageTooltip");
-    private string PlaceholderAddressHintString => _stringLocalizer.GetString("WebView_Placeholder_AddressHint");
-    private string PlaceholderSettingsHintString => _stringLocalizer.GetString("WebView_Placeholder_SettingsHint");
     private string PlaceholderLoadFailedString => _stringLocalizer.GetString("WebView_Placeholder_LoadFailed");
     private string PlaceholderLoadFailedHintString => _stringLocalizer.GetString("WebView_Placeholder_LoadFailedHint");
 
@@ -137,6 +135,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
         ViewModel.NavigateRequested += ViewModel_NavigateRequested;
         UpdateReloadOrStopTooltip();
+        UpdateBookmarkPageButton();
+        UpdatePlaceholderHint();
 
         Loaded += WebViewDocumentView_Loaded;
     }
@@ -756,6 +756,26 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
 
     private void ManageBookmarksButton_Click(object sender, RoutedEventArgs e)
     {
+        ShowBookmarksSection();
+    }
+
+    // Bookmarks the page on screen, or opens the bookmark that already points at it. A second click never
+    // removes a bookmark: the card it opens is where a bookmark is edited and deleted.
+    private void BookmarkPageButton_Click(object sender, RoutedEventArgs e)
+    {
+        var bookmark = ViewModel.FindBookmarkForCurrentPage() ?? ViewModel.AddBookmarkFromCurrentPage();
+        if (bookmark is null)
+        {
+            return;
+        }
+
+        ShowBookmarksSection();
+
+        SettingsSurface.RevealBookmark(bookmark);
+    }
+
+    private void ShowBookmarksSection()
+    {
         // Opening the settings builds them on the stored section, so the key is set first. A surface that
         // was already built ignores that key, and is sent to the section directly below.
         _settingsSectionKey = WebViewDocumentSettingsView.BookmarksSectionKey;
@@ -834,14 +854,13 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         }
     }
 
-    // A document with neither an address nor a URL bar to type one into has no way in, so it opens on the
-    // settings whatever state it was saved in. Home is the section holding the URL, and a restored section
-    // would otherwise land the user somewhere that cannot help.
+    // A document with no address, no URL bar to type one into and no bookmarks bar to choose a page from has
+    // no way in, so it opens on the settings whatever state it was saved in. Home is the section holding the
+    // URL, and a restored section would otherwise land the user somewhere that cannot help.
     private void OpenSettingsIfNoWayToNavigate()
     {
         if (Options.Role != WebViewDocumentRole.ExternalUrl
-            || !string.IsNullOrWhiteSpace(ViewModel.SourceUrl)
-            || ViewModel.ShowUrlBar)
+            || ViewModel.HasWayToNavigate)
         {
             return;
         }
@@ -916,6 +935,15 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         {
             UpdateDownloadIndicatorTooltip();
         }
+        else if (e.PropertyName == nameof(WebViewDocumentViewModel.IsCurrentPageBookmarked))
+        {
+            UpdateBookmarkPageButton();
+        }
+        else if (e.PropertyName == nameof(WebViewDocumentViewModel.ShowUrlBar)
+            || e.PropertyName == nameof(WebViewDocumentViewModel.IsBookmarksBarVisible))
+        {
+            UpdatePlaceholderHint();
+        }
         else if (e.PropertyName == nameof(WebViewDocumentViewModel.IsSettingsVisible))
         {
             ApplyContentLayout();
@@ -936,6 +964,47 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         var key = ViewModel.IsNavigating ? "WebView_UrlBar_StopTooltip" : "WebView_UrlBar_ReloadTooltip";
         string tooltip = _stringLocalizer.GetString(key);
         ToolTipService.SetToolTip(ReloadOrStopButton, tooltip);
+    }
+
+    // One glyph whichever state the page is in, so a document with no page shows the hollow star, disabled,
+    // rather than an empty button.
+    private void UpdateBookmarkPageButton()
+    {
+        var isBookmarked = ViewModel.IsCurrentPageBookmarked;
+
+        BookmarkPageIcon.Symbol = isBookmarked ? IconSymbol.StarFilled : IconSymbol.Star;
+
+        var key = isBookmarked ? "WebView_UrlBar_EditBookmarkTooltip" : "WebView_UrlBar_BookmarkPageTooltip";
+        string tooltip = _stringLocalizer.GetString(key);
+        ToolTipService.SetToolTip(BookmarkPageButton, tooltip);
+    }
+
+    // Both bars sit above the placeholder, so the hint points up at whichever of them the document shows. A
+    // document with neither is reached through the settings.
+    private void UpdatePlaceholderHint()
+    {
+        var showUrlBar = ViewModel.ShowUrlBar;
+        var showBookmarksBar = ViewModel.IsBookmarksBarVisible;
+
+        string key;
+        if (showUrlBar && showBookmarksBar)
+        {
+            key = "WebView_Placeholder_AddressOrBookmarkHint";
+        }
+        else if (showUrlBar)
+        {
+            key = "WebView_Placeholder_AddressHint";
+        }
+        else if (showBookmarksBar)
+        {
+            key = "WebView_Placeholder_BookmarkHint";
+        }
+        else
+        {
+            key = "WebView_Placeholder_SettingsHint";
+        }
+
+        PlaceholderHint.Text = _stringLocalizer.GetString(key);
     }
 
     private void UpdateDownloadIndicatorTooltip()

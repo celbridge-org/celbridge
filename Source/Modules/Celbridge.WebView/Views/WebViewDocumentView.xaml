@@ -111,6 +111,18 @@
                             Orientation="Horizontal"
                             Spacing="4"
                             VerticalAlignment="Center">
+                    <!-- First in the group, so the download indicator coming and going never moves it.
+                         A page a bookmark already points at fills the star in and the button leads to
+                         that bookmark, rather than unbookmarking the page under a second click. The glyph
+                         is set in code-behind with the tooltip that describes it. -->
+                    <controls:IconButton x:Name="BookmarkPageButton"
+                                         VerticalAlignment="Center"
+                                         IsEnabled="{x:Bind ViewModel.HasPage, Mode=OneWay}"
+                                         Click="BookmarkPageButton_Click">
+                        <controls:Icon x:Name="BookmarkPageIcon"
+                                       Symbol="Star"
+                                       FontSize="{StaticResource IconSizeMedium}" />
+                    </controls:IconButton>
                     <controls:IconButton x:Name="DownloadIndicatorButton"
                                          VerticalAlignment="Center"
                                          Visibility="{x:Bind ViewModel.IsDownloadIndicatorVisible, Mode=OneWay}"
@@ -222,19 +234,14 @@
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                Visibility="{x:Bind ViewModel.IsEmptyStateVisible, Mode=OneWay}" />
 
-                <TextBlock Text="{x:Bind PlaceholderAddressHintString}"
+                <!-- Names whichever way in the document offers: the URL bar, the bookmarks bar, both, or the
+                     settings when it has neither. The text is set in code-behind. -->
+                <TextBlock x:Name="PlaceholderHint"
                            HorizontalAlignment="Center"
                            TextAlignment="Center"
                            TextWrapping="Wrap"
                            Style="{StaticResource SupportingTextStyle}"
-                           Visibility="{x:Bind ViewModel.IsAddressHintVisible, Mode=OneWay}" />
-
-                <TextBlock Text="{x:Bind PlaceholderSettingsHintString}"
-                           HorizontalAlignment="Center"
-                           TextAlignment="Center"
-                           TextWrapping="Wrap"
-                           Style="{StaticResource SupportingTextStyle}"
-                           Visibility="{x:Bind ViewModel.IsSettingsHintVisible, Mode=OneWay}" />
+                           Visibility="{x:Bind ViewModel.IsEmptyStateVisible, Mode=OneWay}" />
 
                 <!-- The address bar names the page that failed, so this reports the failure and what to do
                      about it rather than repeating the address. -->
