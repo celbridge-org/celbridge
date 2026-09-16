@@ -1,8 +1,8 @@
 namespace Celbridge.Community;
 
 /// <summary>
-/// The Celbridge site pages the community resources link out to. The Community document bookmarks all of
-/// them, and the Home page links to some of them directly.
+/// The Celbridge site pages the community resources link out to. The Community document bookmarks them and
+/// the Home page links to them directly.
 /// </summary>
 public static class CommunityUrls
 {

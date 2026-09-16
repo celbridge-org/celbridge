@@ -61,6 +61,12 @@ public partial class HomeViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void ShowCelbridge()
+    {
+        OpenCommunityUrl(CommunityUrls.Celbridge);
+    }
+
+    [RelayCommand]
     private void ShowLearn()
     {
         OpenCommunityUrl(CommunityUrls.Learn);

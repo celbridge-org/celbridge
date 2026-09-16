@@ -61,6 +61,16 @@
                  Margin="0,0,0,12"/>
 
       <HyperlinkButton Foreground="{ThemeResource AccentContrastBrush}"
+                       Command="{x:Bind ViewModel.ShowCelbridgeCommand}"
+                       ToolTipService.ToolTip="{x:Bind CelbridgeTooltipString}">
+        <StackPanel Orientation="Horizontal">
+          <controls:Icon Symbol="Home"/>
+          <TextBlock Margin="8 0 0 0"
+                     Text="{x:Bind CelbridgeString}"/>
+        </StackPanel>
+      </HyperlinkButton>
+
+      <HyperlinkButton Foreground="{ThemeResource AccentContrastBrush}"
                        Command="{x:Bind ViewModel.ShowLearnCommand}"
                        ToolTipService.ToolTip="{x:Bind LearnTooltipString}">
         <StackPanel Orientation="Horizontal">

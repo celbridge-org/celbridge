@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.Community;
 using Celbridge.Dialog;
 using Celbridge.Explorer;
 using Celbridge.Settings;
@@ -50,7 +51,6 @@ internal static class MacOSMainMenu
 
     private static readonly Dictionary<long, string> _recentProjectPaths = new();
 
-    private const string WebsiteUrl = "https://celbridge.org";
     private const string GitHubUrl = "https://github.com/celbridge-org/celbridge";
 
     public static bool Install()
@@ -565,7 +565,7 @@ internal static class MacOSMainMenu
 
             case TagHelpWebsite:
                 var commandService = ServiceLocator.AcquireService<ICommandService>();
-                commandService.Execute<IOpenBrowserCommand>(command => command.URL = WebsiteUrl);
+                commandService.Execute<IOpenBrowserCommand>(command => command.URL = CommunityUrls.Celbridge);
                 break;
         }
     }
@@ -588,7 +588,7 @@ internal static class MacOSMainMenu
         var stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         var links = new List<MacAboutLink>
         {
-            new(stringLocalizer.GetString("Menu_About_Website"), WebsiteUrl),
+            new(stringLocalizer.GetString("Menu_About_Website"), CommunityUrls.Celbridge),
             new(stringLocalizer.GetString("Menu_About_GitHub"), GitHubUrl)
         };
 
