@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.Globalization;
 using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
@@ -87,6 +88,7 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     [NotifyPropertyChangedFor(nameof(CanOpenInBrowser))]
     [NotifyPropertyChangedFor(nameof(CanSetCurrentPageAsHome))]
     [NotifyPropertyChangedFor(nameof(HasPage))]
+    [NotifyPropertyChangedFor(nameof(HasNavigablePage))]
     [NotifyPropertyChangedFor(nameof(AddressText))]
     [NotifyPropertyChangedFor(nameof(IsPlaceholderVisible))]
     [NotifyPropertyChangedFor(nameof(IsEmptyStateVisible))]
@@ -189,9 +191,15 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
         Bookmarks.Where(bookmark => bookmark.IsNavigable).ToList();
 
     /// <summary>
-    /// True when the document is showing a page, as opposed to nothing or a page that failed to load.
+    /// True when the document has a page address, as opposed to showing nothing. A page that failed to load still
+    /// has one.
     /// </summary>
     public bool HasPage => IsPageUrl(CurrentUrl);
+
+    /// <summary>
+    /// True when the page has a web address, the kind a bookmark or the Home URL can hold.
+    /// </summary>
+    public bool HasNavigablePage => TryNormalizeUserUrl(CurrentUrl, out _);
 
     /// <summary>
     /// The address as the URL bar should show it. Blank for a document with no page, so clearing the
@@ -261,12 +269,12 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     /// True when the page on screen is somewhere other than the configured Home URL,
     /// so adopting it as the new Home URL would change something.
     /// </summary>
-    public bool CanSetCurrentPageAsHome => IsPageUrl(CurrentUrl) && CurrentUrl != SourceUrl;
+    public bool CanSetCurrentPageAsHome => HasNavigablePage && !WebViewUrlHelper.IsSameUrl(CurrentUrl, SourceUrl);
 
     /// <summary>
     /// True when the page on screen can be bookmarked, which a page a bookmark already points at cannot.
     /// </summary>
-    public bool CanAddBookmarkFromCurrentPage => IsPageUrl(CurrentUrl) && !IsCurrentPageBookmarked;
+    public bool CanAddBookmarkFromCurrentPage => HasNavigablePage && !IsCurrentPageBookmarked;
 
     /// <summary>
     /// True when a bookmark already points at the page on screen.
@@ -808,7 +816,12 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     // unless no dot would remain.
     private static string GetDefaultBookmarkName(Uri uri)
     {
-        var name = uri.Authority;
+        var name = GetReadableHost(uri);
+        if (!uri.IsDefaultPort)
+        {
+            name = $"{name}:{uri.Port}";
+        }
+
         if (!name.StartsWith(WwwPrefix, StringComparison.OrdinalIgnoreCase))
         {
             return name;
@@ -821,6 +834,26 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
         }
 
         return remainder;
+    }
+
+    // A web view reports an internationalized domain in its ASCII form, which is turned back into the name as the
+    // user reads it.
+    private static string GetReadableHost(Uri uri)
+    {
+        if (uri.HostNameType != UriHostNameType.Dns)
+        {
+            return uri.Host;
+        }
+
+        try
+        {
+            return new IdnMapping().GetUnicode(uri.IdnHost);
+        }
+        catch (ArgumentException)
+        {
+            // An ASCII form that does not decode is named as it is.
+            return uri.Host;
+        }
     }
 
     private void UpdateHomeState(WebViewBookmarkViewModel bookmark)

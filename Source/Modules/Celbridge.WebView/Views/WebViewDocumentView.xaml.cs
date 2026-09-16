@@ -17,6 +17,7 @@ using Celbridge.WebView.Services;
 using Celbridge.WebView.ViewModels;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.Web.WebView2.Core;
 using Windows.System;
@@ -839,12 +840,18 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         }
         else if (e.Key == VirtualKey.Escape)
         {
-            // Abandon the edit: restore the address the page is actually showing and return to the content.
+            var isEditing = AddressTextBox.Text != ViewModel.AddressText;
+
+            // Abandon the edit, restoring the address the page is actually showing.
             SyncAddressText();
 
-            // The settings keep the document area until the user leaves them, so there is no page waiting
-            // for the keyboard while they are showing.
-            if (ViewModel.IsPageOnScreen)
+            // With no edit to abandon, Escape leaves the settings as it does anywhere else in the document.
+            if (ViewModel.IsSettingsVisible
+                && !isEditing)
+            {
+                ReturnToPage();
+            }
+            else if (ViewModel.IsPageOnScreen)
             {
                 GiveFocusToWebContent();
             }
@@ -929,6 +936,16 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         SettingsSurface.Visibility = showSettings ? Visibility.Visible : Visibility.Collapsed;
         ContentPlaceholder.Visibility = ViewModel.IsPlaceholderVisible ? Visibility.Visible : Visibility.Collapsed;
         AppWebViewContainer.Visibility = ViewModel.IsPageOnScreen ? Visibility.Visible : Visibility.Collapsed;
+
+        UpdatePlaceholderName();
+
+        // A hidden page passes the keyboard on, since on macOS a hidden web view holding it keeps every keystroke.
+        if (!ViewModel.IsPageOnScreen
+            && _webView is not null
+            && _webViewFocusRegistry.IsFocusedSurface(_webView))
+        {
+            FocusDocumentContent();
+        }
     }
 
     private void DownloadIndicatorButton_Click(object sender, RoutedEventArgs e)
@@ -1015,6 +1032,24 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         }
 
         PlaceholderHint.Text = _stringLocalizer.GetString(key);
+
+        UpdatePlaceholderName();
+    }
+
+    // The placeholder takes the keyboard when nothing else in the document can, so it is named for what it says.
+    private void UpdatePlaceholderName()
+    {
+        string name;
+        if (ViewModel.IsLoadFailedVisible)
+        {
+            name = PlaceholderLoadFailedString;
+        }
+        else
+        {
+            name = PlaceholderHint.Text;
+        }
+
+        AutomationProperties.SetName(PlaceholderContent, name);
     }
 
     private void UpdateDownloadIndicatorTooltip()
@@ -1428,14 +1463,18 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         FocusDocumentContent();
     }
 
-    // Gives the keyboard to whatever fills the document area: the settings, the page, or the address box the
-    // placeholder points to. A document being opened has already started navigating to its Home URL by the time it is
-    // activated and focused, so its page counts as on screen.
+    // Gives the keyboard to whatever fills the document area, or failing that to the way in the placeholder points to.
+    // A document being opened has already started navigating to its Home URL by the time it is activated and focused,
+    // so its page counts as on screen.
     private void FocusDocumentContent()
     {
         if (ViewModel.IsSettingsVisible)
         {
-            SettingsSurface.Focus(FocusState.Programmatic);
+            if (!SettingsSurface.FocusRail())
+            {
+                _logger.LogDebug("The Web View settings rail did not take focus");
+            }
+
             return;
         }
 
@@ -1448,7 +1487,17 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         if (ViewModel.IsUrlBarVisible)
         {
             AddressTextBox.Focus(FocusState.Programmatic);
+            return;
         }
+
+        if (ViewModel.IsBookmarksBarVisible
+            && FocusNavigationHelper.TryFocusFirstElement(BookmarksBar))
+        {
+            return;
+        }
+
+        // Taken even with nothing to act on, so the keyboard does not stay with whatever held it before.
+        PlaceholderContent.Focus(FocusState.Programmatic);
     }
 
     // Call it only for a page that is on screen, or one a navigation has just started to show. On macOS,
@@ -1502,13 +1551,13 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
 
     private void OnFindBarClosed(object? sender, EventArgs e)
     {
-        if (!ViewModel.IsPageOnScreen)
+        // The settings close the bar as they open, and the keyboard stays with the control that opened them.
+        if (ViewModel.IsSettingsVisible)
         {
             return;
         }
 
-        // Hand focus back to the page so subsequent keystrokes reach the content, not the hidden find bar.
-        GiveFocusToWebContent();
+        FocusDocumentContent();
     }
 
     async Task IWebViewFindTarget.StartFindAsync(string term, FindOptions options)

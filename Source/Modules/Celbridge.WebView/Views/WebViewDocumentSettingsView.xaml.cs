@@ -95,6 +95,14 @@ public sealed partial class WebViewDocumentSettingsView : UserControl
         _bookmarksView?.RevealBookmark(bookmark);
     }
 
+    /// <summary>
+    /// Gives the keyboard to the section rail, and reports whether it took it.
+    /// </summary>
+    public bool FocusRail()
+    {
+        return SectionSwitcher.FocusRail();
+    }
+
     // The sections in rail order. The keys are persisted, so changing one drops the section a returning
     // user had open.
     private List<SettingsSection> BuildSections(WebViewDocumentViewModel viewModel)

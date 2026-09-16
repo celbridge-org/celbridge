@@ -289,6 +289,16 @@ public class WebViewDocumentViewModelTests
     }
 
     [Test]
+    public void CanSetCurrentPageAsHome_OnTheHomePageWithATrailingSlash_IsFalse()
+    {
+        var viewModel = CreateViewModel();
+        viewModel.SourceUrl = "https://example.com";
+        viewModel.CurrentUrl = "https://example.com/";
+
+        viewModel.CanSetCurrentPageAsHome.Should().BeFalse();
+    }
+
+    [Test]
     public async Task LoadContent_WithBookmarks_DoesNotMarkUnsavedChanges()
     {
         // The bookmarks arriving from disk are not edits, so a document that is only opened must not be
@@ -361,6 +371,20 @@ public class WebViewDocumentViewModelTests
         viewModel.HasUnsavedChanges.Should().BeTrue();
     }
 
+    [TestCase("https://example.com/docs", true)]
+    [TestCase("http://localhost:5173/", true)]
+    [TestCase("", false)]
+    [TestCase("about:blank", false)]
+    [TestCase("data:text/html,hello", false)]
+    [TestCase("blob:https://example.com/3f1c", false)]
+    public void HasNavigablePage_IsTrueOnlyForAWebAddress(string pageUrl, bool expected)
+    {
+        var viewModel = CreateViewModel();
+        viewModel.CurrentUrl = pageUrl;
+
+        viewModel.HasNavigablePage.Should().Be(expected);
+    }
+
     [Test]
     public void CanAddBookmarkFromCurrentPage_WithNoMatchingBookmark_IsTrue()
     {
@@ -407,8 +431,8 @@ public class WebViewDocumentViewModelTests
         viewModel.CanAddBookmarkFromCurrentPage.Should().BeTrue();
     }
 
-    // A leading "www." is dropped unless nothing with a dot would remain, other subdomains are kept, and a port
-    // is kept where it is not the scheme's default.
+    // A leading "www." is dropped unless nothing with a dot would remain, other subdomains are kept, a port is kept
+    // where it is not the scheme's default, and an internationalized domain is named in Unicode.
     [TestCase("https://www.example.com/docs", "example.com")]
     [TestCase("https://example.com/docs", "example.com")]
     [TestCase("https://WWW.Example.com/", "example.com")]
@@ -417,6 +441,8 @@ public class WebViewDocumentViewModelTests
     [TestCase("http://localhost:5173/", "localhost:5173")]
     [TestCase("https://example.com:443/", "example.com")]
     [TestCase("https://www.example.com:8443/", "example.com:8443")]
+    [TestCase("https://xn--bcher-kva.de/", "bücher.de")]
+    [TestCase("https://www.xn--bcher-kva.de/", "bücher.de")]
     public void AddBookmarkFromCurrentPage_NamesTheBookmarkAfterItsSite(string pageUrl, string expectedName)
     {
         var viewModel = CreateViewModel();
