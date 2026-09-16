@@ -122,17 +122,12 @@ public interface IResourcePolicy
     Result Evaluate(ResourceKey resource, ResourceAction action, bool isFolder = false);
 
     /// <summary>
-    /// Whether the project's 'hide' patterns match the resource. Cosmetic and
-    /// binding on the Explorer only: a hidden resource stays readable and
-    /// writable by tools and the editor.
+    /// Whether the project's 'hide' patterns match the resource.
     /// </summary>
     bool IsHidden(ResourceKey resource, bool isFolder);
 
     /// <summary>
-    /// Whether the project's 'search-exclude' patterns match the resource. Binds
-    /// search, reference scanning and tag queries, and until the resource index
-    /// lands the project tree walk as well. An excluded resource stays readable
-    /// and writable.
+    /// Whether the project's 'search-exclude' patterns match the resource.
     /// </summary>
     bool IsSearchExcluded(ResourceKey resource, bool isFolder);
 }

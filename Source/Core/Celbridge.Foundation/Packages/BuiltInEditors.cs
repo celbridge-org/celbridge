@@ -42,6 +42,11 @@ public static class BuiltInEditors
     public static readonly EditorId SpreadsheetEditorId = new("celbridge.spreadsheet");
 
     /// <summary>
+    /// Built-in id of the Report Viewer.
+    /// </summary>
+    public static readonly EditorId ReportViewerId = new("celbridge.report");
+
+    /// <summary>
     /// Built-in id of the web view editor, registered natively by the WebView module.
     /// </summary>
     public static readonly EditorId WebViewEditorId = new("celbridge.webview-editor");
@@ -59,17 +64,6 @@ public static class BuiltInEditors
     public static readonly EditorId ProjectSettingsEditorId = new("celbridge.project-settings");
 
     /// <summary>
-    /// Bundled packages the host always activates, independent of the project's activation list.
-    /// </summary>
-    public static readonly IReadOnlyList<string> AlwaysActivePackages =
-    [
-        "celbridge-code-editor",
-        "celbridge-file-viewer",
-        "celbridge-report",
-        "celbridge-spreadsheet",
-    ];
-
-    /// <summary>
     /// The package built-ins: bundled contributions registered under host-assigned ids. Ordered to
     /// match the shared editors' relative order in BuiltInResolutionOrder, which is the authority for
     /// open precedence; the two lists differ only in that BuiltInResolutionOrder also carries the
@@ -79,6 +73,7 @@ public static class BuiltInEditors
     [
         new BuiltInEditorDefinition(MarkdownEditorId, "celbridge-code-editor", "markdown"),
         new BuiltInEditorDefinition(SpreadsheetEditorId, "celbridge-spreadsheet", "spreadsheet", Optional: true),
+        new BuiltInEditorDefinition(ReportViewerId, "celbridge-report", "report"),
         new BuiltInEditorDefinition(FileViewerId, "celbridge-file-viewer", "file-viewer"),
         new BuiltInEditorDefinition(CodeEditorId, "celbridge-code-editor", "code"),
     ];
@@ -95,15 +90,17 @@ public static class BuiltInEditors
         HtmlViewerId,
         WebViewEditorId,
         SpreadsheetEditorId,
+        ReportViewerId,
         FileViewerId,
         CodeEditorId,
     ];
 
     /// <summary>
-    /// Returns true if the package is a built-in package that the host always activates.
+    /// Returns true if the package contributes a built-in editor, which makes it a built-in package
+    /// that the host always activates.
     /// </summary>
     public static bool IsAlwaysActivePackage(string packageName)
     {
-        return AlwaysActivePackages.Contains(packageName, StringComparer.Ordinal);
+        return PackageBuiltIns.Any(definition => definition.PackageName.Equals(packageName, StringComparison.Ordinal));
     }
 }
