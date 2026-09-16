@@ -99,9 +99,8 @@
                          TextWrapping="Wrap"/>
             </StackPanel>
 
-            <!-- One close for every section, in the corner of the heading band. Collapsed until the surface
-                 names it, which is also what keeps a surface without one from giving the heading less room.
-                 The gap to the heading is set in code-behind from SectionInset, which is a Double. -->
+            <!-- Collapsed while CloseButtonTooltip is empty. The gap to the heading is set in code-behind from
+                 SectionInset, which is a Double. -->
             <controls:IconButton x:Name="CloseButton"
                                  Grid.Column="1"
                                  VerticalAlignment="Top"

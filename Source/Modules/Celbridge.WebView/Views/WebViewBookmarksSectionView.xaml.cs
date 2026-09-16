@@ -43,8 +43,7 @@ public sealed partial class WebViewBookmarksSectionView : UserControl
     }
 
     /// <summary>
-    /// Opens the given bookmark's card and brings it into view, for a caller that arrived here to look at
-    /// that one bookmark.
+    /// Opens the given bookmark's card and brings it into view.
     /// </summary>
     public void RevealBookmark(WebViewBookmarkViewModel bookmark)
     {

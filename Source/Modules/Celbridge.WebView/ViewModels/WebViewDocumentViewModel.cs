@@ -218,8 +218,7 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     public bool IsLoadFailedVisible => IsPlaceholderVisible && HasNavigationFailed;
 
     /// <summary>
-    /// True when the document offers a way to open a page other than its settings: a Home URL to load, a
-    /// URL bar to type an address into, or a bookmarks bar to choose a page from.
+    /// True when the document offers a way to open a page without going through its settings.
     /// </summary>
     public bool HasWayToNavigate => !string.IsNullOrWhiteSpace(SourceUrl)
         || ShowUrlBar
@@ -270,8 +269,7 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     public bool CanAddBookmarkFromCurrentPage => IsPageUrl(CurrentUrl) && !IsCurrentPageBookmarked;
 
     /// <summary>
-    /// True when a bookmark already points at the page on screen, which is what fills in the bookmark
-    /// button in the URL bar.
+    /// True when a bookmark already points at the page on screen.
     /// </summary>
     public bool IsCurrentPageBookmarked => FindBookmarkForCurrentPage() is not null;
 
@@ -588,8 +586,7 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     }
 
     /// <summary>
-    /// Adds a bookmark for the page currently on screen, named after its site so the button reads as
-    /// something before the user renames it.
+    /// Adds a bookmark for the page currently on screen, named after its site.
     /// </summary>
     public WebViewBookmarkViewModel? AddBookmarkFromCurrentPage()
     {
@@ -807,9 +804,8 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
         RecordDataChanged();
     }
 
-    // The host a page is on, with its port where that is not the scheme's default, so bookmarks for two local
-    // servers are told apart. A leading "www." tells no two sites apart and is dropped, unless what remains
-    // has no dot left in it.
+    // The host a page is on, with its port where that is not the scheme's default. A leading "www." is dropped
+    // unless no dot would remain.
     private static string GetDefaultBookmarkName(Uri uri)
     {
         var name = uri.Authority;

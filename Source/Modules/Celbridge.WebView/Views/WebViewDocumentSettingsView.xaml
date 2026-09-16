@@ -6,9 +6,6 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     Background="Transparent">
 
-    <!-- Leaving the settings belongs to the whole surface rather than to any one section, and the URL bar
-         carrying the toggle back can be hidden, so the surface keeps a close of its own over the section
-         heading. -->
     <controls:SettingsSectionSwitcher x:Name="SectionSwitcher"
                                       Margin="{StaticResource SettingsSurfaceMargin}"
                                       Sections="{x:Bind ViewModel.Sections, Mode=OneWay}"

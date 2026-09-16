@@ -759,8 +759,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         ShowBookmarksSection();
     }
 
-    // Bookmarks the page on screen, or opens the bookmark that already points at it. A second click never
-    // removes a bookmark: the card it opens is where a bookmark is edited and deleted.
+    // Opens the card of the bookmark for the page on screen, bookmarking the page first when none points at it.
     private void BookmarkPageButton_Click(object sender, RoutedEventArgs e)
     {
         var bookmark = ViewModel.FindBookmarkForCurrentPage() ?? ViewModel.AddBookmarkFromCurrentPage();
@@ -854,9 +853,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         }
     }
 
-    // A document with no address, no URL bar to type one into and no bookmarks bar to choose a page from has
-    // no way in, so it opens on the settings whatever state it was saved in. Home is the section holding the
-    // URL, and a restored section would otherwise land the user somewhere that cannot help.
+    // A document with no way to navigate opens on its settings, whatever state it was saved in.
     private void OpenSettingsIfNoWayToNavigate()
     {
         if (Options.Role != WebViewDocumentRole.ExternalUrl
@@ -890,9 +887,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         ReturnToPage();
     }
 
-    // Escape leaves the settings from anywhere in the document, the URL and bookmarks bars included, the way
-    // the close button over the section heading does. A control that gives Escape a meaning of its own, such
-    // as the address box abandoning an edit, handles it first.
+    // Escape leaves the settings from anywhere in the document, unless a control inside handled it first.
     private void LayoutRoot_KeyDown(object sender, KeyRoutedEventArgs e)
     {
         if (e.Key != VirtualKey.Escape
@@ -910,8 +905,6 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
     {
         ViewModel.CloseSettings();
 
-        // Focus was in the settings or the chrome above them, and moves to whatever the document area shows
-        // now, which is the placeholder rather than a page for a document with nothing to show.
         FocusDocumentContent();
     }
 
@@ -926,7 +919,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         {
             SettingsSurface.Initialize(ViewModel, _settingsSectionKey);
 
-            // Find applies to the page, which is no longer on screen, so a bar left open closes with it.
+            // Find applies to the page, which the settings hide.
             if (FindBar.Visibility == Visibility.Visible)
             {
                 FindBar.Close();
@@ -987,8 +980,6 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         ToolTipService.SetToolTip(ReloadOrStopButton, tooltip);
     }
 
-    // One glyph whichever state the page is in, so a document with no page shows the hollow star, disabled,
-    // rather than an empty button.
     private void UpdateBookmarkPageButton()
     {
         var isBookmarked = ViewModel.IsCurrentPageBookmarked;
@@ -1000,8 +991,6 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         ToolTipService.SetToolTip(BookmarkPageButton, tooltip);
     }
 
-    // Both bars sit above the placeholder, so the hint points up at whichever of them the document shows. A
-    // document with neither is reached through the settings.
     private void UpdatePlaceholderHint()
     {
         var showUrlBar = ViewModel.ShowUrlBar;
@@ -1440,9 +1429,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
     }
 
     // Gives the keyboard to whatever fills the document area: the settings, the page, or the address box the
-    // placeholder points to. A page that is not on screen never takes it, because native focus on macOS would
-    // land on a hidden web view that no keystroke could ever leave. With no URL bar either, focus stays where
-    // it is. A document being opened has already started navigating to its Home URL by the time it is
+    // placeholder points to. A document being opened has already started navigating to its Home URL by the time it is
     // activated and focused, so its page counts as on screen.
     private void FocusDocumentContent()
     {
@@ -1464,10 +1451,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         }
     }
 
-    // Hands keyboard focus to the page through the registry, which applies native focus on macOS (where no
-    // managed GotFocus follows) and reports the focus so the panel focus follows, releasing the previously
-    // focused surface. Call it only for a page that is on screen, or one a navigation has just started to
-    // show: native focus lands on a hidden web view all the same, and holds every keystroke.
+    // Call it only for a page that is on screen, or one a navigation has just started to show. On macOS,
+    // native focus lands on a hidden web view all the same, and holds every keystroke.
     private void GiveFocusToWebContent()
     {
         if (_webView is null)
@@ -1517,8 +1502,6 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
 
     private void OnFindBarClosed(object? sender, EventArgs e)
     {
-        // The settings close the bar as they take the document area, and focus then stays with whatever
-        // opened them, the page being hidden.
         if (!ViewModel.IsPageOnScreen)
         {
             return;

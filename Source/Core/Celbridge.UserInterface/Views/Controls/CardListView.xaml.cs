@@ -451,9 +451,7 @@ public sealed partial class CardListView : UserControl
     }
 
     /// <summary>
-    /// Opens the card for an entry and brings it into view, so one the consumer added or singled out by
-    /// its own gesture is ready to fill in the way the add button's is. Does nothing when the entry has
-    /// no card.
+    /// Opens the card for an entry and brings it into view. Does nothing when the entry has no card.
     /// </summary>
     public void ExpandCard(object item)
     {

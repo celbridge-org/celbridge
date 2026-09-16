@@ -118,9 +118,7 @@ public sealed partial class SettingsSectionSwitcher : UserControl
             new PropertyMetadata(null, OnRailFooterChanged));
 
     /// <summary>
-    /// The name of the close button over the section heading, shown as its tooltip and read out by
-    /// assistive technology. The button is an icon with no label of its own, so it shows only while this is
-    /// set. A surface that can be left sets it and handles CloseRequested.
+    /// The tooltip and accessible name of the close button, which shows only while this is set.
     /// </summary>
     public string CloseButtonTooltip
     {
@@ -136,8 +134,7 @@ public sealed partial class SettingsSectionSwitcher : UserControl
             new PropertyMetadata(string.Empty, OnCloseButtonTooltipChanged));
 
     /// <summary>
-    /// Raised when the user clicks the close button. The owner carries out leaving, and handles Escape as
-    /// well, since the surface it closes can reach past the switcher, the way a document's URL bar does.
+    /// Raised when the user clicks the close button. The owner carries out leaving, and handles Escape as well.
     /// </summary>
     public event EventHandler? CloseRequested;
 

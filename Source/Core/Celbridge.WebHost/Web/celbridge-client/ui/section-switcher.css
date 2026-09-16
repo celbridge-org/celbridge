@@ -71,7 +71,7 @@
 }
 
 .cel-section-area {
-    /* Positions the close, so it lands in the same corner in both layouts. */
+    /* Anchors the close. */
     position: relative;
     grid-column: 2;
     grid-row: 2;
@@ -225,8 +225,7 @@
     color: var(--cel-text-secondary);
 }
 
-/* One close for every section, in the corner of the header block, mirroring the native switcher's
-   CloseButtonTooltip. A surface that can be left places it in .cel-section-area ahead of the headers. */
+/* One close for every section, in the corner of the header block. */
 .cel-section-close {
     position: absolute;
     top: var(--cel-section-inset);
@@ -234,7 +233,7 @@
 }
 
 /* Reserves the corner for the close: the button's inset, its width, and a gap the size of the inset between
-   it and the text. Keyed on the close coming first, so a surface without one keeps the full width. */
+   it and the text. */
 .cel-section-close ~ .cel-section-header {
     padding-right: calc(var(--cel-section-inset) * 2 + var(--cel-icon-button-size));
 }

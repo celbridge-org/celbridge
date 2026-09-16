@@ -112,10 +112,7 @@
                             Orientation="Horizontal"
                             Spacing="4"
                             VerticalAlignment="Center">
-                    <!-- First in the group, so the download indicator coming and going never moves it.
-                         A page a bookmark already points at fills the star in and the button leads to
-                         that bookmark, rather than unbookmarking the page under a second click. The glyph
-                         is set in code-behind with the tooltip that describes it. -->
+                    <!-- The glyph and tooltip are set in code-behind. -->
                     <controls:IconButton x:Name="BookmarkPageButton"
                                          VerticalAlignment="Center"
                                          IsEnabled="{x:Bind ViewModel.HasPage, Mode=OneWay}"

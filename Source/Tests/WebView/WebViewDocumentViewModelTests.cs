@@ -407,8 +407,8 @@ public class WebViewDocumentViewModelTests
         viewModel.CanAddBookmarkFromCurrentPage.Should().BeTrue();
     }
 
-    // A leading "www." is dropped unless nothing with a dot would remain, other subdomains are kept since
-    // they can name a different site, and a port is kept where it is not the scheme's default.
+    // A leading "www." is dropped unless nothing with a dot would remain, other subdomains are kept, and a port
+    // is kept where it is not the scheme's default.
     [TestCase("https://www.example.com/docs", "example.com")]
     [TestCase("https://example.com/docs", "example.com")]
     [TestCase("https://WWW.Example.com/", "example.com")]
@@ -431,8 +431,6 @@ public class WebViewDocumentViewModelTests
     [Test]
     public void AddBookmarkFromCurrentPage_LeavesCredentialsInTheAddressOutOfTheName()
     {
-        // The name is shown on the bookmarks bar, where a user name and password carried in the address
-        // would be on display.
         var viewModel = CreateViewModel();
         viewModel.CurrentUrl = "https://user:secret@www.example.com/";
 
@@ -487,8 +485,6 @@ public class WebViewDocumentViewModelTests
     [Test]
     public void FindBookmarkForCurrentPage_AfterTheBookmarkIsRepointed_ReturnsNull()
     {
-        // The settings card edits the URL in place, so the page the button was filled in for can stop
-        // being the one the bookmark opens without the bookmark being removed.
         var viewModel = CreateViewModel();
         viewModel.CurrentUrl = "https://example.com/docs";
         var bookmark = viewModel.CreateBookmark(new WebViewBookmark("https://example.com/docs"));
@@ -528,7 +524,7 @@ public class WebViewDocumentViewModelTests
     [Test]
     public async Task LoadContent_MarksTheBookmarkForTheHomeUrl_WithoutMarkingUnsavedChanges()
     {
-        // The flag is worked out from the Home URL rather than stored, so setting it on load is not an edit.
+        // The flag is worked out from the Home URL, so setting it on load is not an edit.
         StubWebViewFile(
             """
             source_url = "https://example.com/docs"
@@ -643,8 +639,6 @@ public class WebViewDocumentViewModelTests
         viewModel.IsBookmarksBarVisible.Should().BeTrue();
     }
 
-    // The page only takes the keyboard while it is on screen: on macOS a hidden web view holding native focus
-    // keeps every keystroke.
     [Test]
     public void IsPageOnScreen_WithAPageShowing_IsTrue()
     {

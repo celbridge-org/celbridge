@@ -28,7 +28,7 @@ public sealed partial class WebViewDocumentSettingsView : UserControl
 
     private WebViewDocumentViewModel? _documentViewModel;
 
-    // Held so a bookmark can be revealed in it. Null until the sections are built.
+    // Null until the sections are built.
     private WebViewBookmarksSectionView? _bookmarksView;
 
     public WebViewDocumentSettingsViewModel ViewModel { get; }
@@ -88,7 +88,7 @@ public sealed partial class WebViewDocumentSettingsView : UserControl
 
     /// <summary>
     /// Opens the given bookmark's card in the Bookmarks section and brings it into view. Select that
-    /// section first: a card opened in a section that is not showing is not what the user is looking at.
+    /// section first.
     /// </summary>
     public void RevealBookmark(WebViewBookmarkViewModel bookmark)
     {

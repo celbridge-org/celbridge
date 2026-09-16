@@ -28,8 +28,7 @@ public partial class WebViewBookmarkViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(HasIcon))]
     private string _icon = string.Empty;
 
-    // True when the bookmark opens the document's Home URL. Set by the document view model, which holds the
-    // Home URL, and not stored with the bookmark.
+    // True when the bookmark opens the document's Home URL.
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanSetAsHome))]
     private bool _isHome;
@@ -82,8 +81,7 @@ public partial class WebViewBookmarkViewModel : ObservableObject
     public bool IsUrlInvalid => !string.IsNullOrWhiteSpace(Url) && !IsNavigable;
 
     /// <summary>
-    /// True when the bookmark can become the document's Home URL: it opens a page, and not the one Home
-    /// already opens.
+    /// True when the bookmark can become the document's Home URL.
     /// </summary>
     public bool CanSetAsHome => IsNavigable && !IsHome;
 
