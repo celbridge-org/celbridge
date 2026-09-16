@@ -643,6 +643,64 @@ public class WebViewDocumentViewModelTests
         viewModel.IsBookmarksBarVisible.Should().BeTrue();
     }
 
+    // The page only takes the keyboard while it is on screen: on macOS a hidden web view holding native focus
+    // keeps every keystroke.
+    [Test]
+    public void IsPageOnScreen_WithAPageShowing_IsTrue()
+    {
+        var viewModel = CreateViewModel();
+        viewModel.Role = WebViewDocumentRole.ExternalUrl;
+        viewModel.CurrentUrl = "https://example.com/";
+
+        viewModel.IsPageOnScreen.Should().BeTrue();
+    }
+
+    [Test]
+    public void IsPageOnScreen_WhileTheSettingsAreOpen_IsFalse()
+    {
+        var viewModel = CreateViewModel();
+        viewModel.Role = WebViewDocumentRole.ExternalUrl;
+        viewModel.CurrentUrl = "https://example.com/";
+
+        viewModel.IsSettingsOpen = true;
+
+        viewModel.IsPageOnScreen.Should().BeFalse();
+    }
+
+    [TestCase("")]
+    [TestCase("about:blank")]
+    public void IsPageOnScreen_WithNoPage_IsFalse(string currentUrl)
+    {
+        var viewModel = CreateViewModel();
+        viewModel.Role = WebViewDocumentRole.ExternalUrl;
+        viewModel.CurrentUrl = currentUrl;
+
+        viewModel.IsPageOnScreen.Should().BeFalse();
+    }
+
+    [Test]
+    public void IsPageOnScreen_AfterTheNavigationFailed_IsFalse()
+    {
+        var viewModel = CreateViewModel();
+        viewModel.Role = WebViewDocumentRole.ExternalUrl;
+        viewModel.CurrentUrl = "https://example.com/";
+
+        viewModel.NotifyNavigationStarted();
+        viewModel.NotifyNavigationCompleted(isSuccess: false);
+
+        viewModel.IsPageOnScreen.Should().BeFalse();
+    }
+
+    [Test]
+    public void IsPageOnScreen_ForTheHtmlViewer_IsTrue()
+    {
+        // The viewer has no placeholder or settings, so its page is always what the document shows.
+        var viewModel = CreateViewModel();
+        viewModel.Role = WebViewDocumentRole.HtmlViewer;
+
+        viewModel.IsPageOnScreen.Should().BeTrue();
+    }
+
     [Test]
     public void HasWayToNavigate_WithOnlyABookmarksBar_IsTrue()
     {

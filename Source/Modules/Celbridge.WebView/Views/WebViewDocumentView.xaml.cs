@@ -910,8 +910,9 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
     {
         ViewModel.CloseSettings();
 
-        // Focus was in the settings or the chrome above them, and the page is what the user returns to.
-        GiveFocusToWebContent();
+        // Focus was in the settings or the chrome above them, and moves to whatever the document area shows
+        // now, which is the placeholder rather than a page for a document with nothing to show.
+        FocusDocumentContent();
     }
 
     // Gives the document area to whichever of the page, the settings and the placeholder belongs there.
@@ -925,8 +926,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         {
             SettingsSurface.Initialize(ViewModel, _settingsSectionKey);
 
-            // Find applies to the page, which is no longer on screen. Closing the bar hands the keyboard
-            // back to the page, so only do it when the bar is actually showing.
+            // Find applies to the page, which is no longer on screen, so a bar left open closes with it.
             if (FindBar.Visibility == Visibility.Visible)
             {
                 FindBar.Close();
@@ -1436,22 +1436,38 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
 
     public override void FocusDocument()
     {
+        FocusDocumentContent();
+    }
+
+    // Gives the keyboard to whatever fills the document area: the settings, the page, or the address box the
+    // placeholder points to. A page that is not on screen never takes it, because native focus on macOS would
+    // land on a hidden web view that no keystroke could ever leave. With no URL bar either, focus stays where
+    // it is. A document being opened has already started navigating to its Home URL by the time it is
+    // activated and focused, so its page counts as on screen.
+    private void FocusDocumentContent()
+    {
         if (ViewModel.IsSettingsVisible)
         {
-            // The page is collapsed behind the settings, and native focus on macOS would land on a hidden
-            // web view that no keystroke could ever leave.
             SettingsSurface.Focus(FocusState.Programmatic);
             return;
         }
 
-        // A tab click focuses the web content (native first responder on macOS, where no managed GotFocus
-        // follows). The registry gives it focus and reports it, releasing the previously focused surface.
-        GiveFocusToWebContent();
+        if (ViewModel.IsPageOnScreen)
+        {
+            GiveFocusToWebContent();
+            return;
+        }
+
+        if (ViewModel.IsUrlBarVisible)
+        {
+            AddressTextBox.Focus(FocusState.Programmatic);
+        }
     }
 
-    // Hands keyboard focus to the page through the registry, which applies native focus on macOS and reports
-    // the focus so the panel focus follows. Used by every path that finishes with the chrome and returns the
-    // user to the content.
+    // Hands keyboard focus to the page through the registry, which applies native focus on macOS (where no
+    // managed GotFocus follows) and reports the focus so the panel focus follows, releasing the previously
+    // focused surface. Call it only for a page that is on screen, or one a navigation has just started to
+    // show: native focus lands on a hidden web view all the same, and holds every keystroke.
     private void GiveFocusToWebContent()
     {
         if (_webView is null)
@@ -1501,6 +1517,13 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
 
     private void OnFindBarClosed(object? sender, EventArgs e)
     {
+        // The settings close the bar as they take the document area, and focus then stays with whatever
+        // opened them, the page being hidden.
+        if (!ViewModel.IsPageOnScreen)
+        {
+            return;
+        }
+
         // Hand focus back to the page so subsequent keystrokes reach the content, not the hidden find bar.
         GiveFocusToWebContent();
     }
