@@ -57,7 +57,16 @@ public class ArchiveResourceDialogCommand : CommandBase, IArchiveResourceDialogC
         }
         var resource = getResult.Value;
 
+        // The archive is created beside the folder, in its parent folder. The project folder resource has
+        // no parent and an empty name, so its archive is created inside it, named after the folder on disk.
         var folderName = resource.Name;
+        var destinationFolder = resource.ParentFolder;
+        if (destinationFolder is null)
+        {
+            folderName = Path.GetFileName(resourceRegistry.ProjectFolderPath);
+            destinationFolder = resourceRegistry.ProjectFolder;
+        }
+
         var defaultArchiveName = $"{folderName}.zip";
 
         // Select just the folder name part, before ".zip"
@@ -67,7 +76,7 @@ public class ArchiveResourceDialogCommand : CommandBase, IArchiveResourceDialogC
         var messageString = _stringLocalizer.GetString("ResourceTree_EnterArchiveName");
 
         var validator = _serviceProvider.GetRequiredService<IResourceNameValidator>();
-        validator.ParentFolder = resource.ParentFolder;
+        validator.ParentFolder = destinationFolder;
 
         var showResult = await _dialogService.ShowInputTextDialogAsync(
             titleString,
@@ -80,8 +89,8 @@ public class ArchiveResourceDialogCommand : CommandBase, IArchiveResourceDialogC
         {
             var archiveName = showResult.Value;
 
-            var parentResource = FolderResource.GetParent();
-            var archiveResource = parentResource.Combine(archiveName);
+            var destinationFolderKey = resourceRegistry.GetResourceKey(destinationFolder);
+            var archiveResource = destinationFolderKey.Combine(archiveName);
 
             _commandService.Execute<IArchiveResourceCommand>(command =>
             {

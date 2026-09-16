@@ -37,28 +37,37 @@ public class ArchiveMenuOption : IMenuOption<ExplorerMenuContext>
 
     public MenuItemState GetState(ExplorerMenuContext context)
     {
-        var isSingleFolder = context.HasSingleSelection &&
-                             context.SingleSelectedResource is IFolderResource &&
-                             !context.SelectionContainsProjectFolder;
+        var hasTargetFolder = GetTargetFolder(context) is not null;
 
         return new MenuItemState(
-            IsVisible: isSingleFolder,
-            IsEnabled: isSingleFolder);
+            IsVisible: hasTargetFolder,
+            IsEnabled: hasTargetFolder);
     }
 
     public void Execute(ExplorerMenuContext context)
     {
-        if (context.SingleSelectedResource is not IFolderResource)
+        var targetFolder = GetTargetFolder(context);
+        if (targetFolder is null)
         {
             return;
         }
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var resourceKey = resourceRegistry.GetResourceKey(context.SingleSelectedResource);
+        var resourceKey = resourceRegistry.GetResourceKey(targetFolder);
 
         _commandService.Execute<IArchiveResourceDialogCommand>(command =>
         {
             command.FolderResource = resourceKey;
         });
+    }
+
+    private static IFolderResource? GetTargetFolder(ExplorerMenuContext context)
+    {
+        if (context.IsProjectFolderTargeted)
+        {
+            return context.ProjectFolder;
+        }
+
+        return context.SingleSelectedResource as IFolderResource;
     }
 }
