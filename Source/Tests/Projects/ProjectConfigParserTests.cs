@@ -109,9 +109,9 @@ public class ProjectConfigParserTests
     }
 
     [Test]
-    public void ParseFromText_MalformedProjectVersion_IsIgnoredWithAnEntryError()
+    public void ParseFromText_MalformedProjectVersion_IsDroppedWithAnEntryError()
     {
-        // A malformed version does not stop the project loading. The key is reported and ignored, and the rest
+        // A malformed version does not stop the project loading. The key is reported and dropped, and the rest
         // of the file still applies.
         var content = """
             [celbridge]
@@ -127,7 +127,7 @@ public class ProjectConfigParserTests
         result.Value.EntryErrors.Should().ContainSingle();
         result.Value.EntryErrors[0].EntryName.Should().Be("celbridge");
         result.Value.EntryErrors[0].Message.Should().Be(
-            "'project-version': '1.2' is not a three-part version such as 1.0.0. The key was ignored.");
+            "'project-version': '1.2' is not a three-part version such as 1.0.0. The key was dropped.");
     }
 
     [Test]

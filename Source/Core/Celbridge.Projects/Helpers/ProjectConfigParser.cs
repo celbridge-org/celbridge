@@ -170,7 +170,7 @@ public static class ProjectConfigParser
             {
                 entryErrors.Add(new ProjectConfigEntryError(
                     ContributionSectionName,
-                    $"'{ContributionSectionName}' must be declared as [[{ContributionSectionName}]] entries. The section was ignored."));
+                    $"'{ContributionSectionName}' must be declared as [[{ContributionSectionName}]] entries. The section was dropped."));
             }
         }
 
@@ -194,7 +194,7 @@ public static class ProjectConfigParser
             {
                 entryErrors.Add(new ProjectConfigEntryError(
                     DocumentShortcutSectionName,
-                    $"'{DocumentShortcutSectionName}' must be declared as [[{DocumentShortcutSectionName}]] entries. The section was ignored."));
+                    $"'{DocumentShortcutSectionName}' must be declared as [[{DocumentShortcutSectionName}]] entries. The section was dropped."));
             }
         }
 
@@ -212,7 +212,7 @@ public static class ProjectConfigParser
                 key == ResourcesKey)
             {
                 entryErrors.Add(new ProjectConfigEntryError(
-                    key, $"The top-level [{key}] section has moved to [{CelbridgeSectionName}]. The section was ignored."));
+                    key, $"The top-level [{key}] section has moved to [{CelbridgeSectionName}]. The section was dropped."));
                 continue;
             }
 
@@ -244,7 +244,7 @@ public static class ProjectConfigParser
         foreach (var key in ConfigSchemaHelper.FindUnknownKeys(celbridgeTable.Keys, KnownCelbridgeKeys))
         {
             entryErrors.Add(new ProjectConfigEntryError(
-                CelbridgeSectionName, $"Unknown key '{key}' on [{CelbridgeSectionName}]. The key was ignored."));
+                CelbridgeSectionName, $"Unknown key '{key}' on [{CelbridgeSectionName}]. The key was dropped."));
         }
 
         var disabledPackages = new List<string>();
@@ -261,7 +261,7 @@ public static class ProjectConfigParser
                     else
                     {
                         entryErrors.Add(new ProjectConfigEntryError(
-                            CelbridgeSectionName, $"Ignored a non-string entry in '{DisabledPackagesKey}'."));
+                            CelbridgeSectionName, $"Dropped a non-string entry in '{DisabledPackagesKey}'."));
                     }
                 }
             }
@@ -282,14 +282,14 @@ public static class ProjectConfigParser
                     if (editorObject is not string editorId || string.IsNullOrWhiteSpace(editorId))
                     {
                         entryErrors.Add(new ProjectConfigEntryError(
-                            CelbridgeSectionName, $"'{EditorAssociationsKey}' entry '{extension}' must name an editor id. The entry was ignored."));
+                            CelbridgeSectionName, $"'{EditorAssociationsKey}' entry '{extension}' must name an editor id. The entry was dropped."));
                         continue;
                     }
 
                     if (!FileExtensionUtils.IsWellFormedFileExtension(extension))
                     {
                         entryErrors.Add(new ProjectConfigEntryError(
-                            CelbridgeSectionName, $"'{EditorAssociationsKey}' key '{extension}' must be a well-formed file extension (e.g. \".txt\"). The entry was ignored."));
+                            CelbridgeSectionName, $"'{EditorAssociationsKey}' key '{extension}' must be a well-formed file extension (e.g. \".txt\"). The entry was dropped."));
                         continue;
                     }
 
@@ -316,7 +316,7 @@ public static class ProjectConfigParser
                     else
                     {
                         entryErrors.Add(new ProjectConfigEntryError(
-                            CelbridgeSectionName, $"'{FeaturesKey}' entry '{featureKey}' must be a boolean. The entry was ignored."));
+                            CelbridgeSectionName, $"'{FeaturesKey}' entry '{featureKey}' must be a boolean. The entry was dropped."));
                     }
                 }
             }
@@ -375,7 +375,7 @@ public static class ProjectConfigParser
         {
             entryErrors.Add(new ProjectConfigEntryError(
                 CelbridgeSectionName,
-                $"'{ProjectVersionKey}': {parseResult.FirstErrorMessage} The key was ignored."));
+                $"'{ProjectVersionKey}': {parseResult.FirstErrorMessage} The key was dropped."));
 
             return null;
         }
@@ -386,7 +386,7 @@ public static class ProjectConfigParser
     // An unusable name is dropped rather than applied, leaving project data where it already sits. The
     // value builds filesystem paths inside the reserved .celbridge/ folder, so a path is not narrowed
     // to its last segment: a project asking for one thing and silently getting another is worse than
-    // a project told its key was ignored.
+    // a project told its key was dropped.
     private static string ReadDataFolder(TomlTable celbridgeTable, List<ProjectConfigEntryError> entryErrors)
     {
         var dataFolder = ReadString(celbridgeTable, DataFolderKey);
@@ -399,7 +399,7 @@ public static class ProjectConfigParser
         {
             entryErrors.Add(new ProjectConfigEntryError(
                 CelbridgeSectionName,
-                $"'{DataFolderKey}' value '{dataFolder}' must be a single folder name, not a path. The key was ignored."));
+                $"'{DataFolderKey}' value '{dataFolder}' must be a single folder name, not a path. The key was dropped."));
 
             return string.Empty;
         }
@@ -489,7 +489,7 @@ public static class ProjectConfigParser
         foreach (var key in ConfigSchemaHelper.FindUnknownKeys(entryTable.Keys, KnownDocumentShortcutKeys))
         {
             entryErrors.Add(new ProjectConfigEntryError(
-                entryName, $"Unknown key '{key}'. The key was ignored."));
+                entryName, $"Unknown key '{key}'. The key was dropped."));
         }
 
         var resource = ReadString(entryTable, DocumentShortcutResourceKey);
@@ -577,7 +577,7 @@ public static class ProjectConfigParser
         }
 
         entryErrors.Add(new ProjectConfigEntryError(
-            reference, $"'{key}' must be a boolean. The value was ignored."));
+            reference, $"'{key}' must be a boolean. The value was dropped."));
 
         return null;
     }
