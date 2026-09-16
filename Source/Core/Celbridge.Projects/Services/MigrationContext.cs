@@ -31,9 +31,9 @@ public class MigrationContext
     public required ILogger Logger { get; init; }
 
     /// <summary>
-    /// The project's Celbridge version before migration started.
+    /// The Celbridge version the project recorded before migration started.
     /// </summary>
-    public required SemanticVersion OriginalVersion { get; init; }
+    public required SemanticVersion RecordedCelbridgeVersion { get; init; }
 
     /// <summary>
     /// Helper method to write the entire project file with updated content.
