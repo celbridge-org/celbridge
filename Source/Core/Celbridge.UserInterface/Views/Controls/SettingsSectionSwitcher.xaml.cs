@@ -1,3 +1,4 @@
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls.Primitives;
 
 namespace Celbridge.UserInterface.Views.Controls;
@@ -116,6 +117,27 @@ public sealed partial class SettingsSectionSwitcher : UserControl
             typeof(SettingsSectionSwitcher),
             new PropertyMetadata(null, OnRailFooterChanged));
 
+    /// <summary>
+    /// The tooltip and accessible name of the close button, which shows only while this is set.
+    /// </summary>
+    public string CloseButtonTooltip
+    {
+        get => (string)GetValue(CloseButtonTooltipProperty);
+        set => SetValue(CloseButtonTooltipProperty, value);
+    }
+
+    public static readonly DependencyProperty CloseButtonTooltipProperty =
+        DependencyProperty.Register(
+            nameof(CloseButtonTooltip),
+            typeof(string),
+            typeof(SettingsSectionSwitcher),
+            new PropertyMetadata(string.Empty, OnCloseButtonTooltipChanged));
+
+    /// <summary>
+    /// Raised when the user clicks the close button. The owner carries out leaving, and handles Escape as well.
+    /// </summary>
+    public event EventHandler? CloseRequested;
+
     public SettingsSectionSwitcher()
     {
         this.InitializeComponent();
@@ -133,6 +155,7 @@ public sealed partial class SettingsSectionSwitcher : UserControl
 
         _sectionInset = (double)resources["SectionInset"];
         SectionHeader.Padding = new Thickness(_sectionInset);
+        CloseButton.Margin = new Thickness(_sectionInset, 0, 0, 0);
         RailItems.Margin = new Thickness(0, _sectionInset - NavRowRise, 0, 0);
     }
 
@@ -160,6 +183,12 @@ public sealed partial class SettingsSectionSwitcher : UserControl
     {
         var switcher = (SettingsSectionSwitcher)d;
         switcher.RailFooterPresenter.Content = e.NewValue;
+    }
+
+    private static void OnCloseButtonTooltipChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var switcher = (SettingsSectionSwitcher)d;
+        switcher.ApplyCloseButton();
     }
 
     // Realizes every section's content up front. Each gets its own scroll container, so a section keeps
@@ -216,6 +245,21 @@ public sealed partial class SettingsSectionSwitcher : UserControl
 
         SectionLabel.Text = selectedSection?.Label ?? string.Empty;
         SectionDescription.Text = selectedSection?.Description ?? string.Empty;
+    }
+
+    private void ApplyCloseButton()
+    {
+        var tooltip = CloseButtonTooltip ?? string.Empty;
+        var hasTooltip = tooltip.Length > 0;
+
+        CloseButton.Visibility = hasTooltip ? Visibility.Visible : Visibility.Collapsed;
+        ToolTipService.SetToolTip(CloseButton, hasTooltip ? tooltip : null);
+        AutomationProperties.SetName(CloseButton, tooltip);
+    }
+
+    private void CloseButton_Click(object sender, RoutedEventArgs e)
+    {
+        CloseRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private void RailButton_Click(object sender, RoutedEventArgs e)

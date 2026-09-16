@@ -60,5 +60,7 @@ public enum IconSymbol
     Visible,
     Hidden,
     Exit,
-    Pin
+    Pin,
+    Star,
+    StarFilled
 }

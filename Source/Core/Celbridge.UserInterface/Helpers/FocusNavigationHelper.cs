@@ -49,6 +49,23 @@ public static class FocusNavigationHelper
     }
 
     /// <summary>
+    /// Gives keyboard focus to the first focusable element under the given one, in tab order, and reports
+    /// whether one took it.
+    /// </summary>
+    public static bool TryFocusFirstElement(DependencyObject root)
+    {
+        foreach (var tabStop in GetTabStops(root))
+        {
+            if (tabStop.Focus(FocusState.Programmatic))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Handles Enter as a field commit, by moving focus the way a Tab would. A field bound on lost focus
     /// commits either way, so this is what shows the user that it did. Leaves any other key alone.
     /// </summary>

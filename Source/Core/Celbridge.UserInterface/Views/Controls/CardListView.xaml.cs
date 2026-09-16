@@ -451,8 +451,7 @@ public sealed partial class CardListView : UserControl
     }
 
     /// <summary>
-    /// Opens the card for an entry, so one the consumer added by its own gesture is ready to fill in the
-    /// way the add button's is. Does nothing when the entry has no card.
+    /// Opens the card for an entry and brings it into view. Does nothing when the entry has no card.
     /// </summary>
     public void ExpandCard(object item)
     {
@@ -463,6 +462,10 @@ public sealed partial class CardListView : UserControl
         }
 
         entry.Card.IsExpanded = true;
+
+        // A card that has just been added, or one in a list that has just been shown, has no position to
+        // scroll to until the layout it is part of has run.
+        DispatcherQueue.TryEnqueue(() => entry.Container.StartBringIntoView());
     }
 
     private void DeleteButton_Click(object sender, RoutedEventArgs e)

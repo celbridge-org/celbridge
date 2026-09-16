@@ -4,7 +4,7 @@
 //
 //   const layout = attachStackLayout(rootElement, {
 //     property: '--cel-section-stack-threshold',
-//     fallback: 387,
+//     fallback: 397,
 //     attribute: 'layout',
 //     onChange(name) { /* the layout changed to 'inline' or 'stacked' */ },
 //   });

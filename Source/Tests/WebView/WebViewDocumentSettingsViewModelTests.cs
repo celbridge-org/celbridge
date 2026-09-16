@@ -14,7 +14,7 @@ public class WebViewDocumentSettingsViewModelTests
         new("Home", "bs-house", "Home", "The page this document opens on.", "home-content");
 
     private static readonly SettingsSection Bookmarks =
-        new("Bookmarks", "bs-bookmark", "Bookmarks", "Pages this document offers.", "bookmarks-content");
+        new("Bookmarks", "bs-star", "Bookmarks", "Pages this document offers.", "bookmarks-content");
 
     private static readonly SettingsSection Appearance =
         new("Appearance", "bs-palette", "Appearance", "The chrome around the page.", "appearance-content");

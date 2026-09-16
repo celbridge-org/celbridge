@@ -17,6 +17,7 @@ public partial class WebViewBookmarkViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(DisplayName))]
     [NotifyPropertyChangedFor(nameof(IsNavigable))]
     [NotifyPropertyChangedFor(nameof(IsUrlInvalid))]
+    [NotifyPropertyChangedFor(nameof(CanSetAsHome))]
     private string _url = string.Empty;
 
     [ObservableProperty]
@@ -26,6 +27,11 @@ public partial class WebViewBookmarkViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasIcon))]
     private string _icon = string.Empty;
+
+    // True when the bookmark opens the document's Home URL.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanSetAsHome))]
+    private bool _isHome;
 
     /// <summary>
     /// The text the toolbar button and the collapsed card show. An unnamed bookmark falls back to its URL,
@@ -55,6 +61,7 @@ public partial class WebViewBookmarkViewModel : ObservableObject
     public string NamePlaceholder => _stringLocalizer.GetString("WebView_Settings_BookmarkNamePlaceholder");
     public string InvalidUrlText => _stringLocalizer.GetString("WebView_InvalidUrl");
     public string OpenTooltip => _stringLocalizer.GetString("WebView_Settings_BookmarkOpenTooltip");
+    public string SetAsHomeText => _stringLocalizer.GetString("WebView_Settings_BookmarkSetAsHome");
 
     /// <summary>
     /// True when the bookmark names an icon, so the button and card show a glyph beside the name.
@@ -72,6 +79,11 @@ public partial class WebViewBookmarkViewModel : ObservableObject
     /// rather than wrong, so it does not report as invalid.
     /// </summary>
     public bool IsUrlInvalid => !string.IsNullOrWhiteSpace(Url) && !IsNavigable;
+
+    /// <summary>
+    /// True when the bookmark can become the document's Home URL.
+    /// </summary>
+    public bool CanSetAsHome => IsNavigable && !IsHome;
 
     public WebViewBookmarkViewModel(IStringLocalizer stringLocalizer)
     {

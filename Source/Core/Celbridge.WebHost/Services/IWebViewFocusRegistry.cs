@@ -62,6 +62,11 @@ public interface IWebViewFocusRegistry
     bool HasFocusedSurface { get; }
 
     /// <summary>
+    /// Whether the given web view is the hosted surface whose focus report is current.
+    /// </summary>
+    bool IsFocusedSurface(WebView2 webView);
+
+    /// <summary>
     /// Makes the focused surface's web view the platform keyboard focus target, with no focus report and
     /// no DOM-side caret change (the page's caret stays exactly where the user put it). The reconciler's
     /// native apply step; a no-op when no hosted surface holds focus.

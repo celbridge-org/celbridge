@@ -564,6 +564,11 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
 
     public bool HasFocusedSurface => _focusedRegistration is not null;
 
+    public bool IsFocusedSurface(WebView2 webView)
+    {
+        return ReferenceEquals(_focusedRegistration?.WebView, webView);
+    }
+
     public void FocusFocusedSurface()
     {
         var registration = _focusedRegistration;
