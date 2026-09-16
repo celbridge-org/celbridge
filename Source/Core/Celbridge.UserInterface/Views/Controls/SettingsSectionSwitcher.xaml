@@ -36,8 +36,12 @@
           <controls:IconToggleButton Style="{StaticResource RailButtonStyle}"
                                      IsChecked="{x:Bind IsSelected, Mode=OneWay}"
                                      Click="RailButton_Click">
-            <StackPanel Orientation="Horizontal"
-                        Spacing="10">
+            <Grid ColumnSpacing="10">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+              </Grid.ColumnDefinitions>
+
               <Grid VerticalAlignment="Center">
                 <controls:Icon IconName="{x:Bind IconName}"
                                FontSize="{StaticResource IconSizeMedium}"/>
@@ -53,10 +57,11 @@
                          Visibility="{x:Bind HasIssue, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
               </Grid>
 
-              <TextBlock Text="{x:Bind Label}"
-                         TextWrapping="NoWrap"
+              <TextBlock Grid.Column="1"
+                         Text="{x:Bind Label}"
+                         TextWrapping="Wrap"
                          VerticalAlignment="Center"/>
-            </StackPanel>
+            </Grid>
           </controls:IconToggleButton>
         </DataTemplate>
       </ItemsControl.ItemTemplate>

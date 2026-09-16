@@ -153,7 +153,7 @@
     width: 100%;
     height: auto;
     min-height: var(--cel-icon-button-size);
-    padding: 0 var(--cel-section-row-padding);
+    padding: 4px var(--cel-section-row-padding);
     text-align: left;
 }
 
@@ -184,14 +184,13 @@
 
 .cel-section-nav-label {
     display: none;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }
 
+/* A label too long for the row wraps, breaking inside a word only where one word is wider than the row. */
 .cel-section-switcher[data-layout="inline"] .cel-section-nav-label {
     display: block;
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 /* Reports that this section has something to look at; the detail belongs in the section itself. Place it
