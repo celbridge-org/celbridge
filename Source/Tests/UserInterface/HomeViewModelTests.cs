@@ -1,6 +1,5 @@
 using Celbridge.Commands;
 using Celbridge.Dialog;
-using Celbridge.FilePicker;
 using Celbridge.FileSystem;
 using Celbridge.Projects;
 using Celbridge.Tests.Helpers;

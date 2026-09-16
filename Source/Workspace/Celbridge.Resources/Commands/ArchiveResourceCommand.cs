@@ -52,41 +52,6 @@ public class ArchiveResourceCommand : CommandBase, IArchiveResourceCommand
         return result;
     }
 
-    // Recursive walk via the gateway to collect every descendant file
-    // together with the relative archive entry name. Mirrors the prior
-    // Directory.GetFiles(..., AllDirectories) traversal but routes through
-    // EnumerateFolderAsync so the read side honours the same containment
-    // validation as the write side.
-    private static async Task CollectArchiveEntriesAsync(
-        IResourceFileSystem resourceFileSystem,
-        ResourceKey folder,
-        string relativePrefix,
-        List<(ResourceKey Resource, string RelativePath)> entries)
-    {
-        var enumerateResult = await resourceFileSystem.EnumerateFolderAsync(folder);
-        if (enumerateResult.IsFailure)
-        {
-            return;
-        }
-
-        foreach (var item in enumerateResult.Value)
-        {
-            var name = item.Resource.ResourceName;
-            var childRelative = string.IsNullOrEmpty(relativePrefix)
-                ? name
-                : $"{relativePrefix}/{name}";
-
-            if (item.IsFolder)
-            {
-                await CollectArchiveEntriesAsync(resourceFileSystem, item.Resource, childRelative, entries);
-            }
-            else
-            {
-                entries.Add((item.Resource, childRelative));
-            }
-        }
-    }
-
     private async Task<Result> ExecuteArchiveAsync()
     {
         if (!_workspaceWrapper.IsWorkspaceLoaded)
@@ -150,48 +115,25 @@ public class ArchiveResourceCommand : CommandBase, IArchiveResourceCommand
 
         try
         {
+            var sourceFiles = await ArchiveHelper.CollectSourceFilesAsync(resourceFileSystem, SourceResource, isFolder);
+            var includedFiles = sourceFiles
+                .Where(sourceFile => ArchiveHelper.ShouldIncludeFile(sourceFile.EntryName, includeRegexes, excludeRegexes))
+                .ToList();
+
             using var memoryStream = new MemoryStream();
             using (var zipArchive = new ZipArchive(memoryStream, ZipArchiveMode.Create, leaveOpen: true))
             {
-                if (isFile)
+                var addResult = await ArchiveHelper.AddSourceFilesToArchiveAsync(zipArchive, resourceFileSystem, includedFiles);
+                if (addResult.IsFailure)
                 {
-                    var fileName = SourceResource.ResourceName;
-
-                    if (ArchiveHelper.ShouldIncludeFile(fileName, includeRegexes, excludeRegexes))
-                    {
-                        var addResult = await ArchiveHelper.AddFileToArchiveAsync(zipArchive, resourceFileSystem, SourceResource, fileName);
-                        if (addResult.IsFailure)
-                        {
-                            return addResult;
-                        }
-                        entryCount++;
-                    }
-                }
-                else
-                {
-                    var fileEntries = new List<(ResourceKey Resource, string RelativePath)>();
-                    await CollectArchiveEntriesAsync(resourceFileSystem, SourceResource, string.Empty, fileEntries);
-
-                    foreach (var (fileResource, relativePath) in fileEntries)
-                    {
-                        if (!ArchiveHelper.ShouldIncludeFile(relativePath, includeRegexes, excludeRegexes))
-                        {
-                            continue;
-                        }
-
-                        var addResult = await ArchiveHelper.AddFileToArchiveAsync(zipArchive, resourceFileSystem, fileResource, relativePath);
-                        if (addResult.IsFailure)
-                        {
-                            return addResult;
-                        }
-                        entryCount++;
-                    }
+                    return addResult;
                 }
             }
 
             // Disposing the ZipArchive flushes the central directory into
             // memoryStream; leaveOpen:true keeps the buffer accessible.
             archiveBytes = memoryStream.ToArray();
+            entryCount = includedFiles.Count;
         }
         catch (IOException exception)
         {

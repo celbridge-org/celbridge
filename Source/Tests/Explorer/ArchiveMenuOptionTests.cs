@@ -9,8 +9,8 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.Tests.Explorer;
 
 /// <summary>
-/// Unit tests for ArchiveMenuOption visibility. The option archives the project folder when it is the
-/// right-click target, and otherwise a single selected folder.
+/// Unit tests for ArchiveMenuOption visibility. The option archives a single selected folder. The project
+/// folder is offered for export by ExportArchiveMenuOption instead.
 /// </summary>
 [TestFixture]
 public class ArchiveMenuOptionTests
@@ -55,12 +55,12 @@ public class ArchiveMenuOptionTests
     }
 
     [Test]
-    public void GetState_VisibleWhenProjectFolderTargeted()
+    public void GetState_HiddenWhenProjectFolderTargeted()
     {
         var state = CreateOption().GetState(ContextFor(_projectFolder));
 
-        state.IsVisible.Should().BeTrue();
-        state.IsEnabled.Should().BeTrue();
+        state.IsVisible.Should().BeFalse();
+        state.IsEnabled.Should().BeFalse();
     }
 
     [Test]

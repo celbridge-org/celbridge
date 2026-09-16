@@ -9,8 +9,7 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.Tests.Explorer;
 
 /// <summary>
-/// Unit tests for where the Create Archive dialog puts an archive: beside a folder in its parent folder,
-/// or inside the project folder, which has no parent in the project.
+/// Unit tests for where the Create Archive dialog puts an archive: beside the folder, in its parent folder.
 /// </summary>
 [TestFixture]
 public class ArchiveResourceDialogCommandTests
@@ -80,31 +79,6 @@ public class ArchiveResourceDialogCommandTests
     }
 
     [Test]
-    public async Task ExecuteAsync_ForProjectFolder_ProposesArchiveInsideProjectFolder()
-    {
-        // The project folder resource has an empty name, so the archive is named after the folder on disk.
-        var projectFolder = Substitute.For<IFolderResource>();
-        projectFolder.Name.Returns(string.Empty);
-        projectFolder.ParentFolder.Returns((IFolderResource?)null);
-
-        _resourceRegistry.ProjectFolder.Returns(projectFolder);
-        _resourceRegistry.ProjectFolderPath.Returns(Path.Combine(Path.GetTempPath(), "Acme"));
-        _resourceRegistry.GetResource(ResourceKey.Empty).Returns(Result<IResource>.Ok(projectFolder));
-        _resourceRegistry.GetResourceKey(projectFolder).Returns(ResourceKey.Empty);
-
-        var command = CreateCommand();
-        command.FolderResource = ResourceKey.Empty;
-
-        var result = await command.ExecuteAsync();
-
-        result.IsSuccess.Should().BeTrue();
-        _proposedArchiveName.Should().Be("Acme.zip");
-        _validator.ParentFolder.Should().BeSameAs(projectFolder);
-        _archiveCommand.SourceResource.Should().Be(ResourceKey.Empty);
-        _archiveCommand.ArchiveResource.Should().Be(new ResourceKey("Acme.zip"));
-    }
-
-    [Test]
     public async Task ExecuteAsync_ForSubfolder_ProposesArchiveBesideFolder()
     {
         var parentFolder = Substitute.For<IFolderResource>();
@@ -114,7 +88,6 @@ public class ArchiveResourceDialogCommandTests
 
         var folderKey = new ResourceKey("Docs/Data");
         _resourceRegistry.GetResource(folderKey).Returns(Result<IResource>.Ok(folder));
-        _resourceRegistry.GetResourceKey(parentFolder).Returns(new ResourceKey("Docs"));
 
         var command = CreateCommand();
         command.FolderResource = folderKey;

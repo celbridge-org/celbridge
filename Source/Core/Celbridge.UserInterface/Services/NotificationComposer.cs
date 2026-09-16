@@ -143,6 +143,7 @@ public sealed class NotificationComposer
             ResourceOperationType.Create => "Notification_OperationFailed_Create",
             ResourceOperationType.Archive => "Notification_OperationFailed_Archive",
             ResourceOperationType.Extract => "Notification_OperationFailed_Extract",
+            ResourceOperationType.Export => "Notification_OperationFailed_Export",
             _ => "Notification_OperationFailed_Unknown"
         };
 

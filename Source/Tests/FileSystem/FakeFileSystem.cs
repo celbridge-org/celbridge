@@ -228,7 +228,7 @@ public sealed class FakeFileSystem : ILocalFileSystem
         return Task.FromResult(Result<IReadOnlyList<FileSystemEntry>>.Ok(list));
     }
 
-    public Task<Result> MoveFileAsync(string source, string dest)
+    public Task<Result> MoveFileAsync(string source, string dest, bool overwrite = false)
     {
         Record($"MoveFileAsync('{source}', '{dest}')");
         if (!_files.TryRemove(source, out var entry))

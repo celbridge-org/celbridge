@@ -149,9 +149,10 @@ public interface ILocalFileSystem
 
     /// <summary>
     /// Moves a file from source to destination. The destination's parent folder
-    /// must exist; fails if the destination is already present.
+    /// must exist. An existing file at the destination is replaced when overwrite
+    /// is true, and makes the move fail otherwise.
     /// </summary>
-    Task<Result> MoveFileAsync(string source, string dest);
+    Task<Result> MoveFileAsync(string source, string dest, bool overwrite = false);
 
     /// <summary>
     /// Moves a folder from source to destination. The destination's parent folder
