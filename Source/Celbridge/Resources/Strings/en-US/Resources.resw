@@ -750,6 +750,12 @@ Open with default application instead?</value>
   <data name="Home_Community" xml:space="preserve">
     <value>Community</value>
   </data>
+  <data name="Home_Celbridge" xml:space="preserve">
+    <value>Celbridge</value>
+  </data>
+  <data name="Home_CelbridgeTooltip" xml:space="preserve">
+    <value>Open the Celbridge website in your browser</value>
+  </data>
   <data name="Home_Learn" xml:space="preserve">
     <value>Learn</value>
   </data>
