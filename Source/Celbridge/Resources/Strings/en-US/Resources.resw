@@ -207,7 +207,7 @@
   <data name="ProjectFile_CannotChangeExtension" xml:space="preserve">
     <value>The project file must keep its {0} extension.</value>
   </data>
-  <data name="Toast_SaveDiscarded" xml:space="preserve">
+  <data name="Notification_SaveDiscarded" xml:space="preserve">
     <value>Unsaved changes to '{0}' were discarded</value>
   </data>
   <data name="SaveStatus_Failed_Single" xml:space="preserve">
@@ -223,58 +223,58 @@
     <value>{0}
 This file could not be saved</value>
   </data>
-  <data name="Toast_OperationFailed_Delete_Single" xml:space="preserve">
+  <data name="Notification_OperationFailed_Delete_Single" xml:space="preserve">
     <value>Could not delete '{0}': {1}</value>
   </data>
-  <data name="Toast_OperationFailed_Delete_Multiple" xml:space="preserve">
+  <data name="Notification_OperationFailed_Delete_Multiple" xml:space="preserve">
     <value>Could not delete {0} resources</value>
   </data>
-  <data name="Toast_OperationFailed_Copy_Single" xml:space="preserve">
+  <data name="Notification_OperationFailed_Copy_Single" xml:space="preserve">
     <value>Could not copy '{0}': {1}</value>
   </data>
-  <data name="Toast_OperationFailed_Copy_Multiple" xml:space="preserve">
+  <data name="Notification_OperationFailed_Copy_Multiple" xml:space="preserve">
     <value>Could not copy {0} resources</value>
   </data>
-  <data name="Toast_OperationFailed_Move_Single" xml:space="preserve">
+  <data name="Notification_OperationFailed_Move_Single" xml:space="preserve">
     <value>Could not move '{0}': {1}</value>
   </data>
-  <data name="Toast_OperationFailed_Move_Multiple" xml:space="preserve">
+  <data name="Notification_OperationFailed_Move_Multiple" xml:space="preserve">
     <value>Could not move {0} resources</value>
   </data>
-  <data name="Toast_OperationFailed_Rename_Single" xml:space="preserve">
+  <data name="Notification_OperationFailed_Rename_Single" xml:space="preserve">
     <value>Could not rename '{0}': {1}</value>
   </data>
-  <data name="Toast_OperationFailed_Rename_Multiple" xml:space="preserve">
+  <data name="Notification_OperationFailed_Rename_Multiple" xml:space="preserve">
     <value>Could not rename {0} resources</value>
   </data>
-  <data name="Toast_OperationFailed_Create_Single" xml:space="preserve">
+  <data name="Notification_OperationFailed_Create_Single" xml:space="preserve">
     <value>Could not create '{0}': {1}</value>
   </data>
-  <data name="Toast_OperationFailed_Create_Multiple" xml:space="preserve">
+  <data name="Notification_OperationFailed_Create_Multiple" xml:space="preserve">
     <value>Could not create {0} resources</value>
   </data>
-  <data name="Toast_OperationFailed_Archive_Single" xml:space="preserve">
+  <data name="Notification_OperationFailed_Archive_Single" xml:space="preserve">
     <value>Could not create the archive for '{0}': {1}</value>
   </data>
-  <data name="Toast_OperationFailed_Archive_Multiple" xml:space="preserve">
+  <data name="Notification_OperationFailed_Archive_Multiple" xml:space="preserve">
     <value>Could not create the archive for {0} resources</value>
   </data>
-  <data name="Toast_OperationFailed_Extract_Single" xml:space="preserve">
+  <data name="Notification_OperationFailed_Extract_Single" xml:space="preserve">
     <value>Could not extract '{0}': {1}</value>
   </data>
-  <data name="Toast_OperationFailed_Extract_Multiple" xml:space="preserve">
+  <data name="Notification_OperationFailed_Extract_Multiple" xml:space="preserve">
     <value>Could not extract {0} archives</value>
   </data>
-  <data name="Toast_OperationFailed_Unknown_Single" xml:space="preserve">
+  <data name="Notification_OperationFailed_Unknown_Single" xml:space="preserve">
     <value>The operation failed on '{0}': {1}</value>
   </data>
-  <data name="Toast_OperationFailed_Unknown_Multiple" xml:space="preserve">
+  <data name="Notification_OperationFailed_Unknown_Multiple" xml:space="preserve">
     <value>The operation failed on {0} resources</value>
   </data>
-  <data name="Toast_ReferencesNotUpdated_One" xml:space="preserve">
+  <data name="Notification_ReferencesNotUpdated_One" xml:space="preserve">
     <value>One reference still points at the old location</value>
   </data>
-  <data name="Toast_ReferencesNotUpdated_Many" xml:space="preserve">
+  <data name="Notification_ReferencesNotUpdated_Many" xml:space="preserve">
     <value>{0} references still point at the old location</value>
   </data>
   <data name="ResourceTree_Rename" xml:space="preserve">
@@ -349,32 +349,47 @@ This file could not be saved</value>
   <data name="ResourceTree_DuplicateResourceEnterName" xml:space="preserve">
     <value>Enter a name for the new copy:</value>
   </data>
-  <data name="Toast_ViewReportButton" xml:space="preserve">
+  <data name="Notification_ViewReportButton" xml:space="preserve">
     <value>View Report</value>
   </data>
-  <data name="Toast_ProjectLoadIssues_One" xml:space="preserve">
-    <value>The project loaded with 1 issue.</value>
+  <data name="Notification_ProjectLoadIssues_One" xml:space="preserve">
+    <value>The project loaded with 1 issue</value>
   </data>
-  <data name="Toast_ProjectLoadIssues_Many" xml:space="preserve">
-    <value>The project loaded with {0} issues.</value>
-  </data>
-  <data name="ProjectHealth_Healthy" xml:space="preserve">
-    <value>Loaded with no issues</value>
+  <data name="Notification_ProjectLoadIssues_Many" xml:space="preserve">
+    <value>The project loaded with {0} issues</value>
   </data>
   <data name="TitleBar_ProjectLoadReport" xml:space="preserve">
     <value>Project Load Report</value>
   </data>
-  <data name="ProjectHealth_Warnings_One" xml:space="preserve">
-    <value>Loaded with 1 warning</value>
+  <data name="NotificationCentre_Summary_Warnings_One" xml:space="preserve">
+    <value>1 warning.</value>
   </data>
-  <data name="ProjectHealth_Warnings_Many" xml:space="preserve">
-    <value>Loaded with {0} warnings</value>
+  <data name="NotificationCentre_Summary_Warnings_Many" xml:space="preserve">
+    <value>{0} warnings.</value>
   </data>
-  <data name="ProjectHealth_Errors_One" xml:space="preserve">
-    <value>Loaded with 1 error</value>
+  <data name="NotificationCentre_Summary_Errors_One" xml:space="preserve">
+    <value>1 error.</value>
   </data>
-  <data name="ProjectHealth_Errors_Many" xml:space="preserve">
-    <value>Loaded with {0} errors</value>
+  <data name="NotificationCentre_Summary_Errors_Many" xml:space="preserve">
+    <value>{0} errors.</value>
+  </data>
+  <data name="NotificationCentre_Summary_Messages_One" xml:space="preserve">
+    <value>1 message.</value>
+  </data>
+  <data name="NotificationCentre_Summary_Messages_Many" xml:space="preserve">
+    <value>{0} messages.</value>
+  </data>
+  <data name="NotificationCentre_Title" xml:space="preserve">
+    <value>Notifications</value>
+  </data>
+  <data name="NotificationCentre_ClearAll" xml:space="preserve">
+    <value>Clear All</value>
+  </data>
+  <data name="NotificationCentre_Dismiss" xml:space="preserve">
+    <value>Dismiss</value>
+  </data>
+  <data name="NotificationCentre_Occurrences" xml:space="preserve">
+    <value>{0} times</value>
   </data>
   <data name="PanelHeader_CollapseTooltip" xml:space="preserve">
     <value>Collapse Panel</value>

@@ -9,7 +9,7 @@ namespace Celbridge.Documents.Views;
 
 /// <summary>
 /// Handles IHostDialog RPC methods for contribution document views.
-/// Provides image picking, file picking, alert dialogs, and workspace toasts.
+/// Provides image picking, file picking, alert dialogs, and notifications.
 /// </summary>
 internal sealed class CustomDialogHandler : IHostDialog
 {

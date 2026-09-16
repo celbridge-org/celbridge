@@ -18,6 +18,12 @@ public record ProjectLoadReportSummary(
 public interface IProjectLoadReporter
 {
     /// <summary>
+    /// The report the current load has written, as of its latest flush. Null until a flush for the current
+    /// load succeeds.
+    /// </summary>
+    ProjectLoadReportSummary? WrittenReport { get; }
+
+    /// <summary>
     /// Resets state for a fresh project load.
     /// </summary>
     void BeginLoad(string projectFilePath);

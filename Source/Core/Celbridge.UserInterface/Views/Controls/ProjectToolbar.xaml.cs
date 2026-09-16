@@ -8,6 +8,12 @@ public sealed partial class ProjectToolbar : UserControl
     private readonly IStringLocalizer _stringLocalizer;
     private MainMenu? _mainMenu;
 
+    /// <summary>
+    /// Raised when a control in this toolbar appears, disappears or changes width without the toolbar itself
+    /// necessarily being resized.
+    /// </summary>
+    internal event EventHandler? InteractiveLayoutChanged;
+
     public ProjectToolbar()
     {
         this.InitializeComponent();
@@ -16,6 +22,8 @@ public sealed partial class ProjectToolbar : UserControl
 
         var overlayFlyoutSupport = ServiceLocator.AcquireService<IOverlayFlyoutSupport>();
         overlayFlyoutSupport.Apply(MainMenuFlyout);
+
+        NotificationBadge.LayoutChanged += OnNotificationBadge_LayoutChanged;
 
         Loaded += OnProjectToolbar_Loaded;
         Unloaded += OnProjectToolbar_Unloaded;
@@ -40,8 +48,15 @@ public sealed partial class ProjectToolbar : UserControl
     {
         _mainMenu?.OnUnloaded();
 
+        NotificationBadge.LayoutChanged -= OnNotificationBadge_LayoutChanged;
+
         Loaded -= OnProjectToolbar_Loaded;
         Unloaded -= OnProjectToolbar_Unloaded;
+    }
+
+    private void OnNotificationBadge_LayoutChanged(object? sender, EventArgs e)
+    {
+        InteractiveLayoutChanged?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>
@@ -52,9 +67,15 @@ public sealed partial class ProjectToolbar : UserControl
         var elements = new List<FrameworkElement>
         {
             MainMenuButton,
-            ProjectSwitcher,
-            ProjectHealthButton
+            ProjectSwitcher
         };
+
+        // A collapsed control keeps the size and position it was last measured at, so the badge's visibility is
+        // what says whether it is on screen.
+        if (NotificationBadge.Visibility == Visibility.Visible)
+        {
+            elements.Add(NotificationBadge);
+        }
 
         return elements;
     }

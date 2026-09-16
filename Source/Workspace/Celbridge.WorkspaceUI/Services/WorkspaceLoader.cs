@@ -18,7 +18,6 @@ public class WorkspaceLoader
     private readonly IProjectService _projectService;
     private readonly IServerService _serverService;
     private readonly IProjectLoadReporter _loadReporter;
-    private readonly IProjectHealthService _projectHealthService;
     private readonly IAppEnvironment _appEnvironment;
     private readonly ICommunityService _communityService;
 
@@ -29,7 +28,6 @@ public class WorkspaceLoader
         IProjectService projectService,
         IServerService serverService,
         IProjectLoadReporter loadReporter,
-        IProjectHealthService projectHealthService,
         IAppEnvironment appEnvironment,
         ICommunityService communityService)
     {
@@ -39,7 +37,6 @@ public class WorkspaceLoader
         _projectService = projectService;
         _serverService = serverService;
         _loadReporter = loadReporter;
-        _projectHealthService = projectHealthService;
         _appEnvironment = appEnvironment;
         _communityService = communityService;
     }
@@ -218,16 +215,8 @@ public class WorkspaceLoader
             RecordResourceCounts();
 
             var reportSummary = await _loadReporter.FlushAsync();
-            if (reportSummary is null)
-            {
-                return;
-            }
-
-            // Recorded in every state, including a clean load: the switcher's health row states what the
-            // load found whether or not it found anything, and needs a report to open either way.
-            _projectHealthService.SetHealth(reportSummary);
-
-            if (reportSummary.Severity == ReportSeverity.Info)
+            if (reportSummary is null ||
+                reportSummary.Severity == ReportSeverity.Info)
             {
                 return;
             }

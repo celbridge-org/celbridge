@@ -1,4 +1,4 @@
-# Writing a report producer
+# Report Producers
 
 A report is the structured record of one completed operation: generated, read-only, timestamped, and opened as a document. This note is for the host developer adding a producer. It covers the three decisions the format does not make for you â€” whether the operation deserves a report at all, which findings to declare, and what to put in each occurrence.
 
@@ -10,7 +10,7 @@ Write one when there is per-item detail worth reading beyond the summary line â€
 
 A single rename failure is fully expressed by "Could not rename 'notes.txt': the file is locked". Generating a one-row document for it is noise, and a `logs:reports/` folder churning with trivia devalues the reports that matter.
 
-The project load is the exception that proves the rule: it writes on **every** load, including a clean one, because the health indicator needs a resting state and something to open. A report that leads with facts about the subject is worth opening whether or not it found anything.
+The project load is the exception that proves the rule: it writes on **every** load, including a clean one, because the Project Switcher's load report row opens it in every state, and after a clean load nothing in the notification badge does. A report that leads with facts about the subject is worth opening whether or not it found anything.
 
 ## Where the report goes
 

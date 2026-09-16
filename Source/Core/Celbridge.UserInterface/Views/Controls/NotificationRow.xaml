@@ -1,0 +1,90 @@
+﻿<UserControl
+    x:Class="Celbridge.UserInterface.Views.Controls.NotificationRow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Celbridge.UserInterface.Views.Controls">
+
+  <Grid>
+
+    <!-- Separates the row from the one above it, so the first row in the list hides it. -->
+    <Border x:Name="Divider"
+            Height="1"
+            VerticalAlignment="Top"
+            Background="{ThemeResource DividerBrush}"/>
+
+    <Grid Padding="4,10,0,10"
+          ColumnSpacing="10">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="Auto"/>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="Auto"/>
+      </Grid.ColumnDefinitions>
+
+      <!-- Each severity is its own element so its foreground can stay a ThemeResource and follow a theme
+           change. Nudged down to sit level with the first line of the message. -->
+      <Grid Grid.Column="0"
+            Margin="0,2,0,0"
+            VerticalAlignment="Top">
+        <controls:Icon x:Name="ErrorIcon"
+                       Symbol="Error"
+                       FontSize="{StaticResource IconSizeSmall}"
+                       Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                       Visibility="Collapsed"/>
+        <controls:Icon x:Name="WarningIcon"
+                       Symbol="Warning"
+                       FontSize="{StaticResource IconSizeSmall}"
+                       Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                       Visibility="Collapsed"/>
+        <controls:Icon x:Name="InfoIcon"
+                       Symbol="Info"
+                       FontSize="{StaticResource IconSizeSmall}"
+                       Foreground="{ThemeResource AccentContrastBrush}"
+                       Visibility="Collapsed"/>
+      </Grid>
+
+      <StackPanel Grid.Column="1"
+                  Spacing="6">
+        <!-- Wrapped, since the line is all a notification says. -->
+        <TextBlock x:Name="MessageText"
+                   TextWrapping="Wrap"/>
+
+        <Grid ColumnSpacing="8">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+          </Grid.ColumnDefinitions>
+
+          <StackPanel Orientation="Horizontal"
+                      Spacing="8"
+                      VerticalAlignment="Center">
+            <TextBlock x:Name="ArrivalText"
+                       Style="{StaticResource SupportingTextStyle}"/>
+            <TextBlock x:Name="OccurrenceText"
+                       Style="{StaticResource SupportingTextStyle}"
+                       Visibility="Collapsed"/>
+          </StackPanel>
+
+          <!-- A plain button that opens a document. A submenu cannot be kept clear of the web views under the
+               list, so an action never opens one. -->
+          <Button x:Name="ActionButton"
+                  Grid.Column="1"
+                  AutomationProperties.AutomationId="notification-action-button"
+                  Click="ActionButton_Click"
+                  Visibility="Collapsed"/>
+        </Grid>
+      </StackPanel>
+
+      <!-- Only an event can be dismissed. Pulled up so the button centres on the first line of the message. -->
+      <controls:IconButton x:Name="DismissButton"
+                           Grid.Column="2"
+                           Margin="0,-6,0,0"
+                           VerticalAlignment="Top"
+                           AutomationProperties.AutomationId="notification-dismiss-button"
+                           Click="DismissButton_Click"
+                           Visibility="Collapsed">
+        <controls:Icon Symbol="Close"
+                       FontSize="{StaticResource IconSizeSmall}"/>
+      </controls:IconButton>
+    </Grid>
+  </Grid>
+</UserControl>

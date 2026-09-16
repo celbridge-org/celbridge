@@ -1,4 +1,4 @@
-// Dialog API: Operations that reach the user directly — native dialogs, and the workspace toast.
+// Dialog API: Operations that reach the user directly — native dialogs, and the notification centre.
 
 /**
  * Operations that reach the user directly.
@@ -55,18 +55,19 @@ export class DialogAPI {
     }
 
     /**
-     * Shows a workspace toast. Unlike the other methods here this tells the user something rather
-     * than asking them, so it does not wait for a response.
+     * Adds a notification to the notification centre, the list behind the badge beside the Project
+     * Switcher. Unlike the other methods here this tells the user something rather than asking them,
+     * so it does not wait for a response.
      *
-     * Best effort: the promise resolves when the host has taken the toast, not when the user has
-     * seen it. Never treat it as an acknowledgement.
+     * Best effort: the promise resolves when the host has taken the notification, not when the user
+     * has seen it. Never treat it as an acknowledgement.
      *
      * @param {'info'|'warning'|'error'} severity - How serious it is. The same three
      *   values a report file uses, so a report severity passes straight through.
      * @param {string} message - One line, already localized by the caller. Only the first line is
      *   shown; detail belongs in a report.
-     * @param {Object} [action] - Gives the toast a button that opens a document. Omit it and the
-     *   toast carries no action.
+     * @param {Object} [action] - Gives the notification a button that opens a document. Omit it and
+     *   the notification carries no action.
      * @param {string} action.resource - Resource key of the document to open, such as the key
      *   document.writeReport returned.
      * @param {string} [action.label] - Text on the button, already localized. Defaults to the host's

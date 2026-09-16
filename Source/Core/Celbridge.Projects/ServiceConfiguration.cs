@@ -18,7 +18,6 @@ public static class ServiceConfiguration
         services.AddSingleton<IMigrationStepRegistry, MigrationStepRegistry>();
         services.AddTransient<IProjectLoader, ProjectLoader>();
         services.AddSingleton<IProjectLoadReporter, ProjectLoadReporter>();
-        services.AddSingleton<IProjectHealthService, ProjectHealthService>();
         services.AddTransient<ProjectUnloader>();
         services.AddTransient<ProjectFactory>();
 

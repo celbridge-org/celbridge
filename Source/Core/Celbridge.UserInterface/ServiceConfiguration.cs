@@ -1,6 +1,7 @@
 using Celbridge.Dialog;
 using Celbridge.FilePicker;
 using Celbridge.Localization;
+using Celbridge.Notifications;
 using Celbridge.UserInterface.Commands;
 using Celbridge.UserInterface.DragDrop;
 using Celbridge.UserInterface.Platform;
@@ -42,6 +43,8 @@ public static class ServiceConfiguration
         services.AddSingleton<IApplicationShell, ApplicationShell>();
         services.AddSingleton<MainMenuUtils>();
         services.AddSingleton<IInputSimulationService, InputSimulationService>();
+        services.AddSingleton<INotificationCentre, NotificationCentre>();
+        services.AddSingleton<NotificationComposer>();
 
         // LayoutManager is a single implementation that exposes two interfaces:
         // IWindowModeService (window mode) and ILayoutService (surface visibility).
@@ -81,6 +84,7 @@ public static class ServiceConfiguration
         services.AddTransient<WebViewSettingsViewModel>();
         services.AddTransient<TitleBarViewModel>();
         services.AddTransient<ProjectSwitcherViewModel>();
+        services.AddTransient<NotificationBadgeViewModel>();
         services.AddTransient<ApplicationMenuViewModel>();
         services.AddTransient<ViewMenuViewModel>();
         services.AddTransient<AlertDialogViewModel>();
@@ -104,5 +108,9 @@ public static class ServiceConfiguration
         // Seed the built-in spotlight landmarks into the runtime registry.
         var spotlightRegistry = ServiceLocator.AcquireService<ISpotlightRegistry>();
         SpotlightLandmarks.Seed(spotlightRegistry);
+
+        // Before any project loads, so the notifications its load raises are recorded.
+        var notificationComposer = ServiceLocator.AcquireService<NotificationComposer>();
+        notificationComposer.Start();
     }
 }

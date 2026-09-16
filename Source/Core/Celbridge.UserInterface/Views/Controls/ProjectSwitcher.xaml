@@ -79,8 +79,8 @@
 
         <MenuFlyoutSeparator x:Name="ProjectLoadReportSeparator"/>
 
-        <!-- The only route to the report after a clean load: the health button beside the switcher stays
-             collapsed, and the logs: root the report is written to is not enumerated in the Explorer. -->
+        <!-- The only route to the report after a clean load, which leaves nothing in the notification badge. The
+             logs: root the report is written to is not enumerated in the Explorer. -->
         <MenuFlyoutItem x:Name="ProjectLoadReportItem"
                         Text="{x:Bind ProjectLoadReportString}"
                         Click="OpenProjectLoadReport">

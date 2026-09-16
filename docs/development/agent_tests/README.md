@@ -18,6 +18,7 @@ goes stale faster than anyone notices.
 | [Spreadsheet](spreadsheet.md) | The grid, its cell editor, and the Designer's chrome and dialogs |
 | [Console](console.md) | The terminal and its settings form |
 | [Notes](notes.md) | Rich text notes |
+| [Notification Centre](notification_centre.md) | The notification badge and the list it opens over the documents |
 | [Web Documents](web_documents.md) | `.webview` and `.html` documents |
 | [Workspace](workspace.md) | Explorer, Search, dialogs, menus and project settings |
 

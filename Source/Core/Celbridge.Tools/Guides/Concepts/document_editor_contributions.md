@@ -268,7 +268,7 @@ Prefer this over a delimited text field (`a | b | c` per line) for anything Celb
 
 ## Telling the user something
 
-`client.dialog.toast(severity, message)` shows the workspace toast — the same single-line notification the host uses for a project load or a failed batch operation.
+`client.dialog.toast(severity, message)` adds a notification to the notification centre — the list behind the badge beside the Project Switcher, where the host also records a project load that found issues and a failed batch operation. The badge lights with a count and flashes, and the user opens the list from it.
 
 ```javascript
 await client.dialog.toast('warning', t('MyEditor_ConvertedWithWarnings', failed.length));
@@ -276,7 +276,7 @@ await client.dialog.toast('warning', t('MyEditor_ConvertedWithWarnings', failed.
 
 `severity` is `'info'`, `'warning'` or `'error'`. Anything else is rejected rather than downgraded, so a typo surfaces as an error instead of quietly showing your failure as information. `message` is one line you have already localized; only its first line is shown.
 
-A third argument gives the toast a button that opens a document:
+A third argument gives the notification a button that opens a document:
 
 ```javascript
 await client.dialog.toast('error', t('MyEditor_ConfigSyntaxError'), {
@@ -286,13 +286,13 @@ await client.dialog.toast('error', t('MyEditor_ConfigSyntaxError'), {
 });
 ```
 
-`resource` is any document, not only a report — `line` and `column` are one-based and land the reader on a spot in it, so a single problem with a known position does not need a report written just to be navigable. `label` is your own localized text; omit it and the button uses the host's wording for opening a report. Omit the whole argument and the toast carries no button.
+`resource` is any document, not only a report — `line` and `column` are one-based and land the reader on a spot in it, so a single problem with a known position does not need a report written just to be navigable. `label` is your own localized text. Omit it and the button uses the host's wording for opening a report. Omit the whole argument and the notification carries no button.
 
-**It resolves when the host has taken the toast, not when the user has seen it.** One notification is on screen at a time, a newer one replaces the current one, and anything below an error is dropped while an error is still showing. Nothing auto-dismisses. Treat the call as best effort and never as an acknowledgement.
+**It resolves when the host has taken the notification, not when the user has seen it.** Nothing interrupts the user: the badge waits to be noticed, and the notification stays in the list until the user dismisses it or the project unloads. A later notification never replaces an earlier one, but one identical to the notification before it is counted on that entry, and the list keeps only the most recent fifty. Treat the call as best effort and never as an acknowledgement.
 
 This sits under `dialog` alongside `alert`, but it is the opposite kind of call: `alert` blocks until the user answers, `toast` tells them and returns. Note that it is unrelated to `notifyChanged`, `notifyContentLoaded` and the other `notify*` calls, which are protocol messages to the host rather than anything the user sees. Reach for `alert` only when the user genuinely cannot continue without responding.
 
-Use it for an outcome the user should know about but did not ask a question about — a conversion that finished with failures, a long operation that completed. **One operation raises one toast**, whatever it found: a loop that toasts per item will have every line but the last replaced before anyone reads it. When there is per-item detail worth reading, say it once here and write the detail as a report.
+Use it for an outcome the user should know about but did not ask a question about — a conversion that finished with failures, a long operation that completed. **One operation raises one notification**, whatever it found: a loop that notifies per item fills the user's list with lines they have to dismiss one by one. When there is per-item detail worth reading, say it once here and write the detail as a report.
 
 ## Reporting per-item detail
 
@@ -327,7 +327,7 @@ await client.dialog.toast('warning', '9 of 40 tilesets could not be converted', 
 
 The current report of an id sits at `{id}.report` and writing a new one moves the previous into `history/`, where it is kept for a week. So `id` is stable across runs — `acme-tiles-convert`, not `convert-2026-08-18`. That keeps re-running from opening a new tab each time, and lets the reader compare against the last few.
 
-It must be lowercase letters, digits, hyphens and dots. **Nothing stops you colliding with another package or with the host, so qualify it with your package name.** The host's own ids are `project-load`, `check-references`, `copy-resources`, `move-resources`, `delete-resources`; taking one of those replaces the report the user's project health button opens.
+It must be lowercase letters, digits, hyphens and dots. **Nothing stops you colliding with another package or with the host, so qualify it with your package name.** The host's own ids are `project-load`, `check-references`, `copy-resources`, `move-resources`, `delete-resources`; taking one of those replaces a report that the host's own notifications open.
 
 Set `generatedAt` yourself (an ISO 8601 UTC stamp) if one operation writes its report more than once as it progresses — the same stamp means one report being revised rather than several superseding each other. Omit it and the host stamps the write.
 

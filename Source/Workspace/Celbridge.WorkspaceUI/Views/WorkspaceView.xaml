@@ -20,11 +20,6 @@
           AutomationProperties.AutomationId="documents-panel"
           Background="{ThemeResource ChromeBackgroundBrush}"/>
 
-    <!-- Notification toast. Overlaid at the bottom-right corner of the workspace rather than docked, so a
-         notification never takes space from the surfaces it appears over. -->
-    <Grid x:Name="WorkspaceToastHost"
-          AutomationProperties.AutomationId="workspace-toast"/>
-
     <!-- Topmost display-only overlay for pointer-driven resource drag visuals (the ghost),
          spanning every panel so the ghost is visible across the whole workspace. -->
     <Canvas x:Name="ResourceDragOverlay"

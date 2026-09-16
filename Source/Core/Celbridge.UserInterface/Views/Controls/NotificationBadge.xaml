@@ -1,0 +1,93 @@
+﻿<UserControl
+    x:Class="Celbridge.UserInterface.Views.Controls.NotificationBadge"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
+    Visibility="Collapsed">
+
+  <!-- Collapsed while nothing is pending. -->
+  <Grid VerticalAlignment="Center">
+
+    <!-- Attention flash overlay, pulsed to the accent color when a notification arrives. Behind the button,
+         which is transparent at rest, and not hit-testable. -->
+    <Border x:Name="AttentionOverlay"
+            CornerRadius="{StaticResource IconButtonCornerRadius}"
+            Background="{ThemeResource AccentBrush}"
+            Opacity="0"
+            IsHitTestVisible="False"/>
+
+    <controls:IconButton x:Name="BadgeButton"
+                         AutomationProperties.AutomationId="notification-badge"
+                         Padding="7,0"
+                         VerticalAlignment="Center">
+
+      <Button.Flyout>
+        <Flyout x:Name="NotificationFlyout"
+                Placement="BottomEdgeAlignedLeft">
+          <Grid Width="400"
+                RowSpacing="4">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0"
+                  Padding="4,0,0,0">
+              <TextBlock x:Name="TitleText"
+                         Style="{StaticResource ListItemTitleTextStyle}"
+                         VerticalAlignment="Center"/>
+
+              <!-- Removes the events and leaves the conditions, so it is hidden while there is no event. -->
+              <Button x:Name="ClearAllButton"
+                      AutomationProperties.AutomationId="notification-clear-all-button"
+                      HorizontalAlignment="Right"
+                      Click="ClearAllButton_Click"/>
+            </Grid>
+
+            <!-- Height capped in code-behind from the window height as the list opens. -->
+            <ScrollViewer x:Name="NotificationScrollViewer"
+                          Grid.Row="1"
+                          HorizontalScrollMode="Disabled"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollMode="Auto"
+                          VerticalScrollBarVisibility="Auto">
+              <StackPanel x:Name="NotificationRows"
+                          Padding="0,0,12,0"/>
+            </ScrollViewer>
+          </Grid>
+        </Flyout>
+      </Button.Flyout>
+
+      <StackPanel Orientation="Horizontal"
+                  Spacing="4">
+        <!-- Each severity is its own element so its foreground can stay a ThemeResource and follow a theme
+             change. -->
+        <Grid VerticalAlignment="Center">
+          <controls:Icon x:Name="ErrorIcon"
+                         Symbol="Error"
+                         FontSize="{StaticResource IconSizeMedium}"
+                         Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                         Visibility="Collapsed"/>
+          <controls:Icon x:Name="WarningIcon"
+                         Symbol="Warning"
+                         FontSize="{StaticResource IconSizeMedium}"
+                         Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                         Visibility="Collapsed"/>
+          <controls:Icon x:Name="InfoIcon"
+                         Symbol="Info"
+                         FontSize="{StaticResource IconSizeMedium}"
+                         Foreground="{ThemeResource AccentContrastBrush}"
+                         Visibility="Collapsed"/>
+        </Grid>
+
+        <!-- Wide enough for two digits, which is as many as the count can reach, so the badge does not reflow
+             as the count passes from nine to ten. -->
+        <TextBlock x:Name="CountText"
+                   Style="{StaticResource BadgeCountTextStyle}"
+                   MinWidth="14"
+                   TextAlignment="Center"
+                   VerticalAlignment="Center"/>
+      </StackPanel>
+    </controls:IconButton>
+  </Grid>
+</UserControl>

@@ -10,8 +10,9 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.Tests.Documents;
 
 /// <summary>
-/// Tests for the toast half of the editor bridge. A contribution's only route to the user is through
-/// here, so what it accepts and what it refuses is the contract.
+/// Tests for the notification half of the editor bridge, reached through its toast method. A contribution's
+/// only route to the notification centre is through here, so what it accepts and what it refuses is the
+/// contract.
 /// </summary>
 [TestFixture]
 public class CustomDialogHandlerTests
@@ -45,7 +46,7 @@ public class CustomDialogHandlerTests
     [TestCase("warning", ReportSeverity.Warning)]
     [TestCase("error", ReportSeverity.Error)]
     [TestCase("Error", ReportSeverity.Error)]
-    public async Task ARecognisedSeverity_ShowsTheToast(string severity, ReportSeverity expected)
+    public async Task ARecognisedSeverity_RaisesTheNotification(string severity, ReportSeverity expected)
     {
         await _handler.ToastAsync(severity, "9 of 40 tilesets failed to convert");
 
@@ -76,7 +77,7 @@ public class CustomDialogHandlerTests
     }
 
     [Test]
-    public async Task ANamedResource_BecomesTheToastsAction()
+    public async Task ANamedResource_BecomesTheNotificationsAction()
     {
         await _handler.ToastAsync(
             "error",
@@ -97,7 +98,7 @@ public class CustomDialogHandlerTests
     }
 
     [Test]
-    public async Task NoResource_LeavesTheToastWithoutAnAction()
+    public async Task NoResource_LeavesTheNotificationWithoutAnAction()
     {
         await _handler.ToastAsync("info", "Conversion complete");
 

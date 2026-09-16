@@ -68,7 +68,7 @@ public class ProjectLoadReporterTests
     public async Task FlushAsync_LandsUnderTheLogsReportsRoot()
     {
         // The report is addressable as a document, so the key it returns is the contract
-        // the health button and the notification are written against.
+        // the switcher's load report row and the notification are written against.
         _reporter.BeginLoad(_projectFilePath);
         _reporter.RecordLoadOutcome(loadSucceeded: true, loadResult: Result.Ok());
 
@@ -81,6 +81,26 @@ public class ProjectLoadReporterTests
         key.Should().Be("logs:reports/project-load.report");
 
         File.Exists(ResolveReportFilePath(reportSummary.Resource)).Should().BeTrue();
+    }
+
+    [Test]
+    public async Task WrittenReport_NamesTheLatestFlush_UntilTheNextLoadBegins()
+    {
+        // The switcher's load report row opens this in every state, including after a clean load, which
+        // leaves nothing in the notification badge.
+        _reporter.WrittenReport.Should().BeNull();
+
+        _reporter.BeginLoad(_projectFilePath);
+        _reporter.RecordLoadOutcome(loadSucceeded: true, loadResult: Result.Ok());
+
+        var reportSummary = await _reporter.FlushAsync();
+
+        reportSummary.Should().NotBeNull();
+        _reporter.WrittenReport.Should().Be(reportSummary);
+
+        _reporter.BeginLoad(_projectFilePath);
+
+        _reporter.WrittenReport.Should().BeNull();
     }
 
     [Test]
@@ -99,7 +119,7 @@ public class ProjectLoadReporterTests
     public async Task FlushAsync_CleanLoad_WritesSummaryOnlyAndReportsHealthy()
     {
         // The healthy report is not empty: it carries the summary facts, which is what
-        // makes the health button worth pressing when nothing is wrong.
+        // makes the load report worth opening when nothing is wrong.
         _reporter.BeginLoad(_projectFilePath);
         _reporter.RecordMigrationResult(
             MigrationResult.WithVersions(MigrationStatus.Complete, Result.Ok(), "0.2.7", "1.0.0"),

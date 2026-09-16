@@ -27,6 +27,11 @@ public static class AttentionFlash
     public const double OutlineThickness = 2;
 
     /// <summary>
+    /// How long a flash runs, from the start of its fade-in to the end of its fade-out.
+    /// </summary>
+    public static readonly TimeSpan Duration = TimeSpan.FromMilliseconds(1000);
+
+    /// <summary>
     /// Starts a flash on the given overlay and returns the running storyboard. Pulses the overlay's opacity in
     /// to the given peak, holds, then fades out.
     /// </summary>
@@ -57,7 +62,7 @@ public static class AttentionFlash
         });
         animation.KeyFrames.Add(new LinearDoubleKeyFrame
         {
-            KeyTime = KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(1000)),
+            KeyTime = KeyTime.FromTimeSpan(Duration),
             Value = 0.0
         });
 

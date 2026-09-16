@@ -22,10 +22,6 @@ public sealed partial class WorkspaceView : UserControl, IWorkspaceView
 
     public CancellationTokenSource? LoadCancellation { get; set; }
 
-    // The workspace notification toast, kept so its messenger subscriptions can be torn down with the
-    // workspace.
-    private WorkspaceToast? _workspaceToast;
-
     public WorkspaceView()
     {
         InitializeComponent();
@@ -69,13 +65,8 @@ public sealed partial class WorkspaceView : UserControl, IWorkspaceView
         // registers both with the workspace service as it builds.
         var documentsPanel = ServiceLocator.AcquireService<IDocumentsPanel>();
 
-        // The toast overlays the surfaces rather than sitting in the layout, so it is always present and
-        // costs nothing while no notification is showing.
-        _workspaceToast = ServiceLocator.AcquireService<WorkspaceToast>();
-
         // Add panels to the UI
         WorkspacePanelHost.Children.Add(documentsPanel as UIElement);
-        WorkspaceToastHost.Children.Add(_workspaceToast);
 
         // Enable the pointer-driven resource drag overlay on heads where the built-in drag-and-drop is
         // disabled. The panels register their drop targets with the coordinator as they load.
@@ -98,10 +89,6 @@ public sealed partial class WorkspaceView : UserControl, IWorkspaceView
 
         var messengerService = ServiceLocator.AcquireService<IMessengerService>();
         messengerService.UnregisterAll(this);
-
-        // Tear down the toast's messenger subscriptions.
-        _workspaceToast?.Cleanup();
-        _workspaceToast = null;
 
         await ViewModel.OnWorkspaceViewUnloadedAsync();
     }

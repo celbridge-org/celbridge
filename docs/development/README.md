@@ -13,4 +13,4 @@ Documentation for people working on Celbridge itself. For using the application,
 | [MCP Tools](mcp_tools.md) | Authoring MCP tool classes in `Celbridge.Tools` |
 | [Agent Tests](agent_tests/README.md) | Test plans an agent runs against the running app, for behaviour CI cannot reach; one per area, each with three effort levels |
 | [Agent Guides](../../Source/Core/Celbridge.Tools/Guides/README.md) | Authoring the embedded markdown guides the MCP broker prepends to tool responses |
-| [Report Producers](../../Source/Core/Celbridge.Utilities/Services/README.md) | Writing a report producer: whether an operation deserves a report, which findings to declare, and where the report goes |
+| [Report Producers](report_producers.md) | Writing a report producer: whether an operation deserves a report, which findings to declare, and where the report goes |

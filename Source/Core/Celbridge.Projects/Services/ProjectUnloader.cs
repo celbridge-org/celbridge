@@ -1,4 +1,5 @@
 using Celbridge.Logging;
+using Celbridge.Notifications;
 using Celbridge.Server;
 using Celbridge.UserInterface;
 
@@ -13,20 +14,20 @@ public class ProjectUnloader
     private readonly IProjectService _projectService;
     private readonly IApplicationShell _applicationShell;
     private readonly IServerService _serverService;
-    private readonly IProjectHealthService _projectHealthService;
+    private readonly INotificationCentre _notificationCentre;
 
     public ProjectUnloader(
         ILogger<ProjectUnloader> logger,
         IProjectService projectService,
         IApplicationShell applicationShell,
         IServerService serverService,
-        IProjectHealthService projectHealthService)
+        INotificationCentre notificationCentre)
     {
         _logger = logger;
         _projectService = projectService;
         _applicationShell = applicationShell;
         _serverService = serverService;
-        _projectHealthService = projectHealthService;
+        _notificationCentre = notificationCentre;
     }
 
     /// <summary>
@@ -49,9 +50,8 @@ public class ProjectUnloader
         // even on a failure rather than leaving the project current with nothing on screen.
         var closeResult = await _applicationShell.CloseWorkspaceAsync();
 
-        // Health describes the load that is ending, so it goes with the project rather than lingering
-        // on the switcher while no project is open.
-        _projectHealthService.ClearHealth();
+        // Every notification describes the project that is ending.
+        _notificationCentre.Clear();
 
         // Clear the reference and dispose the project
         _projectService.ClearCurrentProject();

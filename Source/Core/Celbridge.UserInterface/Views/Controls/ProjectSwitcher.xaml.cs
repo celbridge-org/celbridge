@@ -22,7 +22,7 @@ public sealed partial class ProjectSwitcher : UserControl
     // Everything else in the menu is declared in XAML and stays in place.
     private readonly List<MenuFlyoutItemBase> _recentProjectItems = new();
 
-    private readonly IProjectHealthService _projectHealthService;
+    private readonly IProjectLoadReporter _projectLoadReporter;
 
     private ApplicationMenuViewModel? _applicationMenuViewModel;
 
@@ -40,7 +40,7 @@ public sealed partial class ProjectSwitcher : UserControl
     {
         // The menu's labels are bound one-time, so the localizer has to be in place before the XAML loads.
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
-        _projectHealthService = ServiceLocator.AcquireService<IProjectHealthService>();
+        _projectLoadReporter = ServiceLocator.AcquireService<IProjectLoadReporter>();
         ViewModel = ServiceLocator.AcquireService<ProjectSwitcherViewModel>();
 
         this.InitializeComponent();
@@ -190,8 +190,8 @@ public sealed partial class ProjectSwitcher : UserControl
 
     private void UpdateProjectLoadReportItem()
     {
-        var health = _projectHealthService.CurrentHealth;
-        if (health is null)
+        var loadReport = _projectLoadReporter.WrittenReport;
+        if (loadReport is null)
         {
             // Nothing was recorded for this load, so there is no report to open. The separator goes with the
             // item, which is last in the menu and would otherwise leave it dangling.
@@ -206,7 +206,7 @@ public sealed partial class ProjectSwitcher : UserControl
 
     private void OpenProjectLoadReport(object sender, RoutedEventArgs e)
     {
-        var reportResource = _projectHealthService.CurrentHealth?.Resource ?? ResourceKey.Empty;
+        var reportResource = _projectLoadReporter.WrittenReport?.Resource ?? ResourceKey.Empty;
         if (reportResource.IsEmpty)
         {
             return;

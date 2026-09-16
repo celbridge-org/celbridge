@@ -18,7 +18,7 @@ Read the document covering an area before working in it:
 | [Design Tokens](docs/development/design_tokens.md) | The generated colour and dimension tokens shared by the XAML and web sides |
 | [MCP Tools](docs/development/mcp_tools.md) | Authoring MCP tool classes in `Celbridge.Tools` |
 | [Agent Guides](Source/Core/Celbridge.Tools/Guides/README.md) | Authoring the embedded markdown guides the MCP broker prepends to tool responses |
-| [Report Producers](Source/Core/Celbridge.Utilities/Services/README.md) | Writing a report producer: whether an operation deserves a report, which findings to declare, and where the report goes |
+| [Report Producers](docs/development/report_producers.md) | Writing a report producer: whether an operation deserves a report, which findings to declare, and where the report goes |
 
 ## Git
 

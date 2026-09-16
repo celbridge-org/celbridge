@@ -38,6 +38,8 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
     private int? _fileResourceCount;
     private int? _folderResourceCount;
 
+    public ProjectLoadReportSummary? WrittenReport { get; private set; }
+
     public ProjectLoadReporter(
         IReportWriter reportWriter,
         ILogger<ProjectLoadReporter> logger,
@@ -65,6 +67,7 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
         _sidecarReport = null;
         _fileResourceCount = null;
         _folderResourceCount = null;
+        WrittenReport = null;
     }
 
     public void RecordMigrationResult(MigrationResult result, bool userConfirmedUpgrade, bool userCancelledUpgrade)
@@ -123,7 +126,12 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
             var reportResource = writeResult.Value;
             var issueCount = CountIssues(report.Sections);
 
-            return new ProjectLoadReportSummary(reportResource, report.Severity, issueCount);
+            // A later flush that fails leaves this in place: every flush during a load writes the same file, so
+            // the report it names is still there to open.
+            var reportSummary = new ProjectLoadReportSummary(reportResource, report.Severity, issueCount);
+            WrittenReport = reportSummary;
+
+            return reportSummary;
         }
         catch (Exception ex)
         {

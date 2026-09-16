@@ -60,6 +60,7 @@ public sealed partial class ApplicationToolbar : UserControl
 
         LayoutToolbar.SizeChanged += OnInteractiveElement_SizeChanged;
         ProjectToolbar.SizeChanged += OnInteractiveElement_SizeChanged;
+        ProjectToolbar.InteractiveLayoutChanged += OnProjectToolbar_InteractiveLayoutChanged;
 
         // A host that derives window-chrome regions from the toolbar (the Windows TitleBar wrapper)
         // recomputes them when the layout shifts, e.g. on window maximize/restore.
@@ -75,6 +76,7 @@ public sealed partial class ApplicationToolbar : UserControl
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
         LayoutToolbar.SizeChanged -= OnInteractiveElement_SizeChanged;
         ProjectToolbar.SizeChanged -= OnInteractiveElement_SizeChanged;
+        ProjectToolbar.InteractiveLayoutChanged -= OnProjectToolbar_InteractiveLayoutChanged;
         this.LayoutUpdated -= OnApplicationToolbar_LayoutUpdated;
 
         if (_layoutChangedTimer is not null)
@@ -126,6 +128,11 @@ public sealed partial class ApplicationToolbar : UserControl
         {
             RaiseInteractiveLayoutChanged();
         }
+    }
+
+    private void OnProjectToolbar_InteractiveLayoutChanged(object? sender, EventArgs e)
+    {
+        RaiseInteractiveLayoutChanged();
     }
 
     private void OnApplicationToolbar_LayoutUpdated(object? sender, object e)

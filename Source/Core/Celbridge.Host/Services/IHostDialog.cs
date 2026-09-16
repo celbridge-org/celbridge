@@ -42,10 +42,10 @@ public interface IHostDialog
     Task<AlertResult> AlertAsync(string title, string message);
 
     /// <summary>
-    /// Shows a workspace toast. Severity is "info", "warning" or "error", and the message is one
-    /// line, already localized by the caller. Naming a resource gives the toast an action that opens
-    /// it, at the given one-based line and column when they are set. Best effort: returning means the
-    /// host took the notification, not that the user saw it.
+    /// Adds a notification to the notification centre. Severity is "info", "warning" or "error", and
+    /// the message is one line, already localized by the caller. Naming a resource gives the
+    /// notification an action that opens it, at the given one-based line and column when they are set.
+    /// Best effort: returning means the host took the notification, not that the user saw it.
     /// </summary>
     [JsonRpcMethod(DialogRpcMethods.Toast)]
     Task<ToastResult> ToastAsync(

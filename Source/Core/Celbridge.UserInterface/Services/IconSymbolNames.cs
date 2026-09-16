@@ -27,6 +27,7 @@ internal static class IconSymbolNames
         { IconSymbol.Delete, "bs-trash" },
         { IconSymbol.Error, "bs-exclamation-circle-fill" },
         { IconSymbol.Warning, "bs-exclamation-triangle-fill" },
+        { IconSymbol.Info, "bs-info-circle-fill" },
         { IconSymbol.Report, "bs-clipboard-data" },
         { IconSymbol.More, "bs-three-dots" },
         { IconSymbol.Collapse, "bs-arrows-collapse" },
