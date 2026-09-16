@@ -3,6 +3,7 @@ using System.Text.Json;
 using Celbridge.Logging;
 using Celbridge.Settings;
 using Microsoft.Web.WebView2.Core;
+using Windows.Foundation;
 
 namespace Celbridge.WebHost.Services;
 
@@ -87,9 +88,16 @@ public sealed class WebViewLoadDiagnostics
     // How long a document that is still parsing is given before the one further look it gets.
     private static readonly TimeSpan StillParsingRetryDelay = TimeSpan.FromSeconds(2);
 
+    // How often a surface being resized logs its geometry. A drag raises a size change per frame.
+    private static readonly TimeSpan ViewportSizeLogInterval = TimeSpan.FromSeconds(1);
+
     private readonly IWebViewAdapter _webViewAdapter;
     private readonly IFeatureFlags _featureFlags;
     private readonly ILogger _logger;
+
+    private DateTime _lastViewportSizeLogTime;
+    private bool _lastViewportSizeWasArranged;
+    private int _viewportSizesSinceLog;
 
     public WebViewLoadDiagnostics(IWebViewAdapter webViewAdapter, IFeatureFlags featureFlags, ILogger logger)
     {
@@ -120,7 +128,26 @@ public sealed class WebViewLoadDiagnostics
             : "native=none";
 
         return $"loaded={webView.IsLoaded} size={webView.ActualWidth:F0}x{webView.ActualHeight:F0} "
-            + $"xamlRoot={webView.XamlRoot is not null} {native}".TrimEnd();
+            + $"{DescribeControlPosition(webView)} xamlRoot={webView.XamlRoot is not null} {native}".TrimEnd();
+    }
+
+    /// <summary>
+    /// Where the control sits in the window. Reads as 0,0 for a control that is not in the visual tree.
+    /// </summary>
+    private static string DescribeControlPosition(WebView2 webView)
+    {
+        try
+        {
+            var transform = webView.TransformToVisual(null);
+            var position = transform.TransformPoint(new Point(0, 0));
+
+            return $"at={position.X:F0},{position.Y:F0}";
+        }
+        catch (Exception)
+        {
+            // A transform is never worth failing a diagnostic for.
+            return "at=unknown";
+        }
     }
 
     /// <summary>
@@ -188,6 +215,42 @@ public sealed class WebViewLoadDiagnostics
         }
 
         _logger.LogDebug("{Moment} for {Resource} ({Surface}) scrollY={ScrollY}", moment, surface.Name, described, scrollY);
+    }
+
+    /// <summary>
+    /// Logs the geometry a surface was sized to, sampled once a second. The count says how many size changes
+    /// the sampled one stands for.
+    /// </summary>
+    public void LogViewportSize(WebViewSurface surface, double width, double height, bool isArranged)
+    {
+        if (!IsNarrationEnabled)
+        {
+            return;
+        }
+
+        _viewportSizesSinceLog++;
+
+        // A change of arranged state is never sampled away.
+        var now = DateTime.UtcNow;
+        if (isArranged == _lastViewportSizeWasArranged &&
+            now - _lastViewportSizeLogTime < ViewportSizeLogInterval)
+        {
+            return;
+        }
+
+        _lastViewportSizeLogTime = now;
+        _lastViewportSizeWasArranged = isArranged;
+
+        var sizeChanges = _viewportSizesSinceLog;
+        _viewportSizesSinceLog = 0;
+
+        _logger.LogDebug(
+            "Viewport sized for {Resource} to {Viewport} arranged={Arranged} changes={Changes} ({Surface})",
+            surface.Name,
+            $"{width:F0}x{height:F0}",
+            isArranged,
+            sizeChanges,
+            DescribeSurface(surface));
     }
 
     /// <summary>

@@ -26,6 +26,11 @@ public sealed record MacSnapshotRequest(
     int Quality);
 
 /// <summary>
+/// A native view's frame in points: its origin in its superview's flipped coordinates, and its size.
+/// </summary>
+public sealed record MacViewFrame(double X, double Y, double Width, double Height);
+
+/// <summary>
 /// Objective-C interop for reaching the native WKWebView behind Uno's macOS Skia WebView2 control and
 /// calling the WebKit methods the managed CoreWebView2 leaves unimplemented on macOS: serving a document
 /// under a chosen origin, document-start script injection, surface capture, and view teardown. macOS-only.
@@ -465,17 +470,18 @@ public static class MacOSWebViewInterop
     }
 
     /// <summary>
-    /// The native view's frame size in points, which is what its page reads as its viewport.
+    /// The native view's frame, or null when there is no view to read it from.
     /// </summary>
-    public static (double Width, double Height) GetFrameSize(IntPtr webView)
+    public static MacViewFrame? GetFrame(IntPtr webView)
     {
         if (webView == IntPtr.Zero)
         {
-            return (0, 0);
+            return null;
         }
 
         var frame = SendMessageReturnCGRect(webView, FrameSelector);
-        return (frame.Width, frame.Height);
+
+        return new MacViewFrame(frame.X, frame.Y, frame.Width, frame.Height);
     }
 
     /// <summary>
@@ -576,18 +582,18 @@ public static class MacOSWebViewInterop
     }
 
     /// <summary>
-    /// Sets the native view's frame, which is what the page reads as its viewport. Uno arranges the frame
-    /// only while the control is in the visual tree, so a surface that loads before it is ever arranged
-    /// (a document restored into a background tab, a utility that runs from project load) would otherwise
-    /// report a zero-sized window to its page.
+    /// Sets the size of the native view's frame, which is what the page reads as its viewport, holding the
+    /// origin Uno arranged it at.
     /// </summary>
     // UNO-BUG: the native frame is arranged only while the control is in the visual tree.
     public static void SetViewportSize(IntPtr webView, double width, double height)
     {
+        var current = SendMessageReturnCGRect(webView, FrameSelector);
+
         var frame = new CGRect
         {
-            X = 0,
-            Y = 0,
+            X = current.X,
+            Y = current.Y,
             Width = width,
             Height = height
         };

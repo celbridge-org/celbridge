@@ -906,6 +906,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         // Sized before the page is told its measurement counts, so what it measures is that size.
         var applied = _webViewAdapter.SetViewportSize(WebView, width, height);
 
+        Diagnostics.LogViewportSize(Surface, width, height, isArranged);
+
         // An arranged surface's page reports the geometry it was arranged at. An unarranged one reports
         // what the host gave it, and where the host cannot give it any, whatever the platform left it with
         // - which is not a size to measure against.

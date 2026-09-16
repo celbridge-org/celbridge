@@ -705,11 +705,15 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
             return "native=unresolved";
         }
 
-        var (width, height) = MacOSWebViewInterop.GetFrameSize(nativeHandle);
+        var frame = MacOSWebViewInterop.GetFrame(nativeHandle);
         var window = MacOSWebViewInterop.HasWindow(nativeHandle) ? "yes" : "no";
         var processId = MacOSWebViewInterop.GetWebContentProcessId(nativeHandle);
 
-        return $"window={window} frame={width:F0}x{height:F0} pid={processId}";
+        var describedFrame = frame is null
+            ? "frame=none"
+            : $"frame={frame.Width:F0}x{frame.Height:F0}@{frame.X:F0},{frame.Y:F0}";
+
+        return $"window={window} {describedFrame} pid={processId}";
     }
 
     public void SetZoomControlEnabled(CoreWebView2 coreWebView2, bool enabled)
