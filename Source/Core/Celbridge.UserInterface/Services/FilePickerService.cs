@@ -1,4 +1,4 @@
-using Celbridge.FilePicker;
+using Celbridge.Dialog;
 using Celbridge.Platform;
 using Windows.Storage.Pickers;
 
@@ -27,14 +27,7 @@ public class FilePickerService : IFilePickerService
             fileOpenPicker.FileTypeFilter.Add(extension);
         }
 
-        // The packaged WinUI head requires the picker to be associated with the owning window handle.
-        if (_platformInfo.PickersRequireWindowHandle)
-        {
-            var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
-            var mainWindow = userInterfaceService.MainWindow;
-            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(mainWindow);
-            WinRT.Interop.InitializeWithWindow.Initialize(fileOpenPicker, hwnd);
-        }
+        InitializeWithMainWindow(fileOpenPicker);
 
         StorageFile file = await fileOpenPicker.PickSingleFileAsync();
 
@@ -62,14 +55,7 @@ public class FilePickerService : IFilePickerService
 
         folderPicker.FileTypeFilter.Add("*");
 
-        // The packaged WinUI head requires the picker to be associated with the owning window handle.
-        if (_platformInfo.PickersRequireWindowHandle)
-        {
-            var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
-            var mainWindow = userInterfaceService.MainWindow;
-            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(mainWindow);
-            WinRT.Interop.InitializeWithWindow.Initialize(folderPicker, hwnd);
-        }
+        InitializeWithMainWindow(folderPicker);
 
         StorageFolder folder = await folderPicker.PickSingleFolderAsync();
         if (folder == null)
@@ -82,4 +68,39 @@ public class FilePickerService : IFilePickerService
         return Result<string>.Ok(folderPath);
     }
 
+    public async Task<Result<string>> PickSaveFileAsync(string suggestedFileName, string fileTypeDescription, IEnumerable<string> fileExtensions)
+    {
+        var fileSavePicker = new FileSavePicker
+        {
+            SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
+            SuggestedFileName = suggestedFileName
+        };
+
+        var extensions = fileExtensions.ToList();
+        fileSavePicker.FileTypeChoices.Add(fileTypeDescription, extensions);
+
+        InitializeWithMainWindow(fileSavePicker);
+
+        StorageFile file = await fileSavePicker.PickSaveFileAsync();
+        if (file == null)
+        {
+            return Result<string>.Fail("No file selected to save");
+        }
+
+        return Result<string>.Ok(file.Path);
+    }
+
+    // The packaged WinUI head requires a picker to be associated with the owning window handle.
+    private void InitializeWithMainWindow(object picker)
+    {
+        if (!_platformInfo.PickersRequireWindowHandle)
+        {
+            return;
+        }
+
+        var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
+        var mainWindow = userInterfaceService.MainWindow;
+        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(mainWindow);
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+    }
 }

@@ -214,7 +214,7 @@ public sealed class LocalFileSystem : ILocalFileSystem
         }
     }
 
-    public async Task<Result> MoveFileAsync(string source, string dest)
+    public async Task<Result> MoveFileAsync(string source, string dest, bool overwrite = false)
     {
         var runResult = await RetryPolicy.RunAsync<bool>(
             _logger,
@@ -222,7 +222,7 @@ public sealed class LocalFileSystem : ILocalFileSystem
             path: source,
             operation: () =>
             {
-                File.Move(source, dest);
+                File.Move(source, dest, overwrite);
                 return Task.FromResult(true);
             }).ConfigureAwait(false);
 

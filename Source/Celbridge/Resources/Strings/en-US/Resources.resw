@@ -265,6 +265,12 @@ This file could not be saved</value>
   <data name="Notification_OperationFailed_Extract_Multiple" xml:space="preserve">
     <value>Could not extract {0} archives</value>
   </data>
+  <data name="Notification_OperationFailed_Export_Single" xml:space="preserve">
+    <value>Could not export the archive: {1}</value>
+  </data>
+  <data name="Notification_OperationFailed_Export_Multiple" xml:space="preserve">
+    <value>Could not export {0} archives</value>
+  </data>
   <data name="Notification_OperationFailed_Unknown_Single" xml:space="preserve">
     <value>The operation failed on '{0}': {1}</value>
   </data>
@@ -281,22 +287,31 @@ This file could not be saved</value>
     <value>Rename</value>
   </data>
   <data name="ResourceTree_CreateArchive" xml:space="preserve">
-    <value>Create archive</value>
+    <value>Create Archive</value>
   </data>
   <data name="ResourceTree_CreateArchiveTitle" xml:space="preserve">
-    <value>Create archive from '{0}'</value>
+    <value>Create Archive from '{0}'</value>
   </data>
   <data name="ResourceTree_EnterArchiveName" xml:space="preserve">
     <value>Enter a name for the zip archive:</value>
   </data>
   <data name="ResourceTree_ExtractArchive" xml:space="preserve">
-    <value>Extract archive</value>
+    <value>Extract Archive</value>
   </data>
   <data name="ResourceTree_ExtractArchiveTitle" xml:space="preserve">
     <value>Extract '{0}'</value>
   </data>
   <data name="ResourceTree_EnterExtractFolderName" xml:space="preserve">
     <value>Enter a name for the destination folder:</value>
+  </data>
+  <data name="ResourceTree_ExportArchive" xml:space="preserve">
+    <value>Export Archive</value>
+  </data>
+  <data name="ResourceTree_ExportArchiveFileType" xml:space="preserve">
+    <value>Zip Archive</value>
+  </data>
+  <data name="ResourceTree_ExportArchiveProgress" xml:space="preserve">
+    <value>Exporting {0}</value>
   </data>
   <data name="Settings_DialogTitle" xml:space="preserve">
     <value>Settings</value>

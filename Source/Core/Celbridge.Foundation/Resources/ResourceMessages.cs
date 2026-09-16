@@ -41,6 +41,11 @@ public enum ResourceOperationType
     /// Extract the contents of a .zip archive into the project tree.
     /// </summary>
     Extract,
+
+    /// <summary>
+    /// Write a .zip archive of resources to a file outside the project.
+    /// </summary>
+    Export,
 }
 
 /// <summary>

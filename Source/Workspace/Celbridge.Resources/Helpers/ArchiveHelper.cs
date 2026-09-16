@@ -4,8 +4,13 @@ using System.Text.RegularExpressions;
 namespace Celbridge.Resources.Helpers;
 
 /// <summary>
+/// A file to add to a zip archive: the resource to read and the entry name to store it under.
+/// </summary>
+public record ArchiveSourceFile(ResourceKey Resource, string EntryName);
+
+/// <summary>
 /// Static utility methods for creating and extracting zip archives.
-/// Used by ArchiveResourceCommand and UnarchiveResourceCommand.
+/// Used by ArchiveResourceCommand, ExportArchiveCommand and UnarchiveResourceCommand.
 /// </summary>
 public static class ArchiveHelper
 {
@@ -49,6 +54,82 @@ public static class ArchiveHelper
         await using var fileStream = openResult.Value;
         await fileStream.CopyToAsync(entryStream);
         return Result.Ok();
+    }
+
+    /// <summary>
+    /// Lists the files to archive for a file or folder resource. A file is stored under its own name, and a
+    /// folder's files under their paths relative to the folder, so the folder's contents sit at the archive
+    /// root. The folder walk goes through the gateway, so reserved folders such as .celbridge are never listed.
+    /// </summary>
+    public static async Task<List<ArchiveSourceFile>> CollectSourceFilesAsync(
+        IResourceFileSystem resourceFileSystem,
+        ResourceKey sourceResource,
+        bool isFolder)
+    {
+        var sourceFiles = new List<ArchiveSourceFile>();
+
+        if (isFolder)
+        {
+            await CollectFolderSourceFilesAsync(resourceFileSystem, sourceResource, string.Empty, sourceFiles);
+        }
+        else
+        {
+            sourceFiles.Add(new ArchiveSourceFile(sourceResource, sourceResource.ResourceName));
+        }
+
+        return sourceFiles;
+    }
+
+    /// <summary>
+    /// Adds each source file to a zip archive under its entry name, stopping at the first file that
+    /// cannot be read.
+    /// </summary>
+    public static async Task<Result> AddSourceFilesToArchiveAsync(
+        ZipArchive zipArchive,
+        IResourceFileSystem resourceFileSystem,
+        IReadOnlyList<ArchiveSourceFile> sourceFiles)
+    {
+        foreach (var sourceFile in sourceFiles)
+        {
+            var addResult = await AddFileToArchiveAsync(zipArchive, resourceFileSystem, sourceFile.Resource, sourceFile.EntryName);
+            if (addResult.IsFailure)
+            {
+                return addResult;
+            }
+        }
+
+        return Result.Ok();
+    }
+
+    // A folder that cannot be listed contributes no files.
+    private static async Task CollectFolderSourceFilesAsync(
+        IResourceFileSystem resourceFileSystem,
+        ResourceKey folder,
+        string relativePrefix,
+        List<ArchiveSourceFile> sourceFiles)
+    {
+        var enumerateResult = await resourceFileSystem.EnumerateFolderAsync(folder);
+        if (enumerateResult.IsFailure)
+        {
+            return;
+        }
+
+        foreach (var item in enumerateResult.Value)
+        {
+            var name = item.Resource.ResourceName;
+            var childRelative = string.IsNullOrEmpty(relativePrefix)
+                ? name
+                : $"{relativePrefix}/{name}";
+
+            if (item.IsFolder)
+            {
+                await CollectFolderSourceFilesAsync(resourceFileSystem, item.Resource, childRelative, sourceFiles);
+            }
+            else
+            {
+                sourceFiles.Add(new ArchiveSourceFile(item.Resource, childRelative));
+            }
+        }
     }
 
     /// <summary>
