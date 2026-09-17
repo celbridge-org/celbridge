@@ -1,6 +1,6 @@
 ---
 name: update-third-party-licenses
-description: Regenerate THIRD-PARTY-LICENSES.txt, the open source notices file that ships with Celbridge, and resolve the license questions it raises. Use when the user asks to update, regenerate or check third-party licenses, license notices or open source attributions, when preparing a release, or after adding, upgrading or removing a NuGet package, vendored script, font or bundled tool.
+description: Regenerate THIRD-PARTY-LICENSES.txt, the open source notices file that ships with Celbridge, resolve the license questions it raises, and review the README's open source credits. Use when the user asks to update, regenerate or check third-party licenses, license notices, open source attributions or credits, when preparing a release, or after adding, upgrading or removing a NuGet package, vendored script, font or bundled tool.
 ---
 
 # Update third-party licenses
@@ -67,13 +67,26 @@ Set `exclude = true` only for a package that does not reach the Release build ou
 
 The script finds vendored code by looking under `Source` for folders named `lib`, `min` or `vendor`, font files, license or notices files, and minified scripts, skipping `bin`, `obj`, `node_modules`, `.venv` and `.celbridge`. It checks versions only where a component has a `version_check`. Libraries bundled inside another bundle (ProseMirror inside the Tiptap script, js-base64 inside the xterm clipboard addon) have no check of their own. When a vendoring script such as `npm run vendor:notes` or `npm run vendor:console` has run since the last release, list the bundled packages with `npm ls --omit=dev --all` in its `build` folder and bring those components up to date.
 
-## 4. Review and report
+## 4. Review the README credits
+
+The Credits section of `README.md` thanks a short, hand-picked list of the open source projects Celbridge is built on. It is a courtesy rather than a license requirement, and `THIRD-PARTY-LICENSES.txt` stays the complete list, so the credits only need to name the projects people would expect to find there.
+
+Compare the list with what Celbridge uses now, using the component changes from this run and a search of the code:
+
+- **Suggest adding** a project that a user or contributor would recognise and that powers a visible feature or the app's foundation.
+- **Suggest removing** a credited project that Celbridge no longer uses. Search the code as well as the notices file, because some credited projects are not bundled. Python and IPython, for example, are installed per project rather than shipped with the app.
+- **Leave out** projects that another entry already covers (SkiaSharp and the Windows App SDK come with Uno Platform), commercial components (SpreadJS has its own sponsor thanks), and features that are off by default or likely to be removed.
+
+Give each project its own bullet with a link to its website or repository and no description, and keep the list short. Put your suggestions to the user rather than editing the list, because what belongs on it is their call, and make the edits once they agree.
+
+## 5. Report
 
 Once the file is written, read `git diff --stat THIRD-PARTY-LICENSES.txt` and skim the changes to the component list. Report to the user:
 
 - the components added, removed or upgraded,
 - any license that is new to the file,
 - each decision you recorded in the manifest, with its reason,
+- your suggested changes to the README credits, or that none are needed,
 - anything left for them to decide.
 
 Do not stage or commit. The user reviews the diff before committing.

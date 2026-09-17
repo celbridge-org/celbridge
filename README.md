@@ -177,12 +177,21 @@ This project was made possible by the Sabbatical Policy at [Romero Games](https:
 
 Many thanks to [MESCIUS SpreadJS](https://developer.mescius.com/spreadjs) for sponsoring Celbridge and supporting open source developers!
 
-Celbridge relies on code from many fantastic open source projects, including:
-* [Uno Platform](https://platform.uno) 
-* [Monaco Editor](https://microsoft.github.io/monaco-editor)
-* [WebView2](https://github.com/MicrosoftEdge/WebView2Browser)
-* [file-icons](https://github.com/file-icons/vscode/blob/master/LICENSE.md)
-* [github-markdown-css](https://github.com/sindresorhus/github-markdown-css/blob/main/license)
-* [fluentui-system-icons](https://github.com/microsoft/fluentui-system-icons)
+Celbridge is built on many fantastic open source projects, including:
+* [.NET](https://dotnet.microsoft.com/)
+* [Uno Platform](https://platform.uno/)
+* [WebView2](https://developer.microsoft.com/microsoft-edge/webview2/)
+* [Monaco Editor](https://microsoft.github.io/monaco-editor/)
+* [xterm.js](https://xtermjs.org/)
+* [Python](https://www.python.org/)
+* [IPython](https://ipython.org/)
+* [uv](https://docs.astral.sh/uv/)
+* [ClosedXML](https://github.com/ClosedXML/ClosedXML)
+* [marked](https://marked.js.org/)
+* [highlight.js](https://highlightjs.org/)
+* [Model Context Protocol C# SDK](https://github.com/modelcontextprotocol/csharp-sdk)
+* [Nerd Fonts](https://www.nerdfonts.com/)
+* [Bootstrap Icons](https://icons.getbootstrap.com/)
+* [Cascadia Code](https://github.com/microsoft/cascadia-code)
 
 Every third-party component included in Celbridge is listed with its license and copyright notice in `THIRD-PARTY-LICENSES.txt`.
