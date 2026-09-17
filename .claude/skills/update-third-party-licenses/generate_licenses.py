@@ -166,10 +166,9 @@ def license_identifiers(expression: str) -> list[str]:
     return identifiers
 
 
-def canonical_text_path(identifier: str) -> Path:
-    """Return the license-texts file for an SPDX identifier, ignoring -only, -or-later and + suffixes."""
-    base_identifier = re.sub(r"(-only|-or-later|\+)$", "", identifier)
-    return LICENSE_TEXTS_FOLDER / f"{base_identifier}.txt"
+def license_text_path(identifier: str) -> Path:
+    """Return the license-texts file holding the SPDX License List text for an identifier."""
+    return LICENSE_TEXTS_FOLDER / f"{identifier}.txt"
 
 
 def describe_license(expression: str) -> str:
@@ -285,11 +284,11 @@ def check_license_texts(subject: str, identifiers: list[str], has_own_text: bool
     for identifier in identifiers:
         if identifier.startswith("LicenseRef-"):
             continue
-        if canonical_text_path(identifier).exists():
+        if license_text_path(identifier).exists():
             continue
         if has_own_text:
             continue
-        issues.append(Issue(subject, f"no license text for {identifier}. Add license-texts/{canonical_text_path(identifier).name}"))
+        issues.append(Issue(subject, f"no license text for {identifier}. Add license-texts/{identifier}.txt from the SPDX License List"))
 
 
 def build_package_entries(assets: dict, manifest: dict, issues: list[Issue]) -> list[Entry]:
@@ -592,10 +591,10 @@ def render_file(component_entries: list[Entry], package_entries: list[Entry]) ->
     identifiers = set()
     for entry in all_entries:
         for identifier in license_identifiers(entry.license_expression):
-            if canonical_text_path(identifier).exists():
-                identifiers.add(canonical_text_path(identifier).stem)
+            if license_text_path(identifier).exists():
+                identifiers.add(identifier)
     for identifier in sorted(identifiers, key=str.lower):
-        lines.extend(render_text_block(identifier, read_text(LICENSE_TEXTS_FOLDER / f"{identifier}.txt")))
+        lines.extend(render_text_block(identifier, read_text(license_text_path(identifier))))
 
     def license_files_of(entry):
         if entry.license_file_text:

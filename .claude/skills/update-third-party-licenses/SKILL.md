@@ -44,7 +44,7 @@ Every fix is an edit to `manifest.toml` followed by another run. Give each packa
 |---|---|
 | No license information, or only a license URL | Find the license in the package's project or repository (its LICENSE file), on its nuget.org page, or among the files in its NuGet cache folder. Record it as `license` in a package decision. If there is none to be found, ask the user. |
 | License is not in `accepted_licenses` | Judge it with the guidance below, then record `accept_license = true` with a reason, or take it to the user. |
-| No license text for an identifier | Add `license-texts/<identifier>.txt` holding the verbatim text, named without any `-only` or `-or-later` suffix. Prefer copying from a trusted local file, such as one inside a package or an installed SDK. Ask the user before downloading one. |
+| No license text for an identifier | Download `text/<identifier>.txt` from the latest release of the SPDX License List data (`github.com/spdx/license-list-data`) and save it unmodified as `license-texts/<identifier>.txt`. Ask the user before downloading. |
 | Ships a third-party notices file | Read the notices file in the package folder. Set `notices = "include"` when it covers code built into what the package ships, and `"omit"` when it is repository-wide or lists the project's own build and test dependencies. |
 | Looks like third-party code but nothing covers it | Identify the code and add a `[[component]]` whose `paths` include the folder. If the folder is Celbridge's own, add an `[[ignored_path]]` with a reason instead. |
 | The manifest version differs from the repository | The vendored code was updated. Update `version`, and check that its license and copyright lines have not changed. |
@@ -90,6 +90,13 @@ Once the file is written, read `git diff --stat THIRD-PARTY-LICENSES.txt` and sk
 - anything left for them to decide.
 
 Do not stage or commit. The user reviews the diff before committing.
+
+## License texts
+
+`license-texts/` holds the full text of each license the file uses, one file per exact SPDX identifier (`LGPL-2.1-or-later.txt`, not `LGPL-2.1.txt`). Every file is an unmodified copy of the matching file in the SPDX License List data, taken from release v3.29.0 for the current set. SPDX is the source of truth for these texts, so never edit them or take a license text from anywhere else.
+
+- A component that ships its own license file, such as Cascadia Mono's `OFL.txt`, uses `license_file` instead, because that file states the component's actual terms.
+- SPDX's texts keep template copyright lines such as `Copyright (c) <year> <copyright holders>`, while each entry carries the component's real copyright lines. Where a generic text names a specific copyright holder, as the Unicode License does, put the component's own copyright line in its entry or note.
 
 ## Manifest reference
 

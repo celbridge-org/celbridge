@@ -58,8 +58,8 @@ ids = [
 license = "Apache-2.0 AND Unicode-3.0"
 accept_license = true
 source = "https://github.com/unoplatform/uno.icu"
-note = "Contains ICU binaries, licensed under the Unicode License v3."
-reason = "No license metadata. The uno.icu repository is Apache-2.0, and the ICU binaries it packages are under the Unicode License v3."
+note = "Contains ICU binaries, Copyright © 2016-2025 Unicode, Inc., licensed under the Unicode License v3."
+reason = "No license metadata. The uno.icu repository is Apache-2.0, and the ICU binaries it packages are under the Unicode License v3. The note carries ICU's own copyright line from ICU 77's LICENSE file, so update its years when Uno.icu moves to a newer ICU release."
 
 [[package]]
 ids = [
