@@ -11,6 +11,7 @@ namespace Celbridge.Python.Services;
 public class PythonInstaller : IPythonInstaller
 {
     private const string PythonFolderName = "Python";
+    private const string UvBinFolderName = "bin";
     private const string InstalledVersionFileName = "installed_version.txt";
     private const string WheelFilePattern = "celbridge-*.whl";
     private const string PythonModuleFolder = "Celbridge.Python";
@@ -33,6 +34,8 @@ public class PythonInstaller : IPythonInstaller
     }
 
     public string PythonFolderPath => Path.Combine(_appEnvironment.LocalApplicationDataFolderPath, PythonFolderName);
+
+    public string UvBinFolderPath => Path.Combine(PythonFolderPath, UvBinFolderName);
 
     public Task<Result<string>> InstallPythonAsync(string appVersion)
     {
@@ -193,7 +196,7 @@ public class PythonInstaller : IPythonInstaller
         // uv handles installing the required python & package versions for the loaded project.
         var uvArchivePath = _appEnvironment.GetBundledAssetPath(
             PythonModuleFolder, $"Assets/UV/{GetUvArchiveFileName()}");
-        await ExtractUvArchiveAsync(uvArchivePath, pythonFolderPath);
+        await ExtractUvArchiveAsync(uvArchivePath, UvBinFolderPath);
 
         // Copy the bundled Python assets to the local Python folder.
         var pythonAssetsPath = _appEnvironment.GetBundledAssetPath(PythonModuleFolder, "Assets/Python");
@@ -231,17 +234,19 @@ public class PythonInstaller : IPythonInstaller
             : "uv-x86_64-unknown-linux-gnu.tar.gz";
     }
 
-    // Extracts the bundled uv archive into the Python folder. On Windows (the Skia desktop head can run
+    // Extracts the bundled uv archive into the uv bin folder. On Windows (the Skia desktop head can run
     // there too) the archive is a .zip with the binaries at the root. On macOS and Linux it is a .tar.gz
     // whose binaries sit under a single top-level folder (e.g. uv-aarch64-apple-darwin/uv). That folder is
-    // stripped so the binary lands directly in the Python folder, matching the layout the rest of the
-    // service expects. TarFile preserves the Unix executable mode and the flattening move is a rename that
-    // preserves it, so no explicit chmod is needed.
-    private async Task ExtractUvArchiveAsync(string uvArchivePath, string pythonFolderPath)
+    // stripped so the binaries land directly in the bin folder, which carries executables alone so that
+    // putting it on a console PATH exposes nothing else. TarFile preserves the Unix executable mode and
+    // the flattening move is a rename that preserves it, so no explicit chmod is needed.
+    private async Task ExtractUvArchiveAsync(string uvArchivePath, string uvBinFolderPath)
     {
+        await _fileSystem.CreateFolderAsync(uvBinFolderPath);
+
         if (OperatingSystem.IsWindows())
         {
-            ZipFile.ExtractToDirectory(uvArchivePath, pythonFolderPath, overwriteFiles: true);
+            ZipFile.ExtractToDirectory(uvArchivePath, uvBinFolderPath, overwriteFiles: true);
             return;
         }
 
@@ -256,13 +261,13 @@ public class PythonInstaller : IPythonInstaller
         using (var archiveStream = new MemoryStream(archiveBytes))
         using (var gzipStream = new GZipStream(archiveStream, CompressionMode.Decompress))
         {
-            TarFile.ExtractToDirectory(gzipStream, pythonFolderPath, overwriteFiles: true);
+            TarFile.ExtractToDirectory(gzipStream, uvBinFolderPath, overwriteFiles: true);
         }
 
         // The tarball extracts a single top-level folder named after the archive (without the .tar.gz
-        // suffix). Move its files up so the uv binary sits directly in the Python folder.
+        // suffix). Move its files up so the uv binary sits directly in the bin folder.
         var topLevelFolderName = Path.GetFileName(uvArchivePath).Replace(".tar.gz", string.Empty);
-        var extractedFolder = Path.Combine(pythonFolderPath, topLevelFolderName);
+        var extractedFolder = Path.Combine(uvBinFolderPath, topLevelFolderName);
 
         var enumerateResult = await _fileSystem.EnumerateAsync(extractedFolder, "*", recursive: false);
         if (enumerateResult.IsFailure)
@@ -278,7 +283,7 @@ public class PythonInstaller : IPythonInstaller
                 continue;
             }
 
-            var destPath = Path.Combine(pythonFolderPath, Path.GetFileName(entry.FullPath));
+            var destPath = Path.Combine(uvBinFolderPath, Path.GetFileName(entry.FullPath));
             var moveResult = await _fileSystem.MoveFileAsync(entry.FullPath, destPath);
             if (moveResult.IsFailure)
             {
@@ -288,6 +293,30 @@ public class PythonInstaller : IPythonInstaller
         }
 
         await _fileSystem.DeleteFolderAsync(extractedFolder, recursive: true);
+
+        await RemoveAppleDoubleFilesAsync(uvBinFolderPath);
+    }
+
+    // The uv tarball carries an AppleDouble stub beside each entry, which TarFile writes out as a file with
+    // the executable mode of the entry it describes. The bin folder is on a console PATH, so it holds the
+    // binaries alone.
+    private async Task RemoveAppleDoubleFilesAsync(string uvBinFolderPath)
+    {
+        var enumerateResult = await _fileSystem.EnumerateAsync(uvBinFolderPath, "._*", recursive: false);
+        if (enumerateResult.IsFailure)
+        {
+            return;
+        }
+
+        foreach (var entry in enumerateResult.Value)
+        {
+            if (entry.IsFolder)
+            {
+                continue;
+            }
+
+            await _fileSystem.DeleteFileAsync(entry.FullPath);
+        }
     }
 
     // Recursively copies a bundled-asset folder to a destination through the filesystem gateway.

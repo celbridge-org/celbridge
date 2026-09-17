@@ -22,6 +22,11 @@ from celbridge.rpc_client import RpcClient
 # once consumed so terminals spawned from the REPL can bootstrap again.
 BOOTSTRAP_MARKER = 'CELBRIDGE_BOOTSTRAPPED'
 
+# The launch requires a uv-managed interpreter and says so with --managed-python, which uv refuses to
+# accept alongside the argument this variable names. A shell profile that exports it would otherwise
+# leave the REPL unable to start at all.
+CONFLICTING_UV_VARIABLE = 'UV_PYTHON_PREFERENCE'
+
 # Private OSC identifier carrying a diagnostic for the host application log, alongside the console's
 # ready marker on 7000. A terminal that never sees it renders nothing, and the host lifts it out of the
 # output stream before the user's terminal does. ConPTY forwards an OSC as it parses it rather than when
@@ -93,7 +98,11 @@ def _resolve_launch(environ, arguments) -> ResolvedLaunch:
 
 
 def _build_uv_run_command(resolved: ResolvedLaunch, environ, payload):
-    """Build the uv run command that runs payload in the launch's environment."""
+    """Build the uv run command that runs payload in the launch's environment.
+
+    The cache is passed as a flag, which outranks any UV_CACHE_DIR a console or a shell profile has set,
+    holding the REPL to the cache the host warmed.
+    """
     uv_path = environ.get('CELBRIDGE_UV')
     wheel_path = environ.get('CELBRIDGE_WHEEL')
     if not uv_path or not wheel_path:
@@ -138,6 +147,14 @@ def _build_probe_command(resolved: ResolvedLaunch, environ):
     return _build_uv_run_command(resolved._replace(offline=True), environ, ['python', '-c', ''])
 
 
+def _build_uv_environment(environ):
+    """Copy an environment into the one uv is run under, dropping the variable it will not accept."""
+    environment = dict(environ)
+    environment.pop(CONFLICTING_UV_VARIABLE, None)
+
+    return environment
+
+
 def _probe_offline_cache(resolved: ResolvedLaunch, environ):
     """Measure whether the launch resolves entirely from the uv cache.
 
@@ -145,6 +162,8 @@ def _probe_offline_cache(resolved: ResolvedLaunch, environ):
     package resolved with no network access, so the real launch can bootstrap offline. uv caches the
     environment it builds here, so the launch that follows finds it already built. The probe's output is
     discarded: on a cache miss uv explains itself at length, and the launch simply goes online instead.
+
+    The probe runs under the same environ it was built from, so what it measures is what the launch uses.
     """
     import subprocess
     import time
@@ -155,6 +174,7 @@ def _probe_offline_cache(resolved: ResolvedLaunch, environ):
     try:
         completed = subprocess.run(
             command,
+            env=_build_uv_environment(environ),
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             check=False,
@@ -186,7 +206,7 @@ def _bootstrap(resolved: ResolvedLaunch):
 
     command = _build_bootstrap_command(resolved, os.environ)
 
-    environment = dict(os.environ)
+    environment = _build_uv_environment(os.environ)
     environment[BOOTSTRAP_MARKER] = '1'
 
     if os.name == 'posix':

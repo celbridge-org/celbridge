@@ -50,8 +50,11 @@ internal static class ToolInstallPolicy
 
         // A reinstall removes the tool environment that a running console is executing from. On Windows the
         // running process holds those files open, so the removal half-succeeds and leaves an environment
-        // without its packages, which every later console then fails against.
-        if (hasRunningSessions)
+        // without its packages, which every later console then fails against. A missing tool has neither
+        // property: there is nothing to remove and nothing running from it, and deferring would launch the
+        // console against a tool that does not exist.
+        if (hasRunningSessions
+            && health != ToolEnvironmentHealth.Missing)
         {
             return ToolInstallDecision.Defer;
         }
@@ -93,15 +96,16 @@ public interface IPythonLaunchService
     Task<Result<PythonStartupResult>> BuildStartupAsync(PythonLaunchRequest request);
 
     /// <summary>
-    /// Returns a PATH value with the project's uv tool bin folder prepended to the given base (or to the
-    /// resolved child-process base PATH when null), so the installed celbridge-py command resolves in any
-    /// console. Already-prepended input is returned unchanged.
+    /// Returns a PATH value with the app's uv bin folder and the project's uv tool bin folder prepended to
+    /// the given base (or to the resolved child-process base PATH when null), so uv, uvx and the installed
+    /// celbridge-py command resolve in a console. A folder already on the given base keeps its position.
+    /// An interactive shell sources its profile after this is applied and may prepend its own folders.
     /// </summary>
     string BuildConsolePath(string? basePath);
 
     /// <summary>
-    /// Returns the host-integration environment every console shares, creating the folders the variables
-    /// point at. A celbridge-py launched from any console then behaves like a python console session.
+    /// Returns the host-integration environment every console shares, installing the Python support files
+    /// first. A celbridge-py launched from any console then behaves like a python console session.
     /// </summary>
     Task<IReadOnlyDictionary<string, string>> BuildConsoleEnvironmentAsync();
 }
@@ -166,6 +170,18 @@ public sealed class PythonLaunchService : IPythonLaunchService
         _projectService.CurrentProject!.ProjectDataFolderPath,
         ProjectConstants.PythonFolder);
 
+    private string ProjectUVCacheFolder => Path.Combine(ProjectPythonFolder, UVCacheFolderName);
+
+    private string ProjectUVBinFolder => Path.Combine(ProjectPythonFolder, UVBinFolderName);
+
+    private string ProjectUVToolsFolder => Path.Combine(ProjectPythonFolder, UVToolsFolderName);
+
+    private string ProjectUVPythonInstallFolder => Path.Combine(ProjectPythonFolder, UVPythonInstallsFolderName);
+
+    private string UvExecutablePath => Path.Combine(
+        _pythonInstaller.UvBinFolderPath,
+        OperatingSystem.IsWindows() ? UVExecutableNameWindows : UVExecutableName);
+
     public async Task<Result<PythonStartupResult>> BuildStartupAsync(PythonLaunchRequest request)
     {
         var startupTimer = Stopwatch.StartNew();
@@ -183,8 +199,7 @@ public sealed class PythonLaunchService : IPythonLaunchService
         }
         var pythonFolder = installResult.Value;
 
-        var uvFileName = OperatingSystem.IsWindows() ? UVExecutableNameWindows : UVExecutableName;
-        var uvExePath = Path.Combine(pythonFolder, uvFileName);
+        var uvExePath = UvExecutablePath;
         var uvExeInfoResult = await _fileSystem.GetInfoAsync(uvExePath);
         var uvExeExists = uvExeInfoResult.IsSuccess
             && uvExeInfoResult.Value.Kind == StorageItemKind.File;
@@ -193,10 +208,10 @@ public sealed class PythonLaunchService : IPythonLaunchService
             return Result<PythonStartupResult>.Fail($"uv not found at '{uvExePath}'");
         }
 
-        var uvCacheDir = Path.Combine(projectPythonFolder, UVCacheFolderName);
-        var uvPythonInstallDir = Path.Combine(projectPythonFolder, UVPythonInstallsFolderName);
-        var uvToolsFolder = Path.Combine(projectPythonFolder, UVToolsFolderName);
-        var uvBinFolder = Path.Combine(projectPythonFolder, UVBinFolderName);
+        var uvCacheDir = ProjectUVCacheFolder;
+        var uvPythonInstallDir = ProjectUVPythonInstallFolder;
+        var uvToolsFolder = ProjectUVToolsFolder;
+        var uvBinFolder = ProjectUVBinFolder;
 
         // Filter blank entries, so a stray blank line cannot reach uv as an empty package specifier.
         var dependencies = request.Dependencies
@@ -264,47 +279,82 @@ public sealed class PythonLaunchService : IPythonLaunchService
 
     public string BuildConsolePath(string? basePath)
     {
-        var uvBinFolder = Path.Combine(ProjectPythonFolder, UVBinFolderName);
         var resolvedBase = string.IsNullOrEmpty(basePath) ? ResolveChildProcessBasePath() : basePath;
 
-        return resolvedBase.Contains(uvBinFolder, StringComparison.OrdinalIgnoreCase)
-            ? resolvedBase
-            : uvBinFolder + Path.PathSeparator + resolvedBase;
+        var consolePath = PrependPathFolder(resolvedBase, _pythonInstaller.UvBinFolderPath);
+
+        return PrependPathFolder(consolePath, ProjectUVBinFolder);
+    }
+
+    private string PrependPathFolder(string path, string folder)
+    {
+        if (PathListHelper.TryPrepend(path, folder, out var consolePath))
+        {
+            return consolePath;
+        }
+
+        _logger.LogWarning(
+            "Folder '{Folder}' was left off the console PATH because it contains the path separator '{Separator}'",
+            folder,
+            Path.PathSeparator);
+
+        return consolePath;
     }
 
     public async Task<IReadOnlyDictionary<string, string>> BuildConsoleEnvironmentAsync()
     {
-        var projectPythonFolder = ProjectPythonFolder;
+        var environmentInfo = _environmentService.GetEnvironmentInfo();
 
-        var uvPythonInstallDir = Path.Combine(projectPythonFolder, UVPythonInstallsFolderName);
+        // Every console type advertises the uv bin folder on its PATH, so the install has to have finished
+        // before the environment is handed over. A reinstall empties that folder while it runs.
+        var installResult = await _pythonInstaller.InstallPythonAsync(environmentInfo.AppVersion);
+        if (installResult.IsFailure)
+        {
+            _logger.LogError(
+                "Failed to install Python support files, so the console environment omits uv: {Error}",
+                installResult.FirstErrorMessage);
+        }
+
+        var uvPythonInstallDir = ProjectUVPythonInstallFolder;
         await _fileSystem.CreateFolderAsync(uvPythonInstallDir);
 
-        var ipythonDir = Path.Combine(projectPythonFolder, IPythonCacheFolderName);
+        var ipythonDir = Path.Combine(ProjectPythonFolder, IPythonCacheFolderName);
         await _fileSystem.CreateFolderAsync(ipythonDir);
 
-        var environmentInfo = _environmentService.GetEnvironmentInfo();
         var celbridgeVersion = environmentInfo.Configuration == "Debug"
             ? $"{environmentInfo.AppVersion} (Debug)"
             : $"{environmentInfo.AppVersion}";
 
+        var uvCacheDir = ProjectUVCacheFolder;
+
+        // uv's own variables, so a uv the user types in a console works against the project's folders and
+        // interpreters. A console can override any of them.
         var environment = new Dictionary<string, string>
         {
+            ["UV_CACHE_DIR"] = uvCacheDir,
             ["UV_PYTHON_INSTALL_DIR"] = uvPythonInstallDir,
-            ["PATH"] = BuildConsolePath(null),
+            ["UV_TOOL_DIR"] = ProjectUVToolsFolder,
+            ["UV_TOOL_BIN_DIR"] = ProjectUVBinFolder,
+
+            // A bare uv venv downloads the interpreter it needs into the project. Left to uv's default it
+            // would take whatever Python the host happens to carry, which on macOS is Xcode's 3.9. This is
+            // the variable behind --managed-python, which the REPL's own launch passes: the older
+            // UV_PYTHON_PREFERENCE names a different argument, and uv rejects the pair.
+            ["UV_MANAGED_PYTHON"] = "1",
             ["CELBRIDGE_MCP_PORT"] = _serverService.Port.ToString(),
             ["CELBRIDGE_PROJECT_FOLDER"] = _projectService.CurrentProject!.ProjectFolderPath,
             ["CELBRIDGE_VERSION"] = celbridgeVersion,
             ["CELBRIDGE_IPYTHON_DIR"] = ipythonDir,
-            ["CELBRIDGE_UV_CACHE_DIR"] = Path.Combine(projectPythonFolder, UVCacheFolderName),
+
+            // Read by celbridge-py, which passes it as an explicit --cache-dir. That outranks any
+            // UV_CACHE_DIR a console or a shell profile sets, holding the REPL to the warmed cache.
+            ["CELBRIDGE_UV_CACHE_DIR"] = uvCacheDir,
         };
 
         // The bootstrapper variables: where a typed celbridge-py finds uv and the celbridge wheel when its
         // launch options make it re-exec through uv. Only set once the support files are installed; before
         // that no celbridge-py tool exists to consume them.
-        var pythonFolder = _pythonInstaller.PythonFolderPath;
-
-        var uvFileName = OperatingSystem.IsWindows() ? UVExecutableNameWindows : UVExecutableName;
-        var uvExePath = Path.Combine(pythonFolder, uvFileName);
+        var uvExePath = UvExecutablePath;
         var uvExeInfoResult = await _fileSystem.GetInfoAsync(uvExePath);
         var uvExeExists = uvExeInfoResult.IsSuccess
             && uvExeInfoResult.Value.Kind == StorageItemKind.File;
@@ -313,7 +363,7 @@ public sealed class PythonLaunchService : IPythonLaunchService
             environment["CELBRIDGE_UV"] = uvExePath;
         }
 
-        var findWheelResult = await FindWheelFileAsync(pythonFolder, "celbridge");
+        var findWheelResult = await FindWheelFileAsync(_pythonInstaller.PythonFolderPath, "celbridge");
         if (findWheelResult.IsSuccess)
         {
             environment["CELBRIDGE_WHEEL"] = findWheelResult.Value;
@@ -502,7 +552,6 @@ public sealed class PythonLaunchService : IPythonLaunchService
             "tool",
             "install",
             "--force",
-            "--cache-dir", uvCacheDir,
             "--python", pythonVersion,
             "--managed-python",
             celbridgeWheelPath,
@@ -517,6 +566,7 @@ public sealed class PythonLaunchService : IPythonLaunchService
         processStartInfo.Environment["UV_TOOL_DIR"] = uvToolsFolder;
         processStartInfo.Environment["UV_TOOL_BIN_DIR"] = uvBinFolder;
         processStartInfo.Environment["UV_PYTHON_INSTALL_DIR"] = uvPythonInstallDir;
+        processStartInfo.Environment["UV_CACHE_DIR"] = uvCacheDir;
 
         var installTimer = Stopwatch.StartNew();
 
