@@ -1,0 +1,299 @@
+# Decisions behind THIRD-PARTY-LICENSES.txt, read by generate_licenses.py.
+# SKILL.md describes each table and field.
+
+# The restore output of the application project. It lists every NuGet package the app heads use.
+assets_file = "Source/Celbridge/obj/project.assets.json"
+
+# Licenses that need no review. A package under any other license needs accept_license = true.
+accepted_licenses = [
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "MIT",
+]
+
+# NuGet package decisions. Every decision whose ids match a package applies, the earliest winning each field.
+
+[[package]]
+ids = [
+    "Uno.UI.App.Mcp",
+    "Uno.UI.HotDesign",
+    "Uno.WinUI.DevServer",
+    "Uno.WinUI.DevServer.Messaging",
+]
+exclude = true
+reason = "Uno developer tooling. It is in the restore graph for every configuration, but Release builds leave it out."
+
+[[package]]
+ids = [
+    "AtkSharp",
+    "CairoSharp",
+    "GdkSharp",
+    "GioSharp",
+    "GLibSharp",
+    "GtkSharp",
+    "PangoSharp",
+    "WebkitGtkSharp",
+]
+license = "LGPL-2.0-only"
+accept_license = true
+reason = "No license metadata. The GtkSharp repository ships the GNU Library General Public License version 2. Uno's Linux (X11) WebView pulls these in, and they are used unmodified as separate assemblies."
+
+[[package]]
+ids = "LibVLCSharp"
+accept_license = true
+reason = "LGPL-2.1-or-later. Uno's Linux (X11) runtime pulls it in, and it is used unmodified as a separate assembly."
+
+[[package]]
+ids = "CommonServiceLocator"
+license = "MS-PL"
+accept_license = true
+reason = "The metadata only links to the Microsoft Public License, which allows redistribution in binary form with the notices kept. Uno pulls it in."
+
+[[package]]
+ids = [
+    "Uno.icu-macos",
+    "Uno.icu-win",
+]
+license = "Apache-2.0 AND Unicode-3.0"
+accept_license = true
+source = "https://github.com/unoplatform/uno.icu"
+note = "Contains ICU binaries, Copyright © 2016-2025 Unicode, Inc., licensed under the Unicode License v3."
+reason = "No license metadata. The uno.icu repository is Apache-2.0, and the ICU binaries it packages are under the Unicode License v3. The note carries ICU's own copyright line from ICU 77's LICENSE file, so update its years when Uno.icu moves to a newer ICU release."
+
+[[package]]
+ids = [
+    "Uno.Diagnostics.Eventing",
+    "Uno.Wasm.WebSockets",
+]
+license = "Apache-2.0"
+reason = "No license metadata. Both source repositories are Apache-2.0."
+
+[[package]]
+ids = "Uno.Fonts.Roboto"
+license = "Apache-2.0"
+note = "Includes the Roboto font."
+reason = "No license metadata. The uno.fonts repository is Apache-2.0."
+
+[[package]]
+ids = [
+    "Uno.Extensions.Markup.WinUI",
+    "Uno.WinUI.Markup",
+]
+license = "LicenseRef-Not-Stated"
+accept_license = true
+note = "The publisher does not state a license for this package."
+reason = "Uno C# Markup packages with no license metadata and no linked source repository. Celbridge calls no C# Markup APIs, but the package adds global usings for WinUI namespaces that code across the solution relies on, so the CSharpMarkup feature stays."
+
+[[package]]
+ids = "Microsoft.Web.WebView2"
+accept_license = true
+notices = "include"
+reason = "Microsoft's BSD-style license for the WebView2 SDK, shipped in the package."
+
+[[package]]
+ids = "Microsoft.WindowsAppSDK"
+accept_license = true
+notices = "include"
+reason = "The Microsoft Software License Terms for the Windows App SDK, shipped in the package."
+
+[[package]]
+ids = [
+    "CommunityToolkit.Mvvm",
+    "HarfBuzzSharp.NativeAssets.*",
+    "Nerdbank.MessagePack",
+    "Nerdbank.Streams",
+    "SkiaSharp.NativeAssets.*",
+]
+notices = "include"
+reason = "The notices cover third-party code built into the shipped assemblies and native libraries."
+
+[[package]]
+ids = [
+    "Microsoft.Bcl.*",
+    "Microsoft.Extensions.*",
+    "System.*",
+]
+notices = "omit"
+reason = "Repository-wide notices from the .NET repositories, not specific to these assemblies. The .NET Runtime component includes the runtime's notices."
+
+[[package]]
+ids = [
+    "Microsoft.VisualStudio.Threading.Only",
+    "Microsoft.VisualStudio.Validation",
+    "StreamJsonRpc",
+]
+notices = "omit"
+reason = "Repository-wide notices that list each project's build and test dependencies, not code in the package."
+
+# Bundled components that no package manager reports: vendored scripts, fonts, tools and the runtime.
+
+[[component]]
+name = ".NET Runtime"
+runtime_pack = "microsoft.netcore.app.runtime.win-x64"
+license = "MIT"
+copyright = "Copyright (c) .NET Foundation and Contributors"
+source = "https://github.com/dotnet/runtime"
+note = "Celbridge is published self-contained, so the .NET runtime ships with it."
+
+[[component]]
+name = "Bootstrap Icons"
+version = "1.12.1"
+license = "MIT"
+copyright = "Copyright (c) 2019-2024 The Bootstrap Authors"
+source = "https://github.com/twbs/icons"
+paths = [
+    "Source/Core/Celbridge.UserInterface/Assets/Fonts/BootstrapIcons",
+    "Source/Core/Celbridge.WebHost/Web/bootstrap-icons",
+]
+
+[component.version_check]
+file = "Source/Core/Celbridge.WebHost/Web/bootstrap-icons/bootstrap-icons.css"
+pattern = "Bootstrap Icons v([0-9.]+)"
+
+[[component]]
+name = "Cascadia Mono"
+license = "OFL-1.1"
+copyright = "Copyright (c) 2019 - Present, Microsoft Corporation, with Reserved Font Name Cascadia Code."
+source = "https://github.com/microsoft/cascadia-code"
+paths = "Source/Core/Celbridge.WebHost/Web/cascadia-mono"
+license_file = "Source/Core/Celbridge.WebHost/Web/cascadia-mono/OFL.txt"
+
+[[component]]
+name = "highlight.js"
+version = "11.11.1"
+license = "BSD-3-Clause"
+copyright = "Copyright (c) 2006, Ivan Sagalaev."
+source = "https://github.com/highlightjs/highlight.js"
+note = "Bundled into the Markdown preview script."
+
+[component.version_check]
+file = "Source/Modules/Celbridge.DocumentEditors/Editors/CodeEditor/markdown-preview/lib/marked.esm.js"
+pattern = '"(11\.[0-9]+\.[0-9]+)"'
+
+[[component]]
+name = "js-base64"
+license = "BSD-3-Clause"
+copyright = "Copyright (c) 2014, Dan Kogai"
+source = "https://github.com/dankogai/js-base64"
+note = "Bundled into the xterm.js clipboard addon."
+
+[[component]]
+name = "linkifyjs"
+license = "MIT"
+copyright = "Copyright (c) 2024 Nick Frasser"
+source = "https://github.com/nfrasser/linkifyjs"
+note = "Bundled into the Tiptap script used by the Notes editor."
+
+[[component]]
+name = "marked"
+license = "MIT AND BSD-3-Clause"
+copyright = [
+    "Copyright (c) 2018+, MarkedJS (https://github.com/markedjs/)",
+    "Copyright (c) 2011-2018, Christopher Jeffrey (https://github.com/chjj/)",
+    "Copyright © 2004, John Gruber",
+]
+source = "https://github.com/markedjs/marked"
+paths = "Source/Modules/Celbridge.DocumentEditors/Editors/CodeEditor/markdown-preview/lib"
+note = "Bundled into the Markdown preview script and the Tiptap script. The BSD-3-Clause license covers John Gruber's original Markdown."
+
+[[component]]
+name = "marked-highlight"
+license = "MIT"
+copyright = "Copyright (c) 2021 @markedjs"
+source = "https://github.com/markedjs/marked-highlight"
+note = "Bundled into the Markdown preview script."
+
+[[component]]
+name = "Monaco Editor"
+version = "0.55.1"
+license = "MIT"
+copyright = "Copyright (c) Microsoft Corporation"
+source = "https://github.com/microsoft/monaco-editor"
+paths = "Source/Modules/Celbridge.DocumentEditors/Editors/CodeEditor/min"
+note = "Monaco includes third-party code listed in https://github.com/microsoft/monaco-editor/blob/main/ThirdPartyNotices.txt"
+
+[component.version_check]
+file = "Source/Modules/Celbridge.DocumentEditors/Editors/CodeEditor/min/vs/nls.messages.*.js.js"
+pattern = "Version: ([0-9][0-9.]*)"
+
+[[component]]
+name = "ProseMirror"
+license = "MIT"
+copyright = [
+    "Copyright (C) 2015-2017 by Marijn Haverbeke <marijn@haverbeke.berlin> and others",
+    "Copyright (C) 2016 by Marijn Haverbeke <marijn@haverbeke.berlin> and others",
+]
+source = "https://github.com/ProseMirror"
+note = "Bundled into the Tiptap script used by the Notes editor, with orderedmap, rope-sequence and w3c-keyname by the same author."
+
+[[component]]
+name = "SpreadJS"
+version = "18.1.4"
+license = "LicenseRef-SpreadJS-Commercial-License"
+copyright = "Copyright (c) MESCIUS inc. All rights reserved."
+source = "https://developer.mescius.com/spreadjs"
+paths = "Source/Modules/Celbridge.Spreadsheet/Package/lib"
+generated = true
+note = "Commercial software, used under license from MESCIUS. It is not open source."
+
+[component.version_check]
+file = "Source/Modules/Celbridge.Spreadsheet/Package/lib/spreadjs/scripts/gc.spread.sheets.all.*.min.js"
+pattern = "SpreadJS Library ([0-9.]+)"
+
+[[component]]
+name = "Symbols Nerd Font"
+version = "3.5.0"
+license = "MIT"
+copyright = "Copyright (c) 2014 Ryan L McIntyre"
+source = "https://github.com/ryanoasis/nerd-fonts"
+paths = "Source/Core/Celbridge.UserInterface/Assets/Fonts/NerdFonts"
+notices_file = "Source/Core/Celbridge.UserInterface/Assets/Fonts/NerdFonts/LICENSE.md"
+
+[component.version_check]
+file = "Source/Core/Celbridge.UserInterface/Assets/Fonts/NerdFonts/glyphnames.json"
+pattern = '"version":"([0-9.]+)"'
+
+[[component]]
+name = "Tiptap"
+version = "3"
+license = "MIT"
+copyright = "Copyright (c) 2025, Tiptap GmbH"
+source = "https://github.com/ueberdosis/tiptap"
+paths = "Source/Modules/Celbridge.DocumentEditors/Editors/Notes/lib"
+note = "Bundled into the Tiptap script used by the Notes editor."
+
+[component.version_check]
+file = "Source/Modules/Celbridge.DocumentEditors/Editors/Notes/lib/build/package.json"
+pattern = '"@tiptap/core": "\^?([0-9]+)'
+
+[[component]]
+name = "uv"
+version = "0.10.11"
+license = "MIT OR Apache-2.0"
+copyright = "Copyright (c) 2025 Astral Software Inc."
+source = "https://github.com/astral-sh/uv"
+paths = "Source/Workspace/Celbridge.Python/Assets/UV"
+generated = true
+note = "Downloaded by the build and shipped with the app."
+
+[component.version_check]
+file = "Source/Workspace/Celbridge.Python/Celbridge.Python.csproj"
+pattern = "<UvVersion>([^<]+)</UvVersion>"
+
+[[component]]
+name = "xterm.js"
+version = "6.0.0"
+license = "MIT"
+copyright = [
+    "Copyright (c) 2017-2019, The xterm.js authors (https://github.com/xtermjs/xterm.js)",
+    "Copyright (c) 2014-2016, SourceLair Private Company (https://www.sourcelair.com)",
+    "Copyright (c) 2012-2013, Christopher Jeffrey (https://github.com/chjj/)",
+]
+source = "https://github.com/xtermjs/xterm.js"
+paths = "Source/Workspace/Celbridge.Console/Web/Console/lib"
+note = "Includes the fit, clipboard, unicode11 and web-links addons."
+
+[component.version_check]
+file = "Source/Workspace/Celbridge.Console/Web/Console/lib/build/package.json"
+pattern = '"@xterm/xterm": "([^"]+)"'

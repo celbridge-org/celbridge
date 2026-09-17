@@ -117,6 +117,11 @@
           Visible="true" />
   </ItemGroup>
 
+  <!-- Third-party notices, packaged at the root of the app. -->
+  <ItemGroup>
+    <Content Include="$(MSBuildThisFileDirectory)..\..\THIRD-PARTY-LICENSES.txt" Link="THIRD-PARTY-LICENSES.txt" />
+  </ItemGroup>
+
   <!-- Modules -->
   <ItemGroup>
     <ProjectReference Include="..\Modules\Celbridge.DocumentEditors\Celbridge.DocumentEditors.csproj" />
