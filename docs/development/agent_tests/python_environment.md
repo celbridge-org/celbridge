@@ -23,7 +23,7 @@ project's `.celbridge/python` folder, and the environment a console's shell is s
 | A shell console | read its environment | the cache and interpreter folders point at the application's shared store, the tool and tool-bin folders point inside the project, and the uv and wheel paths point at the installed support files | 2 |
 | A second project, which has never opened a python console | open a shell console | uv, uvx and celbridge-py all resolve, the last of them out of the application's folder; the project holds no tool environment, cache or interpreter of its own, and its first python console starts without downloading one | 2 |
 | A shell console | create a virtual environment without naming a version, then create one asking for seeded packages | the first takes an interpreter uv manages and never one belonging to the host; the second has a working `pip` | 2 |
-| The version marker deleted and the application relaunched | open a shell console | the support folder is rebuilt and uv resolves again, and the rebuild downloads no interpreter because the shared store is untouched | 2 |
+| The version marker deleted and the application relaunched | open a shell console | the support folder is rebuilt and uv resolves again, the rebuild downloads no interpreter because the shared store is untouched, and what it does add to that store is measured rather than assumed | 2 |
 | A python console opened a second time in the same project | open it | the REPL starts from the warm cache without going to the network | 2 |
 | A shell console already running | open a python console, in a project that has run one before and in a project that has not | its REPL works either way | 3 |
 | A console whose own configuration names a different uv cache folder | run uv in that console, then open a python console | the typed uv follows the console's setting; the REPL still resolves from the application's cache | 3 |
@@ -50,6 +50,12 @@ A console added while the project is open has to be registered before it can be 
 listing first. Opening one the application has not seen raises a modal, which holds the command queue
 until it is answered and reads for all the world like a hang.
 
+A relaunch reopens the consoles that were open when the application closed, and each one restarts and
+re-runs its startup script. A case that relaunches therefore has its install triggered by a restored
+console, seconds before the console the case names is opened, and the probe files earlier cases wrote are
+overwritten underneath it. Close what a case does not need before quitting, or read from the log which
+console the install actually ran for.
+
 The log says a launch succeeded some time before the console has one. The line naming the startup command
 is written when that command is composed, not when it runs, so a console that never starts leaves a log
 that reads as healthy. Judge a console by what it produced, not by the launch lines above it.
@@ -58,6 +64,10 @@ The cases that force a reinstall change state outside the project, and the celbr
 of what gets rebuilt, so a reinstall costs seconds rather than no time at all. Let a launch rebuild the
 support folder, and confirm from the log that it completed before reading anything else.
 
+A reinstall also leaves the shared store larger. The tool's environment is resolved afresh and uv keeps the
+copy it replaced, so measure the store before and after rather than assuming a rebuild is free, and report
+growth that repeats on every rebuild.
+
 Only the first python console on a machine downloads an interpreter. The cache and the interpreters are
 shared by every project, so a fresh project's first launch is warm, and a second project that does go to
 the network is a defect rather than a wait to tolerate. Allow tens of seconds, not minutes, for the one
@@ -65,6 +75,11 @@ cold launch: on a fast connection it is a matter of seconds, and one that has pr
 a minute has failed rather than slowed down. Waiting far past that buys nothing and costs the run more
 than every case in this file put together. The case that asks for a warm cache is the one that would
 catch a cache the REPL cannot find, and it only means anything on a second launch.
+
+A machine that has already run Celbridge has no cold launch left in it. Reaching one means deleting the
+application's cache folder, at the cost of a real download of an interpreter and the tool's packages. Do it
+deliberately, or say in the report that the cold path went unexercised: a run on a warm machine passes
+every case here without once touching it.
 
 A console that resolves the wrong uv is not always the application's fault: an interactive shell sources
 its profile after the console's environment is applied, and a profile that prepends a folder holding
