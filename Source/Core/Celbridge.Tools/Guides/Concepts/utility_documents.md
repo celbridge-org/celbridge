@@ -21,7 +21,7 @@ A utility's display name, icon, and description (shown as its tooltip) come from
 
 Every utility is **workspace-scoped**: it is created when the project loads and lives until the project closes. It is never destroyed by the user — like Explorer and Search, it is always there. What the user controls is only *where* it is docked. A utility always occupies exactly one **workspace area**:
 
-- **`utility`** — the utility is shown in the Utility Panel (the left sidebar), selected by clicking its rail button, one at a time alongside Explorer and Search.
+- **`utility`** — the utility is shown in the Utility Panel (the left sidebar), selected by clicking its rail button, one at a time alongside Explorer and Search. The button of the utility the panel is showing is highlighted, and clicking it collapses the panel.
 - **`main`**, **`bottom`**, **`side`** — the utility is a tab in that documents area, sitting among the open documents.
 
 All four are areas inside the app; none is free-floating. The user moves a utility between them at runtime and the *same* live WebView is reparented across — no reload, no lost state. This is the VS Code affordance of moving a view between the sidebar and the editor group.
@@ -30,7 +30,7 @@ The manifest's `dock-area` key names the document area a utility docks into. A m
 
 ## Moving between areas
 
-- **Dock as a document** ("Open as document"): a control in the utility's Utility Panel header moves it into its document area, in that area's primary section, and makes it the active document. Its rail button stays but dims to show it now lives as a document, and the panel falls back to Explorer. Docking into `bottom` or `side` reveals that area first when it is collapsed. The control is absent for a utility that declares no document area, because there is nowhere for it to send the utility.
+- **Dock as a document** ("Open as document"): a control in the utility's Utility Panel header moves it into its document area, in that area's primary section, and makes it the active document. Its rail button stays but is no longer highlighted, and the panel falls back to Explorer. Docking into `bottom` or `side` reveals that area first when it is collapsed. The control is absent for a utility that declares no document area, because there is nowhere for it to send the utility.
 - **Dock back into the panel** (close the tab): the close button on a utility's document tab does not destroy it — it reparents the WebView back to the Utility Panel. The utility returns to the panel, reachable from its rail button as before. A utility therefore can never be truly closed; the close control means "send it back to the panel".
 - Clicking the rail button of a utility that is docked as a document activates its document tab (with a brief highlight) rather than showing anything in the panel, since its view has moved out of the panel.
 
