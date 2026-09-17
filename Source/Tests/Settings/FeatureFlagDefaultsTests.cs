@@ -6,18 +6,22 @@ using Celbridge.Tests.Architecture;
 namespace Celbridge.Tests.Settings;
 
 /// <summary>
-/// Keeps the FeatureFlags section of appsettings.json in step with FeatureFlagConstants.
+/// Keeps the FeatureFlags sections of appsettings.json and the local appsettings.development.json in step
+/// with FeatureFlagConstants.
 /// </summary>
 [TestFixture]
 public class FeatureFlagDefaultsTests
 {
     private const string FeatureFlagsSectionName = "FeatureFlags";
+    private const string AppSettingsFileName = "appsettings.json";
+    private const string DevelopmentAppSettingsFileName = "appsettings.development.json";
 
     [Test]
     public void AppSettings_ListsEveryDeclaredFlag()
     {
         var declaredNames = GetDeclaredFlagNames();
-        var configuredNames = ReadConfiguredFlags().Keys;
+        var settingsPath = GetSettingsPath(AppSettingsFileName);
+        var configuredNames = ReadConfiguredFlags(settingsPath).Keys;
 
         configuredNames.Should().Contain(declaredNames, "every declared flag needs an explicit default");
     }
@@ -26,7 +30,8 @@ public class FeatureFlagDefaultsTests
     public void AppSettings_ListsOnlyDeclaredFlags()
     {
         var declaredNames = GetDeclaredFlagNames();
-        var configuredNames = ReadConfiguredFlags().Keys;
+        var settingsPath = GetSettingsPath(AppSettingsFileName);
+        var configuredNames = ReadConfiguredFlags(settingsPath).Keys;
 
         configuredNames.Should().BeSubsetOf(declaredNames, "an entry naming no declared flag is never read");
     }
@@ -34,12 +39,39 @@ public class FeatureFlagDefaultsTests
     [Test]
     public void AppSettings_FlagValuesAreBooleans()
     {
-        var configuredFlags = ReadConfiguredFlags();
+        var settingsPath = GetSettingsPath(AppSettingsFileName);
+        var configuredFlags = ReadConfiguredFlags(settingsPath);
+        var nonBooleanNames = GetNonBooleanFlagNames(configuredFlags);
 
-        var nonBooleanNames = configuredFlags
-            .Where(entry => entry.Value is not (JsonValueKind.True or JsonValueKind.False))
-            .Select(entry => entry.Key)
-            .ToList();
+        nonBooleanNames.Should().BeEmpty("a value that is not a boolean resolves to off");
+    }
+
+    [Test]
+    public void DevelopmentAppSettings_ListsOnlyDeclaredFlags()
+    {
+        var settingsPath = GetSettingsPath(DevelopmentAppSettingsFileName);
+        if (!File.Exists(settingsPath))
+        {
+            Assert.Ignore("This machine has no local appsettings.development.json to check.");
+        }
+
+        var declaredNames = GetDeclaredFlagNames();
+        var configuredNames = ReadConfiguredFlags(settingsPath).Keys;
+
+        configuredNames.Should().BeSubsetOf(declaredNames, "an entry naming no declared flag is never read");
+    }
+
+    [Test]
+    public void DevelopmentAppSettings_FlagValuesAreBooleans()
+    {
+        var settingsPath = GetSettingsPath(DevelopmentAppSettingsFileName);
+        if (!File.Exists(settingsPath))
+        {
+            Assert.Ignore("This machine has no local appsettings.development.json to check.");
+        }
+
+        var configuredFlags = ReadConfiguredFlags(settingsPath);
+        var nonBooleanNames = GetNonBooleanFlagNames(configuredFlags);
 
         nonBooleanNames.Should().BeEmpty("a value that is not a boolean resolves to off");
     }
@@ -53,24 +85,37 @@ public class FeatureFlagDefaultsTests
             .ToList();
     }
 
-    // Maps each entry in the FeatureFlags section of appsettings.json to the JSON kind of its value.
-    private static IReadOnlyDictionary<string, JsonValueKind> ReadConfiguredFlags()
+    private static string GetSettingsPath(string settingsFileName)
     {
         var sourceFolder = ArchitectureHelpers.FindSourceFolder();
         sourceFolder.Should().NotBeEmpty("the tests locate the repository by walking up to Celbridge.slnx");
 
-        var settingsPath = Path.Combine(sourceFolder, "Celbridge", "appsettings.json");
-        var settingsJson = File.ReadAllText(settingsPath);
+        return Path.Combine(sourceFolder, "Celbridge", settingsFileName);
+    }
 
+    // Maps each entry in the FeatureFlags section of a settings file to the JSON kind of its value.
+    private static IReadOnlyDictionary<string, JsonValueKind> ReadConfiguredFlags(string settingsPath)
+    {
+        var settingsJson = File.ReadAllText(settingsPath);
         using var document = JsonDocument.Parse(settingsJson);
-        var flagsElement = document.RootElement.GetProperty(FeatureFlagsSectionName);
 
         var configuredFlags = new Dictionary<string, JsonValueKind>(StringComparer.Ordinal);
-        foreach (var property in flagsElement.EnumerateObject())
+        if (document.RootElement.TryGetProperty(FeatureFlagsSectionName, out var flagsElement))
         {
-            configuredFlags[property.Name] = property.Value.ValueKind;
+            foreach (var property in flagsElement.EnumerateObject())
+            {
+                configuredFlags[property.Name] = property.Value.ValueKind;
+            }
         }
 
         return configuredFlags;
+    }
+
+    private static IReadOnlyList<string> GetNonBooleanFlagNames(IReadOnlyDictionary<string, JsonValueKind> configuredFlags)
+    {
+        return configuredFlags
+            .Where(entry => entry.Value is not (JsonValueKind.True or JsonValueKind.False))
+            .Select(entry => entry.Key)
+            .ToList();
     }
 }
