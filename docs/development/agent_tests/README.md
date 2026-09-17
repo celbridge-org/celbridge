@@ -21,6 +21,7 @@ goes stale faster than anyone notices.
 | [Notification Centre](notification_centre.md) | The notification badge and the list it opens over the documents |
 | [Web Documents](web_documents.md) | `.webview` and `.html` documents |
 | [Workspace](workspace.md) | Explorer, Search, dialogs, menus and project settings |
+| [Python Environment](python_environment.md) | The uv install, the Celbridge wheel, and the environment consoles inherit |
 
 ## Effort levels
 
@@ -77,7 +78,8 @@ through the application's own new-document flow rather than copied from anywhere
 into documents and change settings.
 
 Anything changed outside the project — the setting that decides which project opens, window state, the
-clipboard — is yours to put back, and the app should not be left running.
+clipboard, and anything a plan deliberately mutates in the application's own data folder — is yours to put
+back, and the app should not be left running.
 
 Driving the app needs the computer-use tools, which require the user's permission at the start of the
 session. Real key presses are the point: a shortcut delivered any other way tests a path a user never
