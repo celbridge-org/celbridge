@@ -30,6 +30,7 @@ console's shell is started with.
 | The project's `.celbridge/python` folder deleted while the application runs | open a console of each type | the folder is rebuilt and both work | 3 |
 | A project whose folder path contains a space | open a shell console | every folder the environment names arrives intact, and uv resolves | 3 |
 | A shell console | install a small tool with uv | it lands inside the project and runs by name with no change to PATH | 3 |
+| The application's installed wheel replaced while a python console runs | open a second python console | the second REPL works, the installed tool is left as it was, and a console opened later with none running picks the new wheel up | 3 |
 
 Run the cases in one project, in the order they are listed, and say in the report which project each ran
 in. What a console does here depends on what the consoles before it did — the install is decided per
@@ -41,12 +42,23 @@ file in the project, which the file tools then read: that covers the environment
 the output of any command, and needs no keyboard at all. The support folder is read directly. The install
 writes to the application log, which says whether a reinstall ran and whether it finished.
 
+Have the script write that file so its presence means the case finished — under a temporary name renamed
+at the end, or ending with a line the reader waits for. A script that redirects into the file directly
+creates it before it has written anything, and a reader waiting for the file to appear gets a half-written
+one and reads it as a case that stopped early.
+
+A console added while the project is open has to be registered before it can be opened: refresh the file
+listing first. Opening one the application has not seen raises a modal, which holds the command queue
+until it is answered and reads for all the world like a hang.
+
 The log says a launch succeeded some time before the console has one. The line naming the startup command
 is written when that command is composed, not when it runs, so a console that never starts leaves a log
 that reads as healthy. Judge a console by what it produced, not by the launch lines above it.
 
 The cases that force a reinstall change state outside the project. Let a launch rebuild the support
-folder, and confirm from the log that it completed before reading anything else.
+folder, and confirm from the log that it completed before reading anything else. The case that replaces
+the wheel changes it too, and that one has to be put back by hand: leaving a foreign wheel there would
+follow every later project.
 
 A python console's first launch in a fresh project downloads an interpreter, so allow for the wait and do
 not read a cold launch as a failure. Allow tens of seconds, not minutes: a cold launch on a fast
