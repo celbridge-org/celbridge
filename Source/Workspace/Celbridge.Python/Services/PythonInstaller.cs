@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Formats.Tar;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
@@ -11,14 +12,26 @@ namespace Celbridge.Python.Services;
 public class PythonInstaller : IPythonInstaller
 {
     private const string PythonFolderName = "Python";
+    private const string PythonCacheFolderName = "PythonCache";
     private const string UvBinFolderName = "bin";
+    private const string UvToolsFolderName = "uv_tools";
+    private const string UvToolBinFolderName = "uv_bin";
+    private const string UvCacheFolderName = "uv_cache";
+    private const string UvPythonInstallsFolderName = "uv_python_installs";
     private const string InstalledVersionFileName = "installed_version.txt";
     private const string WheelFilePattern = "celbridge-*.whl";
     private const string PythonModuleFolder = "Celbridge.Python";
+    private const string UVExecutableName = "uv";
+    private const string UVExecutableNameWindows = "uv.exe";
+
+    // Generous because the first install on a machine downloads an interpreter and the tool's packages
+    // before it can publish anything.
+    private static readonly TimeSpan ToolInstallTimeout = TimeSpan.FromMinutes(5);
 
     private readonly ILocalFileSystem _fileSystem;
     private readonly ILogger<PythonInstaller> _logger;
     private readonly IAppEnvironment _appEnvironment;
+    private readonly IPythonConfigService _pythonConfigService;
 
     private readonly object _installLock = new();
     private Task<Result<string>>? _installTask;
@@ -26,16 +39,35 @@ public class PythonInstaller : IPythonInstaller
     public PythonInstaller(
         ILocalFileSystem fileSystem,
         ILogger<PythonInstaller> logger,
-        IAppEnvironment appEnvironment)
+        IAppEnvironment appEnvironment,
+        IPythonConfigService pythonConfigService)
     {
         _fileSystem = fileSystem;
         _logger = logger;
         _appEnvironment = appEnvironment;
+        _pythonConfigService = pythonConfigService;
     }
 
     public string PythonFolderPath => Path.Combine(_appEnvironment.LocalApplicationDataFolderPath, PythonFolderName);
 
     public string UvBinFolderPath => Path.Combine(PythonFolderPath, UvBinFolderName);
+
+    public string UvToolBinFolderPath => Path.Combine(PythonFolderPath, UvToolBinFolderName);
+
+    private string UvToolsFolderPath => Path.Combine(PythonFolderPath, UvToolsFolderName);
+
+    // uv's download cache and the interpreters it manages, shared by the installed tool and by every
+    // project. Outside the Python folder, which a reinstall deletes wholesale: nothing here is described
+    // by an install, so keeping it means a rebuilt wheel costs no downloads.
+    private string PythonCacheFolderPath => Path.Combine(_appEnvironment.LocalApplicationDataFolderPath, PythonCacheFolderName);
+
+    public string UvCacheFolderPath => Path.Combine(PythonCacheFolderPath, UvCacheFolderName);
+
+    public string UvPythonInstallFolderPath => Path.Combine(PythonCacheFolderPath, UvPythonInstallsFolderName);
+
+    private string UvExecutablePath => Path.Combine(
+        UvBinFolderPath,
+        OperatingSystem.IsWindows() ? UVExecutableNameWindows : UVExecutableName);
 
     public Task<Result<string>> InstallPythonAsync(string appVersion)
     {
@@ -158,14 +190,10 @@ public class PythonInstaller : IPythonInstaller
         // still triggers reinstalls on app updates.
         var wheelHash = "";
         var assetsFolder = _appEnvironment.GetBundledAssetPath(PythonModuleFolder, "Assets/Python");
-        var enumerateFilesResult = await _fileSystem.EnumerateAsync(assetsFolder, WheelFilePattern, recursive: false);
-        if (enumerateFilesResult.IsSuccess)
+        var findWheelResult = await FindWheelFileAsync(assetsFolder);
+        if (findWheelResult.IsSuccess)
         {
-            var wheelFile = enumerateFilesResult.Value.FirstOrDefault(entry => !entry.IsFolder);
-            if (wheelFile is not null)
-            {
-                wheelHash = await FileHashHelper.HashFileContentsAsync(wheelFile.FullPath);
-            }
+            wheelHash = await FileHashHelper.HashFileContentsAsync(findWheelResult.Value);
         }
 
         return $"{appVersion}\n{wheelHash}";
@@ -202,12 +230,125 @@ public class PythonInstaller : IPythonInstaller
         var pythonAssetsPath = _appEnvironment.GetBundledAssetPath(PythonModuleFolder, "Assets/Python");
         await CopyBundledFolderAsync(pythonAssetsPath, pythonFolderPath);
 
+        await InstallCelbridgeToolAsync(pythonFolderPath);
+
         // Write the version file after successful install.
         // This signals that the install completed successfully and includes both the app
         // version and the build version so that changes to either trigger a reinstall.
         var versionFile = Path.Combine(pythonFolderPath, InstalledVersionFileName);
         var versionContent = await GetVersionContentAsync(currentVersion);
         await _fileSystem.WriteAllTextAsync(versionFile, versionContent);
+    }
+
+    // Publishes the celbridge-py command from the wheel that was just copied in. One environment for the
+    // application: it only runs the bootstrap shim, and the interpreter and packages the REPL imports come
+    // from the inner uv run that shim performs, so nothing here varies by project.
+    //
+    // A fixed interpreter version, so the version marker fully describes what is installed. The version the
+    // REPL runs on is chosen by that inner uv run.
+    private async Task InstallCelbridgeToolAsync(string pythonFolderPath)
+    {
+        var findWheelResult = await FindWheelFileAsync(pythonFolderPath);
+        if (findWheelResult.IsFailure)
+        {
+            throw new InvalidOperationException(
+                $"Failed to find the celbridge wheel to install as a tool: {findWheelResult.FirstErrorMessage}");
+        }
+        var celbridgeWheelPath = findWheelResult.Value;
+
+        var pythonVersion = _pythonConfigService.DefaultPythonVersion;
+
+        _logger.LogInformation("Installing celbridge as a uv tool with Python {PythonVersion}", pythonVersion);
+
+        var uvExePath = UvExecutablePath;
+        var processStartInfo = new ProcessStartInfo
+        {
+            FileName = uvExePath,
+            WorkingDirectory = UvBinFolderPath,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
+        };
+
+        var toolInstallArguments = new[]
+        {
+            "tool",
+            "install",
+            "--force",
+            "--python", pythonVersion,
+            "--managed-python",
+            celbridgeWheelPath,
+        };
+        foreach (var argument in toolInstallArguments)
+        {
+            processStartInfo.ArgumentList.Add(argument);
+        }
+
+        _logger.LogDebug("uv tool install command: {FileName} {Arguments}", uvExePath, string.Join(' ', toolInstallArguments));
+
+        processStartInfo.Environment["UV_TOOL_DIR"] = UvToolsFolderPath;
+        processStartInfo.Environment["UV_TOOL_BIN_DIR"] = UvToolBinFolderPath;
+        processStartInfo.Environment["UV_PYTHON_INSTALL_DIR"] = UvPythonInstallFolderPath;
+        processStartInfo.Environment["UV_CACHE_DIR"] = UvCacheFolderPath;
+
+        var installTimer = Stopwatch.StartNew();
+
+        using var process = Process.Start(processStartInfo);
+        if (process is null)
+        {
+            throw new InvalidOperationException($"Failed to start uv at '{uvExePath}'");
+        }
+
+        var stdoutTask = process.StandardOutput.ReadToEndAsync();
+        var stderrTask = process.StandardError.ReadToEndAsync();
+
+        using var timeoutCancellation = new CancellationTokenSource(ToolInstallTimeout);
+        try
+        {
+            await process.WaitForExitAsync(timeoutCancellation.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            process.Kill(entireProcessTree: true);
+
+            throw new InvalidOperationException(
+                $"uv tool install timed out after {ToolInstallTimeout.TotalMinutes} minutes");
+        }
+
+        var stdout = await stdoutTask;
+        var stderr = await stderrTask;
+
+        // Throws rather than leaving the marker unwritten and the folder half-built, so the failure reads
+        // as an install failure instead of an unrelated Python traceback at the first console launch.
+        if (process.ExitCode != 0)
+        {
+            _logger.LogError("uv tool install exited with code {ExitCode} after {DurationMs}ms. Stderr: {Stderr}. Stdout: {Stdout}",
+                process.ExitCode, installTimer.ElapsedMilliseconds, stderr, stdout);
+
+            throw new InvalidOperationException(
+                $"uv tool install exited with code {process.ExitCode}. {stderr.Trim()}");
+        }
+
+        _logger.LogInformation("celbridge tool installed successfully in {DurationMs}ms", installTimer.ElapsedMilliseconds);
+    }
+
+    private async Task<Result<string>> FindWheelFileAsync(string folderPath)
+    {
+        var enumerateFilesResult = await _fileSystem.EnumerateAsync(folderPath, WheelFilePattern, recursive: false);
+        if (enumerateFilesResult.IsFailure)
+        {
+            return Result<string>.Fail($"Error searching for the celbridge wheel in '{folderPath}'")
+                .WithErrors(enumerateFilesResult);
+        }
+
+        var wheelFile = enumerateFilesResult.Value.FirstOrDefault(entry => !entry.IsFolder);
+        if (wheelFile is null)
+        {
+            return Result<string>.Fail($"No celbridge wheel found in '{folderPath}'");
+        }
+
+        return Result<string>.Ok(wheelFile.FullPath);
     }
 
     // Returns the uv release archive filename for the running OS and architecture, matching the DownloadUv

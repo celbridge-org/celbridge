@@ -46,7 +46,8 @@
     <UvDownloadUrl>https://github.com/astral-sh/uv/releases/download/$(UvVersion)/$(UvZipFileName)</UvDownloadUrl>
   </PropertyGroup>
 
-  <Target Name="DownloadUv" BeforeTargets="Build" Condition="!Exists('$(UvZipPath)') AND '$(UvPlatform)' != ''">
+  <Target Name="DownloadUv" BeforeTargets="Build"
+          Condition="!Exists('$(UvZipPath)') AND '$(UvPlatform)' != '' AND '$(DesignTimeBuild)' != 'true'">
     <Message Text="Downloading uv $(UvVersion) for $(UvPlatform)..." Importance="high" />
     <MakeDir Directories="$(UvAssetFolder)" />
     <DownloadFile SourceUrl="$(UvDownloadUrl)" DestinationFolder="$(UvAssetFolder)" DestinationFileName="$(UvZipFileName)" />
@@ -57,11 +58,12 @@
     <PythonPackageFolder>$(MSBuildThisFileDirectory)packages\celbridge</PythonPackageFolder>
     <PythonAssetsFolder>$(MSBuildThisFileDirectory)Assets\Python</PythonAssetsFolder>
     <PythonWheelPath>$(PythonAssetsFolder)\celbridge-0.1.0-py3-none-any.whl</PythonWheelPath>
-    <!-- The wheel is platform independent, so one head per OS builds it and the rest consume it. -->
-    <PythonWheelTargetFramework Condition="$([MSBuild]::IsOSPlatform('Windows'))">net10.0-windows10.0.22621</PythonWheelTargetFramework>
-    <PythonWheelTargetFramework Condition="'$(PythonWheelTargetFramework)' == ''">net10.0-desktop</PythonWheelTargetFramework>
-    <PythonLauncher Condition="$([MSBuild]::IsOSPlatform('Windows'))">python</PythonLauncher>
-    <PythonLauncher Condition="'$(PythonLauncher)' == ''">python3</PythonLauncher>
+    <!-- The wheel is built by the uv this project already downloads, so no build depends on a system
+         Python. Extracted outside Assets, which ships to the app: the archive belongs there, the
+         binaries unpacked from it do not. -->
+    <UvBuildFolder>$(MSBuildThisFileDirectory)obj\uv</UvBuildFolder>
+    <UvBuildExecutable Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(UvBuildFolder)\uv.exe</UvBuildExecutable>
+    <UvBuildExecutable Condition="'$(UvBuildExecutable)' == ''">$(UvBuildFolder)/uv</UvBuildExecutable>
   </PropertyGroup>
 
   <ItemGroup>
@@ -69,20 +71,38 @@
     <PythonSourceFiles Include="$(PythonPackageFolder)\pyproject.toml" />
   </ItemGroup>
 
-  <!-- Rebuild the wheel via build.py before content target paths are assigned. A machine with no Python
-       new enough to build the package keeps the committed wheel and gets a warning, so no build depends
-       on a system Python being installed. Skipped during design-time builds so editing Python source in
-       Visual Studio does not invoke pip. -->
-  <Target Name="BuildPythonWheel" BeforeTargets="AssignTargetPaths"
-          Inputs="@(PythonSourceFiles)" Outputs="$(PythonWheelPath)"
-          Condition="'$(TargetFramework)' == '$(PythonWheelTargetFramework)' AND '$(DesignTimeBuild)' != 'true'">
-    <Message Text="Building celbridge Python wheel via build.py..." Importance="high" />
-    <Exec Command="$(PythonLauncher) &quot;$(MSBuildThisFileDirectory)build.py&quot;" ContinueOnError="true">
-      <Output TaskParameter="ExitCode" PropertyName="PythonWheelExitCode" />
-    </Exec>
-    <Warning Condition="'$(PythonWheelExitCode)' != '0'"
-             Text="Python sources changed but the celbridge wheel could not be rebuilt, so the committed wheel is being used and is now stale. Install Python 3.10 or later to rebuild it here." />
+  <!-- tar reads both archives uv publishes. The tarball nests its binaries under a folder named after the
+       archive, which the Windows zip does not. -->
+  <Target Name="ExtractUv" DependsOnTargets="DownloadUv"
+          Inputs="$(UvZipPath)" Outputs="$(UvBuildExecutable)"
+          Condition="'$(DesignTimeBuild)' != 'true'">
+    <Error Condition="'$(UvPlatform)' == ''"
+           Text="The celbridge wheel is built through uv, and uv publishes no release for this platform, so the wheel cannot be built here." />
+    <MakeDir Directories="$(UvBuildFolder)" />
+    <Exec Command="tar -xf &quot;$(UvZipPath)&quot; -C &quot;$(UvBuildFolder)&quot;"
+          Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
+    <Exec Command="tar -xzf &quot;$(UvZipPath)&quot; --strip-components=1 -C &quot;$(UvBuildFolder)&quot;"
+          Condition="!$([MSBuild]::IsOSPlatform('Windows'))" />
   </Target>
+
+  <!-- Skipped during design-time builds so editing Python source in Visual Studio does not invoke uv.
+       The condition sits here rather than on the two targets that hook this one into a build, because
+       DependsOnTargets runs a target before the depending target's own condition is evaluated. -->
+  <Target Name="BuildCelbridgeWheel" DependsOnTargets="ExtractUv"
+          Inputs="@(PythonSourceFiles)" Outputs="$(PythonWheelPath)"
+          Condition="'$(DesignTimeBuild)' != 'true'">
+    <Message Text="Building celbridge Python wheel via build.py..." Importance="high" />
+    <Exec Command="&quot;$(UvBuildExecutable)&quot; run --no-project --managed-python &quot;$(MSBuildThisFileDirectory)build.py&quot; &quot;$(UvBuildExecutable)&quot;" />
+  </Target>
+
+  <!-- The wheel is platform independent and every target framework bundles the same one, so it is built
+       once in the outer multi-targeting pass rather than by a nominated framework that the others, which
+       build in parallel, would race. -->
+  <Target Name="BuildPythonWheelOuter" BeforeTargets="DispatchToInnerBuilds" DependsOnTargets="BuildCelbridgeWheel" />
+
+  <!-- And before content target paths are assigned in an inner build, which is all there is when a head
+       references this project for one framework. Up to date by then if the outer pass ran. -->
+  <Target Name="BuildPythonWheel" BeforeTargets="AssignTargetPaths" DependsOnTargets="BuildCelbridgeWheel" />
 
   <!-- Include the generated wheel as Content before target paths are assigned, so it enters the Uno
        content pipeline exactly once. -->

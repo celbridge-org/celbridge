@@ -70,25 +70,6 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         _messengerService.Register<ResourceCreatedMessage>(this, OnResourceCreated);
     }
 
-    public bool HasRunningSessions
-    {
-        get
-        {
-            lock (_sessionsLock)
-            {
-                foreach (var session in _sessions.Values)
-                {
-                    if (session.State == ConsoleSessionRunState.Running)
-                    {
-                        return true;
-                    }
-                }
-            }
-
-            return false;
-        }
-    }
-
     public async Task EnsureStartedAsync(ResourceKey resource)
     {
         var session = GetOrCreateSession(resource);
