@@ -185,4 +185,4 @@ Celbridge relies on code from many fantastic open source projects, including:
 * [github-markdown-css](https://github.com/sindresorhus/github-markdown-css/blob/main/license)
 * [fluentui-system-icons](https://github.com/microsoft/fluentui-system-icons)
 
-Celbridge also uses a range of open source NuGet & Python packages, details of which can be found in `THIRD-PARTY-LICENSES.txt`.
+Every third-party component included in Celbridge is listed with its license and copyright notice in `THIRD-PARTY-LICENSES.txt`.
