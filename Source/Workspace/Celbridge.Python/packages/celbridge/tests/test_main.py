@@ -3,11 +3,13 @@
 import pytest
 
 from celbridge.__main__ import (
+    CONFLICTING_UV_VARIABLE,
     DIAGNOSTIC_OSC_CODE,
     ResolvedLaunch,
     _build_bootstrap_command,
     _build_exec_lines,
     _build_probe_command,
+    _build_uv_environment,
     _emit_diagnostic,
     _resolve_launch,
     _resolve_rpc_port,
@@ -96,10 +98,12 @@ def test_build_bootstrap_command_builds_full_uv_run_command():
     environ = {
         "CELBRIDGE_UV": "/apps/python/uv",
         "CELBRIDGE_WHEEL": "/apps/python/celbridge-0.1.0-py3-none-any.whl",
+        "CELBRIDGE_UV_CACHE_DIR": "/project/.celbridge/python/uv_cache",
     }
     command = _build_bootstrap_command(resolved, environ)
     assert command == [
         "/apps/python/uv", "run",
+        "--cache-dir", "/project/.celbridge/python/uv_cache",
         "--offline",
         "--no-project",
         "--python", "3.13",
@@ -112,7 +116,7 @@ def test_build_bootstrap_command_builds_full_uv_run_command():
 
 
 def test_build_bootstrap_command_omits_absent_options():
-    """Test that offline and python version are omitted when not provided."""
+    """Test that cache dir, offline, and python version are omitted when not provided."""
     resolved = ResolvedLaunch(None, ["requests"], False, [])
     environ = {
         "CELBRIDGE_UV": "/apps/python/uv",
@@ -143,10 +147,12 @@ def test_build_probe_command_forces_offline_with_a_no_op_payload():
     environ = {
         "CELBRIDGE_UV": "/apps/python/uv",
         "CELBRIDGE_WHEEL": "/apps/python/celbridge-0.1.0-py3-none-any.whl",
+        "CELBRIDGE_UV_CACHE_DIR": "/project/.celbridge/python/uv_cache",
     }
     command = _build_probe_command(resolved, environ)
     assert command == [
         "/apps/python/uv", "run",
+        "--cache-dir", "/project/.celbridge/python/uv_cache",
         "--offline",
         "--no-project",
         "--python", "3.13",
@@ -170,6 +176,24 @@ def test_build_probe_command_matches_the_launch_it_measures():
     payload_index = probe.index("python")
     assert probe[:payload_index] == launch[:payload_index]
     assert probe[payload_index:] == ["python", "-c", ""]
+
+
+def test_build_uv_environment_drops_the_variable_uv_refuses():
+    """Test that a profile-set python preference is kept away from uv, which rejects it outright."""
+    environ = {CONFLICTING_UV_VARIABLE: "only-managed", "UV_CACHE_DIR": "/project/uv_cache"}
+
+    environment = _build_uv_environment(environ)
+
+    assert CONFLICTING_UV_VARIABLE not in environment
+    assert environment["UV_CACHE_DIR"] == "/project/uv_cache"
+    assert CONFLICTING_UV_VARIABLE in environ
+
+
+def test_build_uv_environment_copies_an_environment_without_it():
+    """Test that an environment that never set the variable is passed through unchanged."""
+    environ = {"UV_CACHE_DIR": "/project/uv_cache"}
+
+    assert _build_uv_environment(environ) == environ
 
 
 def test_emit_diagnostic_writes_a_private_osc_sequence(capsys):

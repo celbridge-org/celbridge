@@ -63,6 +63,19 @@ public class ToolInstallPolicyTests
     }
 
     [Test]
+    public void RunningSessions_DoNotDeferAToolThatWasNeverInstalled()
+    {
+        // Opening a shell console before the first python console in a project. Deferring here would hand
+        // the python console a celbridge-py that does not exist, and nothing would install it later.
+        var decision = ToolInstallPolicy.Decide(
+            ToolEnvironmentHealth.Missing,
+            wheelHashChanged: true,
+            hasRunningSessions: true);
+
+        decision.Should().Be(ToolInstallDecision.Install);
+    }
+
+    [Test]
     public void RunningSessions_DoNotAffectAToolThatIsAlreadyCurrent()
     {
         var decision = ToolInstallPolicy.Decide(

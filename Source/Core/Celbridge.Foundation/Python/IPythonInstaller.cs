@@ -12,6 +12,12 @@ public interface IPythonInstaller
     string PythonFolderPath { get; }
 
     /// <summary>
+    /// The absolute path of the folder holding the uv and uvx executables, whether or not they are
+    /// installed yet. Holds executables alone, so it is safe to put on a child process PATH.
+    /// </summary>
+    string UvBinFolderPath { get; }
+
+    /// <summary>
     /// Ensures the Python support files are installed for the given app version,
     /// performing a full reinstall if the on-disk version marker is missing or
     /// differs from the bundled assets. Returns the absolute path to the Python
