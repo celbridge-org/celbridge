@@ -216,7 +216,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 
                 var viewModelItem = ViewModel.AddItem(itemId, panelView.FocusIdentity);
                 BindButton(railButton, viewModelItem);
-                railButton.Click += (sender, e) => ShowUtility(itemId);
+                railButton.Click += (sender, e) => OnUtilityButtonClick(viewModelItem);
 
                 _contentControls[itemId] = CreateContentHost(panelView);
                 _focusActions[itemId] = panelView.FocusPanel;
@@ -268,6 +268,19 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         ContentArea.Children.Add(contentControl);
 
         return contentControl;
+    }
+
+    // A lit button is the utility the open panel is showing, so clicking it collapses the panel. Any other
+    // utility button shows its utility.
+    private void OnUtilityButtonClick(UtilityItemViewModel item)
+    {
+        if (item.IsSelected)
+        {
+            HideUtilityPanel();
+            return;
+        }
+
+        ShowUtility(item.Id);
     }
 
     // Opens a shortcut's document in the area it declares. Already open, the command activates its tab.
@@ -454,6 +467,15 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         PresentArea(WorkspaceArea.Utility);
     }
 
+    private void HideUtilityPanel()
+    {
+        _commandService.Execute<ISetAreaVisibilityCommand>(command =>
+        {
+            command.Area = WorkspaceArea.Utility;
+            command.IsVisible = false;
+        });
+    }
+
     // Reveals a collapsed area, so presenting something in it puts it on screen. Main is never collapsed,
     // which is the no-op case.
     private void PresentArea(WorkspaceArea area)
@@ -478,10 +500,12 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         // returns to it.
         ViewModel.SetPanelVisible(isPanelVisible);
 
-        // Every area reports through this message, so one about the Bottom or Side area says nothing about
-        // a reveal still waiting on the panel.
         if (!isPanelVisible)
         {
+            HandKeyboardToDocuments();
+
+            // Every area reports through this message, so one about the Bottom or Side area says nothing
+            // about a reveal still waiting on the panel.
             return;
         }
 
@@ -504,6 +528,23 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
                     ShowUtilityInPanel(revealedUtilityId);
                 }
             });
+    }
+
+    // A collapsed utility cannot take keys, and the platform would otherwise move the keyboard to whichever
+    // chrome control it finds next, so a utility holding the keyboard hands it to the active document.
+    private void HandKeyboardToDocuments()
+    {
+        var focusedPanel = _focusService.FocusedPanel;
+        bool isKeyboardInPanel = focusedPanel == FocusPanelId.Explorer
+            || focusedPanel == FocusPanelId.Search
+            || focusedPanel == FocusPanelId.CustomUtility;
+
+        if (!isKeyboardInPanel)
+        {
+            return;
+        }
+
+        _focusService.RefocusPanel(FocusPanelId.Documents);
     }
 
     // Makes the utility the one the panel shows and shows its content. takeFocus carries the keyboard to it,
