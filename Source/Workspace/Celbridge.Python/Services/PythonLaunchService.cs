@@ -60,10 +60,8 @@ public sealed class PythonLaunchService : IPythonLaunchService
     private const int LoginShellPathTimeoutMs = 5000;
 
     private const string CelbridgeToolCommand = "celbridge-py";
-    private const string UVExecutableName = "uv";
-    private const string UVExecutableNameWindows = "uv.exe";
-    private const string UVToolsFolderName = "uv_tools";
-    private const string UVBinFolderName = "uv_bin";
+    private const string ProjectUvToolsFolderName = "uv_tools";
+    private const string ProjectUvBinFolderName = "uv_bin";
     private const string IPythonProfileFolderName = "ipython";
 
     private readonly IAppEnvironment _environmentService;
@@ -99,13 +97,9 @@ public sealed class PythonLaunchService : IPythonLaunchService
         _projectService.CurrentProject!.ProjectDataFolderPath,
         ProjectConstants.PythonFolder);
 
-    private string ProjectUVBinFolder => Path.Combine(ProjectPythonFolder, UVBinFolderName);
+    private string ProjectUvBinFolder => Path.Combine(ProjectPythonFolder, ProjectUvBinFolderName);
 
-    private string ProjectUVToolsFolder => Path.Combine(ProjectPythonFolder, UVToolsFolderName);
-
-    private string UvExecutablePath => Path.Combine(
-        _pythonInstaller.UvBinFolderPath,
-        OperatingSystem.IsWindows() ? UVExecutableNameWindows : UVExecutableName);
+    private string ProjectUvToolsFolder => Path.Combine(ProjectPythonFolder, ProjectUvToolsFolderName);
 
     public async Task<Result<PythonStartupResult>> BuildStartupAsync(PythonLaunchRequest request)
     {
@@ -122,13 +116,11 @@ public sealed class PythonLaunchService : IPythonLaunchService
                 .WithErrors(installResult);
         }
 
-        var uvExePath = UvExecutablePath;
-        var uvExeInfoResult = await _fileSystem.GetInfoAsync(uvExePath);
-        var uvExeExists = uvExeInfoResult.IsSuccess
-            && uvExeInfoResult.Value.Kind == StorageItemKind.File;
-        if (!uvExeExists)
+        var resolveUvResult = await ResolveUvExecutableAsync();
+        if (resolveUvResult.IsFailure)
         {
-            return Result<PythonStartupResult>.Fail($"uv not found at '{uvExePath}'");
+            return Result<PythonStartupResult>.Fail("Failed to resolve uv for the Python console")
+                .WithErrors(resolveUvResult);
         }
 
         // Filter blank entries, so a stray blank line cannot reach uv as an empty package specifier.
@@ -165,8 +157,9 @@ public sealed class PythonLaunchService : IPythonLaunchService
         var resolvedBase = string.IsNullOrEmpty(basePath) ? ResolveChildProcessBasePath() : basePath;
 
         // The app's folders are prepended last, so they outrank the project's. A project can hold a
-        // celbridge-py of its own, and a stale shim ahead of the installed one would be found first.
-        var consolePath = PrependPathFolder(resolvedBase, ProjectUVBinFolder);
+        // celbridge-py of its own, and a stale shim ahead of the installed one would be found first. Each
+        // folder is moved to the front even when the inherited PATH already carried it.
+        var consolePath = PrependPathFolder(resolvedBase, ProjectUvBinFolder);
         consolePath = PrependPathFolder(consolePath, _pythonInstaller.UvToolBinFolderPath);
 
         return PrependPathFolder(consolePath, _pythonInstaller.UvBinFolderPath);
@@ -211,16 +204,14 @@ public sealed class PythonLaunchService : IPythonLaunchService
         var uvCacheDir = _pythonInstaller.UvCacheFolderPath;
 
         // uv's own variables, so a uv the user types in a console works against the same folders the
-        // console's own Python does. A console can override any of them. The cache and the interpreter
-        // store are the application's, shared by every project; each REPL still gets its own environment
-        // from the inner uv run, so what a project imports is its own. The tool folders are the project's,
-        // and hold whatever the user installs here.
+        // console's own Python does. A console can override any of them. Sharing the cache does not share
+        // imports: each REPL still gets its own environment from the inner uv run.
         var environment = new Dictionary<string, string>
         {
             ["UV_CACHE_DIR"] = uvCacheDir,
             ["UV_PYTHON_INSTALL_DIR"] = _pythonInstaller.UvPythonInstallFolderPath,
-            ["UV_TOOL_DIR"] = ProjectUVToolsFolder,
-            ["UV_TOOL_BIN_DIR"] = ProjectUVBinFolder,
+            ["UV_TOOL_DIR"] = ProjectUvToolsFolder,
+            ["UV_TOOL_BIN_DIR"] = ProjectUvBinFolder,
 
             // A bare uv venv downloads the interpreter it needs into the project. Left to uv's default it
             // would take whatever Python the host happens to carry, which on macOS is Xcode's 3.9. This is
@@ -237,48 +228,41 @@ public sealed class PythonLaunchService : IPythonLaunchService
             ["CELBRIDGE_UV_CACHE_DIR"] = uvCacheDir,
         };
 
-        // The bootstrapper variables: where a typed celbridge-py finds uv and the celbridge wheel when its
-        // launch options make it re-exec through uv. Only set once the support files are installed; before
-        // that no celbridge-py tool exists to consume them.
-        var uvExePath = UvExecutablePath;
-        var uvExeInfoResult = await _fileSystem.GetInfoAsync(uvExePath);
-        var uvExeExists = uvExeInfoResult.IsSuccess
-            && uvExeInfoResult.Value.Kind == StorageItemKind.File;
-        if (uvExeExists)
+        // Where a typed celbridge-py finds uv and the celbridge wheel when its launch options make it
+        // re-exec through uv. Only set once the support files are installed, because before that no
+        // celbridge-py exists to consume them.
+        var resolveUvResult = await ResolveUvExecutableAsync();
+        if (resolveUvResult.IsSuccess)
         {
-            environment["CELBRIDGE_UV"] = uvExePath;
+            environment["CELBRIDGE_UV"] = resolveUvResult.Value;
         }
 
-        var findWheelResult = await FindWheelFileAsync(_pythonInstaller.PythonFolderPath, "celbridge");
-        if (findWheelResult.IsSuccess)
+        var wheelPathResult = await _pythonInstaller.GetInstalledWheelPathAsync();
+        if (wheelPathResult.IsSuccess)
         {
-            environment["CELBRIDGE_WHEEL"] = findWheelResult.Value;
+            environment["CELBRIDGE_WHEEL"] = wheelPathResult.Value;
         }
 
         return environment;
     }
 
-    private async Task<Result<string>> FindWheelFileAsync(string folderPath, string packageName)
+    // The install reports success before this is called, so a missing binary means something removed it
+    // afterwards rather than an install that has not run.
+    private async Task<Result<string>> ResolveUvExecutableAsync()
     {
-        var searchPattern = $"{packageName}-*.whl";
-        var enumerateFilesResult = await _fileSystem.EnumerateAsync(folderPath, searchPattern, recursive: false);
-        if (enumerateFilesResult.IsFailure)
+        var uvExePath = _pythonInstaller.UvExecutablePath;
+
+        var uvExeInfoResult = await _fileSystem.GetInfoAsync(uvExePath);
+        var uvExeExists = uvExeInfoResult.IsSuccess
+            && uvExeInfoResult.Value.Kind == StorageItemKind.File;
+        if (!uvExeExists)
         {
-            return Result<string>.Fail($"Error searching for wheel files for package '{packageName}'")
-                .WithErrors(enumerateFilesResult);
+            return Result<string>.Fail($"uv not found at '{uvExePath}'");
         }
 
-        var wheelFiles = enumerateFilesResult.Value
-            .Where(entry => !entry.IsFolder)
-            .Select(entry => entry.FullPath)
-            .ToList();
-        if (wheelFiles.Count == 0)
-        {
-            return Result<string>.Fail($"No wheel files found for package '{packageName}' in '{folderPath}'");
-        }
-
-        return Result<string>.Ok(wheelFiles[0]);
+        return Result<string>.Ok(uvExePath);
     }
+
 
     // The base PATH for the Python subsystem and terminal child processes. A macOS app launched from
     // Finder inherits only the minimal launchd PATH, so resolve the user's login-shell PATH once and reuse

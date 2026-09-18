@@ -8,8 +8,9 @@ namespace Celbridge.Utilities;
 public static class PathListHelper
 {
     /// <summary>
-    /// Puts a folder at the front of a path list, leaving it where it is when the list already carries it.
-    /// Fails when the folder contains the platform's path separator, which no entry can represent.
+    /// Puts a folder at the front of a path list, moving it there when the list already carries it
+    /// elsewhere. Fails when the folder contains the platform's path separator, which no entry can
+    /// represent.
     /// </summary>
     public static bool TryPrepend(string? pathList, string folder, out string result)
     {
@@ -26,13 +27,16 @@ public static class PathListHelper
             return true;
         }
 
-        var isPresent = pathList
+        // Any existing entry is dropped rather than left alone, so the caller's folder is reached first
+        // whatever the inherited list already held.
+        var remaining = pathList
             .Split(Path.PathSeparator)
-            .Any(entry => string.Equals(entry, folder, PathComparison.Comparison));
+            .Where(entry => !string.Equals(entry, folder, PathComparison.Comparison))
+            .ToList();
 
-        result = isPresent
-            ? pathList
-            : folder + Path.PathSeparator + pathList;
+        result = remaining.Count == 0
+            ? folder
+            : folder + Path.PathSeparator + string.Join(Path.PathSeparator, remaining);
 
         return true;
     }

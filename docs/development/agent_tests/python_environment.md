@@ -24,12 +24,15 @@ project's `.celbridge/python` folder, and the environment a console's shell is s
 | A second project, which has never opened a python console | open a shell console | uv, uvx and celbridge-py all resolve, the last of them out of the application's folder; the project holds no tool environment, cache or interpreter of its own, and its first python console starts without downloading one | 2 |
 | A shell console | create a virtual environment without naming a version, then create one asking for seeded packages | the first takes an interpreter uv manages and never one belonging to the host; the second has a working `pip` | 2 |
 | The version marker deleted and the application relaunched | open a shell console | the support folder is rebuilt and uv resolves again, the rebuild downloads no interpreter because the shared store is untouched, and what it does add to that store is measured rather than assumed | 2 |
+| The celbridge-py command deleted from the support folder, with the version marker left alone | relaunch, then open a console of each type | the log shows the tool republished rather than a full reinstall, the uv binaries are not replaced, and both consoles work | 2 |
 | A python console opened a second time in the same project | open it | the REPL starts from the warm cache without going to the network | 2 |
 | A shell console already running | open a python console, in a project that has run one before and in a project that has not | its REPL works either way | 3 |
 | A console whose own configuration names a different uv cache folder | run uv in that console, then open a python console | the typed uv follows the console's setting; the REPL still resolves from the application's cache | 3 |
 | The project's `.celbridge/python` folder deleted while the application runs | open a console of each type | the folder is rebuilt, both work, and neither goes to the network: nothing that was deleted had to be downloaded | 3 |
 | A project whose folder path contains a space | open a shell console | every folder the environment names arrives intact, and uv resolves | 3 |
 | A shell console | install a small tool with uv | it lands inside the project and runs by name with no change to PATH | 3 |
+| The shared store of interpreters deleted | relaunch, then open a python console | the launch finds the installed command unrunnable and republishes it, and the REPL works again — the one case in this file that costs a download | 3 |
+| Two instances launched together, the second carrying a changed wheel | open a console in each | the two installs do not overlap, and neither leaves a half-built support folder | 3 |
 
 Run the cases in one project, in the order they are listed, and say in the report which project each ran
 in. What a console does here depends on what the consoles before it did — the install is decided per
@@ -56,6 +59,10 @@ console, seconds before the console the case names is opened, and the probe file
 overwritten underneath it. Close what a case does not need before quitting, or read from the log which
 console the install actually ran for.
 
+Opening a console that is already open does not run it again. A restored console has already written its
+file and will not write it a second time, so a case that waits for one reads as a console that never
+started. Give a case its own console document, or close the restored one first.
+
 The log says a launch succeeded some time before the console has one. The line naming the startup command
 is written when that command is composed, not when it runs, so a console that never starts leaves a log
 that reads as healthy. Judge a console by what it produced, not by the launch lines above it.
@@ -63,6 +70,11 @@ that reads as healthy. Judge a console by what it produced, not by the launch li
 The cases that force a reinstall change state outside the project, and the celbridge-py tool is now part
 of what gets rebuilt, so a reinstall costs seconds rather than no time at all. Let a launch rebuild the
 support folder, and confirm from the log that it completed before reading anything else.
+
+A launch has two repairs available and the log names which it chose. A marker that no longer matches
+rebuilds the whole support folder. A marker that matches over a missing command republishes only the tool,
+which is quicker and leaves everything else in place, so a case that expects one and sees the other has
+found something even when both end with a working console.
 
 A reinstall also leaves the shared store larger. The tool's environment is resolved afresh and uv keeps the
 copy it replaced, so measure the store before and after rather than assuming a rebuild is free, and report
@@ -93,7 +105,7 @@ another uv wins. Read the PATH the console actually has before calling it a defe
 | Binary names | `uv`, `uvx` | `uv.exe`, `uvx.exe` |
 | PATH | colon-separated | semicolon-separated, and the variable's name may be spelled in any case — a console that spells it `Path` keeps its entries and gains the uv folders |
 | The host's own Python | an Xcode interpreter is usually present, and a bare virtual environment must never pick it | a Store alias may stand in for `python`, and must likewise never be picked |
-| Reinstalling while a console runs | files delete while in use | an open file can block the delete, and the failure says so rather than leaving a half-built folder |
+| Reinstalling while a console runs | files delete while in use | an open file can block the delete part way through, so the failure names the locked file and the support folder is left incomplete. The marker goes with it, so the next launch rebuilds |
 
 ## Not covered
 

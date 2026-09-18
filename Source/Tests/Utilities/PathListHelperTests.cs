@@ -20,14 +20,14 @@ public class PathListHelperTests
     }
 
     [Test]
-    public void TryPrepend_FolderAlreadyPresent_LeavesListUnchanged()
+    public void TryPrepend_FolderAlreadyPresent_MovesItToTheFront()
     {
-        var pathList = List("/usr/bin", "/app/uv", "/bin");
-
-        PathListHelper.TryPrepend(pathList, "/app/uv", out var result)
+        // The caller's folder has to be reached first, so an entry the inherited list already carried
+        // further down is dropped rather than left to win.
+        PathListHelper.TryPrepend(List("/usr/bin", "/app/uv", "/bin"), "/app/uv", out var result)
             .Should().BeTrue();
 
-        result.Should().Be(pathList);
+        result.Should().Be(List("/app/uv", "/usr/bin", "/bin"));
     }
 
     [Test]
@@ -99,7 +99,7 @@ public class PathListHelperTests
         var isCaseInsensitive = PathComparison.Comparison == StringComparison.OrdinalIgnoreCase;
 
         result.Should().Be(isCaseInsensitive
-            ? List("/APP/UV")
+            ? List("/app/uv")
             : List("/app/uv", "/APP/UV"));
     }
 }

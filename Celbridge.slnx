@@ -43,6 +43,7 @@
     <Project Path="Source/Workspace/Celbridge.Packages/Celbridge.Packages.csproj" />
     <Project Path="Source/Workspace/Celbridge.ProjectSettings/Celbridge.ProjectSettings.csproj" />
     <Project Path="Source/Workspace/Celbridge.Python/Celbridge.Python.csproj" />
+    <Project Path="Source/Workspace/Celbridge.Python.Assets/Celbridge.Python.Assets.csproj" />
     <Project Path="Source/Workspace/Celbridge.Resources/Celbridge.Resources.csproj" />
     <Project Path="Source/Workspace/Celbridge.Search/Celbridge.Search.csproj" />
     <Project Path="Source/Workspace/Celbridge.Workspace/Celbridge.Workspace.csproj" />

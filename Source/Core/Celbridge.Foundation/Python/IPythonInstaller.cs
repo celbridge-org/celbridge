@@ -18,6 +18,11 @@ public interface IPythonInstaller
     string UvBinFolderPath { get; }
 
     /// <summary>
+    /// The absolute path of the uv executable, whether or not it is installed yet.
+    /// </summary>
+    string UvExecutablePath { get; }
+
+    /// <summary>
     /// The absolute path of the folder holding the celbridge-py command published by the tool install,
     /// whether or not it is installed yet. Holds executables alone, so it is safe to put on a child
     /// process PATH.
@@ -25,22 +30,27 @@ public interface IPythonInstaller
     string UvToolBinFolderPath { get; }
 
     /// <summary>
-    /// The absolute path of uv's package cache, shared by the installed tool and by every project. Kept
-    /// out of the folder an install rebuilds, so a reinstall never costs a download.
+    /// The absolute path of uv's package cache, shared by the installed tool and by every project.
     /// </summary>
     string UvCacheFolderPath { get; }
 
     /// <summary>
     /// The absolute path of the store of interpreters uv manages, shared by the installed tool and by
-    /// every project. Kept out of the folder an install rebuilds.
+    /// every project.
     /// </summary>
     string UvPythonInstallFolderPath { get; }
 
     /// <summary>
-    /// Ensures the Python support files are installed for the given app version,
-    /// performing a full reinstall if the on-disk version marker is missing or
-    /// differs from the bundled assets. Returns the absolute path to the Python
-    /// folder on success. Concurrent callers share a single install run.
+    /// Ensures the Python support files are installed for the given app version, performing a full
+    /// reinstall if the on-disk version marker is missing or differs from the bundled assets, and
+    /// republishing the celbridge-py tool if only that is missing. Concurrent callers share a single
+    /// install run.
     /// </summary>
-    Task<Result<string>> InstallPythonAsync(string appVersion);
+    Task<Result> InstallPythonAsync(string appVersion);
+
+    /// <summary>
+    /// The absolute path of the celbridge wheel in the installed support folder. Fails if no install has
+    /// completed.
+    /// </summary>
+    Task<Result<string>> GetInstalledWheelPathAsync();
 }

@@ -210,6 +210,13 @@ PublishScripts/
 # Celbridge source code folders named Packages
 !Source/Core/Celbridge.Foundation/Packages/*
 !Source/Tests/Packages/*
+# The celbridge Python package. Its wheel is generated rather than committed, so a source the rule above
+# swallowed would reach no other machine at all.
+!Source/Workspace/Celbridge.Python/packages/*
+Source/Workspace/Celbridge.Python/packages/celbridge/build/
+Source/Workspace/Celbridge.Python/packages/celbridge/src/*.egg-info/
+Source/Workspace/Celbridge.Python/packages/celbridge/.pytest_cache/
+Source/Workspace/Celbridge.Python/packages/celbridge/.ruff_cache/
 # Uncomment if necessary however generally it will be regenerated when needed
 #!**/[Pp]ackages/repositories.config
 # NuGet v3's project.json files produces more ignorable files
@@ -442,6 +449,7 @@ Source/Core/Celbridge.WebHost/Web/celbridge-client/celbridge-tokens.css
 # UV binary (downloaded during build from GitHub releases, and extracted to obj/ to build the wheel)
 Source/Workspace/Celbridge.Python/Assets/UV/*.zip
 Source/Workspace/Celbridge.Python/Assets/UV/*.tar.gz
+Source/Workspace/Celbridge.Python/Assets/UV/uv_version.txt
 
 # Celbridge Python wheel (built during the build from packages/celbridge)
 Source/Workspace/Celbridge.Python/Assets/Python/*.whl

@@ -29,7 +29,7 @@ Two corollaries follow, and most of the layout below exists to serve them:
 | Location | Holds | Lifetime |
 |---|---|---|
 | `<app data>/Python/` | `bin/` (uv, uvx), the wheel, `uv_tools/` (the celbridge-py environment), `uv_bin/` (the celbridge-py command), `installed_version.txt` | Deleted and rebuilt whenever the marker mismatches |
-| `<app data>/PythonCache/` | `uv_cache/`, `uv_python_installs/` | Never deleted by an install. Shared by the tool and by every project |
+| `<app data>/PythonCache/` | `uv_cache/`, `uv_python_installs/` | Never deleted by an install, and never safe to delete by hand. Shared by the tool and by every project |
 | `<project>/.celbridge/python/` | `ipython/` (the profile), `uv_tools/` and `uv_bin/` (tools the **user** installs in this project) | Belongs to the project; safe to delete at any time |
 
 `<app data>` is `ApplicationData.Current.LocalFolder` on packaged Windows, which the OS removes on
@@ -38,8 +38,13 @@ uninstall, and `~/Library/Application Support/Celbridge/` elsewhere.
 The cache and the interpreter store are shared rather than per-project. They hold downloaded artifacts
 addressed by content and by interpreter version — nothing a project owns — and each REPL still gets its
 own environment from the inner `uv run`, so what a project imports is unaffected. Per-project copies were
-how these were once kept safe from a reinstall that deleted the whole folder; the folder split does that
+how these were once kept safe from a reinstall that deleted the whole folder. The folder split does that
 now, at a measured 50 MB of interpreter and 99–256 MB of cache saved per project.
+
+Shared does not mean disposable. The installed `celbridge-py` runs on an interpreter in
+`uv_python_installs/`, and every REPL launch resolves its environment out of `uv_cache/`, so emptying
+either breaks a working install. The install checks that interpreter before treating a matching marker as
+current, and reinstalls when it has gone.
 
 `UV_TOOL_DIR` and `UV_TOOL_BIN_DIR` still point into the project. They are the user's: a `uv tool install`
 typed in a console lands in the project rather than on the machine.
@@ -49,8 +54,10 @@ typed in a console lands in the project rather than on the machine.
 This is the part that surprises people, and the reason "I changed a script and nothing happened" is
 usually a question about *which* of these was stale.
 
-1. **The tool environment**, `Python/uv_tools/celbridge/`. Runs the bootstrap shim
-   (`celbridge/__main__.py`) and nothing else. Refreshed by the install.
+1. **The tool environment**, `Python/uv_tools/celbridge/`. Refreshed by the install. A python console
+   passes launch options, which make `__main__.py` re-exec through uv, so this environment only runs the
+   shim. A bare `celbridge-py` typed in a shell console passes none, does not re-exec, and runs IPython
+   and the `celbridge` package from here.
 2. **The uv cache archive**, `PythonCache/uv_cache/archive-v0/<id>/`. This is what the REPL actually
    imports. The shim re-execs `uv run --with <wheel>`, and uv revalidates that wheel and builds a new
    archive when its bytes change. A running REPL reports its own module path here, not in the tool
@@ -93,16 +100,20 @@ PATH the console actually has first.
 
 ## The build
 
-The wheel is generated, not committed, and `Assets/Python/*.whl` is gitignored. `build.py` runs
-`uv build`, using the uv the project downloads and extracts to `obj/uv`, so building needs no Python on
-the machine. A failed wheel build fails the build.
+Both bundled assets are generated rather than committed, and both are gitignored: the uv release archive
+under `Assets/UV/` and the wheel under `Assets/Python/`. `Celbridge.Python.Assets` produces them.
+`build.py` runs `uv build` using the uv that project downloads, so building needs no Python on the
+machine. A failed build fails the build.
 
-A build that wants the assembly and not the asset opts out with `-p:SkipCelbridgeWheelBuild=true`;
-CI's unit test job does, because no test reads the wheel. Building either app head builds it.
+That is a separate project because `Celbridge.Python` multi-targets and its inner builds run in parallel,
+which had several of them downloading and extracting uv, and running `build.py`, over the same files at
+the same time. `Celbridge.Python.Assets` has one target framework, so it runs once however many
+frameworks reference it — the same shape as `Celbridge.Templates`.
 
-The wheel is built once in the outer multi-targeting pass, before the inner framework builds start. They
-run in parallel and all of them bundle the same wheel, so a single nominated framework would be a race
-now that the file is not in the repository.
+A build that wants the assembly and not the assets opts out with `-p:SkipPythonAssets=true`, which CI's
+unit test job passes because no test reads either asset. The build then warns that its output cannot run
+Python. Anything that has to launch leaves the property unset, and a missing asset fails the build rather
+than surfacing at the first console launch.
 
 ## Investigating
 

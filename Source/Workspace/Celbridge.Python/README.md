@@ -6,7 +6,7 @@ Celbridge workspace project that manages the Python connector. Builds the `celbr
 
 The Celbridge .NET application starts a TCP JSON-RPC server and launches a terminal process with the `CELBRIDGE_RPC_PORT` environment variable set. The Python connector reads this variable, connects to the server, and launches an IPython REPL with the `cel` proxy injected.
 
-The `celbridge-py` command is installed as a uv tool, so users can type `celbridge-py` in the terminal to start a new REPL session after exiting. It is installed once per application, alongside uv and the wheel, because the environment it lives in only runs the bootstrap shim: the interpreter and packages the REPL imports come from an inner `uv run` against the open project's own cache.
+The `celbridge-py` command is installed as a uv tool, so users can type `celbridge-py` in the terminal to start a new REPL session after exiting. It is installed once per application, alongside uv and the wheel, because the environment it lives in only runs the bootstrap shim: the interpreter and packages the REPL imports come from an inner `uv run` against the application's shared cache.
 
 ## Package
 
