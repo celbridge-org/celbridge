@@ -210,13 +210,12 @@ PublishScripts/
 # Celbridge source code folders named Packages
 !Source/Core/Celbridge.Foundation/Packages/*
 !Source/Tests/Packages/*
-# The celbridge Python package. Its wheel is generated rather than committed, so a source the rule above
-# swallowed would reach no other machine at all.
+# The celbridge Python packages. The rule above would swallow their sources, and the wheel built from
+# them is generated rather than committed, so a swallowed source reaches no other machine at all. The two
+# lines after it re-ignore the build artefacts that un-ignoring the packages exposes.
 !Source/Workspace/Celbridge.Python/packages/*
-Source/Workspace/Celbridge.Python/packages/celbridge/build/
-Source/Workspace/Celbridge.Python/packages/celbridge/src/*.egg-info/
-Source/Workspace/Celbridge.Python/packages/celbridge/.pytest_cache/
-Source/Workspace/Celbridge.Python/packages/celbridge/.ruff_cache/
+Source/Workspace/Celbridge.Python/packages/*/build/
+Source/Workspace/Celbridge.Python/packages/*/src/*.egg-info/
 # Uncomment if necessary however generally it will be regenerated when needed
 #!**/[Pp]ackages/repositories.config
 # NuGet v3's project.json files produces more ignorable files
