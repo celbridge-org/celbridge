@@ -110,6 +110,31 @@ public class AreaLayoutState
     }
 
     /// <summary>
+    /// The workspace areas on screen: the Utility Panel while it is presented, and each presented document area.
+    /// </summary>
+    public IReadOnlySet<WorkspaceArea> PresentedAreas
+    {
+        get
+        {
+            var presentedAreas = new HashSet<WorkspaceArea>();
+            if (_isUtilityPanelPresented)
+            {
+                presentedAreas.Add(WorkspaceArea.Utility);
+            }
+
+            foreach (var area in DocumentLayoutHelper.AllAreas)
+            {
+                if (IsAreaPresented(area))
+                {
+                    presentedAreas.Add(area.GetWorkspaceArea());
+                }
+            }
+
+            return presentedAreas;
+        }
+    }
+
+    /// <summary>
     /// Whether the section is currently laid out on screen: its area is presented and, for a secondary
     /// section, that area is split.
     /// </summary>

@@ -119,10 +119,36 @@ public class AppToolTests
 
         root.GetProperty("focusedPanel").GetString().Should().Be("Documents");
 
-        // Every area is reported by its token, including Main, which is always visible.
+        // Every area is reported by its token, including Main, which the Default layout always shows.
         var areaVisibility = root.GetProperty("layoutMode").GetProperty("areaVisibility");
         areaVisibility.GetProperty("utility").GetBoolean().Should().BeTrue();
         areaVisibility.GetProperty("main").GetBoolean().Should().BeTrue();
+        areaVisibility.GetProperty("side").GetBoolean().Should().BeFalse();
+        areaVisibility.GetProperty("bottom").GetBoolean().Should().BeTrue();
+    }
+
+    [Test]
+    public void GetState_InFocusShowingTheBottomArea_ReportsOnlyThatArea()
+    {
+        WireAppStateDependencies();
+        var projectService = Substitute.For<IProjectService>();
+        projectService.CurrentProject.Returns((IProject?)null);
+        _services.GetRequiredService<IProjectService>().Returns(projectService);
+
+        // Focus shows the Bottom area on its own, with Main off screen.
+        var layoutService = _services.GetRequiredService<ILayoutService>();
+        var presentedAreas = new HashSet<WorkspaceArea>
+        {
+            WorkspaceArea.Bottom
+        };
+        layoutService.PresentedAreas.Returns(presentedAreas);
+
+        var tools = new AppTools(_services);
+        var root = ParseResult(tools.GetState());
+
+        var areaVisibility = root.GetProperty("layoutMode").GetProperty("areaVisibility");
+        areaVisibility.GetProperty("utility").GetBoolean().Should().BeFalse();
+        areaVisibility.GetProperty("main").GetBoolean().Should().BeFalse();
         areaVisibility.GetProperty("side").GetBoolean().Should().BeFalse();
         areaVisibility.GetProperty("bottom").GetBoolean().Should().BeTrue();
     }
@@ -330,11 +356,24 @@ public class AppToolTests
 
         var layoutService = Substitute.For<ILayoutService>();
 
-        // The live service always reports Main visible, so the substitute has to say so too.
-        layoutService.IsAreaVisible(WorkspaceArea.Main).Returns(true);
-        layoutService.IsAreaVisible(WorkspaceArea.Utility).Returns(contextVisible);
-        layoutService.IsAreaVisible(WorkspaceArea.Side).Returns(inspectorVisible);
-        layoutService.IsAreaVisible(WorkspaceArea.Bottom).Returns(consoleVisible);
+        // The Default layout always has Main on screen, so the substitute has to say so too.
+        var presentedAreas = new HashSet<WorkspaceArea>
+        {
+            WorkspaceArea.Main
+        };
+        if (contextVisible)
+        {
+            presentedAreas.Add(WorkspaceArea.Utility);
+        }
+        if (inspectorVisible)
+        {
+            presentedAreas.Add(WorkspaceArea.Side);
+        }
+        if (consoleVisible)
+        {
+            presentedAreas.Add(WorkspaceArea.Bottom);
+        }
+        layoutService.PresentedAreas.Returns(presentedAreas);
 
         _services.GetRequiredService<IFeatureFlags>().Returns(featureFlags);
         _services.GetRequiredService<IAppEnvironment>().Returns(environmentService);

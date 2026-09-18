@@ -35,7 +35,7 @@ public class GetUtilitiesStateCommandTests
 
         // Nothing is collapsed unless a test says so, so isVisible follows what is presenting the item.
         _layoutService = Substitute.For<ILayoutService>();
-        _layoutService.IsAreaVisible(Arg.Any<WorkspaceArea>()).Returns(true);
+        _layoutService.PresentedAreas.Returns(WorkspaceAreaHelper.AllAreasVisible);
         _utilityService.GetCurrentArea(BuiltInShortcutIds.Community).Returns(WorkspaceArea.Main);
 
         _documentsService = Substitute.For<IDocumentsService>();
@@ -186,6 +186,42 @@ public class GetUtilitiesStateCommandTests
     }
 
     [Test]
+    public async Task Execute_ItemInTheAreaFocusIsShowing_IsVisible()
+    {
+        // Focus shows the Bottom area on its own.
+        _layoutService.PresentedAreas.Returns(PresentedAreas(WorkspaceArea.Bottom));
+        _utilityService.GetCurrentArea(NotepadId).Returns(WorkspaceArea.Bottom);
+        OpenDocumentInSection(NotepadResource, DocumentSection.BottomLeft, isSelected: true);
+
+        var command = new GetUtilitiesStateCommand(_workspaceWrapper, _layoutService);
+
+        await command.ExecuteAsync();
+
+        var notepad = command.ResultValue.Utilities.Single(utility => utility.UtilityId == NotepadId);
+        notepad.IsVisible.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task Execute_ItemInAnAreaFocusHides_IsNotVisible()
+    {
+        // Focus is showing the Bottom area, so Main is off screen even though its section is showing the item.
+        _layoutService.PresentedAreas.Returns(PresentedAreas(WorkspaceArea.Bottom));
+        OpenDocumentInSection(CommunityResource, DocumentSection.MainLeft, isSelected: true);
+
+        var command = new GetUtilitiesStateCommand(_workspaceWrapper, _layoutService);
+
+        await command.ExecuteAsync();
+
+        var community = command.ResultValue.Utilities.Single(utility => utility.UtilityId == BuiltInShortcutIds.Community);
+        community.IsVisible.Should().BeFalse();
+    }
+
+    private static IReadOnlySet<WorkspaceArea> PresentedAreas(params WorkspaceArea[] areas)
+    {
+        return new HashSet<WorkspaceArea>(areas);
+    }
+
+    [Test]
     public async Task Execute_ItemBehindAnotherTabInItsSection_IsNotVisible()
     {
         // Open in the Bottom area, but another tab in that section is the one drawn.
@@ -231,7 +267,7 @@ public class GetUtilitiesStateCommandTests
     {
         // The rail keeps its selection through a collapse, so the selected utility is still the active one.
         _utilityPanel.ActiveUtilityId.Returns(BuiltInUtilityIds.Explorer);
-        _layoutService.IsAreaVisible(WorkspaceArea.Utility).Returns(false);
+        _layoutService.PresentedAreas.Returns(PresentedAreas(WorkspaceArea.Main, WorkspaceArea.Bottom, WorkspaceArea.Side));
 
         var command = new GetUtilitiesStateCommand(_workspaceWrapper, _layoutService);
 

@@ -35,7 +35,7 @@ public interface IOpenDocumentCommand : IExecutableCommand<OpenDocumentOutcome>
 
     /// <summary>
     /// Optional target section to open the document in, whose area is shown if it is collapsed. In Focus or
-    /// Presentation mode only an activating open shows it, ending the mode.
+    /// Presentation mode a hidden area is shown only by an activating open, which ends the mode.
     /// If null, a new document opens in Main's primary section and an already open document stays where it is.
     /// </summary>
     DocumentSection? TargetSection { get; set; }

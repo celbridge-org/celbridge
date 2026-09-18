@@ -35,6 +35,9 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
     // A document off screen cannot take the keyboard, so its claim waits for the area to be laid out.
     private PendingRevealFocus? _pendingRevealFocus;
 
+    // The areas last reported as on screen, so a layout pass that changes none of them sends nothing.
+    private IReadOnlySet<WorkspaceArea>? _reportedPresentedAreas;
+
     public WorkspacePanelViewModel ViewModel { get; }
 
     // Manages the document sections inside the layout container's area grids.
@@ -125,6 +128,10 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
             return;
         }
 
+        // Read before the isolation below follows the active document, so an activation in the area Focus or
+        // Presentation is showing keeps the mode.
+        var revealingArea = RevealActivatedDocumentArea(documentResource, reason);
+
         // Closing the last document in an isolated area moves the active document to another area, so
         // the isolation follows it rather than leaving an empty panel on screen.
         if (SectionContainer.Areas.IsolatedArea is not null)
@@ -133,8 +140,6 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         }
 
         ViewModel.OnActiveDocumentChanged(documentResource);
-
-        var revealingArea = RevealActivatedDocumentArea(documentResource, reason);
 
         // This activation supersedes any claim still waiting on a reveal, so at most one is ever held and it
         // is always the newest.
@@ -155,9 +160,9 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         }
     }
 
-    // Opens the collapsed area holding the document that just became active, returning the area being
-    // revealed, or null when nothing needed revealing. A restore is left alone: the workspace restores its
-    // own area visibility.
+    // Opens the area holding the document that just became active when it is off screen, returning the area
+    // being revealed, or null when nothing needed revealing. A restore is left alone: the workspace restores
+    // its own area visibility.
     private DocumentArea? RevealActivatedDocumentArea(ResourceKey documentResource, ActiveDocumentChangeReason reason)
     {
         if (documentResource.IsEmpty
@@ -167,7 +172,8 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         }
 
         var area = SectionContainer.ActiveSection.GetArea();
-        if (ViewModel.IsAreaVisible(area))
+        if (!area.IsCollapsible()
+            || SectionContainer.Areas.IsAreaPresented(area))
         {
             return null;
         }
@@ -413,7 +419,32 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         UpdateTabStripVisibility(_windowModeService.LayoutMode);
         UpdateUtilityRailVisibility(_windowModeService.LayoutMode);
 
+        // Focus and Presentation put a document area on screen that only this panel knows about, so the
+        // panel tells the layout service what every layout pass leaves on screen.
+        SectionContainer.Areas.PresentationApplied += ReportPresentedAreas;
+        ReportPresentedAreas();
+
         RegisterAsResourceDropTarget();
+    }
+
+    private void ReportPresentedAreas()
+    {
+        if (_isShuttingDown)
+        {
+            return;
+        }
+
+        var presentedAreas = SectionContainer.Areas.PresentedAreas;
+        if (_reportedPresentedAreas is not null
+            && _reportedPresentedAreas.SetEquals(presentedAreas))
+        {
+            return;
+        }
+
+        _reportedPresentedAreas = presentedAreas;
+
+        var message = new AreaPresentationChangedMessage(presentedAreas);
+        _messengerService.Send(message);
     }
 
     private void OnPanelFocusChanged(object recipient, PanelFocusChangedMessage message)
@@ -510,6 +541,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
     private void WorkspacePanel_Unloaded(object sender, RoutedEventArgs e)
     {
         UnregisterAsResourceDropTarget();
+        SectionContainer.Areas.PresentationApplied -= ReportPresentedAreas;
         ViewModel.AreaSizeChanged -= OnStoredAreaSizeChanged;
         ViewModel.OnViewUnloaded();
         _focusService.SetPanelFocusHandler(FocusPanelId.Documents, null);
@@ -644,20 +676,20 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         SectionContainer.Areas.SetBottomAreaAlignment(message.Alignment);
     }
 
-    // Mounts the section a document is about to open into. Naming an unsplit area's secondary section
-    // splits it, so the request can be satisfied where it asked for. A section in a collapsed area is left
-    // alone: the area keeps its tabs while hidden.
-    // Reveals the area a section sits in, so a document is never made active out of sight. Main is never
-    // collapsed, which is the no-op case. A restore opens without activating and so leaves the saved
+    // Reveals the area a section sits in when it is off screen, so a document is never made active out of
+    // sight. The area Focus or Presentation is showing is on screen, so opening into it keeps the mode. Main
+    // is never collapsed, which is the no-op case. A restore opens without activating and so leaves the saved
     // visibility alone.
     private void PresentSectionArea(DocumentSection section)
     {
-        var area = section.GetArea().GetWorkspaceArea();
-        if (!area.IsCollapsible())
+        var documentArea = section.GetArea();
+        if (!documentArea.IsCollapsible()
+            || SectionContainer.Areas.IsAreaPresented(documentArea))
         {
             return;
         }
 
+        var area = documentArea.GetWorkspaceArea();
         _commandService.Execute<ISetAreaVisibilityCommand>(command =>
         {
             command.Area = area;
@@ -665,6 +697,9 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         });
     }
 
+    // Mounts the section a document is about to open into. Naming an unsplit area's secondary section
+    // splits it, so the request can be satisfied where it asked for. A section in a collapsed area is left
+    // alone: the area keeps its tabs while hidden.
     private DocumentSection EnsureSectionMounted(DocumentSection section)
     {
         var area = section.GetArea();

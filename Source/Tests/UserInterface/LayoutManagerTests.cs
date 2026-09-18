@@ -419,6 +419,22 @@ public class LayoutManagerTests
     }
 
     [Test]
+    public void AreaPresentationChanged_ReportsTheAreaFocusIsShowing()
+    {
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Focus);
+
+        // Focus is showing the Bottom area on its own, while the layout still shows only Main.
+        var presentedAreas = new HashSet<WorkspaceArea>
+        {
+            WorkspaceArea.Bottom
+        };
+        _messengerService.Send(new AreaPresentationChangedMessage(presentedAreas));
+
+        _layoutManager.PresentedAreas.Should().BeEquivalentTo(presentedAreas);
+        _layoutManager.VisibleAreas.Should().BeEquivalentTo(VisibleAreas());
+    }
+
+    [Test]
     public void LayoutModeChange_SendsLayoutModeChangedMessage()
     {
         LayoutModeChangedMessage? receivedMessage = null;

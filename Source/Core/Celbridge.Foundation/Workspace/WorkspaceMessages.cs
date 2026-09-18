@@ -44,6 +44,12 @@ public record WorkspaceStateDirtyMessage();
 public record AreaVisibilityChangedMessage(IReadOnlySet<WorkspaceArea> VisibleAreas);
 
 /// <summary>
+/// Sent when the set of workspace areas on screen changes, including when Focus or Presentation shows a
+/// single document area.
+/// </summary>
+public record AreaPresentationChangedMessage(IReadOnlySet<WorkspaceArea> PresentedAreas);
+
+/// <summary>
 /// Sent to request a brief attention flash around the perimeter of an area the user has just revealed.
 /// </summary>
 public record FlashAreaMessage(WorkspaceArea Area);

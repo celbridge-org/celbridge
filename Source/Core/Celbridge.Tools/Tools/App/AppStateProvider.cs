@@ -128,10 +128,11 @@ internal sealed class AppStateProvider : IAppStateProvider
 
         var activeUtility = isLoaded ? _activeUtilityId : string.Empty;
 
+        var presentedAreas = _layoutService.PresentedAreas;
         var areaVisibility = new Dictionary<string, bool>();
         foreach (var area in WorkspaceAreaHelper.AllAreas)
         {
-            areaVisibility[area.ToToken()] = _layoutService.IsAreaVisible(area);
+            areaVisibility[area.ToToken()] = presentedAreas.Contains(area);
         }
 
         var layoutMode = new LayoutModeInfo(areaVisibility);

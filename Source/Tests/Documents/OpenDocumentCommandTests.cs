@@ -183,10 +183,9 @@ public class OpenDocumentCommandTests
     }
 
     [Test]
-    public async Task ExecuteAsync_ActivatingOpenInALayoutMode_ShowsTheArea()
+    public async Task ExecuteAsync_ActivatingOpen_LeavesTheAreaToTheOpenItself()
     {
-        _windowModeService.LayoutMode.Returns(LayoutMode.Focus);
-
+        // Bringing the document forward shows its area, so the command has nothing to add.
         var command = CreateCommand();
         command.FileResource = new ResourceKey("notes/readme.md");
         command.TargetSection = DocumentSection.BottomLeft;
@@ -194,7 +193,7 @@ public class OpenDocumentCommandTests
 
         await command.ExecuteAsync();
 
-        _layoutService.Received(1).SetAreaVisibility(WorkspaceArea.Bottom, true);
+        _layoutService.DidNotReceiveWithAnyArgs().SetAreaVisibility(default, default);
     }
 
     [Test]
@@ -202,6 +201,7 @@ public class OpenDocumentCommandTests
     {
         var command = CreateCommand();
         command.FileResource = new ResourceKey("notes/readme.md");
+        command.Activate = false;
 
         await command.ExecuteAsync();
 
@@ -218,6 +218,7 @@ public class OpenDocumentCommandTests
         var command = CreateCommand();
         command.FileResource = new ResourceKey("notes/readme.md");
         command.TargetSection = DocumentSection.BottomLeft;
+        command.Activate = false;
 
         await command.ExecuteAsync();
 

@@ -59,9 +59,9 @@ public class GetUtilitiesStateCommand : CommandBase, IGetUtilitiesStateCommand
         return Result.Ok();
     }
 
-    // Whether the user can see the item: something has to be presenting it, in an area that is not
-    // collapsed. The rail keeps its selection through a collapse so a reveal returns to it, which is why
-    // being selected is not on its own enough.
+    // Whether the user can see the item: something has to be presenting it, in an area that is on screen.
+    // The rail keeps its selection through a collapse so a reveal returns to it, which is why being selected
+    // is not on its own enough.
     private bool IsRailItemVisible(
         UtilityRailItem railItem,
         WorkspaceArea? currentArea,
@@ -72,7 +72,7 @@ public class GetUtilitiesStateCommand : CommandBase, IGetUtilitiesStateCommand
             return false;
         }
 
-        if (!_layoutService.IsAreaVisible(currentArea.Value))
+        if (!_layoutService.PresentedAreas.Contains(currentArea.Value))
         {
             return false;
         }

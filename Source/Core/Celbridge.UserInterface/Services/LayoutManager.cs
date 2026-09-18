@@ -37,6 +37,7 @@ public class LayoutManager : IWindowModeService, ILayoutService
         _workspaceWrapper = workspaceWrapper;
 
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
+        _messengerService.Register<AreaPresentationChangedMessage>(this, OnAreaPresentationChanged);
 
         // Listen for when the user exits fullscreen by dragging the window (Windows built-in behavior)
         _messengerService.Register<ExitedFullscreenViaDragMessage>(this, OnExitedFullscreenViaDrag);
@@ -140,9 +141,19 @@ public class LayoutManager : IWindowModeService, ILayoutService
 
     public IReadOnlySet<WorkspaceArea> VisibleAreas { get; private set; } = WorkspaceAreaHelper.AllAreasVisible;
 
+    // Each report is a new set that is never changed afterwards, so a reader on another thread sees a whole one.
+    public IReadOnlySet<WorkspaceArea> PresentedAreas { get; private set; } = WorkspaceAreaHelper.AllAreasVisible;
+
     public bool IsAreaVisible(WorkspaceArea area)
     {
         return VisibleAreas.Contains(area);
+    }
+
+    private void OnAreaPresentationChanged(object recipient, AreaPresentationChangedMessage message)
+    {
+        PresentedAreas = message.PresentedAreas;
+
+        _logger.LogDebug($"Presented areas changed: {DescribeAreas(message.PresentedAreas)}");
     }
 
     public Result SetAreaVisibility(WorkspaceArea area, bool isVisible)

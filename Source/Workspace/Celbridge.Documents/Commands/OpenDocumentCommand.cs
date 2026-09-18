@@ -133,9 +133,10 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
             return;
         }
 
-        // Showing an area ends Focus or Presentation, which only an activating open may do.
-        if (!Activate
-            && _windowModeService.LayoutMode != LayoutMode.Default)
+        // An activating open presents its own area. Showing an area ends Focus or Presentation, which a
+        // background open leaves alone.
+        if (Activate
+            || _windowModeService.LayoutMode != LayoutMode.Default)
         {
             return;
         }

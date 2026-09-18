@@ -1,14 +1,21 @@
 namespace Celbridge.Workspace;
 
 /// <summary>
-/// Tracks which workspace areas are on screen and how far the Bottom area spans. Main is always visible.
+/// Tracks which workspace areas the layout shows, which are on screen, and how far the Bottom area spans.
 /// </summary>
 public interface ILayoutService
 {
     /// <summary>
-    /// The areas currently on screen, always including Main.
+    /// The areas the layout shows, always including Main. Focus and Presentation show Main alone, standing for
+    /// whichever document area the mode puts on screen.
     /// </summary>
     IReadOnlySet<WorkspaceArea> VisibleAreas { get; }
+
+    /// <summary>
+    /// The areas currently on screen, which in Focus and Presentation is the one document area the mode is
+    /// showing. Safe to read from any thread.
+    /// </summary>
+    IReadOnlySet<WorkspaceArea> PresentedAreas { get; }
 
     /// <summary>
     /// How far the Bottom document area spans across the workspace.
@@ -16,7 +23,7 @@ public interface ILayoutService
     BottomAreaAlignment BottomAreaAlignment { get; }
 
     /// <summary>
-    /// Whether the area is currently on screen. Always true for Main.
+    /// Whether the layout shows the area. Always true for Main.
     /// </summary>
     bool IsAreaVisible(WorkspaceArea area);
 

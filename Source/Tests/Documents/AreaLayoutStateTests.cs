@@ -75,6 +75,32 @@ public class AreaLayoutStateTests
     }
 
     [Test]
+    public void PresentedAreas_NormalLayout_AreTheUtilityPanelAndTheVisibleAreas()
+    {
+        _layoutState.SetAreaVisible(DocumentArea.Bottom, false);
+
+        _layoutState.PresentedAreas.Should().BeEquivalentTo(new[]
+        {
+            WorkspaceArea.Utility,
+            WorkspaceArea.Main,
+            WorkspaceArea.Side
+        });
+    }
+
+    [Test]
+    public void PresentedAreas_IsolatedArea_IsThatAreaAlone()
+    {
+        // Focus hides the Utility Panel and shows the isolated area in place of the others.
+        _layoutState.SetUtilityPanelPresented(false);
+        _layoutState.SetIsolatedArea(DocumentArea.Bottom);
+
+        _layoutState.PresentedAreas.Should().BeEquivalentTo(new[]
+        {
+            WorkspaceArea.Bottom
+        });
+    }
+
+    [Test]
     public void IsAreaPresented_IsolationOverridesHiddenVisibility()
     {
         // Isolation presents the area even when the user had it hidden, and hides the rest without
