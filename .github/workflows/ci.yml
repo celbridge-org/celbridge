@@ -36,8 +36,10 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore Source/Tests/Celbridge.Tests.csproj
 
+      # No unit test reads the Python wheel, and building it would pull uv and a managed interpreter
+      # onto the runner. Building either app head builds the wheel, which is where a break surfaces.
       - name: Build tests
-        run: dotnet build Source/Tests/Celbridge.Tests.csproj --no-restore --configuration Release
+        run: dotnet build Source/Tests/Celbridge.Tests.csproj --no-restore --configuration Release -p:SkipCelbridgeWheelBuild=true
 
       - name: Run tests
         run: dotnet test Source/Tests/Celbridge.Tests.csproj --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx"

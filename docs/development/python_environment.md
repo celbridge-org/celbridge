@@ -97,6 +97,9 @@ The wheel is generated, not committed, and `Assets/Python/*.whl` is gitignored. 
 `uv build`, using the uv the project downloads and extracts to `obj/uv`, so building needs no Python on
 the machine. A failed wheel build fails the build.
 
+A build that wants the assembly and not the asset opts out with `-p:SkipCelbridgeWheelBuild=true`;
+CI's unit test job does, because no test reads the wheel. Building either app head builds it.
+
 The wheel is built once in the outer multi-targeting pass, before the inner framework builds start. They
 run in parallel and all of them bundle the same wheel, so a single nominated framework would be a race
 now that the file is not in the repository.
