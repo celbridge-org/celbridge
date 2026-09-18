@@ -64,7 +64,7 @@ public sealed class PythonLaunchService : IPythonLaunchService
     private const string UVExecutableNameWindows = "uv.exe";
     private const string UVToolsFolderName = "uv_tools";
     private const string UVBinFolderName = "uv_bin";
-    private const string IPythonCacheFolderName = "ipython";
+    private const string IPythonProfileFolderName = "ipython";
 
     private readonly IAppEnvironment _environmentService;
     private readonly IServerService _serverService;
@@ -201,7 +201,7 @@ public sealed class PythonLaunchService : IPythonLaunchService
                 installResult.FirstErrorMessage);
         }
 
-        var ipythonDir = Path.Combine(ProjectPythonFolder, IPythonCacheFolderName);
+        var ipythonDir = Path.Combine(ProjectPythonFolder, IPythonProfileFolderName);
         await _fileSystem.CreateFolderAsync(ipythonDir);
 
         var celbridgeVersion = environmentInfo.Configuration == "Debug"
