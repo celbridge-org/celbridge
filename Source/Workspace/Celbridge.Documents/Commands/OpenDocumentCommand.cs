@@ -17,6 +17,8 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IMessengerService _messengerService;
+    private readonly ILayoutService _layoutService;
+    private readonly IWindowModeService _windowModeService;
 
     public ResourceKey FileResource { get; set; }
 
@@ -41,13 +43,17 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
         IDialogService dialogService,
         ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper,
-        IMessengerService messengerService)
+        IMessengerService messengerService,
+        ILayoutService layoutService,
+        IWindowModeService windowModeService)
     {
         _stringLocalizer = stringLocalizer;
         _dialogService = dialogService;
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
         _messengerService = messengerService;
+        _layoutService = layoutService;
+        _windowModeService = windowModeService;
     }
 
     public override async Task<Result> ExecuteAsync()
@@ -104,6 +110,11 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
 
         ResultValue = openResult.Value;
 
+        if (ResultValue == OpenDocumentOutcome.Opened)
+        {
+            ShowTargetSectionArea();
+        }
+
         // Flash the tab to draw the eye to it, but only when the document was actually opened (not a
         // cancelled open) and brought to the front.
         if (Activate
@@ -113,6 +124,31 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
         }
 
         return Result.Ok();
+    }
+
+    private void ShowTargetSectionArea()
+    {
+        if (!TargetSection.HasValue)
+        {
+            return;
+        }
+
+        // An activating open presents its own area. Showing an area ends Focus or Presentation, which a
+        // background open leaves alone.
+        if (Activate
+            || _windowModeService.LayoutMode != LayoutMode.Default)
+        {
+            return;
+        }
+
+        var documentArea = TargetSection.Value.GetArea();
+        if (!documentArea.IsCollapsible())
+        {
+            return;
+        }
+
+        var workspaceArea = documentArea.GetWorkspaceArea();
+        _layoutService.SetAreaVisibility(workspaceArea, true);
     }
 
     public static void OpenDocument(ResourceKey fileResource)

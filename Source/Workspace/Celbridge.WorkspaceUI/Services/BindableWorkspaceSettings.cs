@@ -20,20 +20,29 @@ public sealed class BindableWorkspaceSettings : IBindableWorkspaceSettings
         _settings = settings;
     }
 
-    public IReadOnlySet<WorkspaceArea> PreferredVisibleAreas
+    public IReadOnlySet<WorkspaceArea>? PreferredVisibleAreas
     {
         get
         {
-            // A project that has never customised its layout shows every area. That is not the same as a
-            // stored value naming no collapsible area, which is the user having hidden them all.
+            // A project with no stored value has no saved choice. That is not the same as a stored value
+            // naming no collapsible area, which is the user having hidden them all.
             if (!_settings.IsConfigured(SettingCatalog.Layout.PreferredVisibleAreas))
             {
-                return WorkspaceAreaHelper.AllAreasVisible;
+                return null;
             }
 
             return ParseAreas(Get(SettingCatalog.Layout.PreferredVisibleAreas));
         }
-        set => Set(SettingCatalog.Layout.PreferredVisibleAreas, FormatAreas(value));
+        set
+        {
+            if (value is null)
+            {
+                Reset(SettingCatalog.Layout.PreferredVisibleAreas);
+                return;
+            }
+
+            Set(SettingCatalog.Layout.PreferredVisibleAreas, FormatAreas(value));
+        }
     }
 
     public float UtilityPanelWidth
@@ -136,6 +145,17 @@ public sealed class BindableWorkspaceSettings : IBindableWorkspaceSettings
         }
 
         _settings.Set(descriptor, value);
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+
+    private void Reset(ISettingDescriptor descriptor, [CallerMemberName] string? propertyName = null)
+    {
+        if (!_settings.IsScopeAvailable(SettingScope.Workspace))
+        {
+            return;
+        }
+
+        _settings.Reset(descriptor);
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }

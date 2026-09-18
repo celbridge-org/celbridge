@@ -59,7 +59,8 @@ public static class SettingCatalog
     {
         // The areas the user prefers to see, as a comma separated list of area tokens. This is the layout
         // Focus and Presentation restore on the way out, not what is on screen while one of them is hiding
-        // everything. The empty default means the layout has never been customised, which shows every area.
+        // everything. No stored value means the project has no saved choice, and the workspace then shows
+        // the Utility Panel and Main, plus each document area holding a tab when the project loads.
         public static readonly SettingDescriptor<string> PreferredVisibleAreas =
             new("Layout.PreferredVisibleAreas", SettingScope.Workspace, "");
 

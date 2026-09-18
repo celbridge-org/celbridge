@@ -20,6 +20,11 @@ public class LayoutManager : IWindowModeService, ILayoutService
     private bool _isFullScreen;
     private BottomAreaAlignment _bottomAreaAlignment = WorkspaceConstants.BottomAreaAlignment;
 
+    // The areas the Default layout shows while the project has no saved choice, worked out from the tabs open
+    // at each workspace load and each layout reset. Leaving Focus or Presentation does not work them out
+    // again, so it returns to the areas that were showing even if tabs have closed since.
+    private IReadOnlySet<WorkspaceArea> _defaultVisibleAreas = WorkspaceAreaHelper.AllAreasVisible;
+
     public LayoutManager(
         ILogger<LayoutManager> logger,
         IMessengerService messengerService,
@@ -32,6 +37,7 @@ public class LayoutManager : IWindowModeService, ILayoutService
         _workspaceWrapper = workspaceWrapper;
 
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
+        _messengerService.Register<AreaPresentationChangedMessage>(this, OnAreaPresentationChanged);
 
         // Listen for when the user exits fullscreen by dragging the window (Windows built-in behavior)
         _messengerService.Register<ExitedFullscreenViaDragMessage>(this, OnExitedFullscreenViaDrag);
@@ -44,9 +50,9 @@ public class LayoutManager : IWindowModeService, ILayoutService
             ? _workspaceWrapper.WorkspaceService.BindableWorkspaceSettings
             : null;
 
-    // The areas the project prefers to show, falling back to every area when no workspace is loaded.
+    // The areas the project prefers to show: its saved choice, or its default while it has none.
     private IReadOnlySet<WorkspaceArea> PreferredVisibleAreas =>
-        WorkspaceSettings?.PreferredVisibleAreas ?? WorkspaceAreaHelper.AllAreasVisible;
+        WorkspaceSettings?.PreferredVisibleAreas ?? _defaultVisibleAreas;
 
     // Persists the preferred visible areas for the current project. A no-op when no workspace is loaded.
     private void PersistPreferredVisibleAreas(IReadOnlySet<WorkspaceArea> visibleAreas)
@@ -58,6 +64,31 @@ public class LayoutManager : IWindowModeService, ILayoutService
         }
     }
 
+    // The Utility Panel and Main, plus each document area holding a tab. An empty document area stays
+    // collapsed until the user asks for it.
+    private IReadOnlySet<WorkspaceArea> ComposeDefaultVisibleAreas()
+    {
+        var visibleAreas = new HashSet<WorkspaceArea>
+        {
+            WorkspaceArea.Utility,
+            WorkspaceArea.Main
+        };
+
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
+        {
+            return visibleAreas;
+        }
+
+        var openDocuments = _workspaceWrapper.WorkspaceService.DocumentsService.GetOpenDocuments();
+        foreach (var openDocument in openDocuments)
+        {
+            var documentArea = openDocument.Address.Section.GetArea();
+            visibleAreas.Add(documentArea.GetWorkspaceArea());
+        }
+
+        return visibleAreas;
+    }
+
     private static readonly IReadOnlySet<WorkspaceArea> OnlyMainVisible = new HashSet<WorkspaceArea>
     {
         WorkspaceArea.Main
@@ -65,6 +96,9 @@ public class LayoutManager : IWindowModeService, ILayoutService
 
     private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage message)
     {
+        // The loader restores the open tabs before it announces the load, so the default sees where they are.
+        _defaultVisibleAreas = ComposeDefaultVisibleAreas();
+
         // No need to persist, we are restoring the saved state.
         UpdateVisibleAreas(PreferredVisibleAreas, shouldPersist: false);
 
@@ -107,9 +141,19 @@ public class LayoutManager : IWindowModeService, ILayoutService
 
     public IReadOnlySet<WorkspaceArea> VisibleAreas { get; private set; } = WorkspaceAreaHelper.AllAreasVisible;
 
+    // Each report is a new set that is never changed afterwards, so a reader on another thread sees a whole one.
+    public IReadOnlySet<WorkspaceArea> PresentedAreas { get; private set; } = WorkspaceAreaHelper.AllAreasVisible;
+
     public bool IsAreaVisible(WorkspaceArea area)
     {
         return VisibleAreas.Contains(area);
+    }
+
+    private void OnAreaPresentationChanged(object recipient, AreaPresentationChangedMessage message)
+    {
+        PresentedAreas = message.PresentedAreas;
+
+        _logger.LogDebug($"Presented areas changed: {DescribeAreas(message.PresentedAreas)}");
     }
 
     public Result SetAreaVisibility(WorkspaceArea area, bool isVisible)
@@ -258,8 +302,14 @@ public class LayoutManager : IWindowModeService, ILayoutService
         _settingsService.Set(SettingCatalog.Window.PreferredHeight, 0);
         _settingsService.Set(SettingCatalog.Window.IsMaximized, false);
 
-        UpdateVisibleAreas(WorkspaceAreaHelper.AllAreasVisible, shouldPersist: true);
-        PersistPreferredVisibleAreas(WorkspaceAreaHelper.AllAreasVisible);
+        // Clearing the saved choice puts the project back on its default, worked out from the tabs open now.
+        if (workspaceSettings is not null)
+        {
+            workspaceSettings.PreferredVisibleAreas = null;
+        }
+
+        _defaultVisibleAreas = ComposeDefaultVisibleAreas();
+        UpdateVisibleAreas(_defaultVisibleAreas, shouldPersist: false);
 
         // Return to the Default layout and exit fullscreen.
         if (_layoutMode != LayoutMode.Default)

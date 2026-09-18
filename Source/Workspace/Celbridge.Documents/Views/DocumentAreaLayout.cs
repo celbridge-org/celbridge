@@ -36,6 +36,17 @@ public sealed class DocumentAreaLayout
     public event Action<DocumentArea, bool, double>? AreaLayoutChanged;
 
     /// <summary>
+    /// Event raised after the layout container is given the current presentation, which can change the
+    /// areas on screen.
+    /// </summary>
+    public event Action? PresentationApplied;
+
+    /// <summary>
+    /// The workspace areas on screen.
+    /// </summary>
+    public IReadOnlySet<WorkspaceArea> PresentedAreas => _layoutState.PresentedAreas;
+
+    /// <summary>
     /// The sections that are currently mounted, in reading order.
     /// </summary>
     public IReadOnlyList<DocumentSection> VisibleSections => _layoutState.VisibleSections;
@@ -87,6 +98,14 @@ public sealed class DocumentAreaLayout
     public bool IsAreaSplit(DocumentArea area)
     {
         return _layoutState.IsAreaSplit(area);
+    }
+
+    /// <summary>
+    /// Whether the area is on screen. While an area is isolated it is the only one.
+    /// </summary>
+    public bool IsAreaPresented(DocumentArea area)
+    {
+        return _layoutState.IsAreaPresented(area);
     }
 
     /// <summary>
@@ -593,6 +612,8 @@ public sealed class DocumentAreaLayout
         _layoutContainer.ApplyPresentation(presentation);
 
         ApplySectionChrome();
+
+        PresentationApplied?.Invoke();
     }
 
     // A section is the rectangle a document actually sits in, so the chrome is drawn per section rather than

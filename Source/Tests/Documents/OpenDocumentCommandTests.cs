@@ -2,6 +2,7 @@ using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Documents.Commands;
 using Celbridge.Messaging;
+using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -20,6 +21,8 @@ public class OpenDocumentCommandTests
     private IDialogService _dialogService = null!;
     private ICommandService _commandService = null!;
     private IMessengerService _messengerService = null!;
+    private ILayoutService _layoutService = null!;
+    private IWindowModeService _windowModeService = null!;
 
     [SetUp]
     public void Setup()
@@ -41,6 +44,10 @@ public class OpenDocumentCommandTests
         _commandService = Substitute.For<ICommandService>();
 
         _messengerService = Substitute.For<IMessengerService>();
+        _layoutService = Substitute.For<ILayoutService>();
+
+        _windowModeService = Substitute.For<IWindowModeService>();
+        _windowModeService.LayoutMode.Returns(LayoutMode.Default);
     }
 
     private OpenDocumentCommand CreateCommand()
@@ -50,7 +57,9 @@ public class OpenDocumentCommandTests
             _dialogService,
             _commandService,
             _workspaceWrapper,
-            _messengerService);
+            _messengerService,
+            _layoutService,
+            _windowModeService);
     }
 
     [Test]
@@ -142,5 +151,77 @@ public class OpenDocumentCommandTests
 
         result.IsSuccess.Should().BeTrue();
         command.ResultValue.Should().Be(OpenDocumentOutcome.Cancelled);
+    }
+
+    [Test]
+    public async Task ExecuteAsync_WithTargetSectionAndNoActivation_ShowsTheArea()
+    {
+        var command = CreateCommand();
+        command.FileResource = new ResourceKey("notes/readme.md");
+        command.TargetSection = DocumentSection.SideTop;
+        command.Activate = false;
+
+        await command.ExecuteAsync();
+
+        _layoutService.Received(1).SetAreaVisibility(WorkspaceArea.Side, true);
+    }
+
+    [TestCase(LayoutMode.Focus)]
+    [TestCase(LayoutMode.Presentation)]
+    public async Task ExecuteAsync_BackgroundOpenInALayoutMode_LeavesTheAreasAlone(LayoutMode layoutMode)
+    {
+        _windowModeService.LayoutMode.Returns(layoutMode);
+
+        var command = CreateCommand();
+        command.FileResource = new ResourceKey("notes/readme.md");
+        command.TargetSection = DocumentSection.SideTop;
+        command.Activate = false;
+
+        await command.ExecuteAsync();
+
+        _layoutService.DidNotReceiveWithAnyArgs().SetAreaVisibility(default, default);
+    }
+
+    [Test]
+    public async Task ExecuteAsync_ActivatingOpen_LeavesTheAreaToTheOpenItself()
+    {
+        // Bringing the document forward shows its area, so the command has nothing to add.
+        var command = CreateCommand();
+        command.FileResource = new ResourceKey("notes/readme.md");
+        command.TargetSection = DocumentSection.BottomLeft;
+        command.Activate = true;
+
+        await command.ExecuteAsync();
+
+        _layoutService.DidNotReceiveWithAnyArgs().SetAreaVisibility(default, default);
+    }
+
+    [Test]
+    public async Task ExecuteAsync_WithNoTargetSection_LeavesTheAreasAlone()
+    {
+        var command = CreateCommand();
+        command.FileResource = new ResourceKey("notes/readme.md");
+        command.Activate = false;
+
+        await command.ExecuteAsync();
+
+        _layoutService.DidNotReceiveWithAnyArgs().SetAreaVisibility(default, default);
+    }
+
+    [Test]
+    public async Task ExecuteAsync_CancelledOpen_LeavesTheAreasAlone()
+    {
+        _documentsService
+            .OpenDocument(Arg.Any<ResourceKey>(), Arg.Any<OpenDocumentOptions?>())
+            .Returns(Result<OpenDocumentOutcome>.Ok(OpenDocumentOutcome.Cancelled));
+
+        var command = CreateCommand();
+        command.FileResource = new ResourceKey("notes/readme.md");
+        command.TargetSection = DocumentSection.BottomLeft;
+        command.Activate = false;
+
+        await command.ExecuteAsync();
+
+        _layoutService.DidNotReceiveWithAnyArgs().SetAreaVisibility(default, default);
     }
 }
