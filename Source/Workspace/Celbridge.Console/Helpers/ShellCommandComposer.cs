@@ -11,7 +11,7 @@ public sealed record ComposedStartup(string Line, string? ScanMarker, bool Marke
 /// Composes a startup command into a single line safe to inject at a shell prompt, quoting each token for
 /// the target shell's dialect. The line clears the screen and emits the shell family's ready marker before
 /// running the command, wiping the shell's own startup noise and marking the point at which the screen is
-/// ready to be revealed.
+/// ready to be revealed. Under zsh it also replaces the stock macOS prompt with a compact one.
 /// </summary>
 public static class ShellCommandComposer
 {
@@ -25,13 +25,20 @@ public static class ShellCommandComposer
     private const string PosixReadyMarkerOscCode = "7000";
     private const string PosixReadyMarkerText = "CELBRIDGE-CONSOLE-READY";
 
+    // The prompt macOS ships in /etc/zshrc, and the compact prompt a console replaces it with. The stock
+    // prompt spends most of a narrow console's width on the user and host names. Matching it exactly is
+    // what leaves a prompt set from an rc file untouched.
+    private const string StockZshPrompt = "%n@%m %1~ %# ";
+    private const string CompactZshPrompt = "%F{cyan}%1~%f %# ";
+
     public static ComposedStartup Compose(
-        ConsoleShellFamily family,
+        ConsoleShell shell,
         ConsoleStartupInvocation command,
         string? workingDirectory = null)
     {
+        var family = shell.Family;
         var hasExecutable = !string.IsNullOrWhiteSpace(command.Executable);
-        var reveal = BuildReveal(family);
+        var reveal = BuildReveal(shell);
 
         // A plain shell injects no command, but a shell whose marker is invisible still clears the startup
         // noise and marks the ready point so the buffer begins on a clean prompt. A visible-marker shell
@@ -96,9 +103,9 @@ public static class ShellCommandComposer
     }
 
     // The reveal injected before the command: clears the screen and emits the marker.
-    private static (string Prefix, string? ScanMarker, bool PersistsOnScreen) BuildReveal(ConsoleShellFamily family)
+    private static (string Prefix, string? ScanMarker, bool PersistsOnScreen) BuildReveal(ConsoleShell shell)
     {
-        switch (family)
+        switch (shell.Family)
         {
             case ConsoleShellFamily.PowerShell:
             {
@@ -118,9 +125,23 @@ public static class ShellCommandComposer
                 // Invisible, cursor-neutral OSC carrying the marker. It leaves the shell at column 0, so a
                 // reveal with no following command does not trip zsh's partial-line indicator.
                 var prefix = $"clear; printf '{PosixMarkerPrintfSource()}'; ";
+
+                if (shell.IsZsh)
+                {
+                    prefix += BuildZshPromptDefault();
+                }
+
                 return (prefix, PosixMarkerStreamBytes(), false);
             }
         }
+    }
+
+    // Applies the compact prompt, and only to a shell still wearing the stock one. Written as an if
+    // rather than a guarded assignment so the line's exit status stays zero either way: a prompt that
+    // reports the last status would otherwise open the console showing a failure.
+    private static string BuildZshPromptDefault()
+    {
+        return $"if [[ $PROMPT == '{StockZshPrompt}' ]]; then PROMPT='{CompactZshPrompt}'; fi; ";
     }
 
     // The OSC marker as printf source text: backslash-escaped ESC and BEL, so its literal form differs from

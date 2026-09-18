@@ -34,4 +34,16 @@ public class ConsoleShellTests
     {
         ConsoleShell.ClassifyFamily(executable).Should().Be(expected);
     }
+
+    [TestCase("/bin/zsh", true)]
+    [TestCase("/usr/local/bin/zsh", true)]
+    [TestCase("/bin/bash", false)]
+    [TestCase("/usr/bin/fish", false)]
+    [TestCase("powershell.exe", false)]
+    public void IsZsh_ByExecutableName(string executable, bool expected)
+    {
+        var shell = new ConsoleShell(executable, ConsoleShell.ClassifyFamily(executable));
+
+        shell.IsZsh.Should().Be(expected);
+    }
 }
