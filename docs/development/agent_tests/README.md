@@ -21,6 +21,7 @@ goes stale faster than anyone notices.
 | [Notification Centre](notification_centre.md) | The notification badge and the list it opens over the documents |
 | [Web Documents](web_documents.md) | `.webview` and `.html` documents |
 | [Workspace](workspace.md) | Explorer, Search, dialogs, menus and project settings |
+| [Layout](layout.md) | The areas on screen, Focus and Presentation, and Reset Layout |
 | [Python Environment](python_environment.md) | The uv install, the Celbridge wheel, and the environment consoles inherit |
 
 ## Effort levels
