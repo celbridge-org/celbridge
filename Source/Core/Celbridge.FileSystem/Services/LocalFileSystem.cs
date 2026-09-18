@@ -113,6 +113,38 @@ public sealed class LocalFileSystem : ILocalFileSystem
             var fileInfo = new FileInfo(path);
             if (fileInfo.Exists)
             {
+                // Every property here answers for the link itself: a link's Length is the length of the
+                // path it holds, and a link left behind by a deleted target still reports as a file. So a
+                // link is answered by describing what it points at.
+                var linkTargetPath = ResolveLinkTargetPath(fileInfo, out var isBrokenLink);
+                if (isBrokenLink)
+                {
+                    var brokenLinkResult = new StorageItemInfo(
+                        Kind: StorageItemKind.BrokenLink,
+                        Size: 0,
+                        ModifiedUtc: fileInfo.LastWriteTimeUtc,
+                        Attributes: MapToPortable(fileInfo.Attributes));
+                    return brokenLinkResult;
+                }
+
+                if (linkTargetPath is not null)
+                {
+                    var targetInfoResult = await GetInfoAsync(linkTargetPath);
+                    if (targetInfoResult.IsFailure)
+                    {
+                        return targetInfoResult;
+                    }
+                    var targetInfo = targetInfoResult.Value;
+
+                    // The target says what the caller can open. The flag says a link is how they reached
+                    // it, which the target's own attributes do not carry.
+                    var linkedInfo = targetInfo with
+                    {
+                        Attributes = targetInfo.Attributes | FileSystemAttributes.ReparsePoint
+                    };
+                    return linkedInfo;
+                }
+
                 var fileAttributes = MapToPortable(fileInfo.Attributes);
                 var fileResult = new StorageItemInfo(
                     Kind: StorageItemKind.File,
@@ -181,26 +213,16 @@ public sealed class LocalFileSystem : ILocalFileSystem
             var folderInfos = directoryInfo.EnumerateDirectories(pattern, searchOption).OrderBy(folder => folder.FullName, StringComparer.Ordinal);
             foreach (var folderInfo in folderInfos)
             {
-                var folderAttributes = MapToPortable(folderInfo.Attributes);
-                var folderEntry = new FileSystemEntry(
-                    FullPath: folderInfo.FullName,
-                    IsFolder: true,
-                    Size: 0,
-                    ModifiedUtc: folderInfo.LastWriteTimeUtc,
-                    Attributes: folderAttributes);
+                var folderEntry = await DescribeEntryAsync(
+                    folderInfo, StorageItemKind.Folder, size: 0);
                 entries.Add(folderEntry);
             }
 
             var fileInfos = directoryInfo.EnumerateFiles(pattern, searchOption).OrderBy(file => file.FullName, StringComparer.Ordinal);
             foreach (var fileInfo in fileInfos)
             {
-                var fileAttributes = MapToPortable(fileInfo.Attributes);
-                var fileEntry = new FileSystemEntry(
-                    FullPath: fileInfo.FullName,
-                    IsFolder: false,
-                    Size: fileInfo.Length,
-                    ModifiedUtc: fileInfo.LastWriteTimeUtc,
-                    Attributes: fileAttributes);
+                var fileEntry = await DescribeEntryAsync(
+                    fileInfo, StorageItemKind.File, fileInfo.Length);
                 entries.Add(fileEntry);
             }
 
@@ -355,6 +377,68 @@ public sealed class LocalFileSystem : ILocalFileSystem
     {
         return ex is not FileNotFoundException
             and not DirectoryNotFoundException;
+    }
+
+    // The walk answers for the link itself: its length is the path it holds, and its target may be gone.
+    // The reparse flag comes free from the walk, so only a link pays for the probe that describes what it
+    // points at, and a tree without links costs exactly what it did before.
+    private async Task<FileSystemEntry> DescribeEntryAsync(
+        FileSystemInfo entryInfo, StorageItemKind kind, long size)
+    {
+        var attributes = MapToPortable(entryInfo.Attributes);
+        var modifiedUtc = entryInfo.LastWriteTimeUtc;
+
+        if (attributes.HasFlag(FileSystemAttributes.ReparsePoint))
+        {
+            var targetInfoResult = await GetInfoAsync(entryInfo.FullName);
+            if (targetInfoResult.IsSuccess)
+            {
+                var targetInfo = targetInfoResult.Value;
+                kind = targetInfo.Kind;
+                size = targetInfo.Size;
+                modifiedUtc = targetInfo.ModifiedUtc;
+                attributes = targetInfo.Attributes;
+            }
+        }
+
+        var entry = new FileSystemEntry(
+            FullPath: entryInfo.FullName,
+            Kind: kind,
+            Size: size,
+            ModifiedUtc: modifiedUtc,
+            Attributes: attributes);
+
+        return entry;
+    }
+
+    // The final target of a link, or null when the path is not a link. A resolve that throws is a link
+    // that cannot be followed, which is a broken link by any useful definition. The final target is never
+    // itself a link, so describing it terminates.
+    private static string? ResolveLinkTargetPath(FileInfo fileInfo, out bool isBrokenLink)
+    {
+        isBrokenLink = false;
+
+        try
+        {
+            var linkTarget = fileInfo.ResolveLinkTarget(returnFinalTarget: true);
+            if (linkTarget is null)
+            {
+                return null;
+            }
+
+            if (!linkTarget.Exists)
+            {
+                isBrokenLink = true;
+                return null;
+            }
+
+            return linkTarget.FullName;
+        }
+        catch (IOException)
+        {
+            isBrokenLink = true;
+            return null;
+        }
     }
 
     private static FileSystemAttributes MapToPortable(System.IO.FileAttributes native)

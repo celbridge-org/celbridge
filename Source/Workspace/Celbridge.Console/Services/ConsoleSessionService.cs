@@ -70,25 +70,6 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         _messengerService.Register<ResourceCreatedMessage>(this, OnResourceCreated);
     }
 
-    public bool HasRunningSessions
-    {
-        get
-        {
-            lock (_sessionsLock)
-            {
-                foreach (var session in _sessions.Values)
-                {
-                    if (session.State == ConsoleSessionRunState.Running)
-                    {
-                        return true;
-                    }
-                }
-            }
-
-            return false;
-        }
-    }
-
     public async Task EnsureStartedAsync(ResourceKey resource)
     {
         var session = GetOrCreateSession(resource);
@@ -501,7 +482,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
     }
 
     // A released session is terminally gone, so its state change is broadcast for per-session bookkeeping
-    // (a pending Python fingerprint, for instance) before its handler is detached.
+    // before its handler is detached.
     private void ReleaseSession(ConsoleSession session)
     {
         if (session.State != ConsoleSessionRunState.Ended &&

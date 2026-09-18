@@ -49,9 +49,8 @@ public static class ProjectConstants
     public const string TrashFolder = "trash";
 
     /// <summary>
-    /// Sub-folder of .celbridge/ that holds this project's Python environment: uv's
-    /// package cache and interpreter installs, the tool install, the IPython profile,
-    /// and the config fingerprint.
+    /// Sub-folder of .celbridge/ that holds what is this project's alone: its IPython
+    /// profile, and any uv tool the user installs here.
     /// </summary>
     public const string PythonFolder = "python";
 

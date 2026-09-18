@@ -260,7 +260,7 @@ internal sealed class ConsoleSession : IDisposable
         var workingDirectory = ConsoleWorkingFolder.Resolve(config.WorkingDirectory, projectFolderPath);
 
         var composedStartup = ShellCommandComposer.Compose(
-            shell.Family,
+            shell,
             startupInvocation,
             workingDirectory: workingDirectory);
         var injectedCommandLine = composedStartup.Line;
