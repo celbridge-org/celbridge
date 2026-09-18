@@ -213,26 +213,16 @@ public sealed class LocalFileSystem : ILocalFileSystem
             var folderInfos = directoryInfo.EnumerateDirectories(pattern, searchOption).OrderBy(folder => folder.FullName, StringComparer.Ordinal);
             foreach (var folderInfo in folderInfos)
             {
-                var folderAttributes = MapToPortable(folderInfo.Attributes);
-                var folderEntry = new FileSystemEntry(
-                    FullPath: folderInfo.FullName,
-                    IsFolder: true,
-                    Size: 0,
-                    ModifiedUtc: folderInfo.LastWriteTimeUtc,
-                    Attributes: folderAttributes);
+                var folderEntry = await DescribeEntryAsync(
+                    folderInfo, StorageItemKind.Folder, size: 0);
                 entries.Add(folderEntry);
             }
 
             var fileInfos = directoryInfo.EnumerateFiles(pattern, searchOption).OrderBy(file => file.FullName, StringComparer.Ordinal);
             foreach (var fileInfo in fileInfos)
             {
-                var fileAttributes = MapToPortable(fileInfo.Attributes);
-                var fileEntry = new FileSystemEntry(
-                    FullPath: fileInfo.FullName,
-                    IsFolder: false,
-                    Size: fileInfo.Length,
-                    ModifiedUtc: fileInfo.LastWriteTimeUtc,
-                    Attributes: fileAttributes);
+                var fileEntry = await DescribeEntryAsync(
+                    fileInfo, StorageItemKind.File, fileInfo.Length);
                 entries.Add(fileEntry);
             }
 
@@ -387,6 +377,38 @@ public sealed class LocalFileSystem : ILocalFileSystem
     {
         return ex is not FileNotFoundException
             and not DirectoryNotFoundException;
+    }
+
+    // The walk answers for the link itself: its length is the path it holds, and its target may be gone.
+    // The reparse flag comes free from the walk, so only a link pays for the probe that describes what it
+    // points at, and a tree without links costs exactly what it did before.
+    private async Task<FileSystemEntry> DescribeEntryAsync(
+        FileSystemInfo entryInfo, StorageItemKind kind, long size)
+    {
+        var attributes = MapToPortable(entryInfo.Attributes);
+        var modifiedUtc = entryInfo.LastWriteTimeUtc;
+
+        if (attributes.HasFlag(FileSystemAttributes.ReparsePoint))
+        {
+            var targetInfoResult = await GetInfoAsync(entryInfo.FullName);
+            if (targetInfoResult.IsSuccess)
+            {
+                var targetInfo = targetInfoResult.Value;
+                kind = targetInfo.Kind;
+                size = targetInfo.Size;
+                modifiedUtc = targetInfo.ModifiedUtc;
+                attributes = targetInfo.Attributes;
+            }
+        }
+
+        var entry = new FileSystemEntry(
+            FullPath: entryInfo.FullName,
+            Kind: kind,
+            Size: size,
+            ModifiedUtc: modifiedUtc,
+            Attributes: attributes);
+
+        return entry;
     }
 
     // The final target of a link, or null when the path is not a link. A resolve that throws is a link

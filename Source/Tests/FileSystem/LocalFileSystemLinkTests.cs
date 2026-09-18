@@ -130,6 +130,64 @@ public class LocalFileSystemLinkTests
     }
 
     [Test]
+    public async Task EnumerateAsync_LinkToAFile_ReportsTheTargetsSize()
+    {
+        // The directory walk answers for the link, whose length is the path string it holds, so an
+        // unresolved entry reports a size the file does not have.
+        var targetPath = WriteFile("target.txt");
+        File.CreateSymbolicLink(Path.Combine(_root, "link"), targetPath);
+
+        var result = await _fileSystem.EnumerateAsync(_root, "*", recursive: false);
+
+        var linkEntry = result.Value.Single(entry => entry.FullPath.EndsWith("link", StringComparison.Ordinal));
+        linkEntry.Kind.Should().Be(StorageItemKind.File);
+        linkEntry.Size.Should().Be(7);
+        linkEntry.Attributes.HasFlag(FileSystemAttributes.ReparsePoint).Should().BeTrue();
+    }
+
+    [Test]
+    public async Task EnumerateAsync_LinkWhoseTargetHasGone_IsABrokenLink()
+    {
+        var targetPath = WriteFile("target.txt");
+        File.CreateSymbolicLink(Path.Combine(_root, "link"), targetPath);
+        File.Delete(targetPath);
+
+        var result = await _fileSystem.EnumerateAsync(_root, "*", recursive: false);
+
+        var linkEntry = result.Value.Single(entry => entry.FullPath.EndsWith("link", StringComparison.Ordinal));
+        linkEntry.Kind.Should().Be(StorageItemKind.BrokenLink);
+        linkEntry.IsFolder.Should().BeFalse();
+    }
+
+    [Test]
+    public async Task EnumerateAsync_LinkToAFolder_IsAFolder()
+    {
+        var folderPath = Path.Combine(_root, "folder");
+        Directory.CreateDirectory(folderPath);
+        Directory.CreateSymbolicLink(Path.Combine(_root, "link"), folderPath);
+
+        var result = await _fileSystem.EnumerateAsync(_root, "*", recursive: false);
+
+        var linkEntry = result.Value.Single(entry => entry.FullPath.EndsWith("link", StringComparison.Ordinal));
+        linkEntry.IsFolder.Should().BeTrue();
+        linkEntry.Attributes.HasFlag(FileSystemAttributes.ReparsePoint).Should().BeTrue();
+    }
+
+    [Test]
+    public async Task EnumerateAsync_PlainFile_AgreesWithGetInfoAsync()
+    {
+        var filePath = WriteFile("plain.txt");
+
+        var enumerated = await _fileSystem.EnumerateAsync(_root, "*", recursive: false);
+        var probed = await _fileSystem.GetInfoAsync(filePath);
+
+        var entry = enumerated.Value.Single();
+        entry.Kind.Should().Be(probed.Value.Kind);
+        entry.Size.Should().Be(probed.Value.Size);
+        entry.Attributes.Should().Be(probed.Value.Attributes);
+    }
+
+    [Test]
     public async Task GetInfoAsync_MissingPath_IsNotFound()
     {
         var result = await _fileSystem.GetInfoAsync(Path.Combine(_root, "absent.txt"));
