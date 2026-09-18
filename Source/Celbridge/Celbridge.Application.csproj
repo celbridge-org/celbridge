@@ -92,6 +92,23 @@
           Command="@(LocalRunAssetFolder->'ln -sfn &quot;../%(Filename)%(Extension)&quot; &quot;$(LocalRunResourcesFolder)/%(Filename)%(Extension)&quot;', ' &amp;&amp; ')" />
   </Target>
 
+  <!-- StreamJsonRpc depends on Microsoft.VisualStudio.Threading, whose Windows build carries a framework reference
+       to WPF. Only its DispatcherExtensions class uses WPF, to run work on a WPF Dispatcher, and nothing in the
+       application calls it. Removing the reference keeps the WPF runtime, about 60 MB, out of the self-contained
+       package. The library still names WPF's WindowsBase, so the reference resolver reports a version conflict
+       (MSB3277) that is expected here, and it is logged as a message instead of a warning. -->
+  <PropertyGroup Condition="$(TargetFramework.Contains('-windows'))">
+    <MSBuildWarningsAsMessages>$(MSBuildWarningsAsMessages);MSB3277</MSBuildWarningsAsMessages>
+  </PropertyGroup>
+
+  <Target Name="RemoveUnusedWpfFrameworkReference"
+          AfterTargets="AddTransitiveFrameworkReferences"
+          Condition="$(TargetFramework.Contains('-windows'))">
+    <ItemGroup>
+      <FrameworkReference Remove="Microsoft.WindowsDesktop.App.WPF" />
+    </ItemGroup>
+  </Target>
+
   <!-- Direct project dependencies -->
   <ItemGroup>
     <ProjectReference Include="..\Core\Celbridge.Server\Celbridge.Server.csproj" />
