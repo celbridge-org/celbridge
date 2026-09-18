@@ -18,6 +18,7 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IMessengerService _messengerService;
     private readonly ILayoutService _layoutService;
+    private readonly IWindowModeService _windowModeService;
 
     public ResourceKey FileResource { get; set; }
 
@@ -43,7 +44,8 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
         ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper,
         IMessengerService messengerService,
-        ILayoutService layoutService)
+        ILayoutService layoutService,
+        IWindowModeService windowModeService)
     {
         _stringLocalizer = stringLocalizer;
         _dialogService = dialogService;
@@ -51,6 +53,7 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
         _workspaceWrapper = workspaceWrapper;
         _messengerService = messengerService;
         _layoutService = layoutService;
+        _windowModeService = windowModeService;
     }
 
     public override async Task<Result> ExecuteAsync()
@@ -126,6 +129,13 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
     private void ShowTargetSectionArea()
     {
         if (!TargetSection.HasValue)
+        {
+            return;
+        }
+
+        // Showing an area ends Focus or Presentation, which only an activating open may do.
+        if (!Activate
+            && _windowModeService.LayoutMode != LayoutMode.Default)
         {
             return;
         }
