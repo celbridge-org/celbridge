@@ -482,7 +482,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
     }
 
     // A released session is terminally gone, so its state change is broadcast for per-session bookkeeping
-    // (a pending Python fingerprint, for instance) before its handler is detached.
+    // before its handler is detached.
     private void ReleaseSession(ConsoleSession session)
     {
         if (session.State != ConsoleSessionRunState.Ended &&

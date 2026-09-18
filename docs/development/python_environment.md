@@ -51,9 +51,17 @@ typed in a console lands in the project rather than on the machine.
 
 ## Reclaiming the disk
 
-Every reinstall leaves behind the tool environment it replaced, at roughly 50 MB each, and nothing
-reclaims them. An upgrade costs one, which nobody notices. A wheel rebuilt during development costs one
-each, so a development machine accumulates them fastest.
+Every full reinstall leaves behind a copy of the environment the REPL imports, at roughly 50 MB each, and
+nothing reclaims them. The install rewrites the wheel into the support folder, which moves its timestamp,
+so the next python console resolves a fresh cache archive and the archive it replaced stays. Identical
+bytes do not save it: a marker deleted by hand costs a copy as surely as a rebuilt wheel does. The cost
+also arrives late — the reinstall itself adds a couple of hundred kilobytes, and the next python console
+pays the rest.
+
+A republish costs nothing here, because it leaves the wheel where it is.
+
+An upgrade costs one copy, which nobody notices. A wheel rebuilt during development costs one each, so a
+development machine accumulates them fastest.
 
 Removing the application does not clear them on the Skia heads, where the folder is ordinary user data.
 The packaged Windows head is the exception: its folder belongs to the MSIX package, which the OS deletes
@@ -84,8 +92,9 @@ usually a question about *which* of these was stale.
    and the `celbridge` package from here.
 2. **The uv cache archive**, `PythonCache/uv_cache/archive-v0/<id>/`. This is what the REPL actually
    imports. The shim re-execs `uv run --with <wheel>`, and uv revalidates that wheel and builds a new
-   archive when its bytes change. A running REPL reports its own module path here, not in the tool
-   environment.
+   archive whenever the file's timestamp moves — not when its bytes do, which is why a reinstall that
+   rewrites an identical wheel still sends the next console to a fresh archive. A running REPL reports its
+   own module path here, not in the tool environment.
 3. **The installed wheel**, `Python/celbridge-<version>.whl`. The source both of the above are built
    from, and the file the marker hashes.
 
@@ -147,6 +156,10 @@ Everything here is read back rather than seen; none of it needs a keyboard.
   marker mismatched, and `celbridge tool installed successfully in <n>ms` says it finished. A launch line
   is written when the command is *composed*, not when it runs, so a console that never started can leave
   a log that reads as healthy — judge a console by what it produced.
+- **Whether a REPL reached the network** is in the log too. `celbridge-py` measures the cache before it
+  bootstraps and reports what it found, which arrives as `Console '<resource>' reported: python-probe
+  mode=offline ms=<n>`. `offline` means every package resolved without touching the network, so a launch
+  that went online says so rather than leaving the question to a stopwatch.
 - **The environment** is read by giving a console a startup script that writes what it finds to a file in
   the project. Write it under a temporary name and rename it at the end, so its presence means the case
   finished rather than started.
