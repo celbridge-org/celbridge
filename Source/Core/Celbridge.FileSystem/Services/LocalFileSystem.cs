@@ -113,6 +113,38 @@ public sealed class LocalFileSystem : ILocalFileSystem
             var fileInfo = new FileInfo(path);
             if (fileInfo.Exists)
             {
+                // Every property here answers for the link itself: a link's Length is the length of the
+                // path it holds, and a link left behind by a deleted target still reports as a file. So a
+                // link is answered by describing what it points at.
+                var linkTargetPath = ResolveLinkTargetPath(fileInfo, out var isBrokenLink);
+                if (isBrokenLink)
+                {
+                    var brokenLinkResult = new StorageItemInfo(
+                        Kind: StorageItemKind.BrokenLink,
+                        Size: 0,
+                        ModifiedUtc: fileInfo.LastWriteTimeUtc,
+                        Attributes: MapToPortable(fileInfo.Attributes));
+                    return brokenLinkResult;
+                }
+
+                if (linkTargetPath is not null)
+                {
+                    var targetInfoResult = await GetInfoAsync(linkTargetPath);
+                    if (targetInfoResult.IsFailure)
+                    {
+                        return targetInfoResult;
+                    }
+                    var targetInfo = targetInfoResult.Value;
+
+                    // The target says what the caller can open. The flag says a link is how they reached
+                    // it, which the target's own attributes do not carry.
+                    var linkedInfo = targetInfo with
+                    {
+                        Attributes = targetInfo.Attributes | FileSystemAttributes.ReparsePoint
+                    };
+                    return linkedInfo;
+                }
+
                 var fileAttributes = MapToPortable(fileInfo.Attributes);
                 var fileResult = new StorageItemInfo(
                     Kind: StorageItemKind.File,
@@ -355,6 +387,36 @@ public sealed class LocalFileSystem : ILocalFileSystem
     {
         return ex is not FileNotFoundException
             and not DirectoryNotFoundException;
+    }
+
+    // The final target of a link, or null when the path is not a link. A resolve that throws is a link
+    // that cannot be followed, which is a broken link by any useful definition. The final target is never
+    // itself a link, so describing it terminates.
+    private static string? ResolveLinkTargetPath(FileInfo fileInfo, out bool isBrokenLink)
+    {
+        isBrokenLink = false;
+
+        try
+        {
+            var linkTarget = fileInfo.ResolveLinkTarget(returnFinalTarget: true);
+            if (linkTarget is null)
+            {
+                return null;
+            }
+
+            if (!linkTarget.Exists)
+            {
+                isBrokenLink = true;
+                return null;
+            }
+
+            return linkTarget.FullName;
+        }
+        catch (IOException)
+        {
+            isBrokenLink = true;
+            return null;
+        }
     }
 
     private static FileSystemAttributes MapToPortable(System.IO.FileAttributes native)

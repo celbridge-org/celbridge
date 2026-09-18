@@ -67,6 +67,12 @@ public enum StorageItemKind
     /// The item exists and is a folder.
     /// </summary>
     Folder,
+
+    /// <summary>
+    /// The item is a symbolic link whose target no longer exists, so nothing can open it. The platform
+    /// reports the link itself as a file, which is why this is a kind of its own rather than a file.
+    /// </summary>
+    BrokenLink,
 }
 
 /// <summary>
@@ -135,7 +141,9 @@ public interface ILocalFileSystem
 
     /// <summary>
     /// Probes a path and returns its kind, size, modified-time, and attribute
-    /// flags in a single stat.
+    /// flags in a single stat. Symbolic links are followed, so a link reports the
+    /// kind and size of its target, or BrokenLink when that target has gone. Either
+    /// way the ReparsePoint attribute records that the path is a link.
     /// </summary>
     Task<Result<StorageItemInfo>> GetInfoAsync(string path);
 

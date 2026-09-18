@@ -378,11 +378,14 @@ public partial class App : Application
 
         // The launch time in UTC, matching the timestamp in a report file name. A local time would
         // repeat an hour at every daylight saving change, so two runs could claim the same file.
-        var processStartTime = System.Diagnostics.Process.GetCurrentProcess().StartTime;
-        var timestamp = Celbridge.Utilities.FileTimestamp.Compose(processStartTime);
+        var currentProcess = System.Diagnostics.Process.GetCurrentProcess();
+        var timestamp = Celbridge.Utilities.FileTimestamp.Compose(currentProcess.StartTime);
 
+        // The timestamp resolves to a second, so two instances started within one interleave their lines
+        // into one file and corrupt both. The process id separates them, and names which wrote which.
+        // Retention orders by name, and the fixed width timestamp still leads.
         var logFolderPath = System.IO.Path.Combine(localDataPath, "Logs");
-        var logFileName = $"celbridge_{timestamp}.log";
+        var logFileName = $"celbridge_{timestamp}_{currentProcess.Id}.log";
         var logFilePath = System.IO.Path.Combine(logFolderPath, logFileName);
 
         Environment.SetEnvironmentVariable("CELBRIDGE_LOG_FILE", logFilePath);
