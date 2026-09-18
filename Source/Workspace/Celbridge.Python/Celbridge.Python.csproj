@@ -24,81 +24,43 @@
     <!-- being incorrectly parsed as Windows resource qualifiers by the PRI indexer. -->
     <MSBuildWarningsAsMessages>$(MSBuildWarningsAsMessages);PRI249</MSBuildWarningsAsMessages>
 
-    <!-- The wheel is generated during the build and re-included by IncludeGeneratedPythonWheel.
-         Excluding it from the default Assets glob avoids a duplicate MSIX payload (APPX1101) on the
-         packaged Windows head. -->
-    <CelbridgeDefaultItemExcludes>$(CelbridgeDefaultItemExcludes);Assets\Python\*.whl</CelbridgeDefaultItemExcludes>
+    <!-- Celbridge.Python.Assets generates the wheel and the uv archive, so neither exists when the SDK
+         evaluates the default Assets glob on a clean checkout. Excluding them here and re-including them
+         in IncludeGeneratedPythonAssets is what gets them into the output, and it avoids a duplicate
+         MSIX payload (APPX1101) on the packaged Windows head. -->
+    <CelbridgeDefaultItemExcludes>$(CelbridgeDefaultItemExcludes);Assets\Python\*.whl;Assets\UV\uv-*.zip;Assets\UV\uv-*.tar.gz</CelbridgeDefaultItemExcludes>
 
   </PropertyGroup>
 
-  <!-- Download uv binary from GitHub releases if not already present -->
-  <PropertyGroup>
-    <UvVersion>0.10.11</UvVersion>
-    <UvPlatform Condition="$([MSBuild]::IsOSPlatform('Windows'))">x86_64-pc-windows-msvc</UvPlatform>
-    <UvPlatform Condition="$([MSBuild]::IsOSPlatform('OSX')) AND '$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'Arm64'">aarch64-apple-darwin</UvPlatform>
-    <UvPlatform Condition="$([MSBuild]::IsOSPlatform('OSX')) AND '$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'X64'">x86_64-apple-darwin</UvPlatform>
-    <!-- The Windows uv release is a .zip; the macOS and Linux releases are .tar.gz archives. -->
-    <UvArchiveExtension Condition="$([MSBuild]::IsOSPlatform('Windows'))">zip</UvArchiveExtension>
-    <UvArchiveExtension Condition="!$([MSBuild]::IsOSPlatform('Windows'))">tar.gz</UvArchiveExtension>
-    <UvZipFileName>uv-$(UvPlatform).$(UvArchiveExtension)</UvZipFileName>
-    <UvAssetFolder>$(MSBuildThisFileDirectory)Assets\UV</UvAssetFolder>
-    <UvZipPath>$(UvAssetFolder)\$(UvZipFileName)</UvZipPath>
-    <UvDownloadUrl>https://github.com/astral-sh/uv/releases/download/$(UvVersion)/$(UvZipFileName)</UvDownloadUrl>
-  </PropertyGroup>
-
-  <Target Name="DownloadUv" BeforeTargets="Build" Condition="!Exists('$(UvZipPath)') AND '$(UvPlatform)' != ''">
-    <Message Text="Downloading uv $(UvVersion) for $(UvPlatform)..." Importance="high" />
-    <MakeDir Directories="$(UvAssetFolder)" />
-    <DownloadFile SourceUrl="$(UvDownloadUrl)" DestinationFolder="$(UvAssetFolder)" DestinationFileName="$(UvZipFileName)" />
-  </Target>
-
-  <!-- Build the celbridge Python wheel from source when Python files change. -->
-  <PropertyGroup>
-    <PythonPackageFolder>$(MSBuildThisFileDirectory)packages\celbridge</PythonPackageFolder>
-    <PythonAssetsFolder>$(MSBuildThisFileDirectory)Assets\Python</PythonAssetsFolder>
-    <PythonWheelPath>$(PythonAssetsFolder)\celbridge-0.1.0-py3-none-any.whl</PythonWheelPath>
-    <!-- The wheel is platform independent, so one head per OS builds it and the rest consume it. -->
-    <PythonWheelTargetFramework Condition="$([MSBuild]::IsOSPlatform('Windows'))">net10.0-windows10.0.22621</PythonWheelTargetFramework>
-    <PythonWheelTargetFramework Condition="'$(PythonWheelTargetFramework)' == ''">net10.0-desktop</PythonWheelTargetFramework>
-    <PythonLauncher Condition="$([MSBuild]::IsOSPlatform('Windows'))">python</PythonLauncher>
-    <PythonLauncher Condition="'$(PythonLauncher)' == ''">python3</PythonLauncher>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <PythonSourceFiles Include="$(PythonPackageFolder)\src\celbridge\**\*.py" />
-    <PythonSourceFiles Include="$(PythonPackageFolder)\pyproject.toml" />
-  </ItemGroup>
-
-  <!-- Rebuild the wheel via build.py before content target paths are assigned. A machine with no Python
-       new enough to build the package keeps the committed wheel and gets a warning, so no build depends
-       on a system Python being installed. Skipped during design-time builds so editing Python source in
-       Visual Studio does not invoke pip. -->
-  <Target Name="BuildPythonWheel" BeforeTargets="AssignTargetPaths"
-          Inputs="@(PythonSourceFiles)" Outputs="$(PythonWheelPath)"
-          Condition="'$(TargetFramework)' == '$(PythonWheelTargetFramework)' AND '$(DesignTimeBuild)' != 'true'">
-    <Message Text="Building celbridge Python wheel via build.py..." Importance="high" />
-    <Exec Command="$(PythonLauncher) &quot;$(MSBuildThisFileDirectory)build.py&quot;" ContinueOnError="true">
-      <Output TaskParameter="ExitCode" PropertyName="PythonWheelExitCode" />
-    </Exec>
-    <Warning Condition="'$(PythonWheelExitCode)' != '0'"
-             Text="Python sources changed but the celbridge wheel could not be rebuilt, so the committed wheel is being used and is now stale. Install Python 3.10 or later to rebuild it here." />
-  </Target>
-
-  <!-- Include the generated wheel as Content before target paths are assigned, so it enters the Uno
-       content pipeline exactly once. -->
-  <Target Name="IncludeGeneratedPythonWheel" BeforeTargets="AssignTargetPaths" DependsOnTargets="BuildPythonWheel">
+  <!-- Both assets are produced by Celbridge.Python.Assets, a single target framework project so that it
+       runs once however many of this project's frameworks are building. They reach the app through this
+       target alone, because the property group above takes them out of the default glob. A missing asset
+       is reported here rather than at the first console launch, which is where it would otherwise
+       surface. -->
+  <Target Name="IncludeGeneratedPythonAssets" BeforeTargets="AssignTargetPaths">
     <ItemGroup>
-      <Content Include="Assets\Python\*.whl" />
+      <PythonWheelAsset Include="Assets\Python\*.whl" />
+      <UvArchiveAsset Include="Assets\UV\uv-*.zip;Assets\UV\uv-*.tar.gz" />
+    </ItemGroup>
+    <Error Condition="'@(PythonWheelAsset)' == '' AND '$(SkipPythonAssets)' != 'true' AND '$(DesignTimeBuild)' != 'true'"
+           Text="No celbridge wheel in Assets/Python. It is generated by Celbridge.Python.Assets, which did not run or did not succeed." />
+    <Error Condition="'@(UvArchiveAsset)' == '' AND '$(SkipPythonAssets)' != 'true' AND '$(DesignTimeBuild)' != 'true'"
+           Text="No uv archive in Assets/UV. It is downloaded by Celbridge.Python.Assets, which did not run or did not succeed." />
+    <Warning Condition="'$(SkipPythonAssets)' == 'true'"
+             Text="Built with SkipPythonAssets, so this output carries no uv archive and no celbridge wheel and cannot run Python." />
+    <ItemGroup>
+      <Content Include="@(PythonWheelAsset);@(UvArchiveAsset)" />
+      <Content Include="Assets\UV\uv_version.txt" Condition="Exists('$(MSBuildThisFileDirectory)Assets\UV\uv_version.txt')" />
     </ItemGroup>
   </Target>
 
   <ItemGroup>
     <ProjectReference Include="..\..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
     <ProjectReference Include="..\..\Core\Celbridge.Utilities\Celbridge.Utilities.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <InternalsVisibleTo Include="Celbridge.Tests" />
+    <!-- UndefineProperties stops a global TargetFramework (e.g. dotnet build -f net10.0-desktop) from
+         forcing that framework onto this net10.0 NoTargets project (NETSDK1139). -->
+    <ProjectReference Include="..\..\Workspace\Celbridge.Python.Assets\Celbridge.Python.Assets.csproj"
+                      ReferenceOutputAssembly="false" UndefineProperties="TargetFramework" />
   </ItemGroup>
 
   <ItemGroup>

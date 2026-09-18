@@ -95,7 +95,7 @@ pip install -e "packages/celbridge[dev]"
 python run_tests.py
 ```
 
-The venv is for running the tests only. The wheel build (`build.py`) resolves its own interpreter from PATH and never looks for a venv, so where the venv lives has no bearing on the build.
+The venv is for running the tests only. The wheel build (`build.py`) takes its interpreter from uv and never looks for a venv, so where the venv lives has no bearing on the build.
 
 ## Linting
 

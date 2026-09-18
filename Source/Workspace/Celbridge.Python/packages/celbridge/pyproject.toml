@@ -1,7 +1,6 @@
 [build-system]
-# Pinned rather than a floor. setuptools stamps its own version into the wheel's dist-info, so an
-# unpinned range builds different bytes on every machine that resolves a different release, and the
-# committed wheel then shows as modified after any rebuild. Bump deliberately.
+# Pinned because setuptools stamps its version into the wheel, whose hash gates the application's Python
+# install: an unpinned range reinstalls it wherever a different release resolves. Bump deliberately.
 requires = ["setuptools==84.0.0"]
 build-backend = "setuptools.build_meta"
 

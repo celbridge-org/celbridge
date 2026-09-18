@@ -67,6 +67,12 @@ public enum StorageItemKind
     /// The item exists and is a folder.
     /// </summary>
     Folder,
+
+    /// <summary>
+    /// The item is a symbolic link whose target no longer exists, so nothing can open it. The platform
+    /// reports the link itself as a file, which is why this is a kind of its own rather than a file.
+    /// </summary>
+    BrokenLink,
 }
 
 /// <summary>
@@ -80,18 +86,24 @@ public record StorageItemInfo(
     FileSystemAttributes Attributes);
 
 /// <summary>
-/// A file or folder entry returned by EnumerateAsync, with its absolute path,
-/// the size, modified-time, and portable attribute flags from the directory
-/// walk. IsFolder is false for anything that is not a directory, so a
-/// non-folder is not guaranteed to be a readable regular file. Size is 0 for
+/// An entry returned by EnumerateAsync, with its absolute path, the size,
+/// modified-time, and portable attribute flags from the directory walk. Kind
+/// carries the same meaning as it does for GetInfoAsync, so a link reports what
+/// it points at and a link whose target has gone reports BrokenLink. Size is 0 for
 /// folders.
 /// </summary>
 public record FileSystemEntry(
     string FullPath,
-    bool IsFolder,
+    StorageItemKind Kind,
     long Size,
     DateTime ModifiedUtc,
-    FileSystemAttributes Attributes);
+    FileSystemAttributes Attributes)
+{
+    /// <summary>
+    /// Whether the entry is a folder. Anything else is a file, or a link whose target has gone.
+    /// </summary>
+    public bool IsFolder => Kind == StorageItemKind.Folder;
+}
 
 /// <summary>
 /// Path-based gateway for local-substrate filesystem reads and writes. The
@@ -135,7 +147,9 @@ public interface ILocalFileSystem
 
     /// <summary>
     /// Probes a path and returns its kind, size, modified-time, and attribute
-    /// flags in a single stat.
+    /// flags in a single stat. Symbolic links are followed, so a link reports the
+    /// kind and size of its target, or BrokenLink when that target has gone. Either
+    /// way the ReparsePoint attribute records that the path is a link.
     /// </summary>
     Task<Result<StorageItemInfo>> GetInfoAsync(string path);
 

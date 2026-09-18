@@ -210,6 +210,12 @@ PublishScripts/
 # Celbridge source code folders named Packages
 !Source/Core/Celbridge.Foundation/Packages/*
 !Source/Tests/Packages/*
+# The celbridge Python packages. The rule above would swallow their sources, and the wheel built from
+# them is generated rather than committed, so a swallowed source reaches no other machine at all. The two
+# lines after it re-ignore the build artefacts that un-ignoring the packages exposes.
+!Source/Workspace/Celbridge.Python/packages/*
+Source/Workspace/Celbridge.Python/packages/*/build/
+Source/Workspace/Celbridge.Python/packages/*/src/*.egg-info/
 # Uncomment if necessary however generally it will be regenerated when needed
 #!**/[Pp]ackages/repositories.config
 # NuGet v3's project.json files produces more ignorable files
@@ -439,9 +445,13 @@ Source/Core/Celbridge.Projects/Assets/Templates/*.zip
 Source/Core/Celbridge.UserInterface/Resources/ColorTokens.xaml
 Source/Core/Celbridge.WebHost/Web/celbridge-client/celbridge-tokens.css
 
-# UV binary (downloaded during build from GitHub releases)
+# UV binary (downloaded during build from GitHub releases, and extracted to obj/ to build the wheel)
 Source/Workspace/Celbridge.Python/Assets/UV/*.zip
 Source/Workspace/Celbridge.Python/Assets/UV/*.tar.gz
+Source/Workspace/Celbridge.Python/Assets/UV/uv_version.txt
+
+# Celbridge Python wheel (built during the build from packages/celbridge)
+Source/Workspace/Celbridge.Python/Assets/Python/*.whl
 
 # Design documentation (keep local only)
 Source/Celbridge/DesignDocs/

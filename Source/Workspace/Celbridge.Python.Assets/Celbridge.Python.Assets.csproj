@@ -1,0 +1,101 @@
+<Project Sdk="Microsoft.Build.NoTargets/3.7.56">
+
+  <!--
+    Produces the two generated assets Celbridge.Python ships: the uv archive the application unpacks at
+    first launch, and the celbridge wheel it installs as a tool. Neither is committed.
+
+    One target framework, so that it builds once however many frameworks reference it. Celbridge.Python
+    multi-targets and builds its frameworks in parallel, so assets generated there would be written by
+    several builds at the same time.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <PythonModuleFolder>$(MSBuildThisFileDirectory)..\Celbridge.Python</PythonModuleFolder>
+    <!-- Set by a build that wants the Celbridge.Python assembly and not the assets, so uv is neither
+         downloaded nor run. The application cannot run Python without them, so anything that has to
+         launch must leave this unset. -->
+    <GeneratePythonAssets Condition="'$(SkipPythonAssets)' != 'true' AND '$(DesignTimeBuild)' != 'true'">true</GeneratePythonAssets>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <UvVersion>0.10.11</UvVersion>
+    <UvPlatform Condition="$([MSBuild]::IsOSPlatform('Windows'))">x86_64-pc-windows-msvc</UvPlatform>
+    <UvPlatform Condition="$([MSBuild]::IsOSPlatform('OSX')) AND '$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'Arm64'">aarch64-apple-darwin</UvPlatform>
+    <UvPlatform Condition="$([MSBuild]::IsOSPlatform('OSX')) AND '$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'X64'">x86_64-apple-darwin</UvPlatform>
+    <UvPlatform Condition="$([MSBuild]::IsOSPlatform('Linux')) AND '$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'X64'">x86_64-unknown-linux-gnu</UvPlatform>
+    <UvPlatform Condition="$([MSBuild]::IsOSPlatform('Linux')) AND '$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'Arm64'">aarch64-unknown-linux-gnu</UvPlatform>
+    <!-- The Windows uv release is a .zip. The macOS and Linux releases are .tar.gz archives. -->
+    <UvArchiveExtension Condition="$([MSBuild]::IsOSPlatform('Windows'))">zip</UvArchiveExtension>
+    <UvArchiveExtension Condition="!$([MSBuild]::IsOSPlatform('Windows'))">tar.gz</UvArchiveExtension>
+    <UvAssetFolder>$(PythonModuleFolder)\Assets\UV</UvAssetFolder>
+    <UvArchivePath>$(UvAssetFolder)\uv-$(UvPlatform).$(UvArchiveExtension)</UvArchivePath>
+    <!-- Ships beside the archive, which carries no version in its name. The application folds it into
+         the marker that decides whether an install is current. -->
+    <UvVersionFile>$(UvAssetFolder)\uv_version.txt</UvVersionFile>
+    <UvDownloadUrl>https://github.com/astral-sh/uv/releases/download/$(UvVersion)/uv-$(UvPlatform).$(UvArchiveExtension)</UvDownloadUrl>
+
+    <UvBuildFolder>$(MSBuildThisFileDirectory)obj\uv</UvBuildFolder>
+    <UvBuildExecutable Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(UvBuildFolder)\uv.exe</UvBuildExecutable>
+    <UvBuildExecutable Condition="'$(UvBuildExecutable)' == ''">$(UvBuildFolder)/uv</UvBuildExecutable>
+    <!-- tar restores each entry's recorded modification time, which is the uv release date and so always
+         older than the archive we downloaded. A stamp this target writes is what MSBuild can compare. -->
+    <UvExtractStamp>$(UvBuildFolder)\extracted-$(UvVersion).stamp</UvExtractStamp>
+
+    <PythonPackageFolder>$(PythonModuleFolder)\packages\celbridge</PythonPackageFolder>
+    <PythonAssetsFolder>$(PythonModuleFolder)\Assets\Python</PythonAssetsFolder>
+    <PythonWheelPath>$(PythonAssetsFolder)\celbridge-0.1.0-py3-none-any.whl</PythonWheelPath>
+  </PropertyGroup>
+
+  <!-- The version already on disk, so a version bump re-downloads an archive whose name never changes. -->
+  <PropertyGroup Condition="Exists('$(UvVersionFile)')">
+    <DownloadedUvVersion>$([System.IO.File]::ReadAllText('$(UvVersionFile)').Trim())</DownloadedUvVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PythonSourceFiles Include="$(PythonPackageFolder)\src\celbridge\**\*.py" />
+    <PythonSourceFiles Include="$(PythonPackageFolder)\pyproject.toml" />
+  </ItemGroup>
+
+  <Target Name="DownloadUv"
+          Condition="'$(GeneratePythonAssets)' == 'true' AND ('$(DownloadedUvVersion)' != '$(UvVersion)' OR !Exists('$(UvArchivePath)'))">
+    <Error Condition="'$(UvPlatform)' == ''"
+           Text="uv publishes no release for this platform, so the Celbridge Python assets cannot be built here." />
+    <Message Text="Downloading uv $(UvVersion) for $(UvPlatform)..." Importance="high" />
+    <MakeDir Directories="$(UvAssetFolder)" />
+    <DownloadFile SourceUrl="$(UvDownloadUrl)" DestinationFolder="$(UvAssetFolder)"
+                  DestinationFileName="uv-$(UvPlatform).$(UvArchiveExtension)" SkipUnchangedFiles="false" />
+    <WriteLinesToFile File="$(UvVersionFile)" Lines="$(UvVersion)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+  </Target>
+
+  <!-- tar reads both archives uv publishes. The tarball nests its binaries under a folder named after
+       the archive, which the Windows zip does not. -->
+  <Target Name="ExtractUv" DependsOnTargets="DownloadUv"
+          Inputs="$(UvArchivePath)" Outputs="$(UvExtractStamp)"
+          Condition="'$(GeneratePythonAssets)' == 'true'">
+    <MakeDir Directories="$(UvBuildFolder)" />
+    <Exec Command="tar -xf &quot;$(UvArchivePath)&quot; -C &quot;$(UvBuildFolder)&quot;"
+          Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
+    <Exec Command="tar -xzf &quot;$(UvArchivePath)&quot; --strip-components=1 -C &quot;$(UvBuildFolder)&quot;"
+          Condition="!$([MSBuild]::IsOSPlatform('Windows'))" />
+    <Touch Files="$(UvExtractStamp)" AlwaysCreate="true" />
+  </Target>
+
+  <!-- uv supplies the interpreter and the build backend, so building the wheel needs no Python on the
+       machine. -->
+  <Target Name="BuildCelbridgeWheel" DependsOnTargets="ExtractUv" BeforeTargets="Build"
+          Inputs="@(PythonSourceFiles)" Outputs="$(PythonWheelPath)"
+          Condition="'$(GeneratePythonAssets)' == 'true'">
+    <Message Text="Building the celbridge wheel..." Importance="high" />
+    <Exec Command="&quot;$(UvBuildExecutable)&quot; run --no-project --managed-python &quot;$(PythonModuleFolder)/build.py&quot; &quot;$(UvBuildExecutable)&quot;" />
+  </Target>
+
+  <Target Name="CleanPythonAssets" AfterTargets="Clean">
+    <ItemGroup>
+      <GeneratedWheels Include="$(PythonAssetsFolder)\*.whl" />
+    </ItemGroup>
+    <Delete Files="@(GeneratedWheels)" />
+    <RemoveDir Directories="$(UvBuildFolder)" />
+  </Target>
+
+</Project>
