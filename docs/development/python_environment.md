@@ -49,6 +49,30 @@ current, and reinstalls when it has gone.
 `UV_TOOL_DIR` and `UV_TOOL_BIN_DIR` still point into the project. They are the user's: a `uv tool install`
 typed in a console lands in the project rather than on the machine.
 
+## Reclaiming the disk
+
+Every reinstall leaves behind the tool environment it replaced, at roughly 50 MB each, and nothing
+reclaims them. An upgrade costs one, which nobody notices. A wheel rebuilt during development costs one
+each, so a development machine accumulates them fastest.
+
+Removing the application does not clear them on the Skia heads, where the folder is ordinary user data.
+The packaged Windows head is the exception: its folder belongs to the MSIX package, which the OS deletes
+on uninstall.
+
+To reclaim the space, close Celbridge and delete the cache:
+
+```
+rm -rf ~/Library/Application\ Support/Celbridge/PythonCache/uv_cache
+```
+
+The next python console rebuilds what it needs in a few seconds. Leave `uv_python_installs` beside it
+alone unless the disk is desperate, because it holds the interpreters and they are the slower download.
+Deleting that is recoverable too — an install that finds its interpreter gone republishes the tool on the
+next launch — but it costs more to undo.
+
+`uv cache prune` is not a lighter alternative. Despite the name it empties the cache rather than trimming
+it.
+
 ## The three places Python code loads from
 
 This is the part that surprises people, and the reason "I changed a script and nothing happened" is
