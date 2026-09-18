@@ -42,12 +42,27 @@ public class InputSimulationService : IInputSimulationService
             }
         }
 
-        return RunOnUIThreadAsync(() => MacOSInputSimulator.PressKey(key, command, control, shift, option));
+        return RunOnUIThreadAsync(() => PressKey(key, command, control, shift, option));
     }
 
-    // The simulator calls AppKit, which is main thread only, and the caller is a tool request arriving on
-    // its own thread. The dispatcher is used rather than the command queue so the press still lands while
-    // a modal dialog holds the queue.
+    private static Result PressKey(string key, bool command, bool control, bool shift, bool option)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return WindowsInputSimulator.PressKey(key, command, control, shift, option);
+        }
+
+        if (OperatingSystem.IsMacOS())
+        {
+            return MacOSInputSimulator.PressKey(key, command, control, shift, option);
+        }
+
+        return Result.Fail("Simulated key presses are supported on macOS and Windows only.");
+    }
+
+    // Both simulators read state that belongs to the UI thread, AppKit's key window on macOS and the thread's
+    // focused window on Windows, and the caller is a tool request arriving on its own thread. The dispatcher
+    // is used rather than the command queue so the press still lands while a modal dialog holds the queue.
     private Task<Result> RunOnUIThreadAsync(Func<Result> operation)
     {
         if (_userInterfaceService.MainWindow is not Window mainWindow)

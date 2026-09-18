@@ -20,10 +20,10 @@ Utility buttons and the ones document shortcuts add, double-clicking a document 
 | Focus showing the Bottom area | open another Bottom document from its shortcut | the document opens beside the others, Focus stays on, and `app_get_state` reports `bottom` alone on screen | 2 |
 | Focus showing the Bottom area | open a Side document from its shortcut | Focus ends, and the normal layout returns with Side showing the document | 2 |
 | Tabs in Bottom and none in Side, Bottom hidden and Side shown by hand, the window maximised | Reset Layout | Bottom shows, Side collapses, and the window is restored from maximised | 2 |
-| An area hidden by hand | reload the project | the area is still hidden | 2 |
-| Presentation on | open a Side document with `document_open` without activating it | Presentation stays on and nothing on screen changes | 2 |
+| An area holding tabs, hidden by hand | reload the project | the area is still hidden | 2 |
+| Presentation on, Side collapsed | open a Side document with `document_open` without activating it | Presentation stays on and nothing on screen changes | 2 |
 | Focus showing the Bottom area, documents open in other areas | close Bottom's last tab | another document is on screen, and no empty area is left in view | 3 |
-| Presentation on | open a Side document with `document_open` and activate it | Presentation ends and Side shows the document | 3 |
+| Presentation on, Side collapsed | open a Side document with `document_open` and activate it | Presentation ends and Side shows the document | 3 |
 | Side showing | collapse it with its own close button | the title bar's Side button and the View menu both show it hidden | 3 |
 | The Utility Panel showing Explorer, the keyboard in the tree | click Explorer's Utility button, then click it again | the first click collapses the panel and moves the keyboard to the active document, and the second brings the panel back on Explorer | 3 |
 | An area split into two sections | close the last tab in one of them | the area folds back to a single section | 3 |
@@ -32,7 +32,9 @@ Utility buttons and the ones document shortcuts add, double-clicking a document 
 
 The cases need document shortcuts into Bottom and Side. A `[[shortcut]]` entry in the project file names a
 resource and the `area` it opens in, and adds a Utility button that opens it. Two into Bottom and one into
-Side cover every case.
+Side cover every case. Point the first Bottom shortcut at a file that opens in the code editor, such as a
+`.txt` file. Markdown opens in preview, where a typed character lands nowhere, so it cannot show where the
+keyboard is.
 
 Read the areas back rather than trusting the screen: `app_get_state` reports which areas are on screen, and
 `document_get_state` which sections. In Focus and Presentation the title bar's area buttons and the View

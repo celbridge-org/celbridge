@@ -89,7 +89,9 @@ reliable routes that the project's own tooling provides.
 
 Two things a run reliably trips over:
 
-**Escape may not arrive.** Desktop automation reports success for Escape and can deliver nothing. Several
+**Escape may not arrive.** Desktop automation reports success for Escape and can deliver nothing, because
+computer use keeps Escape as its own stop key: an Escape it sees stops the run rather than reaching the
+app. Several
 cases turn on it, so send it with `app_simulate_input` instead and treat a missing Escape as a limit of the
 harness, not a defect — unless an equivalent route shows the app is at fault.
 
