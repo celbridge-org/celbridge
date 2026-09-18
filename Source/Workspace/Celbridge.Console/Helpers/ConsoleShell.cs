@@ -16,6 +16,13 @@ public enum ConsoleShellFamily
 public sealed record ConsoleShell(string Executable, ConsoleShellFamily Family)
 {
     /// <summary>
+    /// Whether this shell is zsh. The POSIX family shares a quoting dialect but not a prompt syntax, so
+    /// anything written in zsh's own syntax has to name the shell rather than the family.
+    /// </summary>
+    public bool IsZsh => Path.GetFileNameWithoutExtension(Executable)
+        .Equals("zsh", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
     /// Resolves the platform default shell. Each is resolvable without a PATH probe: powershell.exe ships
     /// in System32, and the Unix path honours the user's $SHELL.
     /// </summary>
