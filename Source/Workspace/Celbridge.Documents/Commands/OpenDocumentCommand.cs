@@ -123,8 +123,6 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
         return Result.Ok();
     }
 
-    // A caller that names a section wants the document seen there, so a collapsed area is shown even when the
-    // document is not activated. Main never collapses.
     private void ShowTargetSectionArea()
     {
         if (!TargetSection.HasValue)

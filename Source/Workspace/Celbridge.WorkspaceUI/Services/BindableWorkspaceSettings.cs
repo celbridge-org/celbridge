@@ -24,7 +24,7 @@ public sealed class BindableWorkspaceSettings : IBindableWorkspaceSettings
     {
         get
         {
-            // A project with no stored value has never chosen its areas. That is not the same as a stored value
+            // A project with no stored value has no saved choice. That is not the same as a stored value
             // naming no collapsible area, which is the user having hidden them all.
             if (!_settings.IsConfigured(SettingCatalog.Layout.PreferredVisibleAreas))
             {
@@ -148,7 +148,6 @@ public sealed class BindableWorkspaceSettings : IBindableWorkspaceSettings
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
-    // Removes the stored value so reads return the default. Guarded against a missing store as Set is.
     private void Reset(ISettingDescriptor descriptor, [CallerMemberName] string? propertyName = null)
     {
         if (!_settings.IsScopeAvailable(SettingScope.Workspace))

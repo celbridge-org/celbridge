@@ -10,8 +10,7 @@ public interface IBindableWorkspaceSettings : INotifyPropertyChanged
 {
     /// <summary>
     /// The workspace areas the user has chosen to see, always including Main, or null while the project has no
-    /// saved choice. This is the layout a project opens at and returns to when it leaves Focus or Presentation,
-    /// rather than what is on screen while one of those is hiding everything. Setting null clears the choice.
+    /// saved choice. This is the layout a project opens at and returns to when it leaves Focus or Presentation.
     /// </summary>
     IReadOnlySet<WorkspaceArea>? PreferredVisibleAreas { get; set; }
 
