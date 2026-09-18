@@ -187,6 +187,19 @@ def _probe_offline_cache(resolved: ResolvedLaunch, environ):
     return exit_code == 0, duration_ms
 
 
+def _build_handshake_params(session_token, bootstrapped):
+    """Build the session/handshake parameters that bind this REPL to the console that launched it.
+
+    A bootstrapped REPL also reports the temporary environment uv run built for it, which is removed once
+    the console has closed.
+    """
+    params = {"sessionToken": session_token}
+    if bootstrapped:
+        params["temporaryEnvironmentFolder"] = sys.prefix
+
+    return params
+
+
 def _emit_diagnostic(text):
     """Write a diagnostic for the host to lift into its application log."""
     sys.stdout.write(f'\x1b]{DIAGNOSTIC_OSC_CODE};{text}\x07')
@@ -228,7 +241,8 @@ def main():
     # A bootstrapped (inner) run received its effective arguments on the command line, so it skips
     # option resolution entirely and must not re-bootstrap.
     ipython_forward_arguments = sys.argv[1:]
-    if os.environ.pop(BOOTSTRAP_MARKER, None) != '1':
+    bootstrapped = os.environ.pop(BOOTSTRAP_MARKER, None) == '1'
+    if not bootstrapped:
         resolved = _resolve_launch(os.environ, sys.argv[1:])
         if resolved.requires_bootstrap:
             _bootstrap(resolved)
@@ -246,7 +260,8 @@ def main():
     session_token = os.environ.get('CELBRIDGE_SESSION_TOKEN')
     if session_token:
         try:
-            bound = client.call("session/handshake", sessionToken=session_token)
+            handshake_params = _build_handshake_params(session_token, bootstrapped)
+            bound = client.call("session/handshake", **handshake_params)
             if not bound:
                 logging.getLogger(__name__).debug(
                     "session/handshake did not bind: token does not match an open console")

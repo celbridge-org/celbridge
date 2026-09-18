@@ -2,6 +2,7 @@ using Celbridge.Console.Helpers;
 using Celbridge.Documents;
 using Celbridge.Logging;
 using Celbridge.Messaging;
+using Celbridge.Python;
 using Celbridge.Server;
 using Celbridge.WebHost;
 using Celbridge.Workspace;
@@ -25,6 +26,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
     private readonly IServiceProvider _serviceProvider;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IMessengerService _messengerService;
+    private readonly IPythonInstaller _pythonInstaller;
     private readonly ILogger<ConsoleSessionService> _logger;
 
     private readonly object _sessionsLock = new();
@@ -53,6 +55,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         _messengerService = messengerService;
         _logger = logger;
         _webViewAdapter = ServiceLocator.AcquireService<IWebViewAdapter>();
+        _pythonInstaller = serviceProvider.GetRequiredService<IPythonInstaller>();
 
         _sessionProviders = ResolveSessionProviders(serviceProvider);
         _sessionTypes = _sessionProviders.Select(provider => provider.SessionType).ToList();
@@ -269,7 +272,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         }
     }
 
-    public bool TryBindConnection(Guid sessionToken, int connectionId)
+    public bool TryBindConnection(Guid sessionToken, int connectionId, string? temporaryEnvironmentFolder)
     {
         Guid boundSessionId;
         lock (_sessionsLock)
@@ -291,6 +294,10 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
 
             match.ConnectionId = connectionId;
             match.HasConnected = true;
+            if (temporaryEnvironmentFolder is not null)
+            {
+                match.ClientTemporaryEnvironmentFolder = temporaryEnvironmentFolder;
+            }
             _connectionToSession[connectionId] = sessionToken;
             boundSessionId = match.SessionId;
         }
@@ -503,6 +510,20 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         }
 
         session.Dispose();
+        RemoveClientTemporaryEnvironment(session);
+    }
+
+    // On Windows tearing down the pty also terminates the process that would remove a client's temporary
+    // environment as the client exits, so it is removed here once the pty is gone.
+    private void RemoveClientTemporaryEnvironment(ConsoleSession session)
+    {
+        var folderPath = session.ClientTemporaryEnvironmentFolder;
+        if (string.IsNullOrEmpty(folderPath))
+        {
+            return;
+        }
+
+        _ = Task.Run(() => _pythonInstaller.RemoveTemporaryEnvironmentAsync(folderPath));
     }
 
     private void OnDocumentOpened(object recipient, DocumentOpenedMessage message)
@@ -633,6 +654,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         {
             session.StateChanged -= OnSessionStateChanged;
             session.Dispose();
+            RemoveClientTemporaryEnvironment(session);
         }
 
         _proxyListener.Dispose();

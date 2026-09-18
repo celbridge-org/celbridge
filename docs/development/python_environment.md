@@ -39,29 +39,48 @@ The cache and the interpreter store are shared rather than per-project. They hol
 addressed by content and by interpreter version — nothing a project owns — and each REPL still gets its
 own environment from the inner `uv run`, so what a project imports is unaffected. Per-project copies were
 how these were once kept safe from a reinstall that deleted the whole folder. The folder split does that
-now, at a measured 50 MB of interpreter and 99–256 MB of cache saved per project.
+now, at a measured 50 MB of interpreter and 99–256 MB of cache saved per project. Opening a project
+removes the `uv_cache` and `uv_python_installs` an earlier release left in its `.celbridge/python`, in the
+background, unless another Celbridge instance is running.
 
 Shared does not mean disposable. The installed `celbridge-py` runs on an interpreter in
 `uv_python_installs/`, and every REPL launch resolves its environment out of `uv_cache/`, so emptying
 either breaks a working install. The install checks that interpreter before treating a matching marker as
-current, and reinstalls when it has gone.
+current, and republishes the tool when it has gone. It finds the interpreter through the `home` line of the
+tool environment's `pyvenv.cfg`, because on Windows the environment's own `python.exe` is a launcher that
+outlives the interpreter it starts.
 
 `UV_TOOL_DIR` and `UV_TOOL_BIN_DIR` still point into the project. They are the user's: a `uv tool install`
 typed in a console lands in the project rather than on the machine.
 
 ## Reclaiming the disk
 
-Every full reinstall leaves behind a copy of the environment the REPL imports, at roughly 50 MB each, and
-nothing reclaims them. The install rewrites the wheel into the support folder, which moves its timestamp,
-so the next python console resolves a fresh cache archive and the archive it replaced stays. Identical
-bytes do not save it: a marker deleted by hand costs a copy as surely as a rebuilt wheel does. The cost
-also arrives late — the reinstall itself adds a couple of hundred kilobytes, and the next python console
-pays the rest.
+A wheel the REPL has not imported before leaves behind a copy of the environment the REPL imports, at tens
+of megabytes each, and nothing reclaims them. uv keys that environment on the wheel file's timestamp
+rather than its bytes: its change time on macOS, its modified time on Windows. The install copies the
+wheel into the support folder, which gives the copy a new change time but, on Windows, keeps its modified
+time.
 
-A republish costs nothing here, because it leaves the wheel where it is.
+- On macOS every full reinstall therefore costs a copy. Identical bytes do not save it: a marker deleted
+  by hand costs one as surely as a rebuilt wheel does.
+- On Windows only a wheel with a new modified time costs one, so a rebuilt wheel or an upgrade does and a
+  marker deleted by hand does not. Measured there, a reinstall over the same wheel and the python console
+  after it added nothing, and a changed wheel cost 33 MB.
+
+The cost arrives late: the reinstall itself adds at most a couple of hundred kilobytes, and the next
+python console pays the rest. A republish costs nothing, because it leaves the wheel where it is.
 
 An upgrade costs one copy, which nobody notices. A wheel rebuilt during development costs one each, so a
 development machine accumulates them fastest.
+
+Each REPL also runs in a temporary environment that `uv run` builds under `uv_cache/builds-v0` and
+removes when the REPL exits normally. On macOS closing a python console lets it do that, because uv
+passes the hang-up on to the REPL and waits for it to exit. On Windows closing the console terminates uv
+before it can, so the REPL reports its environment when it connects, and the application removes it once
+the console's processes are gone: after closing or reopening the console, and after unloading the
+project. What a quit or a crash leaves behind, at about 0.8 MB each, is removed in the background by the
+next launch with no other Celbridge instance running. A running instance keeps its REPLs in the same
+cache, so a launch beside one leaves them all in place.
 
 Removing the application does not clear them on the Skia heads, where the folder is ordinary user data.
 The packaged Windows head is the exception: its folder belongs to the MSIX package, which the OS deletes
@@ -92,9 +111,9 @@ usually a question about *which* of these was stale.
    and the `celbridge` package from here.
 2. **The uv cache archive**, `PythonCache/uv_cache/archive-v0/<id>/`. This is what the REPL actually
    imports. The shim re-execs `uv run --with <wheel>`, and uv revalidates that wheel and builds a new
-   archive whenever the file's timestamp moves — not when its bytes do, which is why a reinstall that
-   rewrites an identical wheel still sends the next console to a fresh archive. A running REPL reports its
-   own module path here, not in the tool environment.
+   archive whenever the file's timestamp moves — not when its bytes do. On macOS a reinstall that rewrites
+   an identical wheel therefore still sends the next console to a fresh archive, and on Windows it does
+   not. A running REPL reports its own module path here, not in the tool environment.
 3. **The installed wheel**, `Python/celbridge-<version>.whl`. The source both of the above are built
    from, and the file the marker hashes.
 
@@ -152,10 +171,14 @@ than surfacing at the first console launch.
 
 Everything here is read back rather than seen; none of it needs a keyboard.
 
-- **The install** writes to the application log. `Python reinstall required` names which half of the
-  marker mismatched, and `celbridge tool installed successfully in <n>ms` says it finished. A launch line
-  is written when the command is *composed*, not when it runs, so a console that never started can leave
-  a log that reads as healthy — judge a console by what it produced.
+- **The install** writes its decision to the application log on every launch. `Python support files are
+  current` means it had nothing to do. `Python reinstall required` names which half of the marker
+  mismatched, `The celbridge tool is not installed: '<path>' is missing` names what a republish replaces,
+  and `celbridge tool installed successfully in <n>ms` says either one finished. An instance that waited
+  for another instance's install says so, and for how long, and a launch that found temporary
+  environments left by earlier sessions says how many it removed. A launch line is written when the
+  command is *composed*, not when it runs, so a console that never started can leave a log that reads as
+  healthy — judge a console by what it produced.
 - **Whether a REPL reached the network** is in the log too. `celbridge-py` measures the cache before it
   bootstraps and reports what it found, which arrives as `Console '<resource>' reported: python-probe
   mode=offline ms=<n>`. `offline` means every package resolved without touching the network, so a launch
@@ -163,8 +186,9 @@ Everything here is read back rather than seen; none of it needs a keyboard.
 - **The environment** is read by giving a console a startup script that writes what it finds to a file in
   the project. Write it under a temporary name and rename it at the end, so its presence means the case
   finished rather than started.
-- **The folders** are read directly, and are usually enough on their own: a project holding a `uv_cache`
-  or `uv_python_installs` means something is still scoping them per-project.
+- **The folders** are read directly, and are usually enough on their own: a project whose `uv_cache` or
+  `uv_python_installs` comes back after opening it has removed them means something is still scoping them
+  per-project.
 
 The [Python Environment agent test plan](agent_tests/python_environment.md) covers this area case by
 case. No unit suite reaches it — the interpreter, the tool install and the REPL's launch all happen by

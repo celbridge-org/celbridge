@@ -25,6 +25,12 @@ public class PythonInstaller : IPythonInstaller
     private const string PythonModuleFolder = "Celbridge.Python";
     private const string UVExecutableName = "uv";
     private const string UVExecutableNameWindows = "uv.exe";
+    private const string PythonExecutableNameWindows = "python.exe";
+    private const string PyvenvConfigFileName = "pyvenv.cfg";
+    private const string PyvenvHomeKey = "home";
+
+    // The bucket in uv's cache for the temporary environments it builds, such as the one each REPL runs in.
+    private const string UvTemporaryEnvironmentsFolderName = "builds-v0";
 
     // Generous because the first install on a machine downloads an interpreter and the tool's packages
     // before it can publish anything.
@@ -34,6 +40,15 @@ public class PythonInstaller : IPythonInstaller
     // instance's install rather than fail beside it.
     private static readonly TimeSpan InstallLockTimeout = TimeSpan.FromMinutes(6);
 
+    // A retry of the lock starts soon and backs off, because another instance's install takes seconds.
+    private static readonly TimeSpan InstallLockFirstRetryDelay = TimeSpan.FromMilliseconds(100);
+    private static readonly TimeSpan InstallLockMaxRetryDelay = TimeSpan.FromSeconds(1);
+
+    // A closed console's processes can hold their temporary environment's files for a moment, so removing
+    // it is retried for a while.
+    private static readonly TimeSpan TemporaryEnvironmentRemovalTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan TemporaryEnvironmentRemovalRetryDelay = TimeSpan.FromMilliseconds(100);
+
     private readonly ILocalFileSystem _fileSystem;
     private readonly ILogger<PythonInstaller> _logger;
     private readonly IAppEnvironment _appEnvironment;
@@ -41,6 +56,7 @@ public class PythonInstaller : IPythonInstaller
 
     private readonly SemaphoreSlim _installGate = new(1, 1);
     private Result? _installResult;
+    private bool _hasListedStaleTemporaryEnvironments;
 
     public PythonInstaller(
         ILocalFileSystem fileSystem,
@@ -76,8 +92,9 @@ public class PythonInstaller : IPythonInstaller
 
     public string UvPythonInstallFolderPath => Path.Combine(PythonCacheFolderPath, UvPythonInstallsFolderName);
 
-    // The command the tool install publishes, and the interpreter it runs on. Both are checked before an
-    // install is treated as current, because the marker describes what was installed and not what survived.
+    // The command the tool install publishes, and the tool environment's own interpreter. Both are checked
+    // before an install is treated as current, because the marker describes what was installed and not what
+    // survived.
     private string CelbridgeToolCommandPath => Path.Combine(
         UvToolBinFolderPath,
         OperatingSystem.IsWindows() ? $"{CelbridgeToolCommand}.exe" : CelbridgeToolCommand);
@@ -113,6 +130,46 @@ public class PythonInstaller : IPythonInstaller
         return await FindWheelFileAsync(PythonFolderPath);
     }
 
+    public async Task RemoveTemporaryEnvironmentAsync(string folderPath)
+    {
+        var temporaryEnvironmentsPath = Path.GetFullPath(Path.Combine(UvCacheFolderPath, UvTemporaryEnvironmentsFolderName));
+        var fullFolderPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(folderPath));
+        var parentPath = Path.GetDirectoryName(fullFolderPath);
+        if (!string.Equals(parentPath, temporaryEnvironmentsPath, StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogDebug("Left '{Path}' in place because it is not one of uv's temporary environments", folderPath);
+            return;
+        }
+
+        var deadline = DateTime.UtcNow + TemporaryEnvironmentRemovalTimeout;
+        while (true)
+        {
+            var infoResult = await _fileSystem.GetInfoAsync(fullFolderPath);
+            if (infoResult.IsSuccess &&
+                infoResult.Value.Kind == StorageItemKind.NotFound)
+            {
+                return;
+            }
+
+            var deleteResult = await _fileSystem.DeleteFolderAsync(fullFolderPath, recursive: true);
+            if (deleteResult.IsSuccess)
+            {
+                _logger.LogDebug("Removed the temporary environment '{Path}'", fullFolderPath);
+                return;
+            }
+
+            if (DateTime.UtcNow >= deadline)
+            {
+                _logger.LogDebug("Failed to remove the temporary environment '{Path}': {Error}",
+                    fullFolderPath,
+                    deleteResult.FirstErrorMessage);
+                return;
+            }
+
+            await Task.Delay(TemporaryEnvironmentRemovalRetryDelay);
+        }
+    }
+
     private async Task<Result> RunInstallAsync(string appVersion)
     {
         FileStream? installLock = null;
@@ -130,12 +187,15 @@ public class PythonInstaller : IPythonInstaller
 
             installLock = await AcquireInstallLockAsync();
 
+            await BeginRemovingStaleTemporaryEnvironmentsAsync();
+
             if (await IsInstallCurrentAsync(pythonFolderPath, versionContent))
             {
                 // The marker describes the folder, so only the tool can be missing, and republishing it
                 // costs a fraction of a reinstall and destroys nothing a running console is using.
                 if (await IsToolInstalledAsync())
                 {
+                    _logger.LogInformation("Python support files are current at {Path}", pythonFolderPath);
                     return Result.Ok();
                 }
 
@@ -169,18 +229,123 @@ public class PythonInstaller : IPythonInstaller
         var lockFilePath = Path.Combine(_appEnvironment.LocalApplicationDataFolderPath, InstallLockFileName);
         await _fileSystem.CreateFolderAsync(_appEnvironment.LocalApplicationDataFolderPath);
 
+        var waitTimer = Stopwatch.StartNew();
         var deadline = DateTime.UtcNow + InstallLockTimeout;
+        var retryDelay = InstallLockFirstRetryDelay;
+        var hasWaited = false;
         while (true)
         {
             try
             {
-                return new FileStream(
+                var installLock = new FileStream(
                     lockFilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+
+                if (hasWaited)
+                {
+                    _logger.LogInformation("Waited {DurationMs}ms for another Celbridge instance to finish installing Python",
+                        waitTimer.ElapsedMilliseconds);
+                }
+
+                return installLock;
             }
             catch (IOException) when (DateTime.UtcNow < deadline)
             {
-                _logger.LogDebug("Waiting for another Celbridge instance to finish installing Python");
-                await Task.Delay(TimeSpan.FromMilliseconds(250));
+                if (!hasWaited)
+                {
+                    _logger.LogInformation("Waiting for another Celbridge instance to finish installing Python");
+                    hasWaited = true;
+                }
+
+                await Task.Delay(retryDelay);
+
+                var doubledDelay = retryDelay * 2;
+                retryDelay = doubledDelay < InstallLockMaxRetryDelay ? doubledDelay : InstallLockMaxRetryDelay;
+            }
+        }
+    }
+
+    // uv removes a REPL's temporary environment when the REPL exits normally, and one whose console was torn
+    // down can leave it behind. The first install of a launch runs before any console can start, so what it
+    // lists belongs to earlier sessions and is removed in the background. Another instance's REPLs use the
+    // same cache, so nothing is listed while one is running.
+    private async Task BeginRemovingStaleTemporaryEnvironmentsAsync()
+    {
+        if (_hasListedStaleTemporaryEnvironments)
+        {
+            return;
+        }
+        _hasListedStaleTemporaryEnvironments = true;
+
+        try
+        {
+            if (IsAnotherInstanceRunning())
+            {
+                _logger.LogDebug("Left the temporary environments in the uv cache in place because another Celbridge instance is running");
+                return;
+            }
+
+            var temporaryEnvironmentsPath = Path.Combine(UvCacheFolderPath, UvTemporaryEnvironmentsFolderName);
+            var enumerateResult = await _fileSystem.EnumerateAsync(temporaryEnvironmentsPath, "*", recursive: false);
+            if (enumerateResult.IsFailure)
+            {
+                // A cache that has never built an environment has no folder to list.
+                return;
+            }
+
+            var staleFolderPaths = enumerateResult.Value
+                .Where(entry => entry.IsFolder)
+                .Select(entry => entry.FullPath)
+                .ToList();
+
+            if (staleFolderPaths.Count > 0)
+            {
+                _ = Task.Run(() => RemoveTemporaryEnvironmentsAsync(staleFolderPaths));
+            }
+        }
+        catch (Exception exception)
+        {
+            // The stale environments stay until a later launch, which costs disk and nothing else.
+            _logger.LogWarning(exception, "Failed to list the temporary environments in the uv cache");
+        }
+    }
+
+    private async Task RemoveTemporaryEnvironmentsAsync(IReadOnlyList<string> folderPaths)
+    {
+        var removalTimer = Stopwatch.StartNew();
+        var removedCount = 0;
+        foreach (var folderPath in folderPaths)
+        {
+            var deleteResult = await _fileSystem.DeleteFolderAsync(folderPath, recursive: true);
+            if (deleteResult.IsFailure)
+            {
+                _logger.LogDebug("Failed to remove the temporary environment '{Path}': {Error}",
+                    folderPath,
+                    deleteResult.FirstErrorMessage);
+                continue;
+            }
+
+            removedCount++;
+        }
+
+        _logger.LogInformation("Removed {RemovedCount} of {Count} temporary environments left in the uv cache in {DurationMs}ms",
+            removedCount,
+            folderPaths.Count,
+            removalTimer.ElapsedMilliseconds);
+    }
+
+    internal static bool IsAnotherInstanceRunning()
+    {
+        using var currentProcess = Process.GetCurrentProcess();
+        var namesakes = Process.GetProcessesByName(currentProcess.ProcessName);
+        try
+        {
+            return namesakes.Any(process => process.Id != currentProcess.Id);
+        }
+        finally
+        {
+            foreach (var process in namesakes)
+            {
+                process.Dispose();
             }
         }
     }
@@ -230,21 +395,85 @@ public class PythonInstaller : IPythonInstaller
         return true;
     }
 
-    // uv, the published command, and the interpreter that command runs on. The interpreter lives in the
-    // shared cache folder, which no install describes, so it can go while the marker still matches.
+    // uv, the published command, the tool environment's own interpreter, and the interpreter in the shared
+    // cache folder that the environment runs on. No install describes the shared folder, so its interpreter
+    // can go while the marker still matches.
     private async Task<bool> IsToolInstalledAsync()
     {
         foreach (var path in new[] { UvExecutablePath, CelbridgeToolCommandPath, CelbridgeToolInterpreterPath })
         {
-            var infoResult = await _fileSystem.GetInfoAsync(path);
-            if (infoResult.IsFailure || infoResult.Value.Kind != StorageItemKind.File)
+            if (!await IsToolPartPresentAsync(path, StorageItemKind.File))
             {
-                _logger.LogDebug("The celbridge tool is not installed: '{Path}' is missing", path);
                 return false;
             }
         }
 
+        var interpreterHomePath = await ReadToolInterpreterHomeAsync();
+        if (string.IsNullOrEmpty(interpreterHomePath))
+        {
+            _logger.LogDebug("The celbridge tool is not installed: its environment names no interpreter");
+            return false;
+        }
+
+        // On Windows the environment's own interpreter is a launcher that outlives the interpreter it starts,
+        // and a junction whose target has gone still reads as a folder, so the interpreter itself is checked.
+        if (OperatingSystem.IsWindows())
+        {
+            var interpreterPath = Path.Combine(interpreterHomePath, PythonExecutableNameWindows);
+            return await IsToolPartPresentAsync(interpreterPath, StorageItemKind.File);
+        }
+
+        return await IsToolPartPresentAsync(interpreterHomePath, StorageItemKind.Folder);
+    }
+
+    private async Task<bool> IsToolPartPresentAsync(string path, StorageItemKind expectedKind)
+    {
+        var infoResult = await _fileSystem.GetInfoAsync(path);
+        if (infoResult.IsFailure ||
+            infoResult.Value.Kind != expectedKind)
+        {
+            _logger.LogDebug("The celbridge tool is not installed: '{Path}' is missing", path);
+            return false;
+        }
+
         return true;
+    }
+
+    // The folder holding the interpreter the tool environment runs on, as its pyvenv.cfg names it.
+    private async Task<string?> ReadToolInterpreterHomeAsync()
+    {
+        var configPath = Path.Combine(UvToolsFolderPath, CelbridgeToolName, PyvenvConfigFileName);
+        var readResult = await _fileSystem.ReadAllTextAsync(configPath);
+        if (readResult.IsFailure)
+        {
+            return null;
+        }
+        var configText = readResult.Value;
+
+        return ReadPyvenvHome(configText);
+    }
+
+    // The value of the home key in the text of a pyvenv.cfg, or null when it has none.
+    internal static string? ReadPyvenvHome(string configText)
+    {
+        foreach (var line in configText.Split('\n'))
+        {
+            var separatorIndex = line.IndexOf('=');
+            if (separatorIndex < 0)
+            {
+                continue;
+            }
+
+            var key = line[..separatorIndex].Trim();
+            if (!key.Equals(PyvenvHomeKey, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            return line[(separatorIndex + 1)..].Trim();
+        }
+
+        return null;
     }
 
     // Everything the installed folder is built from: the application version, the wheel, the interpreter
