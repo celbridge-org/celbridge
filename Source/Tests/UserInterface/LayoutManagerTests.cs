@@ -16,6 +16,7 @@ public class LayoutManagerTests
     private IMessengerService _messengerService = null!;
     private ISettingsService _settingsService = null!;
     private IBindableWorkspaceSettings _workspaceSettings = null!;
+    private List<OpenDocumentInfo> _openDocuments = null!;
     private LayoutManager _layoutManager = null!;
 
     [SetUp]
@@ -39,11 +40,18 @@ public class LayoutManagerTests
         // getter) so writes by the layout manager are reflected on subsequent reads.
         _workspaceSettings.PreferredVisibleAreas = WorkspaceAreaHelper.AllAreasVisible;
 
+        // The default areas for a project with no saved choice depend on where its tabs are. A test adds to
+        // this list to place them.
+        _openDocuments = new List<OpenDocumentInfo>();
+        var documentsService = Substitute.For<IDocumentsService>();
+        documentsService.GetOpenDocuments().Returns(_openDocuments);
+
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceWrapper.IsWorkspaceLoaded.Returns(true);
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
         workspaceService.BindableWorkspaceSettings.Returns(_workspaceSettings);
+        workspaceService.DocumentsService.Returns(documentsService);
 
         var logger = _serviceProvider.GetRequiredService<ILogger<LayoutManager>>();
 
@@ -305,15 +313,17 @@ public class LayoutManagerTests
     }
 
     [Test]
-    public void ResetLayout_RestoresEveryAreaVisible()
+    public void ResetLayout_ShowsTheUtilityPanelAndTheDocumentAreasHoldingTabs()
     {
         _layoutManager.SetAreaVisibility(WorkspaceArea.Utility, false);
         _layoutManager.SetAreaVisibility(WorkspaceArea.Side, false);
+        OpenDocumentIn(DocumentSection.SideTop);
 
         var result = _layoutManager.RequestLayoutTransition(LayoutTransition.ResetLayout);
 
+        // The hidden Side area holds a tab so it comes back, and the empty Bottom area collapses.
         result.IsSuccess.Should().BeTrue();
-        _layoutManager.VisibleAreas.Should().BeEquivalentTo(WorkspaceAreaHelper.AllAreasVisible);
+        _layoutManager.VisibleAreas.Should().BeEquivalentTo(VisibleAreas(WorkspaceArea.Utility, WorkspaceArea.Side));
     }
 
     [Test]
@@ -350,11 +360,62 @@ public class LayoutManagerTests
     }
 
     [Test]
-    public void ResetLayout_ClearsTheHiddenAreasInWorkspaceSettings()
+    public void ResetLayout_ClearsTheSavedAreas()
     {
+        _layoutManager.SetAreaVisibility(WorkspaceArea.Side, false);
+
         _layoutManager.RequestLayoutTransition(LayoutTransition.ResetLayout);
 
-        AssertPersistedPreferredAreas(WorkspaceArea.Utility, WorkspaceArea.Bottom, WorkspaceArea.Side);
+        _workspaceSettings.PreferredVisibleAreas.Should().BeNull();
+    }
+
+    [Test]
+    public void WorkspaceLoaded_WithNoSavedAreas_ShowsTheUtilityPanelAndMain()
+    {
+        _workspaceSettings.PreferredVisibleAreas = null;
+
+        _messengerService.Send(new WorkspaceLoadedMessage());
+
+        _layoutManager.VisibleAreas.Should().BeEquivalentTo(VisibleAreas(WorkspaceArea.Utility));
+    }
+
+    [Test]
+    public void WorkspaceLoaded_WithNoSavedAreas_ShowsTheDocumentAreasHoldingTabsWithoutSavingThem()
+    {
+        _workspaceSettings.PreferredVisibleAreas = null;
+        OpenDocumentIn(DocumentSection.MainLeft);
+        OpenDocumentIn(DocumentSection.BottomLeft);
+
+        _messengerService.Send(new WorkspaceLoadedMessage());
+
+        _layoutManager.VisibleAreas.Should().BeEquivalentTo(VisibleAreas(WorkspaceArea.Utility, WorkspaceArea.Bottom));
+        _workspaceSettings.PreferredVisibleAreas.Should().BeNull();
+    }
+
+    [Test]
+    public void WorkspaceLoaded_WithSavedAreas_KeepsTheSavedChoice()
+    {
+        _workspaceSettings.PreferredVisibleAreas = VisibleAreas(WorkspaceArea.Utility);
+        OpenDocumentIn(DocumentSection.SideTop);
+
+        _messengerService.Send(new WorkspaceLoadedMessage());
+
+        _layoutManager.VisibleAreas.Should().BeEquivalentTo(VisibleAreas(WorkspaceArea.Utility));
+    }
+
+    [Test]
+    public void TransitionToDefault_WithNoSavedAreas_ReturnsToTheAreasTheProjectOpenedWith()
+    {
+        _workspaceSettings.PreferredVisibleAreas = null;
+        OpenDocumentIn(DocumentSection.BottomLeft);
+        _messengerService.Send(new WorkspaceLoadedMessage());
+
+        // Closing the last Bottom tab does not change the layout the project opened with.
+        _openDocuments.Clear();
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Focus);
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Default);
+
+        _layoutManager.VisibleAreas.Should().BeEquivalentTo(VisibleAreas(WorkspaceArea.Utility, WorkspaceArea.Bottom));
     }
 
     [Test]
@@ -585,6 +646,15 @@ public class LayoutManagerTests
         _layoutManager.IsAreaVisible(WorkspaceArea.Utility).Should().BeFalse();
         _layoutManager.IsAreaVisible(WorkspaceArea.Side).Should().BeFalse();
         _layoutManager.IsAreaVisible(WorkspaceArea.Bottom).Should().BeTrue();
+    }
+
+    private void OpenDocumentIn(DocumentSection section)
+    {
+        var fileResource = new ResourceKey($"notes/{section}.md");
+        var address = new DocumentAddress(WindowIndex: 0, Section: section, TabOrder: 0);
+        var openDocument = new OpenDocumentInfo(fileResource, address, EditorId.Empty);
+
+        _openDocuments.Add(openDocument);
     }
 
     // A visible set always holds Main, which cannot be hidden.

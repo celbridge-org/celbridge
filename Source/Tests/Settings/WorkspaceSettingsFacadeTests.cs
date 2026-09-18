@@ -83,7 +83,7 @@ public class WorkspaceSettingsFacadeTests
         var fixture = await LoadWorkspaceAsync(Path.Combine(_rootFolderPath, "projectA"));
         var settings = fixture.Settings;
 
-        settings.PreferredVisibleAreas.Should().BeEquivalentTo(WorkspaceAreaHelper.AllAreasVisible);
+        settings.PreferredVisibleAreas.Should().BeNull();
         settings.UtilityPanelWidth.Should().Be(WorkspaceConstants.UtilityPanelWidth);
         settings.SideAreaWidth.Should().Be(WorkspaceConstants.SideAreaWidth);
         settings.BottomAreaHeight.Should().Be(WorkspaceConstants.BottomAreaHeight);
@@ -131,6 +131,23 @@ public class WorkspaceSettingsFacadeTests
 
         var reloaded = await LoadWorkspaceAsync(folderPath);
         reloaded.Settings.PreferredVisibleAreas.Should().BeEquivalentTo(visibleAreas);
+    }
+
+    [Test]
+    public async Task PreferredVisibleAreas_SetToNull_ClearsTheSavedChoice()
+    {
+        var fixture = await LoadWorkspaceAsync(Path.Combine(_rootFolderPath, "projectA"));
+
+        // Main alone is a saved choice, the user having hidden every other area.
+        fixture.Settings.PreferredVisibleAreas = new HashSet<WorkspaceArea>
+        {
+            WorkspaceArea.Main
+        };
+        fixture.Settings.PreferredVisibleAreas.Should().NotBeNull();
+
+        fixture.Settings.PreferredVisibleAreas = null;
+
+        fixture.Settings.PreferredVisibleAreas.Should().BeNull();
     }
 
     [Test]

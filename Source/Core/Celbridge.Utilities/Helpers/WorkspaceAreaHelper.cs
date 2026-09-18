@@ -29,7 +29,7 @@ public static class WorkspaceAreaHelper
     ];
 
     /// <summary>
-    /// Every area showing at once, which is the layout a workspace opens with.
+    /// Every area showing at once, the most the workspace can have on screen.
     /// </summary>
     public static readonly IReadOnlySet<WorkspaceArea> AllAreasVisible = new HashSet<WorkspaceArea>(AllAreas);
 

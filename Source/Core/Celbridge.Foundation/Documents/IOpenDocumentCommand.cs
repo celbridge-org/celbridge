@@ -34,7 +34,7 @@ public interface IOpenDocumentCommand : IExecutableCommand<OpenDocumentOutcome>
     string Location { get; set; }
 
     /// <summary>
-    /// Optional target section to open the document in.
+    /// Optional target section to open the document in, whose area is shown if it is collapsed.
     /// If null, a new document opens in Main's primary section and an already open document stays where it is.
     /// </summary>
     DocumentSection? TargetSection { get; set; }

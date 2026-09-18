@@ -20,6 +20,7 @@ public class OpenDocumentCommandTests
     private IDialogService _dialogService = null!;
     private ICommandService _commandService = null!;
     private IMessengerService _messengerService = null!;
+    private ILayoutService _layoutService = null!;
 
     [SetUp]
     public void Setup()
@@ -41,6 +42,7 @@ public class OpenDocumentCommandTests
         _commandService = Substitute.For<ICommandService>();
 
         _messengerService = Substitute.For<IMessengerService>();
+        _layoutService = Substitute.For<ILayoutService>();
     }
 
     private OpenDocumentCommand CreateCommand()
@@ -50,7 +52,8 @@ public class OpenDocumentCommandTests
             _dialogService,
             _commandService,
             _workspaceWrapper,
-            _messengerService);
+            _messengerService,
+            _layoutService);
     }
 
     [Test]
@@ -142,5 +145,45 @@ public class OpenDocumentCommandTests
 
         result.IsSuccess.Should().BeTrue();
         command.ResultValue.Should().Be(OpenDocumentOutcome.Cancelled);
+    }
+
+    [Test]
+    public async Task ExecuteAsync_WithTargetSectionAndNoActivation_ShowsTheArea()
+    {
+        var command = CreateCommand();
+        command.FileResource = new ResourceKey("notes/readme.md");
+        command.TargetSection = DocumentSection.SideTop;
+        command.Activate = false;
+
+        await command.ExecuteAsync();
+
+        _layoutService.Received(1).SetAreaVisibility(WorkspaceArea.Side, true);
+    }
+
+    [Test]
+    public async Task ExecuteAsync_WithNoTargetSection_LeavesTheAreasAlone()
+    {
+        var command = CreateCommand();
+        command.FileResource = new ResourceKey("notes/readme.md");
+
+        await command.ExecuteAsync();
+
+        _layoutService.DidNotReceiveWithAnyArgs().SetAreaVisibility(default, default);
+    }
+
+    [Test]
+    public async Task ExecuteAsync_CancelledOpen_LeavesTheAreasAlone()
+    {
+        _documentsService
+            .OpenDocument(Arg.Any<ResourceKey>(), Arg.Any<OpenDocumentOptions?>())
+            .Returns(Result<OpenDocumentOutcome>.Ok(OpenDocumentOutcome.Cancelled));
+
+        var command = CreateCommand();
+        command.FileResource = new ResourceKey("notes/readme.md");
+        command.TargetSection = DocumentSection.BottomLeft;
+
+        await command.ExecuteAsync();
+
+        _layoutService.DidNotReceiveWithAnyArgs().SetAreaVisibility(default, default);
     }
 }
