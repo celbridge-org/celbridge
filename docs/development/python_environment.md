@@ -59,9 +59,12 @@ time.
 
 - On macOS every full reinstall therefore costs a copy. Identical bytes do not save it: a marker deleted
   by hand costs one as surely as a rebuilt wheel does.
-- On Windows only a wheel with a new modified time costs one, so a rebuilt wheel or an upgrade does and a
-  marker deleted by hand does not. Measured there, a reinstall over the same wheel and the python console
-  after it added nothing, and a changed wheel cost 33 MB.
+- On Windows only a wheel file whose modified time differs from the installed copy's costs one. A build
+  can rewrite the wheel without changing its bytes, so identical bytes are no guarantee: an upgrade or a
+  rebuilt wheel costs one, and so does a marker deleted by hand once a build has rewritten the bundled
+  file since the last install. Measured there, a reinstall over the very file the last install copied
+  added nothing, and one over identical bytes that a build had rewritten cost 33 MB at the next python
+  console, as a changed wheel does.
 
 The cost arrives late: the reinstall itself adds at most a couple of hundred kilobytes, and the next
 python console pays the rest. A republish costs nothing, because it leaves the wheel where it is.
@@ -109,7 +112,8 @@ usually a question about *which* of these was stale.
    imports. The shim re-execs `uv run --with <wheel>`, and uv revalidates that wheel and builds a new
    archive whenever the file's timestamp moves — not when its bytes do. On macOS a reinstall that rewrites
    an identical wheel therefore still sends the next console to a fresh archive, and on Windows it does
-   not. A running REPL reports its own module path here, not in the tool environment.
+   only when the bundled file's modified time differs from the installed copy's. A running REPL reports
+   its own module path here, not in the tool environment.
 3. **The installed wheel**, `Python/celbridge-<version>.whl`. The source both of the above are built
    from, and the file the marker hashes.
 

@@ -24,7 +24,7 @@ temporary environment each REPL runs in.
 | A shell console | read its environment | the cache and interpreter folders point at the application's shared store, the tool and tool-bin folders point inside the project, and the uv and wheel paths point at the installed support files | 2 |
 | A second project, which has never opened a python console | open a shell console | uv, uvx and celbridge-py all resolve, the last of them out of the application's folder; the project holds no tool environment, cache or interpreter of its own, and its first python console starts without downloading one | 2 |
 | A shell console | create a virtual environment without naming a version, then create one asking for seeded packages | the first takes an interpreter uv manages and never one belonging to the host; the second has a working `pip` | 2 |
-| The version marker deleted and the application relaunched | open a shell console | the support folder is rebuilt and uv resolves again, the rebuild downloads no interpreter because the shared store is untouched, and what it does add to that store is measured rather than assumed | 2 |
+| The version marker deleted and the application relaunched | open a shell console | the support folder is rebuilt and uv resolves again, the rebuild downloads no interpreter because the shared store is untouched, and what it adds to that store, up to and including the first python console after it, is measured rather than assumed | 2 |
 | The celbridge-py command deleted from the support folder, with the version marker left alone | relaunch, then open a console of each type | the log shows the tool republished rather than a full reinstall, the uv binaries are not replaced, and both consoles work | 2 |
 | A python console opened a second time in the same project | open it | the REPL starts from the warm cache without going to the network | 2 |
 | A python console closed, and another left open when the application quits | list the temporary environments in the shared cache before the first opens, a few seconds after it closes, just before the quit, and after a relaunch with no other instance running | closing the console brings the list back to where it started, and none of the environments listed before the quit is left after the relaunch — the console the relaunch reopens builds a new one — with the log saying how many were removed | 2 |
@@ -87,10 +87,13 @@ not been read correctly.
 A full reinstall can leave the shared store larger, and the bill arrives after the install has finished:
 the python console after it builds a cache archive of its own — tens of megabytes — while the archive it
 replaced stays. Whether it does depends on the platform, as the table below says: on macOS every reinstall
-pays, and on Windows only a wheel with a new modified time does. So a case that reinstalls and then opens
-only a shell console has not seen the cost at all. The python console after it pays whatever there is. A
-republish leaves the wheel alone and costs nothing. Measure the store before and after rather than
-assuming any of this, and say which console the measurement was taken around.
+pays, and on Windows only one that copies a wheel file whose modified time differs from the installed
+copy's does, identical bytes or not. So a case that reinstalls and then opens only a shell console has not
+seen the cost at all. The python console after it pays whatever there is, and when that console belongs to
+a later case the cost is still the reinstall's. A republish leaves the wheel alone and costs nothing.
+Measure the store before and after rather than assuming any of this, and say which console the
+measurement was taken around. On Windows, note the modified times of the installed and the bundled wheel
+before the relaunch that reinstalls: they say in advance whether that console will pay.
 
 Only the first python console on a machine downloads an interpreter. The cache and the interpreters are
 shared by every project, so a fresh project's first launch is warm, and a second project that does go to
@@ -132,7 +135,7 @@ relaunch once so the support folder is rebuilt from it.
 | The host's own Python | an Xcode interpreter is usually present, and a bare virtual environment must never pick it | a Store alias may stand in for `python`, and must likewise never be picked |
 | Reinstalling while a console runs | files delete while in use | an open file can block the delete part way through, so the failure names the locked file and the support folder is left incomplete. The marker goes with it, so the next launch rebuilds |
 | The tool's own interpreter | a link into the shared store, which dangles once the store is gone | a launcher that survives the store being deleted, so only the interpreter its environment names shows that the store has gone |
-| A reinstall's copy of the wheel | gets a new change time, which uv keys its archive on, so the next python console builds a fresh archive even from identical bytes | keeps its modified time, which uv keys its archive on there, so the next python console reuses the archive and only a rebuilt wheel costs a fresh one |
+| A reinstall's copy of the wheel | gets a new change time, which uv keys its archive on, so the next python console builds a fresh archive even from identical bytes | keeps its modified time, which uv keys its archive on there, so the next python console reuses the archive only while the bundled wheel's modified time matches the installed copy's. A build can rewrite the wheel without changing its bytes, and the rewritten file costs a fresh archive as a changed wheel does |
 | Closing a python console | uv removes the REPL's temporary environment itself | uv is terminated with the console, so the application removes the environment a moment after the close |
 
 ## Not covered

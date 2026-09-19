@@ -147,6 +147,21 @@ than it needed to be. Only genuinely useful ones — an empty section is a bette
 The report is usually the input to the next piece of work, so a finding and the change to the plan that
 would have caught it sooner both belong in it.
 
+## The reply
+
+The report is the record. The reply at the end of a run is for deciding what happens next, so it should
+be quick to read and quick to answer. It has two parts:
+
+1. **Failures.** For each case that failed or could not be run, a short summary: what was expected, what
+   happened, and the evidence, in a line or two. When every case passed, say so in one line.
+2. **Proposed changes.** A numbered list, one change per item, so each can be approved or declined by its
+   number. It covers fixes for what failed, corrections to documentation the run contradicted, and
+   improvements to the plan. Each item says what it changes, where, and why, in a sentence or two. Make
+   none of them until they are approved.
+
+Then give the report's path. Passes, setup notes and everything else stay in the report. The exception is
+a change outside the project that the run could not put back, which belongs in the reply too.
+
 ## Writing a plan
 
 One file per area, listing the surfaces in scope and the cases as a table of *situation, action, expected
