@@ -130,6 +130,19 @@ and read as "nothing happened" when what actually happened is a dialog waiting f
 reliable on every head: clicks can register as hover, and a control that ignores one can be perfectly
 healthy. Before reporting a negative, show that an equivalent action through a different route does work.
 
+Move the pointer onto a control and press it in two separate calls, never as one batched sequence. A
+move and a press sent together do not activate some controls on a hosted page, and they fail
+selectively — a formatting button in a toolbar answers while the button beside it, which opens a
+popover, does not, and the dead one can be shown receiving a full trusted click sequence. Settling the
+pointer first makes both work. This is the most productive source of false failures a run has, because
+the evidence for the false one looks conclusive.
+
+**An outcome you can only see while it happens is not an agent's to check.** A flash, a fade, the order
+two things disappear in: an agent samples the screen far too slowly to catch any of them, and several
+identical captures of an animation that already finished read as proof it never ran. Plans keep those
+checks in a section of their own for a person to run (see [Writing a plan](#writing-a-plan)); a run
+neither attempts them nor counts them as cases it could not run.
+
 ## The report
 
 Write a summary to the scratch project folder and give the user its path. Name the plan, the level run and
@@ -157,6 +170,11 @@ reads as the priority list the levels already make it.
 Prefer cases that have failed before, and pick a representative set rather than an exhaustive one — a rich
 third-party surface has more controls than anyone will ever check, and a plan that tries to name them all
 is both unfinishable and out of date. Add specific cases later when a bug report justifies one.
+
+Every case in the table is an agent's to run. An expectation an agent cannot observe — an animation, or
+the order two changes land in — goes in a **By hand** section instead, as a line saying what to do and
+what to look for. Keeping them out of the table is what stops a run spending its budget photographing an
+animation and reporting the still it caught.
 
 State what the plan does not cover. Where platforms are expected to differ, say so and say why, so a
 difference found on one platform is not mistaken for a defect.

@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Celbridge.Logging;
 using Celbridge.Platform;
 using Celbridge.UserInterface.Helpers;
@@ -14,6 +15,7 @@ public class ManagedFocus : IManagedFocus
     private readonly IUserInterfaceService _userInterfaceService;
     private readonly IPlatformInfo _platformInfo;
     private readonly ILogger<ManagedFocus> _logger;
+    private readonly ConditionalWeakTable<TextBox, TextEditHistory> _textEditHistories = new();
 
     private ContentControl? _placeholder;
     private bool _reportedFocusFailure;
@@ -73,11 +75,11 @@ public class ManagedFocus : IManagedFocus
         switch (intent)
         {
             case EditIntent.Undo:
-                textBox.Undo();
+                UndoTextEdit(textBox);
                 return true;
 
             case EditIntent.Redo:
-                textBox.Redo();
+                RedoTextEdit(textBox);
                 return true;
 
             case EditIntent.SelectAll:
@@ -89,16 +91,94 @@ public class ManagedFocus : IManagedFocus
                 return true;
 
             case EditIntent.Cut:
-                textBox.CutSelectionToClipboard();
+                PerformRecordedEdit(textBox, textBox.CutSelectionToClipboard);
                 return true;
 
             case EditIntent.Paste:
-                textBox.PasteFromClipboard();
+                PerformRecordedEdit(textBox, textBox.PasteFromClipboard);
                 return true;
 
             default:
                 return false;
         }
+    }
+
+    // UNO-BUG: a TextBox records only typed input in its undo history, so the clipboard edits performed
+    // here leave no entry: undo after a cut restores nothing, and undo after a paste drops back past the
+    // paste to whatever was typed before it. Recording them here is what makes them reversible, and the
+    // undo and redo paths below consult that record before the control's own.
+    private void PerformRecordedEdit(TextBox textBox, Action performEdit)
+    {
+        var before = CaptureTextEdit(textBox);
+        var history = GetTextEditHistory(textBox);
+        var isRecorded = false;
+
+        // Cut changes the text before it returns, while paste reads the clipboard asynchronously and lands
+        // some time later, so the edit is recorded from whichever of the two arrives.
+        void RecordIfChanged()
+        {
+            var after = CaptureTextEdit(textBox);
+            if (isRecorded
+                || after.Text == before.Text)
+            {
+                return;
+            }
+
+            isRecorded = true;
+            textBox.TextChanged -= OnTextChanged;
+            history.Record(before, after);
+        }
+
+        void OnTextChanged(object sender, TextChangedEventArgs args)
+        {
+            RecordIfChanged();
+        }
+
+        textBox.TextChanged += OnTextChanged;
+        performEdit();
+        RecordIfChanged();
+    }
+
+    private void UndoTextEdit(TextBox textBox)
+    {
+        if (GetTextEditHistory(textBox).TryUndo(textBox.Text, out var restored))
+        {
+            RestoreTextEdit(textBox, restored);
+            return;
+        }
+
+        textBox.Undo();
+    }
+
+    private void RedoTextEdit(TextBox textBox)
+    {
+        if (GetTextEditHistory(textBox).TryRedo(textBox.Text, out var restored))
+        {
+            RestoreTextEdit(textBox, restored);
+            return;
+        }
+
+        textBox.Redo();
+    }
+
+    private TextEditHistory GetTextEditHistory(TextBox textBox)
+    {
+        return _textEditHistories.GetValue(textBox, _ => new TextEditHistory());
+    }
+
+    private static TextEditSnapshot CaptureTextEdit(TextBox textBox)
+    {
+        return new TextEditSnapshot(textBox.Text, textBox.SelectionStart, textBox.SelectionLength);
+    }
+
+    private static void RestoreTextEdit(TextBox textBox, TextEditSnapshot snapshot)
+    {
+        textBox.Text = snapshot.Text;
+
+        var selectionStart = Math.Clamp(snapshot.SelectionStart, 0, snapshot.Text.Length);
+        var selectionLength = Math.Clamp(snapshot.SelectionLength, 0, snapshot.Text.Length - selectionStart);
+
+        textBox.Select(selectionStart, selectionLength);
     }
 
     public bool TryMoveFocusFromTextControl(bool backwards)

@@ -46,6 +46,11 @@ from the keyboard: SpreadJS reaches the clipboard through the browser, which the
 buttons went to the host instead. Copy something outside the grid before testing them — a copy made inside
 the grid can be pasted from SpreadJS's own memory, which hides the case that breaks.
 
+The ribbon's Paste is a split button: its lower half opens the paste-options dropdown and pastes nothing,
+and the command is the icon above it. A click on the label is also a click on text, which leaves a
+selection in the page — enough to make the next right-click in the grid produce WebKit's own text menu
+instead of the Designer's cell menu. Both read as the Designer ignoring input, and neither is.
+
 The Designer's name box keeps whatever was typed into it after Escape, rather than showing the active
 cell's reference again. The key does reach the page and the grid is unaffected; the box corrects itself on
 the next selection. It is the Designer's own behaviour, so judge these cases on the grid and the cell

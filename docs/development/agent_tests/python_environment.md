@@ -44,6 +44,10 @@ file in the project, which the file tools then read: that covers the environment
 the output of any command, and needs no keyboard at all. The support folder is read directly. The install
 writes to the application log, which says whether a reinstall ran and whether it finished.
 
+That script is the `script` key of the selected type's own table — `[session.shell]` or
+`[session.python]`, not `[session]`. A `script` in the wrong table is dropped without a word: the console
+opens, shows its prompt and runs nothing, which is indistinguishable from a console that failed to start.
+
 Have the script write that file so its presence means the case finished — under a temporary name renamed
 at the end, or ending with a line the reader waits for. A script that redirects into the file directly
 creates it before it has written anything, and a reader waiting for the file to appear gets a half-written
