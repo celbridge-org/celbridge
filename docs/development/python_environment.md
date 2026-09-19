@@ -163,8 +163,6 @@ than surfacing at the first console launch.
 
 ## Investigating
 
-Everything here is read back rather than seen; none of it needs a keyboard.
-
 - **The install** writes its decision to the application log on every launch. `Python support files are
   current` means it had nothing to do. `Python reinstall required` names which half of the marker
   mismatched, `The celbridge tool is not installed: '<path>' is missing` names what a republish replaces,
@@ -177,9 +175,6 @@ Everything here is read back rather than seen; none of it needs a keyboard.
   bootstraps and reports what it found, which arrives as `Console '<resource>' reported: python-probe
   mode=offline ms=<n>`. `offline` means every package resolved without touching the network, so a launch
   that went online says so rather than leaving the question to a stopwatch.
-- **The environment** is read by giving a console a startup script that writes what it finds to a file in
-  the project. Write it under a temporary name and rename it at the end, so its presence means the case
-  finished rather than started.
 - **The folders** are read directly, and are usually enough on their own: a `uv_cache` or
   `uv_python_installs` that appears in a project's `.celbridge/python`, or changes there after a console
   runs, means something is still scoping them per-project.
