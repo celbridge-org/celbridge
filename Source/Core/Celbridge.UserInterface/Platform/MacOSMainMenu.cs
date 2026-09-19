@@ -347,7 +347,7 @@ internal static class MacOSMainMenu
 
     private static MacMenuItemState EditVerbState(EditIntent intent)
     {
-        return MacOSEditCommands.Resolve(intent, EditVerbFocusService(), EditVerbManagedFocus(), IsDialogOpen()) switch
+        return EditVerbRouter.Resolve(intent, EditVerbFocusService(), EditVerbManagedFocus(), IsDialogOpen()) switch
         {
             EditRouting.Surface or EditRouting.TextControl => MacMenuItemState.Enabled,
             EditRouting.Unavailable => MacMenuItemState.Disabled,
@@ -359,12 +359,14 @@ internal static class MacOSMainMenu
     {
         var commandService = ServiceLocator.AcquireService<ICommandService>();
 
-        var routing = MacOSEditCommands.Perform(
+        var routing = EditVerbRouter.Perform(
             shortcut.Intent,
             EditVerbFocusService(),
             EditVerbManagedFocus(),
             commandService,
             IsDialogOpen());
+        // The one part of edit routing AppKit owns: a verb nothing focused claimed goes to the responder
+        // chain, so a native field outside the managed tree still answers for it.
         if (routing == EditRouting.ResponderChain)
         {
             MacOSMenuInterop.SendActionToResponderChain(shortcut.SelectorName);

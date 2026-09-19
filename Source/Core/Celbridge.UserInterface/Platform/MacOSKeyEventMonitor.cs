@@ -271,7 +271,7 @@ internal static class MacOSKeyEventMonitor
             return false;
         }
 
-        return MacOSEditCommands.Perform(
+        return EditVerbRouter.Perform(
             editIntent.Value,
             _focusService,
             _managedFocus,
@@ -279,10 +279,11 @@ internal static class MacOSKeyEventMonitor
             IsDialogOpen()) != EditRouting.ResponderChain;
     }
 
+    // UNO-BUG: a Command chord reaching a focused text control is typed as its character rather than
+    // recognised as a shortcut, so Cmd+X puts an "x" in the box.
     // Hands a Command chord no owner claimed back to AppKit, unless a managed text control holds the
-    // keyboard and the chord names a character: there Uno turns the chord into that character and types it.
-    // Offering it to the menubar is the key-equivalent phase AppKit would have run next, and the chord is
-    // swallowed either way.
+    // keyboard and the chord names a character. Offering it to the menubar is the key-equivalent phase
+    // AppKit would have run next, and the chord is swallowed either way.
     private static IntPtr ReleaseCommandChord(IntPtr nsEvent, ulong modifierFlags)
     {
         if (!IsPlainCommandChord(modifierFlags)
