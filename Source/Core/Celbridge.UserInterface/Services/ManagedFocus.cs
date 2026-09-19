@@ -103,10 +103,10 @@ public class ManagedFocus : IManagedFocus
         }
     }
 
-    // UNO-BUG: a TextBox records only typed input in its undo history, so the clipboard edits performed
-    // here leave no entry: undo after a cut restores nothing, and undo after a paste drops back past the
-    // paste to whatever was typed before it. Recording them here is what makes them reversible, and the
-    // undo and redo paths below consult that record before the control's own.
+    // UNO-BUG: a TextBox discards its undo history on any edit that is not typing, so the clipboard edits
+    // performed here leave it with nothing to reverse: undo after a cut restores nothing, and undo after a
+    // paste drops back past the paste to whatever was typed before it. Recording them here is what makes
+    // them reversible, and the undo and redo paths below consult that record before the control's own.
     private void PerformRecordedEdit(TextBox textBox, Action performEdit)
     {
         var before = CaptureTextEdit(textBox);

@@ -5,8 +5,9 @@ namespace Celbridge.UserInterface.Services;
 /// </summary>
 public sealed record TextEditSnapshot(string Text, int SelectionStart, int SelectionLength);
 
-// UNO-BUG: a TextBox records only typed input in its undo history. An edit made through its own clipboard
-// API, or by assigning SelectedText, leaves no entry, so the control cannot reverse it.
+// UNO-BUG: a TextBox discards its undo history on any edit that is not typing. Its clipboard API, an
+// assignment to SelectedText, and its own Cmd+X handling all leave CanUndo false, so the control can
+// reverse none of them. Reproduces in a bare Uno app, so it is not an artefact of this one.
 /// <summary>
 /// Undo history for the edits the host performs on a text control through its clipboard API. The control
 /// records its own typing and nothing else, so an edit made this way is reversible only if the host keeps
