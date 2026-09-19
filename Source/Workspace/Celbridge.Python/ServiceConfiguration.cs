@@ -11,7 +11,6 @@ public static class ServiceConfiguration
         services.AddSingleton<IPythonConfigService, PythonConfigService>();
         services.AddSingleton<IPythonInstaller, PythonInstaller>();
         services.AddSingleton<IPythonLaunchService, PythonLaunchService>();
-        services.AddSingleton<RetiredProjectCacheCleaner>();
 
         services.AddSingleton<IConsoleEnvironmentContributor, PythonEnvironmentContributor>();
     }
@@ -27,8 +26,5 @@ public static class ServiceConfiguration
 
         var environmentInfo = appEnvironment.GetEnvironmentInfo();
         _ = pythonInstaller.InstallPythonAsync(environmentInfo.AppVersion);
-
-        // Constructed here so it is listening before the first project loads.
-        ServiceLocator.AcquireService<RetiredProjectCacheCleaner>();
     }
 }

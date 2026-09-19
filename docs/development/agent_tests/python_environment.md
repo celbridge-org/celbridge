@@ -36,7 +36,6 @@ temporary environment each REPL runs in.
 | The shared store of interpreters deleted | relaunch, then open a python console | the launch finds the installed command unrunnable and republishes it, and the REPL works again — the one case in this file that costs a download | 3 |
 | Two instances launched together, the second carrying a changed wheel | open a console in each | the two installs do not overlap, neither leaves a half-built support folder, and both consoles run the wheel of whichever install finished last | 3 |
 | A python console open in one instance | launch a second instance | the second launch removes no temporary environment, and the first instance's REPL still answers | 3 |
-| A project whose `.celbridge/python` still holds the `uv_cache` and `uv_python_installs` an earlier release kept there, beside an IPython profile and a tool installed in the project | open it | both folders are removed in the background and the log names each one, while the profile and the tool stay and the tool still runs | 3 |
 
 Run the cases in one project, in the order they are listed, and say in the report which project each ran
 in. What a console does here depends on what the consoles before it did — the install is decided per

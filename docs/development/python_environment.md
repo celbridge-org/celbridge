@@ -37,11 +37,7 @@ uninstall, and `~/Library/Application Support/Celbridge/` elsewhere.
 
 The cache and the interpreter store are shared rather than per-project. They hold downloaded artifacts
 addressed by content and by interpreter version — nothing a project owns — and each REPL still gets its
-own environment from the inner `uv run`, so what a project imports is unaffected. Per-project copies were
-how these were once kept safe from a reinstall that deleted the whole folder. The folder split does that
-now, at a measured 50 MB of interpreter and 99–256 MB of cache saved per project. Opening a project
-removes the `uv_cache` and `uv_python_installs` an earlier release left in its `.celbridge/python`, in the
-background, unless another Celbridge instance is running.
+own environment from the inner `uv run`, so what a project imports is unaffected.
 
 Shared does not mean disposable. The installed `celbridge-py` runs on an interpreter in
 `uv_python_installs/`, and every REPL launch resolves its environment out of `uv_cache/`, so emptying
@@ -142,9 +138,7 @@ takes about 9.8 s because it downloads an interpreter and the tool's packages; e
 `BuildConsolePath` prepends, in order, the project's tool bin folder, then the application's tool bin
 folder, then the application's uv bin folder — so the application's folders are searched first.
 
-That order is deliberate. A project opened by an earlier release still holds the `celbridge-py` its
-per-project install published, and the stale shim would otherwise be found ahead of the installed one.
-More generally, the application's own commands should not be shadowable by project content.
+That order is deliberate: the application's own commands should not be shadowable by project content.
 
 An interactive shell sources its profile *after* this is applied, so a profile that prepends a folder
 holding another uv still wins. A console resolving the wrong uv is not automatically a defect — read the
@@ -158,9 +152,9 @@ under `Assets/UV/` and the wheel under `Assets/Python/`. `Celbridge.Python.Asset
 machine. A failed build fails the build.
 
 That is a separate project because `Celbridge.Python` multi-targets and its inner builds run in parallel,
-which had several of them downloading and extracting uv, and running `build.py`, over the same files at
-the same time. `Celbridge.Python.Assets` has one target framework, so it runs once however many
-frameworks reference it — the same shape as `Celbridge.Templates`.
+and generating the assets in each of them would download and extract uv, and run `build.py`, over the
+same files at the same time. `Celbridge.Python.Assets` has one target framework, so it runs once however
+many frameworks reference it — the same shape as `Celbridge.Templates`.
 
 A build that wants the assembly and not the assets opts out with `-p:SkipPythonAssets=true`, which CI's
 unit test job passes because no test reads either asset. The build then warns that its output cannot run
@@ -186,9 +180,9 @@ Everything here is read back rather than seen; none of it needs a keyboard.
 - **The environment** is read by giving a console a startup script that writes what it finds to a file in
   the project. Write it under a temporary name and rename it at the end, so its presence means the case
   finished rather than started.
-- **The folders** are read directly, and are usually enough on their own: a project whose `uv_cache` or
-  `uv_python_installs` comes back after opening it has removed them means something is still scoping them
-  per-project.
+- **The folders** are read directly, and are usually enough on their own: a `uv_cache` or
+  `uv_python_installs` that appears in a project's `.celbridge/python`, or changes there after a console
+  runs, means something is still scoping them per-project.
 
 The [Python Environment agent test plan](agent_tests/python_environment.md) covers this area case by
 case. No unit suite reaches it — the interpreter, the tool install and the REPL's launch all happen by

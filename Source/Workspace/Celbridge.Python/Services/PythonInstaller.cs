@@ -333,7 +333,7 @@ public class PythonInstaller : IPythonInstaller
             removalTimer.ElapsedMilliseconds);
     }
 
-    internal static bool IsAnotherInstanceRunning()
+    private static bool IsAnotherInstanceRunning()
     {
         using var currentProcess = Process.GetCurrentProcess();
         var namesakes = Process.GetProcessesByName(currentProcess.ProcessName);
