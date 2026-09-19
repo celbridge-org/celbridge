@@ -113,6 +113,11 @@ internal sealed class ConsoleSession : IDisposable
     public bool HasConnected { get; set; }
 
     /// <summary>
+    /// The temporary environment the latest client to report one runs in, or null when none has.
+    /// </summary>
+    public string? ClientTemporaryEnvironmentFolder { get; set; }
+
+    /// <summary>
     /// A session that bound a client and then lost it is a live shell whose REPL has exited, so its
     /// runners target a prompt that is no longer there.
     /// </summary>
@@ -212,6 +217,7 @@ internal sealed class ConsoleSession : IDisposable
         Triggers = ResolveTriggers(config);
         ConnectionId = null;
         HasConnected = false;
+        ClientTemporaryEnvironmentFolder = null;
 
         // Seed the host-connection variables for every console: the shared listener port every peer dials,
         // and this console's session token, inherited by anything the shell launches.

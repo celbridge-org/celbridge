@@ -80,8 +80,7 @@ public sealed class AppEnvironment : IAppEnvironment
         var normalizedRelativePath = relativePath.Replace('/', Path.DirectorySeparatorChar);
 
         // Every head lays a library's bundled content out the same way, in the library's module folder
-        // beside the app. The packaged head also flattens each library's Assets folder to the package
-        // root, but that copy covers Assets alone, so no caller depends on it.
+        // beside the app.
         return Path.Combine(AppContext.BaseDirectory, moduleFolderName, normalizedRelativePath);
     }
 

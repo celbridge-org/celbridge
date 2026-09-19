@@ -104,10 +104,11 @@ public interface IConsoleSessionService
     void EndSession(ResourceKey resource);
 
     /// <summary>
-    /// Binds a transport connection to the session whose handshake token matches, broadcasting
+    /// Binds a transport connection to the session whose handshake token matches, together with the
+    /// temporary environment the client runs in when it reports one, broadcasting
     /// ConsoleSessionConnectedMessage. Returns false if no session matches the token.
     /// </summary>
-    bool TryBindConnection(Guid sessionToken, int connectionId);
+    bool TryBindConnection(Guid sessionToken, int connectionId, string? temporaryEnvironmentFolder);
 
     /// <summary>
     /// Clears a lost transport connection's binding. Session liveness follows the pty, so the session

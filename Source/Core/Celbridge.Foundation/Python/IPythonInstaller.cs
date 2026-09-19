@@ -53,4 +53,10 @@ public interface IPythonInstaller
     /// completed.
     /// </summary>
     Task<Result<string>> GetInstalledWheelPathAsync();
+
+    /// <summary>
+    /// Removes the temporary environment a REPL ran in, once the processes that used it are gone. A folder
+    /// outside the one uv keeps its temporary environments in is left alone.
+    /// </summary>
+    Task RemoveTemporaryEnvironmentAsync(string folderPath);
 }

@@ -18,14 +18,16 @@ internal sealed class SessionHandshakeHandler
         _connectionId = connectionId;
     }
 
+    // A client that runs in a temporary environment also reports it. The folder is optional, so a client
+    // that reports none still binds.
     [JsonRpcMethod("session/handshake")]
-    public bool Handshake(string sessionToken)
+    public bool Handshake(string sessionToken, string? temporaryEnvironmentFolder = null)
     {
         if (!Guid.TryParse(sessionToken, out var token))
         {
             return false;
         }
 
-        return _sessionService.TryBindConnection(token, _connectionId);
+        return _sessionService.TryBindConnection(token, _connectionId, temporaryEnvironmentFolder);
     }
 }

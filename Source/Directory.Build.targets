@@ -38,6 +38,23 @@
   </PropertyGroup>
 
   <!--
+    On the packaged Windows head the Uno SDK marks every project's Assets content to be copied to the output,
+    libraries included. The application then receives each library's assets as files of its own, and the MSIX
+    carries them twice: under the library's folder, where the library layout puts them and where they are read
+    from, and again at the package root, where nothing reads them. Clearing the copy on a library's Assets
+    content leaves the library layout as the only route into the package.
+  -->
+  <Target Name="KeepLibraryAssetsInLibraryLayout"
+          BeforeTargets="AssignTargetPaths"
+          Condition="'$(GenerateLibraryLayout)' == 'true' and '$(TargetPlatformIdentifier)' == 'windows'">
+    <ItemGroup>
+      <Content Condition="$([System.String]::Copy('%(Content.Identity)').StartsWith('Assets\'))">
+        <CopyToOutputDirectory></CopyToOutputDirectory>
+      </Content>
+    </ItemGroup>
+  </Target>
+
+  <!--
     Distribute the Celbridge.FileSystem.Analyzers gateway analyzer (CEL_FS_001)
     to every product project. OutputItemType="Analyzer" with
     ReferenceOutputAssembly="false" adds it as an analyzer only, not a compile
