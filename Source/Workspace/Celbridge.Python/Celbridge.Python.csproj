@@ -25,18 +25,19 @@
     <MSBuildWarningsAsMessages>$(MSBuildWarningsAsMessages);PRI249</MSBuildWarningsAsMessages>
 
     <!-- Celbridge.Python.Assets generates the wheel and the uv archive, so neither exists when the SDK
-         evaluates the default Assets glob on a clean checkout. Excluding them here and re-including them
-         in IncludeGeneratedPythonAssets is what gets them into the output, and it avoids a duplicate
-         MSIX payload (APPX1101) on the packaged Windows head. -->
+         evaluates the default Assets glob on a clean checkout. Once they do, this keeps the Uno SDK's
+         Assets glob on the Skia heads from including them beside IncludeGeneratedPythonAssets. The Windows
+         App SDK's Assets glob on the packaged head takes no exclusions, so there an existing asset is
+         included by both the glob and the target, as the same file. -->
     <CelbridgeDefaultItemExcludes>$(CelbridgeDefaultItemExcludes);Assets\Python\*.whl;Assets\UV\uv-*.zip;Assets\UV\uv-*.tar.gz</CelbridgeDefaultItemExcludes>
 
   </PropertyGroup>
 
   <!-- Both assets are produced by Celbridge.Python.Assets, a single target framework project so that it
-       runs once however many of this project's frameworks are building. They reach the app through this
-       target alone, because the property group above takes them out of the default glob. A missing asset
-       is reported here rather than at the first console launch, which is where it would otherwise
-       surface. -->
+       runs once however many of this project's frameworks are building. This target includes them
+       whenever the default Assets glob does not: on every head from a clean checkout, and always on the
+       Skia heads, where the property group above excludes them. A missing asset is reported here rather
+       than at the first console launch, which is where it would otherwise surface. -->
   <Target Name="IncludeGeneratedPythonAssets" BeforeTargets="AssignTargetPaths">
     <ItemGroup>
       <PythonWheelAsset Include="Assets\Python\*.whl" />
@@ -51,6 +52,10 @@
     <ItemGroup>
       <Content Include="@(PythonWheelAsset);@(UvArchiveAsset)" />
       <Content Include="Assets\UV\uv_version.txt" Condition="Exists('$(MSBuildThisFileDirectory)Assets\UV\uv_version.txt')" />
+
+      <!-- A .gitignore beside the wheel is not an asset, and the installer would copy it into the support
+           folder. It is removed here because the Windows App SDK's Assets glob takes no exclusions. -->
+      <Content Remove="Assets\Python\.gitignore" />
     </ItemGroup>
   </Target>
 
@@ -65,6 +70,10 @@
 
   <ItemGroup>
     <Folder Include="Assets\UV\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Celbridge.Tests" />
   </ItemGroup>
 
   <!-- The Uno SDK auto-includes files as Content, which GenerateLibraryLayout bundles into the

@@ -1,5 +1,7 @@
 """Tests for the __main__ entry point."""
 
+import sys
+
 import pytest
 
 from celbridge.__main__ import (
@@ -8,6 +10,7 @@ from celbridge.__main__ import (
     ResolvedLaunch,
     _build_bootstrap_command,
     _build_exec_lines,
+    _build_handshake_params,
     _build_probe_command,
     _build_uv_environment,
     _emit_diagnostic,
@@ -202,3 +205,17 @@ def test_emit_diagnostic_writes_a_private_osc_sequence(capsys):
 
     expected = f"\x1b]{DIAGNOSTIC_OSC_CODE};python-probe mode=offline ms=412\x07"
     assert capsys.readouterr().out == expected
+
+
+def test_build_handshake_params_for_a_direct_launch_sends_the_token_alone():
+    """Test that a REPL running straight from the tool environment reports no temporary environment."""
+    assert _build_handshake_params("token", bootstrapped=False) == {"sessionToken": "token"}
+
+
+def test_build_handshake_params_for_a_bootstrapped_launch_reports_its_environment(monkeypatch):
+    """Test that a bootstrapped REPL reports the temporary environment it runs in."""
+    monkeypatch.setattr(sys, "prefix", "/cache/builds-v0/.tmp1234")
+
+    params = _build_handshake_params("token", bootstrapped=True)
+
+    assert params == {"sessionToken": "token", "temporaryEnvironmentFolder": "/cache/builds-v0/.tmp1234"}
