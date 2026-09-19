@@ -271,7 +271,7 @@ internal static class MacOSKeyEventMonitor
             return false;
         }
 
-        return MacOSEditCommands.Perform(
+        return EditVerbRouter.Perform(
             editIntent.Value,
             _focusService,
             _managedFocus,

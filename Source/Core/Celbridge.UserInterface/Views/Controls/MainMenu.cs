@@ -1,8 +1,10 @@
 using Celbridge.Commands;
+using Celbridge.Dialog;
 using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Platform;
 using Celbridge.Settings;
+using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.Views.Controls;
 using Celbridge.UserInterface.ViewModels.Controls;
 using Celbridge.Workspace;
@@ -48,8 +50,8 @@ public class MainMenu
         // hamburger reads the same way on Windows and Linux. Single app-level commands stay flat below them.
         _menuFlyout.Items.Add(CreateFileSubItem());
 
-        // Edit verbs route to the focused surface through the edit-intent command; enable state reflects what
-        // that surface can currently do.
+        // Edit verbs route through EditVerbRouter, the same resolver the macOS menu bar and Command chords
+        // use, so a verb reached two ways agrees with itself.
         _menuFlyout.Items.Add(CreateEditSubItem());
 
         _menuFlyout.Items.Add(CreateViewSubItem());
@@ -191,8 +193,9 @@ public class MainMenu
     private MenuFlyoutSubItem CreateEditSubItem()
     {
         var focusService = ServiceLocator.AcquireService<IFocusService>();
+        var managedFocus = ServiceLocator.AcquireService<IManagedFocus>();
+        var isDialogOpen = ServiceLocator.AcquireService<IDialogService>().IsDialogOpen;
         var shortcutHintService = ServiceLocator.AcquireService<IShortcutHintService>();
-        var activeTarget = focusService.EditTarget;
 
         var editSubItem = new MenuFlyoutSubItem
         {
@@ -201,8 +204,9 @@ public class MainMenu
 
         void AddEditItem(string labelKey, EditIntent intent)
         {
-            var isEnabled = activeTarget is not null
-                && activeTarget.CanPerformEdit(intent);
+            // There is no responder chain here, so a verb the router leaves to the platform has no owner.
+            var routing = EditVerbRouter.Resolve(intent, focusService, managedFocus, isDialogOpen);
+            var isEnabled = routing is EditRouting.Surface or EditRouting.TextControl;
 
             var editItem = new MenuFlyoutItem
             {
@@ -368,8 +372,12 @@ public class MainMenu
 
     private void PerformEdit(EditIntent intent)
     {
+        var focusService = ServiceLocator.AcquireService<IFocusService>();
+        var managedFocus = ServiceLocator.AcquireService<IManagedFocus>();
         var commandService = ServiceLocator.AcquireService<ICommandService>();
-        commandService.Execute<IPerformEditCommand>(command => command.Intent = intent);
+        var isDialogOpen = ServiceLocator.AcquireService<IDialogService>().IsDialogOpen;
+
+        EditVerbRouter.Perform(intent, focusService, managedFocus, commandService, isDialogOpen);
     }
 
     private async void OpenRecentProject(string projectFilePath)

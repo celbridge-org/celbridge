@@ -1,8 +1,7 @@
 using Celbridge.Commands;
-using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
 
-namespace Celbridge.UserInterface.Platform;
+namespace Celbridge.UserInterface.Services;
 
 /// <summary>
 /// Who performs a standard edit verb.
@@ -20,21 +19,22 @@ internal enum EditRouting
     TextControl,
 
     /// <summary>
-    /// Nobody. The owner of the verb cannot perform it right now, so the responder chain must not act on it.
+    /// Nobody. The owner of the verb cannot perform it right now, so the platform must not act on it.
     /// </summary>
     Unavailable,
 
     /// <summary>
-    /// The AppKit responder chain, because nothing focused handles the verb.
+    /// The platform, because nothing focused handles the verb. macOS offers it to the AppKit responder
+    /// chain; the other heads have nowhere further to send it.
     /// </summary>
     ResponderChain
 }
 
 /// <summary>
-/// Routes a standard edit verb to the surface that owns it. A verb nothing focused owns is left to the
-/// AppKit responder chain. macOS-only.
+/// Routes a standard edit verb to the surface that owns it, for every caller that offers one: the menus and
+/// the macOS Command chords. A verb nothing focused owns is left to the platform.
 /// </summary>
-internal static class MacOSEditCommands
+internal static class EditVerbRouter
 {
     /// <summary>
     /// Who should perform the verb given the currently focused surface and text control, and whether a modal
@@ -111,7 +111,7 @@ internal static class MacOSEditCommands
     }
 
     // A text control holding the keyboard owns every standard verb, so one it cannot perform right now is
-    // unavailable, and the responder chain must not be offered it.
+    // unavailable, and the platform must not be offered it.
     private static EditRouting ResolveTextControl(EditIntent intent, IManagedFocus? managedFocus)
     {
         if (managedFocus?.IsTextControlFocused != true)
