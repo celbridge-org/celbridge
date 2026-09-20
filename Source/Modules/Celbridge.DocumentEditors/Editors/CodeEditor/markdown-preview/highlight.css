@@ -74,6 +74,7 @@
     color: var(--hl-type);
 }
 
+.hljs-attr,
 .hljs-attribute,
 .hljs-symbol,
 .hljs-bullet {

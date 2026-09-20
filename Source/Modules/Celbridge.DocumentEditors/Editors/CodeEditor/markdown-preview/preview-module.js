@@ -8,6 +8,8 @@ import { marked, markedHighlight, hljs } from './lib/marked.esm.js';
 import { projectUrl } from '/assets/celbridge-client/api/document-api.js';
 import celbridge from '/assets/celbridge-client/celbridge.js';
 import { createFindBar } from '/assets/celbridge-client/ui/find-bar.js';
+import { t } from '/assets/celbridge-client/localization.js';
+import { splitFrontmatter } from './frontmatter.js';
 
 let iframeElement = null;
 let callbacks = null;
@@ -32,6 +34,10 @@ let scrollResizeObserver = null;
 // and vice versa). Without this, scrolling past the last block produced a
 // "dead zone" where one side stopped tracking the other.
 let totalSourceLines = 0;
+
+// Whether the frontmatter block is expanded. render() rebuilds the preview DOM on every edit, so the
+// flag has to outlive the element that carries it.
+let frontmatterExpanded = false;
 
 configureMarked();
 
@@ -85,12 +91,10 @@ function configureMarked() {
 
         code(token) {
             const lang = (token.lang || '').match(/\S*/)?.[0] ?? '';
-            const escaped = token.escaped
-                ? token.text
-                : token.text
-                    .replace(/&/g, '&amp;')
-                    .replace(/</g, '&lt;')
-                    .replace(/>/g, '&gt;');
+            let escaped = token.text;
+            if (!token.escaped) {
+                escaped = escapeHtml(token.text);
+            }
             const langClass = lang ? ` class="language-${lang}"` : '';
             return `<pre${sourceAttr(token)}><code${langClass}>${escaped}\n</code></pre>\n`;
         },
@@ -220,13 +224,25 @@ function sourceAttr(token) {
 }
 
 /**
+ * Escapes the HTML-significant characters in text bound for the preview DOM.
+ */
+function escapeHtml(text) {
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+/**
  * Walks the top-level token list and annotates each block token with the
  * 1-based source line of its first character in the original markdown source.
  * marked tokens carry a `raw` property (the original text), so cumulative
  * offsets over `raw` lengths give each token its position in the source.
  * Annotation runs before parse so renderer hooks can read `token.sourceLine`.
+ * `startOffset` is where the tokenized text begins in `source`, so a body lexed
+ * without its frontmatter still maps onto the full document's lines.
  */
-function annotateTokensWithSourceLines(tokens, source) {
+function annotateTokensWithSourceLines(tokens, source, startOffset = 0) {
     const lineStarts = [0];
     for (let i = 0; i < source.length; i++) {
         if (source.charCodeAt(i) === 10) {
@@ -255,7 +271,7 @@ function annotateTokensWithSourceLines(tokens, source) {
         return lo;
     };
 
-    let charOffset = 0;
+    let charOffset = startOffset;
     for (const token of tokens) {
         if (typeof token.raw !== 'string') {
             continue;
@@ -420,18 +436,17 @@ export function render(markdown) {
     }
 
     try {
-        const tokens = marked.lexer(markdown);
-        annotateTokensWithSourceLines(tokens, markdown);
-        const html = marked.parser(tokens);
+        const { frontmatter, body, bodyOffset } = splitFrontmatter(markdown);
+        const tokens = marked.lexer(body);
+        annotateTokensWithSourceLines(tokens, markdown, bodyOffset);
+        const html = renderFrontmatter(frontmatter) + marked.parser(tokens);
         previewContentElement.innerHTML = html;
+        attachFrontmatterToggle();
         attachLinkHandlers();
     } catch (error) {
         console.error('Error rendering markdown:', error);
         try {
-            const escaped = markdown
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;');
+            const escaped = escapeHtml(markdown);
             previewContentElement.innerHTML = `
                 <div class="markdown-error">
                     <p><strong>Preview error:</strong> ${error.message}</p>
@@ -455,6 +470,51 @@ export function render(markdown) {
             previewContainerElement.scrollTop = savedScrollTop;
         });
     }
+}
+
+/**
+ * Renders a frontmatter block as a collapsed disclosure above the document body.
+ * The keys belong to whatever publishes the file rather than to Celbridge, so the block is shown
+ * verbatim rather than interpreted.
+ */
+function renderFrontmatter(frontmatter) {
+    if (frontmatter === null) {
+        return '';
+    }
+
+    let highlighted;
+    try {
+        highlighted = hljs.highlight(frontmatter, { language: 'yaml' }).value;
+    } catch (error) {
+        console.warn('Highlight error for frontmatter:', error);
+        highlighted = escapeHtml(frontmatter);
+    }
+
+    let openAttribute = '';
+    if (frontmatterExpanded) {
+        openAttribute = ' open';
+    }
+
+    const label = escapeHtml(t('CodeEditor_Preview_Frontmatter'));
+
+    return `<details class="markdown-frontmatter" data-source-line="1"${openAttribute}>\n` +
+        `<summary>${label}</summary>\n` +
+        `<pre><code class="hljs language-yaml">${highlighted}</code></pre>\n` +
+        `</details>\n`;
+}
+
+/**
+ * Carries the frontmatter block's expanded state across the renders that follow it.
+ */
+function attachFrontmatterToggle() {
+    const details = previewContentElement.querySelector('.markdown-frontmatter');
+    if (!details) {
+        return;
+    }
+
+    details.addEventListener('toggle', () => {
+        frontmatterExpanded = details.open;
+    });
 }
 
 /**
