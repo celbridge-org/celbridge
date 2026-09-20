@@ -8,6 +8,7 @@ import { marked, markedHighlight, hljs } from './lib/marked.esm.js';
 import { projectUrl } from '/assets/celbridge-client/api/document-api.js';
 import celbridge from '/assets/celbridge-client/celbridge.js';
 import { createFindBar } from '/assets/celbridge-client/ui/find-bar.js';
+import { stripFrontmatter } from './frontmatter.js';
 
 let iframeElement = null;
 let callbacks = null;
@@ -85,12 +86,10 @@ function configureMarked() {
 
         code(token) {
             const lang = (token.lang || '').match(/\S*/)?.[0] ?? '';
-            const escaped = token.escaped
-                ? token.text
-                : token.text
-                    .replace(/&/g, '&amp;')
-                    .replace(/</g, '&lt;')
-                    .replace(/>/g, '&gt;');
+            let escaped = token.text;
+            if (!token.escaped) {
+                escaped = escapeHtml(token.text);
+            }
             const langClass = lang ? ` class="language-${lang}"` : '';
             return `<pre${sourceAttr(token)}><code${langClass}>${escaped}\n</code></pre>\n`;
         },
@@ -220,13 +219,25 @@ function sourceAttr(token) {
 }
 
 /**
+ * Escapes the HTML-significant characters in text bound for the preview DOM.
+ */
+function escapeHtml(text) {
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+/**
  * Walks the top-level token list and annotates each block token with the
  * 1-based source line of its first character in the original markdown source.
  * marked tokens carry a `raw` property (the original text), so cumulative
  * offsets over `raw` lengths give each token its position in the source.
  * Annotation runs before parse so renderer hooks can read `token.sourceLine`.
+ * `startOffset` is where the tokenized text begins in `source`, so a body lexed
+ * without its frontmatter still maps onto the full document's lines.
  */
-function annotateTokensWithSourceLines(tokens, source) {
+function annotateTokensWithSourceLines(tokens, source, startOffset = 0) {
     const lineStarts = [0];
     for (let i = 0; i < source.length; i++) {
         if (source.charCodeAt(i) === 10) {
@@ -255,7 +266,7 @@ function annotateTokensWithSourceLines(tokens, source) {
         return lo;
     };
 
-    let charOffset = 0;
+    let charOffset = startOffset;
     for (const token of tokens) {
         if (typeof token.raw !== 'string') {
             continue;
@@ -420,18 +431,12 @@ export function render(markdown) {
     }
 
     try {
-        const tokens = marked.lexer(markdown);
-        annotateTokensWithSourceLines(tokens, markdown);
-        const html = marked.parser(tokens);
-        previewContentElement.innerHTML = html;
+        previewContentElement.innerHTML = renderToHtml(markdown);
         attachLinkHandlers();
     } catch (error) {
         console.error('Error rendering markdown:', error);
         try {
-            const escaped = markdown
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;');
+            const escaped = escapeHtml(markdown);
             previewContentElement.innerHTML = `
                 <div class="markdown-error">
                     <p><strong>Preview error:</strong> ${error.message}</p>
@@ -455,6 +460,22 @@ export function render(markdown) {
             previewContainerElement.scrollTop = savedScrollTop;
         });
     }
+}
+
+/**
+ * Converts markdown to the preview's HTML, dropping any frontmatter block and annotating each
+ * block element with the source line it came from.
+ */
+export function renderToHtml(markdown) {
+    // marked normalizes CR and CRLF to LF before tokenizing, so the source map has to be built over
+    // the same normalized text for the token offsets to land on the right lines. The line count is
+    // the same either way.
+    const source = markdown.replace(/\r\n|\r/g, '\n');
+    const { body, bodyOffset } = stripFrontmatter(source);
+    const tokens = marked.lexer(body);
+    annotateTokensWithSourceLines(tokens, source, bodyOffset);
+
+    return marked.parser(tokens);
 }
 
 /**
