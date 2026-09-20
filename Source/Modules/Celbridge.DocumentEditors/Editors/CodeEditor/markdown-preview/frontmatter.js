@@ -1,34 +1,27 @@
-// Frontmatter detection for the markdown preview.
-//
-// A YAML frontmatter block is metadata for whatever publishes the file, not document body, so the
-// preview shows it separately rather than as markdown. Left in the source handed to marked, the block
-// parses as a setext heading underlined by its closing delimiter and renders as one large heading.
+// Frontmatter handling for the markdown preview.
 
-// The opening delimiter has to be the first line of the file and the closing delimiter a line of
-// exactly three dashes. Matching without the multiline flag anchors the opening delimiter to offset 0.
-// A block that is unterminated or holds no content is not frontmatter, so a document opening with a
-// horizontal rule still renders as markdown.
+// The opening delimiter must be the first line of the file. Matching without the multiline flag
+// anchors it to offset 0.
 const FRONTMATTER_PATTERN = /^\uFEFF?---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/;
 
 /**
- * Splits a leading YAML frontmatter block off the markdown source.
+ * Removes a leading YAML frontmatter block from the markdown source.
  * @param {string} markdown - The full document source.
- * @returns {{frontmatter: string|null, body: string, bodyOffset: number}} The block's contents, null
- * when the document has none, the markdown that follows it, and the character offset of that markdown
- * in the original source.
+ * @returns {{body: string, bodyOffset: number}} The markdown that follows the block, and the
+ * character offset it starts at in the original source. A document with no frontmatter comes back
+ * unchanged at offset 0.
  */
-export function splitFrontmatter(markdown) {
+export function stripFrontmatter(markdown) {
     const source = markdown || '';
     const match = FRONTMATTER_PATTERN.exec(source);
     if (!match ||
         match[1].trim() === '') {
-        return { frontmatter: null, body: source, bodyOffset: 0 };
+        return { body: source, bodyOffset: 0 };
     }
 
     const bodyOffset = match[0].length;
 
     return {
-        frontmatter: match[1],
         body: source.substring(bodyOffset),
         bodyOffset
     };

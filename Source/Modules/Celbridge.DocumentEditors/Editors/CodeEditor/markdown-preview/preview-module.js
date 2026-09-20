@@ -8,8 +8,7 @@ import { marked, markedHighlight, hljs } from './lib/marked.esm.js';
 import { projectUrl } from '/assets/celbridge-client/api/document-api.js';
 import celbridge from '/assets/celbridge-client/celbridge.js';
 import { createFindBar } from '/assets/celbridge-client/ui/find-bar.js';
-import { t } from '/assets/celbridge-client/localization.js';
-import { splitFrontmatter } from './frontmatter.js';
+import { stripFrontmatter } from './frontmatter.js';
 
 let iframeElement = null;
 let callbacks = null;
@@ -34,10 +33,6 @@ let scrollResizeObserver = null;
 // and vice versa). Without this, scrolling past the last block produced a
 // "dead zone" where one side stopped tracking the other.
 let totalSourceLines = 0;
-
-// Whether the frontmatter block is expanded. render() rebuilds the preview DOM on every edit, so the
-// flag has to outlive the element that carries it.
-let frontmatterExpanded = false;
 
 configureMarked();
 
@@ -436,12 +431,7 @@ export function render(markdown) {
     }
 
     try {
-        const { frontmatter, body, bodyOffset } = splitFrontmatter(markdown);
-        const tokens = marked.lexer(body);
-        annotateTokensWithSourceLines(tokens, markdown, bodyOffset);
-        const html = renderFrontmatter(frontmatter) + marked.parser(tokens);
-        previewContentElement.innerHTML = html;
-        attachFrontmatterToggle();
+        previewContentElement.innerHTML = renderToHtml(markdown);
         attachLinkHandlers();
     } catch (error) {
         console.error('Error rendering markdown:', error);
@@ -473,48 +463,19 @@ export function render(markdown) {
 }
 
 /**
- * Renders a frontmatter block as a collapsed disclosure above the document body.
- * The keys belong to whatever publishes the file rather than to Celbridge, so the block is shown
- * verbatim rather than interpreted.
+ * Converts markdown to the preview's HTML, dropping any frontmatter block and annotating each
+ * block element with the source line it came from.
  */
-function renderFrontmatter(frontmatter) {
-    if (frontmatter === null) {
-        return '';
-    }
+export function renderToHtml(markdown) {
+    // marked normalizes CR and CRLF to LF before tokenizing, so the source map has to be built over
+    // the same normalized text for the token offsets to land on the right lines. The line count is
+    // the same either way.
+    const source = markdown.replace(/\r\n|\r/g, '\n');
+    const { body, bodyOffset } = stripFrontmatter(source);
+    const tokens = marked.lexer(body);
+    annotateTokensWithSourceLines(tokens, source, bodyOffset);
 
-    let highlighted;
-    try {
-        highlighted = hljs.highlight(frontmatter, { language: 'yaml' }).value;
-    } catch (error) {
-        console.warn('Highlight error for frontmatter:', error);
-        highlighted = escapeHtml(frontmatter);
-    }
-
-    let openAttribute = '';
-    if (frontmatterExpanded) {
-        openAttribute = ' open';
-    }
-
-    const label = escapeHtml(t('CodeEditor_Preview_Frontmatter'));
-
-    return `<details class="markdown-frontmatter" data-source-line="1"${openAttribute}>\n` +
-        `<summary>${label}</summary>\n` +
-        `<pre><code class="hljs language-yaml">${highlighted}</code></pre>\n` +
-        `</details>\n`;
-}
-
-/**
- * Carries the frontmatter block's expanded state across the renders that follow it.
- */
-function attachFrontmatterToggle() {
-    const details = previewContentElement.querySelector('.markdown-frontmatter');
-    if (!details) {
-        return;
-    }
-
-    details.addEventListener('toggle', () => {
-        frontmatterExpanded = details.open;
-    });
+    return marked.parser(tokens);
 }
 
 /**

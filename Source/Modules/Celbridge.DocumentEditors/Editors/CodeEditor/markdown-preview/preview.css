@@ -115,29 +115,6 @@ body {
     margin-bottom: 0;
 }
 
-/* Frontmatter. Metadata for whatever publishes the file rather than document body, so it sits above
-   the content as a collapsed block styled as chrome. */
-.markdown-frontmatter {
-    margin-bottom: 16px;
-    border: 1px solid var(--table-border);
-    border-radius: 6px;
-    background-color: var(--code-bg);
-}
-
-.markdown-frontmatter > summary {
-    padding: 6px 12px;
-    font-size: 0.875em;
-    color: var(--blockquote-text);
-    cursor: pointer;
-    user-select: none;
-}
-
-.markdown-frontmatter > pre {
-    margin: 0;
-    padding: 0 12px 12px 12px;
-    background-color: transparent;
-}
-
 /* Headings */
 h1, h2, h3, h4, h5, h6 {
     color: var(--heading-color);
