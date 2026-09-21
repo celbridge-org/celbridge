@@ -144,6 +144,10 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
     private WebViewLoadDiagnostics? _diagnostics;
 
+    // Routes the page's downloads through the download service, so a file a package editor offers lands
+    // in the project rather than in the operating system's Downloads folder.
+    private WebViewDownloadHandler? _downloadHandler;
+
     // Counted for the lifetime of the controller, so a page that has died and recovered still reports it.
     private int _processFailures;
 
@@ -444,6 +448,9 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             await TryInjectToolBridgeShimAsync();
         }
 
+        _downloadHandler?.Detach();
+        _downloadHandler = WebViewDownloadHandler.Attach(WebView.CoreWebView2);
+
         // Block all new window requests
         WebView.CoreWebView2.NewWindowRequested += (s, args) =>
         {
@@ -714,6 +721,9 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
             if (WebView.CoreWebView2 is not null)
             {
+                _downloadHandler?.Detach();
+                _downloadHandler = null;
+
                 WebView.CoreWebView2.NavigationStarting -= OnNavigationStarting_Diagnostics;
                 WebView.CoreWebView2.NavigationCompleted -= OnNavigationCompleted_Diagnostics;
                 _webViewFocusRegistry.Unregister(WebView.CoreWebView2);
@@ -1219,10 +1229,12 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         }
         else
         {
-            _commandService.Execute<IOpenDocumentCommand>(command =>
+            var workspaceWrapper = _serviceProvider.GetRequiredService<IWorkspaceWrapper>();
+
+            if (!LinkedResourceOpener.Open(_commandService, workspaceWrapper.WorkspaceService, resourceKey))
             {
-                command.FileResource = resourceKey;
-            });
+                _ = ShowLinkErrorAsync(resourceKey.Path);
+            }
         }
     }
 
@@ -1239,10 +1251,10 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         });
     }
 
-    private async Task ShowLinkErrorAsync(string href)
+    private async Task ShowLinkErrorAsync(string linkPath)
     {
         var errorTitle = _stringLocalizer.GetString("Extension_LinkError_Title");
-        var errorMessage = _stringLocalizer.GetString("Extension_LinkError_Message", href);
+        var errorMessage = _stringLocalizer.GetString("Extension_LinkError_Message", linkPath);
         await _dialogService.ShowAlertDialogAsync(errorTitle, errorMessage);
     }
 

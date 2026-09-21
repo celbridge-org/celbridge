@@ -1,12 +1,6 @@
 namespace Celbridge.Notifications;
 
 /// <summary>
-/// Sent when the pending notifications change. HasArrival is true when a notification arrived, including one
-/// counted on the identical entry before it.
-/// </summary>
-public record NotificationsChangedMessage(bool HasArrival);
-
-/// <summary>
 /// Holds the notifications waiting for the user while a project is loaded. Safe to call from any thread.
 /// </summary>
 public interface INotificationCentre

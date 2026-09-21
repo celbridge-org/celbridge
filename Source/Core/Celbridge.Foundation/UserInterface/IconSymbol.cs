@@ -38,6 +38,7 @@ public enum IconSymbol
     People,
     Chat,
     Upload,
+    Download,
     ChevronDown,
     ChevronLeft,
     ChevronRight,

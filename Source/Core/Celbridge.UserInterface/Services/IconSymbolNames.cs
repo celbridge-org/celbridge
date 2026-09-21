@@ -42,6 +42,7 @@ internal static class IconSymbolNames
         { IconSymbol.People, "bs-people" },
         { IconSymbol.Chat, "bs-chat-dots" },
         { IconSymbol.Upload, "bs-upload" },
+        { IconSymbol.Download, "bs-download" },
         { IconSymbol.ChevronDown, "bs-chevron-down" },
         { IconSymbol.ChevronLeft, "bs-chevron-left" },
         { IconSymbol.ChevronRight, "bs-chevron-right" },

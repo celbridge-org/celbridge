@@ -140,12 +140,10 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
 
     public async Task<Result<MoveResult>> MoveAsync(ResourceKey source, ResourceKey dest)
     {
-        if (source.Root != dest.Root)
-        {
-            return Result.Fail(
-                $"MoveAsync requires source and destination on the same root: '{source}' to '{dest}'. " +
-                "For cross-root moves, compose CopyAsync followed by DeleteAsync.");
-        }
+        // A resource keeps no identity from one root to another, so a move across roots is a delete from
+        // the source root and a create in the destination root. References to the source are left as they
+        // are, and only its removal is announced.
+        var isCrossRoot = source.Root != dest.Root;
 
         var registry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
@@ -195,6 +193,11 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         }
 
         var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
+        if (!IsRootWritable(rootHandlerRegistry, source))
+        {
+            return Result.Fail($"Root '{source.Root}' is read-only.");
+        }
+
         if (!IsRootWritable(rootHandlerRegistry, dest))
         {
             return Result.Fail($"Root '{dest.Root}' is read-only.");
@@ -221,7 +224,8 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         var updatedReferencers = new List<ResourceKey>();
         var skippedReferencers = new List<SkippedReferencer>();
 
-        if (source.Root == ResourceKey.DefaultRoot)
+        if (!isCrossRoot &&
+            source.Root == ResourceKey.DefaultRoot)
         {
             var rewriteResult = await _referenceRewriter.RewriteForMoveAsync(source, dest, sourceIsFolder, updatedReferencers, skippedReferencers);
             if (rewriteResult.IsFailure)
@@ -283,22 +287,25 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
 
         if (source.Root == ResourceKey.DefaultRoot)
         {
-            // Announce the source removal and the new key identity synchronously
-            // so subscribers update before control returns. The watcher's own
-            // events still arrive later via UI-thread dispatch; subscribers must
-            // treat these messages as idempotent.
+            // Announce the source removal, and within the root the new key identity, synchronously so
+            // subscribers update before control returns. The watcher's own events still arrive later via
+            // UI-thread dispatch, so subscribers must treat these messages as idempotent.
             var sourceRemovedMessage = new ResourceDeletedMessage(source);
             _messengerService.Send(sourceRemovedMessage);
 
-            var keyChangedMessage = new ResourceKeyChangedMessage(source, dest);
-            _messengerService.Send(keyChangedMessage);
+            if (!isCrossRoot)
+            {
+                var keyChangedMessage = new ResourceKeyChangedMessage(source, dest);
+                _messengerService.Send(keyChangedMessage);
+            }
 
             foreach (var descendantSource in sourceDescendantKeys)
             {
                 var descendantRemovedMessage = new ResourceDeletedMessage(descendantSource);
                 _messengerService.Send(descendantRemovedMessage);
 
-                if (TryMapDescendantKey(source, dest, descendantSource, out var descendantDestination))
+                if (!isCrossRoot &&
+                    TryMapDescendantKey(source, dest, descendantSource, out var descendantDestination))
                 {
                     var descendantKeyChangedMessage = new ResourceKeyChangedMessage(descendantSource, descendantDestination);
                     _messengerService.Send(descendantKeyChangedMessage);

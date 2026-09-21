@@ -1,11 +1,6 @@
 namespace Celbridge.Localization;
 
 /// <summary>
-/// Message sent when the application language changes, carrying the two-letter code of the new language.
-/// </summary>
-public record LanguageChangedMessage(string Language);
-
-/// <summary>
 /// The language the application presents itself in. Owns the stored choice and the effective language that
 /// falls back to the operating system's, so no caller has to decide what the current language is.
 /// </summary>

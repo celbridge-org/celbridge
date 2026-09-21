@@ -7,9 +7,9 @@ using Microsoft.Extensions.FileProviders;
 namespace Celbridge.Server.Services;
 
 /// <summary>
-/// Serves project files over HTTP on localhost via the server's Kestrel instance.
-/// Files are served at /local/{resourceKey} and the file provider is swapped
-/// when projects are loaded and unloaded.
+/// Serves project files, shared web assets and package folders over HTTP on localhost via the server's
+/// Kestrel instance. Project files are served at /project/{path}, and the file provider is swapped when
+/// projects are loaded and unloaded.
 /// </summary>
 public class FileServer : IFileServer, IDisposable
 {
@@ -38,42 +38,11 @@ public class FileServer : IFileServer, IDisposable
     }
 
     /// <summary>
-    /// Registers the /local/{path} endpoint on the given WebApplication.
+    /// Registers the /project/, /assets/ and /package/ routes on the given WebApplication.
     /// Must be called during Kestrel setup before the server starts.
     /// </summary>
     public void ConfigureEndpoints(WebApplication application)
     {
-        application.MapGet("/local/{**path}", async (HttpContext context, string path) =>
-        {
-            if (_projectFileProvider is null)
-            {
-                context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
-                await context.Response.WriteAsync("No project is currently loaded");
-                return;
-            }
-
-            var fileInfo = _projectFileProvider.GetFileInfo(path);
-            if (!fileInfo.Exists || fileInfo.IsDirectory)
-            {
-                context.Response.StatusCode = StatusCodes.Status404NotFound;
-                return;
-            }
-
-            var contentTypeProvider = new FileExtensionContentTypeProvider();
-            if (!contentTypeProvider.TryGetContentType(path, out var contentType))
-            {
-                contentType = "application/octet-stream";
-            }
-
-            context.Response.ContentType = contentType;
-
-            // These headers enable support for running a WebContainer in local HTML/JS
-            context.Response.Headers["Cross-Origin-Embedder-Policy"] = "credentialless";
-            context.Response.Headers["Cross-Origin-Opener-Policy"] = "same-origin";
-
-            await context.Response.SendFileAsync(fileInfo);
-        });
-
         // The three WebView content routes. WebViews are navigated to a loopback URL under one of
         // these and reference everything else root-relative, so the page resolves all content against
         // its own loopback origin.
@@ -138,7 +107,7 @@ public class FileServer : IFileServer, IDisposable
             }
         }
 
-        // These match the /local/ route and enable WebContainer support in local HTML/JS.
+        // These enable WebContainer support in local HTML/JS.
         context.Response.Headers["Cross-Origin-Embedder-Policy"] = "credentialless";
         context.Response.Headers["Cross-Origin-Opener-Policy"] = "same-origin";
 
@@ -167,48 +136,6 @@ public class FileServer : IFileServer, IDisposable
         _projectFileProvider?.Dispose();
         _projectFileProvider = null;
         _port = 0;
-    }
-
-    public string ResolveLocalFileUrl(string path, ResourceKey contextResource = default)
-    {
-        if (_port == 0 || _projectFileProvider is null || string.IsNullOrWhiteSpace(path))
-        {
-            _logger.LogDebug(
-                "ResolveProjectFileUrl early exit: port={Port}, provider={HasProvider}, path='{Path}'",
-                _port, _projectFileProvider is not null, path);
-            return string.Empty;
-        }
-
-        // Try resolving relative to the context resource's folder first
-        if (!contextResource.IsEmpty)
-        {
-            var contextFolder = contextResource.GetParent().ToString();
-            var relativePath = CombineAndNormalize(contextFolder, path);
-
-            if (!string.IsNullOrEmpty(relativePath))
-            {
-                var fileInfo = _projectFileProvider.GetFileInfo(relativePath);
-                if (fileInfo.Exists && !fileInfo.IsDirectory)
-                {
-                    return $"http://127.0.0.1:{_port}/local/{relativePath}";
-                }
-            }
-        }
-
-        // Try as an absolute resource key
-        var normalizedPath = NormalizePath(path);
-
-        if (!string.IsNullOrEmpty(normalizedPath))
-        {
-            var fileInfo = _projectFileProvider.GetFileInfo(normalizedPath);
-            if (fileInfo.Exists && !fileInfo.IsDirectory)
-            {
-                return $"http://127.0.0.1:{_port}/local/{normalizedPath}";
-            }
-        }
-
-        _logger.LogWarning("ResolveProjectFileUrl failed to resolve path='{Path}', context='{Context}'", path, contextResource);
-        return string.Empty;
     }
 
     public void RegisterAssetsFolder(string folderPath)
@@ -313,20 +240,6 @@ public class FileServer : IFileServer, IDisposable
             _logger.LogWarning(exception, "Failed to register WebView content folder '{Label}' at {FolderPath}", label, folderPath);
             return null;
         }
-    }
-
-    /// <summary>
-    /// Combines a base folder path with a relative path and normalizes
-    /// "." and ".." segments. Returns empty string if the result would
-    /// escape above the project root.
-    /// </summary>
-    private static string CombineAndNormalize(string baseFolderPath, string relativePath)
-    {
-        var combined = string.IsNullOrEmpty(baseFolderPath)
-            ? relativePath
-            : $"{baseFolderPath}/{relativePath}";
-
-        return NormalizePath(combined);
     }
 
     /// <summary>

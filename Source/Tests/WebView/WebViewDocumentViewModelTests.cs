@@ -1,4 +1,6 @@
 using Celbridge.Commands;
+using Celbridge.Documents;
+using Celbridge.Explorer;
 using Celbridge.Resources;
 using Celbridge.Server;
 using Celbridge.Settings;
@@ -706,7 +708,7 @@ public class WebViewDocumentViewModelTests
         viewModel.CurrentUrl = "https://example.com/";
 
         viewModel.NotifyNavigationStarted();
-        viewModel.NotifyNavigationCompleted(isSuccess: false);
+        viewModel.NotifyNavigationCompleted(NavigationOutcome.Failed);
 
         viewModel.IsPageOnScreen.Should().BeFalse();
     }
@@ -800,6 +802,104 @@ public class WebViewDocumentViewModelTests
         viewModel.SourceUrl.Should().Be("https://example.com");
     }
 
+    [TestCase("html-test/page.html", "html-test/page.html")]
+    [TestCase("my%20folder/two%20words.md", "my folder/two words.md")]
+    [TestCase("html-test/page.html?query=1#section", "html-test/page.html")]
+    [TestCase("html-test/", "html-test")]
+    public void TryResolveProjectResource_MapsAProjectAddressToItsResource(string urlPath, string expectedPath)
+    {
+        var viewModel = CreateHtmlViewer();
+
+        var isResolved = viewModel.TryResolveProjectResource(new Uri($"http://127.0.0.1:5000/project/{urlPath}"), out var resource);
+
+        isResolved.Should().BeTrue();
+        resource.Should().Be(new ResourceKey(expectedPath));
+    }
+
+    [TestCase("https://example.com/project/page.html")]
+    [TestCase("http://127.0.0.1:6000/project/page.html")]
+    [TestCase("http://localhost:5000/project/page.html")]
+    [TestCase("http://127.0.0.1:5000/assets/celbridge-client/celbridge.js")]
+    [TestCase("http://127.0.0.1:5000/project/")]
+    public void TryResolveProjectResource_RefusesAnyOtherAddress(string url)
+    {
+        var viewModel = CreateHtmlViewer();
+
+        var isResolved = viewModel.TryResolveProjectResource(new Uri(url), out _);
+
+        isResolved.Should().BeFalse();
+    }
+
+    [TestCase("http://127.0.0.1:5000/project/%2E%2E/secret.txt")]
+    [TestCase("http://127.0.0.1:5000/project/html-test/%2E%2E%2F%2E%2E%2Fsecret.txt")]
+    [TestCase("http://127.0.0.1:5000/project/temp:downloads/staged.txt")]
+    public void TryResolveProjectResource_CannotLeaveTheProject(string url)
+    {
+        var viewModel = CreateHtmlViewer();
+
+        var isResolved = viewModel.TryResolveProjectResource(new Uri(url), out var resource);
+
+        // Refused outright, or kept to a name inside the project root where a colon is a legal file name.
+        if (isResolved)
+        {
+            resource.Root.Should().Be(ResourceKey.DefaultRoot);
+            resource.Path.Should().NotContain("..");
+        }
+    }
+
+    [Test]
+    public void OpenLinkedResource_OpensAFileThatHasAnEditor_UnderItsNameOnDisk()
+    {
+        // The link differs in case from the file, which the file system ignores.
+        var linkedResource = new ResourceKey("html-test/Page.html");
+        var resourceOnDisk = new ResourceKey("html-test/page.html");
+        StubLinkedResource(linkedResource, resourceOnDisk, isDocumentSupported: true);
+
+        var openCommand = Substitute.For<IOpenDocumentCommand>();
+        _commandService
+            .When(service => service.Execute(Arg.Any<Action<IOpenDocumentCommand>>(), Arg.Any<string>(), Arg.Any<int>()))
+            .Do(call => call.Arg<Action<IOpenDocumentCommand>>().Invoke(openCommand));
+
+        var isOpened = CreateHtmlViewer().OpenLinkedResource(linkedResource);
+
+        isOpened.Should().BeTrue();
+        openCommand.FileResource.Should().Be(resourceOnDisk);
+        _commandService.DidNotReceive().Execute(Arg.Any<Action<ISelectResourceCommand>>(), Arg.Any<string>(), Arg.Any<int>());
+    }
+
+    [Test]
+    public void OpenLinkedResource_SelectsAResourceWithNoEditorInTheExplorer()
+    {
+        var linkedResource = new ResourceKey("html-test/sample.zip");
+        StubLinkedResource(linkedResource, linkedResource, isDocumentSupported: false);
+
+        var selectCommand = Substitute.For<ISelectResourceCommand>();
+        _commandService
+            .When(service => service.Execute(Arg.Any<Action<ISelectResourceCommand>>(), Arg.Any<string>(), Arg.Any<int>()))
+            .Do(call => call.Arg<Action<ISelectResourceCommand>>().Invoke(selectCommand));
+
+        var isOpened = CreateHtmlViewer().OpenLinkedResource(linkedResource);
+
+        isOpened.Should().BeTrue();
+        selectCommand.Resource.Should().Be(linkedResource);
+        _commandService.DidNotReceive().Execute(Arg.Any<Action<IOpenDocumentCommand>>(), Arg.Any<string>(), Arg.Any<int>());
+    }
+
+    [Test]
+    public void OpenLinkedResource_ReportsAResourceTheProjectDoesNotHave()
+    {
+        var linkedResource = new ResourceKey("html-test/missing.html");
+        _workspaceWrapper.IsWorkspaceLoaded.Returns(true);
+        _workspaceWrapper.WorkspaceService.ResourceService.Registry.NormalizeResourceKey(linkedResource)
+            .Returns(Result<ResourceKey>.Fail("Not in the project"));
+
+        var isOpened = CreateHtmlViewer().OpenLinkedResource(linkedResource);
+
+        isOpened.Should().BeFalse();
+        _commandService.DidNotReceive().Execute(Arg.Any<Action<IOpenDocumentCommand>>(), Arg.Any<string>(), Arg.Any<int>());
+        _commandService.DidNotReceive().Execute(Arg.Any<Action<ISelectResourceCommand>>(), Arg.Any<string>(), Arg.Any<int>());
+    }
+
     private void StubWebViewFile(string tomlContent)
     {
         _resourceFileSystem.ReadAllTextAsync(Arg.Any<ResourceKey>())
@@ -812,5 +912,24 @@ public class WebViewDocumentViewModelTests
         {
             FileResource = new ResourceKey("test.webview"),
         };
+    }
+
+    private WebViewDocumentViewModel CreateHtmlViewer()
+    {
+        return new WebViewDocumentViewModel(new NullLogger<WebViewDocumentViewModel>(), _commandService, _workspaceWrapper, _serverService, _stringLocalizer)
+        {
+            FileResource = new ResourceKey("html-test/index.html"),
+            Role = WebViewDocumentRole.HtmlViewer,
+        };
+    }
+
+    private void StubLinkedResource(ResourceKey linkedResource, ResourceKey resourceOnDisk, bool isDocumentSupported)
+    {
+        _workspaceWrapper.IsWorkspaceLoaded.Returns(true);
+
+        var workspaceService = _workspaceWrapper.WorkspaceService;
+        workspaceService.ResourceService.Registry.NormalizeResourceKey(linkedResource)
+            .Returns(Result<ResourceKey>.Ok(resourceOnDisk));
+        workspaceService.DocumentsService.IsDocumentSupported(resourceOnDisk).Returns(isDocumentSupported);
     }
 }

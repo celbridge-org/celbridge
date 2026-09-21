@@ -60,7 +60,8 @@ public sealed class WebViewNavigationPolicy : IWebViewNavigationPolicy
             return;
         }
 
-        var decisionTask = handler(destination);
+        var request = new NavigationRequest(destination, args.IsUserInitiated);
+        var decisionTask = handler(request);
 
         // Synchronous fast path. Most call sites - the .webview always-allow handler
         // and the HTML viewer's same-URL pinned-match check - complete synchronously.

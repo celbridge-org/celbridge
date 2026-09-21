@@ -164,7 +164,7 @@ public partial class CustomDocumentViewModel : DocumentViewModel
     /// </summary>
     public string GetDocumentBasePath()
     {
-        return FileResource.GetParent().ToString();
+        return FileResource.GetParent().Path;
     }
 
     /// <summary>
@@ -219,9 +219,10 @@ public partial class CustomDocumentViewModel : DocumentViewModel
     }
 
     /// <summary>
-    /// Resolves a path to an absolute resource key.
-    /// Paths starting with '/' are resolved from the project root.
+    /// Resolves a path to an absolute resource key in the document's own root.
+    /// Paths starting with '/' are resolved from the top of that root, such as the project folder.
     /// All other paths are resolved relative to the current document's folder.
+    /// The resource is not checked to exist. Fails when the path leads out of the root.
     /// </summary>
     public Result<ResourceKey> ResolveResourcePath(string path)
     {
@@ -240,23 +241,19 @@ public partial class CustomDocumentViewModel : DocumentViewModel
         }
 
         var normalizedPath = NormalizeResourcePath(fullPath);
-        if (!ResourceKey.TryCreate(normalizedPath, out var resourceKey))
+        if (string.IsNullOrEmpty(normalizedPath) ||
+            !ResourceKey.TryCreate($"{FileResource.Root}:{normalizedPath}", out var resourceKey))
         {
             return Result<ResourceKey>.Fail($"Invalid resource key derived from path: {normalizedPath}");
         }
-        var result = _resourceRegistry.NormalizeResourceKey(resourceKey);
 
-        if (result.IsSuccess)
-        {
-            return Result<ResourceKey>.Ok(result.Value);
-        }
-
-        return Result<ResourceKey>.Fail($"Could not resolve resource path: {path}");
+        return Result<ResourceKey>.Ok(resourceKey);
     }
 
     /// <summary>
     /// Determines the action to take for a clicked link.
     /// Returns the resolved resource key for internal links, or ResourceKey.Empty for external URLs.
+    /// An internal link is not checked to exist, so a broken one can still be reported by its path.
     /// </summary>
     public Result<ResourceKey> ResolveLinkTarget(string href)
     {
@@ -328,6 +325,7 @@ public partial class CustomDocumentViewModel : DocumentViewModel
 
     /// <summary>
     /// Normalizes a path by resolving '..' and '.' segments.
+    /// A '..' with no folder left to leave is kept, so a path that leads out of the root still does.
     /// </summary>
     private static string NormalizeResourcePath(string path)
     {
@@ -335,9 +333,16 @@ public partial class CustomDocumentViewModel : DocumentViewModel
         var stack = new Stack<string>();
         foreach (var segment in segments)
         {
-            if (segment == ".." && stack.Count > 0)
+            if (segment == "..")
             {
-                stack.Pop();
+                if (stack.Count > 0 && stack.Peek() != "..")
+                {
+                    stack.Pop();
+                }
+                else
+                {
+                    stack.Push(segment);
+                }
             }
             else if (segment != "." && !string.IsNullOrEmpty(segment))
             {

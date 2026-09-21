@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Globalization;
 using Celbridge.Commands;
+using Celbridge.Documents.Helpers;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Logging;
@@ -17,19 +18,35 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.WebView.ViewModels;
 
 /// <summary>
-/// The lifecycle stage of the URL bar's download indicator.
+/// How a navigation ended.
 /// </summary>
-public enum WebViewDownloadStatus
+public enum NavigationOutcome
 {
-    None,
-    InProgress,
-    Succeeded,
+    /// <summary>
+    /// The page loaded.
+    /// </summary>
+    Loaded,
+
+    /// <summary>
+    /// The page could not be loaded, and the document says so in place of it.
+    /// </summary>
     Failed,
+
+    /// <summary>
+    /// The browser abandoned the navigation before it produced a page. The page that was showing is still
+    /// showing, so there is nothing to report.
+    /// </summary>
+    Aborted
 }
 
 public partial class WebViewDocumentViewModel : DocumentViewModel
 {
     private const string WwwPrefix = "www.";
+
+    // Where the loopback file server serves the open project's files, which is where the HTML viewer's
+    // page and every file it links to within the project are found.
+    private const string ServerHost = "127.0.0.1";
+    private const string ProjectRoute = "/project/";
 
     private readonly ILogger<WebViewDocumentViewModel> _logger;
     private readonly ICommandService _commandService;
@@ -111,19 +128,6 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     [NotifyPropertyChangedFor(nameof(IsReloadOrStopEnabled))]
     [NotifyPropertyChangedFor(nameof(IsReloadIconVisible))]
     private bool _isNavigating;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsDownloadIndicatorVisible))]
-    [NotifyPropertyChangedFor(nameof(IsDownloadInProgress))]
-    [NotifyPropertyChangedFor(nameof(IsDownloadSucceeded))]
-    [NotifyPropertyChangedFor(nameof(IsDownloadFailed))]
-    private WebViewDownloadStatus _downloadStatus = WebViewDownloadStatus.None;
-
-    /// <summary>
-    /// The imported resource of the most recent completed download. Clicking the
-    /// settled download indicator reveals it in the Explorer.
-    /// </summary>
-    public ResourceKey LastDownloadedResource { get; private set; } = ResourceKey.Empty;
 
     private WebViewDocumentRole _role;
 
@@ -308,14 +312,6 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
 
     public bool CanOpenInBrowser => IsPageUrl(CurrentUrl);
 
-    public bool IsDownloadIndicatorVisible => DownloadStatus != WebViewDownloadStatus.None;
-
-    public bool IsDownloadInProgress => DownloadStatus == WebViewDownloadStatus.InProgress;
-
-    public bool IsDownloadSucceeded => DownloadStatus == WebViewDownloadStatus.Succeeded;
-
-    public bool IsDownloadFailed => DownloadStatus == WebViewDownloadStatus.Failed;
-
     /// <summary>
     /// The URL the view should navigate to. For .webview documents this is the configured source URL
     /// verbatim. For the HTML viewer it is the loopback /project/ URL on the Skia heads, or the project
@@ -338,7 +334,7 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
 
                 // Served over the loopback file server's /project/ route. Relative asset
                 // references in the HTML resolve against this origin.
-                return $"http://127.0.0.1:{_serverService.Port}/project/{FileResource.Path}";
+                return $"http://{ServerHost}:{_serverService.Port}{ProjectRoute}{FileResource.Path}";
             }
 
             return SourceUrl;
@@ -524,6 +520,52 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     }
 
     /// <summary>
+    /// Finds the project resource a destination on the loopback file server names. False for any other
+    /// destination, including the server's routes outside the project.
+    /// </summary>
+    public bool TryResolveProjectResource(Uri destination, out ResourceKey resource)
+    {
+        resource = ResourceKey.Empty;
+
+        var isProjectServer = destination.Scheme == Uri.UriSchemeHttp &&
+            destination.Host == ServerHost &&
+            destination.Port == _serverService.Port;
+
+        if (!isProjectServer ||
+            !destination.AbsolutePath.StartsWith(ProjectRoute, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        // A link to a folder may end in a separator, which a resource key does not.
+        var escapedPath = destination.AbsolutePath.Substring(ProjectRoute.Length);
+        var path = Uri.UnescapeDataString(escapedPath).TrimEnd('/');
+        if (path.Length == 0)
+        {
+            return false;
+        }
+
+        // Named under the project root explicitly, so a colon in the path cannot select another root. The
+        // resource key rules refuse parent references, so the path cannot climb out of the project either.
+        return ResourceKey.TryCreate($"{ResourceKey.DefaultRoot}:{path}", out resource);
+    }
+
+    /// <summary>
+    /// Opens a project resource a link on the page leads to: in its editor when it has one, and otherwise by
+    /// selecting it in the Explorer, which is also how a linked folder is shown. Returns false when the
+    /// project has no such resource.
+    /// </summary>
+    public bool OpenLinkedResource(ResourceKey resource)
+    {
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
+        {
+            return false;
+        }
+
+        return LinkedResourceOpener.Open(_commandService, _workspaceWrapper.WorkspaceService, resource);
+    }
+
+    /// <summary>
     /// Records that a navigation has begun, clearing the failure the previous one may have reported.
     /// </summary>
     public void NotifyNavigationStarted()
@@ -545,11 +587,11 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     /// <summary>
     /// Records how a navigation ended. A stopped navigation keeps whatever it had rendered so far.
     /// </summary>
-    public void NotifyNavigationCompleted(bool isSuccess)
+    public void NotifyNavigationCompleted(NavigationOutcome outcome)
     {
         IsNavigating = false;
 
-        if (isSuccess
+        if (outcome != NavigationOutcome.Failed
             || _navigationStoppedByUser)
         {
             return;
@@ -661,44 +703,6 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
         CloseSettings();
 
         NavigateRequested?.Invoke(this, url);
-    }
-
-    public void BeginDownload()
-    {
-        DownloadStatus = WebViewDownloadStatus.InProgress;
-    }
-
-    public void CompleteDownload(ResourceKey importedResource)
-    {
-        LastDownloadedResource = importedResource;
-        DownloadStatus = WebViewDownloadStatus.Succeeded;
-    }
-
-    public void FailDownload()
-    {
-        DownloadStatus = WebViewDownloadStatus.Failed;
-    }
-
-    public void ClearDownloadIndicator()
-    {
-        DownloadStatus = WebViewDownloadStatus.None;
-    }
-
-    /// <summary>
-    /// Reveals the most recent completed download in the Explorer panel.
-    /// </summary>
-    public void RevealLastDownload()
-    {
-        if (LastDownloadedResource.IsEmpty)
-        {
-            return;
-        }
-
-        _commandService.Execute<ISelectResourceCommand>(command =>
-        {
-            command.Resource = LastDownloadedResource;
-            command.ShowExplorerPanel = true;
-        });
     }
 
     protected override IResourceFileSystem GetFileSystem()

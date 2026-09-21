@@ -13,7 +13,7 @@ public enum WebViewDocumentRole
     ExternalUrl,
 
     /// <summary>
-    /// Hosts a project-served .html or .htm file via the project.celbridge virtual host.
+    /// Hosts a project .html or .htm file, served over the loopback file server's /project/ route.
     /// </summary>
     HtmlViewer,
 }

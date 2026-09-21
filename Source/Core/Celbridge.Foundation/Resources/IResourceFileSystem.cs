@@ -4,8 +4,6 @@ namespace Celbridge.Resources;
 /// The gateway for reads, writes, and structural operations on resources
 /// addressed by ResourceKey. Structural operations on project: resources
 /// cascade the paired sidecar and rewrite references in scannable file types.
-/// MoveAsync is a same-root rename; cross-root callers compose CopyAsync
-/// followed by DeleteAsync.
 /// </summary>
 public interface IResourceFileSystem
 {
@@ -45,10 +43,11 @@ public interface IResourceFileSystem
     Task<Result<Stream>> OpenWriteAsync(ResourceKey resource);
 
     /// <summary>
-    /// Renames the resource within its root and cascades reference rewrites
-    /// and the paired sidecar. Source and destination must share the same
-    /// root; a cross-root call fails with a precondition error. Compose
-    /// CopyAsync followed by DeleteAsync for cross-root semantics.
+    /// Moves the resource and cascades the paired sidecar. Within a root the
+    /// resource keeps its identity: references to it are rewritten and the key
+    /// change is announced. A move across roots is a delete from one root and a
+    /// create in the other, as CopyAsync followed by DeleteAsync would be, so
+    /// references to the source are left as they are.
     /// </summary>
     Task<Result<MoveResult>> MoveAsync(ResourceKey source, ResourceKey dest);
 

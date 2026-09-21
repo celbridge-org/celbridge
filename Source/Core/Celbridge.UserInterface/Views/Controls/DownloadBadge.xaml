@@ -1,0 +1,94 @@
+<UserControl
+    x:Class="Celbridge.UserInterface.Views.Controls.DownloadBadge"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
+    Visibility="Collapsed">
+
+  <!-- Collapsed until the session downloads something. Nothing but the user starts a download, so an
+       absent badge says there have been none rather than saying nothing. -->
+  <Grid VerticalAlignment="Center">
+
+    <!-- Attention flash overlay, pulsed to the accent color when a download settles. Behind the button,
+         which is transparent at rest, and not hit-testable. -->
+    <Border x:Name="AttentionOverlay"
+            CornerRadius="{StaticResource IconButtonCornerRadius}"
+            Background="{ThemeResource AccentBrush}"
+            Opacity="0"
+            IsHitTestVisible="False"/>
+
+    <controls:IconButton x:Name="BadgeButton"
+                         AutomationProperties.AutomationId="download-badge"
+                         Padding="7,0"
+                         VerticalAlignment="Center">
+
+      <Button.Flyout>
+        <Flyout x:Name="DownloadFlyout"
+                Placement="BottomEdgeAlignedLeft">
+          <Grid Width="400"
+                RowSpacing="4">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0"
+                  Padding="4,0,0,0">
+              <TextBlock x:Name="TitleText"
+                         Style="{StaticResource ListItemTitleTextStyle}"
+                         VerticalAlignment="Center"/>
+
+              <!-- Worded as the notification flyout beside it is. What it leaves behind, the downloaded
+                   files, is said in its tooltip. -->
+              <Button x:Name="ClearAllButton"
+                      AutomationProperties.AutomationId="download-clear-all-button"
+                      HorizontalAlignment="Right"
+                      Click="ClearAllButton_Click"/>
+            </Grid>
+
+            <!-- Height capped in code-behind from the window height as the list opens. -->
+            <ScrollViewer x:Name="DownloadScrollViewer"
+                          Grid.Row="1"
+                          HorizontalScrollMode="Disabled"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollMode="Auto"
+                          VerticalScrollBarVisibility="Auto">
+              <StackPanel x:Name="DownloadRows"
+                          Padding="0,0,12,0"/>
+            </ScrollViewer>
+          </Grid>
+        </Flyout>
+      </Button.Flyout>
+
+      <StackPanel Orientation="Horizontal"
+                  Spacing="4">
+        <!-- The settled glyph is two elements, one per foreground, so each stays a ThemeResource and
+             follows a theme change. -->
+        <Grid VerticalAlignment="Center">
+          <ProgressRing x:Name="TransferRing"
+                        Width="{StaticResource IconSizeSmall}"
+                        Height="{StaticResource IconSizeSmall}"
+                        IsActive="False"
+                        Visibility="Collapsed"/>
+          <controls:Icon x:Name="SettledIcon"
+                         Symbol="Download"
+                         FontSize="{StaticResource IconSizeMedium}"
+                         Visibility="Collapsed"/>
+          <controls:Icon x:Name="FailedIcon"
+                         Symbol="Download"
+                         FontSize="{StaticResource IconSizeMedium}"
+                         Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                         Visibility="Collapsed"/>
+        </Grid>
+
+        <!-- Wide enough for two digits, which is as many as the count can reach, so the badge does not
+             reflow as the count passes from nine to ten. -->
+        <TextBlock x:Name="CountText"
+                   Style="{StaticResource BadgeCountTextStyle}"
+                   MinWidth="14"
+                   TextAlignment="Center"
+                   VerticalAlignment="Center"/>
+      </StackPanel>
+    </controls:IconButton>
+  </Grid>
+</UserControl>

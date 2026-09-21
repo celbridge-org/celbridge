@@ -64,3 +64,8 @@ public record CloseAllDocumentsRequestedMessage();
 /// </summary>
 public record FlashDocumentMessage(ResourceKey FileResource);
 
+/// <summary>
+/// Message sent when the application theme changes.
+/// </summary>
+public record ThemeChangedMessage(UserInterfaceTheme Theme);
+

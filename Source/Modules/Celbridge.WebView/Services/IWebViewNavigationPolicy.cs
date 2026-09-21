@@ -27,11 +27,18 @@ public enum NavigationDecision
 }
 
 /// <summary>
-/// Async callback that decides what should happen for a single attempted navigation.
-/// Implementations are expected to be pure UI - showing a dialog, returning a choice -
-/// without dispatching the resulting action themselves; the policy helper handles dispatch.
+/// An attempted top-frame navigation. IsUserInitiated is true when the user started it, as
+/// by clicking a link, and false when the page started it by itself.
 /// </summary>
-public delegate Task<NavigationDecision> NavigationDestinationHandler(Uri destination);
+public record NavigationRequest(Uri Destination, bool IsUserInitiated);
+
+/// <summary>
+/// Async callback that decides what should happen for a single attempted navigation. The
+/// policy helper carries out the decision's side effect, such as opening the system
+/// browser. A destination the handler deals with itself, such as a project file it opens
+/// in Celbridge, is returned as Cancel.
+/// </summary>
+public delegate Task<NavigationDecision> NavigationDestinationHandler(NavigationRequest request);
 
 /// <summary>
 /// Wraps WebView2 NavigationStarting interception so the .webview view and the HTML
