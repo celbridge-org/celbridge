@@ -26,6 +26,13 @@ public interface IManagedFocus
     FocusLocation FocusLocation { get; }
 
     /// <summary>
+    /// The workspace panel the element holding managed keyboard focus belongs to. None while nothing holds
+    /// focus, and while focus rests outside every panel, in an open popup, or on an element no longer in the
+    /// window's tree.
+    /// </summary>
+    FocusPanelId Panel { get; }
+
+    /// <summary>
     /// Whether a text editing control holds managed keyboard focus.
     /// </summary>
     bool IsTextControlFocused { get; }

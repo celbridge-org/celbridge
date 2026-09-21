@@ -221,8 +221,18 @@ public sealed partial class DocumentSectionView : UserControl
         }
 
         var focusedElement = Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(xamlRoot) as DependencyObject;
-        if (focusedElement is not null
-            && ReferenceEquals(FocusTracking.FindDocumentView(focusedElement), documentView))
+
+        var focusIsInPressedDocument = focusedElement is not null
+            && ReferenceEquals(FocusTracking.FindDocumentView(focusedElement), documentView);
+
+        // Nothing focused leaves the keyboard unclaimed, so it reads as the main content.
+        var focusLocation = FocusLocation.MainContent;
+        if (focusedElement is UIElement focusedUIElement)
+        {
+            focusLocation = FocusTracking.GetFocusLocation(focusedUIElement);
+        }
+
+        if (!ActiveDocumentFocusPolicy.ShouldFocusPressedDocument(focusIsInPressedDocument, focusLocation))
         {
             return;
         }

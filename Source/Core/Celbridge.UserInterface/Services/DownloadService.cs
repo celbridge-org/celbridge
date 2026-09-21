@@ -3,6 +3,7 @@ using Celbridge.Downloads;
 using Celbridge.Localization;
 using Celbridge.Logging;
 using Celbridge.Projects;
+using Celbridge.Utilities;
 using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.Services;
@@ -310,9 +311,12 @@ public sealed class DownloadService : IDownloadService
     // already promised to a download that is still running.
     private async Task<Result<ResourceKey>> ReserveDestinationAsync(IResourceRegistry resourceRegistry, string fileName)
     {
-        // Downloads land under project:downloads/ so the project root stays uncluttered when a session
-        // downloads several files.
-        if (!ResourceKey.TryCreate($"{ProjectConstants.DownloadsFolder}/{fileName}", out var requestedResource))
+        // Downloads land in the folder the project names, which is downloads/ unless it names another, so
+        // the project root stays uncluttered when a session downloads several files.
+        var configuredFolder = _projectService.CurrentProject?.Config.Resources.DownloadsFolder ?? string.Empty;
+        var downloadsFolder = DownloadsFolderPath.Resolve(resourceRegistry, configuredFolder);
+
+        if (!ResourceKey.TryCreate($"{downloadsFolder.Path}/{fileName}", out var requestedResource))
         {
             return Result<ResourceKey>.Fail($"'{fileName}' is not a valid download file name");
         }

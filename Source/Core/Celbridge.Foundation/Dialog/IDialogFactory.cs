@@ -55,6 +55,12 @@ public interface IDialogFactory
     IResourcePickerDialog CreateResourcePickerDialog(IReadOnlyList<string> extensions, string? title = null, bool showPreview = false);
 
     /// <summary>
+    /// Create a Resource Picker Dialog listing the project's folders.
+    /// Requires a loaded workspace.
+    /// </summary>
+    IResourcePickerDialog CreateFolderPickerDialog(string? title = null);
+
+    /// <summary>
     /// Create an Icon Picker Dialog over the supported icon set, opening its search on the given text.
     /// Text that names one of the supported icons also opens with that icon selected.
     /// </summary>

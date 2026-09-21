@@ -66,6 +66,10 @@ public static class ProjectConfigSerializer
         builder.Append("[celbridge.resources]\n");
         WriteKeyValue(builder, "hide", RenderStringArray(resources.Hide));
         WriteKeyValue(builder, "search-exclude", RenderStringArray(resources.SearchExclude));
+        if (!string.IsNullOrEmpty(resources.DownloadsFolder))
+        {
+            WriteKeyValue(builder, "downloads-folder", TomlStringEncoder.EncodeBasicString(resources.DownloadsFolder));
+        }
     }
 
     // Emits the [[contribution]] override entries, sorted by package then contribution so the same

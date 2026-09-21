@@ -61,7 +61,8 @@ public static class ProjectConstants
 
     /// <summary>
     /// Folder name used for WebView downloads. Used both for the in-progress
-    /// staging folder under temp: and for the destination folder under project:.
+    /// staging folder under temp: and for the default destination folder under
+    /// project:, which a project's downloads-folder key can change.
     /// </summary>
     public const string DownloadsFolder = "downloads";
 }

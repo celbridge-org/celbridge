@@ -4,9 +4,13 @@ using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace Celbridge.UserInterface.ViewModels;
 
+/// <summary>
+/// Lists the project's files or folders for the resource picker, filtered by what is typed in its search box.
+/// </summary>
 public partial class ResourcePickerDialogViewModel : ObservableObject
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IIconService _iconService;
     private readonly IStringLocalizer _stringLocalizer;
 
     private IResourceRegistry? _registry;
@@ -17,6 +21,9 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
 
     [ObservableProperty]
     private string _searchText = string.Empty;
+
+    [ObservableProperty]
+    private string _searchPlaceholder = string.Empty;
 
     [ObservableProperty]
     private List<ResourcePickerItem> _filteredItems = [];
@@ -37,13 +44,19 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
     private Visibility _previewImageVisibility = Visibility.Collapsed;
 
     public ResourcePickerDialogViewModel(
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        IIconService iconService,
+        IStringLocalizer stringLocalizer)
     {
         _workspaceWrapper = workspaceWrapper;
-        _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
+        _iconService = iconService;
+        _stringLocalizer = stringLocalizer;
         PropertyChanged += OnPropertyChanged;
     }
 
+    /// <summary>
+    /// Lists the project's files, keeping only those with one of the extensions when any are given.
+    /// </summary>
     public void Initialize(IReadOnlyList<string> extensions, bool showPreview)
     {
         // The resource picker only makes sense for a loaded project. Callers
@@ -62,9 +75,32 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
 
         // Show the preview panel container if preview is enabled (reserves space)
         PreviewPanelVisibility = showPreview ? Visibility.Visible : Visibility.Collapsed;
+        SearchPlaceholder = _stringLocalizer.GetString("ResourcePickerDialog_SearchPlaceholder");
 
-        _allItems = BuildFlatList(_registry);
-        UpdateFilteredItems();
+        var items = new List<ResourcePickerItem>();
+        CollectFileResources(_registry.ProjectFolder, _registry, items);
+        ShowItems(items);
+    }
+
+    /// <summary>
+    /// Lists every folder in the project, at any depth, but not the project folder itself.
+    /// </summary>
+    public void InitializeForFolders()
+    {
+        Guard.IsTrue(_workspaceWrapper.IsWorkspaceLoaded);
+
+        var workspaceService = _workspaceWrapper.WorkspaceService;
+        _registry = workspaceService.ResourceService.Registry;
+        _resourceFileSystem = workspaceService.ResourceService.FileSystem;
+        _showPreview = false;
+        _extensions = [];
+
+        PreviewPanelVisibility = Visibility.Collapsed;
+        SearchPlaceholder = _stringLocalizer.GetString("ResourcePickerDialog_FolderSearchPlaceholder");
+
+        var items = new List<ResourcePickerItem>();
+        CollectFolderResources(_registry.ProjectFolder, _registry, items);
+        ShowItems(items);
     }
 
     private void OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -128,12 +164,12 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
         }
     }
 
-    private List<ResourcePickerItem> BuildFlatList(IResourceRegistry registry)
+    private void ShowItems(List<ResourcePickerItem> items)
     {
-        var items = new List<ResourcePickerItem>();
-        CollectFileResources(registry.ProjectFolder, registry, items);
         items.Sort((a, b) => string.Compare(a.DisplayText, b.DisplayText, StringComparison.OrdinalIgnoreCase));
-        return items;
+        _allItems = items;
+
+        UpdateFilteredItems();
     }
 
     private void CollectFileResources(IFolderResource folder, IResourceRegistry registry, List<ResourcePickerItem> items)
@@ -156,6 +192,23 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
                 var readOnlyMessage = ReadOnlyMessageHelper.GetReadOnlyMessage(child.WritableState, _stringLocalizer);
                 items.Add(new ResourcePickerItem(child, resourceKey, fileResource.Icon, readOnlyMessage));
             }
+        }
+    }
+
+    private void CollectFolderResources(IFolderResource folder, IResourceRegistry registry, List<ResourcePickerItem> items)
+    {
+        foreach (var child in folder.Children)
+        {
+            if (child is not IFolderResource subFolder)
+            {
+                continue;
+            }
+
+            var resourceKey = registry.GetResourceKey(subFolder);
+            var readOnlyMessage = ReadOnlyMessageHelper.GetReadOnlyMessage(subFolder.WritableState, _stringLocalizer);
+            items.Add(new ResourcePickerItem(subFolder, resourceKey, _iconService.DefaultFolderIcon, readOnlyMessage));
+
+            CollectFolderResources(subFolder, registry, items);
         }
     }
 

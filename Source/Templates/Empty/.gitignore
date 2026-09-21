@@ -6,6 +6,9 @@
 # Celbridge project metadata
 .celbridge/
 
+# Files downloaded from web pages, kept here until moved where they are needed
+/downloads/
+
 # Build output
 bin/
 obj/

@@ -43,6 +43,23 @@ public class ManagedFocus : IManagedFocus
         }
     }
 
+    public FocusPanelId Panel
+    {
+        get
+        {
+            // Classified as the focus tracker classifies it: focus in a popup or outside the window's tree
+            // names no panel.
+            var focusedElement = GetFocusedElement();
+            if (focusedElement is null
+                || FocusTracking.GetFocusLocation(focusedElement) != FocusLocation.MainContent)
+            {
+                return FocusPanelId.None;
+            }
+
+            return FocusTracking.FindPanel(focusedElement);
+        }
+    }
+
     public bool IsTextControlFocused => GetFocusedElement() is TextBox;
 
     public bool CanPerformTextEditing(EditIntent intent)

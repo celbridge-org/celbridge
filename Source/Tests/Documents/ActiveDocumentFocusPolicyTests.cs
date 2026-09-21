@@ -1,10 +1,12 @@
 using Celbridge.Documents.Views;
+using Celbridge.UserInterface;
 
 namespace Celbridge.Tests.Documents;
 
 /// <summary>
 /// Unit tests for ActiveDocumentFocusPolicy, the rules deciding whether a focus report makes its document
-/// active, and whether a change of active document carries the keyboard to that document.
+/// active, whether a change of active document carries the keyboard to that document, and whether a press
+/// inside a document hands the keyboard to it.
 /// </summary>
 [TestFixture]
 public class ActiveDocumentFocusPolicyTests
@@ -78,5 +80,48 @@ public class ActiveDocumentFocusPolicyTests
             ActiveDocumentChangeReason.Activated);
 
         shouldCarryFocus.Should().BeFalse();
+    }
+
+    [Test]
+    public void APressThatReachedNothingFocusable_HandsTheKeyboardToTheDocument()
+    {
+        var shouldFocus = ActiveDocumentFocusPolicy.ShouldFocusPressedDocument(
+            focusIsInPressedDocument: false,
+            FocusLocation.MainContent);
+
+        shouldFocus.Should().BeTrue();
+    }
+
+    [Test]
+    public void APressThatReachedAControlInTheDocument_LeavesTheControlFocused()
+    {
+        var shouldFocus = ActiveDocumentFocusPolicy.ShouldFocusPressedDocument(
+            focusIsInPressedDocument: true,
+            FocusLocation.MainContent);
+
+        shouldFocus.Should().BeFalse();
+    }
+
+    [Test]
+    public void APressThatOpenedADialogOrFlyout_LeavesTheKeyboardWithIt()
+    {
+        // Focus is judged once it settles after the press, by which time a button's click can have opened a
+        // dialog or flyout and moved focus into it.
+        var shouldFocus = ActiveDocumentFocusPolicy.ShouldFocusPressedDocument(
+            focusIsInPressedDocument: false,
+            FocusLocation.Popup);
+
+        shouldFocus.Should().BeFalse();
+    }
+
+    [Test]
+    public void APressThatLeftFocusStranded_HandsTheKeyboardToTheDocument()
+    {
+        // Focus a dismissed popup left behind reaches nothing on screen.
+        var shouldFocus = ActiveDocumentFocusPolicy.ShouldFocusPressedDocument(
+            focusIsInPressedDocument: false,
+            FocusLocation.Detached);
+
+        shouldFocus.Should().BeTrue();
     }
 }

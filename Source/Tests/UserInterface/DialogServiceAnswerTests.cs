@@ -1,7 +1,9 @@
 using Celbridge.Dialog;
 using Celbridge.Messaging;
+using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.Services.Dialogs;
 using Celbridge.Validators;
+using Celbridge.WebHost;
 using Celbridge.Workspace;
 
 namespace Celbridge.Tests.UserInterface;
@@ -25,7 +27,14 @@ public class DialogServiceAnswerTests
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _logger = Substitute.For<ILogger<DialogService>>();
 
-        _dialogService = new DialogService(_logger, _dialogFactory, _focusService, _workspaceWrapper, _messengerService);
+        _dialogService = new DialogService(
+            _logger,
+            _dialogFactory,
+            _focusService,
+            Substitute.For<IManagedFocus>(),
+            Substitute.For<IWebViewFocusRegistry>(),
+            _workspaceWrapper,
+            _messengerService);
 
         // The DialogService awaits dialog.ShowDialogAsync; stub something sensible.
         var fakeConfirm = Substitute.For<IConfirmationDialog>();

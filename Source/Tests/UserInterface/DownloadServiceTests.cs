@@ -14,9 +14,10 @@ namespace Celbridge.Tests.UserInterface;
 
 /// <summary>
 /// The download badge lists what this service holds, and every download in the application goes through
-/// it. These tests pin the rules that keep a download inside the project and its record honest: a taken
-/// name is uniquified even against a transfer still running, a denied destination is reported rather than
-/// written, a staged file is always cleaned up, and a record whose file has gone leaves the list.
+/// it. These tests pin the rules that keep a download inside the project and its record honest: a download
+/// lands in the folder the project names, a taken name is uniquified even against a transfer still running,
+/// a denied destination is reported rather than written, a staged file is always cleaned up, and a record
+/// whose file has gone leaves the list.
 /// </summary>
 [TestFixture]
 public class DownloadServiceTests
@@ -34,6 +35,7 @@ public class DownloadServiceTests
     private IWorkspaceWrapper _workspaceWrapper = null!;
     private IResourceRegistry _resourceRegistry = null!;
     private IResourceFileSystem _resourceFileSystem = null!;
+    private IProject _project = null!;
     private FakeFileSystem _localFileSystem = null!;
     private List<Move> _moves = null!;
     private ConcurrentDictionary<string, IDownloadTransfer> _transfers = null!;
@@ -77,6 +79,8 @@ public class DownloadServiceTests
             .Returns(callInfo => ResolveResource(callInfo.Arg<string>()));
         _resourceRegistry.GetResource(Arg.Any<ResourceKey>())
             .Returns(callInfo => GetResource(callInfo.Arg<ResourceKey>()));
+        _resourceRegistry.NormalizeResourceKey(Arg.Any<ResourceKey>())
+            .Returns(callInfo => NormalizeResource(callInfo.Arg<ResourceKey>()));
 
         _resourceFileSystem = Substitute.For<IResourceFileSystem>();
         _resourceFileSystem.CreateFolderAsync(Arg.Any<ResourceKey>())
@@ -105,7 +109,12 @@ public class DownloadServiceTests
                 Arg.Any<int>())
             .Returns(callInfo => MoveAsync(callInfo.Arg<Action<IMoveDownloadCommand>>()));
 
+        // A project that names no downloads folder of its own, until a test gives it one.
+        _project = Substitute.For<IProject>();
+        _project.Config.Returns(new ProjectConfig());
+
         var projectService = Substitute.For<IProjectService>();
+        projectService.CurrentProject.Returns(_project);
 
         // Every reason the service records is a localized string, and what it reads is the key.
         var localizerService = Substitute.For<ILocalizerService>();
@@ -183,6 +192,57 @@ public class DownloadServiceTests
         var settled = _downloadService.Downloads.Should().ContainSingle().Subject;
         settled.FileName.Should().Be("report (1).pdf");
         settled.Resource.Should().Be(new ResourceKey("downloads/report (1).pdf"));
+    }
+
+    [Test]
+    public async Task AFolderTheProjectNames_IsWhereDownloadsLand()
+    {
+        _localFileSystem.SeedFolder(Path.Combine(ProjectFolderPath, "assets", "incoming"));
+        NameDownloadsFolder("assets/incoming");
+
+        var ticket = await CompleteDownloadAsync("report.pdf");
+
+        ticket.Destination.Should().Be(new ResourceKey("assets/incoming/report.pdf"));
+        _moves.Should().ContainSingle()
+            .Which.DestResource.Should().Be(new ResourceKey("assets/incoming/report.pdf"));
+    }
+
+    [Test]
+    public async Task AFolderTheProjectNamesButHasNotMade_IsMadeByTheFirstDownload()
+    {
+        NameDownloadsFolder("incoming");
+
+        var ticket = await CompleteDownloadAsync("report.pdf");
+
+        ticket.Destination.Should().Be(new ResourceKey("incoming/report.pdf"));
+        _localFileSystem.Files.Should().ContainKey(ResolvePath(ticket.Destination).Value);
+    }
+
+    [Test]
+    public async Task AFolderNamedInAnotherCase_IsUsedAsTheProjectSpellsIt()
+    {
+        _localFileSystem.SeedFolder(Path.Combine(ProjectFolderPath, "Incoming"));
+        NameDownloadsFolder("incoming");
+
+        var ticket = await BeginAsync("report.pdf");
+
+        ticket.Destination.Should().Be(new ResourceKey("Incoming/report.pdf"));
+    }
+
+    /// <summary>
+    /// A load drops a path that is not a folder path, and a file can take the folder's place after the
+    /// project named it. Either way the download still lands, in the default folder.
+    /// </summary>
+    [TestCase("notes.txt", Description = "a file rather than a folder")]
+    [TestCase("../outside", Description = "a path that leaves the project")]
+    public async Task AFolderTheProjectCannotUse_LeavesDownloadsInTheDefaultFolder(string downloadsFolder)
+    {
+        _localFileSystem.SeedFile(Path.Combine(ProjectFolderPath, "notes.txt"), "notes");
+        NameDownloadsFolder(downloadsFolder);
+
+        var ticket = await BeginAsync("report.pdf");
+
+        ticket.Destination.Should().Be(new ResourceKey("downloads/report.pdf"));
     }
 
     [Test]
@@ -387,6 +447,19 @@ public class DownloadServiceTests
         download.TotalBytes.Should().Be(2048);
     }
 
+    private void NameDownloadsFolder(string downloadsFolder)
+    {
+        var config = new ProjectConfig
+        {
+            Resources = new ResourcesSection
+            {
+                DownloadsFolder = downloadsFolder
+            }
+        };
+
+        _project.Config.Returns(config);
+    }
+
     private async Task<DownloadTicket> BeginAsync(string fileName)
     {
         var beginResult = await _downloadService.BeginAsync(
@@ -480,12 +553,33 @@ public class DownloadServiceTests
     private Result<IResource> GetResource(ResourceKey resource)
     {
         var path = ResolvePath(resource).Value;
+        if (_localFileSystem.Folders.Contains(path))
+        {
+            return Result<IResource>.Ok(Substitute.For<IFolderResource>());
+        }
+
         if (!_localFileSystem.Files.ContainsKey(path))
         {
             return Result<IResource>.Fail($"'{resource}' does not exist");
         }
 
         return Result<IResource>.Ok(Substitute.For<IFileResource>());
+    }
+
+    // Mirrors the registry, which finds the resource on disk whatever the case of the key it is given.
+    private Result<ResourceKey> NormalizeResource(ResourceKey resource)
+    {
+        var path = ResolvePath(resource).Value;
+
+        var pathOnDisk = _localFileSystem.Folders
+            .Concat(_localFileSystem.Files.Keys)
+            .FirstOrDefault(candidate => string.Equals(candidate, path, StringComparison.OrdinalIgnoreCase));
+        if (pathOnDisk is null)
+        {
+            return Result<ResourceKey>.Fail($"'{resource}' does not exist");
+        }
+
+        return ResolveResource(pathOnDisk);
     }
 
     private static string ToKeyPath(string relativePath)

@@ -17,7 +17,6 @@ public sealed partial class ResourcePickerDialog : ContentDialog, IResourcePicke
     public string TitleString => _customTitle ?? _stringLocalizer.GetString("ResourcePickerDialog_Title");
     public string OkString => _stringLocalizer.GetString("DialogButton_Ok");
     public string CancelString => _stringLocalizer.GetString("DialogButton_Cancel");
-    public string SearchPlaceholderString => _stringLocalizer.GetString("ResourcePickerDialog_SearchPlaceholder");
 
     public ResourcePickerDialog()
     {
@@ -75,7 +74,8 @@ public sealed partial class ResourcePickerDialog : ContentDialog, IResourcePicke
         }
     }
 
-    private void ResourceListView_KeyDown(object sender, KeyRoutedEventArgs e)
+    // Previewed, since the list takes Enter for itself before it would bubble up to a KeyDown handler.
+    private void ResourceListView_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
     {
         if (e.Key == VirtualKey.Enter && ViewModel.SelectedItem is not null)
         {

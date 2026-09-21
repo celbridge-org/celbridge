@@ -120,6 +120,17 @@ public class DialogFactory : IDialogFactory
         return WithFocusGuard(dialog);
     }
 
+    public IResourcePickerDialog CreateFolderPickerDialog(string? title = null)
+    {
+        var dialog = new ResourcePickerDialog();
+        dialog.ViewModel.InitializeForFolders();
+        if (title is not null)
+        {
+            dialog.SetTitle(title);
+        }
+        return WithFocusGuard(dialog);
+    }
+
     public IIconPickerDialog CreateIconPickerDialog(string searchText = "")
     {
         var dialog = new IconPickerDialog();

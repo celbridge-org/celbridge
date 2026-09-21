@@ -44,7 +44,7 @@
     <!-- Search box -->
     <TextBox x:Name="SearchTextBox"
              Grid.Row="0"
-             PlaceholderText="{x:Bind SearchPlaceholderString}"
+             PlaceholderText="{x:Bind ViewModel.SearchPlaceholder, Mode=OneWay}"
              Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
              IsSpellCheckEnabled="False"
              AcceptsReturn="False"
@@ -60,7 +60,7 @@
               Margin="0,4,0,0"
               IsDoubleTapEnabled="True"
               DoubleTapped="ResourceListView_DoubleTapped"
-              KeyDown="ResourceListView_KeyDown">
+              PreviewKeyDown="ResourceListView_PreviewKeyDown">
       <ListView.ItemContainerStyle>
         <Style TargetType="ListViewItem">
           <Setter Property="HorizontalContentAlignment" Value="Stretch"/>

@@ -25,13 +25,19 @@ public class ProjectConfigDraftTests
         "contribution = \"console\"\n" +
         "shell = \"python\"\n";
 
+    // Also checks that the draft's text reads back exactly as written. The editor takes a saved file that
+    // reads back differently for an outside change and reloads every section from it, so a draft that
+    // writes anything a load drops wipes out what the user is typing.
     private static ProjectConfig ApplyAndParse(string text, Action<ProjectConfigDraft> edit)
     {
         var draft = DraftFrom(text);
         edit(draft);
 
-        var parseResult = ProjectConfigParser.ParseFromText(draft.Serialize());
+        var writtenText = draft.Serialize();
+        var parseResult = ProjectConfigParser.ParseFromText(writtenText);
         parseResult.IsSuccess.Should().BeTrue(parseResult.IsFailure ? parseResult.DiagnosticReport : string.Empty);
+
+        ProjectConfigSerializer.Serialize(parseResult.Value).Should().Be(writtenText);
 
         return parseResult.Value;
     }
@@ -62,6 +68,44 @@ public class ProjectConfigDraftTests
         var config = ApplyAndParse(sourceConfig, draft => draft.SetPackageDisabled("acme.pixel-editor", true));
 
         config.Celbridge.DataFolder.Should().Be("variant-a");
+    }
+
+    [Test]
+    public void Draft_PreservesTheDownloadsFolder_AcrossAnUnrelatedEdit()
+    {
+        // The draft rebuilds the resources table on every serialize, so an edit to another section must
+        // carry the downloads folder through rather than reset the project to the default folder.
+        var sourceConfig =
+            "[celbridge]\n" +
+            "\n" +
+            "[celbridge.resources]\n" +
+            "downloads-folder = \"assets/incoming\"\n";
+
+        var config = ApplyAndParse(sourceConfig, draft => draft.SetPackageDisabled("acme.pixel-editor", true));
+
+        config.Resources.DownloadsFolder.Should().Be("assets/incoming");
+    }
+
+    [Test]
+    public void Draft_SetDownloadsFolder_WritesThePathItNames()
+    {
+        var config = ApplyAndParse(BaseConfig, draft => draft.SetDownloadsFolder(" /assets/incoming/ "));
+
+        config.Resources.DownloadsFolder.Should().Be("assets/incoming");
+    }
+
+    [TestCase("", Description = "a cleared field")]
+    [TestCase("downloads", Description = "the default folder")]
+    [TestCase("../outside", Description = "a path that is not a folder path, which a load would drop")]
+    public void Draft_SetDownloadsFolderThatNamesNoOtherFolder_WritesNoKey(string folderPath)
+    {
+        var config = ApplyAndParse(BaseConfig, draft =>
+        {
+            draft.SetDownloadsFolder("assets/incoming");
+            draft.SetDownloadsFolder(folderPath);
+        });
+
+        config.Resources.DownloadsFolder.Should().BeEmpty();
     }
 
     [Test]
@@ -167,6 +211,16 @@ public class ProjectConfigDraftTests
         config.Celbridge.ProjectVersion.Should().Be("0.2.0");
     }
 
+    [TestCase("0.2", Description = "a version with two parts")]
+    [TestCase("latest", Description = "text that is not a version")]
+    public void Draft_SetProjectVersionThatIsNotAVersion_WritesNoKey(string projectVersion)
+    {
+        // A load drops a version that does not parse, which leaves the project at the default version.
+        var config = ApplyAndParse(BaseConfig, draft => draft.ProjectVersion = projectVersion);
+
+        config.Celbridge.ProjectVersion.Should().BeNull();
+    }
+
     [Test]
     public void Draft_SetDescription_UpdatesDescription()
     {
@@ -253,6 +307,24 @@ public class ProjectConfigDraftTests
         {
             new() { Resource = "readme.md" },
             new() { Resource = string.Empty, Icon = "bs-book" },
+        };
+
+        var config = ApplyAndParse(BaseConfig, draft => draft.SetDocumentShortcuts(documentShortcuts));
+
+        config.DocumentShortcuts.Should().ContainSingle();
+        config.DocumentShortcuts[0].Resource.Should().Be("readme.md");
+    }
+
+    [TestCase("../outside.md", Description = "a path that leaves the project")]
+    [TestCase("docs\\guide.md", Description = "a path written with backslashes")]
+    public void Draft_SetDocumentShortcuts_DropsAnEntryWhoseResourceIsNotAResourceKey(string resource)
+    {
+        // A load drops a shortcut naming something that is not a resource key, so the card the user is
+        // still correcting writes no entry.
+        var documentShortcuts = new List<DocumentShortcut>
+        {
+            new() { Resource = "readme.md" },
+            new() { Resource = resource, Icon = "bs-book" },
         };
 
         var config = ApplyAndParse(BaseConfig, draft => draft.SetDocumentShortcuts(documentShortcuts));

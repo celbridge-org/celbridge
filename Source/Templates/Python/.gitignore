@@ -6,23 +6,42 @@
 # Celbridge project metadata
 .celbridge/
 
-# Build output
-bin/
-obj/
-.vs/
-node_modules/
+# Files downloaded from web pages, kept here until moved where they are needed
+/downloads/
 
-# Editor and tooling
-.vscode/
-.idea/
-.claude/
-.mcp.json
-
-# Python
+# Compiled Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.so
+
+# Installed dependencies
+.venv/
+venv/
+node_modules/
+
+# Build output
+build/
+dist/
+*.egg-info/
+
+# Tool output
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+
+# Editor and tooling
+.vscode/
+.idea/
+.vs/
+.claude/
+.mcp.json
 
 # Environment and secrets
 .env

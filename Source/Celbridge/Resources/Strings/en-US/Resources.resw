@@ -491,7 +491,7 @@ This file could not be saved</value>
     <value>The transfer did not complete.</value>
   </data>
   <data name="Downloads_TransferCancelled" xml:space="preserve">
-    <value>The transfer was cancelled.</value>
+    <value>The transfer was canceled.</value>
   </data>
   <data name="PanelHeader_CollapseTooltip" xml:space="preserve">
     <value>Collapse Panel</value>
@@ -1036,7 +1036,7 @@ Open with default application instead?</value>
     <value>Resources</value>
   </data>
   <data name="ProjectSettings_ResourcesDescription" xml:space="preserve">
-    <value>Choose what the Explorer hides and what search skips.</value>
+    <value>Choose how Celbridge handles the files and folders in this project.</value>
   </data>
   <data name="ProjectSettings_HideTitle" xml:space="preserve">
     <value>Hidden in Explorer</value>
@@ -1055,6 +1055,21 @@ Open with default application instead?</value>
   </data>
   <data name="ProjectSettings_InvalidPattern" xml:space="preserve">
     <value>Patterns use forward slashes and are relative to the project folder. Only * and ** are wildcards, not ? or [ ]. A line cannot start with /, ! or #.</value>
+  </data>
+  <data name="ProjectSettings_DownloadsFolderTitle" xml:space="preserve">
+    <value>Downloads folder</value>
+  </data>
+  <data name="ProjectSettings_DownloadsFolderSubtitle" xml:space="preserve">
+    <value>Where files downloaded from web pages are saved, as a path from the project root.</value>
+  </data>
+  <data name="ProjectSettings_DownloadsFolderBrowseTooltip" xml:space="preserve">
+    <value>Choose a folder</value>
+  </data>
+  <data name="ProjectSettings_DownloadsFolderPickerTitle" xml:space="preserve">
+    <value>Choose a Downloads Folder</value>
+  </data>
+  <data name="ProjectSettings_InvalidDownloadsFolder" xml:space="preserve">
+    <value>This is not a valid folder path, so downloads are saved to '{0}'.</value>
   </data>
   <data name="ProjectSettings_PackagesDescription" xml:space="preserve">
     <value>Enable or disable packages and configure their contributions.</value>
@@ -1541,6 +1556,9 @@ Open with default application instead?</value>
   </data>
   <data name="ResourcePickerDialog_SearchPlaceholder" xml:space="preserve">
     <value>Enter file name...</value>
+  </data>
+  <data name="ResourcePickerDialog_FolderSearchPlaceholder" xml:space="preserve">
+    <value>Enter folder name...</value>
   </data>
   <data name="IconPicker_FieldLabel" xml:space="preserve">
     <value>Icon</value>
