@@ -82,7 +82,7 @@
         </Grid>
 
         <!-- Wide enough for two digits, which is as many as the count can reach, so the badge does not
-             reflow as the count passes from nine to ten. -->
+             reflow as the count passes from nine to ten. Canceled downloads are not counted. -->
         <TextBlock x:Name="CountText"
                    Style="{StaticResource BadgeCountTextStyle}"
                    MinWidth="14"

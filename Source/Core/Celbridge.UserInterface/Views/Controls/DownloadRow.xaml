@@ -53,6 +53,12 @@
                            FontSize="{StaticResource IconSizeSmall}"
                            Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                            Visibility="Collapsed"/>
+            <!-- A canceled download is not a failure, so it takes the color of the text beside it. -->
+            <controls:Icon x:Name="CanceledIcon"
+                           IconName="bs-dash-circle-fill"
+                           FontSize="{StaticResource IconSizeSmall}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           Visibility="Collapsed"/>
           </Grid>
 
           <StackPanel Grid.Column="1"
@@ -77,17 +83,33 @@
                        Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                        TextWrapping="Wrap"
                        Visibility="Collapsed"/>
+
+            <TextBlock x:Name="CanceledText"
+                       Style="{StaticResource SupportingTextStyle}"
+                       TextWrapping="Wrap"
+                       Visibility="Collapsed"/>
           </StackPanel>
         </Grid>
       </Button>
 
-      <!-- Only a running download has anything to do beside the row, since a finished one is found by
-           clicking the row itself. Centred on the row, which a running download fills with its bar. -->
+      <!-- One or the other, never both: a running download can be stopped, and a finished one can be taken
+           off the list. Both are centred on the row, which is what reads as belonging to it, and which
+           leaves the button where it is when a download settles. -->
       <controls:IconButton x:Name="CancelButton"
                            Grid.Column="1"
                            VerticalAlignment="Center"
                            AutomationProperties.AutomationId="download-cancel-button"
                            Click="CancelButton_Click"
+                           Visibility="Collapsed">
+        <controls:Icon Symbol="Close"
+                       FontSize="{StaticResource IconSizeSmall}"/>
+      </controls:IconButton>
+
+      <controls:IconButton x:Name="RemoveButton"
+                           Grid.Column="1"
+                           VerticalAlignment="Center"
+                           AutomationProperties.AutomationId="download-remove-button"
+                           Click="RemoveButton_Click"
                            Visibility="Collapsed">
         <controls:Icon Symbol="Close"
                        FontSize="{StaticResource IconSizeSmall}"/>

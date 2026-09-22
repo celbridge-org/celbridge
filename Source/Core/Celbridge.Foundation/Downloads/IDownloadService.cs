@@ -18,7 +18,12 @@ public enum DownloadStatus
     /// <summary>
     /// The transfer or the move into the project failed. Nothing was left in the project.
     /// </summary>
-    Failed
+    Failed,
+
+    /// <summary>
+    /// The transfer was stopped before it finished, which is not a failure. Nothing was left in the project.
+    /// </summary>
+    Canceled
 }
 
 /// <summary>
@@ -97,7 +102,7 @@ public interface IDownloadService
     Task CompleteAsync(long downloadId);
 
     /// <summary>
-    /// Stops a running download and records it as cancelled, deleting anything it staged.
+    /// Stops a running download and records it as canceled, deleting anything it staged.
     /// </summary>
     Task CancelAsync(long downloadId);
 
@@ -105,6 +110,18 @@ public interface IDownloadService
     /// Records the download as failed with the reason its row states, and deletes anything it staged.
     /// </summary>
     Task FailAsync(long downloadId, string reason);
+
+    /// <summary>
+    /// Records a download the platform stopped by itself as canceled, which is not a failure, and deletes
+    /// anything it staged. The transfer is not asked to stop, since it already has.
+    /// </summary>
+    Task ReportCanceledAsync(long downloadId);
+
+    /// <summary>
+    /// Removes the record of a finished download. A download still running keeps its record, and the file a
+    /// finished download landed on stays in the project.
+    /// </summary>
+    void Remove(long downloadId);
 
     /// <summary>
     /// Removes the records of finished downloads. A download still running keeps its record, and the files

@@ -279,13 +279,38 @@ public sealed class DownloadService : IDownloadService
             _logger.LogError(ex, "Failed to cancel a download");
         }
 
-        if (_workspaceWrapper.HasWorkspaceService)
+        await SettleCanceledAsync(downloadId, inFlightDownload);
+    }
+
+    public async Task ReportCanceledAsync(long downloadId)
+    {
+        var inFlightDownload = TakeInFlight(downloadId);
+        if (inFlightDownload is null)
         {
-            var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
-            await resourceFileSystem.DeleteAsync(inFlightDownload.StagingResource);
+            return;
         }
 
-        SettleAsFailed(downloadId, GetString("Downloads_TransferCancelled"));
+        await SettleCanceledAsync(downloadId, inFlightDownload);
+    }
+
+    public void Remove(long downloadId)
+    {
+        lock (_lock)
+        {
+            // A download still running keeps its row, as it does through Clear All.
+            var removedCount = _entries.RemoveAll(entry =>
+                entry.Id == downloadId &&
+                entry.Status != DownloadStatus.InProgress);
+
+            if (removedCount == 0)
+            {
+                return;
+            }
+
+            UpdateDownloads();
+        }
+
+        SendDownloadsChanged(hasArrival: false);
     }
 
     public void ClearAll()
@@ -493,6 +518,36 @@ public sealed class DownloadService : IDownloadService
         SendDownloadsChanged(hasArrival: true);
     }
 
+    private async Task SettleCanceledAsync(long downloadId, InFlightDownload inFlightDownload)
+    {
+        if (_workspaceWrapper.HasWorkspaceService)
+        {
+            var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+            await resourceFileSystem.DeleteAsync(inFlightDownload.StagingResource);
+        }
+
+        SettleAsCanceled(downloadId);
+    }
+
+    // Announced as no arrival, since a download that was stopped has brought nothing to draw attention to.
+    private void SettleAsCanceled(long downloadId)
+    {
+        lock (_lock)
+        {
+            var isUpdated = TryUpdateEntry(downloadId, entry => entry with
+            {
+                Status = DownloadStatus.Canceled
+            });
+
+            if (!isUpdated)
+            {
+                return;
+            }
+        }
+
+        SendDownloadsChanged(hasArrival: false);
+    }
+
     private InFlightDownload? TakeInFlight(long downloadId)
     {
         lock (_lock)
@@ -507,7 +562,8 @@ public sealed class DownloadService : IDownloadService
     }
 
     // A succeeded row's whole value is that clicking it reveals the file, so a row whose file has gone
-    // leaves the list rather than sitting there as a dead end. A failed row names no file and stays.
+    // leaves the list rather than sitting there as a dead end. A failed or canceled row names no file and
+    // stays.
     private void OnResourceRegistryUpdated(object recipient, ResourceRegistryUpdatedMessage message)
     {
         if (!_workspaceWrapper.HasWorkspaceService)

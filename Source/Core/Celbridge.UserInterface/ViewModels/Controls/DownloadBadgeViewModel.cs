@@ -44,6 +44,12 @@ public class DownloadBadgeViewModel
     public bool HasFailure { get; private set; }
 
     /// <summary>
+    /// The number the badge shows: every recorded download except those that were canceled, which stay in
+    /// the list without counting towards it.
+    /// </summary>
+    public int BadgeCount { get; private set; }
+
+    /// <summary>
     /// Whether any recorded download has finished, which is what Clear All removes.
     /// </summary>
     public bool CanClearAll { get; private set; }
@@ -104,6 +110,14 @@ public class DownloadBadgeViewModel
         _ = _downloadService.CancelAsync(download.Id);
     }
 
+    /// <summary>
+    /// Takes a finished download off the list, leaving the file it landed on in the project.
+    /// </summary>
+    public void Remove(DownloadEntry download)
+    {
+        _downloadService.Remove(download.Id);
+    }
+
     public void ClearAll()
     {
         _downloadService.ClearAll();
@@ -132,6 +146,7 @@ public class DownloadBadgeViewModel
         Downloads = downloads;
         IsTransferring = downloads.Any(download => download.Status == DownloadStatus.InProgress);
         HasFailure = downloads.Any(download => download.Status == DownloadStatus.Failed);
+        BadgeCount = downloads.Count(download => download.Status != DownloadStatus.Canceled);
         CanClearAll = downloads.Any(download => download.Status != DownloadStatus.InProgress);
         Summary = ComposeSummary(downloads);
     }
@@ -152,12 +167,14 @@ public class DownloadBadgeViewModel
         var inProgressCount = downloads.Count(download => download.Status == DownloadStatus.InProgress);
         var succeededCount = downloads.Count(download => download.Status == DownloadStatus.Succeeded);
         var failedCount = downloads.Count(download => download.Status == DownloadStatus.Failed);
+        var canceledCount = downloads.Count(download => download.Status == DownloadStatus.Canceled);
 
         var sentences = new List<string>();
 
         AddCountSentence(sentences, inProgressCount, "Downloads_Summary_InProgress");
         AddCountSentence(sentences, failedCount, "Downloads_Summary_Failed");
         AddCountSentence(sentences, succeededCount, "Downloads_Summary_Succeeded");
+        AddCountSentence(sentences, canceledCount, "Downloads_Summary_Canceled");
 
         return string.Join(" ", sentences);
     }

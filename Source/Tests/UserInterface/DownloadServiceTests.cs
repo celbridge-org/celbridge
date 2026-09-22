@@ -449,23 +449,77 @@ public class DownloadServiceTests
     {
         var ticket = await BeginAsync("report.pdf");
         _localFileSystem.SeedFile(ticket.StagingPath, "partial");
+        _messengerService.ClearReceivedCalls();
 
         await _downloadService.CancelAsync(ticket.Id);
 
         _transfers["report.pdf"].Received(1).Cancel();
 
+        // A cancellation is not a failure, and brings nothing for the badge to announce.
         var download = _downloadService.Downloads.Should().ContainSingle().Subject;
-        download.Status.Should().Be(DownloadStatus.Failed);
-        download.FailureReason.Should().Be("Downloads_TransferCancelled");
+        download.Status.Should().Be(DownloadStatus.Canceled);
+        download.FailureReason.Should().BeEmpty();
+        _messengerService.DidNotReceive().Send(Arg.Is<DownloadsChangedMessage>(message => message.HasArrival));
 
         _localFileSystem.Files.Should().NotContainKey(ticket.StagingPath);
 
         // The platform may report the stop afterwards, and by then the download has already settled.
         await _downloadService.CompleteAsync(ticket.Id);
+        await _downloadService.ReportCanceledAsync(ticket.Id);
 
         _moves.Should().BeEmpty();
+        _transfers["report.pdf"].Received(1).Cancel();
         _downloadService.Downloads.Should().ContainSingle()
-            .Which.Status.Should().Be(DownloadStatus.Failed);
+            .Which.Status.Should().Be(DownloadStatus.Canceled);
+    }
+
+    [Test]
+    public async Task AStopThePlatformReports_IsACancellation_AndLeavesTheTransferAlone()
+    {
+        var ticket = await BeginAsync("report.pdf");
+        _localFileSystem.SeedFile(ticket.StagingPath, "partial");
+
+        await _downloadService.ReportCanceledAsync(ticket.Id);
+
+        // The platform has already stopped the transfer, and is not called back from inside its report.
+        _transfers["report.pdf"].DidNotReceive().Cancel();
+
+        var download = _downloadService.Downloads.Should().ContainSingle().Subject;
+        download.Status.Should().Be(DownloadStatus.Canceled);
+        _localFileSystem.Files.Should().NotContainKey(ticket.StagingPath);
+    }
+
+    [Test]
+    public async Task Removing_AFinishedDownload_LeavesTheOthers_AndKeepsItsFile()
+    {
+        var succeededTicket = await CompleteDownloadAsync("report.pdf");
+
+        var failedTicket = await BeginAsync("notes.txt");
+        await _downloadService.FailAsync(failedTicket.Id, "The transfer did not complete.");
+
+        _downloadService.Remove(failedTicket.Id);
+
+        _downloadService.Downloads.Should().ContainSingle()
+            .Which.Id.Should().Be(succeededTicket.Id);
+
+        _downloadService.Remove(succeededTicket.Id);
+
+        // The record goes and the file it named stays in the project.
+        _downloadService.Downloads.Should().BeEmpty();
+        _localFileSystem.Files.Should().ContainKey(ResolvePath(succeededTicket.Destination).Value);
+    }
+
+    [Test]
+    public async Task Removing_ADownloadStillRunning_ChangesNothing()
+    {
+        var ticket = await BeginAsync("report.pdf");
+        _messengerService.ClearReceivedCalls();
+
+        _downloadService.Remove(ticket.Id);
+
+        _downloadService.Downloads.Should().ContainSingle()
+            .Which.Status.Should().Be(DownloadStatus.InProgress);
+        _messengerService.DidNotReceive().Send(Arg.Any<DownloadsChangedMessage>());
     }
 
     [Test]

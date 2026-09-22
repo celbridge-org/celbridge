@@ -13,7 +13,7 @@ namespace Celbridge.UserInterface.Views.Controls;
 
 /// <summary>
 /// The title bar badge for the downloads this session made. It shows a ring while a transfer runs and a
-/// count once they have settled, flashes when one settles, and opens the list of them on click.
+/// count once they have settled, flashes when one lands or fails, and opens the list of them on click.
 /// </summary>
 public sealed partial class DownloadBadge : UserControl
 {
@@ -118,7 +118,10 @@ public sealed partial class DownloadBadge : UserControl
 
         ApplyGlyph(ViewModel.IsTransferring, ViewModel.HasFailure);
 
-        CountText.Text = downloads.Count.ToString(CultureInfo.CurrentCulture);
+        // A list holding only canceled downloads still has a badge to open it by, but nothing to count.
+        var badgeCount = ViewModel.BadgeCount;
+        CountText.Text = badgeCount.ToString(CultureInfo.CurrentCulture);
+        CountText.Visibility = badgeCount > 0 ? Visibility.Visible : Visibility.Collapsed;
 
         var summary = ViewModel.Summary;
         ToolTipService.SetToolTip(BadgeButton, summary);
@@ -235,6 +238,7 @@ public sealed partial class DownloadBadge : UserControl
             var row = new DownloadRow(downloads[index], isFirstRow: index == 0);
             row.RevealRequested += OnRowRevealRequested;
             row.CancelRequested += OnRowCancelRequested;
+            row.RemoveRequested += OnRowRemoveRequested;
 
             DownloadRows.Children.Add(row);
         }
@@ -320,6 +324,7 @@ public sealed partial class DownloadBadge : UserControl
             {
                 row.RevealRequested -= OnRowRevealRequested;
                 row.CancelRequested -= OnRowCancelRequested;
+                row.RemoveRequested -= OnRowRemoveRequested;
             }
         }
 
@@ -408,6 +413,12 @@ public sealed partial class DownloadBadge : UserControl
     private void OnRowCancelRequested(DownloadEntry download)
     {
         ViewModel.Cancel(download);
+    }
+
+    // The list is rebuilt without the row, which hands the keyboard to the row that took its place.
+    private void OnRowRemoveRequested(DownloadEntry download)
+    {
+        ViewModel.Remove(download);
     }
 
     private void ClearAllButton_Click(object sender, RoutedEventArgs e)

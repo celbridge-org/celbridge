@@ -13,16 +13,20 @@ namespace Celbridge.WebHost.Platform;
 /// </summary>
 internal sealed class WebView2DownloadTransfer : IDownloadTransfer
 {
-    private readonly CoreWebView2DownloadOperation _downloadOperation;
-
     public WebView2DownloadTransfer(CoreWebView2DownloadOperation downloadOperation)
     {
-        _downloadOperation = downloadOperation;
+        Operation = downloadOperation;
     }
+
+    /// <summary>
+    /// The operation for the attempt at the download that is running. Chromium retries a download whose
+    /// transfer broke off, and each retry replaces it, so a cancel reaches the attempt under way.
+    /// </summary>
+    public CoreWebView2DownloadOperation Operation { get; set; }
 
     public void Cancel()
     {
-        _downloadOperation.Cancel();
+        Operation.Cancel();
     }
 }
 
@@ -34,10 +38,17 @@ internal sealed class WebView2DownloadTransfer : IDownloadTransfer
 /// </summary>
 internal sealed class WebView2DownloadHandler : IWebViewDownloadHandler
 {
+    // A download this surface has handed to the service and not yet seen settle.
+    private sealed record TrackedDownload(long DownloadId, string StagingPath, WebView2DownloadTransfer Transfer);
+
     private readonly ILogger<WebView2DownloadHandler> _logger;
     private readonly ILocalizerService _localizerService;
     private readonly IDownloadService _downloadService;
     private readonly CoreWebView2 _coreWebView2;
+
+    // Chromium retries a download whose transfer broke off, and WebView2 raises DownloadStarting again for
+    // each retry, so the downloads under way are kept to recognize a retry of one of them.
+    private readonly List<TrackedDownload> _trackedDownloads = new();
 
     public event EventHandler? DownloadStarted;
 
@@ -65,6 +76,8 @@ internal sealed class WebView2DownloadHandler : IWebViewDownloadHandler
     public void Detach()
     {
         _coreWebView2.DownloadStarting -= OnDownloadStarting;
+
+        _trackedDownloads.Clear();
     }
 
     private async void OnDownloadStarting(CoreWebView2 sender, CoreWebView2DownloadStartingEventArgs args)
@@ -84,11 +97,19 @@ internal sealed class WebView2DownloadHandler : IWebViewDownloadHandler
                 return;
             }
 
+            var downloadOperation = args.DownloadOperation;
+
+            var retriedDownload = FindRetriedDownload(downloadOperation);
+            if (retriedDownload is not null)
+            {
+                Retry(retriedDownload, args);
+                return;
+            }
+
             // Announced before the outcome is known, because the navigation this replaced is cancelled
             // whether or not the download goes on to start.
             DownloadStarted?.Invoke(this, EventArgs.Empty);
 
-            var downloadOperation = args.DownloadOperation;
             var transfer = new WebView2DownloadTransfer(downloadOperation);
 
             var fileName = WebView2SuggestedName.Resolve(
@@ -107,37 +128,10 @@ internal sealed class WebView2DownloadHandler : IWebViewDownloadHandler
 
             args.ResultFilePath = ticket.StagingPath;
 
-            _downloadService.ReportProgress(
-                ticket.Id,
-                downloadOperation.BytesReceived,
-                ReadTotalBytes(downloadOperation));
+            var newDownload = new TrackedDownload(ticket.Id, ticket.StagingPath, transfer);
+            _trackedDownloads.Add(newDownload);
 
-            downloadOperation.BytesReceivedChanged += (operation, _) =>
-            {
-                _downloadService.ReportProgress(ticket.Id, operation.BytesReceived, ReadTotalBytes(operation));
-            };
-
-            downloadOperation.StateChanged += async (operation, _) =>
-            {
-                // Async-void event handler: an escaping exception ends up on the synchronization
-                // context's unhandled-exception channel, so a WebView-side failure is contained here.
-                try
-                {
-                    if (operation.State == CoreWebView2DownloadState.Completed)
-                    {
-                        await _downloadService.CompleteAsync(ticket.Id);
-                    }
-                    else if (operation.State == CoreWebView2DownloadState.Interrupted)
-                    {
-                        var reason = DescribeInterruption(operation.InterruptReason);
-                        await _downloadService.FailAsync(ticket.Id, reason);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Download state change handler failed");
-                }
-            };
+            Observe(newDownload, downloadOperation);
         }
         catch (Exception ex)
         {
@@ -150,6 +144,98 @@ internal sealed class WebView2DownloadHandler : IWebViewDownloadHandler
         }
     }
 
+    /// <summary>
+    /// Whether an attempt at a download has been given up on for a retry. The attempt raises no further events,
+    /// and goes on reporting that it is in progress along with the reason its transfer broke off, which an
+    /// attempt still running does not have.
+    /// </summary>
+    internal static bool IsAbandoned(CoreWebView2DownloadState state, CoreWebView2DownloadInterruptReason interruptReason)
+    {
+        return state == CoreWebView2DownloadState.InProgress &&
+            interruptReason != CoreWebView2DownloadInterruptReason.None;
+    }
+
+    // The download a new attempt retries: one from the same address whose attempt was given up on. A second
+    // download of the same address while the first still runs is a download of its own.
+    private TrackedDownload? FindRetriedDownload(CoreWebView2DownloadOperation downloadOperation)
+    {
+        foreach (var trackedDownload in _trackedDownloads)
+        {
+            var trackedOperation = trackedDownload.Transfer.Operation;
+            if (IsAbandoned(trackedOperation.State, trackedOperation.InterruptReason) &&
+                string.Equals(trackedOperation.Uri, downloadOperation.Uri, StringComparison.Ordinal))
+            {
+                return trackedDownload;
+            }
+        }
+
+        return null;
+    }
+
+    // A retry carries on the download it belongs to: the same row and the same staging path, which Chromium
+    // has emptied before starting again. It replaces no navigation, so nothing is announced.
+    private void Retry(TrackedDownload trackedDownload, CoreWebView2DownloadStartingEventArgs args)
+    {
+        _logger.LogDebug($"Download {trackedDownload.DownloadId} retried by the platform");
+
+        args.ResultFilePath = trackedDownload.StagingPath;
+
+        var downloadOperation = args.DownloadOperation;
+        trackedDownload.Transfer.Operation = downloadOperation;
+
+        Observe(trackedDownload, downloadOperation);
+    }
+
+    // Relays an attempt's progress and outcome for as long as it is the attempt under way. One a later
+    // attempt has taken over from reports nothing, since the download it belonged to is still running.
+    private void Observe(TrackedDownload trackedDownload, CoreWebView2DownloadOperation downloadOperation)
+    {
+        var downloadId = trackedDownload.DownloadId;
+
+        _downloadService.ReportProgress(
+            downloadId,
+            downloadOperation.BytesReceived,
+            ReadTotalBytes(downloadOperation));
+
+        downloadOperation.BytesReceivedChanged += (operation, _) =>
+        {
+            if (!ReferenceEquals(trackedDownload.Transfer.Operation, downloadOperation))
+            {
+                return;
+            }
+
+            _downloadService.ReportProgress(downloadId, operation.BytesReceived, ReadTotalBytes(operation));
+        };
+
+        downloadOperation.StateChanged += async (operation, _) =>
+        {
+            // Async-void event handler: an escaping exception ends up on the synchronization
+            // context's unhandled-exception channel, so a WebView-side failure is contained here.
+            try
+            {
+                if (!ReferenceEquals(trackedDownload.Transfer.Operation, downloadOperation))
+                {
+                    return;
+                }
+
+                if (operation.State == CoreWebView2DownloadState.Completed)
+                {
+                    _trackedDownloads.Remove(trackedDownload);
+                    await _downloadService.CompleteAsync(downloadId);
+                }
+                else if (operation.State == CoreWebView2DownloadState.Interrupted)
+                {
+                    _trackedDownloads.Remove(trackedDownload);
+                    await SettleInterruptionAsync(downloadId, operation.InterruptReason);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Download state change handler failed");
+            }
+        };
+    }
+
     private static long? ReadTotalBytes(CoreWebView2DownloadOperation downloadOperation)
     {
         var totalBytes = downloadOperation.TotalBytesToReceive;
@@ -157,12 +243,18 @@ internal sealed class WebView2DownloadHandler : IWebViewDownloadHandler
         return totalBytes > 0 ? totalBytes : null;
     }
 
-    private string DescribeInterruption(CoreWebView2DownloadInterruptReason interruptReason)
+    // A transfer stopped by the user is a cancellation, not a failure. One stopped from the download list
+    // has already been recorded as canceled, and is left as it is. Either way the operation has stopped, so
+    // it is not asked to stop again from inside its own event.
+    private async Task SettleInterruptionAsync(long downloadId, CoreWebView2DownloadInterruptReason interruptReason)
     {
-        var key = interruptReason == CoreWebView2DownloadInterruptReason.UserCanceled
-            ? "Downloads_TransferCancelled"
-            : "Downloads_TransferFailed";
+        if (interruptReason == CoreWebView2DownloadInterruptReason.UserCanceled)
+        {
+            await _downloadService.ReportCanceledAsync(downloadId);
+            return;
+        }
 
-        return _localizerService.GetString(key);
+        var reason = _localizerService.GetString("Downloads_TransferFailed");
+        await _downloadService.FailAsync(downloadId, reason);
     }
 }

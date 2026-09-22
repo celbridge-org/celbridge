@@ -5,7 +5,8 @@ namespace Celbridge.UserInterface.Views.Controls;
 
 /// <summary>
 /// One download in the download list: how far it has got, its file name and how large it is. A running
-/// download can be stopped, and clicking a finished one finds its file in the Explorer.
+/// download can be stopped, and a finished one can be taken off the list. Clicking a completed one finds its
+/// file in the Explorer.
 /// </summary>
 public sealed partial class DownloadRow : UserControl
 {
@@ -34,6 +35,11 @@ public sealed partial class DownloadRow : UserControl
     /// </summary>
     public event Action<DownloadEntry>? CancelRequested;
 
+    /// <summary>
+    /// Raised when the user takes a finished download off the list.
+    /// </summary>
+    public event Action<DownloadEntry>? RemoveRequested;
+
     public DownloadRow(DownloadEntry download, bool isFirstRow)
     {
         InitializeComponent();
@@ -60,8 +66,8 @@ public sealed partial class DownloadRow : UserControl
     }
 
     /// <summary>
-    /// Moves keyboard focus to what the row offers: its cancel button while it runs, or the row itself
-    /// once it has a file to find. Returns false for a failed download, which offers neither.
+    /// Moves keyboard focus to what the row offers first: its cancel button while it runs, the row itself
+    /// once it has a file to find, or otherwise its remove button.
     /// </summary>
     public bool TryFocusButton()
     {
@@ -73,6 +79,11 @@ public sealed partial class DownloadRow : UserControl
         if (RevealButton.IsTabStop)
         {
             return RevealButton.Focus(FocusState.Programmatic);
+        }
+
+        if (RemoveButton.Visibility == Visibility.Visible)
+        {
+            return RemoveButton.Focus(FocusState.Programmatic);
         }
 
         return false;
@@ -94,6 +105,10 @@ public sealed partial class DownloadRow : UserControl
             : Visibility.Collapsed;
 
         FailedIcon.Visibility = download.Status == DownloadStatus.Failed
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
+        CanceledIcon.Visibility = download.Status == DownloadStatus.Canceled
             ? Visibility.Visible
             : Visibility.Collapsed;
 
@@ -129,6 +144,10 @@ public sealed partial class DownloadRow : UserControl
         FileNameText.Text = download.FileName;
         DetailText.Text = ComposeDetail(download);
 
+        CanceledText.Visibility = download.Status == DownloadStatus.Canceled
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
         if (string.IsNullOrEmpty(download.FailureReason))
         {
             FailureText.Visibility = Visibility.Collapsed;
@@ -140,8 +159,8 @@ public sealed partial class DownloadRow : UserControl
     }
 
     // A running transfer says how far it has got and how long is left, and a settled one says when it
-    // arrived, with how large the file turned out to be when there is a file. A failed download left none,
-    // so the bytes it received before it stopped are not a size.
+    // arrived, with how large the file turned out to be when there is a file. A failed or canceled download
+    // left none, so the bytes it received before it stopped are not a size.
     private string ComposeDetail(DownloadEntry download)
     {
         if (download.Status != DownloadStatus.InProgress)
@@ -230,17 +249,25 @@ public sealed partial class DownloadRow : UserControl
         var revealText = _stringLocalizer.GetString("Downloads_Reveal");
         ToolTipService.SetToolTip(RevealButton, revealText);
         AutomationProperties.SetName(RevealButton, $"{download.FileName}. {revealText}");
+
+        var removeText = _stringLocalizer.GetString("Downloads_Remove");
+        ToolTipService.SetToolTip(RemoveButton, removeText);
+        AutomationProperties.SetName(RemoveButton, $"{removeText}. {download.FileName}");
+
+        CanceledText.Text = _stringLocalizer.GetString("Downloads_TransferCancelled");
     }
 
     // Stopping a transfer and finding the file it produced are never both on offer: a download that is
-    // still running has no file to find, and one that has finished cannot be stopped. A row that cannot
-    // be clicked raises no pointer events, so its tooltip stays hidden until it has a file to find.
+    // still running has no file to find, and one that has finished cannot be stopped. Once it has
+    // finished, whatever the outcome, it can be taken off the list. A row that cannot be clicked raises no
+    // pointer events, so its tooltip stays hidden until it has a file to find.
     private void ApplyActions(DownloadEntry download)
     {
         var isTransferring = download.Status == DownloadStatus.InProgress;
         var hasFile = download.Status == DownloadStatus.Succeeded;
 
         CancelButton.Visibility = isTransferring ? Visibility.Visible : Visibility.Collapsed;
+        RemoveButton.Visibility = isTransferring ? Visibility.Collapsed : Visibility.Visible;
 
         RevealButton.IsHitTestVisible = hasFile;
         RevealButton.IsTabStop = hasFile;
@@ -318,5 +345,10 @@ public sealed partial class DownloadRow : UserControl
     private void CancelButton_Click(object sender, RoutedEventArgs e)
     {
         CancelRequested?.Invoke(Download);
+    }
+
+    private void RemoveButton_Click(object sender, RoutedEventArgs e)
+    {
+        RemoveRequested?.Invoke(Download);
     }
 }

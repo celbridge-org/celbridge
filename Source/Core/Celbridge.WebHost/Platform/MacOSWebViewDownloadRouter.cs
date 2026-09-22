@@ -134,20 +134,26 @@ internal sealed class MacOSWebViewDownloadRouter : IMacOSDownloadListener
 
         transfer.IsSettled = true;
 
-        var reasonKey = isCancelled
-            ? "Downloads_TransferCancelled"
-            : "Downloads_TransferFailed";
-        var reason = _localizerService.GetString(reasonKey);
-
+        // A download WebKit stopped is a cancellation, not a failure. One stopped from the download list
+        // has already been recorded as canceled, and WebKit's report of it never arrives here.
+        var reason = string.Empty;
         if (!isCancelled)
         {
+            reason = _localizerService.GetString("Downloads_TransferFailed");
             _logger.LogWarning($"A download failed: {description}");
         }
 
         if (transfer.DownloadId == 0)
         {
             // The service is still reserving the destination, and settles the row once it has.
+            transfer.IsCanceled = isCancelled;
             transfer.FailureReason = reason;
+            return;
+        }
+
+        if (isCancelled)
+        {
+            _ = RecordCancellationAsync(transfer.DownloadId);
             return;
         }
 
@@ -241,7 +247,11 @@ internal sealed class MacOSWebViewDownloadRouter : IMacOSDownloadListener
             // WebKit gave up on the download, or it was stopped, while its destination was being reserved.
             MacOSWebViewInterop.ProvideDownloadDestination(transfer.Download, null);
 
-            if (!string.IsNullOrEmpty(transfer.FailureReason))
+            if (transfer.IsCanceled)
+            {
+                _ = RecordCancellationAsync(ticket.Id);
+            }
+            else if (!string.IsNullOrEmpty(transfer.FailureReason))
             {
                 _ = FailAsync(ticket.Id, transfer.FailureReason);
             }
@@ -274,6 +284,18 @@ internal sealed class MacOSWebViewDownloadRouter : IMacOSDownloadListener
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to record a failed download");
+        }
+    }
+
+    private async Task RecordCancellationAsync(long downloadId)
+    {
+        try
+        {
+            await _downloadService.ReportCanceledAsync(downloadId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to record a canceled download");
         }
     }
 
@@ -400,7 +422,9 @@ internal sealed class MacOSWebViewDownloadRouter : IMacOSDownloadListener
         // Set once the download has ended or been stopped, after which WebKit is not asked about it again.
         public bool IsSettled { get; set; }
 
-        // Why WebKit ended the download while its destination was still being reserved.
+        // How WebKit ended the download while its destination was still being reserved: stopped, or failed for
+        // the reason given.
+        public bool IsCanceled { get; set; }
         public string FailureReason { get; set; } = string.Empty;
 
         public void Cancel()

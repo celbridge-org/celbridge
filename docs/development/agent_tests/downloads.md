@@ -7,7 +7,8 @@ downloaded. Read the [README](README.md) for the invariants, evidence rules and 
 ## Surfaces
 
 The pages a download starts from: an HTML document, a `.webview` document and a package utility. The
-download badge, its count, and the list it opens: each row, a running row's cancel button, and Clear All.
+download badge, its count, and the list it opens: each row, a running row's cancel button, a finished row's
+remove button, and Clear All.
 
 ## Cases
 
@@ -19,8 +20,10 @@ download badge, its count, and the list it opens: each row, a running row's canc
 | A `.webview` document on a page with a plain link to a response marked as an attachment, which the server holds back | click the link, then read the address bar before the response arrives and again once the file has landed | the file lands in `downloads/`, the page stays on screen with the address bar naming it both times, and the log records no navigation failure | 2 |
 | One completed download | click its row in the list | the list closes and the Explorer shows the file selected | 2 |
 | A file already downloaded once | download it again, slowly enough to see it running | a second row and a second file named `<name> (1).<ext>`, which its row shows while it is still running | 2 |
-| A download still running, the list open | click its cancel button | the list stays open, the row says the transfer was canceled and gives no size, the badge turns to the error colour, and nothing is left in `downloads/` or the staging folder | 2 |
+| A download still running, the list open | click its cancel button | the list stays open, the row says the transfer was canceled and gives no size, neither the row nor the badge shows it as a failure, the badge's count no longer includes it, and nothing is left in `downloads/` or the staging folder | 2 |
 | Several finished downloads and one still running | click Clear All | the finished rows go and the running row stays, and their files stay in `downloads/`; once the last download lands, a second Clear All empties the list and the badge goes | 2 |
+| Finished downloads, one of which failed, the list open | click the failed row's remove button, then each remaining row's | the failed row leaves the list and the others stay, the count drops and the badge loses the error color, and removing the last row closes the list and the badge goes, with every downloaded file still in `downloads/` | 2 |
+| A download running when the server drops the connection | let it fail, then wait for the badge to settle | one row, however often the platform retries first, says the transfer did not complete, the badge stops spinning, and nothing is left in `downloads/` or the staging folder | 2 |
 | A download of several hundred megabytes, made after an undoable change in the Explorer such as a new folder | download it, then undo in the Explorer | the application answers input throughout, the file carries the platform's mark of the web, and undo reverts the earlier change and leaves the file where it landed | 2 |
 | A `.webview` document on a page with a `download` link | click the link | the file lands in `downloads/`, as it does from an HTML document | 3 |
 | An HTML document offering a file the page builds itself, and a `download` link that asks for a new window | click each | both land in `downloads/`, and no browser opens | 3 |
@@ -28,8 +31,8 @@ download badge, its count, and the list it opens: each row, a running row's canc
 | A completed download | delete its file in the Explorer | its row leaves the list and the count drops, and the badge goes with the last row | 3 |
 | Two downloads of the same file started together | start both | two files under distinct names, neither overwritten | 3 |
 | A download running from a `.webview` document | close the document's tab | the download carries on and lands | 3 |
-| A download running when the server drops the connection | let it fail | the row says the transfer did not complete, and nothing is left in `downloads/` or the staging folder | 3 |
 | The list open with the keyboard on a running row's cancel button | let that download finish | the list stays open, and the keyboard stays on that row, which now finds the file | 3 |
+| The list open with the keyboard on a running row's cancel button | press Space, then Space again | the first press leaves the row saying the transfer was canceled with the keyboard on its remove button, and the second takes the row off the list | 3 |
 | A downloads folder Celbridge reserves, such as `.git`, typed into Project Settings | download a file | the field says the folder is reserved and the project file gains no key, and the file lands in `downloads/` | 3 |
 | A downloads folder set in Project Settings to a folder the project does not have yet | reload the project, then download a file | the badge is absent after the reload while earlier downloads' files remain, and the new file lands in the named folder, which the download creates | 3 |
 | A page with a link and an image | use the context menu's download or save items on each | on Windows, Save As writes where its picker names and adds no row; on macOS, Download Linked File and Download Image land in `downloads/` | 3 |
@@ -70,6 +73,7 @@ results: the title bar, and the application's own list drawn over a hosted page.
 
 - With the badge absent, download one file: the badge should flash **once** as the download lands.
 - Click two download links in quick succession: **one** flash for the pair, not one per file.
+- Cancel a running download: **no** flash, since nothing arrived.
 - Clear All with only finished downloads listed: the list should close first and the badge go after it,
   rather than the badge vanishing out from under an open list.
 - Packaged Windows head: click the badge while it shows the progress ring, with a count of one, and with a
@@ -100,3 +104,10 @@ application must still answer input.
 
 On Windows, keep a file of the same name in the operating system's Downloads folder for the repeat-download
 case, since that is what made WebView2 suggest a numbered name of its own.
+
+On Windows, WebView2 retries a download whose connection dropped several times before it gives up, and
+announces each retry as a new download, so the dropped-connection case's row runs for a few seconds before
+it fails. A row per retry, or rows left running for ever with the badge spinning, is the defect that case
+is there to catch. WebKit has not been seen to retry, so on macOS the row is expected to fail as soon as
+the connection drops. A macOS run should record which it saw, since a row that runs there too means WebKit
+retries as well, and the same defect is worth looking for.

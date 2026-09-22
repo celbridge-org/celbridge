@@ -418,6 +418,9 @@ This file could not be saved</value>
   <data name="Downloads_Cancel" xml:space="preserve">
     <value>Cancel Download</value>
   </data>
+  <data name="Downloads_Remove" xml:space="preserve">
+    <value>Remove From List</value>
+  </data>
   <data name="Downloads_Progress" xml:space="preserve">
     <value>{0} of {1}</value>
   </data>
@@ -462,6 +465,12 @@ This file could not be saved</value>
   </data>
   <data name="Downloads_Summary_Failed_Many" xml:space="preserve">
     <value>{0} downloads failed.</value>
+  </data>
+  <data name="Downloads_Summary_Canceled_One" xml:space="preserve">
+    <value>1 download canceled.</value>
+  </data>
+  <data name="Downloads_Summary_Canceled_Many" xml:space="preserve">
+    <value>{0} downloads canceled.</value>
   </data>
   <data name="Downloads_Time_JustNow" xml:space="preserve">
     <value>Just now</value>
