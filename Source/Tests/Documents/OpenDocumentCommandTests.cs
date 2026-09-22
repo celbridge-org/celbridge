@@ -16,6 +16,7 @@ namespace Celbridge.Tests.Documents;
 public class OpenDocumentCommandTests
 {
     private IDocumentsService _documentsService = null!;
+    private IDocumentsPanel _documentsPanel = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
     private IStringLocalizer _stringLocalizer = null!;
     private IDialogService _dialogService = null!;
@@ -33,8 +34,11 @@ public class OpenDocumentCommandTests
             .OpenDocument(Arg.Any<ResourceKey>(), Arg.Any<OpenDocumentOptions?>())
             .Returns(Result<OpenDocumentOutcome>.Ok(OpenDocumentOutcome.Opened));
 
+        _documentsPanel = Substitute.For<IDocumentsPanel>();
+
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.DocumentsService.Returns(_documentsService);
+        workspaceService.DocumentsPanel.Returns(_documentsPanel);
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
@@ -223,5 +227,79 @@ public class OpenDocumentCommandTests
         await command.ExecuteAsync();
 
         _layoutService.DidNotReceiveWithAnyArgs().SetAreaVisibility(default, default);
+    }
+
+    [Test]
+    public async Task ExecuteAsync_BackgroundOpenIntoASectionShowingNothing_SelectsTheDocument()
+    {
+        var resource = new ResourceKey("pages/index.html");
+        OpenInSection(resource, DocumentSection.MainLeft);
+        _documentsPanel.GetSelectedDocument(DocumentSection.MainLeft).Returns(ResourceKey.Empty);
+
+        var command = CreateCommand();
+        command.FileResource = resource;
+        command.Activate = false;
+
+        await command.ExecuteAsync();
+
+        _documentsPanel.Received(1).SetSelectedDocument(DocumentSection.MainLeft, resource);
+    }
+
+    [Test]
+    public async Task ExecuteAsync_BackgroundOpenIntoASectionShowingADocument_LeavesTheSelection()
+    {
+        var resource = new ResourceKey("pages/index.html");
+        OpenInSection(resource, DocumentSection.MainLeft);
+        _documentsPanel.GetSelectedDocument(DocumentSection.MainLeft).Returns(new ResourceKey("notes/readme.md"));
+
+        var command = CreateCommand();
+        command.FileResource = resource;
+        command.Activate = false;
+
+        await command.ExecuteAsync();
+
+        _documentsPanel.DidNotReceiveWithAnyArgs().SetSelectedDocument(default, default);
+    }
+
+    [Test]
+    public async Task ExecuteAsync_BackgroundOpenThatLandsInAnotherSection_SelectsTheDocumentThere()
+    {
+        // Naming the secondary section of an empty area folds the split back into the primary section.
+        var resource = new ResourceKey("pages/index.html");
+        OpenInSection(resource, DocumentSection.MainLeft);
+        _documentsPanel.GetSelectedDocument(DocumentSection.MainLeft).Returns(ResourceKey.Empty);
+
+        var command = CreateCommand();
+        command.FileResource = resource;
+        command.TargetSection = DocumentSection.MainRight;
+        command.Activate = false;
+
+        await command.ExecuteAsync();
+
+        _documentsPanel.Received(1).SetSelectedDocument(DocumentSection.MainLeft, resource);
+    }
+
+    [Test]
+    public async Task ExecuteAsync_ActivatingOpen_LeavesTheSelectionToTheOpenItself()
+    {
+        var resource = new ResourceKey("pages/index.html");
+        OpenInSection(resource, DocumentSection.MainLeft);
+        _documentsPanel.GetSelectedDocument(DocumentSection.MainLeft).Returns(ResourceKey.Empty);
+
+        var command = CreateCommand();
+        command.FileResource = resource;
+        command.Activate = true;
+
+        await command.ExecuteAsync();
+
+        _documentsPanel.DidNotReceiveWithAnyArgs().SetSelectedDocument(default, default);
+    }
+
+    private void OpenInSection(ResourceKey resource, DocumentSection section)
+    {
+        var address = new DocumentAddress(WindowIndex: 0, Section: section, TabOrder: 0);
+        var openDocument = new OpenDocumentInfo(resource, address, EditorId.Empty);
+
+        _documentsService.FindOpenDocument(resource).Returns(openDocument);
     }
 }
