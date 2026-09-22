@@ -347,26 +347,57 @@ Report text is resolved by you and written into the file, exactly as notificatio
 
 ## Edit verbs (optional)
 
-The macOS Edit menu and the in-window menu route the standard verbs (copy, cut, paste, selectAll, undo, redo) to the focused editor. Wire two things to participate; skip both and the menu greys out for your editor and the shortcut falls through to your own key handling unchanged.
+The menus and the macOS Command shortcuts route the standard verbs to the focused editor, acting on what it last reported with `client.input.notifyEditAvailability`. Report again whenever the selection or the focused element changes. Omitted flags are false, and an editor that reports nothing leaves every verb to the platform.
+
+| Flag | Effect |
+|---|---|
+| `canSelectAll`, `canUndo`, `canRedo` | The host sends the verb to `input/performEdit` as `{ command }`. |
+| `canCopy`, `canCut`, `canPaste` | The host performs the verb itself, through `editor/getSelectedText` and `editor/insertText`. Report these only with `hostMediatedClipboard`. |
+| `hostMediatedClipboard` | A clipboard verb reported false is unavailable rather than left to the platform. |
+| `canIndent` | Tab and Shift+Tab arrive at `input/performEdit` as `indent` and `outdent`. |
+| `canHandleTab` | Tab arrives as `input/tabKey` with `{ shift }`. With neither Tab flag, Tab moves natively between the page's own fields. |
+| `canFind` | The host's Find menu item sends `input/beginFind`. Without it the host offers no find for the document. |
 
 ```javascript
-// Run your editor's OWN command — never reimplement it. The outcome must equal the user
-// pressing the shortcut while focused in the editor.
-client.onNotification('input/editIntent', ({ intent }) => {
-    runMyEditorCommand(intent); // intent: 'copy' | 'cut' | 'paste' | 'selectAll' | 'undo' | 'redo'
-});
-
-// Report what you can do whenever the selection changes, so the menu enables Copy/Cut only when
-// there is a selection. Paste/selectAll/undo/redo are normally always offered.
-function reportCapabilities() {
-    client.input.notifyCapabilities({
-        canCopy: hasSelection, canCut: hasSelection,
-        canPaste: true, canSelectAll: true, canUndo: true, canRedo: true
+function reportEditAvailability() {
+    client.input.notifyEditAvailability({
+        canCopy: hasSelection, canCut: hasSelection && writable, canPaste: writable,
+        canSelectAll: true, canUndo: writable, canRedo: writable,
+        hostMediatedClipboard: true
     });
 }
+
+// Run the editor's own command, never a reimplementation. The result must match the keystroke.
+client.onNotification('input/performEdit', (params) => runEditorCommand(params?.command));
+
+// The host fetches the selection as plain text for copy and cut, and pushes text in for paste.
+// Empty text is a cut's clear step, so delete what the last getSelectedText returned.
+client.onRequest('editor/getSelectedText', () => getSelectedText());
+client.onNotification('editor/insertText', (params) => insertText(params?.text ?? ''));
 ```
 
-Precedent: `Source/Modules/Celbridge.DocumentEditors/Editors/CodeEditor/js/editor-controller.js` (`runEditIntent` + `#notifyEditCapabilities`).
+- **Rich text keeps the platform clipboard.** The host's clipboard is plain text, so an editor whose copy carries formatting reports none of the clipboard flags and leaves those verbs to the platform. Notes does this.
+- **An editor's own menu goes through the host.** A context menu or toolbar calls `client.input.requestEdit(verb)` for a verb it cannot run itself, typically a clipboard verb, because the WebView cannot reach the clipboard on every head. The host performs it exactly as the menu bar does.
+- **Claim nothing but `canFind` while one of the page's own text fields has the keyboard**, such as a find box or a settings form, so a verb edits that field rather than the document. Claim a Tab flag only while your editing surface has the keyboard.
+
+Precedents in `Source/Modules/`: the code editor (`Celbridge.DocumentEditors/Editors/CodeEditor/js/main.js` and `EditorController.performEdit`), Notes (`Celbridge.DocumentEditors/Editors/Notes/js/note.js`, platform clipboard) and the spreadsheet (`Celbridge.Spreadsheet/Package/spreadsheet.js`, `canHandleTab`, and a ribbon routed through `requestEdit`).
+
+## Keyboard focus
+
+When the host gives your surface the keyboard, on a tab click or an open for example, it moves platform focus to the surface and sends `input/grantFocus`. Platform focus alone does not focus any element inside the page. The client answers the grant by refocusing the element its last `input/releaseFocus` blurred, if nothing else has taken focus since, and does nothing more. A page that never held the keyboard, freshly opened or restored at project load, has nothing to restore, so typing reaches nothing until the user clicks.
+
+To take the keyboard on first open, handle the grant yourself and focus your editor when nothing else holds focus. The client's listener runs first, so an element it restores keeps precedence.
+
+```javascript
+client.onNotification('input/grantFocus', () => {
+    if (editorIsHidden) return; // typing would edit content the user cannot see
+    const active = document.activeElement;
+    if (active && active !== document.body) return;
+    editor.focus();
+});
+```
+
+A grant can arrive before the page can act on it, so the host sends it again once the page reports content loaded, if the surface still holds the keyboard. Register the handler before calling `initializeDocument`, which reports content loaded as it finishes. Precedent: `EditorController.focusIfVacant` in `Source/Modules/Celbridge.DocumentEditors/Editors/CodeEditor/js/editor-controller.js`.
 
 ## Writability rides `cel.viewState`
 
