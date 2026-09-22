@@ -200,9 +200,11 @@ public interface IWebViewAdapter
     IDisposable GateNavigations(CoreWebView2 coreWebView2, NavigationGate gate);
 
     /// <summary>
-    /// Whether the user started the new window a page asked for, as by following a link. Uno implements no
-    /// IsUserInitiated for a new window on the Skia heads, so there every new window counts as one the page
-    /// opened by itself.
+    /// Whether the user started the new window a page asked for, as by following a link. Ask from inside the
+    /// NewWindowRequested handler. Uno implements no IsUserInitiated for a new window on the Skia heads, so
+    /// the macOS head reads the gesture from WebKit's request for the window, which it knows only while the
+    /// handler runs, and the Windows and Linux Skia heads count every new window as one the page opened by
+    /// itself.
     /// </summary>
     bool IsUserInitiated(CoreWebView2NewWindowRequestedEventArgs args);
 

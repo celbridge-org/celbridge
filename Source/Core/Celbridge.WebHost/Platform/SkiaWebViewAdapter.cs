@@ -823,10 +823,16 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     }
 
     // UNO-BUG: CoreWebView2NewWindowRequestedEventArgs.IsUserInitiated throws NotImplementedException on the
-    // Skia heads, from inside Uno's native new-window callback, where an exception ends the process.
+    // Skia heads, from inside Uno's native new-window callback, where an exception ends the process. macOS
+    // reads the gesture from WebKit's own request for the window, and the other Skia heads have none to read.
     public bool IsUserInitiated(CoreWebView2NewWindowRequestedEventArgs args)
     {
-        return false;
+        if (!OperatingSystem.IsMacOS())
+        {
+            return false;
+        }
+
+        return MacOSWebViewInterop.IsUserInitiatedWindowRequest(args.Uri);
     }
 
     private string ResolveSafariVersion()

@@ -195,6 +195,7 @@ public static partial class MacOSWebViewInterop
             // second time, which would make each hook the implementation it falls back to.
             _hookedDelegateClass = delegateClass;
             InstallDownloadHooks(delegateClass);
+            InstallNewWindowHook(delegateClass);
         }
 
         SendMessageVoid(webView, GetSelector("setNavigationDelegate:"), navigationDelegate);
