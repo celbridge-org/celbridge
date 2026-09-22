@@ -822,6 +822,56 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         return registration;
     }
 
+    public IDisposable ObserveNavigationCommits(CoreWebView2 coreWebView2, NavigationCommitted onCommitted)
+    {
+        // On the Windows Skia head, Uno passes on WebView2's Source, which changes as a navigation commits. On
+        // macOS it changes Source only once a page has finished loading, or for a fragment link, so WebKit's
+        // own commit reports a new page as it arrives.
+        var sourceObserver = new SourceChangedObserver(coreWebView2, onCommitted);
+        if (!OperatingSystem.IsMacOS())
+        {
+            return sourceObserver;
+        }
+
+        if (!MacOSWebViewInterop.TryGetNativeWebViewHandle(coreWebView2, out var webView, out var detail))
+        {
+            _logger.LogWarning("A page's navigations are reported only once it has finished loading: its native view could not be resolved ({Detail})", detail);
+            return sourceObserver;
+        }
+
+        var commitRegistration = MacOSWebViewInterop.ObserveNavigationCommits(
+            webView,
+            url => ReportNavigationCommit(onCommitted, url),
+            out var commitDetail);
+        if (commitRegistration is null)
+        {
+            _logger.LogWarning("A page's navigations are reported only once it has finished loading: {Detail}", commitDetail);
+            return sourceObserver;
+        }
+
+        return new CombinedRegistration(sourceObserver, commitRegistration);
+    }
+
+    // Reports WebKit's address in the form Uno gives Source, so a commit and the finished load that follows it
+    // name the page alike. Runs inside WebKit's commit callback, so a failing handler is contained here.
+    private void ReportNavigationCommit(NavigationCommitted onCommitted, string url)
+    {
+        var committedUrl = url;
+        if (Uri.TryCreate(url, UriKind.Absolute, out var uri))
+        {
+            committedUrl = uri.ToString();
+        }
+
+        try
+        {
+            onCommitted(committedUrl);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to report a navigation commit");
+        }
+    }
+
     // UNO-BUG: CoreWebView2NewWindowRequestedEventArgs.IsUserInitiated throws NotImplementedException on the
     // Skia heads, from inside Uno's native new-window callback, where an exception ends the process. macOS
     // reads the gesture from WebKit's own request for the window, and the other Skia heads have none to read.
@@ -1008,5 +1058,24 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         _initHost = host;
 
         return host;
+    }
+
+    // Two registrations a surface holds as one, disposed together.
+    private sealed class CombinedRegistration : IDisposable
+    {
+        private readonly IDisposable _first;
+        private readonly IDisposable _second;
+
+        public CombinedRegistration(IDisposable first, IDisposable second)
+        {
+            _first = first;
+            _second = second;
+        }
+
+        public void Dispose()
+        {
+            _first.Dispose();
+            _second.Dispose();
+        }
     }
 }

@@ -195,6 +195,11 @@ public sealed class WindowsWebViewAdapter : IWebViewAdapter
         return UngatedNavigations.Instance;
     }
 
+    public IDisposable ObserveNavigationCommits(CoreWebView2 coreWebView2, NavigationCommitted onCommitted)
+    {
+        return new SourceChangedObserver(coreWebView2, onCommitted);
+    }
+
     public bool IsUserInitiated(CoreWebView2NewWindowRequestedEventArgs args)
     {
         return args.IsUserInitiated;

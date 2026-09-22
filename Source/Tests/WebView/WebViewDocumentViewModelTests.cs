@@ -707,10 +707,105 @@ public class WebViewDocumentViewModelTests
         viewModel.Role = WebViewDocumentRole.ExternalUrl;
         viewModel.CurrentUrl = "https://example.com/";
 
-        viewModel.NotifyNavigationStarted();
+        viewModel.NotifyNavigationStarted("https://example.com/missing");
         viewModel.NotifyNavigationCompleted(NavigationOutcome.Failed);
 
         viewModel.IsPageOnScreen.Should().BeFalse();
+    }
+
+    [Test]
+    public void ALinkThatDownloads_WhenTheNavigationEndsFirst_NeverMovesTheAddress()
+    {
+        // Chromium ends the navigation it turned into a download before announcing the download.
+        var viewModel = CreateViewModelShowingPage("https://example.com/");
+        var addresses = RecordAddresses(viewModel);
+
+        viewModel.NotifyNavigationStarted("https://example.com/file.zip");
+        viewModel.NotifyNavigationCompleted(NavigationOutcome.Aborted);
+        viewModel.NotifyDownloadStarted();
+
+        addresses.Should().BeEmpty();
+        viewModel.IsPageOnScreen.Should().BeTrue();
+    }
+
+    [Test]
+    public void ALinkThatDownloads_WhenTheDownloadIsAnnouncedFirst_NeverMovesTheAddress()
+    {
+        // WebKit announces the download before it ends the navigation the download replaced.
+        var viewModel = CreateViewModelShowingPage("https://example.com/");
+        var addresses = RecordAddresses(viewModel);
+
+        viewModel.NotifyNavigationStarted("https://example.com/file.zip");
+        viewModel.NotifyDownloadStarted();
+        viewModel.NotifyNavigationCompleted(NavigationOutcome.Aborted);
+
+        addresses.Should().BeEmpty();
+        viewModel.IsPageOnScreen.Should().BeTrue();
+    }
+
+    [Test]
+    public void ALinkToAnotherPage_MovesTheAddressOnceThePageCommits()
+    {
+        var viewModel = CreateViewModelShowingPage("https://example.com/");
+
+        viewModel.NotifyNavigationStarted("https://example.com/next");
+
+        viewModel.CurrentUrl.Should().Be("https://example.com/");
+
+        viewModel.NotifyNavigationCommitted("https://example.com/next");
+        viewModel.NotifyNavigationCompleted(NavigationOutcome.Loaded);
+
+        viewModel.CurrentUrl.Should().Be("https://example.com/next");
+    }
+
+    [Test]
+    public void AnAddressTheUserChose_ShowsAtOnce_AndGivesWayToTheDownloadItBecomes()
+    {
+        var viewModel = CreateViewModelShowingPage("https://example.com/");
+
+        viewModel.NotifyUserNavigation("https://example.com/file.zip");
+
+        viewModel.CurrentUrl.Should().Be("https://example.com/file.zip");
+
+        viewModel.NotifyNavigationStarted("https://example.com/file.zip");
+        viewModel.NotifyDownloadStarted();
+        viewModel.NotifyNavigationCompleted(NavigationOutcome.Aborted);
+
+        viewModel.CurrentUrl.Should().Be("https://example.com/");
+    }
+
+    [Test]
+    public void AFailedNavigation_NamesTheAddressThatFailed_UntilTheNextOneStarts()
+    {
+        var viewModel = CreateViewModelShowingPage("https://example.com/");
+
+        viewModel.NotifyNavigationStarted("https://unreachable.example/");
+        viewModel.NotifyNavigationCompleted(NavigationOutcome.Failed);
+
+        viewModel.CurrentUrl.Should().Be("https://unreachable.example/");
+        viewModel.IsLoadFailedVisible.Should().BeTrue();
+
+        // The next navigation uncovers the page the document is still on, which the bar names again.
+        viewModel.NotifyNavigationStarted("https://example.com/");
+
+        viewModel.CurrentUrl.Should().Be("https://example.com/");
+        viewModel.IsPageOnScreen.Should().BeTrue();
+    }
+
+    [Test]
+    public void APageFoundEmptyAfterItLoaded_KeepsItsAddress()
+    {
+        // The loaded page is probed after its navigation has completed, and reported as a failed load when
+        // it turns out to be empty.
+        var viewModel = CreateViewModelShowingPage("https://example.com/");
+
+        viewModel.NotifyNavigationStarted("https://example.com/empty");
+        viewModel.NotifyNavigationCommitted("https://example.com/empty");
+        viewModel.NotifyNavigationCompleted(NavigationOutcome.Loaded);
+        viewModel.NotifyNavigationCompleted(NavigationOutcome.Failed);
+
+        viewModel.CurrentUrl.Should().Be("https://example.com/empty");
+        viewModel.IsLoadFailedVisible.Should().BeTrue();
     }
 
     [Test]
@@ -912,6 +1007,32 @@ public class WebViewDocumentViewModelTests
         {
             FileResource = new ResourceKey("test.webview"),
         };
+    }
+
+    // A .webview document showing the page at the address, which has committed.
+    private WebViewDocumentViewModel CreateViewModelShowingPage(string url)
+    {
+        var viewModel = CreateViewModel();
+        viewModel.Role = WebViewDocumentRole.ExternalUrl;
+        viewModel.NotifyNavigationCommitted(url);
+
+        return viewModel;
+    }
+
+    // Each address the view model gives the address bar from now on, in order.
+    private static List<string> RecordAddresses(WebViewDocumentViewModel viewModel)
+    {
+        var addresses = new List<string>();
+
+        viewModel.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(WebViewDocumentViewModel.CurrentUrl))
+            {
+                addresses.Add(viewModel.CurrentUrl);
+            }
+        };
+
+        return addresses;
     }
 
     private WebViewDocumentViewModel CreateHtmlViewer()

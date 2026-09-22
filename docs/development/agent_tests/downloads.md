@@ -14,9 +14,9 @@ download badge, its count, and the list it opens: each row, a running row's canc
 | Situation | Action | Expected | Level |
 |---|---|---|---|
 | An HTML document with a `download` link to another project file, and nothing downloaded yet this session | click the link | the badge, absent until now, appears, and the file lands in `downloads/` identical to the one linked | 1 |
-| A `.webview` document on a page with a `target="_blank"` link to a response marked as an attachment | click the link | the file lands in `downloads/`, no system browser opens, and the document still shows the page the link was on | 1 |
+| A `.webview` document on a page with a `target="_blank"` link to a response marked as an attachment, which the server holds back | click the link, then read the address bar before the response arrives and again once the file has landed | the file lands in `downloads/`, no system browser opens, and the document still shows the page the link was on, with the address bar naming it both times | 1 |
 | A package utility whose page offers a file through a `download` link | click the link | the file lands in `downloads/`, and nothing new appears in the operating system's Downloads folder | 2 |
-| A `.webview` document on a page with a plain link to a response marked as an attachment | click the link | the file lands in `downloads/`, the page stays on screen with the address bar still naming it, and the log records no navigation failure | 2 |
+| A `.webview` document on a page with a plain link to a response marked as an attachment, which the server holds back | click the link, then read the address bar before the response arrives and again once the file has landed | the file lands in `downloads/`, the page stays on screen with the address bar naming it both times, and the log records no navigation failure | 2 |
 | One completed download | click its row in the list | the list closes and the Explorer shows the file selected | 2 |
 | A file already downloaded once | download it again, slowly enough to see it running | a second row and a second file named `<name> (1).<ext>`, which its row shows while it is still running | 2 |
 | A download still running, the list open | click its cancel button | the list stays open, the row says the transfer was canceled and gives no size, the badge turns to the error colour, and nothing is left in `downloads/` or the staging folder | 2 |
@@ -45,11 +45,14 @@ An HTML document is served by the application itself, so its links are real down
 nothing leaving the machine. The application's server marks nothing as an attachment, though, and a
 `.webview` takes an http or https address only, so serve the same folder from a small server of your own on
 a loopback port and point the `.webview` there. That server supplies what the application's cannot: a
-response marked as an attachment, one slow enough to act on while it runs, one that drops the connection
-part way through, and one of several hundred megabytes. Give the attachment a type the page could display,
-such as plain text, so that only the marking makes it a download. Start the two downloads that run
-together from separate frames rather than with two clicks in one script, since WebKit cancels all but the
-last of several downloads a script starts at once.
+response marked as an attachment, one it holds back for about ten seconds before sending its headers, one
+slow enough to act on while it runs, one that drops the connection part way through, and one of several
+hundred megabytes. Holding the headers back keeps the link's navigation in flight, since nothing can tell
+it is a download until they arrive, and that is what gives the address bar time to be read before the
+download starts. Give the attachment a type the page could display, such as plain text, so that only the
+marking makes it a download. Start the two downloads that run together from separate frames rather than
+with two clicks in one script, since WebKit cancels all but the last of several downloads a script starts
+at once.
 
 The utility is a package in the project's `packages/` folder whose page offers the file (the agent guide
 `utility_documents` describes the manifest). Packages are found when the project loads, so add it before

@@ -200,6 +200,15 @@ public interface IWebViewAdapter
     IDisposable GateNavigations(CoreWebView2 coreWebView2, NavigationGate gate);
 
     /// <summary>
+    /// Reports each address the page commits to, from the moment the new page takes the place of the old
+    /// one. The Windows heads report WebView2's Source, which changes as a navigation commits. Uno changes
+    /// Source on the macOS Skia head only once a page has finished loading, so there WebKit's own commit
+    /// reports a new page. The caller keeps the returned registration and disposes it when the surface is
+    /// torn down.
+    /// </summary>
+    IDisposable ObserveNavigationCommits(CoreWebView2 coreWebView2, NavigationCommitted onCommitted);
+
+    /// <summary>
     /// Whether the user started the new window a page asked for, as by following a link. Ask from inside the
     /// NewWindowRequested handler. Uno implements no IsUserInitiated for a new window on the Skia heads, so
     /// the macOS head reads the gesture from WebKit's request for the window, which it knows only while the
