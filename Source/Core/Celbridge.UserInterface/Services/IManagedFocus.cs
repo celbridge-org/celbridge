@@ -45,5 +45,5 @@ public interface IManagedFocus
     /// control. A no-op on heads where hosted web views participate in managed focus, and when managed
     /// focus has already been given up.
     /// </summary>
-    void Yield();
+    void YieldFocus();
 }

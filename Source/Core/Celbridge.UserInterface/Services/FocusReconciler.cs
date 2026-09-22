@@ -45,7 +45,7 @@ public class FocusReconciler : IFocusReconciler
         {
             // Managed focus first: applying managed focus resigns the native first responder, so yielding
             // after the native step would undo the focus it establishes.
-            _managedFocus.Yield();
+            _managedFocus.YieldFocus();
         }
 
         if (desiredFocus.FocusWebSurface)

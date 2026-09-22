@@ -59,7 +59,7 @@ public class ManagedFocus : IManagedFocus
         return new NotedFocus(this, FocusedElement);
     }
 
-    public void Yield()
+    public void YieldFocus()
     {
         // Yielding only means something where a web surface's native focus leaves managed focus behind. On
         // the other heads focusing the web view is itself a managed focus change, so there is nothing to
