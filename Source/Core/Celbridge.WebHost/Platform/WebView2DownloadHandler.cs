@@ -3,7 +3,7 @@ using Celbridge.Localization;
 using Celbridge.Logging;
 using Microsoft.Web.WebView2.Core;
 
-namespace Celbridge.WebHost.Services;
+namespace Celbridge.WebHost.Platform;
 
 /// <summary>
 /// One WebView2 download, as the download service sees it. The service holds this for as long as the
@@ -11,11 +11,11 @@ namespace Celbridge.WebHost.Services;
 /// download operation whose wrapper has been collected, and an event subscription holds the handler
 /// rather than the operation, so nothing else roots it.
 /// </summary>
-internal sealed class WebViewDownloadTransfer : IDownloadTransfer
+internal sealed class WebView2DownloadTransfer : IDownloadTransfer
 {
     private readonly CoreWebView2DownloadOperation _downloadOperation;
 
-    public WebViewDownloadTransfer(CoreWebView2DownloadOperation downloadOperation)
+    public WebView2DownloadTransfer(CoreWebView2DownloadOperation downloadOperation)
     {
         _downloadOperation = downloadOperation;
     }
@@ -27,26 +27,23 @@ internal sealed class WebViewDownloadTransfer : IDownloadTransfer
 }
 
 /// <summary>
-/// Drives the download service from a hosted WebView2, so every web surface downloads the same way. The
-/// service decides where a download goes; this relays the events and reports the outcome.
+/// Drives the download service from WebView2's DownloadStarting, so every web surface downloads the same
+/// way. The service decides where a download goes, and this relays the events and reports the outcome.
+/// Chromium ends a navigation it turns into a download before it raises DownloadStarting, so
+/// DownloadStarted follows that navigation's end, and it is raised for every download.
 /// </summary>
-public sealed class WebViewDownloadHandler
+internal sealed class WebView2DownloadHandler : IWebViewDownloadHandler
 {
-    private readonly ILogger<WebViewDownloadHandler> _logger;
+    private readonly ILogger<WebView2DownloadHandler> _logger;
     private readonly ILocalizerService _localizerService;
     private readonly IDownloadService _downloadService;
     private readonly CoreWebView2 _coreWebView2;
 
-    /// <summary>
-    /// Raised when a download starts. A navigation whose response turned out to be an attachment becomes
-    /// a download and is then reported as cancelled, so a surface that navigates needs to tell that apart
-    /// from a page that failed to load.
-    /// </summary>
     public event EventHandler? DownloadStarted;
 
-    private WebViewDownloadHandler(CoreWebView2 coreWebView2)
+    private WebView2DownloadHandler(CoreWebView2 coreWebView2)
     {
-        _logger = ServiceLocator.AcquireService<ILogger<WebViewDownloadHandler>>();
+        _logger = ServiceLocator.AcquireService<ILogger<WebView2DownloadHandler>>();
         _localizerService = ServiceLocator.AcquireService<ILocalizerService>();
         _downloadService = ServiceLocator.AcquireService<IDownloadService>();
 
@@ -54,22 +51,17 @@ public sealed class WebViewDownloadHandler
     }
 
     /// <summary>
-    /// Starts routing the WebView's downloads through the download service. The caller keeps the returned
-    /// handler and detaches it when the surface is torn down.
+    /// Starts routing the WebView's downloads through the download service.
     /// </summary>
-    public static WebViewDownloadHandler Attach(CoreWebView2 coreWebView2)
+    public static WebView2DownloadHandler Attach(CoreWebView2 coreWebView2)
     {
-        var handler = new WebViewDownloadHandler(coreWebView2);
+        var handler = new WebView2DownloadHandler(coreWebView2);
 
         coreWebView2.DownloadStarting += handler.OnDownloadStarting;
 
         return handler;
     }
 
-    /// <summary>
-    /// Stops routing the WebView's downloads. A transfer already running keeps reporting to the service,
-    /// since its record outlives the surface that started it.
-    /// </summary>
     public void Detach()
     {
         _coreWebView2.DownloadStarting -= OnDownloadStarting;
@@ -97,7 +89,7 @@ public sealed class WebViewDownloadHandler
             DownloadStarted?.Invoke(this, EventArgs.Empty);
 
             var downloadOperation = args.DownloadOperation;
-            var transfer = new WebViewDownloadTransfer(downloadOperation);
+            var transfer = new WebView2DownloadTransfer(downloadOperation);
 
             var fileName = WebView2SuggestedName.Resolve(
                 resultFilePath,

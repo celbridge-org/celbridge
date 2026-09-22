@@ -193,7 +193,7 @@ public class MainMenu
     private MenuFlyoutSubItem CreateEditSubItem()
     {
         var focusService = ServiceLocator.AcquireService<IFocusService>();
-        var managedFocus = ServiceLocator.AcquireService<IManagedFocus>();
+        var textControlEditing = ServiceLocator.AcquireService<ITextControlEditing>();
         var isDialogOpen = ServiceLocator.AcquireService<IDialogService>().IsDialogOpen;
         var shortcutHintService = ServiceLocator.AcquireService<IShortcutHintService>();
 
@@ -205,7 +205,7 @@ public class MainMenu
         void AddEditItem(string labelKey, EditIntent intent)
         {
             // There is no responder chain here, so a verb the router leaves to the platform has no owner.
-            var routing = EditVerbRouter.Resolve(intent, focusService, managedFocus, isDialogOpen);
+            var routing = EditVerbRouter.Resolve(intent, focusService, textControlEditing, isDialogOpen);
             var isEnabled = routing is EditRouting.Surface or EditRouting.TextControl;
 
             var editItem = new MenuFlyoutItem
@@ -373,11 +373,11 @@ public class MainMenu
     private void PerformEdit(EditIntent intent)
     {
         var focusService = ServiceLocator.AcquireService<IFocusService>();
-        var managedFocus = ServiceLocator.AcquireService<IManagedFocus>();
+        var textControlEditing = ServiceLocator.AcquireService<ITextControlEditing>();
         var commandService = ServiceLocator.AcquireService<ICommandService>();
         var isDialogOpen = ServiceLocator.AcquireService<IDialogService>().IsDialogOpen;
 
-        EditVerbRouter.Perform(intent, focusService, managedFocus, commandService, isDialogOpen);
+        EditVerbRouter.Perform(intent, focusService, textControlEditing, commandService, isDialogOpen);
     }
 
     private async void OpenRecentProject(string projectFilePath)

@@ -31,6 +31,7 @@ public static class ServiceConfiguration
         services.AddSingleton<IUserInterfaceService, UserInterfaceService>();
         services.AddSingleton<ILanguageService, LanguageService>();
         services.AddSingleton<IManagedFocus, ManagedFocus>();
+        services.AddSingleton<ITextControlEditing, TextControlEditing>();
         services.AddSingleton<IOverlayFlyoutSupport, OverlayFlyoutSupport>();
         services.AddSingleton<IHostWindowFocus, HostWindowFocus>();
         services.AddSingleton<IFocusReconciler, FocusReconciler>();

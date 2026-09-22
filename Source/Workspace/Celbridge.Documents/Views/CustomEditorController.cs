@@ -146,7 +146,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
     // Routes the page's downloads through the download service, so a file a package editor offers lands
     // in the project rather than in the operating system's Downloads folder.
-    private WebViewDownloadHandler? _downloadHandler;
+    private IWebViewDownloadHandler? _downloadHandler;
 
     // Counted for the lifetime of the controller, so a page that has died and recovered still reports it.
     private int _processFailures;
@@ -449,7 +449,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         }
 
         _downloadHandler?.Detach();
-        _downloadHandler = WebViewDownloadHandler.Attach(WebView.CoreWebView2);
+        _downloadHandler = _webViewAdapter.AttachDownloadHandler(WebView.CoreWebView2);
 
         // Block all new window requests
         WebView.CoreWebView2.NewWindowRequested += (s, args) =>

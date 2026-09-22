@@ -223,7 +223,6 @@ public sealed partial class DownloadBadge : UserControl
         // and flicker the list, so the same rows are told the new state instead.
         if (TryUpdateRowsInPlace(downloads))
         {
-            ClearAllButton.IsEnabled = ViewModel.CanClearAll;
             return;
         }
 
@@ -278,9 +277,36 @@ public sealed partial class DownloadBadge : UserControl
             }
         }
 
+        // A download that settles hides its row's cancel button, so the keyboard on that button is noted
+        // before it goes. Focus left on a hidden button falls out of the list, which on macOS takes it to
+        // the placeholder and closes the list.
+        var settlingIds = new HashSet<long>();
+        for (var index = 0; index < rows.Count; index++)
+        {
+            if (rows[index].Download.Status == DownloadStatus.InProgress &&
+                downloads[index].Status != DownloadStatus.InProgress)
+            {
+                settlingIds.Add(downloads[index].Id);
+            }
+        }
+
+        var listFocus = settlingIds.Count > 0
+            ? FindListFocus()
+            : null;
+
+        // Settling only ever makes Clear All available, so it is enabled before the rows change, ready to
+        // take the keyboard from a cancel button that is about to go.
+        ClearAllButton.IsEnabled = ViewModel.CanClearAll;
+
         for (var index = 0; index < rows.Count; index++)
         {
             rows[index].Update(downloads[index]);
+        }
+
+        if (listFocus?.DownloadId is long focusedId &&
+            settlingIds.Contains(focusedId))
+        {
+            RestoreListFocus(listFocus);
         }
 
         return true;

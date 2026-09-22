@@ -60,13 +60,16 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
     private WebViewHostChannel? _hostChannel;
     private CelbridgeHost? _host;
     private IWebViewNavigationPolicy? _navigationPolicy;
-    private WebViewDownloadHandler? _downloadHandler;
+    private IWebViewDownloadHandler? _downloadHandler;
 
     // The section the settings reopen on, carried until the surface is built on first use.
     private string _settingsSectionKey = string.Empty;
 
     // Where the page was last told to go, held until the committed address catches up with it.
     private string _pendingNavigationUrl = string.Empty;
+
+    // Set when a download replaces the navigation in flight, which then reports itself failed.
+    private bool _isNavigationReplacedByDownload;
 
     private WebViewLoadDiagnostics? _diagnostics;
 
@@ -257,7 +260,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
             }
 
             DetachDownloadHandler();
-            _downloadHandler = WebViewDownloadHandler.Attach(_webView.CoreWebView2);
+            _downloadHandler = _webViewAdapter.AttachDownloadHandler(_webView.CoreWebView2);
             _downloadHandler.DownloadStarted += CoreWebView2_DownloadStarted;
 
             _webView.CoreWebView2.NewWindowRequested -= WebView_NewWindowRequested;
@@ -571,7 +574,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
             }
         }
 
-        var outcome = ResolveNavigationOutcome(e);
+        var outcome = ResolveNavigationOutcome(e, _isNavigationReplacedByDownload);
+        _isNavigationReplacedByDownload = false;
 
         if (outcome == NavigationOutcome.Failed)
         {
@@ -600,14 +604,19 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
     // the user stopped, and reports all three the same way. None of them is a page that failed to load, and
     // in each the page being left is still the page on screen, so the placeholder would be describing a
     // failure that did not happen. A page that genuinely could not be fetched reports why it could not.
-    private static NavigationOutcome ResolveNavigationOutcome(CoreWebView2NavigationCompletedEventArgs e)
+    // The macOS head reports every failure alike, but there the download is announced before the
+    // navigation it replaced ends, so that navigation is already known to be abandoned.
+    private static NavigationOutcome ResolveNavigationOutcome(
+        CoreWebView2NavigationCompletedEventArgs e,
+        bool isReplacedByDownload)
     {
         if (e.IsSuccess)
         {
             return NavigationOutcome.Loaded;
         }
 
-        if (e.WebErrorStatus == CoreWebView2WebErrorStatus.ConnectionAborted
+        if (isReplacedByDownload
+            || e.WebErrorStatus == CoreWebView2WebErrorStatus.ConnectionAborted
             || e.WebErrorStatus == CoreWebView2WebErrorStatus.OperationCanceled)
         {
             return NavigationOutcome.Aborted;
@@ -699,6 +708,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
             _toolBridge?.NotifyContentLoading(FileResource);
         }
 
+        _isNavigationReplacedByDownload = false;
+
         ViewModel.NotifyNavigationStarted();
         if (!string.IsNullOrEmpty(args.Uri))
         {
@@ -707,11 +718,16 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         }
     }
 
-    // A navigation whose response turned out to be an attachment has already reported itself abandoned by
-    // the time the download announces itself. Dropping the address it was heading for leaves the navigation
-    // state to fall back to the page the document is still showing, which is where the user still is.
+    // A navigation whose response turned out to be an attachment is abandoned for the download. Dropping
+    // the address it was heading for leaves the navigation state to fall back to the page the document is
+    // still showing, which is where the user still is.
     private void CoreWebView2_DownloadStarted(object? sender, EventArgs e)
     {
+        // Chromium has already ended the navigation by now. WebKit has not, and ends it with a failure. A
+        // navigation that started while the view was detached reported no start, so this is not gated on
+        // one being known to be in flight.
+        _isNavigationReplacedByDownload = true;
+
         _pendingNavigationUrl = string.Empty;
 
         UpdateNavigationState();

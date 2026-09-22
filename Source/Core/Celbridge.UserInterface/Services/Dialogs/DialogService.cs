@@ -152,6 +152,12 @@ public class DialogService : IDialogService
         SetProgressDialogSuppressed(true);
         using var occlusionMonitorScope = MacOSModalOcclusionMonitor.BeginDialogScope(dialogName);
 
+        // Where the keyboard goes back to, noted before the dialog takes it. By the time the dialog has
+        // closed, the focus model has followed wherever the closing dialog left managed focus, which on the
+        // Skia heads can be another panel.
+        var focusedPanel = _focusService.FocusedPanel;
+        var notedFocus = _managedFocus.NoteFocus();
+
         // A hosted web surface reports the dialog taking the keyboard as an ordinary blur, which would
         // otherwise clear the focused panel and leave nothing for the refocus below to return to.
         _messengerService.Send(new ModalDialogOpenedMessage());
@@ -169,28 +175,36 @@ public class DialogService : IDialogService
 
             SetProgressDialogSuppressed(false);
 
-            ReturnKeyboardToFocusedPanel();
+            ReturnKeyboard(focusedPanel, notedFocus);
         }
     }
 
     // A modal dialog moves keyboard focus into itself. Closing it hands focus back to the control that opened
-    // it on the packaged Windows head, but not reliably on the Skia heads, so the panel the focus indicator
-    // shows takes the keyboard back unless it already has it. A web surface keeps its focus report through
-    // the dialog and only gets its caret back when its document takes focus again, so its panel is always
-    // refocused.
-    private void ReturnKeyboardToFocusedPanel()
+    // it on the packaged Windows head, but not reliably on the Skia heads, which can leave it on the first
+    // focusable element of another panel, or of the same one. So the control is given the keyboard back
+    // unless it already has it, and its panel takes the keyboard when the control no longer can. A web
+    // surface keeps its focus report through the dialog and only gets its caret back when its document
+    // takes focus again, so its panel is always refocused.
+    private void ReturnKeyboard(FocusPanelId focusedPanel, INotedFocus notedFocus)
     {
         // No panel held the keyboard, so there is none to give it back to.
-        var focusedPanel = _focusService.FocusedPanel;
         if (focusedPanel == FocusPanelId.None)
         {
             return;
         }
 
-        if (!_webViewFocusRegistry.HasFocusedSurface
-            && _managedFocus.Panel == focusedPanel)
+        if (!_webViewFocusRegistry.HasFocusedSurface)
         {
-            return;
+            if (notedFocus.IsFocusBack)
+            {
+                return;
+            }
+
+            if (notedFocus.TryReturnFocus())
+            {
+                _logger.LogTrace("Returned the keyboard to the control that held it before a dialog opened");
+                return;
+            }
         }
 
         _logger.LogTrace("Returning the keyboard to {Panel} after a dialog closed", focusedPanel);

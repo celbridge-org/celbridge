@@ -2,7 +2,7 @@ using System.Net.Http.Headers;
 
 using Path = System.IO.Path;
 
-namespace Celbridge.WebHost.Services;
+namespace Celbridge.WebHost.Platform;
 
 /// <summary>
 /// Recovers the name a server gave a download from the one WebView2 suggests. Chromium checks the

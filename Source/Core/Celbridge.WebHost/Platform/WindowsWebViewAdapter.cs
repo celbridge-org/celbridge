@@ -184,6 +184,11 @@ public sealed class WindowsWebViewAdapter : IWebViewAdapter
         coreWebView2.Settings.AreDevToolsEnabled = enabled;
     }
 
+    public IWebViewDownloadHandler AttachDownloadHandler(CoreWebView2 coreWebView2)
+    {
+        return WebView2DownloadHandler.Attach(coreWebView2);
+    }
+
     // Windows uses Chromium's built-in find bar (ProvidesBuiltInFind is true), so the host never drives find
     // through the adapter here. These no-ops satisfy the shared adapter contract.
     public async Task StartFindAsync(CoreWebView2 coreWebView2, string term, FindOptions options)

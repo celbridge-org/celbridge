@@ -51,8 +51,3 @@ field is not covered either.
 The rows about a dismissed menu keeping the keyboard apply to the macOS head. The keyboard is handed back
 only where a hosted web view takes native focus of its own, so on the other heads the same sequence is
 expected to leave focus where the toolkit put it.
-
-A closing dialog hands the keyboard back to the control that opened it on the packaged Windows head. The
-macOS head does not reliably do that, and the application then gives the keyboard to the document itself,
-which in project settings means its section list. So on macOS the case that reopens a dialog with SPACE
-also passes when SPACE reopens nothing but Down then moves the section list to the next section.

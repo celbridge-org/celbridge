@@ -37,15 +37,12 @@
           </Grid.ColumnDefinitions>
 
           <!-- Each outcome is its own element so its foreground can stay a ThemeResource and follow a
-               theme change. Nudged down to sit level with the first line of the row. -->
+               theme change. Keeps an icon's width while the download runs, so the name stays in line
+               with settled rows. Nudged down to sit level with the first line of the row. -->
           <Grid Grid.Column="0"
+                MinWidth="{StaticResource IconSizeSmall}"
                 Margin="0,2,0,0"
                 VerticalAlignment="Top">
-            <ProgressRing x:Name="TransferRing"
-                          Width="{StaticResource IconSizeSmall}"
-                          Height="{StaticResource IconSizeSmall}"
-                          IsActive="False"
-                          Visibility="Collapsed"/>
             <controls:Icon x:Name="SucceededIcon"
                            IconName="bs-check-circle-fill"
                            FontSize="{StaticResource IconSizeSmall}"

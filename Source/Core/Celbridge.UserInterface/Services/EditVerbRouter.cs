@@ -43,20 +43,20 @@ internal static class EditVerbRouter
     public static EditRouting Resolve(
         EditIntent intent,
         IFocusService? focusService,
-        IManagedFocus? managedFocus,
+        ITextControlEditing? textControlEditing,
         bool isDialogOpen)
     {
         // A dialog owns the keyboard while it is up, so the verb belongs to the control inside it rather
         // than to the panel behind it, whose edit target the focus service still holds.
         if (isDialogOpen)
         {
-            return ResolveTextControl(intent, managedFocus);
+            return ResolveTextControl(intent, textControlEditing);
         }
 
         var editTarget = focusService?.EditTarget;
         if (editTarget is null)
         {
-            return ResolveTextControl(intent, managedFocus);
+            return ResolveTextControl(intent, textControlEditing);
         }
 
         if (editTarget.CanPerformEdit(intent))
@@ -66,7 +66,7 @@ internal static class EditVerbRouter
 
         // A focused text control answers for the verbs the panel's own edit target does not, so a field in
         // the chrome of a panel can still be edited.
-        var textControlRouting = ResolveTextControl(intent, managedFocus);
+        var textControlRouting = ResolveTextControl(intent, textControlEditing);
         if (textControlRouting != EditRouting.ResponderChain)
         {
             return textControlRouting;
@@ -90,11 +90,11 @@ internal static class EditVerbRouter
     public static EditRouting Perform(
         EditIntent intent,
         IFocusService? focusService,
-        IManagedFocus? managedFocus,
+        ITextControlEditing? textControlEditing,
         ICommandService? commandService,
         bool isDialogOpen)
     {
-        var routing = Resolve(intent, focusService, managedFocus, isDialogOpen);
+        var routing = Resolve(intent, focusService, textControlEditing, isDialogOpen);
 
         switch (routing)
         {
@@ -103,7 +103,7 @@ internal static class EditVerbRouter
                 break;
 
             case EditRouting.TextControl:
-                managedFocus?.TryPerformTextEditing(intent);
+                textControlEditing?.TryPerformEdit(intent);
                 break;
         }
 
@@ -112,14 +112,14 @@ internal static class EditVerbRouter
 
     // A text control holding the keyboard owns every standard verb, so one it cannot perform right now is
     // unavailable, and the platform must not be offered it.
-    private static EditRouting ResolveTextControl(EditIntent intent, IManagedFocus? managedFocus)
+    private static EditRouting ResolveTextControl(EditIntent intent, ITextControlEditing? textControlEditing)
     {
-        if (managedFocus?.IsTextControlFocused != true)
+        if (textControlEditing?.IsTextControlFocused != true)
         {
             return EditRouting.ResponderChain;
         }
 
-        return managedFocus.CanPerformTextEditing(intent)
+        return textControlEditing.CanPerformEdit(intent)
             ? EditRouting.TextControl
             : EditRouting.Unavailable;
     }

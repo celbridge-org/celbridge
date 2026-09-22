@@ -50,7 +50,7 @@ internal static class MacOSKeyCommandRouter
     private const ulong ReturnKeyCode = 36;
 
     private static IWebViewFocusRegistry? _webViewFocusRegistry;
-    private static IManagedFocus? _managedFocus;
+    private static ITextControlEditing? _textControlEditing;
 
     // The caret motions AppKit names for the chords macOS users press for the ends of a line and of the
     // document, with the shifted forms that extend the selection instead of moving. The left and right
@@ -105,12 +105,12 @@ internal static class MacOSKeyCommandRouter
     }
 
     /// <summary>
-    /// Supplies the focus the caret commands act through, enabling the caret path. Until it is set a command
-    /// no web surface takes is absorbed.
+    /// Supplies the text control editing the caret commands act through, enabling the caret path. Until it is
+    /// set a command no web surface takes is absorbed.
     /// </summary>
-    public static void SetManagedFocus(IManagedFocus managedFocus)
+    public static void SetTextControlEditing(ITextControlEditing textControlEditing)
     {
-        _managedFocus = managedFocus;
+        _textControlEditing = textControlEditing;
     }
 
     /// <summary>
@@ -215,8 +215,8 @@ internal static class MacOSKeyCommandRouter
     // Applies a caret command no web surface took to the focused managed text control.
     private static void TryMoveCaret(IntPtr selector)
     {
-        var managedFocus = _managedFocus;
-        if (managedFocus is null)
+        var textControlEditing = _textControlEditing;
+        if (textControlEditing is null)
         {
             return;
         }
@@ -234,6 +234,6 @@ internal static class MacOSKeyCommandRouter
             return;
         }
 
-        managedFocus.TryMoveCaret(command.Motion, command.ExtendSelection);
+        textControlEditing.TryMoveCaret(command.Motion, command.ExtendSelection);
     }
 }

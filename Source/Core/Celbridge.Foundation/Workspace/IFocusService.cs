@@ -147,10 +147,11 @@ public sealed record FocusClaim
 }
 
 /// <summary>
-/// Tracks which workspace panel holds focus so that only one panel appears focused at a time, and
-/// coordinates release of focus from the surface that is losing it. Panel focus and edit context are
-/// distinct: panel focus follows the caret, while the edit context follows the surface that Edit commands
-/// should act on and survives focus moving onto chrome.
+/// The application's own record of which workspace panel holds the keyboard, as opposed to the control or
+/// web view that platform focus rests on. It keeps one panel focused at a time and coordinates release of
+/// focus from the surface that is losing it. Panel focus and edit context are distinct: panel focus follows
+/// the caret, while the edit context follows the surface that Edit commands should act on and survives focus
+/// moving onto chrome.
 /// </summary>
 public interface IFocusService
 {

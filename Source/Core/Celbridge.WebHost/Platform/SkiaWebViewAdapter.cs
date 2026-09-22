@@ -35,6 +35,9 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
 
     private sealed record FindSession(string Term, bool CaseSensitive, Action<FindMatchState>? OnMatchStateChanged);
 
+    // Routes every web view's downloads on macOS, created with the first surface that attaches one.
+    private MacOSWebViewDownloadRouter? _downloadRouter;
+
     public SkiaWebViewAdapter(ILogger<SkiaWebViewAdapter> logger)
     {
         _logger = logger;
@@ -774,6 +777,20 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         }
 
         _logger.LogDebug("Hosted pages are not inspectable: web inspection is disabled");
+    }
+
+    public IWebViewDownloadHandler AttachDownloadHandler(CoreWebView2 coreWebView2)
+    {
+        // Uno raises WebView2's DownloadStarting on no Skia head, so macOS takes the download from WebKit
+        // instead. The Windows and Linux Skia heads keep the WebView2 handler, which Uno never calls.
+        if (!OperatingSystem.IsMacOS())
+        {
+            return WebView2DownloadHandler.Attach(coreWebView2);
+        }
+
+        _downloadRouter ??= new MacOSWebViewDownloadRouter();
+
+        return _downloadRouter.Attach(coreWebView2);
     }
 
     private string ResolveSafariVersion()

@@ -85,9 +85,9 @@ public partial class MainPage : Page
         var focusServiceForKeyMonitor = ServiceLocator.AcquireService<IFocusService>();
         var webViewFocusRegistry = ServiceLocator.AcquireService<IWebViewFocusRegistry>();
         var commandService = ServiceLocator.AcquireService<ICommandService>();
-        var managedFocus = ServiceLocator.AcquireService<IManagedFocus>();
+        var textControlEditing = ServiceLocator.AcquireService<ITextControlEditing>();
         MacOSKeyEventMonitor.Start(
-            focusServiceForKeyMonitor, managedFocus, webViewFocusRegistry, _messengerService, commandService, _logger);
+            focusServiceForKeyMonitor, textControlEditing, webViewFocusRegistry, _messengerService, commandService, _logger);
 
         // Undo native first-responder resigns caused by managed-focus housekeeping, which would otherwise
         // deactivate the focused web surface (hidden caret, beeping keys). macOS-only. A no-op elsewhere.
@@ -100,7 +100,7 @@ public partial class MainPage : Page
         // Route the editing keys Uno diverts away from the native first responder (Backspace, Enter,
         // arrows) into the focused web surface instead of dropping them. macOS-only. A no-op elsewhere.
         MacOSKeyCommandRouter.SetFocusRegistry(webViewFocusRegistry);
-        MacOSKeyCommandRouter.SetManagedFocus(ServiceLocator.AcquireService<IManagedFocus>());
+        MacOSKeyCommandRouter.SetTextControlEditing(textControlEditing);
 
         // Register for layout mode changes
         _messengerService.Register<LayoutModeChangedMessage>(this, OnLayoutModeChanged);

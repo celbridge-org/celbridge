@@ -89,9 +89,6 @@ public sealed partial class DownloadRow : UserControl
     {
         var isTransferring = download.Status == DownloadStatus.InProgress;
 
-        TransferRing.IsActive = isTransferring;
-        TransferRing.Visibility = isTransferring ? Visibility.Visible : Visibility.Collapsed;
-
         SucceededIcon.Visibility = download.Status == DownloadStatus.Succeeded
             ? Visibility.Visible
             : Visibility.Collapsed;

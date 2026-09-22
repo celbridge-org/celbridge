@@ -49,28 +49,28 @@ public class EditVerbRouterTests
     }
 
     // Managed focus resting on a text control that can perform the given verbs.
-    private static IManagedFocus CreateTextControlFocus(params EditIntent[] canPerform)
+    private static ITextControlEditing CreateTextControlFocus(params EditIntent[] canPerform)
     {
-        var managedFocus = Substitute.For<IManagedFocus>();
-        managedFocus.IsTextControlFocused.Returns(true);
-        managedFocus.CanPerformTextEditing(Arg.Any<EditIntent>())
+        var textControlEditing = Substitute.For<ITextControlEditing>();
+        textControlEditing.IsTextControlFocused.Returns(true);
+        textControlEditing.CanPerformEdit(Arg.Any<EditIntent>())
             .Returns(call => canPerform.Contains(call.Arg<EditIntent>()));
 
-        return managedFocus;
+        return textControlEditing;
     }
 
-    private static IManagedFocus CreateCapableTextControlFocus()
+    private static ITextControlEditing CreateCapableTextControlFocus()
     {
         return CreateTextControlFocus(EveryEditIntent.ToArray());
     }
 
     // Managed focus resting anywhere but a text control.
-    private static IManagedFocus CreateNoTextControlFocus()
+    private static ITextControlEditing CreateNoTextControlFocus()
     {
-        var managedFocus = Substitute.For<IManagedFocus>();
-        managedFocus.IsTextControlFocused.Returns(false);
+        var textControlEditing = Substitute.For<ITextControlEditing>();
+        textControlEditing.IsTextControlFocused.Returns(false);
 
-        return managedFocus;
+        return textControlEditing;
     }
 
     [TestCaseSource(nameof(EveryEditIntent))]
@@ -182,7 +182,7 @@ public class EditVerbRouterTests
     public void Resolve_WithNoFocusServiceAtAll_GivesTheVerbToTheResponderChain()
     {
         // A native panel such as a file picker holds the keyboard, so neither service is offered.
-        EditVerbRouter.Resolve(EditIntent.Paste, focusService: null, managedFocus: null, isDialogOpen: false)
+        EditVerbRouter.Resolve(EditIntent.Paste, focusService: null, textControlEditing: null, isDialogOpen: false)
             .Should().Be(EditRouting.ResponderChain);
     }
 
@@ -202,13 +202,13 @@ public class EditVerbRouterTests
     public void Perform_WhenTheFocusedTextControlOwnsTheVerb_PerformsItThere()
     {
         var focusService = CreateFocusService(CreateEditTarget(hostMediatedClipboard: true, EditIntent.SelectAll));
-        var managedFocus = CreateTextControlFocus(EditIntent.SelectAll);
+        var textControlEditing = CreateTextControlFocus(EditIntent.SelectAll);
         var commandService = Substitute.For<ICommandService>();
 
-        EditVerbRouter.Perform(EditIntent.SelectAll, focusService, managedFocus, commandService, isDialogOpen: true)
+        EditVerbRouter.Perform(EditIntent.SelectAll, focusService, textControlEditing, commandService, isDialogOpen: true)
             .Should().Be(EditRouting.TextControl);
 
-        managedFocus.Received(1).TryPerformTextEditing(EditIntent.SelectAll);
+        textControlEditing.Received(1).TryPerformEdit(EditIntent.SelectAll);
         commandService.DidNotReceiveWithAnyArgs().Execute<IPerformEditCommand>();
     }
 
@@ -216,27 +216,27 @@ public class EditVerbRouterTests
     public void Perform_ForAnUnavailableVerbOnAMediatedClipboard_RunsNothing()
     {
         var focusService = CreateFocusService(CreateEditTarget(hostMediatedClipboard: true));
-        var managedFocus = CreateNoTextControlFocus();
+        var textControlEditing = CreateNoTextControlFocus();
         var commandService = Substitute.For<ICommandService>();
 
-        EditVerbRouter.Perform(EditIntent.Cut, focusService, managedFocus, commandService, isDialogOpen: false)
+        EditVerbRouter.Perform(EditIntent.Cut, focusService, textControlEditing, commandService, isDialogOpen: false)
             .Should().Be(EditRouting.Unavailable);
 
         commandService.DidNotReceiveWithAnyArgs().Execute<IPerformEditCommand>();
-        managedFocus.DidNotReceiveWithAnyArgs().TryPerformTextEditing(default);
+        textControlEditing.DidNotReceiveWithAnyArgs().TryPerformEdit(default);
     }
 
     [Test]
     public void Perform_ForAVerbTheResponderChainOwns_RunsNothing()
     {
         var focusService = CreateFocusService(CreateEditTarget(hostMediatedClipboard: false));
-        var managedFocus = CreateNoTextControlFocus();
+        var textControlEditing = CreateNoTextControlFocus();
         var commandService = Substitute.For<ICommandService>();
 
-        EditVerbRouter.Perform(EditIntent.Paste, focusService, managedFocus, commandService, isDialogOpen: false)
+        EditVerbRouter.Perform(EditIntent.Paste, focusService, textControlEditing, commandService, isDialogOpen: false)
             .Should().Be(EditRouting.ResponderChain);
 
         commandService.DidNotReceiveWithAnyArgs().Execute<IPerformEditCommand>();
-        managedFocus.DidNotReceiveWithAnyArgs().TryPerformTextEditing(default);
+        textControlEditing.DidNotReceiveWithAnyArgs().TryPerformEdit(default);
     }
 }

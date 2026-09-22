@@ -33,10 +33,10 @@ public sealed record MacViewFrame(double X, double Y, double Width, double Heigh
 /// <summary>
 /// Objective-C interop for reaching the native WKWebView behind Uno's macOS Skia WebView2 control and
 /// calling the WebKit methods the managed CoreWebView2 leaves unimplemented on macOS: serving a document
-/// under a chosen origin, document-start script injection, surface capture, and view teardown. macOS-only.
-/// Every method touches WebKit, so call on the main (UI) thread.
+/// under a chosen origin, document-start script injection, surface capture, downloads, and view teardown.
+/// macOS-only. Every method touches WebKit, so call on the main (UI) thread.
 /// </summary>
-public static class MacOSWebViewInterop
+public static partial class MacOSWebViewInterop
 {
     private const string LibObjC = "/usr/lib/libobjc.A.dylib";
     private const string LibSystem = "/usr/lib/libSystem.dylib";

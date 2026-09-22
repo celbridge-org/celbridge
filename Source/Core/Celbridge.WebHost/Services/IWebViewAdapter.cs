@@ -181,6 +181,15 @@ public interface IWebViewAdapter
     void SetDevToolsEnabled(CoreWebView2 coreWebView2, bool enabled, string targetName);
 
     /// <summary>
+    /// Starts routing the page's downloads through the download service, so a file a page offers lands in
+    /// the project whichever surface it is on. The packaged Windows head handles WebView2's
+    /// DownloadStarting, which Uno raises on no Skia head. On macOS a native WebKit download delegate takes
+    /// the download instead, and the Windows and Linux Skia heads have no route to the service. The caller
+    /// keeps the returned handler and detaches it when the surface is torn down.
+    /// </summary>
+    IWebViewDownloadHandler AttachDownloadHandler(CoreWebView2 coreWebView2);
+
+    /// <summary>
     /// Describes the native surface behind the page for the log: on the macOS Skia head, whether the
     /// WKWebView currently sits in a window, which is what decides whether a load it starts runs on a
     /// surface the platform can see. Empty where the head has no such state to report.
