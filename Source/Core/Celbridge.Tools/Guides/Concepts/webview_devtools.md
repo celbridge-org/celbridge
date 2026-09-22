@@ -43,7 +43,7 @@ To inspect an image already in the project tree, use `file_read_image` (JPEG, PN
 
 ## Readiness contract
 
-Every inspection and eval tool waits up to 5 seconds for the editor's content-ready signal before dispatching. For contribution editors that means `celbridge.notifyContentLoaded()`; for the HTML viewer it means the WebView's `NavigationCompleted`. A `content-ready` timeout means the editor never signalled — check the console for an unhandled exception during init.
+Every inspection and eval tool waits up to 5 seconds for the editor's content-ready signal before dispatching. For contribution editors that means `celbridge.notifyContentLoaded()`. For the HTML viewer it means the page has finished loading, which a document opened in the background may not report until its tab is shown, so activate it first with `document_activate` or `document_open` with `activate: true`. On a document that is showing, a `content-ready` timeout means the editor never signalled — check the console for an unhandled exception during init.
 
 ## `webview_query` modes
 

@@ -113,6 +113,7 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
         if (ResultValue == OpenDocumentOutcome.Opened)
         {
             ShowTargetSectionArea();
+            SelectTabIfSectionHasNone();
         }
 
         // Flash the tab to draw the eye to it, but only when the document was actually opened (not a
@@ -149,6 +150,35 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
 
         var workspaceArea = documentArea.GetWorkspaceArea();
         _layoutService.SetAreaVisibility(workspaceArea, true);
+    }
+
+    // The tab strip never selects a tab added to it, so a background open into an empty section would leave
+    // its one tab unselected over an empty area. The document is selected there without becoming active. An
+    // activating open has selected it already.
+    private void SelectTabIfSectionHasNone()
+    {
+        if (Activate)
+        {
+            return;
+        }
+
+        var workspaceService = _workspaceWrapper.WorkspaceService;
+
+        // Read back rather than taken from TargetSection, since a document can end up in another section.
+        var openDocument = workspaceService.DocumentsService.FindOpenDocument(FileResource);
+        if (openDocument is null)
+        {
+            return;
+        }
+
+        var section = openDocument.Address.Section;
+        var documentsPanel = workspaceService.DocumentsPanel;
+        if (!documentsPanel.GetSelectedDocument(section).IsEmpty)
+        {
+            return;
+        }
+
+        documentsPanel.SetSelectedDocument(section, FileResource);
     }
 
     public static void OpenDocument(ResourceKey fileResource)

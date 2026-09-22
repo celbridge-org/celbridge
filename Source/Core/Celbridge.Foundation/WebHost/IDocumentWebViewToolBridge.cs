@@ -166,8 +166,8 @@ public interface IDocumentWebViewToolBridge
     /// <summary>
     /// Notifies the bridge that the editor's content has finished loading and gated
     /// tool calls (eval, inspection) may dispatch. Document views call this on the
-    /// editor's readiness signal — notifyContentLoaded for custom editors and
-    /// NavigationCompleted for the HTML viewer. Idempotent. Safe to call repeatedly
+    /// editor's readiness signal — notifyContentLoaded for custom editors and the
+    /// page finishing loading for the HTML viewer. Idempotent. Safe to call repeatedly
     /// and in any order relative to NotifyContentLoading. No effect if the resource
     /// is not registered.
     /// </summary>

@@ -54,6 +54,15 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
             return;
         }
 
+        // The active document's tab is always the one selected in its section.
+        var activeLocation = SectionContainer.FindDocumentTab(SectionContainer.ActiveDocument);
+        if (activeLocation is not null &&
+            activeLocation.SectionView == sectionView &&
+            activeLocation.Tab != documentTab)
+        {
+            return;
+        }
+
         sectionView!.SelectTab(documentTab);
     }
 

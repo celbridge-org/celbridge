@@ -83,7 +83,8 @@ public interface IDocumentsPanel
 
     /// <summary>
     /// Selects a document within its own section without making it the active document. A resource that is
-    /// not open in that section is ignored.
+    /// not open in that section is ignored, as is any other document in the section holding the active
+    /// document, whose tab stays selected.
     /// </summary>
     void SetSelectedDocument(DocumentSection section, ResourceKey fileResource);
 

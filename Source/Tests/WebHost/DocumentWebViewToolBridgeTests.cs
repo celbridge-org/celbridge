@@ -128,6 +128,9 @@ public partial class DocumentWebViewToolBridgeTests
 
         result.IsFailure.Should().BeTrue();
         result.FirstErrorMessage.Should().Contain("content-ready");
+
+        // A page loaded in a hidden tab can miss its readiness signal, and showing the tab recovers it.
+        result.FirstErrorMessage.Should().Contain("document_activate");
     }
 
     [Test]

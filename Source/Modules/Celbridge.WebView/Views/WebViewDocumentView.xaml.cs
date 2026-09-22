@@ -71,6 +71,10 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
     // Set when a download replaces the navigation in flight, which then reports itself failed.
     private bool _isNavigationReplacedByDownload;
 
+    // Set from a navigation starting until its completion is raised. On the Skia heads a navigation that
+    // ran while the view was detached raises neither, so this stays set for a page that loaded unseen.
+    private bool _isAwaitingNavigationCompleted;
+
     private WebViewLoadDiagnostics? _diagnostics;
 
     // Set on successful registration with the bridge. Only populated for the
@@ -187,6 +191,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
 
         ViewModel.CurrentUrl = uri.AbsoluteUri;
         _pendingNavigationUrl = uri.AbsoluteUri;
+        _isAwaitingNavigationCompleted = true;
 
         // Paired with the completion below, so a page that never arrives can be told from one that arrived
         // and failed, and from one the policy declined.
@@ -513,6 +518,15 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         }
     }
 
+    // Opens the tool bridge's content-ready gate, re-delivering the shim first (no-op on Windows).
+    // ExecuteScriptAsync calls are serialised in invocation order, so this fire-and-forget eval is queued
+    // ahead of any later webview_* tool eval even without awaiting it here.
+    private void NotifyToolBridgeContentReady()
+    {
+        _ = ReinjectToolBridgeShimAsync();
+        _toolBridge?.NotifyContentReady(FileResource);
+    }
+
     private void TryRegisterWithToolBridge()
     {
         var webView = _webView;
@@ -554,6 +568,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
 
     private void CoreWebView2_NavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
     {
+        _isAwaitingNavigationCompleted = false;
+
         // The HTML viewer renders static project-served content, so the WebView's own
         // NavigationCompleted is a sufficient content-ready signal. External-URL .webview
         // documents never register, so this no-ops on the .webview path.
@@ -561,11 +577,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         {
             if (e.IsSuccess)
             {
-                // Re-deliver the shim before opening the content-ready gate (no-op on Windows). ExecuteScriptAsync
-                // calls are serialised in invocation order, so this fire-and-forget eval is queued ahead of any
-                // later webview_* tool eval even without awaiting it here.
-                _ = ReinjectToolBridgeShimAsync();
-                _toolBridge?.NotifyContentReady(FileResource);
+                NotifyToolBridgeContentReady();
             }
             else
             {
@@ -672,6 +684,16 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
             // rather than a blank page the user cannot tell from a slow one.
             ViewModel.NotifyNavigationCompleted(NavigationOutcome.Failed);
         }
+
+        // A page that loaded with no completion raised has only the probe to say it arrived. An empty
+        // document is no evidence that it did, and a completion that was raised has already had its say.
+        if (Options.Role == WebViewDocumentRole.HtmlViewer &&
+            _isAwaitingNavigationCompleted &&
+            !probe.IsEmpty)
+        {
+            _isAwaitingNavigationCompleted = false;
+            NotifyToolBridgeContentReady();
+        }
     }
 
     private void WebView_Loaded(object sender, RoutedEventArgs e)
@@ -679,7 +701,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         _ = Diagnostics.LogSurfaceAsync("WebView attached", Surface);
 
         // A document that loaded while detached raised no navigation events, so its completion was never
-        // probed. Attach is the first moment the host hears from it again.
+        // probed and the HTML viewer's tool gate never opened. Attach is the first moment the host hears
+        // from it again.
         _ = ProbeLoadedContentAsync();
     }
 
@@ -709,6 +732,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         }
 
         _isNavigationReplacedByDownload = false;
+        _isAwaitingNavigationCompleted = true;
 
         ViewModel.NotifyNavigationStarted();
         if (!string.IsNullOrEmpty(args.Uri))
