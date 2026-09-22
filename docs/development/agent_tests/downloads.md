@@ -14,7 +14,7 @@ download badge, its count, and the list it opens: each row, a running row's canc
 | Situation | Action | Expected | Level |
 |---|---|---|---|
 | An HTML document with a `download` link to another project file, and nothing downloaded yet this session | click the link | the badge, absent until now, appears, and the file lands in `downloads/` identical to the one linked | 1 |
-| A `.webview` document on a page with a `target="_blank"` link to a response marked as an attachment | click the link | the file lands in `downloads/`, no system browser opens, and the document still shows the page the link was on | 1 |
+| A `.webview` document on a page with a `target="_blank"` link to a response marked as an attachment, which the server holds back | click the link, then read the address bar before the response arrives and again once the file has landed | the file lands in `downloads/`, no system browser opens, and the document still shows the page the link was on, with the address bar naming it both times | 1 |
 | A package utility whose page offers a file through a `download` link | click the link | the file lands in `downloads/`, and nothing new appears in the operating system's Downloads folder | 2 |
 | A `.webview` document on a page with a plain link to a response marked as an attachment, which the server holds back | click the link, then read the address bar before the response arrives and again once the file has landed | the file lands in `downloads/`, the page stays on screen with the address bar naming it both times, and the log records no navigation failure | 2 |
 | One completed download | click its row in the list | the list closes and the Explorer shows the file selected | 2 |
