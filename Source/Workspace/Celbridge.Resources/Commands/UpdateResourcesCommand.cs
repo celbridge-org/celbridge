@@ -7,6 +7,8 @@ public class UpdateResourcesCommand : CommandBase, IUpdateResourcesCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
+    public bool Immediate { get; set; }
+
     public UpdateResourcesCommand(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
@@ -14,9 +16,13 @@ public class UpdateResourcesCommand : CommandBase, IUpdateResourcesCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        await Task.CompletedTask;
-
         var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
+
+        if (Immediate)
+        {
+            return await resourceService.UpdateResourcesAsync();
+        }
+
         resourceService.ScheduleResourceUpdate();
 
         return Result.Ok();

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Celbridge.Commands;
 using Celbridge.Messaging;
 using Celbridge.Packages;
 using Celbridge.Platform;
@@ -265,6 +266,50 @@ public class AppToolTests
 
         root.GetProperty("packages").GetArrayLength().Should().Be(0);
         root.GetProperty("packageLoadFailureCount").GetInt32().Should().Be(0);
+    }
+
+    [Test]
+    public async Task RefreshFiles_RescansThroughTheCommandQueue()
+    {
+        IUpdateResourcesCommand? capturedCommand = null;
+        var commandService = Substitute.For<ICommandService>();
+        commandService
+            .ExecuteAsync<IUpdateResourcesCommand>(
+                Arg.Any<Action<IUpdateResourcesCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(callInfo =>
+            {
+                capturedCommand = Substitute.For<IUpdateResourcesCommand>();
+                callInfo.Arg<Action<IUpdateResourcesCommand>?>()?.Invoke(capturedCommand);
+                return Task.FromResult(Celbridge.Core.Result.Ok());
+            });
+        _services.GetRequiredService<ICommandService>().Returns(commandService);
+
+        var tools = new AppTools(_services);
+        var result = await tools.RefreshFiles();
+
+        result.IsError.Should().NotBe(true);
+        capturedCommand.Should().NotBeNull();
+        capturedCommand!.Immediate.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task RefreshFiles_ReportsAFailedRescan()
+    {
+        var commandService = Substitute.For<ICommandService>();
+        commandService
+            .ExecuteAsync<IUpdateResourcesCommand>(
+                Arg.Any<Action<IUpdateResourcesCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(Task.FromResult<Celbridge.Core.Result>(Celbridge.Core.Result.Fail("Failed to update resources")));
+        _services.GetRequiredService<ICommandService>().Returns(commandService);
+
+        var tools = new AppTools(_services);
+        var result = await tools.RefreshFiles();
+
+        result.IsError.Should().BeTrue();
     }
 
     // A loaded workspace whose registry holds two project packages out of name order, a bundled package, a load
