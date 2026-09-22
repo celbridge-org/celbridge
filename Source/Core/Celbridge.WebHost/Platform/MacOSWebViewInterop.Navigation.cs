@@ -13,8 +13,8 @@ public delegate bool MacNavigationGate(string url, bool isUserInitiated);
 
 /// <summary>
 /// What Uno's WKWebView does not tell managed code about a navigation: a decision on a navigation of the page
-/// taken in WebKit's own navigation policy callback, before any request for it is sent, and whether the user
-/// started a new window the page asks for.
+/// taken in WebKit's own navigation policy callback, before any request for it is sent, whether the user
+/// started a new window the page asks for, and the moment a navigation commits.
 /// </summary>
 public static partial class MacOSWebViewInterop
 {
@@ -28,12 +28,18 @@ public static partial class MacOSWebViewInterop
     // thread, where WebKit calls back and where gates are added and removed.
     private static readonly Dictionary<IntPtr, MacNavigationGate> _navigationGates = new();
 
+    // What each web view's commits are reported to, by native web view. Touched only on the main thread.
+    private static readonly Dictionary<IntPtr, Action<string>> _commitListeners = new();
+
     // The implementation the new-window hook took the place of.
     private static IntPtr _originalCreateWebView;
 
     // The window WebKit is asking for, while Uno raises NewWindowRequested from inside the request. Touched
     // only on the main thread.
     private static WindowRequest? _windowRequest;
+
+    // The implementation the commit hook took the place of, which Uno's web view does not have.
+    private static IntPtr _originalDidCommitNavigation;
 
     /// <summary>
     /// Puts every navigation of the web view's page to the gate before WebKit sends a request for it, and
@@ -51,7 +57,26 @@ public static partial class MacOSWebViewInterop
 
         _navigationGates[webView] = gate;
 
-        return new NavigationGateRegistration(webView, gate);
+        return new WebViewRegistration<MacNavigationGate>(_navigationGates, webView, gate);
+    }
+
+    /// <summary>
+    /// Reports the address of each page the web view commits to, as WebKit commits it, and returns the
+    /// registration that stops the reports again. Returns null with the reason in detail when the web view's
+    /// navigation delegate cannot be hooked.
+    /// </summary>
+    // UNO-BUG: UNOWebView implements no didCommitNavigation, and sets CoreWebView2.Source only once a page has
+    // finished loading.
+    public static IDisposable? ObserveNavigationCommits(IntPtr webView, Action<string> onCommitted, out string detail)
+    {
+        if (!TryHookNavigationDelegate(webView, out detail))
+        {
+            return null;
+        }
+
+        _commitListeners[webView] = onCommitted;
+
+        return new WebViewRegistration<Action<string>>(_commitListeners, webView, onCommitted);
     }
 
     /// <summary>
@@ -122,6 +147,44 @@ public static partial class MacOSWebViewInterop
         }
     }
 
+    private static unsafe void InstallCommitHook(IntPtr delegateClass)
+    {
+        _originalDidCommitNavigation = HookMethod(
+            delegateClass,
+            "webView:didCommitNavigation:",
+            (IntPtr)(delegate* unmanaged[Cdecl]<IntPtr, IntPtr, IntPtr, IntPtr, void>)&DidCommitNavigationHook,
+            "v@:@@");
+    }
+
+    [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]
+    private static void DidCommitNavigationHook(IntPtr self, IntPtr selector, IntPtr webView, IntPtr navigation)
+    {
+        // Never let an exception unwind into WebKit.
+        try
+        {
+            if (_originalDidCommitNavigation != IntPtr.Zero)
+            {
+                CallOriginalImplementation(_originalDidCommitNavigation, self, selector, webView, navigation);
+            }
+
+            if (!_commitListeners.TryGetValue(webView, out var onCommitted))
+            {
+                return;
+            }
+
+            var url = ReadCommittedUrl(webView);
+            if (url is null)
+            {
+                return;
+            }
+
+            onCommitted(url);
+        }
+        catch
+        {
+        }
+    }
+
     // False when the web view's gate refuses the navigation. A navigation that opens a window or loads a
     // frame inside the page is not the page's own, and is never put to the gate.
     private static bool IsNavigationAllowed(IntPtr webView, IntPtr navigationAction)
@@ -162,6 +225,32 @@ public static partial class MacOSWebViewInterop
         return ReadNSString(SendMessage(url, GetSelector("absoluteString")));
     }
 
+    // The address of the page the web view has committed to, or null where it names none. WebKit's public URL
+    // can name an address the web view has only been asked to load, so the committed one is read through SPI
+    // where WebKit offers it.
+    private static string? ReadCommittedUrl(IntPtr webView)
+    {
+        var url = IntPtr.Zero;
+
+        var committedUrlSelector = GetSelector("_committedURL");
+        if (SendMessageReturnBool(webView, RespondsToSelectorSelector, committedUrlSelector))
+        {
+            url = SendMessage(webView, committedUrlSelector);
+        }
+
+        if (url == IntPtr.Zero)
+        {
+            url = SendMessage(webView, GetSelector("URL"));
+        }
+
+        if (url == IntPtr.Zero)
+        {
+            return null;
+        }
+
+        return ReadNSString(SendMessage(url, GetSelector("absoluteString")));
+    }
+
     // Whether a user gesture started the navigation, which is what WebView2 reports as IsUserInitiated.
     // WebKit says so only through SPI, and a followed link is the nearest public signal where it does not.
     private static bool IsUserInitiated(IntPtr navigationAction)
@@ -175,25 +264,29 @@ public static partial class MacOSWebViewInterop
         return SendMessageReturnLong(navigationAction, GetSelector("navigationType")) == NavigationTypeLinkActivated;
     }
 
-    private sealed class NavigationGateRegistration : IDisposable
+    // Removes what a surface registered for a web view, such as its gate.
+    private sealed class WebViewRegistration<T> : IDisposable
+        where T : class
     {
+        private readonly Dictionary<IntPtr, T> _registrations;
         private readonly IntPtr _webView;
-        private readonly MacNavigationGate _gate;
+        private readonly T _registered;
 
-        public NavigationGateRegistration(IntPtr webView, MacNavigationGate gate)
+        public WebViewRegistration(Dictionary<IntPtr, T> registrations, IntPtr webView, T registered)
         {
+            _registrations = registrations;
             _webView = webView;
-            _gate = gate;
+            _registered = registered;
         }
 
-        // Only the gate still registered for the web view, so a late dispose cannot ungate a web view another
-        // surface has gated since.
+        // Only what is still registered for the web view, so a late dispose cannot undo what another surface
+        // has registered for it since.
         public void Dispose()
         {
-            if (_navigationGates.TryGetValue(_webView, out var registeredGate) &&
-                registeredGate == _gate)
+            if (_registrations.TryGetValue(_webView, out var current) &&
+                ReferenceEquals(current, _registered))
             {
-                _navigationGates.Remove(_webView);
+                _registrations.Remove(_webView);
             }
         }
     }

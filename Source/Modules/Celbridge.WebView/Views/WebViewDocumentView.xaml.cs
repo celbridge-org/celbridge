@@ -62,11 +62,11 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
     private IWebViewNavigationPolicy? _navigationPolicy;
     private IWebViewDownloadHandler? _downloadHandler;
 
+    // Reports each address the page commits to, which is when the address bar follows the page.
+    private IDisposable? _navigationCommits;
+
     // The section the settings reopen on, carried until the surface is built on first use.
     private string _settingsSectionKey = string.Empty;
-
-    // Where the page was last told to go, held until the committed address catches up with it.
-    private string _pendingNavigationUrl = string.Empty;
 
     // Set when a download replaces the navigation in flight, which then reports itself failed.
     private bool _isNavigationReplacedByDownload;
@@ -163,36 +163,68 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         Navigate("about:blank");
     }
 
+    // Opens an address the user chose through the document, which the address bar names at once, as a
+    // browser's does for an address typed into it.
     private void Navigate(string url)
+    {
+        var destination = ResolveDestination(url);
+        if (destination is null)
+        {
+            return;
+        }
+
+        // Shown straight away rather than once the page commits. A document restored into a background tab
+        // navigates while its view is out of the visual tree, and the Skia heads raise no navigation event
+        // for it at all, not even once the tab is later shown, so its address bar would otherwise stay empty
+        // for the life of the document. For the same reason the failure a previous navigation reported is
+        // cleared here rather than in NavigationStarting alone.
+        ViewModel.NotifyUserNavigation(destination.AbsoluteUri);
+
+        LoadDestination(destination);
+    }
+
+    // Goes where the page asked to, as a link it followed does. The address bar goes on naming the page on
+    // screen until the new one commits, so an address that turns out to be a download never shows in it.
+    private void FollowPageNavigation(string url)
+    {
+        var destination = ResolveDestination(url);
+        if (destination is null)
+        {
+            return;
+        }
+
+        LoadDestination(destination);
+    }
+
+    // The address a URL names, or null where it names none or there is no WebView to load it in.
+    private Uri? ResolveDestination(string url)
+    {
+        if (_webView is null)
+        {
+            return null;
+        }
+
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var destination))
+        {
+            _logger.LogWarning($"Cannot navigate to invalid URL: '{url}'");
+            return null;
+        }
+
+        return destination;
+    }
+
+    private void LoadDestination(Uri destination)
     {
         if (_webView is null)
         {
             return;
         }
 
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
-        {
-            _logger.LogWarning($"Cannot navigate to invalid URL: '{url}'");
-            return;
-        }
-
-        // Show the destination straight away rather than waiting for NavigationStarting to report it. A
-        // document restored into a background tab navigates while its view is out of the visual tree, and
-        // the Skia heads raise no navigation event for it at all, not even once the tab is later shown, so
-        // its address bar would otherwise stay empty for the life of the document. Any redirect is picked
-        // up by the navigation events as usual.
-        // A document restored into a background tab navigates with no events at all, so the failure a
-        // previous navigation reported is cleared here rather than in NavigationStarting alone.
-        ViewModel.HasNavigationFailed = false;
-
-        ViewModel.CurrentUrl = uri.AbsoluteUri;
-        _pendingNavigationUrl = uri.AbsoluteUri;
-
         // Paired with the completion below, so a page that never arrives can be told from one that arrived
         // and failed, and from one the policy declined.
-        Diagnostics.LogNavigation("Navigating", Surface, uri.AbsoluteUri);
+        Diagnostics.LogNavigation("Navigating", Surface, destination.AbsoluteUri);
 
-        _webView.Source = uri;
+        _webView.Source = destination;
     }
 
     private async void WebViewDocumentView_Loaded(object sender, RoutedEventArgs e)
@@ -262,6 +294,9 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
             DetachDownloadHandler();
             _downloadHandler = _webViewAdapter.AttachDownloadHandler(_webView.CoreWebView2);
             _downloadHandler.DownloadStarted += CoreWebView2_DownloadStarted;
+
+            _navigationCommits?.Dispose();
+            _navigationCommits = _webViewAdapter.ObserveNavigationCommits(_webView.CoreWebView2, OnNavigationCommitted);
 
             _webView.CoreWebView2.NewWindowRequested -= WebView_NewWindowRequested;
             _webView.CoreWebView2.NewWindowRequested += WebView_NewWindowRequested;
@@ -435,6 +470,9 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
 
             DetachDownloadHandler();
 
+            _navigationCommits?.Dispose();
+            _navigationCommits = null;
+
             _webView.CoreWebView2.NewWindowRequested -= WebView_NewWindowRequested;
             _webView.CoreWebView2.HistoryChanged -= CoreWebView2_HistoryChanged;
             _webView.CoreWebView2.NavigationCompleted -= CoreWebView2_NavigationCompleted;
@@ -577,17 +615,19 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         var outcome = ResolveNavigationOutcome(e, _isNavigationReplacedByDownload);
         _isNavigationReplacedByDownload = false;
 
+        // A navigation that never arrived is logged by where it was heading, since the address bar still names
+        // the page it left.
         if (outcome == NavigationOutcome.Failed)
         {
-            Diagnostics.LogNavigationFailed(Surface, ViewModel.CurrentUrl, e.WebErrorStatus);
+            Diagnostics.LogNavigationFailed(Surface, ViewModel.NavigationDestination, e.WebErrorStatus);
+        }
+        else if (outcome == NavigationOutcome.Aborted)
+        {
+            Diagnostics.LogNavigation("Navigation abandoned", Surface, ViewModel.NavigationDestination);
         }
         else
         {
-            var description = outcome == NavigationOutcome.Loaded
-                ? "Navigation completed"
-                : "Navigation abandoned";
-
-            Diagnostics.LogNavigation(description, Surface, ViewModel.CurrentUrl);
+            Diagnostics.LogNavigation("Navigation completed", Surface, ViewModel.CurrentUrl);
         }
 
         ViewModel.NotifyNavigationCompleted(outcome);
@@ -710,17 +750,20 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
 
         _isNavigationReplacedByDownload = false;
 
-        ViewModel.NotifyNavigationStarted();
-        if (!string.IsNullOrEmpty(args.Uri))
-        {
-            ViewModel.CurrentUrl = args.Uri;
-            _pendingNavigationUrl = args.Uri;
-        }
+        ViewModel.NotifyNavigationStarted(args.Uri ?? string.Empty);
     }
 
-    // A navigation whose response turned out to be an attachment is abandoned for the download. Dropping
-    // the address it was heading for leaves the navigation state to fall back to the page the document is
-    // still showing, which is where the user still is.
+    // The address bar follows the page from here, as a browser's does: once a navigation commits, rather than
+    // as it starts.
+    private void OnNavigationCommitted(string url)
+    {
+        Diagnostics.LogNavigation("Navigation committed", Surface, url);
+
+        ViewModel.NotifyNavigationCommitted(url);
+    }
+
+    // A navigation whose response turned out to be an attachment is abandoned for the download, and the page
+    // the document is showing stays on screen.
     private void CoreWebView2_DownloadStarted(object? sender, EventArgs e)
     {
         // Chromium has already ended the navigation by now. WebKit has not, and ends it with a failure. A
@@ -728,9 +771,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         // one being known to be in flight.
         _isNavigationReplacedByDownload = true;
 
-        _pendingNavigationUrl = string.Empty;
-
-        UpdateNavigationState();
+        ViewModel.NotifyDownloadStarted();
     }
 
     private void DetachDownloadHandler()
@@ -754,27 +795,6 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
 
         ViewModel.CanGoBack = _webView.CanGoBack;
         ViewModel.CanGoForward = _webView.CanGoForward;
-
-        // Source names the last committed navigation, so while one is in flight it still reports the page
-        // being left. With nothing pending it is the only signal for a same-document navigation, which
-        // raises no navigation event.
-        var committedUrl = _webView.CoreWebView2?.Source;
-        if (string.IsNullOrEmpty(committedUrl))
-        {
-            return;
-        }
-
-        if (_pendingNavigationUrl.Length > 0
-            && committedUrl != _pendingNavigationUrl)
-        {
-            return;
-        }
-
-        _pendingNavigationUrl = string.Empty;
-
-        // CoreWebView2.Source rather than WebView2.Source, which reports the address percent-encoded where
-        // this reports it as the page shows it.
-        ViewModel.CurrentUrl = committedUrl;
     }
 
     private void BackButton_Click(object sender, RoutedEventArgs e)
@@ -1306,8 +1326,9 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
 
         // A browser document has no tabs to open, so it goes there itself and Back returns. Leaving for
         // the system browser is what the URL bar button is for, and taking a download with it would put
-        // the file outside the project.
-        Navigate(url);
+        // the file outside the project. The page asked for the window, so it is followed as the page's own
+        // navigation.
+        FollowPageNavigation(url);
     }
 
     public override IEditTarget EditTarget { get; } = new DisabledEditTarget();

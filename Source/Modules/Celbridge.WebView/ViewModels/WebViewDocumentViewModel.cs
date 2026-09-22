@@ -78,6 +78,10 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     // follows is not reported as a page that failed to load.
     private bool _navigationStoppedByUser;
 
+    // The address the page last committed to, which names the page on screen whatever navigation is in
+    // flight. Empty until a page commits.
+    private string _committedUrl = string.Empty;
+
     // The URL bar acts on a page that is not on screen while the settings are showing, so every control
     // that would navigate is driven from this as well as from its own state.
     [ObservableProperty]
@@ -166,6 +170,12 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     /// navigate to. The view owns the WebView, so it performs the navigation.
     /// </summary>
     public event EventHandler<string>? NavigateRequested;
+
+    /// <summary>
+    /// Where the navigation in flight is heading, or empty when none is. The address bar names it only when
+    /// the user chose it through the document, or when it fails and the placeholder reports on it.
+    /// </summary>
+    public string NavigationDestination { get; private set; } = string.Empty;
 
     /// <summary>
     /// True when the browser-style URL bar should be shown: the external-URL role
@@ -566,13 +576,69 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     }
 
     /// <summary>
-    /// Records that a navigation has begun, clearing the failure the previous one may have reported.
+    /// Records that the document is opening an address the user chose through it: one entered in the URL
+    /// bar, a bookmark, Home, or the Home URL it opens on. The address bar names the destination at once,
+    /// and the failure a previous navigation may have reported is cleared.
     /// </summary>
-    public void NotifyNavigationStarted()
+    public void NotifyUserNavigation(string url)
     {
+        NavigationDestination = url;
+        HasNavigationFailed = false;
+        CurrentUrl = url;
+    }
+
+    /// <summary>
+    /// Records that a navigation has begun, clearing the failure the previous one may have reported. The
+    /// address bar goes on naming the page on screen until the navigation commits, so a link that turns
+    /// out to be a download never shows in it.
+    /// </summary>
+    public void NotifyNavigationStarted(string destination)
+    {
+        // The placeholder reporting the failure gives way to the page behind it, which the bar names again.
+        if (HasNavigationFailed)
+        {
+            CurrentUrl = _committedUrl;
+        }
+
+        if (destination.Length > 0)
+        {
+            NavigationDestination = destination;
+        }
+
         _navigationStoppedByUser = false;
         HasNavigationFailed = false;
         IsNavigating = true;
+    }
+
+    /// <summary>
+    /// Records the address the page has committed to, as a new page takes the place of the old one or the
+    /// page moves to another address of its own. The address bar follows it, unless it is naming a failed
+    /// load that the placeholder is reporting.
+    /// </summary>
+    public void NotifyNavigationCommitted(string url)
+    {
+        _committedUrl = url;
+
+        if (HasNavigationFailed)
+        {
+            return;
+        }
+
+        CurrentUrl = url;
+    }
+
+    /// <summary>
+    /// Records that the navigation in flight became a download. The page on screen stays, so the address
+    /// bar goes back to naming it, having moved only if the user chose the download's address.
+    /// </summary>
+    public void NotifyDownloadStarted()
+    {
+        if (HasNavigationFailed)
+        {
+            return;
+        }
+
+        CurrentUrl = _committedUrl;
     }
 
     /// <summary>
@@ -585,16 +651,25 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     }
 
     /// <summary>
-    /// Records how a navigation ended. A stopped navigation keeps whatever it had rendered so far.
+    /// Records how a navigation ended. A stopped navigation keeps whatever it had rendered so far. A failed
+    /// one is reported in place of the page, and the address bar names the address that failed.
     /// </summary>
     public void NotifyNavigationCompleted(NavigationOutcome outcome)
     {
         IsNavigating = false;
 
-        if (outcome != NavigationOutcome.Failed
-            || _navigationStoppedByUser)
+        var destination = NavigationDestination;
+        NavigationDestination = string.Empty;
+
+        if (outcome != NavigationOutcome.Failed ||
+            _navigationStoppedByUser)
         {
             return;
+        }
+
+        if (destination.Length > 0)
+        {
+            CurrentUrl = destination;
         }
 
         HasNavigationFailed = true;
