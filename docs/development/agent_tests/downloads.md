@@ -22,10 +22,9 @@ download badge, its count, and the list it opens: each row, a running row's canc
 | A download still running, the list open | click its cancel button | the list stays open, the row says the transfer was canceled and gives no size, the badge turns to the error colour, and nothing is left in `downloads/` or the staging folder | 2 |
 | Several finished downloads and one still running | click Clear All | the finished rows go and the running row stays, and their files stay in `downloads/`; once the last download lands, a second Clear All empties the list and the badge goes | 2 |
 | A download of several hundred megabytes, made after an undoable change in the Explorer such as a new folder | download it, then undo in the Explorer | the application answers input throughout, the file carries the platform's mark of the web, and undo reverts the earlier change and leaves the file where it landed | 2 |
-| An HTML document with plain `target="_blank"` links to a page on another site and to another project file | click each | the page opens in the system browser and the project file in Celbridge, and the application keeps running | 2 |
 | A `.webview` document on a page with a `download` link | click the link | the file lands in `downloads/`, as it does from an HTML document | 3 |
 | An HTML document offering a file the page builds itself, and a `download` link that asks for a new window | click each | both land in `downloads/`, and no browser opens | 3 |
-| An HTML document with a plain link to a response from another server marked as an attachment | click the link | the document asks before handing the address to the system browser, the other server receives no request, and nothing lands in `downloads/` | 3 |
+| An HTML document with a plain link to a response from another server marked as an attachment | click the link | the document asks before handing the address to the system browser, and nothing lands in `downloads/` | 3 |
 | A completed download | delete its file in the Explorer | its row leaves the list and the count drops, and the badge goes with the last row | 3 |
 | Two downloads of the same file started together | start both | two files under distinct names, neither overwritten | 3 |
 | A download running from a `.webview` document | close the document's tab | the download carries on and lands | 3 |
@@ -40,8 +39,7 @@ Most cases need one page offering a download in each shape the table names: a `d
 beside it, a file the page builds itself, a `download` link that asks for a new window, and plain and
 `target="_blank"` links to a response marked as an attachment. Keep the page and its file in a folder of
 their own, so a landed copy is never mistaken for the original, and give the file content that can be
-compared byte for byte. The new-window case needs `target="_blank"` links to an ordinary page, which the
-system browser opens, so point it at a page that says it came from a test, and to another project file.
+compared byte for byte.
 
 An HTML document is served by the application itself, so its links are real downloads over HTTP with
 nothing leaving the machine. The application's server marks nothing as an attachment, though, and a
@@ -81,7 +79,8 @@ results: the title bar, and the application's own list drawn over a hosted page.
 
 Files the application fetches for itself, such as a Workshop package install, which never reach the
 downloads list. What a row says beyond its name and outcome: its progress, sizes and time estimates.
-Choosing the downloads folder with its picker, which the Workspace plan covers.
+Choosing the downloads folder with its picker, which the Workspace plan covers. Where an HTML document's
+links lead, which the Web Documents plan covers.
 
 ## Platform
 
