@@ -160,6 +160,13 @@ async function initialize() {
         editorController.performEdit(params?.command);
     });
 
+    // Sent when the host gives this document the keyboard. The client handles it first, refocusing whatever
+    // had focus when the document last lost the keyboard. The editor takes focus only when that leaves
+    // nothing focused, as when the document first opens.
+    celbridge.onNotification('input/grantFocus', () => {
+        editorController.focusIfVacant();
+    });
+
     // The host's Find menu item lands here, so it opens the same find Command+F does.
     celbridge.onNotification('input/beginFind', () => {
         if (previewPipeline?.beginFind()) {

@@ -1046,20 +1046,27 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             }
         }
 
-        if (state is null)
+        if (state is not null)
         {
-            return;
+            try
+            {
+                await RestoreEditorStateAsync(state);
+            }
+            catch (Exception ex)
+            {
+                // Editor state restoration is best-effort: a corrupt or incompatible state should
+                // never tear down the process. Log and swallow to preserve the async void safety contract.
+                _logger.LogError(ex, "Failed to restore editor state after content loaded");
+            }
         }
 
-        try
+        // The keyboard may have been granted before the page loaded, when the grant could not reach it, so
+        // it is sent again now. It comes after the state restore because the restored view mode decides
+        // whether the editor takes focus.
+        if (WebView is not null
+            && _webViewFocusRegistry.IsFocusedSurface(WebView))
         {
-            await RestoreEditorStateAsync(state);
-        }
-        catch (Exception ex)
-        {
-            // Editor state restoration is best-effort: a corrupt or incompatible state should
-            // never tear down the process. Log and swallow to preserve the async void safety contract.
-            _logger.LogError(ex, "Failed to restore editor state after content loaded");
+            _ = GrantDomFocusAsync();
         }
     }
 
