@@ -27,6 +27,12 @@ public static class ProjectConstants
     public const string CelbridgeFolder = ".celbridge";
 
     /// <summary>
+    /// Git's metadata folder. Celbridge reserves it, as it does its own folder, so no resource can be read
+    /// or written inside it.
+    /// </summary>
+    public const string GitFolder = ".git";
+
+    /// <summary>
     /// Sub-folder of .celbridge/ that backs the temp: virtual root. Wiped on
     /// workspace load.
     /// </summary>

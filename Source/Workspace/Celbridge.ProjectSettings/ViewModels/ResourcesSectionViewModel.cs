@@ -30,6 +30,7 @@ public partial class ResourcesSectionViewModel : ProjectSettingsSectionViewModel
     // Empty while the project names no folder of its own, and the placeholder then names the default.
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsDownloadsFolderInvalid))]
+    [NotifyPropertyChangedFor(nameof(InvalidDownloadsFolderText))]
     private string _downloadsFolderText = string.Empty;
 
     /// <summary>
@@ -44,8 +45,8 @@ public partial class ResourcesSectionViewModel : ProjectSettingsSectionViewModel
     public bool HasInvalidSearchExcludePattern => ContainsInvalidPattern(SearchExcludePatternsText);
 
     /// <summary>
-    /// True when the downloads folder is not a folder path, which leaves downloads going to the default
-    /// folder.
+    /// True when the downloads folder is not a folder path, or is inside a folder Celbridge reserves, which
+    /// leaves downloads going to the default folder.
     /// </summary>
     public bool IsDownloadsFolderInvalid =>
         !string.IsNullOrWhiteSpace(DownloadsFolderText)
@@ -65,7 +66,12 @@ public partial class ResourcesSectionViewModel : ProjectSettingsSectionViewModel
     public string DownloadsFolderTitle => ProjectSettingsLabels.DownloadsFolderTitle;
     public string DownloadsFolderSubtitle => ProjectSettingsLabels.DownloadsFolderSubtitle;
     public string DownloadsFolderBrowseTooltip => ProjectSettingsLabels.DownloadsFolderBrowseTooltip;
-    public string InvalidDownloadsFolderText => ProjectSettingsLabels.InvalidDownloadsFolder;
+    /// <summary>
+    /// Why the downloads folder is not used, said beneath the field while IsDownloadsFolderInvalid is true.
+    /// </summary>
+    public string InvalidDownloadsFolderText => DownloadsFolderPath.IsReserved(DownloadsFolderText)
+        ? ProjectSettingsLabels.ReservedDownloadsFolder
+        : ProjectSettingsLabels.InvalidDownloadsFolder;
 
     public ResourcesSectionViewModel(
         ProjectSettingsContext context,

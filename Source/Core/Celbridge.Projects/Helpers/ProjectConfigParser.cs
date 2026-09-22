@@ -421,9 +421,13 @@ public static class ProjectConfigParser
 
         if (!DownloadsFolderPath.TryParse(downloadsFolder, out var folder))
         {
+            var problem = DownloadsFolderPath.IsReserved(downloadsFolder)
+                ? "is inside a folder Celbridge reserves, where nothing can be saved"
+                : "must be a folder path from the project root";
+
             entryErrors.Add(new ProjectConfigEntryError(
                 $"{CelbridgeSectionName}.{ResourcesKey}",
-                $"'{DownloadsFolderKey}' value '{downloadsFolder}' must be a folder path from the project root. The key was dropped."));
+                $"'{DownloadsFolderKey}' value '{downloadsFolder}' {problem}. The key was dropped."));
 
             return string.Empty;
         }

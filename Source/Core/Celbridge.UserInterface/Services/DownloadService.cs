@@ -120,8 +120,7 @@ public sealed class DownloadService : IDownloadService
             {
                 _logger.LogError($"Download blocked: {probeResult.FirstErrorMessage}");
 
-                var projectFileName = Path.GetFileName(_projectService.CurrentProject?.ProjectFilePath ?? string.Empty);
-                RecordFailure(fileName, sourceUrl, GetString("Downloads_Blocked", fileName, projectFileName));
+                RecordFailure(fileName, sourceUrl, DescribeBlockedDestination(probeResult, fileName));
 
                 return Result<DownloadTicket>.Fail($"The download destination '{destination}' is not permitted")
                     .WithErrors(probeResult);
@@ -370,6 +369,21 @@ public sealed class DownloadService : IDownloadService
             return Result<ResourceKey>.Fail($"Failed to find a free download destination for '{fileName}'")
                 .WithException(ex);
         }
+    }
+
+    // Only Celbridge's own reservations can deny a destination, since nothing a project configures denies a
+    // read or a write, and a downloads folder inside one is refused before it is ever used. The row names the
+    // reserved folder the policy matched, should a destination still reach one.
+    private string DescribeBlockedDestination(Result probeResult, string fileName)
+    {
+        if (probeResult.FirstException is not PolicyDenialError denial)
+        {
+            return GetString("Downloads_DestinationUnavailable");
+        }
+
+        var reservedName = denial.MatchedRule.Pattern.Split('/')[0];
+
+        return GetString("Downloads_Blocked", fileName, reservedName);
     }
 
     private bool IsDestinationReserved(ResourceKey resource)

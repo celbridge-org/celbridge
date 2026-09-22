@@ -479,7 +479,7 @@ This file could not be saved</value>
     <value>{0} hours ago</value>
   </data>
   <data name="Downloads_Blocked" xml:space="preserve">
-    <value>Download of '{0}' was blocked by the resource policy specified in '{1}'.</value>
+    <value>Download of '{0}' was blocked, because '{1}' is reserved by Celbridge.</value>
   </data>
   <data name="Downloads_DestinationUnavailable" xml:space="preserve">
     <value>The downloads folder could not be prepared.</value>
@@ -1070,6 +1070,9 @@ Open with default application instead?</value>
   </data>
   <data name="ProjectSettings_InvalidDownloadsFolder" xml:space="preserve">
     <value>This is not a valid folder path, so downloads are saved to '{0}'.</value>
+  </data>
+  <data name="ProjectSettings_ReservedDownloadsFolder" xml:space="preserve">
+    <value>Celbridge reserves this folder, so downloads are saved to '{0}'.</value>
   </data>
   <data name="ProjectSettings_PackagesDescription" xml:space="preserve">
     <value>Enable or disable packages and configure their contributions.</value>

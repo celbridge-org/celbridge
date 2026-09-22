@@ -190,6 +190,23 @@ public interface IWebViewAdapter
     IWebViewDownloadHandler AttachDownloadHandler(CoreWebView2 coreWebView2);
 
     /// <summary>
+    /// Puts every navigation of the page to the gate before any request for it is sent. WebView2 raises
+    /// NavigationStarting before it sends anything, so the Windows heads decide there and register nothing.
+    /// The macOS Skia head raises it only once the request is under way, so there the gate answers WebKit's
+    /// own navigation policy, and a navigation it refuses never reaches the server. Frames inside the page
+    /// are not gated. The caller keeps the returned registration and disposes it when the surface is torn
+    /// down.
+    /// </summary>
+    IDisposable GateNavigations(CoreWebView2 coreWebView2, NavigationGate gate);
+
+    /// <summary>
+    /// Whether the user started the new window a page asked for, as by following a link. Uno implements no
+    /// IsUserInitiated for a new window on the Skia heads, so there every new window counts as one the page
+    /// opened by itself.
+    /// </summary>
+    bool IsUserInitiated(CoreWebView2NewWindowRequestedEventArgs args);
+
+    /// <summary>
     /// Describes the native surface behind the page for the log: on the macOS Skia head, whether the
     /// WKWebView currently sits in a window, which is what decides whether a load it starts runs on a
     /// surface the platform can see. Empty where the head has no such state to report.

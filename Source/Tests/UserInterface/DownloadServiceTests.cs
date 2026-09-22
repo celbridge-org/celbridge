@@ -35,6 +35,7 @@ public class DownloadServiceTests
     private IWorkspaceWrapper _workspaceWrapper = null!;
     private IResourceRegistry _resourceRegistry = null!;
     private IResourceFileSystem _resourceFileSystem = null!;
+    private ILocalizerService _localizerService = null!;
     private IProject _project = null!;
     private FakeFileSystem _localFileSystem = null!;
     private List<Move> _moves = null!;
@@ -117,14 +118,14 @@ public class DownloadServiceTests
         projectService.CurrentProject.Returns(_project);
 
         // Every reason the service records is a localized string, and what it reads is the key.
-        var localizerService = Substitute.For<ILocalizerService>();
-        localizerService.GetString(Arg.Any<string>(), Arg.Any<object[]>())
+        _localizerService = Substitute.For<ILocalizerService>();
+        _localizerService.GetString(Arg.Any<string>(), Arg.Any<object[]>())
             .Returns(callInfo => callInfo.Arg<string>());
 
         _downloadService = new DownloadService(
             Substitute.For<ILogger<DownloadService>>(),
             _messengerService,
-            localizerService,
+            _localizerService,
             _commandService,
             _workspaceWrapper,
             projectService,
@@ -264,8 +265,41 @@ public class DownloadServiceTests
     [Test]
     public async Task ADeniedDestination_IsRecordedAsAFailure_AndNothingIsStaged()
     {
+        // WebKit tidies a file name that starts with a dot, but the service does not rely on the platform to.
+        var rule = Substitute.For<IPolicyRule>();
+        rule.Source.Returns(PolicyRuleSource.SystemDeny);
+        rule.Pattern.Returns(".git");
+        rule.GatedActions.Returns(ResourceAction.Read | ResourceAction.Write);
+        rule.Description.Returns("The Git metadata folder is reserved and cannot be addressed as a resource.");
+        var denial = new PolicyDenialError(new ResourceKey("downloads/.git"), ResourceAction.Read, rule);
+
         _resourceFileSystem.GetInfoAsync(Arg.Any<ResourceKey>())
-            .Returns(Task.FromResult(Result<StorageItemInfo>.Fail("Denied by the resource policy")));
+            .Returns(Task.FromResult<Result<StorageItemInfo>>(Result.Fail(denial.Message).WithException(denial)));
+
+        var beginResult = await _downloadService.BeginAsync(
+            ".git",
+            "https://example.com/.git",
+            Substitute.For<IDownloadTransfer>());
+
+        beginResult.IsFailure.Should().BeTrue();
+
+        var download = _downloadService.Downloads.Should().ContainSingle().Subject;
+        download.Status.Should().Be(DownloadStatus.Failed);
+        download.FailureReason.Should().Be("Downloads_Blocked");
+
+        // The row names the folder Celbridge reserves, not a rule the project file does not have.
+        _localizerService.Received().GetString(
+            "Downloads_Blocked",
+            Arg.Is<object[]>(arguments => arguments.Length == 2 && Equals(arguments[1], ".git")));
+
+        await _resourceFileSystem.DidNotReceive().CreateFolderAsync(Arg.Any<ResourceKey>());
+    }
+
+    [Test]
+    public async Task ADestinationThatCannotBeChecked_SaysTheFolderCouldNotBePrepared()
+    {
+        _resourceFileSystem.GetInfoAsync(Arg.Any<ResourceKey>())
+            .Returns(Task.FromResult(Result<StorageItemInfo>.Fail("The disk could not be read")));
 
         var beginResult = await _downloadService.BeginAsync(
             "report.pdf",
@@ -275,8 +309,7 @@ public class DownloadServiceTests
         beginResult.IsFailure.Should().BeTrue();
 
         var download = _downloadService.Downloads.Should().ContainSingle().Subject;
-        download.Status.Should().Be(DownloadStatus.Failed);
-        download.FailureReason.Should().Be("Downloads_Blocked");
+        download.FailureReason.Should().Be("Downloads_DestinationUnavailable");
 
         await _resourceFileSystem.DidNotReceive().CreateFolderAsync(Arg.Any<ResourceKey>());
     }

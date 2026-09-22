@@ -793,6 +793,42 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         return _downloadRouter.Attach(coreWebView2);
     }
 
+    public IDisposable GateNavigations(CoreWebView2 coreWebView2, NavigationGate gate)
+    {
+        // The Windows and Linux Skia heads leave navigations to NavigationStarting.
+        if (!OperatingSystem.IsMacOS())
+        {
+            return UngatedNavigations.Instance;
+        }
+
+        if (!MacOSWebViewInterop.TryGetNativeWebViewHandle(coreWebView2, out var webView, out var detail))
+        {
+            _logger.LogWarning("A page's navigations are decided only once their requests are sent: its native view could not be resolved ({Detail})", detail);
+            return UngatedNavigations.Instance;
+        }
+
+        // A URL that is not an absolute URI is left to NavigationStarting, which lets it through as well.
+        MacNavigationGate nativeGate = (url, isUserInitiated) =>
+            !Uri.TryCreate(url, UriKind.Absolute, out var destination) ||
+            gate(destination, isUserInitiated);
+
+        var registration = MacOSWebViewInterop.GateNavigations(webView, nativeGate, out var gateDetail);
+        if (registration is null)
+        {
+            _logger.LogWarning("A page's navigations are decided only once their requests are sent: {Detail}", gateDetail);
+            return UngatedNavigations.Instance;
+        }
+
+        return registration;
+    }
+
+    // UNO-BUG: CoreWebView2NewWindowRequestedEventArgs.IsUserInitiated throws NotImplementedException on the
+    // Skia heads, from inside Uno's native new-window callback, where an exception ends the process.
+    public bool IsUserInitiated(CoreWebView2NewWindowRequestedEventArgs args)
+    {
+        return false;
+    }
+
     private string ResolveSafariVersion()
     {
         var version = MacOSWebViewInterop.GetSafariVersion();

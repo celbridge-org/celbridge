@@ -139,15 +139,17 @@ public sealed partial class DownloadRow : UserControl
         FailureText.Visibility = Visibility.Visible;
     }
 
-    // A running transfer says how far it has got and how long is left, and a settled one says how large
-    // the file turned out to be and when it arrived.
+    // A running transfer says how far it has got and how long is left, and a settled one says when it
+    // arrived, with how large the file turned out to be when there is a file. A failed download left none,
+    // so the bytes it received before it stopped are not a size.
     private string ComposeDetail(DownloadEntry download)
     {
         if (download.Status != DownloadStatus.InProgress)
         {
             var parts = new List<string>();
 
-            if (download.BytesReceived > 0)
+            if (download.Status == DownloadStatus.Succeeded &&
+                download.BytesReceived > 0)
             {
                 parts.Add(FormatBytes(download.BytesReceived));
             }

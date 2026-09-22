@@ -48,9 +48,10 @@ public delegate Task<NavigationDecision> NavigationDestinationHandler(Navigation
 public interface IWebViewNavigationPolicy
 {
     /// <summary>
-    /// Subscribes the supplied handler to NavigationStarting on the given WebView. The
-    /// handler is consulted for every top-frame navigation; iframe navigations are
-    /// always allowed.
+    /// Subscribes the supplied handler to NavigationStarting on the given WebView, and
+    /// to the platform's own navigation policy where NavigationStarting comes only once
+    /// the request is sent. The handler is consulted for every top-frame navigation
+    /// before its request goes out; iframe navigations are always allowed.
     /// </summary>
     void Attach(CoreWebView2 webView, NavigationDestinationHandler handler);
 

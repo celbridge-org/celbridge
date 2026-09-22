@@ -1,6 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.Logging;
 using Celbridge.UserInterface;
+using Celbridge.WebHost;
 using Microsoft.Web.WebView2.Core;
 using Windows.Foundation;
 
@@ -12,16 +13,25 @@ namespace Celbridge.WebView.Services;
 /// </summary>
 public sealed class WebViewNavigationPolicy : IWebViewNavigationPolicy
 {
+    // What an attached web view is subscribed with: the NavigationStarting handler, and the gate that puts
+    // the same navigations to the handler before their requests are sent, on a head that needs one.
+    private record Attachment(
+        TypedEventHandler<CoreWebView2, CoreWebView2NavigationStartingEventArgs> OnStarting,
+        IDisposable Gate);
+
     private readonly ICommandService _commandService;
+    private readonly IWebViewAdapter _webViewAdapter;
     private readonly ILogger<WebViewNavigationPolicy> _logger;
 
-    private readonly Dictionary<CoreWebView2, TypedEventHandler<CoreWebView2, CoreWebView2NavigationStartingEventArgs>> _attachedHandlers = new();
+    private readonly Dictionary<CoreWebView2, Attachment> _attachments = new();
 
     public WebViewNavigationPolicy(
         ICommandService commandService,
+        IWebViewAdapter webViewAdapter,
         ILogger<WebViewNavigationPolicy> logger)
     {
         _commandService = commandService;
+        _webViewAdapter = webViewAdapter;
         _logger = logger;
     }
 
@@ -33,15 +43,22 @@ public sealed class WebViewNavigationPolicy : IWebViewNavigationPolicy
         };
 
         webView.NavigationStarting += onStarting;
-        _attachedHandlers[webView] = onStarting;
+
+        // Where NavigationStarting comes only once the request is sent, the gate takes the decision first,
+        // so a destination the handler refuses is never fetched. A navigation the gate lets through is asked
+        // about again at NavigationStarting, which a handler that allowed it answers the same way.
+        var gate = _webViewAdapter.GateNavigations(webView, (destination, isUserInitiated) =>
+            Decide(new NavigationRequest(destination, isUserInitiated), handler));
+
+        _attachments[webView] = new Attachment(onStarting, gate);
     }
 
     public void Detach(CoreWebView2 webView)
     {
-        if (_attachedHandlers.TryGetValue(webView, out var onStarting))
+        if (_attachments.Remove(webView, out var attachment))
         {
-            webView.NavigationStarting -= onStarting;
-            _attachedHandlers.Remove(webView);
+            webView.NavigationStarting -= attachment.OnStarting;
+            attachment.Gate.Dispose();
         }
     }
 
@@ -61,6 +78,20 @@ public sealed class WebViewNavigationPolicy : IWebViewNavigationPolicy
         }
 
         var request = new NavigationRequest(destination, args.IsUserInitiated);
+        if (!Decide(request, handler))
+        {
+            args.Cancel = true;
+        }
+    }
+
+    /// <summary>
+    /// Asks the handler about a navigation and returns whether it goes ahead. A navigation the handler
+    /// refuses, or has not decided on by the time this returns, does not, and the side effect of the
+    /// decision is dispatched once it is made.
+    /// </summary>
+    internal bool Decide(NavigationRequest request, NavigationDestinationHandler handler)
+    {
+        var destination = request.Destination;
         var decisionTask = handler(request);
 
         // Synchronous fast path. Most call sites - the .webview always-allow handler
@@ -68,22 +99,23 @@ public sealed class WebViewNavigationPolicy : IWebViewNavigationPolicy
         if (decisionTask.IsCompleted)
         {
             var decision = decisionTask.Result;
-            if (decision != NavigationDecision.Allow)
+            if (decision == NavigationDecision.Allow)
             {
-                _logger.LogDebug("Cancelled navigation to {Url}, decided {Decision}", destination, decision);
-
-                args.Cancel = true;
-                DispatchSideEffect(decision, destination);
+                return true;
             }
-            return;
+
+            _logger.LogDebug("Cancelled navigation to {Url}, decided {Decision}", destination, decision);
+
+            DispatchSideEffect(decision, destination);
+            return false;
         }
 
-        // Async path. Cancel synchronously so the WebView never starts loading the
-        // destination, then await the handler and dispatch any side effect.
+        // Async path. Refused at once so the WebView never starts loading the
+        // destination, then the handler is awaited and any side effect dispatched.
         _logger.LogDebug("Cancelled navigation to {Url} while the destination is decided", destination);
 
-        args.Cancel = true;
         _ = AwaitAndDispatchAsync(decisionTask, destination);
+        return false;
     }
 
     private async Task AwaitAndDispatchAsync(Task<NavigationDecision> decisionTask, Uri destination)
@@ -101,8 +133,8 @@ public sealed class WebViewNavigationPolicy : IWebViewNavigationPolicy
 
     /// <summary>
     /// Translates a NavigationDecision into its non-cancellation side effect (or no-op).
-    /// Allow and Cancel are no-ops here; the cancel itself is set on the WebView2 args
-    /// at the call site. OpenInSystemBrowser routes through IOpenBrowserCommand.
+    /// Allow and Cancel are no-ops here; the cancel itself is made by whoever asked for
+    /// the decision. OpenInSystemBrowser routes through IOpenBrowserCommand.
     /// </summary>
     internal void DispatchSideEffect(NavigationDecision decision, Uri destination)
     {

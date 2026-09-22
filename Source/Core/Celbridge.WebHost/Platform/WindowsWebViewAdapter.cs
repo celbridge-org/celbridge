@@ -189,6 +189,17 @@ public sealed class WindowsWebViewAdapter : IWebViewAdapter
         return WebView2DownloadHandler.Attach(coreWebView2);
     }
 
+    // WebView2 raises NavigationStarting before it sends a request, which is where navigations are decided.
+    public IDisposable GateNavigations(CoreWebView2 coreWebView2, NavigationGate gate)
+    {
+        return UngatedNavigations.Instance;
+    }
+
+    public bool IsUserInitiated(CoreWebView2NewWindowRequestedEventArgs args)
+    {
+        return args.IsUserInitiated;
+    }
+
     // Windows uses Chromium's built-in find bar (ProvidesBuiltInFind is true), so the host never drives find
     // through the adapter here. These no-ops satisfy the shared adapter contract.
     public async Task StartFindAsync(CoreWebView2 coreWebView2, string term, FindOptions options)

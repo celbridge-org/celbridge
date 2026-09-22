@@ -104,7 +104,8 @@ public static partial class MacOSWebViewInterop
     // Where WebKit's caller finds the function a block runs: after the block's isa, flags and reserved words.
     private const int BlockInvokeOffset = 16;
 
-    // WKNavigationActionPolicyAllow and WKNavigationActionPolicyDownload.
+    // WKNavigationActionPolicyCancel, WKNavigationActionPolicyAllow and WKNavigationActionPolicyDownload.
+    private const nint NavigationActionPolicyCancel = 0;
     private const nint NavigationActionPolicyAllow = 1;
     private const nint NavigationActionPolicyDownload = 2;
 
@@ -115,9 +116,9 @@ public static partial class MacOSWebViewInterop
     // RouteDownloads, ProvideDownloadDestination and CancelDownload are called.
     private static IMacOSDownloadListener? _downloadListener;
 
-    // The navigation delegate class the download hooks were added to. Uno's web view is its own delegate,
-    // so this is one class for the life of the process.
-    private static IntPtr _downloadHookedClass;
+    // The navigation delegate class the hooks were added to. Uno's web view is its own delegate, so this is
+    // one class for the life of the process.
+    private static IntPtr _hookedDelegateClass;
 
     // The object WebKit reports each download's destination request, finish and failure to.
     private static IntPtr _downloadDelegate;
@@ -146,6 +147,20 @@ public static partial class MacOSWebViewInterop
     // UNO-BUG: UNOWebView implements no navigation response policy and takes no download over.
     public static bool RouteDownloads(IntPtr webView, IMacOSDownloadListener listener, out string detail)
     {
+        if (!TryHookNavigationDelegate(webView, out detail))
+        {
+            return false;
+        }
+
+        _downloadListener = listener;
+
+        return true;
+    }
+
+    // Adds the hooks to the class of the web view's navigation delegate, once per process, and sets the web
+    // view's delegate again, since WebKit reads which methods a delegate implements only when it is set.
+    private static bool TryHookNavigationDelegate(IntPtr webView, out string detail)
+    {
         detail = string.Empty;
 
         if (webView == IntPtr.Zero)
@@ -165,21 +180,20 @@ public static partial class MacOSWebViewInterop
         // that is being observed.
         var delegateClass = SendMessage(navigationDelegate, GetSelector("class"));
 
-        if (_downloadHookedClass != IntPtr.Zero &&
-            _downloadHookedClass != delegateClass)
+        if (_hookedDelegateClass != IntPtr.Zero &&
+            _hookedDelegateClass != delegateClass)
         {
-            detail = $"the navigation delegate is a {GetClassName(navigationDelegate)}, not the class the download hooks were added to";
+            detail = $"the navigation delegate is a {GetClassName(navigationDelegate)}, not the class the hooks were added to";
             return false;
         }
 
-        _downloadListener = listener;
         EnsureDownloadDelegate();
 
-        if (_downloadHookedClass == IntPtr.Zero)
+        if (_hookedDelegateClass == IntPtr.Zero)
         {
             // Recorded before the hooks go in, so a failure part way through can never hook the class a
             // second time, which would make each hook the implementation it falls back to.
-            _downloadHookedClass = delegateClass;
+            _hookedDelegateClass = delegateClass;
             InstallDownloadHooks(delegateClass);
         }
 
@@ -465,7 +479,8 @@ public static partial class MacOSWebViewInterop
     }
 
     // A link's download attribute asks for a download, which is WebKit's own answer for a delegate that
-    // does not decide, and which Uno's delegate never gives. Everything else is left to Uno's delegate.
+    // does not decide, and which Uno's delegate never gives. A navigation of the page is put to the web
+    // view's gate before any request for it is sent. Everything else is left to Uno's delegate.
     [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]
     private static void DecidePolicyForNavigationActionHook(
         IntPtr self,
@@ -477,6 +492,7 @@ public static partial class MacOSWebViewInterop
         // Decided before anything is answered, so a throw can leave WebKit neither unanswered nor answered
         // twice. Never let an exception unwind into WebKit.
         var shouldDownload = false;
+        var isRefused = false;
         try
         {
             var shouldPerformDownloadSelector = GetSelector("shouldPerformDownload");
@@ -486,6 +502,9 @@ public static partial class MacOSWebViewInterop
 
             shouldDownload = isDownloadRequested &&
                 _downloadListener?.IsRoutingDownloads(webView) == true;
+
+            isRefused = !shouldDownload &&
+                !IsNavigationAllowed(webView, navigationAction);
         }
         catch
         {
@@ -494,6 +513,12 @@ public static partial class MacOSWebViewInterop
         if (shouldDownload)
         {
             InvokePolicyHandler(decisionHandler, NavigationActionPolicyDownload);
+            return;
+        }
+
+        if (isRefused)
+        {
+            InvokePolicyHandler(decisionHandler, NavigationActionPolicyCancel);
             return;
         }
 

@@ -1,11 +1,14 @@
+using Celbridge.Projects;
 using Celbridge.Resources;
+using Celbridge.Resources.Services;
 
 namespace Celbridge.Tests.Utilities;
 
 /// <summary>
 /// A project names the folder its downloads are saved to by a path from the project root. These tests pin
-/// which paths name a folder at all, that a named folder is used whether or not the project has made it
-/// yet, and that a path the project cannot use saves downloads to the default rather than failing them.
+/// which paths name a folder at all, that a folder Celbridge reserves is not one, that a named folder is
+/// used whether or not the project has made it yet, and that a path the project cannot use saves downloads
+/// to the default rather than failing them.
 /// </summary>
 [TestFixture]
 public class DownloadsFolderPathTests
@@ -50,6 +53,53 @@ public class DownloadsFolderPathTests
         var isParsed = DownloadsFolderPath.TryParse(path, out _);
 
         isParsed.Should().BeFalse();
+        DownloadsFolderPath.IsReserved(path).Should().BeFalse();
+    }
+
+    [TestCase(".git")]
+    [TestCase(".celbridge")]
+    [TestCase(".git/downloads")]
+    [TestCase("assets/.git")]
+    [TestCase("vendor/.celbridge/temp")]
+    public void AFolderCelbridgeReserves_NamesNoFolder(string path)
+    {
+        // Nothing can be saved there, so a downloads folder there would refuse every download.
+        var isParsed = DownloadsFolderPath.TryParse(path, out _);
+
+        isParsed.Should().BeFalse();
+        DownloadsFolderPath.IsReserved(path).Should().BeTrue();
+    }
+
+    [TestCase(".github")]
+    [TestCase("git")]
+    [TestCase("assets/.gitkeep")]
+    public void ANameThatOnlyResemblesAReservedOne_NamesTheFolder(string path)
+    {
+        var isParsed = DownloadsFolderPath.TryParse(path, out var folder);
+
+        isParsed.Should().BeTrue();
+        folder.Should().Be(new ResourceKey(path));
+        DownloadsFolderPath.IsReserved(path).Should().BeFalse();
+    }
+
+    // The resource policy is what refuses a write, so the folder check has to agree with it about every
+    // path, or the settings would accept a folder that every download then fails in.
+    [TestCase(".git", true)]
+    [TestCase("assets/.celbridge", true)]
+    [TestCase(".github", false)]
+    [TestCase("assets/incoming", false)]
+    public void TheReservedCheck_AgreesWithTheResourcePolicy(string path, bool isReserved)
+    {
+        var project = Substitute.For<IProject>();
+        project.Config.Returns(new ProjectConfig());
+        var projectService = Substitute.For<IProjectService>();
+        projectService.CurrentProject.Returns(project);
+        var policy = new ResourcePolicy(projectService);
+
+        var writeResult = policy.Evaluate(new ResourceKey($"{path}/payload.bin"), ResourceAction.Write);
+
+        writeResult.IsFailure.Should().Be(isReserved);
+        DownloadsFolderPath.IsReserved(path).Should().Be(isReserved);
     }
 
     [Test]
@@ -83,6 +133,7 @@ public class DownloadsFolderPathTests
     [TestCase("", Description = "no folder named")]
     [TestCase("notes.txt", Description = "a file rather than a folder")]
     [TestCase("../outside", Description = "a path that names no folder")]
+    [TestCase(".git", Description = "a folder Celbridge reserves")]
     public void AnythingElse_LeavesDownloadsInTheDefaultFolder(string path)
     {
         _projectResources["notes.txt"] = Substitute.For<IFileResource>();

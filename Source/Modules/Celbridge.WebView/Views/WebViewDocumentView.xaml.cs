@@ -1293,7 +1293,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         // which opens in Celbridge.
         if (Options.InterceptTopFrameNavigation)
         {
-            if (args.IsUserInitiated &&
+            if (_webViewAdapter.IsUserInitiated(args) &&
                 Uri.TryCreate(url, UriKind.Absolute, out var destination) &&
                 TryOpenProjectLink(destination))
             {

@@ -47,6 +47,7 @@ internal static class ProjectSettingsLabels
     public static string DownloadsFolderBrowseTooltip => Localizer.GetString("ProjectSettings_DownloadsFolderBrowseTooltip");
     public static string DownloadsFolderPickerTitle => Localizer.GetString("ProjectSettings_DownloadsFolderPickerTitle");
     public static string InvalidDownloadsFolder => Localizer.GetString("ProjectSettings_InvalidDownloadsFolder", DownloadsFolderPath.DefaultFolder.Path);
+    public static string ReservedDownloadsFolder => Localizer.GetString("ProjectSettings_ReservedDownloadsFolder", DownloadsFolderPath.DefaultFolder.Path);
     public static string ShortcutsEmpty => Localizer.GetString("ProjectSettings_ShortcutsEmpty");
     public static string AddShortcut => Localizer.GetString("ProjectSettings_AddShortcut");
     public static string ShortcutUntitled => Localizer.GetString("ProjectSettings_ShortcutUntitled");

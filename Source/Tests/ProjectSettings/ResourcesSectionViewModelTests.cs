@@ -256,6 +256,25 @@ public class ResourcesSectionViewModelTests
     }
 
     [Test]
+    public void AFolderCelbridgeReserves_IsReportedAndWritesNoKey()
+    {
+        var viewModel = CreateViewModel(downloadsFolder: "assets/incoming");
+        viewModel.Load();
+
+        var changedProperties = new List<string?>();
+        viewModel.PropertyChanged += (_, e) => changedProperties.Add(e.PropertyName);
+
+        viewModel.DownloadsFolderText = ".git";
+
+        // The message beneath the field says the folder is reserved rather than that the path is not one,
+        // so it has to be read again whenever the text changes.
+        viewModel.IsDownloadsFolderInvalid.Should().BeTrue();
+        changedProperties.Should().Contain(nameof(ResourcesSectionViewModel.InvalidDownloadsFolderText));
+        var config = _context.Draft!.ToConfig();
+        config.Resources.DownloadsFolder.Should().BeEmpty();
+    }
+
+    [Test]
     public async Task PickingAFolder_FillsTheField()
     {
         StubPickedFolder(Result<ResourceKey>.Ok(new ResourceKey("assets/incoming")));

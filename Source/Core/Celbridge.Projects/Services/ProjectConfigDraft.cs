@@ -275,8 +275,9 @@ public sealed class ProjectConfigDraft
     }
 
     // A folder path is written as the path it names. The default folder is written as no key at all, and
-    // so is anything that is not a folder path, which a load would drop, so the file reads back as the
-    // draft wrote it. Downloads then go to the default folder, which the section says beneath the field.
+    // so is anything that is not a folder path or is a reserved one, which a load would drop, so the file
+    // reads back as the draft wrote it. Downloads then go to the default folder, which the section says
+    // beneath the field.
     private static string PopulatedDownloadsFolder(string folderPath)
     {
         if (!DownloadsFolderPath.TryParse(folderPath, out var folder)
