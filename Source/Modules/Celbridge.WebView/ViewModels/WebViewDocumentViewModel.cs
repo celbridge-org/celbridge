@@ -43,8 +43,8 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
 {
     private const string WwwPrefix = "www.";
 
-    // Where the loopback file server serves the open project's files, which is where the HTML viewer's
-    // page and every file it links to within the project are found.
+    // Where the loopback file server serves the open project's files: the HTML viewer's page, and every
+    // project file it links to.
     private const string ServerHost = "127.0.0.1";
     private const string ProjectRoute = "/project/";
 
@@ -119,8 +119,8 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     [NotifyPropertyChangedFor(nameof(IsCurrentPageBookmarked))]
     private string _currentUrl = string.Empty;
 
-    // Reported by the WebView when a navigation does not complete, which leaves the page being left
-    // still rendered.
+    // Reported by the WebView when a navigation does not complete, which leaves the previous page on
+    // screen.
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsPlaceholderVisible))]
     [NotifyPropertyChangedFor(nameof(IsEmptyStateVisible))]
@@ -891,8 +891,8 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
         RecordDataChanged();
     }
 
-    // The host a page is on, with its port where that is not the scheme's default. A leading "www." is dropped
-    // unless no dot would remain.
+    // The host a page is on, with its port when that is not the scheme's default. A leading "www." is
+    // dropped unless no dot would remain.
     private static string GetDefaultBookmarkName(Uri uri)
     {
         var name = GetReadableHost(uri);
@@ -915,8 +915,8 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
         return remainder;
     }
 
-    // A web view reports an internationalized domain in its ASCII form, which is turned back into the name as the
-    // user reads it.
+    // A web view reports an internationalized domain in its ASCII form; this turns it back into the name
+    // the user reads.
     private static string GetReadableHost(Uri uri)
     {
         if (uri.HostNameType != UriHostNameType.Dns)

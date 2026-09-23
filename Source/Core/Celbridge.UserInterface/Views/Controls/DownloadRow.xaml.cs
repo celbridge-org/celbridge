@@ -15,7 +15,7 @@ public sealed partial class DownloadRow : UserControl, IBadgeRow
     private const double BytesPerGigabyte = BytesPerMegabyte * 1024;
 
     // A rate measured over the first moments of a transfer is mostly the connection opening, so no time
-    // remaining is offered until enough of one has passed to divide by.
+    // remaining is shown until this much has elapsed.
     private static readonly TimeSpan MinimumElapsedForEstimate = TimeSpan.FromSeconds(2);
 
     private readonly IStringLocalizer _stringLocalizer;
@@ -160,9 +160,9 @@ public sealed partial class DownloadRow : UserControl, IBadgeRow
         FailureText.Visibility = Visibility.Visible;
     }
 
-    // A running transfer says how far it has got and how long is left, and a settled one says when it
-    // arrived, with how large the file turned out to be when there is a file. A failed or canceled download
-    // left none, so the bytes it received before it stopped are not a size.
+    // A running transfer says how far it has got and how long is left. A settled one says when it arrived,
+    // and how large the file is when there is one: a failed or canceled download left no file, so the
+    // bytes it received are not a size.
     private string ComposeDetail(DownloadEntry download)
     {
         if (download.Status != DownloadStatus.InProgress)
@@ -239,9 +239,9 @@ public sealed partial class DownloadRow : UserControl, IBadgeRow
         return _stringLocalizer.GetString("Downloads_TimeLeft_Hours", (int)Math.Ceiling(secondsRemaining / 3600));
     }
 
-    // Set once rather than with each update. A running transfer updates the row several times a second,
-    // and replacing a tooltip restarts the delay before it shows, so one set on every update never
-    // appears. None of this text depends on how far the download has got.
+    // Set once rather than on every update. A running transfer updates the row several times a second, and
+    // replacing a tooltip restarts the delay before it shows, so a tooltip reset that often would never
+    // appear. None of this text changes as the download progresses.
     private void ApplyLabels(DownloadEntry download)
     {
         var cancelText = _stringLocalizer.GetString("Downloads_Cancel");
@@ -259,10 +259,10 @@ public sealed partial class DownloadRow : UserControl, IBadgeRow
         CanceledText.Text = _stringLocalizer.GetString("Downloads_TransferCancelled");
     }
 
-    // Stopping a transfer and finding the file it produced are never both on offer: a download that is
-    // still running has no file to find, and one that has finished cannot be stopped. Once it has
-    // finished, whatever the outcome, it can be taken off the list. A row that cannot be clicked raises no
-    // pointer events, so its tooltip stays hidden until it has a file to find.
+    // Stopping a transfer and finding the file it produced are never both on offer: a download still
+    // running has no file to find, and a finished one cannot be stopped. Any finished download can be
+    // taken off the list. A row that cannot be clicked raises no pointer events, so its tooltip stays
+    // hidden until there is a file to find.
     private void ApplyActions(DownloadEntry download)
     {
         var isTransferring = download.Status == DownloadStatus.InProgress;
@@ -303,7 +303,7 @@ public sealed partial class DownloadRow : UserControl, IBadgeRow
     }
 
     // Relative for anything from the last day, which is every download a session holds in practice. The
-    // rows are rebuilt each time the list opens, so what they say is current when it is read.
+    // rows are rebuilt each time the list opens, so what they say is current whenever it is read.
     private string FormatStart(DateTimeOffset startedAt)
     {
         var elapsed = DateTimeOffset.UtcNow - startedAt;

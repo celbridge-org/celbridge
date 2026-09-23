@@ -11,7 +11,8 @@ namespace Celbridge.UserInterface.Services;
 public sealed class DownloadService : IDownloadService
 {
     /// <summary>
-    /// The most downloads the list holds at once. Past it the oldest is dropped to make room.
+    /// The most downloads the list holds at once. Past it the oldest settled one is dropped to make room,
+    /// and a download still running keeps its row.
     /// </summary>
     public const int DownloadLimit = 50;
 
@@ -19,10 +20,9 @@ public sealed class DownloadService : IDownloadService
     // which is far more often than a list of rows can usefully redraw.
     private static readonly TimeSpan ProgressPublishInterval = TimeSpan.FromMilliseconds(250);
 
-    // What a download still running needs while it runs and when it settles: where the platform is
-    // writing it, where it is going, and the transfer to stop it with. Held apart from the entries, so a
-    // row that leaves the list cannot orphan the transfer behind it, and holding the transfer is also what
-    // keeps the platform's handle for the download alive.
+    // What a download still running needs: where the platform is writing it, where it is going, and the
+    // transfer to stop it with. Held apart from the entries, so a row that leaves the list cannot orphan
+    // its transfer, and holding the transfer is what keeps the platform's handle alive.
     private record InFlightDownload(ResourceKey StagingResource, ResourceKey Destination, IDownloadTransfer Transfer);
 
     private readonly ILogger<DownloadService> _logger;
@@ -39,9 +39,9 @@ public sealed class DownloadService : IDownloadService
     private readonly List<DownloadEntry> _entries = new();
     private readonly Dictionary<long, InFlightDownload> _inFlightDownloads = new();
 
-    // The destinations promised to a download, held until its file is at that path or putting it there has
-    // failed. Held apart from the transfers, which are let go of as soon as one stops running, leaving a
-    // window before the move lands where a second download of the same name would find the path free.
+    // The destinations promised to a download, held until its file lands there or the move fails. Kept
+    // separately from the transfers, which are dropped the moment a transfer stops: that leaves a window
+    // during the move where a second download of the same name would find the path free.
     private readonly HashSet<ResourceKey> _reservedDestinations = new();
 
     // Reserving a destination and recording it has to be indivisible, or two downloads of the same name
@@ -146,8 +146,8 @@ public sealed class DownloadService : IDownloadService
             }
             var destination = reserveResult.Value;
 
-            // Probing the destination before anything is staged is what surfaces a policy denial up front
-            // instead of after the transfer has run.
+            // Probed before anything is staged, so a policy denial surfaces now rather than after the
+            // whole transfer has run.
             var probeResult = await resourceFileSystem.GetInfoAsync(destination);
             if (probeResult.IsFailure)
             {
@@ -170,8 +170,8 @@ public sealed class DownloadService : IDownloadService
                     .WithErrors(createFolderResult);
             }
 
-            // The transfer is staged under temp: so the wipe-on-load policy bounds what an abandoned
-            // download leaves behind. The name is random, because two downloads may share a file name.
+            // Staged under temp:, which is wiped on workspace load, so an abandoned download leaves
+            // nothing behind for long. The name is random, because two downloads may share a file name.
             var stagingName = $"{Path.GetFileNameWithoutExtension(Path.GetRandomFileName())}{Path.GetExtension(fileName)}";
             var stagingResource = new ResourceKey($"{ProjectConstants.TempFolder}:{ProjectConstants.DownloadsFolder}/{stagingName}");
 
@@ -279,8 +279,8 @@ public sealed class DownloadService : IDownloadService
         }
         finally
         {
-            // Given up once the file is at the destination, or once putting it there has failed, so no
-            // second download can be handed the same path while the move is in flight.
+            // Released once the file has landed, or once the move has failed, so no second download is
+            // given the same path while this one is still moving.
             ReleaseDestination(inFlightDownload.Destination);
         }
     }
@@ -312,8 +312,8 @@ public sealed class DownloadService : IDownloadService
             return;
         }
 
-        // Taken out of flight before the transfer is stopped, so the stop the platform may report finds
-        // nothing to settle and the row keeps the reason given here rather than reading as a cancellation.
+        // Taken out of flight before the transfer is stopped, so the cancellation the platform may report
+        // finds nothing to settle and the row keeps the reason given here.
         try
         {
             inFlightDownload.Transfer.Cancel();
@@ -342,8 +342,8 @@ public sealed class DownloadService : IDownloadService
             return;
         }
 
-        // The platform may report the stop afterwards or not at all, and by then the download is no
-        // longer in flight, so the outcome is recorded here rather than waited for.
+        // The platform may report the stop afterwards or not at all, and by then the download is out of
+        // flight, so record the outcome here rather than wait for it.
         try
         {
             inFlightDownload.Transfer.Cancel();
@@ -405,8 +405,8 @@ public sealed class DownloadService : IDownloadService
         SendDownloadsChanged(hasArrival: false);
     }
 
-    // Downloads land in the folder the project names, which is downloads/ unless it names another, so the
-    // project root stays uncluttered when a session downloads several files.
+    // Downloads land in the folder the project names, or downloads/ when it names none, so the project
+    // root stays uncluttered when a session downloads several files.
     private ResourceKey ResolveDownloadsFolder(IResourceRegistry resourceRegistry)
     {
         var configuredFolder = _projectService.CurrentProject?.Config.Resources.DownloadsFolder ?? string.Empty;
@@ -415,7 +415,7 @@ public sealed class DownloadService : IDownloadService
     }
 
     // Appends " (N)" before the extension until the destination is free: absent from disk, and not
-    // already promised to a download that is still running.
+    // already promised to another download.
     private async Task<Result<ResourceKey>> ReserveDestinationAsync(IResourceRegistry resourceRegistry, string fileName)
     {
         var downloadsFolder = ResolveDownloadsFolder(resourceRegistry);
@@ -476,9 +476,9 @@ public sealed class DownloadService : IDownloadService
         }
     }
 
-    // Only Celbridge's own reservations can deny a destination, since nothing a project configures denies a
-    // read or a write, and a downloads folder inside one is refused before it is ever used. The row names the
-    // reserved folder the policy matched, should a destination still reach one.
+    // Only Celbridge's own reserved folders can deny a destination: nothing a project configures denies a
+    // read or a write, and a downloads folder inside a reserved one is refused before it is ever used. If a
+    // destination still reaches one, the row names the folder that matched.
     private string DescribeBlockedDestination(Result probeResult, string fileName)
     {
         if (probeResult.FirstException is not PolicyDenialError denial)
@@ -540,8 +540,8 @@ public sealed class DownloadService : IDownloadService
         return downloadId;
     }
 
-    // A download that never started still gets a row, because a denial the user cannot see reads as the
-    // download having silently done nothing.
+    // A download that never started still gets a row: a denial the user cannot see looks like the download
+    // silently doing nothing.
     private void RecordFailure(string fileName, string sourceUrl, string reason)
     {
         lock (_lock)
@@ -612,7 +612,7 @@ public sealed class DownloadService : IDownloadService
         SettleAsCanceled(downloadId);
     }
 
-    // Announced as no arrival, since a download that was stopped has brought nothing to draw attention to.
+    // Announced as no arrival: a stopped download brought nothing to draw attention to.
     private void SettleAsCanceled(long downloadId)
     {
         lock (_lock)
@@ -673,8 +673,8 @@ public sealed class DownloadService : IDownloadService
         SendDownloadsChanged(hasArrival: false);
     }
 
-    // Every record describes the project that is ending. A transfer still running is stopped, since nothing
-    // is left to report its outcome, and its staging file goes with temp:.
+    // Every record belongs to the project that is closing. A transfer still running is stopped, because
+    // nothing is left to report its outcome, and temp: takes its staging file with it.
     private void OnWorkspaceUnloaded(object recipient, WorkspaceUnloadedMessage message)
     {
         List<InFlightDownload> abandonedDownloads;
@@ -726,7 +726,7 @@ public sealed class DownloadService : IDownloadService
     }
 
     // A download still running keeps its row, so its progress stays in view and it can still be stopped.
-    // With nothing settled left to drop, the list grows past the limit rather than losing one.
+    // When every row is still running the list grows past the limit rather than dropping one.
     private void AddEntry(DownloadEntry entry)
     {
         while (_entries.Count >= DownloadLimit)

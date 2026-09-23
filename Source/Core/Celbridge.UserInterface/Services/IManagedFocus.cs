@@ -11,8 +11,8 @@ public interface INotedFocus
     bool IsFocusBack { get; }
 
     /// <summary>
-    /// Gives managed keyboard focus back to the noted element. Returns false when nothing held focus when it
-    /// was noted, or the element has since left the window, or cannot take focus.
+    /// Gives managed keyboard focus back to the noted element. Returns false when nothing held focus at
+    /// the time, or the element has since left the window, or cannot take focus.
     /// </summary>
     bool TryReturnFocus();
 }
@@ -35,8 +35,8 @@ public interface IManagedFocus
     FocusLocation FocusLocation { get; }
 
     /// <summary>
-    /// Notes the element holding managed keyboard focus, so focus can later be found back on it or given back
-    /// to it, as it must be once something that took the keyboard, such as a modal dialog, has gone.
+    /// Notes the element holding managed keyboard focus, so it can later be checked for focus or given it
+    /// back, as it must be once a modal dialog or anything else that took the keyboard has gone.
     /// </summary>
     INotedFocus NoteFocus();
 

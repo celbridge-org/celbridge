@@ -334,8 +334,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
 
     private void AttachNavigationPolicy(CoreWebView2 coreWebView)
     {
-        // A browser document goes wherever its page asks, so it is not gated at all. A gate that allows
-        // everything still puts every request the page makes through the head's interception machinery.
+        // A browser document goes wherever its page asks, so it is not gated at all. Even a gate that
+        // allows everything routes every request the page makes through the head's interception machinery.
         if (!Options.InterceptTopFrameNavigation)
         {
             return;

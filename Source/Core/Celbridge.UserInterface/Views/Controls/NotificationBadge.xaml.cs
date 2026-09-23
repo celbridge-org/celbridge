@@ -35,8 +35,8 @@ public sealed partial class NotificationBadge : UserControl
 
         _list = new BadgeList(this, NotificationScrollViewer, NotificationRows, ClearAllButton, AttentionOverlay);
 
-        // Kept subscribed for the life of the control, so a badge the title bar takes out of the window and
-        // puts back starts listening again rather than going quiet for the rest of the session.
+        // Never unsubscribed, so a badge the title bar removes and re-adds starts listening again instead
+        // of going quiet for the rest of the session.
         Loaded += OnNotificationBadge_Loaded;
         Unloaded += OnNotificationBadge_Unloaded;
     }

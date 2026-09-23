@@ -8,8 +8,8 @@ using FocusManager = Microsoft.UI.Xaml.Input.FocusManager;
 namespace Celbridge.UserInterface.Views.Controls;
 
 /// <summary>
-/// One row in the list a title bar badge opens. The list tells rows apart by the entry each one shows, so
-/// the keyboard can find its way back to a row after the list has been rebuilt.
+/// One row in the list a title bar badge opens. Each row is identified by the entry it shows, so the
+/// keyboard can return to the same row after the list is rebuilt.
 /// </summary>
 internal interface IBadgeRow
 {
@@ -31,9 +31,9 @@ internal interface IBadgeRow
 internal sealed record BadgeListFocus(long? EntryId, int RowIndex);
 
 /// <summary>
-/// The list a title bar badge opens: how tall it grows, where the keyboard goes as its rows are rebuilt,
-/// and the pulse that draws the eye when something arrives. The badges differ in what they list rather
-/// than in how the list behaves, so they share this.
+/// The list a title bar badge opens: how tall it grows, where the keyboard goes when its rows are
+/// rebuilt, and the pulse that marks an arrival. The badges differ in what they list, not in how the
+/// list behaves, so they share this.
 /// </summary>
 internal sealed class BadgeList
 {
@@ -126,8 +126,8 @@ internal sealed class BadgeList
     }
 
     /// <summary>
-    /// Where the keyboard is in the list, or null when it is somewhere else entirely. Note it before the
-    /// rows are rebuilt, which removes the focused element. Clear All counts as the first row.
+    /// Where the keyboard is in the list, or null when it is elsewhere. Call it before rebuilding the
+    /// rows, which destroys the focused element. Clear All counts as the first row.
     /// </summary>
     public BadgeListFocus? FindFocus()
     {
@@ -199,13 +199,13 @@ internal sealed class BadgeList
             }
         }
 
-        // Refused by a Clear All that is hidden or disabled, which leaves the keyboard where it is.
+        // A hidden or disabled Clear All refuses focus, which leaves the keyboard where it is.
         _clearAllButton.Focus(FocusState.Programmatic);
     }
 
     /// <summary>
-    /// Hands the keyboard back once the rebuilt rows have been laid out, which they have not been until
-    /// after the caller returns.
+    /// Hands the keyboard back once the new rows have been laid out, which happens after the caller
+    /// returns.
     /// </summary>
     public void RestoreFocusWhenLaidOut(BadgeListFocus listFocus)
     {

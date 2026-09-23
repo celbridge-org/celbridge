@@ -16,7 +16,7 @@ internal static class WebView2SuggestedName
     /// <summary>
     /// Returns the server's name for the download when Chromium's suggestion is that name with its own
     /// " (N)" added, and Chromium's suggestion otherwise. Chromium also sanitises names, so its suggestion
-    /// is kept wherever it cannot be shown to be only a uniquified form of the server's.
+    /// is kept unless it is clearly just the server's name with a counter added.
     /// </summary>
     public static string Resolve(string suggestedFilePath, string contentDisposition, string sourceUrl)
     {
@@ -53,7 +53,7 @@ internal static class WebView2SuggestedName
             return string.Empty;
         }
 
-        // The encoded form is the one a server uses for a name plain ASCII cannot carry, so it wins.
+        // A server uses the encoded form for a name plain ASCII cannot carry, so it wins.
         var name = header.FileNameStar;
         if (string.IsNullOrEmpty(name))
         {

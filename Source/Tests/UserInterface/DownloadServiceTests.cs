@@ -432,8 +432,8 @@ public class DownloadServiceTests
     [Test]
     public async Task ARecordStillRunning_IsKeptOnceTheListIsFull()
     {
-        // A running download keeps its row, so its progress stays in view and it can still be stopped. With
-        // nothing settled to drop in its place, the list grows past the limit.
+        // A running download keeps its row, so its progress stays in view and it can still be stopped.
+        // With nothing settled to drop in its place, the list grows past the limit.
         for (var index = 0; index < DownloadService.DownloadLimit + 5; index++)
         {
             await BeginAsync($"report{index}.pdf");
@@ -449,8 +449,8 @@ public class DownloadServiceTests
         var ticket = await BeginAsync("report.pdf");
         _localFileSystem.SeedFile(ticket.StagingPath, "payload");
 
-        // The file is not at its destination until the move lands, so a download begun while that is in
-        // flight must not be handed the same path.
+        // The file is not at its destination until the move lands, so a download begun during the move
+        // must not be given the same path.
         DownloadTicket? concurrentTicket = null;
         _duringMove = async () => concurrentTicket = await BeginAsync("report.pdf");
 

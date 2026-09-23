@@ -27,8 +27,8 @@ public enum DownloadStatus
 }
 
 /// <summary>
-/// What a caller needs to run a download the service has reserved a destination for: the id it reports the
-/// outcome against, the absolute path the platform writes the transfer to, and where the file lands.
+/// A download the service has reserved a destination for: the id to report its outcome against, the
+/// absolute path the platform writes it to, and where the finished file lands.
 /// </summary>
 public partial record DownloadTicket(
     long Id,
@@ -36,9 +36,9 @@ public partial record DownloadTicket(
     ResourceKey Destination);
 
 /// <summary>
-/// A download recorded this session. FileName is the name the file is saved under, once a taken name has
-/// been made unique. Resource is empty until the transfer succeeds, FailureReason is empty unless it
-/// failed, and TotalBytes is null while the server has not said how large the file is.
+/// A download recorded this session. FileName is the name the file is saved under, uniquified when that
+/// name was already taken. Resource is empty until the transfer succeeds, FailureReason is empty unless
+/// it failed, and TotalBytes is null until the server says how large the file is.
 /// </summary>
 public partial record DownloadEntry(
     long Id,
@@ -62,7 +62,7 @@ public partial record DownloadEntry(
 
 /// <summary>
 /// The platform side of a download that is running. The service holds one for the life of the transfer,
-/// which is also what keeps the platform's own handle for it alive.
+/// which is what keeps the platform's own handle alive.
 /// </summary>
 public interface IDownloadTransfer
 {
@@ -113,19 +113,19 @@ public interface IDownloadService
     Task CancelAsync(long downloadId);
 
     /// <summary>
-    /// Records the download as failed with the reason its row states, and deletes anything it staged.
+    /// Records the download as failed with the given reason, and deletes anything it staged.
     /// </summary>
     Task FailAsync(long downloadId, string reason);
 
     /// <summary>
-    /// Stops a running download whose surface has gone, records it as failed with the reason its row
-    /// states, and deletes anything it staged. The transfer is stopped here rather than left to report
-    /// itself, because nothing is listening to it any more.
+    /// Stops a running download whose surface has gone, records it as failed with the given reason, and
+    /// deletes anything it staged. Nothing is listening to the transfer any more, so it is stopped here
+    /// rather than left to report itself.
     /// </summary>
     Task AbandonAsync(long downloadId, string reason);
 
     /// <summary>
-    /// Records a download the platform stopped by itself as canceled, which is not a failure, and deletes
+    /// Records as canceled a download the platform stopped by itself, which is not a failure, and deletes
     /// anything it staged. The transfer is not asked to stop, since it already has.
     /// </summary>
     Task ReportCanceledAsync(long downloadId);

@@ -141,8 +141,8 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
     public async Task<Result<MoveResult>> MoveAsync(ResourceKey source, ResourceKey dest, MoveOptions? options = null)
     {
         // A resource keeps no identity from one root to another, so a move across roots is a delete from
-        // the source root and a create in the destination root. References to the source are left as they
-        // are, and only its removal is announced, which is why a caller has to ask for one.
+        // the source root and a create in the destination root. References to the source still name the
+        // resource that left, and only its removal is announced, so a caller has to ask for this.
         var isCrossRoot = source.Root != dest.Root;
         if (isCrossRoot
             && options?.AllowCrossRoot != true)

@@ -24,7 +24,7 @@ public class DownloadBadgeViewModel
     public event EventHandler? DownloadsChanged;
 
     /// <summary>
-    /// Raised on the UI thread when a download settles, after the change it makes has been raised.
+    /// Raised on the UI thread when a download settles, after DownloadsChanged.
     /// </summary>
     public event EventHandler? DownloadArrived;
 
@@ -34,23 +34,23 @@ public class DownloadBadgeViewModel
     public IReadOnlyList<DownloadEntry> Downloads { get; private set; } = Array.Empty<DownloadEntry>();
 
     /// <summary>
-    /// Whether a transfer is still running, which is what the badge shows a progress ring for.
+    /// Whether a transfer is still running, which is when the badge shows a progress ring.
     /// </summary>
     public bool IsTransferring { get; private set; }
 
     /// <summary>
-    /// Whether any recorded download failed, which is what turns the badge to the error colour.
+    /// Whether any recorded download failed, which turns the badge to the error colour.
     /// </summary>
     public bool HasFailure { get; private set; }
 
     /// <summary>
-    /// The number the badge shows: every recorded download except those that were canceled, which stay in
-    /// the list without counting towards it.
+    /// The number the badge shows: every recorded download except the canceled ones, which stay in the
+    /// list but are not counted.
     /// </summary>
     public int BadgeCount { get; private set; }
 
     /// <summary>
-    /// Whether any recorded download has finished, which is what Clear All removes.
+    /// Whether any recorded download has finished, which is what Clear All takes off the list.
     /// </summary>
     public bool CanClearAll { get; private set; }
 

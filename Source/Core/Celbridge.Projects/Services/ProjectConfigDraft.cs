@@ -7,8 +7,8 @@ namespace Celbridge.Projects.Services;
 /// is open, its sections mutate it as the user works, and the save tick serializes it back to the
 /// .celbridge file. Because the file is normalized on every load, a draft does not preserve formatting;
 /// it only has to produce a file that reconciles to the intended state. It never writes a value a load
-/// would drop, because the editor takes a file that reads back differently from what it wrote for an
-/// outside change and reloads every section from it.
+/// would drop: a file that reads back differently from what the editor wrote looks like an outside
+/// change, and the editor then reloads every section from it.
 /// </summary>
 public sealed class ProjectConfigDraft
 {

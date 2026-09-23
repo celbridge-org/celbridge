@@ -7,17 +7,16 @@ namespace Celbridge.WebHost;
 public interface IWebViewDownloadHandler
 {
     /// <summary>
-    /// Raised when a download starts. A navigation whose response turns out to be an attachment becomes a
-    /// download and then ends without a page, so a surface that navigates needs to tell that apart from a
-    /// page that failed to load. Where the platform decides on the download before that navigation ends,
-    /// this is raised first, and only for a download that replaced the main frame's navigation.
+    /// Raised when a download starts. A navigation that becomes a download then ends without a page, and a
+    /// surface has to tell that apart from a page that failed to load. Raised only for a download that
+    /// replaced the main frame's navigation, and before that navigation ends where the platform allows.
     /// </summary>
     event EventHandler? DownloadStarted;
 
     /// <summary>
     /// Stops routing the web view's downloads. Where a transfer cannot outlive the web view that started
-    /// it, the ones this web view is running are stopped and their records settle, since nothing would ever
-    /// report their outcome. Only this web view's downloads are touched.
+    /// it, this stops the ones still running and settles their records, because nothing would ever report
+    /// their outcome. No other web view's downloads are touched.
     /// </summary>
     void Detach();
 }

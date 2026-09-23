@@ -1,9 +1,9 @@
 namespace Celbridge.Resources;
 
 /// <summary>
-/// How a move departs from the default. AllowCrossRoot permits a source and a
-/// destination on different roots, which the caller has to ask for because such a
-/// move does not carry the resource's identity with it.
+/// Options for a move. AllowCrossRoot lets the source and destination sit on
+/// different roots, which a caller has to ask for: a resource keeps no identity
+/// across roots, so such a move rewrites no references and announces no key change.
 /// </summary>
 public sealed record MoveOptions(bool AllowCrossRoot = false);
 
@@ -52,10 +52,10 @@ public interface IResourceFileSystem
     /// <summary>
     /// Moves the resource within its root and cascades the paired sidecar. The
     /// resource keeps its identity: references to it are rewritten and the key
-    /// change is announced. A source and destination on different roots are
-    /// refused unless the options allow it, in which case the move is a delete
-    /// from one root and a create in the other, as CopyAsync followed by
-    /// DeleteAsync would be, so references to the source are left as they are.
+    /// change is announced. A move across roots is refused unless the options
+    /// allow it. Such a move is a delete from one root and a create in the other,
+    /// like CopyAsync followed by DeleteAsync, so references to the source still
+    /// name the resource that left.
     /// </summary>
     Task<Result<MoveResult>> MoveAsync(ResourceKey source, ResourceKey dest, MoveOptions? options = null);
 

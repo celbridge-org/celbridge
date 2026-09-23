@@ -9,8 +9,8 @@ namespace Celbridge.WebHost.Platform;
 /// <summary>
 /// Drives the download service from WebKit on the macOS Skia head, where WebView2's DownloadStarting never
 /// fires. The native download delegate reports a download's destination request, finish and failure, and
-/// its progress is read while it runs. The service decides where a download goes, and this relays the
-/// signals and reports the outcome. One router serves every web view, because the native hooks are
+/// a timer reads its progress while it runs. The service decides where a download goes, and this relays
+/// the signals and reports the outcome. One router serves every web view, because the native hooks are
 /// process-wide, and all of it runs on the main thread, where WebKit calls back.
 /// </summary>
 internal sealed class MacOSWebViewDownloadRouter : IMacOSDownloadListener
@@ -101,9 +101,9 @@ internal sealed class MacOSWebViewDownloadRouter : IMacOSDownloadListener
 
     public void OnDownloadDestinationRequested(IntPtr download, string suggestedFileName, string sourceUrl)
     {
-        // WebKit asks again for a download it restarts, such as one that followed a redirect. It keeps the
-        // row and the staging path it was already given, so the request is answered from those rather than
-        // reserving a second destination and listing the download twice.
+        // WebKit asks again when it restarts a download, as it does after a redirect. The download keeps
+        // the row and staging path it already has, so answer from those rather than reserving a second
+        // destination and listing the download twice.
         if (_transfers.TryGetValue(download, out var runningTransfer))
         {
             if (runningTransfer.StagingPath.Length > 0)
@@ -111,7 +111,7 @@ internal sealed class MacOSWebViewDownloadRouter : IMacOSDownloadListener
                 MacOSWebViewInterop.ProvideDownloadDestination(download, runningTransfer.StagingPath);
             }
 
-            // Still reserving the destination it was begun with, which answers this request when it lands.
+            // The first request is still reserving a destination, and will answer this one too.
             return;
         }
 
@@ -131,8 +131,8 @@ internal sealed class MacOSWebViewDownloadRouter : IMacOSDownloadListener
 
         transfer.IsSettled = true;
 
-        // The last reading, taken while the download can still be asked, so the row settles on the size
-        // the file turned out to be.
+        // A last reading, taken while WebKit still answers for the download, so the row settles on the
+        // size the file turned out to be.
         ReportProgress(transfer);
 
         _ = CompleteAsync(transfer.DownloadId);

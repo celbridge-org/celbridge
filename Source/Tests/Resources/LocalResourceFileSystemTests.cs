@@ -422,7 +422,7 @@ public class LocalResourceFileSystemTests
         _resourceRegistry.ResolveResourcePath(sourceKey).Returns(Result<string>.Ok(sourcePath));
         _resourceRegistry.ResolveResourcePath(destKey).Returns(Result<string>.Ok(destPath));
 
-        // A move across roots carries none of the resource's identity with it, so a caller asks for one.
+        // A move across roots carries none of the resource's identity, so a caller has to ask for one.
         var result = await _resourceFileSystem.MoveAsync(sourceKey, destKey);
 
         result.IsFailure.Should().BeTrue();

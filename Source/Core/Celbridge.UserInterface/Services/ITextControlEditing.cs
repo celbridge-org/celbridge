@@ -16,8 +16,8 @@ public enum CaretMotion
 
 /// <summary>
 /// The edits the application performs on the managed text control that holds the keyboard, such as a
-/// dialog's field: the standard edit verbs, caret motion, and moving focus on as Tab would. Each member acts
-/// on whichever text control holds managed keyboard focus when it is called.
+/// dialog's field: the standard edit verbs, caret motion, and moving focus on as Tab does. Each member
+/// acts on whichever text control holds managed keyboard focus when it is called.
 /// </summary>
 public interface ITextControlEditing
 {

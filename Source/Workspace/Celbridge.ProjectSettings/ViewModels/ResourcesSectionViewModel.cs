@@ -15,8 +15,8 @@ public partial class ResourcesSectionViewModel : ProjectSettingsSectionViewModel
 {
     private readonly IDialogService _dialogService;
 
-    // Set while the section rebuilds itself from the config, so populating the fields does not write what
-    // it just read back into the draft.
+    // Set while the section rebuilds itself from the config, so filling the fields does not write what it
+    // has just read straight back into the draft.
     private bool _suppressCommit;
 
     [ObservableProperty]
@@ -150,9 +150,9 @@ public partial class ResourcesSectionViewModel : ProjectSettingsSectionViewModel
         return ParsePatterns(text).Any(IsInvalidPattern);
     }
 
-    // The box reads like a .gitignore, so the rest of that grammar gets typed into it. A line written in
-    // one of those forms is reported rather than stored as a pattern that reads differently here. The two
-    // gitignore wildcards the matcher escapes as ordinary characters are reported for the same reason.
+    // The box reads like a .gitignore, so people type the rest of that grammar into it. A line in one of
+    // those forms is reported rather than stored as a pattern that would mean something else here, and so
+    // are the two gitignore wildcards this matcher treats as ordinary characters.
     private static bool IsInvalidPattern(string pattern)
     {
         return pattern.Contains('\\')

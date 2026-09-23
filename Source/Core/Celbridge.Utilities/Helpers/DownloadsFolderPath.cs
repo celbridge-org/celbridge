@@ -4,7 +4,7 @@ using Celbridge.Resources;
 namespace Celbridge.Utilities;
 
 /// <summary>
-/// Reads the folder a project saves its downloads to, which its project file names by a path from the
+/// Reads the folder a project saves its downloads to, which its project file names as a path from the
 /// project root. A project that names none uses the default folder.
 /// </summary>
 public static class DownloadsFolderPath
@@ -49,10 +49,10 @@ public static class DownloadsFolderPath
     }
 
     /// <summary>
-    /// The folder downloads are saved to in the project. A folder the project has is taken as the project
-    /// spells it, which can differ from the path in case, and a path with nothing at it yet is taken as it
-    /// is, for the first download to create. The default folder serves when the path is empty, not valid or
-    /// reserved, or when a file holds it.
+    /// The folder downloads are saved to in the project. A folder that exists is returned as the project
+    /// spells it, which can differ in case; a path with nothing at it is returned unchanged, for the first
+    /// download to create. The default folder is used when the path is empty, invalid, reserved, or held
+    /// by a file.
     /// </summary>
     public static ResourceKey Resolve(IResourceRegistry registry, string path)
     {
@@ -89,8 +89,8 @@ public static class DownloadsFolderPath
         return ReservedFolderMatchers.Any(matcher => matcher.IsMatch(folder.Path, isFolder: true));
     }
 
-    // Where the folder is: as the project spells it when it exists, the path as given when nothing is there
-    // yet, and null when a file holds the path, since no folder can be made there.
+    // Where the folder is: as the project spells it when it exists, the path as given when nothing is
+    // there, and null when a file holds the path, because no folder can be made there.
     private static ResourceKey? LocateFolder(IResourceRegistry registry, ResourceKey folder)
     {
         var normalizeResult = registry.NormalizeResourceKey(folder);

@@ -50,7 +50,7 @@ public class MoveDownloadCommandTests
 
         result.IsSuccess.Should().BeTrue(result.DiagnosticReport);
 
-        // The staged file crosses from temp: into the project, which the gateway refuses unless asked.
+        // The staged file crosses from temp: into the project, which the gateway refuses unless allowed.
         await _resourceFileSystem.Received(1).MoveAsync(
             StagedResource,
             Destination,

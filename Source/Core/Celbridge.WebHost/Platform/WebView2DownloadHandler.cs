@@ -136,8 +136,8 @@ internal sealed class WebView2DownloadHandler : IWebViewDownloadHandler
 
         foreach (var abandonedDownload in abandonedDownloads)
         {
-            // Stopped being relayed before the service stops it, so the cancellation the operation reports
-            // does not settle the row over the reason given here.
+            // Unsubscribed before the service cancels it, so the cancellation the operation reports does
+            // not overwrite the reason given here.
             StopObserving(abandonedDownload);
 
             _logger.LogDebug($"Download {abandonedDownload.DownloadId} abandoned with its web view");
@@ -165,8 +165,8 @@ internal sealed class WebView2DownloadHandler : IWebViewDownloadHandler
 
             var downloadOperation = args.DownloadOperation;
 
-            // Asked before the destination is judged, because a retry is offered the staging path this
-            // handler named for the attempt it carries on from, which reads as a path outside the project.
+            // Checked before the destination, because Chromium offers a retry the staging path this
+            // handler named last time, which the check below would read as a path the user chose.
             var retriedDownload = FindRetriedDownload(downloadOperation);
             if (retriedDownload is not null)
             {
@@ -175,8 +175,8 @@ internal sealed class WebView2DownloadHandler : IWebViewDownloadHandler
             }
 
             // A path the user named in a Save As dialog is theirs, so the file goes where they said and the
-            // download list, which records what this session downloaded into the project, records nothing.
-            // The download then runs with no UI of its own, since Handled has already suppressed WebView2's.
+            // download list, which records only what landed in the project, records nothing. The download
+            // then runs with no UI at all, because Handled has already suppressed WebView2's.
             if (IsUserChosenPath(resultFilePath))
             {
                 _logger.LogDebug("Download saved to the path its Save As dialog named");
@@ -364,8 +364,8 @@ internal sealed class WebView2DownloadHandler : IWebViewDownloadHandler
         };
     }
 
-    // An attempt nothing is relaying raises no further events here, so the handler it was subscribed with
-    // stops rooting this surface once WebView2 lets the operation go.
+    // While these handlers are subscribed the operation keeps this surface alive, so an attempt that is
+    // no longer relayed is unsubscribed rather than just ignored.
     private static void StopObserving(TrackedDownload trackedDownload)
     {
         trackedDownload.StopObserving?.Invoke();

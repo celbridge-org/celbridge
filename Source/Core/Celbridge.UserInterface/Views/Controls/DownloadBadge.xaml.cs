@@ -33,8 +33,8 @@ public sealed partial class DownloadBadge : UserControl
 
         _list = new BadgeList(this, DownloadScrollViewer, DownloadRows, ClearAllButton, AttentionOverlay);
 
-        // Kept subscribed for the life of the control, so a badge the title bar takes out of the window and
-        // puts back starts listening again rather than going quiet for the rest of the session.
+        // Never unsubscribed, so a badge the title bar removes and re-adds starts listening again instead
+        // of going quiet for the rest of the session.
         Loaded += OnDownloadBadge_Loaded;
         Unloaded += OnDownloadBadge_Unloaded;
     }

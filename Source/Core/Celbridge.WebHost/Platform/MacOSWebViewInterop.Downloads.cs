@@ -22,7 +22,7 @@ public enum MacNavigationResponsePolicy
 public sealed record MacNavigationResponse(bool IsForMainFrame, bool CanShowMimeType, string ContentDisposition);
 
 /// <summary>
-/// How much of a download has arrived, and how large it is, which is -1 where the server did not say.
+/// How much of a download has arrived, and how large it is, which is -1 when the server did not say.
 /// </summary>
 public sealed record MacDownloadProgress(long BytesReceived, long TotalBytes);
 
@@ -34,7 +34,7 @@ public interface IMacOSDownloadListener
 {
     /// <summary>
     /// Whether the web view's downloads are routed. A download the page asks for with a link's download
-    /// attribute, or the user asks for from the page's context menu, is taken over only in a web view that is.
+    /// attribute, or the user asks for from the page's context menu, is taken over only in a routed view.
     /// </summary>
     bool IsRoutingDownloads(IntPtr webView);
 
@@ -191,8 +191,8 @@ public static partial class MacOSWebViewInterop
 
         if (_hookedDelegateClass == IntPtr.Zero)
         {
-            // Recorded before the hooks go in, so a failure part way through can never hook the class a
-            // second time, which would make each hook the implementation it falls back to.
+            // Recorded before the hooks go in, so a failure part way through cannot hook the class twice,
+            // which would leave each hook falling back to itself.
             _hookedDelegateClass = delegateClass;
             InstallDownloadHooks(delegateClass);
             InstallNewWindowHook(delegateClass);
@@ -224,7 +224,7 @@ public static partial class MacOSWebViewInterop
         InvokeObjectHandler(completionHandler, destinationUrl);
         _Block_release(completionHandler);
 
-        // A refused download may end without WebKit reporting it, so it is let go of now.
+        // A refused download may end without WebKit reporting it, so release it now.
         if (destinationUrl == IntPtr.Zero)
         {
             ReleaseDownload(download);
@@ -259,8 +259,8 @@ public static partial class MacOSWebViewInterop
     /// </summary>
     public static void CancelDownload(IntPtr download)
     {
-        // Taken out of the adopted set before it is told, so a failure WebKit reports for the cancel is not
-        // passed on, and released after, so it is alive while it is told.
+        // Removed from the adopted set before the cancel, so the failure WebKit reports for it is not
+        // passed on, and released after, so it is still alive when the cancel reaches it.
         if (!_adoptedDownloads.Remove(download))
         {
             return;
@@ -305,8 +305,8 @@ public static partial class MacOSWebViewInterop
             "v@:@@");
     }
 
-    // Adds the hook to the class, or puts it in place of the class's own implementation, and returns what
-    // the class responded with before, which is zero where it did not respond at all.
+    // Adds the hook to the class, or puts it in place of the class's own implementation, and returns the
+    // implementation the class had before, which is zero when it did not respond to the selector at all.
     private static IntPtr HookMethod(IntPtr targetClass, string selectorName, IntPtr hook, string typeEncoding)
     {
         var selector = GetSelector(selectorName);
@@ -374,8 +374,8 @@ public static partial class MacOSWebViewInterop
         _downloadDelegate = SendMessage(allocated, GetSelector("init"));
     }
 
-    // Takes over a download WebKit has just started. WebKit holds a download only weakly to its delegate,
-    // and the download itself is retained until WebKit reports how it ended.
+    // Takes over a download WebKit has just started. A WKDownload holds its delegate weakly, so the
+    // download is retained here until WebKit reports how it ended.
     private static void AdoptDownload(IntPtr download)
     {
         if (download == IntPtr.Zero ||
@@ -480,9 +480,9 @@ public static partial class MacOSWebViewInterop
             thirdArgument);
     }
 
-    // A link's download attribute asks for a download, which is WebKit's own answer for a delegate that
-    // does not decide, and which Uno's delegate never gives. A navigation of the page is put to the web
-    // view's gate before any request for it is sent. Everything else is left to Uno's delegate.
+    // A link's download attribute asks for a download. That is what WebKit does when no delegate decides,
+    // and what Uno's delegate never does. A navigation of the page goes to the web view's gate before any
+    // request for it is sent. Everything else is left to Uno's delegate.
     [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]
     private static void DecidePolicyForNavigationActionHook(
         IntPtr self,
@@ -491,7 +491,7 @@ public static partial class MacOSWebViewInterop
         IntPtr navigationAction,
         IntPtr decisionHandler)
     {
-        // Decided before anything is answered, so a throw can leave WebKit neither unanswered nor answered
+        // Decided before anything is answered, so a throw cannot leave WebKit unanswered or answered
         // twice. Never let an exception unwind into WebKit.
         var shouldDownload = false;
         var isRefused = false;
@@ -581,8 +581,8 @@ public static partial class MacOSWebViewInterop
         {
         }
 
-        // Only a response nothing decided on is left to the class's own implementation, which would
-        // otherwise answer in place of the decision made here.
+        // Only fall back to the class's own implementation when no listener decided, or it would answer
+        // in place of the decision above.
         if (!isDecided &&
             _originalDecidePolicyForNavigationResponse != IntPtr.Zero)
         {
@@ -696,8 +696,8 @@ public static partial class MacOSWebViewInterop
         IntPtr completionHandler)
     {
         // WebKit waits for the answer, which the listener gives after an await, so the handler is copied
-        // off the stack it arrived on. A request that supersedes one still unanswered takes its place, and
-        // the copy taken of that one is let go of here.
+        // off the stack it arrived on. A second request replaces one still unanswered, whose copy is
+        // released here.
         if (_pendingDownloadDestinations.Remove(download, out var supersededHandler))
         {
             _Block_release(supersededHandler);
