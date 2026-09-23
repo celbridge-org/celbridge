@@ -40,20 +40,35 @@ public class WebView2DownloadHandlerTests
             .Should().BeFalse();
     }
 
+    // The comparison under test resolves both paths with the host's own path rules, so the paths here are
+    // built with them too: Windows separators read as ordinary characters everywhere else, which leaves a
+    // path in one unparsed lump and the comparison meaningless. The folder is mixed case on purpose, so
+    // the case the comparison ignores really differs on a host whose temp path is all lower case.
+    private static readonly string DownloadsFolder = Path.Combine(Path.GetTempPath(), "Notes", "Downloads");
+    private static readonly string FileInDownloads = Path.Combine(DownloadsFolder, "report.pdf");
+    private static readonly string FileElsewhere = Path.Combine(Path.GetTempPath(), "ada", "report.pdf");
+
     [Test]
     public void ADownloadToTheProjectsDownloadsFolder_IsNotUserChosen()
     {
         // What an ordinary link download looks like, and what a Save As left on the dialog's own default
         // looks like: either way the file belongs in the project, where the dialog said it would go.
-        WebView2DownloadHandler.IsUserChosenPath(@"C:\Projects\notes\downloads\report.pdf", @"C:\Projects\notes\downloads")
+        WebView2DownloadHandler.IsUserChosenPath(FileInDownloads, DownloadsFolder)
             .Should().BeFalse();
     }
 
-    [TestCase(@"C:\Projects\notes\downloads\")]
-    [TestCase(@"c:\projects\notes\downloads")]
-    public void ADownloadToThatFolderSpeltDifferently_IsNotUserChosen(string downloadsFolderPath)
+    [Test]
+    public void ADownloadToThatFolderWithATrailingSeparator_IsNotUserChosen()
     {
-        WebView2DownloadHandler.IsUserChosenPath(@"C:\Projects\notes\downloads\report.pdf", downloadsFolderPath)
+        WebView2DownloadHandler.IsUserChosenPath(FileInDownloads, DownloadsFolder + Path.DirectorySeparatorChar)
+            .Should().BeFalse();
+    }
+
+    [Test]
+    public void ADownloadToThatFolderInAnotherCase_IsNotUserChosen()
+    {
+        // Folders are compared without regard to case, as the file system the handler runs on treats them.
+        WebView2DownloadHandler.IsUserChosenPath(FileInDownloads, DownloadsFolder.ToLowerInvariant())
             .Should().BeFalse();
     }
 
@@ -61,7 +76,7 @@ public class WebView2DownloadHandlerTests
     public void ADownloadToAnyOtherFolder_IsUserChosen()
     {
         // Only a Save As dialog puts a download anywhere else, so the file goes where the user said.
-        WebView2DownloadHandler.IsUserChosenPath(@"C:\Users\ada\Documents\report.pdf", @"C:\Projects\notes\downloads")
+        WebView2DownloadHandler.IsUserChosenPath(FileElsewhere, DownloadsFolder)
             .Should().BeTrue();
     }
 
@@ -69,7 +84,7 @@ public class WebView2DownloadHandlerTests
     public void ADownloadToASubfolderOfTheProjectsDownloadsFolder_IsUserChosen()
     {
         // WebView2 downloads into the folder itself, so a subfolder was named in a dialog.
-        WebView2DownloadHandler.IsUserChosenPath(@"C:\Projects\notes\downloads\invoices\report.pdf", @"C:\Projects\notes\downloads")
+        WebView2DownloadHandler.IsUserChosenPath(Path.Combine(DownloadsFolder, "invoices", "report.pdf"), DownloadsFolder)
             .Should().BeTrue();
     }
 
@@ -77,7 +92,7 @@ public class WebView2DownloadHandlerTests
     public void ADownloadWithNoFolderToCompareAgainst_IsNotUserChosen()
     {
         // No workspace, so nothing vouches for the path and the download is routed and reported instead.
-        WebView2DownloadHandler.IsUserChosenPath(@"C:\Users\ada\Documents\report.pdf", string.Empty)
+        WebView2DownloadHandler.IsUserChosenPath(FileElsewhere, string.Empty)
             .Should().BeFalse();
     }
 }
