@@ -30,12 +30,13 @@ remove button, and Clear All.
 | An HTML document with a plain link to a response from another server marked as an attachment | click the link | the document asks before handing the address to the system browser, and nothing lands in `downloads/` | 3 |
 | A completed download | delete its file in the Explorer | its row leaves the list and the count drops, and the badge goes with the last row | 3 |
 | Two downloads of the same file started together | start both | two files under distinct names, neither overwritten | 3 |
-| A download running from a `.webview` document | close the document's tab | the download carries on and lands | 3 |
+| A download running from a `.webview` document | close the document's tab | the download stops, its row says the transfer stopped with the document, and nothing is left in `downloads/` or the staging folder | 3 |
+| A download running, and the downloads folder changed in Project Settings while it runs | let it land | the file lands in the folder the download reserved when it started, and the next download goes to the new folder | 3 |
 | The list open with the keyboard on a running row's cancel button | let that download finish | the list stays open, and the keyboard stays on that row, which now finds the file | 3 |
 | The list open with the keyboard on a running row's cancel button | press Space, then Space again | the first press leaves the row saying the transfer was canceled with the keyboard on its remove button, and the second takes the row off the list | 3 |
 | A downloads folder Celbridge reserves, such as `.git`, typed into Project Settings | download a file | the field says the folder is reserved and the project file gains no key, and the file lands in `downloads/` | 3 |
 | A downloads folder set in Project Settings to a folder the project does not have yet | reload the project, then download a file | the badge is absent after the reload while earlier downloads' files remain, and the new file lands in the named folder, which the download creates | 3 |
-| A page with a link and an image | use the context menu's download or save items on each | on Windows, Save As writes where its picker names and adds no row; on macOS, Download Linked File and Download Image land in `downloads/` | 3 |
+| A page with a link and an image | use the context menu's download or save items on each | on Windows, Save As writes where its picker names, adding a row only when that is the downloads folder its picker opened on; on macOS, Download Linked File and Download Image land in `downloads/` | 3 |
 | A PDF and a markdown document | open the PDF in the file viewer and the markdown document with its preview | each displays, and nothing is downloaded | 3 |
 
 Most cases need one page offering a download in each shape the table names: a `download` link to a file
@@ -53,9 +54,10 @@ slow enough to act on while it runs, one that drops the connection part way thro
 hundred megabytes. Holding the headers back keeps the link's navigation in flight, since nothing can tell
 it is a download until they arrive, and that is what gives the address bar time to be read before the
 download starts. Give the attachment a type the page could display, such as plain text, so that only the
-marking makes it a download. Start the two downloads that run together from separate frames rather than
-with two clicks in one script, since WebKit cancels all but the last of several downloads a script starts
-at once.
+marking makes it a download. Start the two downloads that run together with two clicks a moment apart on
+two links leading to one file name: a download the page starts by itself is blocked on Windows, where
+Chromium allows a page only one download without a user gesture, and on macOS WebKit cancels all but the
+last of several a script starts at once, so neither platform runs both unless a person clicks twice.
 
 The utility is a package in the project's `packages/` folder whose page offers the file (the agent guide
 `utility_documents` describes the manifest). Packages are found when the project loads, so add it before
@@ -91,9 +93,16 @@ links lead, which the Web Documents plan covers.
 
 ## Platform
 
-The context-menu case differs by design. WebView2's menu offers Save As, which writes wherever its picker
-names and never reaches the downloads list. WebKit's menu has no Save As, and its Download Linked File and
-Download Image are downloads like any other.
+The context-menu case differs by design. WebView2's menu offers Save As, whose picker opens on the
+project's downloads folder. A file saved to another folder goes there and reaches no row, since the user
+named somewhere outside the project; one saved to the folder the picker opened on is a download like any
+other and gets a row. Check both in the case. WebKit's menu has no Save As, and its Download Linked File
+and Download Image are downloads like any other.
+
+A download does not outlive the document it was started from on Windows, because the platform reports its
+progress and its outcome through that document's web view. On macOS the downloads are routed by one
+process-wide listener instead, so a transfer there may well carry on after its tab closes; a macOS run
+should record which it saw.
 
 The mark of the web is the `com.apple.quarantine` attribute on macOS, which WebKit gives every download, and
 the `Zone.Identifier` stream on Windows, which WebView2 writes according to where the file came from. On
@@ -105,9 +114,16 @@ application must still answer input.
 On Windows, keep a file of the same name in the operating system's Downloads folder for the repeat-download
 case, since that is what made WebView2 suggest a numbered name of its own.
 
-On Windows, WebView2 retries a download whose connection dropped several times before it gives up, and
-announces each retry as a new download, so the dropped-connection case's row runs for a few seconds before
-it fails. A row per retry, or rows left running for ever with the badge spinning, is the defect that case
-is there to catch. WebKit has not been seen to retry, so on macOS the row is expected to fail as soon as
-the connection drops. A macOS run should record which it saw, since a row that runs there too means WebKit
-retries as well, and the same defect is worth looking for.
+WebView2 has been seen to retry a download whose connection dropped several times before it gives up,
+announcing each retry as a new download, so the dropped-connection case's row can run for a few seconds
+before it fails; it has also been seen to give up on the first drop. Either is a pass. The defect that case
+is there to catch is a row per retry, or rows left running for ever with the badge spinning, so the absence
+of retries is not itself a finding. WebKit has not been seen to retry either, and a macOS run should record
+which it saw.
+
+The prompt an HTML document shows for a link to another server stops the page following the link on both
+heads, but only macOS stops the request for it. macOS decides in WebKit's navigation policy, before the
+request is sent; the Windows heads decide at `NavigationStarting`, by which time the request has gone out,
+referrer and all, and a cookie the reply sets is kept. Nothing is downloaded and no browser opens either
+way, which is what the case here checks, so this does not fail the case. It does fail the Web Documents
+plan's own case for it, which is where the defect belongs; a run notes it rather than reporting it afresh.

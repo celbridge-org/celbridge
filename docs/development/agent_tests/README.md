@@ -88,7 +88,23 @@ session. Real key presses are the point: a shortcut delivered any other way test
 takes. Everything else — opening documents, reading page state, inspecting the log — has cheaper and more
 reliable routes that the project's own tooling provides.
 
-Two things a run reliably trips over:
+Five things a run reliably trips over:
+
+**A page takes no pointer input until the web view runtime is granted too.** Desktop automation hides the
+windows of applications outside the permission it was given, and every page the application hosts is drawn
+by the platform's web view runtime, which is a separate application. Without it those pages report
+themselves hidden and ignore every click, while the click tool goes on reporting success — so a run can
+spend an hour proving the application is at fault when nothing ever reached it. Grant the runtime as well
+as the application, by the executable the automation matches against rather than by the product name, and
+confirm a page is taking clicks before reading anything into one that appears to do nothing.
+
+**Click coordinates are in the capture's own frame.** A screen capture is scaled, and the coordinates a
+click takes are in the scaled frame rather than in screen pixels. Calibrate by moving the pointer to two
+known points and reading the pointer position back; a run that infers the scale from a screenshot's label
+clicks in the wrong place and reports whatever it hit.
+
+**A click outside an open flyout is eaten by the dismiss.** The first click of a batch closes the flyout
+and reaches nothing, so close it deliberately before acting on the surface behind it.
 
 **Escape may not arrive.** Desktop automation reports success for Escape and can deliver nothing, because
 computer use keeps Escape as its own stop key: an Escape it sees stops the run rather than reaching the

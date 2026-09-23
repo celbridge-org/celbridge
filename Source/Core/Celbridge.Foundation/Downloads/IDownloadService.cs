@@ -84,6 +84,12 @@ public interface IDownloadService
     IReadOnlyList<DownloadEntry> Downloads { get; }
 
     /// <summary>
+    /// The absolute path of the folder downloads land in, which is the folder the project names. Fails
+    /// while no workspace is loaded, since a download has nowhere to go.
+    /// </summary>
+    Result<string> GetDestinationFolderPath();
+
+    /// <summary>
     /// Reserves a destination and a staging path for a download that is about to start. Fails when the
     /// destination is denied by policy, before any bytes move. The transfer is held for as long as the
     /// download runs, so the platform's handle for it stays alive and the download can be cancelled.
@@ -110,6 +116,13 @@ public interface IDownloadService
     /// Records the download as failed with the reason its row states, and deletes anything it staged.
     /// </summary>
     Task FailAsync(long downloadId, string reason);
+
+    /// <summary>
+    /// Stops a running download whose surface has gone, records it as failed with the reason its row
+    /// states, and deletes anything it staged. The transfer is stopped here rather than left to report
+    /// itself, because nothing is listening to it any more.
+    /// </summary>
+    Task AbandonAsync(long downloadId, string reason);
 
     /// <summary>
     /// Records a download the platform stopped by itself as canceled, which is not a failure, and deletes

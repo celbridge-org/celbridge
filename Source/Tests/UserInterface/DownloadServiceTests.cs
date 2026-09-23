@@ -474,6 +474,55 @@ public class DownloadServiceTests
     }
 
     [Test]
+    public void TheDestinationFolderPath_IsTheFolderTheProjectNames()
+    {
+        // The web view is pointed at this folder, so every download it does not prompt for lands in the
+        // project and a path anywhere else can only have come from a Save As dialog.
+        var folderResult = _downloadService.GetDestinationFolderPath();
+
+        folderResult.IsSuccess.Should().BeTrue(folderResult.DiagnosticReport);
+        folderResult.Value.Should().Be(Path.Combine(ProjectFolderPath, "downloads"));
+    }
+
+    [Test]
+    public async Task AbandoningADownload_StopsTheTransfer_DeletesTheStagedFile_AndFailsWithTheReasonGiven()
+    {
+        var ticket = await BeginAsync("report.pdf");
+        _localFileSystem.SeedFile(ticket.StagingPath, "partial");
+
+        await _downloadService.AbandonAsync(ticket.Id, "the surface went away");
+
+        _transfers["report.pdf"].Received(1).Cancel();
+
+        var download = _downloadService.Downloads.Should().ContainSingle().Subject;
+        download.Status.Should().Be(DownloadStatus.Failed);
+        download.FailureReason.Should().Be("the surface went away");
+
+        _localFileSystem.Files.Should().NotContainKey(ticket.StagingPath);
+
+        // Stopping the transfer makes the platform report it, and by then the download has settled on the
+        // reason given here rather than reading as a cancellation the user asked for.
+        await _downloadService.ReportCanceledAsync(ticket.Id);
+        await _downloadService.CompleteAsync(ticket.Id);
+
+        _moves.Should().BeEmpty();
+        _downloadService.Downloads.Should().ContainSingle()
+            .Which.Status.Should().Be(DownloadStatus.Failed);
+    }
+
+    [Test]
+    public async Task AbandoningADownloadThatHasSettled_ChangesNothing()
+    {
+        var ticket = await CompleteDownloadAsync("report.pdf");
+
+        await _downloadService.AbandonAsync(ticket.Id, "the surface went away");
+
+        _transfers["report.pdf"].DidNotReceive().Cancel();
+        _downloadService.Downloads.Should().ContainSingle()
+            .Which.Status.Should().Be(DownloadStatus.Succeeded);
+    }
+
+    [Test]
     public async Task AStopThePlatformReports_IsACancellation_AndLeavesTheTransferAlone()
     {
         var ticket = await BeginAsync("report.pdf");

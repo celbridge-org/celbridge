@@ -39,4 +39,45 @@ public class WebView2DownloadHandlerTests
             CoreWebView2DownloadInterruptReason.NetworkFailed)
             .Should().BeFalse();
     }
+
+    [Test]
+    public void ADownloadToTheProjectsDownloadsFolder_IsNotUserChosen()
+    {
+        // What an ordinary link download looks like, and what a Save As left on the dialog's own default
+        // looks like: either way the file belongs in the project, where the dialog said it would go.
+        WebView2DownloadHandler.IsUserChosenPath(@"C:\Projects\notes\downloads\report.pdf", @"C:\Projects\notes\downloads")
+            .Should().BeFalse();
+    }
+
+    [TestCase(@"C:\Projects\notes\downloads\")]
+    [TestCase(@"c:\projects\notes\downloads")]
+    public void ADownloadToThatFolderSpeltDifferently_IsNotUserChosen(string downloadsFolderPath)
+    {
+        WebView2DownloadHandler.IsUserChosenPath(@"C:\Projects\notes\downloads\report.pdf", downloadsFolderPath)
+            .Should().BeFalse();
+    }
+
+    [Test]
+    public void ADownloadToAnyOtherFolder_IsUserChosen()
+    {
+        // Only a Save As dialog puts a download anywhere else, so the file goes where the user said.
+        WebView2DownloadHandler.IsUserChosenPath(@"C:\Users\ada\Documents\report.pdf", @"C:\Projects\notes\downloads")
+            .Should().BeTrue();
+    }
+
+    [Test]
+    public void ADownloadToASubfolderOfTheProjectsDownloadsFolder_IsUserChosen()
+    {
+        // WebView2 downloads into the folder itself, so a subfolder was named in a dialog.
+        WebView2DownloadHandler.IsUserChosenPath(@"C:\Projects\notes\downloads\invoices\report.pdf", @"C:\Projects\notes\downloads")
+            .Should().BeTrue();
+    }
+
+    [Test]
+    public void ADownloadWithNoFolderToCompareAgainst_IsNotUserChosen()
+    {
+        // No workspace, so nothing vouches for the path and the download is routed and reported instead.
+        WebView2DownloadHandler.IsUserChosenPath(@"C:\Users\ada\Documents\report.pdf", string.Empty)
+            .Should().BeFalse();
+    }
 }

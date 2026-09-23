@@ -502,6 +502,9 @@ This file could not be saved</value>
   <data name="Downloads_TransferCancelled" xml:space="preserve">
     <value>The transfer was canceled.</value>
   </data>
+  <data name="Downloads_TransferAbandoned" xml:space="preserve">
+    <value>The transfer stopped when its document closed.</value>
+  </data>
   <data name="PanelHeader_CollapseTooltip" xml:space="preserve">
     <value>Collapse Panel</value>
   </data>

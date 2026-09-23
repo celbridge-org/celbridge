@@ -80,6 +80,34 @@ public sealed class DownloadService : IDownloadService
         }
     }
 
+    public Result<string> GetDestinationFolderPath()
+    {
+        if (!_workspaceWrapper.HasWorkspaceService)
+        {
+            return Result<string>.Fail("No workspace is loaded");
+        }
+
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var downloadsFolder = ResolveDownloadsFolder(resourceRegistry);
+
+        var resolveResult = resourceRegistry.ResolveResourcePath(downloadsFolder);
+        if (resolveResult.IsFailure)
+        {
+            return Result<string>.Fail($"Failed to resolve the downloads folder '{downloadsFolder}'")
+                .WithErrors(resolveResult);
+        }
+
+        try
+        {
+            return Path.GetFullPath(resolveResult.Value);
+        }
+        catch (Exception ex)
+        {
+            return Result<string>.Fail($"Failed to resolve the downloads folder '{downloadsFolder}'")
+                .WithException(ex);
+        }
+    }
+
     public async Task<Result<DownloadTicket>> BeginAsync(
         string suggestedFileName,
         string sourceUrl,
@@ -260,6 +288,34 @@ public sealed class DownloadService : IDownloadService
         SettleAsFailed(downloadId, reason);
     }
 
+    public async Task AbandonAsync(long downloadId, string reason)
+    {
+        var inFlightDownload = TakeInFlight(downloadId);
+        if (inFlightDownload is null)
+        {
+            return;
+        }
+
+        // Taken out of flight before the transfer is stopped, so the stop the platform may report finds
+        // nothing to settle and the row keeps the reason given here rather than reading as a cancellation.
+        try
+        {
+            inFlightDownload.Transfer.Cancel();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to stop an abandoned download");
+        }
+
+        if (_workspaceWrapper.HasWorkspaceService)
+        {
+            var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+            await resourceFileSystem.DeleteAsync(inFlightDownload.StagingResource);
+        }
+
+        SettleAsFailed(downloadId, reason);
+    }
+
     public async Task CancelAsync(long downloadId)
     {
         var inFlightDownload = TakeInFlight(downloadId);
@@ -331,14 +387,20 @@ public sealed class DownloadService : IDownloadService
         SendDownloadsChanged(hasArrival: false);
     }
 
+    // Downloads land in the folder the project names, which is downloads/ unless it names another, so the
+    // project root stays uncluttered when a session downloads several files.
+    private ResourceKey ResolveDownloadsFolder(IResourceRegistry resourceRegistry)
+    {
+        var configuredFolder = _projectService.CurrentProject?.Config.Resources.DownloadsFolder ?? string.Empty;
+
+        return DownloadsFolderPath.Resolve(resourceRegistry, configuredFolder);
+    }
+
     // Appends " (N)" before the extension until the destination is free: absent from disk, and not
     // already promised to a download that is still running.
     private async Task<Result<ResourceKey>> ReserveDestinationAsync(IResourceRegistry resourceRegistry, string fileName)
     {
-        // Downloads land in the folder the project names, which is downloads/ unless it names another, so
-        // the project root stays uncluttered when a session downloads several files.
-        var configuredFolder = _projectService.CurrentProject?.Config.Resources.DownloadsFolder ?? string.Empty;
-        var downloadsFolder = DownloadsFolderPath.Resolve(resourceRegistry, configuredFolder);
+        var downloadsFolder = ResolveDownloadsFolder(resourceRegistry);
 
         if (!ResourceKey.TryCreate($"{downloadsFolder.Path}/{fileName}", out var requestedResource))
         {

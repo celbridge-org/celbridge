@@ -3,6 +3,8 @@ using Celbridge.Localization;
 using Celbridge.Logging;
 using Microsoft.Web.WebView2.Core;
 
+using Path = System.IO.Path;
+
 namespace Celbridge.WebHost.Platform;
 
 /// <summary>
@@ -68,16 +70,61 @@ internal sealed class WebView2DownloadHandler : IWebViewDownloadHandler
     {
         var handler = new WebView2DownloadHandler(coreWebView2);
 
+        handler.ApplyDefaultDownloadFolder();
+
         coreWebView2.DownloadStarting += handler.OnDownloadStarting;
 
         return handler;
+    }
+
+    // WebView2 writes a download to its default download folder unless the user names another in a Save As
+    // dialog, so pointing that folder at the project's downloads folder is what makes a path anywhere else
+    // the user's own choice rather than a folder nobody picked. It is also the folder that dialog then
+    // opens on, which is where a file downloaded from a project's page belongs. Applied per web view,
+    // because the project's downloads folder can change between one and the next.
+    private void ApplyDefaultDownloadFolder()
+    {
+        var folderResult = _downloadService.GetDestinationFolderPath();
+        if (folderResult.IsFailure)
+        {
+            return;
+        }
+
+        try
+        {
+            // The folder need not exist: WebView2 creates it when a download first needs it.
+            _coreWebView2.Profile.DefaultDownloadFolderPath = folderResult.Value;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to point the default download folder at the project");
+        }
     }
 
     public void Detach()
     {
         _coreWebView2.DownloadStarting -= OnDownloadStarting;
 
+        // A transfer belongs to the web view that started it: the download operation raises no further
+        // events once that web view is closed, so a download still running here would report nothing ever
+        // again and sit in the list as though it were still going. Only this web view's downloads are
+        // stopped, since the handler tracks no others.
+        var abandonedDownloads = _trackedDownloads.ToArray();
         _trackedDownloads.Clear();
+
+        if (abandonedDownloads.Length == 0)
+        {
+            return;
+        }
+
+        var reason = _localizerService.GetString("Downloads_TransferAbandoned");
+
+        foreach (var abandonedDownload in abandonedDownloads)
+        {
+            _logger.LogDebug($"Download {abandonedDownload.DownloadId} abandoned with its web view");
+
+            _ = _downloadService.AbandonAsync(abandonedDownload.DownloadId, reason);
+        }
     }
 
     private async void OnDownloadStarting(CoreWebView2 sender, CoreWebView2DownloadStartingEventArgs args)
@@ -94,6 +141,14 @@ internal sealed class WebView2DownloadHandler : IWebViewDownloadHandler
             if (string.IsNullOrEmpty(resultFilePath))
             {
                 args.Cancel = true;
+                return;
+            }
+
+            // A path the user named in a Save As dialog is theirs, so the file goes where they said and the
+            // download list, which records what this session downloaded into the project, records nothing.
+            if (IsUserChosenPath(resultFilePath))
+            {
+                _logger.LogDebug("Download saved to the path its Save As dialog named");
                 return;
             }
 
@@ -142,6 +197,53 @@ internal sealed class WebView2DownloadHandler : IWebViewDownloadHandler
         {
             deferral.Complete();
         }
+    }
+
+    /// <summary>
+    /// Whether the download is going to a path the user named in a Save As dialog. WebView2 writes every
+    /// other download to its default download folder, which is the project's downloads folder, so a
+    /// destination anywhere else is one the user chose. A path that cannot be compared is treated as an
+    /// ordinary download, which keeps the file in the project rather than writing it somewhere nothing
+    /// vouched for.
+    /// </summary>
+    internal static bool IsUserChosenPath(string resultFilePath, string downloadsFolderPath)
+    {
+        if (string.IsNullOrEmpty(downloadsFolderPath))
+        {
+            return false;
+        }
+
+        try
+        {
+            var resultFolderPath = Path.GetDirectoryName(Path.GetFullPath(resultFilePath));
+            if (string.IsNullOrEmpty(resultFolderPath))
+            {
+                return false;
+            }
+
+            return !string.Equals(
+                resultFolderPath.TrimEnd(Path.DirectorySeparatorChar),
+                Path.GetFullPath(downloadsFolderPath).TrimEnd(Path.DirectorySeparatorChar),
+                StringComparison.OrdinalIgnoreCase);
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
+    // Compared against where the service would put the download rather than against the web view's own
+    // setting, so a project whose downloads folder has changed since this web view was attached routes the
+    // download rather than writing it to the folder the setting still names.
+    private bool IsUserChosenPath(string resultFilePath)
+    {
+        var folderResult = _downloadService.GetDestinationFolderPath();
+        if (folderResult.IsFailure)
+        {
+            return false;
+        }
+
+        return IsUserChosenPath(resultFilePath, folderResult.Value);
     }
 
     /// <summary>

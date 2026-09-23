@@ -15,8 +15,9 @@ public interface IWebViewDownloadHandler
     event EventHandler? DownloadStarted;
 
     /// <summary>
-    /// Stops routing the web view's downloads. A transfer already running keeps reporting to the service,
-    /// since its record outlives the surface that started it.
+    /// Stops routing the web view's downloads. Where a transfer cannot outlive the web view that started
+    /// it, the ones this web view is running are stopped and their records settle, since nothing would ever
+    /// report their outcome. Only this web view's downloads are touched.
     /// </summary>
     void Detach();
 }
