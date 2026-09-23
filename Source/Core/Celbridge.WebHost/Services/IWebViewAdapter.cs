@@ -190,12 +190,13 @@ public interface IWebViewAdapter
     IWebViewDownloadHandler AttachDownloadHandler(CoreWebView2 coreWebView2);
 
     /// <summary>
-    /// Puts every navigation of the page to the gate before any request for it is sent. WebView2 raises
-    /// NavigationStarting before it sends anything, so the Windows heads decide there and register nothing.
-    /// The macOS Skia head raises it only once the request is under way, so there the gate answers WebKit's
-    /// own navigation policy, and a navigation it refuses never reaches the server. Frames inside the page
-    /// are not gated. The caller keeps the returned registration and disposes it when the surface is torn
-    /// down.
+    /// Puts every navigation of the page to the gate before any request for it is sent. The macOS Skia head
+    /// answers WebKit's own navigation policy here, and a navigation it refuses never reaches the server.
+    /// The Windows heads register nothing and decide at NavigationStarting instead, which stops the page
+    /// following the destination but not the request for it: measured on WebView2 153, the request is
+    /// already away by the time that event is raised, so a refused destination is still fetched. Frames
+    /// inside the page are not gated. The caller keeps the returned registration and disposes it when the
+    /// surface is torn down.
     /// </summary>
     IDisposable GateNavigations(CoreWebView2 coreWebView2, NavigationGate gate);
 

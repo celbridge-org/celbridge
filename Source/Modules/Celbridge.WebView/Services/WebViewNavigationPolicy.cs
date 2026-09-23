@@ -44,9 +44,10 @@ public sealed class WebViewNavigationPolicy : IWebViewNavigationPolicy
 
         webView.NavigationStarting += onStarting;
 
-        // Where NavigationStarting comes only once the request is sent, the gate takes the decision first,
-        // so a destination the handler refuses is never fetched. A navigation the gate lets through is asked
-        // about again at NavigationStarting, which a handler that allowed it answers the same way.
+        // Where the head has a gate, it takes the decision before the request is sent, so a destination the
+        // handler refuses is never fetched. A navigation the gate lets through is asked about again at
+        // NavigationStarting, which a handler that allowed it answers the same way. The Windows heads have
+        // no gate and decide at NavigationStarting alone, by which time the request has gone out.
         var gate = _webViewAdapter.GateNavigations(webView, (destination, isUserInitiated) =>
             Decide(new NavigationRequest(destination, isUserInitiated), handler));
 
@@ -110,8 +111,9 @@ public sealed class WebViewNavigationPolicy : IWebViewNavigationPolicy
             return false;
         }
 
-        // Async path. Refused at once so the WebView never starts loading the
-        // destination, then the handler is awaited and any side effect dispatched.
+        // Async path. Refused at once so the WebView does not present the destination, then the handler is
+        // awaited and any side effect dispatched. Refusing does not unsend a request the head has already
+        // made: see IWebViewAdapter.GateNavigations for which heads fetch a refused destination anyway.
         _logger.LogDebug("Cancelled navigation to {Url} while the destination is decided", destination);
 
         _ = AwaitAndDispatchAsync(decisionTask, destination);
