@@ -194,9 +194,7 @@ public static partial class MacOSWebViewInterop
             return true;
         }
 
-        var targetFrame = SendMessage(navigationAction, GetSelector("targetFrame"));
-        if (targetFrame == IntPtr.Zero ||
-            !SendMessageReturnBool(targetFrame, GetSelector("isMainFrame")))
+        if (!IsMainFrameNavigation(navigationAction))
         {
             return true;
         }
@@ -208,6 +206,65 @@ public static partial class MacOSWebViewInterop
         }
 
         return gate(url, IsUserInitiated(navigationAction));
+    }
+
+    /// <summary>
+    /// Whether the navigation moves within the page the web view already shows, as a link to an anchor
+    /// further down it does. Such a navigation loads nothing: WebKit scrolls the page it has.
+    /// </summary>
+    // UNO-BUG: Uno handles these itself and reads the managed callback's answer the wrong way round -- the
+    // callback returns 1 for a navigation it allows, which Uno's native code takes as a refusal -- so every
+    // one of them is cancelled and the page never moves. Answering before Uno sees it leaves WebKit to
+    // scroll. The NavigationStarting and NavigationCompleted events Uno raises for an anchor go with it,
+    // which is no loss: nothing here reads them for a navigation that loads no content.
+    internal static bool IsSameDocumentNavigation(IntPtr webView, IntPtr navigationAction)
+    {
+        if (!IsMainFrameNavigation(navigationAction))
+        {
+            return false;
+        }
+
+        return IsSameDocument(ReadRequestUrl(navigationAction), ReadCommittedUrl(webView));
+    }
+
+    /// <summary>
+    /// Whether the destination names a place in the committed page rather than a page of its own: the same
+    /// address, and a fragment to move to. An address with no fragment, or one that names another page, is
+    /// a navigation like any other.
+    /// </summary>
+    internal static bool IsSameDocument(string? destinationUrl, string? committedUrl)
+    {
+        if (string.IsNullOrEmpty(destinationUrl) || string.IsNullOrEmpty(committedUrl))
+        {
+            return false;
+        }
+
+        var fragmentIndex = destinationUrl.IndexOf('#');
+        if (fragmentIndex < 0)
+        {
+            return false;
+        }
+
+        return string.Equals(
+            destinationUrl[..fragmentIndex],
+            BeforeFragment(committedUrl),
+            StringComparison.Ordinal);
+    }
+
+    private static string BeforeFragment(string url)
+    {
+        var fragmentIndex = url.IndexOf('#');
+
+        return fragmentIndex < 0 ? url : url[..fragmentIndex];
+    }
+
+    // A navigation of the page itself, rather than of a frame inside it or of a window it asks for.
+    private static bool IsMainFrameNavigation(IntPtr navigationAction)
+    {
+        var targetFrame = SendMessage(navigationAction, GetSelector("targetFrame"));
+
+        return targetFrame != IntPtr.Zero &&
+            SendMessageReturnBool(targetFrame, GetSelector("isMainFrame"));
     }
 
     // The address a navigation action asks for, or null where its request names none.

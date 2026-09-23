@@ -21,6 +21,7 @@ bar. For an HTML document, also where its links, and the page's own navigations,
 | The address bar | paste, select all | each acts on the address bar | 2 |
 | An HTML document with a link to another project file | click the link | the file opens in Celbridge, and the page stays as it was | 2 |
 | An HTML document with a link to a page on another site | click the link, then cancel the prompt | the document asks before leaving, and the other site receives no request | 2 |
+| An HTML document with a link to a place further down its own page | click the link | the page scrolls there, with no prompt and no request to any server | 2 |
 | An HTML document with `target="_blank"` links to another project file and to a page on another site | click each | the project file opens in Celbridge, the page opens in the system browser, and the application keeps running | 2 |
 | A page with no editable field focused | paste | nothing changes anywhere | 3 |
 | An HTML document whose page, a few seconds after a click, navigates to another project file or opens one in a new window | let each happen | neither opens the file in Celbridge: the navigation asks before leaving, and the new window goes to the system browser | 3 |
@@ -34,10 +35,10 @@ at that. Making the page report its field values, focus and selection to the sam
 to read page state back, which the `webview_*` tools do not offer for these documents.
 
 The navigation cases need an HTML document in the project whose page links to another project file, both in
-place and with `target="_blank"`, and to a page on a loopback server of your own, whose log shows whether a
-request arrived. The system browser opens that page, so make it say it came from a test. For the delayed
-cases, have a button start a timer of a few seconds, long enough that the page rather than the click starts
-the navigation.
+place and with `target="_blank"`, to a place further down the page itself, and to a page on a loopback
+server of your own, whose log shows whether a request arrived. The system browser opens that page, so make
+it say it came from a test. For the delayed cases, have a button start a timer of a few seconds, long enough
+that the page rather than the click starts the navigation.
 
 ## Not covered
 
@@ -48,6 +49,10 @@ Downloads plan.
 
 Every navigation case has failed on macOS before, where the application tells a user's click from the page's
 own navigation by other means than on Windows, so run them on both heads.
+
+A link within the page is a macOS case in its own right: the head answers those itself, because Uno cancels
+every one of them, so a link that stops scrolling means that answer has been lost rather than that the page
+is at fault.
 
 The heads keep a refused destination unfetched by different means, so the case that checks a server receives
 no request is worth reading closely on a run that finds it failing. macOS refuses in WebKit's navigation

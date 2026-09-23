@@ -495,6 +495,7 @@ public static partial class MacOSWebViewInterop
         // twice. Never let an exception unwind into WebKit.
         var shouldDownload = false;
         var isRefused = false;
+        var isSameDocument = false;
         try
         {
             var shouldPerformDownloadSelector = GetSelector("shouldPerformDownload");
@@ -507,6 +508,10 @@ public static partial class MacOSWebViewInterop
 
             isRefused = !shouldDownload &&
                 !IsNavigationAllowed(webView, navigationAction);
+
+            isSameDocument = !shouldDownload &&
+                !isRefused &&
+                IsSameDocumentNavigation(webView, navigationAction);
         }
         catch
         {
@@ -521,6 +526,13 @@ public static partial class MacOSWebViewInterop
         if (isRefused)
         {
             InvokePolicyHandler(decisionHandler, NavigationActionPolicyCancel);
+            return;
+        }
+
+        // Answered here rather than by Uno, which cancels every one of them: see IsSameDocumentNavigation.
+        if (isSameDocument)
+        {
+            InvokePolicyHandler(decisionHandler, NavigationActionPolicyAllow);
             return;
         }
 

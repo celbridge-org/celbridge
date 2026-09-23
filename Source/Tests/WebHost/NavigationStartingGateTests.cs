@@ -91,8 +91,10 @@ public class NavigationStartingGateTests
     {
         var wasAsked = false;
 
+        // Not "/elsewhere": a leading slash parses as an absolute file URL everywhere but Windows, so the
+        // gate would be asked about file:///elsewhere and this case would test nothing.
         var goesAhead = NavigationStartingGate.Decides(
-            "/elsewhere",
+            "elsewhere",
             isUserInitiated: true,
             (_, _) =>
             {
