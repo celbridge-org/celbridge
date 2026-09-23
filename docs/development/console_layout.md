@@ -172,7 +172,7 @@ For the page, add `[JsonRpcMethod("console/trace")] void OnTrace(string text)` t
 - in `waitForStableSize`, each sample, what released it (a frame or the timer), and how the wait ended (settled, no size coming, or timed out),
 - a metrics string with each event: `document.hidden`, `client.view.isSized`, the `#terminal` box, the document element's client size, `devicePixelRatio`, `--cel-page-zoom`, the rail width, xterm's cell size (`term._core._renderService.dimensions.css.cell`), `term.cols` and `term.rows`, and `fitAddon.proposeDimensions()`,
 - the events themselves: after the initial fit, the first animation frame, `visibilitychange`, window `resize`, view state pushes, rail layout changes, refits that change the grid, and the attach's start, request and result,
-- a dump of `term.buffer.active` a few seconds after `console/startupComplete`, listing each non-empty row with its index, plus `baseY`, `viewportY` and the cursor. The row the prompt is on shows a gap directly. Use this rather than screenshots: screen captures taken by automation mask WebView content on the packaged head.
+- a dump of `term.buffer.active` a few seconds after `console/startupComplete`, listing each non-empty row with its index, plus `baseY`, `viewportY` and the cursor. The row the prompt is on shows a gap directly. Use this rather than screenshots: it carries row indices and the buffer's own coordinates, which a capture cannot. Screen captures do show the terminal, but the WebView renders in a process of its own, so automation that masks ungranted applications hides it until that process is granted alongside the application.
 
 This is how a cold start regression on the packaged Windows head read, trimmed to the lines that mattered:
 

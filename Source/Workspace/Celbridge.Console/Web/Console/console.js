@@ -84,14 +84,43 @@ function fitTerminal() {
 
 fitTerminal();
 
-// Metrics for the starting veil's status line, which sits at the terminal's first cell. The row height
-// is on the rows container xterm just laid out.
+// Metrics for the starting veil's status line, which sits at the terminal's first cell.
 const terminalRows = terminalElement.querySelector('.xterm-rows');
 document.documentElement.style.setProperty('--console-terminal-font-size', `${term.options.fontSize}px`);
-if (terminalRows) {
-    const rowLineHeight = getComputedStyle(terminalRows).lineHeight;
-    document.documentElement.style.setProperty('--console-terminal-line-height', rowLineHeight);
+
+// Stands in for the line height until a row can be measured, so the veil still lines up and the wheel
+// still scrolls without one. Close to the height xterm lays out at the default font size.
+const FALLBACK_LINE_HEIGHT = 17;
+
+// The height xterm lays a line out at, which the veil's status line sits on and the wheel converts pixel
+// deltas against. Measured on demand and held until the next fit, as a font or zoom change moves it.
+let terminalLineHeight = 0;
+
+function getTerminalLineHeight() {
+    if (terminalLineHeight > 0) {
+        return terminalLineHeight;
+    }
+
+    // xterm lays each line out as its own row element. The rows container computes a line height of
+    // "normal", so the measurement has to come off a row rather than the container.
+    const rowElement = terminalRows ? terminalRows.firstElementChild : null;
+    if (rowElement) {
+        const measuredLineHeight = rowElement.getBoundingClientRect().height;
+        if (measuredLineHeight > 0) {
+            terminalLineHeight = measuredLineHeight;
+        }
+    }
+
+    return terminalLineHeight > 0 ? terminalLineHeight : FALLBACK_LINE_HEIGHT;
 }
+
+function applyTerminalLineHeight() {
+    const lineHeight = getTerminalLineHeight();
+    document.documentElement.style.setProperty('--console-terminal-line-height', `${lineHeight}px`);
+}
+
+// xterm lays its rows out on the frame after it opens, so the first measurement waits for one.
+requestAnimationFrame(applyTerminalLineHeight);
 
 // The width below which the rail lays out across the top of the content, mirroring
 // --cel-rail-stack-threshold. Used where the generated stylesheet has not been served.
@@ -207,32 +236,6 @@ const NOTCH_LINE_MARGIN = 2;
 // Set while a forwarded notch is being dispatched, so the handler lets its own event through untouched.
 let forwardingNotches = false;
 
-// Stands in for the line height until the rows container can be measured, so the wheel still scrolls if
-// the measurement is not available. Close to the height xterm lays out at the default font size.
-const FALLBACK_LINE_HEIGHT = 17;
-
-// The height xterm lays a line out at, which the wheel converts pixel deltas against. Measured on demand
-// and held until the next fit, as a font or zoom change moves it.
-let terminalLineHeight = 0;
-
-function getTerminalLineHeight() {
-    if (terminalLineHeight > 0) {
-        return terminalLineHeight;
-    }
-
-    // xterm lays each line out as its own row element. The rows container computes a line height of
-    // "normal", so the measurement has to come off a row rather than the container.
-    const rowElement = terminalRows ? terminalRows.firstElementChild : null;
-    if (rowElement) {
-        const measuredLineHeight = rowElement.getBoundingClientRect().height;
-        if (measuredLineHeight > 0) {
-            terminalLineHeight = measuredLineHeight;
-        }
-    }
-
-    return terminalLineHeight > 0 ? terminalLineHeight : FALLBACK_LINE_HEIGHT;
-}
-
 // Where the notches the pacer releases are aimed. The terminal reads the position to work out which cell
 // the gesture is over, so they carry the last real event's target and coordinates.
 let notchTarget = null;
@@ -345,6 +348,7 @@ function refitTerminal() {
         refitPending = false;
         fitTerminal();
         terminalLineHeight = 0;
+        applyTerminalLineHeight();
     });
 }
 
