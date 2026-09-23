@@ -19,9 +19,12 @@ The note body and the toolbar's popovers.
 | The note body | Tab | whatever the editor does with Tab, and not focus leaving the document | 3 |
 | A read-only note | cut, paste | refused, and the note is unchanged | 3 |
 | The image popover's picker, left open a minute before answering | choose an image | the image lands in the note | 3 |
+| The link popover's picker, left open | choose a file | the link lands in the note | 3 |
 
-Leave that picker open for well over half a minute before choosing: a dialog answered promptly cannot show
-the failure, which is the note losing an answer it waited too long for.
+Leave the image picker open for well over half a minute before choosing: a dialog answered promptly cannot
+show the failure, which is the note losing an answer it waited too long for. It is the one case that waits
+the clock out in real time. For the link picker, read the deadline instead: while its dialog stands open,
+`__celPendingRequests()` should show the request carrying no timeout.
 
 ## Not covered
 

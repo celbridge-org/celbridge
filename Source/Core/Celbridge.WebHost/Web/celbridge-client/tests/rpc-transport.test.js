@@ -65,6 +65,21 @@ function stubWindowListeners() {
     };
 }
 
+// A transport over an injected message pair, with the messages it sent and a way to answer one.
+function createTransport() {
+    const sent = [];
+    let messageHandler = null;
+
+    const transport = new RpcTransport({
+        postMessage: (message) => sent.push(JSON.parse(message)),
+        onMessage: (handler) => { messageHandler = handler; }
+    });
+
+    const respond = (id, result) => messageHandler(JSON.stringify({ jsonrpc: '2.0', result, id }));
+
+    return { transport, sent, respond };
+}
+
 describe('RpcTransport WebSocket reconnection', () => {
     beforeEach(() => {
         MockWebSocket.instances = [];
@@ -193,20 +208,6 @@ describe('RpcTransport request timeouts', () => {
         vi.useRealTimers();
     });
 
-    function createTransport() {
-        const sent = [];
-        let messageHandler = null;
-
-        const transport = new RpcTransport({
-            postMessage: (message) => sent.push(JSON.parse(message)),
-            onMessage: (handler) => { messageHandler = handler; }
-        });
-
-        const respond = (id, result) => messageHandler(JSON.stringify({ jsonrpc: '2.0', result, id }));
-
-        return { transport, sent, respond };
-    }
-
     it('rejects a request the host leaves unanswered for the default timeout', async () => {
         const { transport } = createTransport();
 
@@ -240,5 +241,57 @@ describe('RpcTransport request timeouts', () => {
         vi.advanceTimersByTime(1000);
 
         await rejects;
+    });
+});
+
+describe('RpcTransport pending requests', () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    it('reports the timeout a request in flight carries', () => {
+        const { transport } = createTransport();
+
+        // Never answered; the entry is what this reads, not the promise.
+        transport.request('test/method').catch(() => {});
+
+        expect(transport.describePendingRequests()).toEqual([
+            { id: 1, method: 'test/method', waitingMs: 0, timeoutMs: 30000 }
+        ]);
+    });
+
+    it('reports no timeout for a request that waits for the user', () => {
+        const { transport } = createTransport();
+
+        transport.request('dialog/pickImage', { extensions: [] }, { timeoutMs: null });
+
+        // Far past the default: the user is still looking at the picker.
+        vi.advanceTimersByTime(90000);
+
+        expect(transport.describePendingRequests()).toEqual([
+            { id: 1, method: 'dialog/pickImage', waitingMs: 90000, timeoutMs: null }
+        ]);
+    });
+
+    it('answers the same list through the diagnostic global', () => {
+        const { transport } = createTransport();
+
+        transport.request('dialog/pickImage', { extensions: [] }, { timeoutMs: null });
+
+        expect(globalThis.__celPendingRequests()).toEqual(transport.describePendingRequests());
+    });
+
+    it('drops a request the host has answered', async () => {
+        const { transport, sent, respond } = createTransport();
+
+        const pending = transport.request('dialog/pickImage', { extensions: [] }, { timeoutMs: null });
+        respond(sent[0].id, { path: '/tmp/chosen.png' });
+        await pending;
+
+        expect(transport.describePendingRequests()).toEqual([]);
     });
 });

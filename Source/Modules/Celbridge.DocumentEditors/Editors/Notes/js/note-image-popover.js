@@ -37,7 +37,13 @@ export function createImageExtension(context) {
 
                 function applyAttrs() {
                     const src = node.attrs.src || '';
-                    img.src = ctx.resolveImageSrc(src);
+                    // An empty src resolves to the page's own URL, which the browser then fetches and fails
+                    // to decode, so a node with no image yet carries no src attribute at all.
+                    if (src) {
+                        img.src = ctx.resolveImageSrc(src);
+                    } else {
+                        img.removeAttribute('src');
+                    }
                     if (node.attrs.alt) img.alt = node.attrs.alt;
                     if (node.attrs.title) img.title = node.attrs.title;
                 }

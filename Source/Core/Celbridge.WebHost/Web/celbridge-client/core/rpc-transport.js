@@ -22,7 +22,7 @@ const DEFAULT_TIMEOUT_MS = 30000;
  * Manages communication between JavaScript and the .NET host.
  */
 export class RpcTransport {
-    /** @type {Map<number, { resolve: Function, reject: Function, method: string, startTime: number }>} */
+    /** @type {Map<number, { resolve: Function, reject: Function, method: string, startTime: number, timeoutMs: number|null }>} */
     #pendingRequests = new Map();
 
     /** @type {number} */
@@ -103,6 +103,10 @@ export class RpcTransport {
         // never load this client fall back to chrome.webview.
         if (typeof globalThis !== 'undefined') {
             globalThis.__hostSendMessage = (json) => this.#postMessage(json);
+
+            // The same reach for the requests in flight, so a page that looks stuck can say what it is
+            // waiting on, and a test can read whether a request carries a deadline at all.
+            globalThis.__celPendingRequests = () => this.describePendingRequests();
         }
     }
 
@@ -273,7 +277,8 @@ export class RpcTransport {
                     reject(error);
                 },
                 method,
-                startTime
+                startTime,
+                timeoutMs
             });
 
             const message = {
@@ -286,6 +291,23 @@ export class RpcTransport {
             this.#log('debug', `-> request #${id}: ${method}`, params);
             this.#postMessage(JSON.stringify(message));
         });
+    }
+
+    /**
+     * What the page is waiting on the host for, oldest first: each request's id, the method it called, how
+     * long it has been waiting, and the timeout it carries. A timeout of null is a request that waits as
+     * long as the user takes, such as one that opened a dialog.
+     * @returns {{ id: number, method: string, waitingMs: number, timeoutMs: number|null }[]}
+     */
+    describePendingRequests() {
+        const now = Date.now();
+
+        return [...this.#pendingRequests].map(([id, pending]) => ({
+            id,
+            method: pending.method,
+            waitingMs: now - pending.startTime,
+            timeoutMs: pending.timeoutMs
+        }));
     }
 
     /**

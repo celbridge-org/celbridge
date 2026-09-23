@@ -33,6 +33,10 @@ menu, the document tab strip and its context menu, and the project settings form
 | The downloads folder picker in project settings, with the name of a folder other than `downloads` typed into its search field and Down pressed | press Enter | the highlighted folder is chosen: the Downloads folder field and the project file both name it | 3 |
 | A shortcut to a project file, its Opens in list just opened with a click | press Down, then Enter | the open list keeps the keyboard: Enter chooses the next area, and the project file records it | 3 |
 | The caret in a code editor document, and an alert raised over it by a tool call | accept the alert, then type | the text lands in the editor where the caret was: the page got the keyboard back | 3 |
+| An alert a package editor page raised through its client, left standing | accept it | the page carries on from its own call: it waited for the answer rather than giving up | 3 |
+
+The alert case reads the request's deadline rather than waiting it out: while the alert stands open,
+`__celPendingRequests()` on the page that raised it should show the request carrying no timeout.
 
 ## Not covered
 
