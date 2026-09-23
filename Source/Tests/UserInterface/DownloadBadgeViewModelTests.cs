@@ -68,12 +68,22 @@ public class DownloadBadgeViewModelTests
     }
 
     [Test]
-    public void AFailedDownload_IsAFailure_AndIsCounted()
+    public void AFailedDownload_IsAFailure_AndIsLeftOutOfTheCount()
     {
         ShowDownloads(CreateEntry(1, DownloadStatus.Succeeded), CreateEntry(2, DownloadStatus.Failed));
 
         _viewModel.HasFailure.Should().BeTrue();
-        _viewModel.BadgeCount.Should().Be(2);
+        _viewModel.BadgeCount.Should().Be(1);
+        _viewModel.Downloads.Should().HaveCount(2);
+    }
+
+    [Test]
+    public void DownloadsThatAllCameToNothing_LeaveTheBadgeWithNothingToCount()
+    {
+        ShowDownloads(CreateEntry(1, DownloadStatus.Failed), CreateEntry(2, DownloadStatus.Canceled));
+
+        _viewModel.BadgeCount.Should().Be(0);
+        _viewModel.Downloads.Should().HaveCount(2);
     }
 
     private void ShowDownloads(params DownloadEntry[] downloads)

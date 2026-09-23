@@ -44,8 +44,8 @@ public class DownloadBadgeViewModel
     public bool HasFailure { get; private set; }
 
     /// <summary>
-    /// The number the badge shows: every recorded download except the canceled ones, which stay in the
-    /// list but are not counted.
+    /// The number the badge shows: every recorded download that arrived or is still on its way. A
+    /// canceled or failed download stays in the list but is not counted, since nothing came of it.
     /// </summary>
     public int BadgeCount { get; private set; }
 
@@ -146,7 +146,9 @@ public class DownloadBadgeViewModel
         Downloads = downloads;
         IsTransferring = downloads.Any(download => download.Status == DownloadStatus.InProgress);
         HasFailure = downloads.Any(download => download.Status == DownloadStatus.Failed);
-        BadgeCount = downloads.Count(download => download.Status != DownloadStatus.Canceled);
+        BadgeCount = downloads.Count(download =>
+            download.Status != DownloadStatus.Canceled &&
+            download.Status != DownloadStatus.Failed);
         CanClearAll = downloads.Any(download => download.Status != DownloadStatus.InProgress);
         Summary = ComposeSummary(downloads);
     }
