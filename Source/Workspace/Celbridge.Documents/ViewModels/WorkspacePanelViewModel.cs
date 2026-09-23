@@ -185,7 +185,7 @@ public partial class WorkspacePanelViewModel : ObservableObject
         });
     }
 
-    public async Task StoreDocumentEditorState(ResourceKey fileResource, string? state)
+    public async Task StoreDocumentEditorState(ResourceKey fileResource, DocumentEditorState? state)
     {
         await _documentsService.StoreDocumentEditorState(fileResource, state);
     }

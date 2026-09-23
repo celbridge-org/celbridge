@@ -571,7 +571,7 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public Task StoreDocumentEditorStates() => _layoutStore.StoreDocumentEditorStatesAsync();
 
-    public Task StoreDocumentEditorState(ResourceKey fileResource, string? state) =>
+    public Task StoreDocumentEditorState(ResourceKey fileResource, DocumentEditorState? state) =>
         _layoutStore.StoreDocumentEditorStateAsync(fileResource, state);
 
     public Task RestorePanelState()

@@ -10,7 +10,7 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.Tests.Documents;
 
 /// <summary>
-/// Tests for the notification half of the editor bridge, reached through its toast method. A contribution's
+/// Tests for the notification half of the editor bridge, reached through its notify method. A contribution's
 /// only route to the notification centre is through here, so what it accepts and what it refuses is the
 /// contract.
 /// </summary>
@@ -48,7 +48,7 @@ public class CustomDialogHandlerTests
     [TestCase("Error", ReportSeverity.Error)]
     public async Task ARecognisedSeverity_RaisesTheNotification(string severity, ReportSeverity expected)
     {
-        await _handler.ToastAsync(severity, "9 of 40 tilesets failed to convert");
+        await _handler.ShowNotificationAsync(severity, "9 of 40 tilesets failed to convert");
 
         _sentMessages.Should().HaveCount(1);
         _sentMessages[0].Severity.Should().Be(expected);
@@ -59,7 +59,7 @@ public class CustomDialogHandlerTests
     public async Task AnUnknownSeverity_IsRefusedRatherThanDowngraded()
     {
         // Showing an intended error as information is the worse failure, so the editor is told.
-        var act = async () => await _handler.ToastAsync("critical", "something went wrong");
+        var act = async () => await _handler.ShowNotificationAsync("critical", "something went wrong");
 
         await act.Should().ThrowAsync<ArgumentException>();
 
@@ -69,7 +69,7 @@ public class CustomDialogHandlerTests
     [Test]
     public async Task AnEmptyMessage_IsRefused()
     {
-        var act = async () => await _handler.ToastAsync("info", "   ");
+        var act = async () => await _handler.ShowNotificationAsync("info", "   ");
 
         await act.Should().ThrowAsync<ArgumentException>();
 
@@ -79,7 +79,7 @@ public class CustomDialogHandlerTests
     [Test]
     public async Task ANamedResource_BecomesTheNotificationsAction()
     {
-        await _handler.ToastAsync(
+        await _handler.ShowNotificationAsync(
             "error",
             "config.json has a syntax error",
             "project:config.json",
@@ -100,7 +100,7 @@ public class CustomDialogHandlerTests
     [Test]
     public async Task NoResource_LeavesTheNotificationWithoutAnAction()
     {
-        await _handler.ToastAsync("info", "Conversion complete");
+        await _handler.ShowNotificationAsync("info", "Conversion complete");
 
         _sentMessages.Should().HaveCount(1);
         _sentMessages[0].Action.Should().BeNull();
@@ -109,7 +109,7 @@ public class CustomDialogHandlerTests
     [Test]
     public async Task AResourceThatEscapesTheProject_IsRefused()
     {
-        var act = async () => await _handler.ToastAsync("info", "done", "project:../outside.json");
+        var act = async () => await _handler.ShowNotificationAsync("info", "done", "project:../outside.json");
 
         await act.Should().ThrowAsync<ArgumentException>();
 

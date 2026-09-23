@@ -91,13 +91,13 @@ internal sealed class CustomDialogHandler : IHostDialog
         return new PickIconResult(null);
     }
 
-    public async Task<AlertResult> AlertAsync(string title, string message)
+    public async Task<ShowAlertResult> ShowAlertAsync(string title, string message)
     {
         await _dialogService.ShowAlertDialogAsync(title, message);
-        return new AlertResult();
+        return new ShowAlertResult();
     }
 
-    public async Task<ToastResult> ToastAsync(
+    public async Task<ShowNotificationResult> ShowNotificationAsync(
         string severity,
         string message,
         string? resource = null,
@@ -109,7 +109,7 @@ internal sealed class CustomDialogHandler : IHostDialog
 
         if (string.IsNullOrWhiteSpace(message))
         {
-            throw new ArgumentException("Toast message is empty.", nameof(message));
+            throw new ArgumentException("Notification message is empty.", nameof(message));
         }
 
         // A value this build does not know is a mistake in the editor rather than a newer severity to
@@ -117,7 +117,7 @@ internal sealed class CustomDialogHandler : IHostDialog
         if (!TryParseSeverity(severity, out var parsedSeverity))
         {
             throw new ArgumentException(
-                $"Unknown toast severity: '{severity}'. Expected 'info', 'warning' or 'error'.",
+                $"Unknown notification severity: '{severity}'. Expected 'info', 'warning' or 'error'.",
                 nameof(severity));
         }
 
@@ -129,7 +129,7 @@ internal sealed class CustomDialogHandler : IHostDialog
         };
         _messengerService.Send(notification);
 
-        return new ToastResult();
+        return new ShowNotificationResult();
     }
 
     private static OpenDocumentAction? ComposeAction(string? resource, string? label, int line, int column)

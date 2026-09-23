@@ -240,23 +240,28 @@ export class RpcTransport {
      * @template T
      * @param {string} method - The method name.
      * @param {Object} [params] - The request parameters.
+     * @param {Object} [options] - Options for this request alone.
+     * @param {number|null} [options.timeoutMs] - How long to wait, in place of the transport's
+     *   default. Pass null to wait indefinitely, which is what a request the user has to answer
+     *   needs: a dialog the host is showing outlives any timeout the page could pick.
      * @returns {Promise<T>} - The response result.
      */
-    request(method, params = {}) {
+    request(method, params = {}, options = {}) {
+        const timeoutMs = options.timeoutMs === undefined ? this.#timeoutMs : options.timeoutMs;
+
         return new Promise((resolve, reject) => {
             const id = this.#nextId++;
             const startTime = Date.now();
 
-            // Set up timeout
-            const timeoutId = setTimeout(() => {
+            const timeoutId = timeoutMs === null ? null : setTimeout(() => {
                 if (this.#pendingRequests.has(id)) {
                     this.#pendingRequests.delete(id);
-                    const error = new Error(`Request timeout: ${method} (${this.#timeoutMs}ms)`);
+                    const error = new Error(`Request timeout: ${method} (${timeoutMs}ms)`);
                     error.code = -32000;
                     this.#log('warn', `Request #${id} timed out: ${method}`);
                     reject(error);
                 }
-            }, this.#timeoutMs);
+            }, timeoutMs);
 
             this.#pendingRequests.set(id, {
                 resolve: (result) => {

@@ -58,7 +58,8 @@ public interface IOpenDocumentCommand : IExecutableCommand<OpenDocumentOutcome>
     EditorId EditorId { get; set; }
 
     /// <summary>
-    /// When set, restores this editor state after the document opens.
+    /// When set, restores this editor state after the document opens, unless another editor opened
+    /// the document.
     /// </summary>
-    string? EditorStateJson { get; set; }
+    DocumentEditorState? EditorState { get; set; }
 }

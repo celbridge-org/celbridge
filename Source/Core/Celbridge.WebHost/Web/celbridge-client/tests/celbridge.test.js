@@ -350,9 +350,9 @@ describe('Celbridge', () => {
 
             await initializeClient(client, simulateResponse);
 
-            const alertPromise = client.dialog.alert('Title', 'Message');
+            const alertPromise = client.dialog.showAlert('Title', 'Message');
             const sent = JSON.parse(sentMessages[2]);
-            expect(sent.method).toBe('dialog/alert');
+            expect(sent.method).toBe('dialog/showAlert');
             expect(sent.params.title).toBe('Title');
             expect(sent.params.message).toBe('Message');
 

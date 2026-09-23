@@ -6,7 +6,8 @@ bar apply only to Markdown. Read the [README](README.md) for the invariants, evi
 ## Surfaces
 
 The editor text, the editor's own find widget, the preview pane and the preview's find bar, across the
-source, split and preview view modes.
+source, split and preview view modes. Also the view the editor returns to: where it was left, and which
+editor is entitled to it.
 
 ## Cases
 
@@ -25,9 +26,14 @@ source, split and preview view modes.
 | Preview mode, nothing focused | paste | nothing changes, and in particular the hidden source is not edited | 3 |
 | A read-only document | cut, paste | refused, and the document is unchanged | 3 |
 | Multiple cursors, with text on the clipboard | paste | every cursor receives the text and each is left with a caret after it | 3 |
+| A markdown document scrolled well down | reload the project | it comes back showing the same place, in the same view mode | 2 |
+| The same document | reopen it with the code editor from the tab menu | it opens at the top of the file, and nothing of the markdown editor's view carries over | 3 |
 
 Reach the find bars by their shortcut, not only by clicking, and return focus to the editor by clicking
 after using one. Focus leaving and returning without a click has been a distinct failure.
+
+Scroll far enough down for the place to be unmistakable, since a document that restores nothing still opens
+at the top.
 
 ## Not covered
 

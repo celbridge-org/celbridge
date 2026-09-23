@@ -36,7 +36,7 @@ macOS it can be present while the screen looks right.
 
 A load finds issues when the project file carries an entry the parser has to skip, such as a feature flag
 set to something other than true or false. An event needs a failure: deleting a file another process holds
-open fails on Windows, and an editor raises one through the `dialog.toast` call of the client it imports,
+open fails on Windows, and an editor raises one through the `dialog.showNotification` call of the client it imports,
 which `webview_eval` can make from inside a contribution document.
 
 ## By hand

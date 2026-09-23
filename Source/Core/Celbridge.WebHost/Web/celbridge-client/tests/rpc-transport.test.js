@@ -183,3 +183,62 @@ describe('RpcTransport WebSocket reconnection', () => {
         expect(MockWebSocket.instances).toHaveLength(2);
     });
 });
+
+describe('RpcTransport request timeouts', () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    function createTransport() {
+        const sent = [];
+        let messageHandler = null;
+
+        const transport = new RpcTransport({
+            postMessage: (message) => sent.push(JSON.parse(message)),
+            onMessage: (handler) => { messageHandler = handler; }
+        });
+
+        const respond = (id, result) => messageHandler(JSON.stringify({ jsonrpc: '2.0', result, id }));
+
+        return { transport, sent, respond };
+    }
+
+    it('rejects a request the host leaves unanswered for the default timeout', async () => {
+        const { transport } = createTransport();
+
+        const pending = transport.request('test/method');
+        const rejects = expect(pending).rejects.toThrow('Request timeout: test/method (30000ms)');
+
+        vi.advanceTimersByTime(30000);
+
+        await rejects;
+    });
+
+    it('waits indefinitely for a request that opts out of the timeout', async () => {
+        const { transport, sent, respond } = createTransport();
+
+        const pending = transport.request('dialog/pickFile', { extensions: ['.png'] }, { timeoutMs: null });
+
+        // Far past the default: the user is still looking at the picker.
+        vi.advanceTimersByTime(300000);
+
+        respond(sent[0].id, { path: '/tmp/chosen.png' });
+
+        await expect(pending).resolves.toEqual({ path: '/tmp/chosen.png' });
+    });
+
+    it('times a request out at the timeout it carries', async () => {
+        const { transport } = createTransport();
+
+        const pending = transport.request('test/method', {}, { timeoutMs: 1000 });
+        const rejects = expect(pending).rejects.toThrow('Request timeout: test/method (1000ms)');
+
+        vi.advanceTimersByTime(1000);
+
+        await rejects;
+    });
+});

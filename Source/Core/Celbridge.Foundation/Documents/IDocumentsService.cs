@@ -47,6 +47,12 @@ public sealed record ExtensionEditorCandidates(
     EditorId DefaultEditorId);
 
 /// <summary>
+/// An editor's saved view state, with the editor that produced it. The state is opaque to the host and
+/// means nothing to another editor, so it is only ever restored into the editor named here.
+/// </summary>
+public sealed record DocumentEditorState(EditorId EditorId, string Json);
+
+/// <summary>
 /// Options for opening a document in the documents panel.
 /// </summary>
 public record OpenDocumentOptions(
@@ -55,7 +61,7 @@ public record OpenDocumentOptions(
     string Location = "",
     bool Activate = true,
     EditorId EditorId = default,
-    string? EditorStateJson = null);
+    DocumentEditorState? EditorState = null);
 
 /// <summary>
 /// Options for closing a document in the documents panel. ForceClose closes the document without letting
@@ -215,11 +221,10 @@ public interface IDocumentsService
     Task StoreDocumentEditorStates();
 
     /// <summary>
-    /// Saves editor state for a single document. Pass a non-empty state string to persist,
-    /// or null/empty to clear any existing entry for the resource. Persistence is best effort: a
-    /// failure is logged rather than reported.
+    /// Saves editor state for a single document. Pass null to clear any existing entry for the
+    /// resource. Persistence is best effort: a failure is logged rather than reported.
     /// </summary>
-    Task StoreDocumentEditorState(ResourceKey fileResource, string? state);
+    Task StoreDocumentEditorState(ResourceKey fileResource, DocumentEditorState? state);
 
     /// <summary>
     /// Records a hint that the next watcher-driven reload of the resource should honour,

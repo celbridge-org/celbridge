@@ -272,10 +272,10 @@ Prefer this over a delimited text field (`a | b | c` per line) for anything Celb
 
 ## Telling the user something
 
-`client.dialog.toast(severity, message)` adds a notification to the notification centre — the list behind the badge beside the Project Switcher, where the host also records a project load that found issues and a failed batch operation. The badge lights with a count and flashes, and the user opens the list from it.
+`client.dialog.showNotification(severity, message)` adds a notification to the notification centre — the list behind the badge beside the Project Switcher, where the host also records a project load that found issues and a failed batch operation. The badge lights with a count and flashes, and the user opens the list from it.
 
 ```javascript
-await client.dialog.toast('warning', t('MyEditor_ConvertedWithWarnings', failed.length));
+await client.dialog.showNotification('warning', t('MyEditor_ConvertedWithWarnings', failed.length));
 ```
 
 `severity` is `'info'`, `'warning'` or `'error'`. Anything else is rejected rather than downgraded, so a typo surfaces as an error instead of quietly showing your failure as information. `message` is one line you have already localized; only its first line is shown.
@@ -283,7 +283,7 @@ await client.dialog.toast('warning', t('MyEditor_ConvertedWithWarnings', failed.
 A third argument gives the notification a button that opens a document:
 
 ```javascript
-await client.dialog.toast('error', t('MyEditor_ConfigSyntaxError'), {
+await client.dialog.showNotification('error', t('MyEditor_ConfigSyntaxError'), {
     resource: 'project:config.json',
     label: t('MyEditor_OpenConfig'),
     line: 42
@@ -294,13 +294,13 @@ await client.dialog.toast('error', t('MyEditor_ConfigSyntaxError'), {
 
 **It resolves when the host has taken the notification, not when the user has seen it.** Nothing interrupts the user: the badge waits to be noticed, and the notification stays in the list until the user dismisses it or the project unloads. A later notification never replaces an earlier one, but one identical to the notification before it is counted on that entry, and the list keeps only the most recent fifty. Treat the call as best effort and never as an acknowledgement.
 
-This sits under `dialog` alongside `alert`, but it is the opposite kind of call: `alert` blocks until the user answers, `toast` tells them and returns. Note that it is unrelated to `notifyChanged`, `notifyContentLoaded` and the other `notify*` calls, which are protocol messages to the host rather than anything the user sees. Reach for `alert` only when the user genuinely cannot continue without responding.
+This sits under `dialog` alongside `showAlert`, but it is the opposite kind of call: `showAlert` blocks until the user answers, `showNotification` tells them and returns. Reach for `showAlert` only when the user genuinely cannot continue without responding.
 
 Use it for an outcome the user should know about but did not ask a question about — a conversion that finished with failures, a long operation that completed. **One operation raises one notification**, whatever it found: a loop that notifies per item fills the user's list with lines they have to dismiss one by one. When there is per-item detail worth reading, say it once here and write the detail as a report.
 
 ## Reporting per-item detail
 
-`client.document.writeReport(report)` writes a `.report` document into the project and returns the resource key it opens by. Hand that key to `dialog.toast` as its action resource and the toast gains a button that opens it.
+`client.document.writeReport(report)` writes a `.report` document into the project and returns the resource key it opens by. Hand that key to `dialog.notify` as its action resource and the notification gains a button that opens it.
 
 ```javascript
 const resource = await client.document.writeReport({
@@ -322,7 +322,7 @@ const resource = await client.document.writeReport({
     }]
 });
 
-await client.dialog.toast('warning', '9 of 40 tilesets could not be converted', { resource });
+await client.dialog.showNotification('warning', '9 of 40 tilesets could not be converted', { resource });
 ```
 
 **Write one when there is per-item detail worth reading beyond the notification line** — more than one item, or one item whose reason will not fit a line. A single failure fully described by its notification does not need a report, and a reports folder churning with one-row documents devalues the ones that matter.

@@ -34,7 +34,7 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
 
     public EditorId EditorId { get; set; }
 
-    public string? EditorStateJson { get; set; }
+    public DocumentEditorState? EditorState { get; set; }
 
     public OpenDocumentOutcome ResultValue { get; private set; } = OpenDocumentOutcome.Opened;
 
@@ -94,7 +94,7 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
             ? new DocumentAddress(WindowIndex: 0, Section: TargetSection.Value, TabOrder: tabOrder)
             : null;
 
-        var options = new OpenDocumentOptions(address, ForceReload, Location, Activate, EditorId, EditorStateJson);
+        var options = new OpenDocumentOptions(address, ForceReload, Location, Activate, EditorId, EditorState);
 
         var openResult = await documentsService.OpenDocument(FileResource, options);
 

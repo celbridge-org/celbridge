@@ -1,8 +1,8 @@
 # Notes
 
 A rich text document, which makes it the one editing surface where the platform's own clipboard must be
-preserved: routing it through plain text would flatten formatting. Read the [README](README.md) for the
-invariants, evidence rules and levels.
+preserved: routing it through plain text would flatten formatting. Its toolbar also reaches the host's own
+file pickers. Read the [README](README.md) for the invariants, evidence rules and levels.
 
 ## Surfaces
 
@@ -18,6 +18,10 @@ The note body and the toolbar's popovers.
 | A text field in a toolbar popover, such as a link | paste | text enters the field; the note body is unchanged | 2 |
 | The note body | Tab | whatever the editor does with Tab, and not focus leaving the document | 3 |
 | A read-only note | cut, paste | refused, and the note is unchanged | 3 |
+| The image popover's picker, left open a minute before answering | choose an image | the image lands in the note | 3 |
+
+Leave that picker open for well over half a minute before choosing: a dialog answered promptly cannot show
+the failure, which is the note losing an answer it waited too long for.
 
 ## Not covered
 

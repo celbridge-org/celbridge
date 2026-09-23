@@ -41,6 +41,12 @@ public class DocumentLayoutStore
     /// </summary>
     public record StoredAreaSplitRatio(double SplitRatio);
 
+    /// <summary>
+    /// Serialization DTO for one document's saved editor state, with the editor that saved it. A stored
+    /// entry naming no editor cannot be matched to one, so it is discarded.
+    /// </summary>
+    public record StoredEditorState(string EditorId, string State);
+
     public async Task StoreOpenDocumentAddressesAsync()
     {
         try
@@ -150,8 +156,8 @@ public class DocumentLayoutStore
 
             // Start with existing saved states so that editors that aren't ready yet
             // (e.g., WebView still loading) preserve their previously saved state.
-            var editorStates = await propertyBag.GetPropertyAsync<Dictionary<string, string>>(DocumentEditorStatesKey)
-                ?? new Dictionary<string, string>();
+            var editorStates = await TryLoadPropertyAsync<Dictionary<string, StoredEditorState>>(propertyBag, DocumentEditorStatesKey)
+                ?? new Dictionary<string, StoredEditorState>();
 
             var openDocumentKeys = new HashSet<string>();
 
@@ -173,7 +179,7 @@ public class DocumentLayoutStore
                     var state = await documentView.TrySaveEditorStateAsync();
                     if (!string.IsNullOrEmpty(state))
                     {
-                        editorStates[resourceKey] = state;
+                        editorStates[resourceKey] = new StoredEditorState(documentView.EditorId.ToString(), state);
                     }
                 }
                 catch (Exception ex)
@@ -199,19 +205,20 @@ public class DocumentLayoutStore
         }
     }
 
-    public async Task StoreDocumentEditorStateAsync(ResourceKey fileResource, string? state)
+    public async Task StoreDocumentEditorStateAsync(ResourceKey fileResource, DocumentEditorState? state)
     {
         try
         {
             var propertyBag = GetPropertyBag();
 
-            var editorStates = await propertyBag.GetPropertyAsync<Dictionary<string, string>>(DocumentEditorStatesKey)
-                ?? new Dictionary<string, string>();
+            var editorStates = await TryLoadPropertyAsync<Dictionary<string, StoredEditorState>>(propertyBag, DocumentEditorStatesKey)
+                ?? new Dictionary<string, StoredEditorState>();
 
             var resourceKey = fileResource.ToString();
-            if (!string.IsNullOrEmpty(state))
+            if (state is not null &&
+                !string.IsNullOrEmpty(state.Json))
             {
-                editorStates[resourceKey] = state;
+                editorStates[resourceKey] = new StoredEditorState(state.EditorId.ToString(), state.Json);
             }
             else
             {
@@ -271,7 +278,7 @@ public class DocumentLayoutStore
     private record StoredLayout(
         Dictionary<string, StoredAreaSplitRatio>? AreaSplitRatios,
         List<StoredDocumentAddress>? OpenDocumentAddresses,
-        Dictionary<string, string>? EditorStates,
+        Dictionary<string, StoredEditorState>? EditorStates,
         string? ActiveDocument,
         Dictionary<string, string>? SelectedDocuments);
 
@@ -285,7 +292,7 @@ public class DocumentLayoutStore
         var openDocumentAddresses = await TryLoadPropertyAsync<List<StoredDocumentAddress>>(
             propertyBag, OpenDocumentAddressesKey);
 
-        var editorStates = await TryLoadPropertyAsync<Dictionary<string, string>>(
+        var editorStates = await TryLoadPropertyAsync<Dictionary<string, StoredEditorState>>(
             propertyBag, DocumentEditorStatesKey);
 
         var activeDocument = await TryLoadPropertyAsync<string>(
@@ -315,7 +322,7 @@ public class DocumentLayoutStore
 
     private async Task RestoreDocumentsAsync(
         IReadOnlyList<StoredDocumentAddress> storedAddresses,
-        IReadOnlyDictionary<string, string>? editorStates)
+        IReadOnlyDictionary<string, StoredEditorState>? editorStates)
     {
         foreach (var stored in storedAddresses)
         {
@@ -363,15 +370,15 @@ public class DocumentLayoutStore
             var address = new DocumentAddress(stored.WindowIndex, storedSection, stored.TabOrder);
 
             // An empty editor id makes the factory resolve the editor from the sidecar (or the
-            // per-extension default) rather than from persisted layout state.
-            string? editorStateJson = null;
-            editorStates?.TryGetValue(fileResource.ToString(), out editorStateJson);
+            // per-extension default) rather than from persisted layout state. The saved state names the
+            // editor that wrote it, and the open drops it unless that editor opens the document again.
+            var editorState = FindStoredEditorState(editorStates, fileResource);
 
             var restoreOptions = new OpenDocumentOptions(
                 Address: address,
                 Activate: false,
                 EditorId: EditorId.Empty,
-                EditorStateJson: editorStateJson);
+                EditorState: editorState);
 
             var openResult = await DocumentsPanel.OpenDocument(fileResource, restoreOptions);
             if (openResult.IsFailure)
@@ -380,6 +387,27 @@ public class DocumentLayoutStore
                 await StoreDocumentEditorStateAsync(fileResource, null);
             }
         }
+    }
+
+    // The saved state for a resource, or null where none is stored or its editor cannot be read back.
+    private static DocumentEditorState? FindStoredEditorState(
+        IReadOnlyDictionary<string, StoredEditorState>? editorStates,
+        ResourceKey fileResource)
+    {
+        if (editorStates is null ||
+            !editorStates.TryGetValue(fileResource.ToString(), out var stored) ||
+            stored is null)
+        {
+            return null;
+        }
+
+        if (string.IsNullOrEmpty(stored.State) ||
+            !EditorId.TryParse(stored.EditorId, out var editorId))
+        {
+            return null;
+        }
+
+        return new DocumentEditorState(editorId, stored.State);
     }
 
     private void RestoreSelectedDocuments(IReadOnlyDictionary<string, string>? selectedDocuments)

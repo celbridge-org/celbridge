@@ -9,7 +9,7 @@ public record DocumentMetadata(string FilePath, string ResourceKey, string FileN
 /// <summary>
 /// Result of the document/initialize request.
 /// </summary>
-public record InitializeResult(string Content, DocumentMetadata Metadata, string? EditorStateJson = null);
+public record InitializeResult(string Content, DocumentMetadata Metadata);
 
 /// <summary>
 /// The host capability context for a custom editor: the package's secrets and its options.
@@ -45,14 +45,14 @@ public record PickFileResult(string? Path);
 public record PickIconResult(string? IconName);
 
 /// <summary>
-/// Result of the dialog/alert request.
+/// Result of the dialog/showAlert request.
 /// </summary>
-public record AlertResult();
+public record ShowAlertResult();
 
 /// <summary>
-/// Result of the dialog/toast request.
+/// Result of the dialog/showNotification request.
 /// </summary>
-public record ToastResult();
+public record ShowNotificationResult();
 
 /// <summary>
 /// Result of the document/writeReport request, carrying the resource key the written report opens by.

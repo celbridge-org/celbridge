@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { DocumentAPI, projectUrl } from '../api/document-api.js';
+import { RpcTransport } from '../core/rpc-transport.js';
 
 describe('projectUrl', () => {
     it('strips the project: prefix when present', () => {
@@ -46,5 +47,50 @@ describe('DocumentAPI.writeReport', () => {
         expect(requests[0].method).toBe('document/writeReport');
         expect(JSON.parse(requests[0].params.reportJson)).toEqual(report);
         expect(resource).toBe('logs:reports/acme-tiles-convert.report');
+    });
+});
+
+describe('DocumentAPI.onRestoreState', () => {
+    function createHostedDocument() {
+        const sent = [];
+        let messageHandler = null;
+
+        const transport = new RpcTransport({
+            postMessage: (message) => sent.push(JSON.parse(message)),
+            onMessage: (handler) => { messageHandler = handler; }
+        });
+
+        const requestRestore = (id, state) => messageHandler(JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'document/restoreState',
+            params: [state],
+            id
+        }));
+
+        return { document: new DocumentAPI(transport), sent, requestRestore };
+    }
+
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+    it('answers the host only once an async handler has finished restoring', async () => {
+        const { document, sent, requestRestore } = createHostedDocument();
+
+        const restored = [];
+        let finishRestore;
+        document.onRestoreState((state) => {
+            restored.push(state);
+            return new Promise((resolve) => { finishRestore = resolve; });
+        });
+
+        requestRestore(7, '{"scroll":120}');
+        await settle();
+
+        expect(restored).toEqual(['{"scroll":120}']);
+        expect(sent).toHaveLength(0);
+
+        finishRestore();
+        await settle();
+
+        expect(sent).toEqual([{ jsonrpc: '2.0', id: 7, result: null }]);
     });
 });
