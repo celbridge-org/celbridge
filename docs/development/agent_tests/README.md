@@ -83,9 +83,11 @@ clipboard, and anything a plan deliberately mutates in the application's own dat
 back, and the app should not be left running.
 
 Driving the app needs the computer-use tools, which require the user's permission at the start of the
-session. Real key presses are the point: a shortcut delivered any other way tests a path a user never
-takes. Everything else — opening documents, reading page state, inspecting the log — has cheaper and more
-reliable routes that the project's own tooling provides.
+session. The application and the WebView renderer are separate processes, so grant both: a screenshot
+taken with only the application granted masks every hosted surface inside it. Real key presses are the
+point: a shortcut delivered any other way tests a path a user never takes. Everything else — opening
+documents, reading page state, inspecting the log — has cheaper and more reliable routes that the
+project's own tooling provides.
 
 Two things a run reliably trips over:
 

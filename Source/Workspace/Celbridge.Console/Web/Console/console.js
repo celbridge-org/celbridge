@@ -8,6 +8,7 @@ import { ContentLoadedReason } from '/assets/celbridge-client/api/document-api.j
 import { attachStackLayout } from '/assets/celbridge-client/ui/stack-layout.js';
 import { createConsoleSettings } from './console-settings.js';
 import { createConsoleSession } from './console-session.js';
+import { createWheelStepCounter, createNotchPacer } from './console-scroll.js';
 
 const client = celbridge;
 
@@ -22,7 +23,10 @@ const term = new Terminal({
     theme: initialIsDark ? darkTheme : lightTheme,
     fontFamily: "'Cascadia Mono', monospace",
     allowProposedApi: true,
-    scrollSensitivity: 3,
+    // Scales every wheel delta, on the paths xterm scrolls itself as well as the one below. Terminal
+    // lines are shorter than the document lines a browser assumes, so a notch of a wheel would otherwise
+    // cover twice the ground here that it covers elsewhere.
+    scrollSensitivity: 0.5,
 });
 
 const fitAddon = new FitAddon.FitAddon();
@@ -80,14 +84,43 @@ function fitTerminal() {
 
 fitTerminal();
 
-// Metrics for the starting veil's status line, which sits at the terminal's first cell. The row height
-// is on the rows container xterm just laid out.
+// Metrics for the starting veil's status line, which sits at the terminal's first cell.
 const terminalRows = terminalElement.querySelector('.xterm-rows');
 document.documentElement.style.setProperty('--console-terminal-font-size', `${term.options.fontSize}px`);
-if (terminalRows) {
-    const rowLineHeight = getComputedStyle(terminalRows).lineHeight;
-    document.documentElement.style.setProperty('--console-terminal-line-height', rowLineHeight);
+
+// Stands in for the line height until a row can be measured, so the veil still lines up and the wheel
+// still scrolls without one. Close to the height xterm lays out at the default font size.
+const FALLBACK_LINE_HEIGHT = 17;
+
+// The height xterm lays a line out at, which the veil's status line sits on and the wheel converts pixel
+// deltas against. Measured on demand and held until the next fit, as a font or zoom change moves it.
+let terminalLineHeight = 0;
+
+function getTerminalLineHeight() {
+    if (terminalLineHeight > 0) {
+        return terminalLineHeight;
+    }
+
+    // xterm lays each line out as its own row element. The rows container computes a line height of
+    // "normal", so the measurement has to come off a row rather than the container.
+    const rowElement = terminalRows ? terminalRows.firstElementChild : null;
+    if (rowElement) {
+        const measuredLineHeight = rowElement.getBoundingClientRect().height;
+        if (measuredLineHeight > 0) {
+            terminalLineHeight = measuredLineHeight;
+        }
+    }
+
+    return terminalLineHeight > 0 ? terminalLineHeight : FALLBACK_LINE_HEIGHT;
 }
+
+function applyTerminalLineHeight() {
+    const lineHeight = getTerminalLineHeight();
+    document.documentElement.style.setProperty('--console-terminal-line-height', `${lineHeight}px`);
+}
+
+// xterm lays its rows out on the frame after it opens, so the first measurement waits for one.
+requestAnimationFrame(applyTerminalLineHeight);
 
 // The width below which the rail lays out across the top of the content, mirroring
 // --cel-rail-stack-threshold. Used where the generated stylesheet has not been served.
@@ -185,19 +218,93 @@ client.onNotification('input/performEdit', (params) => {
     }
 });
 
-// Force the wheel to scroll the xterm viewport while the shell prompt owns the screen, so a TUI does not
-// receive wheel-as-arrow-keys. Shift bypasses this. A TUI on the alternate buffer keeps native scroll.
+const wheelLineCounter = createWheelStepCounter();
+const wheelNotchCounter = createWheelStepCounter();
+
+// A shell or TUI scrolls about this many lines for each wheel notch it is sent, so one notch stands in
+// for that much of the travel counted here.
+const LINES_PER_NOTCH = 3;
+
+// The distance a wheel notch reports. The notches forwarded below carry at least this, so the terminal
+// counts each one as a notch of its own rather than thinning the stream a second time.
+const NOTCH_DELTA_PIXELS = 100;
+
+// How far past one line a forwarded notch is sized, so the terminal's own threshold never swallows one
+// at a line height this distance would otherwise fall short of.
+const NOTCH_LINE_MARGIN = 2;
+
+// Set while a forwarded notch is being dispatched, so the handler lets its own event through untouched.
+let forwardingNotches = false;
+
+// Where the notches the pacer releases are aimed. The terminal reads the position to work out which cell
+// the gesture is over, so they carry the last real event's target and coordinates.
+let notchTarget = null;
+let notchClientX = 0;
+let notchClientY = 0;
+
+// Sends one notch on to the terminal, which forwards it to whatever is running: a mouse event for a TUI
+// that tracks the mouse, an arrow key for one that does not.
+function releaseNotch(direction) {
+    if (notchTarget === null) {
+        return;
+    }
+
+    // The terminal counts a forwarded notch in lines before passing it on, so it has to clear one line
+    // whatever the line height rather than trusting a fixed distance to.
+    const clearsOneLine = getTerminalLineHeight() * NOTCH_LINE_MARGIN / term.options.scrollSensitivity;
+    const notchDelta = Math.max(NOTCH_DELTA_PIXELS, clearsOneLine);
+
+    forwardingNotches = true;
+    try {
+        notchTarget.dispatchEvent(new WheelEvent('wheel', {
+            deltaY: direction * notchDelta,
+            deltaMode: 0,
+            clientX: notchClientX,
+            clientY: notchClientY,
+            bubbles: true,
+            cancelable: true,
+        }));
+    } finally {
+        forwardingNotches = false;
+    }
+}
+
+const notchPacer = createNotchPacer(releaseNotch);
+
+// Take the wheel over from the terminal, so the trackpad's event rate does not reach whatever is running.
+// At the shell prompt this scrolls the viewport directly. Shift bypasses it.
 terminalElement.addEventListener('wheel', (event) => {
-    if (event.shiftKey) {
+    if (event.shiftKey || forwardingNotches) {
         return;
     }
-    if (term.modes.mouseTrackingMode !== 'none' || term.buffer.active.type === 'alternate') {
-        return;
-    }
+
+    const terminalMetrics = {
+        lineHeight: getTerminalLineHeight(),
+        rows: term.rows,
+        sensitivity: term.options.scrollSensitivity,
+    };
+
     event.preventDefault();
     event.stopPropagation();
-    const lines = Math.sign(event.deltaY) * Math.max(1, Math.round(Math.abs(event.deltaY) / 40));
-    term.scrollLines(lines);
+
+    // A TUI scrolls itself, so the wheel has to reach it. The terminal passes on at most one notch per
+    // event it sees, which hands a trackpad's far higher event rate straight to the TUI, so the stream is
+    // thinned to whole notches here and the events between them are dropped.
+    if (term.modes.mouseTrackingMode !== 'none' ||
+        term.buffer.active.type === 'alternate') {
+        terminalMetrics.linesPerStep = LINES_PER_NOTCH;
+        notchTarget = event.target;
+        notchClientX = event.clientX;
+        notchClientY = event.clientY;
+        notchPacer.queue(wheelNotchCounter(event, terminalMetrics));
+
+        return;
+    }
+
+    const lines = wheelLineCounter(event, terminalMetrics);
+    if (lines !== 0) {
+        term.scrollLines(lines);
+    }
 }, { capture: true, passive: false });
 
 term.attachCustomKeyEventHandler((event) => {
@@ -240,6 +347,8 @@ function refitTerminal() {
     requestAnimationFrame(() => {
         refitPending = false;
         fitTerminal();
+        terminalLineHeight = 0;
+        applyTerminalLineHeight();
     });
 }
 
