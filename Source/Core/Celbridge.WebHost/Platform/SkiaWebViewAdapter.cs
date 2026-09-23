@@ -795,16 +795,20 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
 
     public IDisposable GateNavigations(CoreWebView2 coreWebView2, NavigationGate gate)
     {
-        // The Windows and Linux Skia heads leave navigations to NavigationStarting.
+        // Every Skia head decides at NavigationStarting, which Uno raises once the request is under way. The
+        // Windows and Linux heads have nothing earlier to decide at, and macOS puts WebKit's own navigation
+        // policy in front of it, where a destination that is refused is never asked for at all.
+        var navigationStartingGate = new NavigationStartingGate(coreWebView2, gate);
+
         if (!OperatingSystem.IsMacOS())
         {
-            return UngatedNavigations.Instance;
+            return navigationStartingGate;
         }
 
         if (!MacOSWebViewInterop.TryGetNativeWebViewHandle(coreWebView2, out var webView, out var detail))
         {
             _logger.LogWarning("A page's navigations are decided only once their requests are sent: its native view could not be resolved ({Detail})", detail);
-            return UngatedNavigations.Instance;
+            return navigationStartingGate;
         }
 
         // A URL that is not an absolute URI is left to NavigationStarting, which lets it through as well.
@@ -816,10 +820,12 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         if (registration is null)
         {
             _logger.LogWarning("A page's navigations are decided only once their requests are sent: {Detail}", gateDetail);
-            return UngatedNavigations.Instance;
+            return navigationStartingGate;
         }
 
-        return registration;
+        // A navigation the native gate lets through reaches NavigationStarting as well, where the handler
+        // that allowed it answers the same way.
+        return new CombinedNavigationGate(registration, navigationStartingGate);
     }
 
     public IDisposable ObserveNavigationCommits(CoreWebView2 coreWebView2, NavigationCommitted onCommitted)

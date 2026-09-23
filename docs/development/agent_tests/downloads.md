@@ -122,8 +122,5 @@ of retries is not itself a finding. WebKit has not been seen to retry either, an
 which it saw.
 
 The prompt an HTML document shows for a link to another server stops the page following the link on both
-heads, but only macOS stops the request for it. macOS decides in WebKit's navigation policy, before the
-request is sent; the Windows heads decide at `NavigationStarting`, by which time the request has gone out,
-referrer and all, and a cookie the reply sets is kept. Nothing is downloaded and no browser opens either
-way, which is what the case here checks, so this does not fail the case. It does fail the Web Documents
-plan's own case for it, which is where the defect belongs; a run notes it rather than reporting it afresh.
+heads, and neither sends a request for the destination it refuses, so a link to an attachment that is
+refused downloads nothing and reaches nobody. The Web Documents plan is where that request is checked.

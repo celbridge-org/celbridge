@@ -189,10 +189,9 @@ public sealed class WindowsWebViewAdapter : IWebViewAdapter
         return WebView2DownloadHandler.Attach(coreWebView2);
     }
 
-    // WebView2 raises NavigationStarting before it sends a request, which is where navigations are decided.
     public IDisposable GateNavigations(CoreWebView2 coreWebView2, NavigationGate gate)
     {
-        return UngatedNavigations.Instance;
+        return new WebView2NavigationGate(coreWebView2, gate);
     }
 
     public IDisposable ObserveNavigationCommits(CoreWebView2 coreWebView2, NavigationCommitted onCommitted)

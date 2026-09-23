@@ -48,3 +48,9 @@ Downloads plan.
 
 Every navigation case has failed on macOS before, where the application tells a user's click from the page's
 own navigation by other means than on Windows, so run them on both heads.
+
+The heads keep a refused destination unfetched by different means, so the case that checks a server receives
+no request is worth reading closely on a run that finds it failing. macOS refuses in WebKit's navigation
+policy, before any request is made. Windows cancels the navigation, which WebView2 does not take as a reason
+to drop the request it has ready, and stops that request where it intercepts it instead. A WebView2 update
+that moved either point could break the case on Windows while the prompt itself still behaves.

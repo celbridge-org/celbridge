@@ -41,17 +41,17 @@ public record NavigationRequest(Uri Destination, bool IsUserInitiated);
 public delegate Task<NavigationDecision> NavigationDestinationHandler(NavigationRequest request);
 
 /// <summary>
-/// Wraps WebView2 NavigationStarting interception so the .webview view and the HTML
-/// viewer share a single navigation-policy code path. Each role attaches with its own
-/// handler; the helper translates the handler's decision into the matching side effect.
+/// Wraps a head's navigation gating so the .webview view and the HTML viewer share a
+/// single navigation-policy code path. Each role attaches with its own handler; the
+/// helper translates the handler's decision into the matching side effect.
 /// </summary>
 public interface IWebViewNavigationPolicy
 {
     /// <summary>
-    /// Subscribes the supplied handler to NavigationStarting on the given WebView, and
-    /// to the platform's own navigation policy where NavigationStarting comes only once
-    /// the request is sent. The handler is consulted for every top-frame navigation
-    /// before its request goes out; iframe navigations are always allowed.
+    /// Puts the given WebView's top-frame navigations to the supplied handler, wherever
+    /// the head decides them, so a destination the handler refuses is kept from the page
+    /// and, as far as the head allows, never fetched. Iframe navigations are always
+    /// allowed.
     /// </summary>
     void Attach(CoreWebView2 webView, NavigationDestinationHandler handler);
 

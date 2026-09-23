@@ -3,27 +3,21 @@ using Celbridge.Logging;
 using Celbridge.UserInterface;
 using Celbridge.WebHost;
 using Microsoft.Web.WebView2.Core;
-using Windows.Foundation;
 
 namespace Celbridge.WebView.Services;
 
 /// <summary>
-/// Default navigation-policy helper. Intercepts WebView2 top-frame navigations,
-/// invokes the supplied handler, and dispatches the handler's NavigationDecision.
+/// Default navigation-policy helper. Puts a page's top-frame navigations to the supplied handler through
+/// the head's own gate, and dispatches the handler's NavigationDecision.
 /// </summary>
 public sealed class WebViewNavigationPolicy : IWebViewNavigationPolicy
 {
-    // What an attached web view is subscribed with: the NavigationStarting handler, and the gate that puts
-    // the same navigations to the handler before their requests are sent, on a head that needs one.
-    private record Attachment(
-        TypedEventHandler<CoreWebView2, CoreWebView2NavigationStartingEventArgs> OnStarting,
-        IDisposable Gate);
-
     private readonly ICommandService _commandService;
     private readonly IWebViewAdapter _webViewAdapter;
     private readonly ILogger<WebViewNavigationPolicy> _logger;
 
-    private readonly Dictionary<CoreWebView2, Attachment> _attachments = new();
+    // The gate each attached web view's page is held by, until the surface detaches it.
+    private readonly Dictionary<CoreWebView2, IDisposable> _gates = new();
 
     public WebViewNavigationPolicy(
         ICommandService commandService,
@@ -37,51 +31,22 @@ public sealed class WebViewNavigationPolicy : IWebViewNavigationPolicy
 
     public void Attach(CoreWebView2 webView, NavigationDestinationHandler handler)
     {
-        TypedEventHandler<CoreWebView2, CoreWebView2NavigationStartingEventArgs> onStarting = (sender, args) =>
-        {
-            HandleNavigationStarting(args, handler);
-        };
+        // A web view attached a second time would otherwise keep the first gate as well, and answer each of
+        // its navigations twice.
+        Detach(webView);
 
-        webView.NavigationStarting += onStarting;
-
-        // Where the head has a gate, it takes the decision before the request is sent, so a destination the
-        // handler refuses is never fetched. A navigation the gate lets through is asked about again at
-        // NavigationStarting, which a handler that allowed it answers the same way. The Windows heads have
-        // no gate and decide at NavigationStarting alone, by which time the request has gone out.
-        var gate = _webViewAdapter.GateNavigations(webView, (destination, isUserInitiated) =>
+        // The head decides where it puts a navigation to the gate, and how a refused one is kept from being
+        // fetched. Where it can ask in more than one place it asks in each, and a handler that allowed a
+        // navigation answers the same way every time it is asked.
+        _gates[webView] = _webViewAdapter.GateNavigations(webView, (destination, isUserInitiated) =>
             Decide(new NavigationRequest(destination, isUserInitiated), handler));
-
-        _attachments[webView] = new Attachment(onStarting, gate);
     }
 
     public void Detach(CoreWebView2 webView)
     {
-        if (_attachments.Remove(webView, out var attachment))
+        if (_gates.Remove(webView, out var gate))
         {
-            webView.NavigationStarting -= attachment.OnStarting;
-            attachment.Gate.Dispose();
-        }
-    }
-
-    private void HandleNavigationStarting(
-        CoreWebView2NavigationStartingEventArgs args,
-        NavigationDestinationHandler handler)
-    {
-        var uriText = args.Uri;
-        if (string.IsNullOrEmpty(uriText))
-        {
-            return;
-        }
-
-        if (!Uri.TryCreate(uriText, UriKind.Absolute, out var destination))
-        {
-            return;
-        }
-
-        var request = new NavigationRequest(destination, args.IsUserInitiated);
-        if (!Decide(request, handler))
-        {
-            args.Cancel = true;
+            gate.Dispose();
         }
     }
 
@@ -112,8 +77,8 @@ public sealed class WebViewNavigationPolicy : IWebViewNavigationPolicy
         }
 
         // Async path. Refused at once so the WebView does not present the destination, then the handler is
-        // awaited and any side effect dispatched. Refusing does not unsend a request the head has already
-        // made: see IWebViewAdapter.GateNavigations for which heads fetch a refused destination anyway.
+        // awaited and any side effect dispatched. Refusing while the user is being asked is what keeps the
+        // destination unfetched, since a head sends the request the moment a navigation is let through.
         _logger.LogDebug("Cancelled navigation to {Url} while the destination is decided", destination);
 
         _ = AwaitAndDispatchAsync(decisionTask, destination);
