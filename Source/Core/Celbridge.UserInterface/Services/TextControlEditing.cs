@@ -195,8 +195,8 @@ public class TextControlEditing : ITextControlEditing
         return true;
     }
 
-    // The offset a motion lands on. The line motions bound to the line holding the caret, so they stop at a
-    // line break rather than running to the ends of a multi-line box.
+    // The offset a motion lands on. The line motions stop at a line break rather than running to the ends
+    // of a multi-line box.
     internal static int ResolveCaretTarget(string text, int caret, CaretMotion motion)
     {
         switch (motion)

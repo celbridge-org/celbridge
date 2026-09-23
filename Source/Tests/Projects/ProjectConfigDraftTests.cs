@@ -25,9 +25,9 @@ public class ProjectConfigDraftTests
         "contribution = \"console\"\n" +
         "shell = \"python\"\n";
 
-    // Also checks that the draft's text reads back exactly as written. The editor takes a saved file that
-    // reads back differently for an outside change and reloads every section from it, so a draft that
-    // writes anything a load drops wipes out what the user is typing.
+    // Also checks that the draft's text reads back exactly as written. A saved file that reads back
+    // differently looks like an outside change, and the editor then reloads every section from it, so a
+    // draft that writes anything a load drops wipes out what the user is typing.
     private static ProjectConfig ApplyAndParse(string text, Action<ProjectConfigDraft> edit)
     {
         var draft = DraftFrom(text);

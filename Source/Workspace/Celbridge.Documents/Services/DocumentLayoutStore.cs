@@ -371,7 +371,7 @@ public class DocumentLayoutStore
 
             // An empty editor id makes the factory resolve the editor from the sidecar (or the
             // per-extension default) rather than from persisted layout state. The saved state names the
-            // editor that wrote it, and the open drops it unless that editor opens the document again.
+            // editor that wrote it, and is dropped unless that same editor opens the document again.
             var editorState = FindStoredEditorState(editorStates, fileResource);
 
             var restoreOptions = new OpenDocumentOptions(

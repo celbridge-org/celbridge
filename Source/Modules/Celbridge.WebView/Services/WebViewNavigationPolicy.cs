@@ -35,9 +35,9 @@ public sealed class WebViewNavigationPolicy : IWebViewNavigationPolicy
         // its navigations twice.
         Detach(webView);
 
-        // The head decides where it puts a navigation to the gate, and how a refused one is kept from being
-        // fetched. Where it can ask in more than one place it asks in each, and a handler that allowed a
-        // navigation answers the same way every time it is asked.
+        // The head decides where it puts a navigation to the gate, and how it keeps a refused one from
+        // being fetched. A head that can ask in more than one place asks in each, so a handler must answer
+        // the same way every time.
         _gates[webView] = _webViewAdapter.GateNavigations(webView, (destination, isUserInitiated) =>
             Decide(new NavigationRequest(destination, isUserInitiated), handler));
     }
@@ -60,8 +60,7 @@ public sealed class WebViewNavigationPolicy : IWebViewNavigationPolicy
         var destination = request.Destination;
         var decisionTask = handler(request);
 
-        // Synchronous fast path. Most call sites - the .webview always-allow handler
-        // and the HTML viewer's same-URL pinned-match check - complete synchronously.
+        // Synchronous fast path, which the HTML viewer's same-URL pinned-match check takes.
         if (decisionTask.IsCompleted)
         {
             var decision = decisionTask.Result;
@@ -77,8 +76,8 @@ public sealed class WebViewNavigationPolicy : IWebViewNavigationPolicy
         }
 
         // Async path. Refused at once so the WebView does not present the destination, then the handler is
-        // awaited and any side effect dispatched. Refusing while the user is being asked is what keeps the
-        // destination unfetched, since a head sends the request the moment a navigation is let through.
+        // awaited and any side effect dispatched. Refusing while the user is asked is what keeps the
+        // destination unfetched: a head sends the request the moment a navigation is let through.
         _logger.LogDebug("Cancelled navigation to {Url} while the destination is decided", destination);
 
         _ = AwaitAndDispatchAsync(decisionTask, destination);

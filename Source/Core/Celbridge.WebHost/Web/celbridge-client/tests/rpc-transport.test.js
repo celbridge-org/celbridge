@@ -256,7 +256,7 @@ describe('RpcTransport pending requests', () => {
     it('reports the timeout a request in flight carries', () => {
         const { transport } = createTransport();
 
-        // Never answered; the entry is what this reads, not the promise.
+        // Never answered: this reads the pending entry, not the promise.
         transport.request('test/method').catch(() => {});
 
         expect(transport.describePendingRequests()).toEqual([

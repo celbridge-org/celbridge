@@ -12,9 +12,9 @@ namespace Celbridge.WebHost.Platform;
 public delegate bool MacNavigationGate(string url, bool isUserInitiated);
 
 /// <summary>
-/// What Uno's WKWebView does not tell managed code about a navigation: a decision on a navigation of the page
-/// taken in WebKit's own navigation policy callback, before any request for it is sent, whether the user
-/// started a new window the page asks for, and the moment a navigation commits.
+/// What Uno's WKWebView does not tell managed code about a navigation: a decision taken in WebKit's own
+/// navigation policy callback, before any request is sent; whether the user started a new window the page
+/// asks for; and the moment a navigation commits.
 /// </summary>
 public static partial class MacOSWebViewInterop
 {
@@ -24,11 +24,11 @@ public static partial class MacOSWebViewInterop
     // WKNavigationTypeLinkActivated.
     private const long NavigationTypeLinkActivated = 0;
 
-    // The gate each web view's page navigations are put to, by native web view. Touched only on the main
+    // The gate each web view's page navigations go to, keyed by native web view. Touched only on the main
     // thread, where WebKit calls back and where gates are added and removed.
     private static readonly Dictionary<IntPtr, MacNavigationGate> _navigationGates = new();
 
-    // What each web view's commits are reported to, by native web view. Touched only on the main thread.
+    // Where each web view's commits are reported, keyed by native web view. Touched only on the main thread.
     private static readonly Dictionary<IntPtr, Action<string>> _commitListeners = new();
 
     // The implementation the new-window hook took the place of.
@@ -102,8 +102,8 @@ public static partial class MacOSWebViewInterop
             "@@:@@@@");
     }
 
-    // Notes the window for the length of Uno's implementation, which raises NewWindowRequested, and puts back
-    // whatever was noted before, so a request never outlives the call it belongs to.
+    // Notes the window while Uno's implementation runs and raises NewWindowRequested, then puts back
+    // whatever was noted before, so a request never outlives its own call.
     [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]
     private static unsafe IntPtr CreateWebViewHook(
         IntPtr self,
@@ -309,7 +309,7 @@ public static partial class MacOSWebViewInterop
     }
 
     // Whether a user gesture started the navigation, which is what WebView2 reports as IsUserInitiated.
-    // WebKit says so only through SPI, and a followed link is the nearest public signal where it does not.
+    // WebKit says so only through SPI; where that is missing, a followed link is the nearest public signal.
     private static bool IsUserInitiated(IntPtr navigationAction)
     {
         var userInitiatedSelector = GetSelector("_isUserInitiated");

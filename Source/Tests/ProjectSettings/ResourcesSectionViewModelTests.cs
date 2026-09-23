@@ -266,8 +266,8 @@ public class ResourcesSectionViewModelTests
 
         viewModel.DownloadsFolderText = ".git";
 
-        // The message beneath the field says the folder is reserved rather than that the path is not one,
-        // so it has to be read again whenever the text changes.
+        // The message beneath the field distinguishes a reserved folder from a path that is not a folder
+        // path, so it is read again whenever the text changes.
         viewModel.IsDownloadsFolderInvalid.Should().BeTrue();
         changedProperties.Should().Contain(nameof(ResourcesSectionViewModel.InvalidDownloadsFolderText));
         var config = _context.Draft!.ToConfig();

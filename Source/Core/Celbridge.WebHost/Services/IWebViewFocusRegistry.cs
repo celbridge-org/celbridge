@@ -8,9 +8,9 @@ namespace Celbridge.WebHost;
 /// surface's focus-gain signals (managed GotFocus on Windows, the macOS native click monitor) onto a single
 /// report of its Panel, EditTarget, and ReleaseFocus. Every surface has an edit target. ReleaseFocus drops
 /// the surface's DOM caret when focus leaves it (the JS blur). GrantDomFocus is the optional DOM-side focus
-/// the grant path applies after native focus. A grant can reach the page before the page is ready to act on
-/// it, so a view whose page signals that it is ready sends the DOM grant again at that point if the surface
-/// still holds the keyboard. OnFocusGained is an optional side effect run when the surface gains focus (a
+/// the grant path applies after native focus. A grant can reach the page before it is ready to act on one,
+/// so a view re-sends the DOM grant when its page signals readiness, if the surface still holds the
+/// keyboard. OnFocusGained is an optional side effect run when the surface gains focus (a
 /// document reports itself as the active document). SurfaceName names the surface in focus diagnostics, so
 /// two surfaces of the same kind can be told apart in a log.
 /// </summary>

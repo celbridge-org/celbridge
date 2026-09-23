@@ -104,8 +104,8 @@ export class RpcTransport {
         if (typeof globalThis !== 'undefined') {
             globalThis.__hostSendMessage = (json) => this.#postMessage(json);
 
-            // The same reach for the requests in flight, so a page that looks stuck can say what it is
-            // waiting on, and a test can read whether a request carries a deadline at all.
+            // The same way in for the requests in flight, so a page that looks stuck can say what it is
+            // waiting on, and a test can check whether a request carries a deadline.
             globalThis.__celPendingRequests = () => this.describePendingRequests();
         }
     }

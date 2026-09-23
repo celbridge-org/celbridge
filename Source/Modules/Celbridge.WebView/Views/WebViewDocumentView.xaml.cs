@@ -161,7 +161,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
     }
 
     // Drops the page and returns the document to the placeholder it started on. A real navigation rather
-    // than just clearing the address, so the page being left stops running instead of playing on unseen.
+    // than just clearing the address, so the old page stops running instead of playing on unseen.
     private void ClearPage()
     {
         Navigate("about:blank");
@@ -649,12 +649,12 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         }
     }
 
-    // Chromium abandons a navigation it turned into a download, one a later navigation superseded, and one
-    // the user stopped, and reports all three the same way. None of them is a page that failed to load, and
-    // in each the page being left is still the page on screen, so the placeholder would be describing a
-    // failure that did not happen. A page that genuinely could not be fetched reports why it could not.
-    // The macOS head reports every failure alike, but there the download is announced before the
-    // navigation it replaced ends, so that navigation is already known to be abandoned.
+    // Chromium reports three cases the same way: a navigation it turned into a download, one a later
+    // navigation superseded, and one the user stopped. None is a page that failed to load, and in each the
+    // old page is still on screen, so the placeholder would describe a failure that did not happen. A page
+    // that genuinely could not be fetched reports why. The macOS head reports every failure alike, but
+    // there the download is announced before the navigation it replaced ends, so that one is already known
+    // to be abandoned.
     private static NavigationOutcome ResolveNavigationOutcome(
         CoreWebView2NavigationCompletedEventArgs e,
         bool isReplacedByDownload)
@@ -704,8 +704,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
             return;
         }
 
-        // The probe reports on a completion that has already happened, so a navigation started while it was
-        // in flight owns the document now and this verdict is about a page that has been left.
+        // The probe reports on a completion that has already happened, so a navigation started while it
+        // was in flight owns the document now, and this verdict is about a page already gone.
         if (ViewModel.IsNavigating
             || !string.Equals(ViewModel.CurrentUrl, probedUrl, StringComparison.Ordinal))
         {
@@ -1359,9 +1359,9 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         FocusDocumentContent();
     }
 
-    // Gives the keyboard to whatever fills the document area, or failing that to the way in the placeholder points to.
-    // A document being opened has already started navigating to its Home URL by the time it is activated and focused,
-    // so its page counts as on screen.
+    // Gives the keyboard to whatever fills the document area, or failing that to whatever way in the
+    // placeholder offers. A document being opened has already started navigating to its Home URL by the
+    // time it is activated and focused, so its page counts as on screen.
     private void FocusDocumentContent()
     {
         if (ViewModel.IsSettingsVisible)

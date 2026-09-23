@@ -121,7 +121,7 @@ public class DownloadServiceTests
         var projectService = Substitute.For<IProjectService>();
         projectService.CurrentProject.Returns(_project);
 
-        // Every reason the service records is a localized string, and what it reads is the key.
+        // Every reason the service records is a localized string; these tests read the key.
         _localizerService = Substitute.For<ILocalizerService>();
         _localizerService.GetString(Arg.Any<string>(), Arg.Any<object[]>())
             .Returns(callInfo => callInfo.Arg<string>());
@@ -269,7 +269,8 @@ public class DownloadServiceTests
     [Test]
     public async Task ADeniedDestination_IsRecordedAsAFailure_AndNothingIsStaged()
     {
-        // WebKit tidies a file name that starts with a dot, but the service does not rely on the platform to.
+        // WebKit tidies a file name that starts with a dot, but the service does not rely on the platform
+        // doing so.
         var rule = Substitute.For<IPolicyRule>();
         rule.Source.Returns(PolicyRuleSource.SystemDeny);
         rule.Pattern.Returns(".git");
@@ -291,7 +292,7 @@ public class DownloadServiceTests
         download.Status.Should().Be(DownloadStatus.Failed);
         download.FailureReason.Should().Be("Downloads_Blocked");
 
-        // The row names the folder Celbridge reserves, not a rule the project file does not have.
+        // The row names the folder Celbridge reserves, rather than a project-file rule that does not exist.
         _localizerService.Received().GetString(
             "Downloads_Blocked",
             Arg.Is<object[]>(arguments => arguments.Length == 2 && Equals(arguments[1], ".git")));
@@ -475,7 +476,7 @@ public class DownloadServiceTests
         // Nothing is left to report the transfer's outcome, so it is stopped rather than left running.
         _transfers["notes.txt"].Received(1).Cancel();
 
-        // Every record described the project that ended, and the staged file goes with temp:.
+        // Every record described the project that ended, and the staged file went with temp:.
         await _downloadService.CompleteAsync(ticket.Id);
 
         _moves.Should().ContainSingle()
@@ -538,8 +539,8 @@ public class DownloadServiceTests
 
         _localFileSystem.Files.Should().NotContainKey(ticket.StagingPath);
 
-        // Stopping the transfer makes the platform report it, and by then the download has settled on the
-        // reason given here rather than reading as a cancellation the user asked for.
+        // Stopping the transfer makes the platform report it, and by then the download has already settled
+        // on the reason given here rather than on a cancellation the user asked for.
         await _downloadService.ReportCanceledAsync(ticket.Id);
         await _downloadService.CompleteAsync(ticket.Id);
 

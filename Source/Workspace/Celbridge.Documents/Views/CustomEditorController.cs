@@ -1060,9 +1060,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             }
         }
 
-        // The keyboard may have been granted before the page loaded, when the grant could not reach it, so
-        // it is sent again now. It comes after the state restore because the restored view mode decides
-        // whether the editor takes focus.
+        // A grant made before the page loaded could not reach it, so it is sent again now. It comes after
+        // the state restore because the restored view mode decides whether the editor takes focus.
         if (WebView is not null
             && _webViewFocusRegistry.IsFocusedSurface(WebView))
         {

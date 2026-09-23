@@ -27,8 +27,8 @@ internal sealed class SourceChangedObserver : IDisposable
 
     private void CoreWebView2_SourceChanged(CoreWebView2 sender, CoreWebView2SourceChangedEventArgs args)
     {
-        // CoreWebView2.Source rather than WebView2.Source, which reports the address percent-encoded where
-        // this reports it as the page shows it.
+        // CoreWebView2.Source rather than WebView2.Source, which percent-encodes the address; this reports
+        // it as the page shows it.
         _onCommitted(sender.Source);
     }
 

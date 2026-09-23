@@ -80,7 +80,7 @@ public class DialogServiceFocusTests
     [Test]
     public async Task AControlThatCannotTakeTheKeyboardBack_LeavesItToItsPanel()
     {
-        // A control in a menu that has since closed, for one.
+        // A control in a menu that has since closed, for example.
         _notedFocus.IsFocusBack.Returns(false);
         _notedFocus.TryReturnFocus().Returns(false);
 

@@ -182,7 +182,7 @@ public class DialogService : IDialogService
     // A modal dialog moves keyboard focus into itself. Closing it hands focus back to the control that opened
     // it on the packaged Windows head, but not reliably on the Skia heads, which can leave it on the first
     // focusable element of another panel, or of the same one. So the control is given the keyboard back
-    // unless it already has it, and its panel takes the keyboard when the control no longer can. A web
+    // unless it already has it, and its panel takes over when the control no longer can. A web
     // surface keeps its focus report through the dialog and only gets its caret back when its document
     // takes focus again, so its panel is always refocused.
     private void ReturnKeyboard(FocusPanelId focusedPanel, INotedFocus notedFocus)

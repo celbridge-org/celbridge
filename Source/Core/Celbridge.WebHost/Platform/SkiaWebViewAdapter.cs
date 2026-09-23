@@ -781,7 +781,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
 
     public IWebViewDownloadHandler AttachDownloadHandler(CoreWebView2 coreWebView2)
     {
-        // Uno raises WebView2's DownloadStarting on no Skia head, so macOS takes the download from WebKit
+        // No Skia head raises WebView2's DownloadStarting, so macOS takes the download from WebKit
         // instead. The Windows and Linux Skia heads keep the WebView2 handler, which Uno never calls.
         if (!OperatingSystem.IsMacOS())
         {
@@ -795,9 +795,9 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
 
     public IDisposable GateNavigations(CoreWebView2 coreWebView2, NavigationGate gate)
     {
-        // Every Skia head decides at NavigationStarting, which Uno raises once the request is under way. The
-        // Windows and Linux heads have nothing earlier to decide at, and macOS puts WebKit's own navigation
-        // policy in front of it, where a destination that is refused is never asked for at all.
+        // Every Skia head decides at NavigationStarting, which Uno raises once the request is under way.
+        // The Windows and Linux heads have nothing earlier to use, and macOS puts WebKit's own navigation
+        // policy in front of it, where a refused destination is never asked for at all.
         var navigationStartingGate = new NavigationStartingGate(coreWebView2, gate);
 
         if (!OperatingSystem.IsMacOS())
@@ -858,8 +858,9 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         return new PageRegistration(sourceObserver, commitRegistration);
     }
 
-    // Reports WebKit's address in the form Uno gives Source, so a commit and the finished load that follows it
-    // name the page alike. Runs inside WebKit's commit callback, so a failing handler is contained here.
+    // Reports WebKit's address in the form Uno gives Source, so a commit and the finished load that
+    // follows name the page alike. Runs inside WebKit's commit callback, so a failing handler is contained
+    // here.
     private void ReportNavigationCommit(NavigationCommitted onCommitted, string url)
     {
         var committedUrl = url;

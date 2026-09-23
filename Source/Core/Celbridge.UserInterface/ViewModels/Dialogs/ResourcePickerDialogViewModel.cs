@@ -59,10 +59,8 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
     /// </summary>
     public void Initialize(IReadOnlyList<string> extensions, bool showPreview)
     {
-        // The resource picker only makes sense for a loaded project. Callers
-        // (DialogService.ShowResourcePickerDialogAsync) already short-circuit
-        // with a user-facing error in that case; the guard here is a
-        // belt-and-braces safety net against a future caller that forgets.
+        // The resource picker only makes sense for a loaded project. DialogService reports that to the
+        // user before getting here, so this guard only catches a caller that skips it.
         Guard.IsTrue(_workspaceWrapper.IsWorkspaceLoaded);
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
@@ -73,7 +71,7 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
             .Select(e => e.TrimStart('.').ToLowerInvariant())
             .ToList();
 
-        // Show the preview panel container if preview is enabled (reserves space)
+        // Shown whenever preview is enabled, so the panel reserves its space either way.
         PreviewPanelVisibility = showPreview ? Visibility.Visible : Visibility.Collapsed;
         SearchPlaceholder = _stringLocalizer.GetString("ResourcePickerDialog_SearchPlaceholder");
 
@@ -136,8 +134,8 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
         var resourcePath = resolveResult.Value;
 
         var infoResult = await _resourceFileSystem.GetInfoAsync(selectedItem.ResourceKey);
-        // The selection can change while the probe is in flight; the late
-        // result must not overwrite a newer selection's preview.
+        // The selection can change while the probe is in flight, and a late result must not overwrite a
+        // newer selection's preview.
         if (!ReferenceEquals(selectedItem, SelectedItem))
         {
             return;
