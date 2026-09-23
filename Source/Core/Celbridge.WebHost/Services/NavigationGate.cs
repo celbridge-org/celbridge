@@ -69,24 +69,3 @@ internal sealed class NavigationStartingGate : IDisposable
         _coreWebView2.NavigationStarting -= CoreWebView2_NavigationStarting;
     }
 }
-
-/// <summary>
-/// A page gated in more than one place, which stops gating in all of them when disposed.
-/// </summary>
-internal sealed class CombinedNavigationGate : IDisposable
-{
-    private readonly IDisposable[] _gates;
-
-    public CombinedNavigationGate(params IDisposable[] gates)
-    {
-        _gates = gates;
-    }
-
-    public void Dispose()
-    {
-        foreach (var gate in _gates)
-        {
-            gate.Dispose();
-        }
-    }
-}

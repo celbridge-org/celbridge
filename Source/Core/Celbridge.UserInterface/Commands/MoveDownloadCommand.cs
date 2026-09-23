@@ -33,10 +33,13 @@ public class MoveDownloadCommand : CommandBase, IMoveDownloadCommand
         }
 
         // Through the gateway rather than the operation service, so the destination is policy-checked like
-        // any other write and nothing is recorded for undo.
+        // any other write and nothing is recorded for undo. The staged file is a download rather than a
+        // resource the project already knew, so it carries no identity out of temp: for the move to keep.
         var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
-        var moveResult = await resourceFileSystem.MoveAsync(SourceResource, DestResource);
+        var moveOptions = new MoveOptions(AllowCrossRoot: true);
+
+        var moveResult = await resourceFileSystem.MoveAsync(SourceResource, DestResource, moveOptions);
         if (moveResult.IsFailure)
         {
             return Result.Fail($"Failed to move the download from '{SourceResource}' to '{DestResource}'")

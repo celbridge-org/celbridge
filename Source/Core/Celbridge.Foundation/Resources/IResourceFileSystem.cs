@@ -1,6 +1,13 @@
 namespace Celbridge.Resources;
 
 /// <summary>
+/// How a move departs from the default. AllowCrossRoot permits a source and a
+/// destination on different roots, which the caller has to ask for because such a
+/// move does not carry the resource's identity with it.
+/// </summary>
+public sealed record MoveOptions(bool AllowCrossRoot = false);
+
+/// <summary>
 /// The gateway for reads, writes, and structural operations on resources
 /// addressed by ResourceKey. Structural operations on project: resources
 /// cascade the paired sidecar and rewrite references in scannable file types.
@@ -43,13 +50,14 @@ public interface IResourceFileSystem
     Task<Result<Stream>> OpenWriteAsync(ResourceKey resource);
 
     /// <summary>
-    /// Moves the resource and cascades the paired sidecar. Within a root the
+    /// Moves the resource within its root and cascades the paired sidecar. The
     /// resource keeps its identity: references to it are rewritten and the key
-    /// change is announced. A move across roots is a delete from one root and a
-    /// create in the other, as CopyAsync followed by DeleteAsync would be, so
-    /// references to the source are left as they are.
+    /// change is announced. A source and destination on different roots are
+    /// refused unless the options allow it, in which case the move is a delete
+    /// from one root and a create in the other, as CopyAsync followed by
+    /// DeleteAsync would be, so references to the source are left as they are.
     /// </summary>
-    Task<Result<MoveResult>> MoveAsync(ResourceKey source, ResourceKey dest);
+    Task<Result<MoveResult>> MoveAsync(ResourceKey source, ResourceKey dest, MoveOptions? options = null);
 
     /// <summary>
     /// Copies the resource and cascades the paired sidecar to the destination.

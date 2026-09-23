@@ -41,7 +41,22 @@ internal sealed class WebView2DownloadTransfer : IDownloadTransfer
 internal sealed class WebView2DownloadHandler : IWebViewDownloadHandler
 {
     // A download this surface has handed to the service and not yet seen settle.
-    private sealed record TrackedDownload(long DownloadId, string StagingPath, WebView2DownloadTransfer Transfer);
+    private sealed class TrackedDownload
+    {
+        public TrackedDownload(long downloadId, string stagingPath, WebView2DownloadTransfer transfer)
+        {
+            DownloadId = downloadId;
+            StagingPath = stagingPath;
+            Transfer = transfer;
+        }
+
+        public long DownloadId { get; }
+        public string StagingPath { get; }
+        public WebView2DownloadTransfer Transfer { get; }
+
+        // Stops relaying the attempt under way, and null once nothing is being relayed.
+        public Action? StopObserving { get; set; }
+    }
 
     private readonly ILogger<WebView2DownloadHandler> _logger;
     private readonly ILocalizerService _localizerService;
@@ -121,6 +136,10 @@ internal sealed class WebView2DownloadHandler : IWebViewDownloadHandler
 
         foreach (var abandonedDownload in abandonedDownloads)
         {
+            // Stopped being relayed before the service stops it, so the cancellation the operation reports
+            // does not settle the row over the reason given here.
+            StopObserving(abandonedDownload);
+
             _logger.LogDebug($"Download {abandonedDownload.DownloadId} abandoned with its web view");
 
             _ = _downloadService.AbandonAsync(abandonedDownload.DownloadId, reason);
@@ -144,20 +163,23 @@ internal sealed class WebView2DownloadHandler : IWebViewDownloadHandler
                 return;
             }
 
-            // A path the user named in a Save As dialog is theirs, so the file goes where they said and the
-            // download list, which records what this session downloaded into the project, records nothing.
-            if (IsUserChosenPath(resultFilePath))
-            {
-                _logger.LogDebug("Download saved to the path its Save As dialog named");
-                return;
-            }
-
             var downloadOperation = args.DownloadOperation;
 
+            // Asked before the destination is judged, because a retry is offered the staging path this
+            // handler named for the attempt it carries on from, which reads as a path outside the project.
             var retriedDownload = FindRetriedDownload(downloadOperation);
             if (retriedDownload is not null)
             {
                 Retry(retriedDownload, args);
+                return;
+            }
+
+            // A path the user named in a Save As dialog is theirs, so the file goes where they said and the
+            // download list, which records what this session downloaded into the project, records nothing.
+            // The download then runs with no UI of its own, since Handled has already suppressed WebView2's.
+            if (IsUserChosenPath(resultFilePath))
+            {
+                _logger.LogDebug("Download saved to the path its Save As dialog named");
                 return;
             }
 
@@ -282,14 +304,15 @@ internal sealed class WebView2DownloadHandler : IWebViewDownloadHandler
 
         args.ResultFilePath = trackedDownload.StagingPath;
 
+        StopObserving(trackedDownload);
+
         var downloadOperation = args.DownloadOperation;
         trackedDownload.Transfer.Operation = downloadOperation;
 
         Observe(trackedDownload, downloadOperation);
     }
 
-    // Relays an attempt's progress and outcome for as long as it is the attempt under way. One a later
-    // attempt has taken over from reports nothing, since the download it belonged to is still running.
+    // Relays an attempt's progress and outcome for as long as it is the attempt under way.
     private void Observe(TrackedDownload trackedDownload, CoreWebView2DownloadOperation downloadOperation)
     {
         var downloadId = trackedDownload.DownloadId;
@@ -299,35 +322,29 @@ internal sealed class WebView2DownloadHandler : IWebViewDownloadHandler
             downloadOperation.BytesReceived,
             ReadTotalBytes(downloadOperation));
 
-        downloadOperation.BytesReceivedChanged += (operation, _) =>
+        void OnBytesReceivedChanged(CoreWebView2DownloadOperation operation, object args)
         {
-            if (!ReferenceEquals(trackedDownload.Transfer.Operation, downloadOperation))
-            {
-                return;
-            }
-
             _downloadService.ReportProgress(downloadId, operation.BytesReceived, ReadTotalBytes(operation));
-        };
+        }
 
-        downloadOperation.StateChanged += async (operation, _) =>
+        async void OnStateChanged(CoreWebView2DownloadOperation operation, object args)
         {
             // Async-void event handler: an escaping exception ends up on the synchronization
             // context's unhandled-exception channel, so a WebView-side failure is contained here.
             try
             {
-                if (!ReferenceEquals(trackedDownload.Transfer.Operation, downloadOperation))
-                {
-                    return;
-                }
-
                 if (operation.State == CoreWebView2DownloadState.Completed)
                 {
+                    StopObserving(trackedDownload);
                     _trackedDownloads.Remove(trackedDownload);
+
                     await _downloadService.CompleteAsync(downloadId);
                 }
                 else if (operation.State == CoreWebView2DownloadState.Interrupted)
                 {
+                    StopObserving(trackedDownload);
                     _trackedDownloads.Remove(trackedDownload);
+
                     await SettleInterruptionAsync(downloadId, operation.InterruptReason);
                 }
             }
@@ -335,7 +352,24 @@ internal sealed class WebView2DownloadHandler : IWebViewDownloadHandler
             {
                 _logger.LogError(ex, "Download state change handler failed");
             }
+        }
+
+        downloadOperation.BytesReceivedChanged += OnBytesReceivedChanged;
+        downloadOperation.StateChanged += OnStateChanged;
+
+        trackedDownload.StopObserving = () =>
+        {
+            downloadOperation.BytesReceivedChanged -= OnBytesReceivedChanged;
+            downloadOperation.StateChanged -= OnStateChanged;
         };
+    }
+
+    // An attempt nothing is relaying raises no further events here, so the handler it was subscribed with
+    // stops rooting this surface once WebView2 lets the operation go.
+    private static void StopObserving(TrackedDownload trackedDownload)
+    {
+        trackedDownload.StopObserving?.Invoke();
+        trackedDownload.StopObserving = null;
     }
 
     private static long? ReadTotalBytes(CoreWebView2DownloadOperation downloadOperation)

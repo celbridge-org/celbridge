@@ -560,6 +560,7 @@ public static partial class MacOSWebViewInterop
         IntPtr decisionHandler)
     {
         var policy = MacNavigationResponsePolicy.Allow;
+        var isDecided = false;
         try
         {
             var response = ReadNavigationResponse(navigationResponse);
@@ -573,13 +574,16 @@ public static partial class MacOSWebViewInterop
             if (listener is not null)
             {
                 policy = listener.DecideNavigationResponse(webView, response);
+                isDecided = true;
             }
         }
         catch
         {
         }
 
-        if (policy != MacNavigationResponsePolicy.Download &&
+        // Only a response nothing decided on is left to the class's own implementation, which would
+        // otherwise answer in place of the decision made here.
+        if (!isDecided &&
             _originalDecidePolicyForNavigationResponse != IntPtr.Zero)
         {
             CallOriginalImplementation(
@@ -692,7 +696,13 @@ public static partial class MacOSWebViewInterop
         IntPtr completionHandler)
     {
         // WebKit waits for the answer, which the listener gives after an await, so the handler is copied
-        // off the stack it arrived on.
+        // off the stack it arrived on. A request that supersedes one still unanswered takes its place, and
+        // the copy taken of that one is let go of here.
+        if (_pendingDownloadDestinations.Remove(download, out var supersededHandler))
+        {
+            _Block_release(supersededHandler);
+        }
+
         _pendingDownloadDestinations[download] = _Block_copy(completionHandler);
 
         try

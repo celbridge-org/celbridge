@@ -825,7 +825,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
 
         // A navigation the native gate lets through reaches NavigationStarting as well, where the handler
         // that allowed it answers the same way.
-        return new CombinedNavigationGate(registration, navigationStartingGate);
+        return new PageRegistration(registration, navigationStartingGate);
     }
 
     public IDisposable ObserveNavigationCommits(CoreWebView2 coreWebView2, NavigationCommitted onCommitted)
@@ -855,7 +855,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
             return sourceObserver;
         }
 
-        return new CombinedRegistration(sourceObserver, commitRegistration);
+        return new PageRegistration(sourceObserver, commitRegistration);
     }
 
     // Reports WebKit's address in the form Uno gives Source, so a commit and the finished load that follows it
@@ -1064,24 +1064,5 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         _initHost = host;
 
         return host;
-    }
-
-    // Two registrations a surface holds as one, disposed together.
-    private sealed class CombinedRegistration : IDisposable
-    {
-        private readonly IDisposable _first;
-        private readonly IDisposable _second;
-
-        public CombinedRegistration(IDisposable first, IDisposable second)
-        {
-            _first = first;
-            _second = second;
-        }
-
-        public void Dispose()
-        {
-            _first.Dispose();
-            _second.Dispose();
-        }
     }
 }

@@ -138,12 +138,20 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         return await _fileSystem.OpenWriteAsync(resourcePath, WriteMode.Truncate);
     }
 
-    public async Task<Result<MoveResult>> MoveAsync(ResourceKey source, ResourceKey dest)
+    public async Task<Result<MoveResult>> MoveAsync(ResourceKey source, ResourceKey dest, MoveOptions? options = null)
     {
         // A resource keeps no identity from one root to another, so a move across roots is a delete from
         // the source root and a create in the destination root. References to the source are left as they
-        // are, and only its removal is announced.
+        // are, and only its removal is announced, which is why a caller has to ask for one.
         var isCrossRoot = source.Root != dest.Root;
+        if (isCrossRoot
+            && options?.AllowCrossRoot != true)
+        {
+            return Result.Fail(
+                $"MoveAsync requires source and destination on the same root: '{source}' to '{dest}'. " +
+                "Pass MoveOptions with AllowCrossRoot for a move that crosses roots, or compose " +
+                "CopyAsync followed by DeleteAsync.");
+        }
 
         var registry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 

@@ -8,7 +8,7 @@ namespace Celbridge.UserInterface.Views.Controls;
 /// download can be stopped, and a finished one can be taken off the list. Clicking a completed one finds its
 /// file in the Explorer.
 /// </summary>
-public sealed partial class DownloadRow : UserControl
+public sealed partial class DownloadRow : UserControl, IBadgeRow
 {
     private const double BytesPerKilobyte = 1024;
     private const double BytesPerMegabyte = BytesPerKilobyte * 1024;
@@ -24,6 +24,8 @@ public sealed partial class DownloadRow : UserControl
     /// The download this row shows.
     /// </summary>
     public DownloadEntry Download { get; private set; }
+
+    long IBadgeRow.EntryId => Download.Id;
 
     /// <summary>
     /// Raised when the user asks for the row's file to be found in the Explorer.

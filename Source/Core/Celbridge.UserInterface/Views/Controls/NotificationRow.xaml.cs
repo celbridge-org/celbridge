@@ -9,7 +9,7 @@ namespace Celbridge.UserInterface.Views.Controls;
 /// One pending notification in the notification list: its severity glyph, its line, when it arrived, its
 /// action, and a dismiss button when it is an event.
 /// </summary>
-public sealed partial class NotificationRow : UserControl
+public sealed partial class NotificationRow : UserControl, IBadgeRow
 {
     private readonly IStringLocalizer _stringLocalizer;
 
@@ -17,6 +17,8 @@ public sealed partial class NotificationRow : UserControl
     /// The notification this row shows.
     /// </summary>
     public NotificationEntry Notification { get; }
+
+    long IBadgeRow.EntryId => Notification.Id;
 
     /// <summary>
     /// Raised when the user activates the row's action.

@@ -2,12 +2,6 @@ using System.Globalization;
 using Celbridge.Downloads;
 using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.ViewModels.Controls;
-using Microsoft.UI.Dispatching;
-using Microsoft.UI.Xaml.Media.Animation;
-
-// The Uno SDK's implicit global usings include System.Windows.Input, which on the Windows head also
-// contains a FocusManager type, so the bare name is ambiguous there.
-using FocusManager = Microsoft.UI.Xaml.Input.FocusManager;
 
 namespace Celbridge.UserInterface.Views.Controls;
 
@@ -17,21 +11,8 @@ namespace Celbridge.UserInterface.Views.Controls;
 /// </summary>
 public sealed partial class DownloadBadge : UserControl
 {
-    // The tallest the list grows before it scrolls, and how far it stops short of the bottom of a window
-    // too short to hold that much.
-    private const double ListHeightLimit = 560;
-    private const double ListWindowClearance = 120;
-
-    // Where the keyboard was in the list before the rows were rebuilt: the download its row showed, if it
-    // was on a row, and that row's position.
-    private record ListFocus(long? DownloadId, int RowIndex);
-
     private readonly IStringLocalizer _stringLocalizer;
-
-    private bool _isFlyoutOpen;
-    private bool _isFlashRequested;
-    private long _flashEndTick;
-    private Storyboard? _flashStoryboard;
+    private readonly BadgeList _list;
 
     public DownloadBadgeViewModel ViewModel { get; }
 
@@ -50,6 +31,10 @@ public sealed partial class DownloadBadge : UserControl
         var overlayFlyoutSupport = ServiceLocator.AcquireService<IOverlayFlyoutSupport>();
         overlayFlyoutSupport.Apply(DownloadFlyout);
 
+        _list = new BadgeList(this, DownloadScrollViewer, DownloadRows, ClearAllButton, AttentionOverlay);
+
+        // Kept subscribed for the life of the control, so a badge the title bar takes out of the window and
+        // puts back starts listening again rather than going quiet for the rest of the session.
         Loaded += OnDownloadBadge_Loaded;
         Unloaded += OnDownloadBadge_Unloaded;
     }
@@ -76,24 +61,20 @@ public sealed partial class DownloadBadge : UserControl
     {
         ViewModel.OnUnloaded();
 
-        _flashStoryboard?.Stop();
-        _flashStoryboard = null;
+        _list.StopFlash();
 
         ViewModel.DownloadsChanged -= OnDownloadsChanged;
         ViewModel.DownloadArrived -= OnDownloadArrived;
         DownloadFlyout.Opening -= OnDownloadFlyout_Opening;
         DownloadFlyout.Closed -= OnDownloadFlyout_Closed;
         SizeChanged -= OnDownloadBadge_SizeChanged;
-
-        Loaded -= OnDownloadBadge_Loaded;
-        Unloaded -= OnDownloadBadge_Unloaded;
     }
 
     private void OnDownloadsChanged(object? sender, EventArgs e)
     {
         UpdateBadge();
 
-        if (_isFlyoutOpen)
+        if (_list.IsOpen)
         {
             UpdateList();
         }
@@ -106,7 +87,7 @@ public sealed partial class DownloadBadge : UserControl
         {
             // The badge anchors the list, so an open list closes before the badge collapses from under it.
             // The collapse follows once the list has closed.
-            if (_isFlyoutOpen)
+            if (_list.IsOpen)
             {
                 DownloadFlyout.Hide();
                 return;
@@ -164,49 +145,20 @@ public sealed partial class DownloadBadge : UserControl
 
     private void OnDownloadArrived(object? sender, EventArgs e)
     {
-        // A run of downloads settling together shares one flash.
-        if (_isFlashRequested ||
-            Environment.TickCount64 < _flashEndTick)
-        {
-            return;
-        }
-
-        _isFlashRequested = true;
-
-        // Deferred past the next layout pass, so a badge that has only just appeared is on screen when it
-        // pulses.
-        DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
-        {
-            _isFlashRequested = false;
-
-            if (Visibility != Visibility.Visible)
-            {
-                return;
-            }
-
-            _flashStoryboard = AttentionFlash.Play(AttentionOverlay);
-            _flashEndTick = Environment.TickCount64 + (long)AttentionFlash.Duration.TotalMilliseconds;
-        });
+        _list.Flash();
     }
 
     private void OnDownloadFlyout_Opening(object? sender, object e)
     {
-        _isFlyoutOpen = true;
-
-        // A full list would run off the bottom of the window, so it is capped to the window and scrolls.
-        var windowHeight = XamlRoot?.Size.Height ?? 0;
-        if (windowHeight > 0)
-        {
-            var listHeight = Math.Min(ListHeightLimit, windowHeight - ListWindowClearance);
-            DownloadScrollViewer.MaxHeight = Math.Max(listHeight, 0);
-        }
+        _list.IsOpen = true;
+        _list.CapHeightToWindow();
 
         UpdateList();
     }
 
     private void OnDownloadFlyout_Closed(object? sender, object e)
     {
-        _isFlyoutOpen = false;
+        _list.IsOpen = false;
 
         // The next open builds the rows again from whatever is recorded by then, which is also what keeps
         // each row's relative time current.
@@ -229,7 +181,7 @@ public sealed partial class DownloadBadge : UserControl
             return;
         }
 
-        var listFocus = FindListFocus();
+        var listFocus = _list.FindFocus();
 
         ClearRows();
 
@@ -252,8 +204,7 @@ public sealed partial class DownloadBadge : UserControl
             return;
         }
 
-        // A row cannot take focus until it has been laid out, which happens after this returns.
-        DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () => RestoreListFocus(listFocus));
+        _list.RestoreFocusWhenLaidOut(listFocus);
     }
 
     // True when the list holds the same downloads in the same order, so every row still has one to show.
@@ -295,7 +246,7 @@ public sealed partial class DownloadBadge : UserControl
         }
 
         var listFocus = settlingIds.Count > 0
-            ? FindListFocus()
+            ? _list.FindFocus()
             : null;
 
         // Settling only ever makes Clear All available, so it is enabled before the rows change, ready to
@@ -307,10 +258,10 @@ public sealed partial class DownloadBadge : UserControl
             rows[index].Update(downloads[index]);
         }
 
-        if (listFocus?.DownloadId is long focusedId &&
+        if (listFocus?.EntryId is long focusedId &&
             settlingIds.Contains(focusedId))
         {
-            RestoreListFocus(listFocus);
+            _list.RestoreFocus(listFocus);
         }
 
         return true;
@@ -329,78 +280,6 @@ public sealed partial class DownloadBadge : UserControl
         }
 
         DownloadRows.Children.Clear();
-    }
-
-    // A rebuild removes the focused element, so where the keyboard was is noted first and handed back
-    // afterwards. Clear All counts as the first row.
-    private ListFocus? FindListFocus()
-    {
-        var xamlRoot = XamlRoot;
-        if (xamlRoot is null)
-        {
-            return null;
-        }
-
-        var element = FocusManager.GetFocusedElement(xamlRoot) as DependencyObject;
-        while (element is not null)
-        {
-            if (ReferenceEquals(element, ClearAllButton))
-            {
-                return new ListFocus(DownloadId: null, RowIndex: 0);
-            }
-
-            if (element is DownloadRow row)
-            {
-                var rowIndex = DownloadRows.Children.IndexOf(row);
-
-                return new ListFocus(row.Download.Id, rowIndex);
-            }
-
-            element = VisualTreeHelper.GetParent(element);
-        }
-
-        return null;
-    }
-
-    private void RestoreListFocus(ListFocus listFocus)
-    {
-        if (!_isFlyoutOpen)
-        {
-            return;
-        }
-
-        var rows = DownloadRows.Children
-            .OfType<DownloadRow>()
-            .ToList();
-
-        // The row still listing the same download keeps the keyboard, wherever an arrival has moved it.
-        var sameRow = rows.FirstOrDefault(row => row.Download.Id == listFocus.DownloadId);
-        if (sameRow is not null &&
-            sameRow.TryFocusButton())
-        {
-            return;
-        }
-
-        var startIndex = Math.Clamp(listFocus.RowIndex, 0, Math.Max(rows.Count - 1, 0));
-
-        // Forward from the row that took the removed one's place, then back towards the top.
-        for (var index = startIndex; index < rows.Count; index++)
-        {
-            if (rows[index].TryFocusButton())
-            {
-                return;
-            }
-        }
-
-        for (var index = startIndex - 1; index >= 0; index--)
-        {
-            if (rows[index].TryFocusButton())
-            {
-                return;
-            }
-        }
-
-        ClearAllButton.Focus(FocusState.Programmatic);
     }
 
     private void OnRowRevealRequested(DownloadEntry download)

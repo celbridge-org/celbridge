@@ -397,7 +397,7 @@ public class LocalResourceFileSystemTests
         _resourceRegistry.ResolveResourcePath(sourceKey).Returns(Result<string>.Ok(sourcePath));
         _resourceRegistry.ResolveResourcePath(destKey).Returns(Result<string>.Ok(destPath));
 
-        var result = await _resourceFileSystem.MoveAsync(sourceKey, destKey);
+        var result = await _resourceFileSystem.MoveAsync(sourceKey, destKey, new MoveOptions(AllowCrossRoot: true));
 
         result.IsSuccess.Should().BeTrue(result.DiagnosticReport);
         File.Exists(sourcePath).Should().BeFalse();
@@ -407,6 +407,27 @@ public class LocalResourceFileSystemTests
         // The source was never a project resource, so there is nothing to announce.
         _messengerService.DidNotReceive().Send(Arg.Any<ResourceKeyChangedMessage>());
         _messengerService.DidNotReceive().Send(Arg.Any<ResourceDeletedMessage>());
+    }
+
+    [Test]
+    public async Task MoveAsync_AcrossRoots_WithoutTheOption_IsRefused()
+    {
+        var sourceKey = new ResourceKey("temp:downloads/staged.bin");
+        var destKey = new ResourceKey("downloads/report.bin");
+        var sourcePath = Path.Combine(_tempFolder, ".celbridge", "temp", "downloads", "staged.bin");
+        var destPath = Path.Combine(_tempFolder, "downloads", "report.bin");
+        Directory.CreateDirectory(Path.GetDirectoryName(sourcePath)!);
+        await File.WriteAllTextAsync(sourcePath, "payload");
+
+        _resourceRegistry.ResolveResourcePath(sourceKey).Returns(Result<string>.Ok(sourcePath));
+        _resourceRegistry.ResolveResourcePath(destKey).Returns(Result<string>.Ok(destPath));
+
+        // A move across roots carries none of the resource's identity with it, so a caller asks for one.
+        var result = await _resourceFileSystem.MoveAsync(sourceKey, destKey);
+
+        result.IsFailure.Should().BeTrue();
+        File.Exists(sourcePath).Should().BeTrue();
+        File.Exists(destPath).Should().BeFalse();
     }
 
     [Test]
@@ -431,7 +452,7 @@ public class LocalResourceFileSystemTests
         var referenceIndex = ResourceReferenceIndexTestHelper.WithReferencers(sourceKey, referencerKey);
         _resourceScanner.BuildReferenceIndexAsync().Returns(Task.FromResult(referenceIndex));
 
-        var result = await _resourceFileSystem.MoveAsync(sourceKey, destKey);
+        var result = await _resourceFileSystem.MoveAsync(sourceKey, destKey, new MoveOptions(AllowCrossRoot: true));
 
         result.IsSuccess.Should().BeTrue(result.DiagnosticReport);
         File.Exists(sourcePath).Should().BeFalse();

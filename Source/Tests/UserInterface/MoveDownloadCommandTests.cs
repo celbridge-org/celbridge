@@ -21,7 +21,7 @@ public class MoveDownloadCommandTests
     public void Setup()
     {
         _resourceFileSystem = Substitute.For<IResourceFileSystem>();
-        _resourceFileSystem.MoveAsync(Arg.Any<ResourceKey>(), Arg.Any<ResourceKey>())
+        _resourceFileSystem.MoveAsync(Arg.Any<ResourceKey>(), Arg.Any<ResourceKey>(), Arg.Any<MoveOptions?>())
             .Returns(Task.FromResult(Result<MoveResult>.Ok(new MoveResult(
                 Array.Empty<ResourceKey>(),
                 Array.Empty<SkippedReferencer>(),
@@ -49,7 +49,12 @@ public class MoveDownloadCommandTests
         var result = await _command.ExecuteAsync();
 
         result.IsSuccess.Should().BeTrue(result.DiagnosticReport);
-        await _resourceFileSystem.Received(1).MoveAsync(StagedResource, Destination);
+
+        // The staged file crosses from temp: into the project, which the gateway refuses unless asked.
+        await _resourceFileSystem.Received(1).MoveAsync(
+            StagedResource,
+            Destination,
+            Arg.Is<MoveOptions>(options => options.AllowCrossRoot));
     }
 
     [Test]
@@ -61,13 +66,16 @@ public class MoveDownloadCommandTests
         var result = await _command.ExecuteAsync();
 
         result.IsFailure.Should().BeTrue();
-        await _resourceFileSystem.DidNotReceive().MoveAsync(Arg.Any<ResourceKey>(), Arg.Any<ResourceKey>());
+        await _resourceFileSystem.DidNotReceive().MoveAsync(
+            Arg.Any<ResourceKey>(),
+            Arg.Any<ResourceKey>(),
+            Arg.Any<MoveOptions?>());
     }
 
     [Test]
     public async Task AMoveTheGatewayRefuses_IsReportedAsAFailure()
     {
-        _resourceFileSystem.MoveAsync(StagedResource, Destination)
+        _resourceFileSystem.MoveAsync(StagedResource, Destination, Arg.Any<MoveOptions?>())
             .Returns(Task.FromResult(Result<MoveResult>.Fail("Destination already exists")));
 
         _command.SourceResource = StagedResource;

@@ -39,6 +39,9 @@ public class DownloadServiceTests
     private IProject _project = null!;
     private FakeFileSystem _localFileSystem = null!;
     private List<Move> _moves = null!;
+
+    // Run part way through a move, for a test that needs to see the service mid-import.
+    private Func<Task>? _duringMove;
     private ConcurrentDictionary<string, IDownloadTransfer> _transfers = null!;
     private MessageHandler<object, ResourceRegistryUpdatedMessage>? _registryUpdatedHandler;
     private MessageHandler<object, WorkspaceUnloadedMessage>? _workspaceUnloadedHandler;
@@ -49,6 +52,7 @@ public class DownloadServiceTests
     public void Setup()
     {
         _moves = new List<Move>();
+        _duringMove = null;
         _transfers = new ConcurrentDictionary<string, IDownloadTransfer>();
         _localFileSystem = new FakeFileSystem();
         _localFileSystem.SeedFolder(Path.Combine(ProjectFolderPath, "downloads"));
@@ -414,15 +418,46 @@ public class DownloadServiceTests
     }
 
     [Test]
-    public async Task TheOldestRecord_IsDroppedOnceTheListIsFull()
+    public async Task TheOldestSettledRecord_IsDroppedOnceTheListIsFull()
     {
+        for (var index = 0; index < DownloadService.DownloadLimit + 5; index++)
+        {
+            await CompleteDownloadAsync($"report{index}.pdf");
+        }
+
+        _downloadService.Downloads.Should().HaveCount(DownloadService.DownloadLimit);
+        _downloadService.Downloads[0].FileName.Should().Be($"report{DownloadService.DownloadLimit + 4}.pdf");
+    }
+
+    [Test]
+    public async Task ARecordStillRunning_IsKeptOnceTheListIsFull()
+    {
+        // A running download keeps its row, so its progress stays in view and it can still be stopped. With
+        // nothing settled to drop in its place, the list grows past the limit.
         for (var index = 0; index < DownloadService.DownloadLimit + 5; index++)
         {
             await BeginAsync($"report{index}.pdf");
         }
 
-        _downloadService.Downloads.Should().HaveCount(DownloadService.DownloadLimit);
-        _downloadService.Downloads[0].FileName.Should().Be($"report{DownloadService.DownloadLimit + 4}.pdf");
+        _downloadService.Downloads.Should().HaveCount(DownloadService.DownloadLimit + 5);
+        _downloadService.Downloads.Should().OnlyContain(download => download.Status == DownloadStatus.InProgress);
+    }
+
+    [Test]
+    public async Task ADestinationBeingImported_IsStillReserved()
+    {
+        var ticket = await BeginAsync("report.pdf");
+        _localFileSystem.SeedFile(ticket.StagingPath, "payload");
+
+        // The file is not at its destination until the move lands, so a download begun while that is in
+        // flight must not be handed the same path.
+        DownloadTicket? concurrentTicket = null;
+        _duringMove = async () => concurrentTicket = await BeginAsync("report.pdf");
+
+        await _downloadService.CompleteAsync(ticket.Id);
+
+        concurrentTicket.Should().NotBeNull();
+        concurrentTicket!.Destination.Should().Be(new ResourceKey("downloads/report (1).pdf"));
     }
 
     [Test]
@@ -436,6 +471,9 @@ public class DownloadServiceTests
         RaiseWorkspaceUnloaded();
 
         _downloadService.Downloads.Should().BeEmpty();
+
+        // Nothing is left to report the transfer's outcome, so it is stopped rather than left running.
+        _transfers["notes.txt"].Received(1).Cancel();
 
         // Every record described the project that ended, and the staged file goes with temp:.
         await _downloadService.CompleteAsync(ticket.Id);
@@ -637,6 +675,11 @@ public class DownloadServiceTests
         configure(command);
 
         _moves.Add(new Move(command.SourceResource, command.DestResource));
+
+        if (_duringMove is not null)
+        {
+            await _duringMove();
+        }
 
         var moveResult = await _localFileSystem.MoveFileAsync(
             ResolvePath(command.SourceResource).Value,

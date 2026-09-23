@@ -101,6 +101,20 @@ internal sealed class MacOSWebViewDownloadRouter : IMacOSDownloadListener
 
     public void OnDownloadDestinationRequested(IntPtr download, string suggestedFileName, string sourceUrl)
     {
+        // WebKit asks again for a download it restarts, such as one that followed a redirect. It keeps the
+        // row and the staging path it was already given, so the request is answered from those rather than
+        // reserving a second destination and listing the download twice.
+        if (_transfers.TryGetValue(download, out var runningTransfer))
+        {
+            if (runningTransfer.StagingPath.Length > 0)
+            {
+                MacOSWebViewInterop.ProvideDownloadDestination(download, runningTransfer.StagingPath);
+            }
+
+            // Still reserving the destination it was begun with, which answers this request when it lands.
+            return;
+        }
+
         var transfer = new DownloadTransfer(this, download);
         _transfers[download] = transfer;
 
@@ -257,6 +271,8 @@ internal sealed class MacOSWebViewDownloadRouter : IMacOSDownloadListener
             }
             return;
         }
+
+        transfer.StagingPath = ticket.StagingPath;
 
         MacOSWebViewInterop.ProvideDownloadDestination(transfer.Download, ticket.StagingPath);
 
@@ -418,6 +434,9 @@ internal sealed class MacOSWebViewDownloadRouter : IMacOSDownloadListener
 
         // Zero until the service has reserved the download its destination.
         public long DownloadId { get; set; }
+
+        // Where WebKit writes the download, empty until the service has reserved it.
+        public string StagingPath { get; set; } = string.Empty;
 
         // Set once the download has ended or been stopped, after which WebKit is not asked about it again.
         public bool IsSettled { get; set; }

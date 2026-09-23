@@ -39,6 +39,11 @@ public sealed class DownloadService : IDownloadService
     private readonly List<DownloadEntry> _entries = new();
     private readonly Dictionary<long, InFlightDownload> _inFlightDownloads = new();
 
+    // The destinations promised to a download, held until its file is at that path or putting it there has
+    // failed. Held apart from the transfers, which are let go of as soon as one stops running, leaving a
+    // window before the move lands where a second download of the same name would find the path free.
+    private readonly HashSet<ResourceKey> _reservedDestinations = new();
+
     // Reserving a destination and recording it has to be indivisible, or two downloads of the same name
     // started together both find the same path free.
     private readonly SemaphoreSlim _beginGate = new(1, 1);
@@ -233,42 +238,51 @@ public sealed class DownloadService : IDownloadService
             return;
         }
 
-        if (!_workspaceWrapper.HasWorkspaceService)
+        try
         {
-            // The project the download belonged to has gone, and its staging file goes with temp:.
-            SettleAsFailed(downloadId, GetString("Downloads_ImportFailed"));
-            return;
-        }
-
-        // Moved rather than copied. temp: lives inside the project folder, so the move is a rename: it
-        // writes no second copy for antivirus to scan, keeps the mark of the web the platform gave the
-        // file, and puts no limit on its size.
-        var moveResult = await _commandService.ExecuteAsync<IMoveDownloadCommand>(command =>
-        {
-            command.SourceResource = inFlightDownload.StagingResource;
-            command.DestResource = inFlightDownload.Destination;
-        });
-
-        if (moveResult.IsFailure)
-        {
-            _logger.LogError(
-                $"Failed to move the downloaded file to '{inFlightDownload.Destination}'. {moveResult.DiagnosticReport}");
-
-            SettleAsFailed(downloadId, GetString("Downloads_ImportFailed"));
-
-            // A move that failed leaves the staged file behind.
-            if (_workspaceWrapper.HasWorkspaceService)
+            if (!_workspaceWrapper.HasWorkspaceService)
             {
-                var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
-                await resourceFileSystem.DeleteAsync(inFlightDownload.StagingResource);
+                // The project the download belonged to has gone, and its staging file goes with temp:.
+                SettleAsFailed(downloadId, GetString("Downloads_ImportFailed"));
+                return;
             }
-            return;
-        }
 
-        // Nothing in the Explorer is selected or expanded, since selecting there takes the keyboard from
-        // whatever the user was doing when the download finished. The badge announces the arrival, and its
-        // row finds the file.
-        SettleAsSucceeded(downloadId, inFlightDownload.Destination);
+            // Moved rather than copied. temp: lives inside the project folder, so the move is a rename: it
+            // writes no second copy for antivirus to scan, keeps the mark of the web the platform gave the
+            // file, and puts no limit on its size.
+            var moveResult = await _commandService.ExecuteAsync<IMoveDownloadCommand>(command =>
+            {
+                command.SourceResource = inFlightDownload.StagingResource;
+                command.DestResource = inFlightDownload.Destination;
+            });
+
+            if (moveResult.IsFailure)
+            {
+                _logger.LogError(
+                    $"Failed to move the downloaded file to '{inFlightDownload.Destination}'. {moveResult.DiagnosticReport}");
+
+                SettleAsFailed(downloadId, GetString("Downloads_ImportFailed"));
+
+                // A move that failed leaves the staged file behind.
+                if (_workspaceWrapper.HasWorkspaceService)
+                {
+                    var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+                    await resourceFileSystem.DeleteAsync(inFlightDownload.StagingResource);
+                }
+                return;
+            }
+
+            // Nothing in the Explorer is selected or expanded, since selecting there takes the keyboard from
+            // whatever the user was doing when the download finished. The badge announces the arrival, and its
+            // row finds the file.
+            SettleAsSucceeded(downloadId, inFlightDownload.Destination);
+        }
+        finally
+        {
+            // Given up once the file is at the destination, or once putting it there has failed, so no
+            // second download can be handed the same path while the move is in flight.
+            ReleaseDestination(inFlightDownload.Destination);
+        }
     }
 
     public async Task FailAsync(long downloadId, string reason)
@@ -284,6 +298,8 @@ public sealed class DownloadService : IDownloadService
             var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
             await resourceFileSystem.DeleteAsync(inFlightDownload.StagingResource);
         }
+
+        ReleaseDestination(inFlightDownload.Destination);
 
         SettleAsFailed(downloadId, reason);
     }
@@ -312,6 +328,8 @@ public sealed class DownloadService : IDownloadService
             var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
             await resourceFileSystem.DeleteAsync(inFlightDownload.StagingResource);
         }
+
+        ReleaseDestination(inFlightDownload.Destination);
 
         SettleAsFailed(downloadId, reason);
     }
@@ -477,15 +495,15 @@ public sealed class DownloadService : IDownloadService
     {
         lock (_lock)
         {
-            foreach (var inFlightDownload in _inFlightDownloads.Values)
-            {
-                if (inFlightDownload.Destination == resource)
-                {
-                    return true;
-                }
-            }
+            return _reservedDestinations.Contains(resource);
+        }
+    }
 
-            return false;
+    private void ReleaseDestination(ResourceKey destination)
+    {
+        lock (_lock)
+        {
+            _reservedDestinations.Remove(destination);
         }
     }
 
@@ -503,6 +521,7 @@ public sealed class DownloadService : IDownloadService
             downloadId = TakeDownloadId();
 
             _inFlightDownloads.Add(downloadId, new InFlightDownload(stagingResource, destination, transfer));
+            _reservedDestinations.Add(destination);
 
             var entry = new DownloadEntry(
                 downloadId,
@@ -588,6 +607,8 @@ public sealed class DownloadService : IDownloadService
             await resourceFileSystem.DeleteAsync(inFlightDownload.StagingResource);
         }
 
+        ReleaseDestination(inFlightDownload.Destination);
+
         SettleAsCanceled(downloadId);
     }
 
@@ -652,22 +673,45 @@ public sealed class DownloadService : IDownloadService
         SendDownloadsChanged(hasArrival: false);
     }
 
-    // Every record describes the project that is ending. A transfer still running is abandoned with its
-    // staging file, which temp: wipes on the next workspace load.
+    // Every record describes the project that is ending. A transfer still running is stopped, since nothing
+    // is left to report its outcome, and its staging file goes with temp:.
     private void OnWorkspaceUnloaded(object recipient, WorkspaceUnloadedMessage message)
     {
+        List<InFlightDownload> abandonedDownloads;
+        bool hasClearedEntries;
+
         lock (_lock)
         {
+            abandonedDownloads = _inFlightDownloads.Values.ToList();
+
             _inFlightDownloads.Clear();
+            _reservedDestinations.Clear();
 
-            if (_entries.Count == 0)
+            hasClearedEntries = _entries.Count > 0;
+            if (hasClearedEntries)
             {
-                return;
+                _entries.Clear();
+
+                UpdateDownloads();
             }
+        }
 
-            _entries.Clear();
+        // Stopped outside the lock, since a transfer can report back into the service as it stops.
+        foreach (var abandonedDownload in abandonedDownloads)
+        {
+            try
+            {
+                abandonedDownload.Transfer.Cancel();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to stop a download whose project closed");
+            }
+        }
 
-            UpdateDownloads();
+        if (!hasClearedEntries)
+        {
+            return;
         }
 
         SendDownloadsChanged(hasArrival: false);
@@ -681,11 +725,20 @@ public sealed class DownloadService : IDownloadService
         return downloadId;
     }
 
+    // A download still running keeps its row, so its progress stays in view and it can still be stopped.
+    // With nothing settled left to drop, the list grows past the limit rather than losing one.
     private void AddEntry(DownloadEntry entry)
     {
         while (_entries.Count >= DownloadLimit)
         {
-            _entries.RemoveAt(_entries.Count - 1);
+            var oldestSettledIndex = _entries.FindLastIndex(
+                candidate => candidate.Status != DownloadStatus.InProgress);
+            if (oldestSettledIndex < 0)
+            {
+                break;
+            }
+
+            _entries.RemoveAt(oldestSettledIndex);
         }
 
         _entries.Insert(0, entry);
