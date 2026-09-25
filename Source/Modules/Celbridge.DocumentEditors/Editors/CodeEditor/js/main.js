@@ -203,11 +203,11 @@ async function initialize() {
                 await previewReady;
             },
             onExternalReloadContent: (content, metadata) => {
-                followDocumentName(metadata);
+                setLanguageForFile(metadata?.fileName);
                 previewPipeline?.handleExternalReload(content, metadata?.resourceKey);
             },
             onRenamed: (metadata) => {
-                followDocumentName(metadata);
+                setLanguageForFile(metadata?.fileName);
                 previewPipeline?.handleRenamed(metadata?.resourceKey);
             },
             onSaved: () => {
@@ -227,14 +227,14 @@ async function initialize() {
     }
 }
 
-// A rename or a move keeps the document open in this editor, and can change its extension, so the
-// highlighting follows the name the host reports.
-function followDocumentName(metadata) {
-    if (!metadata?.fileName) {
+// Highlights the source as the language of the file's extension. A rename or a move can change the
+// extension while the document stays open in this editor. Without a name, it changes nothing.
+function setLanguageForFile(fileName) {
+    if (!fileName) {
         return;
     }
 
-    editorController.setLanguage(getLanguageForFile(metadata.fileName));
+    editorController.setLanguage(getLanguageForFile(fileName));
 }
 
 function captureState() {
