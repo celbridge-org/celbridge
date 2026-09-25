@@ -131,13 +131,58 @@ public class ProjectTemplateServiceTests
 
         var projectFilePath = Path.Combine(projectFolderPath, "MyProject.celbridge");
 
-        var result = await _projectTemplateService.CreateFromTemplateAsync(projectFilePath, template);
+        var result = await _projectTemplateService.CreateFromTemplateAsync(
+            projectFilePath, template, replaceExistingFiles: true);
 
         result.IsSuccess.Should().BeTrue();
         File.Exists(projectFilePath).Should().BeTrue();
 
         var readmeContents = await File.ReadAllTextAsync(readmePath);
         readmeContents.Should().NotContain("the user's own readme");
+    }
+
+    [Test]
+    public async Task CreateFromTemplate_ExistingFile_WithoutReplace_WritesNothing()
+    {
+        // Replacing is opted into, so the default refuses. It has to refuse before the first move:
+        // failing partway is what left a half-created project behind in issue #987.
+        var template = _projectTemplateService.GetDefaultTemplate();
+
+        var projectFolderPath = Path.Combine(_tempRootPath, "ExistingFolder");
+        Directory.CreateDirectory(projectFolderPath);
+        var readmePath = Path.Combine(projectFolderPath, "readme.md");
+        await File.WriteAllTextAsync(readmePath, "the user's own readme");
+
+        var projectFilePath = Path.Combine(projectFolderPath, "MyProject.celbridge");
+
+        var result = await _projectTemplateService.CreateFromTemplateAsync(projectFilePath, template);
+
+        result.IsFailure.Should().BeTrue();
+
+        var readmeContents = await File.ReadAllTextAsync(readmePath);
+        readmeContents.Should().Be("the user's own readme");
+        File.Exists(projectFilePath).Should().BeFalse();
+        File.Exists(Path.Combine(projectFolderPath, ".gitignore")).Should().BeFalse();
+    }
+
+    [Test]
+    public async Task CreateFromTemplate_FolderNamedLikeATemplateFile_WritesNothing()
+    {
+        // A move cannot put a file where a folder already sits, and replaceExistingFiles does not
+        // extend to that. The refusal still has to come before anything else moves.
+        var template = _projectTemplateService.GetDefaultTemplate();
+
+        var projectFolderPath = Path.Combine(_tempRootPath, "ExistingFolder");
+        Directory.CreateDirectory(projectFolderPath);
+        Directory.CreateDirectory(Path.Combine(projectFolderPath, "readme.md"));
+
+        var projectFilePath = Path.Combine(projectFolderPath, "MyProject.celbridge");
+
+        var result = await _projectTemplateService.CreateFromTemplateAsync(
+            projectFilePath, template, replaceExistingFiles: true);
+
+        result.IsFailure.Should().BeTrue();
+        File.Exists(projectFilePath).Should().BeFalse();
     }
 
     [Test]
@@ -188,6 +233,34 @@ public class ProjectTemplateServiceTests
         {
             result.Value.Should().BeEmpty();
         }
+    }
+
+    [Test]
+    public async Task GetConflictingFileNames_UnreadableFolder_Fails()
+    {
+        // A folder that is there but cannot be listed must not report as conflict-free. Reporting no
+        // conflicts would carry the user past the confirmation and into an overwrite of files the
+        // check never managed to see.
+        var folderInfo = new StorageItemInfo(StorageItemKind.Folder, 0, DateTime.UtcNow, FileSystemAttributes.None);
+
+        var fileSystem = Substitute.For<ILocalFileSystem>();
+        fileSystem.GetInfoAsync(Arg.Any<string>())
+            .Returns(Result<StorageItemInfo>.Ok(folderInfo));
+        fileSystem.EnumerateAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>())
+            .Returns(Result<IReadOnlyList<FileSystemEntry>>.Fail("Permission denied."));
+
+        var projectTemplateService = new ProjectTemplateService(
+            Substitute.For<IStringLocalizer>(),
+            fileSystem,
+            new AppEnvironment(),
+            Substitute.For<ILogger<ProjectTemplateService>>());
+
+        var template = projectTemplateService.GetDefaultTemplate();
+        var projectFilePath = Path.Combine(_tempRootPath, "ExistingFolder", "MyProject.celbridge");
+
+        var result = await projectTemplateService.GetConflictingFileNamesAsync(projectFilePath, template);
+
+        result.IsFailure.Should().BeTrue();
     }
 
     [Test]

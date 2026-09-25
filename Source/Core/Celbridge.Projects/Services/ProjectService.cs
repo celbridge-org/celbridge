@@ -126,7 +126,7 @@ public class ProjectService : IProjectService
         return await _projectTemplateService.GetConflictingFileNamesAsync(config.ProjectFilePath, config.Template);
     }
 
-    public async Task<Result> CreateProjectAsync(NewProjectConfig config)
+    public async Task<Result> CreateProjectAsync(NewProjectConfig config, bool replaceExistingFiles = false)
     {
         try
         {
@@ -137,7 +137,8 @@ public class ProjectService : IProjectService
                 return Result.Fail($"Failed to create project file because the file already exists: '{projectFilePath}'");
             }
 
-            var createResult = await _projectTemplateService.CreateFromTemplateAsync(config.ProjectFilePath, config.Template);
+            var createResult = await _projectTemplateService.CreateFromTemplateAsync(
+                config.ProjectFilePath, config.Template, replaceExistingFiles);
             if (createResult.IsFailure)
             {
                 return Result.Fail($"Failed to create project: '{config.ProjectFilePath}'")

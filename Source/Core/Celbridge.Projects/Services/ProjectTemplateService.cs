@@ -59,18 +59,30 @@ public class ProjectTemplateService : IProjectTemplateService
             var projectFolderPath = Path.GetDirectoryName(projectFilePath);
             Guard.IsNotNull(projectFolderPath);
 
-            var entriesResult = await _fileSystem.EnumerateAsync(projectFolderPath, "*", recursive: false);
-            if (entriesResult.IsFailure)
+            // A folder that isn't there yet holds nothing to collide with. Any other reason it can't
+            // be read has to surface: reporting no conflicts would carry the user past the
+            // confirmation and into an overwrite they never approved.
+            var folderInfo = await _fileSystem.GetInfoAsync(projectFolderPath);
+            var folderExists = folderInfo.IsSuccess
+                && folderInfo.Value.Kind == StorageItemKind.Folder;
+
+            if (!folderExists)
             {
-                // The folder does not exist yet, so the template can't collide with anything in it.
                 var noConflicts = new List<string>();
 
                 return noConflicts.OkResult<IReadOnlyList<string>>();
             }
 
+            var entriesResult = await _fileSystem.EnumerateAsync(projectFolderPath, "*", recursive: false);
+            if (entriesResult.IsFailure)
+            {
+                return Result<IReadOnlyList<string>>.Fail($"Failed to enumerate the destination folder: {projectFolderPath}")
+                    .WithErrors(entriesResult);
+            }
+
             // Names match under the filesystem's own case rules, so the template's readme.md
             // conflicts with the user's README.md on Windows and macOS but not on Linux.
-            var existingFileNames = new Dictionary<string, string>(PathComparison.Comparer);
+            var existingFileNames = new HashSet<string>(PathComparison.Comparer);
             foreach (var entry in entriesResult.Value)
             {
                 if (entry.IsFolder)
@@ -79,7 +91,7 @@ public class ProjectTemplateService : IProjectTemplateService
                 }
 
                 var existingFileName = Path.GetFileName(entry.FullPath);
-                existingFileNames[existingFileName] = existingFileName;
+                existingFileNames.Add(existingFileName);
             }
 
             // Report the name the file already has rather than the template's spelling of it. That is
@@ -106,7 +118,7 @@ public class ProjectTemplateService : IProjectTemplateService
         }
     }
 
-    public async Task<Result> CreateFromTemplateAsync(string projectFilePath, ProjectTemplate template)
+    public async Task<Result> CreateFromTemplateAsync(string projectFilePath, ProjectTemplate template, bool replaceExistingFiles = false)
     {
         Guard.IsNotNullOrWhiteSpace(projectFilePath);
 
@@ -172,16 +184,6 @@ public class ProjectTemplateService : IProjectTemplateService
                     .WithErrors(writeResult);
             }
 
-            // Rename the project settings file to the user-specified name in staging
-            var projectFileName = Path.GetFileName(projectFilePath);
-            var stagedProjectFilePath = Path.Combine(tempStagingPath!, projectFileName);
-            var renameResult = await _fileSystem.MoveFileAsync(extractedProjectFile, stagedProjectFilePath);
-            if (renameResult.IsFailure)
-            {
-                return Result.Fail($"Failed to rename staged project file: {extractedProjectFile}")
-                    .WithErrors(renameResult);
-            }
-
             // All staging operations succeeded - now move to final location
             // Ensure the destination folder exists
             var destFolderInfo = await _fileSystem.GetInfoAsync(projectPath);
@@ -203,6 +205,17 @@ public class ProjectTemplateService : IProjectTemplateService
                     .WithErrors(stagedEntriesResult);
             }
 
+            // Every collision is settled before the first move, so refusing one cannot leave the
+            // folder holding half a project.
+            var collisionResult = await CheckDestinationCollisionsAsync(
+                projectFilePath, stagedEntriesResult.Value, replaceExistingFiles);
+            if (collisionResult.IsFailure)
+            {
+                return collisionResult;
+            }
+
+            var projectFileName = Path.GetFileName(projectFilePath);
+
             foreach (var entry in stagedEntriesResult.Value)
             {
                 if (entry.IsFolder)
@@ -210,11 +223,9 @@ public class ProjectTemplateService : IProjectTemplateService
                     continue;
                 }
 
-                // The template owns the files it ships, so a file of the same name already in the
-                // folder is replaced. GetConflictingFileNamesAsync reports these ahead of time so
-                // the user confirms the replacement before anything is written.
-                var destFile = Path.Combine(projectPath, Path.GetFileName(entry.FullPath));
-                var moveFileResult = await _fileSystem.MoveFileAsync(entry.FullPath, destFile, overwrite: true);
+                var destFileName = GetDestinationFileName(Path.GetFileName(entry.FullPath), projectFileName);
+                var destFile = Path.Combine(projectPath, destFileName);
+                var moveFileResult = await _fileSystem.MoveFileAsync(entry.FullPath, destFile, replaceExistingFiles);
                 if (moveFileResult.IsFailure)
                 {
                     return Result.Fail($"Failed to move staged file to final location: {entry.FullPath}")
@@ -264,6 +275,60 @@ public class ProjectTemplateService : IProjectTemplateService
         return Result.Ok();
     }
 
+    // A staged folder can never replace one already in the destination, and a staged file only when
+    // the caller asked for it, so both are probed while the project folder is still untouched.
+    private async Task<Result> CheckDestinationCollisionsAsync(
+        string projectFilePath,
+        IReadOnlyList<FileSystemEntry> stagedEntries,
+        bool replaceExistingFiles)
+    {
+        var projectPath = Path.GetDirectoryName(projectFilePath);
+        Guard.IsNotNull(projectPath);
+
+        var projectFileName = Path.GetFileName(projectFilePath);
+
+        foreach (var entry in stagedEntries)
+        {
+            var destFileName = GetDestinationFileName(Path.GetFileName(entry.FullPath), projectFileName);
+            var destPath = Path.Combine(projectPath, destFileName);
+
+            var destInfo = await _fileSystem.GetInfoAsync(destPath);
+            if (destInfo.IsFailure)
+            {
+                return Result.Fail($"Failed to probe the destination path: {destPath}")
+                    .WithErrors(destInfo);
+            }
+
+            if (destInfo.Value.Kind == StorageItemKind.NotFound)
+            {
+                continue;
+            }
+
+            // Replacing a file with a file is the one collision the move itself can handle.
+            var isReplaceableFile = !entry.IsFolder
+                && destInfo.Value.Kind == StorageItemKind.File
+                && replaceExistingFiles;
+
+            if (isReplaceableFile)
+            {
+                continue;
+            }
+
+            return Result.Fail($"The destination folder already contains: {destPath}");
+        }
+
+        return Result.Ok();
+    }
+
+    // The template's project file takes the name the user chose; everything else keeps its own. Both
+    // the move and the conflict check read the destination name from here, so neither can drift.
+    private static string GetDestinationFileName(string templateFileName, string projectFileName)
+    {
+        return templateFileName == TemplateProjectFileName
+            ? projectFileName
+            : templateFileName;
+    }
+
     // Names the template writes into the project folder, with the template's own project file under
     // the name the user chose. Templates are flat, so nested entries are not reported.
     private List<string> GetTemplateFileNames(string projectFilePath, ProjectTemplate template)
@@ -284,13 +349,7 @@ public class ProjectTemplateService : IProjectTemplateService
                 continue;
             }
 
-            if (entry.Name == TemplateProjectFileName)
-            {
-                templateFileNames.Add(projectFileName);
-                continue;
-            }
-
-            templateFileNames.Add(entry.Name);
+            templateFileNames.Add(GetDestinationFileName(entry.Name, projectFileName));
         }
 
         return templateFileNames;

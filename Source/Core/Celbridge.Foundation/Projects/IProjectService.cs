@@ -19,15 +19,16 @@ public interface IProjectService
 
     /// <summary>
     /// Returns the names of the files the configured template writes that already exist in the
-    /// destination folder, sorted by name. Creating the project replaces these files.
+    /// destination folder, sorted by name.
     /// </summary>
     Task<Result<IReadOnlyList<string>>> GetConflictingFileNamesAsync(NewProjectConfig config);
 
     /// <summary>
-    /// Create a new project file and database using the specified config information.
-    /// Files the template writes replace any file of the same name already in the destination folder.
+    /// Create a new project file and database using the specified config information. Fails without
+    /// writing anything when the destination folder already holds one of the files the template
+    /// writes, unless replaceExistingFiles asks for those files to be replaced.
     /// </summary>
-    Task<Result> CreateProjectAsync(NewProjectConfig config);
+    Task<Result> CreateProjectAsync(NewProjectConfig config, bool replaceExistingFiles = false);
 
     /// <summary>
     /// Load the project file at the specified path.

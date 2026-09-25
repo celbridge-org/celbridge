@@ -56,7 +56,7 @@ public class CreateProjectCommandTests
         };
         _config = new NewProjectConfig("/projects/MyProject/MyProject.celbridge", template);
 
-        _projectService.CreateProjectAsync(Arg.Any<NewProjectConfig>())
+        _projectService.CreateProjectAsync(Arg.Any<NewProjectConfig>(), Arg.Any<bool>())
             .Returns(Result.Ok());
     }
 
@@ -72,7 +72,8 @@ public class CreateProjectCommandTests
 
         await _dialogService.DidNotReceive().ShowConfirmationDialogAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<ConfirmationDialogOptions>());
-        await _projectService.Received(1).CreateProjectAsync(_config);
+        // Nothing was approved, so nothing may be replaced.
+        await _projectService.Received(1).CreateProjectAsync(_config, false);
     }
 
     [Test]
@@ -85,7 +86,9 @@ public class CreateProjectCommandTests
         var result = await command.ExecuteAsync();
 
         result.IsSuccess.Should().BeTrue();
-        await _projectService.Received(1).CreateProjectAsync(_config);
+
+        // Replacement is requested only because the user just agreed to it.
+        await _projectService.Received(1).CreateProjectAsync(_config, true);
     }
 
     [Test]
@@ -100,7 +103,7 @@ public class CreateProjectCommandTests
         // Declining is an outcome, not an error.
         result.IsSuccess.Should().BeTrue();
 
-        await _projectService.DidNotReceive().CreateProjectAsync(Arg.Any<NewProjectConfig>());
+        await _projectService.DidNotReceive().CreateProjectAsync(Arg.Any<NewProjectConfig>(), Arg.Any<bool>());
 
         // The confirmation comes before the open project is closed, so declining leaves the user
         // with the project they already had rather than dropping them on Home.
@@ -109,7 +112,7 @@ public class CreateProjectCommandTests
     }
 
     [Test]
-    public async Task ConflictingFiles_AreNamedInTheConfirmation()
+    public async Task ConflictingFiles_AreCountedInTheConfirmation()
     {
         GivenConflictingFileNames("hello_world.py", "readme.md");
         GivenConfirmationAnswer(false);
@@ -145,7 +148,7 @@ public class CreateProjectCommandTests
         messageText.Should().Be("This will replace the existing file 'readme.md'. This cannot be undone.");
     }
 
-    private object[] GetConfirmationArguments()
+    private object?[] GetConfirmationArguments()
     {
         var confirmationCall = _dialogService.ReceivedCalls()
             .Single(call => call.GetMethodInfo().Name == nameof(IDialogService.ShowConfirmationDialogAsync));
@@ -164,7 +167,14 @@ public class CreateProjectCommandTests
 
         // Creating without knowing which files would be replaced risks destroying the user's work.
         result.IsFailure.Should().BeTrue();
-        await _projectService.DidNotReceive().CreateProjectAsync(Arg.Any<NewProjectConfig>());
+        await _projectService.DidNotReceive().CreateProjectAsync(Arg.Any<NewProjectConfig>(), Arg.Any<bool>());
+
+        // The dialog closed when Create was clicked, so silence here would read as success.
+        await _dialogService.Received(1).ShowAlertDialogAsync(Arg.Any<string>(), Arg.Any<string>());
+
+        // The check runs before the open project is closed, so a failed check leaves it open.
+        await _commandService.DidNotReceive().ExecuteImmediate<IUnloadProjectCommand>(
+            Arg.Any<Action<IUnloadProjectCommand>?>(), Arg.Any<string>(), Arg.Any<int>());
     }
 
     private static LocalizedString ResolveString(IReadOnlyDictionary<string, string> strings, string name)

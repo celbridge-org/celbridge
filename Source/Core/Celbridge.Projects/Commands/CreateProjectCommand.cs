@@ -47,7 +47,8 @@ public class CreateProjectCommand : CommandBase, ICreateProjectCommand
         }
 
         var conflictingFileNames = conflictsResult.Value;
-        if (conflictingFileNames.Count > 0)
+        var replaceExistingFiles = conflictingFileNames.Count > 0;
+        if (replaceExistingFiles)
         {
             var confirmResult = await ConfirmReplaceFilesAsync(conflictingFileNames);
             if (confirmResult.IsFailure)
@@ -69,8 +70,9 @@ public class CreateProjectCommand : CommandBase, ICreateProjectCommand
         // This will fail if there's no project currently open, but we can just ignore that.
         await _commandService.ExecuteImmediate<IUnloadProjectCommand>();
 
-        // Create the new project
-        var createResult = await _projectService.CreateProjectAsync(Config);
+        // Create the new project. Replacement is only asked for when the user has just agreed to it,
+        // so a file that appeared since the check is refused rather than quietly overwritten.
+        var createResult = await _projectService.CreateProjectAsync(Config, replaceExistingFiles);
         if (createResult.IsFailure)
         {
             // The open project was closed above, so the shell is already showing Home.
