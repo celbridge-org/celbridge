@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Text.Json;
 using Celbridge.Commands;
 using Celbridge.FileSystem;
@@ -16,10 +17,19 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
 {
     private const string ShimRelativePath = "Celbridge.WebHost/Web/celbridge-client/core/webview-tools-shim.js";
 
+    /// <summary>
+    /// The name of the page itself, as opposed to a frame inside it. The shim uses the same name.
+    /// </summary>
+    internal const string TopFrame = "top";
+
     // Default upper bound on how long a tool call waits for the editor's content-ready
     // signal before failing. Generous enough for heavyweight editors (markdown preview,
-    // Monaco) that import packages on first paint.
+    // Monaco) that import packages on first paint. A call that acts on a frame then waits
+    // up to the same time again for the frame to load its page.
     private static readonly TimeSpan DefaultContentReadyTimeout = TimeSpan.FromSeconds(5);
+
+    // How often a call checks again on a frame that is still loading its page.
+    private static readonly TimeSpan FrameLoadPollInterval = TimeSpan.FromMilliseconds(50);
 
     private readonly TimeSpan _contentReadyTimeout;
     private readonly ICommandService _commandService;
@@ -144,7 +154,7 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
         }
     }
 
-    public async Task<Result<string>> EvalAsync(ResourceKey resource, string expression)
+    public async Task<Result<WebViewEvalResult>> EvalAsync(ResourceKey resource, string expression, string? frame = null)
     {
         if (!_entries.TryGetValue(resource, out var entry))
         {
@@ -157,19 +167,57 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
             return Result.Fail(waitResult);
         }
 
+        var resolveResult = await ResolveFrameAsync(entry, resource, frame);
+        if (resolveResult.IsFailure)
+        {
+            return Result.Fail(resolveResult);
+        }
+        var resolvedFrame = resolveResult.Value;
+
+        // The WebView evaluates the page itself directly, and the page's Content-Security-Policy does not restrict
+        // that. The shim evaluates a frame, in the frame's own global scope.
+        if (resolvedFrame.IsTop)
+        {
+            try
+            {
+                var valueJson = await entry.EvalAsync(expression);
+                return new WebViewEvalResult(TopFrame, valueJson);
+            }
+            catch (Exception ex)
+            {
+                return Result.Fail($"WebView eval failed for resource '{resource}': {ex.Message}")
+                    .WithException(ex);
+            }
+        }
+
+        var args = new
+        {
+            frame = resolvedFrame.Name,
+            expression
+        };
+
+        var evaluateResult = await InvokeShimHandlerAsync(entry, resource, "evaluate", args);
+        if (evaluateResult.IsFailure)
+        {
+            return Result.Fail(evaluateResult);
+        }
+
         try
         {
-            var result = await entry.EvalAsync(expression);
-            return result;
+            using var document = JsonDocument.Parse(evaluateResult.Value);
+            var root = document.RootElement;
+            var frameName = root.GetProperty("frame").GetString() ?? resolvedFrame.Name;
+            var valueJson = root.GetProperty("valueJson").GetString() ?? "null";
+            return new WebViewEvalResult(frameName, valueJson);
         }
         catch (Exception ex)
         {
-            return Result.Fail($"WebView eval failed for resource '{resource}': {ex.Message}")
+            return Result.Fail($"Failed to parse the value evaluated in frame '{resolvedFrame.Name}' on resource '{resource}': {ex.Message}")
                 .WithException(ex);
         }
     }
 
-    public async Task<Result> ReloadAsync(ResourceKey resource, bool clearCache)
+    public async Task<Result<string>> ReloadAsync(ResourceKey resource, bool clearCache, string? frame = null)
     {
         if (!_entries.TryGetValue(resource, out var entry))
         {
@@ -181,11 +229,24 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
         await TryDrainConsoleAsync(entry);
         await TryDrainNetworkAsync(entry);
 
+        // The shim reloads a frame itself. For the page itself it only names it, and the WebView reloads the page.
+        var reloadResult = await InvokeShimForFrameAsync(entry, resource, "reload", new { frame }, frame);
+        if (reloadResult.IsFailure)
+        {
+            return Result.Fail(reloadResult);
+        }
+
+        var reloadedFrame = reloadResult.Value;
+        if (!reloadedFrame.IsTop)
+        {
+            return reloadedFrame.Name;
+        }
+
         entry.NotifyContentLoading();
         try
         {
             await entry.ReloadAsync(clearCache);
-            return Result.Ok();
+            return TopFrame;
         }
         catch (Exception ex)
         {
@@ -214,9 +275,16 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
             return Result.Fail(waitResult);
         }
 
+        // Resolving the frame waits for its page to load, so the drain includes what the page logged while loading.
+        var resolveResult = await ResolveFrameAsync(entry, resource, options.Frame);
+        if (resolveResult.IsFailure)
+        {
+            return Result.Fail(resolveResult);
+        }
+
         await TryDrainConsoleAsync(entry);
 
-        var snapshot = entry.SnapshotConsole(options);
+        var snapshot = entry.SnapshotConsole(options, resolveResult.Value.Name);
         return JsonSerializer.Serialize(snapshot, JsonOptions);
     }
 
@@ -224,6 +292,7 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
     {
         var args = new
         {
+            frame = options.Frame,
             selector = options.Selector,
             maxDepth = options.MaxDepth
         };
@@ -254,6 +323,7 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
 
         var args = new
         {
+            frame = options.Frame,
             role,
             name,
             text,
@@ -268,6 +338,7 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
     {
         var args = new
         {
+            frame = options.Frame,
             selector = options.Selector,
             childPreviewLimit = options.ChildPreviewLimit
         };
@@ -279,6 +350,7 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
     {
         var args = new
         {
+            frame = options.Frame,
             selector = options.Selector
         };
 
@@ -289,6 +361,7 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
     {
         var args = new
         {
+            frame = options.Frame,
             selector = options.Selector,
             value = options.Value
         };
@@ -309,13 +382,19 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
             return Result.Fail(waitResult);
         }
 
+        var resolveResult = await ResolveFrameAsync(entry, resource, options.Frame);
+        if (resolveResult.IsFailure)
+        {
+            return Result.Fail(resolveResult);
+        }
+
         await TryDrainNetworkAsync(entry);
 
-        var snapshot = entry.SnapshotNetwork(options);
+        var snapshot = entry.SnapshotNetwork(options, resolveResult.Value.Name);
         return JsonSerializer.Serialize(snapshot, JsonOptions);
     }
 
-    public async Task<Result<ScreenshotData>> ScreenshotAsync(ResourceKey resource, ScreenshotOptions options)
+    public async Task<Result<WebViewScreenshot>> ScreenshotAsync(ResourceKey resource, ScreenshotOptions options)
     {
         if (!_entries.TryGetValue(resource, out var entry))
         {
@@ -341,22 +420,20 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
             return Result.Fail(waitResult);
         }
 
-        Result<ScreenshotClip> clipResult = string.IsNullOrEmpty(options.Selector)
-            ? await ResolveViewportClipAsync(entry, resource, options.MaxEdge)
-            : await ResolveSelectorRectAsync(entry, resource, options.Selector!, options.MaxEdge);
+        var clipResult = await ResolveClipAsync(entry, resource, options.Frame, options.Selector, options.MaxEdge);
         if (clipResult.IsFailure)
         {
             return Result.Fail(clipResult);
         }
-        var clip = clipResult.Value;
+        var frameClip = clipResult.Value;
 
         var settleMs = options.SettleMs < 0 ? 0 : options.SettleMs;
-        var request = new ScreenshotRequest(format, quality, clip, settleMs);
+        var request = new ScreenshotRequest(format, quality, frameClip.Clip, settleMs);
 
         try
         {
             var data = await entry.ScreenshotAsync(request);
-            return data;
+            return new WebViewScreenshot(frameClip.Frame, data);
         }
         catch (Exception ex)
         {
@@ -365,93 +442,54 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
         }
     }
 
-    private static async Task<Result<ScreenshotClip>> ResolveSelectorRectAsync(
+    // The area the screenshot captures, in the page's viewport: the frame's viewport, or the part of the
+    // selected element that is on screen.
+    private async Task<Result<FrameClip>> ResolveClipAsync(
         WebViewToolBridgeEntry entry,
         ResourceKey resource,
-        string selector,
+        string? frame,
+        string? selector,
         int maxEdge)
     {
-        var argsJson = JsonSerializer.Serialize(new { selector }, JsonOptions);
-        var expression = BuildInvokeExpression("getRect", argsJson);
-        string evalResultJson;
-        try
+        var hasSelector = !string.IsNullOrEmpty(selector);
+        var handlerName = hasSelector ? "getRect" : "getViewport";
+        var args = new
         {
-            evalResultJson = await entry.EvalAsync(expression);
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"Failed to resolve selector rectangle for screenshot on resource '{resource}': {ex.Message}")
-                .WithException(ex);
-        }
+            frame,
+            selector
+        };
 
-        var unwrap = UnwrapShimResult(evalResultJson, "getRect", resource);
-        if (unwrap.IsFailure)
+        var areaResult = await InvokeShimHandlerAsync(entry, resource, handlerName, args);
+        if (areaResult.IsFailure)
         {
-            return Result.Fail(unwrap);
+            return Result.Fail(areaResult);
         }
 
         try
         {
-            using var doc = JsonDocument.Parse(unwrap.Value);
+            using var doc = JsonDocument.Parse(areaResult.Value);
             var root = doc.RootElement;
+            var frameName = root.GetProperty("frame").GetString() ?? TopFrame;
             var x = root.GetProperty("x").GetDouble();
             var y = root.GetProperty("y").GetDouble();
             var width = root.GetProperty("width").GetDouble();
             var height = root.GetProperty("height").GetDouble();
             if (width <= 0 || height <= 0)
             {
-                return Result.Fail($"Element matched by selector '{selector}' has zero size; nothing to capture.");
-            }
-            var scale = ComputeScale(width, height, maxEdge);
-            return new ScreenshotClip(x, y, width, height, scale);
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"Failed to parse selector rectangle for screenshot on resource '{resource}': {ex.Message}")
-                .WithException(ex);
-        }
-    }
+                if (hasSelector)
+                {
+                    return Result.Fail($"Element matched by selector '{selector}' has zero size; nothing to capture.");
+                }
 
-    private static async Task<Result<ScreenshotClip>> ResolveViewportClipAsync(
-        WebViewToolBridgeEntry entry,
-        ResourceKey resource,
-        int maxEdge)
-    {
-        var argsJson = "{}";
-        var expression = BuildInvokeExpression("getViewport", argsJson);
-        string evalResultJson;
-        try
-        {
-            evalResultJson = await entry.EvalAsync(expression);
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"Failed to resolve viewport size for screenshot on resource '{resource}': {ex.Message}")
-                .WithException(ex);
-        }
-
-        var unwrap = UnwrapShimResult(evalResultJson, "getViewport", resource);
-        if (unwrap.IsFailure)
-        {
-            return Result.Fail(unwrap);
-        }
-
-        try
-        {
-            using var doc = JsonDocument.Parse(unwrap.Value);
-            var root = doc.RootElement;
-            var width = root.GetProperty("width").GetDouble();
-            var height = root.GetProperty("height").GetDouble();
-            if (width <= 0 || height <= 0)
-            {
                 return Result.Fail($"WebView reported a non-positive viewport size ({width}x{height}); cannot compute a screenshot clip.");
             }
+
             var scale = ComputeScale(width, height, maxEdge);
-            return new ScreenshotClip(0, 0, width, height, scale);
+            return new FrameClip(frameName, new ScreenshotClip(x, y, width, height, scale));
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to parse viewport size for screenshot on resource '{resource}': {ex.Message}")
+            return Result.Fail($"Failed to parse the screenshot area on resource '{resource}': {ex.Message}")
                 .WithException(ex);
         }
     }
@@ -527,21 +565,166 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
             return Result.Fail(waitResult);
         }
 
+        return await InvokeShimHandlerAsync(entry, resource, handlerName, args);
+    }
+
+    private async Task<Result<string>> InvokeShimHandlerAsync(
+        WebViewToolBridgeEntry entry,
+        ResourceKey resource,
+        string handlerName,
+        object args)
+    {
+        var responseResult = await EvaluateShimHandlerAsync(entry, resource, handlerName, args);
+        if (responseResult.IsFailure)
+        {
+            return Result.Fail(responseResult);
+        }
+
+        return UnwrapShimResult(responseResult.Value, handlerName, resource);
+    }
+
+    // Returns the shim's raw response to the handler. While the frame the call acts on is still loading its page,
+    // the handler is called again, until the frame has loaded or the time allowed runs out.
+    private async Task<Result<string>> EvaluateShimHandlerAsync(
+        WebViewToolBridgeEntry entry,
+        ResourceKey resource,
+        string handlerName,
+        object args)
+    {
         var argsJson = JsonSerializer.Serialize(args, JsonOptions);
         var expression = BuildInvokeExpression(handlerName, argsJson);
 
-        string evalResultJson;
+        var stopwatch = Stopwatch.StartNew();
+        while (true)
+        {
+            string responseJson;
+            try
+            {
+                responseJson = await entry.EvalAsync(expression);
+            }
+            catch (Exception ex)
+            {
+                return Result.Fail($"WebView shim invocation failed for handler '{handlerName}' on resource '{resource}': {ex.Message}")
+                    .WithException(ex);
+            }
+
+            var loadingFrame = GetLoadingFrame(responseJson);
+            if (loadingFrame is null)
+            {
+                return responseJson;
+            }
+
+            if (stopwatch.Elapsed >= _contentReadyTimeout)
+            {
+                return Result.Fail($"Timed out after {_contentReadyTimeout.TotalSeconds:0.#}s waiting for the frame '{loadingFrame}' to finish loading its page. If the document's tab is not showing, activate it with document_activate and try again.");
+            }
+
+            await Task.Delay(FrameLoadPollInterval);
+        }
+    }
+
+    // Resolves the frame a call acts on, waiting while the frame loads its page.
+    private Task<Result<ResolvedFrame>> ResolveFrameAsync(WebViewToolBridgeEntry entry, ResourceKey resource, string? frame)
+    {
+        return InvokeShimForFrameAsync(entry, resource, "resolveFrame", new { frame }, frame);
+    }
+
+    // Calls a shim handler that answers with the frame it acted on and whether that frame is the page itself. A
+    // page without the shim has no frames the tools can reach, so a call that names no frame, or names the page
+    // itself, acts on the page.
+    private async Task<Result<ResolvedFrame>> InvokeShimForFrameAsync(
+        WebViewToolBridgeEntry entry,
+        ResourceKey resource,
+        string handlerName,
+        object args,
+        string? frame)
+    {
+        var responseResult = await EvaluateShimHandlerAsync(entry, resource, handlerName, args);
+        if (responseResult.IsFailure)
+        {
+            return Result.Fail(responseResult);
+        }
+
+        if (IsShimMissing(responseResult.Value))
+        {
+            if (string.IsNullOrEmpty(frame) ||
+                frame == TopFrame)
+            {
+                return new ResolvedFrame(TopFrame, IsTop: true);
+            }
+
+            return Result.Fail($"The page open for resource '{resource}' has no WebView tool bridge shim, so the frame '{frame}' cannot be reached.");
+        }
+
+        var unwrapResult = UnwrapShimResult(responseResult.Value, handlerName, resource);
+        if (unwrapResult.IsFailure)
+        {
+            return Result.Fail(unwrapResult);
+        }
+
         try
         {
-            evalResultJson = await entry.EvalAsync(expression);
+            using var document = JsonDocument.Parse(unwrapResult.Value);
+            var root = document.RootElement;
+            var frameName = root.GetProperty("frame").GetString() ?? TopFrame;
+            var isTop = root.GetProperty("top").GetBoolean();
+            return new ResolvedFrame(frameName, isTop);
         }
         catch (Exception ex)
         {
-            return Result.Fail($"WebView shim invocation failed for handler '{handlerName}' on resource '{resource}': {ex.Message}")
+            return Result.Fail($"Failed to parse the frame named by handler '{handlerName}' on resource '{resource}': {ex.Message}")
                 .WithException(ex);
         }
+    }
 
-        return UnwrapShimResult(evalResultJson, handlerName, resource);
+    // The name of the frame the shim reports as still loading its page, or null when the response is not that.
+    private static string? GetLoadingFrame(string responseJson)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(responseJson);
+            var root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object ||
+                !root.TryGetProperty("pending", out var pendingElement) ||
+                pendingElement.ValueKind != JsonValueKind.True)
+            {
+                return null;
+            }
+
+            if (root.TryGetProperty("frame", out var frameElement) &&
+                frameElement.ValueKind == JsonValueKind.String)
+            {
+                return frameElement.GetString() ?? string.Empty;
+            }
+
+            return string.Empty;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    // True when the page did not answer through the shim: the shim is not installed, or the WebView returned
+    // something other than the shim's response.
+    private static bool IsShimMissing(string responseJson)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(responseJson);
+            var root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object)
+            {
+                return true;
+            }
+
+            return root.TryGetProperty("missingShim", out var missingElement) &&
+                missingElement.ValueKind == JsonValueKind.True;
+        }
+        catch (JsonException)
+        {
+            return true;
+        }
     }
 
     private async Task TryDrainConsoleAsync(WebViewToolBridgeEntry entry)
@@ -593,7 +776,7 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
         var argsLiteral = JsonSerializer.Serialize(argsJson);
 
         return "(function(){var b=globalThis[Symbol.for('__cel_webview_tools')];" +
-               $"if(!b||typeof b.invoke!=='function'){{return {{ok:false,error:'WebView tool bridge shim not present'}};}}" +
+               $"if(!b||typeof b.invoke!=='function'){{return {{ok:false,missingShim:true,error:'WebView tool bridge shim not present'}};}}" +
                $"return b.invoke({nameLiteral},{argsLiteral});}})()";
     }
 
@@ -794,14 +977,18 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
             }
         }
 
-        public ConsoleSnapshot SnapshotConsole(ConsoleQueryOptions options)
+        public ConsoleSnapshot SnapshotConsole(ConsoleQueryOptions options, string frame)
         {
             List<ConsoleEntry> filtered;
             int totalCount;
             lock (_gate)
             {
-                totalCount = _consoleHistory.Count;
-                IEnumerable<ConsoleEntry> source = _consoleHistory;
+                var frameEntries = _consoleHistory
+                    .Where(entry => entry.Frame == frame)
+                    .ToList();
+
+                totalCount = frameEntries.Count;
+                IEnumerable<ConsoleEntry> source = frameEntries;
 
                 if (options.SinceTimestampMs.HasValue)
                 {
@@ -822,7 +1009,7 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
                 ? filtered.GetRange(filtered.Count - tail, tail)
                 : filtered;
 
-            return new ConsoleSnapshot(taken, taken.Count, totalCount);
+            return new ConsoleSnapshot(frame, taken, taken.Count, totalCount);
         }
 
         public void AppendNetworkEntry(NetworkEntry networkEntry, int historyCap)
@@ -838,14 +1025,18 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
             }
         }
 
-        public NetworkSnapshot SnapshotNetwork(NetworkQueryOptions options)
+        public NetworkSnapshot SnapshotNetwork(NetworkQueryOptions options, string frame)
         {
             List<NetworkEntry> filtered;
             int totalCount;
             lock (_gate)
             {
-                totalCount = _networkHistory.Count;
-                IEnumerable<NetworkEntry> source = _networkHistory;
+                var frameEntries = _networkHistory
+                    .Where(entry => entry.Frame == frame)
+                    .ToList();
+
+                totalCount = frameEntries.Count;
+                IEnumerable<NetworkEntry> source = frameEntries;
 
                 if (options.SinceTimestampMs.HasValue)
                 {
@@ -881,7 +1072,7 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
                     entry.Error));
             }
 
-            return new NetworkSnapshot(projected, projected.Count, totalCount);
+            return new NetworkSnapshot(frame, projected, projected.Count, totalCount);
         }
     }
 

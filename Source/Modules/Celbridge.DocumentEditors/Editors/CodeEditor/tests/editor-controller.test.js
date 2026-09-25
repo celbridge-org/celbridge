@@ -188,6 +188,37 @@ describe('EditorController saves', () => {
     });
 });
 
+describe('EditorController initial content', () => {
+    let controller;
+
+    beforeEach(() => {
+        for (const key of Object.keys(__capturedHandlers)) {
+            delete __capturedHandlers[key];
+        }
+        installMonacoStub(createMockEditor(createMockModel()));
+
+        controller = new EditorController();
+        controller.create(document.createElement('div'));
+    });
+
+    it('finishes taking the initial content only once the caller has handled it', async () => {
+        let finishHandling;
+        const handled = new Promise((resolve) => { finishHandling = resolve; });
+        await controller.initializeHost({ onInitialContent: () => handled });
+
+        let isContentTaken = false;
+        const taking = __capturedHandlers.onContent('<p>Page</p>', { fileName: 'page.html' })
+            .then(() => { isContentTaken = true; });
+
+        await flushMicrotasks();
+        expect(isContentTaken).toBe(false);
+
+        finishHandling();
+        await taking;
+        expect(isContentTaken).toBe(true);
+    });
+});
+
 describe('EditorController.performEdit', () => {
     let model;
     let editor;

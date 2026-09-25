@@ -5,11 +5,15 @@ Reloads the WebView associated with an open document so package code reinitialis
 ## Parameters
 
 - `resource` — resource key of an open document tab.
-- `clearCache` — when `true` (default), evicts the WebView HTTP cache before reload so newly-edited JS, CSS, and image sub-resources are refetched. Pass `false` when no sub-resources have changed. The cache eviction is profile-wide: it affects every document sharing the same WebView profile.
+- `clearCache` — when `true` (default), evicts the WebView HTTP cache before reload so newly-edited JS, CSS, and image sub-resources are refetched. Pass `false` when no sub-resources have changed. The cache eviction is profile-wide: it affects every document sharing the same WebView profile. It applies only when the page itself reloads.
+
+## Reloading a frame
+
+When the call acts on a frame, only that frame's page reloads and the cache is left alone. Project files are never cached, so the page and its project assets always load fresh. In the HTML editor this reloads the previewed page, which picks up edited stylesheets and scripts without touching the editor. Pass `frame: "top"` to reload the editor itself.
 
 ## Returns
 
-`"ok"` on success.
+`"ok"` on success, followed by a JSON block naming the `frame` that was reloaded.
 
 ## What gets discarded
 

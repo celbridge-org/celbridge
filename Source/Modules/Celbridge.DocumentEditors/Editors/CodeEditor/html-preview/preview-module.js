@@ -7,11 +7,18 @@
 // There is no scroll sync with the source, so scrollToSourceLine and getTopSourceLine are left out. Mapping
 // rendered HTML back to source lines would require rewriting the markup, and the preview would then no
 // longer be the page as served.
+//
+// Once the frame shows the page, it carries data-cel-content-frame, so the webview_* tools act on the page by
+// default. While a page loads, the frame carries aria-busy, and the tools wait until it is cleared.
 
 let iframeElement = null;
 
 // A scroll position waiting to be applied, kept across a reload or until the frame has a layout.
 let pendingScrollPercentage = null;
+
+// The page's scroll position the last time the frame had a layout. Hiding the frame resets the page's
+// position, and a hidden frame reports none, so this is the position to return to.
+let lastVisibleScrollPercentage = 0;
 
 // True until the page has loaded, and again from each refresh until the new page loads. Until then the frame
 // still holds the old document, and a scroll applied to it would be lost.
@@ -26,12 +33,17 @@ export function initialize(iframe) {
 
     iframe.addEventListener('load', () => {
         isAwaitingDocument = false;
+        iframe.removeAttribute('aria-busy');
+        listenForScroll();
         applyPendingScroll();
     });
 
-    // The frame has no layout while the view mode hides the preview, so a scroll position waits until it is
-    // shown.
-    const resizeObserver = new ResizeObserver(() => applyPendingScroll());
+    // The frame has no layout while the view mode hides the preview. The page's last position is held when the
+    // frame is hidden, and applied once it is shown again.
+    const resizeObserver = new ResizeObserver(() => {
+        holdHiddenScrollPosition();
+        applyPendingScroll();
+    });
     resizeObserver.observe(iframe);
 }
 
@@ -53,10 +65,12 @@ export function setBasePath() {}
 export function refresh(url) {
     if (pendingScrollPercentage === null &&
         !isAwaitingDocument) {
-        pendingScrollPercentage = readScrollPercentage();
+        pendingScrollPercentage = getVisibleScrollPercentage();
     }
 
     isAwaitingDocument = true;
+    iframeElement.setAttribute('data-cel-content-frame', '');
+    iframeElement.setAttribute('aria-busy', 'true');
     iframeElement.src = url;
 }
 
@@ -81,7 +95,43 @@ export function getScrollPercentage() {
         return pendingScrollPercentage;
     }
 
+    return getVisibleScrollPercentage();
+}
+
+// The page's scroll position, or while the frame has no layout, the last position it had.
+function getVisibleScrollPercentage() {
+    if (!hasLayout()) {
+        return lastVisibleScrollPercentage;
+    }
+
     return readScrollPercentage();
+}
+
+function hasLayout() {
+    return iframeElement.clientHeight !== 0;
+}
+
+// Each load gives the page a new window, so the listener is added to every new one.
+function listenForScroll() {
+    const frameWindow = iframeElement.contentDocument?.defaultView;
+    frameWindow?.addEventListener('scroll', recordScrollPosition, { passive: true });
+}
+
+function recordScrollPosition() {
+    if (hasLayout()) {
+        lastVisibleScrollPercentage = readScrollPercentage();
+    }
+}
+
+// Once the frame has lost its layout, holds the page's last position to apply when the frame is shown again.
+function holdHiddenScrollPosition() {
+    if (hasLayout() ||
+        pendingScrollPercentage !== null ||
+        isAwaitingDocument) {
+        return;
+    }
+
+    pendingScrollPercentage = lastVisibleScrollPercentage;
 }
 
 function readScrollPercentage() {
@@ -101,7 +151,7 @@ function readScrollPercentage() {
 function applyPendingScroll() {
     if (pendingScrollPercentage === null ||
         isAwaitingDocument ||
-        iframeElement.clientHeight === 0) {
+        !hasLayout()) {
         return false;
     }
 
@@ -112,8 +162,10 @@ function applyPendingScroll() {
         return false;
     }
 
+    const percentage = Math.max(0, Math.min(1, pendingScrollPercentage));
     const scrollRange = scrollingElement.scrollHeight - scrollingElement.clientHeight;
-    scrollingElement.scrollTop = Math.max(0, scrollRange) * Math.max(0, Math.min(1, pendingScrollPercentage));
+    scrollingElement.scrollTop = Math.max(0, scrollRange) * percentage;
+    lastVisibleScrollPercentage = percentage;
     pendingScrollPercentage = null;
 
     return true;

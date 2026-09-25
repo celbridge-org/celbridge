@@ -3,12 +3,14 @@ namespace Celbridge.WebHost;
 /// <summary>
 /// Options for IDocumentWebViewToolBridge.GetConsoleAsync. Tails the most recent
 /// entries, suppresses debug-level by default, and optionally filters to entries
-/// newer than a given timestamp.
+/// newer than a given timestamp. Only the entries logged in the frame the call acts
+/// on are returned.
 /// </summary>
 public sealed record ConsoleQueryOptions(
     int Tail = 100,
     bool IncludeDebug = false,
-    long? SinceTimestampMs = null);
+    long? SinceTimestampMs = null,
+    string? Frame = null);
 
 /// <summary>
 /// Options for IDocumentWebViewToolBridge.GetHtmlAsync. A null selector returns the
@@ -17,7 +19,8 @@ public sealed record ConsoleQueryOptions(
 /// </summary>
 public sealed record GetHtmlOptions(
     string? Selector = null,
-    int MaxDepth = 8);
+    int MaxDepth = 8,
+    string? Frame = null);
 
 /// <summary>
 /// Discriminator for IDocumentWebViewToolBridge.QueryAsync. Exactly one mode is
@@ -47,58 +50,62 @@ public sealed record SelectorQuery(string Selector) : QueryMode;
 /// <summary>
 /// Options for IDocumentWebViewToolBridge.QueryAsync.
 /// </summary>
-public sealed record QueryOptions(QueryMode Mode, int MaxResults = 20);
+public sealed record QueryOptions(QueryMode Mode, int MaxResults = 20, string? Frame = null);
 
 /// <summary>
 /// Options for IDocumentWebViewToolBridge.InspectAsync.
 /// </summary>
 public sealed record InspectOptions(
     string Selector,
-    int ChildPreviewLimit = 5);
+    int ChildPreviewLimit = 5,
+    string? Frame = null);
 
 /// <summary>
 /// Options for IDocumentWebViewToolBridge.ClickAsync. Identifies the element to
 /// click by CSS selector. Click events are programmatic and dispatched with
 /// isTrusted = false, so handlers that gate on isTrusted will not fire.
 /// </summary>
-public sealed record ClickOptions(string Selector);
+public sealed record ClickOptions(string Selector, string? Frame = null);
 
 /// <summary>
 /// Options for IDocumentWebViewToolBridge.FillAsync. Sets the value of an input,
 /// textarea, select, or contenteditable element identified by CSS selector and
 /// dispatches input and change events.
 /// </summary>
-public sealed record FillOptions(string Selector, string Value);
+public sealed record FillOptions(string Selector, string Value, string? Frame = null);
 
 /// <summary>
 /// Options for IDocumentWebViewToolBridge.GetNetworkAsync. Tails the most recent
 /// captured fetch and XHR entries. Headers and request/response bodies are
 /// opt-in to control context budget. SinceTimestampMs filters to entries newer
-/// than a given start time so agents can poll incrementally.
+/// than a given start time so agents can poll incrementally. Only the requests made
+/// by the frame the call acts on are returned.
 /// </summary>
 public sealed record NetworkQueryOptions(
     int Tail = 100,
     bool IncludeHeaders = false,
     bool IncludeBodies = false,
-    long? SinceTimestampMs = null);
+    long? SinceTimestampMs = null,
+    string? Frame = null);
 
 /// <summary>
 /// Options for IDocumentWebViewToolBridge.ScreenshotAsync. Format selects the
 /// image encoding ("jpeg" or "png"). Quality applies to JPEG only (1-100).
 /// MaxEdge caps the longer side in pixels (0 disables downscaling). When
 /// Selector is provided, the screenshot is clipped to the matched element's
-/// bounding rect. SettleMs is an additional delay (in milliseconds) the
-/// platform applies after the editor's content-ready signal and before the
-/// capture, on top of a small fixed paint backstop. Callers bump it when a
-/// recent layout-changing operation (such as document_open) may not yet
-/// have committed to a stable visual state.
+/// bounding rect. Otherwise it shows the frame the call acts on. SettleMs is an
+/// additional delay (in milliseconds) the platform applies after the editor's
+/// content-ready signal and before the capture, on top of a small fixed paint
+/// backstop. Callers bump it when a recent layout-changing operation (such as
+/// document_open) may not yet have committed to a stable visual state.
 /// </summary>
 public sealed record ScreenshotOptions(
     string Format = "jpeg",
     int Quality = 70,
     int MaxEdge = 768,
     string? Selector = null,
-    int SettleMs = 0);
+    int SettleMs = 0,
+    string? Frame = null);
 
 /// <summary>
 /// Clip rectangle and scale factor passed to a platform screenshot delegate.
@@ -124,10 +131,26 @@ public sealed record ScreenshotRequest(string Format, int Quality, ScreenshotCli
 public sealed record ScreenshotData(string Format, int Width, int Height, byte[] Bytes);
 
 /// <summary>
+/// A screenshot taken by IDocumentWebViewToolBridge.ScreenshotAsync, with the name of the frame it shows.
+/// </summary>
+public sealed record WebViewScreenshot(string Frame, ScreenshotData Data);
+
+/// <summary>
+/// The result of IDocumentWebViewToolBridge.EvalAsync. Value is the expression's value encoded as JSON, and
+/// Frame names the frame the expression ran in.
+/// </summary>
+public sealed record WebViewEvalResult(string Frame, string Value);
+
+/// <summary>
 /// Host-side registry and execution gateway for the webview_* MCP tool namespace.
 /// Bridges those tools to the in-page WebView surface. Not related to WebView2's
 /// built-in browser DevTools. Document views register themselves when their WebView
 /// is ready and unregister on teardown.
+/// A call acts on one frame of the page. The caller names a frame element with a CSS
+/// selector, or the page itself as "top". A call that names no frame acts on the frame
+/// the page marks as its content frame, or on the page itself when it marks none. A
+/// call that acts on a frame waits for the frame to finish loading its page, and its
+/// result names the frame.
 /// </summary>
 public interface IDocumentWebViewToolBridge
 {
@@ -192,20 +215,21 @@ public interface IDocumentWebViewToolBridge
     void NotifyContentFailed(ResourceKey resource, string reason);
 
     /// <summary>
-    /// Evaluates a JavaScript expression in the WebView registered for the resource.
-    /// Returns the JSON-encoded result produced by the WebView's eval primitive.
+    /// Evaluates a JavaScript expression in the frame, in the WebView registered for the
+    /// resource. Returns the JSON-encoded value and the name of the frame.
     /// Waits for the editor's content-ready signal (with timeout) before dispatching.
     /// Fails if no WebView is registered for the resource.
     /// </summary>
-    Task<Result<string>> EvalAsync(ResourceKey resource, string expression);
+    Task<Result<WebViewEvalResult>> EvalAsync(ResourceKey resource, string expression, string? frame = null);
 
     /// <summary>
-    /// Reloads the WebView registered for the resource. Page state is discarded;
-    /// console and network buffers are preserved so entries captured before the
-    /// reload remain readable. When clearCache is true, the HTTP cache is cleared
-    /// before reloading.
+    /// Reloads the frame in the WebView registered for the resource, discarding its page
+    /// state. Console and network buffers are preserved so entries captured before the
+    /// reload remain readable. Reloading the page itself clears the HTTP cache first
+    /// when clearCache is true. Reloading a frame reloads only that frame's page and
+    /// leaves the cache alone. Returns the name of the frame.
     /// </summary>
-    Task<Result> ReloadAsync(ResourceKey resource, bool clearCache);
+    Task<Result<string>> ReloadAsync(ResourceKey resource, bool clearCache, string? frame = null);
 
     /// <summary>
     /// Returns captured console.* messages, uncaught errors, and unhandled promise
@@ -261,11 +285,11 @@ public interface IDocumentWebViewToolBridge
     Task<Result<string>> GetNetworkAsync(ResourceKey resource, NetworkQueryOptions options);
 
     /// <summary>
-    /// Captures a screenshot of the WebView. Supports JPEG and PNG. The JPEG quality
+    /// Captures a screenshot of the frame. Supports JPEG and PNG. The JPEG quality
     /// parameter is ignored for PNG. When a selector is supplied, the output is clipped
     /// to the element's bounding rectangle. The longer edge is capped at MaxEdge unless
     /// MaxEdge is non-positive. Fails when the registered WebView did not provide a
     /// screenshot delegate (e.g. on a platform without a native snapshot API).
     /// </summary>
-    Task<Result<ScreenshotData>> ScreenshotAsync(ResourceKey resource, ScreenshotOptions options);
+    Task<Result<WebViewScreenshot>> ScreenshotAsync(ResourceKey resource, ScreenshotOptions options);
 }

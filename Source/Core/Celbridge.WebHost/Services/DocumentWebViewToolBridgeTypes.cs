@@ -1,6 +1,13 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Celbridge.WebHost.Services;
+
+// A frame a call acts on, and whether it is the page itself.
+internal sealed record ResolvedFrame(string Name, bool IsTop);
+
+// The area of the page a screenshot captures, and the name of the frame it shows.
+internal sealed record FrameClip(string Frame, ScreenshotClip Clip);
 
 internal sealed record ConsoleEntry(
     string Level,
@@ -8,6 +15,10 @@ internal sealed record ConsoleEntry(
     IReadOnlyList<string> Args,
     string? Stack)
 {
+    // The frame the entry was logged in. A result names its frame once, so each entry leaves it out.
+    [JsonIgnore]
+    public string Frame { get; init; } = DocumentWebViewToolBridge.TopFrame;
+
     public static ConsoleEntry? FromJson(JsonElement element)
     {
         if (element.ValueKind != JsonValueKind.Object)
@@ -48,11 +59,27 @@ internal sealed record ConsoleEntry(
             ? stackElement.GetString()
             : null;
 
-        return new ConsoleEntry(level, timestamp, args, stack);
+        return new ConsoleEntry(level, timestamp, args, stack)
+        {
+            Frame = ReadFrame(element)
+        };
+    }
+
+    // The shim names the frame each entry came from. An entry without a name came from the page itself.
+    internal static string ReadFrame(JsonElement element)
+    {
+        if (element.TryGetProperty("frame", out var frameElement) &&
+            frameElement.ValueKind == JsonValueKind.String)
+        {
+            return frameElement.GetString() ?? DocumentWebViewToolBridge.TopFrame;
+        }
+
+        return DocumentWebViewToolBridge.TopFrame;
     }
 }
 
 internal sealed record ConsoleSnapshot(
+    string Frame,
     IReadOnlyList<ConsoleEntry> Entries,
     int Returned,
     int TotalAccumulated);
@@ -75,13 +102,15 @@ internal sealed partial record NetworkEntry(
     NetworkBody? ResponseBody,
     string? Error)
 {
+    // The frame that made the request.
+    public string Frame { get; init; } = DocumentWebViewToolBridge.TopFrame;
+
     public static NetworkEntry? FromJson(JsonElement element)
     {
         if (element.ValueKind != JsonValueKind.Object)
         {
             return null;
         }
-
 
         long id = element.TryGetProperty("id", out var idElement) && idElement.ValueKind == JsonValueKind.Number
             ? (idElement.TryGetInt64(out var idLong) ? idLong : 0)
@@ -137,7 +166,10 @@ internal sealed partial record NetworkEntry(
 
         return new NetworkEntry(id, type, method, url, status, startTimeMs, durationMs,
             requestSize, responseSize, requestHeaders, responseHeaders,
-            requestBodyDescription, responseBody, error);
+            requestBodyDescription, responseBody, error)
+        {
+            Frame = ConsoleEntry.ReadFrame(element)
+        };
     }
 
     private static long ReadInt64(JsonElement parent, string name)
@@ -190,6 +222,7 @@ internal sealed partial record NetworkEntryView(
     string? Error);
 
 internal sealed record NetworkSnapshot(
+    string Frame,
     IReadOnlyList<NetworkEntryView> Entries,
     int Returned,
     int TotalAccumulated);

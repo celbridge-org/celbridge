@@ -11,7 +11,7 @@ public partial class WebViewTools
     [McpServerTool(Name = "webview_fill")]
     [ToolAlias("webview.fill")]
     [RelatedGuides("resource_keys", "webview_documents", "webview_devtools")]
-    public async partial Task<CallToolResult> Fill(string resource, string selector, string value)
+    public async partial Task<CallToolResult> Fill(string resource, string selector, string value, string frame = "")
     {
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
@@ -29,11 +29,11 @@ public partial class WebViewTools
             return ToolResponse.Error("webview_fill requires a non-empty selector.");
         }
 
-        Logger.LogInformation("webview_fill resource={Resource} selector={Selector} valueLength={ValueLength}",
-            resourceKey, selector, value.Length);
+        Logger.LogInformation("webview_fill resource={Resource} selector={Selector} frame={Frame} valueLength={ValueLength}",
+            resourceKey, selector, frame, value.Length);
 
         var toolBridge = GetRequiredService<IDocumentWebViewToolBridge>();
-        var options = new FillOptions(selector, value);
+        var options = new FillOptions(selector, value, frame);
         var fillResult = await toolBridge.FillAsync(resourceKey, options);
         if (fillResult.IsFailure)
         {

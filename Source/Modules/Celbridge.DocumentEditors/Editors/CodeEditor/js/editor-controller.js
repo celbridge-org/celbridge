@@ -459,6 +459,7 @@ export class EditorController {
     /**
      * Initialize the host connection, load content, and register handlers.
      * notifyContentLoaded() is called automatically after this completes.
+     * The `onInitialContent` callback may return a promise, and the content is reported loaded once it settles.
      * The `onWritableStateChanged` callback receives `{state, readOnly}`.
      * The `onSaved` callback fires after each successful save.
      */
@@ -492,13 +493,13 @@ export class EditorController {
         });
 
         await celbridge.initializeDocument({
-            onContent: (content, metadata) => {
+            onContent: async (content, metadata) => {
                 log('editor: initial content received', { length: content ? content.length : 0 });
                 if (content) {
                     this.#editor.setValue(content);
                 }
                 if (onInitialContent) {
-                    onInitialContent(content, metadata);
+                    await onInitialContent(content, metadata);
                 }
             },
             onRequestSave: async () => {

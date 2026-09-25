@@ -5,7 +5,7 @@ The `webview_*` tools give the agent a feedback loop into a running contribution
 ## Edit-reload-inspect loop
 
 1. Edit the package's HTML/CSS/JS files with `document_*` or `file_*` tools.
-2. `webview_reload(resource)` — reinitialises package code from disk. Destructive: in-page state and Monaco's undo history are wiped. The HTTP cache is cleared by default; pass `clearCache: false` when no sub-resources have changed.
+2. `webview_reload(resource)` — reinitialises package code from disk. Destructive: in-page state and Monaco's undo history are wiped. The HTTP cache is cleared by default. Pass `clearCache: false` when no sub-resources have changed. In the HTML editor this reloads only the previewed page, so pass `frame: "top"` to reload the editor itself.
 3. `webview_get_console(resource)` — read parse errors and exceptions. The console buffer survives reloads.
 4. Inspect the rendered DOM with `webview_get_html`, `webview_query`, `webview_inspect`.
 5. Drive interaction with `webview_click`, `webview_fill`, `webview_eval`.
@@ -13,7 +13,17 @@ The `webview_*` tools give the agent a feedback loop into a running contribution
 
 ## Confirm the right editor opened the document
 
-`document_get_state` returns an `editorId` per open document (e.g. `celbridge.html-viewer`, `celbridge.code`). If you opened a `.html` file expecting the HTML viewer but `editorId` is the code editor, devtools will not work against it — check before any `webview_*` call.
+`document_get_state` returns an `editorId` per open document. A `.html` page can be inspected in the HTML viewer (`celbridge.html-viewer`), where the page is the WebView itself, and in the HTML editor (`celbridge.html`), where the page is the editor's content frame. In the general code editor (`celbridge.code`) there is no page to inspect, only the editor itself. Check `editorId` before any `webview_*` call.
+
+## Frames
+
+Every `webview_*` call acts on one frame, and its result names that frame in a `frame` field. For `webview_eval` and `webview_reload`, the frame is named in a JSON block after the result.
+
+- With no `frame`, a call acts on the page's content frame when the page marks one, and otherwise on the page itself. The HTML editor marks the frame that shows the previewed page, so a call reaches the page rather than the editor around it. The other editors mark no frame.
+- `frame: "top"` names the page itself, such as the HTML editor's toolbar and source pane.
+- Any other `frame` is a CSS selector for an `iframe` in the page itself. A frame inside another frame cannot be reached. Passing back the `frame` a result named reaches the same frame again.
+- To list a page's frames, call `webview_query` with `selector: "iframe"` and `frame: "top"`. The content frame is the one with a `data-cel-content-frame` attribute.
+- Selectors and rectangles in a result belong to the frame's own document and viewport.
 
 ## Synthetic events have `isTrusted: false`
 
@@ -45,9 +55,11 @@ To inspect an image already in the project tree, use `file_read_image` (JPEG, PN
 
 Every inspection and eval tool waits up to 5 seconds for the editor's content-ready signal before dispatching. For contribution editors that means `celbridge.notifyContentLoaded()`. For the HTML viewer it means the page has finished loading, which a document opened in the background may not report until its tab is shown, so activate it first with `document_activate` or `document_open` with `activate: true`. On a document that is showing, a `content-ready` timeout means the editor never signalled — check the console for an unhandled exception during init.
 
+A call that acts on a frame then waits up to 5 seconds more for the frame to finish loading its page. The HTML editor reloads its preview after each save and each change on disk, so a call made just after a change waits for the new page.
+
 ## What a page is waiting for
 
-`webview_eval` with `__celPendingRequests()` lists the requests the page has sent the host and not had answered: each one's `method`, how long it has waited, and the `timeoutMs` it carries. A `timeoutMs` of null belongs to a request that waits as long as the user takes, such as one that opened a dialog, so a page sitting on one of those is waiting for the user rather than stuck. Every page that loads the client has it, whatever transport it uses.
+`webview_eval` with `__celPendingRequests()` lists the requests the page has sent the host and not had answered: each one's `method`, how long it has waited, and the `timeoutMs` it carries. A `timeoutMs` of null belongs to a request that waits as long as the user takes, such as one that opened a dialog, so a page sitting on one of those is waiting for the user rather than stuck. Every page that loads the client has it, whatever transport it uses. In the HTML editor, pass `frame: "top"`, because the previewed page does not load the client.
 
 ## `webview_query` modes
 
@@ -55,7 +67,7 @@ Pass exactly one of `role` (with optional `name`), `text`, or `selector`. Role q
 
 ## Supported targets
 
-Any open document editor — text, markdown, HTML viewers, custom contribution editors. Excluded: external-URL `.webview` documents, and editors whose package opts out. The resource key must match an open tab.
+Any open document editor — text, markdown, HTML viewers and editors, custom contribution editors. Excluded: external-URL `.webview` documents, and editors whose package opts out. The resource key must match an open tab.
 
 ## `webview_eval` is gated by an extra feature flag
 

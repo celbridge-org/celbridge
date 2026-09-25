@@ -23,8 +23,8 @@ export class PreviewPipeline {
     // The loopback URL of the document's file, known once the initial content arrives.
     #documentUrl = null;
 
-    // The file has changed since the preview last loaded it.
-    #isPreviewStale = false;
+    // Settles once the renderer has loaded, or has failed to load.
+    #rendererSettled = Promise.resolve();
 
     constructor({
         editorController,
@@ -45,7 +45,6 @@ export class PreviewPipeline {
                 updateViewModeButtons(mode);
                 syncSnippetButtonForViewMode(mode);
                 editorController.setHidden(mode === ViewMode.Preview);
-                this.#refreshStalePreview();
             }
         });
 
@@ -88,7 +87,14 @@ export class PreviewPipeline {
     // Callers do not wait on this: the renderer loads in parallel with the
     // rest of the initialize flow, and render() catches up once the module
     // resolves.
-    async attachRenderer(rendererUrl) {
+    attachRenderer(rendererUrl) {
+        const attaching = this.#attachRenderer(rendererUrl);
+        this.#rendererSettled = attaching.catch(() => {});
+
+        return attaching;
+    }
+
+    async #attachRenderer(rendererUrl) {
         await this.#previewController.setRenderer(rendererUrl);
 
         // Scroll sync is only wired for a renderer that maps its output to source lines, so the controller
@@ -110,7 +116,9 @@ export class PreviewPipeline {
         return this.#previewController.beginFind();
     }
 
-    handleInitialContent(content, resourceKey) {
+    // Resolves once the renderer has loaded and been handed the initial content, so the preview has started
+    // showing it.
+    async handleInitialContent(content, resourceKey) {
         const basePath = extractParentPath(resourceKey ?? '');
         this.#previewController.setBasePath(basePath);
         this.#previewController.render(content || '');
@@ -121,6 +129,8 @@ export class PreviewPipeline {
         }
 
         this.#updatePreview();
+
+        await this.#rendererSettled;
     }
 
     handleExternalReload(content) {
@@ -163,21 +173,13 @@ export class PreviewPipeline {
         }
     }
 
-    // Reloads a preview of the saved file. While Source mode hides the preview, it is marked stale instead and
-    // reloaded when shown, so the page's scripts do not run on every save.
+    // Reloads a preview of the saved file. It reloads even while Source mode hides it, so it always shows the
+    // saved file.
     #updatePreview() {
-        this.#isPreviewStale = true;
-        this.#refreshStalePreview();
-    }
-
-    #refreshStalePreview() {
-        if (!this.#isPreviewStale ||
-            this.#documentUrl === null ||
-            this.#viewModeController.getMode() === ViewMode.Source) {
+        if (this.#documentUrl === null) {
             return;
         }
 
-        this.#isPreviewStale = false;
         this.#previewController.refresh(this.#documentUrl);
     }
 

@@ -189,17 +189,18 @@ async function initialize() {
 
     try {
         await editorController.initializeHost({
-            onInitialContent: (content, metadata) => {
+            onInitialContent: async (content, metadata) => {
                 const language = getLanguageForFile(metadata?.fileName || '');
                 editorController.setLanguage(language);
 
-                if (previewPipeline) {
-                    previewPipeline.handleInitialContent(content, metadata?.resourceKey);
-                }
+                const previewReady = previewPipeline?.handleInitialContent(content, metadata?.resourceKey);
 
                 // Reveal the editor now that Monaco has the first buffer. Until this point
                 // #split-root is opacity:0 so the user never sees the empty pre-content view.
                 document.getElementById('split-root').classList.add('is-loaded');
+
+                // The editor reports its content loaded once the preview has the content too.
+                await previewReady;
             },
             onExternalReloadContent: (content) => {
                 previewPipeline?.handleExternalReload(content);

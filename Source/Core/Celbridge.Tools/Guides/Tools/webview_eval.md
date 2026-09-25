@@ -18,10 +18,11 @@ Both flags are on by default, and a project can switch either off. If either fla
 
 ## Returns
 
-The JSON-serialised result of the expression. `null` is returned when the expression evaluates to `undefined` or `null`.
+The JSON-serialised result of the expression, followed by a JSON block naming the `frame` it ran in. `null` is returned when the expression evaluates to `undefined` or `null`.
 
 ## Gotchas
 
 - The DevTools-only `getEventListeners()` helper does not exist in this context. Calling it raises a `ReferenceError`.
+- In a frame, the expression runs in the frame's own global scope, where the frame page's Content-Security-Policy applies. A page that forbids evaluation refuses the call with an error. The page itself (`frame: "top"`) is not subject to its policy.
 - The expression body may contain sensitive output (cookies, storage values). The host logs only the resource and the expression length at info level. Treat the contents as you would any other arbitrary code execution path.
 - Only available from Python and from the MCP transport. The host refuses `webview.*` calls from package code, and nothing a package declares lifts that.

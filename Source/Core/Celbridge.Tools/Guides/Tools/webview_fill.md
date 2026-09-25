@@ -10,7 +10,7 @@ Sets the value of a form control (or `contenteditable` element) inside an open W
 
 ## Returns
 
-JSON object with `selector`, `tag`, and the value read back after assignment. Compare the read-back value against `value` to confirm the assignment took effect against any framework-managed binding.
+JSON object with `frame`, `selector`, `tag`, and the value read back after assignment. Compare the read-back value against `value` to confirm the assignment took effect against any framework-managed binding.
 
 ## Supported targets
 

@@ -9,7 +9,7 @@ Drives a click against an open contribution editor or HTML viewer by selector. T
 
 ## Returns
 
-JSON object with `selector`, `tag`, `visible`, `rect`, and `isTrusted` (always `false`).
+JSON object with `frame`, `selector`, `tag`, `visible`, `rect`, and `isTrusted` (always `false`).
 
 ## Gotchas
 

@@ -63,6 +63,28 @@ public static class ToolResponse
     }
 
     /// <summary>
+    /// Creates a successful CallToolResult whose text is followed by a JSON metadata text
+    /// block. For a result whose text has a shape of its own, such as an evaluated value,
+    /// so the metadata cannot be added to it.
+    /// </summary>
+    public static CallToolResult SuccessWithMetadata(string text, string metadataJson)
+    {
+        return new CallToolResult
+        {
+            Content = [
+                new TextContentBlock
+                {
+                    Text = text
+                },
+                new TextContentBlock
+                {
+                    Text = metadataJson
+                }
+            ]
+        };
+    }
+
+    /// <summary>
     /// Creates an error CallToolResult that surfaces the given message,
     /// length-capped so pathological exception messages don't dominate the
     /// response. Every error path goes through this method so the cap and

@@ -11,7 +11,7 @@ public partial class WebViewTools
     [McpServerTool(Name = "webview_eval")]
     [ToolAlias("webview.eval")]
     [RelatedGuides("resource_keys", "webview_documents", "webview_devtools")]
-    public async partial Task<CallToolResult> Eval(string resource, string expression)
+    public async partial Task<CallToolResult> Eval(string resource, string expression, string frame = "")
     {
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
@@ -37,17 +37,18 @@ public partial class WebViewTools
         // The expression body may contain sensitive output (e.g. document.cookie,
         // values fetched from storage). Log the resource and length only. The body
         // is logged at Debug for opt-in diagnostics.
-        Logger.LogInformation("webview_eval resource={Resource} expressionLength={Length}", resourceKey, expression.Length);
+        Logger.LogInformation("webview_eval resource={Resource} frame={Frame} expressionLength={Length}", resourceKey, frame, expression.Length);
         Logger.LogDebug("webview_eval expression={Expression}", expression);
 
         var toolBridge = GetRequiredService<IDocumentWebViewToolBridge>();
-        var evalResult = await toolBridge.EvalAsync(resourceKey, expression);
+        var evalResult = await toolBridge.EvalAsync(resourceKey, expression, frame);
         if (evalResult.IsFailure)
         {
             return ToolResponse.Error(evalResult);
         }
 
-        var value = evalResult.Value;
-        return ToolResponse.Success(value);
+        // The value keeps a text block of its own, so it reads exactly as the expression returned it.
+        var result = evalResult.Value;
+        return ToolResponse.SuccessWithMetadata(result.Value, SerializeFrameMetadata(result.Frame));
     }
 }

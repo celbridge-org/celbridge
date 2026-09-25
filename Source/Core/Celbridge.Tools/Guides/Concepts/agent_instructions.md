@@ -30,7 +30,7 @@ Each auto-attached block opens with a `#` heading naming what it is (`# file_gre
 These are the rules that turn a successful tool call into wrong results:
 
 - **Spreadsheet operations including reads require A1 notation and cell-typing context.** A `spreadsheet_read_sheet` call with the wrong `headers` flag or a misread of cell types returns subtly wrong values, not an error. The `spreadsheet` namespace guide and the `spreadsheet_a1_notation`, `spreadsheet_cell_typing`, `spreadsheet_headers_mode` concepts auto-attach on first spreadsheet use.
-- **WebView tools depend on which editor opened the document.** Calling `webview_*` against a `.html` file that was opened in the code editor instead of the HTML viewer fails confusingly. Check `editorId` from `document_get_state` first.
+- **WebView tools depend on which editor opened the document.** A `.html` page can be inspected in the HTML viewer and the HTML editor, but a `.html` file opened in the general code editor shows only its source. Check `editorId` from `document_get_state` first.
 - **Programmatic edits cannot be undone with Ctrl+Z.** They wipe Monaco's undo history when reloading the buffer. The user's recovery path is source control or a copy.
 
 ## Tool naming across surfaces

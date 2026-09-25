@@ -1,6 +1,6 @@
 # webview_get_network
 
-Reads the WebView's accumulated network buffer of `fetch` and `XMLHttpRequest` activity. The default payload is a header- and body-free summary so casual polling stays cheap. The buffer survives reloads, mirroring `webview_get_console`.
+Reads the WebView's accumulated network buffer of `fetch` and `XMLHttpRequest` activity. The default payload is a header- and body-free summary so casual polling stays cheap. The buffer survives reloads, mirroring `webview_get_console`, and a call returns the requests made by the frame it acts on.
 
 ## Parameters
 
@@ -14,9 +14,10 @@ Reads the WebView's accumulated network buffer of `fetch` and `XMLHttpRequest` a
 
 JSON object with:
 
+- `frame` — the frame that made the requests.
 - `entries` — array of `{id, type, method, url, status, startTimeMs, durationMs, requestSize, responseSize}`. When the corresponding flag is set: `requestHeaders`, `responseHeaders`, `requestBodyDescription`, `responseBody`. Failed requests carry an `error` field.
 - `returned` — count after filtering.
-- `totalAccumulated` — total entries the host has captured for this resource since it was opened.
+- `totalAccumulated` — total entries the host has captured for this frame since the document was opened.
 
 ## Payload control
 

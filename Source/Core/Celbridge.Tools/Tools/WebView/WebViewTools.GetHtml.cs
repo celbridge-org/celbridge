@@ -11,7 +11,7 @@ public partial class WebViewTools
     [McpServerTool(Name = "webview_get_html")]
     [ToolAlias("webview.get_html")]
     [RelatedGuides("resource_keys", "webview_documents", "webview_devtools")]
-    public async partial Task<CallToolResult> GetHtml(string resource, string selector = "", int maxDepth = 8)
+    public async partial Task<CallToolResult> GetHtml(string resource, string selector = "", int maxDepth = 8, string frame = "")
     {
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
@@ -29,12 +29,12 @@ public partial class WebViewTools
         const int MaxAllowedDepth = 50;
         var clampedDepth = maxDepth < 0 ? 0 : Math.Min(maxDepth, MaxAllowedDepth);
 
-        Logger.LogInformation("webview_get_html resource={Resource} selector={Selector} maxDepth={MaxDepth}",
-            resourceKey, selector, clampedDepth);
+        Logger.LogInformation("webview_get_html resource={Resource} selector={Selector} maxDepth={MaxDepth} frame={Frame}",
+            resourceKey, selector, clampedDepth, frame);
 
         var toolBridge = GetRequiredService<IDocumentWebViewToolBridge>();
         var scopedSelector = string.IsNullOrEmpty(selector) ? null : selector;
-        var options = new GetHtmlOptions(scopedSelector, clampedDepth);
+        var options = new GetHtmlOptions(scopedSelector, clampedDepth, frame);
         var htmlResult = await toolBridge.GetHtmlAsync(resourceKey, options);
         if (htmlResult.IsFailure)
         {

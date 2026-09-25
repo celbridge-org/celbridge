@@ -84,14 +84,15 @@ public partial class DocumentWebViewToolBridgeTests
     {
         _bridge.Register(
             _resource,
-            evalAsync: expression => Task.FromResult($"\"echo:{expression}\""),
+            evalAsync: PageWithoutFrames(expression => Task.FromResult($"\"echo:{expression}\"")),
             reloadAsync: _ => Task.CompletedTask);
         _bridge.NotifyContentReady(_resource);
 
         var result = await _bridge.EvalAsync(_resource, "1 + 1");
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be("\"echo:1 + 1\"");
+        result.Value.Frame.Should().Be("top");
+        result.Value.Value.Should().Be("\"echo:1 + 1\"");
     }
 
     [Test]
@@ -234,7 +235,7 @@ public partial class DocumentWebViewToolBridgeTests
 
         var result = await _bridge.EvalAsync(_resource, "x");
 
-        result.Value.Should().Be("\"second\"");
+        result.Value.Value.Should().Be("\"second\"");
     }
 
     [Test]
@@ -254,7 +255,7 @@ public partial class DocumentWebViewToolBridgeTests
         // The new key inherits the registration, including the open content-ready gate.
         var renamedResult = await _bridge.EvalAsync(renamedResource, "x");
         renamedResult.IsSuccess.Should().BeTrue();
-        renamedResult.Value.Should().Be("\"alive\"");
+        renamedResult.Value.Value.Should().Be("\"alive\"");
 
         // The old key no longer resolves, so the entry does not leak.
         var oldResult = await _bridge.EvalAsync(_resource, "x");
@@ -271,7 +272,7 @@ public partial class DocumentWebViewToolBridgeTests
         var drained = false;
         _bridge.Register(
             _resource,
-            evalAsync: _ =>
+            evalAsync: PageWithoutFrames(_ =>
             {
                 if (drained)
                 {
@@ -279,7 +280,7 @@ public partial class DocumentWebViewToolBridgeTests
                 }
                 drained = true;
                 return Task.FromResult(BuildFlushEnvelope("[{\"level\":\"log\",\"timestampMs\":10,\"args\":[\"before-rename\"]}]"));
-            },
+            }),
             reloadAsync: _ => Task.CompletedTask);
         _bridge.NotifyContentReady(_resource);
 
@@ -367,7 +368,7 @@ public partial class DocumentWebViewToolBridgeTests
         var calls = 0;
         _bridge.Register(
             _resource,
-            evalAsync: _ =>
+            evalAsync: PageWithoutFrames(_ =>
             {
                 calls++;
                 if (calls == 1)
@@ -375,7 +376,7 @@ public partial class DocumentWebViewToolBridgeTests
                     return Task.FromResult(BuildFlushEnvelope("[{\"level\":\"log\",\"timestampMs\":10,\"args\":[\"first\"]}]"));
                 }
                 return Task.FromResult(BuildFlushEnvelope("[{\"level\":\"warn\",\"timestampMs\":20,\"args\":[\"second\"]}]"));
-            },
+            }),
             reloadAsync: _ => Task.CompletedTask);
         _bridge.NotifyContentReady(_resource);
 
@@ -397,9 +398,9 @@ public partial class DocumentWebViewToolBridgeTests
     {
         _bridge.Register(
             _resource,
-            evalAsync: _ => Task.FromResult(BuildFlushEnvelope(
+            evalAsync: PageWithoutFrames(_ => Task.FromResult(BuildFlushEnvelope(
                 "[{\"level\":\"log\",\"timestampMs\":1,\"args\":[\"keep\"]}," +
-                "{\"level\":\"debug\",\"timestampMs\":2,\"args\":[\"hide\"]}]")),
+                "{\"level\":\"debug\",\"timestampMs\":2,\"args\":[\"hide\"]}]"))),
             reloadAsync: _ => Task.CompletedTask);
         _bridge.NotifyContentReady(_resource);
 
@@ -416,9 +417,9 @@ public partial class DocumentWebViewToolBridgeTests
     {
         _bridge.Register(
             _resource,
-            evalAsync: _ => Task.FromResult(BuildFlushEnvelope(
+            evalAsync: PageWithoutFrames(_ => Task.FromResult(BuildFlushEnvelope(
                 "[{\"level\":\"log\",\"timestampMs\":10,\"args\":[\"old\"]}," +
-                "{\"level\":\"log\",\"timestampMs\":20,\"args\":[\"new\"]}]")),
+                "{\"level\":\"log\",\"timestampMs\":20,\"args\":[\"new\"]}]"))),
             reloadAsync: _ => Task.CompletedTask);
         _bridge.NotifyContentReady(_resource);
 
@@ -437,7 +438,7 @@ public partial class DocumentWebViewToolBridgeTests
         var calls = 0;
         _bridge.Register(
             _resource,
-            evalAsync: _ =>
+            evalAsync: PageWithoutFrames(_ =>
             {
                 calls++;
                 if (calls == 1)
@@ -445,7 +446,7 @@ public partial class DocumentWebViewToolBridgeTests
                     return Task.FromResult(BuildFlushEnvelope("[{\"level\":\"error\",\"timestampMs\":1,\"args\":[\"pre-reload\"]}]"));
                 }
                 return Task.FromResult(BuildFlushEnvelope("[{\"level\":\"log\",\"timestampMs\":2,\"args\":[\"post-reload\"]}]"));
-            },
+            }),
             reloadAsync: _ => Task.CompletedTask);
         _bridge.NotifyContentReady(_resource);
 
@@ -470,7 +471,7 @@ public partial class DocumentWebViewToolBridgeTests
         var networkCalls = 0;
         _bridge.Register(
             _resource,
-            evalAsync: expression =>
+            evalAsync: PageWithoutFrames(expression =>
             {
                 if (expression.Contains("flushNetwork"))
                 {
@@ -484,7 +485,7 @@ public partial class DocumentWebViewToolBridgeTests
                         "[{\"id\":2,\"type\":\"fetch\",\"method\":\"GET\",\"url\":\"https://example.com/post-reload\",\"status\":200,\"startTimeMs\":2}]"));
                 }
                 return Task.FromResult(BuildFlushEnvelope("[]"));
-            },
+            }),
             reloadAsync: _ => Task.CompletedTask);
         _bridge.NotifyContentReady(_resource);
 
@@ -576,5 +577,282 @@ public partial class DocumentWebViewToolBridgeTests
     private static string BuildFlushEnvelope(string entriesJsonArray)
     {
         return "{\"ok\":true,\"value\":" + entriesJsonArray + "}";
+    }
+
+    private static string BuildShimValue(string valueJson)
+    {
+        return "{\"ok\":true,\"value\":" + valueJson + "}";
+    }
+
+    private static bool CallsHandler(string expression, string handlerName)
+    {
+        return expression.Contains($"\"{handlerName}\"");
+    }
+
+    // Answers the shim's frame requests the way a page with no frames does, and hands every other expression to
+    // the evaluator.
+    private static Func<string, Task<string>> PageWithoutFrames(Func<string, Task<string>> evaluate)
+    {
+        return expression =>
+        {
+            if (CallsHandler(expression, "resolveFrame") ||
+                CallsHandler(expression, "reload"))
+            {
+                return Task.FromResult(BuildShimValue("{\"frame\":\"top\",\"top\":true}"));
+            }
+
+            return evaluate(expression);
+        };
+    }
+
+    // Answers the shim's frame requests the way a page whose content frame is #preview does, and hands every
+    // other expression to the evaluator.
+    private static Func<string, Task<string>> PageWithContentFrame(Func<string, Task<string>> evaluate)
+    {
+        return expression =>
+        {
+            if (CallsHandler(expression, "resolveFrame") ||
+                CallsHandler(expression, "reload"))
+            {
+                return Task.FromResult(BuildShimValue("{\"frame\":\"#preview\",\"top\":false}"));
+            }
+
+            return evaluate(expression);
+        };
+    }
+
+    [Test]
+    public async Task GetHtmlAsync_WhileTheFrameLoads_CallsAgainUntilItHasLoaded()
+    {
+        var calls = 0;
+        _bridge.Register(
+            _resource,
+            evalAsync: _ =>
+            {
+                calls++;
+                if (calls < 3)
+                {
+                    return Task.FromResult("{\"ok\":false,\"pending\":true,\"frame\":\"#preview\",\"error\":\"loading\"}");
+                }
+                return Task.FromResult(BuildShimValue("{\"frame\":\"#preview\",\"selector\":null,\"html\":\"<html></html>\"}"));
+            },
+            reloadAsync: _ => Task.CompletedTask);
+        _bridge.NotifyContentReady(_resource);
+
+        var result = await _bridge.GetHtmlAsync(_resource, new GetHtmlOptions());
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().Contain("#preview");
+        calls.Should().Be(3);
+    }
+
+    [Test]
+    public async Task GetHtmlAsync_FrameThatNeverLoads_FailsNamingTheFrame()
+    {
+        var fastBridge = new DocumentWebViewToolBridge(_commandService, _logger, _fileSystem, TimeSpan.FromMilliseconds(100));
+        fastBridge.Register(
+            _resource,
+            evalAsync: _ => Task.FromResult("{\"ok\":false,\"pending\":true,\"frame\":\"#preview\",\"error\":\"loading\"}"),
+            reloadAsync: _ => Task.CompletedTask);
+        fastBridge.NotifyContentReady(_resource);
+
+        var result = await fastBridge.GetHtmlAsync(_resource, new GetHtmlOptions());
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("'#preview' to finish loading");
+        result.FirstErrorMessage.Should().Contain("document_activate");
+    }
+
+    [Test]
+    public async Task GetHtmlAsync_PassesTheFrameToTheShim()
+    {
+        string? capturedExpression = null;
+        _bridge.Register(
+            _resource,
+            evalAsync: expression =>
+            {
+                capturedExpression = expression;
+                return Task.FromResult(BuildShimValue("{\"frame\":\"top\",\"selector\":null,\"html\":\"<html></html>\"}"));
+            },
+            reloadAsync: _ => Task.CompletedTask);
+        _bridge.NotifyContentReady(_resource);
+
+        await _bridge.GetHtmlAsync(_resource, new GetHtmlOptions(Frame: "top"));
+
+        ReadInvokeArgs(capturedExpression!).GetProperty("frame").GetString().Should().Be("top");
+    }
+
+    // The args travel to the shim as a JSON string literal, the last argument of the invoke call.
+    private static JsonElement ReadInvokeArgs(string expression)
+    {
+        var invokeStart = expression.LastIndexOf("b.invoke(", StringComparison.Ordinal);
+        var argsStart = expression.IndexOf(',', invokeStart) + 1;
+        var argsEnd = expression.LastIndexOf(");", StringComparison.Ordinal);
+        var argsJson = JsonSerializer.Deserialize<string>(expression[argsStart..argsEnd])!;
+
+        using var document = JsonDocument.Parse(argsJson);
+        return document.RootElement.Clone();
+    }
+
+    [Test]
+    public async Task EvalAsync_InAFrame_EvaluatesThroughTheShimAndNamesTheFrame()
+    {
+        var evaluatedDirectly = false;
+        _bridge.Register(
+            _resource,
+            evalAsync: PageWithContentFrame(expression =>
+            {
+                if (CallsHandler(expression, "evaluate"))
+                {
+                    return Task.FromResult(BuildShimValue("{\"frame\":\"#preview\",\"valueJson\":\"\\\"Framed\\\"\"}"));
+                }
+
+                evaluatedDirectly = true;
+                return Task.FromResult("null");
+            }),
+            reloadAsync: _ => Task.CompletedTask);
+        _bridge.NotifyContentReady(_resource);
+
+        var result = await _bridge.EvalAsync(_resource, "document.title");
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Frame.Should().Be("#preview");
+        result.Value.Value.Should().Be("\"Framed\"");
+        evaluatedDirectly.Should().BeFalse();
+    }
+
+    [Test]
+    public async Task EvalAsync_OnThePageItself_EvaluatesTheExpressionDirectly()
+    {
+        string? directExpression = null;
+        _bridge.Register(
+            _resource,
+            evalAsync: PageWithoutFrames(expression =>
+            {
+                directExpression = expression;
+                return Task.FromResult("2");
+            }),
+            reloadAsync: _ => Task.CompletedTask);
+        _bridge.NotifyContentReady(_resource);
+
+        var result = await _bridge.EvalAsync(_resource, "1 + 1");
+
+        result.Value.Should().Be(new WebViewEvalResult("top", "2"));
+        directExpression.Should().Be("1 + 1");
+    }
+
+    [Test]
+    public async Task EvalAsync_PageWithoutTheShim_EvaluatesThePageButCannotReachAFrame()
+    {
+        _bridge.Register(
+            _resource,
+            evalAsync: expression =>
+            {
+                if (CallsHandler(expression, "resolveFrame"))
+                {
+                    return Task.FromResult("{\"ok\":false,\"missingShim\":true,\"error\":\"WebView tool bridge shim not present\"}");
+                }
+                return Task.FromResult("2");
+            },
+            reloadAsync: _ => Task.CompletedTask);
+        _bridge.NotifyContentReady(_resource);
+
+        var pageResult = await _bridge.EvalAsync(_resource, "1 + 1");
+        var frameResult = await _bridge.EvalAsync(_resource, "1 + 1", "#preview");
+
+        pageResult.Value.Should().Be(new WebViewEvalResult("top", "2"));
+        frameResult.IsFailure.Should().BeTrue();
+        frameResult.FirstErrorMessage.Should().Contain("'#preview' cannot be reached");
+    }
+
+    [Test]
+    public async Task ReloadAsync_Frame_ReloadsThroughTheShimAndKeepsTheGateOpen()
+    {
+        var reloadedTheWebView = false;
+        _bridge.Register(
+            _resource,
+            evalAsync: PageWithContentFrame(_ => Task.FromResult(BuildFlushEnvelope("[]"))),
+            reloadAsync: _ =>
+            {
+                reloadedTheWebView = true;
+                return Task.CompletedTask;
+            });
+        _bridge.NotifyContentReady(_resource);
+
+        var result = await _bridge.ReloadAsync(_resource, clearCache: true);
+
+        result.Value.Should().Be("#preview");
+        reloadedTheWebView.Should().BeFalse();
+
+        // Only the frame reloaded, so the page's content-ready gate stays open and the next call goes ahead at once.
+        var htmlTask = _bridge.GetHtmlAsync(_resource, new GetHtmlOptions());
+        htmlTask.IsCompleted.Should().BeTrue();
+        (await htmlTask).IsSuccess.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task ReloadAsync_PageItself_ReloadsTheWebView()
+    {
+        var reloadedTheWebView = false;
+        _bridge.Register(
+            _resource,
+            evalAsync: PageWithoutFrames(_ => Task.FromResult(BuildFlushEnvelope("[]"))),
+            reloadAsync: _ =>
+            {
+                reloadedTheWebView = true;
+                return Task.CompletedTask;
+            });
+
+        var result = await _bridge.ReloadAsync(_resource, clearCache: false);
+
+        result.Value.Should().Be("top");
+        reloadedTheWebView.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task GetConsoleAsync_ReturnsOnlyTheEntriesOfTheFrame()
+    {
+        _bridge.Register(
+            _resource,
+            evalAsync: PageWithContentFrame(_ => Task.FromResult(BuildFlushEnvelope(
+                "[{\"level\":\"log\",\"timestampMs\":1,\"args\":[\"shell\"],\"frame\":\"top\"}," +
+                "{\"level\":\"log\",\"timestampMs\":2,\"args\":[\"page\"],\"frame\":\"#preview\"}]"))),
+            reloadAsync: _ => Task.CompletedTask);
+        _bridge.NotifyContentReady(_resource);
+
+        var result = await _bridge.GetConsoleAsync(_resource, new ConsoleQueryOptions());
+
+        result.IsSuccess.Should().BeTrue();
+        using var snapshot = JsonDocument.Parse(result.Value);
+        var root = snapshot.RootElement;
+        root.GetProperty("frame").GetString().Should().Be("#preview");
+        root.GetProperty("totalAccumulated").GetInt32().Should().Be(1);
+        var entries = root.GetProperty("entries");
+        entries.GetArrayLength().Should().Be(1);
+        entries[0].GetProperty("args")[0].GetString().Should().Be("page");
+        entries[0].TryGetProperty("frame", out _).Should().BeFalse();
+    }
+
+    [Test]
+    public async Task ScreenshotAsync_OfAFrame_CapturesTheFrameAndNamesIt()
+    {
+        ScreenshotRequest? capturedRequest = null;
+        _bridge.Register(
+            _resource,
+            evalAsync: expression => Task.FromResult(BuildShimValue(
+                "{\"frame\":\"#preview\",\"x\":100,\"y\":40,\"width\":600,\"height\":400}")),
+            reloadAsync: _ => Task.CompletedTask,
+            screenshotAsync: request =>
+            {
+                capturedRequest = request;
+                return Task.FromResult(new ScreenshotData("jpeg", 600, 400, [1, 2, 3]));
+            });
+        _bridge.NotifyContentReady(_resource);
+
+        var result = await _bridge.ScreenshotAsync(_resource, new ScreenshotOptions(MaxEdge: 0));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Frame.Should().Be("#preview");
+        capturedRequest!.Clip.Should().Be(new ScreenshotClip(100, 40, 600, 400, 1.0));
     }
 }

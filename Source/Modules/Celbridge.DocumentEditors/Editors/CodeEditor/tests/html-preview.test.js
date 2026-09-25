@@ -17,11 +17,25 @@ class FakeResizeObserver {
 
 // A freshly loaded page: a scroll range of 800, scrolled to the top.
 function createPage() {
+    const scrollListeners = [];
+
     return {
         scrollingElement: {
             scrollHeight: 1000,
             clientHeight: 200,
             scrollTop: 0
+        },
+        defaultView: {
+            addEventListener(type, listener) {
+                if (type === 'scroll') {
+                    scrollListeners.push(listener);
+                }
+            }
+        },
+        // Scrolls the page as the reader does, which raises the page's scroll event.
+        scrollPage(position) {
+            this.scrollingElement.scrollTop = position;
+            scrollListeners.forEach((listener) => listener());
         }
     };
 }
@@ -29,6 +43,7 @@ function createPage() {
 // A stand-in for the preview frame. jsdom cannot load a page into a real one, and lays nothing out.
 function createFrame() {
     const loadListeners = [];
+    const attributes = new Map();
 
     return {
         src: 'about:blank',
@@ -39,12 +54,35 @@ function createFrame() {
                 loadListeners.push(listener);
             }
         },
+        setAttribute(name, value) {
+            attributes.set(name, String(value));
+        },
+        removeAttribute(name) {
+            attributes.delete(name);
+        },
+        getAttribute(name) {
+            return attributes.has(name) ? attributes.get(name) : null;
+        },
+        hasAttribute(name) {
+            return attributes.has(name);
+        },
         // Replaces the document with a newly loaded page, as a navigation does, and fires the frame's load.
         loadPage() {
             this.contentDocument = createPage();
             loadListeners.forEach((listener) => listener());
 
             return this.contentDocument.scrollingElement;
+        },
+        // Hides the frame as Source mode does. The browser resets the page's scroll position when it loses its
+        // layout.
+        hide() {
+            this.clientHeight = 0;
+            this.contentDocument.scrollingElement.scrollTop = 0;
+            resizeCallbacks.forEach((callback) => callback());
+        },
+        show() {
+            this.clientHeight = 400;
+            resizeCallbacks.forEach((callback) => callback());
         }
     };
 }
@@ -75,6 +113,25 @@ describe('HTML preview module', () => {
         expect(frame.src).toBe(pageUrl);
     });
 
+    it('marks the frame as the content frame once it shows the page', () => {
+        expect(frame.hasAttribute('data-cel-content-frame')).toBe(false);
+
+        previewModule.refresh(pageUrl);
+
+        expect(frame.hasAttribute('data-cel-content-frame')).toBe(true);
+    });
+
+    it('marks the frame busy from each refresh until the page has loaded', () => {
+        previewModule.refresh(pageUrl);
+        expect(frame.getAttribute('aria-busy')).toBe('true');
+
+        frame.loadPage();
+        expect(frame.hasAttribute('aria-busy')).toBe(false);
+
+        previewModule.refresh(pageUrl);
+        expect(frame.getAttribute('aria-busy')).toBe('true');
+    });
+
     it('keeps the reader\'s place across a reload', () => {
         previewModule.refresh(pageUrl);
         frame.loadPage().scrollTop = 400;
@@ -94,6 +151,41 @@ describe('HTML preview module', () => {
         const page = frame.loadPage();
 
         expect(page.scrollTop).toBe(200);
+    });
+
+    it('keeps the reader\'s place when the preview is hidden and shown again', () => {
+        previewModule.refresh(pageUrl);
+        frame.loadPage();
+        frame.contentDocument.scrollPage(400);
+
+        frame.hide();
+        frame.show();
+
+        expect(frame.contentDocument.scrollingElement.scrollTop).toBe(400);
+    });
+
+    it('keeps the reader\'s place across a reload while the preview is hidden', () => {
+        previewModule.refresh(pageUrl);
+        frame.loadPage();
+        frame.contentDocument.scrollPage(400);
+        frame.hide();
+
+        previewModule.refresh(pageUrl);
+        const reloadedPage = frame.loadPage();
+        expect(reloadedPage.scrollTop).toBe(0);
+
+        frame.show();
+        expect(reloadedPage.scrollTop).toBe(400);
+    });
+
+    it('reports the last position the page showed while the preview is hidden', () => {
+        previewModule.refresh(pageUrl);
+        frame.loadPage();
+        frame.contentDocument.scrollPage(400);
+
+        frame.hide();
+
+        expect(previewModule.getScrollPercentage()).toBe(0.5);
     });
 
     it('holds a restored position while the preview is hidden, and applies it once shown', () => {

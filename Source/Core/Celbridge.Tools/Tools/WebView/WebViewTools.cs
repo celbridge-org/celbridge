@@ -1,3 +1,4 @@
+using System.Text.Json;
 using ModelContextProtocol.Server;
 
 namespace Celbridge.Tools;
@@ -15,4 +16,12 @@ public partial class WebViewTools : AgentToolBase
     public WebViewTools(IApplicationServiceProvider services) : base(services) { }
 
     private ILogger<WebViewTools> Logger => _logger ??= GetRequiredService<ILogger<WebViewTools>>();
+
+    // Names the frame a call acted on, for a result whose own text has no room for it.
+    private static string SerializeFrameMetadata(string frame)
+    {
+        return JsonSerializer.Serialize(new FrameMetadata(frame), JsonOptions);
+    }
+
+    private sealed record FrameMetadata(string Frame);
 }

@@ -16,7 +16,8 @@ public partial class WebViewTools
         int tail = 100,
         bool includeHeaders = false,
         bool includeBodies = false,
-        long sinceTimestampMs = 0)
+        long sinceTimestampMs = 0,
+        string frame = "")
     {
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
@@ -29,12 +30,12 @@ public partial class WebViewTools
             return ToolResponse.InvalidResourceKey(resource);
         }
 
-        Logger.LogInformation("webview_get_network resource={Resource} tail={Tail} includeHeaders={IncludeHeaders} includeBodies={IncludeBodies} since={Since}",
-            resourceKey, tail, includeHeaders, includeBodies, sinceTimestampMs);
+        Logger.LogInformation("webview_get_network resource={Resource} tail={Tail} includeHeaders={IncludeHeaders} includeBodies={IncludeBodies} since={Since} frame={Frame}",
+            resourceKey, tail, includeHeaders, includeBodies, sinceTimestampMs, frame);
 
         var toolBridge = GetRequiredService<IDocumentWebViewToolBridge>();
         long? since = sinceTimestampMs > 0 ? sinceTimestampMs : null;
-        var options = new NetworkQueryOptions(tail, includeHeaders, includeBodies, since);
+        var options = new NetworkQueryOptions(tail, includeHeaders, includeBodies, since, frame);
         var networkResult = await toolBridge.GetNetworkAsync(resourceKey, options);
         if (networkResult.IsFailure)
         {

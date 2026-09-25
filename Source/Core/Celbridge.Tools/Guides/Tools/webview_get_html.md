@@ -10,7 +10,7 @@ Returns serialised HTML for an open document, optionally scoped to a subtree by 
 
 ## Returns
 
-JSON object with `selector` (the resolved selector, or document root) and `html` (the serialised markup with depth pruning applied).
+JSON object with `frame`, `selector` (the resolved selector, or document root) and `html` (the serialised markup with depth pruning applied). The markup of a frame inside the document is not included, so read a frame by naming it in `frame`.
 
 ## Redactions
 

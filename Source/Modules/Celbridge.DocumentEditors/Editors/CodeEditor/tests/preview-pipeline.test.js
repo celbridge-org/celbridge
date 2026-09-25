@@ -172,20 +172,25 @@ describe('PreviewPipeline preview updates', () => {
         expect(refreshSpy).toHaveBeenLastCalledWith('/project/docs/page.html');
     });
 
-    it('holds an update back while the preview is hidden and applies it once shown', () => {
+    it('refreshes the preview while Source mode hides it', () => {
         const pipeline = createPipeline(ViewMode.Source);
 
         pipeline.handleInitialContent('<p>First</p>', 'project:docs/page.html');
         pipeline.handleSaved();
-        expect(refreshSpy).not.toHaveBeenCalled();
+
+        expect(refreshSpy).toHaveBeenCalledTimes(2);
+        expect(refreshSpy).toHaveBeenLastCalledWith('/project/docs/page.html');
+    });
+
+    it('does not refresh the preview when the view mode changes', () => {
+        const pipeline = createPipeline(ViewMode.Source);
+        pipeline.handleInitialContent('<p>First</p>', 'project:docs/page.html');
+        refreshSpy.mockClear();
 
         pipeline.viewModeController.setMode(ViewMode.Split);
-        expect(refreshSpy).toHaveBeenCalledOnce();
-        expect(refreshSpy).toHaveBeenCalledWith('/project/docs/page.html');
-
-        // Switching between Split and Preview does not reload a preview that is up to date.
         pipeline.viewModeController.setMode(ViewMode.Preview);
-        expect(refreshSpy).toHaveBeenCalledOnce();
+
+        expect(refreshSpy).not.toHaveBeenCalled();
     });
 });
 
@@ -255,5 +260,68 @@ describe('PreviewPipeline scroll sync', () => {
 
         expect(editorController.getValue).not.toHaveBeenCalled();
         expect(globalThis.__fakePreviewModule.render).not.toHaveBeenCalled();
+    });
+});
+
+describe('PreviewPipeline initial content', () => {
+    const rendererExports = [
+        'initialize',
+        'render',
+        'setBasePath',
+        'setScrollPercentage',
+        'refresh'
+    ];
+
+    afterEach(() => {
+        document.body.innerHTML = '';
+    });
+
+    it('finishes with the initial content once the renderer has loaded and received it', async () => {
+        let finishLoading;
+        globalThis.__fakePreviewModule = {
+            initialize: vi.fn(() => new Promise((resolve) => { finishLoading = resolve; })),
+            render: vi.fn(),
+            setBasePath: vi.fn(),
+            setScrollPercentage: vi.fn(),
+            refresh: vi.fn()
+        };
+        const pipeline = new PreviewPipeline({
+            editorController: createEditorController(),
+            initialViewMode: ViewMode.Preview,
+            panes: createPanes()
+        });
+        pipeline.attachRenderer(makeFakeRendererUrl(rendererExports));
+
+        let isHandled = false;
+        const handling = pipeline.handleInitialContent('<p>Page</p>', 'project:docs/page.html')
+            .then(() => { isHandled = true; });
+
+        await vi.waitFor(() => expect(finishLoading).toBeTypeOf('function'));
+        expect(isHandled).toBe(false);
+
+        finishLoading();
+        await handling;
+
+        expect(globalThis.__fakePreviewModule.refresh).toHaveBeenCalledWith('/project/docs/page.html');
+    });
+
+    it('finishes with the initial content when the renderer fails to load', async () => {
+        globalThis.__fakePreviewModule = {
+            initialize: vi.fn().mockRejectedValue(new Error('The renderer could not start')),
+            render: vi.fn(),
+            setBasePath: vi.fn(),
+            setScrollPercentage: vi.fn(),
+            refresh: vi.fn()
+        };
+        const pipeline = new PreviewPipeline({
+            editorController: createEditorController(),
+            initialViewMode: ViewMode.Preview,
+            panes: createPanes()
+        });
+        const attaching = pipeline.attachRenderer(makeFakeRendererUrl(rendererExports));
+
+        await pipeline.handleInitialContent('<p>Page</p>', 'project:docs/page.html');
+
+        await expect(attaching).rejects.toThrow('The renderer could not start');
     });
 });
