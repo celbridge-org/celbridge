@@ -99,8 +99,7 @@ public sealed partial class DownloadBadge : UserControl
 
         ApplyGlyph(ViewModel.IsTransferring, ViewModel.HasFailure);
 
-        // A list holding only downloads that came to nothing still has a badge to open it by, but
-        // nothing to count.
+        // A list holding only canceled downloads still has a badge to open it by, but nothing to count.
         var badgeCount = ViewModel.BadgeCount;
         CountText.Text = badgeCount.ToString(CultureInfo.CurrentCulture);
         CountText.Visibility = badgeCount > 0 ? Visibility.Visible : Visibility.Collapsed;
