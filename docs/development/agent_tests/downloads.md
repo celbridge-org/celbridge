@@ -23,7 +23,7 @@ remove button, and Clear All.
 | A download still running, the list open | click its cancel button | the list stays open, the row says the transfer was canceled and gives no size, neither the row nor the badge shows it as a failure, the badge's count no longer includes it, and nothing is left in `downloads/` or the staging folder | 2 |
 | Several finished downloads and one still running | click Clear All | the finished rows go and the running row stays, and their files stay in `downloads/`; once the last download lands, a second Clear All empties the list and the badge goes | 2 |
 | A download running when the server drops the connection | let it fail, then wait for the badge to settle | one row, however often the platform retries first, says the transfer did not complete, the badge stops spinning, and nothing is left in `downloads/` or the staging folder | 2 |
-| Finished downloads, one of which failed, the list open | click the failed row's remove button, then each remaining row's | the failed row leaves the list and the others stay, the count drops and the badge loses the error color, and removing the last row closes the list and the badge goes, with every downloaded file still in `downloads/` | 2 |
+| Finished downloads, one of which failed, the list open | click the failed row's remove button, then each remaining row's | the failed row leaves the list and the others stay, the list stays open until the last row goes, the count drops and the badge loses the error color, and removing the last row closes the list and the badge goes, with every downloaded file still in `downloads/` | 2 |
 | A download of several hundred megabytes, made after an undoable change in the Explorer such as a new folder | download it, then undo in the Explorer | the application answers input throughout, the file carries the platform's mark of the web, and undo reverts the earlier change and leaves the file where it landed | 2 |
 | A `.webview` document on a page with a `download` link | click the link | the file lands in `downloads/`, as it does from an HTML document | 3 |
 | A download running from a `.webview` document | close the document's tab | the download stops, its row says the transfer stopped with the document, and nothing is left in `downloads/` or the staging folder | 3 |
@@ -65,8 +65,10 @@ launching or reload the project after.
 
 Read outcomes from disk rather than from the list: what landed in the downloads folder and its bytes, the
 operating system's Downloads folder, and the staging folder, `.celbridge/temp/downloads/`, which is empty
-whenever nothing is running. The list is the application's own chrome, so find rows with a screenshot and
-prove what they did with the files.
+once nothing is settling. A running transfer can leave it empty too, since the platform holds the file
+elsewhere until it lands, so read the staging folder after a download has ended rather than during one. The
+list is the application's own chrome, so find rows with a screenshot and prove what they did with the
+files.
 
 ## By hand
 
@@ -118,8 +120,8 @@ WebView2 has been seen to retry a download whose connection dropped several time
 announcing each retry as a new download, so the dropped-connection case's row can run for a few seconds
 before it fails; it has also been seen to give up on the first drop. Either is a pass. The defect that case
 is there to catch is a row per retry, or rows left running for ever with the badge spinning, so the absence
-of retries is not itself a finding. WebKit has not been seen to retry either, and a macOS run should record
-which it saw.
+of retries is not itself a finding. WebKit gives up on the first drop, sending one request and leaving one
+row, which is what macOS runs have seen so far; a run that sees it retry should record that.
 
 The prompt an HTML document shows for a link to another server stops the page following the link on both
 heads, and neither sends a request for the destination it refuses, so a link to an attachment that is

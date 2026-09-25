@@ -159,6 +159,29 @@ internal sealed class BadgeList
     }
 
     /// <summary>
+    /// Notes where the keyboard is and parks it on the list itself, for a caller about to rebuild the rows.
+    /// Null when the keyboard was elsewhere.
+    /// </summary>
+    public BadgeListFocus? HoldFocusForRebuild()
+    {
+        var listFocus = FindFocus();
+        if (listFocus is null)
+        {
+            return null;
+        }
+
+        // A rebuild takes the focused row out of the tree, and a focus reconcile landing in that gap reads
+        // the keyboard as stranded and moves it to the window's placeholder, which dismisses the flyout.
+        // Parking it on the list keeps it inside the flyout until the rows are back. The tab stop lasts only
+        // for the move: a permanent one would add a step to every Tab through the list.
+        _scrollViewer.IsTabStop = true;
+        _scrollViewer.Focus(FocusState.Programmatic);
+        _scrollViewer.IsTabStop = false;
+
+        return listFocus;
+    }
+
+    /// <summary>
     /// Hands the keyboard back to where it was, or as near to it as the rebuilt list allows.
     /// </summary>
     public void RestoreFocus(BadgeListFocus listFocus)

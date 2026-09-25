@@ -162,7 +162,7 @@ public sealed partial class NotificationBadge : UserControl
 
     private void UpdateList()
     {
-        var listFocus = _list.FindFocus();
+        var listFocus = _list.HoldFocusForRebuild();
 
         ClearRows();
 

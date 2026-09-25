@@ -181,7 +181,7 @@ public sealed partial class DownloadBadge : UserControl
             return;
         }
 
-        var listFocus = _list.FindFocus();
+        var listFocus = _list.HoldFocusForRebuild();
 
         ClearRows();
 
