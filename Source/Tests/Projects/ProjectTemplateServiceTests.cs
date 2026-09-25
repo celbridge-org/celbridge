@@ -1,7 +1,9 @@
+using Celbridge.Logging;
 using Celbridge.Projects;
 using Celbridge.Projects.Services;
 using Celbridge.Python;
 using Celbridge.Tests.FileSystem;
+using Celbridge.Utilities;
 using Celbridge.Utilities.Platform;
 using Microsoft.Extensions.Localization;
 
@@ -22,6 +24,7 @@ public class ProjectTemplateServiceTests
 
         // The localizer is only used to label the templates, not by the creation flow.
         var stringLocalizer = Substitute.For<IStringLocalizer>();
+        var logger = Substitute.For<ILogger<ProjectTemplateService>>();
 
         // A real app environment so the test exercises actual bundled-asset path resolution (the
         // AppContext.BaseDirectory layout the Skia heads use) and supplies the temp folder. Its reported
@@ -32,7 +35,8 @@ public class ProjectTemplateServiceTests
         _projectTemplateService = new ProjectTemplateService(
             stringLocalizer,
             _fileSystem,
-            appEnvironment);
+            appEnvironment,
+            logger);
 
         _tempRootPath = Path.Combine(
             Path.GetTempPath(),
@@ -110,5 +114,222 @@ public class ProjectTemplateServiceTests
         parseResult.Value.EntryErrors.Should().BeEmpty();
         parseResult.Value.Celbridge.ProjectVersion.Should().BeNull();
         parseResult.Value.DocumentShortcuts.Should().ContainSingle(s => s.Resource == "python.console");
+    }
+
+    [Test]
+    public async Task CreateFromTemplate_ExistingTemplateFile_ReplacesIt()
+    {
+        // Creating a project in a folder that already holds one of the template's files used to fail
+        // partway through the move, leaving a half-created project behind (issue #987). The template
+        // owns its files, so the existing one is replaced and creation succeeds.
+        var template = _projectTemplateService.GetDefaultTemplate();
+
+        var projectFolderPath = Path.Combine(_tempRootPath, "ExistingFolder");
+        Directory.CreateDirectory(projectFolderPath);
+        var readmePath = Path.Combine(projectFolderPath, "readme.md");
+        await File.WriteAllTextAsync(readmePath, "the user's own readme");
+
+        var projectFilePath = Path.Combine(projectFolderPath, "MyProject.celbridge");
+
+        var result = await _projectTemplateService.CreateFromTemplateAsync(
+            projectFilePath, template, replaceExistingFiles: true);
+
+        result.IsSuccess.Should().BeTrue();
+        File.Exists(projectFilePath).Should().BeTrue();
+
+        var readmeContents = await File.ReadAllTextAsync(readmePath);
+        readmeContents.Should().NotContain("the user's own readme");
+    }
+
+    [Test]
+    public async Task CreateFromTemplate_ExistingFile_WithoutReplace_WritesNothing()
+    {
+        // Replacing is opted into, so the default refuses. It has to refuse before the first move:
+        // failing partway is what left a half-created project behind in issue #987.
+        var template = _projectTemplateService.GetDefaultTemplate();
+
+        var projectFolderPath = Path.Combine(_tempRootPath, "ExistingFolder");
+        Directory.CreateDirectory(projectFolderPath);
+        var readmePath = Path.Combine(projectFolderPath, "readme.md");
+        await File.WriteAllTextAsync(readmePath, "the user's own readme");
+
+        var projectFilePath = Path.Combine(projectFolderPath, "MyProject.celbridge");
+
+        var result = await _projectTemplateService.CreateFromTemplateAsync(projectFilePath, template);
+
+        result.IsFailure.Should().BeTrue();
+
+        var readmeContents = await File.ReadAllTextAsync(readmePath);
+        readmeContents.Should().Be("the user's own readme");
+        File.Exists(projectFilePath).Should().BeFalse();
+        File.Exists(Path.Combine(projectFolderPath, ".gitignore")).Should().BeFalse();
+    }
+
+    [Test]
+    public async Task CreateFromTemplate_FolderNamedLikeATemplateFile_WritesNothing()
+    {
+        // A move cannot put a file where a folder already sits, and replaceExistingFiles does not
+        // extend to that. The refusal still has to come before anything else moves.
+        var template = _projectTemplateService.GetDefaultTemplate();
+
+        var projectFolderPath = Path.Combine(_tempRootPath, "ExistingFolder");
+        Directory.CreateDirectory(projectFolderPath);
+        Directory.CreateDirectory(Path.Combine(projectFolderPath, "readme.md"));
+
+        var projectFilePath = Path.Combine(projectFolderPath, "MyProject.celbridge");
+
+        var result = await _projectTemplateService.CreateFromTemplateAsync(
+            projectFilePath, template, replaceExistingFiles: true);
+
+        result.IsFailure.Should().BeTrue();
+        File.Exists(projectFilePath).Should().BeFalse();
+    }
+
+    [Test]
+    public async Task GetConflictingFileNames_ReportsFilesTheTemplateWouldReplace()
+    {
+        var template = _projectTemplateService.GetTemplates().Single(t => t.Id == "Python");
+
+        var projectFolderPath = Path.Combine(_tempRootPath, "ExistingFolder");
+        Directory.CreateDirectory(projectFolderPath);
+        await File.WriteAllTextAsync(Path.Combine(projectFolderPath, "readme.md"), "user content");
+        await File.WriteAllTextAsync(Path.Combine(projectFolderPath, "hello_world.py"), "user content");
+        await File.WriteAllTextAsync(Path.Combine(projectFolderPath, "untouched.txt"), "user content");
+
+        // The template's .gitignore is merged rather than replaced, so it is never a conflict.
+        await File.WriteAllTextAsync(Path.Combine(projectFolderPath, ".gitignore"), "*.log\n");
+
+        var projectFilePath = Path.Combine(projectFolderPath, "MyProject.celbridge");
+
+        var result = await _projectTemplateService.GetConflictingFileNamesAsync(projectFilePath, template);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().Equal("hello_world.py", "readme.md");
+    }
+
+    [Test]
+    public async Task GetConflictingFileNames_DifferentCase_FollowsTheFileSystemRules()
+    {
+        // The reported issue used an uppercase README.md against the template's lowercase readme.md.
+        var template = _projectTemplateService.GetDefaultTemplate();
+
+        var projectFolderPath = Path.Combine(_tempRootPath, "ExistingFolder");
+        Directory.CreateDirectory(projectFolderPath);
+        await File.WriteAllTextAsync(Path.Combine(projectFolderPath, "README.md"), "user content");
+
+        var projectFilePath = Path.Combine(projectFolderPath, "MyProject.celbridge");
+
+        var result = await _projectTemplateService.GetConflictingFileNamesAsync(projectFilePath, template);
+
+        result.IsSuccess.Should().BeTrue();
+
+        var isCaseInsensitiveFileSystem = PathComparison.Comparer.Equals("readme.md", "README.md");
+        if (isCaseInsensitiveFileSystem)
+        {
+            // Reported under the name the user gave it, which is the name that survives the replacement.
+            result.Value.Should().Equal("README.md");
+        }
+        else
+        {
+            result.Value.Should().BeEmpty();
+        }
+    }
+
+    [Test]
+    public async Task GetConflictingFileNames_UnreadableFolder_Fails()
+    {
+        // A folder that is there but cannot be listed must not report as conflict-free. Reporting no
+        // conflicts would carry the user past the confirmation and into an overwrite of files the
+        // check never managed to see.
+        var folderInfo = new StorageItemInfo(StorageItemKind.Folder, 0, DateTime.UtcNow, FileSystemAttributes.None);
+
+        var fileSystem = Substitute.For<ILocalFileSystem>();
+        fileSystem.GetInfoAsync(Arg.Any<string>())
+            .Returns(Result<StorageItemInfo>.Ok(folderInfo));
+        fileSystem.EnumerateAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>())
+            .Returns(Result<IReadOnlyList<FileSystemEntry>>.Fail("Permission denied."));
+
+        var projectTemplateService = new ProjectTemplateService(
+            Substitute.For<IStringLocalizer>(),
+            fileSystem,
+            new AppEnvironment(),
+            Substitute.For<ILogger<ProjectTemplateService>>());
+
+        var template = projectTemplateService.GetDefaultTemplate();
+        var projectFilePath = Path.Combine(_tempRootPath, "ExistingFolder", "MyProject.celbridge");
+
+        var result = await projectTemplateService.GetConflictingFileNamesAsync(projectFilePath, template);
+
+        result.IsFailure.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task GetConflictingFileNames_FolderWithNothingInCommon_ReportsNothing()
+    {
+        var template = _projectTemplateService.GetDefaultTemplate();
+
+        // A folder that does not exist yet, which is what creating a subfolder for the project gives.
+        var newFolderPath = Path.Combine(_tempRootPath, "NewFolder");
+        var newFolderResult = await _projectTemplateService.GetConflictingFileNamesAsync(
+            Path.Combine(newFolderPath, "MyProject.celbridge"), template);
+
+        newFolderResult.IsSuccess.Should().BeTrue();
+        newFolderResult.Value.Should().BeEmpty();
+
+        // An existing folder holding files the template does not write.
+        var existingFolderPath = Path.Combine(_tempRootPath, "ExistingFolder");
+        Directory.CreateDirectory(existingFolderPath);
+        await File.WriteAllTextAsync(Path.Combine(existingFolderPath, "notes.txt"), "user content");
+
+        var existingFolderResult = await _projectTemplateService.GetConflictingFileNamesAsync(
+            Path.Combine(existingFolderPath, "MyProject.celbridge"), template);
+
+        existingFolderResult.IsSuccess.Should().BeTrue();
+        existingFolderResult.Value.Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task CreateFromTemplate_NoGitIgnore_WritesTheCelbridgeOne()
+    {
+        var template = _projectTemplateService.GetDefaultTemplate();
+
+        var projectFolderPath = Path.Combine(_tempRootPath, "MyProject");
+        var projectFilePath = Path.Combine(projectFolderPath, "MyProject.celbridge");
+
+        var result = await _projectTemplateService.CreateFromTemplateAsync(projectFilePath, template);
+
+        result.IsSuccess.Should().BeTrue();
+
+        var gitIgnoreContents = await File.ReadAllTextAsync(Path.Combine(projectFolderPath, ".gitignore"));
+        gitIgnoreContents.Should().Contain(".celbridge/");
+        gitIgnoreContents.Should().Contain("/downloads/");
+
+        // A fresh file is the canonical one, so it carries no merge marker.
+        gitIgnoreContents.Should().NotContain("# Added by Celbridge");
+    }
+
+    [Test]
+    public async Task CreateFromTemplate_ExistingGitIgnore_AppendsOnlyMissingPatterns()
+    {
+        var template = _projectTemplateService.GetDefaultTemplate();
+
+        var projectFolderPath = Path.Combine(_tempRootPath, "ExistingRepo");
+        Directory.CreateDirectory(projectFolderPath);
+        var gitIgnorePath = Path.Combine(projectFolderPath, ".gitignore");
+        await File.WriteAllTextAsync(gitIgnorePath, "# The user's rules\nnode_modules/\n*.log\n");
+
+        var projectFilePath = Path.Combine(projectFolderPath, "MyProject.celbridge");
+
+        var result = await _projectTemplateService.CreateFromTemplateAsync(projectFilePath, template);
+
+        result.IsSuccess.Should().BeTrue();
+
+        // Creating a project merges rather than replaces. What the merge itself produces is
+        // GitIgnoreWriterTests' subject; this only proves creation runs it.
+        var gitIgnoreContents = await File.ReadAllTextAsync(gitIgnorePath);
+        gitIgnoreContents.Should().Contain("# The user's rules");
+        gitIgnoreContents.Should().Contain("*.log");
+        gitIgnoreContents.Should().Contain("# Added by Celbridge");
+        gitIgnoreContents.Should().Contain(".celbridge/");
     }
 }

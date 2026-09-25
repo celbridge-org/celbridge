@@ -143,26 +143,14 @@ public class FileTypeHelper
     {
         var assembly = Assembly.GetExecutingAssembly();
 
-        var stream = assembly.GetManifestResourceStream(FileViewerTypesResourceName);
-        if (stream is null)
+        var readResult = EmbeddedResourceReader.ReadText(assembly, FileViewerTypesResourceName);
+        if (readResult.IsFailure)
         {
-            return Result.Fail($"Embedded resource not found: {FileViewerTypesResourceName}");
+            return Result.Fail($"Failed to read embedded resource: {FileViewerTypesResourceName}")
+                .WithErrors(readResult);
         }
 
-        var json = string.Empty;
-        try
-        {
-            using (stream)
-            using (StreamReader reader = new StreamReader(stream))
-            {
-                json = reader.ReadToEnd();
-            }
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"An exception occurred when reading content of embedded resource: {FileViewerTypesResourceName}")
-                .WithException(ex);
-        }
+        var json = readResult.Value;
 
         try
         {

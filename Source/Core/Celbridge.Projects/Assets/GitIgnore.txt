@@ -1,13 +1,20 @@
-# Files matched here are excluded from git. Celbridge does not read this file: what the
-# Explorer hides and what search skips are set in the project's .celbridge file, under
-# [celbridge.resources]. Edit freely. Your project's *.celbridge file is not matched by
-# any pattern here and stays tracked.
-
 # Celbridge project metadata
 .celbridge/
 
 # Files downloaded from web pages, kept here until moved where they are needed
 /downloads/
+
+# Build output
+bin/
+obj/
+build/
+dist/
+*.egg-info/
+
+# Installed dependencies
+node_modules/
+.venv/
+venv/
 
 # Compiled Python
 __pycache__/
@@ -15,16 +22,6 @@ __pycache__/
 *.pyo
 *.pyd
 *.so
-
-# Installed dependencies
-.venv/
-venv/
-node_modules/
-
-# Build output
-build/
-dist/
-*.egg-info/
 
 # Tool output
 .pytest_cache/
@@ -37,9 +34,9 @@ htmlcov/
 .ipynb_checkpoints/
 
 # Editor and tooling
+.vs/
 .vscode/
 .idea/
-.vs/
 .claude/
 .mcp.json
 
