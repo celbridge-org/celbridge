@@ -1,5 +1,5 @@
-using System.Reflection;
 using System.Text;
+using Celbridge.Utilities;
 
 namespace Celbridge.Projects;
 
@@ -22,43 +22,43 @@ public static class GitIgnoreWriter
     /// </summary>
     public static async Task<Result> WriteAsync(string projectFolderPath, ILocalFileSystem fileSystem)
     {
-        try
+        Guard.IsNotNullOrWhiteSpace(projectFolderPath);
+
+        var celbridgeResult = EmbeddedResourceReader.ReadText(
+            typeof(GitIgnoreWriter).Assembly, GitIgnoreResourceName);
+        if (celbridgeResult.IsFailure)
         {
-            Guard.IsNotNullOrWhiteSpace(projectFolderPath);
-
-            var celbridgeContents = ReadCelbridgeGitIgnore();
-            var gitIgnorePath = Path.Combine(projectFolderPath, GitIgnoreFileName);
-
-            var existingInfo = await fileSystem.GetInfoAsync(gitIgnorePath);
-            var hasExistingGitIgnore = existingInfo.IsSuccess
-                && existingInfo.Value.Kind == StorageItemKind.File;
-
-            if (!hasExistingGitIgnore)
-            {
-                return await fileSystem.WriteAllTextAsync(gitIgnorePath, celbridgeContents);
-            }
-
-            var readResult = await fileSystem.ReadAllTextAsync(gitIgnorePath);
-            if (readResult.IsFailure)
-            {
-                return Result.Fail($"Failed to read existing .gitignore: {gitIgnorePath}")
-                    .WithErrors(readResult);
-            }
-
-            var existingContents = readResult.Value;
-            var mergedContents = Merge(existingContents, celbridgeContents);
-            if (mergedContents is null)
-            {
-                return Result.Ok();
-            }
-
-            return await fileSystem.WriteAllTextAsync(gitIgnorePath, mergedContents);
+            return Result.Fail("Failed to read the bundled .gitignore.")
+                .WithErrors(celbridgeResult);
         }
-        catch (Exception ex)
+
+        var celbridgeContents = celbridgeResult.Value;
+        var gitIgnorePath = Path.Combine(projectFolderPath, GitIgnoreFileName);
+
+        var existingInfo = await fileSystem.GetInfoAsync(gitIgnorePath);
+        var hasExistingGitIgnore = existingInfo.IsSuccess
+            && existingInfo.Value.Kind == StorageItemKind.File;
+
+        if (!hasExistingGitIgnore)
         {
-            return Result.Fail($"An exception occurred when writing the .gitignore: {projectFolderPath}")
-                .WithException(ex);
+            return await fileSystem.WriteAllTextAsync(gitIgnorePath, celbridgeContents);
         }
+
+        var readResult = await fileSystem.ReadAllTextAsync(gitIgnorePath);
+        if (readResult.IsFailure)
+        {
+            return Result.Fail($"Failed to read existing .gitignore: {gitIgnorePath}")
+                .WithErrors(readResult);
+        }
+
+        var existingContents = readResult.Value;
+        var mergedContents = Merge(existingContents, celbridgeContents);
+        if (mergedContents is null)
+        {
+            return Result.Ok();
+        }
+
+        return await fileSystem.WriteAllTextAsync(gitIgnorePath, mergedContents);
     }
 
     /// <summary>
@@ -277,15 +277,5 @@ public static class GitIgnoreWriter
     {
         return trimmedLine.Length > 0
             && !trimmedLine.StartsWith('#');
-    }
-
-    private static string ReadCelbridgeGitIgnore()
-    {
-        var assembly = typeof(GitIgnoreWriter).Assembly;
-        using var stream = assembly.GetManifestResourceStream(GitIgnoreResourceName)
-            ?? throw new InvalidDataException($"Resource '{GitIgnoreResourceName}' could not be opened.");
-        using var reader = new StreamReader(stream);
-
-        return reader.ReadToEnd();
     }
 }
