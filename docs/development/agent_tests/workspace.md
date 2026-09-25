@@ -5,8 +5,9 @@ settings document. Read the [README](README.md) for the invariants, evidence rul
 
 ## Surfaces
 
-The Explorer tree, the Search panel and its field, modal dialogs with text fields, the application's Edit
-menu, the document tab strip and its context menu, and the project settings form.
+The Explorer tree, the Search panel and its field, modal dialogs with text fields and the confirmations a
+command raises behind them, the application's Edit menu, the document tab strip and its context menu, and
+the project settings form.
 
 ## Cases
 
@@ -29,6 +30,7 @@ menu, the document tab strip and its context menu, and the project settings form
 | Focus on a toolbar or other chrome, just after editing a document | copy, and a verb that touches no clipboard | both still reach the surface the user was last editing, and the Edit menu offers what the shortcuts do | 3 |
 | The Explorer's context menu, just used to copy a path | press SPACE | no item of the dismissed menu runs: no document opens and the tree is unchanged | 3 |
 | The Explorer's context menu on a resource with another below it, just used to open Rename, and that dialog canceled | press Down | the selection moves to the resource below: the keyboard came back to the tree | 3 |
+| The Explorer holding the keyboard with a resource selected, and New Project pointed at a folder that already holds a file the chosen template writes | create, then decline the confirmation that names the file, then press Down | the project that was open is still open and unchanged, and the selection moves to the resource below: the keyboard came back past two dialogs in a row | 3 |
 | The Explorer holding the keyboard, with the project settings document on screen | press empty space in the document, away from any control | the document takes the keyboard: `app_get_state` names Documents as the focused panel | 3 |
 | The downloads folder picker in project settings, with the name of a folder other than `downloads` typed into its search field and Down pressed | press Enter | the highlighted folder is chosen: the Downloads folder field and the project file both name it | 3 |
 | A shortcut to a project file, its Opens in list just opened with a click | press Down, then Enter | the open list keeps the keyboard: Enter chooses the next area, and the project file records it | 3 |
@@ -41,7 +43,9 @@ The alert case reads the request's deadline rather than waiting it out: while th
 ## Not covered
 
 What the commands themselves do — creating, renaming and deleting resources, or the results of a search.
-The subject here is which surface a keystroke reaches.
+The subject here is which surface a keystroke reaches. Creating a project appears only in the row about
+the keyboard returning from its confirmation; which files that confirmation replaces, and what it leaves
+merged, are settled by unit tests.
 
 A menu nested inside another, such as the submenu a sub-item opens, is not covered: it is not a flyout and
 the host cannot tell when one closes.

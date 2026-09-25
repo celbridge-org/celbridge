@@ -18,7 +18,14 @@ public interface IProjectService
     Result ValidateNewProjectConfig(NewProjectConfig config);
 
     /// <summary>
+    /// Returns the names of the files the configured template writes that already exist in the
+    /// destination folder, sorted by name. Creating the project replaces these files.
+    /// </summary>
+    Task<Result<IReadOnlyList<string>>> GetConflictingFileNamesAsync(NewProjectConfig config);
+
+    /// <summary>
     /// Create a new project file and database using the specified config information.
+    /// Files the template writes replace any file of the same name already in the destination folder.
     /// </summary>
     Task<Result> CreateProjectAsync(NewProjectConfig config);
 

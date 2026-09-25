@@ -1,5 +1,7 @@
 using System.IO.Compression;
+using Celbridge.Logging;
 using Celbridge.Platform;
+using Celbridge.Utilities;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Projects.Services;
@@ -12,14 +14,17 @@ public class ProjectTemplateService : IProjectTemplateService
     private readonly List<ProjectTemplate> _templates;
     private readonly ILocalFileSystem _fileSystem;
     private readonly IAppEnvironment _appEnvironment;
+    private readonly ILogger<ProjectTemplateService> _logger;
 
     public ProjectTemplateService(
         IStringLocalizer stringLocalizer,
         ILocalFileSystem fileSystem,
-        IAppEnvironment appEnvironment)
+        IAppEnvironment appEnvironment,
+        ILogger<ProjectTemplateService> logger)
     {
         _fileSystem = fileSystem;
         _appEnvironment = appEnvironment;
+        _logger = logger;
 
         _templates =
         [
@@ -44,6 +49,62 @@ public class ProjectTemplateService : IProjectTemplateService
 
     public ProjectTemplate GetDefaultTemplate() =>
         _templates.First(t => t.Id == "Empty");
+
+    public async Task<Result<IReadOnlyList<string>>> GetConflictingFileNamesAsync(string projectFilePath, ProjectTemplate template)
+    {
+        Guard.IsNotNullOrWhiteSpace(projectFilePath);
+
+        try
+        {
+            var projectFolderPath = Path.GetDirectoryName(projectFilePath);
+            Guard.IsNotNull(projectFolderPath);
+
+            var entriesResult = await _fileSystem.EnumerateAsync(projectFolderPath, "*", recursive: false);
+            if (entriesResult.IsFailure)
+            {
+                // The folder does not exist yet, so the template can't collide with anything in it.
+                var noConflicts = new List<string>();
+
+                return noConflicts.OkResult<IReadOnlyList<string>>();
+            }
+
+            // Names match under the filesystem's own case rules, so the template's readme.md
+            // conflicts with the user's README.md on Windows and macOS but not on Linux.
+            var existingFileNames = new Dictionary<string, string>(PathComparison.Comparer);
+            foreach (var entry in entriesResult.Value)
+            {
+                if (entry.IsFolder)
+                {
+                    continue;
+                }
+
+                var existingFileName = Path.GetFileName(entry.FullPath);
+                existingFileNames[existingFileName] = existingFileName;
+            }
+
+            // Report the name the file already has rather than the template's spelling of it. That is
+            // how the user sees the file, and a case-preserving filesystem keeps that name after the
+            // template's contents replace it.
+            var conflictingFileNames = new List<string>();
+            var templateFileNames = GetTemplateFileNames(projectFilePath, template);
+            foreach (var templateFileName in templateFileNames)
+            {
+                if (existingFileNames.TryGetValue(templateFileName, out var existingFileName))
+                {
+                    conflictingFileNames.Add(existingFileName);
+                }
+            }
+
+            conflictingFileNames.Sort(StringComparer.Ordinal);
+
+            return conflictingFileNames.OkResult<IReadOnlyList<string>>();
+        }
+        catch (Exception ex)
+        {
+            return Result<IReadOnlyList<string>>.Fail($"An exception occurred when checking for conflicting files: {projectFilePath}")
+                .WithException(ex);
+        }
+    }
 
     public async Task<Result> CreateFromTemplateAsync(string projectFilePath, ProjectTemplate template)
     {
@@ -148,8 +209,12 @@ public class ProjectTemplateService : IProjectTemplateService
                 {
                     continue;
                 }
+
+                // The template owns the files it ships, so a file of the same name already in the
+                // folder is replaced. GetConflictingFileNamesAsync reports these ahead of time so
+                // the user confirms the replacement before anything is written.
                 var destFile = Path.Combine(projectPath, Path.GetFileName(entry.FullPath));
-                var moveFileResult = await _fileSystem.MoveFileAsync(entry.FullPath, destFile);
+                var moveFileResult = await _fileSystem.MoveFileAsync(entry.FullPath, destFile, overwrite: true);
                 if (moveFileResult.IsFailure)
                 {
                     return Result.Fail($"Failed to move staged file to final location: {entry.FullPath}")
@@ -171,6 +236,14 @@ public class ProjectTemplateService : IProjectTemplateService
                         .WithErrors(moveFolderResult);
                 }
             }
+
+            // A project is usable without a .gitignore, so a failure here is logged and the project
+            // still counts as created.
+            var gitIgnoreResult = await GitIgnoreWriter.WriteAsync(projectPath, _fileSystem);
+            if (gitIgnoreResult.IsFailure)
+            {
+                _logger.LogWarning(gitIgnoreResult, $"Failed to write .gitignore for project: '{projectFilePath}'");
+            }
         }
         catch (Exception ex)
         {
@@ -189,5 +262,37 @@ public class ProjectTemplateService : IProjectTemplateService
         }
 
         return Result.Ok();
+    }
+
+    // Names the template writes into the project folder, with the template's own project file under
+    // the name the user chose. Templates are flat, so nested entries are not reported.
+    private List<string> GetTemplateFileNames(string projectFilePath, ProjectTemplate template)
+    {
+        var sourceZipPath = _appEnvironment.GetBundledAssetPath(
+            ProjectsModuleFolder, $"Assets/Templates/{template.Id}.zip");
+
+        var projectFileName = Path.GetFileName(projectFilePath);
+
+        var templateFileNames = new List<string>();
+        using var archive = ZipFile.OpenRead(sourceZipPath);
+        foreach (var entry in archive.Entries)
+        {
+            var isNestedEntry = entry.FullName != entry.Name;
+            if (isNestedEntry
+                || string.IsNullOrEmpty(entry.Name))
+            {
+                continue;
+            }
+
+            if (entry.Name == TemplateProjectFileName)
+            {
+                templateFileNames.Add(projectFileName);
+                continue;
+            }
+
+            templateFileNames.Add(entry.Name);
+        }
+
+        return templateFileNames;
     }
 }

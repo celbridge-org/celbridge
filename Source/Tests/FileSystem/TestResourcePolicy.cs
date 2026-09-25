@@ -24,6 +24,7 @@ internal static class TestResourcePolicy
         public IProject? CurrentProject => null;
 
         public Result ValidateNewProjectConfig(NewProjectConfig config) => throw new NotImplementedException();
+        public Task<Result<IReadOnlyList<string>>> GetConflictingFileNamesAsync(NewProjectConfig config) => throw new NotImplementedException();
         public Task<Result> CreateProjectAsync(NewProjectConfig config) => throw new NotImplementedException();
         public Task<Result<IProject>> LoadProjectAsync(string projectFilePath, MigrationResult migrationResult) => throw new NotImplementedException();
         public Task<ProjectConfigReconcileResult?> ReconcileConfigAsync(IReadOnlyList<EditorContribution> discoveredContributions, bool persistNormalizedConfig) => throw new NotImplementedException();

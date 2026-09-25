@@ -121,6 +121,11 @@ public class ProjectService : IProjectService
         return Result.Ok();
     }
 
+    public async Task<Result<IReadOnlyList<string>>> GetConflictingFileNamesAsync(NewProjectConfig config)
+    {
+        return await _projectTemplateService.GetConflictingFileNamesAsync(config.ProjectFilePath, config.Template);
+    }
+
     public async Task<Result> CreateProjectAsync(NewProjectConfig config)
     {
         try
