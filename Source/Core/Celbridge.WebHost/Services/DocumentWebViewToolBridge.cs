@@ -146,14 +146,6 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
         }
     }
 
-    public void NotifyContentFailed(ResourceKey resource, string reason)
-    {
-        if (_entries.TryGetValue(resource, out var entry))
-        {
-            entry.NotifyContentFailed(reason);
-        }
-    }
-
     public async Task<Result<WebViewEvalResult>> EvalAsync(ResourceKey resource, string expression, string? frame = null)
     {
         if (!_entries.TryGetValue(resource, out var entry))
@@ -944,7 +936,7 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
                 var completed = await Task.WhenAny(readyTask, delayTask);
                 if (completed != readyTask)
                 {
-                    return Result.Fail($"Timed out after {timeout.TotalSeconds:0.#}s waiting for the editor's content-ready signal. The editor must call celbridge.notifyContentLoaded() (custom editors) or finish navigation (HTML viewer) before WebView tools can dispatch. If the document's tab is not showing, activate it with document_activate and try again.");
+                    return Result.Fail($"Timed out after {timeout.TotalSeconds:0.#}s waiting for the editor's content-ready signal. The editor must call celbridge.notifyContentLoaded() before WebView tools can dispatch. If the document's tab is not showing, activate it with document_activate and try again.");
                 }
 
                 cts.Cancel();

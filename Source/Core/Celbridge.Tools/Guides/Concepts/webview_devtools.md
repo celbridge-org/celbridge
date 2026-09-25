@@ -1,6 +1,6 @@
 # WebView devtools
 
-The `webview_*` tools give the agent a feedback loop into a running contribution editor or HTML viewer WebView, so the agent can iterate on package code without needing the user to reload and paste back errors.
+The `webview_*` tools give the agent a feedback loop into a running contribution editor WebView, and into the page the HTML editor previews, so the agent can iterate on package code or a page without needing the user to reload and paste back errors.
 
 ## Edit-reload-inspect loop
 
@@ -13,7 +13,7 @@ The `webview_*` tools give the agent a feedback loop into a running contribution
 
 ## Confirm the right editor opened the document
 
-`document_get_state` returns an `editorId` per open document. A `.html` page can be inspected in the HTML viewer (`celbridge.html-viewer`), where the page is the WebView itself, and in the HTML editor (`celbridge.html`), where the page is the editor's content frame. In the general code editor (`celbridge.code`) there is no page to inspect, only the editor itself. Check `editorId` before any `webview_*` call.
+`document_get_state` returns an `editorId` per open document. A `.html` page opens in the HTML editor (`celbridge.html`), where the page is the editor's content frame. In the general code editor (`celbridge.code`) there is no page to inspect, only the editor itself. Check `editorId` before any `webview_*` call.
 
 ## Frames
 
@@ -53,7 +53,7 @@ To inspect an image already in the project tree, use `file_read_image` (JPEG, PN
 
 ## Readiness contract
 
-Every inspection and eval tool waits up to 5 seconds for the editor's content-ready signal before dispatching. For contribution editors that means `celbridge.notifyContentLoaded()`. For the HTML viewer it means the page has finished loading, which a document opened in the background may not report until its tab is shown, so activate it first with `document_activate` or `document_open` with `activate: true`. On a document that is showing, a `content-ready` timeout means the editor never signalled — check the console for an unhandled exception during init.
+Every inspection and eval tool waits up to 5 seconds for the editor's content-ready signal, `celbridge.notifyContentLoaded()`, before dispatching. A document opened in the background may not signal until its tab is shown, so activate it first with `document_activate` or `document_open` with `activate: true`. On a document that is showing, a `content-ready` timeout means the editor never signalled — check the console for an unhandled exception during init.
 
 A call that acts on a frame then waits up to 5 seconds more for the frame to finish loading its page. The HTML editor reloads its preview after each save and each change on disk, so a call made just after a change waits for the new page.
 
@@ -67,7 +67,7 @@ Pass exactly one of `role` (with optional `name`), `text`, or `selector`. Role q
 
 ## Supported targets
 
-Any open document editor — text, markdown, HTML viewers and editors, custom contribution editors. Excluded: external-URL `.webview` documents, and editors whose package opts out. The resource key must match an open tab.
+Any open document editor — text, markdown, HTML, custom contribution editors. Excluded: external-URL `.webview` documents, and editors whose package opts out. The resource key must match an open tab.
 
 ## `webview_eval` is gated by an extra feature flag
 

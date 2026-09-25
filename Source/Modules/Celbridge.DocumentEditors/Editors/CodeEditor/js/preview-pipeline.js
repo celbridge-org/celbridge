@@ -20,7 +20,8 @@ export class PreviewPipeline {
     #viewModeController;
     #previewController;
 
-    // The loopback URL of the document's file, known once the initial content arrives.
+    // The loopback URL of the document's file, known once the initial content arrives. A rename or a move
+    // changes it.
     #documentUrl = null;
 
     // Settles once the renderer has loaded, or has failed to load.
@@ -133,8 +134,25 @@ export class PreviewPipeline {
         await this.#rendererSettled;
     }
 
-    handleExternalReload(content) {
+    handleExternalReload(content, resourceKey) {
+        this.#setResourceKey(resourceKey);
         this.#previewController.render(content || '');
+        this.#updatePreview();
+    }
+
+    // Called when a rename or a move gives the open document a new name and path. A preview of the saved file
+    // reloads at the new address, and a preview of the buffer renders again against the new folder.
+    handleRenamed(resourceKey) {
+        if (!resourceKey) {
+            return;
+        }
+
+        this.#setResourceKey(resourceKey);
+
+        if (!this.#previewController.canRefresh()) {
+            this.#previewController.render(this.#editorController.getValue());
+        }
+
         this.#updatePreview();
     }
 
@@ -171,6 +189,16 @@ export class PreviewPipeline {
         if (typeof state.previewScrollPercentage === 'number') {
             this.#previewController.setScrollPercentage(state.previewScrollPercentage);
         }
+    }
+
+    // Takes the document's name and path, which a rename or a move changes while the document stays open.
+    #setResourceKey(resourceKey) {
+        if (!resourceKey) {
+            return;
+        }
+
+        this.#previewController.setBasePath(extractParentPath(resourceKey));
+        this.#documentUrl = projectUrl(resourceKey);
     }
 
     // Reloads a preview of the saved file. It reloads even while Source mode hides it, so it always shows the

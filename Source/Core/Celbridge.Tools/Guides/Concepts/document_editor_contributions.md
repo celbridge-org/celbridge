@@ -83,6 +83,7 @@ await client.initializeDocument({
     onContent: async (content, metadata) => { /* load into editor */ },
     onRequestSave: async () => { /* await client.document.save(serialised) */ },
     onExternalChange: async () => { /* reload, then notifyContentLoaded(ExternalReload) */ },
+    onRenamed: (metadata) => { /* take the new name and path */ },
     onRequestState: () => { /* return opaque snapshot string or null */ },
     onRestoreState: (stateJson) => { /* apply snapshot */ }
 });
@@ -96,6 +97,7 @@ client.viewState.onChanged((viewState) => {
 - **`onContent(content, metadata)`** — initial load. `content` is string or base64; `metadata.resourceKey` is the resource key. Framework calls `notifyContentLoaded()` for you. Do not save here; suppress framework update events (see trap).
 - **`onRequestSave()`** — auto-save, tab close, programmatic flush. `await client.document.save(content)`. May fire while the tab is hidden.
 - **`onExternalChange(args)`** — file changed on disk. `client.document.load()`, apply with the spurious-update guard, then `client.document.notifyContentLoaded(ContentLoadedReason.ExternalReload)`. Forward `args.preserveViewState`.
+- **`onRenamed(metadata)`** — the document was renamed or moved, and it stays open in the same editor. `metadata` carries the new `resourceKey`, `fileName` and `filePath`. Update anything the editor derived from them at `onContent`, such as a URL built with `projectUrl()` or a syntax mode chosen by extension. An editor that uses only its content can leave this out.
 - **`onRequestState()` / `onRestoreState(stateJson)`** — opaque string round-trip for scroll, selection, pending view state. Survives external reloads and session restore. Return `null` if nothing to preserve.
 
 ## Styling

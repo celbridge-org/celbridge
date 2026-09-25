@@ -84,6 +84,15 @@ export class DocumentAPI {
     }
 
     /**
+     * Registers a handler for rename notifications from the host. A rename or a move keeps the document
+     * open in the same editor, which otherwise keeps the name and path it was given when it opened.
+     * @param {Function} handler - Called with the document's new DocumentMetadata.
+     */
+    onRenamed(handler) {
+        this.#transport.addEventListener('document/renamed', (params) => handler(params?.metadata));
+    }
+
+    /**
      * Registers a handler for save request notifications from the host.
      * The handler should get the current content and call document.save(content).
      * @param {Function} handler - Called when the host requests a save.

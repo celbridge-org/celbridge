@@ -50,7 +50,7 @@
                 Background="{ThemeResource ChromeBackgroundBrush}"
                 BorderBrush="{ThemeResource DividerBrush}"
                 BorderThickness="0,0,0,1"
-                Visibility="{x:Bind ViewModel.IsUrlBarVisible, Mode=OneWay}">
+                Visibility="{x:Bind ViewModel.ShowUrlBar, Mode=OneWay}">
             <Grid ColumnSpacing="6">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />

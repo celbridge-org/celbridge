@@ -2,13 +2,11 @@ using Celbridge.Commands;
 using Celbridge.Documents;
 using Celbridge.Explorer;
 using Celbridge.Resources;
-using Celbridge.Server;
 using Celbridge.Settings;
 using Celbridge.UserInterface;
 using Celbridge.WebHost;
 using Microsoft.Extensions.Localization;
 using Celbridge.WebHost.Services;
-using Celbridge.WebView.Services;
 using Celbridge.Tests.Helpers;
 using Celbridge.WebView.ViewModels;
 using Celbridge.Workspace;
@@ -21,16 +19,12 @@ public class WebViewDocumentViewModelTests
     private ICommandService _commandService = null!;
     private IResourceFileSystem _resourceFileSystem = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
-    private IServerService _serverService = null!;
     private IStringLocalizer _stringLocalizer = null!;
 
     [SetUp]
     public void SetUp()
     {
         _commandService = Substitute.For<ICommandService>();
-        _serverService = Substitute.For<IServerService>();
-        _serverService.Port.Returns(5000);
-
         _stringLocalizer = Substitute.For<IStringLocalizer>();
 
         _resourceFileSystem = Substitute.For<IResourceFileSystem>();
@@ -145,7 +139,6 @@ public class WebViewDocumentViewModelTests
         await viewModel.LoadContent();
 
         viewModel.ShowUrlBar.Should().BeTrue();
-        viewModel.IsUrlBarVisible.Should().BeTrue();
     }
 
     [Test]
@@ -161,63 +154,6 @@ public class WebViewDocumentViewModelTests
         await viewModel.LoadContent();
 
         viewModel.ShowUrlBar.Should().BeFalse();
-        viewModel.IsUrlBarVisible.Should().BeFalse();
-    }
-
-    [Test]
-    public async Task LoadContent_HtmlViewer_IgnoresFileContents_AndSucceeds()
-    {
-        // The HtmlViewer role serves the HTML file directly via the project virtual
-        // host without consulting any .webview file. The resource file system is
-        // never called for this role.
-        var viewModel = new WebViewDocumentViewModel(new NullLogger<WebViewDocumentViewModel>(), _commandService, _workspaceWrapper, _serverService, _stringLocalizer)
-        {
-            FilePath = "ignored.html",
-            FileResource = new ResourceKey("page.html"),
-            Role = WebViewDocumentRole.HtmlViewer,
-        };
-
-        var result = await viewModel.LoadContent();
-
-        result.IsSuccess.Should().BeTrue();
-        await _resourceFileSystem.DidNotReceive().ReadAllTextAsync(Arg.Any<ResourceKey>());
-    }
-
-    [Test]
-    public void IsUrlBarVisible_HtmlViewer_IsFalse()
-    {
-        // The URL bar is external-URL chrome; the HTML viewer never shows it.
-        var viewModel = new WebViewDocumentViewModel(new NullLogger<WebViewDocumentViewModel>(), _commandService, _workspaceWrapper, _serverService, _stringLocalizer)
-        {
-            FileResource = new ResourceKey("page.html"),
-            Role = WebViewDocumentRole.HtmlViewer,
-        };
-
-        viewModel.IsUrlBarVisible.Should().BeFalse();
-    }
-
-    [Test]
-    public void NavigateUrl_HtmlViewer_BuildsLoopbackProjectUrlFromResourceKey()
-    {
-        var viewModel = new WebViewDocumentViewModel(new NullLogger<WebViewDocumentViewModel>(), _commandService, _workspaceWrapper, _serverService, _stringLocalizer)
-        {
-            FileResource = new ResourceKey("Pages/welcome.html"),
-            Role = WebViewDocumentRole.HtmlViewer,
-        };
-
-        // The HtmlViewer is served over the loopback file server's /project/ route on every head.
-        viewModel.NavigateUrl.Should().Be("http://127.0.0.1:5000/project/Pages/welcome.html");
-    }
-
-    [Test]
-    public async Task NavigateUrl_ExternalUrl_ReturnsSourceUrl()
-    {
-        StubWebViewFile("source_url = \"https://example.com/x\"");
-
-        var viewModel = CreateViewModel();
-        await viewModel.LoadContent();
-
-        viewModel.NavigateUrl.Should().Be("https://example.com/x");
     }
 
     [Test]
@@ -635,7 +571,6 @@ public class WebViewDocumentViewModelTests
         // Adding a bookmark starts it blank, and the bar is on screen while it is filled in, so an entry
         // with no usable URL must not put a button there that does nothing.
         var viewModel = CreateViewModel();
-        viewModel.Role = WebViewDocumentRole.ExternalUrl;
         viewModel.Bookmarks.Add(viewModel.CreateBookmark(new WebViewBookmark("https://example.com")));
         viewModel.Bookmarks.Add(viewModel.CreateBookmark(new WebViewBookmark(string.Empty)));
 
@@ -647,7 +582,6 @@ public class WebViewDocumentViewModelTests
     public void IsBookmarksBarVisible_WithOnlyUnnavigableBookmarks_IsFalse()
     {
         var viewModel = CreateViewModel();
-        viewModel.Role = WebViewDocumentRole.ExternalUrl;
         viewModel.Bookmarks.Add(viewModel.CreateBookmark(new WebViewBookmark(string.Empty)));
 
         viewModel.IsBookmarksBarVisible.Should().BeFalse();
@@ -659,7 +593,6 @@ public class WebViewDocumentViewModelTests
         // The bar doubles as a live preview of the bookmarks being edited, so it stays up with the
         // settings showing.
         var viewModel = CreateViewModel();
-        viewModel.Role = WebViewDocumentRole.ExternalUrl;
         viewModel.Bookmarks.Add(viewModel.CreateBookmark(new WebViewBookmark("https://example.com")));
 
         viewModel.IsSettingsOpen = true;
@@ -671,7 +604,6 @@ public class WebViewDocumentViewModelTests
     public void IsPageOnScreen_WithAPageShowing_IsTrue()
     {
         var viewModel = CreateViewModel();
-        viewModel.Role = WebViewDocumentRole.ExternalUrl;
         viewModel.CurrentUrl = "https://example.com/";
 
         viewModel.IsPageOnScreen.Should().BeTrue();
@@ -681,7 +613,6 @@ public class WebViewDocumentViewModelTests
     public void IsPageOnScreen_WhileTheSettingsAreOpen_IsFalse()
     {
         var viewModel = CreateViewModel();
-        viewModel.Role = WebViewDocumentRole.ExternalUrl;
         viewModel.CurrentUrl = "https://example.com/";
 
         viewModel.IsSettingsOpen = true;
@@ -694,7 +625,6 @@ public class WebViewDocumentViewModelTests
     public void IsPageOnScreen_WithNoPage_IsFalse(string currentUrl)
     {
         var viewModel = CreateViewModel();
-        viewModel.Role = WebViewDocumentRole.ExternalUrl;
         viewModel.CurrentUrl = currentUrl;
 
         viewModel.IsPageOnScreen.Should().BeFalse();
@@ -704,7 +634,6 @@ public class WebViewDocumentViewModelTests
     public void IsPageOnScreen_AfterTheNavigationFailed_IsFalse()
     {
         var viewModel = CreateViewModel();
-        viewModel.Role = WebViewDocumentRole.ExternalUrl;
         viewModel.CurrentUrl = "https://example.com/";
 
         viewModel.NotifyNavigationStarted("https://example.com/missing");
@@ -809,21 +738,10 @@ public class WebViewDocumentViewModelTests
     }
 
     [Test]
-    public void IsPageOnScreen_ForTheHtmlViewer_IsTrue()
-    {
-        // The viewer has no placeholder or settings, so its page is always what the document shows.
-        var viewModel = CreateViewModel();
-        viewModel.Role = WebViewDocumentRole.HtmlViewer;
-
-        viewModel.IsPageOnScreen.Should().BeTrue();
-    }
-
-    [Test]
     public void HasWayToNavigate_WithOnlyABookmarksBar_IsTrue()
     {
         // A document that hides its URL bar and has no Home URL can still open a page from its bookmarks.
         var viewModel = CreateViewModel();
-        viewModel.Role = WebViewDocumentRole.ExternalUrl;
         viewModel.ShowUrlBar = false;
         viewModel.Bookmarks.Add(viewModel.CreateBookmark(new WebViewBookmark("https://example.com")));
 
@@ -834,7 +752,6 @@ public class WebViewDocumentViewModelTests
     public void HasWayToNavigate_WithBookmarksButTheBarHidden_IsFalse()
     {
         var viewModel = CreateViewModel();
-        viewModel.Role = WebViewDocumentRole.ExternalUrl;
         viewModel.ShowUrlBar = false;
         viewModel.ShowBookmarksBar = false;
         viewModel.Bookmarks.Add(viewModel.CreateBookmark(new WebViewBookmark("https://example.com")));
@@ -847,7 +764,6 @@ public class WebViewDocumentViewModelTests
     {
         // Home names a destination, so it stays live and returns the document area to the page.
         var viewModel = CreateViewModel();
-        viewModel.Role = WebViewDocumentRole.ExternalUrl;
         viewModel.SourceUrl = "https://example.com";
 
         viewModel.IsSettingsOpen = true;
@@ -861,7 +777,6 @@ public class WebViewDocumentViewModelTests
         // Back, Forward and Reload act on a page that is not on screen, so they report as unavailable
         // rather than acting out of sight.
         var viewModel = CreateViewModel();
-        viewModel.Role = WebViewDocumentRole.ExternalUrl;
         viewModel.CurrentUrl = "https://example.com";
         viewModel.CanGoBack = true;
         viewModel.CanGoForward = true;
@@ -897,104 +812,6 @@ public class WebViewDocumentViewModelTests
         viewModel.SourceUrl.Should().Be("https://example.com");
     }
 
-    [TestCase("html-test/page.html", "html-test/page.html")]
-    [TestCase("my%20folder/two%20words.md", "my folder/two words.md")]
-    [TestCase("html-test/page.html?query=1#section", "html-test/page.html")]
-    [TestCase("html-test/", "html-test")]
-    public void TryResolveProjectResource_MapsAProjectAddressToItsResource(string urlPath, string expectedPath)
-    {
-        var viewModel = CreateHtmlViewer();
-
-        var isResolved = viewModel.TryResolveProjectResource(new Uri($"http://127.0.0.1:5000/project/{urlPath}"), out var resource);
-
-        isResolved.Should().BeTrue();
-        resource.Should().Be(new ResourceKey(expectedPath));
-    }
-
-    [TestCase("https://example.com/project/page.html")]
-    [TestCase("http://127.0.0.1:6000/project/page.html")]
-    [TestCase("http://localhost:5000/project/page.html")]
-    [TestCase("http://127.0.0.1:5000/assets/celbridge-client/celbridge.js")]
-    [TestCase("http://127.0.0.1:5000/project/")]
-    public void TryResolveProjectResource_RefusesAnyOtherAddress(string url)
-    {
-        var viewModel = CreateHtmlViewer();
-
-        var isResolved = viewModel.TryResolveProjectResource(new Uri(url), out _);
-
-        isResolved.Should().BeFalse();
-    }
-
-    [TestCase("http://127.0.0.1:5000/project/%2E%2E/secret.txt")]
-    [TestCase("http://127.0.0.1:5000/project/html-test/%2E%2E%2F%2E%2E%2Fsecret.txt")]
-    [TestCase("http://127.0.0.1:5000/project/temp:downloads/staged.txt")]
-    public void TryResolveProjectResource_CannotLeaveTheProject(string url)
-    {
-        var viewModel = CreateHtmlViewer();
-
-        var isResolved = viewModel.TryResolveProjectResource(new Uri(url), out var resource);
-
-        // Refused outright, or kept to a name inside the project root where a colon is a legal file name.
-        if (isResolved)
-        {
-            resource.Root.Should().Be(ResourceKey.DefaultRoot);
-            resource.Path.Should().NotContain("..");
-        }
-    }
-
-    [Test]
-    public void OpenLinkedResource_OpensAFileThatHasAnEditor_UnderItsNameOnDisk()
-    {
-        // The link differs in case from the file, which the file system ignores.
-        var linkedResource = new ResourceKey("html-test/Page.html");
-        var resourceOnDisk = new ResourceKey("html-test/page.html");
-        StubLinkedResource(linkedResource, resourceOnDisk, isDocumentSupported: true);
-
-        var openCommand = Substitute.For<IOpenDocumentCommand>();
-        _commandService
-            .When(service => service.Execute(Arg.Any<Action<IOpenDocumentCommand>>(), Arg.Any<string>(), Arg.Any<int>()))
-            .Do(call => call.Arg<Action<IOpenDocumentCommand>>().Invoke(openCommand));
-
-        var isOpened = CreateHtmlViewer().OpenLinkedResource(linkedResource);
-
-        isOpened.Should().BeTrue();
-        openCommand.FileResource.Should().Be(resourceOnDisk);
-        _commandService.DidNotReceive().Execute(Arg.Any<Action<ISelectResourceCommand>>(), Arg.Any<string>(), Arg.Any<int>());
-    }
-
-    [Test]
-    public void OpenLinkedResource_SelectsAResourceWithNoEditorInTheExplorer()
-    {
-        var linkedResource = new ResourceKey("html-test/sample.zip");
-        StubLinkedResource(linkedResource, linkedResource, isDocumentSupported: false);
-
-        var selectCommand = Substitute.For<ISelectResourceCommand>();
-        _commandService
-            .When(service => service.Execute(Arg.Any<Action<ISelectResourceCommand>>(), Arg.Any<string>(), Arg.Any<int>()))
-            .Do(call => call.Arg<Action<ISelectResourceCommand>>().Invoke(selectCommand));
-
-        var isOpened = CreateHtmlViewer().OpenLinkedResource(linkedResource);
-
-        isOpened.Should().BeTrue();
-        selectCommand.Resource.Should().Be(linkedResource);
-        _commandService.DidNotReceive().Execute(Arg.Any<Action<IOpenDocumentCommand>>(), Arg.Any<string>(), Arg.Any<int>());
-    }
-
-    [Test]
-    public void OpenLinkedResource_ReportsAResourceTheProjectDoesNotHave()
-    {
-        var linkedResource = new ResourceKey("html-test/missing.html");
-        _workspaceWrapper.IsWorkspaceLoaded.Returns(true);
-        _workspaceWrapper.WorkspaceService.ResourceService.Registry.NormalizeResourceKey(linkedResource)
-            .Returns(Result<ResourceKey>.Fail("Not in the project"));
-
-        var isOpened = CreateHtmlViewer().OpenLinkedResource(linkedResource);
-
-        isOpened.Should().BeFalse();
-        _commandService.DidNotReceive().Execute(Arg.Any<Action<IOpenDocumentCommand>>(), Arg.Any<string>(), Arg.Any<int>());
-        _commandService.DidNotReceive().Execute(Arg.Any<Action<ISelectResourceCommand>>(), Arg.Any<string>(), Arg.Any<int>());
-    }
-
     private void StubWebViewFile(string tomlContent)
     {
         _resourceFileSystem.ReadAllTextAsync(Arg.Any<ResourceKey>())
@@ -1003,7 +820,7 @@ public class WebViewDocumentViewModelTests
 
     private WebViewDocumentViewModel CreateViewModel()
     {
-        return new WebViewDocumentViewModel(new NullLogger<WebViewDocumentViewModel>(), _commandService, _workspaceWrapper, _serverService, _stringLocalizer)
+        return new WebViewDocumentViewModel(new NullLogger<WebViewDocumentViewModel>(), _commandService, _workspaceWrapper, _stringLocalizer)
         {
             FileResource = new ResourceKey("test.webview"),
         };
@@ -1013,7 +830,6 @@ public class WebViewDocumentViewModelTests
     private WebViewDocumentViewModel CreateViewModelShowingPage(string url)
     {
         var viewModel = CreateViewModel();
-        viewModel.Role = WebViewDocumentRole.ExternalUrl;
         viewModel.NotifyNavigationCommitted(url);
 
         return viewModel;
@@ -1033,24 +849,5 @@ public class WebViewDocumentViewModelTests
         };
 
         return addresses;
-    }
-
-    private WebViewDocumentViewModel CreateHtmlViewer()
-    {
-        return new WebViewDocumentViewModel(new NullLogger<WebViewDocumentViewModel>(), _commandService, _workspaceWrapper, _serverService, _stringLocalizer)
-        {
-            FileResource = new ResourceKey("html-test/index.html"),
-            Role = WebViewDocumentRole.HtmlViewer,
-        };
-    }
-
-    private void StubLinkedResource(ResourceKey linkedResource, ResourceKey resourceOnDisk, bool isDocumentSupported)
-    {
-        _workspaceWrapper.IsWorkspaceLoaded.Returns(true);
-
-        var workspaceService = _workspaceWrapper.WorkspaceService;
-        workspaceService.ResourceService.Registry.NormalizeResourceKey(linkedResource)
-            .Returns(Result<ResourceKey>.Ok(resourceOnDisk));
-        workspaceService.DocumentsService.IsDocumentSupported(resourceOnDisk).Returns(isDocumentSupported);
     }
 }

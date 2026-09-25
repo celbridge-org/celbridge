@@ -259,6 +259,33 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         _toolBridgeRegisteredResource = newResource;
     }
 
+    /// <summary>
+    /// Tells the editor page the document's new name and path. Called after a rename, which reuses this
+    /// controller and its page, so the page would otherwise keep the name it was given when it opened.
+    /// </summary>
+    public void NotifyRenamed()
+    {
+        if (Host is null)
+        {
+            return;
+        }
+
+        _ = SendRenamedAsync(Host);
+    }
+
+    private async Task SendRenamedAsync(CelbridgeHost host)
+    {
+        try
+        {
+            await host.NotifyRenamedAsync(CreateDocumentMetadata());
+        }
+        catch (Exception ex)
+        {
+            // The rename has already happened, so a page that cannot be reached is logged rather than failing it.
+            _logger.LogWarning(ex, "Failed to tell the editor page about a rename: {File}", _viewModel.FilePath);
+        }
+    }
+
     public bool HasUnsavedChanges => _viewModel.HasUnsavedChanges;
 
     /// <summary>
@@ -424,7 +451,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
         // A custom editor is application chrome, not a browsable page, so disable WebView zoom (Ctrl+/-,
         // Ctrl+scroll). It reads as part of the app and follows OS display scaling like the native panels.
-        // The .webview browser and HTML viewer keep zoom.
+        // The .webview browser keeps zoom.
         _webViewAdapter.SetZoomControlEnabled(WebView.CoreWebView2, false);
 
         // Register this editor's web surface. It hosts an edit target (this) for the Edit commands.
@@ -810,7 +837,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         _logger);
 
     // An editor page is never legitimately empty, so an empty probe on one is a failed load.
-    private WebViewSurface Surface => new(_viewModel.FileResource.ToString(), WebView, TreatEmptyDocumentAsFailure: true);
+    private WebViewSurface Surface => new(_viewModel.FileResource.ToString(), WebView);
 
     private void OnNavigationStarting_Diagnostics(CoreWebView2 sender, CoreWebView2NavigationStartingEventArgs args)
     {

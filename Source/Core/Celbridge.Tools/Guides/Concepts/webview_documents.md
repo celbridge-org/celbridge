@@ -6,7 +6,7 @@ A `.webview` file is a TOML file naming an external web page to display in an em
 source_url = "https://example.com"
 ```
 
-`source_url` must be an external `http://` or `https://` URL. Local paths and resource keys are not supported here — for project-local HTML, use the HTML viewer document type instead. An optional `show_url_bar` boolean (default `true`) hides the document's browser-style URL bar when set to `false`, presenting the page as an application.
+`source_url` must be an external `http://` or `https://` URL. Local paths and resource keys are not supported here — for project-local HTML, open the `.html` file itself, which shows it in the HTML editor. An optional `show_url_bar` boolean (default `true`) hides the document's browser-style URL bar when set to `false`, presenting the page as an application.
 
 Use `file_write` to create a `.webview` file in one step:
 

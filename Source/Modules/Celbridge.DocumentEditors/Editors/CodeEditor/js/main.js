@@ -202,8 +202,13 @@ async function initialize() {
                 // The editor reports its content loaded once the preview has the content too.
                 await previewReady;
             },
-            onExternalReloadContent: (content) => {
-                previewPipeline?.handleExternalReload(content);
+            onExternalReloadContent: (content, metadata) => {
+                followDocumentName(metadata);
+                previewPipeline?.handleExternalReload(content, metadata?.resourceKey);
+            },
+            onRenamed: (metadata) => {
+                followDocumentName(metadata);
+                previewPipeline?.handleRenamed(metadata?.resourceKey);
             },
             onSaved: () => {
                 previewPipeline?.handleSaved();
@@ -220,6 +225,16 @@ async function initialize() {
     } catch (ex) {
         console.error('Failed to initialize host connection:', ex);
     }
+}
+
+// A rename or a move keeps the document open in this editor, and can change its extension, so the
+// highlighting follows the name the host reports.
+function followDocumentName(metadata) {
+    if (!metadata?.fileName) {
+        return;
+    }
+
+    editorController.setLanguage(getLanguageForFile(metadata.fileName));
 }
 
 function captureState() {

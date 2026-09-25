@@ -460,12 +460,15 @@ export class EditorController {
      * Initialize the host connection, load content, and register handlers.
      * notifyContentLoaded() is called automatically after this completes.
      * The `onInitialContent` callback may return a promise, and the content is reported loaded once it settles.
+     * The `onExternalReloadContent` callback receives the reloaded content and the document's metadata.
+     * The `onRenamed` callback receives the document's new metadata after a rename or a move.
      * The `onWritableStateChanged` callback receives `{state, readOnly}`.
      * The `onSaved` callback fires after each successful save.
      */
     async initializeHost({
         onInitialContent,
         onExternalReloadContent,
+        onRenamed,
         onSaved,
         onRequestState,
         onRestoreState,
@@ -514,6 +517,12 @@ export class EditorController {
             },
             onExternalChange: async () => {
                 await this.#handleExternalChange(onExternalReloadContent);
+            },
+            onRenamed: (metadata) => {
+                log('editor: renamed', { resourceKey: metadata?.resourceKey });
+                if (onRenamed) {
+                    onRenamed(metadata);
+                }
             },
             onRequestState,
             onRestoreState
@@ -572,7 +581,7 @@ export class EditorController {
         // Let the caller drive dependent surfaces (e.g. the preview pane)
         // before the content-loaded signal fires.
         if (onExternalReloadContent) {
-            onExternalReloadContent(this.#editor.getValue());
+            onExternalReloadContent(this.#editor.getValue(), result.metadata);
         }
 
         // Signal to the host that new content has been loaded so consumers can

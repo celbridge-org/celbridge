@@ -227,6 +227,20 @@ describe('Celbridge', () => {
             expect(handler).toHaveBeenCalledOnce();
         });
 
+        it('hands a rename handler the document\'s new metadata', async () => {
+            const { client, simulateResponse, simulateNotification } = createTestClient();
+
+            await initializeClient(client, simulateResponse);
+
+            const handler = vi.fn();
+            client.document.onRenamed(handler);
+
+            const metadata = { resourceKey: 'project:site/renamed.html', fileName: 'renamed.html' };
+            simulateNotification('document/renamed', { metadata });
+
+            expect(handler).toHaveBeenCalledWith(metadata);
+        });
+
         it('cel.viewState mirrors per-view state pushed by the host', () => {
             const { client, simulateNotification } = createTestClient();
 

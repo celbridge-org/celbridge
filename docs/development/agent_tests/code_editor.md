@@ -7,7 +7,7 @@ bar apply only to Markdown. Read the [README](README.md) for the invariants, evi
 
 The editor text, the editor's own find widget, the preview pane and the preview's find bar, across the
 source, split and preview view modes. Also the view the editor returns to: where it was left, and which
-editor is entitled to it.
+editor is entitled to it. And a document renamed or moved while it is open.
 
 ## Cases
 
@@ -28,6 +28,8 @@ editor is entitled to it.
 | Multiple cursors, with text on the clipboard | paste | every cursor receives the text and each is left with a caret after it | 3 |
 | A markdown document scrolled well down | reload the project | it comes back showing the same place, in the same view mode | 2 |
 | The same document | reopen it with the code editor from the tab menu | it opens at the top of the file, and nothing of the markdown editor's view carries over | 3 |
+| A markdown document showing an image from its own folder, with an edit made in the source | move it from the Explorer to a folder holding a different image of the same name | the preview shows the new folder's image, and undo in the source still reaches the edit | 3 |
+| A code document with an edit made | rename it from the Explorer to another language's extension | the highlighting follows the new language, and undo still reaches the edit | 3 |
 
 Reach the find bars by their shortcut, not only by clicking, and return focus to the editor by clicking
 after using one. Focus leaving and returning without a click has been a distinct failure.
@@ -35,7 +37,11 @@ after using one. Focus leaving and returning without a click has been a distinct
 Scroll far enough down for the place to be unmistakable, since a document that restores nothing still opens
 at the top.
 
+For the move case, make the two images easy to tell apart, and read back the address of the image the
+preview shows rather than judging it by eye. The edit made before a rename or a move is what shows the
+document stayed open, since a document opened again has no undo history.
+
 ## Not covered
 
 Editing behaviour that belongs to the editor component itself — completion, folding, multi-cursor
-gestures, syntax highlighting — beyond the interaction between a cursor and a clipboard verb.
+gestures, how well it highlights a language — beyond the interaction between a cursor and a clipboard verb.

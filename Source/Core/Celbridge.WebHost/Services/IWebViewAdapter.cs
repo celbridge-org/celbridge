@@ -190,19 +190,6 @@ public interface IWebViewAdapter
     IWebViewDownloadHandler AttachDownloadHandler(CoreWebView2 coreWebView2);
 
     /// <summary>
-    /// Puts every navigation of the page to the gate, and keeps the page from reaching a destination the
-    /// gate refuses. Each head decides as early as it can, and that is where they differ. The macOS Skia
-    /// head answers WebKit's own navigation policy before any request is sent, so a destination it refuses
-    /// is never asked for. The other heads decide at NavigationStarting, which Uno and WebView2 both raise
-    /// with the request already made ready: the packaged Windows head stops that request where WebView2
-    /// intercepts it, while the Windows and Linux Skia heads have nothing to stop it with, so there a
-    /// refused destination is still fetched. Only what the page asks the network for is covered, not a
-    /// destination answered from the head's cache or by a service worker. Frames inside the page are not
-    /// gated. The caller keeps the returned registration and disposes it when the surface is torn down.
-    /// </summary>
-    IDisposable GateNavigations(CoreWebView2 coreWebView2, NavigationGate gate);
-
-    /// <summary>
     /// Reports each address the page commits to, from the moment the new page takes the place of the old
     /// one. The Windows heads report WebView2's Source, which changes as a navigation commits. Uno changes
     /// Source on the macOS Skia head only once a page has finished loading, so there WebKit's own commit
@@ -210,15 +197,6 @@ public interface IWebViewAdapter
     /// torn down.
     /// </summary>
     IDisposable ObserveNavigationCommits(CoreWebView2 coreWebView2, NavigationCommitted onCommitted);
-
-    /// <summary>
-    /// Whether the user started the new window a page asked for, as by following a link. Ask from inside
-    /// the NewWindowRequested handler. Uno implements no IsUserInitiated for a new window on the Skia
-    /// heads, so the macOS head reads the gesture from WebKit's request for the window, which it knows only
-    /// while the handler runs. The Windows and Linux Skia heads count every new window as one the page
-    /// opened by itself.
-    /// </summary>
-    bool IsUserInitiated(CoreWebView2NewWindowRequestedEventArgs args);
 
     /// <summary>
     /// Describes the native surface behind the page for the log: on the macOS Skia head, whether the

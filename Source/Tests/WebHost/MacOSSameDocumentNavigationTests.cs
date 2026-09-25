@@ -4,8 +4,8 @@ namespace Celbridge.Tests.WebHost;
 
 /// <summary>
 /// The macOS head answers a navigation within the committed page itself, because Uno cancels every one of
-/// them. These tests pin which destinations count as within the page, since answering for anything else
-/// would take the decision away from the gate that belongs to it.
+/// them. These tests pin which destinations count as within the page, since every other navigation is
+/// still Uno's to decide.
 /// </summary>
 [TestFixture]
 public class MacOSSameDocumentNavigationTests

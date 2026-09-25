@@ -185,8 +185,11 @@ public partial class DocumentWebViewToolBridgeTests
         fastBridge.Register(
             _resource,
             evalAsync: _ => Task.FromResult("\"ok\""),
-            reloadAsync: _ => Task.CompletedTask);
-        fastBridge.NotifyContentFailed(_resource, "previous failure");
+            reloadAsync: _ => throw new InvalidOperationException("previous failure"));
+        fastBridge.NotifyContentReady(_resource);
+
+        var reloadResult = await fastBridge.ReloadAsync(_resource, clearCache: false);
+        reloadResult.IsFailure.Should().BeTrue();
 
         // The next navigation cycle starts loading and clears the sticky reason.
         fastBridge.NotifyContentLoading(_resource);

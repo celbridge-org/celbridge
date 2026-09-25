@@ -162,8 +162,8 @@ public interface IDocumentWebViewToolBridge
     string GetShimScript();
 
     /// <summary>
-    /// Registers a supported WebView with the tool bridge. Called by document views
-    /// (custom editors and HTML viewers) once their WebView is initialized.
+    /// Registers a supported WebView with the tool bridge. Called by custom editors
+    /// once their WebView is initialized.
     /// The screenshot delegate is optional. Pass null on platforms or surfaces that
     /// do not support a native snapshot API.
     /// </summary>
@@ -188,9 +188,8 @@ public interface IDocumentWebViewToolBridge
 
     /// <summary>
     /// Notifies the bridge that the editor's content has finished loading and gated
-    /// tool calls (eval, inspection) may dispatch. Document views call this on the
-    /// editor's readiness signal — notifyContentLoaded for custom editors and the
-    /// page finishing loading for the HTML viewer. Idempotent. Safe to call repeatedly
+    /// tool calls (eval, inspection) may dispatch. Custom editors call this when the
+    /// editor calls notifyContentLoaded. Idempotent. Safe to call repeatedly
     /// and in any order relative to NotifyContentLoading. No effect if the resource
     /// is not registered.
     /// </summary>
@@ -204,15 +203,6 @@ public interface IDocumentWebViewToolBridge
     /// resource is not registered.
     /// </summary>
     void NotifyContentLoading(ResourceKey resource);
-
-    /// <summary>
-    /// Notifies the bridge that loading has failed and tool calls cannot dispatch
-    /// against this WebView until the next navigation cycle. Opens the gate so
-    /// pending and future calls fail fast with the supplied reason rather than
-    /// waiting for the content-ready timeout. Cleared by the next
-    /// NotifyContentLoading. No effect if the resource is not registered.
-    /// </summary>
-    void NotifyContentFailed(ResourceKey resource, string reason);
 
     /// <summary>
     /// Evaluates a JavaScript expression in the frame, in the WebView registered for the

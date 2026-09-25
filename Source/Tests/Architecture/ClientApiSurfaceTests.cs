@@ -33,6 +33,7 @@ public class ClientApiSurfaceTests
             "notifyContentLoaded",
             "notifyImportComplete",
             "onExternalChange",
+            "onRenamed",
             "onRequestSave",
             "onRequestState",
             "onRestoreState",

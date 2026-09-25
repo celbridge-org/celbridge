@@ -5,8 +5,8 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.WebView.Services;
 
 /// <summary>
-/// Factory for the .webview editor. Produces a WebViewDocumentView configured for the
-/// external-URL role, with the URL read from the .webview document's TOML body.
+/// Factory for the .webview editor. Produces a WebViewDocumentView, which reads the URL it opens from
+/// the .webview document's TOML body.
 /// </summary>
 public class WebViewEditorFactory : DocumentEditorFactoryBase
 {
@@ -28,9 +28,6 @@ public class WebViewEditorFactory : DocumentEditorFactoryBase
     public override Result<IDocumentView> CreateDocumentView(ResourceKey fileResource)
     {
         var view = _serviceProvider.GetRequiredService<WebViewDocumentView>();
-        view.Options = new WebViewDocumentOptions(
-            WebViewDocumentRole.ExternalUrl,
-            InterceptTopFrameNavigation: false);
         view.EditorId = EditorId;
 
         return Result<IDocumentView>.Ok(view);

@@ -7,7 +7,7 @@ using Celbridge.Workspace;
 namespace Celbridge.Tests.Documents;
 
 /// <summary>
-/// A link in a document, whether a markdown preview or the HTML viewer, opens what it leads to in Celbridge.
+/// A link in a document's preview, whether markdown or HTML, opens what it leads to in Celbridge.
 /// These tests pin how that is decided: a file with an editor opens in it, anything else is selected in the
 /// Explorer rather than raising the unsupported-format dialog, and a resource the project does not have is
 /// left for the caller to report.

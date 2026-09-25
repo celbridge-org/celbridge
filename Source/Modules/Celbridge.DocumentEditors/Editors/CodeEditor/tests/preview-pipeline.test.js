@@ -192,6 +192,97 @@ describe('PreviewPipeline preview updates', () => {
 
         expect(refreshSpy).not.toHaveBeenCalled();
     });
+
+    it('moves the preview to the new address on a rename, and keeps it there', () => {
+        const pipeline = createPipeline(ViewMode.Split);
+        pipeline.handleInitialContent('<p>First</p>', 'project:docs/page.html');
+        refreshSpy.mockClear();
+
+        pipeline.handleRenamed('project:site/renamed.html');
+        pipeline.handleSaved();
+
+        expect(refreshSpy).toHaveBeenCalledTimes(2);
+        expect(refreshSpy).toHaveBeenNthCalledWith(1, '/project/site/renamed.html');
+        expect(refreshSpy).toHaveBeenNthCalledWith(2, '/project/site/renamed.html');
+    });
+
+    it('takes the address an external reload reports', () => {
+        const pipeline = createPipeline(ViewMode.Split);
+        pipeline.handleInitialContent('<p>First</p>', 'project:docs/page.html');
+
+        pipeline.handleExternalReload('<p>Second</p>', 'project:site/moved.html');
+
+        expect(refreshSpy).toHaveBeenLastCalledWith('/project/site/moved.html');
+    });
+
+    it('ignores a rename that names no document', () => {
+        const pipeline = createPipeline(ViewMode.Split);
+        pipeline.handleInitialContent('<p>First</p>', 'project:docs/page.html');
+        refreshSpy.mockClear();
+
+        pipeline.handleRenamed(undefined);
+
+        expect(refreshSpy).not.toHaveBeenCalled();
+    });
+});
+
+describe('PreviewPipeline rename', () => {
+    const rendererExports = [
+        'initialize',
+        'render',
+        'setBasePath',
+        'setScrollPercentage',
+        'getScrollPercentage'
+    ];
+
+    beforeEach(() => {
+        globalThis.__fakePreviewModule = {
+            initialize: vi.fn().mockResolvedValue(undefined),
+            render: vi.fn(),
+            setBasePath: vi.fn(),
+            setScrollPercentage: vi.fn(),
+            getScrollPercentage: vi.fn().mockReturnValue(0),
+            refresh: vi.fn()
+        };
+    });
+
+    afterEach(() => {
+        document.body.innerHTML = '';
+    });
+
+    it('renders the buffer again against the new folder for a renderer of the buffer', async () => {
+        const editorController = createEditorController();
+        editorController.getValue.mockReturnValue('![logo](logo.png)');
+        const pipeline = new PreviewPipeline({
+            editorController,
+            initialViewMode: ViewMode.Preview,
+            panes: createPanes()
+        });
+        await pipeline.attachRenderer(makeFakeRendererUrl(rendererExports));
+        await pipeline.handleInitialContent('![logo](logo.png)', 'project:notes/notes.md');
+        globalThis.__fakePreviewModule.render.mockClear();
+
+        pipeline.handleRenamed('project:archive/notes.md');
+
+        expect(globalThis.__fakePreviewModule.setBasePath).toHaveBeenLastCalledWith('archive/');
+        expect(globalThis.__fakePreviewModule.render).toHaveBeenCalledWith('![logo](logo.png)');
+    });
+
+    it('reloads a preview of the saved file at the new address without copying the buffer', async () => {
+        const editorController = createEditorController();
+        const pipeline = new PreviewPipeline({
+            editorController,
+            initialViewMode: ViewMode.Preview,
+            panes: createPanes()
+        });
+        await pipeline.attachRenderer(makeFakeRendererUrl([...rendererExports, 'refresh']));
+        await pipeline.handleInitialContent('<p>Page</p>', 'project:site/page.html');
+
+        pipeline.handleRenamed('project:site/renamed.html');
+
+        expect(globalThis.__fakePreviewModule.refresh).toHaveBeenLastCalledWith('/project/site/renamed.html');
+        expect(editorController.getValue).not.toHaveBeenCalled();
+    });
 });
 
 describe('PreviewPipeline scroll sync', () => {

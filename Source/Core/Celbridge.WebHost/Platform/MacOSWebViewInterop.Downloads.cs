@@ -104,8 +104,7 @@ public static partial class MacOSWebViewInterop
     // Where WebKit's caller finds the function a block runs: after the block's isa, flags and reserved words.
     private const int BlockInvokeOffset = 16;
 
-    // WKNavigationActionPolicyCancel, WKNavigationActionPolicyAllow and WKNavigationActionPolicyDownload.
-    private const nint NavigationActionPolicyCancel = 0;
+    // WKNavigationActionPolicyAllow and WKNavigationActionPolicyDownload.
     private const nint NavigationActionPolicyAllow = 1;
     private const nint NavigationActionPolicyDownload = 2;
 
@@ -195,7 +194,6 @@ public static partial class MacOSWebViewInterop
             // which would leave each hook falling back to itself.
             _hookedDelegateClass = delegateClass;
             InstallDownloadHooks(delegateClass);
-            InstallNewWindowHook(delegateClass);
             InstallCommitHook(delegateClass);
         }
 
@@ -481,8 +479,8 @@ public static partial class MacOSWebViewInterop
     }
 
     // A link's download attribute asks for a download. That is what WebKit does when no delegate decides,
-    // and what Uno's delegate never does. A navigation of the page goes to the web view's gate before any
-    // request for it is sent. Everything else is left to Uno's delegate.
+    // and what Uno's delegate never does. A move within the page the web view shows is allowed here.
+    // Everything else is left to Uno's delegate.
     [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]
     private static void DecidePolicyForNavigationActionHook(
         IntPtr self,
@@ -494,7 +492,6 @@ public static partial class MacOSWebViewInterop
         // Decided before anything is answered, so a throw cannot leave WebKit unanswered or answered
         // twice. Never let an exception unwind into WebKit.
         var shouldDownload = false;
-        var isRefused = false;
         var isSameDocument = false;
         try
         {
@@ -506,11 +503,7 @@ public static partial class MacOSWebViewInterop
             shouldDownload = isDownloadRequested &&
                 _downloadListener?.IsRoutingDownloads(webView) == true;
 
-            isRefused = !shouldDownload &&
-                !IsNavigationAllowed(webView, navigationAction);
-
             isSameDocument = !shouldDownload &&
-                !isRefused &&
                 IsSameDocumentNavigation(webView, navigationAction);
         }
         catch
@@ -520,12 +513,6 @@ public static partial class MacOSWebViewInterop
         if (shouldDownload)
         {
             InvokePolicyHandler(decisionHandler, NavigationActionPolicyDownload);
-            return;
-        }
-
-        if (isRefused)
-        {
-            InvokePolicyHandler(decisionHandler, NavigationActionPolicyCancel);
             return;
         }
 

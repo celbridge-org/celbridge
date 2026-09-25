@@ -8,10 +8,9 @@ using Windows.Foundation;
 namespace Celbridge.WebHost.Services;
 
 /// <summary>
-/// The surface a diagnostic line describes: the name it is logged under, the control behind it, and whether
-/// an empty document on it is a failed load rather than a page that is legitimately blank.
+/// The surface a diagnostic line describes: the name it is logged under, and the control behind it.
 /// </summary>
-public sealed record WebViewSurface(string Name, WebView2? WebView, bool TreatEmptyDocumentAsFailure);
+public sealed record WebViewSurface(string Name, WebView2? WebView);
 
 /// <summary>
 /// What the probe of a completed navigation found: the host's reading of the page's report, and whether it
@@ -301,12 +300,12 @@ public sealed class WebViewLoadDiagnostics
     }
 
     /// <summary>
-    /// Writes the probe to the log: a warning for an empty document on a surface that treats one as a failed
-    /// load, a debug line otherwise.
+    /// Writes the probe to the log: a warning for an empty document, which is a failed load, and a debug
+    /// line otherwise.
     /// </summary>
     public void LogProbe(WebViewSurface surface, string url, WebViewContentProbe probe)
     {
-        if (probe.IsEmpty && surface.TreatEmptyDocumentAsFailure)
+        if (probe.IsEmpty)
         {
             _logger.LogWarning(
                 "Navigation for {Resource} completed at {Url} but produced an empty document: {Probe} ({Surface})",

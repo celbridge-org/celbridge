@@ -122,6 +122,27 @@ public class DocumentEditorRegistryTests
         result.Value.Should().Be(markdownFactory);
     }
 
+    [TestCase("page.html", ".html")]
+    [TestCase("page.htm", ".htm")]
+    public void GetFactory_HtmlResolvesToTheHtmlEditorAheadOfTheCodeEditor(string fileName, string extension)
+    {
+        var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
+
+        // The code editor registers first, but the pinned order places the HTML editor ahead of it.
+        var codeFactory = CreateMockFactory(BuiltInEditors.CodeEditorId.ToString(), extension);
+        var htmlFactory = CreateMockFactory(BuiltInEditors.HtmlEditorId.ToString(), extension);
+
+        registry.RegisterFactory(codeFactory);
+        registry.RegisterFactory(htmlFactory);
+
+        var result = registry.GetFactory(new ResourceKey(fileName));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().Be(htmlFactory);
+
+        registry.GetFactoriesForExtension(extension).Should().Equal(htmlFactory, codeFactory);
+    }
+
     [Test]
     public void GetFactory_FallsBackToNextFactoryWhenFirstInResolutionOrderCannotHandle()
     {

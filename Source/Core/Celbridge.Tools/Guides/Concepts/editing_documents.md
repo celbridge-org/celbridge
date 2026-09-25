@@ -35,5 +35,5 @@ Every editing tool writes straight to disk. If the document is open, its buffer 
 You don't need to open a document to edit its file — `file_edit` works on any file under the content root. Open the document when:
 
 - You want the user to see the result.
-- You intend to drive `webview_*` against an HTML viewer or contribution editor afterwards.
+- You intend to drive `webview_*` against a contribution editor, such as the HTML editor, afterwards.
 - The user is already looking at it — modifying the file under their feet still reloads the buffer, but at least they can see what is happening.

@@ -6,9 +6,10 @@ downloaded. Read the [README](README.md) for the invariants, evidence rules and 
 
 ## Surfaces
 
-The pages a download starts from: an HTML document, a `.webview` document and a package utility. The
-download badge, its count, and the list it opens: each row, a running row's cancel button, a finished row's
-remove button, and Clear All.
+The pages a download starts from, by the application's two routes: a package editor's page, which an HTML
+document's preview and a package utility both are, and a `.webview` document. The download badge, its
+count, and the list it opens: each row, a running row's cancel button, a finished row's remove button, and
+Clear All.
 
 ## Cases
 
@@ -29,7 +30,7 @@ remove button, and Clear All.
 | A download running from a `.webview` document | close the document's tab | the download stops, its row says the transfer stopped with the document, and nothing is left in `downloads/` or the staging folder | 3 |
 | Two downloads of the same file started together | start both | two files under distinct names, neither overwritten | 3 |
 | An HTML document offering a file the page builds itself, and a `download` link that asks for a new window | click each | both land in `downloads/`, and no browser opens | 3 |
-| An HTML document with a plain link to a response from another server marked as an attachment | click the link | the document asks before handing the address to the system browser, and nothing lands in `downloads/` | 3 |
+| An HTML document with a plain link to a response from another server marked as an attachment | click the link | the address goes to the system browser with no prompt, and nothing lands in `downloads/` | 3 |
 | A page with a link and an image | use the context menu's download or save items on each | on Windows, Save As writes where its picker names, adding a row only when that is the downloads folder its picker opened on; on macOS, Download Linked File and Download Image land in `downloads/` | 3 |
 | A completed download | delete its file in the Explorer | its row leaves the list and the count drops, and the badge goes with the last row | 3 |
 | The list open with the keyboard on a running row's cancel button | let that download finish | the list stays open, and the keyboard stays on that row, which now finds the file | 3 |
@@ -91,7 +92,7 @@ results: the title bar, and the application's own list drawn over a hosted page.
 Files the application fetches for itself, such as a Workshop package install, which never reach the
 downloads list. What a row says beyond its name and outcome: its progress, sizes and time estimates.
 Choosing the downloads folder with its picker, which the Workspace plan covers. Where an HTML document's
-links lead, which the Web Documents plan covers.
+links lead, which the HTML Editor plan covers.
 
 ## Platform
 
@@ -122,7 +123,3 @@ before it fails; it has also been seen to give up on the first drop. Either is a
 is there to catch is a row per retry, or rows left running for ever with the badge spinning, so the absence
 of retries is not itself a finding. WebKit gives up on the first drop, sending one request and leaving one
 row, which is what macOS runs have seen so far; a run that sees it retry should record that.
-
-The prompt an HTML document shows for a link to another server stops the page following the link on both
-heads, and neither sends a request for the destination it refuses, so a link to an attachment that is
-refused downloads nothing and reaches nobody. The Web Documents plan is where that request is checked.

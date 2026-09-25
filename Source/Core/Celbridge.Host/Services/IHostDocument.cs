@@ -35,6 +35,7 @@ public static class DocumentRpcMethods
     public const string Changed = "document/changed";
     public const string RequestSave = "document/requestSave";
     public const string ExternalChange = "document/externalChange";
+    public const string Renamed = "document/renamed";
     public const string ImportComplete = "document/importComplete";
     public const string ContentLoaded = "document/contentLoaded";
     public const string RequestState = "document/requestState";
@@ -126,6 +127,13 @@ public static class HostDocumentExtensions
     /// </summary>
     public static Task NotifyExternalChangeAsync(this CelbridgeHost host, bool preserveViewState)
         => host.Rpc.NotifyWithParameterObjectAsync(DocumentRpcMethods.ExternalChange, new { preserveViewState });
+
+    /// <summary>
+    /// Tells the WebView the document's new name and path after a rename or a move. The document stays open
+    /// in the same editor, which otherwise keeps the name and path it was given when it opened.
+    /// </summary>
+    public static Task NotifyRenamedAsync(this CelbridgeHost host, DocumentMetadata metadata)
+        => host.Rpc.NotifyWithParameterObjectAsync(DocumentRpcMethods.Renamed, new { metadata });
 
     /// <summary>
     /// Requests the WebView to return its current editor state as an opaque JSON string.

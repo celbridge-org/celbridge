@@ -4,8 +4,8 @@ using ModelContextProtocol.Server;
 namespace Celbridge.Tools;
 
 /// <summary>
-/// MCP tools for inspecting and exercising custom editor and HTML viewer
-/// WebViews. Provides agents authoring custom editors with a feedback loop:
+/// MCP tools for inspecting and exercising custom editor WebViews, and the
+/// pages they preview. Provides agents authoring custom editors with a feedback loop:
 /// reload after a package edit, evaluate JavaScript, and inspect DOM, console, and network state.
 /// </summary>
 [McpServerToolType]

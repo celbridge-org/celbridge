@@ -1,10 +1,8 @@
 using System.Text.Json;
 using Celbridge.Commands;
-using Celbridge.Dialog;
 using Celbridge.Documents;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Documents.Views;
-using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Platform;
 using Celbridge.Settings;
@@ -12,7 +10,6 @@ using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.WebHost;
 using Celbridge.WebHost.Services;
-using Celbridge.WebView.Services;
 using Celbridge.WebView.ViewModels;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
@@ -29,13 +26,10 @@ namespace Celbridge.WebView.Views;
 internal sealed record WebViewEditorState(bool SettingsOpen, string SettingsSectionKey);
 
 /// <summary>
-/// Hosts an arbitrary user URL from a .webview document, or a project-served
-/// HTML page from a .html / .htm document. The two roles share a single WebView2
-/// lifecycle and differ only in URL source, navigation policy, and chrome: the
-/// external-URL role presents a browser-style URL bar above the page and a
+/// Hosts the external page a .webview document opens, with a browser-style URL bar above the page and a
 /// resizable settings panel over it.
 /// </summary>
-public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWebViewFindTarget, IDocumentChromeOwner
+public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarget, IDocumentChromeOwner
 {
     private static readonly JsonSerializerOptions EditorStateSerializerOptions = new()
     {
@@ -56,10 +50,6 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
     private int _processFailures;
     // Set on the first initialization attempt, so LoadContent and Loaded share a single run.
     private Task? _initializeWebViewTask;
-    // Host RPC channel. Only created for the HtmlViewer role. External-URL documents run without one.
-    private WebViewHostChannel? _hostChannel;
-    private CelbridgeHost? _host;
-    private IWebViewNavigationPolicy? _navigationPolicy;
     private IWebViewDownloadHandler? _downloadHandler;
 
     // Reports each address the page commits to, which is when the address bar follows the page.
@@ -71,26 +61,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
     // Set when a download replaces the navigation in flight, which then reports itself failed.
     private bool _isNavigationReplacedByDownload;
 
-    // Set from a navigation starting until its completion is raised. On the Skia heads a navigation that
-    // ran while the view was detached raises neither, so this stays set for a page that loaded unseen.
-    private bool _isAwaitingNavigationCompleted;
-
     private WebViewLoadDiagnostics? _diagnostics;
-
-    // Set on successful registration with the bridge. Only populated for the
-    // HtmlViewer role. .webview (external URL) documents do not register and the
-    // webview_* tool namespace is not supported for them.
-    private IDocumentWebViewToolBridge? _toolBridge;
-
-    private static readonly WebViewDocumentOptions DefaultOptions = new(
-        WebViewDocumentRole.ExternalUrl,
-        InterceptTopFrameNavigation: false);
-
-    /// <summary>
-    /// Per-instance options supplied by the editor factory. Defaults to the .webview
-    /// external-URL behaviour.
-    /// </summary>
-    internal WebViewDocumentOptions Options { get; set; } = DefaultOptions;
 
     public WebViewDocumentViewModel ViewModel { get; }
 
@@ -143,21 +114,15 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         Loaded += WebViewDocumentView_Loaded;
     }
 
-    public void OnKeyboardShortcut(string key, bool ctrlKey, bool shiftKey, bool altKey)
-    {
-        var keyboardShortcutService = ServiceLocator.AcquireService<IKeyboardShortcutService>();
-        keyboardShortcutService.HandleShortcut(key, ctrlKey, shiftKey, altKey);
-    }
-
     private void TryNavigate()
     {
-        var navigateUrl = ViewModel.NavigateUrl;
-        if (string.IsNullOrEmpty(navigateUrl))
+        var sourceUrl = ViewModel.SourceUrl;
+        if (string.IsNullOrEmpty(sourceUrl))
         {
             return;
         }
 
-        Navigate(navigateUrl);
+        Navigate(sourceUrl);
     }
 
     // Drops the page and returns the document to the placeholder it started on. A real navigation rather
@@ -224,10 +189,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
             return;
         }
 
-        _isAwaitingNavigationCompleted = true;
-
         // Paired with the completion below, so a page that never arrives can be told from one that arrived
-        // and failed, and from one the policy declined.
+        // and failed.
         Diagnostics.LogNavigation("Navigating", Surface, destination.AbsoluteUri);
 
         _webView.Source = destination;
@@ -265,37 +228,21 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
             _webView.Loaded += WebView_Loaded;
             _webView.Unloaded += WebView_Unloaded;
 
-            // The DOM focus callbacks only reach a page that loads the client script. An external-URL page
-            // relies on the registry's native click monitor instead.
-            RegisterWebSurfaceFocus(_webView, ReleaseFocus, GrantDomFocusAsync);
+            // An external page runs no client script, so there is no DOM focus to release or grant. The
+            // registry's native click monitor tracks focus on the page instead.
+            RegisterWebSurfaceFocus(_webView, releaseFocus: () => { });
 
             var devToolsEnabled = _webViewService.IsDevToolsFeatureEnabled();
             _webViewAdapter.SetDevToolsEnabled(_webView.CoreWebView2, devToolsEnabled, FileResource.ResourceName);
 
-            // The .webview browser and HTML viewer render page content, so keep user zoom enabled.
+            // The page is browsed content rather than application chrome, so user zoom stays enabled.
             _webViewAdapter.SetZoomControlEnabled(_webView.CoreWebView2, true);
             // The macOS WKWebView default UA is otherwise flagged as an unsupported browser by some sites.
             var environmentInfo = _serviceProvider.GetRequiredService<IAppEnvironment>().GetEnvironmentInfo();
             _webViewAdapter.SetApplicationUserAgent(_webView.CoreWebView2, $"Celbridge/{environmentInfo.AppVersion}");
 
-            // Only the HtmlViewer role runs a host RPC channel. External-URL .webview documents load
-            // untrusted third-party content: the native message bus is unauthenticated, so a channel
-            // there would let a page drive host RPC methods.
-            if (Options.Role == WebViewDocumentRole.HtmlViewer)
-            {
-                // The HTML viewer renders loopback project content and supports the webview_* MCP tools.
-                await TryInjectToolBridgeShimAsync();
-
-                var webSurfaceLog = ServiceLocator.AcquireService<IWebSurfaceLog>();
-                var logTarget = new WebSurfaceLogTarget(FileResource.ToString(), webSurfaceLog);
-
-                _hostChannel = new WebViewHostChannel(_webView.CoreWebView2);
-                _host = new CelbridgeHost(_hostChannel, logTarget);
-                _host.AddLocalRpcTarget<IHostInput>(this);
-                _host.StartListening();
-
-                TryRegisterWithToolBridge();
-            }
+            // No host RPC channel is opened. The page is untrusted third-party content, and the native message
+            // bus is unauthenticated, so a channel would let the page drive host RPC methods.
 
             DetachDownloadHandler();
             _downloadHandler = _webViewAdapter.AttachDownloadHandler(_webView.CoreWebView2);
@@ -321,8 +268,6 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
             _webView.CoreWebView2.ProcessFailed -= CoreWebView2_ProcessFailed;
             _webView.CoreWebView2.ProcessFailed += CoreWebView2_ProcessFailed;
 
-            AttachNavigationPolicy(_webView.CoreWebView2);
-
             TryNavigate();
         }
         catch (Exception ex)
@@ -332,140 +277,12 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         }
     }
 
-    private void AttachNavigationPolicy(CoreWebView2 coreWebView)
-    {
-        // A browser document goes wherever its page asks, so it is not gated at all. Even a gate that
-        // allows everything routes every request the page makes through the head's interception machinery.
-        if (!Options.InterceptTopFrameNavigation)
-        {
-            return;
-        }
-
-        _navigationPolicy = _serviceProvider.GetRequiredService<IWebViewNavigationPolicy>();
-        _navigationPolicy.Attach(coreWebView, CreateInterceptingHandler());
-    }
-
-    private NavigationDestinationHandler CreateInterceptingHandler()
-    {
-        return async (request) =>
-        {
-            // The HTML viewer is pinned to its page's URL. Allow the initial navigation, reloads, and any
-            // same-document scrolling, but prompt the user for any other top-frame destination so the page
-            // cannot redirect out from under them.
-            var destination = request.Destination;
-            var pinnedUrl = ViewModel.NavigateUrl;
-            if (!string.IsNullOrEmpty(pinnedUrl) && IsSameDocument(destination, pinnedUrl))
-            {
-                return NavigationDecision.Allow;
-            }
-
-            // A link the user follows to another project file opens that file in Celbridge, as a link in the
-            // markdown preview does. A navigation the page starts by itself is still asked about, so a script
-            // cannot open the project's documents on its own.
-            if (request.IsUserInitiated &&
-                TryOpenProjectLink(destination))
-            {
-                return NavigationDecision.Cancel;
-            }
-
-            return await PromptForNavigationDestinationAsync(destination);
-        };
-    }
-
-    // True when the destination is a file on the project's own server, which is then opened in Celbridge, or
-    // reported as missing when the project has no such file.
-    private bool TryOpenProjectLink(Uri destination)
-    {
-        if (!ViewModel.TryResolveProjectResource(destination, out var resource))
-        {
-            return false;
-        }
-
-        if (!ViewModel.OpenLinkedResource(resource))
-        {
-            _ = ShowMissingLinkTargetAsync(resource);
-        }
-
-        return true;
-    }
-
-    private async Task ShowMissingLinkTargetAsync(ResourceKey resource)
-    {
-        try
-        {
-            var dialogService = _serviceProvider.GetRequiredService<IDialogService>();
-            var stringLocalizer = _serviceProvider.GetRequiredService<IStringLocalizer>();
-
-            var title = stringLocalizer.GetString("Extension_LinkError_Title");
-            var message = stringLocalizer.GetString("Extension_LinkError_Message", resource.Path);
-
-            await dialogService.ShowAlertDialogAsync(title, message);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to report a link to a missing project file");
-        }
-    }
-
-    private static bool IsSameDocument(Uri destination, string pinnedUrl)
-    {
-        if (!Uri.TryCreate(pinnedUrl, UriKind.Absolute, out var pinned))
-        {
-            return false;
-        }
-
-        return string.Equals(destination.Scheme, pinned.Scheme, StringComparison.OrdinalIgnoreCase)
-            && string.Equals(destination.Host, pinned.Host, StringComparison.OrdinalIgnoreCase)
-            && destination.Port == pinned.Port
-            && string.Equals(destination.AbsolutePath, pinned.AbsolutePath, StringComparison.Ordinal);
-    }
-
-    private async Task<NavigationDecision> PromptForNavigationDestinationAsync(Uri destination)
-    {
-        try
-        {
-            var dialogService = _serviceProvider.GetRequiredService<IDialogService>();
-            var stringLocalizer = _serviceProvider.GetRequiredService<IStringLocalizer>();
-
-            var title = stringLocalizer.GetString("WebView_NavigationPrompt_Title");
-            var message = stringLocalizer.GetString("WebView_NavigationPrompt_Message", destination.ToString());
-            var openInBrowserOption = stringLocalizer.GetString("WebView_NavigationPrompt_OpenInBrowser");
-
-            var options = new List<string> { openInBrowserOption };
-
-            var dialogResult = await dialogService.ShowChoiceDialogAsync(title, message, options, defaultIndex: 0);
-            if (dialogResult.IsFailure)
-            {
-                return NavigationDecision.Cancel;
-            }
-
-            var choice = dialogResult.Value;
-            if (choice.SelectedIndex == 0)
-            {
-                return NavigationDecision.OpenInSystemBrowser;
-            }
-
-            return NavigationDecision.Cancel;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to prompt for navigation destination");
-            return NavigationDecision.Cancel;
-        }
-    }
-
     /// <summary>
-    /// Tears down the WebView, host channel, and associated event handlers. Safe
-    /// to call multiple times and from partially initialized states.
+    /// Tears down the WebView and its event handlers. Safe to call multiple times and from partially
+    /// initialized states.
     /// </summary>
     private void TeardownWebViewState()
     {
-        if (_toolBridge is not null)
-        {
-            _toolBridge.Unregister(FileResource);
-            _toolBridge = null;
-        }
-
         if (_webView?.CoreWebView2 is not null)
         {
             _webViewFocusRegistry.Unregister(_webView.CoreWebView2);
@@ -480,11 +297,6 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
             _webView.CoreWebView2.NavigationCompleted -= CoreWebView2_NavigationCompleted;
             _webView.CoreWebView2.NavigationStarting -= CoreWebView2_NavigationStarting;
             _webView.CoreWebView2.ProcessFailed -= CoreWebView2_ProcessFailed;
-
-            if (_navigationPolicy is not null)
-            {
-                _navigationPolicy.Detach(_webView.CoreWebView2);
-            }
         }
 
         if (_webView is not null)
@@ -496,95 +308,6 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
 
             _webView = null;
         }
-
-        _navigationPolicy = null;
-
-        _host?.Dispose();
-        _hostChannel?.Detach();
-
-        _host = null;
-        _hostChannel = null;
-    }
-
-    private async Task TryInjectToolBridgeShimAsync()
-    {
-        var coreWebView2 = _webView?.CoreWebView2;
-        if (coreWebView2 is null)
-        {
-            return;
-        }
-
-        var toolBridge = _serviceProvider.GetService<IDocumentWebViewToolBridge>();
-        if (toolBridge is null)
-        {
-            return;
-        }
-
-        // Install the shim as a document-start script so it wraps console/fetch before page scripts run,
-        // required for get_console / get_network capture. Running before the first navigation captures the
-        // initial page's boot output.
-        try
-        {
-            var script = toolBridge.GetShimScript();
-            await _webViewAdapter.InstallDocumentStartScriptAsync(coreWebView2, script);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to install the document-start WebView tool bridge shim into the HTML viewer");
-        }
-    }
-
-    private async Task ReinjectToolBridgeShimAsync()
-    {
-        var coreWebView2 = _webView?.CoreWebView2;
-        if (coreWebView2 is null || _toolBridge is null)
-        {
-            return;
-        }
-
-        try
-        {
-            var script = _toolBridge.GetShimScript();
-            await _webViewAdapter.ReinjectDocumentStartScriptAsync(coreWebView2, script);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to re-inject the WebView tool bridge shim");
-        }
-    }
-
-    // Opens the tool bridge's content-ready gate, re-delivering the shim first (no-op on Windows).
-    // ExecuteScriptAsync calls are serialised in invocation order, so this fire-and-forget eval is queued
-    // ahead of any later webview_* tool eval even without awaiting it here.
-    private void NotifyToolBridgeContentReady()
-    {
-        _ = ReinjectToolBridgeShimAsync();
-        _toolBridge?.NotifyContentReady(FileResource);
-    }
-
-    private void TryRegisterWithToolBridge()
-    {
-        var webView = _webView;
-        if (webView?.CoreWebView2 is null)
-        {
-            return;
-        }
-
-        var toolBridge = _serviceProvider.GetService<IDocumentWebViewToolBridge>();
-        if (toolBridge is null)
-        {
-            return;
-        }
-
-        var resource = FileResource;
-        if (resource.IsEmpty)
-        {
-            return;
-        }
-
-        toolBridge.RegisterWebView2(resource, webView, _webViewAdapter);
-
-        _toolBridge = toolBridge;
     }
 
     private void CoreWebView2_HistoryChanged(object? sender, object e)
@@ -603,24 +326,6 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
 
     private void CoreWebView2_NavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
     {
-        _isAwaitingNavigationCompleted = false;
-
-        // The HTML viewer renders static project-served content, so the WebView's own
-        // NavigationCompleted is a sufficient content-ready signal. External-URL .webview
-        // documents never register, so this no-ops on the .webview path.
-        if (Options.Role == WebViewDocumentRole.HtmlViewer)
-        {
-            if (e.IsSuccess)
-            {
-                NotifyToolBridgeContentReady();
-            }
-            else
-            {
-                var reason = $"The WebView navigation failed with status '{e.WebErrorStatus}'.";
-                _toolBridge?.NotifyContentFailed(FileResource, reason);
-            }
-        }
-
         var outcome = ResolveNavigationOutcome(e, _isNavigationReplacedByDownload);
         _isNavigationReplacedByDownload = false;
 
@@ -681,12 +386,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         _serviceProvider.GetRequiredService<IFeatureFlags>(),
         _logger);
 
-    // Only the external-URL role treats an empty document as a failed load: it owns the placeholder that
-    // reports one, and a project-served page can legitimately be empty.
-    private WebViewSurface Surface => new(
-        FileResource.ToString(),
-        _webView,
-        TreatEmptyDocumentAsFailure: Options.Role == WebViewDocumentRole.ExternalUrl);
+    private WebViewSurface Surface => new(FileResource.ToString(), _webView);
 
     private async Task ProbeLoadedContentAsync()
     {
@@ -712,24 +412,13 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
             return;
         }
 
-        var surface = Surface;
-        Diagnostics.LogProbe(surface, probedUrl, probe);
+        Diagnostics.LogProbe(Surface, probedUrl, probe);
 
-        if (probe.IsEmpty && surface.TreatEmptyDocumentAsFailure)
+        if (probe.IsEmpty)
         {
             // Reported as the failure it is, so the document shows the load-failed placeholder and its reload
             // rather than a blank page the user cannot tell from a slow one.
             ViewModel.NotifyNavigationCompleted(NavigationOutcome.Failed);
-        }
-
-        // A page that loaded with no completion raised has only the probe to say it arrived. An empty
-        // document is no evidence that it did, and a completion that was raised has already had its say.
-        if (Options.Role == WebViewDocumentRole.HtmlViewer &&
-            _isAwaitingNavigationCompleted &&
-            !probe.IsEmpty)
-        {
-            _isAwaitingNavigationCompleted = false;
-            NotifyToolBridgeContentReady();
         }
     }
 
@@ -738,8 +427,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         _ = Diagnostics.LogSurfaceAsync("WebView attached", Surface);
 
         // A document that loaded while detached raised no navigation events, so its completion was never
-        // probed and the HTML viewer's tool gate never opened. Attach is the first moment the host hears
-        // from it again.
+        // probed. Attach is the first moment the host hears from it again.
         _ = ProbeLoadedContentAsync();
     }
 
@@ -760,16 +448,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         // redirect looks like and what a re-attach must not.
         Diagnostics.LogNavigation("Navigation starting", Surface, args.Uri);
 
-        // Reset the tool bridge's content-ready gate so webview_* tool calls block
-        // until the new navigation completes. Cross-origin navigations (e.g. an
-        // attacker-controlled redirect from project content) reset support here too.
-        if (Options.Role == WebViewDocumentRole.HtmlViewer)
-        {
-            _toolBridge?.NotifyContentLoading(FileResource);
-        }
-
         _isNavigationReplacedByDownload = false;
-        _isAwaitingNavigationCompleted = true;
 
         ViewModel.NotifyNavigationStarted(args.Uri ?? string.Empty);
     }
@@ -985,7 +664,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
             SyncAddressText();
 
             // With no edit to abandon, Escape leaves the settings as it does anywhere else in the document.
-            if (ViewModel.IsSettingsVisible
+            if (ViewModel.IsSettingsOpen
                 && !isEditing)
             {
                 ReturnToPage();
@@ -1002,8 +681,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
     // A document with no way to navigate opens on its settings, whatever state it was saved in.
     private void OpenSettingsIfNoWayToNavigate()
     {
-        if (Options.Role != WebViewDocumentRole.ExternalUrl
-            || ViewModel.HasWayToNavigate)
+        if (ViewModel.HasWayToNavigate)
         {
             return;
         }
@@ -1019,8 +697,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
     // keeps it: changing the Home URL is not a request to leave the page.
     private void NavigateIfPageIsBlank()
     {
-        if (Options.Role != WebViewDocumentRole.ExternalUrl
-            || ViewModel.HasPage)
+        if (ViewModel.HasPage)
         {
             return;
         }
@@ -1037,7 +714,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
     private void LayoutRoot_KeyDown(object sender, KeyRoutedEventArgs e)
     {
         if (e.Key != VirtualKey.Escape
-            || !ViewModel.IsSettingsVisible)
+            || !ViewModel.IsSettingsOpen)
         {
             return;
         }
@@ -1060,7 +737,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
     // them, and the cursor over it answers to the page.
     private void ApplyContentLayout()
     {
-        var showSettings = ViewModel.IsSettingsVisible;
+        var showSettings = ViewModel.IsSettingsOpen;
         if (showSettings)
         {
             SettingsSurface.Initialize(ViewModel, _settingsSectionKey);
@@ -1102,7 +779,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         {
             UpdatePlaceholderHint();
         }
-        else if (e.PropertyName == nameof(WebViewDocumentViewModel.IsSettingsVisible))
+        else if (e.PropertyName == nameof(WebViewDocumentViewModel.IsSettingsOpen))
         {
             ApplyContentLayout();
         }
@@ -1179,29 +856,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         AutomationProperties.SetName(PlaceholderContent, name);
     }
 
-    public override async Task<Result> SetFileResource(ResourceKey fileResource)
-    {
-        var previousResource = FileResource;
-
-        var setResult = await base.SetFileResource(fileResource);
-        if (setResult.IsFailure)
-        {
-            return setResult;
-        }
-
-        // A rename reuses this view, so the bridge entry has to follow the resource. Left on the
-        // old key, every webview_* call for the renamed document finds no registration and the
-        // stale entry survives until the workspace closes.
-        _toolBridge?.Rekey(previousResource, FileResource);
-
-        return setResult;
-    }
-
     public override async Task<Result> LoadContent()
     {
-        // Push the role onto the view model so NavigateUrl knows which URL to compute.
-        ViewModel.Role = Options.Role;
-
         var loadResult = await ViewModel.LoadContent();
         if (loadResult.IsFailure)
         {
@@ -1210,7 +866,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
 
         OpenSettingsIfNoWayToNavigate();
 
-        // Runs after the view model so NavigateUrl is resolved by the time initialization navigates.
+        // Runs after the view model so the Home URL is read by the time initialization navigates.
         var wasInitialized = _initializeWebViewTask is not null;
         await EnsureWebViewInitializedAsync();
 
@@ -1240,9 +896,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         await Task.CompletedTask;
 
         // A view that has not finished initializing would report a default settings state, which the
-        // layout store would then write over good saved state. The HTML viewer has no settings at all.
-        if (Options.Role != WebViewDocumentRole.ExternalUrl ||
-            _webView is null)
+        // layout store would then write over good saved state.
+        if (_webView is null)
         {
             return null;
         }
@@ -1276,11 +931,6 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
     {
         await Task.CompletedTask;
 
-        if (Options.Role != WebViewDocumentRole.ExternalUrl)
-        {
-            return;
-        }
-
         WebViewEditorState? editorState;
         try
         {
@@ -1310,7 +960,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
     }
 
     // The URL bar is the only chrome this view hides, and it carries every control the view owns.
-    public bool CanRestoreChrome => Options.Role == WebViewDocumentRole.ExternalUrl && !ViewModel.ShowUrlBar;
+    public bool CanRestoreChrome => !ViewModel.ShowUrlBar;
 
     public string RestoreChromeMenuTextKey => "WebView_ShowUrlBar";
 
@@ -1326,22 +976,6 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         var url = args.Uri;
         if (string.IsNullOrEmpty(url))
         {
-            return;
-        }
-
-        // A pinned page cannot navigate away without ceasing to be what the document is, so its new
-        // window is handed to the system browser, unless the user followed a link to another project file,
-        // which opens in Celbridge.
-        if (Options.InterceptTopFrameNavigation)
-        {
-            if (_webViewAdapter.IsUserInitiated(args) &&
-                Uri.TryCreate(url, UriKind.Absolute, out var destination) &&
-                TryOpenProjectLink(destination))
-            {
-                return;
-            }
-
-            ViewModel.OpenBrowser(url);
             return;
         }
 
@@ -1364,7 +998,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
     // time it is activated and focused, so its page counts as on screen.
     private void FocusDocumentContent()
     {
-        if (ViewModel.IsSettingsVisible)
+        if (ViewModel.IsSettingsOpen)
         {
             if (!SettingsSurface.FocusRail())
             {
@@ -1380,7 +1014,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
             return;
         }
 
-        if (ViewModel.IsUrlBarVisible)
+        if (ViewModel.ShowUrlBar)
         {
             AddressTextBox.Focus(FocusState.Programmatic);
             return;
@@ -1409,24 +1043,6 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         _webViewFocusRegistry.GrantFocus(_webView);
     }
 
-    private void ReleaseFocus()
-    {
-        _ = _host?.NotifyReleaseFocusAsync();
-    }
-
-    // Native focus gives the page the keyboard but leaves no element inside it focused, so a page that was
-    // released when its tab lost focus needs the DOM focus handed back.
-    private async Task GrantDomFocusAsync()
-    {
-        var host = _host;
-        if (host is null)
-        {
-            return;
-        }
-
-        await host.NotifyGrantFocusAsync();
-    }
-
     // True when the host find bar can drive this document: the page is the thing on screen, the WebView is
     // live, and its backend has no find UI of its own (the Windows Chromium heads do, so they report false
     // and keep their built-in bar).
@@ -1448,7 +1064,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
     private void OnFindBarClosed(object? sender, EventArgs e)
     {
         // The settings close the bar as they open, and the keyboard stays with the control that opened them.
-        if (ViewModel.IsSettingsVisible)
+        if (ViewModel.IsSettingsOpen)
         {
             return;
         }

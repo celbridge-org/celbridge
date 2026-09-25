@@ -317,6 +317,7 @@ export class Celbridge {
      * @param {Function} [handlers.onContent] - Called with (content, metadata) after initialization.
      * @param {Function} [handlers.onRequestSave] - Called when the host requests a save.
      * @param {Function} [handlers.onExternalChange] - Called when the file changes externally.
+     * @param {Function} [handlers.onRenamed] - Called with the document's new metadata after a rename or a move.
      * @param {Function} [handlers.onRequestState] - Called when the host requests editor state. Should return a string or null.
      *   The returned string must round-trip through `onRestoreState` with equivalent editor behavior.
      * @param {Function} [handlers.onRestoreState] - Called with a state string previously returned
@@ -341,6 +342,9 @@ export class Celbridge {
         }
         if (handlers.onExternalChange) {
             this.document.onExternalChange(handlers.onExternalChange);
+        }
+        if (handlers.onRenamed) {
+            this.document.onRenamed(handlers.onRenamed);
         }
         // Always register the state handlers, defaulting to "no state" / no-op. The host requests state on
         // close (to save workspace state). An editor that leaves these unset would otherwise have no

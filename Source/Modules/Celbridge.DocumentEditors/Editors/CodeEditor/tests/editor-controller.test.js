@@ -219,6 +219,41 @@ describe('EditorController initial content', () => {
     });
 });
 
+describe('EditorController document name', () => {
+    let controller;
+
+    beforeEach(() => {
+        for (const key of Object.keys(__capturedHandlers)) {
+            delete __capturedHandlers[key];
+        }
+        installMonacoStub(createMockEditor(createMockModel()));
+
+        controller = new EditorController();
+        controller.create(document.createElement('div'));
+    });
+
+    it('hands the caller the new metadata when the document is renamed', async () => {
+        const onRenamed = vi.fn();
+        await controller.initializeHost({ onRenamed });
+
+        const metadata = { resourceKey: 'project:src/app.py', fileName: 'app.py' };
+        __capturedHandlers.onRenamed(metadata);
+
+        expect(onRenamed).toHaveBeenCalledWith(metadata);
+    });
+
+    it('passes the metadata of an external reload on with the content', async () => {
+        const metadata = { resourceKey: 'project:src/app.py', fileName: 'app.py' };
+        celbridge.document.load = vi.fn().mockResolvedValue({ content: 'print(1)', metadata });
+        const onExternalReloadContent = vi.fn();
+        await controller.initializeHost({ onExternalReloadContent });
+
+        await __capturedHandlers.onExternalChange();
+
+        expect(onExternalReloadContent).toHaveBeenCalledWith(expect.any(String), metadata);
+    });
+});
+
 describe('EditorController.performEdit', () => {
     let model;
     let editor;

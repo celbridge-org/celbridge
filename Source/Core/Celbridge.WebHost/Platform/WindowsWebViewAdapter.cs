@@ -189,19 +189,9 @@ public sealed class WindowsWebViewAdapter : IWebViewAdapter
         return WebView2DownloadHandler.Attach(coreWebView2);
     }
 
-    public IDisposable GateNavigations(CoreWebView2 coreWebView2, NavigationGate gate)
-    {
-        return new WebView2NavigationGate(coreWebView2, gate);
-    }
-
     public IDisposable ObserveNavigationCommits(CoreWebView2 coreWebView2, NavigationCommitted onCommitted)
     {
         return new SourceChangedObserver(coreWebView2, onCommitted);
-    }
-
-    public bool IsUserInitiated(CoreWebView2NewWindowRequestedEventArgs args)
-    {
-        return args.IsUserInitiated;
     }
 
     // Windows uses Chromium's built-in find bar (ProvidesBuiltInFind is true), so the host never drives find

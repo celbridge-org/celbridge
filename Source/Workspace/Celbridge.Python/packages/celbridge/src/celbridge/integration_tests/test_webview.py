@@ -1,6 +1,8 @@
 """End-to-end tests for the webview_* tools.
 
 Writes a self-contained HTML page, opens it, and exercises every tool.
+The page opens in the HTML editor, so a call that names no frame lands on
+the frame that previews it, and frame="top" names the editor page itself.
 Eval-dependent cases are skipped automatically when the
 webview-dev-tools-eval feature flag is off.
 """
@@ -83,9 +85,9 @@ def workspace(explorer, file, document):
         "<!doctype html><html><body>unopened</body></html>",
     )
     document.open(TEST_RESOURCE, activate=True)
-    # The bridge's content-ready gate covers most of the navigation wait,
-    # but a small grace period lets the inline <script> run so console
-    # messages are present when the first get_console call fires.
+    # Each call waits for the editor and the page it previews to load. The
+    # grace period gives the page's fetch time to finish before the first
+    # get_network call.
     time.sleep(0.5)
     yield
     close_if_open(document, TEST_RESOURCE)
@@ -99,8 +101,7 @@ class TestWebView:
     def test_reload_returns_ok(self, webview):
         result = webview.reload(TEST_RESOURCE)
         assert result == "ok"
-        # Reload resets the readiness gate. Wait for the next NavigationCompleted
-        # so the next test in the class does not race the reload.
+        # Let the reload finish so the next test in the class does not race it.
         time.sleep(0.5)
 
     def test_reload_unopened_resource_fails(self, webview):
@@ -136,20 +137,39 @@ class TestWebView:
         assert title == "WebView Tools Test"
 
     def test_eval_unparseable_returns_none(self, webview, eval_enabled):
-        # ExecuteScriptAsync returns null silently when the script throws or
-        # fails to parse. The host does not surface JS errors. Lock that
-        # contract in so a future change is caught.
+        # An expression that throws or fails to parse returns None. The host
+        # does not surface JS errors. Lock that contract in so a future change
+        # is caught.
         if not eval_enabled:
             pytest.skip("webview-dev-tools-eval flag is off")
         assert webview.eval(TEST_RESOURCE, "this is not valid javascript") is None
 
     def test_eval_undefined_result_returns_none(self, webview, eval_enabled):
-        # An undefined result faults WKWebView's evaluateJavaScript (surfaced by
-        # Uno as ArgumentNullException) and is serialised by WebView2 as the JSON
-        # literal "null". Both paths converge on None. console.log returns undefined.
+        # console.log returns undefined, which the frame's shim serializes as null.
         if not eval_enabled:
             pytest.skip("webview-dev-tools-eval flag is off")
         assert webview.eval(TEST_RESOURCE, "console.log('eval-undefined-probe')") is None
+
+    def test_eval_top_frame_reaches_the_editor_page(self, webview, eval_enabled):
+        # The editor page holds the frame that previews the document.
+        if not eval_enabled:
+            pytest.skip("webview-dev-tools-eval flag is off")
+        has_preview_frame = webview.eval(
+            TEST_RESOURCE,
+            "document.querySelector('[data-cel-content-frame]') !== null",
+            frame="top",
+        )
+        assert has_preview_frame is True
+
+    def test_eval_undefined_result_in_the_editor_page_returns_none(self, webview, eval_enabled):
+        # The WebView evaluates the editor page directly. An undefined result
+        # faults WKWebView's evaluateJavaScript (surfaced by Uno as
+        # ArgumentNullException) and is serialized by WebView2 as the JSON
+        # literal "null". Both paths converge on None. console.log returns undefined.
+        if not eval_enabled:
+            pytest.skip("webview-dev-tools-eval flag is off")
+        result = webview.eval(TEST_RESOURCE, "console.log('eval-undefined-probe')", frame="top")
+        assert result is None
 
     def test_eval_empty_expression_rejected(self, webview, eval_enabled):
         if not eval_enabled:

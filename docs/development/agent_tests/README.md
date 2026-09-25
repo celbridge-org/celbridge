@@ -15,11 +15,12 @@ goes stale faster than anyone notices.
 | Plan | Area |
 |---|---|
 | [Code Editor](code_editor.md) | Markdown and code documents, their preview and find bars |
+| [HTML Editor](html_editor.md) | HTML documents: the page's source, and the live preview beside it |
 | [Spreadsheet](spreadsheet.md) | The grid, its cell editor, and the Designer's chrome and dialogs |
 | [Console](console.md) | The terminal and its settings form |
 | [Notes](notes.md) | Rich text notes |
 | [Notification Centre](notification_centre.md) | The notification badge and the list it opens over the documents |
-| [Web Documents](web_documents.md) | `.webview` and `.html` documents |
+| [Web Documents](web_documents.md) | `.webview` documents |
 | [Downloads](downloads.md) | Downloads from hosted pages, and the title bar badge and list that record them |
 | [Workspace](workspace.md) | Explorer, Search, dialogs, menus and project settings |
 | [Layout](layout.md) | The areas on screen, Focus and Presentation, and Reset Layout |
