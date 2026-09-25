@@ -1,88 +1,87 @@
 using Celbridge.Commands;
 using Celbridge.Logging;
 using Celbridge.UserInterface;
+using Celbridge.WebHost;
 using Microsoft.Web.WebView2.Core;
-using Windows.Foundation;
 
 namespace Celbridge.WebView.Services;
 
 /// <summary>
-/// Default navigation-policy helper. Intercepts WebView2 top-frame navigations,
-/// invokes the supplied handler, and dispatches the handler's NavigationDecision.
+/// Default navigation-policy helper. Puts a page's top-frame navigations to the supplied handler through
+/// the head's own gate, and dispatches the handler's NavigationDecision.
 /// </summary>
 public sealed class WebViewNavigationPolicy : IWebViewNavigationPolicy
 {
     private readonly ICommandService _commandService;
+    private readonly IWebViewAdapter _webViewAdapter;
     private readonly ILogger<WebViewNavigationPolicy> _logger;
 
-    private readonly Dictionary<CoreWebView2, TypedEventHandler<CoreWebView2, CoreWebView2NavigationStartingEventArgs>> _attachedHandlers = new();
+    // The gate each attached web view's page is held by, until the surface detaches it.
+    private readonly Dictionary<CoreWebView2, IDisposable> _gates = new();
 
     public WebViewNavigationPolicy(
         ICommandService commandService,
+        IWebViewAdapter webViewAdapter,
         ILogger<WebViewNavigationPolicy> logger)
     {
         _commandService = commandService;
+        _webViewAdapter = webViewAdapter;
         _logger = logger;
     }
 
     public void Attach(CoreWebView2 webView, NavigationDestinationHandler handler)
     {
-        TypedEventHandler<CoreWebView2, CoreWebView2NavigationStartingEventArgs> onStarting = (sender, args) =>
-        {
-            HandleNavigationStarting(args, handler);
-        };
+        // A web view attached a second time would otherwise keep the first gate as well, and answer each of
+        // its navigations twice.
+        Detach(webView);
 
-        webView.NavigationStarting += onStarting;
-        _attachedHandlers[webView] = onStarting;
+        // The head decides where it puts a navigation to the gate, and how it keeps a refused one from
+        // being fetched. A head that can ask in more than one place asks in each, so a handler must answer
+        // the same way every time.
+        _gates[webView] = _webViewAdapter.GateNavigations(webView, (destination, isUserInitiated) =>
+            Decide(new NavigationRequest(destination, isUserInitiated), handler));
     }
 
     public void Detach(CoreWebView2 webView)
     {
-        if (_attachedHandlers.TryGetValue(webView, out var onStarting))
+        if (_gates.Remove(webView, out var gate))
         {
-            webView.NavigationStarting -= onStarting;
-            _attachedHandlers.Remove(webView);
+            gate.Dispose();
         }
     }
 
-    private void HandleNavigationStarting(
-        CoreWebView2NavigationStartingEventArgs args,
-        NavigationDestinationHandler handler)
+    /// <summary>
+    /// Puts a navigation to the handler and returns whether it may go ahead. True only when the handler
+    /// allows it straight away. A refusal returns false, and so does a decision still being made.
+    /// Whatever the decision turns out to be, its side effect is dispatched once it arrives.
+    /// </summary>
+    internal bool Decide(NavigationRequest request, NavigationDestinationHandler handler)
     {
-        var uriText = args.Uri;
-        if (string.IsNullOrEmpty(uriText))
-        {
-            return;
-        }
+        var destination = request.Destination;
+        var decisionTask = handler(request);
 
-        if (!Uri.TryCreate(uriText, UriKind.Absolute, out var destination))
-        {
-            return;
-        }
-
-        var decisionTask = handler(destination);
-
-        // Synchronous fast path. Most call sites - the .webview always-allow handler
-        // and the HTML viewer's same-URL pinned-match check - complete synchronously.
+        // Synchronous fast path, which the HTML viewer's same-URL pinned-match check takes.
         if (decisionTask.IsCompleted)
         {
             var decision = decisionTask.Result;
-            if (decision != NavigationDecision.Allow)
+            if (decision == NavigationDecision.Allow)
             {
-                _logger.LogDebug("Cancelled navigation to {Url}, decided {Decision}", destination, decision);
-
-                args.Cancel = true;
-                DispatchSideEffect(decision, destination);
+                return true;
             }
-            return;
+
+            _logger.LogDebug("Cancelled navigation to {Url}, decided {Decision}", destination, decision);
+
+            DispatchSideEffect(decision, destination);
+            return false;
         }
 
-        // Async path. Cancel synchronously so the WebView never starts loading the
-        // destination, then await the handler and dispatch any side effect.
+        // Async path. Refused at once so the WebView does not present the destination, then the handler is
+        // awaited and any side effect dispatched. Refusing while the user is asked is what keeps the
+        // destination unfetched: a head sends the request the moment a navigation is let through.
         _logger.LogDebug("Cancelled navigation to {Url} while the destination is decided", destination);
 
-        args.Cancel = true;
         _ = AwaitAndDispatchAsync(decisionTask, destination);
+        return false;
     }
 
     private async Task AwaitAndDispatchAsync(Task<NavigationDecision> decisionTask, Uri destination)
@@ -100,8 +99,8 @@ public sealed class WebViewNavigationPolicy : IWebViewNavigationPolicy
 
     /// <summary>
     /// Translates a NavigationDecision into its non-cancellation side effect (or no-op).
-    /// Allow and Cancel are no-ops here; the cancel itself is set on the WebView2 args
-    /// at the call site. OpenInSystemBrowser routes through IOpenBrowserCommand.
+    /// Allow and Cancel are no-ops here; the cancel itself is made by whoever asked for
+    /// the decision. OpenInSystemBrowser routes through IOpenBrowserCommand.
     /// </summary>
     internal void DispatchSideEffect(NavigationDecision decision, Uri destination)
     {

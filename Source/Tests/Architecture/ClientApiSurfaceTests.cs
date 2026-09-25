@@ -20,11 +20,11 @@ public class ClientApiSurfaceTests
     {
         ["api/dialog-api.js"] = new[]
         {
-            "alert",
             "pickFile",
             "pickIcon",
             "pickImage",
-            "toast"
+            "showAlert",
+            "showNotification"
         },
         ["api/document-api.js"] = new[]
         {

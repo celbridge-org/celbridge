@@ -1,9 +1,8 @@
 namespace Celbridge.Server;
 
 /// <summary>
-/// Serves local files over HTTP on localhost via the server's Kestrel
-/// instance. Provides URL resolution for resource keys, supporting both
-/// absolute keys and relative paths from a context resource.
+/// Serves local files over HTTP on localhost via the server's Kestrel instance: the open project's
+/// files, the app-bundled web assets and package folders, and builds the loopback URLs for each.
 /// </summary>
 public interface IFileServer
 {
@@ -21,17 +20,6 @@ public interface IFileServer
     /// Disables file serving and releases the file provider.
     /// </summary>
     void Disable();
-
-    /// <summary>
-    /// Resolves a path to a localhost URL for the file server.
-    /// The path can be an absolute resource key (e.g. "Project/output/index.html"),
-    /// a relative path from the context resource's folder (e.g. "index.html" or
-    /// "../shared/header.html"), or a path with "." and ".." segments.
-    /// Relative paths are resolved from the folder containing contextResource.
-    /// Returns the URL if the path maps to a valid project file, or an empty
-    /// string if the server is not available or the path cannot be resolved.
-    /// </summary>
-    string ResolveLocalFileUrl(string path, ResourceKey contextResource = default);
 
     /// <summary>
     /// Registers the folder of app-bundled web assets shared by every WebView (the celbridge-client

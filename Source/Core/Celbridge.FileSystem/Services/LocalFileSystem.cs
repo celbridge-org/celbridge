@@ -242,11 +242,7 @@ public sealed class LocalFileSystem : ILocalFileSystem
             _logger,
             operationLabel: "Move",
             path: source,
-            operation: () =>
-            {
-                File.Move(source, dest, overwrite);
-                return Task.FromResult(true);
-            }).ConfigureAwait(false);
+            operation: () => RunOnWorkerThreadAsync(() => File.Move(source, dest, overwrite))).ConfigureAwait(false);
 
         return runResult.IsSuccess ? Result.Ok() : Result.Fail(runResult);
     }
@@ -257,11 +253,7 @@ public sealed class LocalFileSystem : ILocalFileSystem
             _logger,
             operationLabel: "Move",
             path: source,
-            operation: () =>
-            {
-                Directory.Move(source, dest);
-                return Task.FromResult(true);
-            }).ConfigureAwait(false);
+            operation: () => RunOnWorkerThreadAsync(() => Directory.Move(source, dest))).ConfigureAwait(false);
 
         return runResult.IsSuccess ? Result.Ok() : Result.Fail(runResult);
     }
@@ -272,11 +264,7 @@ public sealed class LocalFileSystem : ILocalFileSystem
             _logger,
             operationLabel: "Copy",
             path: source,
-            operation: () =>
-            {
-                File.Copy(source, dest);
-                return Task.FromResult(true);
-            }).ConfigureAwait(false);
+            operation: () => RunOnWorkerThreadAsync(() => File.Copy(source, dest))).ConfigureAwait(false);
 
         return runResult.IsSuccess ? Result.Ok() : Result.Fail(runResult);
     }
@@ -287,11 +275,7 @@ public sealed class LocalFileSystem : ILocalFileSystem
             _logger,
             operationLabel: "Delete",
             path: path,
-            operation: () =>
-            {
-                File.Delete(path);
-                return Task.FromResult(true);
-            }).ConfigureAwait(false);
+            operation: () => RunOnWorkerThreadAsync(() => File.Delete(path))).ConfigureAwait(false);
 
         return runResult.IsSuccess ? Result.Ok() : Result.Fail(runResult);
     }
@@ -302,11 +286,7 @@ public sealed class LocalFileSystem : ILocalFileSystem
             _logger,
             operationLabel: "Delete",
             path: path,
-            operation: () =>
-            {
-                Directory.Delete(path, recursive);
-                return Task.FromResult(true);
-            }).ConfigureAwait(false);
+            operation: () => RunOnWorkerThreadAsync(() => Directory.Delete(path, recursive))).ConfigureAwait(false);
 
         return runResult.IsSuccess ? Result.Ok() : Result.Fail(runResult);
     }
@@ -368,6 +348,18 @@ public sealed class LocalFileSystem : ILocalFileSystem
             return Result.Fail($"Failed to set attributes on path: '{path}'")
                 .WithException(ex);
         }
+    }
+
+    // Deletes, moves and copies have no asynchronous form in System.IO, so they run on a worker thread
+    // rather than on the caller's. The command queue calls them from the UI thread, where one that waits
+    // on a file antivirus is still scanning would freeze the application until the scan ends.
+    private static Task<bool> RunOnWorkerThreadAsync(Action operation)
+    {
+        return Task.Run(() =>
+        {
+            operation();
+            return true;
+        });
     }
 
     // Reads short-circuit FileNotFoundException and DirectoryNotFoundException

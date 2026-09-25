@@ -385,15 +385,85 @@ public class LocalResourceFileSystemTests
     }
 
     [Test]
-    public async Task MoveAsync_FailsCrossRootPrecondition()
+    public async Task MoveAsync_AcrossRoots_MovesTheFileWithoutAnnouncingAKeyChange()
     {
-        var sourceKey = new ResourceKey("project:a.txt");
-        var destKey = new ResourceKey("temp:a.txt");
+        var sourceKey = new ResourceKey("temp:downloads/staged.bin");
+        var destKey = new ResourceKey("downloads/report.bin");
+        var sourcePath = Path.Combine(_tempFolder, ".celbridge", "temp", "downloads", "staged.bin");
+        var destPath = Path.Combine(_tempFolder, "downloads", "report.bin");
+        Directory.CreateDirectory(Path.GetDirectoryName(sourcePath)!);
+        await File.WriteAllTextAsync(sourcePath, "payload");
 
+        _resourceRegistry.ResolveResourcePath(sourceKey).Returns(Result<string>.Ok(sourcePath));
+        _resourceRegistry.ResolveResourcePath(destKey).Returns(Result<string>.Ok(destPath));
+
+        var result = await _resourceFileSystem.MoveAsync(sourceKey, destKey, new MoveOptions(AllowCrossRoot: true));
+
+        result.IsSuccess.Should().BeTrue(result.DiagnosticReport);
+        File.Exists(sourcePath).Should().BeFalse();
+        (await File.ReadAllTextAsync(destPath)).Should().Be("payload");
+        result.Value.UpdatedReferencers.Should().BeEmpty();
+
+        // The source was never a project resource, so there is nothing to announce.
+        _messengerService.DidNotReceive().Send(Arg.Any<ResourceKeyChangedMessage>());
+        _messengerService.DidNotReceive().Send(Arg.Any<ResourceDeletedMessage>());
+    }
+
+    [Test]
+    public async Task MoveAsync_AcrossRoots_WithoutTheOption_IsRefused()
+    {
+        var sourceKey = new ResourceKey("temp:downloads/staged.bin");
+        var destKey = new ResourceKey("downloads/report.bin");
+        var sourcePath = Path.Combine(_tempFolder, ".celbridge", "temp", "downloads", "staged.bin");
+        var destPath = Path.Combine(_tempFolder, "downloads", "report.bin");
+        Directory.CreateDirectory(Path.GetDirectoryName(sourcePath)!);
+        await File.WriteAllTextAsync(sourcePath, "payload");
+
+        _resourceRegistry.ResolveResourcePath(sourceKey).Returns(Result<string>.Ok(sourcePath));
+        _resourceRegistry.ResolveResourcePath(destKey).Returns(Result<string>.Ok(destPath));
+
+        // A move across roots carries none of the resource's identity, so a caller has to ask for one.
         var result = await _resourceFileSystem.MoveAsync(sourceKey, destKey);
 
         result.IsFailure.Should().BeTrue();
-        result.FirstErrorMessage.Should().Contain("same root");
+        File.Exists(sourcePath).Should().BeTrue();
+        File.Exists(destPath).Should().BeFalse();
+    }
+
+    [Test]
+    public async Task MoveAsync_OutOfTheProjectRoot_AnnouncesTheRemoval_AndRewritesNoReferences()
+    {
+        var sourceKey = new ResourceKey("source.txt");
+        var destKey = new ResourceKey("temp:source.txt");
+        var referencerKey = new ResourceKey("doc.json");
+
+        var sourcePath = Path.Combine(_tempFolder, "source.txt");
+        var destPath = Path.Combine(_tempFolder, ".celbridge", "temp", "source.txt");
+        var referencerPath = Path.Combine(_tempFolder, "doc.json");
+        await File.WriteAllTextAsync(sourcePath, "data");
+        await File.WriteAllTextAsync(referencerPath, "See \"project:source.txt\" for details.");
+
+        _resourceRegistry.ResolveResourcePath(sourceKey).Returns(Result<string>.Ok(sourcePath));
+        _resourceRegistry.ResolveResourcePath(destKey).Returns(Result<string>.Ok(destPath));
+        _resourceRegistry.ResolveResourcePath(referencerKey).Returns(Result<string>.Ok(referencerPath));
+        _resourceRegistry.ResolveResourcePath(new ResourceKey("source.txt.cel")).Returns(Result<string>.Ok(sourcePath + ".cel"));
+        _resourceRegistry.ResolveResourcePath(new ResourceKey("temp:source.txt.cel")).Returns(Result<string>.Ok(destPath + ".cel"));
+
+        var referenceIndex = ResourceReferenceIndexTestHelper.WithReferencers(sourceKey, referencerKey);
+        _resourceScanner.BuildReferenceIndexAsync().Returns(Task.FromResult(referenceIndex));
+
+        var result = await _resourceFileSystem.MoveAsync(sourceKey, destKey, new MoveOptions(AllowCrossRoot: true));
+
+        result.IsSuccess.Should().BeTrue(result.DiagnosticReport);
+        File.Exists(sourcePath).Should().BeFalse();
+        File.Exists(destPath).Should().BeTrue();
+
+        // A key in another root is not the same resource, so references keep naming the one that left.
+        result.Value.UpdatedReferencers.Should().BeEmpty();
+        (await File.ReadAllTextAsync(referencerPath)).Should().Be("See \"project:source.txt\" for details.");
+
+        _messengerService.Received(1).Send(Arg.Is<ResourceDeletedMessage>(message => message.Resource == sourceKey));
+        _messengerService.DidNotReceive().Send(Arg.Any<ResourceKeyChangedMessage>());
     }
 
     [Test]

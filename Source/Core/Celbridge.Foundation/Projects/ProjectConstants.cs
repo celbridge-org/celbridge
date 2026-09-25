@@ -27,6 +27,12 @@ public static class ProjectConstants
     public const string CelbridgeFolder = ".celbridge";
 
     /// <summary>
+    /// Git's metadata folder. Celbridge reserves it, as it does its own folder, so no resource can be read
+    /// or written inside it.
+    /// </summary>
+    public const string GitFolder = ".git";
+
+    /// <summary>
     /// Sub-folder of .celbridge/ that backs the temp: virtual root. Wiped on
     /// workspace load.
     /// </summary>
@@ -61,7 +67,8 @@ public static class ProjectConstants
 
     /// <summary>
     /// Folder name used for WebView downloads. Used both for the in-progress
-    /// staging folder under temp: and for the destination folder under project:.
+    /// staging folder under temp: and for the default destination folder under
+    /// project:, which a project's downloads-folder key can change.
     /// </summary>
     public const string DownloadsFolder = "downloads";
 }

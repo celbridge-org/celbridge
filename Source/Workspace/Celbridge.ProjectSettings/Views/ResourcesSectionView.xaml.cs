@@ -4,7 +4,7 @@ namespace Celbridge.ProjectSettings.Views;
 
 /// <summary>
 /// The Resources section of the Project Settings: the patterns the Explorer hides and the patterns search
-/// skips, each edited as a block of glob patterns, one per line.
+/// skips, each edited as a block of glob patterns, one per line, and the folder downloads are saved to.
 /// </summary>
 public sealed partial class ResourcesSectionView : UserControl
 {
@@ -25,5 +25,10 @@ public sealed partial class ResourcesSectionView : UserControl
     public ResourcesSectionView()
     {
         InitializeComponent();
+    }
+
+    private void BrowseDownloadsFolderButton_Click(object sender, RoutedEventArgs e)
+    {
+        _ = ViewModel?.PickDownloadsFolderAsync();
     }
 }

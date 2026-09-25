@@ -54,6 +54,15 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
             return;
         }
 
+        // The active document's tab is always the one selected in its section.
+        var activeLocation = SectionContainer.FindDocumentTab(SectionContainer.ActiveDocument);
+        if (activeLocation is not null &&
+            activeLocation.SectionView == sectionView &&
+            activeLocation.Tab != documentTab)
+        {
+            return;
+        }
+
         sectionView!.SelectTab(documentTab);
     }
 
@@ -947,9 +956,22 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
             await NavigateToLocation(fileResource, effectiveOptions.Location);
         }
 
-        if (!string.IsNullOrEmpty(effectiveOptions.EditorStateJson))
+        // Editor state is private to the editor that wrote it, so state another editor saved, as a
+        // Reopen With or a changed association leaves behind, is dropped rather than handed over.
+        var editorState = effectiveOptions.EditorState;
+        if (editorState is not null &&
+            !string.IsNullOrEmpty(editorState.Json))
         {
-            await documentView.RestoreEditorStateAsync(effectiveOptions.EditorStateJson);
+            if (editorState.EditorId == documentView.EditorId)
+            {
+                await documentView.RestoreEditorStateAsync(editorState.Json);
+            }
+            else
+            {
+                _logger.LogDebug(
+                    "Dropped editor state for {Document} saved by {SavingEditor}, since {OpeningEditor} opened it",
+                    fileResource, editorState.EditorId, documentView.EditorId);
+            }
         }
 
         return Result<OpenDocumentOutcome>.Ok(OpenDocumentOutcome.Opened);
@@ -1081,10 +1103,11 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
     }
 
     /// <summary>
-    /// Returns the editor state JSON for the given tab, or null if the view isn't ready, hasn't
-    /// been created, or anything throws. Best-effort: editor state is a user convenience, not data.
+    /// Returns the editor state for the given tab, with the editor that saved it, or null if the view
+    /// isn't ready, hasn't been created, or anything throws. Best-effort: editor state is a user
+    /// convenience, not data.
     /// </summary>
-    private static async Task<string?> TryCaptureEditorStateAsync(DocumentTab documentTab)
+    private static async Task<DocumentEditorState?> TryCaptureEditorStateAsync(DocumentTab documentTab)
     {
         var documentView = documentTab.ViewModel.DocumentView;
         if (documentView is null)
@@ -1094,7 +1117,13 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
 
         try
         {
-            return await documentView.TrySaveEditorStateAsync();
+            var state = await documentView.TrySaveEditorStateAsync();
+            if (string.IsNullOrEmpty(state))
+            {
+                return null;
+            }
+
+            return new DocumentEditorState(documentView.EditorId, state);
         }
         catch
         {

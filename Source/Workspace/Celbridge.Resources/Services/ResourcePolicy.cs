@@ -137,31 +137,31 @@ public sealed class ResourcePolicy : IResourcePolicy
         // raw paths.
         rules.Add(new CompiledPolicyRule(
             source: PolicyRuleSource.SystemDeny,
-            pattern: ".celbridge",
+            pattern: ProjectConstants.CelbridgeFolder,
             gatedActions: ResourceAction.Read | ResourceAction.Write,
             description: "The project metadata folder is reserved by Celbridge and cannot be addressed as a resource.",
-            matcher: CompileReservedMatcher(".celbridge")));
+            matcher: CompileReservedMatcher(ProjectConstants.CelbridgeFolder)));
 
         rules.Add(new CompiledPolicyRule(
             source: PolicyRuleSource.SystemDeny,
-            pattern: ".celbridge/**",
+            pattern: $"{ProjectConstants.CelbridgeFolder}/**",
             gatedActions: ResourceAction.Read | ResourceAction.Write,
             description: "Files under the project metadata folder are reserved by Celbridge.",
-            matcher: CompileReservedMatcher(".celbridge/**")));
+            matcher: CompileReservedMatcher($"{ProjectConstants.CelbridgeFolder}/**")));
 
         rules.Add(new CompiledPolicyRule(
             source: PolicyRuleSource.SystemDeny,
-            pattern: ".git",
+            pattern: ProjectConstants.GitFolder,
             gatedActions: ResourceAction.Read | ResourceAction.Write,
             description: "The Git metadata folder is reserved and cannot be addressed as a resource.",
-            matcher: CompileReservedMatcher(".git")));
+            matcher: CompileReservedMatcher(ProjectConstants.GitFolder)));
 
         rules.Add(new CompiledPolicyRule(
             source: PolicyRuleSource.SystemDeny,
-            pattern: ".git/**",
+            pattern: $"{ProjectConstants.GitFolder}/**",
             gatedActions: ResourceAction.Read | ResourceAction.Write,
             description: "Files under the Git metadata folder are reserved.",
-            matcher: CompileReservedMatcher(".git/**")));
+            matcher: CompileReservedMatcher($"{ProjectConstants.GitFolder}/**")));
 
         return rules;
     }

@@ -50,7 +50,7 @@ notesInput.addEventListener('input', notifyChanged);
 // A bare JavaScript alert() is unhandled and silently does nothing on the macOS head.
 async function showNotes() {
     try {
-        await client.dialog.alert('Notes', notesInput.value || 'Nothing saved yet.');
+        await client.dialog.showAlert('Notes', notesInput.value || 'Nothing saved yet.');
     } catch (e) {
         console.error('[UtilityDemo] Failed to show the notes:', e);
     }

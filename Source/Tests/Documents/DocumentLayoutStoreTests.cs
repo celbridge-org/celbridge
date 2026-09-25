@@ -258,29 +258,53 @@ public class DocumentLayoutStoreTests
     }
 
     [Test]
-    public async Task RestorePanelStateAsync_AttachesEditorStateJsonByResourceKey()
+    public async Task RestorePanelStateAsync_AttachesEditorStateByResourceKey()
     {
         // Saved editor state is indexed by resource key, the canonical "project:..."
         // form ResourceKey.ToString emits. The restore forwards only the entry that
-        // matches each opened tab.
+        // matches each opened tab, naming the editor that saved it.
         var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
         {
             new("notes/readme.md", 0, "main_left", 0),
         };
         _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("OpenDocumentAddresses")
             .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
-        _propertyBag.GetPropertyAsync<Dictionary<string, string>>("DocumentEditorStates")
-            .Returns(Task.FromResult<Dictionary<string, string>?>(new Dictionary<string, string>
-            {
-                [new ResourceKey("notes/readme.md").ToString()] = "{\"scroll\":0.5}",
-                [new ResourceKey("other/file.md").ToString()] = "{\"scroll\":1.0}",
-            }));
+        StubStoredEditorStates(new Dictionary<string, DocumentLayoutStore.StoredEditorState>
+        {
+            [new ResourceKey("notes/readme.md").ToString()] = new("celbridge.markdown", "{\"scroll\":0.5}"),
+            [new ResourceKey("other/file.md").ToString()] = new("celbridge.markdown", "{\"scroll\":1.0}"),
+        });
 
         await _store.RestorePanelStateAsync(NoDocumentShortcuts);
 
         await _documentsPanel.Received(1).OpenDocument(
             Arg.Any<ResourceKey>(),
-            Arg.Is<OpenDocumentOptions>(options => options.EditorStateJson == "{\"scroll\":0.5}"));
+            Arg.Is<OpenDocumentOptions>(options =>
+                options.EditorState != null &&
+                options.EditorState.Json == "{\"scroll\":0.5}" &&
+                options.EditorState.EditorId == new EditorId("celbridge.markdown")));
+    }
+
+    [Test]
+    public async Task RestorePanelStateAsync_DropsStateThatNamesNoEditor()
+    {
+        // A state naming no editor cannot be matched against the editor that opens the file.
+        var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
+        {
+            new("notes/readme.md", 0, "main_left", 0),
+        };
+        _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("OpenDocumentAddresses")
+            .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
+        StubStoredEditorStates(new Dictionary<string, DocumentLayoutStore.StoredEditorState>
+        {
+            [new ResourceKey("notes/readme.md").ToString()] = new(string.Empty, "{\"scroll\":0.5}"),
+        });
+
+        await _store.RestorePanelStateAsync(NoDocumentShortcuts);
+
+        await _documentsPanel.Received(1).OpenDocument(
+            Arg.Any<ResourceKey>(),
+            Arg.Is<OpenDocumentOptions>(options => options.EditorState == null));
     }
 
     [Test]
@@ -442,19 +466,20 @@ public class DocumentLayoutStoreTests
     {
         var targetResource = new ResourceKey("notes/readme.md");
         var otherResource = new ResourceKey("other/file.md");
-        _propertyBag.GetPropertyAsync<Dictionary<string, string>>("DocumentEditorStates")
-            .Returns(Task.FromResult<Dictionary<string, string>?>(new Dictionary<string, string>
-            {
-                [otherResource.ToString()] = "{\"scroll\":1.0}",
-            }));
+        StubStoredEditorStates(new Dictionary<string, DocumentLayoutStore.StoredEditorState>
+        {
+            [otherResource.ToString()] = new("celbridge.markdown", "{\"scroll\":1.0}"),
+        });
 
-        await _store.StoreDocumentEditorStateAsync(targetResource, "{\"scroll\":0.5}");
+        var state = new DocumentEditorState(new EditorId("celbridge.markdown"), "{\"scroll\":0.5}");
+        await _store.StoreDocumentEditorStateAsync(targetResource, state);
 
         await _propertyBag.Received(1).SetPropertyAsync(
             "DocumentEditorStates",
-            Arg.Is<Dictionary<string, string>>(d =>
-                d[targetResource.ToString()] == "{\"scroll\":0.5}"
-                && d[otherResource.ToString()] == "{\"scroll\":1.0}"));
+            Arg.Is<Dictionary<string, DocumentLayoutStore.StoredEditorState>>(d =>
+                d[targetResource.ToString()].State == "{\"scroll\":0.5}"
+                && d[targetResource.ToString()].EditorId == "celbridge.markdown"
+                && d[otherResource.ToString()].State == "{\"scroll\":1.0}"));
     }
 
     [Test]
@@ -462,19 +487,24 @@ public class DocumentLayoutStoreTests
     {
         var targetResource = new ResourceKey("notes/readme.md");
         var otherResource = new ResourceKey("other/file.md");
-        _propertyBag.GetPropertyAsync<Dictionary<string, string>>("DocumentEditorStates")
-            .Returns(Task.FromResult<Dictionary<string, string>?>(new Dictionary<string, string>
-            {
-                [targetResource.ToString()] = "{\"scroll\":0.5}",
-                [otherResource.ToString()] = "{\"scroll\":1.0}",
-            }));
+        StubStoredEditorStates(new Dictionary<string, DocumentLayoutStore.StoredEditorState>
+        {
+            [targetResource.ToString()] = new("celbridge.markdown", "{\"scroll\":0.5}"),
+            [otherResource.ToString()] = new("celbridge.markdown", "{\"scroll\":1.0}"),
+        });
 
         await _store.StoreDocumentEditorStateAsync(targetResource, null);
 
         await _propertyBag.Received(1).SetPropertyAsync(
             "DocumentEditorStates",
-            Arg.Is<Dictionary<string, string>>(d =>
+            Arg.Is<Dictionary<string, DocumentLayoutStore.StoredEditorState>>(d =>
                 !d.ContainsKey(targetResource.ToString())
-                && d[otherResource.ToString()] == "{\"scroll\":1.0}"));
+                && d[otherResource.ToString()].State == "{\"scroll\":1.0}"));
+    }
+
+    private void StubStoredEditorStates(Dictionary<string, DocumentLayoutStore.StoredEditorState> editorStates)
+    {
+        _propertyBag.GetPropertyAsync<Dictionary<string, DocumentLayoutStore.StoredEditorState>>("DocumentEditorStates")
+            .Returns(Task.FromResult<Dictionary<string, DocumentLayoutStore.StoredEditorState>?>(editorStates));
     }
 }

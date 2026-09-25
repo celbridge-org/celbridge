@@ -20,6 +20,7 @@ goes stale faster than anyone notices.
 | [Notes](notes.md) | Rich text notes |
 | [Notification Centre](notification_centre.md) | The notification badge and the list it opens over the documents |
 | [Web Documents](web_documents.md) | `.webview` and `.html` documents |
+| [Downloads](downloads.md) | Downloads from hosted pages, and the title bar badge and list that record them |
 | [Workspace](workspace.md) | Explorer, Search, dialogs, menus and project settings |
 | [Layout](layout.md) | The areas on screen, Focus and Presentation, and Reset Layout |
 | [Python Environment](python_environment.md) | The uv install, the Celbridge wheel, and the environment consoles inherit |
@@ -29,6 +30,12 @@ goes stale faster than anyone notices.
 Every case carries a level, and running at level N means running every case at N and below. The level is
 also the case's value ranking, so each plan lists its cases in level order and the broadest, most-used
 paths come first.
+
+Within a level the order is the order to run them in. A case that needs what an earlier one leaves
+behind comes after it, cases on one surface sit together, and a case that clears the state the others
+build up comes after the ones that need it. A run should be able to work down the table without setting
+the same thing up twice or backtracking, so where value order and run order disagree, run order wins
+inside a level. Levels still rank value against each other.
 
 | Level | Scope | Size |
 |---|---|---|
@@ -89,7 +96,23 @@ point: a shortcut delivered any other way tests a path a user never takes. Every
 documents, reading page state, inspecting the log — has cheaper and more reliable routes that the
 project's own tooling provides.
 
-Two things a run reliably trips over:
+Six things a run reliably trips over:
+
+**A page takes no pointer input until the web view runtime is granted too.** Desktop automation hides the
+windows of applications outside the permission it was given, and every page the application hosts is drawn
+by the platform's web view runtime, which is a separate application. Without it those pages report
+themselves hidden and ignore every click, while the click tool goes on reporting success — so a run can
+spend an hour proving the application is at fault when nothing ever reached it. Grant the runtime as well
+as the application, by the executable the automation matches against rather than by the product name, and
+confirm a page is taking clicks before reading anything into one that appears to do nothing.
+
+**Click coordinates are in the capture's own frame.** A screen capture is scaled, and the coordinates a
+click takes are in the scaled frame rather than in screen pixels. Calibrate by moving the pointer to two
+known points and reading the pointer position back; a run that infers the scale from a screenshot's label
+clicks in the wrong place and reports whatever it hit.
+
+**A click outside an open flyout is eaten by the dismiss.** The first click of a batch closes the flyout
+and reaches nothing, so close it deliberately before acting on the surface behind it.
 
 **Escape may not arrive.** Desktop automation reports success for Escape and can deliver nothing, because
 computer use keeps Escape as its own stop key: an Escape it sees stops the run rather than reaching the
@@ -102,9 +125,14 @@ that raises one unexpectedly appears to hang. Answer it — `Escape` cancels and
 `app_simulate_input`, which runs outside the queue — or schedule `app_answer_dialog` before the step that
 raises it.
 
+**A tool call that fails with nothing but the tool's name is a wrong argument.** The application answers a
+bad call with `An error occurred invoking '<tool>'` and no more; what was actually wrong — most often a
+parameter named something other than what the run guessed — is in the application log. Each tool carries a
+guide in the project saying what it takes, and reading one costs less than a wrong guess does.
+
 ## Evidence
 
-Most of the cost of a run is spent telling a real failure from a bad observation. Three rules, each of
+Most of the cost of a run is spent telling a real failure from a bad observation. Four rules, each of
 which has produced a wrong verdict before:
 
 **Read state back; do not trust the screen.** A hosted web view can present a stale frame while its DOM is
@@ -127,6 +155,12 @@ fails, check the precondition again before reporting it.
 An action that appears to have done nothing deserves a screenshot before it is written down as a
 negative. Some read tools answer while a dialog is open, so they report the state from before the action
 and read as "nothing happened" when what actually happened is a dialog waiting for an answer.
+
+**A baseline has to survive being written down.** Several cases turn on comparing a folder, a list or a
+file with what it held before, and a listing saved to disk and read back can come back changed by nothing
+but the encoding it was read with — names outside plain ASCII first. Compare in one pass where you can,
+and where you cannot, check that an untouched baseline still compares equal before believing a difference
+the comparison reports.
 
 **Distinguish "the app is wrong" from "the input never arrived".** Synthetic input is not perfectly
 reliable on every head: clicks can register as hover, and a control that ignores one can be perfectly
@@ -182,7 +216,8 @@ a change outside the project that the run could not put back, which belongs in t
 One file per area, listing the surfaces in scope and the cases as a table of *situation, action, expected
 outcome, level*, where the outcome is something observable. Write the expectation, not the mechanism: a
 plan should survive the implementation changing underneath it. List the cases in level order, so the table
-reads as the priority list the levels already make it.
+reads as the priority list the levels already make it, and within a level in the order a run should take
+them.
 
 Prefer cases that have failed before, and pick a representative set rather than an exhaustive one — a rich
 third-party surface has more controls than anyone will ever check, and a plan that tries to name them all

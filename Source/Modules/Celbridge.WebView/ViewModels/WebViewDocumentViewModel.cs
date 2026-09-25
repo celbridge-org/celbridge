@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Globalization;
 using Celbridge.Commands;
+using Celbridge.Documents.Helpers;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Logging;
@@ -17,19 +18,36 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.WebView.ViewModels;
 
 /// <summary>
-/// The lifecycle stage of the URL bar's download indicator.
+/// How a navigation ended.
 /// </summary>
-public enum WebViewDownloadStatus
+public enum NavigationOutcome
 {
-    None,
-    InProgress,
-    Succeeded,
+    /// <summary>
+    /// The page loaded.
+    /// </summary>
+    Loaded,
+
+    /// <summary>
+    /// The page could not be loaded, and the document says so in place of it.
+    /// </summary>
     Failed,
+
+    /// <summary>
+    /// The browser abandoned the navigation before it produced a page. The page that was showing is still
+    /// showing, so there is nothing to report.
+    /// </summary>
+    Aborted
 }
 
 public partial class WebViewDocumentViewModel : DocumentViewModel
 {
     private const string WwwPrefix = "www.";
+
+    // Where the loopback file server serves the open project's files: the HTML viewer's page, and every
+    // project file it links to. Everything served sits on this one origin, which is what lets those pages
+    // reach the server without CORS. The localhost alias names the same machine but a different origin.
+    private const string ServerHost = "127.0.0.1";
+    private const string ProjectRoute = "/project/";
 
     private readonly ILogger<WebViewDocumentViewModel> _logger;
     private readonly ICommandService _commandService;
@@ -60,6 +78,10 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     // Cleared when a navigation starts and set by the stop gesture, so the cancelled navigation that
     // follows is not reported as a page that failed to load.
     private bool _navigationStoppedByUser;
+
+    // The address the page last committed to, which names the page on screen whatever navigation is in
+    // flight. Empty until a page commits.
+    private string _committedUrl = string.Empty;
 
     // The URL bar acts on a page that is not on screen while the settings are showing, so every control
     // that would navigate is driven from this as well as from its own state.
@@ -98,8 +120,8 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     [NotifyPropertyChangedFor(nameof(IsCurrentPageBookmarked))]
     private string _currentUrl = string.Empty;
 
-    // Reported by the WebView when a navigation does not complete, which leaves the page being left
-    // still rendered.
+    // Reported by the WebView when a navigation does not complete, which leaves the previous page on
+    // screen.
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsPlaceholderVisible))]
     [NotifyPropertyChangedFor(nameof(IsEmptyStateVisible))]
@@ -111,19 +133,6 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     [NotifyPropertyChangedFor(nameof(IsReloadOrStopEnabled))]
     [NotifyPropertyChangedFor(nameof(IsReloadIconVisible))]
     private bool _isNavigating;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsDownloadIndicatorVisible))]
-    [NotifyPropertyChangedFor(nameof(IsDownloadInProgress))]
-    [NotifyPropertyChangedFor(nameof(IsDownloadSucceeded))]
-    [NotifyPropertyChangedFor(nameof(IsDownloadFailed))]
-    private WebViewDownloadStatus _downloadStatus = WebViewDownloadStatus.None;
-
-    /// <summary>
-    /// The imported resource of the most recent completed download. Clicking the
-    /// settled download indicator reveals it in the Explorer.
-    /// </summary>
-    public ResourceKey LastDownloadedResource { get; private set; } = ResourceKey.Empty;
 
     private WebViewDocumentRole _role;
 
@@ -162,6 +171,12 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     /// navigate to. The view owns the WebView, so it performs the navigation.
     /// </summary>
     public event EventHandler<string>? NavigateRequested;
+
+    /// <summary>
+    /// Where the navigation in flight is heading, or empty when none is. The address bar names it only when
+    /// the user chose it through the document, or when it fails and the placeholder reports on it.
+    /// </summary>
+    public string NavigationDestination { get; private set; } = string.Empty;
 
     /// <summary>
     /// True when the browser-style URL bar should be shown: the external-URL role
@@ -308,14 +323,6 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
 
     public bool CanOpenInBrowser => IsPageUrl(CurrentUrl);
 
-    public bool IsDownloadIndicatorVisible => DownloadStatus != WebViewDownloadStatus.None;
-
-    public bool IsDownloadInProgress => DownloadStatus == WebViewDownloadStatus.InProgress;
-
-    public bool IsDownloadSucceeded => DownloadStatus == WebViewDownloadStatus.Succeeded;
-
-    public bool IsDownloadFailed => DownloadStatus == WebViewDownloadStatus.Failed;
-
     /// <summary>
     /// The URL the view should navigate to. For .webview documents this is the configured source URL
     /// verbatim. For the HTML viewer it is the loopback /project/ URL on the Skia heads, or the project
@@ -338,7 +345,7 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
 
                 // Served over the loopback file server's /project/ route. Relative asset
                 // references in the HTML resolve against this origin.
-                return $"http://127.0.0.1:{_serverService.Port}/project/{FileResource.Path}";
+                return $"http://{ServerHost}:{_serverService.Port}{ProjectRoute}{FileResource.Path}";
             }
 
             return SourceUrl;
@@ -524,13 +531,115 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     }
 
     /// <summary>
-    /// Records that a navigation has begun, clearing the failure the previous one may have reported.
+    /// Finds the project resource a destination on the loopback file server names. False for any other
+    /// destination, including the server's routes outside the project.
     /// </summary>
-    public void NotifyNavigationStarted()
+    public bool TryResolveProjectResource(Uri destination, out ResourceKey resource)
     {
+        resource = ResourceKey.Empty;
+
+        var isProjectServer = destination.Scheme == Uri.UriSchemeHttp &&
+            destination.Host == ServerHost &&
+            destination.Port == _serverService.Port;
+
+        if (!isProjectServer ||
+            !destination.AbsolutePath.StartsWith(ProjectRoute, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        // A link to a folder may end in a separator, which a resource key does not.
+        var escapedPath = destination.AbsolutePath.Substring(ProjectRoute.Length);
+        var path = Uri.UnescapeDataString(escapedPath).TrimEnd('/');
+        if (path.Length == 0)
+        {
+            return false;
+        }
+
+        // Named under the project root explicitly, so a colon in the path cannot select another root. The
+        // resource key rules refuse parent references, so the path cannot climb out of the project either.
+        return ResourceKey.TryCreate($"{ResourceKey.DefaultRoot}:{path}", out resource);
+    }
+
+    /// <summary>
+    /// Opens a project resource a link on the page leads to: in its editor when it has one, and otherwise by
+    /// selecting it in the Explorer, which is also how a linked folder is shown. Returns false when the
+    /// project has no such resource.
+    /// </summary>
+    public bool OpenLinkedResource(ResourceKey resource)
+    {
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
+        {
+            return false;
+        }
+
+        return LinkedResourceOpener.Open(_commandService, _workspaceWrapper.WorkspaceService, resource);
+    }
+
+    /// <summary>
+    /// Records that the document is opening an address the user chose through it: one entered in the URL
+    /// bar, a bookmark, Home, or the Home URL it opens on. The address bar names the destination at once,
+    /// and the failure a previous navigation may have reported is cleared.
+    /// </summary>
+    public void NotifyUserNavigation(string url)
+    {
+        NavigationDestination = url;
+        HasNavigationFailed = false;
+        CurrentUrl = url;
+    }
+
+    /// <summary>
+    /// Records that a navigation has begun, clearing the failure the previous one may have reported. The
+    /// address bar goes on naming the page on screen until the navigation commits, so a link that turns
+    /// out to be a download never shows in it.
+    /// </summary>
+    public void NotifyNavigationStarted(string destination)
+    {
+        // The placeholder reporting the failure gives way to the page behind it, which the bar names again.
+        if (HasNavigationFailed)
+        {
+            CurrentUrl = _committedUrl;
+        }
+
+        if (destination.Length > 0)
+        {
+            NavigationDestination = destination;
+        }
+
         _navigationStoppedByUser = false;
         HasNavigationFailed = false;
         IsNavigating = true;
+    }
+
+    /// <summary>
+    /// Records the address the page has committed to, as a new page takes the place of the old one or the
+    /// page moves to another address of its own. The address bar follows it, unless it is naming a failed
+    /// load that the placeholder is reporting.
+    /// </summary>
+    public void NotifyNavigationCommitted(string url)
+    {
+        _committedUrl = url;
+
+        if (HasNavigationFailed)
+        {
+            return;
+        }
+
+        CurrentUrl = url;
+    }
+
+    /// <summary>
+    /// Records that the navigation in flight became a download. The page on screen stays, so the address
+    /// bar goes back to naming it, having moved only if the user chose the download's address.
+    /// </summary>
+    public void NotifyDownloadStarted()
+    {
+        if (HasNavigationFailed)
+        {
+            return;
+        }
+
+        CurrentUrl = _committedUrl;
     }
 
     /// <summary>
@@ -543,16 +652,25 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     }
 
     /// <summary>
-    /// Records how a navigation ended. A stopped navigation keeps whatever it had rendered so far.
+    /// Records how a navigation ended. A stopped navigation keeps whatever it had rendered so far. A failed
+    /// one is reported in place of the page, and the address bar names the address that failed.
     /// </summary>
-    public void NotifyNavigationCompleted(bool isSuccess)
+    public void NotifyNavigationCompleted(NavigationOutcome outcome)
     {
         IsNavigating = false;
 
-        if (isSuccess
-            || _navigationStoppedByUser)
+        var destination = NavigationDestination;
+        NavigationDestination = string.Empty;
+
+        if (outcome != NavigationOutcome.Failed ||
+            _navigationStoppedByUser)
         {
             return;
+        }
+
+        if (destination.Length > 0)
+        {
+            CurrentUrl = destination;
         }
 
         HasNavigationFailed = true;
@@ -661,44 +779,6 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
         CloseSettings();
 
         NavigateRequested?.Invoke(this, url);
-    }
-
-    public void BeginDownload()
-    {
-        DownloadStatus = WebViewDownloadStatus.InProgress;
-    }
-
-    public void CompleteDownload(ResourceKey importedResource)
-    {
-        LastDownloadedResource = importedResource;
-        DownloadStatus = WebViewDownloadStatus.Succeeded;
-    }
-
-    public void FailDownload()
-    {
-        DownloadStatus = WebViewDownloadStatus.Failed;
-    }
-
-    public void ClearDownloadIndicator()
-    {
-        DownloadStatus = WebViewDownloadStatus.None;
-    }
-
-    /// <summary>
-    /// Reveals the most recent completed download in the Explorer panel.
-    /// </summary>
-    public void RevealLastDownload()
-    {
-        if (LastDownloadedResource.IsEmpty)
-        {
-            return;
-        }
-
-        _commandService.Execute<ISelectResourceCommand>(command =>
-        {
-            command.Resource = LastDownloadedResource;
-            command.ShowExplorerPanel = true;
-        });
     }
 
     protected override IResourceFileSystem GetFileSystem()
@@ -812,8 +892,8 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
         RecordDataChanged();
     }
 
-    // The host a page is on, with its port where that is not the scheme's default. A leading "www." is dropped
-    // unless no dot would remain.
+    // The host a page is on, with its port when that is not the scheme's default. A leading "www." is
+    // dropped unless no dot would remain.
     private static string GetDefaultBookmarkName(Uri uri)
     {
         var name = GetReadableHost(uri);
@@ -836,8 +916,8 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
         return remainder;
     }
 
-    // A web view reports an internationalized domain in its ASCII form, which is turned back into the name as the
-    // user reads it.
+    // A web view reports an internationalized domain in its ASCII form; this turns it back into the name
+    // the user reads.
     private static string GetReadableHost(Uri uri)
     {
         if (uri.HostNameType != UriHostNameType.Dns)

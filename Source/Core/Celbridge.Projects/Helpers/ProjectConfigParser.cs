@@ -29,6 +29,7 @@ public static class ProjectConfigParser
 
     private const string HideKey = "hide";
     private const string SearchExcludeKey = "search-exclude";
+    private const string DownloadsFolderKey = "downloads-folder";
 
     private const string DocumentShortcutResourceKey = "resource";
     private const string DocumentShortcutIconKey = "icon";
@@ -57,6 +58,7 @@ public static class ProjectConfigParser
     {
         HideKey,
         SearchExcludeKey,
+        DownloadsFolderKey,
     };
 
     private static readonly IReadOnlySet<string> KnownDocumentShortcutKeys = new HashSet<string>(StringComparer.Ordinal)
@@ -345,6 +347,7 @@ public static class ProjectConfigParser
                 {
                     Hide = ReadStringList(resourcesTable, HideKey) ?? resourcesSection.Hide,
                     SearchExclude = ReadStringList(resourcesTable, SearchExcludeKey) ?? resourcesSection.SearchExclude,
+                    DownloadsFolder = ReadDownloadsFolder(resourcesTable, entryErrors),
                 };
             }
             else
@@ -405,6 +408,31 @@ public static class ProjectConfigParser
         }
 
         return dataFolder;
+    }
+
+    // An unusable path is dropped rather than applied, which leaves downloads going to the default folder.
+    private static string ReadDownloadsFolder(TomlTable resourcesTable, List<ProjectConfigEntryError> entryErrors)
+    {
+        var downloadsFolder = ReadString(resourcesTable, DownloadsFolderKey);
+        if (string.IsNullOrEmpty(downloadsFolder))
+        {
+            return string.Empty;
+        }
+
+        if (!DownloadsFolderPath.TryParse(downloadsFolder, out var folder))
+        {
+            var problem = DownloadsFolderPath.IsReserved(downloadsFolder)
+                ? "is inside a folder Celbridge reserves, where nothing can be saved"
+                : "must be a folder path from the project root";
+
+            entryErrors.Add(new ProjectConfigEntryError(
+                $"{CelbridgeSectionName}.{ResourcesKey}",
+                $"'{DownloadsFolderKey}' value '{downloadsFolder}' {problem}. The key was dropped."));
+
+            return string.Empty;
+        }
+
+        return folder.Path;
     }
 
     private static ContributionOverride? ParseContributionEntry(

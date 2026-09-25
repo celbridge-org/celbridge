@@ -35,6 +35,9 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
 
     private sealed record FindSession(string Term, bool CaseSensitive, Action<FindMatchState>? OnMatchStateChanged);
 
+    // Routes every web view's downloads on macOS, created with the first surface that attaches one.
+    private MacOSWebViewDownloadRouter? _downloadRouter;
+
     public SkiaWebViewAdapter(ILogger<SkiaWebViewAdapter> logger)
     {
         _logger = logger;
@@ -774,6 +777,119 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         }
 
         _logger.LogDebug("Hosted pages are not inspectable: web inspection is disabled");
+    }
+
+    public IWebViewDownloadHandler AttachDownloadHandler(CoreWebView2 coreWebView2)
+    {
+        // No Skia head raises WebView2's DownloadStarting, so macOS takes the download from WebKit
+        // instead. The Windows and Linux Skia heads keep the WebView2 handler, which Uno never calls.
+        if (!OperatingSystem.IsMacOS())
+        {
+            return WebView2DownloadHandler.Attach(coreWebView2);
+        }
+
+        _downloadRouter ??= new MacOSWebViewDownloadRouter();
+
+        return _downloadRouter.Attach(coreWebView2);
+    }
+
+    public IDisposable GateNavigations(CoreWebView2 coreWebView2, NavigationGate gate)
+    {
+        // Every Skia head decides at NavigationStarting, which Uno raises once the request is under way.
+        // The Windows and Linux heads have nothing earlier to use, and macOS puts WebKit's own navigation
+        // policy in front of it, where a refused destination is never asked for at all.
+        var navigationStartingGate = new NavigationStartingGate(coreWebView2, gate);
+
+        if (!OperatingSystem.IsMacOS())
+        {
+            return navigationStartingGate;
+        }
+
+        if (!MacOSWebViewInterop.TryGetNativeWebViewHandle(coreWebView2, out var webView, out var detail))
+        {
+            _logger.LogWarning("A page's navigations are decided only once their requests are sent: its native view could not be resolved ({Detail})", detail);
+            return navigationStartingGate;
+        }
+
+        // A URL that is not an absolute URI is left to NavigationStarting, which lets it through as well.
+        MacNavigationGate nativeGate = (url, isUserInitiated) =>
+            !Uri.TryCreate(url, UriKind.Absolute, out var destination) ||
+            gate(destination, isUserInitiated);
+
+        var registration = MacOSWebViewInterop.GateNavigations(webView, nativeGate, out var gateDetail);
+        if (registration is null)
+        {
+            _logger.LogWarning("A page's navigations are decided only once their requests are sent: {Detail}", gateDetail);
+            return navigationStartingGate;
+        }
+
+        // A navigation the native gate lets through reaches NavigationStarting as well, where the handler
+        // that allowed it answers the same way.
+        return new PageRegistration(registration, navigationStartingGate);
+    }
+
+    public IDisposable ObserveNavigationCommits(CoreWebView2 coreWebView2, NavigationCommitted onCommitted)
+    {
+        // On the Windows Skia head, Uno passes on WebView2's Source, which changes as a navigation commits. On
+        // macOS it changes Source only once a page has finished loading, or for a fragment link, so WebKit's
+        // own commit reports a new page as it arrives.
+        var sourceObserver = new SourceChangedObserver(coreWebView2, onCommitted);
+        if (!OperatingSystem.IsMacOS())
+        {
+            return sourceObserver;
+        }
+
+        if (!MacOSWebViewInterop.TryGetNativeWebViewHandle(coreWebView2, out var webView, out var detail))
+        {
+            _logger.LogWarning("A page's navigations are reported only once it has finished loading: its native view could not be resolved ({Detail})", detail);
+            return sourceObserver;
+        }
+
+        var commitRegistration = MacOSWebViewInterop.ObserveNavigationCommits(
+            webView,
+            url => ReportNavigationCommit(onCommitted, url),
+            out var commitDetail);
+        if (commitRegistration is null)
+        {
+            _logger.LogWarning("A page's navigations are reported only once it has finished loading: {Detail}", commitDetail);
+            return sourceObserver;
+        }
+
+        return new PageRegistration(sourceObserver, commitRegistration);
+    }
+
+    // Reports WebKit's address in the form Uno gives Source, so a commit and the finished load that
+    // follows name the page alike. Runs inside WebKit's commit callback, so a failing handler is contained
+    // here.
+    private void ReportNavigationCommit(NavigationCommitted onCommitted, string url)
+    {
+        var committedUrl = url;
+        if (Uri.TryCreate(url, UriKind.Absolute, out var uri))
+        {
+            committedUrl = uri.ToString();
+        }
+
+        try
+        {
+            onCommitted(committedUrl);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to report a navigation commit");
+        }
+    }
+
+    // UNO-BUG: CoreWebView2NewWindowRequestedEventArgs.IsUserInitiated throws NotImplementedException on the
+    // Skia heads, from inside Uno's native new-window callback, where an exception ends the process. macOS
+    // reads the gesture from WebKit's own request for the window, and the other Skia heads have none to read.
+    public bool IsUserInitiated(CoreWebView2NewWindowRequestedEventArgs args)
+    {
+        if (!OperatingSystem.IsMacOS())
+        {
+            return false;
+        }
+
+        return MacOSWebViewInterop.IsUserInitiatedWindowRequest(args.Uri);
     }
 
     private string ResolveSafariVersion()

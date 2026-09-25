@@ -145,6 +145,12 @@ public sealed record class ResourcesSection
     /// does not draw them.
     /// </summary>
     public IReadOnlyList<string> SearchExclude { get; init; } = Array.Empty<string>();
+
+    /// <summary>
+    /// The folder files downloaded from web pages are saved to, as a path from
+    /// the project root. Empty saves them to the default downloads folder.
+    /// </summary>
+    public string DownloadsFolder { get; init; } = string.Empty;
 }
 
 /// <summary>

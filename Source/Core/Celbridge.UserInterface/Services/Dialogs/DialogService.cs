@@ -4,6 +4,7 @@ using Celbridge.Logging;
 using Celbridge.Projects;
 using Celbridge.UserInterface.Platform;
 using Celbridge.Validators;
+using Celbridge.WebHost;
 using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.Services.Dialogs;
@@ -13,6 +14,8 @@ public class DialogService : IDialogService
     private readonly ILogger<DialogService> _logger;
     private readonly IDialogFactory _dialogFactory;
     private readonly IFocusService _focusService;
+    private readonly IManagedFocus _managedFocus;
+    private readonly IWebViewFocusRegistry _webViewFocusRegistry;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IMessengerService _messengerService;
     private readonly DialogAnswerScheduler _answerScheduler;
@@ -29,12 +32,16 @@ public class DialogService : IDialogService
         ILogger<DialogService> logger,
         IDialogFactory dialogFactory,
         IFocusService focusService,
+        IManagedFocus managedFocus,
+        IWebViewFocusRegistry webViewFocusRegistry,
         IWorkspaceWrapper workspaceWrapper,
         IMessengerService messengerService)
     {
         _logger = logger;
         _dialogFactory = dialogFactory;
         _focusService = focusService;
+        _managedFocus = managedFocus;
+        _webViewFocusRegistry = webViewFocusRegistry;
         _workspaceWrapper = workspaceWrapper;
         _messengerService = messengerService;
         _answerScheduler = new DialogAnswerScheduler(logger, messengerService);
@@ -145,6 +152,12 @@ public class DialogService : IDialogService
         SetProgressDialogSuppressed(true);
         using var occlusionMonitorScope = MacOSModalOcclusionMonitor.BeginDialogScope(dialogName);
 
+        // Where the keyboard goes back to, noted before the dialog takes it. By the time the dialog has
+        // closed, the focus model has followed wherever the closing dialog left managed focus, which on the
+        // Skia heads can be another panel.
+        var focusedPanel = _focusService.FocusedPanel;
+        var notedFocus = _managedFocus.NoteFocus();
+
         // A hosted web surface reports the dialog taking the keyboard as an ordinary blur, which would
         // otherwise clear the focused panel and leave nothing for the refocus below to return to.
         _messengerService.Send(new ModalDialogOpenedMessage());
@@ -162,11 +175,41 @@ public class DialogService : IDialogService
 
             SetProgressDialogSuppressed(false);
 
-            // A modal dialog moves keyboard focus into itself; on the Skia heads closing it does not
-            // reliably return focus to the panel it came from. Return keyboard focus to the focused panel
-            // so the focus indicator's panel is the keyboard target again.
-            _focusService.RefocusPanel(_focusService.FocusedPanel);
+            ReturnKeyboard(focusedPanel, notedFocus);
         }
+    }
+
+    // A modal dialog moves keyboard focus into itself. Closing it hands focus back to the control that opened
+    // it on the packaged Windows head, but not reliably on the Skia heads, which can leave it on the first
+    // focusable element of another panel, or of the same one. So the control is given the keyboard back
+    // unless it already has it, and its panel takes over when the control no longer can. A web
+    // surface keeps its focus report through the dialog and only gets its caret back when its document
+    // takes focus again, so its panel is always refocused.
+    private void ReturnKeyboard(FocusPanelId focusedPanel, INotedFocus notedFocus)
+    {
+        // No panel held the keyboard, so there is none to give it back to.
+        if (focusedPanel == FocusPanelId.None)
+        {
+            return;
+        }
+
+        if (!_webViewFocusRegistry.HasFocusedSurface)
+        {
+            if (notedFocus.IsFocusBack)
+            {
+                return;
+            }
+
+            if (notedFocus.TryReturnFocus())
+            {
+                _logger.LogTrace("Returned the keyboard to the control that held it before a dialog opened");
+                return;
+            }
+        }
+
+        _logger.LogTrace("Returning the keyboard to {Panel} after a dialog closed", focusedPanel);
+
+        _focusService.RefocusPanel(focusedPanel);
     }
 
     private void UpdateProgressDialog()
@@ -268,6 +311,23 @@ public class DialogService : IDialogService
         }
 
         var dialog = _dialogFactory.CreateResourcePickerDialog(extensions, title, showPreview);
+        _answerScheduler.OnDialogShown(DialogKind.ResourcePicker);
+        return await ShowDialogAsync(dialog.ShowDialogAsync);
+    }
+
+    public async Task<Result<ResourceKey>> ShowFolderPickerDialogAsync(string? title = null)
+    {
+        if (IsDialogOpen)
+        {
+            return RefuseSecondDialog();
+        }
+
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
+        {
+            return Result<ResourceKey>.Fail("Cannot show folder picker: no project is currently loaded.");
+        }
+
+        var dialog = _dialogFactory.CreateFolderPickerDialog(title);
         _answerScheduler.OnDialogShown(DialogKind.ResourcePicker);
         return await ShowDialogAsync(dialog.ShowDialogAsync);
     }

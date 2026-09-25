@@ -1,5 +1,9 @@
 // Dialog API: Operations that reach the user directly — native dialogs, and the notification centre.
 
+// A dialog is answered by the user, who takes as long as they take, so the requests that open one wait
+// without a timeout. The host answers when the dialog closes.
+const WAITS_FOR_USER = { timeoutMs: null };
+
 /**
  * Operations that reach the user directly.
  */
@@ -20,7 +24,7 @@ export class DialogAPI {
      * @returns {Promise<string|null>} - The selected path, or null if cancelled.
      */
     async pickImage(extensions) {
-        const result = await this.#transport.request('dialog/pickImage', { extensions });
+        const result = await this.#transport.request('dialog/pickImage', { extensions }, WAITS_FOR_USER);
         return result.path;
     }
 
@@ -30,7 +34,7 @@ export class DialogAPI {
      * @returns {Promise<string|null>} - The selected path, or null if cancelled.
      */
     async pickFile(extensions) {
-        const result = await this.#transport.request('dialog/pickFile', { extensions });
+        const result = await this.#transport.request('dialog/pickFile', { extensions }, WAITS_FOR_USER);
         return result.path;
     }
 
@@ -40,7 +44,7 @@ export class DialogAPI {
      * @returns {Promise<string|null>} - The chosen icon name, or null if cancelled.
      */
     async pickIcon(searchText) {
-        const result = await this.#transport.request('dialog/pickIcon', { searchText });
+        const result = await this.#transport.request('dialog/pickIcon', { searchText }, WAITS_FOR_USER);
         return result.iconName;
     }
 
@@ -50,8 +54,8 @@ export class DialogAPI {
      * @param {string} message - The alert message.
      * @returns {Promise<void>}
      */
-    async alert(title, message) {
-        await this.#transport.request('dialog/alert', { title, message });
+    async showAlert(title, message) {
+        await this.#transport.request('dialog/showAlert', { title, message }, WAITS_FOR_USER);
     }
 
     /**
@@ -76,8 +80,8 @@ export class DialogAPI {
      * @param {number} [action.column] - One-based column to land on.
      * @returns {Promise<void>}
      */
-    async toast(severity, message, action) {
-        await this.#transport.request('dialog/toast', {
+    async showNotification(severity, message, action) {
+        await this.#transport.request('dialog/showNotification', {
             severity,
             message,
             resource: action?.resource,

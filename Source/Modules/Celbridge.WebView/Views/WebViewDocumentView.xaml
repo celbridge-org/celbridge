@@ -121,25 +121,6 @@
                                        Symbol="Star"
                                        FontSize="{StaticResource IconSizeMedium}" />
                     </controls:IconButton>
-                    <controls:IconButton x:Name="DownloadIndicatorButton"
-                                         VerticalAlignment="Center"
-                                         Visibility="{x:Bind ViewModel.IsDownloadIndicatorVisible, Mode=OneWay}"
-                                         Click="DownloadIndicatorButton_Click">
-                        <Grid>
-                            <ProgressRing Width="16"
-                                          Height="16"
-                                          IsActive="{x:Bind ViewModel.IsDownloadInProgress, Mode=OneWay}"
-                                          Visibility="{x:Bind ViewModel.IsDownloadInProgress, Mode=OneWay}" />
-                            <controls:Icon IconName="bs-check-circle-fill"
-                                           FontSize="{StaticResource IconSizeMedium}"
-                                           Foreground="{ThemeResource SystemFillColorSuccessBrush}"
-                                           Visibility="{x:Bind ViewModel.IsDownloadSucceeded, Mode=OneWay}" />
-                            <controls:Icon IconName="bs-x-circle-fill"
-                                           FontSize="{StaticResource IconSizeMedium}"
-                                           Foreground="{ThemeResource SystemFillColorCriticalBrush}"
-                                           Visibility="{x:Bind ViewModel.IsDownloadFailed, Mode=OneWay}" />
-                        </Grid>
-                    </controls:IconButton>
                     <controls:IconButton x:Name="OpenInBrowserButton"
                                          VerticalAlignment="Center"
                                          IsEnabled="{x:Bind ViewModel.CanOpenInBrowser, Mode=OneWay}"

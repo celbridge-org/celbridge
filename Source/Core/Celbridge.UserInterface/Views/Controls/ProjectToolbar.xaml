@@ -35,5 +35,9 @@
                                 Margin="4,0,0,0"
                                 VerticalAlignment="Center"/>
 
+    <controls:DownloadBadge x:Name="DownloadBadge"
+                            Margin="4,0,0,0"
+                            VerticalAlignment="Center"/>
+
   </StackPanel>
 </UserControl>

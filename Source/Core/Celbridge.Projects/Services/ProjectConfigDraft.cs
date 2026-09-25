@@ -6,7 +6,9 @@ namespace Celbridge.Projects.Services;
 /// A mutable working copy of a project config. The Project Settings editor holds one for as long as it
 /// is open, its sections mutate it as the user works, and the save tick serializes it back to the
 /// .celbridge file. Because the file is normalized on every load, a draft does not preserve formatting;
-/// it only has to produce a file that reconciles to the intended state.
+/// it only has to produce a file that reconciles to the intended state. It never writes a value a load
+/// would drop: a file that reads back differently from what the editor wrote looks like an outside
+/// change, and the editor then reloads every section from it.
 /// </summary>
 public sealed class ProjectConfigDraft
 {
@@ -22,6 +24,7 @@ public sealed class ProjectConfigDraft
 
     private string _projectVersion;
     private string _description;
+    private string _downloadsFolder;
 
     public ProjectConfigDraft(ProjectConfig source)
     {
@@ -34,6 +37,7 @@ public sealed class ProjectConfigDraft
         _documentShortcuts = source.DocumentShortcuts.ToList();
         _hide = source.Resources.Hide.ToList();
         _searchExclude = source.Resources.SearchExclude.ToList();
+        _downloadsFolder = source.Resources.DownloadsFolder;
 
         // Coerced to empty because an unset key parses as null while the editor binds a text box to it.
         // The serializer skips an empty value, so a field left alone still writes no key.
@@ -70,6 +74,14 @@ public sealed class ProjectConfigDraft
     {
         _searchExclude.Clear();
         _searchExclude.AddRange(patterns);
+    }
+
+    /// <summary>
+    /// Sets the folder downloads are saved to, as a path from the project root.
+    /// </summary>
+    public void SetDownloadsFolder(string folderPath)
+    {
+        _downloadsFolder = folderPath;
     }
 
     /// <summary>
@@ -213,10 +225,12 @@ public sealed class ProjectConfigDraft
                 || contributionOverride.Config.Count > 0)
             .ToList();
 
-        // A shortcut naming no resource opens nothing, so it is dropped rather than written as a blank
-        // entry. The card the user is still filling in stays on screen either way.
+        // A shortcut naming no resource opens nothing, and a load drops one naming something that is not a
+        // resource key, so neither is written. The card the user is still filling in stays on screen either
+        // way.
         var populatedShortcuts = _documentShortcuts
-            .Where(documentShortcut => !string.IsNullOrWhiteSpace(documentShortcut.Resource))
+            .Where(documentShortcut => !string.IsNullOrWhiteSpace(documentShortcut.Resource)
+                && ResourceKey.IsValidKey(documentShortcut.Resource))
             .ToList();
 
         return _source with
@@ -225,13 +239,14 @@ public sealed class ProjectConfigDraft
             {
                 DisabledPackages = _disabledPackages.ToList(),
                 EditorAssociations = new Dictionary<string, string>(_editorAssociations, StringComparer.Ordinal),
-                ProjectVersion = _projectVersion,
+                ProjectVersion = PopulatedProjectVersion(_projectVersion),
                 Description = _description,
             },
             Resources = new ResourcesSection
             {
                 Hide = PopulatedPatterns(_hide),
                 SearchExclude = PopulatedPatterns(_searchExclude),
+                DownloadsFolder = PopulatedDownloadsFolder(_downloadsFolder),
             },
             Features = new Dictionary<string, bool>(_features, StringComparer.Ordinal),
             ContributionOverrides = populatedOverrides,
@@ -245,6 +260,33 @@ public sealed class ProjectConfigDraft
     public string Serialize()
     {
         return ProjectConfigSerializer.Serialize(ToConfig());
+    }
+
+    // A version a load would drop is written as no key, so the file reads back as the draft wrote it and
+    // the project stays at the default version, as a load would leave it.
+    private static string PopulatedProjectVersion(string projectVersion)
+    {
+        if (SemanticVersion.ParseOptional(projectVersion).IsFailure)
+        {
+            return string.Empty;
+        }
+
+        return projectVersion;
+    }
+
+    // A folder path is written as the path it names. The default folder is written as no key at all, and
+    // so is anything that is not a folder path or is a reserved one, which a load would drop, so the file
+    // reads back as the draft wrote it. Downloads then go to the default folder, which the section says
+    // beneath the field.
+    private static string PopulatedDownloadsFolder(string folderPath)
+    {
+        if (!DownloadsFolderPath.TryParse(folderPath, out var folder)
+            || folder == DownloadsFolderPath.DefaultFolder)
+        {
+            return string.Empty;
+        }
+
+        return folder.Path;
     }
 
     // A blank pattern matches nothing, so it is dropped rather than written as an empty entry. The blank

@@ -1,0 +1,119 @@
+<UserControl
+    x:Class="Celbridge.UserInterface.Views.Controls.DownloadRow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Celbridge.UserInterface.Views.Controls">
+
+  <Grid>
+
+    <!-- Separates the row from the one above it, so the first row in the list hides it. -->
+    <Border x:Name="Divider"
+            Height="1"
+            VerticalAlignment="Top"
+            Background="{ThemeResource DividerBrush}"/>
+
+    <Grid Padding="0,4,0,4"
+          ColumnSpacing="4">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="Auto"/>
+      </Grid.ColumnDefinitions>
+
+      <!-- Finds the downloaded file in the Explorer, so the whole row is one button. A row with no
+           file to find keeps its text at rest and is skipped by the keyboard, rather than being
+           disabled and dimmed. -->
+      <Button x:Name="RevealButton"
+              Grid.Column="0"
+              AutomationProperties.AutomationId="download-reveal-button"
+              Style="{StaticResource IconButtonBaseStyle}"
+              HorizontalAlignment="Stretch"
+              HorizontalContentAlignment="Left"
+              Padding="4,6"
+              Click="RevealButton_Click">
+        <Grid ColumnSpacing="10">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+          </Grid.ColumnDefinitions>
+
+          <!-- Each outcome is its own element so its foreground can stay a ThemeResource and follow a
+               theme change. Keeps an icon's width while the download runs, so the name stays in line
+               with settled rows. Nudged down to sit level with the first line of the row. -->
+          <Grid Grid.Column="0"
+                MinWidth="{StaticResource IconSizeSmall}"
+                Margin="0,2,0,0"
+                VerticalAlignment="Top">
+            <controls:Icon x:Name="SucceededIcon"
+                           IconName="bs-check-circle-fill"
+                           FontSize="{StaticResource IconSizeSmall}"
+                           Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                           Visibility="Collapsed"/>
+            <controls:Icon x:Name="FailedIcon"
+                           IconName="bs-x-circle-fill"
+                           FontSize="{StaticResource IconSizeSmall}"
+                           Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                           Visibility="Collapsed"/>
+            <!-- A canceled download is not a failure, so it takes the color of the text beside it. -->
+            <controls:Icon x:Name="CanceledIcon"
+                           IconName="bs-dash-circle-fill"
+                           FontSize="{StaticResource IconSizeSmall}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           Visibility="Collapsed"/>
+          </Grid>
+
+          <StackPanel Grid.Column="1"
+                      Spacing="4">
+            <TextBlock x:Name="FileNameText"
+                       TextTrimming="CharacterEllipsis"/>
+
+            <!-- Determinate while the server has said how large the file is, and indeterminate until it
+                 has, so a transfer of unknown length still reads as running. -->
+            <ProgressBar x:Name="TransferProgress"
+                         Height="3"
+                         Margin="0,1,0,1"
+                         Visibility="Collapsed"/>
+
+            <TextBlock x:Name="DetailText"
+                       Style="{StaticResource SupportingTextStyle}"
+                       TextTrimming="CharacterEllipsis"/>
+
+            <!-- Wrapped, since the reason is all a failed row has to explain itself with. -->
+            <TextBlock x:Name="FailureText"
+                       Style="{StaticResource SupportingTextStyle}"
+                       Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                       TextWrapping="Wrap"
+                       Visibility="Collapsed"/>
+
+            <TextBlock x:Name="CanceledText"
+                       Style="{StaticResource SupportingTextStyle}"
+                       TextWrapping="Wrap"
+                       Visibility="Collapsed"/>
+          </StackPanel>
+        </Grid>
+      </Button>
+
+      <!-- One or the other, never both: a running download can be stopped, and a finished one can be taken
+           off the list. Both are centred on the row, which is what reads as belonging to it, and which
+           leaves the button where it is when a download settles. -->
+      <controls:IconButton x:Name="CancelButton"
+                           Grid.Column="1"
+                           VerticalAlignment="Center"
+                           AutomationProperties.AutomationId="download-cancel-button"
+                           Click="CancelButton_Click"
+                           Visibility="Collapsed">
+        <controls:Icon Symbol="Close"
+                       FontSize="{StaticResource IconSizeSmall}"/>
+      </controls:IconButton>
+
+      <controls:IconButton x:Name="RemoveButton"
+                           Grid.Column="1"
+                           VerticalAlignment="Center"
+                           AutomationProperties.AutomationId="download-remove-button"
+                           Click="RemoveButton_Click"
+                           Visibility="Collapsed">
+        <controls:Icon Symbol="Close"
+                       FontSize="{StaticResource IconSizeSmall}"/>
+      </controls:IconButton>
+    </Grid>
+  </Grid>
+</UserControl>

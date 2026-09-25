@@ -43,8 +43,8 @@ public interface IWebViewAdapter
 
     /// <summary>
     /// Whether a surface can be given the geometry its page reads as its viewport before the platform has
-    /// arranged it. Where it cannot, a page that has not been shown has no size to report and reports none
-    /// until it is.
+    /// arranged it. Where it cannot, a page that has not been shown has no size to report until it is
+    /// shown.
     /// </summary>
     bool CanSizeUnarrangedViewport { get; }
 
@@ -88,14 +88,14 @@ public interface IWebViewAdapter
     /// Gives the hosted web content keyboard focus, reproducing what a click inside the view establishes.
     /// Managed focus does this on the Windows heads. On the macOS Skia head managed focus routes keys
     /// through the managed pipeline, where they never reach the web content, so the native WKWebView is
-    /// made the window's first responder instead, and managed focus is moved off the control that held it
-    /// so that control stops acting on the keys the pipeline still routes to it.
+    /// made the window's first responder instead, and managed focus is moved off the control that held it,
+    /// so that control stops acting on the keys the pipeline still routes there.
     /// </summary>
     void FocusWebView(WebView2 webView);
 
     /// <summary>
-    /// What the host has observed about this hosted page still working. Healthy where the head does not
-    /// wake its pages, which is where nothing is observed rather than where nothing is wrong.
+    /// What the host has observed about this hosted page still working. Reads healthy on a head that does
+    /// not wake its pages, where that means nothing was observed rather than nothing was wrong.
     /// </summary>
     DocumentHealth GetHostedPageHealth(CoreWebView2 coreWebView2);
 
@@ -179,6 +179,46 @@ public interface IWebViewAdapter
     /// Develop menu. The Linux Skia head has no developer tools wired.
     /// </summary>
     void SetDevToolsEnabled(CoreWebView2 coreWebView2, bool enabled, string targetName);
+
+    /// <summary>
+    /// Starts routing the page's downloads through the download service, so a file a page offers lands in
+    /// the project whichever surface it is on. The packaged Windows head handles WebView2's
+    /// DownloadStarting, which Uno raises on no Skia head. On macOS a native WebKit download delegate takes
+    /// the download instead, and the Windows and Linux Skia heads have no route to the service. The caller
+    /// keeps the returned handler and detaches it when the surface is torn down.
+    /// </summary>
+    IWebViewDownloadHandler AttachDownloadHandler(CoreWebView2 coreWebView2);
+
+    /// <summary>
+    /// Puts every navigation of the page to the gate, and keeps the page from reaching a destination the
+    /// gate refuses. Each head decides as early as it can, and that is where they differ. The macOS Skia
+    /// head answers WebKit's own navigation policy before any request is sent, so a destination it refuses
+    /// is never asked for. The other heads decide at NavigationStarting, which Uno and WebView2 both raise
+    /// with the request already made ready: the packaged Windows head stops that request where WebView2
+    /// intercepts it, while the Windows and Linux Skia heads have nothing to stop it with, so there a
+    /// refused destination is still fetched. Only what the page asks the network for is covered, not a
+    /// destination answered from the head's cache or by a service worker. Frames inside the page are not
+    /// gated. The caller keeps the returned registration and disposes it when the surface is torn down.
+    /// </summary>
+    IDisposable GateNavigations(CoreWebView2 coreWebView2, NavigationGate gate);
+
+    /// <summary>
+    /// Reports each address the page commits to, from the moment the new page takes the place of the old
+    /// one. The Windows heads report WebView2's Source, which changes as a navigation commits. Uno changes
+    /// Source on the macOS Skia head only once a page has finished loading, so there WebKit's own commit
+    /// reports a new page. The caller keeps the returned registration and disposes it when the surface is
+    /// torn down.
+    /// </summary>
+    IDisposable ObserveNavigationCommits(CoreWebView2 coreWebView2, NavigationCommitted onCommitted);
+
+    /// <summary>
+    /// Whether the user started the new window a page asked for, as by following a link. Ask from inside
+    /// the NewWindowRequested handler. Uno implements no IsUserInitiated for a new window on the Skia
+    /// heads, so the macOS head reads the gesture from WebKit's request for the window, which it knows only
+    /// while the handler runs. The Windows and Linux Skia heads count every new window as one the page
+    /// opened by itself.
+    /// </summary>
+    bool IsUserInitiated(CoreWebView2NewWindowRequestedEventArgs args);
 
     /// <summary>
     /// Describes the native surface behind the page for the log: on the macOS Skia head, whether the

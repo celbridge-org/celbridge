@@ -5,7 +5,7 @@ namespace Celbridge.ProjectSettings.ViewModels;
 
 /// <summary>
 /// Drives the Information section: the read-only Celbridge version plus the user-editable project version
-/// and description. Edits are written to the .celbridge file and apply when the project is reloaded.
+/// and description.
 /// </summary>
 public partial class InformationSectionViewModel : ProjectSettingsSectionViewModel
 {

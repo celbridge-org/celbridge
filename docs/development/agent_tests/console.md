@@ -22,9 +22,14 @@ create.
 | A settings field | cut, copy, select all, undo | each acts on the field | 3 |
 | A field in a card created by one of the list tabs | paste | text enters the field | 3 |
 | The settings form open, nothing focused | paste | nothing reaches the hidden terminal | 3 |
+| A shortcut card's icon picker, left open | choose an icon | the icon lands on the card | 3 |
 
 The terminal is a live shell: check that a paste reaches the prompt as text, and never assume it did
 because something appeared on screen.
+
+While the icon picker stands open, `__celPendingRequests()` on the console document should show its request
+carrying no timeout. That is what keeps the form from losing an answer the user took too long over, and it
+is read rather than waited out.
 
 ## Not covered
 

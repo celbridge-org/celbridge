@@ -11,12 +11,14 @@ public partial class AppTools
     [RelatedGuides]
     public async partial Task<CallToolResult> RefreshFiles()
     {
-        var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        var result = await workspaceWrapper.WorkspaceService.ResourceService.UpdateResourcesAsync();
-        if (result.IsFailure)
+        var updateResult = await ExecuteCommandAsync<IUpdateResourcesCommand>(command =>
+        {
+            command.Immediate = true;
+        });
+        if (updateResult.IsFailure)
         {
             var failure = Result.Fail("Failed to refresh file listing")
-                .WithErrors(result);
+                .WithErrors(updateResult);
             return ToolResponse.Error(failure);
         }
 

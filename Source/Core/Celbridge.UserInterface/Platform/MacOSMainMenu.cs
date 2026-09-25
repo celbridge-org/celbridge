@@ -347,7 +347,7 @@ internal static class MacOSMainMenu
 
     private static MacMenuItemState EditVerbState(EditIntent intent)
     {
-        return EditVerbRouter.Resolve(intent, EditVerbFocusService(), EditVerbManagedFocus(), IsDialogOpen()) switch
+        return EditVerbRouter.Resolve(intent, EditVerbFocusService(), EditVerbTextControlEditing(), IsDialogOpen()) switch
         {
             EditRouting.Surface or EditRouting.TextControl => MacMenuItemState.Enabled,
             EditRouting.Unavailable => MacMenuItemState.Disabled,
@@ -362,7 +362,7 @@ internal static class MacOSMainMenu
         var routing = EditVerbRouter.Perform(
             shortcut.Intent,
             EditVerbFocusService(),
-            EditVerbManagedFocus(),
+            EditVerbTextControlEditing(),
             commandService,
             IsDialogOpen());
         // The one part of edit routing AppKit owns: a verb nothing focused claimed goes to the responder
@@ -386,11 +386,11 @@ internal static class MacOSMainMenu
             : null;
     }
 
-    // Managed focus, or null while a native panel such as a file picker holds the keyboard.
-    private static IManagedFocus? EditVerbManagedFocus()
+    // Text control editing, or null while a native panel such as a file picker holds the keyboard.
+    private static ITextControlEditing? EditVerbTextControlEditing()
     {
         return MacOSWindowInterop.IsAppWindowKey()
-            ? ServiceLocator.AcquireService<IManagedFocus>()
+            ? ServiceLocator.AcquireService<ITextControlEditing>()
             : null;
     }
 

@@ -1,14 +1,18 @@
 using Celbridge.Commands;
+using Celbridge.Dialog;
 using Celbridge.ProjectSettings.ViewModels;
 using Celbridge.Projects;
 using Celbridge.Projects.Services;
 using Celbridge.Workspace;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Tests.ProjectSettings;
 
 /// <summary>
-/// Covers the Resources section: what the two pattern blocks write back into the config draft, and which
-/// lines are reported as written in a dialect the matcher does not read.
+/// Covers the Resources section: what the two pattern blocks and the downloads folder write back into the
+/// config draft, which lines are reported as written in a dialect the matcher does not read, and which
+/// downloads folders are reported as unusable.
 /// </summary>
 [TestFixture]
 public class ResourcesSectionViewModelTests
@@ -16,11 +20,22 @@ public class ResourcesSectionViewModelTests
     private const string ProjectFolderPath = @"C:\fake\project";
 
     private IProjectService _projectService = null!;
+    private IDialogService _dialogService = null!;
     private ProjectSettingsContext _context = null!;
+    private IServiceProvider? _previousServiceProvider;
 
     [SetUp]
     public void Setup()
     {
+        // The section titles the folder picker through the localizer, which it acquires from the global
+        // ServiceLocator.
+        var services = new ServiceCollection();
+        services.AddSingleton(Substitute.For<IStringLocalizer>());
+        _previousServiceProvider = ServiceLocator.ServiceProvider;
+        ServiceLocator.Initialize(services.BuildServiceProvider());
+
+        _dialogService = Substitute.For<IDialogService>();
+
         var project = Substitute.For<IProject>();
         project.ProjectFolderPath.Returns(ProjectFolderPath);
 
@@ -32,6 +47,19 @@ public class ResourcesSectionViewModelTests
             _projectService,
             Substitute.For<ICommandService>(),
             () => { });
+    }
+
+    [TearDown]
+    public void TearDown()
+    {
+        if (_previousServiceProvider is not null)
+        {
+            ServiceLocator.Initialize(_previousServiceProvider);
+        }
+        else
+        {
+            ServiceLocator.Reset();
+        }
     }
 
     [Test]
@@ -163,16 +191,145 @@ public class ResourcesSectionViewModelTests
         viewModel.HasInvalidSearchExcludePattern.Should().BeFalse();
     }
 
+    [Test]
+    public void Load_ShowsTheFolderTheProjectNames()
+    {
+        var viewModel = CreateViewModel(downloadsFolder: "assets/incoming");
+
+        viewModel.Load();
+
+        viewModel.DownloadsFolderText.Should().Be("assets/incoming");
+    }
+
+    [Test]
+    public void Load_ShowsAProjectThatNamesNoFolderAsAnEmptyField()
+    {
+        var viewModel = CreateViewModel();
+
+        viewModel.Load();
+
+        // The placeholder names the default, so the field holds nothing until the project names another.
+        viewModel.DownloadsFolderText.Should().BeEmpty();
+        viewModel.DefaultDownloadsFolder.Should().Be("downloads");
+        viewModel.IsDownloadsFolderInvalid.Should().BeFalse();
+    }
+
+    [Test]
+    public void EditingTheDownloadsFolder_WritesThePathItNamesIntoTheDraft()
+    {
+        var viewModel = CreateViewModel();
+        viewModel.Load();
+
+        viewModel.DownloadsFolderText = "/assets/incoming/";
+
+        var config = _context.Draft!.ToConfig();
+        config.Resources.DownloadsFolder.Should().Be("assets/incoming");
+    }
+
+    [TestCase("", Description = "a cleared field")]
+    [TestCase("downloads/", Description = "the default, typed")]
+    public void TheDefaultFolder_WritesNoKey(string folderText)
+    {
+        var viewModel = CreateViewModel(downloadsFolder: "assets/incoming");
+        viewModel.Load();
+
+        viewModel.DownloadsFolderText = folderText;
+
+        var config = _context.Draft!.ToConfig();
+        config.Resources.DownloadsFolder.Should().BeEmpty();
+    }
+
+    [Test]
+    public void APathThatIsNotAFolderPath_IsReportedAndWritesNoKey()
+    {
+        var viewModel = CreateViewModel(downloadsFolder: "assets/incoming");
+        viewModel.Load();
+
+        viewModel.DownloadsFolderText = "../outside";
+
+        // A load would drop the path, so none is written and downloads go to the default folder. Writing
+        // it would make the saved file read back differently, and the section would reload from it.
+        viewModel.IsDownloadsFolderInvalid.Should().BeTrue();
+        viewModel.DownloadsFolderText.Should().Be("../outside");
+        var config = _context.Draft!.ToConfig();
+        config.Resources.DownloadsFolder.Should().BeEmpty();
+    }
+
+    [Test]
+    public void AFolderCelbridgeReserves_IsReportedAndWritesNoKey()
+    {
+        var viewModel = CreateViewModel(downloadsFolder: "assets/incoming");
+        viewModel.Load();
+
+        var changedProperties = new List<string?>();
+        viewModel.PropertyChanged += (_, e) => changedProperties.Add(e.PropertyName);
+
+        viewModel.DownloadsFolderText = ".git";
+
+        // The message beneath the field distinguishes a reserved folder from a path that is not a folder
+        // path, so it is read again whenever the text changes.
+        viewModel.IsDownloadsFolderInvalid.Should().BeTrue();
+        changedProperties.Should().Contain(nameof(ResourcesSectionViewModel.InvalidDownloadsFolderText));
+        var config = _context.Draft!.ToConfig();
+        config.Resources.DownloadsFolder.Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task PickingAFolder_FillsTheField()
+    {
+        StubPickedFolder(Result<ResourceKey>.Ok(new ResourceKey("assets/incoming")));
+        var viewModel = CreateViewModel();
+        viewModel.Load();
+
+        await viewModel.PickDownloadsFolderAsync();
+
+        viewModel.DownloadsFolderText.Should().Be("assets/incoming");
+        var config = _context.Draft!.ToConfig();
+        config.Resources.DownloadsFolder.Should().Be("assets/incoming");
+    }
+
+    [Test]
+    public async Task PickingTheDefaultFolder_EmptiesTheField()
+    {
+        StubPickedFolder(Result<ResourceKey>.Ok(new ResourceKey("downloads")));
+        var viewModel = CreateViewModel(downloadsFolder: "assets/incoming");
+        viewModel.Load();
+
+        await viewModel.PickDownloadsFolderAsync();
+
+        viewModel.DownloadsFolderText.Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task DismissingThePicker_KeepsTheFolder()
+    {
+        StubPickedFolder(Result<ResourceKey>.Fail("Resource picker was cancelled"));
+        var viewModel = CreateViewModel(downloadsFolder: "assets/incoming");
+        viewModel.Load();
+
+        await viewModel.PickDownloadsFolderAsync();
+
+        viewModel.DownloadsFolderText.Should().Be("assets/incoming");
+    }
+
+    private void StubPickedFolder(Result<ResourceKey> pickResult)
+    {
+        _dialogService.ShowFolderPickerDialogAsync(Arg.Any<string?>())
+            .Returns(Task.FromResult(pickResult));
+    }
+
     private ResourcesSectionViewModel CreateViewModel(
         string[]? hide = null,
-        string[]? searchExclude = null)
+        string[]? searchExclude = null,
+        string downloadsFolder = "")
     {
         var config = new ProjectConfig
         {
             Resources = new ResourcesSection
             {
                 Hide = hide ?? Array.Empty<string>(),
-                SearchExclude = searchExclude ?? Array.Empty<string>()
+                SearchExclude = searchExclude ?? Array.Empty<string>(),
+                DownloadsFolder = downloadsFolder
             }
         };
 
@@ -183,6 +340,6 @@ public class ResourcesSectionViewModelTests
 
         _context.Draft = new ProjectConfigDraft(config);
 
-        return new ResourcesSectionViewModel(_context);
+        return new ResourcesSectionViewModel(_context, _dialogService);
     }
 }

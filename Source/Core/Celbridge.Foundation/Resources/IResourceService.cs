@@ -69,7 +69,8 @@ public interface IResourceService
     void ScheduleResourceUpdate();
 
     /// <summary>
-    /// Refreshes the resource registry immediately.
+    /// Refreshes the resource registry immediately. Call it on the UI thread: the registry update message it
+    /// sends is handled on the calling thread, and its recipients update the UI.
     /// </summary>
     Task<Result> UpdateResourcesAsync();
 }

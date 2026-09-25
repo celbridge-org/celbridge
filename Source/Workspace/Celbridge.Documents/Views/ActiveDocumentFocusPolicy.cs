@@ -1,10 +1,12 @@
+using Celbridge.UserInterface;
+
 namespace Celbridge.Documents.Views;
 
 /// <summary>
 /// Decides what a focus report does to the active document: whether the report makes its document active,
-/// and whether a change of active document carries the keyboard to it. Pure functions because the rules keep
-/// focus and activation from driving each other, which a live web surface would otherwise be needed to
-/// exercise.
+/// whether a change of active document carries the keyboard to it, and whether a press inside a document
+/// hands the keyboard to it. Pure functions, so the rules that keep focus and activation from driving
+/// each other can be exercised without a live web surface or window.
 /// </summary>
 public static class ActiveDocumentFocusPolicy
 {
@@ -38,9 +40,26 @@ public static class ActiveDocumentFocusPolicy
         }
 
         // A restore is not something the user asked for, and a document made active by its own surface
-        // taking the keyboard already has it. Granting focus to the latter is what lets two web surfaces
-        // trade it without settling: each grant reports focus, each report makes its document active, and
-        // each activation grants focus again.
+        // taking the keyboard already has it. Granting focus to the latter would let two web surfaces
+        // trade it forever: each grant reports focus, each report makes its document active, and each
+        // activation grants focus again.
         return reason == ActiveDocumentChangeReason.Activated;
+    }
+
+    /// <summary>
+    /// Whether a press inside a document should hand the keyboard to that document, judged from where focus
+    /// settled after the press.
+    /// </summary>
+    public static bool ShouldFocusPressedDocument(bool focusIsInPressedDocument, FocusLocation focusLocation)
+    {
+        // The press reached a control in the document, which now holds the keyboard.
+        if (focusIsInPressedDocument)
+        {
+            return false;
+        }
+
+        // The press opened a dialog, flyout or menu, which owns the keyboard while it is open. Taking focus
+        // back to the document would leave it on screen with no keys reaching it.
+        return focusLocation != FocusLocation.Popup;
     }
 }

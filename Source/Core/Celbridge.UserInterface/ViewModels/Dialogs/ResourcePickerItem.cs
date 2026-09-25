@@ -1,7 +1,7 @@
 namespace Celbridge.UserInterface.ViewModels;
 
 /// <summary>
-/// Represents a single file item in the Resource Picker dialog list.
+/// Represents a single file or folder in the resource picker list.
 /// </summary>
 public class ResourcePickerItem
 {

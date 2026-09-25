@@ -761,7 +761,7 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
                 var completed = await Task.WhenAny(readyTask, delayTask);
                 if (completed != readyTask)
                 {
-                    return Result.Fail($"Timed out after {timeout.TotalSeconds:0.#}s waiting for the editor's content-ready signal. The editor must call celbridge.notifyContentLoaded() (custom editors) or finish navigation (HTML viewer) before WebView tools can dispatch.");
+                    return Result.Fail($"Timed out after {timeout.TotalSeconds:0.#}s waiting for the editor's content-ready signal. The editor must call celbridge.notifyContentLoaded() (custom editors) or finish navigation (HTML viewer) before WebView tools can dispatch. If the document's tab is not showing, activate it with document_activate and try again.");
                 }
 
                 cts.Cancel();

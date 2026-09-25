@@ -81,6 +81,12 @@ public interface IDialogService
     Task<Result<ResourceKey>> ShowResourcePickerDialogAsync(IReadOnlyList<string> extensions, string? title = null, bool showPreview = false);
 
     /// <summary>
+    /// Display a Resource Picker Dialog listing the project's folders.
+    /// Fails if no project is currently loaded.
+    /// </summary>
+    Task<Result<ResourceKey>> ShowFolderPickerDialogAsync(string? title = null);
+
+    /// <summary>
     /// Display an Icon Picker Dialog over the supported icon set, opening its search on the given text.
     /// Returns the prefixed name of the chosen icon, or fails if the dialog was cancelled.
     /// </summary>

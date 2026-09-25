@@ -11,8 +11,7 @@ namespace Celbridge.ProjectSettings.ViewModels;
 
 /// <summary>
 /// Drives the Packages section: every user-curatable package with its contributions nested beneath, each
-/// with an enable toggle and descriptor form fields. Toggles and field edits are written to the
-/// .celbridge file and apply when the project is reloaded.
+/// with an enable toggle and descriptor form fields.
 /// </summary>
 public class PackagesSectionViewModel : ProjectSettingsSectionViewModel
 {

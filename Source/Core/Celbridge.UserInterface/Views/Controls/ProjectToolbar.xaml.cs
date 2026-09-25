@@ -23,7 +23,8 @@ public sealed partial class ProjectToolbar : UserControl
         var overlayFlyoutSupport = ServiceLocator.AcquireService<IOverlayFlyoutSupport>();
         overlayFlyoutSupport.Apply(MainMenuFlyout);
 
-        NotificationBadge.LayoutChanged += OnNotificationBadge_LayoutChanged;
+        NotificationBadge.LayoutChanged += OnBadge_LayoutChanged;
+        DownloadBadge.LayoutChanged += OnBadge_LayoutChanged;
 
         Loaded += OnProjectToolbar_Loaded;
         Unloaded += OnProjectToolbar_Unloaded;
@@ -48,13 +49,14 @@ public sealed partial class ProjectToolbar : UserControl
     {
         _mainMenu?.OnUnloaded();
 
-        NotificationBadge.LayoutChanged -= OnNotificationBadge_LayoutChanged;
+        NotificationBadge.LayoutChanged -= OnBadge_LayoutChanged;
+        DownloadBadge.LayoutChanged -= OnBadge_LayoutChanged;
 
         Loaded -= OnProjectToolbar_Loaded;
         Unloaded -= OnProjectToolbar_Unloaded;
     }
 
-    private void OnNotificationBadge_LayoutChanged(object? sender, EventArgs e)
+    private void OnBadge_LayoutChanged(object? sender, EventArgs e)
     {
         InteractiveLayoutChanged?.Invoke(this, EventArgs.Empty);
     }
@@ -70,11 +72,16 @@ public sealed partial class ProjectToolbar : UserControl
             ProjectSwitcher
         };
 
-        // A collapsed control keeps the size and position it was last measured at, so the badge's visibility is
-        // what says whether it is on screen.
+        // A collapsed control keeps the size and position it was last measured at, so a badge's visibility
+        // is what says whether it is on screen.
         if (NotificationBadge.Visibility == Visibility.Visible)
         {
             elements.Add(NotificationBadge);
+        }
+
+        if (DownloadBadge.Visibility == Visibility.Visible)
+        {
+            elements.Add(DownloadBadge);
         }
 
         return elements;

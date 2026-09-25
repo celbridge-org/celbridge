@@ -27,23 +27,31 @@ public enum NavigationDecision
 }
 
 /// <summary>
-/// Async callback that decides what should happen for a single attempted navigation.
-/// Implementations are expected to be pure UI - showing a dialog, returning a choice -
-/// without dispatching the resulting action themselves; the policy helper handles dispatch.
+/// An attempted top-frame navigation. IsUserInitiated is true when the user started it, as
+/// by clicking a link, and false when the page started it by itself.
 /// </summary>
-public delegate Task<NavigationDecision> NavigationDestinationHandler(Uri destination);
+public record NavigationRequest(Uri Destination, bool IsUserInitiated);
 
 /// <summary>
-/// Wraps WebView2 NavigationStarting interception so the .webview view and the HTML
-/// viewer share a single navigation-policy code path. Each role attaches with its own
-/// handler; the helper translates the handler's decision into the matching side effect.
+/// Async callback that decides what should happen for a single attempted navigation. The
+/// policy helper carries out the decision's side effect, such as opening the system
+/// browser. A destination the handler deals with itself, such as a project file it opens
+/// in Celbridge, is returned as Cancel.
+/// </summary>
+public delegate Task<NavigationDecision> NavigationDestinationHandler(NavigationRequest request);
+
+/// <summary>
+/// Wraps a head's navigation gating so the .webview view and the HTML viewer share a
+/// single navigation-policy code path. Each role attaches with its own handler; the
+/// helper translates the handler's decision into the matching side effect.
 /// </summary>
 public interface IWebViewNavigationPolicy
 {
     /// <summary>
-    /// Subscribes the supplied handler to NavigationStarting on the given WebView. The
-    /// handler is consulted for every top-frame navigation; iframe navigations are
-    /// always allowed.
+    /// Puts the given WebView's top-frame navigations to the supplied handler, wherever
+    /// the head decides them, so a destination the handler refuses is kept from the page
+    /// and, as far as the head allows, never fetched. Iframe navigations are always
+    /// allowed.
     /// </summary>
     void Attach(CoreWebView2 webView, NavigationDestinationHandler handler);
 

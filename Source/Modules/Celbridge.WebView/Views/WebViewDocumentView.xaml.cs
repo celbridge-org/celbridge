@@ -7,7 +7,6 @@ using Celbridge.Documents.Views;
 using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Platform;
-using Celbridge.Projects;
 using Celbridge.Settings;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
@@ -18,7 +17,6 @@ using Celbridge.WebView.ViewModels;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Xaml.Automation;
-using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.Web.WebView2.Core;
 using Windows.System;
 
@@ -39,9 +37,6 @@ internal sealed record WebViewEditorState(bool SettingsOpen, string SettingsSect
 /// </summary>
 public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWebViewFindTarget, IDocumentChromeOwner
 {
-    // How long the settled download indicator stays visible before fading out.
-    private static readonly TimeSpan DownloadIndicatorDismissDelay = TimeSpan.FromSeconds(10);
-
     private static readonly JsonSerializerOptions EditorStateSerializerOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -65,14 +60,20 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
     private WebViewHostChannel? _hostChannel;
     private CelbridgeHost? _host;
     private IWebViewNavigationPolicy? _navigationPolicy;
+    private IWebViewDownloadHandler? _downloadHandler;
 
-    private DispatcherTimer? _downloadIndicatorDismissTimer;
+    // Reports each address the page commits to, which is when the address bar follows the page.
+    private IDisposable? _navigationCommits;
 
     // The section the settings reopen on, carried until the surface is built on first use.
     private string _settingsSectionKey = string.Empty;
 
-    // Where the page was last told to go, held until the committed address catches up with it.
-    private string _pendingNavigationUrl = string.Empty;
+    // Set when a download replaces the navigation in flight, which then reports itself failed.
+    private bool _isNavigationReplacedByDownload;
+
+    // Set from a navigation starting until its completion is raised. On the Skia heads a navigation that
+    // ran while the view was detached raises neither, so this stays set for a page that loaded unseen.
+    private bool _isAwaitingNavigationCompleted;
 
     private WebViewLoadDiagnostics? _diagnostics;
 
@@ -160,42 +161,76 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
     }
 
     // Drops the page and returns the document to the placeholder it started on. A real navigation rather
-    // than just clearing the address, so the page being left stops running instead of playing on unseen.
+    // than just clearing the address, so the old page stops running instead of playing on unseen.
     private void ClearPage()
     {
         Navigate("about:blank");
     }
 
+    // Opens an address the user chose through the document, which the address bar names at once, as a
+    // browser's does for an address typed into it.
     private void Navigate(string url)
+    {
+        var destination = ResolveDestination(url);
+        if (destination is null)
+        {
+            return;
+        }
+
+        // Shown straight away rather than once the page commits. A document restored into a background tab
+        // navigates while its view is out of the visual tree, and the Skia heads raise no navigation event
+        // for it at all, not even once the tab is later shown, so its address bar would otherwise stay empty
+        // for the life of the document. For the same reason the failure a previous navigation reported is
+        // cleared here rather than in NavigationStarting alone.
+        ViewModel.NotifyUserNavigation(destination.AbsoluteUri);
+
+        LoadDestination(destination);
+    }
+
+    // Goes where the page asked to, as a link it followed does. The address bar goes on naming the page on
+    // screen until the new one commits, so an address that turns out to be a download never shows in it.
+    private void FollowPageNavigation(string url)
+    {
+        var destination = ResolveDestination(url);
+        if (destination is null)
+        {
+            return;
+        }
+
+        LoadDestination(destination);
+    }
+
+    // The address a URL names, or null where it names none or there is no WebView to load it in.
+    private Uri? ResolveDestination(string url)
+    {
+        if (_webView is null)
+        {
+            return null;
+        }
+
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var destination))
+        {
+            _logger.LogWarning($"Cannot navigate to invalid URL: '{url}'");
+            return null;
+        }
+
+        return destination;
+    }
+
+    private void LoadDestination(Uri destination)
     {
         if (_webView is null)
         {
             return;
         }
 
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
-        {
-            _logger.LogWarning($"Cannot navigate to invalid URL: '{url}'");
-            return;
-        }
-
-        // Show the destination straight away rather than waiting for NavigationStarting to report it. A
-        // document restored into a background tab navigates while its view is out of the visual tree, and
-        // the Skia heads raise no navigation event for it at all, not even once the tab is later shown, so
-        // its address bar would otherwise stay empty for the life of the document. Any redirect is picked
-        // up by the navigation events as usual.
-        // A document restored into a background tab navigates with no events at all, so the failure a
-        // previous navigation reported is cleared here rather than in NavigationStarting alone.
-        ViewModel.HasNavigationFailed = false;
-
-        ViewModel.CurrentUrl = uri.AbsoluteUri;
-        _pendingNavigationUrl = uri.AbsoluteUri;
+        _isAwaitingNavigationCompleted = true;
 
         // Paired with the completion below, so a page that never arrives can be told from one that arrived
         // and failed, and from one the policy declined.
-        Diagnostics.LogNavigation("Navigating", Surface, uri.AbsoluteUri);
+        Diagnostics.LogNavigation("Navigating", Surface, destination.AbsoluteUri);
 
-        _webView.Source = uri;
+        _webView.Source = destination;
     }
 
     private async void WebViewDocumentView_Loaded(object sender, RoutedEventArgs e)
@@ -262,14 +297,12 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
                 TryRegisterWithToolBridge();
             }
 
-            // temp:/ is wiped on workspace load, so the downloads sub-folder
-            // may not exist yet. Ensure it via the gateway before the user
-            // can trigger a download.
-            var downloadsFolder = new ResourceKey($"temp:{ProjectConstants.DownloadsFolder}");
-            await ResourceFileSystem.CreateFolderAsync(downloadsFolder);
+            DetachDownloadHandler();
+            _downloadHandler = _webViewAdapter.AttachDownloadHandler(_webView.CoreWebView2);
+            _downloadHandler.DownloadStarted += CoreWebView2_DownloadStarted;
 
-            _webView.CoreWebView2.DownloadStarting -= CoreWebView2_DownloadStarting;
-            _webView.CoreWebView2.DownloadStarting += CoreWebView2_DownloadStarting;
+            _navigationCommits?.Dispose();
+            _navigationCommits = _webViewAdapter.ObserveNavigationCommits(_webView.CoreWebView2, OnNavigationCommitted);
 
             _webView.CoreWebView2.NewWindowRequested -= WebView_NewWindowRequested;
             _webView.CoreWebView2.NewWindowRequested += WebView_NewWindowRequested;
@@ -301,37 +334,77 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
 
     private void AttachNavigationPolicy(CoreWebView2 coreWebView)
     {
+        // A browser document goes wherever its page asks, so it is not gated at all. Even a gate that
+        // allows everything routes every request the page makes through the head's interception machinery.
+        if (!Options.InterceptTopFrameNavigation)
+        {
+            return;
+        }
+
         _navigationPolicy = _serviceProvider.GetRequiredService<IWebViewNavigationPolicy>();
-
-        NavigationDestinationHandler handler;
-        if (Options.InterceptTopFrameNavigation)
-        {
-            handler = CreateInterceptingHandler();
-        }
-        else
-        {
-            handler = (_) => Task.FromResult(NavigationDecision.Allow);
-        }
-
-        _navigationPolicy.Attach(coreWebView, handler);
+        _navigationPolicy.Attach(coreWebView, CreateInterceptingHandler());
     }
 
     private NavigationDestinationHandler CreateInterceptingHandler()
     {
-        return async (destination) =>
+        return async (request) =>
         {
-            // The HTML viewer is pinned to the project virtual-host URL. Allow the
-            // initial navigation, reloads, and any same-document scrolling, but prompt
-            // the user for any other top-frame destination so the page cannot redirect
-            // out from under them.
+            // The HTML viewer is pinned to its page's URL. Allow the initial navigation, reloads, and any
+            // same-document scrolling, but prompt the user for any other top-frame destination so the page
+            // cannot redirect out from under them.
+            var destination = request.Destination;
             var pinnedUrl = ViewModel.NavigateUrl;
             if (!string.IsNullOrEmpty(pinnedUrl) && IsSameDocument(destination, pinnedUrl))
             {
                 return NavigationDecision.Allow;
             }
 
+            // A link the user follows to another project file opens that file in Celbridge, as a link in the
+            // markdown preview does. A navigation the page starts by itself is still asked about, so a script
+            // cannot open the project's documents on its own.
+            if (request.IsUserInitiated &&
+                TryOpenProjectLink(destination))
+            {
+                return NavigationDecision.Cancel;
+            }
+
             return await PromptForNavigationDestinationAsync(destination);
         };
+    }
+
+    // True when the destination is a file on the project's own server, which is then opened in Celbridge, or
+    // reported as missing when the project has no such file.
+    private bool TryOpenProjectLink(Uri destination)
+    {
+        if (!ViewModel.TryResolveProjectResource(destination, out var resource))
+        {
+            return false;
+        }
+
+        if (!ViewModel.OpenLinkedResource(resource))
+        {
+            _ = ShowMissingLinkTargetAsync(resource);
+        }
+
+        return true;
+    }
+
+    private async Task ShowMissingLinkTargetAsync(ResourceKey resource)
+    {
+        try
+        {
+            var dialogService = _serviceProvider.GetRequiredService<IDialogService>();
+            var stringLocalizer = _serviceProvider.GetRequiredService<IStringLocalizer>();
+
+            var title = stringLocalizer.GetString("Extension_LinkError_Title");
+            var message = stringLocalizer.GetString("Extension_LinkError_Message", resource.Path);
+
+            await dialogService.ShowAlertDialogAsync(title, message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to report a link to a missing project file");
+        }
     }
 
     private static bool IsSameDocument(Uri destination, string pinnedUrl)
@@ -397,7 +470,11 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         {
             _webViewFocusRegistry.Unregister(_webView.CoreWebView2);
 
-            _webView.CoreWebView2.DownloadStarting -= CoreWebView2_DownloadStarting;
+            DetachDownloadHandler();
+
+            _navigationCommits?.Dispose();
+            _navigationCommits = null;
+
             _webView.CoreWebView2.NewWindowRequested -= WebView_NewWindowRequested;
             _webView.CoreWebView2.HistoryChanged -= CoreWebView2_HistoryChanged;
             _webView.CoreWebView2.NavigationCompleted -= CoreWebView2_NavigationCompleted;
@@ -476,6 +553,15 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         }
     }
 
+    // Opens the tool bridge's content-ready gate, re-delivering the shim first (no-op on Windows).
+    // ExecuteScriptAsync calls are serialised in invocation order, so this fire-and-forget eval is queued
+    // ahead of any later webview_* tool eval even without awaiting it here.
+    private void NotifyToolBridgeContentReady()
+    {
+        _ = ReinjectToolBridgeShimAsync();
+        _toolBridge?.NotifyContentReady(FileResource);
+    }
+
     private void TryRegisterWithToolBridge()
     {
         var webView = _webView;
@@ -517,6 +603,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
 
     private void CoreWebView2_NavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
     {
+        _isAwaitingNavigationCompleted = false;
+
         // The HTML viewer renders static project-served content, so the WebView's own
         // NavigationCompleted is a sufficient content-ready signal. External-URL .webview
         // documents never register, so this no-ops on the .webview path.
@@ -524,11 +612,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         {
             if (e.IsSuccess)
             {
-                // Re-deliver the shim before opening the content-ready gate (no-op on Windows). ExecuteScriptAsync
-                // calls are serialised in invocation order, so this fire-and-forget eval is queued ahead of any
-                // later webview_* tool eval even without awaiting it here.
-                _ = ReinjectToolBridgeShimAsync();
-                _toolBridge?.NotifyContentReady(FileResource);
+                NotifyToolBridgeContentReady();
             }
             else
             {
@@ -537,16 +621,25 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
             }
         }
 
-        if (e.IsSuccess)
+        var outcome = ResolveNavigationOutcome(e, _isNavigationReplacedByDownload);
+        _isNavigationReplacedByDownload = false;
+
+        // A navigation that never arrived is logged by where it was heading, since the address bar still names
+        // the page it left.
+        if (outcome == NavigationOutcome.Failed)
         {
-            Diagnostics.LogNavigation("Navigation completed", Surface, ViewModel.CurrentUrl);
+            Diagnostics.LogNavigationFailed(Surface, ViewModel.NavigationDestination, e.WebErrorStatus);
+        }
+        else if (outcome == NavigationOutcome.Aborted)
+        {
+            Diagnostics.LogNavigation("Navigation abandoned", Surface, ViewModel.NavigationDestination);
         }
         else
         {
-            Diagnostics.LogNavigationFailed(Surface, ViewModel.CurrentUrl, e.WebErrorStatus);
+            Diagnostics.LogNavigation("Navigation completed", Surface, ViewModel.CurrentUrl);
         }
 
-        ViewModel.NotifyNavigationCompleted(e.IsSuccess);
+        ViewModel.NotifyNavigationCompleted(outcome);
         UpdateNavigationState();
 
         // Runs after the navigation state settles so the probe reads the address the page committed to.
@@ -554,6 +647,31 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         {
             _ = ProbeLoadedContentAsync();
         }
+    }
+
+    // Chromium reports three cases the same way: a navigation it turned into a download, one a later
+    // navigation superseded, and one the user stopped. None is a page that failed to load, and in each the
+    // old page is still on screen, so the placeholder would describe a failure that did not happen. A page
+    // that genuinely could not be fetched reports why. The macOS head reports every failure alike, but
+    // there the download is announced before the navigation it replaced ends, so that one is already known
+    // to be abandoned.
+    private static NavigationOutcome ResolveNavigationOutcome(
+        CoreWebView2NavigationCompletedEventArgs e,
+        bool isReplacedByDownload)
+    {
+        if (e.IsSuccess)
+        {
+            return NavigationOutcome.Loaded;
+        }
+
+        if (isReplacedByDownload
+            || e.WebErrorStatus == CoreWebView2WebErrorStatus.ConnectionAborted
+            || e.WebErrorStatus == CoreWebView2WebErrorStatus.OperationCanceled)
+        {
+            return NavigationOutcome.Aborted;
+        }
+
+        return NavigationOutcome.Failed;
     }
 
     // The load diagnostics shared with the custom editor controller: the surface a load runs against, and
@@ -586,8 +704,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
             return;
         }
 
-        // The probe reports on a completion that has already happened, so a navigation started while it was
-        // in flight owns the document now and this verdict is about a page that has been left.
+        // The probe reports on a completion that has already happened, so a navigation started while it
+        // was in flight owns the document now, and this verdict is about a page already gone.
         if (ViewModel.IsNavigating
             || !string.Equals(ViewModel.CurrentUrl, probedUrl, StringComparison.Ordinal))
         {
@@ -601,7 +719,17 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         {
             // Reported as the failure it is, so the document shows the load-failed placeholder and its reload
             // rather than a blank page the user cannot tell from a slow one.
-            ViewModel.NotifyNavigationCompleted(false);
+            ViewModel.NotifyNavigationCompleted(NavigationOutcome.Failed);
+        }
+
+        // A page that loaded with no completion raised has only the probe to say it arrived. An empty
+        // document is no evidence that it did, and a completion that was raised has already had its say.
+        if (Options.Role == WebViewDocumentRole.HtmlViewer &&
+            _isAwaitingNavigationCompleted &&
+            !probe.IsEmpty)
+        {
+            _isAwaitingNavigationCompleted = false;
+            NotifyToolBridgeContentReady();
         }
     }
 
@@ -610,7 +738,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         _ = Diagnostics.LogSurfaceAsync("WebView attached", Surface);
 
         // A document that loaded while detached raised no navigation events, so its completion was never
-        // probed. Attach is the first moment the host hears from it again.
+        // probed and the HTML viewer's tool gate never opened. Attach is the first moment the host hears
+        // from it again.
         _ = ProbeLoadedContentAsync();
     }
 
@@ -639,12 +768,43 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
             _toolBridge?.NotifyContentLoading(FileResource);
         }
 
-        ViewModel.NotifyNavigationStarted();
-        if (!string.IsNullOrEmpty(args.Uri))
+        _isNavigationReplacedByDownload = false;
+        _isAwaitingNavigationCompleted = true;
+
+        ViewModel.NotifyNavigationStarted(args.Uri ?? string.Empty);
+    }
+
+    // The address bar follows the page from here, as a browser's does: once a navigation commits, rather than
+    // as it starts.
+    private void OnNavigationCommitted(string url)
+    {
+        Diagnostics.LogNavigation("Navigation committed", Surface, url);
+
+        ViewModel.NotifyNavigationCommitted(url);
+    }
+
+    // A navigation whose response turned out to be an attachment is abandoned for the download, and the page
+    // the document is showing stays on screen.
+    private void CoreWebView2_DownloadStarted(object? sender, EventArgs e)
+    {
+        // Chromium has already ended the navigation by now. WebKit has not, and ends it with a failure. A
+        // navigation that started while the view was detached reported no start, so this is not gated on
+        // one being known to be in flight.
+        _isNavigationReplacedByDownload = true;
+
+        ViewModel.NotifyDownloadStarted();
+    }
+
+    private void DetachDownloadHandler()
+    {
+        if (_downloadHandler is null)
         {
-            ViewModel.CurrentUrl = args.Uri;
-            _pendingNavigationUrl = args.Uri;
+            return;
         }
+
+        _downloadHandler.DownloadStarted -= CoreWebView2_DownloadStarted;
+        _downloadHandler.Detach();
+        _downloadHandler = null;
     }
 
     private void UpdateNavigationState()
@@ -656,27 +816,6 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
 
         ViewModel.CanGoBack = _webView.CanGoBack;
         ViewModel.CanGoForward = _webView.CanGoForward;
-
-        // Source names the last committed navigation, so while one is in flight it still reports the page
-        // being left. With nothing pending it is the only signal for a same-document navigation, which
-        // raises no navigation event.
-        var committedUrl = _webView.CoreWebView2?.Source;
-        if (string.IsNullOrEmpty(committedUrl))
-        {
-            return;
-        }
-
-        if (_pendingNavigationUrl.Length > 0
-            && committedUrl != _pendingNavigationUrl)
-        {
-            return;
-        }
-
-        _pendingNavigationUrl = string.Empty;
-
-        // CoreWebView2.Source rather than WebView2.Source, which reports the address percent-encoded where
-        // this reports it as the page shows it.
-        ViewModel.CurrentUrl = committedUrl;
     }
 
     private void BackButton_Click(object sender, RoutedEventArgs e)
@@ -948,23 +1087,11 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         }
     }
 
-    private void DownloadIndicatorButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (ViewModel.IsDownloadSucceeded)
-        {
-            ViewModel.RevealLastDownload();
-        }
-    }
-
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(WebViewDocumentViewModel.IsNavigating))
         {
             UpdateReloadOrStopTooltip();
-        }
-        else if (e.PropertyName == nameof(WebViewDocumentViewModel.DownloadStatus))
-        {
-            UpdateDownloadIndicatorTooltip();
         }
         else if (e.PropertyName == nameof(WebViewDocumentViewModel.IsCurrentPageBookmarked))
         {
@@ -1050,259 +1177,6 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         }
 
         AutomationProperties.SetName(PlaceholderContent, name);
-    }
-
-    private void UpdateDownloadIndicatorTooltip()
-    {
-        string? key = ViewModel.DownloadStatus switch
-        {
-            WebViewDownloadStatus.InProgress => "WebView_UrlBar_DownloadInProgressTooltip",
-            WebViewDownloadStatus.Succeeded => "WebView_UrlBar_DownloadSucceededTooltip",
-            WebViewDownloadStatus.Failed => "WebView_UrlBar_DownloadFailedTooltip",
-            _ => null,
-        };
-
-        if (key is null)
-        {
-            ToolTipService.SetToolTip(DownloadIndicatorButton, null);
-            return;
-        }
-
-        string tooltip = _stringLocalizer.GetString(key);
-        ToolTipService.SetToolTip(DownloadIndicatorButton, tooltip);
-    }
-
-    // Holds the settled indicator visible briefly, then fades it out.
-    private void ScheduleDownloadIndicatorDismiss()
-    {
-        if (_downloadIndicatorDismissTimer is null)
-        {
-            _downloadIndicatorDismissTimer = new DispatcherTimer
-            {
-                Interval = DownloadIndicatorDismissDelay,
-            };
-            _downloadIndicatorDismissTimer.Tick += DownloadIndicatorDismissTimer_Tick;
-        }
-
-        _downloadIndicatorDismissTimer.Stop();
-        _downloadIndicatorDismissTimer.Start();
-    }
-
-    private void DownloadIndicatorDismissTimer_Tick(object? sender, object e)
-    {
-        _downloadIndicatorDismissTimer?.Stop();
-
-        // A new download may have started during the dismiss delay; leave its
-        // in-progress indicator alone.
-        if (ViewModel.IsDownloadInProgress)
-        {
-            return;
-        }
-
-        var animation = new DoubleAnimation
-        {
-            From = 1.0,
-            To = 0.0,
-            Duration = new Duration(TimeSpan.FromMilliseconds(250)),
-        };
-        Storyboard.SetTarget(animation, DownloadIndicatorButton);
-        Storyboard.SetTargetProperty(animation, "Opacity");
-
-        var storyboard = new Storyboard();
-        storyboard.Children.Add(animation);
-        storyboard.Completed += (_, _) =>
-        {
-            ViewModel.ClearDownloadIndicator();
-            DownloadIndicatorButton.Opacity = 1.0;
-        };
-        storyboard.Begin();
-    }
-
-    private async void CoreWebView2_DownloadStarting(CoreWebView2 sender, CoreWebView2DownloadStartingEventArgs args)
-    {
-        // WebView2 reads args mutations only after the handler completes the
-        // deferral. Without the deferral, an await mid-handler would let the
-        // runtime proceed with the original args before our overrides land.
-        var deferral = args.GetDeferral();
-        try
-        {
-            // The URL bar's download indicator is the download UI, so suppress
-            // WebView2's own download flyout.
-            args.Handled = true;
-
-            var downloadPath = args.ResultFilePath;
-            if (string.IsNullOrEmpty(downloadPath))
-            {
-                args.Cancel = true;
-                return;
-            }
-
-            var filename = Path.GetFileName(downloadPath);
-
-            // Downloads land under project:downloads/ so the project root stays
-            // uncluttered when a session produces multiple downloads.
-            var requestedDestResource = new ResourceKey($"{ProjectConstants.DownloadsFolder}/{filename}");
-            var resolveResult = ResourceRegistry.ResolveResourcePath(requestedDestResource);
-            if (resolveResult.IsFailure)
-            {
-                args.Cancel = true;
-                return;
-            }
-            var requestedPath = resolveResult.Value;
-            var getResult = await GetUniquePathAsync(requestedPath);
-            if (getResult.IsFailure)
-            {
-                args.Cancel = true;
-                return;
-            }
-            var savePath = getResult.Value;
-
-            var getResourceResult = ResourceRegistry.GetResourceKey(savePath);
-            if (getResourceResult.IsFailure)
-            {
-                args.Cancel = true;
-                return;
-            }
-            var saveResourceKey = getResourceResult.Value;
-
-            // Probe the destination before staging so policy denials surface to
-            // the user up front instead of after the transfer completes.
-            var probeResult = await ResourceFileSystem.GetInfoAsync(saveResourceKey);
-            if (probeResult.IsFailure)
-            {
-                args.Cancel = true;
-                _logger.LogError($"Download blocked: {probeResult.FirstErrorMessage}");
-
-                var dialogService = _serviceProvider.GetRequiredService<IDialogService>();
-                var stringLocalizer = _serviceProvider.GetRequiredService<IStringLocalizer>();
-                var projectService = _serviceProvider.GetRequiredService<IProjectService>();
-                var projectFileName = Path.GetFileName(projectService.CurrentProject?.ProjectFilePath ?? string.Empty);
-
-                var title = stringLocalizer.GetString("WebView_DownloadBlocked_Title");
-                var message = stringLocalizer.GetString(
-                    "WebView_DownloadBlocked_Message",
-                    filename,
-                    projectFileName);
-                await dialogService.ShowAlertDialogAsync(title, message);
-                return;
-            }
-
-            // Stage the download under the project's temp: root so the staging
-            // location lives alongside the rest of the workspace's scratch space
-            // and the wipe-on-load policy bounds orphan accumulation.
-            var extension = Path.GetExtension(filename);
-            var randomName = Path.GetFileNameWithoutExtension(Path.GetRandomFileName());
-            var downloadResource = new ResourceKey($"temp:{ProjectConstants.DownloadsFolder}/{randomName}{extension}");
-            var resolveTempResult = ResourceRegistry.ResolveResourcePath(downloadResource);
-            if (resolveTempResult.IsFailure)
-            {
-                args.Cancel = true;
-                return;
-            }
-            var tempPath = resolveTempResult.Value;
-            args.ResultFilePath = tempPath;
-
-            ViewModel.BeginDownload();
-
-            args.DownloadOperation.StateChanged += async (s, e) =>
-            {
-                // Async-void event handler: any escaping exception ends up on the
-                // SynchronizationContext's unhandled-exception channel, so wrap
-                // the body so a WebView-side failure can't crash the host.
-                try
-                {
-                    if (s.State == CoreWebView2DownloadState.Completed)
-                    {
-                        var importResult = await _commandService.ExecuteAsync<ICreateResourceCommand>(command =>
-                        {
-                            command.ResourceType = ResourceType.File;
-                            command.SourcePath = tempPath;
-                            command.DestResource = saveResourceKey;
-                        });
-
-                        // The import copies bytes (no cross-root move from temp:
-                        // to project:), so the staging copy is always redundant
-                        // afterwards. Delete it on failure too, or it leaks.
-                        await ResourceFileSystem.DeleteAsync(downloadResource);
-
-                        if (importResult.IsFailure)
-                        {
-                            ViewModel.FailDownload();
-                            _logger.LogError(
-                                $"Failed to import downloaded file to '{saveResourceKey}'. {importResult.DiagnosticReport}");
-                        }
-                        else
-                        {
-                            ViewModel.CompleteDownload(saveResourceKey);
-                        }
-
-                        ScheduleDownloadIndicatorDismiss();
-                    }
-                    else if (s.State == CoreWebView2DownloadState.Interrupted)
-                    {
-                        await ResourceFileSystem.DeleteAsync(downloadResource);
-
-                        ViewModel.FailDownload();
-                        ScheduleDownloadIndicatorDismiss();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Download state change handler failed");
-                }
-            };
-        }
-        finally
-        {
-            deferral.Complete();
-        }
-    }
-
-    // Returns a path that doesn't collide with an existing file or folder by
-    // appending " (N)" before any extension.
-    private static async Task<Result<string>> GetUniquePathAsync(string path)
-    {
-        try
-        {
-            path = Path.GetFullPath(path);
-
-            string directoryPath = Path.GetDirectoryName(path)!;
-            string nameWithoutExtension = Path.GetFileNameWithoutExtension(path);
-            string extension = Path.GetExtension(path);
-            string uniqueName = Path.GetFileName(path);
-            int count = 1;
-
-            var fileSystem = ServiceLocator.AcquireService<ILocalFileSystem>();
-
-            while (true)
-            {
-                var candidatePath = Path.Combine(directoryPath, uniqueName);
-                var infoResult = await fileSystem.GetInfoAsync(candidatePath);
-                bool exists = infoResult.IsSuccess
-                    && infoResult.Value.Kind != StorageItemKind.NotFound;
-                if (!exists)
-                {
-                    break;
-                }
-
-                if (!string.IsNullOrEmpty(extension))
-                {
-                    uniqueName = $"{nameWithoutExtension} ({count}){extension}";
-                }
-                else
-                {
-                    uniqueName = $"{nameWithoutExtension} ({count})";
-                }
-                count++;
-            }
-
-            return Path.Combine(directoryPath, uniqueName);
-        }
-        catch (Exception ex)
-        {
-            return Result<string>.Fail($"Failed to generate a unique path: {path}")
-                .WithException(ex);
-        }
     }
 
     public override async Task<Result> SetFileResource(ResourceKey fileResource)
@@ -1450,10 +1324,32 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         args.Handled = true;
 
         var url = args.Uri;
-        if (!string.IsNullOrEmpty(url))
+        if (string.IsNullOrEmpty(url))
         {
-            ViewModel.OpenBrowser(url);
+            return;
         }
+
+        // A pinned page cannot navigate away without ceasing to be what the document is, so its new
+        // window is handed to the system browser, unless the user followed a link to another project file,
+        // which opens in Celbridge.
+        if (Options.InterceptTopFrameNavigation)
+        {
+            if (_webViewAdapter.IsUserInitiated(args) &&
+                Uri.TryCreate(url, UriKind.Absolute, out var destination) &&
+                TryOpenProjectLink(destination))
+            {
+                return;
+            }
+
+            ViewModel.OpenBrowser(url);
+            return;
+        }
+
+        // A browser document has no tabs to open, so it goes there itself and Back returns. Leaving for
+        // the system browser is what the URL bar button is for, and taking a download with it would put
+        // the file outside the project. The page asked for the window, so it is followed as the page's own
+        // navigation.
+        FollowPageNavigation(url);
     }
 
     public override IEditTarget EditTarget { get; } = new DisabledEditTarget();
@@ -1463,9 +1359,9 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
         FocusDocumentContent();
     }
 
-    // Gives the keyboard to whatever fills the document area, or failing that to the way in the placeholder points to.
-    // A document being opened has already started navigating to its Home URL by the time it is activated and focused,
-    // so its page counts as on screen.
+    // Gives the keyboard to whatever fills the document area, or failing that to whatever way in the
+    // placeholder offers. A document being opened has already started navigating to its Home URL by the
+    // time it is activated and focused, so its page counts as on screen.
     private void FocusDocumentContent()
     {
         if (ViewModel.IsSettingsVisible)
@@ -1596,7 +1492,6 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput, IWeb
     {
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
         ViewModel.NavigateRequested -= ViewModel_NavigateRequested;
-        _downloadIndicatorDismissTimer?.Stop();
 
         TeardownWebViewState();
 

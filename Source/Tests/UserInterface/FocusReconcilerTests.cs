@@ -33,7 +33,7 @@ public class FocusReconcilerTests
 
         // Yielding managed focus would pull it out of the open popup, which then stops receiving input
         // while still on screen.
-        _managedFocus.DidNotReceive().Yield();
+        _managedFocus.DidNotReceive().YieldFocus();
         _webViewFocusRegistry.DidNotReceive().FocusFocusedSurface();
     }
 
@@ -48,7 +48,7 @@ public class FocusReconcilerTests
         // first responder, so the reverse order would undo the focus being established.
         Received.InOrder(() =>
         {
-            _managedFocus.Yield();
+            _managedFocus.YieldFocus();
             _webViewFocusRegistry.FocusFocusedSurface();
         });
         _hostWindowFocus.DidNotReceive().FocusHostWindow();
@@ -62,7 +62,7 @@ public class FocusReconcilerTests
         _focusReconciler.Reconcile();
 
         _hostWindowFocus.Received(1).FocusHostWindow();
-        _managedFocus.DidNotReceive().Yield();
+        _managedFocus.DidNotReceive().YieldFocus();
         _webViewFocusRegistry.DidNotReceive().FocusFocusedSurface();
     }
 
@@ -74,7 +74,7 @@ public class FocusReconcilerTests
         _focusReconciler.Reconcile();
         _focusReconciler.Reconcile();
 
-        _managedFocus.Received(2).Yield();
+        _managedFocus.Received(2).YieldFocus();
         _webViewFocusRegistry.Received(2).FocusFocusedSurface();
         _hostWindowFocus.DidNotReceive().FocusHostWindow();
     }
@@ -89,7 +89,7 @@ public class FocusReconcilerTests
 
         Received.InOrder(() =>
         {
-            _managedFocus.Yield();
+            _managedFocus.YieldFocus();
             _hostWindowFocus.FocusHostWindow();
         });
         _hostWindowFocus.Received(1).FocusHostWindow();

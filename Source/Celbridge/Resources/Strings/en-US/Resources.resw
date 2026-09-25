@@ -406,6 +406,105 @@ This file could not be saved</value>
   <data name="NotificationCentre_Occurrences" xml:space="preserve">
     <value>{0} times</value>
   </data>
+  <data name="Downloads_Title" xml:space="preserve">
+    <value>Downloads</value>
+  </data>
+  <data name="Downloads_ClearAll" xml:space="preserve">
+    <value>Clear All</value>
+  </data>
+  <data name="Downloads_ClearAllTooltip" xml:space="preserve">
+    <value>Clear Finished Downloads</value>
+  </data>
+  <data name="Downloads_Cancel" xml:space="preserve">
+    <value>Cancel Download</value>
+  </data>
+  <data name="Downloads_Remove" xml:space="preserve">
+    <value>Remove From List</value>
+  </data>
+  <data name="Downloads_Progress" xml:space="preserve">
+    <value>{0} of {1}</value>
+  </data>
+  <data name="Downloads_TimeLeft_Seconds" xml:space="preserve">
+    <value>{0}s left</value>
+  </data>
+  <data name="Downloads_TimeLeft_Minutes" xml:space="preserve">
+    <value>{0}m left</value>
+  </data>
+  <data name="Downloads_TimeLeft_Hours" xml:space="preserve">
+    <value>{0}h left</value>
+  </data>
+  <data name="Downloads_Size_Bytes" xml:space="preserve">
+    <value>{0} B</value>
+  </data>
+  <data name="Downloads_Size_Kilobytes" xml:space="preserve">
+    <value>{0} KB</value>
+  </data>
+  <data name="Downloads_Size_Megabytes" xml:space="preserve">
+    <value>{0} MB</value>
+  </data>
+  <data name="Downloads_Size_Gigabytes" xml:space="preserve">
+    <value>{0} GB</value>
+  </data>
+  <data name="Downloads_Reveal" xml:space="preserve">
+    <value>Show in Explorer</value>
+  </data>
+  <data name="Downloads_Summary_InProgress_One" xml:space="preserve">
+    <value>1 download in progress.</value>
+  </data>
+  <data name="Downloads_Summary_InProgress_Many" xml:space="preserve">
+    <value>{0} downloads in progress.</value>
+  </data>
+  <data name="Downloads_Summary_Succeeded_One" xml:space="preserve">
+    <value>1 download completed.</value>
+  </data>
+  <data name="Downloads_Summary_Succeeded_Many" xml:space="preserve">
+    <value>{0} downloads completed.</value>
+  </data>
+  <data name="Downloads_Summary_Failed_One" xml:space="preserve">
+    <value>1 download failed.</value>
+  </data>
+  <data name="Downloads_Summary_Failed_Many" xml:space="preserve">
+    <value>{0} downloads failed.</value>
+  </data>
+  <data name="Downloads_Summary_Canceled_One" xml:space="preserve">
+    <value>1 download canceled.</value>
+  </data>
+  <data name="Downloads_Summary_Canceled_Many" xml:space="preserve">
+    <value>{0} downloads canceled.</value>
+  </data>
+  <data name="Downloads_Time_JustNow" xml:space="preserve">
+    <value>Just now</value>
+  </data>
+  <data name="Downloads_Time_MinutesAgo_One" xml:space="preserve">
+    <value>1 minute ago</value>
+  </data>
+  <data name="Downloads_Time_MinutesAgo_Many" xml:space="preserve">
+    <value>{0} minutes ago</value>
+  </data>
+  <data name="Downloads_Time_HoursAgo_One" xml:space="preserve">
+    <value>1 hour ago</value>
+  </data>
+  <data name="Downloads_Time_HoursAgo_Many" xml:space="preserve">
+    <value>{0} hours ago</value>
+  </data>
+  <data name="Downloads_Blocked" xml:space="preserve">
+    <value>Download of '{0}' was blocked, because '{1}' is reserved by Celbridge.</value>
+  </data>
+  <data name="Downloads_DestinationUnavailable" xml:space="preserve">
+    <value>The downloads folder could not be prepared.</value>
+  </data>
+  <data name="Downloads_ImportFailed" xml:space="preserve">
+    <value>The downloaded file could not be added to the project.</value>
+  </data>
+  <data name="Downloads_TransferFailed" xml:space="preserve">
+    <value>The transfer did not complete.</value>
+  </data>
+  <data name="Downloads_TransferCancelled" xml:space="preserve">
+    <value>The transfer was canceled.</value>
+  </data>
+  <data name="Downloads_TransferAbandoned" xml:space="preserve">
+    <value>The transfer stopped when its document closed.</value>
+  </data>
   <data name="PanelHeader_CollapseTooltip" xml:space="preserve">
     <value>Collapse Panel</value>
   </data>
@@ -612,15 +711,6 @@ This file could not be saved</value>
   </data>
   <data name="WebView_UrlBar_SettingsTooltip" xml:space="preserve">
     <value>Web View Settings</value>
-  </data>
-  <data name="WebView_UrlBar_DownloadInProgressTooltip" xml:space="preserve">
-    <value>Downloading...</value>
-  </data>
-  <data name="WebView_UrlBar_DownloadSucceededTooltip" xml:space="preserve">
-    <value>Download complete. Click to show in Explorer.</value>
-  </data>
-  <data name="WebView_UrlBar_DownloadFailedTooltip" xml:space="preserve">
-    <value>Download failed</value>
   </data>
   <data name="WebView_ShowUrlBar" xml:space="preserve">
     <value>Show URL Bar</value>
@@ -958,7 +1048,7 @@ Open with default application instead?</value>
     <value>Resources</value>
   </data>
   <data name="ProjectSettings_ResourcesDescription" xml:space="preserve">
-    <value>Choose what the Explorer hides and what search skips.</value>
+    <value>Choose how Celbridge handles the files and folders in this project.</value>
   </data>
   <data name="ProjectSettings_HideTitle" xml:space="preserve">
     <value>Hidden in Explorer</value>
@@ -977,6 +1067,24 @@ Open with default application instead?</value>
   </data>
   <data name="ProjectSettings_InvalidPattern" xml:space="preserve">
     <value>Patterns use forward slashes and are relative to the project folder. Only * and ** are wildcards, not ? or [ ]. A line cannot start with /, ! or #.</value>
+  </data>
+  <data name="ProjectSettings_DownloadsFolderTitle" xml:space="preserve">
+    <value>Downloads folder</value>
+  </data>
+  <data name="ProjectSettings_DownloadsFolderSubtitle" xml:space="preserve">
+    <value>Where files downloaded from web pages are saved, as a path from the project root.</value>
+  </data>
+  <data name="ProjectSettings_DownloadsFolderBrowseTooltip" xml:space="preserve">
+    <value>Choose a folder</value>
+  </data>
+  <data name="ProjectSettings_DownloadsFolderPickerTitle" xml:space="preserve">
+    <value>Choose a Downloads Folder</value>
+  </data>
+  <data name="ProjectSettings_InvalidDownloadsFolder" xml:space="preserve">
+    <value>This is not a valid folder path, so downloads are saved to '{0}'.</value>
+  </data>
+  <data name="ProjectSettings_ReservedDownloadsFolder" xml:space="preserve">
+    <value>Celbridge reserves this folder, so downloads are saved to '{0}'.</value>
   </data>
   <data name="ProjectSettings_PackagesDescription" xml:space="preserve">
     <value>Enable or disable packages and configure their contributions.</value>
@@ -1464,6 +1572,9 @@ Open with default application instead?</value>
   <data name="ResourcePickerDialog_SearchPlaceholder" xml:space="preserve">
     <value>Enter file name...</value>
   </data>
+  <data name="ResourcePickerDialog_FolderSearchPlaceholder" xml:space="preserve">
+    <value>Enter folder name...</value>
+  </data>
   <data name="IconPicker_FieldLabel" xml:space="preserve">
     <value>Icon</value>
   </data>
@@ -1731,6 +1842,18 @@ Open with default application instead?</value>
   <data name="WebView_Find_MatchCount" xml:space="preserve">
     <value>{0} of {1}</value>
   </data>
+  <data name="Extension_LinkError_Title" xml:space="preserve">
+    <value>Broken Link</value>
+  </data>
+  <data name="Extension_LinkError_Message" xml:space="preserve">
+    <value>{0} is not in the project.</value>
+  </data>
+  <data name="Extension_SelectFile_Title" xml:space="preserve">
+    <value>Select File</value>
+  </data>
+  <data name="Extension_SelectImage_Title" xml:space="preserve">
+    <value>Select Image</value>
+  </data>
   <data name="WebView_NavigationPrompt_Title" xml:space="preserve">
     <value>Open external link</value>
   </data>
@@ -1741,12 +1864,6 @@ Open with default application instead?</value>
   </data>
   <data name="WebView_NavigationPrompt_OpenInBrowser" xml:space="preserve">
     <value>Open in system browser</value>
-  </data>
-  <data name="WebView_DownloadBlocked_Title" xml:space="preserve">
-    <value>Download blocked</value>
-  </data>
-  <data name="WebView_DownloadBlocked_Message" xml:space="preserve">
-    <value>Download of '{0}' was blocked by the resource policy specified in '{1}'.</value>
   </data>
   <data name="Explorer_OpenWith" xml:space="preserve">
     <value>Open with...</value>

@@ -197,6 +197,53 @@ describe('EditorController.performEdit', () => {
     });
 });
 
+describe('EditorController.focusIfVacant', () => {
+    let editor;
+    let controller;
+
+    beforeEach(() => {
+        editor = createMockEditor(createMockModel());
+        installMonacoStub(editor);
+
+        if (!window.matchMedia) {
+            window.matchMedia = () => ({
+                matches: false,
+                addEventListener: () => {},
+                removeEventListener: () => {}
+            });
+        }
+
+        controller = new EditorController();
+        controller.create(document.createElement('div'));
+    });
+
+    it('puts the keyboard in the editor text when nothing in the page holds it', () => {
+        controller.focusIfVacant();
+
+        expect(editor.focus).toHaveBeenCalledTimes(1);
+    });
+
+    it('leaves the keyboard with an element the page has focused', () => {
+        const findInput = document.createElement('input');
+        document.body.appendChild(findInput);
+        findInput.focus();
+
+        controller.focusIfVacant();
+
+        expect(editor.focus).not.toHaveBeenCalled();
+
+        findInput.remove();
+    });
+
+    it('leaves the keyboard alone while the preview hides the editor', () => {
+        controller.setHidden(true);
+
+        controller.focusIfVacant();
+
+        expect(editor.focus).not.toHaveBeenCalled();
+    });
+});
+
 describe('EditorController edit availability', () => {
     let model;
     let editor;

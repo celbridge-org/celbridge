@@ -73,6 +73,23 @@ export class EditorController {
     }
 
     /**
+     * Puts the keyboard in the editor text when no element in the page holds it. Nothing changes while the
+     * view mode has hidden the editor, where typing would edit source the user cannot see.
+     */
+    focusIfVacant() {
+        if (!this.#editor || this.#isHidden) {
+            return;
+        }
+
+        const activeElement = document.activeElement;
+        if (activeElement && activeElement !== document.body) {
+            return;
+        }
+
+        this.#editor.focus();
+    }
+
+    /**
      * Reports edit availability again, for a focus change this page cannot observe itself. Focus moving
      * into the preview iframe raises no event in this document, so the preview reports it.
      */

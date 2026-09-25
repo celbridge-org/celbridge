@@ -78,6 +78,62 @@ public class ProjectConfigParserTests
     }
 
     [Test]
+    public void ParseFromText_DownloadsFolder_NamesTheFolderDownloadsAreSavedTo()
+    {
+        var content = """
+            [celbridge]
+
+            [celbridge.resources]
+            downloads-folder = "assets/incoming/"
+            """;
+
+        var result = ProjectConfigParser.ParseFromText(content);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Resources.DownloadsFolder.Should().Be("assets/incoming");
+        result.Value.EntryErrors.Should().BeEmpty();
+    }
+
+    [Test]
+    public void ParseFromText_DownloadsFolderThatLeavesTheProject_IsIgnoredWithAnEntryError()
+    {
+        // Downloads then go to the default folder, and the project is told why its own was not used.
+        var content = """
+            [celbridge]
+
+            [celbridge.resources]
+            downloads-folder = "../escape"
+            """;
+
+        var result = ProjectConfigParser.ParseFromText(content);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Resources.DownloadsFolder.Should().BeEmpty();
+        result.Value.EntryErrors.Should().ContainSingle();
+        result.Value.EntryErrors[0].Message.Should().Contain("downloads-folder");
+    }
+
+    [Test]
+    public void ParseFromText_DownloadsFolderCelbridgeReserves_IsIgnoredWithAnEntryErrorThatSaysSo()
+    {
+        // Nothing can be saved in .git, so the folder would fail every download. The error says why the
+        // path was dropped rather than calling a valid path invalid.
+        var content = """
+            [celbridge]
+
+            [celbridge.resources]
+            downloads-folder = ".git"
+            """;
+
+        var result = ProjectConfigParser.ParseFromText(content);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Resources.DownloadsFolder.Should().BeEmpty();
+        result.Value.EntryErrors.Should().ContainSingle();
+        result.Value.EntryErrors[0].Message.Should().Contain("downloads-folder").And.Contain("reserves");
+    }
+
+    [Test]
     public void ParseFromText_ProjectVersion_IsRead()
     {
         var content = """

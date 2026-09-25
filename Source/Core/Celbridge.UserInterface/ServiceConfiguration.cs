@@ -1,4 +1,5 @@
 using Celbridge.Dialog;
+using Celbridge.Downloads;
 using Celbridge.Localization;
 using Celbridge.Notifications;
 using Celbridge.UserInterface.Commands;
@@ -30,6 +31,7 @@ public static class ServiceConfiguration
         services.AddSingleton<IUserInterfaceService, UserInterfaceService>();
         services.AddSingleton<ILanguageService, LanguageService>();
         services.AddSingleton<IManagedFocus, ManagedFocus>();
+        services.AddSingleton<ITextControlEditing, TextControlEditing>();
         services.AddSingleton<IOverlayFlyoutSupport, OverlayFlyoutSupport>();
         services.AddSingleton<IHostWindowFocus, HostWindowFocus>();
         services.AddSingleton<IFocusReconciler, FocusReconciler>();
@@ -44,6 +46,7 @@ public static class ServiceConfiguration
         services.AddSingleton<IInputSimulationService, InputSimulationService>();
         services.AddSingleton<INotificationCentre, NotificationCentre>();
         services.AddSingleton<NotificationComposer>();
+        services.AddSingleton<IDownloadService, DownloadService>();
 
         // LayoutManager is a single implementation that exposes two interfaces:
         // IWindowModeService (window mode) and ILayoutService (surface visibility).
@@ -70,6 +73,7 @@ public static class ServiceConfiguration
         services.AddTransient<ISpotlightCommand, SpotlightCommand>();
         services.AddTransient<IShowLogsCommand, ShowLogsCommand>();
         services.AddTransient<IOpenBrowserCommand, OpenBrowserCommand>();
+        services.AddTransient<IMoveDownloadCommand, MoveDownloadCommand>();
 
         //
         // Register view models
@@ -84,6 +88,7 @@ public static class ServiceConfiguration
         services.AddTransient<TitleBarViewModel>();
         services.AddTransient<ProjectSwitcherViewModel>();
         services.AddTransient<NotificationBadgeViewModel>();
+        services.AddTransient<DownloadBadgeViewModel>();
         services.AddTransient<ApplicationMenuViewModel>();
         services.AddTransient<ViewMenuViewModel>();
         services.AddTransient<AlertDialogViewModel>();

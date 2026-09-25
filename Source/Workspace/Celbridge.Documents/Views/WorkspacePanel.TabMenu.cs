@@ -308,11 +308,9 @@ public sealed partial class WorkspacePanel
         var currentLocation = SectionContainer.FindDocumentTab(fileResource);
         var tabIndex = currentLocation?.SectionView.GetTabIndex(tab) ?? 0;
 
-        string? editorState = null;
-        if (tab.ViewModel.DocumentView is not null)
-        {
-            editorState = await tab.ViewModel.DocumentView.TrySaveEditorStateAsync();
-        }
+        // Captured with the editor that saved it, so a reopen with a different editor starts fresh
+        // rather than handing that editor a state in another editor's schema.
+        var editorState = await TryCaptureEditorStateAsync(tab);
 
         // Close then reopen via the command service, which processes them sequentially. The close does not
         // pick a neighbour: the same document is coming straight back to this section and index, so
@@ -332,7 +330,7 @@ public sealed partial class WorkspacePanel
         {
             command.FileResource = fileResource;
             command.EditorId = editorId;
-            command.EditorStateJson = editorState;
+            command.EditorState = editorState;
             command.TargetSection = section;
             command.TargetTabIndex = tabIndex;
         });

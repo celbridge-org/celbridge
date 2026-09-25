@@ -125,7 +125,7 @@ export class DocumentAPI {
 
     /**
      * Writes a report document into the project's reports folder and returns the resource key it
-     * opens by, ready to hand to `dialog.toast` as its action.
+     * opens by, ready to hand to `dialog.showNotification` as its action.
      *
      * The report's `id` names the kind of report, not the run: the current one always sits at that
      * name, and writing a new one moves the previous into history. Pick an id that will not collide
@@ -147,13 +147,15 @@ export class DocumentAPI {
     /**
      * Registers a handler for state restore requests from the host.
      * The handler receives a previously saved state string and should restore the editor to that state.
+     * An async handler is awaited, so the host's request completes once the restore has, up to the
+     * host's own timeout.
      * @param {Function} handler - Called with the state string to restore.
      */
     onRestoreState(handler) {
         this.#transport.setRequestHandler('document/restoreState', (params) => {
             // The host sends the state string as a positional argument, which arrives as an array
             const state = Array.isArray(params) ? params[0] : params;
-            handler(state);
+            return handler(state);
         });
     }
 }

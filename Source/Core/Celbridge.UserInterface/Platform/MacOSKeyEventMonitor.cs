@@ -42,7 +42,7 @@ internal static class MacOSKeyEventMonitor
     private static IntPtr _monitor;
     private static IntPtr _monitorBlock;
     private static IFocusService? _focusService;
-    private static IManagedFocus? _managedFocus;
+    private static ITextControlEditing? _textControlEditing;
     private static IWebViewFocusRegistry? _webViewFocusRegistry;
     private static IMessengerService? _messengerService;
     private static ICommandService? _commandService;
@@ -50,7 +50,7 @@ internal static class MacOSKeyEventMonitor
 
     public static void Start(
         IFocusService focusService,
-        IManagedFocus managedFocus,
+        ITextControlEditing textControlEditing,
         IWebViewFocusRegistry webViewFocusRegistry,
         IMessengerService messengerService,
         ICommandService commandService,
@@ -68,7 +68,7 @@ internal static class MacOSKeyEventMonitor
 
         _started = true;
         _focusService = focusService;
-        _managedFocus = managedFocus;
+        _textControlEditing = textControlEditing;
         _webViewFocusRegistry = webViewFocusRegistry;
         _messengerService = messengerService;
         _commandService = commandService;
@@ -164,7 +164,7 @@ internal static class MacOSKeyEventMonitor
             // whatever the user had selected, so focus is moved here and the key is swallowed.
             if (isTab
                 && _webViewFocusRegistry?.HasFocusedSurface != true
-                && _managedFocus?.TryMoveFocusFromTextControl(shift) == true)
+                && _textControlEditing?.TryMoveFocusFromTextControl(shift) == true)
             {
                 return IntPtr.Zero;
             }
@@ -274,7 +274,7 @@ internal static class MacOSKeyEventMonitor
         return EditVerbRouter.Perform(
             editIntent.Value,
             _focusService,
-            _managedFocus,
+            _textControlEditing,
             _commandService,
             IsDialogOpen()) != EditRouting.ResponderChain;
     }
@@ -288,7 +288,7 @@ internal static class MacOSKeyEventMonitor
     {
         if (!IsPlainCommandChord(modifierFlags)
             || !NamesCharacter(nsEvent)
-            || _managedFocus?.IsTextControlFocused != true)
+            || _textControlEditing?.IsTextControlFocused != true)
         {
             return nsEvent;
         }
