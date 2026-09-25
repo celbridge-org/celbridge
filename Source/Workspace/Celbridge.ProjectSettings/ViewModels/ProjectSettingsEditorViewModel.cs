@@ -21,8 +21,8 @@ namespace Celbridge.ProjectSettings.ViewModels;
 
 /// <summary>
 /// Coordinates the Project Settings editor: the section rail, the pending-changes state shared by every
-/// section, and the reload gesture. Each section has its own view model, and each writes its edits to
-/// the project file. The running workspace only reflects them after a reload.
+/// section, the save tick that writes the draft to the project file, and the reload gesture. The running
+/// workspace only reflects a saved change after a reload, whichever section made it.
 /// </summary>
 public partial class ProjectSettingsEditorViewModel : ObservableObject
 {

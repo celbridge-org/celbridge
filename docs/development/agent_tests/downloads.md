@@ -35,7 +35,7 @@ remove button, and Clear All.
 | The list open with the keyboard on a running row's cancel button | let that download finish | the list stays open, and the keyboard stays on that row, which now finds the file | 3 |
 | The list open with the keyboard on a running row's cancel button | press Space, then Space again | the first press leaves the row saying the transfer was canceled with the keyboard on its remove button, and the second takes the row off the list | 3 |
 | A downloads folder Celbridge reserves, such as `.git`, typed into Project Settings | download a file | the field says the folder is reserved and the project file gains no key, and the file lands in `downloads/` | 3 |
-| A download running, and the downloads folder changed in Project Settings while it runs | let it land | the file lands in the folder the download reserved when it started, and the next download goes to the new folder | 3 |
+| A download running, and the downloads folder changed in Project Settings while it runs | let it land, then download again | the file lands in the folder the download reserved when it started, and so does the next one, since a settings change waits for a project reload | 3 |
 | A downloads folder set in Project Settings to a folder the project does not have yet | reload the project, then download a file | the badge is absent after the reload while earlier downloads' files remain, and the new file lands in the named folder, which the download creates | 3 |
 | A PDF and a markdown document | open the PDF in the file viewer and the markdown document with its preview | each displays, and nothing is downloaded | 3 |
 

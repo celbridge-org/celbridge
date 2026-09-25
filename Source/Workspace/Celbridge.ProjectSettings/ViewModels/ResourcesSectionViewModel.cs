@@ -6,10 +6,9 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace Celbridge.ProjectSettings.ViewModels;
 
 /// <summary>
-/// Drives the Resources section: the patterns the Explorer hides, the patterns search skips, and the
-/// folder downloads are saved to. Each pattern list is edited as one block of text, a pattern per line, so
-/// it can be pasted between projects. Neither list changes what tools may read or write, and all three
-/// apply when the project is reloaded.
+/// Drives the Resources section: fills its fields from the project config and commits every edit back to
+/// the draft. A pattern list is edited as one block of text, a pattern per line, so a list can be pasted
+/// from one project into another.
 /// </summary>
 public partial class ResourcesSectionViewModel : ProjectSettingsSectionViewModel
 {

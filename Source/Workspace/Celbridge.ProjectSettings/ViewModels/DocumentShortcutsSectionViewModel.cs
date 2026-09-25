@@ -11,8 +11,7 @@ namespace Celbridge.ProjectSettings.ViewModels;
 
 /// <summary>
 /// Drives the Shortcuts section: the project files a shortcut opens as documents, from a Utility Rail
-/// button, when the project loads, or both. The cards are the order the rail draws them in, and the
-/// workspace picks the changes up when the project is reloaded.
+/// button, when the project loads, or both. The cards are the order the rail draws them in.
 /// </summary>
 public class DocumentShortcutsSectionViewModel : ProjectSettingsSectionViewModel
 {

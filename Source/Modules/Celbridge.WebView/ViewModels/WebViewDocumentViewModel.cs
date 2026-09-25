@@ -44,7 +44,8 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     private const string WwwPrefix = "www.";
 
     // Where the loopback file server serves the open project's files: the HTML viewer's page, and every
-    // project file it links to.
+    // project file it links to. Everything served sits on this one origin, which is what lets those pages
+    // reach the server without CORS. The localhost alias names the same machine but a different origin.
     private const string ServerHost = "127.0.0.1";
     private const string ProjectRoute = "/project/";
 

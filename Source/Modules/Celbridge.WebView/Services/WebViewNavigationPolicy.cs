@@ -51,9 +51,9 @@ public sealed class WebViewNavigationPolicy : IWebViewNavigationPolicy
     }
 
     /// <summary>
-    /// Asks the handler about a navigation and returns whether it goes ahead. A navigation the handler
-    /// refuses, or has not decided on by the time this returns, does not, and the side effect of the
-    /// decision is dispatched once it is made.
+    /// Puts a navigation to the handler and returns whether it may go ahead. True only when the handler
+    /// allows it straight away. A refusal returns false, and so does a decision still being made.
+    /// Whatever the decision turns out to be, its side effect is dispatched once it arrives.
     /// </summary>
     internal bool Decide(NavigationRequest request, NavigationDestinationHandler handler)
     {

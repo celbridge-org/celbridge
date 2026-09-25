@@ -95,8 +95,7 @@ public enum SectionContentState
 
 /// <summary>
 /// Base for the Project Settings section view models. Each section presents the project file's current
-/// content on Load and mutates the shared draft as the user edits. The draft reaches disk on the editor's save tick, and the running
-/// workspace only reflects it after a reload.
+/// content on Load and mutates the shared draft as the user edits.
 /// </summary>
 public abstract class ProjectSettingsSectionViewModel : ObservableObject
 {
