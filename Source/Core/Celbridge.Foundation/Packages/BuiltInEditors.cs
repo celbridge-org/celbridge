@@ -31,6 +31,11 @@ public static class BuiltInEditors
     public static readonly EditorId MarkdownEditorId = new("celbridge.markdown");
 
     /// <summary>
+    /// Built-in id of the HTML editor, which edits a page's source beside a live preview of the page.
+    /// </summary>
+    public static readonly EditorId HtmlEditorId = new("celbridge.html");
+
+    /// <summary>
     /// Built-in id of the File Viewer.
     /// </summary>
     public static readonly EditorId FileViewerId = new("celbridge.file-viewer");
@@ -72,6 +77,7 @@ public static class BuiltInEditors
     public static readonly IReadOnlyList<BuiltInEditorDefinition> PackageBuiltIns =
     [
         new BuiltInEditorDefinition(MarkdownEditorId, "celbridge-code-editor", "markdown"),
+        new BuiltInEditorDefinition(HtmlEditorId, "celbridge-code-editor", "html"),
         new BuiltInEditorDefinition(SpreadsheetEditorId, "celbridge-spreadsheet", "spreadsheet", Optional: true),
         new BuiltInEditorDefinition(ReportViewerId, "celbridge-report", "report"),
         new BuiltInEditorDefinition(FileViewerId, "celbridge-file-viewer", "file-viewer"),
@@ -88,6 +94,7 @@ public static class BuiltInEditors
     [
         MarkdownEditorId,
         HtmlViewerId,
+        HtmlEditorId,
         WebViewEditorId,
         SpreadsheetEditorId,
         ReportViewerId,

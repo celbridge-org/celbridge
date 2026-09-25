@@ -153,6 +153,41 @@ describe('EditorController.handleExternalChange', () => {
     });
 });
 
+describe('EditorController saves', () => {
+    let controller;
+
+    beforeEach(() => {
+        for (const key of Object.keys(__capturedHandlers)) {
+            delete __capturedHandlers[key];
+        }
+        installMonacoStub(createMockEditor(createMockModel()));
+
+        controller = new EditorController();
+        controller.create(document.createElement('div'));
+    });
+
+    it('reports a save once the host has written it', async () => {
+        celbridge.document.save = vi.fn().mockResolvedValue({ success: true });
+        const onSaved = vi.fn();
+
+        await controller.initializeHost({ onSaved });
+        await __capturedHandlers.onRequestSave();
+
+        expect(celbridge.document.save).toHaveBeenCalledOnce();
+        expect(onSaved).toHaveBeenCalledOnce();
+    });
+
+    it('does not report a save the host failed to write', async () => {
+        celbridge.document.save = vi.fn().mockResolvedValue({ success: false, error: 'Access denied' });
+        const onSaved = vi.fn();
+
+        await controller.initializeHost({ onSaved });
+        await __capturedHandlers.onRequestSave();
+
+        expect(onSaved).not.toHaveBeenCalled();
+    });
+});
+
 describe('EditorController.performEdit', () => {
     let model;
     let editor;

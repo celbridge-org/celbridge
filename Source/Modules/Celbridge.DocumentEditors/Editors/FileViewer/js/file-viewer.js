@@ -33,7 +33,8 @@ function getExtension(fileName) {
 }
 
 function buildResourceUrl(resourceKey) {
-    // Cache-bust on every load so external changes immediately replace the rendered media.
+    // Cache-bust on every load so external changes immediately replace the rendered media. The file server's
+    // no-store header is not enough, because a page reuses an image it has already loaded from the same URL.
     const cacheBuster = Date.now();
     return `${projectUrl(resourceKey)}?t=${cacheBuster}`;
 }

@@ -1,7 +1,7 @@
 // Orchestrates the editor-and-preview experience. Owns the preview iframe
 // controller, the view-mode layout controller, the divider drag handler,
-// and the wiring that keeps editor content and scroll position in sync
-// with the preview pane.
+// and the wiring that keeps the preview pane up to date with the editor or,
+// for a renderer that shows the saved file, with the file on disk.
 //
 // Only instantiated when a document's options supply a preview_renderer_url,
 // so plain code documents never construct this pipeline and pay no
@@ -10,13 +10,21 @@
 import { PreviewController } from './preview-controller.js';
 import { ViewModeController, ViewMode } from './view-mode-controller.js';
 import { attachSplitter } from '/assets/celbridge-client/ui/splitter.js';
+import { projectUrl } from '/assets/celbridge-client/api/document-api.js';
 import { updateViewModeButtons, syncSnippetButtonForViewMode } from './toolbar.js';
 
 export class PreviewPipeline {
     #initialViewMode;
     #onLinkClicked;
+    #editorController;
     #viewModeController;
     #previewController;
+
+    // The loopback URL of the document's file, known once the initial content arrives.
+    #documentUrl = null;
+
+    // The file has changed since the preview last loaded it.
+    #isPreviewStale = false;
 
     constructor({
         editorController,
@@ -26,6 +34,7 @@ export class PreviewPipeline {
     }) {
         this.#initialViewMode = initialViewMode ?? ViewMode.Source;
         this.#onLinkClicked = onLinkClicked ?? (() => {});
+        this.#editorController = editorController;
 
         this.#viewModeController = new ViewModeController({
             splitRoot: panes.splitRoot,
@@ -36,12 +45,13 @@ export class PreviewPipeline {
                 updateViewModeButtons(mode);
                 syncSnippetButtonForViewMode(mode);
                 editorController.setHidden(mode === ViewMode.Preview);
+                this.#refreshStalePreview();
             }
         });
 
         // Focus entering the preview raises no focus event in this document, so the editor would keep
-        // claiming the clipboard while the preview's find bar holds the keyboard. Reattached on each shell
-        // load, which replaces the iframe's document.
+        // claiming the clipboard while the preview's find bar holds the keyboard. Reattached on each load,
+        // which replaces the iframe's document.
         panes.previewIframe?.addEventListener('load', () => {
             panes.previewIframe.contentDocument?.addEventListener(
                 'focusin',
@@ -62,14 +72,12 @@ export class PreviewPipeline {
         this.#attachDivider(panes.dividerElement);
 
         editorController.onContentChanged(() => {
-            this.#previewController.render(editorController.getValue());
-        });
+            // A renderer that shows the saved file does not use the buffer, so skip copying it on every edit.
+            if (this.#previewController.canRefresh()) {
+                return;
+            }
 
-        // Editor-to-preview scroll sync. PreviewController buffers the target
-        // internally while the renderer module is still loading, so no external
-        // guard is needed here.
-        editorController.onScrollChanged((target) => {
-            this.#previewController.scrollToSourceLine(target.line, target.fraction);
+            this.#previewController.render(editorController.getValue());
         });
     }
 
@@ -77,10 +85,19 @@ export class PreviewPipeline {
         return this.#viewModeController;
     }
 
-    attachRenderer(rendererUrl) {
-        // Fire-and-forget: the renderer loads in parallel with the rest of
-        // the initialize flow. render() catches up once the module resolves.
-        this.#previewController.setRenderer(rendererUrl);
+    // Callers do not wait on this: the renderer loads in parallel with the
+    // rest of the initialize flow, and render() catches up once the module
+    // resolves.
+    async attachRenderer(rendererUrl) {
+        await this.#previewController.setRenderer(rendererUrl);
+
+        // Scroll sync is only wired for a renderer that maps its output to source lines, so the controller
+        // never holds a scroll target it cannot apply.
+        if (this.#previewController.canScrollToSourceLine()) {
+            this.#editorController.onScrollChanged((target) => {
+                this.#previewController.scrollToSourceLine(target.line, target.fraction);
+            });
+        }
     }
 
     // Opens the find that belongs to the visible pane: the preview's own bar in Preview mode, and
@@ -98,10 +115,22 @@ export class PreviewPipeline {
         this.#previewController.setBasePath(basePath);
         this.#previewController.render(content || '');
         this.#viewModeController.setMode(this.#initialViewMode);
+
+        if (resourceKey) {
+            this.#documentUrl = projectUrl(resourceKey);
+        }
+
+        this.#updatePreview();
     }
 
     handleExternalReload(content) {
         this.#previewController.render(content || '');
+        this.#updatePreview();
+    }
+
+    // Called once a save made by the editor has reached disk.
+    handleSaved() {
+        this.#updatePreview();
     }
 
     captureState() {
@@ -132,6 +161,24 @@ export class PreviewPipeline {
         if (typeof state.previewScrollPercentage === 'number') {
             this.#previewController.setScrollPercentage(state.previewScrollPercentage);
         }
+    }
+
+    // Reloads a preview of the saved file. While Source mode hides the preview, it is marked stale instead and
+    // reloaded when shown, so the page's scripts do not run on every save.
+    #updatePreview() {
+        this.#isPreviewStale = true;
+        this.#refreshStalePreview();
+    }
+
+    #refreshStalePreview() {
+        if (!this.#isPreviewStale ||
+            this.#documentUrl === null ||
+            this.#viewModeController.getMode() === ViewMode.Source) {
+            return;
+        }
+
+        this.#isPreviewStale = false;
+        this.#previewController.refresh(this.#documentUrl);
     }
 
     #attachDivider(dividerElement) {

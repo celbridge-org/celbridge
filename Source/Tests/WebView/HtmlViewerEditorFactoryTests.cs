@@ -1,3 +1,4 @@
+using Celbridge.Packages;
 using Celbridge.WebView.Services;
 using Microsoft.Extensions.Localization;
 
@@ -63,5 +64,38 @@ public class HtmlViewerEditorFactoryTests
         alternates.Should().HaveCount(2);
         alternates[0].Should().Be(_factory);
         alternates[1].Should().Be(codeEditor);
+    }
+
+    [TestCase("page.html", ".html")]
+    [TestCase("page.htm", ".htm")]
+    public void Registry_HtmlEditorRanksBetweenTheViewerAndTheCodeEditor(string fileName, string extension)
+    {
+        // The HTML editor is offered for .html and .htm, but the viewer stays the default for them.
+        var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
+
+        var codeEditor = CreateEditorFactory(DocumentConstants.CodeEditorId);
+        var htmlEditor = CreateEditorFactory(BuiltInEditors.HtmlEditorId);
+
+        registry.RegisterFactory(codeEditor);
+        registry.RegisterFactory(htmlEditor);
+        registry.RegisterFactory(_factory);
+
+        var resolveResult = registry.GetFactory(new ResourceKey(fileName));
+
+        resolveResult.IsSuccess.Should().BeTrue();
+        resolveResult.Value.Should().Be(_factory);
+
+        var alternates = registry.GetFactoriesForExtension(extension);
+        alternates.Should().Equal(_factory, htmlEditor, codeEditor);
+    }
+
+    private static IDocumentEditorFactory CreateEditorFactory(EditorId editorId)
+    {
+        var factory = Substitute.For<IDocumentEditorFactory>();
+        factory.EditorId.Returns(editorId);
+        factory.SupportedExtensions.Returns(new List<string> { ".html", ".htm" });
+        factory.CanHandleResource(Arg.Any<ResourceKey>()).Returns(true);
+
+        return factory;
     }
 }

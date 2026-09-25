@@ -2,8 +2,8 @@
 // Creates the Monaco editor, wires up the optional snippet toolbar, and —
 // when the document's options opt in — constructs a PreviewPipeline that
 // owns the preview pane, view-mode switcher, and source-to-preview sync.
-// The same bundle serves both the code and markdown document contributions;
-// the options decide which parts to activate at runtime.
+// The same bundle serves the code, markdown and HTML document contributions,
+// and the options decide which parts to activate at runtime.
 
 import celbridge from '/assets/celbridge-client/celbridge.js';
 import { EditorController } from './editor-controller.js';
@@ -203,6 +203,9 @@ async function initialize() {
             },
             onExternalReloadContent: (content) => {
                 previewPipeline?.handleExternalReload(content);
+            },
+            onSaved: () => {
+                previewPipeline?.handleSaved();
             },
             onRequestState: () => captureState(),
             onRestoreState: (stateJson) => restoreState(stateJson),

@@ -1,4 +1,6 @@
+using Celbridge.Commands;
 using Celbridge.Logging;
+using Celbridge.Projects;
 using Celbridge.UserInterface.Views;
 using Celbridge.Workspace;
 
@@ -11,12 +13,20 @@ internal sealed record CurrentWorkspace(IWorkspaceView View, UIElement Element);
 
 public class ApplicationShell : IApplicationShell
 {
+    // Time for the open editors to report their state and the last edits to be written. An editor that never
+    // answers cannot keep the application open longer than this.
+    private static readonly TimeSpan ExitUnloadTimeout = TimeSpan.FromSeconds(10);
+
     private readonly ILogger<ApplicationShell> _logger;
     private readonly IServiceProvider _serviceProvider;
 
     private Panel? _contentArea;
     private CurrentWorkspace? _currentWorkspace;
     private HomeView? _homeView;
+    private Task? _exitTask;
+    private bool _isExiting;
+
+    public bool IsReadyToClose { get; private set; }
 
     public ApplicationShell(
         ILogger<ApplicationShell> logger,
@@ -101,9 +111,60 @@ public class ApplicationShell : IApplicationShell
         Guard.IsNotNull(_contentArea);
         _contentArea.Children.Remove(currentWorkspace.Element);
 
-        ShowHome();
+        // During an exit the window closes right after the unload, so showing Home would only make it flash.
+        if (!_isExiting)
+        {
+            ShowHome();
+        }
 
         return teardownResult;
+    }
+
+    public Task ExitApplicationAsync()
+    {
+        // A second request, such as another click on the close button, joins the exit already under way.
+        _exitTask ??= ExitAsync();
+
+        return _exitTask;
+    }
+
+    private async Task ExitAsync()
+    {
+        _isExiting = true;
+
+        try
+        {
+            // Unloading the project tears down the workspace, which saves the open editors' state and writes any
+            // unsaved edits. It runs as a command, so it waits for any command already running.
+            var commandService = _serviceProvider.GetRequiredService<ICommandService>();
+            var unloadTask = commandService.ExecuteAsync<IUnloadProjectCommand>();
+
+            var completedTask = await Task.WhenAny(unloadTask, Task.Delay(ExitUnloadTimeout));
+            if (completedTask != unloadTask)
+            {
+                _logger.LogWarning(
+                    "The project did not unload within {Seconds}s of the exit request, so the application is closing without it",
+                    ExitUnloadTimeout.TotalSeconds);
+            }
+            else
+            {
+                var unloadResult = await unloadTask;
+                if (unloadResult.IsFailure)
+                {
+                    _logger.LogError(unloadResult, "Failed to unload the project before exiting");
+                }
+            }
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Failed to unload the project before exiting");
+        }
+
+        IsReadyToClose = true;
+
+        var userInterfaceService = _serviceProvider.GetRequiredService<IUserInterfaceService>();
+        var mainWindow = userInterfaceService.MainWindow as Window;
+        mainWindow?.Close();
     }
 
     private void ShowHome()

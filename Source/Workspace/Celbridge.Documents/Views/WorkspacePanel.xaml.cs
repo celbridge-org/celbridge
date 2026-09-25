@@ -956,9 +956,17 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
             await NavigateToLocation(fileResource, effectiveOptions.Location);
         }
 
+        // When no state is passed in, restore the state saved when the document was last closed. Opening at a
+        // location skips this, because the restored scroll position would override it.
+        var editorState = effectiveOptions.EditorState;
+        if (editorState is null &&
+            string.IsNullOrEmpty(effectiveOptions.Location))
+        {
+            editorState = await ViewModel.LoadDocumentEditorState(fileResource);
+        }
+
         // Editor state is private to the editor that wrote it, so state another editor saved, as a
         // Reopen With or a changed association leaves behind, is dropped rather than handed over.
-        var editorState = effectiveOptions.EditorState;
         if (editorState is not null &&
             !string.IsNullOrEmpty(editorState.Json))
         {

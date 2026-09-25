@@ -227,6 +227,12 @@ public interface IDocumentsService
     Task StoreDocumentEditorState(ResourceKey fileResource, DocumentEditorState? state);
 
     /// <summary>
+    /// Returns the editor state saved when the document was last closed, or null when none is stored or it
+    /// cannot be read.
+    /// </summary>
+    Task<DocumentEditorState?> LoadDocumentEditorState(ResourceKey fileResource);
+
+    /// <summary>
     /// Records a hint that the next watcher-driven reload of the resource should honour,
     /// overwriting any prior hint for the same resource. Hints expire if not consumed
     /// within a short window.

@@ -10,6 +10,13 @@ namespace Celbridge.Documents.ViewModels;
 /// </summary>
 public partial class CustomDocumentViewModel : DocumentViewModel
 {
+    // The characters that end a link's path and begin its query or fragment.
+    private static readonly char[] QueryAndFragmentMarkers =
+    [
+        '?',
+        '#'
+    ];
+
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IResourceRegistry _resourceRegistry;
     private readonly ILocalFileSystem _fileSystem;
@@ -253,7 +260,8 @@ public partial class CustomDocumentViewModel : DocumentViewModel
     /// <summary>
     /// Determines the action to take for a clicked link.
     /// Returns the resolved resource key for internal links, or ResourceKey.Empty for external URLs.
-    /// An internal link is not checked to exist, so a broken one can still be reported by its path.
+    /// An internal link's query and fragment are ignored and its path is percent-decoded. It is not checked to
+    /// exist, so a broken link can still be reported by its path.
     /// </summary>
     public Result<ResourceKey> ResolveLinkTarget(string href)
     {
@@ -269,8 +277,23 @@ public partial class CustomDocumentViewModel : DocumentViewModel
             return Result<ResourceKey>.Ok(ResourceKey.Empty);
         }
 
+        var linkPath = href;
+        var pathEnd = href.IndexOfAny(QueryAndFragmentMarkers);
+        if (pathEnd >= 0)
+        {
+            linkPath = href.Substring(0, pathEnd);
+        }
+
+        // A link that is only a query or fragment refers to the current document.
+        if (linkPath.Length == 0)
+        {
+            return Result<ResourceKey>.Ok(FileResource);
+        }
+
+        var decodedPath = Uri.UnescapeDataString(linkPath);
+
         // Internal link - resolve to resource key
-        var resolveResult = ResolveResourcePath(href);
+        var resolveResult = ResolveResourcePath(decodedPath);
         if (resolveResult.IsFailure)
         {
             return Result<ResourceKey>.Fail(resolveResult.DiagnosticReport);

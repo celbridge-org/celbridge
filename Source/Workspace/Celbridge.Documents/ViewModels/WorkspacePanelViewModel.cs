@@ -190,6 +190,11 @@ public partial class WorkspacePanelViewModel : ObservableObject
         await _documentsService.StoreDocumentEditorState(fileResource, state);
     }
 
+    public async Task<DocumentEditorState?> LoadDocumentEditorState(ResourceKey fileResource)
+    {
+        return await _documentsService.LoadDocumentEditorState(fileResource);
+    }
+
     public ResourceKey GetResourceKey(IFileResource fileResource)
     {
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;

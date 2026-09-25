@@ -95,6 +95,43 @@ public class CustomDocumentViewModelTests
         _registry.DidNotReceive().NormalizeResourceKey(Arg.Any<ResourceKey>());
     }
 
+    [TestCase("other.md#install")]
+    [TestCase("other.md?tab=2")]
+    [TestCase("other.md?tab=2#install")]
+    public void ALinkWithAQueryOrFragment_ResolvesToTheFileItNames(string href)
+    {
+        _viewModel.FileResource = new ResourceKey("docs/notes.md");
+
+        var result = _viewModel.ResolveLinkTarget(href);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().Be(new ResourceKey("docs/other.md"));
+    }
+
+    [TestCase("my%20notes.md", "docs/my notes.md")]
+    [TestCase("a%23b.md", "docs/a#b.md")]
+    public void APercentEncodedLink_ResolvesToTheDecodedName(string href, string expectedPath)
+    {
+        _viewModel.FileResource = new ResourceKey("docs/notes.md");
+
+        var result = _viewModel.ResolveLinkTarget(href);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().Be(new ResourceKey(expectedPath));
+    }
+
+    [TestCase("#install")]
+    [TestCase("?tab=2")]
+    public void ALinkThatIsOnlyAQueryOrFragment_ResolvesToItsOwnDocument(string href)
+    {
+        _viewModel.FileResource = new ResourceKey("docs/notes.md");
+
+        var result = _viewModel.ResolveLinkTarget(href);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().Be(new ResourceKey("docs/notes.md"));
+    }
+
     [TestCase("https://example.com/")]
     [TestCase("http://example.com/page.html")]
     public void AWebLink_ResolvesToNoResource(string href)

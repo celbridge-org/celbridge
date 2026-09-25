@@ -307,10 +307,10 @@ function resolveRelativePath(relativePath) {
 /**
  * Initializes the preview module.
  * Loads this module's iframe shell (iframe.html) into the provided iframe element,
- * wires up scroll/click listeners, and stores the host callbacks.
+ * wires up scroll/click listeners, and stores the host callbacks. The preview controller
+ * handles link clicks, so this module attaches no link handlers.
  * @param {HTMLIFrameElement} iframe - The sandboxed iframe that hosts the preview DOM.
  * @param {Object} handlers - Callback handlers.
- * @param {Function} handlers.onLinkClicked - Called with an href when any link is clicked. The host resolves whether it is a local resource or external URL.
  * @param {Function} handlers.onSyncToEditor - Called with a scroll percentage (0-1) when the preview scrolls or is clicked.
  * @returns {Promise<void>} - Resolves once the iframe document is ready.
  */
@@ -432,7 +432,7 @@ export function render(markdown) {
 
     try {
         previewContentElement.innerHTML = renderToHtml(markdown);
-        attachLinkHandlers();
+        disableScriptLinks(previewContentElement);
     } catch (error) {
         console.error('Error rendering markdown:', error);
         try {
@@ -459,6 +459,30 @@ export function render(markdown) {
         requestAnimationFrame(() => {
             previewContainerElement.scrollTop = savedScrollTop;
         });
+    }
+}
+
+/**
+ * Removes the href from every javascript: link in the container, so clicking one does nothing. A script
+ * running in the preview frame can reach the editor's host channel, and links in a markdown file have no
+ * reason to run one.
+ * @param {ParentNode} container
+ */
+export function disableScriptLinks(container) {
+    for (const link of container.querySelectorAll('a[href], area[href]')) {
+        if (isScriptUrl(link.getAttribute('href'))) {
+            link.removeAttribute('href');
+        }
+    }
+}
+
+// Parses the href the way the browser will, so spaces around it, or tabs and line breaks inside the scheme,
+// cannot hide a javascript: link.
+function isScriptUrl(href) {
+    try {
+        return new URL(href, document.baseURI).protocol === 'javascript:';
+    } catch {
+        return false;
     }
 }
 
@@ -757,42 +781,6 @@ function stopScrollRetry() {
         scrollResizeObserver.disconnect();
         scrollResizeObserver = null;
     }
-}
-
-function attachLinkHandlers() {
-    if (!previewContentElement) {
-        return;
-    }
-
-    const links = previewContentElement.querySelectorAll('a[href]');
-    const currentUrl = iframeElement.contentWindow.location.href.split('#')[0];
-
-    links.forEach((link) => {
-        const href = link.getAttribute('href');
-        const isAnchorLink = href && (
-            href.startsWith('#') ||
-            (href.startsWith(currentUrl) && href.includes('#'))
-        );
-
-        if (isAnchorLink) {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                const hashIndex = href.indexOf('#');
-                const targetId = hashIndex >= 0 ? href.slice(hashIndex + 1) : '';
-                const target = iframeElement.contentDocument.getElementById(targetId);
-                if (target) {
-                    target.scrollIntoView({ behavior: 'smooth' });
-                }
-            });
-        } else if (href) {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                if (callbacks && callbacks.onLinkClicked) {
-                    callbacks.onLinkClicked(href);
-                }
-            });
-        }
-    });
 }
 
 function attachScrollListener() {

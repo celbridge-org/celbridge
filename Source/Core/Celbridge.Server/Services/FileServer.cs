@@ -50,8 +50,13 @@ public class FileServer : IFileServer, IDisposable
         // /project/ serves the open project's files. Its pages fetch their own content same-origin, so it
         // opts out of cross-origin reads: a page in another local origin (e.g. one loaded in the user's
         // browser that discovered the loopback port) cannot read the project's files across origins.
+        // Project files change with every save, agent write and external edit, so the route forbids caching
+        // and a reloaded page always gets the current files.
         application.MapGet("/project/{**path}", (HttpContext context, string path) =>
-            ServeFromProvider(context, _projectFileProvider, path, allowCrossOrigin: false));
+        {
+            context.Response.Headers.CacheControl = "no-store";
+            return ServeFromProvider(context, _projectFileProvider, path, allowCrossOrigin: false);
+        });
 
         // /assets/ and /package/ serve bundled shared assets and package folders. The synthetic-origin
         // editor (a faked origin for a domain-locked library) pulls its lib and the shared client from

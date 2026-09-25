@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { renderToHtml } from '../markdown-preview/preview-module.js';
+import { renderToHtml, disableScriptLinks } from '../markdown-preview/preview-module.js';
 
 // Line numbers are what the source map promises, so the fixture is written a line at a time.
 const documentWithFrontmatter = [
@@ -57,5 +57,39 @@ describe('renderToHtml', () => {
 
         expect(html).not.toContain('title:');
         expect(html).not.toContain('Getting Started');
+    });
+});
+
+describe('disableScriptLinks', () => {
+    function renderLinks(markdown) {
+        const container = document.createElement('div');
+        container.innerHTML = renderToHtml(markdown);
+        disableScriptLinks(container);
+
+        return [...container.querySelectorAll('a')].map((link) => link.getAttribute('href'));
+    }
+
+    it('removes the address from a script link, written in markdown or as raw HTML', () => {
+        const markdown = [
+            '[Markdown](javascript:alert(1))',
+            '',
+            '<a href="JavaScript:alert(2)">Raw</a>',
+            '',
+            '<a href=" java&#9;script:alert(3)">Disguised</a>',
+            ''
+        ].join('\n');
+
+        expect(renderLinks(markdown)).toEqual([null, null, null]);
+    });
+
+    it('leaves every other link as written', () => {
+        const markdown = '[Guide](guide.md) [Site](https://example.com/) [Top](#top) [Mail](mailto:someone@example.com)\n';
+
+        expect(renderLinks(markdown)).toEqual([
+            'guide.md',
+            'https://example.com/',
+            '#top',
+            'mailto:someone@example.com'
+        ]);
     });
 });

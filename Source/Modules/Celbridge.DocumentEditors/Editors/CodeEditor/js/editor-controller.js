@@ -460,10 +460,12 @@ export class EditorController {
      * Initialize the host connection, load content, and register handlers.
      * notifyContentLoaded() is called automatically after this completes.
      * The `onWritableStateChanged` callback receives `{state, readOnly}`.
+     * The `onSaved` callback fires after each successful save.
      */
     async initializeHost({
         onInitialContent,
         onExternalReloadContent,
+        onSaved,
         onRequestState,
         onRestoreState,
         onWritableStateChanged
@@ -501,7 +503,13 @@ export class EditorController {
             },
             onRequestSave: async () => {
                 const content = this.#editor.getValue();
-                await celbridge.document.save(content);
+                const result = await celbridge.document.save(content);
+
+                // A failed save leaves the file unchanged, so only a successful save is reported.
+                if (result?.success &&
+                    onSaved) {
+                    onSaved();
+                }
             },
             onExternalChange: async () => {
                 await this.#handleExternalChange(onExternalReloadContent);

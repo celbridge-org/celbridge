@@ -17,4 +17,15 @@ public interface IApplicationShell
     /// Succeeds when no workspace is showing.
     /// </summary>
     Task<Result> CloseWorkspaceAsync();
+
+    /// <summary>
+    /// Unloads the open project, saving each open editor's state and any unsaved edits, then closes the main
+    /// window to exit the application. A request made while an exit is under way joins it.
+    /// </summary>
+    Task ExitApplicationAsync();
+
+    /// <summary>
+    /// Whether the main window can close without losing work: true once an exit has unloaded the project.
+    /// </summary>
+    bool IsReadyToClose { get; }
 }

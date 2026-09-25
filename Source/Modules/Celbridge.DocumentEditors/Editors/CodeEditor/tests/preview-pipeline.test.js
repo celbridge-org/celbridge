@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { PreviewPipeline } from '../js/preview-pipeline.js';
+import { PreviewController } from '../js/preview-controller.js';
 import { ViewMode } from '../js/view-mode-controller.js';
 
 const splitRootWidth = 1000;
@@ -109,4 +110,150 @@ describe('PreviewPipeline divider', () => {
         expect(editorController.refreshEditAvailability).toHaveBeenCalled();
     });
 
+});
+
+function createPanes() {
+    const splitRoot = document.createElement('div');
+    const editorPane = document.createElement('div');
+    const dividerElement = document.createElement('div');
+    const previewPane = document.createElement('div');
+    const previewIframe = document.createElement('iframe');
+    splitRoot.append(editorPane, dividerElement, previewPane);
+    previewPane.appendChild(previewIframe);
+    document.body.appendChild(splitRoot);
+
+    return {
+        splitRoot,
+        editorPane,
+        previewPane,
+        dividerElement,
+        previewIframe
+    };
+}
+
+// Serves a fake preview module with the given exports, each proxying to globalThis.__fakePreviewModule.
+function makeFakeRendererUrl(exportNames) {
+    const code = exportNames
+        .map((name) =>
+            `export function ${name}(...args) { return globalThis.__fakePreviewModule.${name}(...args); }`)
+        .join('\n');
+    const encoded = Buffer.from(code).toString('base64');
+    return `data:text/javascript;base64,${encoded}`;
+}
+
+describe('PreviewPipeline preview updates', () => {
+    let refreshSpy;
+
+    beforeEach(() => {
+        refreshSpy = vi.spyOn(PreviewController.prototype, 'refresh');
+    });
+
+    afterEach(() => {
+        refreshSpy.mockRestore();
+        document.body.innerHTML = '';
+    });
+
+    function createPipeline(initialViewMode) {
+        return new PreviewPipeline({
+            editorController: createEditorController(),
+            initialViewMode,
+            panes: createPanes()
+        });
+    }
+
+    it('refreshes the preview with the file URL on opening, on a save and on an external reload', () => {
+        const pipeline = createPipeline(ViewMode.Split);
+
+        pipeline.handleInitialContent('<p>First</p>', 'project:docs/page.html');
+        pipeline.handleSaved();
+        pipeline.handleExternalReload('<p>Second</p>');
+
+        expect(refreshSpy).toHaveBeenCalledTimes(3);
+        expect(refreshSpy).toHaveBeenLastCalledWith('/project/docs/page.html');
+    });
+
+    it('holds an update back while the preview is hidden and applies it once shown', () => {
+        const pipeline = createPipeline(ViewMode.Source);
+
+        pipeline.handleInitialContent('<p>First</p>', 'project:docs/page.html');
+        pipeline.handleSaved();
+        expect(refreshSpy).not.toHaveBeenCalled();
+
+        pipeline.viewModeController.setMode(ViewMode.Split);
+        expect(refreshSpy).toHaveBeenCalledOnce();
+        expect(refreshSpy).toHaveBeenCalledWith('/project/docs/page.html');
+
+        // Switching between Split and Preview does not reload a preview that is up to date.
+        pipeline.viewModeController.setMode(ViewMode.Preview);
+        expect(refreshSpy).toHaveBeenCalledOnce();
+    });
+});
+
+describe('PreviewPipeline scroll sync', () => {
+    const commonExports = [
+        'initialize',
+        'render',
+        'setBasePath',
+        'setScrollPercentage',
+        'getScrollPercentage'
+    ];
+
+    beforeEach(() => {
+        globalThis.__fakePreviewModule = {
+            initialize: vi.fn().mockResolvedValue(undefined),
+            render: vi.fn(),
+            setBasePath: vi.fn(),
+            setScrollPercentage: vi.fn(),
+            getScrollPercentage: vi.fn().mockReturnValue(0),
+            scrollToSourceLine: vi.fn(),
+            getTopSourceLine: vi.fn().mockReturnValue(null),
+            refresh: vi.fn()
+        };
+    });
+
+    afterEach(() => {
+        document.body.innerHTML = '';
+    });
+
+    it('follows the editor scroll for a renderer that maps source lines', async () => {
+        const editorController = createEditorController();
+        const pipeline = new PreviewPipeline({ editorController, panes: createPanes() });
+
+        await pipeline.attachRenderer(makeFakeRendererUrl([...commonExports, 'scrollToSourceLine', 'getTopSourceLine']));
+
+        expect(editorController.onScrollChanged).toHaveBeenCalledOnce();
+    });
+
+    it('leaves the editor scroll unwired for a renderer without a source map', async () => {
+        const editorController = createEditorController();
+        const pipeline = new PreviewPipeline({ editorController, panes: createPanes() });
+
+        await pipeline.attachRenderer(makeFakeRendererUrl([...commonExports, 'refresh']));
+
+        expect(editorController.onScrollChanged).not.toHaveBeenCalled();
+    });
+
+    it('hands a renderer of the buffer each edit', async () => {
+        const editorController = createEditorController();
+        editorController.getValue.mockReturnValue('# Edited');
+        const pipeline = new PreviewPipeline({ editorController, panes: createPanes() });
+        await pipeline.attachRenderer(makeFakeRendererUrl([...commonExports, 'scrollToSourceLine', 'getTopSourceLine']));
+
+        const onContentChanged = editorController.onContentChanged.mock.calls[0][0];
+        onContentChanged();
+
+        expect(globalThis.__fakePreviewModule.render).toHaveBeenCalledWith('# Edited');
+    });
+
+    it('does not copy the buffer out for a renderer of the file', async () => {
+        const editorController = createEditorController();
+        const pipeline = new PreviewPipeline({ editorController, panes: createPanes() });
+        await pipeline.attachRenderer(makeFakeRendererUrl([...commonExports, 'refresh']));
+
+        const onContentChanged = editorController.onContentChanged.mock.calls[0][0];
+        onContentChanged();
+
+        expect(editorController.getValue).not.toHaveBeenCalled();
+        expect(globalThis.__fakePreviewModule.render).not.toHaveBeenCalled();
+    });
 });
