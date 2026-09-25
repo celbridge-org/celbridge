@@ -84,19 +84,4 @@ public abstract class AgentToolBase
         });
     }
 
-    /// <summary>
-    /// Loads an embedded resource from the Celbridge.Tools assembly as a string.
-    /// Returns a placeholder string when the resource is missing (build-time invariant).
-    /// </summary>
-    protected static string LoadEmbeddedResource(string resourceName)
-    {
-        var assembly = typeof(AgentToolBase).Assembly;
-        using var stream = assembly.GetManifestResourceStream(resourceName);
-        if (stream is null)
-        {
-            return $"Resource '{resourceName}' not found.";
-        }
-        using var reader = new StreamReader(stream);
-        return reader.ReadToEnd();
-    }
 }
