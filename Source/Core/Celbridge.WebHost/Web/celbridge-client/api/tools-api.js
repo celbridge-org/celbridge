@@ -4,7 +4,8 @@
 // builds a dynamic proxy exposing each one as `celbridge.cel.<namespace>.<tool>(...)`.
 //
 // The host decides what that list contains and re-checks every `tools/call`, so a tool absent from
-// the proxy is one the host withheld rather than a client-side rule.
+// the proxy is one the host withheld rather than a client-side rule. If the list cannot be fetched at
+// all, the proxy instead throws on every namespace with the reason.
 //
 // Calling convention:
 //   - Arguments are positional and camelCase, in parameter declaration order.
@@ -13,6 +14,8 @@
 //     automatically (for editsJson, resources, files, etc.).
 //   - Each argument is type-checked against the descriptor's parameter type. A mismatch
 //     throws CelToolError(InvalidArgs). `undefined` and `null` skip validation.
+
+import { LogAPI } from './log-api.js';
 
 /**
  * Error codes for tool proxy failures. Wire codes are JSON-RPC application error codes
@@ -259,6 +262,42 @@ function buildLeafFunction(descriptor, invoke) {
 }
 
 /**
+ * Wraps the proxy built after a failed `tools/list` so that reaching for any namespace throws a
+ * CelToolError carrying the reason, instead of yielding undefined and failing later with a TypeError.
+ * @param {Object} celProxy
+ * @param {string} reason
+ * @returns {Object}
+ */
+function guardFailedDiscovery(celProxy, reason) {
+    return new Proxy(celProxy, {
+        get(target, property, receiver) {
+            // Symbols, Object.prototype members and the promise and JSON probes answer as usual, so the
+            // proxy can still be logged, awaited and serialized.
+            if (typeof property !== 'string' ||
+                property in target ||
+                property === 'then' ||
+                property === 'toJSON') {
+                return Reflect.get(target, property, receiver);
+            }
+
+            throw new CelToolError(
+                CelToolErrorCode.Failed,
+                '',
+                `cel.${property} is unavailable because the tool list could not be loaded: ${reason}`
+            );
+        }
+    });
+}
+
+function describeError(error) {
+    if (typeof error?.message === 'string' && error.message.length > 0) {
+        return error.message;
+    }
+
+    return String(error);
+}
+
+/**
  * Client-side tools API. Loads tool descriptors from the host during
  * `celbridge.initialize()`, builds a positional `cel.*` proxy, and dispatches
  * calls through JSON-RPC. The host re-checks every call, so this proxy does not
@@ -274,6 +313,9 @@ export class ToolsAPI {
     /** @type {Object|null} */
     #celProxy = null;
 
+    /** @type {LogAPI} */
+    #log;
+
     /**
      * @param {import('../core/rpc-transport.js').RpcTransport} transport
      * @param {ReadonlyArray<ToolDescriptor>} [initialDescriptors] - Pre-supplied descriptors
@@ -281,6 +323,7 @@ export class ToolsAPI {
      */
     constructor(transport, initialDescriptors = null) {
         this.#transport = transport;
+        this.#log = new LogAPI(transport);
 
         if (Array.isArray(initialDescriptors)) {
             this.setDescriptors(initialDescriptors);
@@ -302,16 +345,20 @@ export class ToolsAPI {
      * callable. Invoked by Celbridge.initialize(). Safe to call multiple times.
      * Subsequent calls refresh the descriptor list.
      *
+     * A failed fetch does not reject, so an editor that makes no tool calls still loads. The
+     * failure is written to the host log, and reaching for any `cel.*` namespace throws a
+     * CelToolError that carries the reason.
+     *
      * @returns {Promise<void>}
      */
     async loadDescriptors() {
         let response;
         try {
             response = await this.#transport.request('tools/list', {});
-        } catch {
-            // If the host does not expose tools (older host or test environment),
-            // mark ready with an empty descriptor list rather than rejecting.
-            this.setDescriptors([]);
+        } catch (error) {
+            const reason = describeError(error);
+            this.#log.error(`Could not load the tool list, so cel.* has no tools in this editor: ${reason}`);
+            this.#applyDescriptors([], reason);
             return;
         }
 
@@ -322,7 +369,7 @@ export class ToolsAPI {
             ? tools.filter(tool => typeof tool?.alias === 'string' && tool.alias.length > 0)
             : [];
 
-        this.setDescriptors(named);
+        this.#applyDescriptors(named, null);
     }
 
     /**
@@ -331,9 +378,19 @@ export class ToolsAPI {
      * @param {ReadonlyArray<ToolDescriptor>} descriptors
      */
     setDescriptors(descriptors) {
+        this.#applyDescriptors(descriptors, null);
+    }
+
+    #applyDescriptors(descriptors, loadFailureReason) {
         const copy = Array.isArray(descriptors) ? [...descriptors] : [];
         this.#descriptors = Object.freeze(copy);
-        this.#celProxy = buildCelProxy(copy, (alias, args) => this.call(alias, args));
+
+        const celProxy = buildCelProxy(copy, (alias, args) => this.call(alias, args));
+        if (loadFailureReason === null) {
+            this.#celProxy = celProxy;
+        } else {
+            this.#celProxy = guardFailedDiscovery(celProxy, loadFailureReason);
+        }
     }
 
     /**

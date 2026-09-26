@@ -339,14 +339,60 @@ describe('ToolsAPI', () => {
         expect(typeof api.cel.file.read).toBe('function');
     });
 
-    it('loadDescriptors() tolerates transport failures with an empty descriptor list', async () => {
-        const transport = { request: () => Promise.reject(new Error('no tools/list')) };
+    it('loadDescriptors() resolves when tools/list fails, and cel.* throws with the reason', async () => {
+        const transport = {
+            request: () => Promise.reject(new Error('MCP tools/list returned 404: Session not found')),
+            notify: () => { }
+        };
         const api = new ToolsAPI(transport);
 
         await api.loadDescriptors();
 
         expect(api.isReady).toBe(true);
         expect(api.list()).toEqual([]);
+        expect(() => api.cel.file).toThrow(CelToolError);
+        expect(() => api.cel.file).toThrow(/cel\.file is unavailable .*Session not found/);
+
+        // The promise and JSON probes still answer, so the proxy can be awaited and logged.
+        expect(api.cel.then).toBeUndefined();
+        expect(JSON.stringify(api.cel)).toBe('{}');
+    });
+
+    it('loadDescriptors() writes a tools/list failure to the host log', async () => {
+        const notifications = [];
+        const transport = {
+            request: () => Promise.reject(new Error('Session not found')),
+            notify: (method, params) => notifications.push({ method, params })
+        };
+        const api = new ToolsAPI(transport);
+
+        await api.loadDescriptors();
+
+        expect(notifications).toHaveLength(1);
+        expect(notifications[0].method).toBe('host/log');
+        expect(notifications[0].params.level).toBe('error');
+        expect(notifications[0].params.message).toMatch(/tool list.*Session not found/);
+    });
+
+    it('loadDescriptors() recovers the proxy once a later tools/list succeeds', async () => {
+        let failNext = true;
+        const transport = {
+            request: () => {
+                if (failNext) {
+                    failNext = false;
+                    return Promise.reject(new Error('Session not found'));
+                }
+                return Promise.resolve([descriptor('file.read', [{ name: 'fileResource', type: 'string' }])]);
+            },
+            notify: () => { }
+        };
+        const api = new ToolsAPI(transport);
+
+        await api.loadDescriptors();
+        await api.loadDescriptors();
+
+        expect(typeof api.cel.file.read).toBe('function');
+        expect(api.cel.document).toBeUndefined();
     });
 
     it('list() throws before descriptors are loaded', () => {
@@ -416,6 +462,31 @@ describe('Celbridge.tools integration', () => {
         simulateResponse(callMessage.id, { isSuccess: true, value: '0.2.5' });
 
         await expect(callPromise).resolves.toBe('0.2.5');
+    });
+
+    it('initialize() still resolves when tools/list fails', async () => {
+        const { client, sentMessages, simulateResponse, simulateError } = createTestClient({
+            context: { secrets: {} }
+        });
+
+        const initPromise = client.initialize();
+
+        const docInitMessage = JSON.parse(sentMessages[0]);
+        simulateResponse(docInitMessage.id, {
+            content: '',
+            metadata: { filePath: '', resourceKey: '', fileName: '', locale: '' }
+        });
+
+        await Promise.resolve();
+        await Promise.resolve();
+
+        const listMessage = JSON.parse(sentMessages[1]);
+        simulateError(listMessage.id, -32000, 'MCP tools/list returned 404: Session not found');
+
+        await expect(initPromise).resolves.toBeDefined();
+        expect(() => client.cel.app).toThrow(/Session not found/);
+
+        delete globalThis.cel;
     });
 
     it('a host denial surfaces as CEL_TOOL_DENIED', async () => {

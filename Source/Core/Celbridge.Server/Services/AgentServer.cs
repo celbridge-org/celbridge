@@ -44,7 +44,12 @@ internal class AgentServer : IAgentServer
 
         var mcpBuilder = services
             .AddMcpServer()
-            .WithHttpTransport()
+            .WithHttpTransport(options =>
+            {
+                // Every session ends when the server restarts on the next project load, so there is no
+                // need to expire idle ones. A client left idle for hours keeps its session.
+                options.IdleTimeout = Timeout.InfiniteTimeSpan;
+            })
             .WithToolsFromAssembly(typeof(AppTools).Assembly);
 
         var responseFilter = new AgentResponseFilter(

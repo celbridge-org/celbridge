@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Json;
 using System.Reflection;
 using System.Text.Json;
@@ -30,6 +31,7 @@ public class McpToolBridge : IMcpToolBridge
     private readonly HttpClient _httpClient;
     private readonly Dictionary<string, ToolMetadata> _toolMetadata;
     private readonly Dictionary<string, string> _aliasToToolName;
+    private readonly SemaphoreSlim _sessionLock = new(1, 1);
 
     private int _nextRequestId;
     private string? _sessionId;
@@ -38,10 +40,23 @@ public class McpToolBridge : IMcpToolBridge
         IServerService serverService,
         IMessengerService messengerService,
         ILogger<McpToolBridge> logger)
+        : this(serverService, messengerService, logger, new HttpClientHandler())
+    {
+    }
+
+    /// <summary>
+    /// Creates a bridge over an explicit message handler so tests can serve
+    /// canned MCP responses without a live server.
+    /// </summary>
+    internal McpToolBridge(
+        IServerService serverService,
+        IMessengerService messengerService,
+        ILogger<McpToolBridge> logger,
+        HttpMessageHandler messageHandler)
     {
         _serverService = serverService;
         _logger = logger;
-        _httpClient = new HttpClient();
+        _httpClient = new HttpClient(messageHandler);
         _toolMetadata = BuildToolMetadata();
         _aliasToToolName = new Dictionary<string, string>(_toolMetadata.Count, StringComparer.Ordinal);
         foreach (var entry in _toolMetadata)
@@ -467,74 +482,80 @@ public class McpToolBridge : IMcpToolBridge
     }
 
     /// <summary>
-    /// Ensures an MCP session is established by sending an initialize request
-    /// if we don't already have a session ID.
+    /// Returns the current MCP session id, first completing the initialize handshake
+    /// if there is no session yet.
     /// </summary>
-    private async Task EnsureSessionAsync(string url)
+    private async Task<string?> EnsureSessionAsync(string url)
     {
-        if (_sessionId is not null)
+        var sessionId = _sessionId;
+        if (sessionId is not null)
         {
-            return;
+            return sessionId;
         }
 
-        var requestId = Interlocked.Increment(ref _nextRequestId);
-
-        var initializeRequest = new JsonObject
+        // Concurrent callers share one handshake rather than each opening a session.
+        await _sessionLock.WaitAsync();
+        try
         {
-            ["jsonrpc"] = "2.0",
-            ["method"] = "initialize",
-            ["id"] = requestId,
-            ["params"] = new JsonObject
+            if (_sessionId is not null)
             {
-                ["protocolVersion"] = "2025-03-26",
-                ["capabilities"] = new JsonObject(),
-                ["clientInfo"] = new JsonObject
-                {
-                    ["name"] = "CelbridgeMcpToolBridge",
-                    ["version"] = "1.0.0"
-                }
+                return _sessionId;
             }
-        };
 
-        var httpRequest = new HttpRequestMessage(HttpMethod.Post, url);
-        httpRequest.Content = JsonContent.Create(initializeRequest);
-        httpRequest.Headers.Accept.Clear();
-        httpRequest.Headers.Accept.ParseAdd("application/json");
-        httpRequest.Headers.Accept.ParseAdd("text/event-stream");
+            var requestId = Interlocked.Increment(ref _nextRequestId);
 
-        var httpResponse = await _httpClient.SendAsync(httpRequest);
-        if (!httpResponse.IsSuccessStatusCode)
-        {
-            var errorBody = await httpResponse.Content.ReadAsStringAsync();
-            _logger.LogWarning("MCP initialize returned {StatusCode}: {Body}",
-                (int)httpResponse.StatusCode, errorBody);
-            httpResponse.EnsureSuccessStatusCode();
+            var initializeRequest = new JsonObject
+            {
+                ["jsonrpc"] = "2.0",
+                ["method"] = "initialize",
+                ["id"] = requestId,
+                ["params"] = new JsonObject
+                {
+                    ["protocolVersion"] = "2025-03-26",
+                    ["capabilities"] = new JsonObject(),
+                    ["clientInfo"] = new JsonObject
+                    {
+                        ["name"] = "CelbridgeMcpToolBridge",
+                        ["version"] = "1.0.0"
+                    }
+                }
+            };
+
+            var httpResponse = await PostAsync(url, initializeRequest, null);
+            if (!httpResponse.IsSuccessStatusCode)
+            {
+                var errorBody = await httpResponse.Content.ReadAsStringAsync();
+                _logger.LogWarning("MCP initialize returned {StatusCode}: {Body}",
+                    (int)httpResponse.StatusCode, errorBody);
+                throw new HttpRequestException(
+                    $"MCP initialize returned {(int)httpResponse.StatusCode}: {errorBody}",
+                    null,
+                    httpResponse.StatusCode);
+            }
+
+            string? newSessionId = null;
+            if (httpResponse.Headers.TryGetValues(McpSessionIdHeader, out var sessionValues))
+            {
+                newSessionId = sessionValues.FirstOrDefault();
+            }
+
+            // Send the initialized notification to complete the handshake
+            var initializedNotification = new JsonObject
+            {
+                ["jsonrpc"] = "2.0",
+                ["method"] = "notifications/initialized"
+            };
+
+            await PostAsync(url, initializedNotification, newSessionId);
+
+            _sessionId = newSessionId;
+
+            return newSessionId;
         }
-
-        if (httpResponse.Headers.TryGetValues(McpSessionIdHeader, out var sessionValues))
+        finally
         {
-            _sessionId = sessionValues.FirstOrDefault();
+            _sessionLock.Release();
         }
-
-        // Send the initialized notification to complete the handshake
-        var notificationId = Interlocked.Increment(ref _nextRequestId);
-        var initializedNotification = new JsonObject
-        {
-            ["jsonrpc"] = "2.0",
-            ["method"] = "notifications/initialized"
-        };
-
-        var notifyRequest = new HttpRequestMessage(HttpMethod.Post, url);
-        notifyRequest.Content = JsonContent.Create(initializedNotification);
-        notifyRequest.Headers.Accept.Clear();
-        notifyRequest.Headers.Accept.ParseAdd("application/json");
-        notifyRequest.Headers.Accept.ParseAdd("text/event-stream");
-        if (_sessionId is not null)
-        {
-            notifyRequest.Headers.Add(McpSessionIdHeader, _sessionId);
-        }
-
-        await _httpClient.SendAsync(notifyRequest);
     }
 
     private async Task<JsonObject?> SendMcpRequestAsync(string method, JsonObject? methodParams)
@@ -548,7 +569,7 @@ public class McpToolBridge : IMcpToolBridge
 
         var url = $"http://127.0.0.1:{port}/mcp";
 
-        await EnsureSessionAsync(url);
+        var sessionId = await EnsureSessionAsync(url);
 
         var requestId = Interlocked.Increment(ref _nextRequestId);
 
@@ -563,24 +584,36 @@ public class McpToolBridge : IMcpToolBridge
             request["params"] = methodParams;
         }
 
-        var httpRequest = new HttpRequestMessage(HttpMethod.Post, url);
-        httpRequest.Content = JsonContent.Create(request);
-        httpRequest.Headers.Accept.Clear();
-        httpRequest.Headers.Accept.ParseAdd("application/json");
-        httpRequest.Headers.Accept.ParseAdd("text/event-stream");
-        if (_sessionId is not null)
+        var httpResponse = await PostAsync(url, request, sessionId);
+
+        // The server answers 404 for a session it no longer holds, such as one issued before a restart
+        // or pruned while idle. The MCP spec has the client start a new session. The request was never
+        // dispatched, so resending it is safe.
+        if (httpResponse.StatusCode == HttpStatusCode.NotFound &&
+            sessionId is not null)
         {
-            httpRequest.Headers.Add(McpSessionIdHeader, _sessionId);
+            _logger.LogInformation("MCP session {SessionId} not found, starting a new session", sessionId);
+            httpResponse.Dispose();
+
+            // Leave the field alone if a concurrent caller has already replaced the session.
+            Interlocked.CompareExchange(ref _sessionId, null, sessionId);
+
+            sessionId = await EnsureSessionAsync(url);
+            httpResponse = await PostAsync(url, request, sessionId);
         }
 
-        var httpResponse = await _httpClient.SendAsync(httpRequest);
         if (!httpResponse.IsSuccessStatusCode)
         {
             var errorBody = await httpResponse.Content.ReadAsStringAsync();
             _logger.LogWarning(
                 "MCP {Method} returned {StatusCode}: {Body}",
                 method, (int)httpResponse.StatusCode, errorBody);
-            httpResponse.EnsureSuccessStatusCode();
+
+            // Carry the server's body so the caller sees why, not just the status line.
+            throw new HttpRequestException(
+                $"MCP {method} returned {(int)httpResponse.StatusCode}: {errorBody}",
+                null,
+                httpResponse.StatusCode);
         }
 
         var responseBody = await httpResponse.Content.ReadAsStringAsync();
@@ -625,6 +658,21 @@ public class McpToolBridge : IMcpToolBridge
         }
 
         return responseNode?["result"]?.AsObject();
+    }
+
+    private async Task<HttpResponseMessage> PostAsync(string url, JsonObject payload, string? sessionId)
+    {
+        var httpRequest = new HttpRequestMessage(HttpMethod.Post, url);
+        httpRequest.Content = JsonContent.Create(payload);
+        httpRequest.Headers.Accept.Clear();
+        httpRequest.Headers.Accept.ParseAdd("application/json");
+        httpRequest.Headers.Accept.ParseAdd("text/event-stream");
+        if (sessionId is not null)
+        {
+            httpRequest.Headers.Add(McpSessionIdHeader, sessionId);
+        }
+
+        return await _httpClient.SendAsync(httpRequest);
     }
 
     /// <summary>
