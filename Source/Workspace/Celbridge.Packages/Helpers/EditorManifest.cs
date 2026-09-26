@@ -118,7 +118,7 @@ internal sealed record ManifestUtilitySection
     // seeds an empty file.
     public string? Template { get; init; }
 
-    // The document area "Open as document" sends the utility to: "main", "bottom", "side", or "none"
+    // The document area "Open as Document" sends the utility to: "main", "bottom", "side", or "none"
     // for a utility that stays in the Utility Panel.
     public string? DockArea { get; init; }
 

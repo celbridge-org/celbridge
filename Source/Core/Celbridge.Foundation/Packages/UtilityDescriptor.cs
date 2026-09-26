@@ -28,7 +28,7 @@ public record UtilityDescriptor
 
     /// <summary>
     /// The document area the utility docks into, from the manifest's dock-area key. Null when it declares
-    /// dock-area = "none", which keeps it in the Utility Panel and hides its "Open as document" control.
+    /// dock-area = "none", which keeps it in the Utility Panel and hides its "Open as Document" control.
     /// </summary>
     public WorkspaceArea? DockArea { get; init; } = WorkspaceArea.Main;
 }

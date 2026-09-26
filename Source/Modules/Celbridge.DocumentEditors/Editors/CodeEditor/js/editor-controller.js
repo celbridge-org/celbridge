@@ -21,6 +21,9 @@ export class EditorController {
     // The ranges the last getSelectedText read, so the cut that follows clears exactly those.
     #copiedRanges = null;
     #pendingNavigation = null;
+    // The model's alternative version id when the buffer last matched the file. Undo back to that text
+    // returns to the same id, so the buffer counts as saved again.
+    #savedVersionId = null;
     #onContentChanged = () => {};
     #onScrollChanged = () => {};
     #suppressScrollNotify = false;
@@ -501,17 +504,25 @@ export class EditorController {
                 if (content) {
                     this.#editor.setValue(content);
                 }
+                this.#markSaved();
                 if (onInitialContent) {
                     await onInitialContent(content, metadata);
                 }
             },
             onRequestSave: async () => {
+                // Edits made while the save is in flight are not in the file, so the saved version is the one
+                // the content was taken from.
+                const versionId = this.getVersionId();
                 const content = this.#editor.getValue();
                 const result = await celbridge.document.save(content);
 
                 // A failed save leaves the file unchanged, so only a successful save is reported.
-                if (result?.success &&
-                    onSaved) {
+                if (!result?.success) {
+                    return;
+                }
+
+                this.#savedVersionId = versionId;
+                if (onSaved) {
                     onSaved();
                 }
             },
@@ -548,6 +559,33 @@ export class EditorController {
     }
 
     /**
+     * Whether the buffer holds edits the host has not saved yet. The host saves only after the document has
+     * gone a second without changing, so edits stay unsaved for as long as they continue.
+     */
+    hasUnsavedEdits() {
+        if (this.#savedVersionId === null) {
+            return false;
+        }
+
+        return this.getVersionId() !== this.#savedVersionId;
+    }
+
+    /**
+     * The model's alternative version id. An undo returns it to the value it had before the edit.
+     */
+    getVersionId() {
+        return this.#editor.getModel().getAlternativeVersionId();
+    }
+
+    /**
+     * The version id of the text the file held when the buffer last matched it, or null before the first
+     * content arrives.
+     */
+    getSavedVersionId() {
+        return this.#savedVersionId;
+    }
+
+    /**
      * Registers a callback fired on editor scroll changes.
      * Receives `{line, fraction}` for the topmost visible line, or null when
      * the editor has no layout (collapsed preview mode). The callback is
@@ -577,6 +615,9 @@ export class EditorController {
             // against the new baseline.
             this.#editor.setValue(result.content);
         }
+
+        // The host drops a pending save when the file changes on disk, so the buffer now matches the file.
+        this.#markSaved();
 
         // Let the caller drive dependent surfaces (e.g. the preview pane)
         // before the content-loaded signal fires.
@@ -674,6 +715,10 @@ export class EditorController {
             // Focus the editor to make the cursor visible
             this.#editor.focus();
         });
+    }
+
+    #markSaved() {
+        this.#savedVersionId = this.getVersionId();
     }
 
     #shouldNotifyHost() {

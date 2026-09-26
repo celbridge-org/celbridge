@@ -800,7 +800,7 @@ This file could not be saved</value>
     <value>Name shown on the button</value>
   </data>
   <data name="WebView_Settings_BookmarkOpenTooltip" xml:space="preserve">
-    <value>Open this bookmark</value>
+    <value>Open This Bookmark</value>
   </data>
   <data name="WebView_Settings_BookmarkSetAsHome" xml:space="preserve">
     <value>Set as Home</value>
@@ -809,7 +809,7 @@ This file could not be saved</value>
     <value>Untitled bookmark</value>
   </data>
   <data name="WebView_Bookmarks_ManageTooltip" xml:space="preserve">
-    <value>Manage bookmarks</value>
+    <value>Manage Bookmarks</value>
   </data>
   <data name="WebView_Settings_ShowBookmarksBarLabel" xml:space="preserve">
     <value>Show bookmarks bar</value>
@@ -967,7 +967,7 @@ Open with default application instead?</value>
     <value>F2</value>
   </data>
   <data name="DocumentTab_CloseTabTooltip" xml:space="preserve">
-    <value>Close tab ({0})</value>
+    <value>Close Tab ({0})</value>
   </data>
   <data name="DocumentTab_MoveLeft" xml:space="preserve">
     <value>Move Left</value>
@@ -1075,7 +1075,7 @@ Open with default application instead?</value>
     <value>Where files downloaded from web pages are saved, as a path from the project root.</value>
   </data>
   <data name="ProjectSettings_DownloadsFolderBrowseTooltip" xml:space="preserve">
-    <value>Choose a folder</value>
+    <value>Choose a Folder</value>
   </data>
   <data name="ProjectSettings_DownloadsFolderPickerTitle" xml:space="preserve">
     <value>Choose a Downloads Folder</value>
@@ -1126,13 +1126,13 @@ Open with default application instead?</value>
     <value>This project has no file at this path yet.</value>
   </data>
   <data name="ProjectSettings_ShortcutBrowseTooltip" xml:space="preserve">
-    <value>Choose a file</value>
+    <value>Choose a File</value>
   </data>
   <data name="ProjectSettings_ShortcutPickerTitle" xml:space="preserve">
     <value>Choose a File to Open</value>
   </data>
   <data name="ProjectSettings_ShortcutOpenTooltip" xml:space="preserve">
-    <value>Open this document</value>
+    <value>Open This Document</value>
   </data>
   <data name="ProjectSettings_ShortcutAreaLabel" xml:space="preserve">
     <value>Opens in</value>
@@ -1294,7 +1294,7 @@ Open with default application instead?</value>
     <value>Manifest</value>
   </data>
   <data name="ProjectSettings_OpenManifestTooltip" xml:space="preserve">
-    <value>Open the manifest file</value>
+    <value>Open the Manifest File</value>
   </data>
   <data name="ProjectSettings_RevealManifestTooltip" xml:space="preserve">
     <value>Reveal in Explorer</value>
@@ -1426,7 +1426,7 @@ Open with default application instead?</value>
     <value>To exit Presentation mode, choose another layout from the View menu</value>
   </data>
   <data name="TitleBar_MainMenuTooltip" xml:space="preserve">
-    <value>Main menu</value>
+    <value>Main Menu</value>
   </data>
   <data name="TitleBar_SwitchProjectTooltip" xml:space="preserve">
     <value>Switch Project</value>
@@ -1585,7 +1585,7 @@ Open with default application instead?</value>
     <value>There is no supported icon with this name.</value>
   </data>
   <data name="IconPicker_BrowseTooltip" xml:space="preserve">
-    <value>Choose an icon</value>
+    <value>Choose an Icon</value>
   </data>
   <data name="IconPicker_DialogTitle" xml:space="preserve">
     <value>Select Icon</value>
@@ -1690,7 +1690,7 @@ Open with default application instead?</value>
     <value>Forum</value>
   </data>
   <data name="Utility_OpenAsDocument_Tooltip" xml:space="preserve">
-    <value>Open as document</value>
+    <value>Open as Document</value>
   </data>
   <data name="NewProjectDialog_InvalidProjectName" xml:space="preserve">
     <value>The project name contains invalid characters or is not a valid file name.</value>
@@ -1738,10 +1738,10 @@ Open with default application instead?</value>
     <value>Replacing...</value>
   </data>
   <data name="SearchPanel_SearchHistoryTooltip" xml:space="preserve">
-    <value>Search history</value>
+    <value>Search History</value>
   </data>
   <data name="SearchPanel_ReplaceHistoryTooltip" xml:space="preserve">
-    <value>Replace history</value>
+    <value>Replace History</value>
   </data>
   <data name="SearchPanel_ClearHistoryText" xml:space="preserve">
     <value>Clear Recent</value>
@@ -1822,16 +1822,16 @@ Open with default application instead?</value>
     <value>Find</value>
   </data>
   <data name="WebView_Find_Next" xml:space="preserve">
-    <value>Next match</value>
+    <value>Next Match</value>
   </data>
   <data name="WebView_Find_Previous" xml:space="preserve">
-    <value>Previous match</value>
+    <value>Previous Match</value>
   </data>
   <data name="WebView_Find_Close" xml:space="preserve">
     <value>Close</value>
   </data>
   <data name="WebView_Find_MatchCase" xml:space="preserve">
-    <value>Match case</value>
+    <value>Match Case</value>
   </data>
   <data name="WebView_Find_NoResults" xml:space="preserve">
     <value>No results</value>

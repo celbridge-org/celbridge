@@ -106,15 +106,17 @@ class TestWebViewRenameHtmlEditor:
 
         assert webview.eval(HTML_RENAMED_RESOURCE, "location.pathname") == f"/project/{HTML_RENAMED_RESOURCE}"
 
-    def test_rename_then_a_change_on_disk_reaches_the_preview(self, webview, explorer, file):
-        # The address the file has left now answers 404, so a preview still on it would show an
-        # error page the tools cannot reach, and the call would fall back to the editor page.
+    def test_rename_then_a_reload_shows_a_change_on_disk(self, webview, explorer, file):
+        # The preview does not follow changes on disk, so the reload is what shows the change. The
+        # address the file has left now answers 404, so a preview still on it would reload an error
+        # page the tools cannot reach, and the call would fall back to the editor page.
         explorer.move(HTML_RESOURCE, HTML_RENAMED_RESOURCE)
         time.sleep(0.5)
 
         changed = _PAGE_HTML.replace("<h1>WebView Rename Test</h1>", "<h1>Changed after rename</h1>")
         file.write(HTML_RENAMED_RESOURCE, changed)
         time.sleep(1.5)
+        webview.reload(HTML_RENAMED_RESOURCE)
 
         result = webview.get_html(HTML_RENAMED_RESOURCE, selector="h1")
         assert result["frame"] == "#preview-iframe"

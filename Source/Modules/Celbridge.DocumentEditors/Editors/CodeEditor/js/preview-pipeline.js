@@ -1,7 +1,8 @@
 // Orchestrates the editor-and-preview experience. Owns the preview iframe
 // controller, the view-mode layout controller, the divider drag handler,
-// and the wiring that keeps the preview pane up to date with the editor or,
-// for a renderer that shows the saved file, with the file on disk.
+// and the wiring that keeps the preview pane up to date with the editor.
+// A renderer that shows the saved file loads it when the document opens or
+// moves, and otherwise only when the user reloads it.
 //
 // Only instantiated when a document's options supply a preview_renderer_url,
 // so plain code documents never construct this pipeline and pay no
@@ -11,7 +12,11 @@ import { PreviewController } from './preview-controller.js';
 import { ViewModeController, ViewMode } from './view-mode-controller.js';
 import { attachSplitter } from '/assets/celbridge-client/ui/splitter.js';
 import { projectUrl } from '/assets/celbridge-client/api/document-api.js';
-import { updateViewModeButtons, syncSnippetButtonForViewMode } from './toolbar.js';
+import {
+    setToolbarViewMode,
+    setToolbarPreviewStale,
+    showToolbarReloadButton
+} from './toolbar.js';
 
 export class PreviewPipeline {
     #initialViewMode;
@@ -26,6 +31,14 @@ export class PreviewPipeline {
 
     // Settles once the renderer has loaded, or has failed to load.
     #rendererSettled = Promise.resolve();
+
+    // Set when the user reloads while edits are still unsaved. The preview reloads once a save has written them
+    // all, so it shows them.
+    #isReloadAwaitingSave = false;
+
+    // The editor's version id of the text the file held when the preview last loaded it, or null before the
+    // first load.
+    #loadedVersionId = null;
 
     constructor({
         editorController,
@@ -43,8 +56,7 @@ export class PreviewPipeline {
             previewPane: panes.previewPane,
             onLayoutChanged: () => editorController.layout(),
             onModeChanged: (mode) => {
-                updateViewModeButtons(mode);
-                syncSnippetButtonForViewMode(mode);
+                setToolbarViewMode(mode);
                 editorController.setHidden(mode === ViewMode.Preview);
             }
         });
@@ -74,6 +86,7 @@ export class PreviewPipeline {
         editorController.onContentChanged(() => {
             // A renderer that shows the saved file does not use the buffer, so skip copying it on every edit.
             if (this.#previewController.canRefresh()) {
+                this.#syncStale();
                 return;
             }
 
@@ -97,6 +110,13 @@ export class PreviewPipeline {
 
     async #attachRenderer(rendererUrl) {
         await this.#previewController.setRenderer(rendererUrl);
+
+        // A renderer that shows the saved file changes only when it is reloaded, so it gets the reload button.
+        // A renderer of the buffer follows every edit and never needs one.
+        if (this.#previewController.canRefresh()) {
+            showToolbarReloadButton(this.#viewModeController.getMode());
+            this.#syncStale();
+        }
 
         // Scroll sync is only wired for a renderer that maps its output to source lines, so the controller
         // never holds a scroll target it cannot apply.
@@ -134,10 +154,16 @@ export class PreviewPipeline {
         await this.#rendererSettled;
     }
 
+    // A preview of the buffer renders the new content. A preview of the saved file waits to be reloaded, unless
+    // the user asked for a reload that was waiting on a save, which the change on disk has dropped.
     handleExternalReload(content, resourceKey) {
         this.#setResourceKey(resourceKey);
         this.#previewController.render(content || '');
-        this.#updatePreview();
+
+        if (this.#isReloadAwaitingSave) {
+            this.#isReloadAwaitingSave = false;
+            this.#updatePreview();
+        }
     }
 
     // Called when a rename or a move gives the open document a new name and path. A preview of the saved file
@@ -156,8 +182,27 @@ export class PreviewPipeline {
         this.#updatePreview();
     }
 
-    // Called once a save made by the editor has reached disk.
+    // Called once a save made by the editor has reached disk. The preview does not follow saves, so this only
+    // completes a reload that was waiting, and only once the save has left no edit unsaved.
     handleSaved() {
+        if (!this.#isReloadAwaitingSave ||
+            this.#editorController.hasUnsavedEdits()) {
+            return;
+        }
+
+        this.#isReloadAwaitingSave = false;
+        this.#updatePreview();
+    }
+
+    // Called when the user reloads the preview. The frame goes back to the document even when the page has
+    // navigated itself somewhere else. The host saves only after the document has gone a second without
+    // changing, so while edits are unsaved the reload waits for the save that includes them.
+    reload() {
+        if (this.#editorController.hasUnsavedEdits()) {
+            this.#isReloadAwaitingSave = true;
+            return;
+        }
+
         this.#updatePreview();
     }
 
@@ -201,14 +246,26 @@ export class PreviewPipeline {
         this.#documentUrl = projectUrl(resourceKey);
     }
 
-    // Reloads a preview of the saved file. It reloads even while Source mode hides it, so it always shows the
-    // saved file.
+    // Loads the saved file into a preview of it, at the document's current address.
     #updatePreview() {
         if (this.#documentUrl === null) {
             return;
         }
 
         this.#previewController.refresh(this.#documentUrl);
+        this.#loadedVersionId = this.#editorController.getSavedVersionId();
+        this.#syncStale();
+    }
+
+    // A preview of the saved file is stale while the buffer differs from the text it last loaded. An undo
+    // back to that text makes it current again. A change to a file the page links does not count, since
+    // the document watches only its own file.
+    #syncStale() {
+        const isStale = this.#previewController.canRefresh() &&
+            this.#loadedVersionId !== null &&
+            this.#editorController.getVersionId() !== this.#loadedVersionId;
+
+        setToolbarPreviewStale(isStale);
     }
 
     #attachDivider(dividerElement) {

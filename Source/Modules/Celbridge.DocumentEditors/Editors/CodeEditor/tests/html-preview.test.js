@@ -44,9 +44,18 @@ function createPage() {
 function createFrame() {
     const loadListeners = [];
     const attributes = new Map();
+    let src = 'about:blank';
 
     return {
-        src: 'about:blank',
+        // Every URL the frame's src was set to. A browser navigates on each one, even one the src already names.
+        navigations: [],
+        get src() {
+            return src;
+        },
+        set src(url) {
+            src = url;
+            this.navigations.push(url);
+        },
         clientHeight: 400,
         contentDocument: createPage(),
         addEventListener(type, listener) {
@@ -111,6 +120,18 @@ describe('HTML preview module', () => {
         previewModule.refresh(pageUrl);
 
         expect(frame.src).toBe(pageUrl);
+    });
+
+    it('navigates the frame back to the file after the page has navigated it elsewhere', () => {
+        previewModule.refresh(pageUrl);
+        frame.loadPage();
+
+        // The page navigates itself, and the new page loads. The frame's src still names the file.
+        frame.loadPage();
+        previewModule.refresh(pageUrl);
+
+        expect(frame.navigations).toEqual([pageUrl, pageUrl]);
+        expect(frame.getAttribute('aria-busy')).toBe('true');
     });
 
     it('marks the frame as the content frame once it shows the page', () => {

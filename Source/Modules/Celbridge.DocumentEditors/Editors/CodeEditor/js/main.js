@@ -133,6 +133,7 @@ async function initialize() {
         showSnippets: options.enableSnippetToolbar,
         snippetSet: options.snippetSet,
         viewModeController: previewPipeline?.viewModeController ?? null,
+        onReloadPreview: () => previewPipeline?.reload(),
         onInsertSnippet: (text) => editorController.insertText(text)
     });
 

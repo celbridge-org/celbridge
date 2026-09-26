@@ -24,7 +24,7 @@ public sealed partial class CustomUtilityView : UserControl, IWorkspaceItem
     // The utility's id, set on Bind. Used by the dock orchestration to address this panel.
     private EditorId _utilityId = EditorId.Empty;
 
-    // The document area the "Open as document" control docks into, resolved from the utility's declaration
+    // The document area the "Open as Document" control docks into, resolved from the utility's declaration
     // on Bind. Null when the utility declares no document area, in which case the control is hidden.
     private WorkspaceArea? _openAsDocumentArea;
 

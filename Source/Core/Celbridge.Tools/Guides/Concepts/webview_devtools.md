@@ -55,7 +55,7 @@ To inspect an image already in the project tree, use `file_read_image` (JPEG, PN
 
 Every inspection and eval tool waits up to 5 seconds for the editor's content-ready signal, `celbridge.notifyContentLoaded()`, before dispatching. A document opened in the background may not signal until its tab is shown, so activate it first with `document_activate` or `document_open` with `activate: true`. On a document that is showing, a `content-ready` timeout means the editor never signalled — check the console for an unhandled exception during init.
 
-A call that acts on a frame then waits up to 5 seconds more for the frame to finish loading its page. The HTML editor reloads its preview after each save and each change on disk, so a call made just after a change waits for the new page.
+A call that acts on a frame then waits up to 5 seconds more for the frame to finish loading its page. The HTML editor's preview does not follow saves or changes on disk. It loads the file when the document opens or moves, and when it is reloaded, by the user's Reload button or by `webview_reload`. After writing the page or a file it uses, call `webview_reload` before inspecting it. A call made just after a reload waits for the new page.
 
 ## What a page is waiting for
 

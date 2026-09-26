@@ -1,8 +1,8 @@
 // HTML preview module.
 // Shows the document by pointing the preview frame at the file's URL on the loopback server. The page loads
 // exactly as it is served, so its scripts run, its relative assets resolve and it sees its real location.
-// The frame shows the saved file, not the editor buffer, and reloads when the pipeline calls refresh after a
-// save or an external change.
+// The frame shows the saved file, not the editor buffer. It loads it when the pipeline calls refresh: when the
+// document opens or moves, and when the user reloads the preview.
 //
 // There is no scroll sync with the source, so scrollToSourceLine and getTopSourceLine are left out. Mapping
 // rendered HTML back to source lines would require rewriting the markup, and the preview would then no

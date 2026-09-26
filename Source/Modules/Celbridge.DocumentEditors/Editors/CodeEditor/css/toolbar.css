@@ -86,6 +86,21 @@
     cursor: default;
 }
 
+/* The preview is older than the source, so a reload would change what it shows. The fill matches the app's
+   other reload-to-apply buttons: Reload Project in Project Settings and the console's Reopen button. */
+.toolbar-btn.is-stale {
+    background-color: var(--cel-accent);
+    color: var(--cel-accent-text);
+}
+
+.toolbar-btn.is-stale:hover:not(:disabled) {
+    background-color: var(--cel-accent-hover);
+}
+
+.toolbar-btn.is-stale:active:not(:disabled) {
+    background-color: var(--cel-accent-pressed);
+}
+
 /* A flyout over the document rather than a band of chrome, so it takes the panel edge that bounds a floating
    object and a shadow to lift it off the canvas. */
 .snippet-menu {

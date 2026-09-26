@@ -1,9 +1,12 @@
-// Wires up the in-HTML editor toolbar: view-mode buttons and the optional
-// snippet insertion menu. Both are plain DOM — no framework.
+// Wires up the in-HTML editor toolbar: view-mode buttons, the optional button
+// that reloads the preview, and the optional snippet insertion menu. All are
+// plain DOM — no framework.
 //
 // The toolbar elements are declared in index.html and are hidden by default
 // via CSS. initializeToolbar() reveals whichever sections the package options
-// have activated and attaches click handlers.
+// have activated and attaches click handlers. The reload button waits for
+// showToolbarReloadButton(), since only the preview's renderer knows whether
+// it needs one.
 
 import { ViewMode } from './view-mode-controller.js';
 import { t } from '/assets/celbridge-client/localization.js';
@@ -23,6 +26,7 @@ export function initializeToolbar({
     showSnippets,
     snippetSet,
     viewModeController,
+    onReloadPreview,
     onInsertSnippet
 }) {
     const toolbar = document.getElementById('toolbar');
@@ -31,6 +35,7 @@ export function initializeToolbar({
     }
 
     const viewModePanel = document.getElementById('view-mode-panel');
+    const previewReloadButton = document.getElementById('preview-reload-button');
     const snippetPanel = document.getElementById('snippet-panel');
     const snippetButton = document.getElementById('snippet-button');
     const snippetMenu = document.getElementById('snippet-menu');
@@ -51,6 +56,12 @@ export function initializeToolbar({
         attachViewModeButtons(viewModeController);
     }
 
+    if (onReloadPreview && previewReloadButton) {
+        previewReloadButton.addEventListener('click', () => {
+            onReloadPreview();
+        });
+    }
+
     if (hasSnippets) {
         snippetPanel.hidden = false;
         if (snippetSeparator && hasViewMode) {
@@ -62,13 +73,49 @@ export function initializeToolbar({
 }
 
 /**
- * Syncs the snippet button's disabled state with the current view mode.
- * The snippet inserter has nowhere to insert into when the editor pane is
- * hidden, so the button goes disabled in Preview mode.
+ * Updates the toolbar for the active view mode. The view-mode buttons show
+ * which mode is active. The reload button is disabled in Source mode, where
+ * the preview is hidden, and the snippet button is disabled in Preview mode,
+ * where the editor is hidden.
  */
-export function syncSnippetButtonForViewMode(activeMode) {
+export function setToolbarViewMode(activeMode) {
+    updateViewModeButtons(activeMode);
+    syncReloadButton(activeMode);
     snippetButtonViewMode = activeMode;
     syncSnippetButton();
+}
+
+/**
+ * Shows the reload button, for a preview that changes only when it is
+ * reloaded. Its disabled state follows the active view mode from the start.
+ */
+export function showToolbarReloadButton(activeMode) {
+    const panel = document.getElementById('preview-reload-panel');
+    if (!panel) {
+        return;
+    }
+
+    panel.hidden = false;
+
+    const viewModePanel = document.getElementById('view-mode-panel');
+    const separator = document.getElementById('preview-reload-separator');
+    if (separator && viewModePanel && !viewModePanel.hidden) {
+        separator.hidden = false;
+    }
+
+    syncReloadButton(activeMode);
+}
+
+/**
+ * Marks the reload button while the preview is older than the source, so a
+ * reload would change what it shows.
+ */
+export function setToolbarPreviewStale(isStale) {
+    const button = document.getElementById('preview-reload-button');
+    if (!button) {
+        return;
+    }
+    button.classList.toggle('is-stale', isStale === true);
 }
 
 /**
@@ -87,6 +134,15 @@ export function setToolbarReadOnly(isReadOnly) {
             closeMenu(snippetMenu);
         }
     }
+}
+
+// A reload can only be seen while the preview shows.
+function syncReloadButton(activeMode) {
+    const button = document.getElementById('preview-reload-button');
+    if (!button) {
+        return;
+    }
+    button.disabled = activeMode === ViewMode.Source;
 }
 
 function syncSnippetButton() {
@@ -119,12 +175,8 @@ function attachViewModeButtons(viewModeController) {
     updateViewModeButtons(viewModeController.getMode());
 }
 
-/**
- * Updates the view-mode toolbar buttons to reflect the active mode.
- * Exported so main.js can sync the buttons after programmatic mode changes
- * (e.g., the initial mode applied from package options, or state restore).
- */
-export function updateViewModeButtons(activeMode) {
+// Shows the active view mode as the pressed button.
+function updateViewModeButtons(activeMode) {
     const mapping = {
         [ViewMode.Source]: 'view-mode-source',
         [ViewMode.Split]: 'view-mode-split',
