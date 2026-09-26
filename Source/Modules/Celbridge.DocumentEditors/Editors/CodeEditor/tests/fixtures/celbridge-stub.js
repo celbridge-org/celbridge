@@ -8,6 +8,9 @@ export const __capturedHandlers = {};
 // Every availability report the editor sends, newest last.
 export const __capturedEditAvailability = [];
 
+// Every document or window the editor asked the client to watch for the reload keys, oldest first.
+export const __reloadKeyTargets = [];
+
 const celbridge = {
     options: {},
     // Reports to the host are gated on this, so a test opts in before asserting on them.
@@ -28,7 +31,9 @@ const celbridge = {
     },
     input: {
         notifyLinkClicked: () => {},
-        notifyEditAvailability: (availability) => { __capturedEditAvailability.push(availability); }
+        notifyEditAvailability: (availability) => { __capturedEditAvailability.push(availability); },
+        onReloadKey: (handler) => { __capturedHandlers.onReloadKey = handler; },
+        watchReloadKeys: (target) => { __reloadKeyTargets.push(target); }
     },
     initializeDocument: async (handlers) => {
         Object.assign(__capturedHandlers, handlers);

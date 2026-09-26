@@ -9,7 +9,7 @@ import celbridge from '/assets/celbridge-client/celbridge.js';
 import { EditorController } from './editor-controller.js';
 import { ViewMode } from './view-mode-controller.js';
 import { PreviewPipeline } from './preview-pipeline.js';
-import { initializeToolbar, setToolbarReadOnly } from './toolbar.js';
+import { initializeToolbar, pressToolbarReloadButton, setToolbarReadOnly } from './toolbar.js';
 import { initializeLanguageMap, getLanguageForFile } from './language-mapper.js';
 import { log, warn } from './logger.js';
 
@@ -166,6 +166,11 @@ async function initialize() {
     // nothing focused, as when the document first opens.
     celbridge.onNotification('input/grantFocus', () => {
         editorController.focusIfVacant();
+    });
+
+    // F5 does what the preview's Reload button does, and nothing where the button is hidden or disabled.
+    celbridge.input.onReloadKey(() => {
+        pressToolbarReloadButton();
     });
 
     // The host's Find menu item lands here, so it opens the same find Command+F does.

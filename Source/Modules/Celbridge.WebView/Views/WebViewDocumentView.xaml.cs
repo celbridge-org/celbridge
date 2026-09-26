@@ -221,6 +221,12 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
         try
         {
             _webView = await _webViewFactory.AcquireAsync();
+
+            // A page with no background of its own sits on a white canvas, as it does in a browser. The
+            // factory's transparent default would show the app behind it, which leaves the page's default
+            // black text on the dark theme.
+            _webView.DefaultBackgroundColor = Colors.White;
+
             AppWebViewContainer.Children.Add(_webView);
 
             // Attach and detach are what a tab switch does to the surface, so both are logged with the state

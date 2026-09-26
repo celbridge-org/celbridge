@@ -107,6 +107,20 @@ export function showToolbarReloadButton(activeMode) {
 }
 
 /**
+ * Presses the reload button for a key that means reload. Does nothing while
+ * the button is hidden or disabled, so the key reloads only what a click
+ * would.
+ */
+export function pressToolbarReloadButton() {
+    const panel = document.getElementById('preview-reload-panel');
+    const button = document.getElementById('preview-reload-button');
+    if (!panel || panel.hidden || !button || button.disabled) {
+        return;
+    }
+    button.click();
+}
+
+/**
  * Marks the reload button while the preview is older than the source, so a
  * reload would change what it shows.
  */

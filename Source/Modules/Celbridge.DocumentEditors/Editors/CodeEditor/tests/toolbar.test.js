@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
     initializeToolbar,
+    pressToolbarReloadButton,
     setToolbarPreviewStale,
     setToolbarReadOnly,
     setToolbarViewMode,
@@ -199,5 +200,38 @@ describe('toolbar preview reload', () => {
         setToolbarReadOnly(true);
 
         expect(document.getElementById('preview-reload-button').disabled).toBe(false);
+    });
+
+    it('reloads the preview for a reload key', () => {
+        const onReloadPreview = vi.fn();
+        initWithPreviewReload(ViewMode.Split, onReloadPreview);
+
+        pressToolbarReloadButton();
+
+        expect(onReloadPreview).toHaveBeenCalledOnce();
+    });
+
+    it('ignores a reload key while Source mode disables the button', () => {
+        const onReloadPreview = vi.fn();
+        initWithPreviewReload(ViewMode.Source, onReloadPreview);
+
+        pressToolbarReloadButton();
+
+        expect(onReloadPreview).not.toHaveBeenCalled();
+    });
+
+    it('ignores a reload key while the button is hidden', () => {
+        const onReloadPreview = vi.fn();
+        initializeToolbar({
+            showViewMode: true,
+            showSnippets: false,
+            viewModeController: fakeViewModeController(ViewMode.Preview),
+            onReloadPreview,
+            onInsertSnippet: vi.fn()
+        });
+
+        pressToolbarReloadButton();
+
+        expect(onReloadPreview).not.toHaveBeenCalled();
     });
 });

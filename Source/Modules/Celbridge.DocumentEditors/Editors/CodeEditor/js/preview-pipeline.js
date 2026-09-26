@@ -8,6 +8,7 @@
 // so plain code documents never construct this pipeline and pay no
 // preview-related cost at runtime.
 
+import celbridge from '/assets/celbridge-client/celbridge.js';
 import { PreviewController } from './preview-controller.js';
 import { ViewModeController, ViewMode } from './view-mode-controller.js';
 import { attachSplitter } from '/assets/celbridge-client/ui/splitter.js';
@@ -61,13 +62,20 @@ export class PreviewPipeline {
             }
         });
 
-        // Focus entering the preview raises no focus event in this document, so the editor would keep
-        // claiming the clipboard while the preview's find bar holds the keyboard. Reattached on each load,
-        // which replaces the iframe's document.
+        // Focus and keys inside the preview raise no events in this document. Without the focus event the
+        // editor would keep claiming the clipboard while the preview's find bar holds the keyboard. Without
+        // the keys, F5 in the preview would reload the whole editor page. Reattached on each load, which
+        // replaces the iframe's document.
         panes.previewIframe?.addEventListener('load', () => {
-            panes.previewIframe.contentDocument?.addEventListener(
+            const frameDocument = panes.previewIframe.contentDocument;
+            if (!frameDocument) {
+                return;
+            }
+
+            frameDocument.addEventListener(
                 'focusin',
                 () => editorController.refreshEditAvailability());
+            celbridge.input.watchReloadKeys(frameDocument);
         });
 
         this.#previewController = new PreviewController(panes.previewIframe, {

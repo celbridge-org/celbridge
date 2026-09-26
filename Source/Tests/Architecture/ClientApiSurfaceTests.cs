@@ -45,7 +45,9 @@ public class ClientApiSurfaceTests
             "notifyEditAvailability",
             "notifyLinkClicked",
             "notifyShortcut",
-            "requestEdit"
+            "onReloadKey",
+            "requestEdit",
+            "watchReloadKeys"
         },
         ["api/localization-api.js"] = new[]
         {

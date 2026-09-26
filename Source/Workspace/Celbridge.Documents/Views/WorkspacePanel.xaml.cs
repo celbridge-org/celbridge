@@ -1259,6 +1259,8 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
             documentTab.ViewModel.DocumentName = newResource.ResourceName;
         }
 
+        SectionContainer.HandleDocumentRenamed(oldResource, newResource);
+
         // Update all tab names to handle any filename ambiguity changes
         UpdateAllTabDisplayNames();
 

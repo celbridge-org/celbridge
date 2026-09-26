@@ -1,4 +1,5 @@
-// Input API: User input notifications (keyboard shortcuts, link clicks, edit availability).
+// Input API: User input notifications (keyboard shortcuts, link clicks, edit availability), and the reload
+// keys a hosted page keeps from its WebView.
 
 /**
  * Input events API.
@@ -7,11 +8,49 @@ export class InputAPI {
     /** @type {import('../core/rpc-transport.js').RpcTransport} */
     #transport;
 
+    /** @type {Function|null} */
+    #reloadKeyHandler = null;
+
+    /** @type {WeakSet<EventTarget>} */
+    #reloadKeyTargets = new WeakSet();
+
     /**
      * @param {import('../core/rpc-transport.js').RpcTransport} transport
      */
     constructor(transport) {
         this.#transport = transport;
+    }
+
+    /**
+     * Registers the handler for F5, which the WebView would otherwise take as a reload of the whole page.
+     * The client keeps the reload keys, F5, Ctrl+R and Ctrl+Shift+R, from reloading a hosted page with or
+     * without a handler, because a reloaded page loses its state and its session with the host. A later
+     * handler replaces an earlier one.
+     * @param {Function} handler - Called with no arguments when F5 is pressed and nothing on the page took it.
+     */
+    onReloadKey(handler) {
+        this.#reloadKeyHandler = typeof handler === 'function' ? handler : null;
+    }
+
+    /**
+     * Keeps the reload keys pressed inside a document or window from reloading the page. The client watches
+     * its own page. A key pressed inside a same-origin frame never reaches the page around it, so call this
+     * for each document the frame loads. Does nothing in a page opened outside the host, where the keys keep
+     * their browser meaning.
+     * @param {EventTarget} target - The document or window to watch.
+     */
+    watchReloadKeys(target) {
+        if (!this.#transport.isHosted ||
+            typeof target?.addEventListener !== 'function' ||
+            this.#reloadKeyTargets.has(target)) {
+            return;
+        }
+
+        this.#reloadKeyTargets.add(target);
+
+        // The key reaches this listener after the page's own handlers, so a control that takes a reload key
+        // for itself keeps it, as a terminal does with F5.
+        target.addEventListener('keydown', (event) => this.#onReloadKeyDown(event));
     }
 
     /**
@@ -92,4 +131,30 @@ export class InputAPI {
     requestEdit(command) {
         return this.#transport.request('input/requestEdit', { command });
     }
+
+    #onReloadKeyDown(event) {
+        if (event.defaultPrevented || !isReloadKey(event)) {
+            return;
+        }
+
+        event.preventDefault();
+
+        if (event.key === 'F5' && !event.repeat) {
+            this.#reloadKeyHandler?.();
+        }
+    }
+}
+
+// The keys a browser takes as a reload of the page: F5 with or without a modifier, and Ctrl+R with or
+// without Shift.
+function isReloadKey(event) {
+    if (event.key === 'F5') {
+        return true;
+    }
+
+    return event.ctrlKey &&
+        !event.altKey &&
+        !event.metaKey &&
+        typeof event.key === 'string' &&
+        event.key.toLowerCase() === 'r';
 }

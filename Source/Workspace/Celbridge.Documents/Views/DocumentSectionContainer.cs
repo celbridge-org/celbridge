@@ -27,7 +27,12 @@ public enum ActiveDocumentChangeReason
     /// <summary>
     /// The document's own surface reported that it took the keyboard, which makes it the active document.
     /// </summary>
-    Focused
+    Focused,
+
+    /// <summary>
+    /// The active document's file was renamed or moved, so the same document is active under its new name.
+    /// </summary>
+    Renamed
 }
 
 /// <summary>
@@ -215,6 +220,24 @@ public sealed partial class DocumentSectionContainer
             UpdateTabSelectionIndicators();
             ActiveDocumentChanged?.Invoke(_activeDocument, ActiveDocumentChangeReason.Activated);
         }
+    }
+
+    /// <summary>
+    /// Keeps a renamed or moved document active under its new name, once its tab has taken that name. Does
+    /// nothing when the document was not the active one.
+    /// </summary>
+    public void HandleDocumentRenamed(ResourceKey oldResource, ResourceKey newResource)
+    {
+        if (oldResource != _activeDocument
+            || newResource == _activeDocument)
+        {
+            return;
+        }
+
+        _activeDocument = newResource;
+
+        UpdateTabSelectionIndicators();
+        ActiveDocumentChanged?.Invoke(_activeDocument, ActiveDocumentChangeReason.Renamed);
     }
 
     /// <summary>

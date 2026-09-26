@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { PreviewPipeline } from '../js/preview-pipeline.js';
 import { PreviewController } from '../js/preview-controller.js';
 import { ViewMode } from '../js/view-mode-controller.js';
+import { __reloadKeyTargets } from './fixtures/celbridge-stub.js';
 
 const splitRootWidth = 1000;
 const editorPaneWidth = 500;
@@ -113,6 +114,11 @@ describe('PreviewPipeline divider', () => {
         expect(editorController.refreshEditAvailability).toHaveBeenCalled();
     });
 
+    it('watches the reload keys in the document the preview loads', () => {
+        iframe.dispatchEvent(new Event('load'));
+
+        expect(__reloadKeyTargets).toContain(iframe.contentDocument);
+    });
 });
 
 function createPanes() {

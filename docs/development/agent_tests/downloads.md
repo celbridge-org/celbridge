@@ -30,7 +30,7 @@ Clear All.
 | A download running from a `.webview` document | close the document's tab | the download stops, its row says the transfer stopped with the document, and nothing is left in `downloads/` or the staging folder | 3 |
 | Two downloads of the same file started together | start both | two files under distinct names, neither overwritten | 3 |
 | An HTML document offering a file the page builds itself, and a `download` link that asks for a new window | click each | both land in `downloads/`, and no browser opens | 3 |
-| An HTML document with a plain link to a response from another server marked as an attachment | click the link | the address goes to the system browser with no prompt, and nothing lands in `downloads/` | 3 |
+| An HTML document with a plain link to a response from another server marked as an attachment | click the link | the address goes to the system browser with no prompt, the browser downloads the file itself, and nothing lands in `downloads/` | 3 |
 | A page with a link and an image | use the context menu's download or save items on each | on Windows, Save As writes where its picker names, adding a row only when that is the downloads folder its picker opened on; on macOS, Download Linked File and Download Image land in `downloads/` | 3 |
 | A completed download | delete its file in the Explorer | its row leaves the list and the count drops, and the badge goes with the last row | 3 |
 | The list open with the keyboard on a running row's cancel button | let that download finish | the list stays open, and the keyboard stays on that row, which now finds the file | 3 |
@@ -67,7 +67,10 @@ launching or reload the project after.
 Read outcomes from disk rather than from the list: what landed in the downloads folder and its bytes, the
 operating system's Downloads folder, and the staging folder, `.celbridge/temp/downloads/`, which is empty
 once nothing is settling. A running transfer can leave it empty too, since the platform holds the file
-elsewhere until it lands, so read the staging folder after a download has ended rather than during one. The
+elsewhere until it lands, so read the staging folder after a download has ended rather than during one.
+An attachment on another server goes to the system browser, which downloads it into the operating
+system's Downloads folder and may leave a partial file there for a while. Expect that download, and check
+the Downloads folder once the run ends. The
 list is the application's own chrome, so find rows with a screenshot and prove what they did with the
 files.
 

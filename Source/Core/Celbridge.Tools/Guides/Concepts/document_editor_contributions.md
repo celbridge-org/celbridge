@@ -401,6 +401,13 @@ client.onNotification('input/grantFocus', () => {
 
 A grant can arrive before the page can act on it, so the host sends it again once the page reports content loaded, if the surface still holds the keyboard. Register the handler before calling `initializeDocument`, which reports content loaded as it finishes. Precedent: `EditorController.focusIfVacant` in `Source/Modules/Celbridge.DocumentEditors/Editors/CodeEditor/js/editor-controller.js`.
 
+## Reload keys
+
+WebView2 reloads a page on F5, Ctrl+R and Ctrl+Shift+R, and a reloaded editor page loses its state and its session with the host. From the moment the client is created, it cancels those keys on your page. A control that cancels a key itself keeps it, the way a terminal sends F5 to its shell.
+
+- **F5 can mean something in your editor.** Register `client.input.onReloadKey(handler)` and the client calls it when F5 reaches the page. The HTML editor presses its Reload Preview button.
+- **A key pressed inside a same-origin frame never reaches your page.** Pass each document the frame loads to `client.input.watchReloadKeys(frameDocument)`. The frame's window survives its navigations but its listeners do not, so watch the document on every `load`.
+
 ## Writability rides `cel.viewState`
 
 Writability is not a document handler — it is per-view host state on the `cel.viewState` store, alongside any other state the host replicates per view. Subscribe with `client.viewState.onChanged(viewState => ...)` and read `viewState.writable`. The host seeds the value before the view connects, so a handler registered at startup (after your editor surface exists) receives the current value before content is applied, and again whenever it changes mid-session. `viewState.writable` is one of:

@@ -161,6 +161,12 @@ export class Celbridge {
             restoreBlurredElement();
         });
 
+        // WebView2 reloads the page on F5 and Ctrl+R unless the page cancels the key, and the reloaded page
+        // comes back without its state or its session with the host.
+        if (typeof window !== 'undefined') {
+            this.input.watchReloadKeys(window);
+        }
+
         // At runtime the host delivers the capability context over the bridge, so it stays empty here until
         // ready() fetches it via host/getContext. A context provided up front via constructor options
         // short-circuits that fetch and is read here — used by tests and embedders.
