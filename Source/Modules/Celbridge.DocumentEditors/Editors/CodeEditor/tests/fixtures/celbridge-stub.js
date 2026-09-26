@@ -8,8 +8,8 @@ export const __capturedHandlers = {};
 // Every availability report the editor sends, newest last.
 export const __capturedEditAvailability = [];
 
-// Every document or window the editor asked the client to watch for the reload keys, oldest first.
-export const __reloadKeyTargets = [];
+// Every document or window the editor asked the client to watch for the shortcut keys, oldest first.
+export const __shortcutKeyTargets = [];
 
 const celbridge = {
     options: {},
@@ -33,7 +33,7 @@ const celbridge = {
         notifyLinkClicked: () => {},
         notifyEditAvailability: (availability) => { __capturedEditAvailability.push(availability); },
         onReloadKey: (handler) => { __capturedHandlers.onReloadKey = handler; },
-        watchReloadKeys: (target) => { __reloadKeyTargets.push(target); }
+        watchShortcutKeys: (target) => { __shortcutKeyTargets.push(target); }
     },
     initializeDocument: async (handlers) => {
         Object.assign(__capturedHandlers, handlers);

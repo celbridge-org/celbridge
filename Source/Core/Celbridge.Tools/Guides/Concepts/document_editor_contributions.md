@@ -401,12 +401,12 @@ client.onNotification('input/grantFocus', () => {
 
 A grant can arrive before the page can act on it, so the host sends it again once the page reports content loaded, if the surface still holds the keyboard. Register the handler before calling `initializeDocument`, which reports content loaded as it finishes. Precedent: `EditorController.focusIfVacant` in `Source/Modules/Celbridge.DocumentEditors/Editors/CodeEditor/js/editor-controller.js`.
 
-## Reload keys
+## Shortcut keys
 
-WebView2 reloads a page on F5, Ctrl+R and Ctrl+Shift+R, and a reloaded editor page loses its state and its session with the host. From the moment the client is created, it cancels those keys on your page. A control that cancels a key itself keeps it, the way a terminal sends F5 to its shell.
+WebView2 reloads a page on F5, Ctrl+R and Ctrl+Shift+R, and a reloaded editor page loses its state and its session with the host. It also keeps a key typed in the page from the application, so on Windows the close shortcuts, Ctrl+W and Ctrl+Shift+W, would never reach it. From the moment the client is created, it cancels the reload keys on your page and sends the close shortcuts to the host. On macOS the host catches Command+W before the page sees it, so the client leaves Control+W alone there. A control that cancels a key itself keeps it, the way a terminal sends F5 and Ctrl+W to its shell.
 
 - **F5 can mean something in your editor.** Register `client.input.onReloadKey(handler)` and the client calls it when F5 reaches the page. The HTML editor presses its Reload Preview button.
-- **A key pressed inside a same-origin frame never reaches your page.** Pass each document the frame loads to `client.input.watchReloadKeys(frameDocument)`. The frame's window survives its navigations but its listeners do not, so watch the document on every `load`.
+- **A key pressed inside a same-origin frame never reaches your page.** Pass each document the frame loads to `client.input.watchShortcutKeys(frameDocument)`. The frame's window survives its navigations but its listeners do not, so watch the document on every `load`.
 
 ## Writability rides `cel.viewState`
 

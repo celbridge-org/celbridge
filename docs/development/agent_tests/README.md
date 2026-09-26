@@ -121,6 +121,10 @@ app. Several
 cases turn on it, so send it with `app_simulate_input` instead and treat a missing Escape as a limit of the
 harness, not a defect — unless an equivalent route shows the app is at fault.
 
+**A chord needs a real key press on Windows.** `app_simulate_input` refuses modifiers there. Send the
+chord as operating-system key presses with the application in the foreground, and prove the keys arrived
+with a keydown logger in the page, since a swallowed key and one that never arrived look the same.
+
 **A modal dialog holds the command queue.** Every queued tool waits until the dialog is answered, so a run
 that raises one unexpectedly appears to hang. Answer it — `Escape` cancels and `Return` accepts through
 `app_simulate_input`, which runs outside the queue — or schedule `app_answer_dialog` before the step that

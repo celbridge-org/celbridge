@@ -64,8 +64,8 @@ export class PreviewPipeline {
 
         // Focus and keys inside the preview raise no events in this document. Without the focus event the
         // editor would keep claiming the clipboard while the preview's find bar holds the keyboard. Without
-        // the keys, F5 in the preview would reload the whole editor page. Reattached on each load, which
-        // replaces the iframe's document.
+        // the keys, F5 in the preview would reload the whole editor page and Ctrl+W would not close the
+        // document. Reattached on each load, which replaces the iframe's document.
         panes.previewIframe?.addEventListener('load', () => {
             const frameDocument = panes.previewIframe.contentDocument;
             if (!frameDocument) {
@@ -75,7 +75,7 @@ export class PreviewPipeline {
             frameDocument.addEventListener(
                 'focusin',
                 () => editorController.refreshEditAvailability());
-            celbridge.input.watchReloadKeys(frameDocument);
+            celbridge.input.watchShortcutKeys(frameDocument);
         });
 
         this.#previewController = new PreviewController(panes.previewIframe, {

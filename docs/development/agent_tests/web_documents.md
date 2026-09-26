@@ -51,5 +51,9 @@ is at fault.
 On Windows the find bar can be reached only by its shortcut, since the menu's Edit and View submenus have
 no Find item. Reaching it by clicking as well applies to macOS only.
 
+On Windows the close shortcuts do nothing while the keyboard is in the page. A key typed in a page never
+reaches the application there, and the page runs no client to forward it. Ctrl+W works once the document's
+tab has the keyboard.
+
 The white canvas is a background the document gives its WebView. A page with no background that shows dark
 text on the dark theme on one head only means that head is not applying it.

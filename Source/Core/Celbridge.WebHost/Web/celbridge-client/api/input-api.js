@@ -1,4 +1,4 @@
-// Input API: User input notifications (keyboard shortcuts, link clicks, edit availability), and the reload
+// Input API: User input notifications (keyboard shortcuts, link clicks, edit availability), and the shortcut
 // keys a hosted page keeps from its WebView.
 
 /**
@@ -12,7 +12,7 @@ export class InputAPI {
     #reloadKeyHandler = null;
 
     /** @type {WeakSet<EventTarget>} */
-    #reloadKeyTargets = new WeakSet();
+    #shortcutKeyTargets = new WeakSet();
 
     /**
      * @param {import('../core/rpc-transport.js').RpcTransport} transport
@@ -33,24 +33,26 @@ export class InputAPI {
     }
 
     /**
-     * Keeps the reload keys pressed inside a document or window from reloading the page. The client watches
-     * its own page. A key pressed inside a same-origin frame never reaches the page around it, so call this
-     * for each document the frame loads. Does nothing in a page opened outside the host, where the keys keep
-     * their browser meaning.
+     * Keeps the shortcut keys working while they are pressed inside a document or window. The reload
+     * keys never reload the page. On Windows the close shortcuts, Ctrl+W and Ctrl+Shift+W, go to the host,
+     * since the WebView never passes a key typed in the page to the application. The client watches its own
+     * page. A key pressed inside a same-origin frame never reaches the page around it, so call this for each
+     * document the frame loads. Does nothing in a page opened outside the host, where the keys keep their
+     * browser meaning.
      * @param {EventTarget} target - The document or window to watch.
      */
-    watchReloadKeys(target) {
+    watchShortcutKeys(target) {
         if (!this.#transport.isHosted ||
             typeof target?.addEventListener !== 'function' ||
-            this.#reloadKeyTargets.has(target)) {
+            this.#shortcutKeyTargets.has(target)) {
             return;
         }
 
-        this.#reloadKeyTargets.add(target);
+        this.#shortcutKeyTargets.add(target);
 
-        // The key reaches this listener after the page's own handlers, so a control that takes a reload key
-        // for itself keeps it, as a terminal does with F5.
-        target.addEventListener('keydown', (event) => this.#onReloadKeyDown(event));
+        // The key reaches this listener after the page's own handlers, so a control that takes one of these
+        // keys for itself keeps it, as a terminal does with F5 and Ctrl+W.
+        target.addEventListener('keydown', (event) => this.#onShortcutKeyDown(event));
     }
 
     /**
@@ -64,9 +66,8 @@ export class InputAPI {
     }
 
     /**
-     * Notifies the host that a global keyboard shortcut was pressed in the editor.
-     * Use this to forward Celbridge-level shortcuts (e.g. Ctrl+W) when focus
-     * is inside the editor so the host can route them to IKeyboardShortcutService.
+     * Notifies the host that a global keyboard shortcut was pressed in the editor, so the host can route it
+     * to IKeyboardShortcutService. The client already forwards the close shortcuts from every watched page.
      * @param {string} key - The key name (e.g. "W", "F11").
      * @param {Object} [modifiers] - Modifier key state.
      * @param {boolean} [modifiers.ctrl] - Whether Ctrl (or Cmd on macOS) is pressed.
@@ -132,15 +133,26 @@ export class InputAPI {
         return this.#transport.request('input/requestEdit', { command });
     }
 
-    #onReloadKeyDown(event) {
-        if (event.defaultPrevented || !isReloadKey(event)) {
+    #onShortcutKeyDown(event) {
+        if (event.defaultPrevented) {
             return;
         }
 
-        event.preventDefault();
+        if (isReloadKey(event)) {
+            event.preventDefault();
 
-        if (event.key === 'F5' && !event.repeat) {
-            this.#reloadKeyHandler?.();
+            if (event.key === 'F5' && !event.repeat) {
+                this.#reloadKeyHandler?.();
+            }
+            return;
+        }
+
+        if (isCloseShortcut(event)) {
+            event.preventDefault();
+
+            if (!event.repeat) {
+                this.notifyShortcut('W', { ctrl: true, shift: event.shiftKey });
+            }
         }
     }
 }
@@ -157,4 +169,24 @@ function isReloadKey(event) {
         !event.metaKey &&
         typeof event.key === 'string' &&
         event.key.toLowerCase() === 'r';
+}
+
+// Ctrl+W, and Ctrl+Shift+W, which close the active document and every document in its section. macOS
+// closes them on Command+W, which its web view never passes to a page, so there Control+W is the page's own.
+function isCloseShortcut(event) {
+    return event.ctrlKey &&
+        !event.altKey &&
+        !event.metaKey &&
+        typeof event.key === 'string' &&
+        event.key.toLowerCase() === 'w' &&
+        !isMacOS();
+}
+
+function isMacOS() {
+    const navigatorInfo = globalThis.navigator;
+    const platform = navigatorInfo?.userAgentData?.platform ||
+        navigatorInfo?.platform ||
+        navigatorInfo?.userAgent ||
+        '';
+    return /mac/i.test(platform);
 }

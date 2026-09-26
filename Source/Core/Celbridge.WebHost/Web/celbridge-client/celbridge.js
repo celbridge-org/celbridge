@@ -162,9 +162,10 @@ export class Celbridge {
         });
 
         // WebView2 reloads the page on F5 and Ctrl+R unless the page cancels the key, and the reloaded page
-        // comes back without its state or its session with the host.
+        // comes back without its state or its session with the host. It also keeps Ctrl+W from the
+        // application, so the page forwards the close shortcuts itself.
         if (typeof window !== 'undefined') {
-            this.input.watchReloadKeys(window);
+            this.input.watchShortcutKeys(window);
         }
 
         // At runtime the host delivers the capability context over the bridge, so it stays empty here until
