@@ -34,6 +34,8 @@ button and the F5 key, and a document renamed while it is open.
 | Preview mode, with nothing in the page focused | paste | nothing changes, and in particular the hidden source is not edited | 3 |
 | A page that, a few seconds after a click, navigates itself to another project file, or opens one in a new window | let each happen, then click Reload | neither opens the file as a document or in a browser: the preview shows where the page went until Reload brings the document back, and the new window opens nowhere | 3 |
 | An open document | call `webview_get_html` | it returns the previewed page, not the editor around it | 3 |
+| A document whose file name holds `#` or `%` | open it | the preview shows that file | 3 |
+| A `mailto:` link in the previewed page | click it | the system's mail app opens a message to that address with no prompt, and the preview stays where it was | 3 |
 | A document in split mode with a dragged divider | close and reopen it | the mode and the split ratio are restored | 3 |
 | A document left in split mode | reopen it with the general code editor from the tab menu | it opens at the top in source mode, with nothing of the HTML editor's view carried over | 3 |
 

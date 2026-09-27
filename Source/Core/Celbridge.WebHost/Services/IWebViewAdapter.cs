@@ -94,10 +94,10 @@ public interface IWebViewAdapter
     void FocusWebView(WebView2 webView);
 
     /// <summary>
-    /// What the host has observed about this hosted page still working. Reads healthy on a head that does
-    /// not wake its pages, where that means nothing was observed rather than nothing was wrong.
+    /// What has been observed about whether the page in this WebView is still working. Reads healthy on a head
+    /// that does not wake its pages, where that means nothing was observed rather than nothing was wrong.
     /// </summary>
-    DocumentHealth GetHostedPageHealth(CoreWebView2 coreWebView2);
+    DocumentHealth GetPageHealth(CoreWebView2 coreWebView2);
 
     /// <summary>
     /// Evaluates a JavaScript expression and returns the JSON-encoded result. On the Skia heads common

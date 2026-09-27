@@ -929,7 +929,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
             return new DocumentHealth(0, _processFailures);
         }
 
-        var pageHealth = _webViewAdapter.GetHostedPageHealth(coreWebView2);
+        var pageHealth = _webViewAdapter.GetPageHealth(coreWebView2);
         return pageHealth with { ProcessFailures = pageHealth.ProcessFailures + _processFailures };
     }
 

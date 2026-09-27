@@ -204,14 +204,14 @@ describe('resolveLinkClick', () => {
         ['../index.html', '../index.html'],
         ['/assets/manual.pdf', '/assets/manual.pdf'],
         ['https://example.com/docs', 'https://example.com/docs'],
-        ['//example.com/docs', 'http://example.com/docs']
+        ['//example.com/docs', 'http://example.com/docs'],
+        ['mailto:someone@example.com', 'mailto:someone@example.com']
     ])('routes %j to the host', (href, routedHref) => {
         expect(resolveLinkClick(href, documentUrl, documentUrl))
             .toEqual({ action: LinkAction.Route, href: routedHref });
     });
 
     it.each([
-        'mailto:someone@example.com',
         'blob:http://127.0.0.1:5000/0b7c1a54',
         'data:text/plain,hello',
         'javascript:void(0)'
@@ -331,11 +331,20 @@ describe('PreviewController link clicks', () => {
     });
 
     it('leaves a link with a scheme the host cannot resolve to the page', () => {
-        loadFrame('<a id="link" href="mailto:someone@example.com">Mail</a>');
+        loadFrame('<a id="link" href="data:text/plain,hello">Data</a>');
 
         const event = click(frameDocument.getElementById('link'));
 
         expect(event.defaultPrevented).toBe(false);
         expect(onLinkClicked).not.toHaveBeenCalled();
+    });
+
+    it('routes a mail link to the host, which opens the mail app', () => {
+        loadFrame('<a id="link" href="mailto:someone@example.com">Mail</a>');
+
+        const event = click(frameDocument.getElementById('link'));
+
+        expect(event.defaultPrevented).toBe(true);
+        expect(onLinkClicked).toHaveBeenCalledWith('mailto:someone@example.com');
     });
 });

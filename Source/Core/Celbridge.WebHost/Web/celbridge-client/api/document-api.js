@@ -23,15 +23,21 @@ export const ContentLoadedReason = Object.freeze({
 const PROJECT_BASE_URL = '/project/';
 
 /**
- * Converts a project resource key to a full URL. Strips the "project:" prefix so the path lines up
- * with the project folder root. Returns the bare base URL when the resource key is empty.
+ * Converts a project resource key to the URL the loopback server serves it at. Strips the "project:" prefix
+ * so the path lines up with the project folder root, and encodes each segment, so a name holding "#", "?"
+ * or "%" names the file rather than starting a fragment, a query or an escape. Returns the bare base URL
+ * when the resource key is empty.
  */
 export function projectUrl(resourceKey) {
     const key = resourceKey || '';
     const path = key.startsWith('project:')
         ? key.substring('project:'.length)
         : key;
-    return `${PROJECT_BASE_URL}${path}`;
+    const encodedPath = path
+        .split('/')
+        .map((segment) => encodeURIComponent(segment))
+        .join('/');
+    return `${PROJECT_BASE_URL}${encodedPath}`;
 }
 
 /**
@@ -76,7 +82,8 @@ export class DocumentAPI {
     }
 
     /**
-     * Registers a handler for external file change notifications.
+     * Registers a handler for external file change notifications. The host sends none until the editor has
+     * reported its content loaded, so register before calling notifyContentLoaded.
      * @param {Function} handler - Called when the file changes externally.
      */
     onExternalChange(handler) {
@@ -85,7 +92,9 @@ export class DocumentAPI {
 
     /**
      * Registers a handler for rename notifications from the host. A rename or a move keeps the document
-     * open in the same editor, which otherwise keeps the name and path it was given when it opened.
+     * open in the same editor, which otherwise keeps the name and path it was given when it opened. The host
+     * sends none until the editor has reported its content loaded, so register before calling
+     * notifyContentLoaded.
      * @param {Function} handler - Called with the document's new DocumentMetadata.
      */
     onRenamed(handler) {

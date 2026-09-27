@@ -134,7 +134,8 @@ public class CustomDocumentViewModelTests
 
     [TestCase("https://example.com/")]
     [TestCase("http://example.com/page.html")]
-    public void AWebLink_ResolvesToNoResource(string href)
+    [TestCase("mailto:someone@example.com")]
+    public void AWebOrMailLink_ResolvesToNoResource(string href)
     {
         _viewModel.FileResource = new ResourceKey("docs/notes.md");
 

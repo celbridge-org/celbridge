@@ -109,12 +109,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     private IDocumentWebViewToolBridge? _toolBridge;
     private ResourceKey _toolBridgeRegisteredResource;
 
-    // Deferred editor state for views where the WebView initializes asynchronously.
-    // RestoreEditorStateAsync stores state here when the editor isn't ready yet,
-    // and SetContentLoaded applies it once the JS client signals readiness.
-    private string? _pendingEditorStateJson;
-    private string? _pendingLocation;
-    private bool _isContentLoaded;
+    // The web page the editor runs in.
+    private readonly EditorPage _page = new();
 
     // Save tracking state for async save coordination with WebView
     private bool _isSaveInProgress;
@@ -164,7 +160,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
         // The adapter observes the hosted page, this controller observes the control in front of it, and
         // each head reports through whichever of the two works there.
-        var pageHealth = _webViewAdapter.GetHostedPageHealth(coreWebView2);
+        var pageHealth = _webViewAdapter.GetPageHealth(coreWebView2);
         return pageHealth with { ProcessFailures = pageHealth.ProcessFailures + _processFailures };
     }
 
@@ -266,6 +262,12 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     public void NotifyRenamed()
     {
         if (Host is null)
+        {
+            return;
+        }
+
+        // A page still loading is not listening for the rename yet, so it waits for the page's load.
+        if (_page.TryDeferRename())
         {
             return;
         }
@@ -602,6 +604,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
             if (uri.StartsWith(allowedNavigationPrefix))
             {
+                _page.OnNavigating(uri);
                 _toolBridge?.NotifyContentLoading(_toolBridgeRegisteredResource);
                 return;
             }
@@ -706,9 +709,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         _viewModel.ReloadRequested -= ViewModel_ReloadRequested;
         _messengerService.Unregister<LanguageChangedMessage>(this);
 
-        _isContentLoaded = false;
-        _pendingEditorStateJson = null;
-        _pendingLocation = null;
+        _page.Reset();
 
         TeardownWebViewState();
     }
@@ -1034,6 +1035,9 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     {
         var locale = _languageService.CurrentLanguage;
 
+        // Metadata is made only to send to the page, so this is the document the page is told it shows.
+        _page.SetResource(_viewModel.FileResource);
+
         var metaData = new DocumentMetadata(
             _viewModel.FilePath,
             _viewModel.FileResource.ToString(),
@@ -1055,29 +1059,23 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             return;
         }
 
-        _isContentLoaded = true;
-
-        var location = _pendingLocation;
-        _pendingLocation = null;
-
-        var state = _pendingEditorStateJson;
-        _pendingEditorStateJson = null;
+        var deferred = _page.OnLoaded(_viewModel.FileResource);
 
         // Applied in the order the opening caller issued them: navigate, then restore state.
-        if (location is not null)
+        if (deferred.Location is not null)
         {
-            var navigateResult = await NavigateToLocationAsync(location);
+            var navigateResult = await NavigateToLocationAsync(deferred.Location);
             if (navigateResult.IsFailure)
             {
                 _logger.LogWarning(navigateResult, "Failed to navigate to location after content loaded");
             }
         }
 
-        if (state is not null)
+        if (deferred.EditorStateJson is not null)
         {
             try
             {
-                await RestoreEditorStateAsync(state);
+                await RestoreEditorStateAsync(deferred.EditorStateJson);
             }
             catch (Exception ex)
             {
@@ -1093,6 +1091,40 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             && _webViewFocusRegistry.IsFocusedSurface(WebView))
         {
             _ = GrantDomFocusAsync();
+        }
+
+        // What arrived while the page loaded goes to it now that it is listening. The rename comes first, so
+        // a reload that follows reads the file under its new name.
+        if (deferred.Rename)
+        {
+            NotifyRenamed();
+        }
+
+        if (deferred.Reload)
+        {
+            await RunDeferredReloadAsync();
+        }
+    }
+
+    // The page read the file when it loaded, so a reload deferred until then runs only if the file has changed
+    // since.
+    private async Task RunDeferredReloadAsync()
+    {
+        bool isFileChanged;
+        try
+        {
+            isFileChanged = await _viewModel.IsFileChangedExternallyAsync();
+        }
+        catch (Exception ex)
+        {
+            // A failed probe reloads anyway, so a change is never dropped.
+            _logger.LogDebug(ex, "External change probe failed; running the deferred reload");
+            isFileChanged = true;
+        }
+
+        if (isFileChanged)
+        {
+            ViewModel_ReloadRequested(this, EventArgs.Empty);
         }
     }
 
@@ -1157,7 +1189,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
     public async Task<string?> TrySaveEditorStateAsync()
     {
-        if (Host is null || !_isContentLoaded)
+        if (Host is null || !_page.IsLoaded)
         {
             return null;
         }
@@ -1205,9 +1237,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
     public async Task RestoreEditorStateAsync(string state)
     {
-        if (!_isContentLoaded)
+        if (_page.TryDeferEditorState(state))
         {
-            _pendingEditorStateJson = state;
             return;
         }
 
@@ -1294,7 +1325,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     /// <summary>
     /// Sends a navigate-to-location request to the editor. The location is a JSON object describing the target
     /// line and column range. An empty location is a no-op, and a request arriving before the editor has
-    /// loaded its content is held until it has.
+    /// loaded its content is deferred until it has.
     /// </summary>
     public async Task<Result> NavigateToLocationAsync(string location)
     {
@@ -1305,10 +1336,9 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
         // Opening a document and navigating within it arrive together, but the WebView connects
         // asynchronously, so on a first open the editor is not there to receive this yet.
-        if (!_isContentLoaded ||
-            Host is null)
+        if (_page.TryDeferLocation(location)
+            || Host is null)
         {
-            _pendingLocation = location;
             return Result.Ok();
         }
 
@@ -1576,6 +1606,18 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
     private async void ViewModel_ReloadRequested(object? sender, EventArgs e)
     {
+        // A page that has not loaded is not listening for the reload, and reads the file when it loads, so
+        // the request waits for that load and then runs only if the file has changed. A reconnect forces its
+        // reload for a page that may have missed messages, and a page still loading has missed none.
+        if (_page.TryDeferReload())
+        {
+            lock (_reloadLock)
+            {
+                _forceReload = false;
+            }
+            return;
+        }
+
         // Coalesce concurrent reload requests. FileSystemWatcher commonly emits
         // duplicate Changed events for one logical write. A second reload arriving
         // mid-flight folds into one follow-up pass instead of racing the first.

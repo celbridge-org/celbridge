@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { renderToHtml, disableScriptLinks } from '../markdown-preview/preview-module.js';
+import { renderToHtml, disableScriptLinks, setBasePath } from '../markdown-preview/preview-module.js';
 
 // Line numbers are what the source map promises, so the fixture is written a line at a time.
 const documentWithFrontmatter = [
@@ -57,6 +57,32 @@ describe('renderToHtml', () => {
 
         expect(html).not.toContain('title:');
         expect(html).not.toContain('Getting Started');
+    });
+});
+
+describe('renderToHtml images', () => {
+    function imageSource(markdown) {
+        const container = document.createElement('div');
+        container.innerHTML = renderToHtml(markdown);
+        return container.querySelector('img').getAttribute('src');
+    }
+
+    it('serves an image beside the document from the project', () => {
+        setBasePath('docs/');
+
+        expect(imageSource('![Logo](logo.png)')).toBe('/project/docs/logo.png');
+    });
+
+    it('encodes a name once when the markdown already writes it in URL form', () => {
+        setBasePath('docs/');
+
+        expect(imageSource('![Photo](my%20photo.png)')).toBe('/project/docs/my%20photo.png');
+    });
+
+    it('encodes a # in a name, so it names the file rather than a fragment', () => {
+        setBasePath('docs/');
+
+        expect(imageSource('![Chart](chart%231.png)')).toBe('/project/docs/chart%231.png');
     });
 });
 

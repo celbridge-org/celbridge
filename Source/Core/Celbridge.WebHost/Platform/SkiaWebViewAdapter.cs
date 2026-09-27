@@ -28,7 +28,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     private readonly Dictionary<CoreWebView2, CancellationTokenSource> _keepAliveLoops = new();
 
     // What the wake loop has observed about each hosted view, read by callers reporting a document's health.
-    private readonly HostedPageHealthTracker<CoreWebView2> _pageHealth = new();
+    private readonly PageHealthTracker<CoreWebView2> _pageHealth = new();
 
     // The find methods receive only a CoreWebView2, so sessions are keyed by it to recover per-find state.
     private readonly Dictionary<CoreWebView2, FindSession> _findSessions = new();
@@ -290,7 +290,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     private void ObserveWebContentProcess(CoreWebView2 coreWebView2)
     {
         var change = _pageHealth.RecordProcessId(coreWebView2, ReadWebContentProcessId(coreWebView2));
-        if (change == HostedPageProcessChange.None)
+        if (change == PageProcessChange.None)
         {
             return;
         }
@@ -299,15 +299,15 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
 
         switch (change)
         {
-            case HostedPageProcessChange.Gone:
+            case PageProcessChange.Gone:
                 _logger.LogWarning("The WebContent process behind {PageUrl} is no longer running", pageUrl);
                 break;
 
-            case HostedPageProcessChange.Relaunched:
+            case PageProcessChange.Relaunched:
                 _logger.LogInformation("WebKit relaunched the WebContent process behind {PageUrl}", pageUrl);
                 break;
 
-            case HostedPageProcessChange.Replaced:
+            case PageProcessChange.Replaced:
                 _logger.LogInformation(
                     "WebKit swapped the WebContent process behind {PageUrl} without a navigation", pageUrl);
                 break;
@@ -345,7 +345,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
             TaskScheduler.Default);
     }
 
-    public DocumentHealth GetHostedPageHealth(CoreWebView2 coreWebView2)
+    public DocumentHealth GetPageHealth(CoreWebView2 coreWebView2)
     {
         return _pageHealth.GetHealth(coreWebView2);
     }

@@ -57,8 +57,8 @@ export class InputAPI {
 
     /**
      * Notifies the host that a link was clicked in the document. The host resolves the href against the
-     * document's folder: a link that resolves to a project resource opens as a document, and one that does
-     * not opens in the default browser.
+     * document's folder: a link that resolves to a project resource opens as a document, a web address opens
+     * in the default browser, and a mailto: address opens in the default mail app.
      * @param {string} href - The href of the clicked link.
      */
     notifyLinkClicked(href) {

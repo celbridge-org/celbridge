@@ -270,9 +270,12 @@ public partial class CustomDocumentViewModel : DocumentViewModel
             return Result<ResourceKey>.Ok(ResourceKey.Empty);
         }
 
-        // External URLs return empty to indicate browser handling
+        // An external address returns empty, so the system opens it: a web address in the browser and a mail
+        // address in the mail app.
         if (Uri.TryCreate(href, UriKind.Absolute, out var uri) &&
-            (uri.Scheme == "http" || uri.Scheme == "https"))
+            (uri.Scheme == Uri.UriSchemeHttp ||
+             uri.Scheme == Uri.UriSchemeHttps ||
+             uri.Scheme == Uri.UriSchemeMailto))
         {
             return Result<ResourceKey>.Ok(ResourceKey.Empty);
         }

@@ -5,7 +5,7 @@ namespace Celbridge.WebHost.Services;
 /// <summary>
 /// How a hosted page's rendering process changed between two observations.
 /// </summary>
-internal enum HostedPageProcessChange
+internal enum PageProcessChange
 {
     None,
     Gone,
@@ -23,7 +23,7 @@ internal enum HostedPageProcessChange
 /// counted only while it is tracked, so an observation that arrives after the page is closed is discarded
 /// rather than resurrecting its entry. Every member is safe to call from any thread.
 /// </summary>
-internal sealed class HostedPageHealthTracker<TPage>
+internal sealed class PageHealthTracker<TPage>
     where TPage : class
 {
     // Distinguishes a process id that has never been read from one read as absent.
@@ -124,14 +124,14 @@ internal sealed class HostedPageHealthTracker<TPage>
     /// Records the process rendering the page, counting a process failure when it goes absent. A negative id
     /// means the platform could not report one and leaves the page's state untouched.
     /// </summary>
-    public HostedPageProcessChange RecordProcessId(TPage page, long processId)
+    public PageProcessChange RecordProcessId(TPage page, long processId)
     {
         lock (_lock)
         {
             if (processId < 0
                 || !_pages.TryGetValue(page, out var counters))
             {
-                return HostedPageProcessChange.None;
+                return PageProcessChange.None;
             }
 
             var previousProcessId = counters.ProcessId;
@@ -142,28 +142,28 @@ internal sealed class HostedPageHealthTracker<TPage>
                 // The renderer stays absent across later wakes, so its death counts once.
                 if (previousProcessId <= 0)
                 {
-                    return HostedPageProcessChange.None;
+                    return PageProcessChange.None;
                 }
 
                 counters.ProcessFailures++;
-                return HostedPageProcessChange.Gone;
+                return PageProcessChange.Gone;
             }
 
             if (previousProcessId == 0)
             {
                 // The death this replaces was counted when the renderer went absent.
-                return HostedPageProcessChange.Relaunched;
+                return PageProcessChange.Relaunched;
             }
 
             if (previousProcessId == UnknownProcessId
                 || previousProcessId == processId)
             {
-                return HostedPageProcessChange.None;
+                return PageProcessChange.None;
             }
 
             // Not a failure: one running renderer gave way to another, which is what WebKit does to a page
             // it has suspended in the background. Only a renderer observed absent counts.
-            return HostedPageProcessChange.Replaced;
+            return PageProcessChange.Replaced;
         }
     }
 

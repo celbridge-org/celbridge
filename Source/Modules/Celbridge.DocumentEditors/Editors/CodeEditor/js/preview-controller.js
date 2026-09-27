@@ -16,16 +16,17 @@ import { log } from './logger.js';
 export const LinkAction = Object.freeze({
     // The link points to a place in the current page, so the preview scrolls there.
     Scroll: 'scroll',
-    // The host resolves the link: a project file opens in Celbridge and anything else in the system browser.
+    // The host resolves the link: a project file opens in Celbridge, a web address in the system browser and a
+    // mail address in the system's mail app.
     Route: 'route',
     // The page handles the link itself, so the click is not intercepted.
     Ignore: 'ignore'
 });
 
 /**
- * Decides what a click on a link does. A link to the current page scrolls there. A relative path or an
- * http or https URL goes to the host. Any other link, such as a blob: or data: URL, is left to the page,
- * because the host cannot resolve it.
+ * Decides what a click on a link does. A link to the current page scrolls there. A relative path, an http or
+ * https URL, or a mailto: address goes to the host. Any other link, such as a blob: or data: URL, is left to
+ * the page, because the host cannot resolve it.
  * @param {string} href - The link's href attribute, as written.
  * @param {string} documentUrl - The URL of the document the link is in.
  * @param {string} baseUrl - The URL the document resolves its links against.
@@ -57,7 +58,8 @@ export function resolveLinkClick(href, documentUrl, baseUrl) {
     }
 
     if (resolvedUrl.protocol === 'http:' ||
-        resolvedUrl.protocol === 'https:') {
+        resolvedUrl.protocol === 'https:' ||
+        resolvedUrl.protocol === 'mailto:') {
         return { action: LinkAction.Route, href: resolvedUrl.href };
     }
 

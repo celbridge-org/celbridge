@@ -159,7 +159,7 @@ function configureMarked() {
                 const title = token.title || '';
 
                 if (src && !src.startsWith('http://') && !src.startsWith('https://') && !src.startsWith('data:')) {
-                    const resolvedPath = resolveRelativePath(src);
+                    const resolvedPath = resolveRelativePath(decodeUrlPath(src));
                     src = projectUrl(resolvedPath);
                 }
 
@@ -286,6 +286,22 @@ function annotateTokensWithSourceLines(tokens, source, startOffset = 0) {
             }
         }
     }
+}
+
+// An image's href arrives in URL form, so a space is "%20", while projectUrl takes a path and encodes it.
+// Each segment is decoded first so the name is not encoded twice. A segment that is not valid URL form is
+// taken as written.
+function decodeUrlPath(href) {
+    return href
+        .split('/')
+        .map((segment) => {
+            try {
+                return decodeURIComponent(segment);
+            } catch {
+                return segment;
+            }
+        })
+        .join('/');
 }
 
 function resolveRelativePath(relativePath) {
