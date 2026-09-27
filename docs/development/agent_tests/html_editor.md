@@ -27,7 +27,7 @@ button and the F5 key, the find bar over the preview, and a document renamed whi
 | A document in split mode, with an edit made in the source | press F5 with the keyboard in the source, then edit again and press F5 with the keyboard in the preview | each press does what the Reload button does, so the preview shows each edit once it is saved, and the editor page itself does not reload: the mode stays split and undo still steps back through both edits | 2 |
 | The same document | switch to source mode | the source shows with HTML highlighting | 3 |
 | The same document, still in source mode | read the Reload button's state, then read it again in split mode and in preview mode | it is disabled in source mode, and enabled in the other two | 3 |
-| A document in source mode, with an edit made in the source | press F5, then Ctrl+R and Ctrl+Shift+R | nothing reloads: the source keeps the edit and its undo history, and the preview shows what it showed before | 3 |
+| A document in source mode, with an edit made in the source | press F5, then Ctrl+R and Ctrl+Shift+R | nothing reloads: the source keeps the edit and its undo history, the preview shows what it showed before, and the disabled Reload button shows no fill | 3 |
 | A text field in the previewed page, with a selection | cut, copy, select all | each acts on the field, and the source is unchanged | 3 |
 | A text field in the previewed page | Tab | focus moves to the next control in the page, and the source is not indented | 3 |
 | A text field in the previewed page, after focus has moved to the app and back | paste | text enters the field, and the source is unchanged | 3 |

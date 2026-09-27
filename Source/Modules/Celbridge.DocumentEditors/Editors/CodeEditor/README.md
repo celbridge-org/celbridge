@@ -61,7 +61,7 @@ exports `initialize(iframe, callbacks)`, `render(content)`, `setBasePath(basePat
 | `getScrollPercentage()` | Saves the preview's scroll position with the document's state. |
 | `scrollToSourceLine(line, fraction)`, `getTopSourceLine()` | Keeps the preview scrolled to the source in Split mode. Without them the two panes scroll independently. |
 | `beginFind()` | Opens a find bar of the module's own, for a WebView that has none built in. |
-| `refresh(url)` | Shows the file at the URL, for a module that previews the file on disk rather than the buffer. Called when the document opens, after a rename or a move, and from the toolbar's Reload button, which appears for any module that implements `refresh`. Saves and changes on disk do not call it, so the preview changes only when it is reloaded, and the button fills with the accent color while the source differs from what the preview last loaded. |
+| `refresh(url)` | Shows the file at the URL, for a module that previews the file on disk rather than the buffer. Called when the document opens, after a rename or a move, and from the toolbar's Reload button, which appears for any module that implements `refresh`. Saves and changes on disk do not call it, so the preview changes only when it is reloaded, and the button fills with the accent color while it is enabled and the source differs from what the preview last loaded. |
 
 Link clicks are the controller's, so every preview treats them alike: a link to a place in the page
 scrolls there, a relative path, an `http` or `https` URL or a `mailto:` address goes to the host, and any

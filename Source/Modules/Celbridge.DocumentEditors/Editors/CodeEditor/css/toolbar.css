@@ -87,8 +87,9 @@
 }
 
 /* The preview is older than the source, so a reload would change what it shows. The fill matches the app's
-   other reload-to-apply buttons: Reload Project in Project Settings and the console's Reopen button. */
-.toolbar-btn.is-stale {
+   other reload-to-apply buttons: Reload Project in Project Settings and the console's Reopen button. A
+   disabled button cannot be pressed, so it shows no fill. */
+.toolbar-btn.is-stale:not(:disabled) {
     background-color: var(--cel-accent);
     color: var(--cel-accent-text);
 }
