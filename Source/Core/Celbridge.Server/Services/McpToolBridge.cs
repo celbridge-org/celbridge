@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Json;
 using System.Reflection;
 using System.Text.Json;
@@ -30,18 +31,36 @@ public class McpToolBridge : IMcpToolBridge
     private readonly HttpClient _httpClient;
     private readonly Dictionary<string, ToolMetadata> _toolMetadata;
     private readonly Dictionary<string, string> _aliasToToolName;
+    private readonly Lock _sessionLock = new();
 
     private int _nextRequestId;
-    private string? _sessionId;
+    private McpSession? _session;
+    private Task<McpSession>? _pendingHandshake;
+
+    // A completed initialize handshake. SessionId is null when HttpServerTransportOptions.Stateless is set.
+    private sealed record McpSession(string? SessionId);
 
     public McpToolBridge(
         IServerService serverService,
         IMessengerService messengerService,
         ILogger<McpToolBridge> logger)
+        : this(serverService, messengerService, logger, new HttpClientHandler())
+    {
+    }
+
+    /// <summary>
+    /// Creates a bridge over an explicit message handler so tests can serve
+    /// canned MCP responses without a live server.
+    /// </summary>
+    internal McpToolBridge(
+        IServerService serverService,
+        IMessengerService messengerService,
+        ILogger<McpToolBridge> logger,
+        HttpMessageHandler messageHandler)
     {
         _serverService = serverService;
         _logger = logger;
-        _httpClient = new HttpClient();
+        _httpClient = new HttpClient(messageHandler);
         _toolMetadata = BuildToolMetadata();
         _aliasToToolName = new Dictionary<string, string>(_toolMetadata.Count, StringComparer.Ordinal);
         foreach (var entry in _toolMetadata)
@@ -56,7 +75,13 @@ public class McpToolBridge : IMcpToolBridge
         // When the server is restarted for a new workspace, the cached session id
         // is invalid against the fresh instance, so clear it and re-handshake on
         // the next request.
-        messengerService.Register<ServerStoppedMessage>(this, (_, _) => _sessionId = null);
+        messengerService.Register<ServerStoppedMessage>(this, (_, _) =>
+        {
+            lock (_sessionLock)
+            {
+                _session = null;
+            }
+        });
     }
 
     // The JS client addresses tools by alias (e.g. "document.open") while Python and the MCP
@@ -467,16 +492,32 @@ public class McpToolBridge : IMcpToolBridge
     }
 
     /// <summary>
-    /// Ensures an MCP session is established by sending an initialize request
-    /// if we don't already have a session ID.
+    /// Returns the current MCP session, completing the initialize handshake first if there is none.
+    /// Concurrent callers share one handshake, so a failed handshake fails them all at once rather
+    /// than each retrying in turn.
     /// </summary>
-    private async Task EnsureSessionAsync(string url)
+    private Task<McpSession> EnsureSessionAsync(string url)
     {
-        if (_sessionId is not null)
+        lock (_sessionLock)
         {
-            return;
-        }
+            if (_session is not null)
+            {
+                return Task.FromResult(_session);
+            }
 
+            // A finished handshake that left no session failed, so the next caller starts a new one.
+            if (_pendingHandshake is null ||
+                _pendingHandshake.IsCompleted)
+            {
+                _pendingHandshake = HandshakeAsync(url);
+            }
+
+            return _pendingHandshake;
+        }
+    }
+
+    private async Task<McpSession> HandshakeAsync(string url)
+    {
         var requestId = Interlocked.Increment(ref _nextRequestId);
 
         var initializeRequest = new JsonObject
@@ -496,45 +537,34 @@ public class McpToolBridge : IMcpToolBridge
             }
         };
 
-        var httpRequest = new HttpRequestMessage(HttpMethod.Post, url);
-        httpRequest.Content = JsonContent.Create(initializeRequest);
-        httpRequest.Headers.Accept.Clear();
-        httpRequest.Headers.Accept.ParseAdd("application/json");
-        httpRequest.Headers.Accept.ParseAdd("text/event-stream");
-
-        var httpResponse = await _httpClient.SendAsync(httpRequest);
-        if (!httpResponse.IsSuccessStatusCode)
+        using var initializeResponse = await PostAsync(url, initializeRequest, null);
+        if (!initializeResponse.IsSuccessStatusCode)
         {
-            var errorBody = await httpResponse.Content.ReadAsStringAsync();
-            _logger.LogWarning("MCP initialize returned {StatusCode}: {Body}",
-                (int)httpResponse.StatusCode, errorBody);
-            httpResponse.EnsureSuccessStatusCode();
+            throw await CreateHttpFailureAsync("initialize", initializeResponse);
         }
 
-        if (httpResponse.Headers.TryGetValues(McpSessionIdHeader, out var sessionValues))
+        string? sessionId = null;
+        if (initializeResponse.Headers.TryGetValues(McpSessionIdHeader, out var sessionValues))
         {
-            _sessionId = sessionValues.FirstOrDefault();
+            sessionId = sessionValues.FirstOrDefault();
         }
 
         // Send the initialized notification to complete the handshake
-        var notificationId = Interlocked.Increment(ref _nextRequestId);
         var initializedNotification = new JsonObject
         {
             ["jsonrpc"] = "2.0",
             ["method"] = "notifications/initialized"
         };
 
-        var notifyRequest = new HttpRequestMessage(HttpMethod.Post, url);
-        notifyRequest.Content = JsonContent.Create(initializedNotification);
-        notifyRequest.Headers.Accept.Clear();
-        notifyRequest.Headers.Accept.ParseAdd("application/json");
-        notifyRequest.Headers.Accept.ParseAdd("text/event-stream");
-        if (_sessionId is not null)
+        using var notificationResponse = await PostAsync(url, initializedNotification, sessionId);
+
+        var session = new McpSession(sessionId);
+        lock (_sessionLock)
         {
-            notifyRequest.Headers.Add(McpSessionIdHeader, _sessionId);
+            _session = session;
         }
 
-        await _httpClient.SendAsync(notifyRequest);
+        return session;
     }
 
     private async Task<JsonObject?> SendMcpRequestAsync(string method, JsonObject? methodParams)
@@ -547,8 +577,6 @@ public class McpToolBridge : IMcpToolBridge
         }
 
         var url = $"http://127.0.0.1:{port}/mcp";
-
-        await EnsureSessionAsync(url);
 
         var requestId = Interlocked.Increment(ref _nextRequestId);
 
@@ -563,24 +591,10 @@ public class McpToolBridge : IMcpToolBridge
             request["params"] = methodParams;
         }
 
-        var httpRequest = new HttpRequestMessage(HttpMethod.Post, url);
-        httpRequest.Content = JsonContent.Create(request);
-        httpRequest.Headers.Accept.Clear();
-        httpRequest.Headers.Accept.ParseAdd("application/json");
-        httpRequest.Headers.Accept.ParseAdd("text/event-stream");
-        if (_sessionId is not null)
-        {
-            httpRequest.Headers.Add(McpSessionIdHeader, _sessionId);
-        }
-
-        var httpResponse = await _httpClient.SendAsync(httpRequest);
+        using var httpResponse = await PostInSessionAsync(url, request);
         if (!httpResponse.IsSuccessStatusCode)
         {
-            var errorBody = await httpResponse.Content.ReadAsStringAsync();
-            _logger.LogWarning(
-                "MCP {Method} returned {StatusCode}: {Body}",
-                method, (int)httpResponse.StatusCode, errorBody);
-            httpResponse.EnsureSuccessStatusCode();
+            throw await CreateHttpFailureAsync(method, httpResponse);
         }
 
         var responseBody = await httpResponse.Content.ReadAsStringAsync();
@@ -625,6 +639,83 @@ public class McpToolBridge : IMcpToolBridge
         }
 
         return responseNode?["result"]?.AsObject();
+    }
+
+    // Posts a request in the current session. The server answers 404 for a session it no longer holds,
+    // such as one issued before a restart, and the MCP spec has the client start a new session. The
+    // request was never dispatched, so resending it once is safe.
+    private async Task<HttpResponseMessage> PostInSessionAsync(string url, JsonObject request)
+    {
+        var session = await EnsureSessionAsync(url);
+        var httpResponse = await PostAsync(url, request, session.SessionId);
+
+        if (httpResponse.StatusCode != HttpStatusCode.NotFound ||
+            session.SessionId is null)
+        {
+            return httpResponse;
+        }
+
+        _logger.LogInformation("MCP session {SessionId} not found, starting a new session", session.SessionId);
+        httpResponse.Dispose();
+
+        lock (_sessionLock)
+        {
+            // Leave the field alone if a concurrent caller has already replaced the session.
+            if (ReferenceEquals(_session, session))
+            {
+                _session = null;
+            }
+        }
+
+        var newSession = await EnsureSessionAsync(url);
+
+        return await PostAsync(url, request, newSession.SessionId);
+    }
+
+    // Logs the full response body, and returns an exception that carries the server's own error message
+    // where the body holds one, so a caller sees the reason without the raw body.
+    private async Task<HttpRequestException> CreateHttpFailureAsync(string method, HttpResponseMessage httpResponse)
+    {
+        var statusCode = (int)httpResponse.StatusCode;
+        var errorBody = await httpResponse.Content.ReadAsStringAsync();
+        _logger.LogWarning("MCP {Method} returned {StatusCode}: {Body}", method, statusCode, errorBody);
+
+        var reason = ReadJsonRpcErrorMessage(errorBody) ?? httpResponse.ReasonPhrase ?? httpResponse.StatusCode.ToString();
+
+        return new HttpRequestException($"MCP {method} returned {statusCode}: {reason}", null, httpResponse.StatusCode);
+    }
+
+    // Returns the message from a JSON-RPC error body, or null when the body is not a JSON-RPC error.
+    private static string? ReadJsonRpcErrorMessage(string body)
+    {
+        try
+        {
+            var messageNode = JsonNode.Parse(body)?["error"]?["message"];
+            return messageNode?.GetValue<string>();
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
+    }
+
+    private async Task<HttpResponseMessage> PostAsync(string url, JsonObject payload, string? sessionId)
+    {
+        var httpRequest = new HttpRequestMessage(HttpMethod.Post, url);
+        httpRequest.Content = JsonContent.Create(payload);
+        httpRequest.Headers.Accept.Clear();
+        httpRequest.Headers.Accept.ParseAdd("application/json");
+        httpRequest.Headers.Accept.ParseAdd("text/event-stream");
+        if (sessionId is not null)
+        {
+            httpRequest.Headers.Add(McpSessionIdHeader, sessionId);
+        }
+
+        return await _httpClient.SendAsync(httpRequest);
     }
 
     /// <summary>

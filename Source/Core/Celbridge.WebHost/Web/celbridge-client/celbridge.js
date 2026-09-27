@@ -289,7 +289,7 @@ export class Celbridge {
         // Expose `cel` on globalThis for the "just call cel.namespace.method(...)"
         // agent experience. Opt out with `new Celbridge({ exposeCelGlobal: false })`.
         if (this.#exposeCelGlobal && typeof globalThis !== 'undefined') {
-            globalThis.cel = this.tools.cel;
+            defineCelGlobal(() => this.tools.cel);
         }
 
         // Auto-load localization if locale is provided in metadata
@@ -432,6 +432,28 @@ function normalizeContext(raw) {
         secrets: Object.freeze(secrets),
         options: Object.freeze(options)
     };
+}
+
+/**
+ * Defines `globalThis.cel` as an accessor that reads the current proxy, so a later
+ * `tools.loadDescriptors()` is visible through the global as well as through `celbridge.cel`. Assigning
+ * `cel` replaces the accessor with a plain value, so a page can still define its own.
+ * @param {() => Object} readCel
+ */
+function defineCelGlobal(readCel) {
+    Object.defineProperty(globalThis, 'cel', {
+        configurable: true,
+        enumerable: true,
+        get: readCel,
+        set: (value) => {
+            Object.defineProperty(globalThis, 'cel', {
+                configurable: true,
+                enumerable: true,
+                writable: true,
+                value
+            });
+        }
+    });
 }
 
 // The element released by the last blurActiveElement call, so focus can be handed back to it when the
