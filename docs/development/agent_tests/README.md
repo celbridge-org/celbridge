@@ -90,6 +90,13 @@ Anything changed outside the project — the setting that decides which project 
 clipboard, and anything a plan deliberately mutates in the application's own data folder — is yours to put
 back, and the app should not be left running.
 
+Making the throwaway project changes three settings: the recent projects list (`Project.RecentProjects`),
+the project that opens on the next launch (`Project.PreviousProject`) and the folder New Project offers
+(`Project.PreviousNewProjectFolderPath`). Opening the original project again restores the second. The other
+two can only be put back in `settings.json` in the application's data folder, edited while the application
+is closed, where each value is itself JSON-encoded. Desktop automation can type by pasting, which overwrites
+the clipboard, so save what it holds before the first typed text if it is to be put back.
+
 Driving the app needs the computer-use tools, which require the user's permission at the start of the
 session. The application and the WebView renderer are separate processes, so grant both: a screenshot
 taken with only the application granted masks every hosted surface inside it. Real key presses are the
@@ -97,15 +104,31 @@ point: a shortcut delivered any other way tests a path a user never takes. Every
 documents, reading page state, inspecting the log — has cheaper and more reliable routes that the
 project's own tooling provides.
 
-Six things a run reliably trips over:
+Eight things a run reliably trips over:
 
 **A page takes no pointer input until the web view runtime is granted too.** Desktop automation hides the
 windows of applications outside the permission it was given, and every page the application hosts is drawn
 by the platform's web view runtime, which is a separate application. Without it those pages report
 themselves hidden and ignore every click, while the click tool goes on reporting success — so a run can
 spend an hour proving the application is at fault when nothing ever reached it. Grant the runtime as well
-as the application, by the executable the automation matches against rather than by the product name, and
-confirm a page is taking clicks before reading anything into one that appears to do nothing.
+as the application, by the executable the automation matches against rather than by the product name, once
+a page is on screen: before then the automation can report the runtime as not installed. On Windows the
+application's window needs its own executable, `celbridge.exe`, granted alongside the application as well,
+or it stays hidden. Confirm a page is taking clicks before reading anything into one that appears to do
+nothing.
+
+**An instance under a debugger stops dead on an exception.** A debugger set to break on exceptions pauses
+every thread in the application when one is thrown, even one the application goes on to handle. From
+outside that cannot be told apart from a hang: the window stops responding, its processor time stops
+moving, and the MCP port accepts connections without answering. Before driving an instance the run did not
+start, ask whether it is being debugged, or check with the platform (`CheckRemoteDebuggerPresent` on
+Windows).
+
+**Opening the application again can start a second instance.** Asking desktop automation to open an
+application that is already running, minimised in particular, has started a second instance on the same
+project, and two instances on one project overwrite each other's state. Bring a running instance forward by
+its process instead, with `WScript.Shell`'s `AppActivate` and the process id on Windows, and check the
+process list after any launch.
 
 **Click coordinates are in the capture's own frame.** A screen capture is scaled, and the coordinates a
 click takes are in the scaled frame rather than in screen pixels. Calibrate by moving the pointer to two
