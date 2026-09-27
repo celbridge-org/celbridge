@@ -15,16 +15,16 @@ through them, and the `cel` object in a python console.
 
 | Situation | Action | Expected | Level |
 |---|---|---|---|
-| A Text Note open in a new project | list the namespaces on the page's `cel`, then call `cel.app.log` with a message of your own | the namespaces include `app`, `document` and `file`, and the call resolves with the message appearing in the app log | 1 |
-| A Text Note open, having made one tool call | reload the project, then call a tool again from the reopened note | the call resolves and its message appears in the app log | 2 |
-| A project just reloaded | open a Text Note that was not open before the reload, then list its namespaces and call a tool | the namespaces are all present and the call resolves | 2 |
+| A markdown document open in a new project | list the namespaces on the page's `cel`, then call `cel.app.log` with a message of your own | the namespaces include `app`, `document` and `file`, and the call resolves with the message appearing in the app log | 1 |
+| A markdown document open, having made one tool call | reload the project, then call a tool again from the reopened document | the call resolves and its message appears in the app log | 2 |
+| A project just reloaded | open a Python script that was not open before the reload, then list its namespaces and call a tool | the namespaces are all present and the call resolves | 2 |
 | A python console open, having made one tool call | reload the project, then call a tool from the console once its prompt is back | the call returns rather than raising | 2 |
-| Two Text Notes and a markdown document open | reload the project | every reopened page lists all its namespaces, and a call from each resolves | 3 |
+| A markdown document and a Python script open | reload the project | every reopened page lists all its namespaces, and a call from each resolves | 3 |
 
-Make the project from the Python Project template, which supplies the python console and a markdown
-document, and add a Text Note with New File. The third case needs a Text Note that was not open before the
-reload, so keep a second one closed until then, or make it after the reload. Make the console's first call
-before the first reload, so that the level 2 cases share one reload.
+Make the project from the Python Project template, which supplies a python console, a markdown document and
+a Python script, so nothing needs making with New File. Open the markdown document for the first case, and
+leave the script closed until after the first reload, which the third case needs. Make the console's first
+call before the first reload, so that the level 2 cases share one reload.
 
 The last case is about the moment a reload reopens several pages, each fetching its tool list at the same
 time. Calls made afterwards through `webview_eval` run one at a time, so they cannot stand in for that.
@@ -46,9 +46,8 @@ calling.
 A connection lost while the project stays loaded, whether to a long idle period or to a server restart the
 host did not notice. A run cannot arrange either, so recovering a lost connection is covered by unit tests.
 A reload normally drops the connection cleanly, and a run passes the same way whichever path the host takes.
-What the tools themselves do, and the python console beyond making a call,
-which the Python Environment plan covers. Agents connected to the application, which hold connections of
-their own.
+What the tools themselves do, and the python console beyond making a call, which the Python Environment plan
+covers. Agents connected to the application, which hold connections of their own.
 
 ## Platform
 
