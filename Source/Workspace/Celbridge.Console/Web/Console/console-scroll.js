@@ -12,21 +12,44 @@ const PAGE_DELTA_MODE = 2;
 // spun wheel can reach, so a fast wheel is not mistaken for a finger and damped.
 const GESTURE_GAP_MS = 40;
 
-// A finger covers far more ground than the wheel notches it stands in for, so its travel is scaled back
-// to reach a comparable scroll distance.
-const TRACKPAD_SCALE = 0.3;
+/**
+ * The wheel scaling for WebView2 on Windows, which reports a notch as 100 pixels and a touchpad in the
+ * same inflated units.
+ */
+export const DEFAULT_WHEEL_PROFILE = {
+    // Terminal lines are shorter than the document lines a browser assumes, so a notch of a wheel would
+    // otherwise cover twice the ground here that it covers elsewhere.
+    sensitivity: 0.5,
+    // A finger covers far more ground than the wheel notches it stands in for, so its travel is scaled
+    // back to reach a comparable scroll distance.
+    trackpadScale: 0.3,
+    // Acceleration can put tens of lines of travel in a single event, which reads as a jump rather than
+    // a scroll, so no one event is allowed to move more than this.
+    maxLinesPerEvent: 3,
+    // A TUI scrolls about three lines for each wheel event it is sent, so one forwarded event stands in
+    // for that much travel.
+    linesPerForwardedEvent: 3,
+};
 
-// Acceleration can put tens of lines of travel in a single event, which reads as a jump rather than a
-// scroll, so no one event is allowed to move more than this.
-const MAX_LINES_PER_EVENT = 3;
+/**
+ * The wheel scaling for WebKit on macOS, which reports the distance native content scrolls with the
+ * system's acceleration already applied, so the terminal follows it one to one.
+ */
+export const MACOS_WHEEL_PROFILE = {
+    sensitivity: 1,
+    trackpadScale: 1,
+    maxLinesPerEvent: Number.POSITIVE_INFINITY,
+    // One wheel event for each line of travel, as native macOS terminals send. The TUI sets its own speed.
+    linesPerForwardedEvent: 1,
+};
 
 /**
  * Creates a counter that converts a gesture's wheel events into whole steps of scrolling, where a step is
  * one line by default and `linesPerStep` lines otherwise. The counter keeps the leftover fraction of a
  * step between events, so a trackpad scrolls by the distance the finger actually travelled instead of a
- * step per event.
+ * step per event. `wheelProfile` scales the deltas to the platform's units.
  */
-export function createWheelStepCounter() {
+export function createWheelStepCounter(wheelProfile) {
     let partialSteps = 0;
     // No previous event, so the first one of a session is never taken for a continuation.
     let previousTimestamp = Number.NEGATIVE_INFINITY;
@@ -42,14 +65,15 @@ export function createWheelStepCounter() {
         const isGestureStream = event.timeStamp - previousTimestamp < GESTURE_GAP_MS;
         previousTimestamp = event.timeStamp;
 
-        let lines = event.deltaY * terminalMetrics.sensitivity;
+        let lines = event.deltaY * wheelProfile.sensitivity;
 
         if (event.deltaMode === PIXEL_DELTA_MODE) {
+            const maxLines = wheelProfile.maxLinesPerEvent;
             lines /= lineHeight;
             if (isGestureStream) {
-                lines *= TRACKPAD_SCALE;
+                lines *= wheelProfile.trackpadScale;
             }
-            lines = Math.max(-MAX_LINES_PER_EVENT, Math.min(MAX_LINES_PER_EVENT, lines));
+            lines = Math.max(-maxLines, Math.min(maxLines, lines));
         } else if (event.deltaMode === PAGE_DELTA_MODE) {
             lines *= terminalMetrics.rows;
         }
@@ -58,65 +82,19 @@ export function createWheelStepCounter() {
         partialSteps += lines / linesPerStep;
 
         const wholeSteps = Math.trunc(partialSteps);
-        partialSteps -= wholeSteps;
+        if (wholeSteps !== 0) {
+            partialSteps -= wholeSteps;
 
-        return wholeSteps;
-    };
-}
-
-// Notches leave on a clock rather than in the bursts a trackpad delivers them in. A swipe arrives as a
-// dense run of events a few milliseconds apart, and the terminal passes each notch straight to whatever
-// is running, so without this the run lands as one jump.
-const NOTCH_INTERVAL_MS = 60;
-
-// The most notches the queue will hold. A swipe that outruns the clock is capped here rather than
-// scrolling on after the finger has stopped.
-const MAX_PENDING_NOTCHES = 8;
-
-/**
- * Creates a pacer that releases queued notches one at a time on a fixed interval, calling emitNotch with
- * 1 or -1 for each. The first notch of a gesture goes out at once, so scrolling still starts on the
- * movement rather than on the clock.
- */
-export function createNotchPacer(emitNotch) {
-    let pendingNotches = 0;
-    let intervalId = 0;
-
-    function releaseNotch() {
-        if (pendingNotches === 0) {
-            clearInterval(intervalId);
-            intervalId = 0;
-
-            return;
+            return wholeSteps;
         }
 
-        const direction = pendingNotches > 0 ? 1 : -1;
-        pendingNotches -= direction;
-        emitNotch(direction);
-    }
+        if (isGestureStream) {
+            return 0;
+        }
 
-    return {
-        queue(notches) {
-            if (notches === 0) {
-                return;
-            }
+        // A notch always moves at least one step. macOS reports a slow notch as a tenth of a line.
+        partialSteps = 0;
 
-            // Turning back replaces what is queued, so a reversal scrolls the other way at once rather
-            // than waiting out the notches already counted.
-            if (pendingNotches !== 0 &&
-                (notches > 0) !== (pendingNotches > 0)) {
-                pendingNotches = 0;
-            }
-
-            const queuedNotches = pendingNotches + notches;
-            pendingNotches = Math.max(-MAX_PENDING_NOTCHES, Math.min(MAX_PENDING_NOTCHES, queuedNotches));
-
-            if (intervalId === 0) {
-                releaseNotch();
-                if (pendingNotches !== 0) {
-                    intervalId = setInterval(releaseNotch, NOTCH_INTERVAL_MS);
-                }
-            }
-        },
+        return Math.sign(lines);
     };
 }

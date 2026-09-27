@@ -1,5 +1,6 @@
 ﻿using Celbridge.Console.Helpers;
 using Celbridge.Logging;
+using Celbridge.Platform;
 using Celbridge.Utilities;
 using Celbridge.WebHost;
 using Celbridge.Workspace;
@@ -25,6 +26,9 @@ internal sealed class ConsoleSession : IDisposable
     // happens after the command is typed: a first run resolves an interpreter and installs packages, which
     // can take far longer than any fixed budget while still making progress.
     private const int MarkerSilenceTimeoutMs = 10000;
+
+    // The name every console gives as its terminal program.
+    private const string TerminalProgramName = "Celbridge";
 
     private readonly IWebViewAdapter _webViewAdapter;
     private readonly IServiceProvider _serviceProvider;
@@ -224,6 +228,12 @@ internal sealed class ConsoleSession : IDisposable
         var environment = new Dictionary<string, string>(config.Environment);
         environment[ConsoleEnvironmentVariables.RpcPort] = rpcPort.ToString();
         environment[ConsoleEnvironmentVariables.SessionToken] = SessionId.ToString();
+
+        // Name the terminal so a program chooses its handling for this one, not for whichever terminal
+        // launched Celbridge. A console document that sets these keeps its own values.
+        var appVersion = _serviceProvider.GetRequiredService<IAppEnvironment>().GetEnvironmentInfo().AppVersion;
+        environment.TryAdd(ConsoleEnvironmentVariables.TerminalProgram, TerminalProgramName);
+        environment.TryAdd(ConsoleEnvironmentVariables.TerminalProgramVersion, appVersion);
 
         var projectFolderPath = registry.ProjectFolderPath;
 
