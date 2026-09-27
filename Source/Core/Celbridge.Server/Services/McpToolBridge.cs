@@ -37,8 +37,7 @@ public class McpToolBridge : IMcpToolBridge
     private McpSession? _session;
     private Task<McpSession>? _pendingHandshake;
 
-    // The result of a completed initialize handshake. SessionId is null when the server runs stateless and
-    // issues none, which still counts as a session, so no further handshake is made.
+    // A completed initialize handshake. SessionId is null when HttpServerTransportOptions.Stateless is set.
     private sealed record McpSession(string? SessionId);
 
     public McpToolBridge(
@@ -686,7 +685,7 @@ public class McpToolBridge : IMcpToolBridge
         return new HttpRequestException($"MCP {method} returned {statusCode}: {reason}", null, httpResponse.StatusCode);
     }
 
-    // The message of a JSON-RPC error body, or null when the body is not one.
+    // Returns the message from a JSON-RPC error body, or null when the body is not a JSON-RPC error.
     private static string? ReadJsonRpcErrorMessage(string body)
     {
         try
