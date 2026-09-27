@@ -13,7 +13,7 @@
          so they do not exist when the SDK evaluates the default Assets glob on a clean checkout. Exclude
          them from that glob and re-include them in IncludeGeneratedTemplateZips once they have been
          produced, so they reliably reach consumers' output. -->
-    <CelbridgeDefaultItemExcludes>$(CelbridgeDefaultItemExcludes);Assets\Templates\*.zip</CelbridgeDefaultItemExcludes>
+    <CelbridgeDefaultItemExcludes>$(CelbridgeDefaultItemExcludes);Assets\Templates\*.zip;Assets\GitIgnore.txt</CelbridgeDefaultItemExcludes>
 
     <UnoFeatures>
       CSharpMarkup;
@@ -39,6 +39,11 @@
     <!-- UndefineProperties stops a global TargetFramework (e.g. dotnet build -f net10.0-desktop)
          from forcing net10.0-desktop onto this net10.0 NoTargets project (NETSDK1139). -->
     <ProjectReference Include="..\..\Templates\Celbridge.Templates.csproj" ReferenceOutputAssembly="false" UndefineProperties="TargetFramework" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Read as text when a project is created, not copied to output as an asset. -->
+    <EmbeddedResource Include="Assets\GitIgnore.txt" />
   </ItemGroup>
 
   <ItemGroup>

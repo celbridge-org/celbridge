@@ -23,6 +23,7 @@ public class ProjectServiceTests
     private ISettingsService _settingsService = null!;
     private ILocalFileSystem _fileSystem = null!;
     private IMessengerService _messengerService = null!;
+    private IProjectTemplateService _projectTemplateService = null!;
     private ProjectService _projectService = null!;
 
     [SetUp]
@@ -40,14 +41,66 @@ public class ProjectServiceTests
             _fileSystem);
 
         _messengerService = new MessengerService();
+        _projectTemplateService = Substitute.For<IProjectTemplateService>();
 
         _projectService = new ProjectService(
             new NullLogger<ProjectService>(),
             _settingsService,
             _messengerService,
             projectFactory,
-            Substitute.For<IProjectTemplateService>(),
+            _projectTemplateService,
             _fileSystem);
+    }
+
+    [Test]
+    public async Task CreateProject_CarriesTheReplaceDecisionToTheTemplate()
+    {
+        // Replacing is opted into the whole way down. A service that dropped the flag would turn an
+        // approved replacement into a refusal, or an unapproved one into silent data loss.
+        var projectFilePath = MakeProjectFilePath("Created");
+        StubProjectMissing(projectFilePath);
+
+        var template = new ProjectTemplate
+        {
+            Id = "Empty",
+            Name = "Empty Project",
+            Description = "An empty project",
+            Icon = "bs-file-earmark"
+        };
+        var config = new NewProjectConfig(projectFilePath, template);
+
+        _projectTemplateService.CreateFromTemplateAsync(projectFilePath, template, Arg.Any<bool>())
+            .Returns(Result.Ok());
+
+        await _projectService.CreateProjectAsync(config, replaceExistingFiles: true);
+        await _projectTemplateService.Received(1).CreateFromTemplateAsync(projectFilePath, template, true);
+
+        await _projectService.CreateProjectAsync(config);
+        await _projectTemplateService.Received(1).CreateFromTemplateAsync(projectFilePath, template, false);
+    }
+
+    [Test]
+    public async Task GetConflictingFileNames_AsksTheTemplateAboutTheConfiguredDestination()
+    {
+        var projectFilePath = MakeProjectFilePath("Created");
+
+        var template = new ProjectTemplate
+        {
+            Id = "Empty",
+            Name = "Empty Project",
+            Description = "An empty project",
+            Icon = "bs-file-earmark"
+        };
+        var config = new NewProjectConfig(projectFilePath, template);
+
+        var conflictingFileNames = new List<string> { "readme.md" };
+        _projectTemplateService.GetConflictingFileNamesAsync(projectFilePath, template)
+            .Returns(conflictingFileNames.OkResult<IReadOnlyList<string>>());
+
+        var result = await _projectService.GetConflictingFileNamesAsync(config);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().Equal("readme.md");
     }
 
     [Test]

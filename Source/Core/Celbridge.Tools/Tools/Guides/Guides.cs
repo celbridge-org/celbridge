@@ -408,10 +408,14 @@ internal sealed class Guides : IGuides
 
     private static string ReadResource(Assembly assembly, string resourceName)
     {
-        using var stream = assembly.GetManifestResourceStream(resourceName)
-            ?? throw new InvalidDataException($"Guide resource '{resourceName}' could not be opened.");
-        using var reader = new StreamReader(stream);
-        return reader.ReadToEnd();
+        var readResult = EmbeddedResourceReader.ReadText(assembly, resourceName);
+        if (readResult.IsFailure)
+        {
+            throw new InvalidDataException(
+                $"Guide resource '{resourceName}' could not be opened. {readResult.FirstErrorMessage}");
+        }
+
+        return readResult.Value;
     }
 
     private static List<DiscoveredToolMethod> DiscoverToolMethods(Assembly assembly)

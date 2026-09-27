@@ -6,9 +6,14 @@
 import celbridge from '/assets/celbridge-client/celbridge.js';
 import { ContentLoadedReason } from '/assets/celbridge-client/api/document-api.js';
 import { attachStackLayout } from '/assets/celbridge-client/ui/stack-layout.js';
+import { isMacOS } from '/assets/celbridge-client/platform.js';
 import { createConsoleSettings } from './console-settings.js';
 import { createConsoleSession } from './console-session.js';
-import { createWheelStepCounter, createNotchPacer } from './console-scroll.js';
+import {
+    createWheelStepCounter,
+    DEFAULT_WHEEL_PROFILE,
+    MACOS_WHEEL_PROFILE,
+} from './console-scroll.js';
 
 const client = celbridge;
 
@@ -19,14 +24,15 @@ const initialIsDark = typeof window !== 'undefined' && window.matchMedia
     ? window.matchMedia('(prefers-color-scheme: dark)').matches
     : true;
 
+// Each platform's web view reports wheel travel at its own scale.
+const wheelProfile = isMacOS() ? MACOS_WHEEL_PROFILE : DEFAULT_WHEEL_PROFILE;
+
 const term = new Terminal({
     theme: initialIsDark ? darkTheme : lightTheme,
     fontFamily: "'Cascadia Mono', monospace",
     allowProposedApi: true,
-    // Scales every wheel delta, on the paths xterm scrolls itself as well as the one below. Terminal
-    // lines are shorter than the document lines a browser assumes, so a notch of a wheel would otherwise
-    // cover twice the ground here that it covers elsewhere.
-    scrollSensitivity: 0.5,
+    // The paths xterm scrolls itself take the same sensitivity as the wheel handler below.
+    scrollSensitivity: wheelProfile.scrollback.sensitivity,
 });
 
 const fitAddon = new FitAddon.FitAddon();
@@ -218,85 +224,69 @@ client.onNotification('input/performEdit', (params) => {
     }
 });
 
-const wheelLineCounter = createWheelStepCounter();
-const wheelNotchCounter = createWheelStepCounter();
+const wheelLineCounter = createWheelStepCounter(wheelProfile.scrollback);
+const forwardedEventCounter = createWheelStepCounter(wheelProfile.forwarding);
 
-// A shell or TUI scrolls about this many lines for each wheel notch it is sent, so one notch stands in
-// for that much of the travel counted here.
-const LINES_PER_NOTCH = 3;
+// The size of a forwarded wheel event: the distance a wheel notch reports, so the terminal passes each
+// one on by itself rather than taking it for a trackpad and thinning the stream a second time.
+const FORWARDED_DELTA_PIXELS = 100;
 
-// The distance a wheel notch reports. The notches forwarded below carry at least this, so the terminal
-// counts each one as a notch of its own rather than thinning the stream a second time.
-const NOTCH_DELTA_PIXELS = 100;
+// How far past one line a forwarded wheel event is sized, so the terminal's own threshold never swallows
+// one at a line height this distance would otherwise fall short of.
+const FORWARDED_LINE_MARGIN = 2;
 
-// How far past one line a forwarded notch is sized, so the terminal's own threshold never swallows one
-// at a line height this distance would otherwise fall short of.
-const NOTCH_LINE_MARGIN = 2;
+// Set while wheel events are being forwarded, so the handler lets its own events through untouched.
+let forwardingWheelEvents = false;
 
-// Set while a forwarded notch is being dispatched, so the handler lets its own event through untouched.
-let forwardingNotches = false;
-
-// Where the notches the pacer releases are aimed. The terminal reads the position to work out which cell
-// the gesture is over, so they carry the last real event's target and coordinates.
-let notchTarget = null;
-let notchClientX = 0;
-let notchClientY = 0;
-
-// Sends one notch on to the terminal, which forwards it to whatever is running: a mouse event for a TUI
-// that tracks the mouse, an arrow key for one that does not.
-function releaseNotch(direction) {
-    if (notchTarget === null) {
-        return;
-    }
-
-    // The terminal counts a forwarded notch in lines before passing it on, so it has to clear one line
+// Sends wheel events on to the terminal, which passes each one to whatever is running: a mouse event for
+// a TUI that tracks the mouse, an arrow key for one that does not. The events go straight away, so a TUI
+// that speeds up its own scrolling sees the real timing of the gesture.
+function forwardWheelEvents(event, count) {
+    // The terminal counts a forwarded event in lines before passing it on, so it has to clear one line
     // whatever the line height rather than trusting a fixed distance to.
-    const clearsOneLine = getTerminalLineHeight() * NOTCH_LINE_MARGIN / term.options.scrollSensitivity;
-    const notchDelta = Math.max(NOTCH_DELTA_PIXELS, clearsOneLine);
+    const clearsOneLine = getTerminalLineHeight() * FORWARDED_LINE_MARGIN / term.options.scrollSensitivity;
+    const forwardedDelta = Math.sign(count) * Math.max(FORWARDED_DELTA_PIXELS, clearsOneLine);
 
-    forwardingNotches = true;
+    forwardingWheelEvents = true;
     try {
-        notchTarget.dispatchEvent(new WheelEvent('wheel', {
-            deltaY: direction * notchDelta,
-            deltaMode: 0,
-            clientX: notchClientX,
-            clientY: notchClientY,
-            bubbles: true,
-            cancelable: true,
-        }));
+        for (let index = 0; index < Math.abs(count); index++) {
+            event.target.dispatchEvent(new WheelEvent('wheel', {
+                deltaY: forwardedDelta,
+                deltaMode: 0,
+                clientX: event.clientX,
+                clientY: event.clientY,
+                bubbles: true,
+                cancelable: true,
+            }));
+        }
     } finally {
-        forwardingNotches = false;
+        forwardingWheelEvents = false;
     }
 }
 
-const notchPacer = createNotchPacer(releaseNotch);
-
-// Take the wheel over from the terminal, so the trackpad's event rate does not reach whatever is running.
-// At the shell prompt this scrolls the viewport directly. Shift bypasses it.
+// Take the wheel over from the terminal, which would scale a trackpad's travel by rules of its own. At
+// the shell prompt this scrolls the viewport directly. Shift bypasses it.
 terminalElement.addEventListener('wheel', (event) => {
-    if (event.shiftKey || forwardingNotches) {
+    if (event.shiftKey || forwardingWheelEvents) {
         return;
     }
 
     const terminalMetrics = {
         lineHeight: getTerminalLineHeight(),
         rows: term.rows,
-        sensitivity: term.options.scrollSensitivity,
     };
 
     event.preventDefault();
     event.stopPropagation();
 
-    // A TUI scrolls itself, so the wheel has to reach it. The terminal passes on at most one notch per
-    // event it sees, which hands a trackpad's far higher event rate straight to the TUI, so the stream is
-    // thinned to whole notches here and the events between them are dropped.
+    // A TUI scrolls itself, so the wheel has to reach it. The terminal would pass each wheel event on as
+    // one, however far it travelled, so the number to forward is counted from the travel here.
     if (term.modes.mouseTrackingMode !== 'none' ||
         term.buffer.active.type === 'alternate') {
-        terminalMetrics.linesPerStep = LINES_PER_NOTCH;
-        notchTarget = event.target;
-        notchClientX = event.clientX;
-        notchClientY = event.clientY;
-        notchPacer.queue(wheelNotchCounter(event, terminalMetrics));
+        const forwardedEvents = forwardedEventCounter(event, terminalMetrics);
+        if (forwardedEvents !== 0) {
+            forwardWheelEvents(event, forwardedEvents);
+        }
 
         return;
     }
