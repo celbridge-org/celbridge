@@ -25,11 +25,12 @@ internal interface IWebSurfaceMessageDispatcher
     void AddHandler(string method, Action<WebSurfaceMessage> handler);
 
     /// <summary>
-    /// Begins routing the surface's messages under the given name. Attaching a surface that is already
-    /// attached renames it and keeps the one subscription, so a pooled web view reacquired for another
-    /// document reports under the document it now shows.
+    /// Begins routing the surface's messages, named by getSurfaceName. The name is read for each message, so a
+    /// renamed surface reports under its new name. Attaching a surface that is already attached replaces
+    /// getSurfaceName and keeps the existing subscription. A pooled web view reused for another document
+    /// then reports under that document's name.
     /// </summary>
-    void Attach(CoreWebView2 coreWebView, string surfaceName);
+    void Attach(CoreWebView2 coreWebView, Func<string> getSurfaceName);
 
     /// <summary>
     /// Stops routing the surface's messages. Safe to call for a surface that was never attached.

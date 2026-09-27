@@ -502,6 +502,33 @@ public class DocumentLayoutStoreTests
                 && d[otherResource.ToString()].State == "{\"scroll\":1.0}"));
     }
 
+    [Test]
+    public async Task LoadDocumentEditorStateAsync_ReturnsTheStateAndTheEditorThatSavedIt()
+    {
+        var targetResource = new ResourceKey("notes/readme.md");
+        StubStoredEditorStates(new Dictionary<string, DocumentLayoutStore.StoredEditorState>
+        {
+            [targetResource.ToString()] = new("celbridge.markdown", "{\"viewMode\":\"split\"}"),
+        });
+
+        var state = await _store.LoadDocumentEditorStateAsync(targetResource);
+
+        state.Should().Be(new DocumentEditorState(new EditorId("celbridge.markdown"), "{\"viewMode\":\"split\"}"));
+    }
+
+    [Test]
+    public async Task LoadDocumentEditorStateAsync_WithNothingStoredReturnsNull()
+    {
+        StubStoredEditorStates(new Dictionary<string, DocumentLayoutStore.StoredEditorState>
+        {
+            ["other/file.md"] = new("celbridge.markdown", "{\"viewMode\":\"split\"}"),
+        });
+
+        var state = await _store.LoadDocumentEditorStateAsync(new ResourceKey("notes/readme.md"));
+
+        state.Should().BeNull();
+    }
+
     private void StubStoredEditorStates(Dictionary<string, DocumentLayoutStore.StoredEditorState> editorStates)
     {
         _propertyBag.GetPropertyAsync<Dictionary<string, DocumentLayoutStore.StoredEditorState>>("DocumentEditorStates")

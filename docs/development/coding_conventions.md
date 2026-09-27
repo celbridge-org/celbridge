@@ -21,6 +21,13 @@ Formatting (indent width, line endings, trailing whitespace, final newline) is o
 - Keep inline body comments terse — write only what a first-time reader needs to know that they can't read off the code. Don't narrate what the current change is about, don't recap rationale visible in the surrounding code, don't enumerate edge cases the reader can infer. If a comment approaches paragraph length, the code probably needs restructuring instead
 - Unit tests should cover the happy case and the most common failure modes; do not aim for complete coverage for its own sake
 
+## User-facing text
+
+Strings the user reads, in `Resources.resw` and in each web package's `localization/en.json`.
+
+- Short labels and tooltips that name an action or a control use title case: "Reload Preview", "Open in System Browser", "Match Whole Word". Articles, `and`, `or` and short prepositions stay lowercase unless they come first
+- Longer descriptions, field hints, states and messages use sentence case: "Maximize the window for more working space", "On by default", "This page could not be loaded."
+
 ## C#
 
 - Never use `#region` / `#endregion`

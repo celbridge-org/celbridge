@@ -1,6 +1,6 @@
 # webview_click
 
-Drives a click against an open contribution editor or HTML viewer by selector. The first match receives a `mousedown`, `mouseup`, and `click` sequence with bubbling enabled, so React, Lit, Vue, and Svelte handlers all observe the click.
+Drives a click against an open contribution editor, or the page it previews, by selector. The first match receives a `mousedown`, `mouseup`, and `click` sequence with bubbling enabled, so React, Lit, Vue, and Svelte handlers all observe the click.
 
 ## Parameters
 
@@ -9,7 +9,7 @@ Drives a click against an open contribution editor or HTML viewer by selector. T
 
 ## Returns
 
-JSON object with `selector`, `tag`, `visible`, `rect`, and `isTrusted` (always `false`).
+JSON object with `frame`, `selector`, `tag`, `visible`, `rect`, and `isTrusted` (always `false`).
 
 ## Gotchas
 

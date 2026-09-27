@@ -17,6 +17,15 @@ describe('projectUrl', () => {
         expect(projectUrl(undefined)).toBe('/project/');
     });
 
+    it('encodes each segment, so a name holding # or ? or % names the file', () => {
+        expect(projectUrl('project:site/chart #1?.html')).toBe('/project/site/chart%20%231%3F.html');
+        expect(projectUrl('project:100%/page.html')).toBe('/project/100%25/page.html');
+    });
+
+    it('keeps the trailing slash of a folder', () => {
+        expect(projectUrl('project:docs/')).toBe('/project/docs/');
+    });
+
     it('passes through a key with no project: prefix', () => {
         // The helper is intentionally lenient on its input. A caller that
         // already trimmed the prefix should still get a sane URL.

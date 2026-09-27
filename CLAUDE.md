@@ -13,7 +13,7 @@ Read the document covering an area before working in it:
 | Document | Covers |
 |---|---|
 | [Building and Testing](docs/development/building.md) | Building on Windows and macOS, running the .NET, JavaScript and Python test suites, linting, and CI |
-| [Coding Conventions](docs/development/coding_conventions.md) | Conventions for C#, JavaScript and Python, plus the general rules that apply to all three |
+| [Coding Conventions](docs/development/coding_conventions.md) | Conventions for C#, JavaScript and Python, plus the general rules that apply to all three and the casing of user-facing text |
 | [Architecture](docs/development/architecture.md) | The solution layout, service lifetimes and dependency injection rules, the command system, the `Platform/` folder convention, feature flags, and the document save model |
 | [Design Tokens](docs/development/design_tokens.md) | The generated colour and dimension tokens shared by the XAML and web sides |
 | [Python Environment](docs/development/python_environment.md) | What uv, the interpreter and the `celbridge` package install where and why, the three places Python code loads from at runtime, and what makes an edited script reach a running REPL |

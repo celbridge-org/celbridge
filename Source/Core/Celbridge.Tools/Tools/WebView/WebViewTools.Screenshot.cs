@@ -20,7 +20,8 @@ public partial class WebViewTools
         int quality = 70,
         int maxEdge = 768,
         string selector = "",
-        int settleMs = 0)
+        int settleMs = 0,
+        string frame = "")
     {
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
@@ -42,8 +43,8 @@ public partial class WebViewTools
                 "or provide a saveTo to archive it into the project tree.");
         }
 
-        Logger.LogInformation("webview_screenshot resource={Resource} saveTo={SaveTo} returnImage={ReturnImage} format={Format} quality={Quality} maxEdge={MaxEdge} selector={Selector} settleMs={SettleMs}",
-            resourceKey, saveTo, returnImage, format, quality, maxEdge, selector, settleMs);
+        Logger.LogInformation("webview_screenshot resource={Resource} saveTo={SaveTo} returnImage={ReturnImage} format={Format} quality={Quality} maxEdge={MaxEdge} selector={Selector} settleMs={SettleMs} frame={Frame}",
+            resourceKey, saveTo, returnImage, format, quality, maxEdge, selector, settleMs, frame);
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
         var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
@@ -72,14 +73,15 @@ public partial class WebViewTools
         var toolBridge = GetRequiredService<IDocumentWebViewToolBridge>();
         var scopedSelector = string.IsNullOrEmpty(selector) ? null : selector;
         var clampedSettleMs = settleMs < 0 ? 0 : settleMs;
-        var options = new ScreenshotOptions(format, quality, maxEdge, scopedSelector, clampedSettleMs);
+        var options = new ScreenshotOptions(format, quality, maxEdge, scopedSelector, clampedSettleMs, frame);
         var screenshotResult = await toolBridge.ScreenshotAsync(resourceKey, options);
         if (screenshotResult.IsFailure)
         {
             return ToolResponse.Error(screenshotResult);
         }
 
-        var data = screenshotResult.Value;
+        var screenshot = screenshotResult.Value;
+        var data = screenshot.Data;
 
         if (fileResource is not null)
         {
@@ -104,6 +106,7 @@ public partial class WebViewTools
         }
 
         var response = new ScreenshotResponse(
+            screenshot.Frame,
             data.Format,
             data.Width,
             data.Height,
@@ -123,6 +126,7 @@ public partial class WebViewTools
     }
 
     private sealed record ScreenshotResponse(
+        string Frame,
         string Format,
         int Width,
         int Height,

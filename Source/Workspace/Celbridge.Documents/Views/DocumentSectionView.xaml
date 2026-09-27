@@ -6,6 +6,14 @@
   xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
   xmlns:local="using:Celbridge.Documents.Views">
 
+  <UserControl.Resources>
+    <!-- Lays out every tab, for the platforms whose virtualizing tab panel cannot measure the strip. Swapped
+         in from code-behind, because the tab list lives inside the TabView template. -->
+    <ItemsPanelTemplate x:Key="NonVirtualizingTabStripPanel">
+      <StackPanel Orientation="Horizontal"/>
+    </ItemsPanelTemplate>
+  </UserControl.Resources>
+
   <!-- A section is carved out of the chrome field, so it takes the content background across its whole
        area, tab strip included, and draws the edges that face a channel. The thicknesses and corners depend
        on what sits beside it, so they are set by the container. -->

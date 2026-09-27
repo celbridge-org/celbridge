@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Celbridge.Host;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -100,4 +101,21 @@ public class CelbridgeHostTests
         _channel.SentMessages[0].Should().Contain("preserveViewState");
     }
 
+    [Test]
+    public async Task NotifyRenamedAsync_SendsTheNewNameAndPath()
+    {
+        _host.StartListening();
+        var metadata = new DocumentMetadata(@"C:\Acme\site\renamed.html", "project:site/renamed.html", "renamed.html", "en");
+
+        await _host.NotifyRenamedAsync(metadata);
+
+        // The page reads the metadata in the same shape it gets when the document opens.
+        _channel.SentMessages.Should().HaveCount(1);
+        using var message = JsonDocument.Parse(_channel.SentMessages[0]);
+        message.RootElement.GetProperty("method").GetString().Should().Be("document/renamed");
+
+        var sentMetadata = message.RootElement.GetProperty("params").GetProperty("metadata");
+        sentMetadata.GetProperty("resourceKey").GetString().Should().Be("project:site/renamed.html");
+        sentMetadata.GetProperty("fileName").GetString().Should().Be("renamed.html");
+    }
 }

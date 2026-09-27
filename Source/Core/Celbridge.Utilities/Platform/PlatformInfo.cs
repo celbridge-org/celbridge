@@ -83,4 +83,16 @@ public sealed class PlatformInfo : IPlatformInfo
 #endif
         }
     }
+
+    public bool RequiresNonVirtualizingTabStrip
+    {
+        get
+        {
+#if WINDOWS
+            return false;
+#else
+            return true;
+#endif
+        }
+    }
 }

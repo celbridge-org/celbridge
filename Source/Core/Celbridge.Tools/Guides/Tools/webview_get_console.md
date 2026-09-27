@@ -1,6 +1,6 @@
 # webview_get_console
 
-Reads the WebView's accumulated console buffer. Each entry is a `console.log`/`info`/`warn`/`error` call, an uncaught exception, or an unhandled promise rejection. The buffer survives reloads, so errors logged before a `webview_reload` remain visible afterwards.
+Reads the WebView's accumulated console buffer. Each entry is a `console.log`/`info`/`warn`/`error` call, an uncaught exception, or an unhandled promise rejection. The buffer survives reloads, so errors logged before a `webview_reload` remain visible afterwards. The host collects the console of the page and of each frame in it, and a call returns the entries logged in the frame it acts on.
 
 ## Parameters
 
@@ -13,9 +13,10 @@ Reads the WebView's accumulated console buffer. Each entry is a `console.log`/`i
 
 JSON object with:
 
+- `frame` — the frame the entries were logged in.
 - `entries` — array of console records, each carrying `timestampMs`, `level`, `text`, and source metadata.
 - `returned` — the count after filtering.
-- `totalAccumulated` — the total number of entries the host has captured for this resource since it was opened. A growing gap between `returned` and `totalAccumulated` means the buffer is filling faster than you are polling.
+- `totalAccumulated` — the total number of entries the host has captured for this frame since the document was opened. A growing gap between `returned` and `totalAccumulated` means the buffer is filling faster than you are polling.
 
 ## Polling pattern
 

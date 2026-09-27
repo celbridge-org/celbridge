@@ -30,7 +30,7 @@ The manifest's `dock-area` key names the document area a utility docks into. A m
 
 ## Moving between areas
 
-- **Dock as a document** ("Open as document"): a control in the utility's Utility Panel header moves it into its document area, in that area's primary section, and makes it the active document. Its rail button stays but is no longer highlighted, and the panel falls back to Explorer. Docking into `bottom` or `side` reveals that area first when it is collapsed. The control is absent for a utility that declares no document area, because there is nowhere for it to send the utility.
+- **Dock as a document** ("Open as Document"): a control in the utility's Utility Panel header moves it into its document area, in that area's primary section, and makes it the active document. Its rail button stays but is no longer highlighted, and the panel falls back to Explorer. Docking into `bottom` or `side` reveals that area first when it is collapsed. The control is absent for a utility that declares no document area, because there is nowhere for it to send the utility.
 - **Dock back into the panel** (close the tab): the close button on a utility's document tab does not destroy it — it reparents the WebView back to the Utility Panel. The utility returns to the panel, reachable from its rail button as before. A utility therefore can never be truly closed; the close control means "send it back to the panel".
 - Clicking the rail button of a utility that is docked as a document activates its document tab (with a brief highlight) rather than showing anything in the panel, since its view has moved out of the panel.
 
@@ -65,7 +65,7 @@ description = "Scratchpad_Description"      # localization key; the rail-button 
 resource-extension = "._scratchpad"        # file format of the utility state file (required)
 template = "templates/default._scratchpad" # seeds the file when absent (optional)
 icon     = "bs-sticky"                     # prefixed icon name (required)
-dock-area = "main"                         # optional; where "Open as document" sends it, or "none"
+dock-area = "main"                         # optional; where "Open as Document" sends it, or "none"
 ```
 
 | Field | Required | Default | Meaning |
@@ -73,7 +73,7 @@ dock-area = "main"                         # optional; where "Open as document" 
 | `resource-extension` | yes | — | File extension of the utility's backing state file. The host derives the full path from the utility's id, as `utils:{package}.{contribution}{resource-extension}`. |
 | `icon` | yes | — | Prefixed icon name (`<font>-<name>`, e.g. `bs-sticky`) for the rail button and the docked tab icon. Resolved by name, not limited to the curated symbol set. |
 | `template` | no | empty file | Package-relative path to a file that seeds a utility's backing resource when it is absent. |
-| `dock-area` | no | `main` | The document area the "Open as document" control and the `"document"` tool alias send the utility to: `main`, `bottom` or `side`. Declare `none` for a utility that stays in the Utility Panel, which hides that control. A utility always occupies the Utility Panel, so `utility` is not a dock area. |
+| `dock-area` | no | `main` | The document area the "Open as Document" control and the `"document"` tool alias send the utility to: `main`, `bottom` or `side`. Declare `none` for a utility that stays in the Utility Panel, which hides that control. A utility always occupies the Utility Panel, so `utility` is not a dock area. |
 
 `display-name` in `[editor]` is required (as for any editor) and labels the rail button and the docked tab. The tooltip comes from `[editor].description` — the same field a document editor uses — so a utility's rail-button and docked-tab tooltip are authored once there, not in `[utility]`.
 

@@ -11,7 +11,7 @@ public partial class WebViewTools
     [McpServerTool(Name = "webview_inspect")]
     [ToolAlias("webview.inspect")]
     [RelatedGuides("resource_keys", "webview_documents", "webview_devtools")]
-    public async partial Task<CallToolResult> Inspect(string resource, string selector, int childPreviewLimit = 5)
+    public async partial Task<CallToolResult> Inspect(string resource, string selector, int childPreviewLimit = 5, string frame = "")
     {
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
@@ -29,11 +29,11 @@ public partial class WebViewTools
             return ToolResponse.Error("webview_inspect requires a non-empty selector.");
         }
 
-        Logger.LogInformation("webview_inspect resource={Resource} selector={Selector} childPreviewLimit={ChildPreviewLimit}",
-            resourceKey, selector, childPreviewLimit);
+        Logger.LogInformation("webview_inspect resource={Resource} selector={Selector} childPreviewLimit={ChildPreviewLimit} frame={Frame}",
+            resourceKey, selector, childPreviewLimit, frame);
 
         var toolBridge = GetRequiredService<IDocumentWebViewToolBridge>();
-        var options = new InspectOptions(selector, childPreviewLimit);
+        var options = new InspectOptions(selector, childPreviewLimit, frame);
         var inspectResult = await toolBridge.InspectAsync(resourceKey, options);
         if (inspectResult.IsFailure)
         {

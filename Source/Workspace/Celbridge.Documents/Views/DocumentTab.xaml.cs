@@ -63,6 +63,9 @@ public partial class DocumentTab : TabViewItem
     // Whether the documents panel holds the keyboard, which the active document indicator's tone shows.
     private bool _isPanelFocused;
 
+    // The close button from the TabViewItem template, set once the template is applied.
+    private Button? _closeButton;
+
     public DocumentTabViewModel ViewModel { get; }
 
     /// <summary>
@@ -201,6 +204,8 @@ public partial class DocumentTab : TabViewItem
     {
         base.OnApplyTemplate();
 
+        _closeButton = GetTemplateChild("CloseButton") as Button;
+
         OverrideCloseButtonTooltip();
     }
 
@@ -209,14 +214,28 @@ public partial class DocumentTab : TabViewItem
     // Command glyph and both platforms match the close hint on the tab context menu.
     private void OverrideCloseButtonTooltip()
     {
-        if (GetTemplateChild("CloseButton") is not Button closeButton)
+        if (_closeButton is null)
         {
             return;
         }
 
         string shortcutHint = GetCloseShortcutHint();
         string tooltipText = _stringLocalizer.GetString("DocumentTab_CloseTabTooltip", shortcutHint);
-        ToolTipService.SetToolTip(closeButton, tooltipText);
+        ToolTipService.SetToolTip(_closeButton, tooltipText);
+    }
+
+    // Whether the tap landed on the close button, whose taps bubble up to the tab like any other.
+    private bool IsCloseButtonTap(TappedRoutedEventArgs e)
+    {
+        if (_closeButton is null ||
+            e.OriginalSource is not DependencyObject source)
+        {
+            return false;
+        }
+
+        return VisualTree.GetAncestors(source, includeSelf: true)
+            .TakeWhile(ancestor => !ReferenceEquals(ancestor, this))
+            .Any(ancestor => ReferenceEquals(ancestor, _closeButton));
     }
 
     /// <summary>
@@ -454,6 +473,13 @@ public partial class DocumentTab : TabViewItem
 
     private void DocumentTab_Tapped(object sender, TappedRoutedEventArgs e)
     {
+        // A tap on the close button closes the tab rather than clicking it. Taken as a click, it would make
+        // the closing document active, and the close would then pass the active document to its neighbor.
+        if (IsCloseButtonTap(e))
+        {
+            return;
+        }
+
         // Send message to notify that this tab was clicked - this updates the active document
         var message = new DocumentViewFocusedMessage(ViewModel.FileResource);
         _messengerService.Send(message);

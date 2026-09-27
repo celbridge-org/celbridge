@@ -31,6 +31,11 @@ public static class BuiltInEditors
     public static readonly EditorId MarkdownEditorId = new("celbridge.markdown");
 
     /// <summary>
+    /// Built-in id of the HTML editor, which edits a page's source beside a live preview of the page.
+    /// </summary>
+    public static readonly EditorId HtmlEditorId = new("celbridge.html");
+
+    /// <summary>
     /// Built-in id of the File Viewer.
     /// </summary>
     public static readonly EditorId FileViewerId = new("celbridge.file-viewer");
@@ -52,11 +57,6 @@ public static class BuiltInEditors
     public static readonly EditorId WebViewEditorId = new("celbridge.webview-editor");
 
     /// <summary>
-    /// Built-in id of the HTML viewer, registered natively by the WebView module.
-    /// </summary>
-    public static readonly EditorId HtmlViewerId = new("celbridge.html-viewer");
-
-    /// <summary>
     /// Built-in id of the Project Settings editor, registered natively by the Project Settings module.
     /// Absent from BuiltInResolutionOrder because it reserves the project file type, and a reserving
     /// editor holds its file types ahead of the pinned order rather than taking a place in it.
@@ -67,11 +67,12 @@ public static class BuiltInEditors
     /// The package built-ins: bundled contributions registered under host-assigned ids. Ordered to
     /// match the shared editors' relative order in BuiltInResolutionOrder, which is the authority for
     /// open precedence; the two lists differ only in that BuiltInResolutionOrder also carries the
-    /// natively registered HtmlViewer and WebView editors, which are not package contributions.
+    /// natively registered WebView editor, which is not a package contribution.
     /// </summary>
     public static readonly IReadOnlyList<BuiltInEditorDefinition> PackageBuiltIns =
     [
         new BuiltInEditorDefinition(MarkdownEditorId, "celbridge-code-editor", "markdown"),
+        new BuiltInEditorDefinition(HtmlEditorId, "celbridge-code-editor", "html"),
         new BuiltInEditorDefinition(SpreadsheetEditorId, "celbridge-spreadsheet", "spreadsheet", Optional: true),
         new BuiltInEditorDefinition(ReportViewerId, "celbridge-report", "report"),
         new BuiltInEditorDefinition(FileViewerId, "celbridge-file-viewer", "file-viewer"),
@@ -82,12 +83,12 @@ public static class BuiltInEditors
     /// Fixed resolution order for built-in editors, applied after every declared editor. Specialized
     /// editors rank ahead of the general code editor. This
     /// is the authority for built-in open precedence; PackageBuiltIns lists the same contributions
-    /// (minus the natively registered HtmlViewer and WebView) in the same relative order.
+    /// (minus the natively registered WebView editor) in the same relative order.
     /// </summary>
     public static readonly IReadOnlyList<EditorId> BuiltInResolutionOrder =
     [
         MarkdownEditorId,
-        HtmlViewerId,
+        HtmlEditorId,
         WebViewEditorId,
         SpreadsheetEditorId,
         ReportViewerId,

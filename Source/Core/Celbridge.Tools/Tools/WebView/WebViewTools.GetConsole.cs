@@ -11,7 +11,7 @@ public partial class WebViewTools
     [McpServerTool(Name = "webview_get_console")]
     [ToolAlias("webview.get_console")]
     [RelatedGuides("resource_keys", "webview_documents", "webview_devtools")]
-    public async partial Task<CallToolResult> GetConsole(string resource, int tail = 100, bool includeDebug = false, long sinceTimestampMs = 0)
+    public async partial Task<CallToolResult> GetConsole(string resource, int tail = 100, bool includeDebug = false, long sinceTimestampMs = 0, string frame = "")
     {
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
@@ -24,12 +24,12 @@ public partial class WebViewTools
             return ToolResponse.InvalidResourceKey(resource);
         }
 
-        Logger.LogInformation("webview_get_console resource={Resource} tail={Tail} includeDebug={IncludeDebug} since={Since}",
-            resourceKey, tail, includeDebug, sinceTimestampMs);
+        Logger.LogInformation("webview_get_console resource={Resource} tail={Tail} includeDebug={IncludeDebug} since={Since} frame={Frame}",
+            resourceKey, tail, includeDebug, sinceTimestampMs, frame);
 
         var toolBridge = GetRequiredService<IDocumentWebViewToolBridge>();
         long? since = sinceTimestampMs > 0 ? sinceTimestampMs : null;
-        var options = new ConsoleQueryOptions(tail, includeDebug, since);
+        var options = new ConsoleQueryOptions(tail, includeDebug, since, frame);
         var consoleResult = await toolBridge.GetConsoleAsync(resourceKey, options);
         if (consoleResult.IsFailure)
         {

@@ -70,6 +70,10 @@ public sealed partial class DocumentSectionView : UserControl
 
     private ContentPresenter? _tabContentPresenter;
 
+    // The tab this section last selected. Kept apart from the TabView's own selection, because reloading the tab
+    // list can clear that.
+    private DocumentTab? _selectedTab;
+
     private static DocumentTab? _draggedTab;
 
     /// <summary>
@@ -251,7 +255,9 @@ public sealed partial class DocumentSectionView : UserControl
 
         // The border lines come from the strip's template, and the pair inside the tab list only appears
         // once that list has laid out, so a section that starts empty is covered by applying now and again
-        // on the next dispatcher cycle. The scroll arrows live in that same late template.
+        // on the next dispatcher cycle. The scroll arrows and the tab list's items presenter live in that
+        // same late template.
+        DisableTabVirtualization();
         UpdateTabStripBorderLines();
         FixTabStripBandHeight();
         AlignTabListToBandTop();
@@ -260,12 +266,33 @@ public sealed partial class DocumentSectionView : UserControl
 
         _ = DispatcherQueue.TryEnqueue(() =>
         {
+            DisableTabVirtualization();
             UpdateTabStripBorderLines();
             FixTabStripBandHeight();
             AlignTabListToBandTop();
             HideTabStripScrollButtons();
             AttachTabStripScrollHandlers();
+            RestoreSelectionDroppedByReload();
         });
+    }
+
+    // UNO-BUG: each time the tab list loads, the TabView empties it and adds the tabs back, which clears the
+    // selection. The virtualizing panel happens to restore it and the non-virtualizing one does not, which
+    // leaves a section shown again with every tab unselected and no document content. Observed in 6.6.166.
+    /// <summary>
+    /// Selects the section's last selected tab again when reloading the tab list has cleared the selection.
+    /// </summary>
+    private void RestoreSelectionDroppedByReload()
+    {
+        if (!_platformInfo.RequiresNonVirtualizingTabStrip ||
+            TabView.SelectedItem is not null ||
+            _selectedTab is null ||
+            !TabView.TabItems.Contains(_selectedTab))
+        {
+            return;
+        }
+
+        SelectTab(_selectedTab);
     }
 
     private void OnTabViewSizeChanged(object sender, SizeChangedEventArgs e)
@@ -309,6 +336,65 @@ public sealed partial class DocumentSectionView : UserControl
         {
             listView.ItemContainerTransitions = new TransitionCollection();
         }
+    }
+
+    // UNO-BUG: the tab list's virtualizing panel estimates the width of the tabs it has not laid out from the
+    // average width of those it has. The strip then cannot scroll a far tab into view, or its last tab fully
+    // into view. Observed in 6.6.166.
+    /// <summary>
+    /// Swaps the tab list's virtualizing panel for one that lays out every tab, so the strip's extent is the
+    /// true width of its tabs and every tab has bounds to reveal.
+    /// </summary>
+    private void DisableTabVirtualization()
+    {
+        if (!_platformInfo.RequiresNonVirtualizingTabStrip)
+        {
+            return;
+        }
+
+        var tabListView = VisualTree.FindDescendant<ListViewBase>(TabView);
+        if (tabListView is null)
+        {
+            return;
+        }
+
+        tabListView.ItemsPanel = (ItemsPanelTemplate)Resources["NonVirtualizingTabStripPanel"];
+
+        ReserveTabListHeaderAndFooterWidth();
+    }
+
+    // UNO-BUG: over a StackPanel, the items presenter leaves its header and footer out of the width it asks
+    // for, yet still lays them out either side of the tabs. The strip's extent then stops short by their width
+    // and clips the last tab. Observed in 6.6.166.
+    /// <summary>
+    /// Pads the tab list's items presenter by the width of its header and footer, so the width it asks for
+    /// covers everything it lays out. The header and footer carry the ends of the strip's bottom border.
+    /// </summary>
+    private void ReserveTabListHeaderAndFooterWidth()
+    {
+        if (GetTabStripScrollViewer()?.Content is not ItemsPresenter itemsPresenter)
+        {
+            // The tab list's template has not been applied yet, so try again on the next cycle.
+            return;
+        }
+
+        double reservedWidth = MeasureWidth(itemsPresenter.Header) + MeasureWidth(itemsPresenter.Footer);
+
+        itemsPresenter.Padding = new Thickness(0, 0, reservedWidth, 0);
+    }
+
+    // Measured here rather than read from the last layout pass, so the width is known before the strip has
+    // laid out.
+    private static double MeasureWidth(object? content)
+    {
+        if (content is not UIElement element)
+        {
+            return 0;
+        }
+
+        element.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+
+        return element.DesiredSize.Width;
     }
 
     /// <summary>
@@ -518,6 +604,13 @@ public sealed partial class DocumentSectionView : UserControl
         RemoveTabPointerPressedHandler(tab);
         TabView.TabItems.Remove(tab);
         DetachStrandedContainer(tab);
+
+        // A removed tab is never restored, and holding it would keep a closed document alive.
+        if (ReferenceEquals(_selectedTab, tab))
+        {
+            _selectedTab = null;
+        }
+
         UpdateEmptySectionVisuals();
     }
 
@@ -924,6 +1017,7 @@ public sealed partial class DocumentSectionView : UserControl
         // document has no tab list to align when it loads either.
         _ = DispatcherQueue.TryEnqueue(() =>
         {
+            DisableTabVirtualization();
             AlignTabListToBandTop();
             AttachTabStripScrollHandlers();
             UpdateTabStripOverlays();
@@ -1032,6 +1126,11 @@ public sealed partial class DocumentSectionView : UserControl
         if (_isShuttingDown)
         {
             return;
+        }
+
+        if (TabView.SelectedItem is DocumentTab selectedTab)
+        {
+            _selectedTab = selectedTab;
         }
 
         RevealSelectedTab();
@@ -1205,35 +1304,9 @@ public sealed partial class DocumentSectionView : UserControl
         ScrollIndicator.Margin = new Thickness(stripBounds.Left, indicatorTop, 0, 0);
 
         ScrollIndicator.Update(
-            MeasureTabStripContentWidth(scrollViewer),
+            scrollViewer.ExtentWidth,
             scrollViewer.ViewportWidth,
             scrollViewer.HorizontalOffset);
-    }
-
-    // The strip's ExtentWidth under-reports the width it actually arranges its tabs in, so a thumb sized from
-    // it alone reaches the end of its track before the tabs reach the end of the strip. The trailing arranged
-    // tab's right edge is the accurate figure and it is available exactly where it matters, at the end of the
-    // strip. Away from there the tabs past the viewport can be virtualized, and the extent is the estimate
-    // that accounts for them.
-    private double MeasureTabStripContentWidth(ScrollViewer scrollViewer)
-    {
-        double arrangedRight = 0;
-        foreach (var tabItem in TabView.TabItems)
-        {
-            if (tabItem is not DocumentTab tab ||
-                tab.ActualWidth <= 0)
-            {
-                continue;
-            }
-
-            var bounds = tab
-                .TransformToVisual(scrollViewer)
-                .TransformBounds(new Rect(0, 0, tab.ActualWidth, tab.ActualHeight));
-
-            arrangedRight = Math.Max(arrangedRight, bounds.Right + scrollViewer.HorizontalOffset);
-        }
-
-        return Math.Max(scrollViewer.ExtentWidth, arrangedRight);
     }
 
     private static void HoldScrollButtonCollapsed(DependencyObject sender, DependencyProperty property)

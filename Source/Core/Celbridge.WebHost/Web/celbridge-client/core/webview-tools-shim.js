@@ -21,6 +21,17 @@
         return;
     }
 
+    // The name of the page itself, as opposed to a frame inside it. The host uses the same name.
+    var TOP_FRAME = 'top';
+
+    // A page marks the frame that shows its content with this attribute. A call that names no frame acts on
+    // that frame.
+    var CONTENT_FRAME_SELECTOR = '[data-cel-content-frame]';
+
+    // Set on a frame's window when the shim reloads the frame. The page that replaces it gets a new window
+    // without this mark, so a window that still has it has not been replaced yet.
+    var reloadingKey = Symbol('reloading');
+
     // Bounded ring buffer for console messages and uncaught errors. Older
     // entries are evicted FIFO once the buffer fills up. Host code drains
     // and accumulates these before each get-console call so the cap is a
@@ -249,6 +260,8 @@
     function getAccessibleName(el) {
         if (!el || !el.getAttribute) return '';
 
+        var ownerDocument = el.ownerDocument;
+
         var ariaLabel = el.getAttribute('aria-label');
         if (ariaLabel) return ariaLabel.trim();
 
@@ -257,7 +270,7 @@
             var ids = labelledBy.split(/\s+/);
             var parts = [];
             for (var i = 0; i < ids.length; i++) {
-                var ref = document.getElementById(ids[i]);
+                var ref = ownerDocument.getElementById(ids[i]);
                 if (ref) parts.push((ref.textContent || '').trim());
             }
             var joined = parts.join(' ').trim();
@@ -266,7 +279,7 @@
 
         if (el.id) {
             try {
-                var label = document.querySelector('label[for="' + cssEscape(el.id) + '"]');
+                var label = ownerDocument.querySelector('label[for="' + cssEscape(el.id) + '"]');
                 if (label) {
                     var labelText = (label.textContent || '').trim();
                     if (labelText) return labelText;
@@ -304,9 +317,18 @@
         if (!el || !el.getBoundingClientRect) return false;
         var rect = el.getBoundingClientRect();
         if (rect.width === 0 && rect.height === 0) return false;
-        var style = (typeof getComputedStyle === 'function') ? getComputedStyle(el) : null;
+        var style = getElementStyle(el);
         if (style && (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0')) return false;
         return true;
+    }
+
+    // Read through the element's own window, which is a frame's window for an element inside a frame.
+    function getElementStyle(el) {
+        var view = el.ownerDocument && el.ownerDocument.defaultView;
+        if (!view || typeof view.getComputedStyle !== 'function') {
+            return null;
+        }
+        return view.getComputedStyle(el);
     }
 
     function describeRect(el) {
@@ -324,13 +346,15 @@
 
     function buildUniqueSelector(el) {
         if (!el || el.nodeType !== 1) return '';
-        if (el === document.body) return 'body';
-        if (el === document.documentElement) return 'html';
+
+        var ownerDocument = el.ownerDocument;
+        if (el === ownerDocument.body) return 'body';
+        if (el === ownerDocument.documentElement) return 'html';
 
         if (el.id) {
             var idSelector = '#' + cssEscape(el.id);
             try {
-                if (document.querySelectorAll(idSelector).length === 1) {
+                if (ownerDocument.querySelectorAll(idSelector).length === 1) {
                     return idSelector;
                 }
             } catch { /* fallthrough */ }
@@ -338,7 +362,7 @@
 
         var parts = [];
         var current = el;
-        while (current && current.nodeType === 1 && current !== document.body && current !== document.documentElement) {
+        while (current && current.nodeType === 1 && current !== ownerDocument.body && current !== ownerDocument.documentElement) {
             var part = current.tagName.toLowerCase();
             if (current.id) {
                 part = part + '#' + cssEscape(current.id);
@@ -364,7 +388,7 @@
             current = parent;
         }
 
-        if (current === document.body) {
+        if (current === ownerDocument.body) {
             parts.unshift('body');
         }
 
@@ -415,8 +439,8 @@
     }
 
     function curatedComputedStyles(el) {
-        if (typeof getComputedStyle !== 'function') return {};
-        var style = getComputedStyle(el);
+        var style = getElementStyle(el);
+        if (!style) return {};
         var keys = [
             'display', 'visibility', 'opacity', 'position',
             'width', 'height', 'color', 'background-color',
@@ -463,7 +487,7 @@
         if (maxDepth <= 0) {
             if (el.children && el.children.length > 0) {
                 while (el.firstChild) el.removeChild(el.firstChild);
-                el.appendChild(document.createComment('truncated children'));
+                el.appendChild(el.ownerDocument.createComment('truncated children'));
             }
             return;
         }
@@ -473,12 +497,210 @@
         }
     }
 
-    // Handler implementations.
+    // Frames. A call acts on the page itself or on one frame inside it, and its result names that frame.
+    // The shim reads a frame's document directly. A frame's console and network entries come from the shim
+    // running in that frame.
 
-    handlers.flushConsole = function () {
+    // Thrown while the frame a call acts on is still loading its page. The host waits and calls again.
+    function FrameLoading(frameName) {
+        this.frameName = frameName;
+        this.message = "the frame '" + frameName + "' is still loading its page";
+    }
+
+    function topTarget() {
+        return {
+            name: TOP_FRAME,
+            document: document,
+            window: window,
+            element: null
+        };
+    }
+
+    function isFrameElement(el) {
+        return el.localName === 'iframe' || el.localName === 'frame';
+    }
+
+    // Null when the frame shows a page from another origin, whose document cannot be reached from here.
+    function frameTarget(frameElement) {
+        var frameDocument;
+        try {
+            frameDocument = frameElement.contentDocument;
+        } catch {
+            frameDocument = null;
+        }
+
+        if (!frameDocument || !frameDocument.defaultView) {
+            return null;
+        }
+
+        return {
+            name: buildUniqueSelector(frameElement),
+            document: frameDocument,
+            window: frameDocument.defaultView,
+            element: frameElement
+        };
+    }
+
+    // A frame is loading while the page marks it busy, while a reload the shim started has not replaced its
+    // page, and until its document has finished loading.
+    function isFrameLoading(target) {
+        return target.element.getAttribute('aria-busy') === 'true'
+            || target.window[reloadingKey] === true
+            || target.document.readyState !== 'complete';
+    }
+
+    // Resolves the frame a call acts on. An empty name means the content frame the page marks, or the page
+    // itself when it marks none or the marked frame cannot be reached. "top" names the page itself. Any other
+    // name is a CSS selector for a frame element in the page. Throws FrameLoading while the frame is still
+    // loading, unless the caller accepts a loading frame.
+    function resolveTarget(frameName, acceptLoading) {
+        var target;
+        if (!frameName) {
+            var contentFrame = document.querySelector(CONTENT_FRAME_SELECTOR);
+            target = contentFrame && isFrameElement(contentFrame) ? frameTarget(contentFrame) : null;
+            if (!target) {
+                return topTarget();
+            }
+        } else if (frameName === TOP_FRAME) {
+            return topTarget();
+        } else {
+            var frameElement;
+            try {
+                frameElement = document.querySelector(frameName);
+            } catch (e) {
+                throw new Error('invalid frame selector: ' + (e && e.message));
+            }
+            if (!frameElement) {
+                throw new Error("no frame matches '" + frameName + "'");
+            }
+            if (!isFrameElement(frameElement)) {
+                throw new Error("the element matched by frame '" + frameName + "' is a <" + frameElement.localName + '>, not a frame');
+            }
+            target = frameTarget(frameElement);
+            if (!target) {
+                throw new Error("the frame '" + frameName + "' shows a page from another origin, which the tools cannot reach");
+            }
+        }
+
+        if (!acceptLoading && isFrameLoading(target)) {
+            throw new FrameLoading(target.name);
+        }
+
+        return target;
+    }
+
+    // The frame's viewport as a box in the page's viewport: the frame element's box inside its border and
+    // padding.
+    function getFrameViewportBox(frameElement) {
+        var rect = frameElement.getBoundingClientRect();
+        var style = getElementStyle(frameElement);
+        var paddingLeft = style ? parseFloat(style.paddingLeft) || 0 : 0;
+        var paddingTop = style ? parseFloat(style.paddingTop) || 0 : 0;
+        var paddingRight = style ? parseFloat(style.paddingRight) || 0 : 0;
+        var paddingBottom = style ? parseFloat(style.paddingBottom) || 0 : 0;
+        return {
+            x: rect.left + frameElement.clientLeft + paddingLeft,
+            y: rect.top + frameElement.clientTop + paddingTop,
+            width: Math.max(0, frameElement.clientWidth - paddingLeft - paddingRight),
+            height: Math.max(0, frameElement.clientHeight - paddingTop - paddingBottom)
+        };
+    }
+
+    // Tags each entry with the frame it came from.
+    function tagWithFrame(entries, frameName) {
+        for (var i = 0; i < entries.length; i++) {
+            entries[i].frame = frameName;
+        }
+        return entries;
+    }
+
+    // Drains the buffers of the page and of each frame in it that runs this shim. A frame keeps its own
+    // buffers, and they are lost when the frame loads another page.
+    function drainPageAndFrames(drainMethodName) {
+        var entries = tagWithFrame(bridge[drainMethodName](), TOP_FRAME);
+
+        var frameElements = document.querySelectorAll('iframe, frame');
+        for (var i = 0; i < frameElements.length; i++) {
+            var frameBridge;
+            try {
+                frameBridge = frameElements[i].contentWindow && frameElements[i].contentWindow[bridgeKey];
+            } catch {
+                // A frame from another origin cannot be read.
+                frameBridge = null;
+            }
+
+            if (frameBridge && typeof frameBridge[drainMethodName] === 'function') {
+                var frameEntries = frameBridge[drainMethodName]();
+                entries = entries.concat(tagWithFrame(frameEntries, buildUniqueSelector(frameElements[i])));
+            }
+        }
+
+        return entries;
+    }
+
+    function takeConsoleEntries() {
         var entries = consoleBuffer.slice();
         consoleBuffer.length = 0;
         return entries;
+    }
+
+    // Handler implementations.
+
+    handlers.flushConsole = function () {
+        return drainPageAndFrames('drainConsole');
+    };
+
+    handlers.resolveFrame = function (args) {
+        args = args || {};
+        var target = resolveTarget(args.frame, false);
+        return {
+            frame: target.name,
+            top: target.element === null
+        };
+    };
+
+    // Evaluates an expression in the frame's own global scope and returns its value as JSON. An expression
+    // that throws or does not parse gives null, as it does when the host evaluates in the page itself. An
+    // EvalError is reported instead, because it means the frame's Content-Security-Policy forbids evaluation.
+    handlers.evaluate = function (args) {
+        args = args || {};
+        var target = resolveTarget(args.frame, false);
+
+        var value;
+        try {
+            value = target.window.eval(args.expression);
+        } catch (e) {
+            if (e instanceof target.window.EvalError) {
+                throw new Error("the frame '" + target.name + "' does not allow evaluating JavaScript: " + e.message);
+            }
+            value = null;
+        }
+
+        var valueJson;
+        try {
+            valueJson = JSON.stringify(value);
+        } catch (e) {
+            throw new Error('the value cannot be converted to JSON: ' + (e && e.message));
+        }
+
+        return {
+            frame: target.name,
+            valueJson: valueJson === undefined ? 'null' : valueJson
+        };
+    };
+
+    // Reloads a frame's page. The host reloads the page itself, so for the top frame this only names it.
+    handlers.reload = function (args) {
+        args = args || {};
+        var target = resolveTarget(args.frame, true);
+        if (target.element) {
+            target.window[reloadingKey] = true;
+            target.window.location.reload();
+        }
+        return {
+            frame: target.name,
+            top: target.element === null
+        };
     };
 
     // Bounded ring buffer for fetch and XMLHttpRequest activity. Same eviction
@@ -741,20 +963,25 @@
         }
     }
 
-    handlers.flushNetwork = function () {
+    function takeNetworkEntries() {
         var entries = networkBuffer.slice();
         networkBuffer.length = 0;
         return entries;
+    }
+
+    handlers.flushNetwork = function () {
+        return drainPageAndFrames('drainNetwork');
     };
 
     handlers.getHtml = function (args) {
         args = args || {};
+        var target = resolveTarget(args.frame, false);
         var maxDepth = typeof args.maxDepth === 'number' ? args.maxDepth : 8;
         var selector = args.selector;
         var root;
         if (selector) {
             try {
-                root = document.querySelector(selector);
+                root = target.document.querySelector(selector);
             } catch (e) {
                 throw new Error('invalid selector: ' + (e && e.message));
             }
@@ -762,9 +989,10 @@
                 throw new Error("no element matches selector '" + selector + "'");
             }
         } else {
-            root = document.documentElement;
+            root = target.document.documentElement;
         }
         return {
+            frame: target.name,
             selector: selector || null,
             html: serialiseHtml(root, maxDepth)
         };
@@ -772,6 +1000,7 @@
 
     handlers.query = function (args) {
         args = args || {};
+        var target = resolveTarget(args.frame, false);
         var role = args.role;
         var name = args.name;
         var text = args.text;
@@ -786,14 +1015,14 @@
         var matches;
         if (selector) {
             try {
-                matches = Array.prototype.slice.call(document.querySelectorAll(selector));
+                matches = Array.prototype.slice.call(target.document.querySelectorAll(selector));
             } catch (e) {
                 throw new Error('invalid selector: ' + (e && e.message));
             }
         } else if (role) {
-            matches = matchByRoleAndName(role, name);
+            matches = matchByRoleAndName(target.document, role, name);
         } else {
-            matches = matchByText(text);
+            matches = matchByText(target.document, text);
         }
 
         var results = [];
@@ -801,6 +1030,7 @@
             results.push(describeElement(matches[i], {}));
         }
         return {
+            frame: target.name,
             mode: selector ? 'selector' : (role ? 'role' : 'text'),
             totalMatches: matches.length,
             returned: results.length,
@@ -808,8 +1038,8 @@
         };
     };
 
-    function matchByRoleAndName(role, name) {
-        var candidates = document.querySelectorAll('*');
+    function matchByRoleAndName(targetDocument, role, name) {
+        var candidates = targetDocument.querySelectorAll('*');
         var roleLower = role.toLowerCase();
         var nameLower = typeof name === 'string' ? name.toLowerCase() : null;
         var results = [];
@@ -826,11 +1056,11 @@
         return results;
     }
 
-    function matchByText(text) {
+    function matchByText(targetDocument, text) {
         if (typeof text !== 'string' || text.length === 0) return [];
         var lower = text.toLowerCase();
-        var iterator = document.createTreeWalker
-            ? document.createTreeWalker(document.body || document.documentElement, NodeFilter.SHOW_ELEMENT, null)
+        var iterator = targetDocument.createTreeWalker
+            ? targetDocument.createTreeWalker(targetDocument.body || targetDocument.documentElement, NodeFilter.SHOW_ELEMENT, null)
             : null;
         var results = [];
         if (!iterator) return results;
@@ -847,13 +1077,14 @@
 
     handlers.click = function (args) {
         args = args || {};
+        var target = resolveTarget(args.frame, false);
         var selector = args.selector;
         if (typeof selector !== 'string' || selector.length === 0) {
             throw new Error("click requires a non-empty 'selector'");
         }
         var element;
         try {
-            element = document.querySelector(selector);
+            element = target.document.querySelector(selector);
         } catch (e) {
             throw new Error('invalid selector: ' + (e && e.message));
         }
@@ -868,29 +1099,33 @@
         var clientX = rect ? Math.round(rect.left + rect.width / 2) : 0;
         var clientY = rect ? Math.round(rect.top + rect.height / 2) : 0;
 
+        // The events come from the frame's own window, so a page that checks an event's type sees its own
+        // MouseEvent.
+        var view = target.window;
         var visible = isElementVisible(element);
         var phases = ['mousedown', 'mouseup', 'click'];
         for (var i = 0; i < phases.length; i++) {
             var ev;
             try {
-                ev = new MouseEvent(phases[i], {
+                ev = new view.MouseEvent(phases[i], {
                     bubbles: true,
                     cancelable: true,
-                    view: typeof window !== 'undefined' ? window : undefined,
+                    view: view,
                     clientX: clientX,
                     clientY: clientY,
                     button: 0
                 });
             } catch {
-                ev = document.createEvent ? document.createEvent('MouseEvents') : null;
+                ev = target.document.createEvent ? target.document.createEvent('MouseEvents') : null;
                 if (ev && typeof ev.initMouseEvent === 'function') {
-                    ev.initMouseEvent(phases[i], true, true, window, 0, 0, 0, clientX, clientY, false, false, false, false, 0, null);
+                    ev.initMouseEvent(phases[i], true, true, view, 0, 0, 0, clientX, clientY, false, false, false, false, 0, null);
                 }
             }
             if (ev) element.dispatchEvent(ev);
         }
 
         return {
+            frame: target.name,
             selector: selector,
             tag: element.tagName ? element.tagName.toLowerCase() : '',
             visible: visible,
@@ -901,6 +1136,7 @@
 
     handlers.fill = function (args) {
         args = args || {};
+        var target = resolveTarget(args.frame, false);
         var selector = args.selector;
         if (typeof selector !== 'string' || selector.length === 0) {
             throw new Error("fill requires a non-empty 'selector'");
@@ -910,7 +1146,7 @@
         }
         var element;
         try {
-            element = document.querySelector(selector);
+            element = target.document.querySelector(selector);
         } catch (e) {
             throw new Error('invalid selector: ' + (e && e.message));
         }
@@ -925,19 +1161,21 @@
             throw new Error("element matched by selector '" + selector + "' is not a fillable input, textarea, select, or contenteditable element");
         }
 
+        // Uses the frame's own window for the value setter and the events, as the page's own code would.
+        var view = target.window;
         if (isFormControl) {
             try {
                 var nativeSetter = null;
                 if (tagName === 'textarea') {
-                    var textareaProto = window.HTMLTextAreaElement && window.HTMLTextAreaElement.prototype;
+                    var textareaProto = view.HTMLTextAreaElement && view.HTMLTextAreaElement.prototype;
                     var textareaDescriptor = textareaProto ? Object.getOwnPropertyDescriptor(textareaProto, 'value') : null;
                     nativeSetter = textareaDescriptor && textareaDescriptor.set;
                 } else if (tagName === 'input') {
-                    var inputProto = window.HTMLInputElement && window.HTMLInputElement.prototype;
+                    var inputProto = view.HTMLInputElement && view.HTMLInputElement.prototype;
                     var inputDescriptor = inputProto ? Object.getOwnPropertyDescriptor(inputProto, 'value') : null;
                     nativeSetter = inputDescriptor && inputDescriptor.set;
                 } else if (tagName === 'select') {
-                    var selectProto = window.HTMLSelectElement && window.HTMLSelectElement.prototype;
+                    var selectProto = view.HTMLSelectElement && view.HTMLSelectElement.prototype;
                     var selectDescriptor = selectProto ? Object.getOwnPropertyDescriptor(selectProto, 'value') : null;
                     nativeSetter = selectDescriptor && selectDescriptor.set;
                 }
@@ -956,43 +1194,59 @@
         var inputEvent;
         var changeEvent;
         try {
-            inputEvent = new Event('input', { bubbles: true });
+            inputEvent = new view.Event('input', { bubbles: true });
         } catch {
-            inputEvent = document.createEvent ? document.createEvent('Event') : null;
+            inputEvent = target.document.createEvent ? target.document.createEvent('Event') : null;
             if (inputEvent && typeof inputEvent.initEvent === 'function') inputEvent.initEvent('input', true, true);
         }
         try {
-            changeEvent = new Event('change', { bubbles: true });
+            changeEvent = new view.Event('change', { bubbles: true });
         } catch {
-            changeEvent = document.createEvent ? document.createEvent('Event') : null;
+            changeEvent = target.document.createEvent ? target.document.createEvent('Event') : null;
             if (changeEvent && typeof changeEvent.initEvent === 'function') changeEvent.initEvent('change', true, true);
         }
         if (inputEvent) element.dispatchEvent(inputEvent);
         if (changeEvent) element.dispatchEvent(changeEvent);
 
         return {
+            frame: target.name,
             selector: selector,
             tag: tagName,
             value: isFormControl ? (typeof element.value === 'string' ? element.value : '') : (element.textContent || '')
         };
     };
 
-    handlers.getViewport = function () {
-        var width = (typeof window !== 'undefined' ? (window.innerWidth || 0) : 0);
-        var height = (typeof window !== 'undefined' ? (window.innerHeight || 0) : 0);
+    // The area a screenshot of the frame captures, as a box in the page's viewport.
+    handlers.getViewport = function (args) {
+        args = args || {};
+        var target = resolveTarget(args.frame, false);
         var ratio = (typeof window !== 'undefined' && window.devicePixelRatio) ? window.devicePixelRatio : 1;
-        return { width: width, height: height, devicePixelRatio: ratio };
+
+        if (!target.element) {
+            var width = (typeof window !== 'undefined' ? (window.innerWidth || 0) : 0);
+            var height = (typeof window !== 'undefined' ? (window.innerHeight || 0) : 0);
+            return { frame: target.name, x: 0, y: 0, width: width, height: height, devicePixelRatio: ratio };
+        }
+
+        var box = getFrameViewportBox(target.element);
+        if (box.width === 0 || box.height === 0) {
+            throw new Error("the frame '" + target.name + "' is not showing, so there is nothing on screen to capture");
+        }
+        return { frame: target.name, x: box.x, y: box.y, width: box.width, height: box.height, devicePixelRatio: ratio };
     };
 
+    // The area a screenshot of one element captures, as a box in the page's viewport. For an element in a
+    // frame, only the part inside the frame's viewport is on screen.
     handlers.getRect = function (args) {
         args = args || {};
+        var target = resolveTarget(args.frame, false);
         var selector = args.selector;
         if (typeof selector !== 'string' || selector.length === 0) {
             throw new Error("getRect requires a non-empty 'selector'");
         }
         var element;
         try {
-            element = document.querySelector(selector);
+            element = target.document.querySelector(selector);
         } catch (e) {
             throw new Error('invalid selector: ' + (e && e.message));
         }
@@ -1000,34 +1254,55 @@
             throw new Error("no element matches selector '" + selector + "'");
         }
         var rect = element.getBoundingClientRect();
+        if (!target.element) {
+            return {
+                frame: target.name,
+                x: rect.left,
+                y: rect.top,
+                width: rect.width,
+                height: rect.height
+            };
+        }
+
+        var box = getFrameViewportBox(target.element);
+        var left = Math.max(box.x, box.x + rect.left);
+        var top = Math.max(box.y, box.y + rect.top);
+        var right = Math.min(box.x + box.width, box.x + rect.right);
+        var bottom = Math.min(box.y + box.height, box.y + rect.bottom);
+        if (right <= left || bottom <= top) {
+            throw new Error("the element matched by selector '" + selector + "' is outside the visible part of the frame '" + target.name + "'");
+        }
         return {
-            x: rect.left,
-            y: rect.top,
-            width: rect.width,
-            height: rect.height
+            frame: target.name,
+            x: left,
+            y: top,
+            width: right - left,
+            height: bottom - top
         };
     };
 
     handlers.inspect = function (args) {
         args = args || {};
+        var target = resolveTarget(args.frame, false);
         var selector = args.selector;
         if (typeof selector !== 'string' || selector.length === 0) {
             throw new Error("inspect requires a non-empty 'selector'");
         }
         var element;
         try {
-            element = document.querySelector(selector);
+            element = target.document.querySelector(selector);
         } catch (e) {
             throw new Error('invalid selector: ' + (e && e.message));
         }
         if (!element) {
             throw new Error("no element matches selector '" + selector + "'");
         }
-        return describeElement(element, {
+        var description = describeElement(element, {
             includeComputedStyles: true,
             includeChildPreview: true,
             childPreviewLimit: args.childPreviewLimit
         });
+        return Object.assign({ frame: target.name }, description);
     };
 
     var bridge = {
@@ -1037,6 +1312,9 @@
         getHandler: function (name) {
             return handlers[name] || null;
         },
+        // Empty this shim's own buffers. The shim in the page calls these on the shims in its frames.
+        drainConsole: takeConsoleEntries,
+        drainNetwork: takeNetworkEntries,
         invoke: function (name, argsJson) {
             try {
                 var handler = handlers[name];
@@ -1054,6 +1332,9 @@
                 var value = handler(parsed);
                 return { ok: true, value: value === undefined ? null : value };
             } catch (e) {
+                if (e instanceof FrameLoading) {
+                    return { ok: false, pending: true, frame: e.frameName, error: e.message };
+                }
                 return { ok: false, error: (e && (e.message || String(e))) || 'handler threw' };
             }
         }

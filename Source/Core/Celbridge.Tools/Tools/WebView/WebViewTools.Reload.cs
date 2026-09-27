@@ -11,7 +11,7 @@ public partial class WebViewTools
     [McpServerTool(Name = "webview_reload")]
     [ToolAlias("webview.reload")]
     [RelatedGuides("resource_keys", "webview_documents", "webview_devtools")]
-    public async partial Task<CallToolResult> Reload(string resource, bool clearCache = true)
+    public async partial Task<CallToolResult> Reload(string resource, bool clearCache = true, string frame = "")
     {
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
@@ -24,15 +24,15 @@ public partial class WebViewTools
             return ToolResponse.InvalidResourceKey(resource);
         }
 
-        Logger.LogInformation("webview_reload resource={Resource} clearCache={ClearCache}", resourceKey, clearCache);
+        Logger.LogInformation("webview_reload resource={Resource} clearCache={ClearCache} frame={Frame}", resourceKey, clearCache, frame);
 
         var toolBridge = GetRequiredService<IDocumentWebViewToolBridge>();
-        var reloadResult = await toolBridge.ReloadAsync(resourceKey, clearCache);
+        var reloadResult = await toolBridge.ReloadAsync(resourceKey, clearCache, frame);
         if (reloadResult.IsFailure)
         {
             return ToolResponse.Error(reloadResult);
         }
 
-        return ToolResponse.Success("ok");
+        return ToolResponse.SuccessWithMetadata("ok", SerializeFrameMetadata(reloadResult.Value));
     }
 }

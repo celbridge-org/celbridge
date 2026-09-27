@@ -11,10 +11,12 @@ public class OpenBrowserCommand : CommandBase, IOpenBrowserCommand
     {
         try
         {
+            // A bare host name is taken as a web address. A mail address goes to the system's mail app as it is.
             var targetUrl = URL.Trim();
             if (!string.IsNullOrWhiteSpace(targetUrl)
                 && !targetUrl.StartsWith("http")
-                && !targetUrl.StartsWith("file"))
+                && !targetUrl.StartsWith("file")
+                && !targetUrl.StartsWith("mailto:", StringComparison.OrdinalIgnoreCase))
             {
                 targetUrl = $"https://{targetUrl}";
             }

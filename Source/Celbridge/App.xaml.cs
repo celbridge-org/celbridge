@@ -234,6 +234,33 @@ public partial class App : Application
         // Get the Frame from the root grid
         var contentFrame = (MainWindow.Content as Grid)?.Children.OfType<Frame>().FirstOrDefault();
 
+        // The Closing handler cannot wait for async work, so cancel the close and let the shell save the
+        // project and then close the window.
+        MainWindow.AppWindow.Closing += (sender, args) =>
+        {
+            var applicationShell = Host.Services.GetRequiredService<IApplicationShell>();
+            if (applicationShell.IsReadyToClose)
+            {
+                return;
+            }
+
+            args.Cancel = true;
+            _ = applicationShell.ExitApplicationAsync();
+        };
+
+        // Quit in the Dock and a logout skip the Closing event above. This runs the same exit for them. No-op
+        // off macOS.
+        Celbridge.UserInterface.Platform.MacOSApplicationTermination.Install(() =>
+        {
+            var applicationShell = Host.Services.GetRequiredService<IApplicationShell>();
+            if (applicationShell.IsReadyToClose)
+            {
+                return null;
+            }
+
+            return applicationShell.ExitApplicationAsync();
+        });
+
         MainWindow.Closed += (s, e) =>
         {
             // Todo: This doesn't get called on Skia+Gtk at all on exit.

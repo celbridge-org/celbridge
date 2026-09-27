@@ -73,6 +73,17 @@ public class ActiveDocumentFocusPolicyTests
     }
 
     [Test]
+    public void ARenamedDocument_DoesNotTakeTheKeyboard()
+    {
+        // The rename was made from somewhere else, such as the Explorer, which keeps the keyboard.
+        var shouldCarryFocus = ActiveDocumentFocusPolicy.ShouldCarryFocus(
+            Document,
+            ActiveDocumentChangeReason.Renamed);
+
+        shouldCarryFocus.Should().BeFalse();
+    }
+
+    [Test]
     public void TheLastDocumentClosing_CarriesFocusNowhere()
     {
         var shouldCarryFocus = ActiveDocumentFocusPolicy.ShouldCarryFocus(

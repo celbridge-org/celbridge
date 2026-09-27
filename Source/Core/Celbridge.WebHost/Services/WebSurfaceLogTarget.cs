@@ -3,21 +3,22 @@ using Celbridge.Host;
 namespace Celbridge.WebHost;
 
 /// <summary>
-/// The host/log RPC target for one surface, naming it in every entry it records.
+/// The host/log RPC target for one surface. It reads the surface's name for each entry, so a renamed document
+/// logs under its new name.
 /// </summary>
 public sealed class WebSurfaceLogTarget : IHostLog
 {
-    private readonly string _surfaceName;
+    private readonly Func<string> _getSurfaceName;
     private readonly IWebSurfaceLog _webSurfaceLog;
 
-    public WebSurfaceLogTarget(string surfaceName, IWebSurfaceLog webSurfaceLog)
+    public WebSurfaceLogTarget(Func<string> getSurfaceName, IWebSurfaceLog webSurfaceLog)
     {
-        _surfaceName = surfaceName;
+        _getSurfaceName = getSurfaceName;
         _webSurfaceLog = webSurfaceLog;
     }
 
     public void OnLog(string? level, string? message)
     {
-        _webSurfaceLog.Write(_surfaceName, level, message);
+        _webSurfaceLog.Write(_getSurfaceName(), level, message);
     }
 }
