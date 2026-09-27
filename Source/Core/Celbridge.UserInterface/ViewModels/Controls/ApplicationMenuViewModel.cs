@@ -19,6 +19,7 @@ public partial class ApplicationMenuViewModel : ObservableObject
     private readonly IProjectService _projectService;
     private readonly ILocalFileSystem _fileSystem;
     private readonly MainMenuUtils _mainMenuUtils;
+    private readonly IApplicationShell _applicationShell;
 
     [ObservableProperty]
     private bool _isWorkspaceLoaded;
@@ -30,7 +31,8 @@ public partial class ApplicationMenuViewModel : ObservableObject
         IWorkspaceWrapper workspaceWrapper,
         IProjectService projectService,
         ILocalFileSystem fileSystem,
-        MainMenuUtils mainMenuUtils)
+        MainMenuUtils mainMenuUtils,
+        IApplicationShell applicationShell)
     {
         _messengerService = messengerService;
         _commandService = commandService;
@@ -39,6 +41,7 @@ public partial class ApplicationMenuViewModel : ObservableObject
         _projectService = projectService;
         _fileSystem = fileSystem;
         _mainMenuUtils = mainMenuUtils;
+        _applicationShell = applicationShell;
     }
 
     public void OnLoaded()
@@ -106,9 +109,9 @@ public partial class ApplicationMenuViewModel : ObservableObject
 
     public void ExitApplication()
     {
-        var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
-        var mainWindow = userInterfaceService.MainWindow as Window;
-        mainWindow?.Close();
+        // Closing the window from code may not raise its Closing event, so exit through the shell, which saves
+        // the project first.
+        _ = _applicationShell.ExitApplicationAsync();
     }
 
     /// <summary>

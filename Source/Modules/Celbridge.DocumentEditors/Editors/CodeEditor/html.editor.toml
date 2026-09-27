@@ -1,0 +1,17 @@
+[editor]
+id = "html"
+type = "document"
+entry-point = "index.html"
+display-name = "CodeEditor_Editor_Html"
+
+[options]
+preview_renderer_url = "html-preview/preview-module.js"
+initial_view_mode = "preview"
+
+[[file-types]]
+extension = ".html"
+display-name = "CodeEditor_FileType_Html"
+
+[[file-types]]
+extension = ".htm"
+display-name = "CodeEditor_FileType_Html"

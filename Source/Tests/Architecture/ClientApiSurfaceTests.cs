@@ -33,6 +33,7 @@ public class ClientApiSurfaceTests
             "notifyContentLoaded",
             "notifyImportComplete",
             "onExternalChange",
+            "onRenamed",
             "onRequestSave",
             "onRequestState",
             "onRestoreState",
@@ -44,7 +45,9 @@ public class ClientApiSurfaceTests
             "notifyEditAvailability",
             "notifyLinkClicked",
             "notifyShortcut",
-            "requestEdit"
+            "onReloadKey",
+            "requestEdit",
+            "watchShortcutKeys"
         },
         ["api/localization-api.js"] = new[]
         {

@@ -234,6 +234,24 @@ public class DocumentLayoutStore
         }
     }
 
+    public async Task<DocumentEditorState?> LoadDocumentEditorStateAsync(ResourceKey fileResource)
+    {
+        try
+        {
+            var propertyBag = GetPropertyBag();
+
+            var editorStates = await TryLoadPropertyAsync<Dictionary<string, StoredEditorState>>(propertyBag, DocumentEditorStatesKey);
+
+            return FindStoredEditorState(editorStates, fileResource);
+        }
+        catch (Exception ex)
+        {
+            // Best effort: if the state cannot be read, the document opens with its defaults.
+            _logger.LogWarning(ex, $"Failed to load editor state for '{fileResource}'");
+            return null;
+        }
+    }
+
     public async Task RestorePanelStateAsync(IReadOnlyList<DocumentShortcut> documentShortcuts)
     {
         var storedLayout = await LoadStoredLayoutAsync();

@@ -2,9 +2,20 @@
 // /assets/celbridge-client/ui/find-bar.js; vitest aliases that URL to this file so
 // preview-module.js can be imported under jsdom.
 
-export function createFindBar() {
-    return {
-        open: () => false,
+// Every find bar created, oldest first. Each records its options and how often it was opened.
+export const __createdFindBars = [];
+
+export function createFindBar(options) {
+    const findBar = {
+        options,
+        openCount: 0,
+        open() {
+            findBar.openCount++;
+            return true;
+        },
         refresh: () => {}
     };
+    __createdFindBars.push(findBar);
+
+    return findBar;
 }

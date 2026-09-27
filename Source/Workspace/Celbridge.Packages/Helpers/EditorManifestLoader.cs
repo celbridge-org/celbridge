@@ -445,7 +445,7 @@ internal static class EditorManifestLoader
         return descriptor;
     }
 
-    // Reads the dock-area key: the document area the utility's "Open as document" control sends it to, or
+    // Reads the dock-area key: the document area the utility's "Open as Document" control sends it to, or
     // null for a utility that stays in the Utility Panel, which the manifest spells "none". The area is an
     // out parameter because a success Result cannot carry a null payload.
     private static Result ParseDockArea(ManifestUtilitySection utility, string editorTomlPath, out WorkspaceArea? dockArea)

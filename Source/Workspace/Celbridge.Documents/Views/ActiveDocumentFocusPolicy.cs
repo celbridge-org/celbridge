@@ -42,7 +42,7 @@ public static class ActiveDocumentFocusPolicy
         // A restore is not something the user asked for, and a document made active by its own surface
         // taking the keyboard already has it. Granting focus to the latter would let two web surfaces
         // trade it forever: each grant reports focus, each report makes its document active, and each
-        // activation grants focus again.
+        // activation grants focus again. A rename leaves the keyboard where the rename was made from.
         return reason == ActiveDocumentChangeReason.Activated;
     }
 

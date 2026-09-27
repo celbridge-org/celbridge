@@ -1,13 +1,15 @@
 # Layout
 
 The arrangement of the workspace: which areas are showing, the Focus and Presentation modes, Reset Layout,
-and the controls that change them. The areas are the Utility Panel and the three document areas, Main,
-Bottom and Side. Read the [README](README.md) for the invariants, evidence rules and levels.
+the controls that change them, and the tab strip that shows each section's documents. The areas are the
+Utility Panel and the three document areas, Main, Bottom and Side. Read the [README](README.md) for the
+invariants, evidence rules and levels.
 
 ## Surfaces
 
 The title bar's area buttons and layout menu, the View menu, each collapsible area's close button, the
-Utility buttons and the ones document shortcuts add, double-clicking a document tab, and `document_open`.
+Utility buttons and the ones document shortcuts add, the document tab strip, double-clicking a document tab,
+and `document_open`.
 
 ## Cases
 
@@ -21,6 +23,8 @@ Utility buttons and the ones document shortcuts add, double-clicking a document 
 | Focus showing the Bottom area | open a Side document from its shortcut | Focus ends, and the normal layout returns with Side showing the document | 2 |
 | Tabs in Bottom and none in Side, Bottom hidden and Side shown by hand, the window maximised | Reset Layout | Bottom shows, Side collapses, and the window is restored from maximised | 2 |
 | An area holding tabs, hidden by hand | reload the project | the area is still hidden | 2 |
+| A section with more tabs than its strip can show, their names of very different lengths, scrolled to its first tab | open a document that is not open yet, so its tab lands at the far end | the strip scrolls to the new tab and shows all of it: its name and close button are both on screen, and clicking the close button closes the document | 2 |
+| Three tabs in one section, the middle one active | close the last tab with its close button | the middle tab is still the active document, and still selected in the strip | 2 |
 | Main empty, a document active in Side | open an HTML document with `document_open` without activating it | Main shows the document and its page is drawn, while the Side document stays active: `selectedDocuments` names it for `main_left`, and `webview_eval` reads `document.visibilityState` as `visible` | 2 |
 | Presentation on, Side collapsed | open a Side document with `document_open` without activating it | Presentation stays on and nothing on screen changes | 2 |
 | Focus showing the Bottom area, documents open in other areas | close Bottom's last tab | another document is on screen, and no empty area is left in view | 3 |
@@ -28,6 +32,7 @@ Utility buttons and the ones document shortcuts add, double-clicking a document 
 | Side showing | collapse it with its own close button | the title bar's Side button and the View menu both show it hidden | 3 |
 | The Utility Panel showing Explorer, the keyboard in the tree, and the active document on screen | click Explorer's Utility button, then click it again | the first click collapses the panel and moves the keyboard to the active document, so text typed next lands in it, and the second brings the panel back on Explorer | 3 |
 | An area split into two sections | close the last tab in one of them | the area folds back to a single section | 3 |
+| An area just folded back by closing the last tab in one of its sections | open a document into the emptied section with `document_open` | the section comes back showing the document, and `document_get_state` lists it as that section's selected document | 3 |
 | A document showing in Main, a second open in Side, a third active | open the Side document into Main with `document_open` without activating it | the document moves to Main and becomes the active document, as a tab the user moves does | 3 |
 | Bottom showing | choose each Bottom alignment in turn, then reload the project | Bottom runs under the areas each alignment names, and the last choice survives the reload | 3 |
 | Focus on | turn full screen on, leave Focus, then turn full screen off | each change leaves the other alone: the window stays full screen when Focus ends, and the layout stays normal when full screen ends | 3 |
@@ -43,6 +48,12 @@ Read the areas back rather than trusting the screen: `app_get_state` reports whi
 `document_get_state` which sections. In Focus and Presentation the title bar's area buttons and the View
 menu show every area off, even while the mode fills the screen with Bottom or Side. They describe the
 normal layout the mode returns to rather than what is on screen, so that is correct.
+
+The tab strip case needs one section holding enough documents that several tabs sit off-screen. Their names
+must differ widely in length, because a strip of evenly sized tabs scrolls correctly even when the fault is
+present. Scroll the strip to its start by activating its first tab. The strip is not in the accessibility
+tree, so show that the whole tab is on screen by clicking its close button and reading `document_get_state`
+back.
 
 ## Not covered
 

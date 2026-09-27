@@ -7,15 +7,15 @@ namespace Celbridge.Tests.WebHost;
 /// tests stand in a plain object for the CoreWebView2 the adapter passes.
 /// </summary>
 [TestFixture]
-public class HostedPageHealthTrackerTests
+public class PageHealthTrackerTests
 {
-    private HostedPageHealthTracker<object> _tracker = null!;
+    private PageHealthTracker<object> _tracker = null!;
     private object _page = null!;
 
     [SetUp]
     public void Setup()
     {
-        _tracker = new HostedPageHealthTracker<object>();
+        _tracker = new PageHealthTracker<object>();
         _page = new object();
         _tracker.Track(_page);
     }
@@ -67,7 +67,7 @@ public class HostedPageHealthTrackerTests
     [Test]
     public void FirstProcessIdReading_IsNotAChange()
     {
-        _tracker.RecordProcessId(_page, 100).Should().Be(HostedPageProcessChange.None);
+        _tracker.RecordProcessId(_page, 100).Should().Be(PageProcessChange.None);
         _tracker.GetHealth(_page).ProcessFailures.Should().Be(0);
     }
 
@@ -76,7 +76,7 @@ public class HostedPageHealthTrackerTests
     {
         _tracker.RecordProcessId(_page, 100);
 
-        _tracker.RecordProcessId(_page, 100).Should().Be(HostedPageProcessChange.None);
+        _tracker.RecordProcessId(_page, 100).Should().Be(PageProcessChange.None);
         _tracker.GetHealth(_page).ProcessFailures.Should().Be(0);
     }
 
@@ -87,7 +87,7 @@ public class HostedPageHealthTrackerTests
         // working, so the swap is reported without marking the document unhealthy.
         _tracker.RecordProcessId(_page, 100);
 
-        _tracker.RecordProcessId(_page, 200).Should().Be(HostedPageProcessChange.Replaced);
+        _tracker.RecordProcessId(_page, 200).Should().Be(PageProcessChange.Replaced);
         _tracker.GetHealth(_page).ProcessFailures.Should().Be(0);
     }
 
@@ -96,8 +96,8 @@ public class HostedPageHealthTrackerTests
     {
         _tracker.RecordProcessId(_page, 100);
 
-        _tracker.RecordProcessId(_page, 0).Should().Be(HostedPageProcessChange.Gone);
-        _tracker.RecordProcessId(_page, 0).Should().Be(HostedPageProcessChange.None);
+        _tracker.RecordProcessId(_page, 0).Should().Be(PageProcessChange.Gone);
+        _tracker.RecordProcessId(_page, 0).Should().Be(PageProcessChange.None);
 
         _tracker.GetHealth(_page).ProcessFailures.Should().Be(1);
     }
@@ -108,7 +108,7 @@ public class HostedPageHealthTrackerTests
         _tracker.RecordProcessId(_page, 100);
         _tracker.RecordProcessId(_page, 0);
 
-        _tracker.RecordProcessId(_page, 300).Should().Be(HostedPageProcessChange.Relaunched);
+        _tracker.RecordProcessId(_page, 300).Should().Be(PageProcessChange.Relaunched);
         _tracker.GetHealth(_page).ProcessFailures.Should().Be(1);
     }
 
@@ -116,7 +116,7 @@ public class HostedPageHealthTrackerTests
     public void ProcessAbsentOnFirstReading_IsNotAFailure()
     {
         // A page whose renderer has not started yet has not lost one.
-        _tracker.RecordProcessId(_page, 0).Should().Be(HostedPageProcessChange.None);
+        _tracker.RecordProcessId(_page, 0).Should().Be(PageProcessChange.None);
         _tracker.GetHealth(_page).ProcessFailures.Should().Be(0);
     }
 
@@ -126,10 +126,10 @@ public class HostedPageHealthTrackerTests
         _tracker.RecordProcessId(_page, 100);
 
         // A head that cannot report an id must not read as a renderer that has gone away.
-        _tracker.RecordProcessId(_page, -1).Should().Be(HostedPageProcessChange.None);
+        _tracker.RecordProcessId(_page, -1).Should().Be(PageProcessChange.None);
         _tracker.GetHealth(_page).ProcessFailures.Should().Be(0);
 
-        _tracker.RecordProcessId(_page, 100).Should().Be(HostedPageProcessChange.None);
+        _tracker.RecordProcessId(_page, 100).Should().Be(PageProcessChange.None);
         _tracker.GetHealth(_page).ProcessFailures.Should().Be(0);
     }
 
@@ -139,7 +139,7 @@ public class HostedPageHealthTrackerTests
         var untrackedPage = new object();
 
         _tracker.RecordWakeFailed(untrackedPage).Should().Be(0);
-        _tracker.RecordProcessId(untrackedPage, 100).Should().Be(HostedPageProcessChange.None);
+        _tracker.RecordProcessId(untrackedPage, 100).Should().Be(PageProcessChange.None);
 
         _tracker.GetHealth(untrackedPage).Should().Be(DocumentHealth.Healthy);
     }

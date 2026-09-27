@@ -11,7 +11,7 @@ public partial class WebViewTools
     [McpServerTool(Name = "webview_click")]
     [ToolAlias("webview.click")]
     [RelatedGuides("resource_keys", "webview_documents", "webview_devtools")]
-    public async partial Task<CallToolResult> Click(string resource, string selector)
+    public async partial Task<CallToolResult> Click(string resource, string selector, string frame = "")
     {
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
@@ -29,10 +29,10 @@ public partial class WebViewTools
             return ToolResponse.Error("webview_click requires a non-empty selector.");
         }
 
-        Logger.LogInformation("webview_click resource={Resource} selector={Selector}", resourceKey, selector);
+        Logger.LogInformation("webview_click resource={Resource} selector={Selector} frame={Frame}", resourceKey, selector, frame);
 
         var toolBridge = GetRequiredService<IDocumentWebViewToolBridge>();
-        var options = new ClickOptions(selector);
+        var options = new ClickOptions(selector, frame);
         var clickResult = await toolBridge.ClickAsync(resourceKey, options);
         if (clickResult.IsFailure)
         {

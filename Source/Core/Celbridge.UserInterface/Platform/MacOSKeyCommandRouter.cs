@@ -71,10 +71,6 @@ internal static class MacOSKeyCommandRouter
         ["moveToEndOfDocumentAndModifySelection:"] = (CaretMotion.DocumentEnd, true)
     };
 
-    // The timestamp of the last key event forwarded to a web view. A key the page leaves unhandled comes
-    // back through this chain, so the same event is absorbed on its second arrival rather than re-forwarded.
-    private static double _lastForwardedEventTimestamp;
-
     /// <summary>
     /// Adds the command-handling doCommandBySelector: to Uno's window class. Returns false when the class is
     /// not registered, and when Uno has started implementing the method itself, in which case its
@@ -148,8 +144,9 @@ internal static class MacOSKeyCommandRouter
 
     // Recovers the key event the application is processing and delivers it to the focused web surface.
     // Returns false, leaving the caller's handling to proceed, when there is no focused surface or the
-    // current event is not the expected key down. The same event coming back through the responder chain
-    // (a key the page left unhandled) is absorbed rather than re-forwarded.
+    // current event is not the expected key down. The registry also refuses an event that a web view has
+    // already received. When a page leaves a key unhandled, WebKit sends it back through the application, and
+    // it arrives here a second time.
     private static bool ForwardCurrentKeyEvent(ulong? expectedKeyCode)
     {
         var registry = _webViewFocusRegistry;
@@ -179,14 +176,6 @@ internal static class MacOSKeyCommandRouter
                 return false;
             }
         }
-
-        var eventTimestamp = SendMessageReturnDouble(currentEvent, GetSelector("timestamp"));
-        if (eventTimestamp == _lastForwardedEventTimestamp)
-        {
-            return false;
-        }
-
-        _lastForwardedEventTimestamp = eventTimestamp;
 
         return registry.TryForwardKeyEvent(currentEvent);
     }

@@ -83,6 +83,7 @@ await client.initializeDocument({
     onContent: async (content, metadata) => { /* load into editor */ },
     onRequestSave: async () => { /* await client.document.save(serialised) */ },
     onExternalChange: async () => { /* reload, then notifyContentLoaded(ExternalReload) */ },
+    onRenamed: (metadata) => { /* take the new name and path */ },
     onRequestState: () => { /* return opaque snapshot string or null */ },
     onRestoreState: (stateJson) => { /* apply snapshot */ }
 });
@@ -96,6 +97,7 @@ client.viewState.onChanged((viewState) => {
 - **`onContent(content, metadata)`** — initial load. `content` is string or base64; `metadata.resourceKey` is the resource key. Framework calls `notifyContentLoaded()` for you. Do not save here; suppress framework update events (see trap).
 - **`onRequestSave()`** — auto-save, tab close, programmatic flush. `await client.document.save(content)`. May fire while the tab is hidden.
 - **`onExternalChange(args)`** — file changed on disk. `client.document.load()`, apply with the spurious-update guard, then `client.document.notifyContentLoaded(ContentLoadedReason.ExternalReload)`. Forward `args.preserveViewState`.
+- **`onRenamed(metadata)`** — the document was renamed or moved, and it stays open in the same editor. `metadata` carries the new `resourceKey`, `fileName` and `filePath`. Update anything the editor derived from them at `onContent`, such as a URL built with `projectUrl()` or a syntax mode chosen by extension. An editor that uses only its content can leave this out.
 - **`onRequestState()` / `onRestoreState(stateJson)`** — opaque string round-trip for scroll, selection, pending view state. Survives external reloads and session restore. Return `null` if nothing to preserve.
 
 ## Styling
@@ -398,6 +400,13 @@ client.onNotification('input/grantFocus', () => {
 ```
 
 A grant can arrive before the page can act on it, so the host sends it again once the page reports content loaded, if the surface still holds the keyboard. Register the handler before calling `initializeDocument`, which reports content loaded as it finishes. Precedent: `EditorController.focusIfVacant` in `Source/Modules/Celbridge.DocumentEditors/Editors/CodeEditor/js/editor-controller.js`.
+
+## Shortcut keys
+
+WebView2 reloads a page on F5, Ctrl+R and Ctrl+Shift+R, and a reloaded editor page loses its state and its session with the host. It also keeps a key typed in the page from the application, so on Windows the close shortcuts, Ctrl+W and Ctrl+Shift+W, would never reach it. From the moment the client is created, it cancels the reload keys on your page and sends the close shortcuts to the host. On macOS the host catches Command+W before the page sees it, so the client leaves Control+W alone there. A control that cancels a key itself keeps it, the way a terminal sends F5 and Ctrl+W to its shell.
+
+- **F5 can mean something in your editor.** Register `client.input.onReloadKey(handler)` and the client calls it when F5 reaches the page. The HTML editor presses its Reload Preview button.
+- **A key pressed inside a same-origin frame never reaches your page.** Pass each document the frame loads to `client.input.watchShortcutKeys(frameDocument)`. The frame's window survives its navigations but its listeners do not, so watch the document on every `load`.
 
 ## Writability rides `cel.viewState`
 

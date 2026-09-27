@@ -1,6 +1,5 @@
 using Celbridge.Documents;
 using Celbridge.Modules;
-using Celbridge.WebHost;
 using Celbridge.WebView.Services;
 using Celbridge.WebView.ViewModels;
 using Celbridge.WebView.Views;
@@ -24,12 +23,6 @@ public class Module : IModule
 
         services.AddTransient<WebViewDocumentViewModel>();
         services.AddTransient<WebViewDocumentSettingsViewModel>();
-
-        //
-        // Register navigation policy helper
-        //
-
-        services.AddTransient<IWebViewNavigationPolicy, WebViewNavigationPolicy>();
     }
 
     public Result Initialize()
@@ -43,7 +36,6 @@ public class Module : IModule
         return
         [
             new WebViewEditorFactory(serviceProvider, stringLocalizer),
-            new HtmlViewerEditorFactory(serviceProvider, stringLocalizer),
         ];
     }
 }

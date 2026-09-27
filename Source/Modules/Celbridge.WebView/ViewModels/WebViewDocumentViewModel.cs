@@ -2,15 +2,12 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Globalization;
 using Celbridge.Commands;
-using Celbridge.Documents.Helpers;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Logging;
-using Celbridge.Server;
 using Celbridge.UserInterface;
 using Celbridge.WebHost;
 using Celbridge.WebView.Helpers;
-using Celbridge.WebView.Services;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Localization;
@@ -43,16 +40,9 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
 {
     private const string WwwPrefix = "www.";
 
-    // Where the loopback file server serves the open project's files: the HTML viewer's page, and every
-    // project file it links to. Everything served sits on this one origin, which is what lets those pages
-    // reach the server without CORS. The localhost alias names the same machine but a different origin.
-    private const string ServerHost = "127.0.0.1";
-    private const string ProjectRoute = "/project/";
-
     private readonly ILogger<WebViewDocumentViewModel> _logger;
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly IServerService _serverService;
     private readonly IStringLocalizer _stringLocalizer;
 
     // Set while the document's settings are being read off disk, so the bookmarks arriving in the
@@ -68,7 +58,6 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     private string _sourceUrl = string.Empty;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsUrlBarVisible))]
     private bool _showUrlBar = true;
 
     [ObservableProperty]
@@ -86,7 +75,6 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     // The URL bar acts on a page that is not on screen while the settings are showing, so every control
     // that would navigate is driven from this as well as from its own state.
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsSettingsVisible))]
     [NotifyPropertyChangedFor(nameof(IsBackEnabled))]
     [NotifyPropertyChangedFor(nameof(IsForwardEnabled))]
     [NotifyPropertyChangedFor(nameof(IsReloadOrStopEnabled))]
@@ -134,32 +122,6 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     [NotifyPropertyChangedFor(nameof(IsReloadIconVisible))]
     private bool _isNavigating;
 
-    private WebViewDocumentRole _role;
-
-    /// <summary>
-    /// Selects how LoadContent and NavigateUrl interpret the backing resource. Set
-    /// by the view before the first LoadContent call. Defaults to ExternalUrl, which
-    /// matches the .webview document behaviour assumed by the parameterless code-gen flow.
-    /// </summary>
-    public WebViewDocumentRole Role
-    {
-        get => _role;
-        set
-        {
-            _role = value;
-            OnPropertyChanged(nameof(IsUrlBarVisible));
-            OnPropertyChanged(nameof(IsSettingsVisible));
-            OnPropertyChanged(nameof(IsBackEnabled));
-            OnPropertyChanged(nameof(IsForwardEnabled));
-            OnPropertyChanged(nameof(IsReloadOrStopEnabled));
-            OnPropertyChanged(nameof(IsPlaceholderVisible));
-            OnPropertyChanged(nameof(IsEmptyStateVisible));
-            OnPropertyChanged(nameof(IsLoadFailedVisible));
-            OnPropertyChanged(nameof(IsPageOnScreen));
-            OnPropertyChanged(nameof(IsBookmarksBarVisible));
-        }
-    }
-
     /// <summary>
     /// The document's bookmarks, in the order their buttons appear in the bookmarks bar. Editing the
     /// collection or any bookmark in it records a change against the document.
@@ -179,23 +141,10 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     public string NavigationDestination { get; private set; } = string.Empty;
 
     /// <summary>
-    /// True when the browser-style URL bar should be shown: the external-URL role
-    /// only, and only while the document does not hide it via show_url_bar.
-    /// </summary>
-    public bool IsUrlBarVisible => Role == WebViewDocumentRole.ExternalUrl && ShowUrlBar;
-
-    /// <summary>
-    /// True when the settings should take the document area in place of the page. Like the URL bar, the
-    /// settings are external-URL chrome and never appear for the HTML viewer.
-    /// </summary>
-    public bool IsSettingsVisible => Role == WebViewDocumentRole.ExternalUrl && IsSettingsOpen;
-
-    /// <summary>
     /// True when the bookmarks bar should be shown. It stays up while the settings have the document area,
     /// where it doubles as a live preview of the bookmarks being edited.
     /// </summary>
-    public bool IsBookmarksBarVisible => Role == WebViewDocumentRole.ExternalUrl
-        && ShowBookmarksBar
+    public bool IsBookmarksBarVisible => ShowBookmarksBar
         && Bookmarks.Any(bookmark => bookmark.IsNavigable);
 
     /// <summary>
@@ -226,8 +175,7 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     /// True when the placeholder takes the document area in place of a page: the document has none to
     /// show, or the one it was sent to did not load.
     /// </summary>
-    public bool IsPlaceholderVisible => Role == WebViewDocumentRole.ExternalUrl
-        && !IsSettingsVisible
+    public bool IsPlaceholderVisible => !IsSettingsOpen
         && (HasNavigationFailed || !HasPage);
 
     /// <summary>
@@ -250,7 +198,7 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     /// <summary>
     /// True when the page is what fills the document area, rather than the settings or the placeholder.
     /// </summary>
-    public bool IsPageOnScreen => !IsSettingsVisible && !IsPlaceholderVisible;
+    public bool IsPageOnScreen => !IsSettingsOpen && !IsPlaceholderVisible;
 
     /// <summary>
     /// True when the configured Home URL is a navigable external URL.
@@ -301,19 +249,19 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     /// <summary>
     /// True when the page can be navigated back to the previous entry in its history.
     /// </summary>
-    public bool IsBackEnabled => CanGoBack && !IsSettingsVisible;
+    public bool IsBackEnabled => CanGoBack && !IsSettingsOpen;
 
     /// <summary>
     /// True when the page can be navigated forward to the next entry in its history.
     /// </summary>
-    public bool IsForwardEnabled => CanGoForward && !IsSettingsVisible;
+    public bool IsForwardEnabled => CanGoForward && !IsSettingsOpen;
 
     /// <summary>
     /// True when the page can be navigated to the configured Home URL.
     /// </summary>
     public bool IsHomeEnabled => IsHomeUrlValid;
 
-    public bool IsReloadOrStopEnabled => (IsNavigating || CanReload) && !IsSettingsVisible;
+    public bool IsReloadOrStopEnabled => (IsNavigating || CanReload) && !IsSettingsOpen;
 
     /// <summary>
     /// True when the reload/stop button shows the reload icon; while a navigation
@@ -322,35 +270,6 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     public bool IsReloadIconVisible => !IsNavigating;
 
     public bool CanOpenInBrowser => IsPageUrl(CurrentUrl);
-
-    /// <summary>
-    /// The URL the view should navigate to. For .webview documents this is the configured source URL
-    /// verbatim. For the HTML viewer it is the loopback /project/ URL on the Skia heads, or the project
-    /// virtual-host URL on Windows.
-    /// </summary>
-    public string NavigateUrl
-    {
-        get
-        {
-            if (Role == WebViewDocumentRole.HtmlViewer)
-            {
-                if (FileResource.IsEmpty)
-                {
-                    return string.Empty;
-                }
-
-                // URL path is the bare resource path. The "project:" prefix that
-                // ResourceKey.ToString() emits is for serialised diagnostics,
-                // not URL construction.
-
-                // Served over the loopback file server's /project/ route. Relative asset
-                // references in the HTML resolve against this origin.
-                return $"http://{ServerHost}:{_serverService.Port}{ProjectRoute}{FileResource.Path}";
-            }
-
-            return SourceUrl;
-        }
-    }
 
     // Code gen requires a parameterless constructor
     public WebViewDocumentViewModel()
@@ -362,13 +281,11 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
         ILogger<WebViewDocumentViewModel> logger,
         ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper,
-        IServerService serverService,
         IStringLocalizer stringLocalizer)
     {
         _logger = logger;
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
-        _serverService = serverService;
         _stringLocalizer = stringLocalizer;
 
         PropertyChanged += WebViewDocumentViewModel_PropertyChanged;
@@ -390,14 +307,6 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
 
     public async Task<Result> LoadContent()
     {
-        if (Role == WebViewDocumentRole.HtmlViewer)
-        {
-            // HTML viewer content is served by the file server (loopback /project/ route, or the project
-            // virtual host on Windows). Nothing to parse. Succeeding here lets TryNavigate run.
-            await Task.CompletedTask;
-            return Result.Ok();
-        }
-
         // A reload after a rename re-enters here, so the parsed values are pushed onto the properties with
         // the change handlers held off.
         _isLoadingContent = true;
@@ -528,52 +437,6 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
         {
             command.URL = url;
         });
-    }
-
-    /// <summary>
-    /// Finds the project resource a destination on the loopback file server names. False for any other
-    /// destination, including the server's routes outside the project.
-    /// </summary>
-    public bool TryResolveProjectResource(Uri destination, out ResourceKey resource)
-    {
-        resource = ResourceKey.Empty;
-
-        var isProjectServer = destination.Scheme == Uri.UriSchemeHttp &&
-            destination.Host == ServerHost &&
-            destination.Port == _serverService.Port;
-
-        if (!isProjectServer ||
-            !destination.AbsolutePath.StartsWith(ProjectRoute, StringComparison.Ordinal))
-        {
-            return false;
-        }
-
-        // A link to a folder may end in a separator, which a resource key does not.
-        var escapedPath = destination.AbsolutePath.Substring(ProjectRoute.Length);
-        var path = Uri.UnescapeDataString(escapedPath).TrimEnd('/');
-        if (path.Length == 0)
-        {
-            return false;
-        }
-
-        // Named under the project root explicitly, so a colon in the path cannot select another root. The
-        // resource key rules refuse parent references, so the path cannot climb out of the project either.
-        return ResourceKey.TryCreate($"{ResourceKey.DefaultRoot}:{path}", out resource);
-    }
-
-    /// <summary>
-    /// Opens a project resource a link on the page leads to: in its editor when it has one, and otherwise by
-    /// selecting it in the Explorer, which is also how a linked folder is shown. Returns false when the
-    /// project has no such resource.
-    /// </summary>
-    public bool OpenLinkedResource(ResourceKey resource)
-    {
-        if (!_workspaceWrapper.IsWorkspaceLoaded)
-        {
-            return false;
-        }
-
-        return LinkedResourceOpener.Open(_commandService, _workspaceWrapper.WorkspaceService, resource);
     }
 
     /// <summary>
@@ -789,11 +652,9 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     }
 
     // Records an edit against the document, unless the change came from the load rather than from the user.
-    // An HTML viewer has no .webview file behind it, so nothing it reports is a change to write back.
     private void RecordDataChanged()
     {
-        if (_isLoadingContent
-            || Role == WebViewDocumentRole.HtmlViewer)
+        if (_isLoadingContent)
         {
             return;
         }

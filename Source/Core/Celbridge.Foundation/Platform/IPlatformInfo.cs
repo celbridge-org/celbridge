@@ -108,6 +108,14 @@ public interface IPlatformInfo
     bool UsesPointerDrivenTabDrag { get; }
 
     /// <summary>
+    /// Whether the tab strip must lay out every tab rather than virtualize them, because the platform's
+    /// virtualizing panel estimates the width of the tabs it has not laid out. The estimate leaves the strip
+    /// unable to reveal a far tab or to scroll its last tab fully into view. True on the Skia desktop head
+    /// (all operating systems).
+    /// </summary>
+    bool RequiresNonVirtualizingTabStrip { get; }
+
+    /// <summary>
     /// Whether the editing keys the input pipeline diverts away from the native first responder must be
     /// routed back to it, and the already-handled remainder absorbed before the platform sounds the system
     /// beep on them. True on macOS.

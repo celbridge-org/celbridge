@@ -68,6 +68,8 @@ public sealed partial class CustomDocumentView : DocumentView
 
     public override async Task<Result> SetFileResource(ResourceKey fileResource)
     {
+        var previousResource = FileResource;
+
         var setResult = await base.SetFileResource(fileResource);
         if (setResult.IsFailure)
         {
@@ -77,6 +79,13 @@ public sealed partial class CustomDocumentView : DocumentView
         // A rename reuses this view, so the bridge entry has to follow the resource. Left on the old
         // key, every webview_* call for the renamed document finds no registration.
         _controller.RekeyToolBridgeRegistration();
+
+        // The page keeps the name and path it opened with, so it is told the new ones.
+        if (!previousResource.IsEmpty
+            && previousResource != FileResource)
+        {
+            _controller.NotifyRenamed();
+        }
 
         return setResult;
     }

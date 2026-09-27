@@ -161,6 +161,13 @@ export class Celbridge {
             restoreBlurredElement();
         });
 
+        // WebView2 reloads the page on F5 and Ctrl+R unless the page cancels the key, and the reloaded page
+        // comes back without its state or its session with the host. It also keeps Ctrl+W from the
+        // application, so the page forwards the close shortcuts itself.
+        if (typeof window !== 'undefined') {
+            this.input.watchShortcutKeys(window);
+        }
+
         // At runtime the host delivers the capability context over the bridge, so it stays empty here until
         // ready() fetches it via host/getContext. A context provided up front via constructor options
         // short-circuits that fetch and is read here — used by tests and embedders.
@@ -317,6 +324,7 @@ export class Celbridge {
      * @param {Function} [handlers.onContent] - Called with (content, metadata) after initialization.
      * @param {Function} [handlers.onRequestSave] - Called when the host requests a save.
      * @param {Function} [handlers.onExternalChange] - Called when the file changes externally.
+     * @param {Function} [handlers.onRenamed] - Called with the document's new metadata after a rename or a move.
      * @param {Function} [handlers.onRequestState] - Called when the host requests editor state. Should return a string or null.
      *   The returned string must round-trip through `onRestoreState` with equivalent editor behavior.
      * @param {Function} [handlers.onRestoreState] - Called with a state string previously returned
@@ -341,6 +349,9 @@ export class Celbridge {
         }
         if (handlers.onExternalChange) {
             this.document.onExternalChange(handlers.onExternalChange);
+        }
+        if (handlers.onRenamed) {
+            this.document.onRenamed(handlers.onRenamed);
         }
         // Always register the state handlers, defaulting to "no state" / no-op. The host requests state on
         // close (to save workspace state). An editor that leaves these unset would otherwise have no

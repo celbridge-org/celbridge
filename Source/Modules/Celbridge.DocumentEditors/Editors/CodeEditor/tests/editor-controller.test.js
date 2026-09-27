@@ -15,7 +15,8 @@ function createMockModel() {
         validatePosition: vi.fn((position) => position),
         getLineCount: vi.fn(() => 1),
         setEOL: vi.fn(),
-        onDidChangeContent: vi.fn()
+        onDidChangeContent: vi.fn(),
+        getAlternativeVersionId: vi.fn(() => 1)
     };
 }
 
@@ -150,6 +151,181 @@ describe('EditorController.handleExternalChange', () => {
 
         expect(editor.updateOptions).toHaveBeenCalledWith({ readOnly: false });
         expect(onWritableStateChanged).toHaveBeenLastCalledWith({ state: 'Writable', readOnly: false });
+    });
+});
+
+describe('EditorController saves', () => {
+    let controller;
+
+    beforeEach(() => {
+        for (const key of Object.keys(__capturedHandlers)) {
+            delete __capturedHandlers[key];
+        }
+        installMonacoStub(createMockEditor(createMockModel()));
+
+        controller = new EditorController();
+        controller.create(document.createElement('div'));
+    });
+
+    it('reports a save once the host has written it', async () => {
+        celbridge.document.save = vi.fn().mockResolvedValue({ success: true });
+        const onSaved = vi.fn();
+
+        await controller.initializeHost({ onSaved });
+        await __capturedHandlers.onRequestSave();
+
+        expect(celbridge.document.save).toHaveBeenCalledOnce();
+        expect(onSaved).toHaveBeenCalledOnce();
+    });
+
+    it('does not report a save the host failed to write', async () => {
+        celbridge.document.save = vi.fn().mockResolvedValue({ success: false, error: 'Access denied' });
+        const onSaved = vi.fn();
+
+        await controller.initializeHost({ onSaved });
+        await __capturedHandlers.onRequestSave();
+
+        expect(onSaved).not.toHaveBeenCalled();
+    });
+});
+
+describe('EditorController unsaved edits', () => {
+    let controller;
+    let model;
+
+    beforeEach(async () => {
+        for (const key of Object.keys(__capturedHandlers)) {
+            delete __capturedHandlers[key];
+        }
+        model = createMockModel();
+        installMonacoStub(createMockEditor(model));
+
+        controller = new EditorController();
+        controller.create(document.createElement('div'));
+        await controller.initializeHost({});
+        await __capturedHandlers.onContent('<p>Page</p>', { fileName: 'page.html' });
+    });
+
+    it('has none once the initial content is in', () => {
+        expect(controller.hasUnsavedEdits()).toBe(false);
+    });
+
+    it('has one after an edit, until the host saves it', async () => {
+        celbridge.document.save = vi.fn().mockResolvedValue({ success: true });
+        model.getAlternativeVersionId.mockReturnValue(2);
+        expect(controller.hasUnsavedEdits()).toBe(true);
+
+        await __capturedHandlers.onRequestSave();
+
+        expect(controller.hasUnsavedEdits()).toBe(false);
+    });
+
+    it('reports the version of the text the file holds', async () => {
+        celbridge.document.save = vi.fn().mockResolvedValue({ success: true });
+        expect(controller.getSavedVersionId()).toBe(1);
+
+        model.getAlternativeVersionId.mockReturnValue(2);
+        await __capturedHandlers.onRequestSave();
+
+        expect(controller.getSavedVersionId()).toBe(2);
+        expect(controller.getVersionId()).toBe(2);
+    });
+
+    it('keeps an edit unsaved when the host fails to write it', async () => {
+        celbridge.document.save = vi.fn().mockResolvedValue({ success: false, error: 'Access denied' });
+        model.getAlternativeVersionId.mockReturnValue(2);
+
+        await __capturedHandlers.onRequestSave();
+
+        expect(controller.hasUnsavedEdits()).toBe(true);
+    });
+
+    it('keeps an edit made during the save unsaved', async () => {
+        let finishSave;
+        celbridge.document.save = vi.fn(() => new Promise((resolve) => { finishSave = resolve; }));
+        model.getAlternativeVersionId.mockReturnValue(2);
+
+        const saving = __capturedHandlers.onRequestSave();
+        model.getAlternativeVersionId.mockReturnValue(3);
+        finishSave({ success: true });
+        await saving;
+
+        expect(controller.hasUnsavedEdits()).toBe(true);
+    });
+
+    it('has none once a change on disk replaces the buffer', async () => {
+        celbridge.document.load = vi.fn().mockResolvedValue({ content: 'reloaded content' });
+        model.getAlternativeVersionId.mockReturnValue(2);
+
+        await __capturedHandlers.onExternalChange();
+
+        expect(controller.hasUnsavedEdits()).toBe(false);
+    });
+});
+
+describe('EditorController initial content', () => {
+    let controller;
+
+    beforeEach(() => {
+        for (const key of Object.keys(__capturedHandlers)) {
+            delete __capturedHandlers[key];
+        }
+        installMonacoStub(createMockEditor(createMockModel()));
+
+        controller = new EditorController();
+        controller.create(document.createElement('div'));
+    });
+
+    it('finishes taking the initial content only once the caller has handled it', async () => {
+        let finishHandling;
+        const handled = new Promise((resolve) => { finishHandling = resolve; });
+        await controller.initializeHost({ onInitialContent: () => handled });
+
+        let isContentTaken = false;
+        const taking = __capturedHandlers.onContent('<p>Page</p>', { fileName: 'page.html' })
+            .then(() => { isContentTaken = true; });
+
+        await flushMicrotasks();
+        expect(isContentTaken).toBe(false);
+
+        finishHandling();
+        await taking;
+        expect(isContentTaken).toBe(true);
+    });
+});
+
+describe('EditorController document name', () => {
+    let controller;
+
+    beforeEach(() => {
+        for (const key of Object.keys(__capturedHandlers)) {
+            delete __capturedHandlers[key];
+        }
+        installMonacoStub(createMockEditor(createMockModel()));
+
+        controller = new EditorController();
+        controller.create(document.createElement('div'));
+    });
+
+    it('hands the caller the new metadata when the document is renamed', async () => {
+        const onRenamed = vi.fn();
+        await controller.initializeHost({ onRenamed });
+
+        const metadata = { resourceKey: 'project:src/app.py', fileName: 'app.py' };
+        __capturedHandlers.onRenamed(metadata);
+
+        expect(onRenamed).toHaveBeenCalledWith(metadata);
+    });
+
+    it('passes the metadata of an external reload on with the content', async () => {
+        const metadata = { resourceKey: 'project:src/app.py', fileName: 'app.py' };
+        celbridge.document.load = vi.fn().mockResolvedValue({ content: 'print(1)', metadata });
+        const onExternalReloadContent = vi.fn();
+        await controller.initializeHost({ onExternalReloadContent });
+
+        await __capturedHandlers.onExternalChange();
+
+        expect(onExternalReloadContent).toHaveBeenCalledWith(expect.any(String), metadata);
     });
 });
 

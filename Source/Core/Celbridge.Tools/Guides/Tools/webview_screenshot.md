@@ -10,12 +10,12 @@ Captures a PNG or JPEG of an open WebView document. By default the image is retu
 - `format` — `"jpeg"` (default) or `"png"`.
 - `quality` — JPEG quality 1-100. Default 70. Ignored for PNG.
 - `maxEdge` — longer-edge pixel cap. Default 768. `0` disables downscaling. Image token cost scales with pixel area, so doubling `maxEdge` quadruples cost.
-- `selector` — optional CSS selector to clip the capture to a single element.
+- `selector` — optional CSS selector to clip the capture to a single element. Without one, the capture shows the frame the call acts on, so an HTML editor document captures the previewed page. A frame that is not showing, such as the HTML editor's preview in Source mode, has nothing to capture.
 - `settleMs` — extra delay before capture, on top of the editor's content-ready signal. Default 0. Pass 500 (or higher, up to ~1000 for slow editors) after layout-changing operations such as `document_open`, route navigation, or any action that may still be composing the initial layout.
 
 ## Returns
 
-When `returnImage` is `true`: an inline image content block plus a JSON text block. When `returnImage` is `false`: only the JSON metadata. The metadata payload is `{format, width, height, sizeBytes, resource, imageReturned}`. `resource` is the saved location if `saveTo` was used, otherwise `null`.
+When `returnImage` is `true`: an inline image content block plus a JSON text block. When `returnImage` is `false`: only the JSON metadata. The metadata payload is `{frame, format, width, height, sizeBytes, resource, imageReturned}`. `resource` is the saved location if `saveTo` was used, otherwise `null`.
 
 ## Save destination resolution
 

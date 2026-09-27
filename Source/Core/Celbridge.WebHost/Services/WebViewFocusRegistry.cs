@@ -236,6 +236,13 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
 
         _registrations[coreWebView] = registration;
 
+        // Key forwarding checks which key a web view last received, so recording has to start before any web
+        // view gets a key.
+        if (OperatingSystem.IsMacOS())
+        {
+            Platform.MacOSWebViewInterop.ObserveKeyDownDelivery();
+        }
+
         // The managed GotFocus is the Windows gain signal and also fires for clicks on non-focusable content
         // that raise no DOM focus event. The native monitor is the macOS equivalent; a no-op elsewhere.
         registration.WebView.GotFocus += OnWebViewGotFocus;
@@ -244,7 +251,7 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         // The focus-lost signal comes back through the page rather than either of the gain paths above,
         // because neither the managed nor the native layer observes the keyboard leaving the web content.
         // It arrives over the message bus, which the surface joins here for as long as it is registered.
-        _messageDispatcher.Attach(coreWebView, registration.SurfaceName);
+        _messageDispatcher.Attach(coreWebView, registration.GetSurfaceName);
 
         coreWebView.NavigationCompleted += OnNavigationCompleted;
 
@@ -612,6 +619,12 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
 
         var coreWebView = registration.WebView.CoreWebView2;
         if (coreWebView is null)
+        {
+            return false;
+        }
+
+        // The page already has this key. WebKit sent it back because the page left it unhandled.
+        if (Platform.MacOSWebViewInterop.HasWebViewReceivedKeyDown(nativeKeyEvent))
         {
             return false;
         }

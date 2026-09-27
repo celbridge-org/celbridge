@@ -12,6 +12,7 @@ Describes a single element in the WebView in detail. Use this after `webview_que
 
 JSON object with:
 
+- `frame` — the frame the element is in.
 - `tag` — lowercase tag name.
 - `selector` — a stable selector for the element (often more specific than the input).
 - `role` — ARIA role, combining explicit and implicit roles.

@@ -28,7 +28,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     private readonly Dictionary<CoreWebView2, CancellationTokenSource> _keepAliveLoops = new();
 
     // What the wake loop has observed about each hosted view, read by callers reporting a document's health.
-    private readonly HostedPageHealthTracker<CoreWebView2> _pageHealth = new();
+    private readonly PageHealthTracker<CoreWebView2> _pageHealth = new();
 
     // The find methods receive only a CoreWebView2, so sessions are keyed by it to recover per-find state.
     private readonly Dictionary<CoreWebView2, FindSession> _findSessions = new();
@@ -290,7 +290,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
     private void ObserveWebContentProcess(CoreWebView2 coreWebView2)
     {
         var change = _pageHealth.RecordProcessId(coreWebView2, ReadWebContentProcessId(coreWebView2));
-        if (change == HostedPageProcessChange.None)
+        if (change == PageProcessChange.None)
         {
             return;
         }
@@ -299,15 +299,15 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
 
         switch (change)
         {
-            case HostedPageProcessChange.Gone:
+            case PageProcessChange.Gone:
                 _logger.LogWarning("The WebContent process behind {PageUrl} is no longer running", pageUrl);
                 break;
 
-            case HostedPageProcessChange.Relaunched:
+            case PageProcessChange.Relaunched:
                 _logger.LogInformation("WebKit relaunched the WebContent process behind {PageUrl}", pageUrl);
                 break;
 
-            case HostedPageProcessChange.Replaced:
+            case PageProcessChange.Replaced:
                 _logger.LogInformation(
                     "WebKit swapped the WebContent process behind {PageUrl} without a navigation", pageUrl);
                 break;
@@ -345,7 +345,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
             TaskScheduler.Default);
     }
 
-    public DocumentHealth GetHostedPageHealth(CoreWebView2 coreWebView2)
+    public DocumentHealth GetPageHealth(CoreWebView2 coreWebView2)
     {
         return _pageHealth.GetHealth(coreWebView2);
     }
@@ -521,10 +521,16 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         // return types such as Promises (WKError 5), and on an undefined result (surfaced by Uno as an
         // ArgumentNullException). WebView2 returns the JSON literal "null" silently in the equivalent cases.
         // Normalise the faults so common errors and undefined results read as None on Python callers across
-        // platforms. Best-effort: exotic return values (Promise, Date, NaN, circular references) may still
-        // serialise differently per platform.
+        // platforms. On macOS the page encodes the value itself. A value JSON cannot represent then reads as
+        // None too.
         try
         {
+            if (OperatingSystem.IsMacOS())
+            {
+                var encodedResult = await coreWebView2.ExecuteScriptAsync(BuildPageEncodedScript(expression));
+                return DecodePageEncodedResult(encodedResult);
+            }
+
             var result = await coreWebView2.ExecuteScriptAsync(expression);
             return result ?? "null";
         }
@@ -536,6 +542,46 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         {
             return "null";
         }
+    }
+
+    /// <summary>
+    /// Wraps an expression so that the page encodes its value as JSON. The script returns that JSON as the
+    /// only string in an array. If the value cannot be encoded, the script throws, and the result reads as
+    /// null, as it does on WebView2.
+    /// </summary>
+    // UNO-BUG: Uno encodes the result with NSJSONSerialization. A value that refers to itself, such as window,
+    // makes it recurse until the main thread's stack overflows, and the application hangs. Uno also escapes
+    // the quotes in a returned string but not its backslashes. NSJSONSerialization escapes an array
+    // correctly, so the JSON comes back inside one.
+    internal static string BuildPageEncodedScript(string expression)
+    {
+        // A trailing semicolon is not allowed inside the parentheses. The line breaks stop a trailing line
+        // comment from hiding the closing parentheses.
+        var trimmedExpression = expression.TrimEnd().TrimEnd(';');
+
+        return $"[JSON.stringify((\n{trimmedExpression}\n)) ?? null]";
+    }
+
+    /// <summary>
+    /// Returns the page's JSON, unwrapped from the array it arrives in.
+    /// </summary>
+    internal static string DecodePageEncodedResult(string? result)
+    {
+        if (string.IsNullOrEmpty(result))
+        {
+            return "null";
+        }
+
+        using var document = JsonDocument.Parse(result);
+        var root = document.RootElement;
+        if (root.ValueKind != JsonValueKind.Array ||
+            root.GetArrayLength() != 1 ||
+            root[0].ValueKind != JsonValueKind.String)
+        {
+            return "null";
+        }
+
+        return root[0].GetString() ?? "null";
     }
 
     public async Task ReloadAsync(CoreWebView2 coreWebView2, bool clearCache)
@@ -793,41 +839,6 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         return _downloadRouter.Attach(coreWebView2);
     }
 
-    public IDisposable GateNavigations(CoreWebView2 coreWebView2, NavigationGate gate)
-    {
-        // Every Skia head decides at NavigationStarting, which Uno raises once the request is under way.
-        // The Windows and Linux heads have nothing earlier to use, and macOS puts WebKit's own navigation
-        // policy in front of it, where a refused destination is never asked for at all.
-        var navigationStartingGate = new NavigationStartingGate(coreWebView2, gate);
-
-        if (!OperatingSystem.IsMacOS())
-        {
-            return navigationStartingGate;
-        }
-
-        if (!MacOSWebViewInterop.TryGetNativeWebViewHandle(coreWebView2, out var webView, out var detail))
-        {
-            _logger.LogWarning("A page's navigations are decided only once their requests are sent: its native view could not be resolved ({Detail})", detail);
-            return navigationStartingGate;
-        }
-
-        // A URL that is not an absolute URI is left to NavigationStarting, which lets it through as well.
-        MacNavigationGate nativeGate = (url, isUserInitiated) =>
-            !Uri.TryCreate(url, UriKind.Absolute, out var destination) ||
-            gate(destination, isUserInitiated);
-
-        var registration = MacOSWebViewInterop.GateNavigations(webView, nativeGate, out var gateDetail);
-        if (registration is null)
-        {
-            _logger.LogWarning("A page's navigations are decided only once their requests are sent: {Detail}", gateDetail);
-            return navigationStartingGate;
-        }
-
-        // A navigation the native gate lets through reaches NavigationStarting as well, where the handler
-        // that allowed it answers the same way.
-        return new PageRegistration(registration, navigationStartingGate);
-    }
-
     public IDisposable ObserveNavigationCommits(CoreWebView2 coreWebView2, NavigationCommitted onCommitted)
     {
         // On the Windows Skia head, Uno passes on WebView2's Source, which changes as a navigation commits. On
@@ -877,19 +888,6 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         {
             _logger.LogError(ex, "Failed to report a navigation commit");
         }
-    }
-
-    // UNO-BUG: CoreWebView2NewWindowRequestedEventArgs.IsUserInitiated throws NotImplementedException on the
-    // Skia heads, from inside Uno's native new-window callback, where an exception ends the process. macOS
-    // reads the gesture from WebKit's own request for the window, and the other Skia heads have none to read.
-    public bool IsUserInitiated(CoreWebView2NewWindowRequestedEventArgs args)
-    {
-        if (!OperatingSystem.IsMacOS())
-        {
-            return false;
-        }
-
-        return MacOSWebViewInterop.IsUserInitiatedWindowRequest(args.Uri);
     }
 
     private string ResolveSafariVersion()

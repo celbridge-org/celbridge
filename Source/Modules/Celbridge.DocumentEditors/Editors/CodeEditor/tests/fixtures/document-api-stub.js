@@ -11,5 +11,9 @@ export function projectUrl(resourceKey) {
     const path = key.startsWith('project:')
         ? key.substring('project:'.length)
         : key;
-    return `/project/${path}`;
+    const encodedPath = path
+        .split('/')
+        .map((segment) => encodeURIComponent(segment))
+        .join('/');
+    return `/project/${encodedPath}`;
 }

@@ -17,7 +17,8 @@ public partial class WebViewTools
         string name = "",
         string text = "",
         string selector = "",
-        int maxResults = 20)
+        int maxResults = 20,
+        string frame = "")
     {
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
@@ -39,8 +40,8 @@ public partial class WebViewTools
             return ToolResponse.Error("webview_query requires exactly one of role, text, or selector.");
         }
 
-        Logger.LogInformation("webview_query resource={Resource} role={Role} name={Name} text={Text} selector={Selector} maxResults={MaxResults}",
-            resourceKey, role, name, text, selector, maxResults);
+        Logger.LogInformation("webview_query resource={Resource} role={Role} name={Name} text={Text} selector={Selector} maxResults={MaxResults} frame={Frame}",
+            resourceKey, role, name, text, selector, maxResults, frame);
 
         QueryMode mode;
         if (!string.IsNullOrEmpty(role))
@@ -58,7 +59,7 @@ public partial class WebViewTools
         }
 
         var toolBridge = GetRequiredService<IDocumentWebViewToolBridge>();
-        var options = new QueryOptions(mode, maxResults);
+        var options = new QueryOptions(mode, maxResults, frame);
         var queryResult = await toolBridge.QueryAsync(resourceKey, options);
         if (queryResult.IsFailure)
         {

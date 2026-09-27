@@ -22,6 +22,9 @@ export class EditorController {
     // The ranges the last getSelectedText read, so the cut that follows clears exactly those.
     #copiedRanges = null;
     #pendingNavigation = null;
+    // The model's alternative version id when the buffer last matched the file. Undo back to that text
+    // returns to the same id, so the buffer counts as saved again.
+    #savedVersionId = null;
     #onContentChanged = () => {};
     #onScrollChanged = () => {};
     #suppressScrollNotify = false;
@@ -460,11 +463,17 @@ export class EditorController {
     /**
      * Initialize the host connection, load content, and register handlers.
      * notifyContentLoaded() is called automatically after this completes.
+     * The `onInitialContent` callback may return a promise, and the content is reported loaded once it settles.
+     * The `onExternalReloadContent` callback receives the reloaded content and the document's metadata.
+     * The `onRenamed` callback receives the document's new metadata after a rename or a move.
      * The `onWritableStateChanged` callback receives `{state, readOnly}`.
+     * The `onSaved` callback fires after each successful save.
      */
     async initializeHost({
         onInitialContent,
         onExternalReloadContent,
+        onRenamed,
+        onSaved,
         onRequestState,
         onRestoreState,
         onWritableStateChanged
@@ -491,21 +500,41 @@ export class EditorController {
         });
 
         await celbridge.initializeDocument({
-            onContent: (content, metadata) => {
+            onContent: async (content, metadata) => {
                 log('editor: initial content received', { length: content ? content.length : 0 });
                 if (content) {
                     this.#editor.setValue(content);
                 }
+                this.#markSaved();
                 if (onInitialContent) {
-                    onInitialContent(content, metadata);
+                    await onInitialContent(content, metadata);
                 }
             },
             onRequestSave: async () => {
+                // Edits made while the save is in flight are not in the file, so the saved version is the one
+                // the content was taken from.
+                const versionId = this.getVersionId();
                 const content = this.#editor.getValue();
-                await celbridge.document.save(content);
+                const result = await celbridge.document.save(content);
+
+                // A failed save leaves the file unchanged, so only a successful save is reported.
+                if (!result?.success) {
+                    return;
+                }
+
+                this.#savedVersionId = versionId;
+                if (onSaved) {
+                    onSaved();
+                }
             },
             onExternalChange: async () => {
                 await this.#handleExternalChange(onExternalReloadContent);
+            },
+            onRenamed: (metadata) => {
+                log('editor: renamed', { resourceKey: metadata?.resourceKey });
+                if (onRenamed) {
+                    onRenamed(metadata);
+                }
             },
             onRequestState,
             onRestoreState
@@ -528,6 +557,33 @@ export class EditorController {
 
     onContentChanged(callback) {
         this.#onContentChanged = callback ?? (() => {});
+    }
+
+    /**
+     * Whether the buffer holds edits the host has not saved yet. The host saves only after the document has
+     * gone a second without changing, so edits stay unsaved for as long as they continue.
+     */
+    hasUnsavedEdits() {
+        if (this.#savedVersionId === null) {
+            return false;
+        }
+
+        return this.getVersionId() !== this.#savedVersionId;
+    }
+
+    /**
+     * The model's alternative version id. An undo returns it to the value it had before the edit.
+     */
+    getVersionId() {
+        return this.#editor.getModel().getAlternativeVersionId();
+    }
+
+    /**
+     * The version id of the text the file held when the buffer last matched it, or null before the first
+     * content arrives.
+     */
+    getSavedVersionId() {
+        return this.#savedVersionId;
     }
 
     /**
@@ -561,10 +617,13 @@ export class EditorController {
             this.#editor.setValue(result.content);
         }
 
+        // The host drops a pending save when the file changes on disk, so the buffer now matches the file.
+        this.#markSaved();
+
         // Let the caller drive dependent surfaces (e.g. the preview pane)
         // before the content-loaded signal fires.
         if (onExternalReloadContent) {
-            onExternalReloadContent(this.#editor.getValue());
+            onExternalReloadContent(this.#editor.getValue(), result.metadata);
         }
 
         // Signal to the host that new content has been loaded so consumers can
@@ -657,6 +716,10 @@ export class EditorController {
             // Focus the editor to make the cursor visible
             this.#editor.focus();
         });
+    }
+
+    #markSaved() {
+        this.#savedVersionId = this.getVersionId();
     }
 
     #shouldNotifyHost() {

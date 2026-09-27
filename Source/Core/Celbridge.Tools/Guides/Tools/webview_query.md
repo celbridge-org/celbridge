@@ -31,6 +31,7 @@ A CSS selector. Returns up to `maxResults` matching elements.
 
 JSON object with:
 
+- `frame` — the frame that was searched.
 - `mode` — which of `role`, `text`, or `selector` was used.
 - `totalMatches` — total matches found before the `maxResults` cap.
 - `returned` — number of entries in `elements` after the cap.

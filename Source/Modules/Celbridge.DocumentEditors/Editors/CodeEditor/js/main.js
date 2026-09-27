@@ -2,14 +2,14 @@
 // Creates the Monaco editor, wires up the optional snippet toolbar, and —
 // when the document's options opt in — constructs a PreviewPipeline that
 // owns the preview pane, view-mode switcher, and source-to-preview sync.
-// The same bundle serves both the code and markdown document contributions;
-// the options decide which parts to activate at runtime.
+// The same bundle serves the code, markdown and HTML document contributions,
+// and the options decide which parts to activate at runtime.
 
 import celbridge from '/assets/celbridge-client/celbridge.js';
 import { EditorController } from './editor-controller.js';
 import { ViewMode } from './view-mode-controller.js';
 import { PreviewPipeline } from './preview-pipeline.js';
-import { initializeToolbar, setToolbarReadOnly } from './toolbar.js';
+import { initializeToolbar, pressToolbarReloadButton, setToolbarReadOnly } from './toolbar.js';
 import { initializeLanguageMap, getLanguageForFile } from './language-mapper.js';
 import { log, warn } from './logger.js';
 
@@ -133,6 +133,7 @@ async function initialize() {
         showSnippets: options.enableSnippetToolbar,
         snippetSet: options.snippetSet,
         viewModeController: previewPipeline?.viewModeController ?? null,
+        onReloadPreview: () => previewPipeline?.reload(),
         onInsertSnippet: (text) => editorController.insertText(text)
     });
 
@@ -167,6 +168,11 @@ async function initialize() {
         editorController.focusIfVacant();
     });
 
+    // F5 does what the preview's Reload button does, and nothing where the button is hidden or disabled.
+    celbridge.input.onReloadKey(() => {
+        pressToolbarReloadButton();
+    });
+
     // The host's Find menu item lands here, so it opens the same find Command+F does.
     celbridge.onNotification('input/beginFind', () => {
         if (previewPipeline?.beginFind()) {
@@ -189,20 +195,29 @@ async function initialize() {
 
     try {
         await editorController.initializeHost({
-            onInitialContent: (content, metadata) => {
+            onInitialContent: async (content, metadata) => {
                 const language = getLanguageForFile(metadata?.fileName || '');
                 editorController.setLanguage(language);
 
-                if (previewPipeline) {
-                    previewPipeline.handleInitialContent(content, metadata?.resourceKey);
-                }
+                const previewReady = previewPipeline?.handleInitialContent(content, metadata?.resourceKey);
 
                 // Reveal the editor now that Monaco has the first buffer. Until this point
                 // #split-root is opacity:0 so the user never sees the empty pre-content view.
                 document.getElementById('split-root').classList.add('is-loaded');
+
+                // The editor reports its content loaded once the preview has the content too.
+                await previewReady;
             },
-            onExternalReloadContent: (content) => {
-                previewPipeline?.handleExternalReload(content);
+            onExternalReloadContent: (content, metadata) => {
+                setLanguageForFile(metadata?.fileName);
+                previewPipeline?.handleExternalReload(content, metadata?.resourceKey);
+            },
+            onRenamed: (metadata) => {
+                setLanguageForFile(metadata?.fileName);
+                previewPipeline?.handleRenamed(metadata?.resourceKey);
+            },
+            onSaved: () => {
+                previewPipeline?.handleSaved();
             },
             onRequestState: () => captureState(),
             onRestoreState: (stateJson) => restoreState(stateJson),
@@ -216,6 +231,16 @@ async function initialize() {
     } catch (ex) {
         console.error('Failed to initialize host connection:', ex);
     }
+}
+
+// Highlights the source as the language of the file's extension. A rename or a move can change the
+// extension while the document stays open in this editor. Without a name, it changes nothing.
+function setLanguageForFile(fileName) {
+    if (!fileName) {
+        return;
+    }
+
+    editorController.setLanguage(getLanguageForFile(fileName));
 }
 
 function captureState() {

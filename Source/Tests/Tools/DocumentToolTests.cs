@@ -156,7 +156,7 @@ public class DocumentToolTests
             new List<DocumentSection> { DocumentSection.MainLeft },
             new List<OpenDocumentInfo>
             {
-                new(resource, new DocumentAddress(0, DocumentSection.MainLeft, 0), new EditorId("celbridge.html-viewer"))
+                new(resource, new DocumentAddress(0, DocumentSection.MainLeft, 0), new EditorId("celbridge.html"))
             },
             new Dictionary<DocumentSection, ResourceKey>(),
             new Dictionary<ResourceKey, DocumentHealth>(),
@@ -167,7 +167,7 @@ public class DocumentToolTests
         var root = ParseResult(await tools.GetState());
 
         var firstDocument = root.GetProperty("openDocuments")[0];
-        firstDocument.GetProperty("editorId").GetString().Should().Be("celbridge.html-viewer");
+        firstDocument.GetProperty("editorId").GetString().Should().Be("celbridge.html");
     }
 
     [Test]
