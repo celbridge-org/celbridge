@@ -21,12 +21,14 @@ Utility buttons and the ones document shortcuts add, double-clicking a document 
 | Focus showing the Bottom area | open a Side document from its shortcut | Focus ends, and the normal layout returns with Side showing the document | 2 |
 | Tabs in Bottom and none in Side, Bottom hidden and Side shown by hand, the window maximised | Reset Layout | Bottom shows, Side collapses, and the window is restored from maximised | 2 |
 | An area holding tabs, hidden by hand | reload the project | the area is still hidden | 2 |
+| Main empty, a document active in Side | open an HTML document with `document_open` without activating it | Main shows the document and its page is drawn, while the Side document stays active: `selectedDocuments` names it for `main_left`, and `webview_eval` reads `document.visibilityState` as `visible` | 2 |
 | Presentation on, Side collapsed | open a Side document with `document_open` without activating it | Presentation stays on and nothing on screen changes | 2 |
 | Focus showing the Bottom area, documents open in other areas | close Bottom's last tab | another document is on screen, and no empty area is left in view | 3 |
 | Presentation on, Side collapsed | open a Side document with `document_open` and activate it | Presentation ends and Side shows the document | 3 |
 | Side showing | collapse it with its own close button | the title bar's Side button and the View menu both show it hidden | 3 |
 | The Utility Panel showing Explorer, the keyboard in the tree, and the active document on screen | click Explorer's Utility button, then click it again | the first click collapses the panel and moves the keyboard to the active document, so text typed next lands in it, and the second brings the panel back on Explorer | 3 |
 | An area split into two sections | close the last tab in one of them | the area folds back to a single section | 3 |
+| A document showing in Main, a second open in Side, a third active | open the Side document into Main with `document_open` without activating it | the document moves to Main and becomes the active document, as a tab the user moves does | 3 |
 | Bottom showing | choose each Bottom alignment in turn, then reload the project | Bottom runs under the areas each alignment names, and the last choice survives the reload | 3 |
 | Focus on | turn full screen on, leave Focus, then turn full screen off | each change leaves the other alone: the window stays full screen when Focus ends, and the layout stays normal when full screen ends | 3 |
 

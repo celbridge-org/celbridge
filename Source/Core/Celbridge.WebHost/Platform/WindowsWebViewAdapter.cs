@@ -12,8 +12,8 @@ namespace Celbridge.WebHost.Platform;
 /// </summary>
 public sealed class WindowsWebViewAdapter : IWebViewAdapter
 {
-    // Bounds the wait for Page.captureScreenshot. Inactive WinUI tabs pause the WebView2 renderer, which would
-    // otherwise leave the CDP call hanging.
+    // Bounds the wait for Page.captureScreenshot. A WinUI tab that is not being shown pauses the WebView2
+    // renderer, which would otherwise leave the CDP call hanging.
     private static readonly TimeSpan ScreenshotCaptureTimeout = TimeSpan.FromSeconds(5);
 
     public bool SupportsVirtualHostMapping => true;
@@ -109,8 +109,8 @@ public sealed class WindowsWebViewAdapter : IWebViewAdapter
         {
             throw new TimeoutException(
                 $"Screenshot timed out after {ScreenshotCaptureTimeout.TotalSeconds:0}s. " +
-                "The document tab likely became inactive during capture, which pauses " +
-                "WebView2 rendering. Re-activate the tab and retry.");
+                "The document tab likely went off screen during capture, which pauses " +
+                "WebView2 rendering. Bring the tab to the front and retry.");
         }
 
         var resultJson = await captureTask;

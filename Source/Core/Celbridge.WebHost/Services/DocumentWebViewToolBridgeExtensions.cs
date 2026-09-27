@@ -108,15 +108,14 @@ public static class DocumentWebViewToolBridgeExtensions
         {
             try
             {
-                // Inactive tabs pause the renderer, so the capture would hang. Fail
+                // A tab that is not on screen is not drawn, so the capture would hang. Fail
                 // fast both before and after the settle delay.
                 if (!IsRenderableNow(webView))
                 {
                     throw new InvalidOperationException(
-                        "Screenshot requires the target document to be the active tab. " +
-                        "WebView2 pauses rendering for inactive tabs, so the screenshot cannot " +
-                        "complete. Open the document with document_open and ensure its tab is " +
-                        "selected before calling webview_screenshot.");
+                        "Screenshot requires the target document to be on screen. Its tab is not " +
+                        "the one its section is showing, or its area is hidden, so it is not drawn. " +
+                        "Bring it to the front with document_activate before calling webview_screenshot.");
                 }
 
                 var totalSettleMs = PaintBackstopMs + request.SettleMs;
@@ -128,8 +127,8 @@ public static class DocumentWebViewToolBridgeExtensions
                 if (!IsRenderableNow(webView))
                 {
                     throw new InvalidOperationException(
-                        "Screenshot target became inactive during the settle delay. " +
-                        "Re-activate the document tab and retry.");
+                        "Screenshot target went off screen during the settle delay. " +
+                        "Bring the document tab to the front and retry.");
                 }
 
                 var data = await webViewAdapter.CaptureScreenshotAsync(webView, request);
@@ -150,8 +149,8 @@ public static class DocumentWebViewToolBridgeExtensions
     }
 
     // True when the WebView2 is parented in the visual tree and visible. TabView
-    // unloads inactive tabs, so IsLoaded going false is the signal that the
-    // renderer has paused and a screenshot cannot complete.
+    // unloads the tabs it is not showing, so IsLoaded going false is the signal that
+    // the renderer has paused and a screenshot cannot complete.
     private static bool IsRenderableNow(WebView2 webView)
     {
         return webView.IsLoaded
