@@ -46,9 +46,8 @@ internal class AgentServer : IAgentServer
             .AddMcpServer()
             .WithHttpTransport(options =>
             {
-                // The SDK ends a session after two hours without a request, and a client that does not
-                // start a new one on the 404 that follows loses its tools. Sessions end anyway when the
-                // server restarts on the next project load.
+                // Turn off the SDK's two-hour idle expiry, so a client left idle keeps its session.
+                // Sessions still end when the server restarts on the next project load.
                 options.IdleTimeout = Timeout.InfiniteTimeSpan;
             })
             .WithToolsFromAssembly(typeof(AppTools).Assembly);
