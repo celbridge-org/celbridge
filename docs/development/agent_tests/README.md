@@ -24,6 +24,7 @@ goes stale faster than anyone notices.
 | [Workspace](workspace.md) | Explorer, Search, dialogs, menus and project settings |
 | [Layout](layout.md) | The areas on screen, Focus and Presentation, and Reset Layout |
 | [Python Environment](python_environment.md) | The uv install, the Celbridge wheel, and the environment consoles inherit |
+| [Package Tools](package_tools.md) | Tool calls from package editor pages and python consoles, across project reloads |
 
 ## Effort levels
 
