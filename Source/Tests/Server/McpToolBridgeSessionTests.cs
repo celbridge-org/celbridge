@@ -2,20 +2,24 @@ using System.Net;
 using System.Text;
 using System.Text.Json.Nodes;
 using Celbridge.Messaging;
+using Celbridge.Messaging.Services;
 using Celbridge.Server;
 using Celbridge.Server.Services;
 
 namespace Celbridge.Tests.Server;
 
 /// <summary>
-/// Tests for how McpToolBridge holds its MCP session. The MCP server forgets a session
-/// once it has been idle for its IdleTimeout and answers 404 for it from then on, so the
-/// bridge must start a new session rather than failing every call until the next restart.
+/// Tests for how McpToolBridge holds its MCP session. The MCP server answers 404 for a session it
+/// no longer holds, so the bridge must start a new session rather than failing every call until the
+/// next restart, and concurrent callers must share one handshake.
 /// </summary>
 [TestFixture]
 public class McpToolBridgeSessionTests
 {
+    private const int ConcurrentCallCount = 5;
+
     private StubMcpServer _server = null!;
+    private IMessengerService _messengerService = null!;
     private McpToolBridge _bridge = null!;
 
     [SetUp]
@@ -25,9 +29,10 @@ public class McpToolBridgeSessionTests
         serverService.Port.Returns(51359);
 
         _server = new StubMcpServer();
+        _messengerService = new MessengerService();
         _bridge = new McpToolBridge(
             serverService,
-            Substitute.For<IMessengerService>(),
+            _messengerService,
             Substitute.For<ILogger<McpToolBridge>>(),
             _server);
     }
@@ -67,23 +72,117 @@ public class McpToolBridgeSessionTests
         var result = await _bridge.CallToolAsync("app_log", null);
 
         result.IsSuccess.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("404");
+        result.ErrorMessage.Should().Be("MCP tools/call returned 404: Session not found");
         _server.InitializeCount.Should().Be(2);
     }
 
-    // Issues numbered session ids and answers 404 for any session it does not hold,
-    // matching the MCP SDK's stateful HTTP transport.
+    [Test]
+    public async Task CallToolAsync_ConcurrentCallers_ShareOneHandshake()
+    {
+        var initializeGate = new TaskCompletionSource();
+        _server.InitializeGate = initializeGate.Task;
+
+        var calls = Enumerable.Range(0, ConcurrentCallCount)
+            .Select(_ => _bridge.CallToolAsync("app_log", null))
+            .ToList();
+        initializeGate.SetResult();
+
+        var results = await Task.WhenAll(calls);
+
+        results.Should().OnlyContain(result => result.IsSuccess);
+        _server.InitializeCount.Should().Be(1);
+    }
+
+    [Test]
+    public async Task CallToolAsync_WhenSharedHandshakeFails_FailsEveryCallerAfterOneAttempt()
+    {
+        var initializeGate = new TaskCompletionSource();
+        _server.InitializeGate = initializeGate.Task;
+        _server.FailInitialize = true;
+
+        var calls = Enumerable.Range(0, ConcurrentCallCount)
+            .Select(_ => _bridge.CallToolAsync("app_log", null))
+            .ToList();
+        initializeGate.SetResult();
+
+        var results = await Task.WhenAll(calls);
+
+        results.Should().OnlyContain(result => !result.IsSuccess);
+        _server.InitializeCount.Should().Be(1);
+
+        // The server's HTML error page stays in the log rather than the message a caller sees.
+        results[0].ErrorMessage.Should().Be("MCP initialize returned 500: Internal Server Error");
+    }
+
+    [Test]
+    public async Task CallToolAsync_AfterServerStopped_StartsNewSession()
+    {
+        await _bridge.CallToolAsync("app_log", null);
+
+        _messengerService.Send(new ServerStoppedMessage());
+        await _bridge.CallToolAsync("app_log", null);
+
+        _server.InitializeCount.Should().Be(2);
+        _server.LastToolCallSessionId.Should().Be("session-2");
+    }
+
+    [Test]
+    public async Task CallToolAsync_StatelessServer_HandshakesOnce()
+    {
+        _server.Stateless = true;
+
+        var firstResult = await _bridge.CallToolAsync("app_log", null);
+        var secondResult = await _bridge.CallToolAsync("app_log", null);
+
+        firstResult.IsSuccess.Should().BeTrue();
+        secondResult.IsSuccess.Should().BeTrue();
+        _server.InitializeCount.Should().Be(1);
+    }
+
+    // Issues numbered session ids and answers 404 for any session it does not hold, matching the MCP
+    // SDK's stateful HTTP transport. In stateless mode it issues no session id and requires none.
     private sealed class StubMcpServer : HttpMessageHandler
     {
+        private readonly Lock _stateLock = new();
         private readonly HashSet<string> _liveSessions = new();
+        private int _initializeCount;
+        private string? _lastToolCallSessionId;
 
-        public int InitializeCount { get; private set; }
-        public string? LastToolCallSessionId { get; private set; }
+        public int InitializeCount
+        {
+            get
+            {
+                lock (_stateLock)
+                {
+                    return _initializeCount;
+                }
+            }
+        }
+
+        public string? LastToolCallSessionId
+        {
+            get
+            {
+                lock (_stateLock)
+                {
+                    return _lastToolCallSessionId;
+                }
+            }
+        }
+
         public bool RejectAllSessions { get; set; }
+        public bool FailInitialize { get; set; }
+        public bool Stateless { get; set; }
+
+        // When set, initialize is not answered until this completes, so concurrent callers overlap.
+        public Task? InitializeGate { get; set; }
 
         public void ExpireSessions()
         {
-            _liveSessions.Clear();
+            lock (_stateLock)
+            {
+                _liveSessions.Clear();
+            }
         }
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -95,14 +194,7 @@ public class McpToolBridgeSessionTests
 
             if (method == "initialize")
             {
-                InitializeCount++;
-                var newSessionId = $"session-{InitializeCount}";
-                _liveSessions.Add(newSessionId);
-
-                var initializeResponse = ResultResponse(requestId, "{}");
-                initializeResponse.Headers.Add("Mcp-Session-Id", newSessionId);
-
-                return initializeResponse;
+                return await InitializeAsync(requestId);
             }
 
             string? sessionId = null;
@@ -111,26 +203,61 @@ public class McpToolBridgeSessionTests
                 sessionId = sessionValues.First();
             }
 
-            if (sessionId is null ||
-                RejectAllSessions ||
-                !_liveSessions.Contains(sessionId))
+            lock (_stateLock)
             {
-                return JsonResponse(HttpStatusCode.NotFound, """{"error":{"code":-32001,"message":"Session not found"},"id":"","jsonrpc":"2.0"}""");
-            }
+                var sessionIsLive = sessionId is not null && _liveSessions.Contains(sessionId);
+                if (!Stateless &&
+                    (RejectAllSessions || !sessionIsLive))
+                {
+                    return JsonResponse(HttpStatusCode.NotFound, """{"error":{"code":-32001,"message":"Session not found"},"id":"","jsonrpc":"2.0"}""");
+                }
 
-            if (method == "notifications/initialized")
-            {
-                return new HttpResponseMessage(HttpStatusCode.Accepted);
-            }
+                if (method == "notifications/initialized")
+                {
+                    return new HttpResponseMessage(HttpStatusCode.Accepted);
+                }
 
-            if (method == "tools/list")
-            {
-                return ResultResponse(requestId, """{"tools":[{"name":"app_log","description":"","inputSchema":{}}]}""");
-            }
+                if (method == "tools/list")
+                {
+                    return ResultResponse(requestId, """{"tools":[{"name":"app_log","description":"","inputSchema":{}}]}""");
+                }
 
-            LastToolCallSessionId = sessionId;
+                _lastToolCallSessionId = sessionId;
+            }
 
             return ResultResponse(requestId, """{"content":[{"type":"text","text":"ok"}],"isError":false}""");
+        }
+
+        private async Task<HttpResponseMessage> InitializeAsync(int? requestId)
+        {
+            if (InitializeGate is not null)
+            {
+                await InitializeGate;
+            }
+
+            string newSessionId;
+            lock (_stateLock)
+            {
+                _initializeCount++;
+                newSessionId = $"session-{_initializeCount}";
+                _liveSessions.Add(newSessionId);
+            }
+
+            if (FailInitialize)
+            {
+                return new HttpResponseMessage(HttpStatusCode.InternalServerError)
+                {
+                    Content = new StringContent("<html><body>Unhandled exception</body></html>", Encoding.UTF8, "text/html")
+                };
+            }
+
+            var initializeResponse = ResultResponse(requestId, "{}");
+            if (!Stateless)
+            {
+                initializeResponse.Headers.Add("Mcp-Session-Id", newSessionId);
+            }
+
+            return initializeResponse;
         }
 
         private static HttpResponseMessage ResultResponse(int? requestId, string resultJson)

@@ -77,6 +77,11 @@ export class LogAPI {
             return;
         }
 
-        this.#transport.notify('host/log', { level, message: String(message) });
+        try {
+            this.#transport.notify('host/log', { level, message: String(message) });
+        } catch {
+            // Reporting is best effort, so a transport that cannot deliver the entry must not break the
+            // caller, which is often already handling a failure of its own.
+        }
     }
 }

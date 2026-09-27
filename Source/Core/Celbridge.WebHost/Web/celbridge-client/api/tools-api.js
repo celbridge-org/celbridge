@@ -5,7 +5,7 @@
 //
 // The host decides what that list contains and re-checks every `tools/call`, so a tool absent from
 // the proxy is one the host withheld rather than a client-side rule. If the list cannot be fetched at
-// all, the proxy instead throws on every namespace with the reason.
+// all, every tool call through the proxy instead rejects with the reason.
 //
 // Calling convention:
 //   - Arguments are positional and camelCase, in parameter declaration order.
@@ -262,31 +262,45 @@ function buildLeafFunction(descriptor, invoke) {
 }
 
 /**
- * Wraps the proxy built after a failed `tools/list` so that reaching for any namespace throws a
- * CelToolError carrying the reason, instead of yielding undefined and failing later with a TypeError.
- * @param {Object} celProxy
+ * Builds the `cel` proxy used after a failed `tools/list`. Every namespace reads as present and every
+ * tool in it rejects with a CelToolError carrying the reason, so a call reports why it cannot run and
+ * code that only reads the proxy never throws.
  * @param {string} reason
  * @returns {Object}
  */
-function guardFailedDiscovery(celProxy, reason) {
-    return new Proxy(celProxy, {
+function buildUnavailableCelProxy(reason) {
+    const rejectCall = (path) => () => Promise.reject(new CelToolError(
+        CelToolErrorCode.Failed,
+        path,
+        `cel.${path} is unavailable because the tool list could not be loaded: ${reason}`
+    ));
+
+    const buildNamespace = (namespace) => new Proxy({}, {
         get(target, property, receiver) {
-            // Symbols, Object.prototype members and the promise and JSON probes answer as usual, so the
-            // proxy can still be logged, awaited and serialized.
-            if (typeof property !== 'string' ||
-                property in target ||
-                property === 'then' ||
-                property === 'toJSON') {
+            if (isOrdinaryProperty(target, property)) {
                 return Reflect.get(target, property, receiver);
             }
-
-            throw new CelToolError(
-                CelToolErrorCode.Failed,
-                '',
-                `cel.${property} is unavailable because the tool list could not be loaded: ${reason}`
-            );
+            return rejectCall(`${namespace}.${property}`);
         }
     });
+
+    return new Proxy({}, {
+        get(target, property, receiver) {
+            if (isOrdinaryProperty(target, property)) {
+                return Reflect.get(target, property, receiver);
+            }
+            return buildNamespace(property);
+        }
+    });
+}
+
+// Symbols, Object.prototype members and the promise and JSON probes answer as a plain object would, so
+// the unavailable proxy can be logged, awaited and serialized.
+function isOrdinaryProperty(target, property) {
+    return typeof property !== 'string' ||
+        property in target ||
+        property === 'then' ||
+        property === 'toJSON';
 }
 
 function describeError(error) {
@@ -346,8 +360,8 @@ export class ToolsAPI {
      * Subsequent calls refresh the descriptor list.
      *
      * A failed fetch does not reject, so an editor that makes no tool calls still loads. The
-     * failure is written to the host log, and reaching for any `cel.*` namespace throws a
-     * CelToolError that carries the reason.
+     * failure is written to the host log, and every tool call through `cel.*` rejects with a
+     * CelToolError that carries the reason until a later call succeeds.
      *
      * @returns {Promise<void>}
      */
@@ -385,11 +399,10 @@ export class ToolsAPI {
         const copy = Array.isArray(descriptors) ? [...descriptors] : [];
         this.#descriptors = Object.freeze(copy);
 
-        const celProxy = buildCelProxy(copy, (alias, args) => this.call(alias, args));
         if (loadFailureReason === null) {
-            this.#celProxy = celProxy;
+            this.#celProxy = buildCelProxy(copy, (alias, args) => this.call(alias, args));
         } else {
-            this.#celProxy = guardFailedDiscovery(celProxy, loadFailureReason);
+            this.#celProxy = buildUnavailableCelProxy(loadFailureReason);
         }
     }
 
