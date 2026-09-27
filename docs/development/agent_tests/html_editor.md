@@ -59,7 +59,12 @@ stylesheet's effect and the scroll position back through them rather than off th
 belongs to the editor page around the preview, so read the Reload button's state with the tools' `frame`
 set to `top`. For the rename case, make the first edit before renaming, since a document opened again has
 no undo history to step back through, and read `document_get_state` after the rename: `activeDocument`
-names the new file and the renamed tab is the active one.
+names the new file and the renamed tab is the active one. In the rename and F5 cases, type the edits that
+undo steps back through. Edits made by script run together into one undo step, so a single undo removes
+them all.
+
+For the paste with nothing focused, log the page's `paste` event. A paste that never arrived also leaves
+everything unchanged.
 
 For the F5 cases, set a marker on the editor page with `webview_eval` and `frame` set to `top` before
 pressing anything. A reload of the editor page drops the marker, and also resets the view mode and the
@@ -95,3 +100,8 @@ page's DOM contains the bar.
 WebView2 reloads the page on F5 and Ctrl+R unless the page cancels the key, so on Windows an editor page
 that reloads on one of them means the cancel has been lost. WKWebView has no reload key, so on macOS the F5
 cases test only the editor's own handling of the key.
+
+On Windows, a machine whose mail association is out of date shows Windows' own "How do you want to open
+this?" picker for a mail link, whichever application opens it. Before reporting a prompt in the `mailto:`
+case, open the same address from outside the application, such as with `Start-Process` in PowerShell. Close
+the picker without choosing an application, since a choice changes the user's default.
