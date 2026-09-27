@@ -41,19 +41,22 @@ internal sealed class EditorPage
     }
 
     /// <summary>
-    /// Called for each navigation the editor allows. The first is the page's own. A later one back to the
-    /// same address replaces the page with one that has not loaded, and one to any other address is a frame
-    /// inside the page, which leaves it as it is.
+    /// Called for each navigation the editor allows, and returns whether it replaces the page. The first is
+    /// the page's own. A later one back to the same address replaces the page with one that has not loaded,
+    /// and one to any other address is a frame inside the page, which leaves it as it is.
     /// </summary>
-    public void OnNavigating(string uri)
+    public bool OnNavigating(string uri)
     {
         var address = ToPageAddress(uri);
         _address ??= address;
 
-        if (address == _address)
+        if (address != _address)
         {
-            IsLoaded = false;
+            return false;
         }
+
+        IsLoaded = false;
+        return true;
     }
 
     /// <summary>

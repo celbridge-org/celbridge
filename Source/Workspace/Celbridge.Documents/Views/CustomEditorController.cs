@@ -158,8 +158,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             return new DocumentHealth(0, _processFailures);
         }
 
-        // The adapter observes the hosted page, this controller observes the control in front of it, and
-        // each head reports through whichever of the two works there.
+        // The adapter observes the page in the WebView, this controller observes the control in front of it,
+        // and each head reports through whichever of the two works there.
         var pageHealth = _webViewAdapter.GetPageHealth(coreWebView2);
         return pageHealth with { ProcessFailures = pageHealth.ProcessFailures + _processFailures };
     }
@@ -590,9 +590,9 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             connectionToken,
             serverPort);
 
-        // Block all navigations except the editor's own origin. Each allowed navigation also resets the
-        // tool bridge's content-ready gate so webview_* tool calls block until the editor signals
-        // readiness post-navigation.
+        // Block all navigations except the editor's own origin. A navigation of the editor page itself also
+        // resets the tool bridge's content-ready gate so webview_* tool calls block until the new page signals
+        // readiness. A frame loading inside the page leaves the gate open.
         var allowedNavigationPrefix = editorLoader.GetAllowedNavigationOrigin(loadRequest);
         WebView!.NavigationStarting += (s, args) =>
         {
@@ -604,8 +604,10 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
             if (uri.StartsWith(allowedNavigationPrefix))
             {
-                _page.OnNavigating(uri);
-                _toolBridge?.NotifyContentLoading(_toolBridgeRegisteredResource);
+                if (_page.OnNavigating(uri))
+                {
+                    _toolBridge?.NotifyContentLoading(_toolBridgeRegisteredResource);
+                }
                 return;
             }
 

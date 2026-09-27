@@ -87,6 +87,14 @@ public class EditorPageTests
     }
 
     [Test]
+    public void TheFirstNavigation_IsThePagesOwn()
+    {
+        var page = new EditorPage();
+
+        page.OnNavigating(PageUri).Should().BeTrue();
+    }
+
+    [Test]
     public void ANavigationBackToThePagesOwnAddress_MakesItWaitForItsNextLoad()
     {
         var page = new EditorPage();
@@ -94,8 +102,9 @@ public class EditorPageTests
         page.OnLoaded(Document);
 
         // A reload of the page carries a new query, and is still the page's own address.
-        page.OnNavigating("http://127.0.0.1:5000/package/code-editor/index.html?__hostToken=def");
+        var replaced = page.OnNavigating("http://127.0.0.1:5000/package/code-editor/index.html?__hostToken=def");
 
+        replaced.Should().BeTrue();
         page.IsLoaded.Should().BeFalse();
         page.TryDeferReload().Should().BeTrue();
     }
@@ -107,8 +116,9 @@ public class EditorPageTests
         page.OnNavigating(PageUri);
         page.OnLoaded(Document);
 
-        page.OnNavigating("http://127.0.0.1:5000/package/code-editor/markdown-preview/iframe.html");
+        var replaced = page.OnNavigating("http://127.0.0.1:5000/package/code-editor/markdown-preview/iframe.html");
 
+        replaced.Should().BeFalse();
         page.IsLoaded.Should().BeTrue();
         page.TryDeferReload().Should().BeFalse();
     }
