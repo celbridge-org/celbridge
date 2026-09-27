@@ -24,6 +24,7 @@ and `document_open`.
 | Tabs in Bottom and none in Side, Bottom hidden and Side shown by hand, the window maximised | Reset Layout | Bottom shows, Side collapses, and the window is restored from maximised | 2 |
 | An area holding tabs, hidden by hand | reload the project | the area is still hidden | 2 |
 | A section with more tabs than its strip can show, their names of very different lengths, scrolled to its first tab | open a document that is not open yet, so its tab lands at the far end | the strip scrolls to the new tab and shows all of it: its name and close button are both on screen, and clicking the close button closes the document | 2 |
+| Three tabs in one section, the middle one active | close the last tab with its close button | the middle tab is still the active document, and still selected in the strip | 2 |
 | Presentation on, Side collapsed | open a Side document with `document_open` without activating it | Presentation stays on and nothing on screen changes | 2 |
 | Focus showing the Bottom area, documents open in other areas | close Bottom's last tab | another document is on screen, and no empty area is left in view | 3 |
 | Presentation on, Side collapsed | open a Side document with `document_open` and activate it | Presentation ends and Side shows the document | 3 |

@@ -36,6 +36,10 @@ editor is entitled to it. And a document renamed or moved while it is open.
 Reach the find bars by their shortcut, not only by clicking, and return focus to the editor by clicking
 after using one. Focus leaving and returning without a click has been a distinct failure.
 
+To type at the end of a line, click inside the line's text and press End. The minimap runs down the editor's
+right edge, so a click past the end of a line can land on it, which scrolls the editor and leaves the keys
+typed next going nowhere.
+
 Scroll far enough down for the place to be unmistakable, since a document that restores nothing still opens
 at the top.
 
