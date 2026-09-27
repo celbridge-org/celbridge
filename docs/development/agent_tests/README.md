@@ -8,9 +8,10 @@ These are not part of CI. CI has no display and no way to press a key, and the f
 are exactly the ones that survive a green unit test run. A human asks an agent to run one, reads the
 report, and decides what to do about it.
 
-Each plan covers one area of the application and is a single file. How to build, launch, drive and
-inspect the app is not written down here: it is discoverable from the project, and a copy kept in prose
-goes stale faster than anyone notices.
+Each plan covers one area of the application and is a single file. Building, deploying, launching and
+driving the app differ by head, and none of it can be worked out from the project alone. The
+[Windows](windows.md) guide and its scripts cover the packaged Windows head. A guide for the macOS head is
+still to be written.
 
 | Plan | Area |
 |---|---|
