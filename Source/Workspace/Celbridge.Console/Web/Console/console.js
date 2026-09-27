@@ -6,6 +6,7 @@
 import celbridge from '/assets/celbridge-client/celbridge.js';
 import { ContentLoadedReason } from '/assets/celbridge-client/api/document-api.js';
 import { attachStackLayout } from '/assets/celbridge-client/ui/stack-layout.js';
+import { isMacOS } from '/assets/celbridge-client/platform.js';
 import { createConsoleSettings } from './console-settings.js';
 import { createConsoleSession } from './console-session.js';
 import {
@@ -24,14 +25,14 @@ const initialIsDark = typeof window !== 'undefined' && window.matchMedia
     : true;
 
 // Each platform's web view reports wheel travel at its own scale.
-const wheelProfile = /^mac/i.test(navigator.platform) ? MACOS_WHEEL_PROFILE : DEFAULT_WHEEL_PROFILE;
+const wheelProfile = isMacOS() ? MACOS_WHEEL_PROFILE : DEFAULT_WHEEL_PROFILE;
 
 const term = new Terminal({
     theme: initialIsDark ? darkTheme : lightTheme,
     fontFamily: "'Cascadia Mono', monospace",
     allowProposedApi: true,
     // The paths xterm scrolls itself take the same sensitivity as the wheel handler below.
-    scrollSensitivity: wheelProfile.sensitivity,
+    scrollSensitivity: wheelProfile.scrollback.sensitivity,
 });
 
 const fitAddon = new FitAddon.FitAddon();
@@ -223,16 +224,16 @@ client.onNotification('input/performEdit', (params) => {
     }
 });
 
-const wheelLineCounter = createWheelStepCounter(wheelProfile);
-const forwardedEventCounter = createWheelStepCounter(wheelProfile);
+const wheelLineCounter = createWheelStepCounter(wheelProfile.scrollback);
+const forwardedEventCounter = createWheelStepCounter(wheelProfile.forwarding);
 
-// The distance a wheel notch reports. The wheel events forwarded below carry at least this, so the
-// terminal passes each one on by itself rather than thinning the stream a second time.
-const NOTCH_DELTA_PIXELS = 100;
+// The size of a forwarded wheel event: the distance a wheel notch reports, so the terminal passes each
+// one on by itself rather than taking it for a trackpad and thinning the stream a second time.
+const FORWARDED_DELTA_PIXELS = 100;
 
 // How far past one line a forwarded wheel event is sized, so the terminal's own threshold never swallows
 // one at a line height this distance would otherwise fall short of.
-const NOTCH_LINE_MARGIN = 2;
+const FORWARDED_LINE_MARGIN = 2;
 
 // Set while wheel events are being forwarded, so the handler lets its own events through untouched.
 let forwardingWheelEvents = false;
@@ -243,8 +244,8 @@ let forwardingWheelEvents = false;
 function forwardWheelEvents(event, count) {
     // The terminal counts a forwarded event in lines before passing it on, so it has to clear one line
     // whatever the line height rather than trusting a fixed distance to.
-    const clearsOneLine = getTerminalLineHeight() * NOTCH_LINE_MARGIN / term.options.scrollSensitivity;
-    const forwardedDelta = Math.sign(count) * Math.max(NOTCH_DELTA_PIXELS, clearsOneLine);
+    const clearsOneLine = getTerminalLineHeight() * FORWARDED_LINE_MARGIN / term.options.scrollSensitivity;
+    const forwardedDelta = Math.sign(count) * Math.max(FORWARDED_DELTA_PIXELS, clearsOneLine);
 
     forwardingWheelEvents = true;
     try {
@@ -282,7 +283,6 @@ terminalElement.addEventListener('wheel', (event) => {
     // one, however far it travelled, so the number to forward is counted from the travel here.
     if (term.modes.mouseTrackingMode !== 'none' ||
         term.buffer.active.type === 'alternate') {
-        terminalMetrics.linesPerStep = wheelProfile.linesPerForwardedEvent;
         const forwardedEvents = forwardedEventCounter(event, terminalMetrics);
         if (forwardedEvents !== 0) {
             forwardWheelEvents(event, forwardedEvents);

@@ -14,6 +14,11 @@ export default defineConfig({
                 fileURLToPath(new URL('./tests/fixtures/localization-stub.js', import.meta.url)),
             '/assets/celbridge-client/ui/find-bar.js':
                 fileURLToPath(new URL('./tests/fixtures/find-bar-stub.js', import.meta.url)),
+            // The platform check reads nothing but the navigator, so it runs as-is under jsdom.
+            '/assets/celbridge-client/platform.js':
+                fileURLToPath(new URL(
+                    '../../../../Core/Celbridge.WebHost/Web/celbridge-client/platform.js',
+                    import.meta.url)),
             // The splitter gesture talks to nothing but the DOM, so it runs as-is under jsdom.
             '/assets/celbridge-client/ui/splitter.js':
                 fileURLToPath(new URL(
