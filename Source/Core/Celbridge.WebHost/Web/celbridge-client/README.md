@@ -24,6 +24,7 @@ npm run test:watch
 celbridge-client/
 ├── celbridge.js          # Main client entry point
 ├── localization.js       # Localization utilities for WebView editors
+├── platform.js           # Which operating system the page runs on
 ├── types.js              # JSDoc type definitions
 ├── celbridge.css         # Shared editor styles
 ├── celbridge-tokens.css  # Generated design tokens (see docs/development/design_tokens.md)

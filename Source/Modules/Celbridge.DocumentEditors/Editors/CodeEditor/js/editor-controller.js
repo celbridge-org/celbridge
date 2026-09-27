@@ -8,6 +8,7 @@
 
 import celbridge from '/assets/celbridge-client/celbridge.js';
 import { ContentLoadedReason } from '/assets/celbridge-client/api/document-api.js';
+import { isWindows } from '/assets/celbridge-client/platform.js';
 import { log } from './logger.js';
 
 export class EditorController {
@@ -665,14 +666,8 @@ export class EditorController {
     }
 
     #setupLineEndings() {
-        const isWindows = /windows/i.test(
-            navigator.userAgentData?.platform ||
-            navigator.platform ||
-            navigator.userAgent
-        );
-
         const model = this.#editor.getModel();
-        model.setEOL(isWindows
+        model.setEOL(isWindows()
             ? monaco.editor.EndOfLineSequence.CRLF
             : monaco.editor.EndOfLineSequence.LF
         );
