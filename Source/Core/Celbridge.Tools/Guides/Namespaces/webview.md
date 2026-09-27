@@ -7,7 +7,7 @@ The `webview` namespace drives WebView-backed editors: contribution document edi
 - **Most tools are gated by feature flags.** `webview_eval` requires `webview-dev-tools` and `webview-dev-tools-eval`, and the rest require `webview-dev-tools`. In the Web group of the Features section of Project Settings, the user sees `webview-dev-tools` as Developer Tools and `webview-dev-tools-eval` as Run JavaScript in Editors. Both are on by default, and a project can switch either off. Check `featureFlags` from `app_get_state` before calling.
 - **The right editor must have opened the document.** `document_get_state` returns an `editorId` per open document. A `.html` page can be inspected in the HTML editor, but not in the general code editor, which shows only the source. See `webview_devtools`.
 - **A call acts on one frame.** With no `frame`, it acts on the page's content frame, such as the page the HTML editor previews, or else on the page itself. `frame: "top"` names the page itself. Every result names the frame it acted on. See `webview_devtools`.
-- **`webview_screenshot` requires the tab to be active.** WebView2 pauses rendering for inactive tabs. Activate via `document_activate` first.
+- **`webview_screenshot` requires the document to be on screen.** Its tab must be the one its section is showing, in an area that is showing. A tab behind another tab is not drawn, so it cannot be captured. The document does not need to be the active one. `selectedDocuments` in `document_get_state` names the tab each section is showing, and `document_activate` brings a tab to the front.
 - **Synthetic events have `isTrusted: false`.** Handlers gated on `event.isTrusted` will not fire from `webview_click`. If a click appears to do nothing, use `webview_eval` to confirm.
 - **Canvas-painted UI is invisible to selectors.** Pages that draw controls to a `<canvas>` have no DOM elements to query or click. Drive interaction by dispatching a synthetic `MouseEvent` to the canvas via `webview_eval` at the page-expected coordinates.
 - **Console and network buffers survive reloads.** `webview_get_console` and `webview_get_network` return everything observed since the document opened, including across reloads.
@@ -30,7 +30,7 @@ The `webview` namespace drives WebView-backed editors: contribution document edi
 
 - `webview_get_console` — the document's console buffer.
 - `webview_get_network` — the document's network log. `includeHeaders` and `includeBodies` widen the payload — opt in only when needed.
-- `webview_screenshot` — capture the document as an image. Requires the tab to be active.
+- `webview_screenshot` — capture the document as an image. Requires the document to be on screen.
 
 **Lifecycle.**
 

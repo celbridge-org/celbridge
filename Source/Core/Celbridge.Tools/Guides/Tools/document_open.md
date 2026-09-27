@@ -12,6 +12,8 @@ The tab strip to open the document in, as one of `main_left`, `main_right`, `bot
 
 Empty (the default) always opens in `main_left`, the one section that is always present. It never lands in the collapsible Bottom or Side areas, and it does not follow the active document. A document that is already open stays in whichever section it is in — the default never moves it.
 
+Naming a section for a document that is already open in another section moves it there, and a move always makes it the active document, even when `activate` is false, as moving a tab does for the user.
+
 Naming a secondary section (`main_right`, `bottom_right`, `side_bottom`) while its area is not split splits the area so the document opens where it was asked for. If that leaves the area's primary section empty — the area held nothing beforehand — the split folds straight back and the document ends up in the primary section, because a split section is never left empty. Naming a section in a collapsed area shows that area, even when `activate` is false, so the document is on screen where you asked for it. In Focus or Presentation mode a hidden area is shown only when `activate` is true, and that ends the mode.
 
 ### forceReload
@@ -20,7 +22,7 @@ When `true`, reload the document from disk even if it is already open. The norma
 
 ### activate
 
-When `true`, the opened document becomes the active tab in its section. Default `false`.
+When `true`, the opened document becomes the active document, shown in front in its section. Default `false`.
 
 A background open into a section that is showing no tab still selects the document there, so it is on screen, but it does not become the active document and the keyboard stays where it was. Into a section already showing a document, it opens behind that document's tab.
 

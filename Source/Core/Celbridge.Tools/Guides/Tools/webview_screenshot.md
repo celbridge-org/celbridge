@@ -1,10 +1,10 @@
 # webview_screenshot
 
-Captures a PNG or JPEG of an open WebView document. By default the image is returned inline as an MCP image content block alongside a JSON metadata text block. The document must be the active tab — WebView2 pauses rendering for inactive tabs, so an inactive tab fails fast rather than hanging.
+Captures a PNG or JPEG of an open WebView document. By default the image is returned inline as an MCP image content block alongside a JSON metadata text block. The document must be on screen: a tab behind another tab in its section is not drawn, so it fails fast rather than hanging. It does not need to be the active document.
 
 ## Parameters
 
-- `resource` — resource key of an open document tab. Must be the active document.
+- `resource` — resource key of an open document tab. Must be the tab its section is showing.
 - `saveTo` — optional resource key or folder for archiving the image. Empty (default) skips the save. A trailing slash or extension-less value is treated as a folder; a path ending in `.png` / `.jpg` / `.jpeg` is treated as an exact destination. The extension must match `format`.
 - `returnImage` — when `true` (default), returns the image inline so the multimodal model sees it. Setting `false` requires a non-empty `saveTo`; `false` with no `saveTo` is a hard error because the captured bytes would be discarded.
 - `format` — `"jpeg"` (default) or `"png"`.

@@ -37,9 +37,9 @@ It assigns the value through the native `HTMLInputElement` / `HTMLTextAreaElemen
 
 Each entry includes URL, method, status, timing, and sizes. Set `includeHeaders` or `includeBodies` to widen the payload — bodies dominate context, so opt in only when needed. Response bodies are captured up to ~16KB with truncation markers; binary responses appear as a placeholder. Buffer survives reloads.
 
-## `webview_screenshot` requires the document to be the active tab
+## `webview_screenshot` requires the document to be on screen
 
-WebView2 pauses rendering for inactive tabs, so an inactive tab cannot produce a frame and the tool fails fast. Activate the tab via `document_activate` first. If the user switches tabs during the capture, the tool times out within ~5 seconds.
+Only the tab a section is showing is drawn, so a document behind another tab, or in an area that is hidden, cannot produce a frame and the tool fails fast. Being the active document is not required: a document its section is showing captures while the user works elsewhere. Check `selectedDocuments` in `document_get_state`, and bring the tab to the front with `document_activate` if it is not there. If the user switches tabs during the capture, the tool times out within ~5 seconds.
 
 The captured image arrives inline as an MCP image content block alongside JSON metadata. Without `saveTo` the capture is ephemeral. With `saveTo: "screenshots/"` the host writes into that folder with an auto-generated filename; with `saveTo: "docs/output.png"` the host writes to that exact key. The extension must match `format` (`.jpg`/`.jpeg` for `jpeg`, `.png` for `png`). Pass `returnImage: false` together with `saveTo` to skip the inline-token cost; `returnImage: false` with no `saveTo` is a hard error.
 
