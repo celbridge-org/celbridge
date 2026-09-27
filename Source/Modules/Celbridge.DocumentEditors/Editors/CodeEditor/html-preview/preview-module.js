@@ -10,8 +10,18 @@
 //
 // Once the frame shows the page, it carries data-cel-content-frame, so the webview_* tools act on the page by
 // default. While a page loads, the frame carries aria-busy, and the tools wait until it is cleared.
+//
+// If the WebView has no find bar of its own, the module installs the shared find bar in the page. It does
+// this only when the user asks for find, so the page stays as served until then.
+
+import celbridge from '/assets/celbridge-client/celbridge.js';
+import { createFindBar } from '/assets/celbridge-client/ui/find-bar.js';
 
 let iframeElement = null;
+
+// The find bar installed in the page, and the document it was installed in. A reload replaces the document.
+let findBar = null;
+let findBarDocument = null;
 
 // A scroll position waiting to be applied, kept across a reload or until the frame has a layout.
 let pendingScrollPercentage = null;
@@ -35,14 +45,14 @@ export function initialize(iframe) {
         isAwaitingDocument = false;
         iframe.removeAttribute('aria-busy');
         listenForScroll();
-        applyPendingScroll();
+        applyPendingScrollAfterRender();
     });
 
     // The frame has no layout while the view mode hides the preview. The page's last position is held when the
     // frame is hidden, and applied once it is shown again.
     const resizeObserver = new ResizeObserver(() => {
         holdHiddenScrollPosition();
-        applyPendingScroll();
+        applyPendingScrollAfterRender();
     });
     resizeObserver.observe(iframe);
 }
@@ -72,6 +82,33 @@ export function refresh(url) {
     iframeElement.setAttribute('data-cel-content-frame', '');
     iframeElement.setAttribute('aria-busy', 'true');
     iframeElement.src = url;
+}
+
+/**
+ * Opens a find bar in the page. Returns false if the WebView has a find bar of its own
+ * (viewState.providesBuiltInFind) or the page cannot be reached. The caller then falls back to another find.
+ * @returns {boolean}
+ */
+export function beginFind() {
+    if (celbridge.viewState.current.providesBuiltInFind !== 'false') {
+        return false;
+    }
+
+    // Null if the page has navigated the frame to another origin.
+    const frameDocument = iframeElement?.contentDocument;
+    if (!frameDocument?.body) {
+        return false;
+    }
+
+    if (findBarDocument !== frameDocument) {
+        findBar = createFindBar({
+            document: frameDocument,
+            searchRoot: frameDocument.body
+        });
+        findBarDocument = frameDocument;
+    }
+
+    return findBar.open();
 }
 
 /**
@@ -146,6 +183,12 @@ function readScrollPercentage() {
     }
 
     return Math.max(0, Math.min(1, scrollingElement.scrollTop / scrollRange));
+}
+
+// WKWebView does not paint a newly loaded page that is scrolled before its first render with a layout. The
+// frame stays blank until the reader scrolls it. Waiting one animation frame lets that first render happen.
+function applyPendingScrollAfterRender() {
+    requestAnimationFrame(() => applyPendingScroll());
 }
 
 function applyPendingScroll() {

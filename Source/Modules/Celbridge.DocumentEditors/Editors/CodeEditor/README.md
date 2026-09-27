@@ -64,8 +64,8 @@ exports `initialize(iframe, callbacks)`, `render(content)`, `setBasePath(basePat
 | `refresh(url)` | Shows the file at the URL, for a module that previews the file on disk rather than the buffer. Called when the document opens, after a rename or a move, and from the toolbar's Reload button, which appears for any module that implements `refresh`. Saves and changes on disk do not call it, so the preview changes only when it is reloaded, and the button fills with the accent color while the source differs from what the preview last loaded. |
 
 Link clicks are the controller's, so every preview treats them alike: a link to a place in the page
-scrolls there, a relative path or an `http` or `https` URL goes to the host, and any other link is
-left to the page.
+scrolls there, a relative path, an `http` or `https` URL or a `mailto:` address goes to the host, and any
+other link is left to the page.
 
 ## References
 

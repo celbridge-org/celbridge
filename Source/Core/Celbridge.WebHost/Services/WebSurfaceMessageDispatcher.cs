@@ -29,11 +29,11 @@ internal sealed class WebSurfaceMessageDispatcher : IWebSurfaceMessageDispatcher
         _handledMethods = _handlers.Keys.ToArray();
     }
 
-    public void Attach(CoreWebView2 coreWebView, string surfaceName)
+    public void Attach(CoreWebView2 coreWebView, Func<string> getSurfaceName)
     {
         if (_surfaces.TryGetValue(coreWebView, out var attachedSurface))
         {
-            _surfaces[coreWebView] = attachedSurface with { SurfaceName = surfaceName };
+            _surfaces[coreWebView] = attachedSurface with { GetSurfaceName = getSurfaceName };
             return;
         }
 
@@ -43,7 +43,7 @@ internal sealed class WebSurfaceMessageDispatcher : IWebSurfaceMessageDispatcher
         TypedEventHandler<CoreWebView2, CoreWebView2WebMessageReceivedEventArgs> messageHandler =
             (_, args) => OnWebMessageReceived(coreWebView, args);
 
-        _surfaces[coreWebView] = new AttachedSurface(surfaceName, messageHandler);
+        _surfaces[coreWebView] = new AttachedSurface(getSurfaceName, messageHandler);
         coreWebView.WebMessageReceived += messageHandler;
     }
 
@@ -91,7 +91,7 @@ internal sealed class WebSurfaceMessageDispatcher : IWebSurfaceMessageDispatcher
 
             var surfaceMessage = new WebSurfaceMessage(
                 coreWebView,
-                attachedSurface.SurfaceName,
+                attachedSurface.GetSurfaceName(),
                 notification.Parameters);
 
             handler.Invoke(surfaceMessage);
@@ -118,6 +118,6 @@ internal sealed class WebSurfaceMessageDispatcher : IWebSurfaceMessageDispatcher
     }
 
     private sealed record AttachedSurface(
-        string SurfaceName,
+        Func<string> GetSurfaceName,
         TypedEventHandler<CoreWebView2, CoreWebView2WebMessageReceivedEventArgs> MessageHandler);
 }

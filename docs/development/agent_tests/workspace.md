@@ -31,6 +31,7 @@ the project settings form.
 | A text field in an HTML document's previewed page | the platform's close shortcut | the document closes | 3 |
 | A code editor holding the keyboard, in a section with other documents | the platform's close-all shortcut | every document in the section closes | 3 |
 | A console's terminal holding the keyboard | Ctrl+W | the console stays open, and the shell receives the key | 3 |
+| A page holding the keyboard and recording its key events, such as the HTML editor's preview | press a Control chord the platform binds to nothing, such as Control+X, then Backspace | the page receives each key once | 3 |
 | Focus on a toolbar or other chrome, just after editing a document | copy, and a verb that touches no clipboard | both still reach the surface the user was last editing, and the Edit menu offers what the shortcuts do | 3 |
 | The Explorer's context menu, just used to copy a path | press SPACE | no item of the dismissed menu runs: no document opens and the tree is unchanged | 3 |
 | The Explorer's context menu on a resource with another below it, just used to open Rename, and that dialog canceled | press Down | the selection moves to the resource below: the keyboard came back to the tree | 3 |
@@ -69,3 +70,9 @@ catches Command+W before the page sees it. On Windows a key typed in a page neve
 so the page's client forwards Ctrl+W, and a close shortcut that works from a tab but not from inside a page
 means the forwarding has been lost. The console row is Windows only: on macOS Control+W goes to the shell
 and Command+W closes the console.
+
+On macOS a key reaches a page by one of three routes: as first responder, as a key equivalent the web view
+takes, or forwarded by the host for the keys Uno diverts. When the page leaves a key unhandled, the key comes
+back to the host, which must not deliver it again. A key that arrives twice on macOS only means the host has
+lost track of what the page already received. Record keys with a `keydown` listener on the page, rather than
+judging from what the page does with them.

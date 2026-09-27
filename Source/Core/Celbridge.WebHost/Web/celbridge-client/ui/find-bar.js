@@ -403,7 +403,9 @@ class FindBar {
 
         const ranges = [];
         const needle = caseSensitive ? term : term.toLowerCase();
-        const walker = this.#doc.createTreeWalker(this.#searchRoot, NodeFilter.SHOW_TEXT);
+        const walker = this.#doc.createTreeWalker(this.#searchRoot, NodeFilter.SHOW_TEXT, {
+            acceptNode: (node) => this.#isShownText(node) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT
+        });
 
         let node = walker.nextNode();
         while (node) {
@@ -426,6 +428,20 @@ class FindBar {
         }
 
         return ranges;
+    }
+
+    // Whether the reader can see a text node. A find skips the bar's own labels, script and style text, and
+    // hidden text, all of which can sit inside the search root.
+    #isShownText(node) {
+        const parent = node.parentElement;
+        if (!parent ||
+            this.#bar.contains(parent) ||
+            parent.closest('script, style, noscript, template')) {
+            return false;
+        }
+
+        return typeof parent.checkVisibility !== 'function' ||
+            parent.checkVisibility();
     }
 
     #applyMatchHighlights() {

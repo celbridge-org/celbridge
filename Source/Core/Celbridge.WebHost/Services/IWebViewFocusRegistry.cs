@@ -11,17 +11,21 @@ namespace Celbridge.WebHost;
 /// the grant path applies after native focus. A grant can reach the page before it is ready to act on one,
 /// so a view re-sends the DOM grant when its page signals readiness, if the surface still holds the
 /// keyboard. OnFocusGained is an optional side effect run when the surface gains focus (a
-/// document reports itself as the active document). SurfaceName names the surface in focus diagnostics, so
-/// two surfaces of the same kind can be told apart in a log.
+/// document reports itself as the active document). GetSurfaceName names the surface in focus diagnostics and
+/// in the page's log entries, so two surfaces of the same kind can be told apart. It is read on every use,
+/// so a renamed document shows its new name.
 /// </summary>
 public sealed record WebViewFocusRegistration(
     WebView2 WebView,
-    string SurfaceName,
+    Func<string> GetSurfaceName,
     FocusPanelId Panel,
     IEditTarget EditTarget,
     Action ReleaseFocus,
     Func<Task>? GrantDomFocus = null,
-    Action? OnFocusGained = null) : IFocusSurface;
+    Action? OnFocusGained = null) : IFocusSurface
+{
+    public string SurfaceName => GetSurfaceName();
+}
 
 /// <summary>
 /// The single integration point for hosted web-surface focus on the Skia heads, where WebView and host focus
@@ -79,7 +83,8 @@ public interface IWebViewFocusRegistry
     /// Delivers a native key event to the focused surface's web view, bypassing the managed pipeline.
     /// Used for editing-command keys (Backspace, Enter, the arrows) that the platform routes into its own
     /// command handling instead of the first responder while a hosted surface holds focus. Returns false
-    /// when no hosted surface holds focus. macOS-only, like TryHandleTabKey.
+    /// when no hosted surface holds focus. It also returns false when a web view has already received the
+    /// event, so a page never gets the same key twice. macOS-only, like TryHandleTabKey.
     /// </summary>
     bool TryForwardKeyEvent(IntPtr nativeKeyEvent);
 

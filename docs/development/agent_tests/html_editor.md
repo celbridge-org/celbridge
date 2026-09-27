@@ -8,7 +8,7 @@ invariants, evidence rules and levels.
 
 The previewed page, its links and the fields in it, and the source beside it, across the source, split and
 preview view modes. Also where the preview's links lead, the page's own navigations, the toolbar's Reload
-button and the F5 key, and a document renamed while it is open.
+button and the F5 key, the find bar over the preview, and a document renamed while it is open.
 
 ## Cases
 
@@ -32,6 +32,7 @@ button and the F5 key, and a document renamed while it is open.
 | A text field in the previewed page | Tab | focus moves to the next control in the page, and the source is not indented | 3 |
 | A text field in the previewed page, after focus has moved to the app and back | paste | text enters the field, and the source is unchanged | 3 |
 | Preview mode, with nothing in the page focused | paste | nothing changes, and in particular the hidden source is not edited | 3 |
+| Preview mode, with the keyboard in the previewed page | open find, then search for words the page shows and for words only its script holds | a find bar opens over the page and finds only the shown words. The source is unchanged | 3 |
 | A page that, a few seconds after a click, navigates itself to another project file, or opens one in a new window | let each happen, then click Reload | neither opens the file as a document or in a browser: the preview shows where the page went until Reload brings the document back, and the new window opens nowhere | 3 |
 | An open document | call `webview_get_html` | it returns the previewed page, not the editor around it | 3 |
 | A document whose file name holds `#` or `%` | open it | the preview shows that file | 3 |
@@ -73,13 +74,23 @@ covers. Downloads beyond the two link shapes here, which the [Downloads](downloa
 
 ## Platform
 
-A link within the page is scrolled by the editor itself on both heads. On macOS Uno cancels every
-same-document navigation, and the head's own answer to that reaches the page and not a frame inside it,
-so a link that stops scrolling on macOS alone means the editor's scroll has been lost.
+The editor scrolls to a link within the page itself, on both heads. On macOS Uno cancels a same-document
+navigation that the editor allows. The host's workaround for that reaches the page but not a frame inside it.
+The preview's frame, though, shows an address the editor refuses. Uno reads that refusal the wrong way round
+too, so on macOS the frame would move even without the editor's scroll. The anchor case here therefore cannot
+detect a lost scroll on macOS. The Code Editor plan's markdown anchor case can.
 
 Reload fetches the saved file again, which the application's server tells every head not to cache. A
 Reload that shows an older version on one head only, while the source goes on saving, is that head
 answering from its cache.
+
+On macOS, check the preview on screen after a Reload that keeps the scroll position, as well as reading it
+back. WKWebView once left such a page blank until the reader scrolled it, while every tool read the page
+correctly.
+
+The find bar in the preview differs by head. On Windows, WebView2's own find opens. On macOS the WebView has
+no find, so the editor installs its own find bar in the page the first time find is used. From then on, the
+page's DOM contains the bar.
 
 WebView2 reloads the page on F5 and Ctrl+R unless the page cancels the key, so on Windows an editor page
 that reloads on one of them means the cancel has been lost. WKWebView has no reload key, so on macOS the F5

@@ -521,10 +521,16 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         // return types such as Promises (WKError 5), and on an undefined result (surfaced by Uno as an
         // ArgumentNullException). WebView2 returns the JSON literal "null" silently in the equivalent cases.
         // Normalise the faults so common errors and undefined results read as None on Python callers across
-        // platforms. Best-effort: exotic return values (Promise, Date, NaN, circular references) may still
-        // serialise differently per platform.
+        // platforms. On macOS the page encodes the value itself. A value JSON cannot represent then reads as
+        // None too.
         try
         {
+            if (OperatingSystem.IsMacOS())
+            {
+                var encodedResult = await coreWebView2.ExecuteScriptAsync(BuildPageEncodedScript(expression));
+                return DecodePageEncodedResult(encodedResult);
+            }
+
             var result = await coreWebView2.ExecuteScriptAsync(expression);
             return result ?? "null";
         }
@@ -536,6 +542,46 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         {
             return "null";
         }
+    }
+
+    /// <summary>
+    /// Wraps an expression so that the page encodes its value as JSON. The script returns that JSON as the
+    /// only string in an array. If the value cannot be encoded, the script throws, and the result reads as
+    /// null, as it does on WebView2.
+    /// </summary>
+    // UNO-BUG: Uno encodes the result with NSJSONSerialization. A value that refers to itself, such as window,
+    // makes it recurse until the main thread's stack overflows, and the application hangs. Uno also escapes
+    // the quotes in a returned string but not its backslashes. NSJSONSerialization escapes an array
+    // correctly, so the JSON comes back inside one.
+    internal static string BuildPageEncodedScript(string expression)
+    {
+        // A trailing semicolon is not allowed inside the parentheses. The line breaks stop a trailing line
+        // comment from hiding the closing parentheses.
+        var trimmedExpression = expression.TrimEnd().TrimEnd(';');
+
+        return $"[JSON.stringify((\n{trimmedExpression}\n)) ?? null]";
+    }
+
+    /// <summary>
+    /// Returns the page's JSON, unwrapped from the array it arrives in.
+    /// </summary>
+    internal static string DecodePageEncodedResult(string? result)
+    {
+        if (string.IsNullOrEmpty(result))
+        {
+            return "null";
+        }
+
+        using var document = JsonDocument.Parse(result);
+        var root = document.RootElement;
+        if (root.ValueKind != JsonValueKind.Array ||
+            root.GetArrayLength() != 1 ||
+            root[0].ValueKind != JsonValueKind.String)
+        {
+            return "null";
+        }
+
+        return root[0].GetString() ?? "null";
     }
 
     public async Task ReloadAsync(CoreWebView2 coreWebView2, bool clearCache)

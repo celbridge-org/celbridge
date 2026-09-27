@@ -120,4 +120,20 @@ public class WebSurfaceLogTests
         var entry = _logger.EntriesAt(LogEntryLevel.Error).Single();
         ReportedText(entry).Length.Should().BeLessThan(2100);
     }
+
+    [Test]
+    public void LogTarget_AfterTheSurfaceIsRenamed_NamesItsNewName()
+    {
+        var surfaceName = "project:docs/old.html";
+        var logTarget = new WebSurfaceLogTarget(() => surfaceName, _webSurfaceLog);
+
+        logTarget.OnLog("error", "before the rename");
+        surfaceName = "project:docs/new.html";
+        logTarget.OnLog("error", "after the rename");
+
+        var surfaceNames = _logger.EntriesAt(LogEntryLevel.Error)
+            .Select(entry => (string)entry.Arguments[0]!)
+            .ToList();
+        surfaceNames.Should().Equal("project:docs/old.html", "project:docs/new.html");
+    }
 }

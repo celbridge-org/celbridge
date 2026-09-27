@@ -248,6 +248,19 @@ public partial class App : Application
             _ = applicationShell.ExitApplicationAsync();
         };
 
+        // Quit in the Dock and a logout skip the Closing event above. This runs the same exit for them. No-op
+        // off macOS.
+        Celbridge.UserInterface.Platform.MacOSApplicationTermination.Install(() =>
+        {
+            var applicationShell = Host.Services.GetRequiredService<IApplicationShell>();
+            if (applicationShell.IsReadyToClose)
+            {
+                return null;
+            }
+
+            return applicationShell.ExitApplicationAsync();
+        });
+
         MainWindow.Closed += (s, e) =>
         {
             // Todo: This doesn't get called on Skia+Gtk at all on exit.

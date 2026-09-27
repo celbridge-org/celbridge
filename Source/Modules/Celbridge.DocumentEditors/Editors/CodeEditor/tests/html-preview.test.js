@@ -5,6 +5,15 @@ const pageUrl = '/project/docs/page.html';
 // jsdom has no ResizeObserver, so a test fires the observer by hand when it changes the frame's size.
 let resizeCallbacks = [];
 
+// Animation frame callbacks waiting for the next render. A test runs them with renderFrame.
+let animationFrameCallbacks = [];
+
+function renderFrame() {
+    const callbacks = animationFrameCallbacks;
+    animationFrameCallbacks = [];
+    callbacks.forEach((callback) => callback());
+}
+
 class FakeResizeObserver {
     constructor(callback) {
         resizeCallbacks.push(callback);
@@ -20,6 +29,7 @@ function createPage() {
     const scrollListeners = [];
 
     return {
+        body: {},
         scrollingElement: {
             scrollHeight: 1000,
             clientHeight: 200,
@@ -99,14 +109,21 @@ function createFrame() {
 describe('HTML preview module', () => {
     let previewModule;
     let frame;
+    let celbridge;
+    let createdFindBars;
 
     beforeEach(async () => {
         resizeCallbacks = [];
+        animationFrameCallbacks = [];
         vi.stubGlobal('ResizeObserver', FakeResizeObserver);
+        vi.stubGlobal('requestAnimationFrame', (callback) => animationFrameCallbacks.push(callback));
 
-        // The module keeps its state at module level, so each test imports a fresh copy.
+        // The module keeps its state at module level, so each test imports a fresh copy. The test imports the
+        // stubs again too, so it uses the same instances as the module.
         vi.resetModules();
         previewModule = await import('../html-preview/preview-module.js');
+        celbridge = (await import('/assets/celbridge-client/celbridge.js')).default;
+        createdFindBars = (await import('/assets/celbridge-client/ui/find-bar.js')).__createdFindBars;
 
         frame = createFrame();
         previewModule.initialize(frame);
@@ -159,7 +176,21 @@ describe('HTML preview module', () => {
 
         previewModule.refresh(pageUrl);
         const reloadedPage = frame.loadPage();
+        renderFrame();
 
+        expect(reloadedPage.scrollTop).toBe(400);
+    });
+
+    it('waits for a newly loaded page to render before scrolling it', () => {
+        previewModule.refresh(pageUrl);
+        frame.loadPage().scrollTop = 400;
+
+        previewModule.refresh(pageUrl);
+        const reloadedPage = frame.loadPage();
+        expect(reloadedPage.scrollTop).toBe(0);
+        expect(previewModule.getScrollPercentage()).toBe(0.5);
+
+        renderFrame();
         expect(reloadedPage.scrollTop).toBe(400);
     });
 
@@ -170,6 +201,7 @@ describe('HTML preview module', () => {
         expect(previewModule.getScrollPercentage()).toBe(0.25);
 
         const page = frame.loadPage();
+        renderFrame();
 
         expect(page.scrollTop).toBe(200);
     });
@@ -181,6 +213,7 @@ describe('HTML preview module', () => {
 
         frame.hide();
         frame.show();
+        renderFrame();
 
         expect(frame.contentDocument.scrollingElement.scrollTop).toBe(400);
     });
@@ -193,9 +226,11 @@ describe('HTML preview module', () => {
 
         previewModule.refresh(pageUrl);
         const reloadedPage = frame.loadPage();
+        renderFrame();
         expect(reloadedPage.scrollTop).toBe(0);
 
         frame.show();
+        renderFrame();
         expect(reloadedPage.scrollTop).toBe(400);
     });
 
@@ -219,7 +254,47 @@ describe('HTML preview module', () => {
 
         frame.clientHeight = 400;
         resizeCallbacks.forEach((callback) => callback());
+        renderFrame();
 
         expect(page.scrollTop).toBe(400);
+    });
+
+    it('leaves find to a WebView that has a find bar of its own', () => {
+        celbridge.viewState.current.providesBuiltInFind = 'true';
+        previewModule.refresh(pageUrl);
+        frame.loadPage();
+
+        expect(previewModule.beginFind()).toBe(false);
+        expect(createdFindBars).toHaveLength(0);
+    });
+
+    it('installs a find bar in the page only once find is asked for', () => {
+        celbridge.viewState.current.providesBuiltInFind = 'false';
+        previewModule.refresh(pageUrl);
+        frame.loadPage();
+        expect(createdFindBars).toHaveLength(0);
+
+        expect(previewModule.beginFind()).toBe(true);
+        expect(createdFindBars).toHaveLength(1);
+        expect(createdFindBars[0].options.document).toBe(frame.contentDocument);
+        expect(createdFindBars[0].options.searchRoot).toBe(frame.contentDocument.body);
+
+        previewModule.beginFind();
+        expect(createdFindBars).toHaveLength(1);
+        expect(createdFindBars[0].openCount).toBe(2);
+    });
+
+    it('installs the find bar again in a reloaded page', () => {
+        celbridge.viewState.current.providesBuiltInFind = 'false';
+        previewModule.refresh(pageUrl);
+        frame.loadPage();
+        previewModule.beginFind();
+
+        previewModule.refresh(pageUrl);
+        frame.loadPage();
+        previewModule.beginFind();
+
+        expect(createdFindBars).toHaveLength(2);
+        expect(createdFindBars[1].options.document).toBe(frame.contentDocument);
     });
 });

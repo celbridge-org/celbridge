@@ -505,7 +505,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         var hostChannelSetup = HostChannelFactory.Create(WebView.CoreWebView2, useWebSocketChannel, hostChannelBroker);
         _hostChannelTeardown = hostChannelSetup.Teardown;
         var connectionToken = hostChannelSetup.ConnectionToken;
-        var logTarget = new WebSurfaceLogTarget(_viewModel.FileResource.ToString(), _webSurfaceLog);
+        var logTarget = new WebSurfaceLogTarget(() => _viewModel.FileResource.ToString(), _webSurfaceLog);
         Host = new CelbridgeHost(hostChannelSetup.Channel, logTarget);
 
         // A reconnected transport (e.g. after an OS suspend dropped the socket) may have lost messages
@@ -662,7 +662,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
         var registration = new WebViewFocusRegistration(
             WebView,
-            _viewModel.FileResource.ToString(),
+            () => _viewModel.FileResource.ToString(),
             _focusContext.Panel,
             EditTarget: this,
             ReleaseFocus: ReleaseFocus,
