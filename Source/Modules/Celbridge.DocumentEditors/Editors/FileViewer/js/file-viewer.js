@@ -64,9 +64,11 @@ function renderFile(metadata) {
         element.controls = true;
         element.src = url;
     } else if (PDF_EXTENSIONS.has(extension)) {
-        element = document.createElement('embed');
+        // An iframe rather than an embed. WebKit sends the menu's copy: and the other edit commands to a PDF
+        // plugin only when the PDF is its frame's whole document. An embedded PDF gets only its context menu.
+        element = document.createElement('iframe');
         element.className = 'file-pdf';
-        element.type = 'application/pdf';
+        element.title = metadata.fileName;
         element.src = url;
     } else {
         element = document.createElement('div');
