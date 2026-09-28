@@ -1,3 +1,4 @@
+using Celbridge.FileSystem;
 using Celbridge.Projects;
 using Celbridge.Resources;
 
@@ -54,18 +55,18 @@ public static class DownloadsFolderPath
     /// download to create. The default folder is used when the path is empty, invalid, reserved, or held
     /// by a file.
     /// </summary>
-    public static ResourceKey Resolve(IResourceRegistry registry, string path)
+    public static ResourceKey Resolve(IResourceRegistry registry, ILocalFileSystem fileSystem, string path)
     {
         if (TryParse(path, out var folder))
         {
-            var namedFolder = LocateFolder(registry, folder);
+            var namedFolder = LocateFolder(registry, fileSystem, folder);
             if (namedFolder is not null)
             {
                 return namedFolder.Value;
             }
         }
 
-        return LocateFolder(registry, DefaultFolder) ?? DefaultFolder;
+        return LocateFolder(registry, fileSystem, DefaultFolder) ?? DefaultFolder;
     }
 
     private static bool TryParseProjectPath(string path, out ResourceKey folder)
@@ -91,7 +92,7 @@ public static class DownloadsFolderPath
 
     // Where the folder is: as the project spells it when it exists, the path as given when nothing is
     // there, and null when a file holds the path, because no folder can be made there.
-    private static ResourceKey? LocateFolder(IResourceRegistry registry, ResourceKey folder)
+    private static ResourceKey? LocateFolder(IResourceRegistry registry, ILocalFileSystem fileSystem, ResourceKey folder)
     {
         var normalizeResult = registry.NormalizeResourceKey(folder);
         if (normalizeResult.IsFailure)
@@ -101,12 +102,31 @@ public static class DownloadsFolderPath
         var resourceOnDisk = normalizeResult.Value;
 
         var getResourceResult = registry.GetResource(resourceOnDisk);
-        if (getResourceResult.IsFailure
-            || getResourceResult.Value is not IFolderResource)
+        if (getResourceResult.IsSuccess)
+        {
+            if (getResourceResult.Value is IFolderResource)
+            {
+                return resourceOnDisk;
+            }
+
+            return null;
+        }
+
+        // On disk but not yet in the registry, such as the folder WebView2 creates for the download that is
+        // asking where to go. The disk says whether it is a folder.
+        var resolveResult = registry.ResolveResourcePath(resourceOnDisk);
+        if (resolveResult.IsFailure)
         {
             return null;
         }
 
-        return resourceOnDisk;
+        var infoResult = SyncRunner.Run(() => fileSystem.GetInfoAsync(resolveResult.Value));
+        if (infoResult.IsSuccess
+            && infoResult.Value.Kind == StorageItemKind.Folder)
+        {
+            return resourceOnDisk;
+        }
+
+        return null;
     }
 }

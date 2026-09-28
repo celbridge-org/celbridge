@@ -15,11 +15,15 @@ The note body and the toolbar's popovers.
 | The note body, with a selection | cut, copy, paste | the verb acts on the selection | 1 |
 | A formatted run, such as bold | copy, then paste back | the formatting survives the round trip | 1 |
 | The note body | select all, undo, redo | each acts on the note | 2 |
+| Text selected in the note body | click the toolbar's Insert Link button, then its Insert Image button, with the pointer | each popover opens and stays open, and the note gains nothing until a popover is answered | 2 |
 | A text field in a toolbar popover, such as a link | paste | text enters the field; the note body is unchanged | 2 |
 | The note body | Tab | whatever the editor does with Tab, and not focus leaving the document | 3 |
 | A read-only note | cut, paste | refused, and the note is unchanged | 3 |
 | The image popover's picker, left open a minute before answering | choose an image | the image lands in the note | 3 |
 | The link popover's picker, left open | choose a file | the link lands in the note | 3 |
+
+Open the popovers with a real click, since a script's click opens them even where a person's does not. The
+link popover needs text selected first.
 
 Leave the image picker open for well over half a minute before choosing: a dialog answered promptly cannot
 show the failure, which is the note losing an answer it waited too long for. It is the one case that waits

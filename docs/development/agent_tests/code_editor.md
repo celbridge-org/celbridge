@@ -17,7 +17,7 @@ editor is entitled to it. And a document renamed or moved while it is open.
 | The editor's find widget | paste | text enters the find field; the document is unchanged | 1 |
 | Editor text | select all, then type | the whole document is replaced | 2 |
 | Editor text | undo | the last edit reverts | 2 |
-| Editor text | Tab | the line indents; Shift+Tab outdents | 2 |
+| Editor text, caret at the start of a line | Tab | the line indents; Shift+Tab outdents | 2 |
 | A find widget with more than one field | Tab | focus moves within the widget; the document is not indented | 2 |
 | Editor text, caret mid-line | the platform's end-of-line and start-of-line chords | the caret moves to each end of the line | 2 |
 | Preview mode, the preview's find bar | paste | text enters the find field; the source is unchanged | 2 |
@@ -41,7 +41,9 @@ right edge, so a click past the end of a line can land on it, which scrolls the 
 typed next going nowhere.
 
 Scroll far enough down for the place to be unmistakable, since a document that restores nothing still opens
-at the top.
+at the top. In split mode read the place back from both panes, the source's first visible line as well as the
+preview's scroll, since the preview can come back right while the source does not. Give the document one short
+paragraph per line, so a line in the source and its place in the preview stay close together.
 
 For the move case, make the two images easy to tell apart, and read back the address of the image the
 preview shows rather than judging it by eye. The edit made before a rename or a move is what shows the
@@ -58,6 +60,9 @@ Editing behaviour that belongs to the editor component itself — completion, fo
 gestures, how well it highlights a language — beyond the interaction between a cursor and a clipboard verb.
 
 ## Platform
+
+The split mode row for the preview's find bar is Windows only. On macOS find in split mode opens the editor's
+own find wherever the keyboard is, by design, so that find bar is reached only in preview mode there.
 
 The editor scrolls a markdown preview to a link's heading itself. On macOS the browser would not do it. The
 preview's frame sits inside the editor's own package, and Uno cancels the frame's move there. A link that

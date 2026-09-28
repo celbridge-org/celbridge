@@ -67,6 +67,10 @@ internal sealed class WebView2DownloadHandler : IWebViewDownloadHandler
     // each retry, so the downloads under way are kept to recognize a retry of one of them.
     private readonly List<TrackedDownload> _trackedDownloads = new();
 
+    // The attempts that retries replaced. The runtime crashes the application when the wrapper of an attempt
+    // given up on for a retry is collected, so each one is kept for as long as this web view is.
+    private readonly List<CoreWebView2DownloadOperation> _replacedAttempts = new();
+
     public event EventHandler? DownloadStarted;
 
     private WebView2DownloadHandler(CoreWebView2 coreWebView2)
@@ -179,7 +183,7 @@ internal sealed class WebView2DownloadHandler : IWebViewDownloadHandler
             // then runs with no UI at all, because Handled has already suppressed WebView2's.
             if (IsUserChosenPath(resultFilePath))
             {
-                _logger.LogDebug("Download saved to the path its Save As dialog named");
+                _logger.LogDebug($"Download saved to '{resultFilePath}', the path its Save As dialog named");
                 return;
             }
 
@@ -305,6 +309,7 @@ internal sealed class WebView2DownloadHandler : IWebViewDownloadHandler
         args.ResultFilePath = trackedDownload.StagingPath;
 
         StopObserving(trackedDownload);
+        _replacedAttempts.Add(trackedDownload.Transfer.Operation);
 
         var downloadOperation = args.DownloadOperation;
         trackedDownload.Transfer.Operation = downloadOperation;

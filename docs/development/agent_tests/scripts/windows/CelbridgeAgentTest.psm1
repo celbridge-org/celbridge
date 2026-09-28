@@ -24,6 +24,7 @@ public static class CelbridgeAgentTestNative {
     [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr hWnd, IntPtr after, int x, int y, int cx, int cy, uint flags);
     [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int command);
     [DllImport("user32.dll")] public static extern bool IsZoomed(IntPtr hWnd);
+[DllImport("user32.dll")] public static extern bool IsIconic(IntPtr hWnd);
     [DllImport("user32.dll")] public static extern void keybd_event(byte key, byte scan, uint flags, UIntPtr extra);
 }
 '@
@@ -351,10 +352,14 @@ function Get-CelbridgeWindowHandle {
 <#
 .SYNOPSIS
 Brings the Celbridge window to the front. Windows refuses a foreground change from a background process
-unless a key press came first, so an Alt press and release goes ahead of it. Returns whether it worked.
+unless a key press came first, so an Alt press and release goes ahead of it. A window already in front is
+left alone, since the Alt press moves the keyboard out of WebView2's own find bar. Returns whether it worked.
 #>
 function Set-CelbridgeForeground {
     $handle = Get-CelbridgeWindowHandle
+    if ([CelbridgeAgentTestNative]::GetForegroundWindow() -eq $handle) {
+        return $true
+    }
     [CelbridgeAgentTestNative]::keybd_event(0x12, 0, 0, [UIntPtr]::Zero)
     [CelbridgeAgentTestNative]::keybd_event(0x12, 0, 2, [UIntPtr]::Zero)
     [void][CelbridgeAgentTestNative]::SetForegroundWindow($handle)
@@ -364,11 +369,12 @@ function Set-CelbridgeForeground {
 
 <#
 .SYNOPSIS
-Moves and sizes the Celbridge window in physical pixels, restoring it first if it is maximized.
+Moves and sizes the Celbridge window in physical pixels, restoring it first if it is maximized or minimized.
+The app can come up minimized, and computer use cannot grant the WebView2 runtime while the window is hidden.
 #>
 function Set-CelbridgeWindowBounds([int]$X, [int]$Y, [int]$Width, [int]$Height) {
     $handle = Get-CelbridgeWindowHandle
-    if ([CelbridgeAgentTestNative]::IsZoomed($handle)) {
+    if ([CelbridgeAgentTestNative]::IsZoomed($handle) -or [CelbridgeAgentTestNative]::IsIconic($handle)) {
         [void][CelbridgeAgentTestNative]::ShowWindow($handle, 9)
     }
     [void][CelbridgeAgentTestNative]::SetWindowPos($handle, [IntPtr]::Zero, $X, $Y, $Width, $Height, 0x0044)

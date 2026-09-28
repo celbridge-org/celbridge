@@ -22,7 +22,7 @@ All.
 | The badge collapsed | raise a notification | the badge appears with a count of one, and its tooltip reads the notification's line | 2 |
 | The badge showing | raise several different notifications in quick succession | the count rises by the number raised | 2 |
 | The list open, keyboard on a row's dismiss button | press Space | the row goes and the keyboard lands on the next row's dismiss button, still inside the list | 3 |
-| The list open | click outside it, on a document | the list closes and the document takes the click as it would with no list open | 3 |
+| The list open | click outside it, on a document | the list closes, and the click goes no further: the document's caret stays where it was, and the document does not take the keyboard | 3 |
 | An editor raising the same notification repeatedly | open the list | one row, stating how many times it happened | 3 |
 | Packaged Windows head, badge collapsed | raise notifications until the count reaches two digits, then Clear All | the badge takes clicks at every width, and once it has gone the spot it occupied drags the window | 3 |
 

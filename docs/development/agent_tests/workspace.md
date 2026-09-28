@@ -20,7 +20,7 @@ the project settings form.
 | Any text field in the application, text selected | a chord the application binds to nothing | the field's text is unchanged | 2 |
 | The Search field | paste, select all | each acts on the field, and the Explorer selection is untouched | 2 |
 | A field in the project settings document | paste, select all | each acts on the field | 2 |
-| A locked resource open as a document | paste, cut | refused, and the document is unchanged on disk | 2 |
+| A read-only resource open as a document | paste, cut | refused, and the document is unchanged on disk | 2 |
 | A dialog's text field, caret mid-text | the platform's end-of-line and start-of-line chords | the caret moves to each end of the field's text | 2 |
 | A document focused, then the Edit menu opened | list the items and their enabled state, then reach each offered verb by its shortcut on the same document | the two agree: every verb the menu offers works by its shortcut | 2 |
 | A code editor holding the keyboard, with another document open beside it | the platform's close shortcut | the code editor's document closes, and the one beside it becomes active | 2 |
@@ -32,7 +32,7 @@ the project settings form.
 | A code editor holding the keyboard, in a section with other documents | the platform's close-all shortcut | every document in the section closes | 3 |
 | A console's terminal holding the keyboard | Ctrl+W | the console stays open, and the shell receives the key | 3 |
 | A page holding the keyboard and recording its key events, such as the HTML editor's preview | press a Control chord the platform binds to nothing, such as Control+X, then Backspace | the page receives each key once | 3 |
-| Focus on a toolbar or other chrome, just after editing a document | copy, and a verb that touches no clipboard | both still reach the surface the user was last editing, and the Edit menu offers what the shortcuts do | 3 |
+| Focus on chrome, such as the document's own tab, just after editing that document | copy, and a verb that touches no clipboard | both still reach the surface the user was last editing, and the Edit menu offers what the shortcuts do | 3 |
 | The Explorer's context menu, just used to copy a path | press SPACE | no item of the dismissed menu runs: no document opens and the tree is unchanged | 3 |
 | The Explorer's context menu on a resource with another below it, just used to open Rename, and that dialog canceled | press Down | the selection moves to the resource below: the keyboard came back to the tree | 3 |
 | The Explorer holding the keyboard with a resource selected, and New Project pointed at a folder that already holds a file the chosen template writes | create, then decline the confirmation that names the file, then press Down | the project that was open is still open and unchanged, and the selection moves to the resource below: the keyboard came back past two dialogs in a row | 3 |
@@ -44,6 +44,9 @@ the project settings form.
 
 The alert case reads the request's deadline rather than waiting it out: while the alert stands open,
 `__celPendingRequests()` on the page that raised it should show the request carrying no timeout.
+
+Make the resource read-only with `file_set_writeable`. The Code Editor plan's read-only row checks the same
+thing at level 3, so a run of both plans can record one observation for the two.
 
 ## Not covered
 
@@ -64,6 +67,17 @@ field is not covered either.
 The rows about a dismissed menu keeping the keyboard apply to the macOS head. The keyboard is handed back
 only where a hosted web view takes native focus of its own, so on the other heads the same sequence is
 expected to leave focus where the toolkit put it.
+
+On Windows, New Project opens from the title bar's project button, and declining its confirmation hands the
+keyboard back to that button, the control that opened the dialog, rather than to the tree. There the New
+Project row expects the keyboard on that button, whether the confirmation is declined with its button or
+with Escape, so Down does not reach the tree.
+
+On Windows the Edit menu sits in the main menu, which a modal dialog covers, so the row comparing the Edit
+menu with shortcuts while a dialog is open runs its shortcut half only. Windows also has no application-wide
+edit shortcuts: a shortcut reaches a surface only while something that handles it holds the keyboard. A
+click on empty space in the tab strip leaves the keyboard with nothing, so the edit shortcuts do nothing
+there while the Edit menu still reaches the document. That is why the chrome row names the document's tab.
 
 The close shortcuts reach the application by a different route on each head. On macOS a native monitor
 catches Command+W before the page sees it. On Windows a key typed in a page never reaches the application,

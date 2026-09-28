@@ -64,5 +64,9 @@ The Utility Panel's own content, Explorer and Search, belongs to the [Workspace]
 
 ## Platform
 
+On Windows, Presentation hides the title bar. Moving the pointer to the top edge shows a strip whose button
+leaves Presentation for Focus rather than the normal layout. Reset Layout restores a maximized window, and
+leaves a window that is not maximized at the size it is.
+
 On macOS the layout menu has no full screen toggle. Full screen is the native one, reached from the View
 menu or the window's title bar, so the full screen case runs by that route there.

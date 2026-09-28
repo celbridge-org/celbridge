@@ -411,7 +411,7 @@ public sealed class DownloadService : IDownloadService
     {
         var configuredFolder = _projectService.CurrentProject?.Config.Resources.DownloadsFolder ?? string.Empty;
 
-        return DownloadsFolderPath.Resolve(resourceRegistry, configuredFolder);
+        return DownloadsFolderPath.Resolve(resourceRegistry, _localFileSystem, configuredFolder);
     }
 
     // Appends " (N)" before the extension until the destination is free: absent from disk, and not

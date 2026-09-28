@@ -34,6 +34,11 @@ finds, copies every packaged file the build changed into the layout, and checks 
 change that seems to have had no effect is this before it is anything else. Before reading a result, confirm
 the change reached the layout by searching the deployed DLL for a name it added.
 
+The development registration keeps the identity version it was registered with, and the app reports that
+version. After a version bump the deployed build therefore still reports the old one, and refuses a project
+stamped with the new one as made by a newer version, until the packaged head is run once more from Visual
+Studio.
+
 Close Celbridge first, since a running instance holds its DLLs open. `-SkipBuild` deploys the existing build.
 The script lists files in the layout that the build no longer packages. A loose `.xaml` with no `.xbf` beside
 it throws when its type is activated, and `-RemoveOrphans` deletes them.
@@ -57,8 +62,8 @@ redirected.
    first backup.
 3. Make the run's project. The app's own new-project flow is the plain way. A faster one extracts
    `AppX\Celbridge.Projects\Assets\Templates\<template>.zip`, replaces `<application-version>` in the project
-   file with the app's version, and renames `project.celbridge` to `<Name>.celbridge`, which is what the app
-   does.
+   file with the version the app reports, which `app_get_state` gives, and renames `project.celbridge` to
+   `<Name>.celbridge`. The new-project flow also merges a `.gitignore` into the project, which this way does not.
 4. `Start-Celbridge <project file>` points the app at the project, launches it by its application ID and waits
    for the workspace to load. It returns the process, the server port and the log file.
 5. Drive the plan's cases, recording each result and its evidence.
@@ -76,16 +81,19 @@ later tool until it is answered, so arm `app_answer_dialog` before the step.
 
 **Keys.** `app_simulate_input` sends a key without modifiers through the app's own key routing, Escape
 included, and needs the app to have a focused window. It refuses modifiers on Windows. For a chord, call
-`Set-CelbridgeForeground` and then `Send-KeyChord` with virtual key codes, such as `0x11, 0x57` for Ctrl+W. A
-key typed in a web page never reaches the app's own key handling on this head, so a keydown logger added to
-the page with `Invoke-CelbridgeEval` is the proof a chord arrived.
+`Set-CelbridgeForeground` and then `Send-KeyChord` with virtual key codes, such as `0x11, 0x57` for Ctrl+W.
+Bringing the window forward takes an Alt press, which moves the keyboard out of WebView2's own find bar, so
+for a chord there click the find bar first, which leaves the window in front and the helper with nothing to
+do. A key typed in a web page never reaches the app's own key handling on this head, so a keydown logger
+added to the page with `Invoke-CelbridgeEval` is the proof a chord arrived.
 
 **Computer use**, for real pointer input and anything read off the screen:
 
 - Launch the app before asking for access. Grant `celbridge.exe` by its full path in the layout, which
   resolves only while it runs. The name Celbridge resolves the package instead, and actions are then refused
   as not allowed. Grant `msedgewebview2.exe` too, by that name. Without it every page is hidden and takes no
-  clicks. If it fails to resolve, ask again once a document is open.
+  clicks. It resolves only while a page is on screen, so if it fails, open a document and ask again. The app
+  can come up minimized, which hides every page too, and `Set-CelbridgeWindowBounds` restores it.
 - While computer use runs, the Claude app shrinks to a window that floats on top at the right of the screen.
   Size Celbridge clear of it with `Set-CelbridgeWindowBounds`, or clicks land on the Claude app.
 - The Claude app takes the foreground back between actions, so start every batch with a click on Celbridge,
