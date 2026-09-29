@@ -49,10 +49,12 @@ For the move case, make the two images easy to tell apart, and read back the add
 preview shows rather than judging it by eye. The edit made before a rename or a move is what shows the
 document stayed open, since a document opened again has no undo history.
 
-A document saves itself one second after its last change. For the quit case, keep the source changing until
-the moment of the quit, for instance with a timer in the page that adds a line every few hundred milliseconds.
-Then only the exit can have saved the last lines. Run the case once for each way to quit: the window's close
-button, the Quit menu item or its shortcut, and on macOS Quit in the Dock.
+A document saves itself one second after its last change. For the quit case, make one edit and quit within
+that second, so only the exit can have saved it. Type a character and press the quit shortcut in the same
+batch. For the close button, settle the pointer on it before typing. For a route driven from the shell, make a
+single script edit in the same command as the quit. Don't leave a timer editing through the quit. That tests
+something else: the application closing while edits are still arriving. Run the case once for each way to
+quit: the window's close button, the Quit menu item or its shortcut, and on macOS Quit in the Dock.
 
 ## Not covered
 

@@ -73,6 +73,13 @@ public interface IWebViewFocusRegistry
     bool IsFocusedSurface(WebView2 webView);
 
     /// <summary>
+    /// Whether the pointer press being dispatched landed on a registered web surface. The native click
+    /// monitor answers before the managed pointer pipeline raises the press, so a managed handler can tell a
+    /// press meant for a page from one meant for the managed tree. False on heads without that monitor.
+    /// </summary>
+    bool IsPressOnWebSurface { get; }
+
+    /// <summary>
     /// Makes the focused surface's web view the platform keyboard focus target, with no focus report and
     /// no DOM-side caret change (the page's caret stays exactly where the user put it). The reconciler's
     /// native apply step; a no-op when no hosted surface holds focus.
