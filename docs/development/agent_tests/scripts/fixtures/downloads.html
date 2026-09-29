@@ -27,14 +27,28 @@
 <img id="picture" src="picture.svg" width="120" height="60" alt="Fixture picture">
 <script>
   // Posts where each link and the picture sit, in CSS pixels, so a run can click them for real.
+  // The state is checked every second and posted only when it changes.
+  let lastReport = '';
   function report() {
     const points = {};
     document.querySelectorAll('a[id], img[id]').forEach(element => {
       const rect = element.getBoundingClientRect();
       points[element.id] = [Math.round(rect.x + Math.min(60, rect.width / 2)), Math.round(rect.y + rect.height / 2)];
     });
-    const state = { page: 'downloads', href: location.href, visibility: document.visibilityState, dpr: devicePixelRatio, points };
-    fetch('/report', { method: 'POST', body: JSON.stringify(state) }).catch(() => {});
+    const state = {
+      page: 'downloads',
+      href: location.href,
+      visibility: document.visibilityState,
+      dpr: devicePixelRatio,
+      viewport: [innerWidth, innerHeight],
+      points
+    };
+    const body = JSON.stringify(state);
+    if (body === lastReport) {
+      return;
+    }
+    lastReport = body;
+    fetch('/report', { method: 'POST', body }).catch(() => { lastReport = ''; });
   }
   setInterval(report, 1000);
   report();
