@@ -12,6 +12,5 @@ Documentation for people working on Celbridge itself. For using the application,
 | [Console Layout](console_layout.md) | How a console's terminal, pty and WebView agree on a size on each head, the failures that has caused and the rules that prevent them, and how to investigate a new one |
 | [Python Environment](python_environment.md) | What uv, the interpreter and the `celbridge` package install where and why, the three places Python code loads from at runtime, and what makes an edited script reach a running REPL |
 | [MCP Tools](mcp_tools.md) | Authoring MCP tool classes in `Celbridge.Tools` |
-| [Agent Tests](agent_tests/README.md) | Test plans an agent runs against the running app, for behaviour CI cannot reach; one per area, each with three effort levels |
 | [Agent Guides](../../Source/Core/Celbridge.Tools/Guides/README.md) | Authoring the embedded markdown guides the MCP broker prepends to tool responses |
 | [Report Producers](report_producers.md) | Writing a report producer: whether an operation deserves a report, which findings to declare, and where the report goes |

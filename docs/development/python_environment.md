@@ -183,6 +183,6 @@ than surfacing at the first console launch.
   `uv_python_installs` that appears in a project's `.celbridge/python`, or changes there after a console
   runs, means something is still scoping them per-project.
 
-The [Python Environment agent test plan](agent_tests/python_environment.md) covers this area case by
-case. No unit suite reaches it — the interpreter, the tool install and the REPL's launch all happen by
-running uv — so a change that stops every python console starting passes the whole .NET suite.
+The agent tests' Python Environment plan covers this area case by case. No unit suite reaches it — the
+interpreter, the tool install and the REPL's launch all happen by running uv — so a change that stops every
+python console starting passes the whole .NET suite.
