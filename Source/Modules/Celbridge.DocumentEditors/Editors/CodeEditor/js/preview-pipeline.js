@@ -75,6 +75,12 @@ export class PreviewPipeline {
             frameDocument.addEventListener(
                 'focusin',
                 () => editorController.refreshEditAvailability());
+
+            // Focus can return to a preview field that already had it. That raises no focusin, so window
+            // focus triggers the report instead.
+            frameDocument.defaultView?.addEventListener(
+                'focus',
+                () => editorController.refreshEditAvailability());
             celbridge.input.watchShortcutKeys(frameDocument);
         });
 

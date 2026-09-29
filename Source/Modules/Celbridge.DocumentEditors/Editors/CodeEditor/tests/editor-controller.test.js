@@ -32,6 +32,10 @@ function createMockEditor(model) {
         setPosition: vi.fn(),
         setScrollTop: vi.fn(),
         onDidScrollChange: vi.fn(),
+        onDidLayoutChange: vi.fn(),
+        getLayoutInfo: vi.fn(() => ({ width: 600, height: 400 })),
+        getContentHeight: vi.fn(() => 2400),
+        getTopForLineNumber: vi.fn(() => 0),
         onDidChangeCursorSelection: vi.fn(),
         onDidFocusEditorText: vi.fn(),
         onDidBlurEditorText: vi.fn(),
@@ -371,6 +375,203 @@ describe('EditorController.performEdit', () => {
         expect(editor.trigger).not.toHaveBeenCalled();
         expect(editor.setSelection).not.toHaveBeenCalled();
     });
+
+    it('leaves the source alone while the preview hides it', () => {
+        controller.setHidden(true);
+
+        controller.performEdit('paste');
+
+        expect(editor.trigger).not.toHaveBeenCalled();
+    });
+});
+
+// Edit verbs go where the keyboard is. When the keyboard is anywhere in the preview, they belong to the
+// preview. A key typed in the page reaches the focused control directly, so it is not tested here. Each row
+// checks two things. First, whether the editor offers the verbs to the host, which decides the Edit menu and
+// macOS Command shortcuts. Second, whether a verb the host sends to this page edits the source.
+describe('EditorController edit routing by keyboard location', () => {
+    let editor;
+    let controller;
+
+    beforeEach(async () => {
+        for (const key of Object.keys(__capturedHandlers)) {
+            delete __capturedHandlers[key];
+        }
+        __capturedEditAvailability.length = 0;
+        celbridge.isHosted = true;
+
+        editor = createMockEditor(createMockModel());
+        installMonacoStub(editor);
+
+        controller = new EditorController();
+        controller.create(document.createElement('div'));
+
+        await controller.initializeHost({});
+    });
+
+    afterEach(() => {
+        celbridge.isHosted = false;
+        vi.restoreAllMocks();
+    });
+
+    // Stands in for the preview frame as the page's focused element. The argument is the frame's own focused element.
+    function previewFrame(frameActiveElement) {
+        return {
+            tagName: 'IFRAME',
+            contentDocument: { activeElement: frameActiveElement }
+        };
+    }
+
+    const rows = [
+        {
+            keyboard: 'the source',
+            editorHasTextFocus: true,
+            pageHasFocus: true,
+            activeElement: () => document.createElement('textarea'),
+            claimsVerbs: true,
+            editsSource: true
+        },
+        {
+            keyboard: 'a field in the preview',
+            editorHasTextFocus: false,
+            pageHasFocus: true,
+            activeElement: () => previewFrame(document.createElement('input')),
+            claimsVerbs: false,
+            editsSource: false
+        },
+        {
+            keyboard: 'the preview, with nothing in it focused, such as after selecting its text',
+            editorHasTextFocus: false,
+            pageHasFocus: true,
+            activeElement: () => previewFrame(document.createElement('body')),
+            claimsVerbs: false,
+            editsSource: false
+        },
+        {
+            keyboard: 'the application\'s chrome, after editing the source',
+            editorHasTextFocus: false,
+            pageHasFocus: false,
+            activeElement: () => document.body,
+            claimsVerbs: true,
+            editsSource: true
+        },
+        {
+            // Only the outcome is checked here. The editor still offers the verbs, as in the row above.
+            keyboard: 'the application\'s chrome, after the preview had the keyboard',
+            editorHasTextFocus: false,
+            pageHasFocus: false,
+            activeElement: () => previewFrame(document.createElement('input')),
+            claimsVerbs: undefined,
+            editsSource: false
+        }
+    ];
+
+    function placeKeyboard(row) {
+        editor.hasTextFocus.mockReturnValue(row.editorHasTextFocus);
+        editor.getSelection.mockReturnValue({ isEmpty: () => false });
+        vi.spyOn(document, 'hasFocus').mockReturnValue(row.pageHasFocus);
+        vi.spyOn(document, 'activeElement', 'get').mockReturnValue(row.activeElement());
+    }
+
+    for (const row of rows) {
+        if (row.claimsVerbs !== undefined) {
+            it(`${row.claimsVerbs ? 'offers' : 'does not offer'} the verbs to the source with the keyboard in ${row.keyboard}`, () => {
+                placeKeyboard(row);
+
+                document.dispatchEvent(new Event('focusin'));
+
+                const report = __capturedEditAvailability.at(-1);
+                if (row.claimsVerbs) {
+                    expect(report).toMatchObject({ canPaste: true, hostMediatedClipboard: true });
+                } else {
+                    expect(report).toEqual({ canFind: true });
+                }
+            });
+        }
+
+        it(`${row.editsSource ? 'edits' : 'leaves alone'} the source for a routed verb with the keyboard in ${row.keyboard}`, () => {
+            placeKeyboard(row);
+
+            controller.performEdit('paste');
+
+            if (row.editsSource) {
+                expect(editor.trigger).toHaveBeenCalledWith('celbridge', 'editor.action.clipboardPasteAction', null);
+            } else {
+                expect(editor.trigger).not.toHaveBeenCalled();
+                expect(editor.focus).not.toHaveBeenCalled();
+            }
+        });
+    }
+});
+
+describe('EditorController.scrollToPercentage', () => {
+    let editor;
+    let controller;
+
+    beforeEach(() => {
+        editor = createMockEditor(createMockModel());
+        installMonacoStub(editor);
+
+        controller = new EditorController();
+        controller.create(document.createElement('div'));
+    });
+
+    function raiseLayoutChange() {
+        for (const [listener] of editor.onDidLayoutChange.mock.calls) {
+            listener();
+        }
+    }
+
+    it('measures the editor before working out the scroll', () => {
+        controller.scrollToPercentage(0.5);
+
+        expect(editor.layout).toHaveBeenCalled();
+        expect(editor.layout.mock.invocationCallOrder[0])
+            .toBeLessThan(editor.getLayoutInfo.mock.invocationCallOrder[0]);
+        // The content is 2400 pixels and the editor 400, so the scroll range is 2000. Half of that is 1000.
+        expect(editor.setScrollTop).toHaveBeenCalledWith(1000);
+    });
+
+    it('waits for a real layout while the editor is collapsed', () => {
+        // A collapsed editor is a few pixels wide, so word wrap makes the content far too tall.
+        editor.getLayoutInfo.mockReturnValue({ width: 5, height: 5 });
+        editor.getContentHeight.mockReturnValue(180000);
+
+        controller.scrollToPercentage(0.5);
+
+        expect(editor.setScrollTop).not.toHaveBeenCalled();
+
+        editor.getLayoutInfo.mockReturnValue({ width: 600, height: 400 });
+        editor.getContentHeight.mockReturnValue(2400);
+        raiseLayoutChange();
+
+        expect(editor.setScrollTop).toHaveBeenCalledTimes(1);
+        expect(editor.setScrollTop).toHaveBeenCalledWith(1000);
+    });
+
+    it('applies a waiting scroll once only', () => {
+        editor.getLayoutInfo.mockReturnValue({ width: 5, height: 5 });
+        controller.scrollToPercentage(0.5);
+
+        editor.getLayoutInfo.mockReturnValue({ width: 600, height: 400 });
+        raiseLayoutChange();
+        raiseLayoutChange();
+
+        expect(editor.setScrollTop).toHaveBeenCalledTimes(1);
+    });
+
+    it('drops a waiting scroll when the editor is scrolled to a line first', () => {
+        editor.getLayoutInfo.mockReturnValue({ width: 5, height: 5 });
+        controller.scrollToPercentage(0.5);
+
+        controller.scrollToSourceLine(1);
+        editor.setScrollTop.mockClear();
+
+        editor.getLayoutInfo.mockReturnValue({ width: 600, height: 400 });
+        raiseLayoutChange();
+
+        expect(editor.setScrollTop).not.toHaveBeenCalled();
+    });
 });
 
 describe('EditorController.focusIfVacant', () => {
@@ -536,6 +737,25 @@ describe('EditorController edit availability', () => {
             canCopy: true,
             hostMediatedClipboard: true
         });
+
+        hasFocus.mockRestore();
+        findInput.remove();
+    });
+
+    it('reports again when the window comes back to the page, so a field it holds keeps the verbs', () => {
+        editor.hasTextFocus.mockReturnValue(false);
+        const findInput = document.createElement('input');
+        document.body.appendChild(findInput);
+
+        // The field takes focus before the page has window focus. The editor claims the verbs.
+        const hasFocus = vi.spyOn(document, 'hasFocus').mockReturnValue(false);
+        findInput.focus();
+        expect(reportedAvailability()).toMatchObject({ hostMediatedClipboard: true });
+
+        hasFocus.mockReturnValue(true);
+        window.dispatchEvent(new Event('focus'));
+
+        expect(reportedAvailability()).toEqual({ canFind: true });
 
         hasFocus.mockRestore();
         findInput.remove();
