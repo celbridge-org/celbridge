@@ -72,6 +72,13 @@ internal static class EditVerbRouter
             return textControlRouting;
         }
 
+        // Nothing native sits behind a surface built from managed controls. AppKit's own responders would
+        // accept the verb and then do nothing with it.
+        if (!editTarget.HasPlatformEditing)
+        {
+            return EditRouting.Unavailable;
+        }
+
         // The host mediates this surface's clipboard, so AppKit's own cut: or paste: would change the page
         // without telling the editor.
         if (editTarget.HostMediatedClipboard

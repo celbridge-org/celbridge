@@ -16,7 +16,6 @@ let currentWrapperEl = null;
 let isNewImage = false;
 let originalAttrs = null;
 let isPickerOpen = false;
-let pendingPopoverOnSelect = false;
 let isApplyingAttrs = false;
 
 // ---------------------------------------------------------------------------
@@ -81,11 +80,6 @@ export function createImageExtension(context) {
                     },
                     selectNode() {
                         img.classList.add('ProseMirror-selectednode');
-                        if (pendingPopoverOnSelect) {
-                            pendingPopoverOnSelect = false;
-                            const pos = typeof getPos === 'function' ? getPos() : null;
-                            showPopoverForImage(wrapper, pos, node);
-                        }
                     },
                     deselectNode() {
                         img.classList.remove('ProseMirror-selectednode');
@@ -248,16 +242,37 @@ export function toggleImage() {
         return;
     }
 
-    const { state } = ctx.editor;
-    const { selection } = state;
-
-    if (selection.node && selection.node.type.name === 'image') {
-        const pos = selection.from;
-        const domNode = ctx.editor.view.nodeDOM(pos);
-        const wrapperEl = domNode?.closest?.('.image-node-wrapper') || domNode;
-        showPopoverForImage(wrapperEl, pos, selection.node);
-    } else {
-        pendingPopoverOnSelect = true;
-        ctx.editor.chain().focus().setImage({ src: '' }).run();
+    if (!isImageSelected()) {
+        // Tiptap leaves the new image selected only when nothing selectable follows it, so the command selects
+        // it itself.
+        ctx.editor.chain().focus().setImage({ src: '' }).command(({ tr, commands }) => {
+            const pos = findInsertedImage(tr);
+            return pos != null && commands.setNodeSelection(pos);
+        }).run();
+        if (!isImageSelected()) return;
     }
+
+    const { selection } = ctx.editor.state;
+    const pos = selection.from;
+    const domNode = ctx.editor.view.nodeDOM(pos);
+    const wrapperEl = domNode?.closest?.('.image-node-wrapper') || domNode;
+    showPopoverForImage(wrapperEl, pos, selection.node);
+}
+
+function isImageSelected() {
+    const { selection } = ctx.editor.state;
+    return selection.node != null && selection.node.type.name === 'image';
+}
+
+// Returns the position of the image the transaction's last step inserted, or null if it inserted none.
+function findInsertedImage(tr) {
+    const map = tr.steps[tr.steps.length - 1]?.getMap();
+    let found = null;
+    map?.forEach((oldStart, oldEnd, newStart, newEnd) => {
+        tr.doc.nodesBetween(newStart, newEnd, (node, pos) => {
+            if (found == null && node.type.name === 'image') found = pos;
+            return found == null;
+        });
+    });
+    return found;
 }

@@ -46,6 +46,13 @@ public interface IEditTarget
     /// clipboard verb the surface reports unavailable is genuinely unavailable.
     /// </summary>
     bool HostMediatedClipboard { get; }
+
+    /// <summary>
+    /// Whether the platform's own editing reaches inside the surface, as it does in a web page. When false, a
+    /// verb the surface reports unavailable is genuinely unavailable, since nothing native behind it would
+    /// act on the verb.
+    /// </summary>
+    bool HasPlatformEditing { get; }
 }
 
 /// <summary>

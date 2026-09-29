@@ -1408,6 +1408,9 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
     public bool HostMediatedClipboard => _editAvailability.HostMediatedClipboard;
 
+    // The editor is a web page, whose own fields the platform edits.
+    public bool HasPlatformEditing => true;
+
     public void PerformEdit(EditIntent intent)
     {
         // The WebView's own JS clipboard write is blocked outside a user gesture on the Skia WKWebView,

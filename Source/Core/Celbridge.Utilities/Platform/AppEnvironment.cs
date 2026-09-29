@@ -106,7 +106,23 @@ public sealed class AppEnvironment : IAppEnvironment
 #if WINDOWS
         return "Windows";
 #else
-        return "SkiaGtk";
+        // The Skia desktop head runs on more than one operating system, so the build alone cannot name it.
+        if (OperatingSystem.IsMacOS())
+        {
+            return "macOS";
+        }
+
+        if (OperatingSystem.IsLinux())
+        {
+            return "Linux";
+        }
+
+        if (OperatingSystem.IsWindows())
+        {
+            return "Windows (Skia)";
+        }
+
+        return "Unknown";
 #endif
     }
 }

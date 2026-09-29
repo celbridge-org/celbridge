@@ -152,17 +152,6 @@ internal static class MacOSKeyEventMonitor
                 return nsEvent;
             }
 
-            // Records the focus state each Command chord is routed by, since a chord that nothing claims is
-            // lost without a trace.
-            if (isCommand)
-            {
-                var surfaceFocused = _webViewFocusRegistry?.HasFocusedSurface == true;
-                var textControlFocused = _textControlEditing?.IsTextControlFocused == true;
-                _logger?.LogTrace(
-                    $"Command chord, key code {keyCode}: web surface focused {surfaceFocused}, " +
-                    $"panel {_focusService?.FocusedPanel}, text control focused {textControlFocused}");
-            }
-
             // A Command chord arriving while a hosted web surface holds focus never reaches AppKit's
             // key-equivalent phase, so it is acted on here.
             if (isCommand

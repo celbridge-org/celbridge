@@ -13,6 +13,12 @@ driving the app differ by head, and none of it can be worked out from the projec
 [Windows](windows.md) guide and its scripts cover the packaged Windows head. The [macOS](macos.md) guide covers the
 macOS head, and so far records what runs there have learned rather than a full procedure.
 
+Scripts that serve both heads live in [scripts](scripts) and are written in Python, using the standard
+library only, so any Python 3 on the machine runs them. Lint them with the package's ruff configuration:
+`ruff check --config Source/Workspace/Celbridge.Python/packages/celbridge/pyproject.toml
+docs/development/agent_tests/scripts`. The Windows guide's own scripts, which deploy and drive the packaged
+head, are PowerShell.
+
 | Plan | Area |
 |---|---|
 | [Code Editor](code_editor.md) | Markdown and code documents, their preview and find bars |
@@ -155,9 +161,10 @@ with a keydown logger in the page, since a swallowed key and one that never arri
 that raises one unexpectedly appears to hang. Answer it — `Escape` cancels and `Return` accepts through
 `app_simulate_input`, which runs outside the queue — or schedule `app_answer_dialog` before the step that
 raises it. `webview_eval` waits in the queue too, so read a dialog through the accessibility tree while it
-stands open, and have a page post what `__celPendingRequests()` returns to a loopback server of your own
-rather than asking for it. A call that times out and is moved to the background still runs its
-remaining steps once the dialog closes, keys included, so stop it rather than leave it to run.
+stands open, and have a page post what `__celPendingRequests()` returns to a loopback server rather than
+asking for it. [scripts/fixture_server.py](scripts/fixture_server.py) prints whatever is posted to it. A
+call that times out and is moved to the background still runs its remaining steps once the dialog closes,
+keys included, so stop it rather than leave it to run.
 
 **A tool call that fails with nothing but the tool's name is a wrong argument.** The application answers a
 bad call with `An error occurred invoking '<tool>'` and no more; what was actually wrong — most often a

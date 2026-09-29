@@ -3,13 +3,14 @@ using Celbridge.Workspace;
 namespace Celbridge.UserInterface.Helpers;
 
 /// <summary>
-/// The edit target for a surface the host cannot edit, such as a web page or a settings form.
+/// The edit target for a surface built from managed controls that performs no edit verbs itself, such as a
+/// settings form. A focused text control inside it still takes the verbs it can perform.
 /// </summary>
 public sealed class DisabledEditTarget : IEditTarget
 {
-    // The platform's own clipboard serves this surface, so the host stands aside for the clipboard verbs
-    // rather than swallowing them as unavailable.
     public bool HostMediatedClipboard => false;
+
+    public bool HasPlatformEditing => false;
 
     public bool CanPerformEdit(EditIntent intent)
     {

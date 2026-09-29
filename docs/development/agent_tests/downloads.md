@@ -49,11 +49,11 @@ compared byte for byte.
 
 An HTML document is served by the application itself, so its links are real downloads over HTTP with
 nothing leaving the machine. The application's server marks nothing as an attachment, though, and a
-`.webview` takes an http or https address only, so serve the same folder from a small server of your own on
-a loopback port and point the `.webview` there. That server supplies what the application's cannot: a
-response marked as an attachment, one it holds back for about ten seconds before sending its headers, one
-slow enough to act on while it runs, one that drops the connection part way through, and one of several
-hundred megabytes. Holding the headers back keeps the link's navigation in flight, since nothing can tell
+`.webview` takes an http or https address only, so serve the same folder from a loopback server and point
+the `.webview` there. [scripts/fixture_server.py](scripts/fixture_server.py) is that server, and its header
+lists what it answers. It supplies what the application's server cannot: a response marked as an
+attachment, one it holds back for about ten seconds before sending its headers, one slow enough to act on
+while it runs, one that drops the connection part way through, and one of several hundred megabytes. Holding the headers back keeps the link's navigation in flight, since nothing can tell
 it is a download until they arrive, and that is what gives the address bar time to be read before the
 download starts. Give the attachment a type the page could display, such as plain text, so that only the
 marking makes it a download. Start the two downloads that run together with two clicks a moment apart on

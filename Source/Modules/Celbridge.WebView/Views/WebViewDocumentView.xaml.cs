@@ -992,7 +992,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
         FollowPageNavigation(url);
     }
 
-    public override IEditTarget EditTarget { get; } = new DisabledEditTarget();
+    public override IEditTarget EditTarget { get; } = new PlatformEditTarget();
 
     public override void FocusDocument()
     {
