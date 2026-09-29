@@ -131,12 +131,36 @@ internal static class MacOSKeyEventMonitor
 
             bool isTab = keyCode == TabKeyCode;
             bool isCommand = (modifierFlags & MacOSKeyboardModifiers.CommandFlag) != 0;
+            bool isControl = (modifierFlags & MacOSKeyboardModifiers.ControlFlag) != 0;
+
+            // UNO-BUG: a Control chord reaching a focused text control is typed as the control character it
+            // produces, so Control+G puts an invisible U+0007 in the box. No text control acts on one, so the
+            // chord is swallowed. A web surface keeps its Control chords, since a page or a terminal may bind
+            // them.
+            if (isControl
+                && _webViewFocusRegistry?.HasFocusedSurface != true
+                && _textControlEditing?.IsTextControlFocused == true
+                && MacOSControlChords.TypesControlCharacter(modifierFlags, keyCode, ReadEventCharacters(nsEvent)))
+            {
+                return IntPtr.Zero;
+            }
 
             // Pass through anything that is neither Tab nor a Command chord before touching focus.
             if (!isTab
                 && !isCommand)
             {
                 return nsEvent;
+            }
+
+            // Records the focus state each Command chord is routed by, since a chord that nothing claims is
+            // lost without a trace.
+            if (isCommand)
+            {
+                var surfaceFocused = _webViewFocusRegistry?.HasFocusedSurface == true;
+                var textControlFocused = _textControlEditing?.IsTextControlFocused == true;
+                _logger?.LogTrace(
+                    $"Command chord, key code {keyCode}: web surface focused {surfaceFocused}, " +
+                    $"panel {_focusService?.FocusedPanel}, text control focused {textControlFocused}");
             }
 
             // A Command chord arriving while a hosted web surface holds focus never reaches AppKit's
@@ -314,6 +338,12 @@ internal static class MacOSKeyEventMonitor
         return character >= ' '
             && character != '\u007F'
             && character is < '\uF700' or > '\uF8FF';
+    }
+
+    // The characters the key types with its modifiers applied, which for a Control chord is a control character.
+    private static string ReadEventCharacters(IntPtr nsEvent)
+    {
+        return ReadNSString(SendMessage(nsEvent, GetSelector("characters")));
     }
 
     // Whether a modal dialog holds the keyboard. Acquired here rather than injected at Start, so the

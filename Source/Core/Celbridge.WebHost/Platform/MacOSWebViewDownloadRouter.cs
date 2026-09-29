@@ -99,7 +99,7 @@ internal sealed class MacOSWebViewDownloadRouter : IMacOSDownloadListener
         return policy;
     }
 
-    public void OnDownloadDestinationRequested(IntPtr download, string suggestedFileName, string sourceUrl)
+    public void OnDownloadDestinationRequested(IntPtr download, string suggestedFileName, string sourceUrl, int statusCode)
     {
         // WebKit asks again when it restarts a download, as it does after a redirect. The download keeps
         // the row and staging path it already has, so answer from those rather than reserving a second
@@ -116,9 +116,30 @@ internal sealed class MacOSWebViewDownloadRouter : IMacOSDownloadListener
         }
 
         var transfer = new DownloadTransfer(this, download);
-        _transfers[download] = transfer;
+
+        // WebKit downloads the server's error page as if it were the file. The row records a failure instead,
+        // as it does on Windows, and the destination is refused once the row is reserved.
+        if (IsErrorStatus(statusCode))
+        {
+            transfer.IsSettled = true;
+            transfer.FailureReason = _localizerService.GetString("Downloads_TransferFailed");
+            _logger.LogWarning($"A download failed: the server answered with HTTP status {statusCode}");
+        }
+        else
+        {
+            _transfers[download] = transfer;
+        }
 
         _ = BeginAsync(transfer, suggestedFileName, sourceUrl);
+    }
+
+    /// <summary>
+    /// Returns whether a download's HTTP status says the server sent an error rather than the file. A status of
+    /// 0 means the response did not come over HTTP.
+    /// </summary>
+    internal static bool IsErrorStatus(int statusCode)
+    {
+        return statusCode >= 400;
     }
 
     public void OnDownloadFinished(IntPtr download)
