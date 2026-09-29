@@ -111,22 +111,6 @@ class CelProxy:
         agent_namespace.get_report = get_report
         object.__setattr__(self, "agent", agent_namespace)
 
-        def run_test(class_filter=None):
-            """Run the Celbridge MCP integration test suite.
-
-            Tests all tool namespaces: app, data, document, explorer, file, guides, spreadsheet, webview, workshop.
-
-            Args:
-                class_filter: Optional. Restrict the run to a single test class
-                    (e.g. "TestSpreadsheet") or a substring match against the
-                    class names (e.g. "Spreadsheet"). When omitted, every
-                    test class runs.
-            """
-            from celbridge.integration_tests import run_suite
-            run_suite(class_filter)
-
-        object.__setattr__(self, "test", run_test)
-
     _namespace_descriptions: ClassVar[dict[str, str]] = {
         "app": "Application state, logging, and alerts",
         "data": "Sidecar fields, tags, content blocks, and project-health",
@@ -160,7 +144,6 @@ class CelProxy:
         lines.append("")
         lines.append("  cel.agent.claude()      Launch restricted Claude Code CLI")
         lines.append("  cel.agent.get_report()  Write the agent report workbook")
-        lines.append("  cel.test([cls])         Run the MCP integration test suite (optional class filter)")
         lines.append("  cel.tools()             Print raw tool descriptors as JSON")
 
         return "\n".join(lines)

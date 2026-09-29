@@ -114,8 +114,5 @@ match the existing code.
 
 ### Tests
 
-There are two suites, and they are run in different ways.
-
 - **Unit tests** live in `packages/celbridge/tests/` and run under pytest via `run_tests.py`. Write them as plain functions (`def test_...`) using bare `assert`. `unittest.TestCase` is not used, though `unittest.mock` is used for mocking
 - Give each test a one-line docstring saying what it establishes
-- **Integration tests** live in `src/celbridge/integration_tests/` and ship inside the wheel, because they run against a live Celbridge application from the Python REPL rather than in CI. Shared fixtures are session-scoped in `conftest.py`
