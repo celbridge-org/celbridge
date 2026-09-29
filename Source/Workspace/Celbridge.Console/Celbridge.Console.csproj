@@ -33,6 +33,11 @@
          The `build/` subfolder holds the npm tooling used to refresh them
          and is not a runtime asset. -->
     <Content Remove="Web\**\lib\build\**" />
+    <!-- The tests run under Vitest from the package folder, which keeps its results cache in node_modules.
+         None of it is a runtime asset. -->
+    <Content Remove="Web\**\tests\**" />
+    <Content Remove="Web\**\node_modules\**" />
+    <Content Remove="Web\**\package.json" />
   </ItemGroup>
 
   <ItemGroup>
