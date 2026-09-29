@@ -104,7 +104,7 @@ public class CommandTests
 
         var commandService = _commandService as CommandService;
         Guard.IsNotNull(commandService);
-        commandService.StartExecution();
+        commandService.StartExecution(dispatcherQueue: null);
     }
 
     [TearDown]

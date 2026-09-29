@@ -6,6 +6,7 @@ using Celbridge.Messaging;
 using Celbridge.Resources;
 using Celbridge.Settings;
 using Celbridge.Workspace;
+using Microsoft.UI.Dispatching;
 
 namespace Celbridge.Commands.Services;
 
@@ -41,6 +42,10 @@ public class CommandService : ICommandService
     private static readonly TimeSpan IdleTickInterval = TimeSpan.FromMilliseconds(16);
 
     private readonly SemaphoreSlim _commandEnqueued = new(0, 1);
+
+    // The UI thread's queue, which the loop lets go idle between commands. Null when the loop runs without a
+    // UI thread, as in unit tests.
+    private DispatcherQueue? _dispatcherQueue;
 
     public CommandService(
         IServiceProvider serviceProvider,
@@ -199,8 +204,9 @@ public class CommandService : ICommandService
         }
     }
 
-    public void StartExecution()
+    public void StartExecution(DispatcherQueue? dispatcherQueue)
     {
+        _dispatcherQueue = dispatcherQueue;
         _ = StartExecutionAsync();
     }
 
@@ -337,6 +343,10 @@ public class CommandService : ICommandService
                         _logger.LogError(callbackException, "An exception occurred while notifying command callback of a failure.");
                     }
                 }
+
+                // A steady stream of commands keeps the UI thread busy enough that input, layout and rendering
+                // wait until the stream ends. The next command waits for the UI thread to go idle first.
+                await WaitForUserInterfaceIdleAsync();
             }
 
             bool queueIsEmpty;
@@ -346,9 +356,9 @@ public class CommandService : ICommandService
             }
 
             // Park until a command arrives so an idle app does no work between ticks. A pending
-            // command skips the wait entirely, so a burst still drains at full speed. A queue held by an
-            // open dialog parks on the same interval rather than spinning, since closing the dialog does
-            // not signal the semaphore.
+            // command skips the wait, so a burst drains as fast as the UI thread's own work allows. A queue
+            // held by an open dialog parks on the same interval rather than spinning, since closing the
+            // dialog does not signal the semaphore.
             if (queueIsEmpty ||
                 _dialogService.IsDialogOpen)
             {
@@ -389,6 +399,26 @@ public class CommandService : ICommandService
                 $"Command queue blocked: {operationName} has run for {blockedSeconds:F0}s without completing. " +
                 $"No further commands will execute until it returns.");
         }
+    }
+
+    // Completes once the UI thread has nothing else queued, including input, layout and rendering, since low
+    // priority work only runs when nothing else is waiting.
+    private async Task WaitForUserInterfaceIdleAsync()
+    {
+        if (_dispatcherQueue is null)
+        {
+            return;
+        }
+
+        var idle = new TaskCompletionSource();
+        var enqueued = _dispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () => idle.SetResult());
+        if (!enqueued)
+        {
+            // The queue refuses work once it has begun shutting down.
+            return;
+        }
+
+        await idle.Task;
     }
 
     private T CreateCommand<T>() where T : IExecutableCommand
