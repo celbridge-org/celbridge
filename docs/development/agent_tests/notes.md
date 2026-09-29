@@ -26,6 +26,8 @@ The note body and the toolbar's popovers.
 Open the popovers with a real click, since a script's click opens them even where a person's does not. The
 link popover needs text selected first. Clicking away from a popover, the other toolbar buttons included,
 applies what it holds, and only Escape discards it, so answer one popover with Escape before opening the next.
+Escape after Insert Image removes only the image. The line the image split stays split, and text the image
+replaced stays gone.
 
 Leave the image picker open for well over half a minute before choosing: a dialog answered promptly cannot
 show the failure, which is the note losing an answer it waited too long for. It is the one case that waits

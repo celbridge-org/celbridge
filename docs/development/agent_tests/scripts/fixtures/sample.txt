@@ -1,0 +1,1 @@
+Sample file for the downloads fixture. A landed copy should match it byte for byte.

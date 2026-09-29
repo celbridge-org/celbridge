@@ -53,7 +53,16 @@ nothing leaving the machine. The application's server marks nothing as an attach
 the `.webview` there. [scripts/fixture_server.py](scripts/fixture_server.py) is that server, and its header
 lists what it answers. It supplies what the application's server cannot: a response marked as an
 attachment, one it holds back for about ten seconds before sending its headers, one slow enough to act on
-while it runs, one that drops the connection part way through, and one of several hundred megabytes. Holding the headers back keeps the link's navigation in flight, since nothing can tell
+while it runs, one that drops the connection part way through, and one of several hundred megabytes.
+
+[scripts/fixtures/downloads.html](scripts/fixtures/downloads.html) is a `.webview` page with a link of each
+shape the cases need, on the server's own routes. From this folder, serve its folder with
+`python scripts/fixture_server.py scripts/fixtures` and point the `.webview` at
+`http://127.0.0.1:8765/downloads.html`. Every second the page posts the position of each link, in CSS
+pixels, and the server prints it. Add the WebView's position on screen, scaled by the `dpr` the page reports,
+to get a point to click.
+
+Holding the headers back keeps the link's navigation in flight, since nothing can tell
 it is a download until they arrive, and that is what gives the address bar time to be read before the
 download starts. Give the attachment a type the page could display, such as plain text, so that only the
 marking makes it a download. Start the two downloads that run together with two clicks a moment apart on
@@ -121,15 +130,17 @@ the `Zone.Identifier` stream on Windows, which WebView2 writes according to wher
 Windows, run the large download against a real site, such as the `.msix` on the Celbridge download page,
 which is the file that case was written for: Microsoft Defender scans it for tens of seconds after it lands,
 and the file's arrival waits on that scan, so its row can take a few seconds to settle while the
-application must still answer input.
+application must still answer input. The fixture server's `/big` lands in about two seconds over loopback,
+so if it stands in, start timing the application's answers before the click rather than after it.
 
 On Windows, keep a file of the same name in the operating system's Downloads folder for the repeat-download
 case, since that is what made WebView2 suggest a numbered name of its own.
 
-WebView2 retries a download whose connection dropped up to five times, about three seconds apart, announcing
-each retry as a new download, so the dropped-connection case's row can run for about fifteen seconds before
-it fails. A response with no length that breaks off gets no retries and fails at once. A connection that
-comes back during the retries finishes the download. Keep the application busy through the wait, such as
+WebView2 retries a download whose connection dropped up to five times, announcing each retry as a new
+download. Each attempt lasts until the server drops it, so the retries come as often as the server's `wait`
+allows, every 1.5 seconds by default, and the row runs for several seconds before it fails. A response with
+no length that breaks off gets no retries and fails at once. A connection that comes back during the retries
+finishes the download. Keep the application busy through the wait, such as
 by reading `app_get_state` every few seconds: a fault that follows the retries has shown up only once
 .NET's garbage collector ran, which an idle application may put off. The defects the case is there to catch
 are the application closing, a row per retry, and a row left running for ever with the badge spinning.

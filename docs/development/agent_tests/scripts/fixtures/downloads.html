@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Downloads fixture</title>
+<style>
+  body { font-family: sans-serif; margin: 16px; }
+  a { display: block; margin: 8px 0; font-size: 18px; }
+  img { display: block; margin: 8px 0; }
+</style>
+</head>
+<body>
+<h1>Downloads fixture</h1>
+<a id="blank-attach" href="/attach?name=blank_attach.txt&hold=10" target="_blank">target=_blank link to an attachment held back 10 s</a>
+<a id="plain-attach" href="/attach?name=plain_attach.txt&hold=10">plain link to an attachment held back 10 s</a>
+<a id="download-link" href="sample.txt" download>download link to sample.txt</a>
+<a id="quick1" href="/attach?name=quick1.txt">quick attachment 1</a>
+<a id="quick2" href="/attach?name=quick2.txt">quick attachment 2</a>
+<a id="slow" href="/slow?name=slow.bin&size=2000000&rate=100000">slow attachment, about 20 s</a>
+<a id="slow-long" href="/slow?name=slow_long.bin&size=6000000&rate=100000">slow attachment, about 60 s</a>
+<a id="same-a" href="/slow?name=same.txt&size=800000&rate=100000">same.txt, link A, about 8 s</a>
+<a id="same-b" href="/slow?name=same.txt&size=800000&rate=100000">same.txt, link B, about 8 s</a>
+<a id="drop" href="/drop?name=dropped.bin">attachment that drops its connection, with a length</a>
+<a id="drop-no-length" href="/drop?name=dropped_no_length.bin&length=0">attachment that drops its connection, with no length</a>
+<a id="missing" href="missing.txt">link to a file the server answers with 404</a>
+<a id="big" href="/big?name=big.bin&size=314572800">big attachment, 300 MB</a>
+<img id="picture" src="picture.svg" width="120" height="60" alt="Fixture picture">
+<script>
+  // Posts where each link and the picture sit, in CSS pixels, so a run can click them for real.
+  function report() {
+    const points = {};
+    document.querySelectorAll('a[id], img[id]').forEach(element => {
+      const rect = element.getBoundingClientRect();
+      points[element.id] = [Math.round(rect.x + Math.min(60, rect.width / 2)), Math.round(rect.y + rect.height / 2)];
+    });
+    const state = { page: 'downloads', href: location.href, visibility: document.visibilityState, dpr: devicePixelRatio, points };
+    fetch('/report', { method: 'POST', body: JSON.stringify(state) }).catch(() => {});
+  }
+  setInterval(report, 1000);
+  report();
+</script>
+</body>
+</html>
