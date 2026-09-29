@@ -33,10 +33,22 @@ public class EditVerbRouterTests
         return focusService;
     }
 
+    // A web page's edit target, whose own fields the platform edits.
     private static IEditTarget CreateEditTarget(bool hostMediatedClipboard, params EditIntent[] canPerform)
     {
         var editTarget = Substitute.For<IEditTarget>();
         editTarget.HostMediatedClipboard.Returns(hostMediatedClipboard);
+        editTarget.HasPlatformEditing.Returns(true);
+        editTarget.CanPerformEdit(Arg.Any<EditIntent>()).Returns(call => canPerform.Contains(call.Arg<EditIntent>()));
+
+        return editTarget;
+    }
+
+    // The edit target of a surface built from managed controls, such as the Explorer or a settings form.
+    private static IEditTarget CreateManagedEditTarget(params EditIntent[] canPerform)
+    {
+        var editTarget = Substitute.For<IEditTarget>();
+        editTarget.HasPlatformEditing.Returns(false);
         editTarget.CanPerformEdit(Arg.Any<EditIntent>()).Returns(call => canPerform.Contains(call.Arg<EditIntent>()));
 
         return editTarget;
@@ -119,6 +131,25 @@ public class EditVerbRouterTests
 
         EditVerbRouter.Resolve(intent, focusService, CreateNoTextControlFocus(), isDialogOpen: false)
             .Should().Be(EditRouting.ResponderChain);
+    }
+
+    [TestCaseSource(nameof(EveryEditIntent))]
+    public void Resolve_ForAVerbAManagedSurfaceCannotPerform_GivesItToNobody(EditIntent intent)
+    {
+        // Nothing native sits behind a managed surface to perform the verb instead.
+        var focusService = CreateFocusService(CreateManagedEditTarget());
+
+        EditVerbRouter.Resolve(intent, focusService, CreateNoTextControlFocus(), isDialogOpen: false)
+            .Should().Be(EditRouting.Unavailable);
+    }
+
+    [TestCaseSource(nameof(EveryEditIntent))]
+    public void Resolve_ForAVerbAManagedSurfaceCannotPerformWithATextControlFocused_GivesItToTheTextControl(EditIntent intent)
+    {
+        var focusService = CreateFocusService(CreateManagedEditTarget());
+
+        EditVerbRouter.Resolve(intent, focusService, CreateTextControlFocus(intent), isDialogOpen: false)
+            .Should().Be(EditRouting.TextControl);
     }
 
     [TestCaseSource(nameof(EveryEditIntent))]

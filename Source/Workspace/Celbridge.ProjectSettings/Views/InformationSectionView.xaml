@@ -13,6 +13,7 @@
       <StackPanel Spacing="2">
         <TextBlock Text="{x:Bind DescriptionLabel}" Style="{StaticResource FieldLabelTextStyle}"/>
         <TextBox ToolTipService.ToolTip="{x:Bind DescriptionTooltip}"
+                 AutomationProperties.Name="{x:Bind DescriptionLabel}"
                  AcceptsReturn="True"
                  TextWrapping="Wrap"
                  MinHeight="54"
@@ -25,6 +26,7 @@
       <StackPanel Spacing="2">
         <TextBlock Text="{x:Bind ProjectVersionLabel}" Style="{StaticResource FieldLabelTextStyle}"/>
         <TextBox ToolTipService.ToolTip="{x:Bind ProjectVersionTooltip}"
+                 AutomationProperties.Name="{x:Bind ProjectVersionLabel}"
                  PlaceholderText="{x:Bind ViewModel.ProjectVersionPlaceholder, Mode=OneWay}"
                  Text="{x:Bind ViewModel.ProjectVersionText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
         <TextBlock Text="{x:Bind InvalidProjectVersionText}"

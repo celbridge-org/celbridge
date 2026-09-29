@@ -99,7 +99,7 @@ internal sealed class MacOSWebViewDownloadRouter : IMacOSDownloadListener
         return policy;
     }
 
-    public void OnDownloadDestinationRequested(IntPtr download, string suggestedFileName, string sourceUrl)
+    public void OnDownloadDestinationRequested(IntPtr download, string suggestedFileName, string sourceUrl, int statusCode)
     {
         // WebKit asks again when it restarts a download, as it does after a redirect. The download keeps
         // the row and staging path it already has, so answer from those rather than reserving a second
@@ -118,7 +118,25 @@ internal sealed class MacOSWebViewDownloadRouter : IMacOSDownloadListener
         var transfer = new DownloadTransfer(this, download);
         _transfers[download] = transfer;
 
+        // WebKit downloads the server's error page as if it were the file. The row records a failure instead,
+        // as it does on Windows, and the destination is refused once the row is reserved.
+        if (IsErrorStatus(statusCode))
+        {
+            transfer.IsSettled = true;
+            transfer.FailureReason = _localizerService.GetString("Downloads_TransferFailed");
+            _logger.LogWarning($"A download failed: the server answered with HTTP status {statusCode}");
+        }
+
         _ = BeginAsync(transfer, suggestedFileName, sourceUrl);
+    }
+
+    /// <summary>
+    /// Returns whether a download's HTTP status says the server sent an error rather than the file. A status of
+    /// 0 means the response did not come over HTTP.
+    /// </summary>
+    internal static bool IsErrorStatus(int statusCode)
+    {
+        return statusCode >= 400;
     }
 
     public void OnDownloadFinished(IntPtr download)
@@ -258,7 +276,9 @@ internal sealed class MacOSWebViewDownloadRouter : IMacOSDownloadListener
 
         if (transfer.IsSettled)
         {
-            // WebKit gave up on the download, or it was stopped, while its destination was being reserved.
+            // WebKit gave up on the download, it was stopped, or the server answered with an error, while its
+            // destination was being reserved.
+            _transfers.Remove(transfer.Download);
             MacOSWebViewInterop.ProvideDownloadDestination(transfer.Download, null);
 
             if (transfer.IsCanceled)
@@ -358,8 +378,10 @@ internal sealed class MacOSWebViewDownloadRouter : IMacOSDownloadListener
         var transfers = _transfers.Values.ToList();
         foreach (var transfer in transfers)
         {
-            // A download still waiting on its destination has no record to report against yet.
-            if (transfer.DownloadId == 0)
+            // A download still waiting on its destination has no record to report against yet, and a settled
+            // one has nothing more to report.
+            if (transfer.DownloadId == 0
+                || transfer.IsSettled)
             {
                 continue;
             }

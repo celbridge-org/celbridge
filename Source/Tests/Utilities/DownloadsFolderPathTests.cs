@@ -1,6 +1,7 @@
 using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
+using Celbridge.Tests.FileSystem;
 
 namespace Celbridge.Tests.Utilities;
 
@@ -14,7 +15,9 @@ namespace Celbridge.Tests.Utilities;
 public class DownloadsFolderPathTests
 {
     private IResourceRegistry _registry = null!;
+    private ILocalFileSystem _fileSystem = null!;
     private Dictionary<string, IResource> _projectResources = null!;
+    private string _projectFolderPath = null!;
 
     [SetUp]
     public void Setup()
@@ -22,11 +25,27 @@ public class DownloadsFolderPathTests
         // The project's resources by path. The registry finds one whatever the case of the key it is given.
         _projectResources = new Dictionary<string, IResource>(StringComparer.OrdinalIgnoreCase);
 
+        // The project on disk, which can hold an item the registry has not picked up yet.
+        _projectFolderPath = Path.Combine(Path.GetTempPath(), $"DownloadsFolderPathTests_{Guid.NewGuid():N}");
+        _fileSystem = TestFileSystem.CreateLocal();
+        Directory.CreateDirectory(_projectFolderPath);
+
         _registry = Substitute.For<IResourceRegistry>();
         _registry.NormalizeResourceKey(Arg.Any<ResourceKey>())
             .Returns(callInfo => NormalizeResource(callInfo.Arg<ResourceKey>()));
         _registry.GetResource(Arg.Any<ResourceKey>())
             .Returns(callInfo => GetResource(callInfo.Arg<ResourceKey>()));
+        _registry.ResolveResourcePath(Arg.Any<ResourceKey>(), Arg.Any<bool>())
+            .Returns(callInfo => Result<string>.Ok(ResolvePathOnDisk(callInfo.Arg<ResourceKey>())));
+    }
+
+    [TearDown]
+    public void TearDown()
+    {
+        if (Directory.Exists(_projectFolderPath))
+        {
+            Directory.Delete(_projectFolderPath, recursive: true);
+        }
     }
 
     [TestCase("downloads", "downloads")]
@@ -107,7 +126,7 @@ public class DownloadsFolderPathTests
     {
         AddFolder("assets/incoming");
 
-        var folder = DownloadsFolderPath.Resolve(_registry, "assets/incoming");
+        var folder = DownloadsFolderPath.Resolve(_registry, _fileSystem, "assets/incoming");
 
         folder.Should().Be(new ResourceKey("assets/incoming"));
     }
@@ -115,7 +134,7 @@ public class DownloadsFolderPathTests
     [Test]
     public void AFolderTheProjectHasNotMade_IsWhereDownloadsGo()
     {
-        var folder = DownloadsFolderPath.Resolve(_registry, "assets/incoming");
+        var folder = DownloadsFolderPath.Resolve(_registry, _fileSystem, "assets/incoming");
 
         folder.Should().Be(new ResourceKey("assets/incoming"));
     }
@@ -125,9 +144,31 @@ public class DownloadsFolderPathTests
     {
         AddFolder("Incoming");
 
-        var folder = DownloadsFolderPath.Resolve(_registry, "incoming");
+        var folder = DownloadsFolderPath.Resolve(_registry, _fileSystem, "incoming");
 
         folder.Should().Be(new ResourceKey("Incoming"));
+    }
+
+    [Test]
+    public void AFolderOnDiskTheRegistryHasNotPickedUp_IsWhereDownloadsGo()
+    {
+        // WebView2 creates the folder for the first download it saves there, and asks where that download
+        // goes before the registry has seen the folder.
+        Directory.CreateDirectory(ResolvePathOnDisk(new ResourceKey("Incoming")));
+
+        var folder = DownloadsFolderPath.Resolve(_registry, _fileSystem, "incoming");
+
+        folder.Should().Be(new ResourceKey("Incoming"));
+    }
+
+    [Test]
+    public void AFileOnDiskTheRegistryHasNotPickedUp_LeavesDownloadsInTheDefaultFolder()
+    {
+        File.WriteAllText(ResolvePathOnDisk(new ResourceKey("incoming")), "a file, not a folder");
+
+        var folder = DownloadsFolderPath.Resolve(_registry, _fileSystem, "incoming");
+
+        folder.Should().Be(DownloadsFolderPath.DefaultFolder);
     }
 
     [TestCase("", Description = "no folder named")]
@@ -138,7 +179,7 @@ public class DownloadsFolderPathTests
     {
         _projectResources["notes.txt"] = Substitute.For<IFileResource>();
 
-        var folder = DownloadsFolderPath.Resolve(_registry, path);
+        var folder = DownloadsFolderPath.Resolve(_registry, _fileSystem, path);
 
         folder.Should().Be(DownloadsFolderPath.DefaultFolder);
         folder.Should().Be(new ResourceKey("downloads"));
@@ -149,7 +190,7 @@ public class DownloadsFolderPathTests
     {
         AddFolder("Downloads");
 
-        var folder = DownloadsFolderPath.Resolve(_registry, string.Empty);
+        var folder = DownloadsFolderPath.Resolve(_registry, _fileSystem, string.Empty);
 
         folder.Should().Be(new ResourceKey("Downloads"));
     }
@@ -159,16 +200,30 @@ public class DownloadsFolderPathTests
         _projectResources[path] = Substitute.For<IFolderResource>();
     }
 
+    // Finds the resource in the registry, or failing that on disk, as the project spells it.
     private Result<ResourceKey> NormalizeResource(ResourceKey resource)
     {
-        var pathOnDisk = _projectResources.Keys.FirstOrDefault(path =>
+        var registeredPath = _projectResources.Keys.FirstOrDefault(path =>
             string.Equals(path, resource.Path, StringComparison.OrdinalIgnoreCase));
+        if (registeredPath is not null)
+        {
+            return new ResourceKey(registeredPath);
+        }
+
+        var pathOnDisk = Directory.EnumerateFileSystemEntries(_projectFolderPath)
+            .Select(Path.GetFileName)
+            .FirstOrDefault(name => string.Equals(name, resource.Path, StringComparison.OrdinalIgnoreCase));
         if (pathOnDisk is null)
         {
             return Result<ResourceKey>.Fail($"'{resource}' does not exist");
         }
 
         return new ResourceKey(pathOnDisk);
+    }
+
+    private string ResolvePathOnDisk(ResourceKey resource)
+    {
+        return Path.Combine(_projectFolderPath, resource.Path);
     }
 
     // Looked up by the key as given, as the registry does once a key is normalized.

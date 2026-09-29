@@ -50,6 +50,9 @@ navigations, give it buttons that start a timer of a few seconds, long enough th
 click moves the preview. For the Reload case, change a color in the stylesheet rather than anything that
 moves the layout, so the scroll position can be compared.
 
+At the Bottom area's default height the page's lower controls sit under the console, and a click there lands
+in the terminal, so scroll the preview before clicking them.
+
 Click the download links with real pointer input. On Windows a page may start one download without a user
 gesture and has the next held back, and a synthetic click carries none. Reopening the document between the
 two clicks also resets the limit.

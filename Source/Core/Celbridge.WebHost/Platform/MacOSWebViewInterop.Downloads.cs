@@ -45,8 +45,9 @@ public interface IMacOSDownloadListener
 
     /// <summary>
     /// WebKit has started a download and asks where to write it. Answer through ProvideDownloadDestination.
+    /// The status code is the HTTP status of the download's response, or 0 when it did not come over HTTP.
     /// </summary>
-    void OnDownloadDestinationRequested(IntPtr download, string suggestedFileName, string sourceUrl);
+    void OnDownloadDestinationRequested(IntPtr download, string suggestedFileName, string sourceUrl, int statusCode);
 
     /// <summary>
     /// The download has been written in full to the destination it was given.
@@ -419,6 +420,18 @@ public static partial class MacOSWebViewInterop
         return new MacNavigationResponse(isForMainFrame, canShowMimeType, contentDisposition);
     }
 
+    // The HTTP status of a download's response, or 0 for a response that did not come over HTTP.
+    private static int ReadHttpStatusCode(IntPtr response)
+    {
+        if (response == IntPtr.Zero ||
+            !SendMessageReturnBool(response, GetSelector("isKindOfClass:"), GetClass("NSHTTPURLResponse")))
+        {
+            return 0;
+        }
+
+        return (int)SendMessageReturnNint(response, GetSelector("statusCode"));
+    }
+
     private static string ReadDownloadSourceUrl(IntPtr download)
     {
         var request = SendMessage(download, GetSelector("originalRequest"));
@@ -703,8 +716,9 @@ public static partial class MacOSWebViewInterop
 
             var suggestedFileName = ReadNSString(suggestedFilename);
             var sourceUrl = ReadDownloadSourceUrl(download);
+            var statusCode = ReadHttpStatusCode(response);
 
-            listener.OnDownloadDestinationRequested(download, suggestedFileName, sourceUrl);
+            listener.OnDownloadDestinationRequested(download, suggestedFileName, sourceUrl, statusCode);
         }
         catch
         {

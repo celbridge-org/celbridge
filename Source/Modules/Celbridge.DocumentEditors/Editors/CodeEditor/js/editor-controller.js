@@ -11,6 +11,10 @@ import { ContentLoadedReason } from '/assets/celbridge-client/api/document-api.j
 import { isWindows } from '/assets/celbridge-client/platform.js';
 import { log } from './logger.js';
 
+// The smallest width and height, in pixels, at which the editor counts as laid out. Monaco lays out a
+// collapsed editor at 5 by 5.
+const minimumScrollableSize = 20;
+
 export class EditorController {
     #editor = null;
     #containerElement = null;
@@ -28,6 +32,8 @@ export class EditorController {
     #onContentChanged = () => {};
     #onScrollChanged = () => {};
     #suppressScrollNotify = false;
+    // A restored scroll percentage waiting for the editor's first real layout, or null.
+    #pendingScrollPercentage = null;
 
     create(containerElement) {
         this.#containerElement = containerElement;
@@ -51,6 +57,7 @@ export class EditorController {
         this.#setupLineEndings();
         this.#setupContentChangeListener();
         this.#setupScrollListener();
+        this.#setupPendingScrollListener();
         this.#setupThemeListener();
         this.#setupSelectionListener();
     }
@@ -248,6 +255,13 @@ export class EditorController {
             return;
         }
 
+        // When the preview has the keyboard, edit verbs belong to the preview. The same applies when the
+        // preview hides the editor. The verb does nothing here rather than change the source.
+        if (this.#isHidden ||
+            document.activeElement?.tagName === 'IFRAME') {
+            return;
+        }
+
         this.#editor.focus();
 
         if (intent === 'selectAll') {
@@ -291,6 +305,29 @@ export class EditorController {
             return;
         }
 
+        // A view mode change can resize the pane before Monaco notices. Word wrap makes the content height
+        // depend on the width. Measuring first gives the size the user will see.
+        this.#editor.layout();
+
+        // A collapsed editor is a few pixels wide, and word wrap makes its content far too tall. The scroll
+        // waits for the first real layout.
+        if (!this.#hasUsableLayout()) {
+            this.#pendingScrollPercentage = percentage;
+            return;
+        }
+
+        this.#pendingScrollPercentage = null;
+        this.#applyScrollPercentage(percentage);
+    }
+
+    #hasUsableLayout() {
+        const layoutInfo = this.#editor.getLayoutInfo();
+
+        return layoutInfo.width >= minimumScrollableSize
+            && layoutInfo.height >= minimumScrollableSize;
+    }
+
+    #applyScrollPercentage(percentage) {
         const clientHeight = this.#editor.getLayoutInfo().height;
         const contentHeight = this.#editor.getContentHeight();
         const maxScroll = contentHeight - clientHeight;
@@ -323,6 +360,9 @@ export class EditorController {
         if (!model) {
             return;
         }
+
+        // This scroll replaces any restored scroll that is still waiting.
+        this.#pendingScrollPercentage = null;
 
         const lineCount = model.getLineCount();
         const clampedLine = Math.max(1, Math.min(line | 0, lineCount));
@@ -710,7 +750,9 @@ export class EditorController {
                 this.#editor.setPosition({ lineNumber: lineNumber, column: column });
             }
 
-            // Reveal the line in the center of the editor viewport
+            // Reveal the line in the center of the editor viewport. This replaces any restored scroll that
+            // is still waiting.
+            this.#pendingScrollPercentage = null;
             this.#editor.revealLineInCenter(lineNumber);
 
             // Focus the editor to make the cursor visible
@@ -758,6 +800,10 @@ export class EditorController {
         // Monaco raises nothing for the keyboard moving to a control outside the editor, so the page's own
         // focus changes drive the report as well.
         document.addEventListener('focusin', () => this.#notifyEditAvailability());
+
+        // A report made while the page has no window focus gives the verbs to the editor. Report again when
+        // focus comes back, so the verbs go to whatever the page has focused.
+        window.addEventListener('focus', () => this.#notifyEditAvailability());
     }
 
     // Whether an edit verb belongs to the platform rather than the host: the keyboard is in one of the
@@ -821,6 +867,20 @@ export class EditorController {
             canIndent: this.#editor.hasTextFocus() && canMutate,
             hostMediatedClipboard: true,
             canFind: true
+        });
+    }
+
+    // A restored scroll can arrive while the editor is collapsed. It is applied at the first real layout.
+    #setupPendingScrollListener() {
+        this.#editor.onDidLayoutChange(() => {
+            if (this.#pendingScrollPercentage === null ||
+                !this.#hasUsableLayout()) {
+                return;
+            }
+
+            const percentage = this.#pendingScrollPercentage;
+            this.#pendingScrollPercentage = null;
+            this.#applyScrollPercentage(percentage);
         });
     }
 

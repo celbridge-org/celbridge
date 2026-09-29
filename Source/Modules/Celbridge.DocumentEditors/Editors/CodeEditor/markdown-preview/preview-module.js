@@ -4,11 +4,12 @@
 // bleed into Monaco, no script execution) but remains scriptable from the
 // parent via contentDocument because of allow-same-origin.
 
-import { marked, markedHighlight, hljs } from './lib/marked.esm.js';
+import { marked, markedHighlight, hljs, Lexer } from './lib/marked.esm.js';
 import { projectUrl } from '/assets/celbridge-client/api/document-api.js';
 import celbridge from '/assets/celbridge-client/celbridge.js';
 import { createFindBar } from '/assets/celbridge-client/ui/find-bar.js';
 import { stripFrontmatter } from './frontmatter.js';
+import { makeBlockRulesSticky } from './sticky-block-rules.js';
 
 let iframeElement = null;
 let callbacks = null;
@@ -37,6 +38,8 @@ let totalSourceLines = 0;
 configureMarked();
 
 function configureMarked() {
+    makeBlockRulesSticky(Lexer.rules.block);
+
     marked.setOptions({
         gfm: true,
         breaks: false,

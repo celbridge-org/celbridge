@@ -15,4 +15,6 @@ internal class NullWebViewFocusMonitor : IWebViewFocusMonitor
     public void Unregister(CoreWebView2 coreWebView)
     {
     }
+
+    public bool IsLastPressInWebView => false;
 }

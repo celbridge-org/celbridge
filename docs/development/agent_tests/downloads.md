@@ -23,7 +23,7 @@ Clear All.
 | A file already downloaded once | download it again, slowly enough to see it running | a second row and a second file named `<name> (1).<ext>`, which its row shows while it is still running | 2 |
 | A download still running, the list open | click its cancel button | the list stays open, the row says the transfer was canceled and gives no size, neither the row nor the badge shows it as a failure, the badge's count no longer includes it, and nothing is left in `downloads/` or the staging folder | 2 |
 | Several finished downloads and one still running | click Clear All | the finished rows go and the running row stays, and their files stay in `downloads/`; once the last download lands, a second Clear All empties the list and the badge goes | 2 |
-| A download running when the server drops the connection | let it fail, then wait for the badge to settle | one row, however often the platform retries first, says the transfer did not complete, the badge stops spinning, and nothing is left in `downloads/` or the staging folder | 2 |
+| A download running when the server drops the connection | let it fail, then wait for the badge to settle | the application keeps running, one row says the transfer did not complete, the badge stops spinning, and nothing is left in `downloads/` or the staging folder | 2 |
 | Finished downloads, one of which failed, the list open | click the failed row's remove button, then each remaining row's | the failed row leaves the list and the others stay, the list stays open until the last row goes, the count drops and the badge loses the error color, and removing the last row closes the list and the badge goes, with every downloaded file still in `downloads/` | 2 |
 | A download of several hundred megabytes, made after an undoable change in the Explorer such as a new folder | download it, then undo in the Explorer | the application answers input throughout, the file carries the platform's mark of the web, and undo reverts the earlier change and leaves the file where it landed | 2 |
 | A `.webview` document on a page with a `download` link | click the link | the file lands in `downloads/`, as it does from an HTML document | 3 |
@@ -32,6 +32,7 @@ Clear All.
 | An HTML document offering a file the page builds itself, and a `download` link that asks for a new window | click each | both land in `downloads/`, and no browser opens | 3 |
 | An HTML document with a plain link to a response from another server marked as an attachment | click the link | the address goes to the system browser with no prompt, the browser downloads the file itself, and nothing lands in `downloads/` | 3 |
 | A page with a link and an image | use the context menu's download or save items on each | on Windows, Save As writes where its picker names, adding a row only when that is the downloads folder its picker opened on; on macOS, Download Linked File and Download Image land in `downloads/` | 3 |
+| A page with a link to a file its server answers with 404 | download the link from the context menu: Download Linked File on macOS, and on Windows Save As into the downloads folder its picker opens on | one row says the transfer did not complete, and nothing lands in `downloads/` or the staging folder | 3 |
 | A completed download | delete its file in the Explorer | its row leaves the list and the count drops, and the badge goes with the last row | 3 |
 | The list open with the keyboard on a running row's cancel button | let that download finish | the list stays open, and the keyboard stays on that row, which now finds the file | 3 |
 | The list open with the keyboard on a running row's cancel button | press Space, then Space again | the first press leaves the row saying the transfer was canceled with the keyboard on its remove button, and the second takes the row off the list | 3 |
@@ -48,21 +49,40 @@ compared byte for byte.
 
 An HTML document is served by the application itself, so its links are real downloads over HTTP with
 nothing leaving the machine. The application's server marks nothing as an attachment, though, and a
-`.webview` takes an http or https address only, so serve the same folder from a small server of your own on
-a loopback port and point the `.webview` there. That server supplies what the application's cannot: a
-response marked as an attachment, one it holds back for about ten seconds before sending its headers, one
-slow enough to act on while it runs, one that drops the connection part way through, and one of several
-hundred megabytes. Holding the headers back keeps the link's navigation in flight, since nothing can tell
-it is a download until they arrive, and that is what gives the address bar time to be read before the
-download starts. Give the attachment a type the page could display, such as plain text, so that only the
-marking makes it a download. Start the two downloads that run together with two clicks a moment apart on
-two links leading to one file name: a download the page starts by itself is blocked on Windows, where
-Chromium allows a page only one download without a user gesture, and on macOS WebKit cancels all but the
-last of several a script starts at once, so neither platform runs both unless a person clicks twice.
+`.webview` takes an http or https address only, so serve the same folder from a loopback server and point
+the `.webview` there. [scripts/fixture_server.py](scripts/fixture_server.py) is that server, and its header
+lists what it answers. It supplies what the application's server cannot: a response marked as an
+attachment, one it holds back for about ten seconds before sending its headers, one slow enough to act on
+while it runs, one that drops the connection part way through, and one of several hundred megabytes. Holding
+the headers back keeps the link's navigation in flight, since nothing can tell it is a download until they
+arrive, and that is what gives the address bar time to be read before the download starts. Give the
+attachment a type the page could display, such as plain text, so that only the marking makes it a download.
+Start the two downloads that run together with two clicks a moment apart on two links leading to one file
+name: a download the page starts by itself is blocked on Windows, where Chromium allows a page only one
+download without a user gesture, and on macOS WebKit cancels all but the last of several a script starts at
+once, so neither platform runs both unless a person clicks twice.
+
+[scripts/fixtures/downloads.html](scripts/fixtures/downloads.html) is a ready-made `.webview` page for the
+cases that start from a `.webview` document. It has a link for each of them and a picture for the
+context-menu case, all on the fixture server's own routes. It does not cover the HTML document cases, which
+need a page in the project with a file the page builds itself and a `download` link that asks for a new
+window. Its links start with `/`, so they work only when the fixture server serves the page. From
+`docs/development/agent_tests`, run `python scripts/fixture_server.py scripts/fixtures` and point the
+`.webview` at `http://127.0.0.1:8765/downloads.html`.
+
+The page posts its state to the server whenever it changes, and the server prints it. The state holds each
+link's position in CSS pixels, the viewport's size, and the `dpr` the page reports. A point outside the
+viewport is off screen, so scroll the page before clicking it. To get a point on screen in physical pixels,
+multiply the page's point by `dpr` and add the WebView's position on screen in physical pixels.
 
 The utility is a package in the project's `packages/` folder whose page offers the file (the agent guide
 `utility_documents` describes the manifest). Packages are found when the project loads, so add it before
 launching or reload the project after.
+
+For the two cases that start with the keyboard on a running row's cancel button, open the list and Tab to
+that button: a finished row in the list puts the keyboard on Clear All when it opens. At the Bottom area's
+default height an HTML document's lower links sit under the console, so scroll the preview before clicking
+them.
 
 Read outcomes from disk rather than from the list: what landed in the downloads folder and its bytes, the
 operating system's Downloads folder, and the staging folder, `.celbridge/temp/downloads/`, which is empty
@@ -115,14 +135,20 @@ the `Zone.Identifier` stream on Windows, which WebView2 writes according to wher
 Windows, run the large download against a real site, such as the `.msix` on the Celbridge download page,
 which is the file that case was written for: Microsoft Defender scans it for tens of seconds after it lands,
 and the file's arrival waits on that scan, so its row can take a few seconds to settle while the
-application must still answer input.
+application must still answer input. The fixture server's `/big` lands in about two seconds over loopback,
+so if it stands in, start timing the application's answers before the click rather than after it.
 
 On Windows, keep a file of the same name in the operating system's Downloads folder for the repeat-download
 case, since that is what made WebView2 suggest a numbered name of its own.
 
-WebView2 has been seen to retry a download whose connection dropped several times before it gives up,
-announcing each retry as a new download, so the dropped-connection case's row can run for a few seconds
-before it fails; it has also been seen to give up on the first drop. Either is a pass. The defect that case
-is there to catch is a row per retry, or rows left running for ever with the badge spinning, so the absence
-of retries is not itself a finding. WebKit gives up on the first drop, sending one request and leaving one
-row, which is what macOS runs have seen so far; a run that sees it retry should record that.
+WebView2 retries a download whose connection dropped up to five times, announcing each retry as a new
+download. Each attempt lasts until the server drops it, so the retries come as often as the server's `wait`
+allows. With the fixture server's default `wait` of 1.5 seconds, the six attempts end and the row fails
+after about nine seconds, and a row still running at twenty seconds is stuck. A response with no length that
+breaks off gets no retries and fails at once. A connection that comes back during the retries finishes the
+download. Keep the application busy through the wait, such as by reading `app_get_state` every few seconds:
+a fault that follows the retries has shown up only once .NET's garbage collector ran, which an idle
+application may put off. The defects the case is there to catch are the application closing, a row per
+retry, and a row left running for ever with the badge spinning. WebKit gives up on the first drop, sending
+one request and leaving one row, which is what macOS runs have seen so far; a run that sees it retry should
+record that.

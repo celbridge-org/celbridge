@@ -576,6 +576,8 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         return ReferenceEquals(_focusedRegistration?.WebView, webView);
     }
 
+    public bool IsPressOnWebSurface => _webViewFocusMonitor.IsLastPressInWebView;
+
     public void FocusFocusedSurface()
     {
         var registration = _focusedRegistration;

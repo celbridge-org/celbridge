@@ -111,23 +111,28 @@ public sealed partial class LayoutToolbar : UserControl
         }
     }
 
+    // The icon-only buttons have no text of their own, so their tooltips also name them to screen readers.
     private void ApplyTooltips()
     {
         var layoutTooltip = _stringLocalizer.GetString("LayoutToolbar_CustomizeLayoutTooltip");
         ToolTipService.SetToolTip(PanelLayoutButton, layoutTooltip);
         ToolTipService.SetPlacement(PanelLayoutButton, PlacementMode.Bottom);
+        AutomationProperties.SetName(PanelLayoutButton, layoutTooltip);
 
         var primaryTooltip = _stringLocalizer.GetString("LayoutToolbar_ToggleUtilityAreaTooltip");
         ToolTipService.SetToolTip(ToggleUtilityPanelButton, primaryTooltip);
         ToolTipService.SetPlacement(ToggleUtilityPanelButton, PlacementMode.Bottom);
+        AutomationProperties.SetName(ToggleUtilityPanelButton, primaryTooltip);
 
         var consoleTooltip = _stringLocalizer.GetString("LayoutToolbar_ToggleBottomAreaTooltip");
         ToolTipService.SetToolTip(ToggleBottomAreaButton, consoleTooltip);
         ToolTipService.SetPlacement(ToggleBottomAreaButton, PlacementMode.Bottom);
+        AutomationProperties.SetName(ToggleBottomAreaButton, consoleTooltip);
 
         var secondaryTooltip = _stringLocalizer.GetString("LayoutToolbar_ToggleSideAreaTooltip");
         ToolTipService.SetToolTip(ToggleSideAreaButton, secondaryTooltip);
         ToolTipService.SetPlacement(ToggleSideAreaButton, PlacementMode.Bottom);
+        AutomationProperties.SetName(ToggleSideAreaButton, secondaryTooltip);
 
         var defaultModeTooltip = _stringLocalizer.GetString("LayoutToolbar_DefaultModeTooltip");
         ToolTipService.SetToolTip(DefaultModeRadio, defaultModeTooltip);
@@ -148,18 +153,22 @@ public sealed partial class LayoutToolbar : UserControl
         var alignLeftTooltip = _stringLocalizer.GetString("LayoutToolbar_AlignBottomPanelLeftTooltip");
         ToolTipService.SetToolTip(AlignBottomAreaLeftButton, alignLeftTooltip);
         ToolTipService.SetPlacement(AlignBottomAreaLeftButton, PlacementMode.Bottom);
+        AutomationProperties.SetName(AlignBottomAreaLeftButton, alignLeftTooltip);
 
         var alignCenterTooltip = _stringLocalizer.GetString("LayoutToolbar_AlignBottomPanelCenterTooltip");
         ToolTipService.SetToolTip(AlignBottomAreaCenterButton, alignCenterTooltip);
         ToolTipService.SetPlacement(AlignBottomAreaCenterButton, PlacementMode.Bottom);
+        AutomationProperties.SetName(AlignBottomAreaCenterButton, alignCenterTooltip);
 
         var alignRightTooltip = _stringLocalizer.GetString("LayoutToolbar_AlignBottomPanelRightTooltip");
         ToolTipService.SetToolTip(AlignBottomAreaRightButton, alignRightTooltip);
         ToolTipService.SetPlacement(AlignBottomAreaRightButton, PlacementMode.Bottom);
+        AutomationProperties.SetName(AlignBottomAreaRightButton, alignRightTooltip);
 
         var alignJustifyTooltip = _stringLocalizer.GetString("LayoutToolbar_AlignBottomPanelJustifyTooltip");
         ToolTipService.SetToolTip(AlignBottomAreaJustifyButton, alignJustifyTooltip);
         ToolTipService.SetPlacement(AlignBottomAreaJustifyButton, PlacementMode.Bottom);
+        AutomationProperties.SetName(AlignBottomAreaJustifyButton, alignJustifyTooltip);
     }
 
     private void ApplyLabels()

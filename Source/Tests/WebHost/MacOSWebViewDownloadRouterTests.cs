@@ -62,4 +62,25 @@ public class MacOSWebViewDownloadRouterTests
     {
         MacOSWebViewDownloadRouter.IsAttachment(contentDisposition).Should().BeFalse();
     }
+
+    // WebKit saves a server's error page as the downloaded file, so these statuses fail the download.
+    [TestCase(400)]
+    [TestCase(403)]
+    [TestCase(404)]
+    [TestCase(500)]
+    [TestCase(503)]
+    public void AnErrorStatus_FailsTheDownload(int statusCode)
+    {
+        MacOSWebViewDownloadRouter.IsErrorStatus(statusCode).Should().BeTrue();
+    }
+
+    // A status of 0 is a response that did not come over HTTP, such as a blob or data URL.
+    [TestCase(0)]
+    [TestCase(200)]
+    [TestCase(206)]
+    [TestCase(304)]
+    public void ASuccessOrNonHttpStatus_LetsTheDownloadProceed(int statusCode)
+    {
+        MacOSWebViewDownloadRouter.IsErrorStatus(statusCode).Should().BeFalse();
+    }
 }

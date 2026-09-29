@@ -1,6 +1,7 @@
 // Image popover module for Markdown editor
 // All controls shown in a single view with immediate changes.
-// Escape reverts to original state; clicking away keeps changes.
+// Escape reverts to original state; clicking away keeps changes. A new image still without a source is
+// removed however its popover closes, since an image with nothing in it is invisible in the note.
 
 import { Image } from '../lib/tiptap.js';
 import { setupDismiss, positionAtTop, registerPopover, hideAllPopovers } from './popover-utils.js';
@@ -16,8 +17,9 @@ let currentWrapperEl = null;
 let isNewImage = false;
 let originalAttrs = null;
 let isPickerOpen = false;
-let pendingPopoverOnSelect = false;
 let isApplyingAttrs = false;
+// Counts each opening of the popover, so a close queued for one opening cannot close the next.
+let popoverSession = 0;
 
 // ---------------------------------------------------------------------------
 // Image extension
@@ -81,16 +83,11 @@ export function createImageExtension(context) {
                     },
                     selectNode() {
                         img.classList.add('ProseMirror-selectednode');
-                        if (pendingPopoverOnSelect) {
-                            pendingPopoverOnSelect = false;
-                            const pos = typeof getPos === 'function' ? getPos() : null;
-                            showPopoverForImage(wrapper, pos, node);
-                        }
                     },
                     deselectNode() {
                         img.classList.remove('ProseMirror-selectednode');
                         if (!isApplyingAttrs) {
-                            hidePopover();
+                            hidePopoverAfterUpdate();
                         }
                     },
                 };
@@ -175,6 +172,7 @@ export function init(context) {
 function showPopoverForImage(wrapperEl, pos, node) {
     hideAllPopovers();
 
+    popoverSession++;
     currentPos = pos;
     currentWrapperEl = wrapperEl;
     isNewImage = !node.attrs.src;
@@ -192,12 +190,38 @@ function showPopoverForImage(wrapperEl, pos, node) {
     });
 }
 
+// Closes the popover. A new image that was never given a source goes with it.
 function hidePopover() {
+    const newImagePos = isNewImage ? currentPos : null;
+    resetPopover();
+    if (newImagePos != null) {
+        removeImageIfEmpty(newImagePos);
+    }
+}
+
+// Closes the popover from inside a view update, which cannot take a transaction of its own. The close
+// waits until the update is done.
+function hidePopoverAfterUpdate() {
+    const session = popoverSession;
+    queueMicrotask(() => {
+        if (session === popoverSession) {
+            hidePopover();
+        }
+    });
+}
+
+function resetPopover() {
     imagePopoverEl.classList.remove('visible');
     currentPos = null;
     currentWrapperEl = null;
     isNewImage = false;
     originalAttrs = null;
+}
+
+function removeImageIfEmpty(pos) {
+    const node = ctx.editor.state.doc.nodeAt(pos);
+    if (!node || node.type.name !== 'image' || node.attrs.src) return;
+    ctx.editor.view.dispatch(ctx.editor.state.tr.delete(pos, pos + node.nodeSize));
 }
 
 // ---------------------------------------------------------------------------
@@ -215,7 +239,7 @@ function cancelEdit() {
 function deleteImage() {
     if (currentPos == null) return;
     ctx.editor.chain().setNodeSelection(currentPos).deleteSelection().focus().run();
-    hidePopover();
+    resetPopover();
 }
 
 // ---------------------------------------------------------------------------
@@ -248,16 +272,47 @@ export function toggleImage() {
         return;
     }
 
-    const { state } = ctx.editor;
-    const { selection } = state;
-
-    if (selection.node && selection.node.type.name === 'image') {
-        const pos = selection.from;
-        const domNode = ctx.editor.view.nodeDOM(pos);
-        const wrapperEl = domNode?.closest?.('.image-node-wrapper') || domNode;
-        showPopoverForImage(wrapperEl, pos, selection.node);
-    } else {
-        pendingPopoverOnSelect = true;
-        ctx.editor.chain().focus().setImage({ src: '' }).run();
+    if (!isImageSelected()) {
+        // Tiptap leaves the new image selected only when nothing selectable follows it, so the command selects
+        // it itself. An image that cannot be selected would have no popover to fill it in or remove it, so the
+        // insert is dropped instead.
+        ctx.editor.chain().focus().setImage({ src: '' }).command(({ tr, commands }) => {
+            const pos = findInsertedImage(tr);
+            if (pos != null && commands.setNodeSelection(pos)) {
+                return true;
+            }
+            tr.setMeta('preventDispatch', true);
+            return false;
+        }).run();
+        if (!isImageSelected()) return;
     }
+
+    const { selection } = ctx.editor.state;
+    const pos = selection.from;
+    const domNode = ctx.editor.view.nodeDOM(pos);
+    const wrapperEl = domNode?.closest?.('.image-node-wrapper') || domNode;
+    showPopoverForImage(wrapperEl, pos, selection.node);
+}
+
+function isImageSelected() {
+    const { selection } = ctx.editor.state;
+    return selection.node != null && selection.node.type.name === 'image';
+}
+
+// Returns the position of an image the transaction inserted, or null if it inserted none. Each step's range is
+// mapped through the steps after it, so the search holds however many steps the insert took.
+function findInsertedImage(tr) {
+    let found = null;
+    tr.steps.forEach((step, index) => {
+        const laterSteps = tr.mapping.slice(index + 1);
+        step.getMap().forEach((oldStart, oldEnd, newStart, newEnd) => {
+            const from = laterSteps.map(newStart, -1);
+            const to = laterSteps.map(newEnd, 1);
+            tr.doc.nodesBetween(from, to, (node, pos) => {
+                if (found == null && node.type.name === 'image') found = pos;
+                return found == null;
+            });
+        });
+    });
+    return found;
 }

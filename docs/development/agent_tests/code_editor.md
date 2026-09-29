@@ -17,7 +17,7 @@ editor is entitled to it. And a document renamed or moved while it is open.
 | The editor's find widget | paste | text enters the find field; the document is unchanged | 1 |
 | Editor text | select all, then type | the whole document is replaced | 2 |
 | Editor text | undo | the last edit reverts | 2 |
-| Editor text | Tab | the line indents; Shift+Tab outdents | 2 |
+| Editor text, caret at the start of a line | Tab | the line indents; Shift+Tab outdents | 2 |
 | A find widget with more than one field | Tab | focus moves within the widget; the document is not indented | 2 |
 | Editor text, caret mid-line | the platform's end-of-line and start-of-line chords | the caret moves to each end of the line | 2 |
 | Preview mode, the preview's find bar | paste | text enters the find field; the source is unchanged | 2 |
@@ -41,16 +41,20 @@ right edge, so a click past the end of a line can land on it, which scrolls the 
 typed next going nowhere.
 
 Scroll far enough down for the place to be unmistakable, since a document that restores nothing still opens
-at the top.
+at the top. In split mode read the place back from both panes, the source's first visible line as well as the
+preview's scroll, since the preview can come back right while the source does not. Give the document one short
+paragraph per line, so a line in the source and its place in the preview stay close together.
 
 For the move case, make the two images easy to tell apart, and read back the address of the image the
 preview shows rather than judging it by eye. The edit made before a rename or a move is what shows the
 document stayed open, since a document opened again has no undo history.
 
-A document saves itself one second after its last change. For the quit case, keep the source changing until
-the moment of the quit, for instance with a timer in the page that adds a line every few hundred milliseconds.
-Then only the exit can have saved the last lines. Run the case once for each way to quit: the window's close
-button, the Quit menu item or its shortcut, and on macOS Quit in the Dock.
+A document saves itself one second after its last change. For the quit case, make one edit and quit within
+that second, so only the exit can have saved it. Type a character and press the quit shortcut in the same
+batch. For the close button, settle the pointer on it before typing. For a route driven from the shell, make a
+single script edit in the same command as the quit. Don't leave a timer editing through the quit. That tests
+something else: the application closing while edits are still arriving. Run the case once for each way to
+quit: the window's close button, the Quit menu item or its shortcut, and on macOS Quit in the Dock.
 
 ## Not covered
 
@@ -58,6 +62,9 @@ Editing behaviour that belongs to the editor component itself — completion, fo
 gestures, how well it highlights a language — beyond the interaction between a cursor and a clipboard verb.
 
 ## Platform
+
+The split mode row for the preview's find bar is Windows only. On macOS find in split mode opens the editor's
+own find wherever the keyboard is, by design, so that find bar is reached only in preview mode there.
 
 The editor scrolls a markdown preview to a link's heading itself. On macOS the browser would not do it. The
 preview's frame sits inside the editor's own package, and Uno cancels the frame's move there. A link that

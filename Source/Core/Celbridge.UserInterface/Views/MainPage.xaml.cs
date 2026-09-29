@@ -20,6 +20,7 @@ public partial class MainPage : Page
     private IUserInterfaceService _userInterfaceService;
     private IMessengerService _messengerService;
     private IFocusService _focusService;
+    private IWebViewFocusRegistry _webViewFocusRegistry;
     private readonly ILogger<MainPage> _logger;
 
     private Grid _layoutRoot;
@@ -33,6 +34,7 @@ public partial class MainPage : Page
         _userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _focusService = ServiceLocator.AcquireService<IFocusService>();
+        _webViewFocusRegistry = ServiceLocator.AcquireService<IWebViewFocusRegistry>();
         _logger = ServiceLocator.AcquireService<ILogger<MainPage>>();
 
         ViewModel = ServiceLocator.AcquireService<MainPageViewModel>();
@@ -83,11 +85,10 @@ public partial class MainPage : Page
         // focus loop move focus out of it, Command+W / Command+Shift+W to the close-document shortcuts, and
         // Command+F to the active document's find bar. macOS-only. A no-op elsewhere.
         var focusServiceForKeyMonitor = ServiceLocator.AcquireService<IFocusService>();
-        var webViewFocusRegistry = ServiceLocator.AcquireService<IWebViewFocusRegistry>();
         var commandService = ServiceLocator.AcquireService<ICommandService>();
         var textControlEditing = ServiceLocator.AcquireService<ITextControlEditing>();
         MacOSKeyEventMonitor.Start(
-            focusServiceForKeyMonitor, textControlEditing, webViewFocusRegistry, _messengerService, commandService, _logger);
+            focusServiceForKeyMonitor, textControlEditing, _webViewFocusRegistry, _messengerService, commandService, _logger);
 
         // Undo native first-responder resigns caused by managed-focus housekeeping, which would otherwise
         // deactivate the focused web surface (hidden caret, beeping keys). macOS-only. A no-op elsewhere.
@@ -99,7 +100,7 @@ public partial class MainPage : Page
 
         // Route the editing keys Uno diverts away from the native first responder (Backspace, Enter,
         // arrows) into the focused web surface instead of dropping them. macOS-only. A no-op elsewhere.
-        MacOSKeyCommandRouter.SetFocusRegistry(webViewFocusRegistry);
+        MacOSKeyCommandRouter.SetFocusRegistry(_webViewFocusRegistry);
         MacOSKeyCommandRouter.SetTextControlEditing(textControlEditing);
 
         // Register for layout mode changes
@@ -162,6 +163,15 @@ public partial class MainPage : Page
     private void OnRootContentPointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
     {
         _focusService.EndPanelHold();
+
+        // UNO-BUG: a click inside a web view also reaches the managed tree, where nothing handles it, so Uno
+        // clears focus on release. The page sees its window blur, which closes any popover the click opened.
+        // Marking the press handled stops Uno clearing focus.
+        if (e.GetCurrentPoint(null).Properties.IsLeftButtonPressed
+            && _webViewFocusRegistry.IsPressOnWebSurface)
+        {
+            e.Handled = true;
+        }
     }
 
     private void OnRootContentKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)

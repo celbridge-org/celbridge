@@ -51,6 +51,7 @@ internal class MacOSWebViewFocusMonitor : IWebViewFocusMonitor
     private static readonly Dictionary<IntPtr, Action> _callbacksByHandle = new();
     private static readonly Dictionary<CoreWebView2, IntPtr> _handlesByWebView = new();
 
+    private static bool _isLastPressInWebView;
     private static bool _monitorInstalled;
     private static IntPtr _monitor;
     private static IntPtr _monitorBlock;
@@ -104,6 +105,8 @@ internal class MacOSWebViewFocusMonitor : IWebViewFocusMonitor
 
         _callbacksByHandle.Remove(handle);
     }
+
+    public bool IsLastPressInWebView => _isLastPressInWebView;
 
     private static void EnsureMonitorInstalled()
     {
@@ -165,7 +168,12 @@ internal class MacOSWebViewFocusMonitor : IWebViewFocusMonitor
         // Runs on the main thread during event dispatch. Never let an exception cross back into AppKit.
         try
         {
+            // Recorded for the managed copy of this press, which Uno raises after the monitor has run. Cleared
+            // first, so a hit test that throws leaves no answer from an earlier press.
+            _isLastPressInWebView = false;
+
             var matchedHandle = FindClickedRegisteredWebView(nsEvent);
+            _isLastPressInWebView = matchedHandle != IntPtr.Zero;
 
             // Every click inside a registered web view is signalled. Whether it is a change of focus is
             // the registry's to decide: focus can leave a surface with no click at all (a shortcut opening

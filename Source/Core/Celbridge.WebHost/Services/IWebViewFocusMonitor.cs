@@ -24,4 +24,10 @@ internal interface IWebViewFocusMonitor
     /// registered.
     /// </summary>
     void Unregister(CoreWebView2 coreWebView);
+
+    /// <summary>
+    /// Whether the most recent mouse press landed inside a registered web view. It is answered before the
+    /// managed pointer pipeline raises that press. False on heads with no native monitor.
+    /// </summary>
+    bool IsLastPressInWebView { get; }
 }

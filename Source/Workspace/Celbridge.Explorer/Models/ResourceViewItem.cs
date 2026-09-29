@@ -186,4 +186,12 @@ public partial class ResourceViewItem : ObservableObject
         ReadOnlyMessage = readOnlyMessage ?? string.Empty;
         ProjectFolderTooltip = projectFolderTooltip ?? string.Empty;
     }
+
+    /// <summary>
+    /// The resource's name. The ListView names each row to screen readers by its item's string form.
+    /// </summary>
+    public override string ToString()
+    {
+        return Name;
+    }
 }

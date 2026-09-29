@@ -10,8 +10,14 @@ report, and decides what to do about it.
 
 Each plan covers one area of the application and is a single file. Building, deploying, launching and
 driving the app differ by head, and none of it can be worked out from the project alone. The
-[Windows](windows.md) guide and its scripts cover the packaged Windows head. A guide for the macOS head is
-still to be written.
+[Windows](windows.md) guide and its scripts cover the packaged Windows head. The [macOS](macos.md) guide
+covers the macOS head, and so far records what runs there have learned rather than a full procedure.
+
+Scripts that serve both heads live in [scripts](scripts) and are written in Python, using the standard
+library only, so any Python 3 on the machine runs them. Lint them with the package's ruff configuration:
+`ruff check --config Source/Workspace/Celbridge.Python/packages/celbridge/pyproject.toml
+docs/development/agent_tests/scripts`. The Windows guide's own scripts, which deploy and drive the packaged
+head, are PowerShell.
 
 | Plan | Area |
 |---|---|
@@ -106,7 +112,7 @@ point: a shortcut delivered any other way tests a path a user never takes. Every
 documents, reading page state, inspecting the log — has cheaper and more reliable routes that the
 project's own tooling provides.
 
-Eight things a run reliably trips over:
+The things a run reliably trips over:
 
 **A page takes no pointer input until the web view runtime is granted too.** Desktop automation hides the
 windows of applications outside the permission it was given, and every page the application hosts is drawn
@@ -138,7 +144,8 @@ known points and reading the pointer position back; a run that infers the scale 
 clicks in the wrong place and reports whatever it hit.
 
 **A click outside an open flyout is eaten by the dismiss.** The first click of a batch closes the flyout
-and reaches nothing, so close it deliberately before acting on the surface behind it.
+and reaches nothing. Every flyout in the application behaves this way on purpose, the notification and
+download lists included, so close it deliberately before acting on the surface behind it.
 
 **Escape may not arrive.** Desktop automation reports success for Escape and can deliver nothing, because
 computer use keeps Escape as its own stop key: an Escape it sees stops the run rather than reaching the
@@ -153,7 +160,11 @@ with a keydown logger in the page, since a swallowed key and one that never arri
 **A modal dialog holds the command queue.** Every queued tool waits until the dialog is answered, so a run
 that raises one unexpectedly appears to hang. Answer it — `Escape` cancels and `Return` accepts through
 `app_simulate_input`, which runs outside the queue — or schedule `app_answer_dialog` before the step that
-raises it.
+raises it. `webview_eval` waits in the queue too, so read a dialog through the accessibility tree while it
+stands open, and have a page post what `__celPendingRequests()` returns to a loopback server rather than
+asking for it. [scripts/fixture_server.py](scripts/fixture_server.py) prints whatever is posted to it. A
+call that times out and is moved to the background still runs its remaining steps once the dialog closes,
+keys included, so stop it rather than leave it to run.
 
 **A tool call that fails with nothing but the tool's name is a wrong argument.** The application answers a
 bad call with `An error occurred invoking '<tool>'` and no more; what was actually wrong — most often a
