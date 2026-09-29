@@ -10,8 +10,8 @@ report, and decides what to do about it.
 
 Each plan covers one area of the application and is a single file. Building, deploying, launching and
 driving the app differ by head, and none of it can be worked out from the project alone. The
-[Windows](windows.md) guide and its scripts cover the packaged Windows head. The [macOS](macos.md) guide covers the
-macOS head, and so far records what runs there have learned rather than a full procedure.
+[Windows](windows.md) guide and its scripts cover the packaged Windows head. The [macOS](macos.md) guide
+covers the macOS head, and so far records what runs there have learned rather than a full procedure.
 
 Scripts that serve both heads live in [scripts](scripts) and are written in Python, using the standard
 library only, so any Python 3 on the machine runs them. Lint them with the package's ruff configuration:

@@ -11,7 +11,14 @@ $ErrorActionPreference = 'Stop'
 
 $script:RunFolder = $null
 
-if (-not ('CelbridgeAgentTestNative' -as [type])) {
+# A type cannot be redefined in a session, so a session that loaded an older copy of this module keeps its
+# older native type. Check for the newest member, and fail now rather than at the first call that needs it.
+$nativeType = 'CelbridgeAgentTestNative' -as [type]
+if ($nativeType -and -not $nativeType.GetMethod('IsIconic')) {
+    throw 'This PowerShell session holds an older copy of this module. Start a new session and import it again.'
+}
+
+if (-not $nativeType) {
     Add-Type -ReferencedAssemblies System.Drawing @'
 using System;
 using System.Runtime.InteropServices;
@@ -24,7 +31,7 @@ public static class CelbridgeAgentTestNative {
     [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr hWnd, IntPtr after, int x, int y, int cx, int cy, uint flags);
     [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int command);
     [DllImport("user32.dll")] public static extern bool IsZoomed(IntPtr hWnd);
-[DllImport("user32.dll")] public static extern bool IsIconic(IntPtr hWnd);
+    [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr hWnd);
     [DllImport("user32.dll")] public static extern void keybd_event(byte key, byte scan, uint flags, UIntPtr extra);
 }
 '@

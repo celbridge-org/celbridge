@@ -113,8 +113,9 @@ public static class DownloadsFolderPath
         }
 
         // On disk but not yet in the registry, such as the folder WebView2 creates for the download that is
-        // asking where to go. The disk says whether it is a folder.
-        var resolveResult = registry.ResolveResourcePath(resourceOnDisk);
+        // asking where to go. The disk says whether it is a folder. The key already has the disk's case, so the
+        // path needs no second case check.
+        var resolveResult = registry.ResolveResourcePath(resourceOnDisk, validateCase: false);
         if (resolveResult.IsFailure)
         {
             return null;

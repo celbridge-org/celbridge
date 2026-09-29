@@ -168,9 +168,11 @@ internal class MacOSWebViewFocusMonitor : IWebViewFocusMonitor
         // Runs on the main thread during event dispatch. Never let an exception cross back into AppKit.
         try
         {
-            var matchedHandle = FindClickedRegisteredWebView(nsEvent);
+            // Recorded for the managed copy of this press, which Uno raises after the monitor has run. Cleared
+            // first, so a hit test that throws leaves no answer from an earlier press.
+            _isLastPressInWebView = false;
 
-            // Recorded for the managed copy of this press, which Uno raises after the monitor has run.
+            var matchedHandle = FindClickedRegisteredWebView(nsEvent);
             _isLastPressInWebView = matchedHandle != IntPtr.Zero;
 
             // Every click inside a registered web view is signalled. Whether it is a change of focus is

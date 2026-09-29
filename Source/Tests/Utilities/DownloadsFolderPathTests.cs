@@ -35,7 +35,7 @@ public class DownloadsFolderPathTests
             .Returns(callInfo => NormalizeResource(callInfo.Arg<ResourceKey>()));
         _registry.GetResource(Arg.Any<ResourceKey>())
             .Returns(callInfo => GetResource(callInfo.Arg<ResourceKey>()));
-        _registry.ResolveResourcePath(Arg.Any<ResourceKey>())
+        _registry.ResolveResourcePath(Arg.Any<ResourceKey>(), Arg.Any<bool>())
             .Returns(callInfo => Result<string>.Ok(ResolvePathOnDisk(callInfo.Arg<ResourceKey>())));
     }
 

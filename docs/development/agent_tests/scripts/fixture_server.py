@@ -119,8 +119,11 @@ class FixtureHandler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
 
     def _send_bytes(self, size, fill, rate=None, chunked=False):
-        """Writes `size` bytes of `fill`, `rate` bytes a second when a rate is given."""
-        chunk = fill * (min(10000, int(rate)) if rate else 1024 * 1024)
+        """Writes `size` bytes of `fill`, `rate` bytes a second when a positive rate is given."""
+        if rate is not None and rate <= 0:
+            rate = None
+        # A rate below one byte a second still sends a byte at a time, so the loop always moves on.
+        chunk = fill * (max(1, min(10000, int(rate))) if rate else 1024 * 1024)
         sent = 0
         while sent < size:
             n = min(len(chunk), size - sent)

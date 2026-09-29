@@ -482,6 +482,18 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         }
     }
 
+    private void StopLoading(CoreWebView2 coreWebView2)
+    {
+        try
+        {
+            coreWebView2.Stop();
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Could not stop a closing web view's page from loading");
+        }
+    }
+
     public void CloseWebView(WebView2 webView, Panel? container)
     {
         // The macOS head leaks the WKWebView with no native destroy, and WebKit relaunches a renderer for the
@@ -499,6 +511,13 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         {
             _findSessions.Remove(webView.CoreWebView2);
             UnregisterFromKeepAlive(webView.CoreWebView2);
+
+            // The dispose hook keeps a detached page loading, so a closing page is stopped here. This needs no
+            // native handle, so it still works when the teardown below cannot run.
+            if (OperatingSystem.IsMacOS())
+            {
+                StopLoading(webView.CoreWebView2);
+            }
         }
 
         container?.Children.Remove(webView);

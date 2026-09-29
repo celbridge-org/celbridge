@@ -17,6 +17,7 @@ The note body and the toolbar's popovers.
 | The note body | select all, undo, redo | each acts on the note | 2 |
 | Text selected in the note body | click the toolbar's Insert Link button with the pointer | the link popover opens and stays open, and the note is unchanged until it is answered | 2 |
 | The caret in the middle of a line of the note body | click the toolbar's Insert Image button with the pointer | an empty image takes the caret's place, and its popover opens and stays open; Escape then removes the image | 2 |
+| An image just inserted, its popover open with no source given | click in the note body | the popover closes and the empty image goes with it | 2 |
 | A text field in a toolbar popover, such as a link | paste | text enters the field; the note body is unchanged | 2 |
 | The note body | Tab | whatever the editor does with Tab, and not focus leaving the document | 3 |
 | A read-only note | cut, paste | refused, and the note is unchanged | 3 |
@@ -26,8 +27,11 @@ The note body and the toolbar's popovers.
 Open the popovers with a real click, since a script's click opens them even where a person's does not. The
 link popover needs text selected first. Clicking away from a popover, the other toolbar buttons included,
 applies what it holds, and only Escape discards it, so answer one popover with Escape before opening the next.
-Escape after Insert Image removes only the image. The line the image split stays split, and text the image
-replaced stays gone.
+A new image given no source is the exception: it is removed however its popover closes. Escape after Insert
+Image removes only the image. The line the image split stays split, and text the image replaced stays gone.
+
+The popover also closes when the application loses the foreground. Bring the application forward just before
+sending Escape, or the popover may already have closed.
 
 Leave the image picker open for well over half a minute before choosing: a dialog answered promptly cannot
 show the failure, which is the note losing an answer it waited too long for. It is the one case that waits

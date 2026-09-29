@@ -149,6 +149,6 @@ breaks off gets no retries and fails at once. A connection that comes back durin
 download. Keep the application busy through the wait, such as by reading `app_get_state` every few seconds:
 a fault that follows the retries has shown up only once .NET's garbage collector ran, which an idle
 application may put off. The defects the case is there to catch are the application closing, a row per
-retry, and a row left running for ever with the badge spinning.
-WebKit gives up on the first drop, sending one request and leaving one row, which is what macOS runs have
-seen so far; a run that sees it retry should record that.
+retry, and a row left running for ever with the badge spinning. WebKit gives up on the first drop, sending
+one request and leaving one row, which is what macOS runs have seen so far; a run that sees it retry should
+record that.
