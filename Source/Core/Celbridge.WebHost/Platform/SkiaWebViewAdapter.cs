@@ -22,6 +22,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
 
     private bool _checkedBackgroundActivity;
     private bool _checkedInactiveSelection;
+    private bool _checkedLoadingWhenDetached;
     private bool _reportedRemoteInspection;
 
     // The wake loop running for each live hosted web view, keyed by the view it wakes.
@@ -100,6 +101,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
                     _logger.LogDebug("Native WKWebView handle not resolvable after init ({Detail}); pinning deferred to first resolution", detail);
                 }
 
+                KeepLoadingWhenDetached();
                 RegisterForKeepAlive(webView.CoreWebView2);
 
                 // UNO-BUG: the script message handler is registered on every Loaded and never removed.
@@ -459,6 +461,25 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
 
         _logger.LogWarning(
             "WebKit no longer exposes the inactive selection setting, so a selection in a hosted page is lost when focus moves");
+    }
+
+    // A web view leaves the visual tree whenever its document goes to a background tab, and without this a
+    // page still loading at that moment never finishes. Installed once, before the first web view leaves the
+    // host it was initialized in.
+    private void KeepLoadingWhenDetached()
+    {
+        if (_checkedLoadingWhenDetached)
+        {
+            return;
+        }
+
+        _checkedLoadingWhenDetached = true;
+
+        if (!MacOSWebViewInterop.KeepLoadingWhenDetached())
+        {
+            _logger.LogWarning(
+                "Uno's web view no longer has the dispose method it is hooked on, so a document sent to a background tab while its page loads may stay blank");
+        }
     }
 
     public void CloseWebView(WebView2 webView, Panel? container)

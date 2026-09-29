@@ -211,6 +211,57 @@ public static partial class MacOSWebViewInterop
         return EnableBackgroundPageActivity(webView);
     }
 
+    // Uno's own dispose, which the hook runs once the view is out of its superview. Set once, on the main
+    // thread.
+    private static IntPtr _originalDispose;
+
+    /// <summary>
+    /// Lets a page go on loading when its web view leaves the visual tree. Returns false when Uno's web view
+    /// class, or its dispose method, cannot be found. Safe to call more than once.
+    /// </summary>
+    // UNO-BUG: MacOSNativeElement disposes the native view on every Unloaded, and UNOWebView's dispose stops
+    // loading when the view is still in a superview. A document sent to a background tab while its page
+    // loads is left blank for good.
+    public static unsafe bool KeepLoadingWhenDetached()
+    {
+        if (_originalDispose != IntPtr.Zero)
+        {
+            return true;
+        }
+
+        var webViewClass = GetClass("UNOWebView");
+        if (webViewClass == IntPtr.Zero ||
+            class_getInstanceMethod(webViewClass, GetSelector("dispose")) == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        _originalDispose = HookMethod(
+            webViewClass,
+            "dispose",
+            (IntPtr)(delegate* unmanaged[Cdecl]<IntPtr, IntPtr, void>)&DisposeHook,
+            "v@:");
+
+        return _originalDispose != IntPtr.Zero;
+    }
+
+    [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]
+    private static unsafe void DisposeHook(IntPtr self, IntPtr selector)
+    {
+        // Never let an exception unwind into AppKit.
+        try
+        {
+            // Uno's dispose stops loading only for a view that is still in a superview, so taking the view out
+            // first leaves its load running. Uno's dispose would remove it from the superview anyway.
+            SendMessage(self, GetSelector("removeFromSuperview"));
+
+            ((delegate* unmanaged[Cdecl]<IntPtr, IntPtr, void>)_originalDispose)(self, selector);
+        }
+        catch
+        {
+        }
+    }
+
     /// <summary>
     /// The WKPreferences object backing a WKWebView, or zero when it cannot be resolved. The throttling
     /// controls for hidden pages live here rather than on the view.

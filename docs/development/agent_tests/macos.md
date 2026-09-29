@@ -42,7 +42,13 @@ clipboard, even where the shell cannot. If neither can, say in the report that t
 - A click on a tab switches to it. Two clicks on a tab close together make a double-click, which toggles
   Focus, so leave a pause before clicking a tab again.
 - The background `app_*` tools hold a lock that stops input to the display. Call `app_release` before the
-  next click or key press.
+  next click or key press. The menu tool takes that lock too, and while it is held a clipboard read is
+  refused as well.
+- A click on the window's own title bar never reaches the application, so it does not dismiss an open
+  flyout, and the next click is spent dismissing it. Dismiss a flyout by clicking inside the window content.
+- Opening a file with `document_open` straight after writing it to disk can fail with an "Open Document
+  Failed" dialog, because the project has not picked the file up yet. The dialog holds the command queue
+  until it is answered. Wait about a second after writing a file before opening it.
 - The background menu tool presses the item it names whenever that item is enabled. It reads enablement
   only through its refusal of a disabled item, so name an item whose action does no harm. It refuses Cut,
   Copy and Paste outright, so reach those through the menu bar with the pointer.
@@ -61,6 +67,6 @@ If the Explorer tree draws nothing, capture the screen and note the time before 
 save the log. It has happened once after a project reload with nothing in the log, and the toolbar's
 Collapse All drew it again.
 
-A document opened with `document_open` while another is still loading has been left on a blank page for
-good. When a document shows white, look in the log for its "native message bridge present" line: `(blank)`
-with no later line naming the editor's page means it never loaded. Close it and open it again.
+If a document shows white, look in the log for its "native message bridge present" line before closing it.
+`(blank)` with no later line naming the editor's page means its page never loaded, which is a defect to
+report. Save the log, then close the document and open it again.
