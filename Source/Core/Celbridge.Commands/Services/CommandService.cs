@@ -43,8 +43,12 @@ public class CommandService : ICommandService
 
     private readonly SemaphoreSlim _commandEnqueued = new(0, 1);
 
-    // The UI thread's queue, which the loop lets go idle between commands. Null when the loop runs without a
-    // UI thread, as in unit tests.
+    // The longest the loop yields to the UI thread between commands. A UI thread that never goes idle then
+    // slows the queue down instead of stalling it.
+    private static readonly TimeSpan UserInterfaceYieldTimeout = TimeSpan.FromMilliseconds(100);
+
+    // The UI thread's queue, which the loop yields to between commands. Null when the loop runs without a UI
+    // thread, as in unit tests.
     private DispatcherQueue? _dispatcherQueue;
 
     public CommandService(
@@ -344,9 +348,9 @@ public class CommandService : ICommandService
                     }
                 }
 
-                // A steady stream of commands keeps the UI thread busy enough that input, layout and rendering
-                // wait until the stream ends. The next command waits for the UI thread to go idle first.
-                await WaitForUserInterfaceIdleAsync();
+                // The UI thread gets a turn between commands. Input, layout and rendering then keep up with a
+                // long burst of commands.
+                await YieldToUserInterfaceAsync();
             }
 
             bool queueIsEmpty;
@@ -401,9 +405,10 @@ public class CommandService : ICommandService
         }
     }
 
-    // Completes once the UI thread has nothing else queued, including input, layout and rendering, since low
-    // priority work only runs when nothing else is waiting.
-    private async Task WaitForUserInterfaceIdleAsync()
+    // Hands the UI thread back to the platform's event loop, where pending input and rendering run. The low
+    // priority item runs after the UI thread's other queued work. Where input and rendering fall relative to
+    // it differs by platform. The wait ends after UserInterfaceYieldTimeout even if the item has not run.
+    private async Task YieldToUserInterfaceAsync()
     {
         if (_dispatcherQueue is null)
         {
@@ -411,14 +416,21 @@ public class CommandService : ICommandService
         }
 
         var idle = new TaskCompletionSource();
-        var enqueued = _dispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () => idle.SetResult());
+        var enqueued = _dispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () => idle.TrySetResult());
         if (!enqueued)
         {
             // The queue refuses work once it has begun shutting down.
             return;
         }
 
-        await idle.Task;
+        try
+        {
+            await idle.Task.WaitAsync(UserInterfaceYieldTimeout);
+        }
+        catch (TimeoutException)
+        {
+            // The UI thread stayed busy for the whole timeout. The next command runs anyway.
+        }
     }
 
     private T CreateCommand<T>() where T : IExecutableCommand
