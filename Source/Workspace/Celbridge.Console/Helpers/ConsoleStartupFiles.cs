@@ -34,6 +34,18 @@ public static class ConsoleStartupFiles
     public const string UserZdotdirVariable = "CELBRIDGE_CONSOLE_USER_ZDOTDIR";
 
     /// <summary>
+    /// The variable holding the console's command: the executable, then each argument, one to a line. The
+    /// start-up splits it at line breaks alone, so an argument needs no quoting for a shell. A console with no
+    /// command leaves it unset.
+    /// </summary>
+    public const string CommandVariable = "CELBRIDGE_CONSOLE_COMMAND";
+
+    /// <summary>
+    /// The variable naming the folder the console's command runs in.
+    /// </summary>
+    public const string WorkingFolderVariable = "CELBRIDGE_CONSOLE_WORKING_FOLDER";
+
+    /// <summary>
     /// The variable that turns on the user's own start-up files when it is set.
     /// </summary>
     public const string UseShellProfileVariable = "CELBRIDGE_CONSOLE_USE_SHELL_PROFILE";
@@ -104,16 +116,28 @@ public static class ConsoleStartupFiles
             # {{Header}}
             # PowerShell receives this on its command line, so the copy on disk is for reading only.
 
-            # The environment is still exactly what Celbridge built, so the values it guarantees are recorded
-            # before any profile can change them.
+            # The environment is still exactly what Celbridge built, so the values it guarantees are recorded, with
+            # the start-up's own settings, before any profile can change them. The start-up's variables then go,
+            # so neither the profiles nor the console's command see them.
             $global:CelbridgeSnapshot = @{}
             foreach ($celbridgeName in ("$env:{{RestoreVariable}}" -split ' ' | Where-Object { $_ })) {
                 $global:CelbridgeSnapshot[$celbridgeName] = [Environment]::GetEnvironmentVariable($celbridgeName)
             }
+            $global:CelbridgeStartup = @{
+                PathFolders = @("$env:{{ConsoleEnvironmentVariables.PathFolders}}" -split ';' | Where-Object { $_ })
+                UseShellProfile = [bool]$env:{{UseShellProfileVariable}}
+                CompactPrompt = [bool]$env:{{CompactPromptVariable}}
+                History = $env:{{HistoryVariable}}
+                WorkingFolder = $env:{{WorkingFolderVariable}}
+                Command = @(if ($env:{{CommandVariable}}) { $env:{{CommandVariable}} -split "`n" })
+            }
+            foreach ($celbridgeVariable in @(Get-ChildItem Env: | Where-Object { $_.Name -like '{{VariablePrefix}}*' })) {
+                Remove-Item -LiteralPath "Env:$($celbridgeVariable.Name)"
+            }
 
             # The profiles, in the order PowerShell loads them, when the console uses them. One that fails is
             # reported and the rest still run, as PowerShell's own loading does.
-            if ($env:{{UseShellProfileVariable}}) {
+            if ($global:CelbridgeStartup.UseShellProfile) {
                 foreach ($celbridgeProfile in @($PROFILE.AllUsersAllHosts, $PROFILE.AllUsersCurrentHost, $PROFILE.CurrentUserAllHosts, $PROFILE.CurrentUserCurrentHost)) {
                     if ($celbridgeProfile -and (Test-Path -LiteralPath $celbridgeProfile)) {
                         try {
@@ -126,15 +150,15 @@ public static class ConsoleStartupFiles
                 }
             }
 
-            if ($env:{{HistoryVariable}} -and (Get-Command Set-PSReadLineOption -ErrorAction SilentlyContinue)) {
-                Set-PSReadLineOption -HistorySavePath $env:{{HistoryVariable}}
+            if ($global:CelbridgeStartup.History -and (Get-Command Set-PSReadLineOption -ErrorAction SilentlyContinue)) {
+                Set-PSReadLineOption -HistorySavePath $global:CelbridgeStartup.History
             }
 
             # The prompt the console keeps after the first. With the compact prompt on, it is Celbridge's own, which
             # shows the working folder's name where the stock prompt shows the whole path. Otherwise it is the one
             # the profiles set.
             $global:CelbridgePrompt = $function:prompt
-            if ($env:{{CompactPromptVariable}}) {
+            if ($global:CelbridgeStartup.CompactPrompt) {
                 $global:CelbridgePrompt = {
                     $celbridgePath = $executionContext.SessionState.Path.CurrentLocation.Path
                     $celbridgeFolder = if ($celbridgePath -eq $HOME) { '~' } else { Split-Path -Leaf $celbridgePath }
@@ -145,8 +169,9 @@ public static class ConsoleStartupFiles
                 }
             }
 
-            # Celbridge's settings go back on top just before the first prompt, after anything the profiles did.
-            function global:prompt {
+            # Puts Celbridge's settings back on top: the uv and Python settings the profiles made go, and
+            # Celbridge's values, the console's own and Celbridge's folders at the front of PATH come back.
+            function global:CelbridgeRestore {
                 foreach ($celbridgeVariable in @(Get-ChildItem Env:)) {
                     $celbridgeName = $celbridgeVariable.Name
                     if ({{PowerShellMatch(PythonEnvironmentFilter.KeptNames, PythonEnvironmentFilter.KeptPrefixes)}}) {
@@ -161,7 +186,7 @@ public static class ConsoleStartupFiles
                     Set-Item -LiteralPath "Env:$($celbridgeEntry.Key)" -Value $celbridgeEntry.Value
                 }
 
-                $celbridgeFolders = @("$env:{{ConsoleEnvironmentVariables.PathFolders}}" -split ';' | Where-Object { $_ })
+                $celbridgeFolders = $global:CelbridgeStartup.PathFolders
                 $celbridgeRest = @("$env:Path" -split ';' | Where-Object { $_ -and $celbridgeFolders -notcontains $_ })
                 $env:Path = ($celbridgeFolders + $celbridgeRest) -join ';'
 
@@ -176,15 +201,33 @@ public static class ConsoleStartupFiles
                         }
                     }
                 }
+            }
 
-                foreach ($celbridgeVariable in @(Get-ChildItem Env: | Where-Object { $_.Name -like '{{VariablePrefix}}*' })) {
-                    Remove-Item -LiteralPath "Env:$($celbridgeVariable.Name)"
-                }
-
+            # Settings go back on top again just before the first prompt, after the prompt itself, since a tool's
+            # prompt hook can change the environment. The start-up then clears away everything of its own.
+            function global:prompt {
                 $celbridgePrompt = $global:CelbridgePrompt
-                Remove-Variable -Name CelbridgeSnapshot, CelbridgePrompt -Scope Global
+                $celbridgeText = & $celbridgePrompt
+                CelbridgeRestore
+                Remove-Item -LiteralPath Function:CelbridgeRestore
+                Remove-Variable -Name celbridge* -Scope Global -ErrorAction SilentlyContinue
                 $function:global:prompt = $celbridgePrompt
-                & $celbridgePrompt
+                $celbridgeText
+            }
+
+            # A console with a command runs it in its working folder, which a profile may have left. Changing
+            # folder first leaves anything a folder change sets up to be undone. The console is revealed from the
+            # marker on, and the command runs last, as a command given to -NoExit -Command does.
+            if ($global:CelbridgeStartup.WorkingFolder) {
+                Set-Location -LiteralPath $global:CelbridgeStartup.WorkingFolder
+            }
+            CelbridgeRestore
+            if ($global:CelbridgeStartup.Command.Count -gt 0) {
+                Clear-Host
+                Write-Host -NoNewline ([char]0x{{(int)ConsoleReadyMarker.PowerShellCharacter:x4}})
+                $celbridgeExecutable = $global:CelbridgeStartup.Command[0]
+                $celbridgeArguments = @($global:CelbridgeStartup.Command | Select-Object -Skip 1)
+                & $celbridgeExecutable @celbridgeArguments
             }
             """;
     }
@@ -291,9 +334,20 @@ public static class ConsoleStartupFiles
     {
         return $$"""
             # Runs once, just before the first prompt: the uv and Python settings the user's files made go, and
-            # Celbridge's go back on top.
+            # Celbridge's go back on top. The console is then revealed and runs its command.
             _celbridge_first_prompt() {
                 precmd_functions=(${precmd_functions:#_celbridge_first_prompt})
+
+                # A console with a command runs it in its working folder, which a user's file may have left.
+                # Changing folder first leaves anything a folder change sets up to be undone below, and -q
+                # keeps the user's own hooks out of it.
+                local -a _celbridge_command
+                if [[ -n ${{CommandVariable}} ]]; then
+                    _celbridge_command=("${(@f){{CommandVariable}}}")
+                fi
+                if [[ -n ${{WorkingFolderVariable}} ]]; then
+                    builtin cd -q -- ${{WorkingFolderVariable}}
+                fi
 
                 local _celbridge_name
                 for _celbridge_name in ${(k)parameters}; do
@@ -326,6 +380,14 @@ public static class ConsoleStartupFiles
 
                 unset -m '{{VariablePrefix}}*'
                 unset _celbridge_snapshot _celbridge_zdotdir _celbridge_user_zdotdir
+
+                # The console is revealed from the marker on, and its command runs last: everything above must
+                # hold for the command, and nothing after the command would run until it exits.
+                clear
+                printf '{{ConsoleReadyMarker.PosixPrintfSource}}'
+                if (( ${#_celbridge_command} )); then
+                    "${_celbridge_command[@]}"
+                fi
             }
 
             """;
@@ -359,10 +421,25 @@ public static class ConsoleStartupFiles
             fi
 
             # Runs once, just before the first prompt: the uv and Python settings the files made go, and
-            # Celbridge's go back on top. The exit status is kept, since a prompt may show it.
+            # Celbridge's go back on top. The console is then revealed and runs its command. The exit status is
+            # kept, since a prompt may show it.
             _celbridge_first_prompt() {
                 local _celbridge_status=$?
                 local _celbridge_name _celbridge_saved _celbridge_folder _celbridge_index
+
+                # A console with a command runs it in its working folder, which a user's file may have left.
+                # Changing folder first leaves anything a folder change sets up to be undone below, and the
+                # builtin keeps a cd function of the user's out of it.
+                local -a _celbridge_command=()
+                local _celbridge_argument
+                if [ -n "${{CommandVariable}}" ]; then
+                    while IFS= read -r _celbridge_argument; do
+                        _celbridge_command+=("$_celbridge_argument")
+                    done <<< "${{CommandVariable}}"
+                fi
+                if [ -n "${{WorkingFolderVariable}}" ]; then
+                    builtin cd -- "${{WorkingFolderVariable}}"
+                fi
 
                 for _celbridge_name in $(compgen -v); do
                     case $_celbridge_name in
@@ -417,6 +494,14 @@ public static class ConsoleStartupFiles
                 for _celbridge_name in ${!CELBRIDGE_CONSOLE_@}; do
                     unset "$_celbridge_name"
                 done
+
+                # The console is revealed from the marker on, and its command runs last: everything above must
+                # hold for the command, and nothing after the command would run until it exits.
+                clear
+                printf '{{ConsoleReadyMarker.PosixPrintfSource}}'
+                if [ ${#_celbridge_command[@]} -gt 0 ]; then
+                    "${_celbridge_command[@]}"
+                fi
 
                 return $_celbridge_status
             }

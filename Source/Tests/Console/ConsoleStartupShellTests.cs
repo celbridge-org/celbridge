@@ -19,11 +19,16 @@ public class ConsoleStartupShellTests
     private const string CelbridgeCache = "/celbridge/cache";
     private const string DecoyPrompt = "decoy> ";
 
+    private static readonly string PosixMarker = ConsoleReadyMarker.For(new ConsoleShell("/bin/zsh", ConsoleShellFamily.Posix), hasCommand: false)!.ScanText;
+
     private static readonly Regex ResultPattern = new(@"CELTEST (\w+)=(.*)$", RegexOptions.Multiline);
 
     private string _root = null!;
     private string _home = null!;
     private string _historyFolder = null!;
+
+    // What the last shell wrote to its standard output, in order.
+    private string _standardOutput = string.Empty;
 
     [SetUp]
     public void Setup()
@@ -64,6 +69,55 @@ public class ConsoleStartupShellTests
         results["UV_COMMAND"].Should().BeEmpty("no alias stands in for uv");
         results["CELBRIDGE_PY_COMMAND"].Should().BeEmpty("no function stands in for celbridge-py");
         results["CELBRIDGE_CONSOLE_RESTORE"].Should().Be("<unset>");
+        _standardOutput.Should().Contain(PosixMarker, "a console with no command is revealed all the same");
+    }
+
+    // The start-up splits the command at line breaks alone, so no argument is quoted, split or expanded on the
+    // way, and an empty one survives.
+    [TestCase("zsh")]
+    [TestCase("bash")]
+    public void Command_RunsAfterTheMarker_WithEachArgumentIntact(string shellName)
+    {
+        const string awkwardArgument = "Some string, it's \"quoted\" $HOME * ; `true`";
+        var command = new[]
+        {
+            "/usr/bin/printf",
+            @"CELTEST %s=[%s]\nCELTEST %s=[%s]\n",
+            "COMMAND",
+            awkwardArgument,
+            "EMPTY",
+            "",
+        };
+
+        var results = RunShell(shellName, useShellProfile: true, command: command);
+
+        results["COMMAND"].Should().Be($"[{awkwardArgument}]");
+        results["EMPTY"].Should().Be("[]");
+        var markerIndex = _standardOutput.IndexOf(PosixMarker, StringComparison.Ordinal);
+        markerIndex.Should().BeGreaterThanOrEqualTo(0);
+        _standardOutput.IndexOf("CELTEST COMMAND=", StringComparison.Ordinal).Should().BeGreaterThan(markerIndex);
+    }
+
+    // The decoy profile leaves the shell in another folder, as a profile's cd would.
+    [TestCase("zsh")]
+    [TestCase("bash")]
+    public void Command_RunsInTheWorkingFolder_WithoutTheStartUpsVariables(string shellName)
+    {
+        File.AppendAllText(Path.Combine(_home, shellName == "zsh" ? ".zshrc" : ".bash_profile"), "cd /\n");
+        var workingFolder = Path.Combine(_root, "work");
+        Directory.CreateDirectory(workingFolder);
+        var command = new[]
+        {
+            "/bin/sh",
+            "-c",
+            "printf 'CELTEST FOLDER=%s\\n' \"$(pwd -P)\"; printf 'CELTEST INHERITED=%s\\n' \"${CELBRIDGE_CONSOLE_COMMAND-<unset>}\"",
+        };
+
+        var results = RunShell(shellName, useShellProfile: true, command: command, workingFolder: workingFolder);
+
+        // The temporary folder can sit behind a symbolic link, which pwd -P resolves.
+        results["FOLDER"].Should().EndWith(Path.Combine(Path.GetFileName(_root), "work"));
+        results["INHERITED"].Should().Be("<unset>", "the command starts without the variables that carried it");
     }
 
     [TestCase("zsh")]
@@ -102,6 +156,22 @@ public class ConsoleStartupShellTests
         var historyText = File.ReadAllText(historyPath);
         historyText.Should().Contain("an-earlier-console");
         historyText.Should().Contain("celbridge-history-marker");
+    }
+
+    // The console's command and the marker run from the start-up files, so neither is typed at the prompt.
+    [TestCase("zsh", "zsh_history")]
+    [TestCase("bash", "bash_history")]
+    public void History_HoldsNoneOfTheStartUp(string shellName, string historyFileName)
+    {
+        var command = new[] { "/usr/bin/true", "celbridge-command-word" };
+
+        RunShell(shellName, useShellProfile: true, "echo celbridge-history-marker\nkill -9 $$", command: command);
+
+        var historyText = File.ReadAllText(Path.Combine(_historyFolder, historyFileName));
+        historyText.Should().Contain("celbridge-history-marker");
+        historyText.Should().NotContain("celbridge-command-word");
+        historyText.Should().NotContain("CELBRIDGE-CONSOLE-READY");
+        historyText.Should().NotContain("clear");
     }
 
     // The decoy profile resets its own prompt before each prompt, as a prompt framework does.
@@ -196,6 +266,17 @@ public class ConsoleStartupShellTests
         results["LATER_PROMPT"].Should().Be(expected);
     }
 
+    // The decoy's prompt sets a virtual environment, as a tool's prompt hook might, and the first prompt is where
+    // Celbridge's settings go back on top.
+    [Test]
+    public void PowerShell_FirstPrompt_RestoresAfterTheProfilesPromptRuns()
+    {
+        var results = RunPowerShellOnDecoyProfile(useShellProfile: true, compactPrompt: false);
+
+        results["FIRST_PROMPT"].Should().Be(DecoyPrompt);
+        results["VIRTUAL_ENV"].Should().BeEmpty();
+    }
+
     [TestCase(true, "1")]
     [TestCase(false, "")]
     public void PowerShell_Profile_RunsOnlyWhenTheConsoleUsesIt(bool useShellProfile, string expected)
@@ -226,7 +307,9 @@ public class ConsoleStartupShellTests
         bool useShellProfile,
         string extraCommand = "",
         string? userZdotdir = null,
-        bool compactPrompt = true)
+        bool compactPrompt = true,
+        IReadOnlyList<string>? command = null,
+        string? workingFolder = null)
     {
         if (OperatingSystem.IsWindows())
         {
@@ -251,6 +334,8 @@ public class ConsoleStartupShellTests
 
         var options = new ConsoleStartupOptions(startupFolder, _historyFolder)
         {
+            Command = command ?? Array.Empty<string>(),
+            WorkingFolder = workingFolder,
             UseShellProfile = useShellProfile,
             CompactPrompt = compactPrompt,
             UserZdotdir = userZdotdir,
@@ -316,8 +401,44 @@ public class ConsoleStartupShellTests
         return Run(startInfo, input.ToString());
     }
 
+    [Test]
+    public void PowerShell_Command_RunsAfterTheMarker_InItsWorkingFolder()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Ignore("PowerShell consoles run on Windows only.");
+        }
+
+        var workingFolder = Path.Combine(_root, "work");
+        Directory.CreateDirectory(workingFolder);
+        var command = new[] { "cmd.exe", "/c", "echo", "CELTEST", "COMMAND=ran" };
+
+        // The start-up leaves the shell where the command ran, and what follows reads that back.
+        var script = ConsoleStartupFiles.BuildPowerShellStartup() + """
+
+            "CELTEST FOLDER=$((Get-Location).Path)"
+            "CELTEST INHERITED=$env:CELBRIDGE_CONSOLE_COMMAND"
+            """;
+
+        var environment = new Dictionary<string, string>
+        {
+            [ConsoleStartupFiles.CommandVariable] = string.Join('\n', command),
+            [ConsoleStartupFiles.WorkingFolderVariable] = workingFolder,
+        };
+
+        var results = RunPowerShell(script, environment);
+
+        results["COMMAND"].Should().Be("ran");
+        results["FOLDER"].Should().Be(workingFolder);
+        results["INHERITED"].Should().BeEmpty("the command starts without the variables that carried it");
+        var markerIndex = _standardOutput.IndexOf(ConsoleReadyMarker.PowerShellCharacter);
+        markerIndex.Should().BeGreaterThanOrEqualTo(0);
+        _standardOutput.IndexOf("CELTEST COMMAND=", StringComparison.Ordinal).Should().BeGreaterThan(markerIndex);
+    }
+
     // Runs the start-up in a working folder with $PROFILE naming a decoy profile alone, which the start-up loads
-    // as it would the user's own. The decoy sets its own prompt and a variable of its own.
+    // as it would the user's own. The decoy sets a variable of its own, and a prompt of its own that sets a
+    // virtual environment each time it runs.
     private Dictionary<string, string> RunPowerShellOnDecoyProfile(bool useShellProfile, bool compactPrompt)
     {
         if (!OperatingSystem.IsWindows())
@@ -326,7 +447,8 @@ public class ConsoleStartupShellTests
         }
 
         var profilePath = Path.Combine(_root, "profile.ps1");
-        File.WriteAllText(profilePath, $"$env:DECOY_PROFILE = '1'\nfunction global:prompt {{ '{DecoyPrompt}' }}\n");
+        File.WriteAllText(profilePath,
+            $"$env:DECOY_PROFILE = '1'\nfunction global:prompt {{ $env:VIRTUAL_ENV = 'C:\\decoy\\venv'; '{DecoyPrompt}' }}\n");
         var workFolder = Path.Combine(_root, "work");
         Directory.CreateDirectory(workFolder);
 
@@ -337,6 +459,7 @@ public class ConsoleStartupShellTests
             """ + ConsoleStartupFiles.BuildPowerShellStartup() + """
 
             "CELTEST FIRST_PROMPT=$(prompt)"
+            "CELTEST VIRTUAL_ENV=$env:VIRTUAL_ENV"
             "CELTEST LATER_PROMPT=$(prompt)"
             "CELTEST DECOY_PROFILE=$env:DECOY_PROFILE"
             """;
@@ -354,7 +477,7 @@ public class ConsoleStartupShellTests
         return RunPowerShell(script, environment);
     }
 
-    private static Dictionary<string, string> RunPowerShell(string script, IReadOnlyDictionary<string, string> environment)
+    private Dictionary<string, string> RunPowerShell(string script, IReadOnlyDictionary<string, string> environment)
     {
         var encodedScript = Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
 
@@ -381,7 +504,7 @@ public class ConsoleStartupShellTests
         return text.Replace("'", "''");
     }
 
-    private static Dictionary<string, string> Run(ProcessStartInfo startInfo, string? standardInput)
+    private Dictionary<string, string> Run(ProcessStartInfo startInfo, string? standardInput)
     {
         using var process = Process.Start(startInfo)!;
         var outputTask = process.StandardOutput.ReadToEndAsync();
@@ -399,6 +522,7 @@ public class ConsoleStartupShellTests
             Assert.Fail("The shell did not exit within 20 seconds.");
         }
 
+        _standardOutput = outputTask.Result;
         var output = outputTask.Result + errorTask.Result;
         var results = new Dictionary<string, string>();
         foreach (Match match in ResultPattern.Matches(output))

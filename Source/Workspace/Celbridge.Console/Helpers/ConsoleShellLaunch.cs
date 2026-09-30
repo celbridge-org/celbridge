@@ -25,6 +25,18 @@ public sealed record ConsoleStartupOptions(
     /// The folder zsh would have read the user's own files from, when the application inherited one.
     /// </summary>
     public string? UserZdotdir { get; init; }
+
+    /// <summary>
+    /// The console's command, the executable first and then its arguments, which the start-up runs once the
+    /// console is revealed. Empty for a console that leaves the shell at its prompt. No part may hold a line
+    /// break, since the start-up receives the parts one to a line.
+    /// </summary>
+    public IReadOnlyList<string> Command { get; init; } = Array.Empty<string>();
+
+    /// <summary>
+    /// The folder the console's command runs in.
+    /// </summary>
+    public string? WorkingFolder { get; init; }
 }
 
 /// <summary>
@@ -50,6 +62,14 @@ public sealed record ConsoleShellLaunch(string CommandLine, IReadOnlyDictionary<
         if (options.CompactPrompt)
         {
             environment[ConsoleStartupFiles.CompactPromptVariable] = "1";
+        }
+        if (options.Command.Count > 0)
+        {
+            environment[ConsoleStartupFiles.CommandVariable] = string.Join('\n', options.Command);
+            if (!string.IsNullOrEmpty(options.WorkingFolder))
+            {
+                environment[ConsoleStartupFiles.WorkingFolderVariable] = options.WorkingFolder;
+            }
         }
 
         if (shell.IsZsh)
@@ -99,16 +119,7 @@ public sealed record ConsoleShellLaunch(string CommandLine, IReadOnlyDictionary<
             return new ConsoleShellLaunch(powerShellCommandLine, environment);
         }
 
-        return Bare(shell);
-    }
-
-    /// <summary>
-    /// The launch of a shell with no start-up files, for when they could not be written.
-    /// </summary>
-    public static ConsoleShellLaunch Bare(ConsoleShell shell)
-    {
-        var commandLine = new CommandLineBuilder(shell.Executable).ToString();
-
-        return new ConsoleShellLaunch(commandLine, new Dictionary<string, string>());
+        var bareCommandLine = new CommandLineBuilder(shell.Executable).ToString();
+        return new ConsoleShellLaunch(bareCommandLine, new Dictionary<string, string>());
     }
 }

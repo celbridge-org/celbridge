@@ -17,7 +17,7 @@ public sealed record PythonLaunchRequest(
     IReadOnlyList<string> Dependencies);
 
 /// <summary>
-/// The resolved startup: the installed celbridge-py tool to inject, and the per-console environment
+/// The resolved startup: the installed celbridge-py tool to run, and the per-console environment
 /// carrying its launch defaults.
 /// </summary>
 public sealed record PythonStartupResult(
@@ -26,7 +26,7 @@ public sealed record PythonStartupResult(
 
 /// <summary>
 /// Builds the startup command and shared environment for Python sessions, owning all the Python-specific
-/// launch machinery. The injected command is the installed celbridge-py by its full path, so nothing on the
+/// launch machinery. The console's command is the installed celbridge-py by its full path, so nothing on the
 /// shell's PATH can stand in for it. The console's interpreter version and dependencies ride per-console
 /// environment variables that the tool reads as launch defaults, so retyping celbridge-py after exiting the
 /// REPL reproduces the same environment. The uv and wheel locations ride the shared console environment.
@@ -124,7 +124,7 @@ public sealed class PythonLaunchService : IPythonLaunchService
             .Where(dependency => !string.IsNullOrWhiteSpace(dependency))
             .ToList();
 
-        // These per-console variables are the launch defaults the injected celbridge-py reads, making it
+        // These per-console variables are the launch defaults the console's celbridge-py reads, making it
         // re-exec through uv (located via the shared console environment) with this console's interpreter and
         // packages. Dependencies are newline-separated because PEP 508 specifiers can contain commas and
         // semicolons. Offline mode is not among them: celbridge-py measures the cache itself at launch.

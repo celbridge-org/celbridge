@@ -158,6 +158,15 @@ the first prompt, after any prompt hook the user's files installed. It applies t
 Celbridge's values and the console's own, moves Celbridge's folders back to the front of PATH, and removes
 any alias or function named `uv`, `uvx` or `celbridge-py`.
 
+The same hook then reveals the console: it clears the screen and emits the ready marker, and the host
+discards everything the shell printed before it. Last of all it runs the console's command, such as a python
+console's `celbridge-py`, in the console's working folder. PowerShell does the same at the end of its
+start-up script, and puts Celbridge's settings back on top again at its first prompt. The command reaches
+the files in one variable, the executable and each argument on a line of its own, which the files split at
+line breaks alone, so no argument needs quoting. Nothing is typed at the prompt, so the shell's history holds
+only what the user types. A console's own `script` is still typed, into whatever reads input
+once the console is revealed.
+
 The files also own the prompt while `compact_prompt` is on, as it is unless the document turns it off. The
 settings form labels it "Compact Prompt". A hook registered after every other prompt hook sets a compact
 prompt before every prompt, showing the working folder's name, so a prompt framework that rebuilds its own
@@ -168,7 +177,7 @@ macOS and bash on Linux. Windows runs PowerShell.
 
 `BuildConsolePath` puts the application's uv bin folder first, then its tool bin folder, then the
 project's own tool bin folder, so project content cannot shadow the application's commands. A python
-console types `celbridge-py` by its full path, so nothing on PATH can stand in for it.
+console runs `celbridge-py` by its full path, so nothing on PATH can stand in for it.
 
 Celbridge's own uv calls, the REPL's launch and the tool install, pass `--no-config`, so no `uv.toml` can
 stop them. A uv the user types reads configuration files as usual, since a project of their own may depend

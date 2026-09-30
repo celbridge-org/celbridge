@@ -1,10 +1,10 @@
 namespace Celbridge.Console;
 
 /// <summary>
-/// The command a session type injects into its console's shell once the shell is up: an executable (or
+/// The command a session type runs in its console's shell once the shell is up: an executable (or
 /// command name resolved on the shell's PATH), its arguments, and optional environment variables seeded
 /// into the session so a manual re-run of the command reproduces the same launch. An empty executable
-/// means the session is just the plain shell with nothing injected. Environment entries are merged
+/// means the session is just the plain shell with no command. Environment entries are merged
 /// add-if-absent, so a value the console's own [session.environment] sets wins. HandlesStartupScript says
 /// the provider has arranged to run the console's startup script itself, so the host must not also type it
 /// into the pty: a runtime that discards pending input as it takes over the terminal (an interactive
@@ -17,7 +17,7 @@ public sealed record ConsoleStartupInvocation(
     bool HandlesStartupScript = false)
 {
     /// <summary>
-    /// The startup command that injects nothing, leaving the session at the shell prompt.
+    /// The startup command that runs nothing, leaving the session at the shell prompt.
     /// </summary>
     public static ConsoleStartupInvocation None { get; } = new(string.Empty, Array.Empty<string>());
 }
@@ -65,8 +65,8 @@ public sealed record ConsoleSessionType(
 
 /// <summary>
 /// Builds the startup command for one console session type. Every console session runs the platform shell
-/// in the shared console environment. A session type only decides what command, if any, is injected into
-/// that shell once it is up.
+/// in the shared console environment. A session type only decides what command, if any, runs in that shell
+/// once it is up.
 /// </summary>
 public interface IConsoleSessionProvider
 {

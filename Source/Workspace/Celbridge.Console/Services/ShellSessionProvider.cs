@@ -4,7 +4,7 @@ namespace Celbridge.Console.Services;
 
 /// <summary>
 /// The built-in "shell" session type. With no executable the session is just the platform shell; with one,
-/// the executable and its arguments are injected as a command once the shell is up.
+/// the executable and its arguments run as the console's command once the shell is up.
 /// </summary>
 public sealed class ShellSessionProvider : IConsoleSessionProvider
 {
