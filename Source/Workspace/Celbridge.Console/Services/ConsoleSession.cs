@@ -559,7 +559,7 @@ internal sealed class ConsoleSession : IDisposable
         }
 
         var fileSystem = _serviceProvider.GetRequiredService<ILocalFileSystem>();
-        var writeResult = await ConsoleStartupWriter.WriteAsync(fileSystem, projectDataFolderPath, config.UseShellProfile);
+        var writeResult = await ConsoleStartupWriter.WriteAsync(fileSystem, projectDataFolderPath, shell, config.UseShellProfile);
         if (writeResult.IsFailure)
         {
             _logger.LogError("The console starts without its start-up files: {Error}", writeResult.FirstErrorMessage);

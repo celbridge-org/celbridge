@@ -146,7 +146,7 @@ keeps working. `PythonEnvironmentFilter` holds the rule, and the installer's `uv
 it too. The console's own `[session.environment]` table always wins, over Celbridge's defaults and over
 the profile.
 
-The shell starts on start-up files that Celbridge generates into the project data folder, under
+The shell starts on start-up files that Celbridge generates for it into the project data folder, under
 `console/pass_through` or `console/clean`, before each console starts. zsh reads them through `ZDOTDIR` and
 bash through `--rcfile`. PowerShell receives its start-up on the command line, with `-NoProfile`, because
 an execution policy can refuse a script file. The files hold rules only. Every value they act on reaches

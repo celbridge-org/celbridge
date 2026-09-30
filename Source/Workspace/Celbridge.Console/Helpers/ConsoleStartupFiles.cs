@@ -62,20 +62,28 @@ public static class ConsoleStartupFiles
     };
 
     /// <summary>
-    /// The start-up files for one mode, for every shell a console runs.
+    /// The start-up files for one mode, for the shell a console runs. A shell with no start-up files gets none.
     /// </summary>
-    public static IReadOnlyList<ConsoleStartupFile> Generate(bool useShellProfile)
+    public static IReadOnlyList<ConsoleStartupFile> Generate(ConsoleShell shell, bool useShellProfile)
     {
         var files = new List<ConsoleStartupFile>();
 
-        foreach (var fileName in ZshFileNames)
+        if (shell.IsZsh)
         {
-            var content = BuildZshFile(fileName, useShellProfile);
-            files.Add(new ConsoleStartupFile($"{ZshFolder}/{fileName}", content));
+            foreach (var fileName in ZshFileNames)
+            {
+                var content = BuildZshFile(fileName, useShellProfile);
+                files.Add(new ConsoleStartupFile($"{ZshFolder}/{fileName}", content));
+            }
         }
-
-        files.Add(new ConsoleStartupFile(BashRcFile, BuildBashRc(useShellProfile)));
-        files.Add(new ConsoleStartupFile(PowerShellFile, BuildPowerShellStartup(useShellProfile)));
+        else if (shell.IsBash)
+        {
+            files.Add(new ConsoleStartupFile(BashRcFile, BuildBashRc(useShellProfile)));
+        }
+        else if (shell.Family == ConsoleShellFamily.PowerShell)
+        {
+            files.Add(new ConsoleStartupFile(PowerShellFile, BuildPowerShellStartup(useShellProfile)));
+        }
 
         return files;
     }

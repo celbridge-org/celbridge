@@ -3,8 +3,9 @@ using Celbridge.FileSystem;
 namespace Celbridge.Console.Helpers;
 
 /// <summary>
-/// Writes a mode's start-up files into the project data folder before a console starts, rewriting any that
-/// are missing or differ. An upgraded application or a deleted folder is then put right by the next console.
+/// Writes a mode's start-up files for a console's shell into the project data folder before the console
+/// starts, rewriting any that are missing or differ. An upgraded application or a deleted folder is then put
+/// right by the next console.
 /// </summary>
 public static class ConsoleStartupWriter
 {
@@ -14,11 +15,12 @@ public static class ConsoleStartupWriter
     private const string HistoryFolderName = "history";
 
     /// <summary>
-    /// Writes the start-up files for the mode and makes the history folder, and returns where they are.
+    /// Writes the shell's start-up files for the mode and makes the history folder, and returns where they are.
     /// </summary>
     public static async Task<Result<ConsoleStartupOptions>> WriteAsync(
         ILocalFileSystem fileSystem,
         string projectDataFolderPath,
+        ConsoleShell shell,
         bool useShellProfile)
     {
         var consoleFolder = Path.Combine(projectDataFolderPath, ConsoleFolderName);
@@ -32,13 +34,11 @@ public static class ConsoleStartupWriter
                 .WithErrors(historyResult);
         }
 
-        foreach (var file in ConsoleStartupFiles.Generate(useShellProfile))
+        foreach (var file in ConsoleStartupFiles.Generate(shell, useShellProfile))
         {
             var filePath = Path.Combine(modeFolder, file.RelativePath.Replace('/', Path.DirectorySeparatorChar));
 
-            var readResult = await fileSystem.ReadAllTextAsync(filePath);
-            if (readResult.IsSuccess &&
-                readResult.Value == file.Content)
+            if (await HoldsContentAsync(fileSystem, filePath, file.Content))
             {
                 continue;
             }
@@ -60,5 +60,22 @@ public static class ConsoleStartupWriter
 
         var options = new ConsoleStartupOptions(modeFolder, historyFolder, useShellProfile);
         return options;
+    }
+
+    // Whether the file already holds the content. A missing file is probed rather than read, since the read
+    // would throw an exception the debugger breaks on. The first console in a project finds every file missing.
+    private static async Task<bool> HoldsContentAsync(ILocalFileSystem fileSystem, string filePath, string content)
+    {
+        var infoResult = await fileSystem.GetInfoAsync(filePath);
+        var isFile = infoResult.IsSuccess &&
+            infoResult.Value.Kind == StorageItemKind.File;
+        if (!isFile)
+        {
+            return false;
+        }
+
+        var readResult = await fileSystem.ReadAllTextAsync(filePath);
+        return readResult.IsSuccess &&
+            readResult.Value == content;
     }
 }

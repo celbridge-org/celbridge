@@ -257,15 +257,16 @@ public class ConsoleStartupShellTests
             Assert.Ignore($"{executable} is not installed.");
         }
 
+        var shell = new ConsoleShell(executable, ConsoleShellFamily.Posix);
+
         var modeFolder = Path.Combine(_root, "data", "console", useShellProfile ? "pass_through" : "clean");
-        foreach (var file in ConsoleStartupFiles.Generate(useShellProfile))
+        foreach (var file in ConsoleStartupFiles.Generate(shell, useShellProfile))
         {
             var filePath = Path.Combine(modeFolder, file.RelativePath);
             Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
             File.WriteAllText(filePath, file.Content);
         }
 
-        var shell = new ConsoleShell(executable, ConsoleShellFamily.Posix);
         var options = new ConsoleStartupOptions(modeFolder, _historyFolder, useShellProfile)
         {
             CompactPrompt = compactPrompt,
