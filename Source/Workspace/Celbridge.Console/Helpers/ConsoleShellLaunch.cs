@@ -5,14 +5,23 @@ namespace Celbridge.Console.Helpers;
 
 /// <summary>
 /// What a console's start-up needs: the folder of generated files for its mode, the project's shell history
-/// folder, whether the user's profile runs, and the folder zsh would have read the user's own files from when
-/// the application inherited one.
+/// folder, and whether the user's profile runs.
 /// </summary>
 public sealed record ConsoleStartupOptions(
     string ModeFolder,
     string HistoryFolder,
-    bool UseShellProfile,
-    string? UserZdotdir);
+    bool UseShellProfile)
+{
+    /// <summary>
+    /// Whether the start-up replaces the shell's prompt with a compact one before every prompt.
+    /// </summary>
+    public bool CompactPrompt { get; init; }
+
+    /// <summary>
+    /// The folder zsh would have read the user's own files from, when the application inherited one.
+    /// </summary>
+    public string? UserZdotdir { get; init; }
+}
 
 /// <summary>
 /// How a console's shell is started: its command line, and the variables that point it at its start-up
@@ -30,6 +39,10 @@ public sealed record ConsoleShellLaunch(string CommandLine, IReadOnlyDictionary<
     public static ConsoleShellLaunch Build(ConsoleShell shell, ConsoleStartupOptions options)
     {
         var environment = new Dictionary<string, string>();
+        if (options.CompactPrompt)
+        {
+            environment[ConsoleStartupFiles.CompactPromptVariable] = "1";
+        }
 
         if (shell.IsZsh)
         {

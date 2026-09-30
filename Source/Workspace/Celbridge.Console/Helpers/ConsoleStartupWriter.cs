@@ -58,7 +58,7 @@ public static class ConsoleStartupWriter
             }
         }
 
-        var options = new ConsoleStartupOptions(modeFolder, historyFolder, useShellProfile, UserZdotdir: null);
+        var options = new ConsoleStartupOptions(modeFolder, historyFolder, useShellProfile);
         return options;
     }
 }

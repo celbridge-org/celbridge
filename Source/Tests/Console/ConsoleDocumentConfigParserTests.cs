@@ -44,6 +44,19 @@ public class ConsoleDocumentConfigParserTests
     }
 
     [Test]
+    public void Parse_CompactPrompt_IsOnUnlessTurnedOff()
+    {
+        Parse("[session]\ntype = \"shell\"").Value.CompactPrompt.Should().BeTrue();
+        Parse("[session]\ncompact_prompt = true").Value.CompactPrompt.Should().BeTrue();
+
+        var result = Parse("[session]\ncompact_prompt = false");
+
+        result.IsFailure.Should().BeFalse();
+        result.Value.CompactPrompt.Should().BeFalse();
+        result.Value.UnknownFields.Should().BeEmpty();
+    }
+
+    [Test]
     public void Parse_EmptyText_YieldsTheDefaultShellConfig()
     {
         var result = Parse(string.Empty);

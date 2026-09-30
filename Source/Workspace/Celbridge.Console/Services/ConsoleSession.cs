@@ -344,7 +344,7 @@ internal sealed class ConsoleSession : IDisposable
         launchEnvironment[ConsoleStartupFiles.RestoreVariable] = BuildRestoreList(environmentCopy);
 
         var userZdotdir = inheritedEnvironment.GetValueOrDefault("ZDOTDIR");
-        var shellLaunch = await BuildShellLaunchAsync(shell, config.UseShellProfile, userZdotdir);
+        var shellLaunch = await BuildShellLaunchAsync(shell, config, userZdotdir);
         foreach (var pair in shellLaunch.Environment)
         {
             launchEnvironment[pair.Key] = pair.Value;
@@ -547,7 +547,7 @@ internal sealed class ConsoleSession : IDisposable
     // the project data folder first. A shell whose files cannot be written starts without them.
     private async Task<ConsoleShellLaunch> BuildShellLaunchAsync(
         ConsoleShell shell,
-        bool useShellProfile,
+        ConsoleDocumentConfig config,
         string? userZdotdir)
     {
         var projectDataFolderPath = _serviceProvider.GetRequiredService<IProjectService>()
@@ -559,7 +559,7 @@ internal sealed class ConsoleSession : IDisposable
         }
 
         var fileSystem = _serviceProvider.GetRequiredService<ILocalFileSystem>();
-        var writeResult = await ConsoleStartupWriter.WriteAsync(fileSystem, projectDataFolderPath, useShellProfile);
+        var writeResult = await ConsoleStartupWriter.WriteAsync(fileSystem, projectDataFolderPath, config.UseShellProfile);
         if (writeResult.IsFailure)
         {
             _logger.LogError("The console starts without its start-up files: {Error}", writeResult.FirstErrorMessage);
@@ -568,6 +568,7 @@ internal sealed class ConsoleSession : IDisposable
 
         var options = writeResult.Value with
         {
+            CompactPrompt = config.CompactPrompt,
             UserZdotdir = userZdotdir
         };
 

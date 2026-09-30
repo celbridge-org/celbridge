@@ -19,6 +19,7 @@ describe('defaultConsoleConfig', () => {
             type: 'shell',
             workingDirectory: '',
             useShellProfile: true,
+            compactPrompt: true,
             optionsBySessionType: {},
             environment: {},
             runners: [],
@@ -48,6 +49,7 @@ describe('parseConsoleToml', () => {
             type: 'shell',
             workingDirectory: 'tools',
             useShellProfile: true,
+            compactPrompt: true,
             optionsBySessionType: {
                 shell: { executable: 'pwsh', arguments: ['-NoLogo', '-NoProfile'] },
             },
@@ -147,6 +149,12 @@ describe('parseConsoleToml', () => {
 
     it('throws on a use_shell_profile that is not a boolean', () => {
         expect(() => parse('[session]\nuse_shell_profile = "no"')).toThrow(/Invalid boolean/);
+    });
+
+    it('reads compact_prompt, on unless the file turns it off', () => {
+        expect(parse('[session]\ntype = "shell"').compactPrompt).toBe(true);
+        expect(parse('[session]\ncompact_prompt = false').compactPrompt).toBe(false);
+        expect(parse('[session]\ncompact_prompt = true').compactPrompt).toBe(true);
     });
 
     it('parses disabled_runners', () => {
@@ -278,6 +286,14 @@ describe('serializeConsoleToml', () => {
         expect(parse(toml).useShellProfile).toBe(false);
     });
 
+    it('writes compact_prompt only when it is off', () => {
+        expect(serializeConsoleToml(defaultConsoleConfig())).not.toContain('compact_prompt');
+
+        const toml = serializeConsoleToml({ ...defaultConsoleConfig(), compactPrompt: false });
+        expect(toml).toContain('compact_prompt = false');
+        expect(parse(toml).compactPrompt).toBe(false);
+    });
+
     it('omits a type table whose keys are all empty', () => {
         const config = { ...defaultConsoleConfig(), optionsBySessionType: { shell: { executable: '', arguments: [] } } };
         expect(serializeConsoleToml(config)).not.toContain('session.shell');
@@ -371,6 +387,7 @@ describe('round-trip', () => {
             type: 'python',
             workingDirectory: 'tools',
             useShellProfile: false,
+            compactPrompt: false,
             optionsBySessionType: {
                 python: {
                     python_version: '3.13',

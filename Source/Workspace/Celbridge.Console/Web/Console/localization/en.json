@@ -39,6 +39,7 @@
     "Console_Field_WorkingDirectory": "Working Directory",
     "Console_Field_Environment": "Environment Variables",
     "Console_Field_UseShellProfile": "Use My Shell Profile",
+    "Console_Field_CompactPrompt": "Compact Prompt",
     "Console_Field_Script": "Script",
 
     "Console_Field_RunnerExtensions": "Extensions",
@@ -89,6 +90,7 @@
     "Console_Hint_PythonScript": "Runs once the session is ready. Example: import numpy as np",
     "Console_Hint_Environment": "Injected before launch. Example: PYTHONWARNINGS=default",
     "Console_Hint_UseShellProfile": "Runs your shell's start-up files and passes on your environment variables. Turn off for a clean shell.",
+    "Console_Hint_CompactPrompt": "Shortens the prompt to the current folder's name. Turn off to keep your own prompt.",
     "Console_Hint_RunnerExtensions": "Example: .py, .ipy",
     "Console_Hint_RunnerCommand": "{resource} is the path of the file being run. Example: %run \"{resource}\"",
     "Console_Hint_TriggerPattern": "Matched against project paths. Examples: data/**/*.xlsx, *.py",

@@ -16,16 +16,11 @@ public class ShellCommandComposerTests
     private const string PosixReveal = @"clear; printf '\033]7000;CELBRIDGE-CONSOLE-READY\007'; ";
     private const string CmdReveal = "cls & ";
 
-    // Bash stands in for the POSIX family wherever the expectation is about quoting or the marker, so
-    // only the prompt tests carry the zsh prompt default.
+    // Bash stands in for the POSIX family wherever the expectation is about quoting or the marker.
     private static readonly ConsoleShell PowerShell = new("powershell.exe", ConsoleShellFamily.PowerShell);
     private static readonly ConsoleShell Bash = new("/bin/bash", ConsoleShellFamily.Posix);
     private static readonly ConsoleShell Zsh = new("/bin/zsh", ConsoleShellFamily.Posix);
     private static readonly ConsoleShell Cmd = new("cmd.exe", ConsoleShellFamily.Cmd);
-
-    private const string ZshPromptDefault =
-        @"if [[ $PROMPT == '%n@%m %1~ %# ' ]]; then PROMPT='%F{cyan}%1~%f %# '; fi; ";
-    private const string ZshReveal = PosixReveal + ZshPromptDefault;
 
     private static ConsoleStartupInvocation Command(string executable, params string[] arguments)
     {
@@ -282,43 +277,14 @@ public class ShellCommandComposerTests
     }
 
     [Test]
-    public void Compose_ZshPrompt_ReplacesTheStockPromptUnderZshOnly()
+    public void Compose_Zsh_TypesTheSameLineAsBash()
     {
-        // The POSIX family shares a quoting dialect, but this syntax is zsh's own.
-        var command = Command("celbridge-py");
-
-        ShellCommandComposer.Compose(Zsh, command).Line
-            .Should().Be(ZshReveal + "celbridge-py");
-        ShellCommandComposer.Compose(Bash, command).Line
-            .Should().Be(PosixReveal + "celbridge-py");
-    }
-
-    [Test]
-    public void Compose_ZshPrompt_GuardMatchesTheStockMacOSPrompt()
-    {
-        // The exact prompt macOS sets in /etc/zshrc. A prompt set anywhere else fails this comparison,
-        // which is what leaves a customized prompt alone.
-        const string stockPrompt = "%n@%m %1~ %# ";
-
-        ShellCommandComposer.Compose(Zsh, ConsoleStartupInvocation.None).Line
-            .Should().Contain($"[[ $PROMPT == '{stockPrompt}' ]]");
-    }
-
-    [Test]
-    public void Compose_ZshPrompt_PlainShellRevealsWithTheCompactPrompt()
-    {
-        var composed = ShellCommandComposer.Compose(Zsh, ConsoleStartupInvocation.None);
-
-        composed.Line.Should().Be(ZshReveal.TrimEnd());
-        composed.ScanMarker.Should().Be($"{Escape}]7000;{PosixMarkerText}{Bell}");
-    }
-
-    [Test]
-    public void Compose_ZshPrompt_PrecedesTheWorkingDirectoryChange()
-    {
+        // The start-up files own the prompt, so the typed line leaves it alone in every POSIX shell.
         var command = Command("celbridge-py");
 
         ShellCommandComposer.Compose(Zsh, command, "/home/demo").Line
-            .Should().Be(ZshReveal + "cd '/home/demo'; celbridge-py");
+            .Should().Be(ShellCommandComposer.Compose(Bash, command, "/home/demo").Line);
+        ShellCommandComposer.Compose(Zsh, ConsoleStartupInvocation.None).Line
+            .Should().Be(PosixReveal.TrimEnd());
     }
 }

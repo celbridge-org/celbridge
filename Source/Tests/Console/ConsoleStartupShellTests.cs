@@ -8,8 +8,8 @@ namespace Celbridge.Tests.Console;
 
 /// <summary>
 /// Starts real shells on the generated start-up files, with a hostile environment and a decoy profile in a
-/// decoy home, and reads back what the first prompt sees. Each check prints its result through printf, so the
-/// shell's echo of the command, which carries the format string, never matches.
+/// decoy home, and reads back what the first prompt sees, and the prompt at a later one. Each check prints its
+/// result through printf, so the shell's echo of the command, which carries the format string, never matches.
 /// </summary>
 [TestFixture]
 public class ConsoleStartupShellTests
@@ -17,6 +17,7 @@ public class ConsoleStartupShellTests
     private const string CelbridgeBin = "/celbridge/bin";
     private const string CelbridgeToolBin = "/celbridge/uv_bin";
     private const string CelbridgeCache = "/celbridge/cache";
+    private const string DecoyPrompt = "decoy> ";
 
     private static readonly Regex ResultPattern = new(@"CELTEST (\w+)=(.*)$", RegexOptions.Multiline);
 
@@ -33,8 +34,8 @@ public class ConsoleStartupShellTests
         Directory.CreateDirectory(_home);
         Directory.CreateDirectory(_historyFolder);
 
-        WriteDecoyProfile(Path.Combine(_home, ".zshrc"), "typeset -U path PATH\n");
-        WriteDecoyProfile(Path.Combine(_home, ".bash_profile"), "PROMPT_COMMAND=\"history -a;\"\n");
+        WriteDecoyProfile(Path.Combine(_home, ".zshrc"), "typeset -U path PATH\nprecmd_functions+=(decoy_prompt)\n");
+        WriteDecoyProfile(Path.Combine(_home, ".bash_profile"), "PROMPT_COMMAND=\"decoy_prompt; history -a;\"\n");
     }
 
     [TearDown]
@@ -103,6 +104,29 @@ public class ConsoleStartupShellTests
         historyText.Should().Contain("celbridge-history-marker");
     }
 
+    // The decoy profile resets its own prompt before each prompt, as a prompt framework does.
+    [TestCase("zsh", true, "%F{cyan}%1~%f %# ")]
+    [TestCase("zsh", false, "%F{cyan}%1~%f %# ")]
+    [TestCase("bash", true, @"\[\e[36m\]\W\[\e[m\] \$ ")]
+    [TestCase("bash", false, @"\[\e[36m\]\W\[\e[m\] \$ ")]
+    public void CompactPrompt_IsSetBeforeEveryPrompt(string shellName, bool useShellProfile, string compactPrompt)
+    {
+        var results = RunShell(shellName, useShellProfile);
+
+        results["FIRST_PROMPT"].Should().Be(compactPrompt);
+        results["LATER_PROMPT"].Should().Be(compactPrompt, "the compact prompt is set after the profile's own hook");
+    }
+
+    [TestCase("zsh")]
+    [TestCase("bash")]
+    public void CompactPromptOff_LeavesTheProfilesPrompt(string shellName)
+    {
+        var results = RunShell(shellName, useShellProfile: true, compactPrompt: false);
+
+        results["FIRST_PROMPT"].Should().Be(DecoyPrompt);
+        results["LATER_PROMPT"].Should().Be(DecoyPrompt);
+    }
+
     [Test]
     public void Zsh_UserZdotdir_IsReadAndHandedBack()
     {
@@ -144,24 +168,13 @@ public class ConsoleStartupShellTests
             "CELTEST CELBRIDGE_PY_FUNCTION=$(Test-Path Function:celbridge-py)"
             "CELTEST RESTORE=$env:CELBRIDGE_CONSOLE_RESTORE"
             """;
-        var encodedScript = Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
-
-        var startInfo = new ProcessStartInfo("powershell.exe")
+        var results = RunPowerShell(script, new Dictionary<string, string>
         {
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-        };
-        foreach (var argument in new[] { "-NoLogo", "-NoProfile", "-NonInteractive", "-EncodedCommand", encodedScript })
-        {
-            startInfo.ArgumentList.Add(argument);
-        }
-        startInfo.Environment["UV_CACHE_DIR"] = @"C:\celbridge\cache";
-        startInfo.Environment["MY_TABLE"] = "table";
-        startInfo.Environment[ConsoleStartupFiles.RestoreVariable] = "MY_TABLE UV_CACHE_DIR";
-        startInfo.Environment[ConsoleEnvironmentVariables.PathFolders] = @"C:\celbridge\bin;C:\celbridge\uv_bin";
-
-        var results = Run(startInfo, standardInput: null);
+            ["UV_CACHE_DIR"] = @"C:\celbridge\cache",
+            ["MY_TABLE"] = "table",
+            [ConsoleStartupFiles.RestoreVariable] = "MY_TABLE UV_CACHE_DIR",
+            [ConsoleEnvironmentVariables.PathFolders] = @"C:\celbridge\bin;C:\celbridge\uv_bin",
+        });
 
         results["VIRTUAL_ENV"].Should().BeEmpty();
         results["UV_CACHE_DIR"].Should().Be(@"C:\celbridge\cache");
@@ -173,11 +186,49 @@ public class ConsoleStartupShellTests
         results["RESTORE"].Should().BeEmpty();
     }
 
-    // A profile that would steer uv and Python away from Celbridge's install if it won, with a line of shell
-    // specific set-up first.
+    [TestCase(true, "PS work> ")]
+    [TestCase(false, DecoyPrompt)]
+    public void PowerShell_Prompt_IsCompactUnlessTurnedOff(bool compactPrompt, string expected)
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Ignore("PowerShell consoles run on Windows only.");
+        }
+
+        var profilePath = Path.Combine(_root, "profile.ps1");
+        File.WriteAllText(profilePath, $"function global:prompt {{ '{DecoyPrompt}' }}\n");
+        var workFolder = Path.Combine(_root, "work");
+        Directory.CreateDirectory(workFolder);
+
+        // $PROFILE names the decoy profile alone, which the start-up then loads as it would the user's own.
+        var script = $$"""
+            $PROFILE = [pscustomobject]@{ AllUsersAllHosts = $null; AllUsersCurrentHost = $null; CurrentUserAllHosts = '{{PowerShellQuote(profilePath)}}'; CurrentUserCurrentHost = $null }
+            Set-Location -LiteralPath '{{PowerShellQuote(workFolder)}}'
+
+            """ + ConsoleStartupFiles.BuildPowerShellStartup(useShellProfile: true) + """
+
+            "CELTEST FIRST_PROMPT=$(prompt)"
+            "CELTEST LATER_PROMPT=$(prompt)"
+            """;
+
+        var environment = new Dictionary<string, string>();
+        if (compactPrompt)
+        {
+            environment[ConsoleStartupFiles.CompactPromptVariable] = "1";
+        }
+
+        var results = RunPowerShell(script, environment);
+
+        results["FIRST_PROMPT"].Should().Be(expected);
+        results["LATER_PROMPT"].Should().Be(expected);
+    }
+
+    // A profile that would steer uv and Python away from Celbridge's install if it won, and sets its own prompt
+    // before each prompt, with shell specific set-up first.
     private void WriteDecoyProfile(string path, string shellSpecific)
     {
         var profile = shellSpecific +
+            $"decoy_prompt() {{ PS1='{DecoyPrompt}'; }}\n" +
             "export PATH=/decoy/bin:$PATH\n" +
             "export VIRTUAL_ENV=/decoy/venv UV_CACHE_DIR=/decoy/cache UV_PYTHON=/decoy/python\n" +
             "export UV_INDEX_URL=https://mirror.example PYTHONPATH=/decoy/pythonpath\n" +
@@ -192,7 +243,8 @@ public class ConsoleStartupShellTests
         string shellName,
         bool useShellProfile,
         string extraCommand = "",
-        string? userZdotdir = null)
+        string? userZdotdir = null,
+        bool compactPrompt = true)
     {
         if (OperatingSystem.IsWindows())
         {
@@ -214,7 +266,11 @@ public class ConsoleStartupShellTests
         }
 
         var shell = new ConsoleShell(executable, ConsoleShellFamily.Posix);
-        var options = new ConsoleStartupOptions(modeFolder, _historyFolder, useShellProfile, userZdotdir);
+        var options = new ConsoleStartupOptions(modeFolder, _historyFolder, useShellProfile)
+        {
+            CompactPrompt = compactPrompt,
+            UserZdotdir = userZdotdir,
+        };
         var launch = ConsoleShellLaunch.Build(shell, options);
 
         // Input from a pipe rather than a terminal, so the shell is told it is interactive.
@@ -257,13 +313,16 @@ public class ConsoleStartupShellTests
             "ZDOTDIR",
             "CELBRIDGE_CONSOLE_RESTORE",
         };
+        // zsh's PS1 is its PROMPT. The first line runs at the first prompt, and each line after at a new one.
         var input = new StringBuilder();
+        input.Append("printf 'CEL%s %s=%s\\n' TEST FIRST_PROMPT \"$PS1\"\n");
         foreach (var name in names)
         {
             input.Append($"printf 'CEL%s %s=%s\\n' TEST {name} \"${{{name}-<unset>}}\"\n");
         }
         input.Append("printf 'CEL%s %s=%s\\n' TEST UV_COMMAND \"$(command -v uv)\"\n");
         input.Append("printf 'CEL%s %s=%s\\n' TEST CELBRIDGE_PY_COMMAND \"$(command -v celbridge-py)\"\n");
+        input.Append("printf 'CEL%s %s=%s\\n' TEST LATER_PROMPT \"$PS1\"\n");
         if (!string.IsNullOrEmpty(extraCommand))
         {
             input.Append(extraCommand + "\n");
@@ -271,6 +330,33 @@ public class ConsoleStartupShellTests
         input.Append("exit\n");
 
         return Run(startInfo, input.ToString());
+    }
+
+    private static Dictionary<string, string> RunPowerShell(string script, IReadOnlyDictionary<string, string> environment)
+    {
+        var encodedScript = Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
+
+        var startInfo = new ProcessStartInfo("powershell.exe")
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+        foreach (var argument in new[] { "-NoLogo", "-NoProfile", "-NonInteractive", "-EncodedCommand", encodedScript })
+        {
+            startInfo.ArgumentList.Add(argument);
+        }
+        foreach (var pair in environment)
+        {
+            startInfo.Environment[pair.Key] = pair.Value;
+        }
+
+        return Run(startInfo, standardInput: null);
+    }
+
+    private static string PowerShellQuote(string text)
+    {
+        return text.Replace("'", "''");
     }
 
     private static Dictionary<string, string> Run(ProcessStartInfo startInfo, string? standardInput)

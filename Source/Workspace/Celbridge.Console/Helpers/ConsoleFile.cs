@@ -58,6 +58,9 @@ internal sealed record ConsoleSessionSection
     // Whether the shell runs the user's own start-up files. Absent means it does.
     public bool? UseShellProfile { get; init; }
 
+    // Whether the console replaces the shell's prompt with a compact one. Absent means it does.
+    public bool? CompactPrompt { get; init; }
+
     // Built-in runner ids the document opts out of.
     public List<string>? DisabledRunners { get; init; }
 

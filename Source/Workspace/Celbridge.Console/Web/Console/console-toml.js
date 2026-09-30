@@ -29,6 +29,7 @@
  * @property {string} type
  * @property {string} workingDirectory
  * @property {boolean} useShellProfile whether the shell runs the user's own start-up files
+ * @property {boolean} compactPrompt whether the console replaces the shell's prompt with a compact one
  * @property {Object<string,Object<string,(string|string[])>>} optionsBySessionType each type's own table, keyed by type id
  * @property {Object<string,string>} environment
  * @property {ConsoleRunner[]} runners
@@ -43,6 +44,7 @@ export function defaultConsoleConfig() {
         type: 'shell',
         workingDirectory: '',
         useShellProfile: true,
+        compactPrompt: true,
         optionsBySessionType: {},
         environment: {},
         runners: [],
@@ -146,9 +148,12 @@ export function serializeConsoleToml(config) {
     if (config.workingDirectory) {
         lines.push(`working_directory = ${quote(config.workingDirectory)}`);
     }
-    // On is the default, so only a console that turns it off writes the key.
+    // On is the default for both, so only a console that turns one off writes its key.
     if (config.useShellProfile === false) {
         lines.push('use_shell_profile = false');
+    }
+    if (config.compactPrompt === false) {
+        lines.push('compact_prompt = false');
     }
     if (config.disabledBuiltInRunners && config.disabledBuiltInRunners.length > 0) {
         lines.push(`disabled_runners = [${config.disabledBuiltInRunners.map(quote).join(', ')}]`);
@@ -268,6 +273,8 @@ function assignValue(config, section, currentTable, key, rawValue, sessionTypeId
             config.workingDirectory = parseScalar(rawValue);
         } else if (key === 'use_shell_profile') {
             config.useShellProfile = parseBoolean(rawValue);
+        } else if (key === 'compact_prompt') {
+            config.compactPrompt = parseBoolean(rawValue);
         } else if (key === 'disabled_runners') {
             config.disabledBuiltInRunners = parseArray(rawValue);
         }

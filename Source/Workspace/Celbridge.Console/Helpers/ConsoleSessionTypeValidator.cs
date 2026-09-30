@@ -20,6 +20,8 @@ public static class ConsoleSessionTypeValidator
     {
         "type",
         "working_directory",
+        "use_shell_profile",
+        "compact_prompt",
         "disabled_runners",
         "environment",
         "runner",

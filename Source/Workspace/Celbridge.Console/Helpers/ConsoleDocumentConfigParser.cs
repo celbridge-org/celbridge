@@ -37,6 +37,12 @@ public sealed record ConsoleDocumentConfig(
     /// application inherited. Off, it starts clean. On unless the document turns it off.
     /// </summary>
     public bool UseShellProfile { get; init; } = true;
+
+    /// <summary>
+    /// Whether the console replaces the shell's prompt with a compact one before every prompt. Off, nothing
+    /// touches the prompt. On unless the document turns it off.
+    /// </summary>
+    public bool CompactPrompt { get; init; } = true;
 }
 
 /// <summary>
@@ -121,6 +127,7 @@ public static class ConsoleDocumentConfigParser
         {
             UnknownFields = CollectUnknownFields(document, optionKeysBySessionType),
             UseShellProfile = session?.UseShellProfile ?? true,
+            CompactPrompt = session?.CompactPrompt ?? true,
         };
 
         return config;

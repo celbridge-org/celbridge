@@ -157,6 +157,11 @@ the first prompt, after any prompt hook the user's files installed. It applies t
 Celbridge's values and the console's own, moves Celbridge's folders back to the front of PATH, and removes
 any alias or function named `uv`, `uvx` or `celbridge-py`.
 
+The files also own the prompt while `compact_prompt` is on, as it is unless the document turns it off. The
+settings form labels it "Compact Prompt". A hook registered after every other prompt hook sets a compact
+prompt before every prompt, showing the working folder's name, so a prompt framework that rebuilds its own
+prompt each time does not win it back. With it off, nothing touches the prompt.
+
 Consoles run zsh or bash, whichever is the user's `$SHELL`, and otherwise the platform's default: zsh on
 macOS and bash on Linux. Windows runs PowerShell.
 
