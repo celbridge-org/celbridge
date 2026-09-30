@@ -276,36 +276,37 @@ internal sealed class UnixPtyTerminal : IPtyBackend
     }
 
     /// <summary>
-    /// Builds the null-terminated environment array for posix_spawn: the current process environment
-    /// merged with the provided variables (which take precedence), plus a default TERM so the child
-    /// behaves as an interactive terminal.
+    /// Builds the null-terminated environment array for posix_spawn: the given environment, or this process's
+    /// when none is given, plus a default TERM so the child behaves as an interactive terminal.
     /// </summary>
     private static string?[] BuildEnvironmentArray(Dictionary<string, string>? environmentVariables)
     {
-        var mergedEnvironment = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (System.Collections.DictionaryEntry entry in Environment.GetEnvironmentVariables())
-        {
-            if (entry.Key is string key
-                && entry.Value is string value)
-            {
-                mergedEnvironment[key] = value;
-            }
-        }
-
+        var environment = new Dictionary<string, string>(StringComparer.Ordinal);
         if (environmentVariables is not null)
         {
             foreach (var entry in environmentVariables)
             {
-                mergedEnvironment[entry.Key] = entry.Value;
+                environment[entry.Key] = entry.Value;
+            }
+        }
+        else
+        {
+            foreach (System.Collections.DictionaryEntry entry in Environment.GetEnvironmentVariables())
+            {
+                if (entry.Key is string key
+                    && entry.Value is string value)
+                {
+                    environment[key] = value;
+                }
             }
         }
 
-        if (!mergedEnvironment.ContainsKey("TERM"))
+        if (!environment.ContainsKey("TERM"))
         {
-            mergedEnvironment["TERM"] = "xterm-256color";
+            environment["TERM"] = "xterm-256color";
         }
 
-        var entries = mergedEnvironment
+        var entries = environment
             .Select(pair => $"{pair.Key}={pair.Value}")
             .Cast<string?>()
             .ToList();

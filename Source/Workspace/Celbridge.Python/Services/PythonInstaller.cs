@@ -95,7 +95,7 @@ public class PythonInstaller : IPythonInstaller
     // The command the tool install publishes, and the tool environment's own interpreter. Both are checked
     // before an install is treated as current, because the marker describes what was installed and not what
     // survived.
-    private string CelbridgeToolCommandPath => Path.Combine(
+    public string CelbridgeToolCommandPath => Path.Combine(
         UvToolBinFolderPath,
         OperatingSystem.IsWindows() ? $"{CelbridgeToolCommand}.exe" : CelbridgeToolCommand);
 
@@ -591,15 +591,7 @@ public class PythonInstaller : IPythonInstaller
             RedirectStandardError = true
         };
 
-        var toolInstallArguments = new[]
-        {
-            "tool",
-            "install",
-            "--force",
-            "--python", pythonVersion,
-            "--managed-python",
-            celbridgeWheelPath,
-        };
+        var toolInstallArguments = BuildToolInstallArguments(pythonVersion, celbridgeWheelPath);
         foreach (var argument in toolInstallArguments)
         {
             processStartInfo.ArgumentList.Add(argument);
@@ -607,14 +599,13 @@ public class PythonInstaller : IPythonInstaller
 
         _logger.LogDebug("uv tool install command: {FileName} {Arguments}", uvExePath, string.Join(' ', toolInstallArguments));
 
-        processStartInfo.Environment["UV_TOOL_DIR"] = UvToolsFolderPath;
-        processStartInfo.Environment["UV_TOOL_BIN_DIR"] = UvToolBinFolderPath;
-        processStartInfo.Environment["UV_PYTHON_INSTALL_DIR"] = UvPythonInstallFolderPath;
-        processStartInfo.Environment["UV_CACHE_DIR"] = UvCacheFolderPath;
-
-        // uv rejects --managed-python outright when this is set, and the child inherits the environment
-        // this process was launched with. The bootstrap shim drops it for the same reason.
-        processStartInfo.Environment.Remove("UV_PYTHON_PREFERENCE");
+        var removedNames = PrepareToolInstallEnvironment(processStartInfo.Environment);
+        if (removedNames.Count > 0)
+        {
+            _logger.LogInformation(
+                "Left the inherited uv and Python variables out of the tool install: {Names}",
+                string.Join(", ", removedNames));
+        }
 
         var installTimer = Stopwatch.StartNew();
 
@@ -674,6 +665,39 @@ public class PythonInstaller : IPythonInstaller
         }
 
         _logger.LogInformation("celbridge tool installed successfully in {DurationMs}ms", installTimer.ElapsedMilliseconds);
+    }
+
+    // No configuration file is read, so a user's uv.toml can neither stop the install nor change what it
+    // installs.
+    internal static IReadOnlyList<string> BuildToolInstallArguments(string pythonVersion, string wheelPath)
+    {
+        var arguments = new List<string>
+        {
+            "tool",
+            "install",
+            "--force",
+            "--no-config",
+            "--python", pythonVersion,
+            "--managed-python",
+            wheelPath,
+        };
+
+        return arguments;
+    }
+
+    // The environment the application inherited, less the variables that steer uv or Python, with the
+    // install's own folders on top. Returns the names it removed. The filter also takes UV_PYTHON_PREFERENCE,
+    // which uv refuses alongside --managed-python.
+    internal IReadOnlyList<string> PrepareToolInstallEnvironment(IDictionary<string, string?> environment)
+    {
+        var removedNames = PythonEnvironmentFilter.Apply(environment);
+
+        environment["UV_TOOL_DIR"] = UvToolsFolderPath;
+        environment["UV_TOOL_BIN_DIR"] = UvToolBinFolderPath;
+        environment["UV_PYTHON_INSTALL_DIR"] = UvPythonInstallFolderPath;
+        environment["UV_CACHE_DIR"] = UvCacheFolderPath;
+
+        return removedNames;
     }
 
     private async Task<Result<string>> FindWheelFileAsync(string folderPath)

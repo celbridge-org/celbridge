@@ -26,10 +26,10 @@ public sealed record PythonStartupResult(
 
 /// <summary>
 /// Builds the startup command and shared environment for Python sessions, owning all the Python-specific
-/// launch machinery. The injected command is a bare celbridge-py; the console's interpreter version and
-/// dependencies ride per-console environment variables that the tool reads as launch defaults, so retyping
-/// celbridge-py after exiting the REPL reproduces the same environment. The uv and wheel locations ride the
-/// shared console environment.
+/// launch machinery. The injected command is the installed celbridge-py by its full path, so nothing on the
+/// shell's PATH can stand in for it. The console's interpreter version and dependencies ride per-console
+/// environment variables that the tool reads as launch defaults, so retyping celbridge-py after exiting the
+/// REPL reproduces the same environment. The uv and wheel locations ride the shared console environment.
 /// </summary>
 public interface IPythonLaunchService
 {
@@ -59,7 +59,6 @@ public sealed class PythonLaunchService : IPythonLaunchService
 {
     private const int LoginShellPathTimeoutMs = 5000;
 
-    private const string CelbridgeToolCommand = "celbridge-py";
     private const string ProjectUvToolsFolderName = "uv_tools";
     private const string ProjectUvBinFolderName = "uv_bin";
     private const string IPythonProfileFolderName = "ipython";
@@ -128,11 +127,10 @@ public sealed class PythonLaunchService : IPythonLaunchService
             .Where(dependency => !string.IsNullOrWhiteSpace(dependency))
             .ToList();
 
-        // The injected command is a bare celbridge-py; these per-console variables are the launch
-        // defaults it reads, making the tool re-exec through uv (located via the shared console
-        // environment) with this console's interpreter and packages. Dependencies are newline-separated
-        // because PEP 508 specifiers can contain commas and semicolons. Offline mode is not among them:
-        // celbridge-py measures the cache itself at launch.
+        // These per-console variables are the launch defaults the injected celbridge-py reads, making it
+        // re-exec through uv (located via the shared console environment) with this console's interpreter and
+        // packages. Dependencies are newline-separated because PEP 508 specifiers can contain commas and
+        // semicolons. Offline mode is not among them: celbridge-py measures the cache itself at launch.
         var startupEnvironment = new Dictionary<string, string>
         {
             ["CELBRIDGE_PYTHON_VERSION"] = request.PythonVersion,
@@ -143,12 +141,14 @@ public sealed class PythonLaunchService : IPythonLaunchService
             startupEnvironment["CELBRIDGE_PYTHON_WITH"] = string.Join('\n', dependencies);
         }
 
+        var celbridgeToolCommand = _pythonInstaller.CelbridgeToolCommandPath;
+
         _logger.LogDebug("Built Python startup in {DurationMs}ms: {Command} with launch defaults {Environment}",
             startupTimer.ElapsedMilliseconds,
-            CelbridgeToolCommand,
+            celbridgeToolCommand,
             string.Join(' ', startupEnvironment.Select(pair => $"{pair.Key}={pair.Value.Replace('\n', ';')}")));
 
-        var result = new PythonStartupResult(CelbridgeToolCommand, startupEnvironment);
+        var result = new PythonStartupResult(celbridgeToolCommand, startupEnvironment);
         return result;
     }
 
@@ -212,6 +212,10 @@ public sealed class PythonLaunchService : IPythonLaunchService
             ["UV_PYTHON_INSTALL_DIR"] = _pythonInstaller.UvPythonInstallFolderPath,
             ["UV_TOOL_DIR"] = ProjectUvToolsFolder,
             ["UV_TOOL_BIN_DIR"] = ProjectUvBinFolder,
+
+            // Where a typed uv python install links the interpreters it installs, which uv otherwise puts in
+            // the user's own ~/.local/bin.
+            ["UV_PYTHON_BIN_DIR"] = ProjectUvBinFolder,
 
             // A bare uv venv downloads the interpreter it needs into the project. Left to uv's default it
             // would take whatever Python the host happens to carry, which on macOS is Xcode's 3.9. This is

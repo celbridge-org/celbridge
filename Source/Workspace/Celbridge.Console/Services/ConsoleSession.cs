@@ -302,16 +302,26 @@ internal sealed class ConsoleSession : IDisposable
             }
         }
 
+        // A console starts from the environment the application inherited, less what the contributors filter
+        // out, so nothing from however Celbridge was launched can undo what they set up.
+        var launchEnvironment = ReadInheritedEnvironment();
+
         foreach (var contributor in _serviceProvider.GetServices<IConsoleEnvironmentContributor>())
         {
             try
             {
+                contributor.FilterInheritedEnvironment(launchEnvironment);
                 await contributor.ContributeAsync(sessionContext, environmentCopy);
             }
             catch (Exception exception)
             {
                 _logger.LogError(exception, "A console environment contributor failed; launching without its variables");
             }
+        }
+
+        foreach (var pair in environmentCopy)
+        {
+            launchEnvironment[pair.Key] = pair.Value;
         }
 
         // Gate input before the pty starts, so nothing typed can reach the shell prompt ahead of the
@@ -336,7 +346,7 @@ internal sealed class ConsoleSession : IDisposable
 
         try
         {
-            terminal.Start(shellCommandLine, workingDirectory, environmentCopy);
+            terminal.Start(shellCommandLine, workingDirectory, launchEnvironment);
         }
         catch (Exception exception)
         {
@@ -505,6 +515,25 @@ internal sealed class ConsoleSession : IDisposable
 
         terminal.SetSize(cols, rows);
         _terminalSize = new TerminalSize(cols, rows);
+    }
+
+    // Names are case-insensitive on Windows, so a console's PATH replaces an inherited Path rather than
+    // sitting beside it.
+    private static Dictionary<string, string> ReadInheritedEnvironment()
+    {
+        var comparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        var environment = new Dictionary<string, string>(comparer);
+
+        foreach (System.Collections.DictionaryEntry entry in Environment.GetEnvironmentVariables())
+        {
+            if (entry.Key is string key &&
+                entry.Value is string value)
+            {
+                environment[key] = value;
+            }
+        }
+
+        return environment;
     }
 
     public void InjectInvocation(string invocation)

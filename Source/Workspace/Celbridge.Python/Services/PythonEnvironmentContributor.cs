@@ -1,4 +1,5 @@
 using Celbridge.Console;
+using Celbridge.Logging;
 
 namespace Celbridge.Python.Services;
 
@@ -6,17 +7,32 @@ namespace Celbridge.Python.Services;
 /// Gives every console the shared Python host-integration environment (host ports, tool feature flags,
 /// version, per-project folders) and puts the uv bin folders on its PATH, so the installed celbridge-py
 /// command starts a fully-featured cel-connected REPL from any console type or a terminal a console
-/// spawns.
+/// spawns. Keeps the uv and Python settings the application inherited out of every console.
 /// </summary>
 public sealed class PythonEnvironmentContributor : IConsoleEnvironmentContributor
 {
     private const string PathVariableName = "PATH";
 
     private readonly IPythonLaunchService _launchService;
+    private readonly ILogger<PythonEnvironmentContributor> _logger;
 
-    public PythonEnvironmentContributor(IPythonLaunchService launchService)
+    public PythonEnvironmentContributor(
+        IPythonLaunchService launchService,
+        ILogger<PythonEnvironmentContributor> logger)
     {
         _launchService = launchService;
+        _logger = logger;
+    }
+
+    public void FilterInheritedEnvironment(IDictionary<string, string> inheritedEnvironment)
+    {
+        var removedNames = PythonEnvironmentFilter.Apply(inheritedEnvironment);
+        if (removedNames.Count > 0)
+        {
+            _logger.LogDebug(
+                "Left the inherited uv and Python variables out of the console: {Names}",
+                string.Join(", ", removedNames));
+        }
     }
 
     public async Task ContributeAsync(ConsoleSessionContext context, IDictionary<string, string> environment)

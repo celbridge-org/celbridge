@@ -21,9 +21,8 @@ public interface ITerminal : IDisposable
     int? ProcessId { get; }
 
     /// <summary>
-    /// Starts the terminal session by executing a command line program.
-    /// When environmentVariables is provided, those variables are added to the child
-    /// process environment (merged with the current process environment).
+    /// Starts the terminal session by executing a command line program. When environmentVariables is provided
+    /// it is the child process's whole environment. Otherwise the child inherits this process's environment.
     /// </summary>
     void Start(string commandLine, string workingDir, Dictionary<string, string>? environmentVariables = null);
 

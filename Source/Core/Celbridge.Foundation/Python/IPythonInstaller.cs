@@ -30,6 +30,12 @@ public interface IPythonInstaller
     string UvToolBinFolderPath { get; }
 
     /// <summary>
+    /// The absolute path of the celbridge-py command the tool install publishes, whether or not it is
+    /// installed yet.
+    /// </summary>
+    string CelbridgeToolCommandPath { get; }
+
+    /// <summary>
     /// The absolute path of uv's package cache, shared by the installed tool and by every project.
     /// </summary>
     string UvCacheFolderPath { get; }

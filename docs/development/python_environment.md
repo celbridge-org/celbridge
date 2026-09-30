@@ -121,6 +121,19 @@ A console finds the first two through the shared environment: `CELBRIDGE_UV` nam
 through, `CELBRIDGE_WHEEL` the wheel to inject, and `CELBRIDGE_UV_CACHE_DIR` the cache to hold it to —
 passed as an explicit `--cache-dir`, so it outranks any `UV_CACHE_DIR` a console or shell profile sets.
 
+## What a console inherits
+
+A console starts from the environment the application was launched with, less every variable that steers
+uv or Python: `UV` and every `UV_*` variable, every `PYTHON*` variable, `VIRTUAL_ENV` and `CONDA_PREFIX`.
+uv's index and network settings pass through, so a mirror or a proxy keeps working. Celbridge's own
+variables go on top, then the console's `[session.environment]` table. `PythonEnvironmentFilter` holds the
+rule, and the installer's `uv tool install` runs under it too.
+
+Celbridge's own uv calls, the REPL's launch and the tool install, pass `--no-config`, so no `uv.toml` can
+stop them. A uv the user types reads configuration files as usual, since a project of their own may depend
+on its `[tool.uv]` settings. A file cannot move it off the application's interpreters and cache, because uv
+ranks the environment variables Celbridge sets above configuration files.
+
 ## The development cycle
 
 Edit a Python source, build, relaunch, open a console. Three links have to hold, and the middle one is
@@ -143,6 +156,7 @@ takes about 9.8 s because it downloads an interpreter and the tool's packages; e
 folder, then the application's uv bin folder — so the application's folders are searched first.
 
 That order is deliberate: the application's own commands should not be shadowable by project content.
+A python console types `celbridge-py` by its full path, so nothing on PATH can stand in for it.
 
 An interactive shell sources its profile *after* this is applied, so a profile that prepends a folder
 holding another uv still wins. A console resolving the wrong uv is not automatically a defect — read the

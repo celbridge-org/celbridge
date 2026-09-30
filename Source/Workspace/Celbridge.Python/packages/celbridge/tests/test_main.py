@@ -106,6 +106,7 @@ def test_build_bootstrap_command_builds_full_uv_run_command():
     command = _build_bootstrap_command(resolved, environ)
     assert command == [
         "/apps/python/uv", "run",
+        "--no-config",
         "--cache-dir", "/project/.celbridge/python/uv_cache",
         "--offline",
         "--no-project",
@@ -128,12 +129,24 @@ def test_build_bootstrap_command_omits_absent_options():
     command = _build_bootstrap_command(resolved, environ)
     assert command == [
         "/apps/python/uv", "run",
+        "--no-config",
         "--no-project",
         "--managed-python",
         "--with", "/apps/python/celbridge-0.1.0-py3-none-any.whl",
         "--with", "requests",
         "python", "-m", "celbridge",
     ]
+
+
+def test_build_bootstrap_command_reads_no_configuration_file():
+    """Test that the launch tells uv to read no uv.toml, which could stop the REPL starting."""
+    resolved = ResolvedLaunch(None, [], False, [])
+    environ = {
+        "CELBRIDGE_UV": "/apps/python/uv",
+        "CELBRIDGE_WHEEL": "/apps/python/celbridge-0.1.0-py3-none-any.whl",
+    }
+    assert "--no-config" in _build_bootstrap_command(resolved, environ)
+    assert "--no-config" in _build_probe_command(resolved, environ)
 
 
 def test_build_bootstrap_command_requires_console_environment():
@@ -155,6 +168,7 @@ def test_build_probe_command_forces_offline_with_a_no_op_payload():
     command = _build_probe_command(resolved, environ)
     assert command == [
         "/apps/python/uv", "run",
+        "--no-config",
         "--cache-dir", "/project/.celbridge/python/uv_cache",
         "--offline",
         "--no-project",
