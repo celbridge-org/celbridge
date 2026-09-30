@@ -311,7 +311,7 @@ public partial class App : Application
                 // Start executing commands
                 var commandService = Host.Services.GetRequiredService<ICommandService>() as CommandService;
                 Guard.IsNotNull(commandService);
-                commandService.StartExecution();
+                commandService.StartExecution(MainWindow.DispatcherQueue);
             };
 
             if (contentFrame.Content == null)
