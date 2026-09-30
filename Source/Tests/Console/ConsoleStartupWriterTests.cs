@@ -41,27 +41,28 @@ public class ConsoleStartupWriterTests
     {
         var shell = new ConsoleShell(executable, family);
 
-        var result = await ConsoleStartupWriter.WriteAsync(_fileSystem, _dataFolder, shell, useShellProfile: false);
+        var result = await ConsoleStartupWriter.WriteAsync(_fileSystem, _dataFolder, shell);
 
         result.IsSuccess.Should().BeTrue();
         var options = result.Value;
-        options.ModeFolder.Should().Be(Path.Combine(_dataFolder, "console", "clean"));
-        Directory.Exists(options.HistoryFolder).Should().BeTrue();
-        File.Exists(Path.Combine(options.ModeFolder, expectedFile)).Should().BeTrue();
+        options.StartupFolder.Should().Be(Path.Combine(_dataFolder, "console"));
+        options.HistoryFolder.Should().Be(Path.Combine(_dataFolder, "console", "history"));
+        File.Exists(Path.Combine(options.StartupFolder, expectedFile)).Should().BeTrue();
 
-        var shellFolders = Directory.GetDirectories(options.ModeFolder).Select(Path.GetFileName);
-        shellFolders.Should().Equal(Path.GetDirectoryName(expectedFile));
+        // Both modes share the shell's files, so there is no folder for either mode.
+        var folders = Directory.GetDirectories(options.StartupFolder).Select(Path.GetFileName);
+        folders.Should().BeEquivalentTo("history", Path.GetDirectoryName(expectedFile));
     }
 
     [Test]
     public async Task WriteAsync_RewritesAFileThatWasChanged()
     {
-        var first = await ConsoleStartupWriter.WriteAsync(_fileSystem, _dataFolder, Zsh, useShellProfile: true);
-        var zshrcPath = Path.Combine(first.Value.ModeFolder, "zsh", ".zshrc");
+        var first = await ConsoleStartupWriter.WriteAsync(_fileSystem, _dataFolder, Zsh);
+        var zshrcPath = Path.Combine(first.Value.StartupFolder, "zsh", ".zshrc");
         var generated = File.ReadAllText(zshrcPath);
         File.WriteAllText(zshrcPath, "# edited by hand\n");
 
-        await ConsoleStartupWriter.WriteAsync(_fileSystem, _dataFolder, Zsh, useShellProfile: true);
+        await ConsoleStartupWriter.WriteAsync(_fileSystem, _dataFolder, Zsh);
 
         File.ReadAllText(zshrcPath).Should().Be(generated);
     }
@@ -81,7 +82,7 @@ public class ConsoleStartupWriterTests
         AppDomain.CurrentDomain.FirstChanceException += OnFirstChanceException;
         try
         {
-            var result = await ConsoleStartupWriter.WriteAsync(_fileSystem, _dataFolder, Zsh, useShellProfile: true);
+            var result = await ConsoleStartupWriter.WriteAsync(_fileSystem, _dataFolder, Zsh);
             result.IsSuccess.Should().BeTrue();
         }
         finally

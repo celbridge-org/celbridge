@@ -3,28 +3,24 @@ using Celbridge.FileSystem;
 namespace Celbridge.Console.Helpers;
 
 /// <summary>
-/// Writes a mode's start-up files for a console's shell into the project data folder before the console
-/// starts, rewriting any that are missing or differ. An upgraded application or a deleted folder is then put
-/// right by the next console.
+/// Writes the start-up files for a console's shell into the project data folder before the console starts,
+/// rewriting any that are missing or differ. An upgraded application or a deleted folder is then put right by
+/// the next console.
 /// </summary>
 public static class ConsoleStartupWriter
 {
     private const string ConsoleFolderName = "console";
-    private const string PassThroughFolderName = "pass_through";
-    private const string CleanFolderName = "clean";
     private const string HistoryFolderName = "history";
 
     /// <summary>
-    /// Writes the shell's start-up files for the mode and makes the history folder, and returns where they are.
+    /// Writes the shell's start-up files and makes the history folder, and returns where they are.
     /// </summary>
     public static async Task<Result<ConsoleStartupOptions>> WriteAsync(
         ILocalFileSystem fileSystem,
         string projectDataFolderPath,
-        ConsoleShell shell,
-        bool useShellProfile)
+        ConsoleShell shell)
     {
         var consoleFolder = Path.Combine(projectDataFolderPath, ConsoleFolderName);
-        var modeFolder = Path.Combine(consoleFolder, useShellProfile ? PassThroughFolderName : CleanFolderName);
         var historyFolder = Path.Combine(consoleFolder, HistoryFolderName);
 
         var historyResult = await fileSystem.CreateFolderAsync(historyFolder);
@@ -34,9 +30,9 @@ public static class ConsoleStartupWriter
                 .WithErrors(historyResult);
         }
 
-        foreach (var file in ConsoleStartupFiles.Generate(shell, useShellProfile))
+        foreach (var file in ConsoleStartupFiles.Generate(shell))
         {
-            var filePath = Path.Combine(modeFolder, file.RelativePath.Replace('/', Path.DirectorySeparatorChar));
+            var filePath = Path.Combine(consoleFolder, file.RelativePath.Replace('/', Path.DirectorySeparatorChar));
 
             if (await HoldsContentAsync(fileSystem, filePath, file.Content))
             {
@@ -58,7 +54,7 @@ public static class ConsoleStartupWriter
             }
         }
 
-        var options = new ConsoleStartupOptions(modeFolder, historyFolder, useShellProfile);
+        var options = new ConsoleStartupOptions(consoleFolder, historyFolder);
         return options;
     }
 

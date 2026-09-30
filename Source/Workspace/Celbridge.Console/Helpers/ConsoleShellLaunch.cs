@@ -4,18 +4,22 @@ using Celbridge.Utilities;
 namespace Celbridge.Console.Helpers;
 
 /// <summary>
-/// What a console's start-up needs: the folder of generated files for its mode, the project's shell history
-/// folder, and whether the user's profile runs.
+/// What a console's start-up needs: the folder of generated files, the project's shell history folder, and the
+/// console's settings. The settings default to a console document's own defaults.
 /// </summary>
 public sealed record ConsoleStartupOptions(
-    string ModeFolder,
-    string HistoryFolder,
-    bool UseShellProfile)
+    string StartupFolder,
+    string HistoryFolder)
 {
+    /// <summary>
+    /// Whether the user's own start-up files run.
+    /// </summary>
+    public bool UseShellProfile { get; init; } = true;
+
     /// <summary>
     /// Whether the start-up replaces the shell's prompt with a compact one before every prompt.
     /// </summary>
-    public bool CompactPrompt { get; init; }
+    public bool CompactPrompt { get; init; } = true;
 
     /// <summary>
     /// The folder zsh would have read the user's own files from, when the application inherited one.
@@ -39,6 +43,10 @@ public sealed record ConsoleShellLaunch(string CommandLine, IReadOnlyDictionary<
     public static ConsoleShellLaunch Build(ConsoleShell shell, ConsoleStartupOptions options)
     {
         var environment = new Dictionary<string, string>();
+        if (options.UseShellProfile)
+        {
+            environment[ConsoleStartupFiles.UseShellProfileVariable] = "1";
+        }
         if (options.CompactPrompt)
         {
             environment[ConsoleStartupFiles.CompactPromptVariable] = "1";
@@ -47,7 +55,7 @@ public sealed record ConsoleShellLaunch(string CommandLine, IReadOnlyDictionary<
         if (shell.IsZsh)
         {
             // A login shell, as a terminal starts, reading its start-up files from the generated folder.
-            environment["ZDOTDIR"] = Path.Combine(options.ModeFolder, ConsoleStartupFiles.ZshFolder);
+            environment["ZDOTDIR"] = Path.Combine(options.StartupFolder, ConsoleStartupFiles.ZshFolder);
             environment[ConsoleStartupFiles.HistoryVariable] = Path.Combine(options.HistoryFolder, ZshHistoryFile);
             if (options.UseShellProfile &&
                 !string.IsNullOrEmpty(options.UserZdotdir))
@@ -69,7 +77,7 @@ public sealed record ConsoleShellLaunch(string CommandLine, IReadOnlyDictionary<
             environment[ConsoleStartupFiles.HistoryVariable] = Path.Combine(options.HistoryFolder, BashHistoryFile);
 
             var bashCommandLine = new CommandLineBuilder(shell.Executable)
-                .Add("--rcfile", Path.Combine(options.ModeFolder, ConsoleStartupFiles.BashRcFile))
+                .Add("--rcfile", Path.Combine(options.StartupFolder, ConsoleStartupFiles.BashRcFile))
                 .Add("-i")
                 .ToString();
 
@@ -81,7 +89,7 @@ public sealed record ConsoleShellLaunch(string CommandLine, IReadOnlyDictionary<
             environment[ConsoleStartupFiles.HistoryVariable] = Path.Combine(options.HistoryFolder, PowerShellHistoryFile);
 
             // Encoded so no character in the start-up needs quoting for the command line.
-            var startup = ConsoleStartupFiles.BuildPowerShellStartup(options.UseShellProfile);
+            var startup = ConsoleStartupFiles.BuildPowerShellStartup();
             var encodedStartup = Convert.ToBase64String(Encoding.Unicode.GetBytes(startup));
 
             var powerShellCommandLine = new CommandLineBuilder(shell.Executable)

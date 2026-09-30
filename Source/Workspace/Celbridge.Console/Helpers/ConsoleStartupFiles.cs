@@ -3,16 +3,17 @@ using Celbridge.Python.Services;
 namespace Celbridge.Console.Helpers;
 
 /// <summary>
-/// One generated start-up file: its path under a mode's folder, and its content.
+/// One generated start-up file: its path under the console folder, and its content.
 /// </summary>
 public sealed record ConsoleStartupFile(string RelativePath, string Content);
 
 /// <summary>
-/// Generates the start-up files a console's shell runs, one set per mode. In pass-through mode they run the
-/// user's own start-up files, then put Celbridge's settings back on top just before the first prompt. In clean
-/// mode they run only the system's. With the compact prompt on, they also set a compact prompt before every
-/// prompt. The files hold rules alone: every value they act on reaches them through the environment Celbridge
-/// starts the shell with, so no value from the user's environment is written to disk.
+/// Generates the start-up files a console's shell runs, one set for each shell that serves both modes. With the
+/// shell profile on, they run the user's own start-up files, then put Celbridge's settings back on top just
+/// before the first prompt. With it off, they run only the system's. With the compact prompt on, they also set a
+/// compact prompt before every prompt. The files hold rules alone. Every value they act on, both settings
+/// included, reaches them through the environment Celbridge starts the shell with, so no value from the user's
+/// environment is written to disk, and consoles in either mode can share the files.
 /// </summary>
 public static class ConsoleStartupFiles
 {
@@ -31,6 +32,11 @@ public static class ConsoleStartupFiles
     /// The variable naming the folder zsh would have read the user's own files from.
     /// </summary>
     public const string UserZdotdirVariable = "CELBRIDGE_CONSOLE_USER_ZDOTDIR";
+
+    /// <summary>
+    /// The variable that turns on the user's own start-up files when it is set.
+    /// </summary>
+    public const string UseShellProfileVariable = "CELBRIDGE_CONSOLE_USE_SHELL_PROFILE";
 
     /// <summary>
     /// The variable that turns on the compact prompt when it is set.
@@ -62,9 +68,9 @@ public static class ConsoleStartupFiles
     };
 
     /// <summary>
-    /// The start-up files for one mode, for the shell a console runs. A shell with no start-up files gets none.
+    /// The start-up files for the shell a console runs. A shell with no start-up files gets none.
     /// </summary>
-    public static IReadOnlyList<ConsoleStartupFile> Generate(ConsoleShell shell, bool useShellProfile)
+    public static IReadOnlyList<ConsoleStartupFile> Generate(ConsoleShell shell)
     {
         var files = new List<ConsoleStartupFile>();
 
@@ -72,17 +78,17 @@ public static class ConsoleStartupFiles
         {
             foreach (var fileName in ZshFileNames)
             {
-                var content = BuildZshFile(fileName, useShellProfile);
+                var content = BuildZshFile(fileName);
                 files.Add(new ConsoleStartupFile($"{ZshFolder}/{fileName}", content));
             }
         }
         else if (shell.IsBash)
         {
-            files.Add(new ConsoleStartupFile(BashRcFile, BuildBashRc(useShellProfile)));
+            files.Add(new ConsoleStartupFile(BashRcFile, BuildBashRc()));
         }
         else if (shell.Family == ConsoleShellFamily.PowerShell)
         {
-            files.Add(new ConsoleStartupFile(PowerShellFile, BuildPowerShellStartup(useShellProfile)));
+            files.Add(new ConsoleStartupFile(PowerShellFile, BuildPowerShellStartup()));
         }
 
         return files;
@@ -92,10 +98,8 @@ public static class ConsoleStartupFiles
     /// The PowerShell start-up, which a console passes to PowerShell on its command line rather than as a
     /// script file, since an execution policy can refuse an unsigned script.
     /// </summary>
-    public static string BuildPowerShellStartup(bool useShellProfile)
+    public static string BuildPowerShellStartup()
     {
-        var profiles = useShellProfile ? PowerShellProfiles : string.Empty;
-
         return $$"""
             # {{Header}}
             # PowerShell receives this on its command line, so the copy on disk is for reading only.
@@ -106,7 +110,22 @@ public static class ConsoleStartupFiles
             foreach ($celbridgeName in ("$env:{{RestoreVariable}}" -split ' ' | Where-Object { $_ })) {
                 $global:CelbridgeSnapshot[$celbridgeName] = [Environment]::GetEnvironmentVariable($celbridgeName)
             }
-            {{profiles}}
+
+            # The profiles, in the order PowerShell loads them, when the console uses them. One that fails is
+            # reported and the rest still run, as PowerShell's own loading does.
+            if ($env:{{UseShellProfileVariable}}) {
+                foreach ($celbridgeProfile in @($PROFILE.AllUsersAllHosts, $PROFILE.AllUsersCurrentHost, $PROFILE.CurrentUserAllHosts, $PROFILE.CurrentUserCurrentHost)) {
+                    if ($celbridgeProfile -and (Test-Path -LiteralPath $celbridgeProfile)) {
+                        try {
+                            . $celbridgeProfile
+                        }
+                        catch {
+                            Write-Error $_
+                        }
+                    }
+                }
+            }
+
             if ($env:{{HistoryVariable}} -and (Get-Command Set-PSReadLineOption -ErrorAction SilentlyContinue)) {
                 Set-PSReadLineOption -HistorySavePath $env:{{HistoryVariable}}
             }
@@ -170,25 +189,7 @@ public static class ConsoleStartupFiles
             """;
     }
 
-    // The profiles in the order PowerShell loads them. One that fails is reported and the rest still run, as
-    // PowerShell's own loading does.
-    private const string PowerShellProfiles = """
-
-        # The profiles, in the order PowerShell loads them.
-        foreach ($celbridgeProfile in @($PROFILE.AllUsersAllHosts, $PROFILE.AllUsersCurrentHost, $PROFILE.CurrentUserAllHosts, $PROFILE.CurrentUserCurrentHost)) {
-            if ($celbridgeProfile -and (Test-Path -LiteralPath $celbridgeProfile)) {
-                try {
-                    . $celbridgeProfile
-                }
-                catch {
-                    Write-Error $_
-                }
-            }
-        }
-
-        """;
-
-    private static string BuildZshFile(string fileName, bool useShellProfile)
+    private static string BuildZshFile(string fileName)
     {
         var lines = new List<string>
         {
@@ -201,10 +202,7 @@ public static class ConsoleStartupFiles
             lines.Add(ZshSnapshot);
         }
 
-        if (useShellProfile)
-        {
-            lines.Add(ZshSourceUserFile(fileName));
-        }
+        lines.Add(ZshSourceUserFile(fileName));
 
         if (fileName == ".zshenv")
         {
@@ -236,18 +234,20 @@ public static class ConsoleStartupFiles
 
         """;
 
-    // The user's file runs at the top level rather than in a function, so a typeset in it stays global, and
-    // with ZDOTDIR set to their own folder, as it would be in a terminal. Their .zshenv may move ZDOTDIR, and
-    // their later files are then read from where it points.
+    // The user's file runs when the console uses the profile. It runs at the top level rather than in a function,
+    // so a typeset in it stays global, and with ZDOTDIR set to their own folder, as it would be in a terminal.
+    // Their .zshenv may move ZDOTDIR, and their later files are then read from where it points.
     private static string ZshSourceUserFile(string fileName)
     {
         return $$"""
-            ZDOTDIR=$_celbridge_user_zdotdir
-            if [[ -r $ZDOTDIR/{{fileName}} ]]; then
-                source $ZDOTDIR/{{fileName}}
+            if [[ -n ${{UseShellProfileVariable}} ]]; then
+                ZDOTDIR=$_celbridge_user_zdotdir
+                if [[ -r $ZDOTDIR/{{fileName}} ]]; then
+                    source $ZDOTDIR/{{fileName}}
+                fi
+                _celbridge_user_zdotdir=$ZDOTDIR
+                ZDOTDIR=$_celbridge_zdotdir
             fi
-            _celbridge_user_zdotdir=$ZDOTDIR
-            ZDOTDIR=$_celbridge_zdotdir
 
             """;
     }
@@ -331,10 +331,8 @@ public static class ConsoleStartupFiles
             """;
     }
 
-    private static string BuildBashRc(bool useShellProfile)
+    private static string BuildBashRc()
     {
-        var userFiles = useShellProfile ? BashUserFiles : string.Empty;
-
         return $$"""
             # {{Header}}
 
@@ -348,7 +346,18 @@ public static class ConsoleStartupFiles
             if [ -r /etc/profile ]; then
                 . /etc/profile
             fi
-            {{userFiles}}
+
+            # The user's login files when the console uses them, as a login shell reads them: the first that exists.
+            if [ -n "${{UseShellProfileVariable}}" ]; then
+                for _celbridge_file in "$HOME/.bash_profile" "$HOME/.bash_login" "$HOME/.profile"; do
+                    if [ -r "$_celbridge_file" ]; then
+                        . "$_celbridge_file"
+                        break
+                    fi
+                done
+                unset _celbridge_file
+            fi
+
             # Runs once, just before the first prompt: the uv and Python settings the files made go, and
             # Celbridge's go back on top. The exit status is kept, since a prompt may show it.
             _celbridge_first_prompt() {
@@ -447,19 +456,6 @@ public static class ConsoleStartupFiles
             fi
             """ + "\n";
     }
-
-    // The user's login files, as a login shell reads them: the first of these that exists.
-    private const string BashUserFiles = """
-
-        for _celbridge_file in "$HOME/.bash_profile" "$HOME/.bash_login" "$HOME/.profile"; do
-            if [ -r "$_celbridge_file" ]; then
-                . "$_celbridge_file"
-                break
-            fi
-        done
-        unset _celbridge_file
-
-        """;
 
     // A case pattern matching any of the names exactly, or any name beginning with one of the prefixes.
     private static string ShellPattern(IReadOnlyList<string> names, IReadOnlyList<string> prefixes)

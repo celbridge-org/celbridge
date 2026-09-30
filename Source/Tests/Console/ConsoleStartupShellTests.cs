@@ -149,7 +149,7 @@ public class ConsoleStartupShellTests
         }
 
         // What a profile might do, then the prompt PowerShell draws before it reads the first command.
-        var script = ConsoleStartupFiles.BuildPowerShellStartup(useShellProfile: false) + """
+        var script = ConsoleStartupFiles.BuildPowerShellStartup() + """
 
             $env:VIRTUAL_ENV = 'C:\decoy\venv'
             $env:UV_CACHE_DIR = 'C:\decoy\cache'
@@ -190,37 +190,19 @@ public class ConsoleStartupShellTests
     [TestCase(false, DecoyPrompt)]
     public void PowerShell_Prompt_IsCompactUnlessTurnedOff(bool compactPrompt, string expected)
     {
-        if (!OperatingSystem.IsWindows())
-        {
-            Assert.Ignore("PowerShell consoles run on Windows only.");
-        }
-
-        var profilePath = Path.Combine(_root, "profile.ps1");
-        File.WriteAllText(profilePath, $"function global:prompt {{ '{DecoyPrompt}' }}\n");
-        var workFolder = Path.Combine(_root, "work");
-        Directory.CreateDirectory(workFolder);
-
-        // $PROFILE names the decoy profile alone, which the start-up then loads as it would the user's own.
-        var script = $$"""
-            $PROFILE = [pscustomobject]@{ AllUsersAllHosts = $null; AllUsersCurrentHost = $null; CurrentUserAllHosts = '{{PowerShellQuote(profilePath)}}'; CurrentUserCurrentHost = $null }
-            Set-Location -LiteralPath '{{PowerShellQuote(workFolder)}}'
-
-            """ + ConsoleStartupFiles.BuildPowerShellStartup(useShellProfile: true) + """
-
-            "CELTEST FIRST_PROMPT=$(prompt)"
-            "CELTEST LATER_PROMPT=$(prompt)"
-            """;
-
-        var environment = new Dictionary<string, string>();
-        if (compactPrompt)
-        {
-            environment[ConsoleStartupFiles.CompactPromptVariable] = "1";
-        }
-
-        var results = RunPowerShell(script, environment);
+        var results = RunPowerShellOnDecoyProfile(useShellProfile: true, compactPrompt);
 
         results["FIRST_PROMPT"].Should().Be(expected);
         results["LATER_PROMPT"].Should().Be(expected);
+    }
+
+    [TestCase(true, "1")]
+    [TestCase(false, "")]
+    public void PowerShell_Profile_RunsOnlyWhenTheConsoleUsesIt(bool useShellProfile, string expected)
+    {
+        var results = RunPowerShellOnDecoyProfile(useShellProfile, compactPrompt: false);
+
+        results["DECOY_PROFILE"].Should().Be(expected);
     }
 
     // A profile that would steer uv and Python away from Celbridge's install if it won, and sets its own prompt
@@ -259,16 +241,17 @@ public class ConsoleStartupShellTests
 
         var shell = new ConsoleShell(executable, ConsoleShellFamily.Posix);
 
-        var modeFolder = Path.Combine(_root, "data", "console", useShellProfile ? "pass_through" : "clean");
-        foreach (var file in ConsoleStartupFiles.Generate(shell, useShellProfile))
+        var startupFolder = Path.Combine(_root, "data", "console");
+        foreach (var file in ConsoleStartupFiles.Generate(shell))
         {
-            var filePath = Path.Combine(modeFolder, file.RelativePath);
+            var filePath = Path.Combine(startupFolder, file.RelativePath);
             Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
             File.WriteAllText(filePath, file.Content);
         }
 
-        var options = new ConsoleStartupOptions(modeFolder, _historyFolder, useShellProfile)
+        var options = new ConsoleStartupOptions(startupFolder, _historyFolder)
         {
+            UseShellProfile = useShellProfile,
             CompactPrompt = compactPrompt,
             UserZdotdir = userZdotdir,
         };
@@ -331,6 +314,44 @@ public class ConsoleStartupShellTests
         input.Append("exit\n");
 
         return Run(startInfo, input.ToString());
+    }
+
+    // Runs the start-up in a working folder with $PROFILE naming a decoy profile alone, which the start-up loads
+    // as it would the user's own. The decoy sets its own prompt and a variable of its own.
+    private Dictionary<string, string> RunPowerShellOnDecoyProfile(bool useShellProfile, bool compactPrompt)
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Ignore("PowerShell consoles run on Windows only.");
+        }
+
+        var profilePath = Path.Combine(_root, "profile.ps1");
+        File.WriteAllText(profilePath, $"$env:DECOY_PROFILE = '1'\nfunction global:prompt {{ '{DecoyPrompt}' }}\n");
+        var workFolder = Path.Combine(_root, "work");
+        Directory.CreateDirectory(workFolder);
+
+        var script = $$"""
+            $PROFILE = [pscustomobject]@{ AllUsersAllHosts = $null; AllUsersCurrentHost = $null; CurrentUserAllHosts = '{{PowerShellQuote(profilePath)}}'; CurrentUserCurrentHost = $null }
+            Set-Location -LiteralPath '{{PowerShellQuote(workFolder)}}'
+
+            """ + ConsoleStartupFiles.BuildPowerShellStartup() + """
+
+            "CELTEST FIRST_PROMPT=$(prompt)"
+            "CELTEST LATER_PROMPT=$(prompt)"
+            "CELTEST DECOY_PROFILE=$env:DECOY_PROFILE"
+            """;
+
+        var environment = new Dictionary<string, string>();
+        if (useShellProfile)
+        {
+            environment[ConsoleStartupFiles.UseShellProfileVariable] = "1";
+        }
+        if (compactPrompt)
+        {
+            environment[ConsoleStartupFiles.CompactPromptVariable] = "1";
+        }
+
+        return RunPowerShell(script, environment);
     }
 
     private static Dictionary<string, string> RunPowerShell(string script, IReadOnlyDictionary<string, string> environment)

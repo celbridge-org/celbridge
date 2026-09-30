@@ -31,7 +31,7 @@ Two corollaries follow, and most of the layout below exists to serve them:
 | `<app data>/Python/` | `bin/` (uv, uvx), the wheel, `uv_tools/` (the celbridge-py environment), `uv_bin/` (the celbridge-py command), `installed_version.txt` | Deleted and rebuilt whenever the marker mismatches |
 | `<app data>/PythonCache/` | `uv_cache/`, `uv_python_installs/` | Never deleted by an install, and never safe to delete by hand. Shared by the tool and by every project |
 | `<project>/.celbridge/python/` | `ipython/` (the profile), `uv_tools/` and `uv_bin/` (tools the **user** installs in this project) | Belongs to the project; safe to delete at any time |
-| `<project>/.celbridge/console/` | The consoles' generated start-up files, one folder per mode, and `history/` (each shell's history) | Belongs to the project. The start-up files are rewritten before each console starts |
+| `<project>/.celbridge/console/` | The consoles' generated start-up files, one folder for each shell a console has run, and `history/` (each shell's history) | Belongs to the project. The start-up files are rewritten before each console starts |
 
 `<app data>` is `ApplicationData.Current.LocalFolder` on packaged Windows, which the OS removes on
 uninstall, and `~/Library/Application Support/Celbridge/` elsewhere.
@@ -147,10 +147,11 @@ it too. The console's own `[session.environment]` table always wins, over Celbri
 the profile.
 
 The shell starts on start-up files that Celbridge generates for it into the project data folder, under
-`console/pass_through` or `console/clean`, before each console starts. zsh reads them through `ZDOTDIR` and
-bash through `--rcfile`. PowerShell receives its start-up on the command line, with `-NoProfile`, because
-an execution policy can refuse a script file. The files hold rules only. Every value they act on reaches
-them through the environment, so nothing from the user's environment is written to disk.
+`console/zsh`, `console/bash` or `console/powershell`, before each console starts. zsh reads them through
+`ZDOTDIR` and bash through `--rcfile`. PowerShell receives its start-up on the command line, with
+`-NoProfile`, because an execution policy can refuse a script file. The files hold rules only. Every value
+they act on reaches them through the environment, so nothing from the user's environment is written to
+disk. The mode is one of those values, so consoles in both modes share one set of files for each shell.
 
 In pass-through mode the files run the user's own start-up files. A one-shot hook then runs just before
 the first prompt, after any prompt hook the user's files installed. It applies the filter again, restores
