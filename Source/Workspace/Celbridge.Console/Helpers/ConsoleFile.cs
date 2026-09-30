@@ -55,6 +55,9 @@ internal sealed record ConsoleSessionSection
 
     public string? WorkingDirectory { get; init; }
 
+    // Whether the shell runs the user's own start-up files. Absent means it does.
+    public bool? UseShellProfile { get; init; }
+
     // Built-in runner ids the document opts out of.
     public List<string>? DisabledRunners { get; init; }
 

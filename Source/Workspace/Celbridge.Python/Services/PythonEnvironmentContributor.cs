@@ -48,10 +48,14 @@ public sealed class PythonEnvironmentContributor : IConsoleEnvironmentContributo
             }
         }
 
-        // A merge, so a console-configured PATH keeps its entries and gains the uv bin folders.
+        // A merge, so a console-configured PATH keeps its entries and gains the uv bin folders. The start-up
+        // moves the same folders back to the front after the user's profile has run.
         var pathKey = ResolvePathKey(environment);
         environment.TryGetValue(pathKey, out var basePath);
-        environment[pathKey] = _launchService.BuildConsolePath(basePath);
+        environment[pathKey] = _launchService.BuildConsolePath(basePath ?? string.Empty);
+        environment[ConsoleEnvironmentVariables.PathFolders] = string.Join(
+            Path.PathSeparator,
+            _launchService.GetConsolePathFolders());
     }
 
     // Windows environment names are case-insensitive and its canonical spelling is Path, so a console that

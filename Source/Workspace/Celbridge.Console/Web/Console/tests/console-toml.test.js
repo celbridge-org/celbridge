@@ -18,6 +18,7 @@ describe('defaultConsoleConfig', () => {
         expect(defaultConsoleConfig()).toEqual({
             type: 'shell',
             workingDirectory: '',
+            useShellProfile: true,
             optionsBySessionType: {},
             environment: {},
             runners: [],
@@ -46,6 +47,7 @@ describe('parseConsoleToml', () => {
         expect(parse(toml)).toEqual({
             type: 'shell',
             workingDirectory: 'tools',
+            useShellProfile: true,
             optionsBySessionType: {
                 shell: { executable: 'pwsh', arguments: ['-NoLogo', '-NoProfile'] },
             },
@@ -135,6 +137,16 @@ describe('parseConsoleToml', () => {
             { extensions: ['.py', '.ipy'], command: '%run "{resource}"' },
             { extensions: ['.sh'], command: 'bash {resource}' },
         ]);
+    });
+
+    it('reads use_shell_profile, on unless the file turns it off', () => {
+        expect(parse('[session]\ntype = "shell"').useShellProfile).toBe(true);
+        expect(parse('[session]\nuse_shell_profile = false').useShellProfile).toBe(false);
+        expect(parse('[session]\nuse_shell_profile = true').useShellProfile).toBe(true);
+    });
+
+    it('throws on a use_shell_profile that is not a boolean', () => {
+        expect(() => parse('[session]\nuse_shell_profile = "no"')).toThrow(/Invalid boolean/);
     });
 
     it('parses disabled_runners', () => {
@@ -258,6 +270,14 @@ describe('serializeConsoleToml', () => {
         expect(toml).not.toContain('session.environment');
     });
 
+    it('writes use_shell_profile only when it is off', () => {
+        expect(serializeConsoleToml(defaultConsoleConfig())).not.toContain('use_shell_profile');
+
+        const toml = serializeConsoleToml({ ...defaultConsoleConfig(), useShellProfile: false });
+        expect(toml).toContain('use_shell_profile = false');
+        expect(parse(toml).useShellProfile).toBe(false);
+    });
+
     it('omits a type table whose keys are all empty', () => {
         const config = { ...defaultConsoleConfig(), optionsBySessionType: { shell: { executable: '', arguments: [] } } };
         expect(serializeConsoleToml(config)).not.toContain('session.shell');
@@ -350,6 +370,7 @@ describe('round-trip', () => {
         const original = {
             type: 'python',
             workingDirectory: 'tools',
+            useShellProfile: false,
             optionsBySessionType: {
                 python: {
                     python_version: '3.13',

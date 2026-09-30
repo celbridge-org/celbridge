@@ -40,13 +40,16 @@ public interface IPythonLaunchService
     Task<Result<PythonStartupResult>> BuildStartupAsync(PythonLaunchRequest request);
 
     /// <summary>
-    /// Returns a PATH value with the app's uv and tool bin folders, and the project's own uv tool bin
-    /// folder, prepended to the given base (or to the resolved child-process base PATH when null), so uv,
-    /// uvx, celbridge-py and any tool the user installs in the project resolve in a console. A folder
-    /// already on the given base keeps its position. An interactive shell sources its profile after this
-    /// is applied and may prepend its own folders.
+    /// The folders a console puts at the front of PATH, in order: the app's uv and tool bin folders, then the
+    /// project's own uv tool bin folder, so uv, uvx, celbridge-py and any tool the user installs in the
+    /// project resolve in a console.
     /// </summary>
-    string BuildConsolePath(string? basePath);
+    IReadOnlyList<string> GetConsolePathFolders();
+
+    /// <summary>
+    /// Returns a PATH value with the console's folders moved to the front of the given base.
+    /// </summary>
+    string BuildConsolePath(string basePath);
 
     /// <summary>
     /// Returns the host-integration environment every console shares, installing the Python support files
@@ -57,8 +60,6 @@ public interface IPythonLaunchService
 
 public sealed class PythonLaunchService : IPythonLaunchService
 {
-    private const int LoginShellPathTimeoutMs = 5000;
-
     private const string ProjectUvToolsFolderName = "uv_tools";
     private const string ProjectUvBinFolderName = "uv_bin";
     private const string IPythonProfileFolderName = "ipython";
@@ -69,10 +70,6 @@ public sealed class PythonLaunchService : IPythonLaunchService
     private readonly ILocalFileSystem _fileSystem;
     private readonly IProjectService _projectService;
     private readonly ILogger<PythonLaunchService> _logger;
-
-    // The login-shell PATH is app-global and costs a subprocess to resolve, so cache it for the app run.
-    private static string? _resolvedLoginShellPath;
-    private static readonly object _loginShellPathLock = new();
 
     public PythonLaunchService(
         IAppEnvironment environmentService,
@@ -152,17 +149,30 @@ public sealed class PythonLaunchService : IPythonLaunchService
         return result;
     }
 
-    public string BuildConsolePath(string? basePath)
+    // The app's folders come first, so they outrank the project's. A project can hold a celbridge-py of its
+    // own, and a stale shim ahead of the installed one would be found first.
+    public IReadOnlyList<string> GetConsolePathFolders()
     {
-        var resolvedBase = string.IsNullOrEmpty(basePath) ? ResolveChildProcessBasePath() : basePath;
+        var folders = new List<string>
+        {
+            _pythonInstaller.UvBinFolderPath,
+            _pythonInstaller.UvToolBinFolderPath,
+            ProjectUvBinFolder,
+        };
 
-        // The app's folders are prepended last, so they outrank the project's. A project can hold a
-        // celbridge-py of its own, and a stale shim ahead of the installed one would be found first. Each
-        // folder is moved to the front even when the inherited PATH already carried it.
-        var consolePath = PrependPathFolder(resolvedBase, ProjectUvBinFolder);
-        consolePath = PrependPathFolder(consolePath, _pythonInstaller.UvToolBinFolderPath);
+        return folders;
+    }
 
-        return PrependPathFolder(consolePath, _pythonInstaller.UvBinFolderPath);
+    // Each folder is moved to the front even when the base already carried it.
+    public string BuildConsolePath(string basePath)
+    {
+        var consolePath = basePath;
+        foreach (var folder in GetConsolePathFolders().Reverse())
+        {
+            consolePath = PrependPathFolder(consolePath, folder);
+        }
+
+        return consolePath;
     }
 
     private string PrependPathFolder(string path, string folder)
@@ -265,93 +275,5 @@ public sealed class PythonLaunchService : IPythonLaunchService
         }
 
         return Result<string>.Ok(uvExePath);
-    }
-
-
-    // The base PATH for the Python subsystem and terminal child processes. A macOS app launched from
-    // Finder inherits only the minimal launchd PATH, so resolve the user's login-shell PATH once and reuse
-    // it. On other platforms, and if resolution fails, fall back to the process PATH.
-    private string ResolveChildProcessBasePath()
-    {
-        var processPath = Environment.GetEnvironmentVariable("PATH") ?? "";
-        if (!OperatingSystem.IsMacOS())
-        {
-            return processPath;
-        }
-
-        lock (_loginShellPathLock)
-        {
-            if (_resolvedLoginShellPath is not null)
-            {
-                return _resolvedLoginShellPath;
-            }
-
-            var loginShellPath = TryResolveLoginShellPath();
-            _resolvedLoginShellPath = string.IsNullOrEmpty(loginShellPath) ? processPath : loginShellPath;
-            return _resolvedLoginShellPath;
-        }
-    }
-
-    private string TryResolveLoginShellPath()
-    {
-        try
-        {
-            var shell = Environment.GetEnvironmentVariable("SHELL");
-            if (string.IsNullOrEmpty(shell))
-            {
-                shell = "/bin/zsh";
-            }
-
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = shell,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            };
-            startInfo.ArgumentList.Add("-i");
-            startInfo.ArgumentList.Add("-l");
-            startInfo.ArgumentList.Add("-c");
-            startInfo.ArgumentList.Add("printf '__CEL_PATH_BEGIN__%s__CEL_PATH_END__' \"$PATH\"");
-
-            using var process = Process.Start(startInfo);
-            if (process is null)
-            {
-                return string.Empty;
-            }
-
-            var output = process.StandardOutput.ReadToEnd();
-            if (!process.WaitForExit(LoginShellPathTimeoutMs))
-            {
-                try
-                {
-                    process.Kill(entireProcessTree: true);
-                }
-                catch
-                {
-                    // The process may have exited between the wait timing out and the kill.
-                }
-                _logger.LogWarning("Timed out resolving the login shell PATH; using the process PATH instead.");
-                return string.Empty;
-            }
-
-            const string beginMarker = "__CEL_PATH_BEGIN__";
-            const string endMarker = "__CEL_PATH_END__";
-            var startIndex = output.IndexOf(beginMarker, StringComparison.Ordinal);
-            var endIndex = output.IndexOf(endMarker, StringComparison.Ordinal);
-            if (startIndex < 0 || endIndex <= startIndex)
-            {
-                return string.Empty;
-            }
-
-            startIndex += beginMarker.Length;
-            return output.Substring(startIndex, endIndex - startIndex);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to resolve the login shell PATH; using the process PATH instead.");
-            return string.Empty;
-        }
     }
 }

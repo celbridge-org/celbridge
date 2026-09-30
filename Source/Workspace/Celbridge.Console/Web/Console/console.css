@@ -226,31 +226,32 @@ html, body {
     display: none;
 }
 
-.built-in-switch {
+/* An on and off switch, drawn after WinUI's ToggleSwitch. */
+.toggle-switch {
     position: relative;
-    width: 32px;
-    height: 18px;
+    width: 40px;
+    height: 20px;
     padding: 0;
     border: 1px solid var(--cel-text-secondary);
-    border-radius: 9px;
+    border-radius: 10px;
     background: none;
     cursor: pointer;
 }
 
-.built-in-switch[aria-checked="true"] {
+.toggle-switch[aria-checked="true"] {
     border-color: var(--cel-accent);
     background: var(--cel-accent);
 }
 
-.built-in-switch:disabled {
+.toggle-switch:disabled {
     opacity: 0.5;
     cursor: default;
 }
 
-.built-in-switch-thumb {
+.toggle-switch-thumb {
     position: absolute;
-    top: 2px;
-    left: 2px;
+    top: 3px;
+    left: 3px;
     width: 12px;
     height: 12px;
     border-radius: 50%;
@@ -258,13 +259,13 @@ html, body {
     transition: transform 100ms ease, background 100ms ease;
 }
 
-.built-in-switch[aria-checked="true"] .built-in-switch-thumb {
+.toggle-switch[aria-checked="true"] .toggle-switch-thumb {
     background: var(--cel-accent-text);
-    transform: translateX(14px);
+    transform: translateX(20px);
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .built-in-switch-thumb {
+    .toggle-switch-thumb {
         transition: none;
     }
 }

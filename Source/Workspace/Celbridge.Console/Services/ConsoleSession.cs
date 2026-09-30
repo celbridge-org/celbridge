@@ -1,5 +1,8 @@
-﻿using Celbridge.Console.Helpers;
+﻿using System.Text.RegularExpressions;
+using Celbridge.Console.Helpers;
+using Celbridge.FileSystem;
 using Celbridge.Logging;
+using Celbridge.Projects;
 using Celbridge.Utilities;
 using Celbridge.WebHost;
 using Celbridge.Workspace;
@@ -25,6 +28,11 @@ internal sealed class ConsoleSession : IDisposable
     // happens after the command is typed: a first run resolves an interpreter and installs packages, which
     // can take far longer than any fixed budget while still making progress.
     private const int MarkerSilenceTimeoutMs = 10000;
+
+    private const string PathVariableName = "PATH";
+
+    // A name a POSIX shell can hold as a variable.
+    private static readonly Regex ShellVariableNamePattern = new("^[A-Za-z_][A-Za-z0-9_]*$", RegexOptions.Compiled);
 
     private readonly IWebViewAdapter _webViewAdapter;
     private readonly IServiceProvider _serviceProvider;
@@ -261,7 +269,6 @@ internal sealed class ConsoleSession : IDisposable
         // The injected line clears the shell-startup noise and emits the ready marker, so the buffer
         // begins on a clean screen.
         var shell = ConsoleShell.Resolve();
-        var shellCommandLine = new CommandLineBuilder(shell.Executable).ToString();
 
         var workingDirectory = ConsoleWorkingFolder.Resolve(config.WorkingDirectory, projectFolderPath);
 
@@ -302,9 +309,19 @@ internal sealed class ConsoleSession : IDisposable
             }
         }
 
-        // A console starts from the environment the application inherited, less what the contributors filter
-        // out, so nothing from however Celbridge was launched can undo what they set up.
-        var launchEnvironment = ReadInheritedEnvironment();
+        // A console starts from the environment the application inherited, or with the shell profile off from
+        // only the essentials, less what the contributors filter out. Nothing from however Celbridge was
+        // launched can then undo what they set up.
+        var inheritedEnvironment = ConsoleStartingEnvironment.ReadInherited();
+        var launchEnvironment = ConsoleStartingEnvironment.Build(inheritedEnvironment, config.UseShellProfile);
+
+        // The contributors extend the console's own PATH when it sets one, and otherwise the one it starts with.
+        var setsPath = environmentCopy.Keys.Any(IsPathVariable);
+        if (!setsPath &&
+            launchEnvironment.TryGetValue(PathVariableName, out var startingPath))
+        {
+            environmentCopy[PathVariableName] = startingPath;
+        }
 
         foreach (var contributor in _serviceProvider.GetServices<IConsoleEnvironmentContributor>())
         {
@@ -320,6 +337,15 @@ internal sealed class ConsoleSession : IDisposable
         }
 
         foreach (var pair in environmentCopy)
+        {
+            launchEnvironment[pair.Key] = pair.Value;
+        }
+
+        launchEnvironment[ConsoleStartupFiles.RestoreVariable] = BuildRestoreList(environmentCopy);
+
+        var userZdotdir = inheritedEnvironment.GetValueOrDefault("ZDOTDIR");
+        var shellLaunch = await BuildShellLaunchAsync(shell, config.UseShellProfile, userZdotdir);
+        foreach (var pair in shellLaunch.Environment)
         {
             launchEnvironment[pair.Key] = pair.Value;
         }
@@ -346,7 +372,7 @@ internal sealed class ConsoleSession : IDisposable
 
         try
         {
-            terminal.Start(shellCommandLine, workingDirectory, launchEnvironment);
+            terminal.Start(shellLaunch.CommandLine, workingDirectory, launchEnvironment);
         }
         catch (Exception exception)
         {
@@ -517,23 +543,57 @@ internal sealed class ConsoleSession : IDisposable
         _terminalSize = new TerminalSize(cols, rows);
     }
 
-    // Names are case-insensitive on Windows, so a console's PATH replaces an inherited Path rather than
-    // sitting beside it.
-    private static Dictionary<string, string> ReadInheritedEnvironment()
+    // The shell's command line and the variables that point it at its start-up files, which are written into
+    // the project data folder first. A shell whose files cannot be written starts without them.
+    private async Task<ConsoleShellLaunch> BuildShellLaunchAsync(
+        ConsoleShell shell,
+        bool useShellProfile,
+        string? userZdotdir)
     {
-        var comparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
-        var environment = new Dictionary<string, string>(comparer);
-
-        foreach (System.Collections.DictionaryEntry entry in Environment.GetEnvironmentVariables())
+        var projectDataFolderPath = _serviceProvider.GetRequiredService<IProjectService>()
+            .CurrentProject?.ProjectDataFolderPath;
+        if (string.IsNullOrEmpty(projectDataFolderPath))
         {
-            if (entry.Key is string key &&
-                entry.Value is string value)
-            {
-                environment[key] = value;
-            }
+            _logger.LogWarning("No project is loaded, so the console starts without its start-up files");
+            return ConsoleShellLaunch.Bare(shell);
         }
 
-        return environment;
+        var fileSystem = _serviceProvider.GetRequiredService<ILocalFileSystem>();
+        var writeResult = await ConsoleStartupWriter.WriteAsync(fileSystem, projectDataFolderPath, useShellProfile);
+        if (writeResult.IsFailure)
+        {
+            _logger.LogError("The console starts without its start-up files: {Error}", writeResult.FirstErrorMessage);
+            return ConsoleShellLaunch.Bare(shell);
+        }
+
+        var options = writeResult.Value with
+        {
+            UserZdotdir = userZdotdir
+        };
+
+        return ConsoleShellLaunch.Build(shell, options);
+    }
+
+    // The variables Celbridge guarantees, which the start-up puts back after the user's files have run: all
+    // that this session sets except PATH, whose folders the start-up moves to the front instead. A name no
+    // shell can hold as a variable is one no profile can change either.
+    private static string BuildRestoreList(IReadOnlyDictionary<string, string> sessionEnvironment)
+    {
+        var names = sessionEnvironment.Keys
+            .Where(name => !IsPathVariable(name))
+            .Where(name => !name.StartsWith(ConsoleStartupFiles.VariablePrefix, StringComparison.Ordinal))
+            .Where(name => ShellVariableNamePattern.IsMatch(name))
+            .OrderBy(name => name, StringComparer.Ordinal);
+
+        return string.Join(' ', names);
+    }
+
+    // Names are case-insensitive on Windows alone.
+    private static bool IsPathVariable(string name)
+    {
+        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+
+        return string.Equals(name, PathVariableName, comparison);
     }
 
     public void InjectInvocation(string invocation)

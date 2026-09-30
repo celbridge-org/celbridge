@@ -31,6 +31,7 @@ Two corollaries follow, and most of the layout below exists to serve them:
 | `<app data>/Python/` | `bin/` (uv, uvx), the wheel, `uv_tools/` (the celbridge-py environment), `uv_bin/` (the celbridge-py command), `installed_version.txt` | Deleted and rebuilt whenever the marker mismatches |
 | `<app data>/PythonCache/` | `uv_cache/`, `uv_python_installs/` | Never deleted by an install, and never safe to delete by hand. Shared by the tool and by every project |
 | `<project>/.celbridge/python/` | `ipython/` (the profile), `uv_tools/` and `uv_bin/` (tools the **user** installs in this project) | Belongs to the project; safe to delete at any time |
+| `<project>/.celbridge/console/` | The consoles' generated start-up files, one folder per mode, and `history/` (each shell's history) | Belongs to the project. The start-up files are rewritten before each console starts |
 
 `<app data>` is `ApplicationData.Current.LocalFolder` on packaged Windows, which the OS removes on
 uninstall, and `~/Library/Application Support/Celbridge/` elsewhere.
@@ -121,18 +122,56 @@ A console finds the first two through the shared environment: `CELBRIDGE_UV` nam
 through, `CELBRIDGE_WHEEL` the wheel to inject, and `CELBRIDGE_UV_CACHE_DIR` the cache to hold it to —
 passed as an explicit `--cache-dir`, so it outranks any `UV_CACHE_DIR` a console or shell profile sets.
 
-## What a console inherits
+## Console isolation
 
-A console starts from the environment the application was launched with, less every variable that steers
-uv or Python: `UV` and every `UV_*` variable, every `PYTHON*` variable, `VIRTUAL_ENV` and `CONDA_PREFIX`.
-uv's index and network settings pass through, so a mirror or a proxy keeps working. Celbridge's own
-variables go on top, then the console's `[session.environment]` table. `PythonEnvironmentFilter` holds the
-rule, and the installer's `uv tool install` runs under it too.
+A console starts in a working state, on Celbridge's uv and Celbridge's Python. What the user does after
+that is their business. Nothing installed on the machine, nothing in the environment the application was
+launched with, and nothing in the user's shell profile or uv's configuration files can change which `uv`,
+`uvx` and `celbridge-py` a new console resolves, or which interpreter its REPL runs on. A console that does
+is a defect, and the agent tests' Environment Isolation plan plants a hostile launch environment and a
+hostile profile to check for one.
+
+Each `.console` document chooses its mode with `use_shell_profile`, which is on unless the document turns
+it off. The settings form labels it "Use My Shell Profile".
+
+| | Pass-through, the default | Clean |
+|---|---|---|
+| Starts from | Everything the application inherited, less the variables that steer uv or Python | Only what a shell and the network need, and the system PATH |
+| The user's profile | Runs, as in a new terminal window | Does not run |
+| Before the first prompt | The uv and Python variables go again, and Celbridge's values and the console's own go back on top | Celbridge's values and the console's own go on top |
+
+The variables that steer uv or Python are `UV` and every `UV_*` variable, every `PYTHON*` variable,
+`VIRTUAL_ENV` and `CONDA_PREFIX`. uv's index and network settings pass through, so a mirror or a proxy
+keeps working. `PythonEnvironmentFilter` holds the rule, and the installer's `uv tool install` runs under
+it too. The console's own `[session.environment]` table always wins, over Celbridge's defaults and over
+the profile.
+
+The shell starts on start-up files that Celbridge generates into the project data folder, under
+`console/pass_through` or `console/clean`, before each console starts. zsh reads them through `ZDOTDIR` and
+bash through `--rcfile`. PowerShell receives its start-up on the command line, with `-NoProfile`, because
+an execution policy can refuse a script file. The files hold rules only. Every value they act on reaches
+them through the environment, so nothing from the user's environment is written to disk.
+
+In pass-through mode the files run the user's own start-up files. A one-shot hook then runs just before
+the first prompt, after any prompt hook the user's files installed. It applies the filter again, restores
+Celbridge's values and the console's own, moves Celbridge's folders back to the front of PATH, and removes
+any alias or function named `uv`, `uvx` or `celbridge-py`.
+
+Consoles run zsh or bash, whichever is the user's `$SHELL`, and otherwise the platform's default: zsh on
+macOS and bash on Linux. Windows runs PowerShell.
+
+`BuildConsolePath` puts the application's uv bin folder first, then its tool bin folder, then the
+project's own tool bin folder, so project content cannot shadow the application's commands. A python
+console types `celbridge-py` by its full path, so nothing on PATH can stand in for it.
 
 Celbridge's own uv calls, the REPL's launch and the tool install, pass `--no-config`, so no `uv.toml` can
 stop them. A uv the user types reads configuration files as usual, since a project of their own may depend
 on its `[tool.uv]` settings. A file cannot move it off the application's interpreters and cache, because uv
 ranks the environment variables Celbridge sets above configuration files.
+
+Shell history is kept per project in `console/history` in the project data folder, one file per shell,
+as IPython's is. The data folder carries a `.gitignore` of its own that ignores everything, so neither
+history reaches version control whatever the project's own `.gitignore` says.
 
 ## The development cycle
 
@@ -149,18 +188,6 @@ Measured on macOS: 11 s to build, 3 s to install, and the new code is in the REP
 sentinel value and three distinct cache archive ids across three iterations. A first install on a machine
 takes about 9.8 s because it downloads an interpreter and the tool's packages; every later one is about
 3 s because those stay in `PythonCache`.
-
-## Console PATH precedence
-
-`BuildConsolePath` prepends, in order, the project's tool bin folder, then the application's tool bin
-folder, then the application's uv bin folder — so the application's folders are searched first.
-
-That order is deliberate: the application's own commands should not be shadowable by project content.
-A python console types `celbridge-py` by its full path, so nothing on PATH can stand in for it.
-
-An interactive shell sources its profile *after* this is applied, so a profile that prepends a folder
-holding another uv still wins. A console resolving the wrong uv is not automatically a defect — read the
-PATH the console actually has first.
 
 ## The build
 

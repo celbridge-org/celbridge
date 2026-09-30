@@ -138,6 +138,15 @@
                                     <textarea id="environment" rows="4" spellcheck="false" data-loc-key="Console_Placeholder_Environment" data-loc-attr="placeholder"></textarea>
                                     <span class="field-hint" data-loc-key="Console_Hint_Environment"></span>
                                 </label>
+
+                                <div class="field">
+                                    <span id="use-shell-profile-label" class="field-label" data-loc-key="Console_Field_UseShellProfile"></span>
+                                    <button id="use-shell-profile" class="toggle-switch" type="button" role="switch"
+                                            aria-checked="true" aria-labelledby="use-shell-profile-label">
+                                        <span class="toggle-switch-thumb"></span>
+                                    </button>
+                                    <span class="field-hint" data-loc-key="Console_Hint_UseShellProfile"></span>
+                                </div>
                             </section>
 
                             <section class="settings-section" data-section="shortcuts" hidden>
@@ -221,9 +230,9 @@
                 <span class="cel-card-title"></span>
                 <span class="built-in-badge" data-loc-key="Console_Runner_BuiltIn"></span>
                 <span class="cel-card-actions">
-                    <button class="built-in-switch" type="button" role="switch"
+                    <button class="toggle-switch" type="button" role="switch"
                             data-loc-key="Console_Runner_BuiltInEnabled" data-loc-attr="title,aria-label">
-                        <span class="built-in-switch-thumb"></span>
+                        <span class="toggle-switch-thumb"></span>
                     </button>
                 </span>
             </summary>

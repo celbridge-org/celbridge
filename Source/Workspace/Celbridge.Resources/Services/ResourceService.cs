@@ -1,6 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.Logging;
 using Celbridge.Projects;
+using Celbridge.Resources.Helpers;
 using Celbridge.Resources.Services.Roots;
 using Celbridge.UserInterface;
 using Celbridge.Workspace;
@@ -111,6 +112,12 @@ public class ResourceService : IResourceService, IDisposable
         // so previous-session trash content has no live handles.
         TryDeleteFolder(trashFolder);
         SyncRunner.Run(() => _fileSystem.CreateFolderAsync(trashFolder));
+
+        var gitIgnoreResult = SyncRunner.Run(() => DataFolderGitIgnore.EnsureAsync(_fileSystem, projectDataFolder));
+        if (gitIgnoreResult.IsFailure)
+        {
+            _logger.LogWarning("Failed to write the project data folder's .gitignore: {Error}", gitIgnoreResult.FirstErrorMessage);
+        }
 
         rootHandlerRegistry.RegisterRootHandler(new TempRootHandler(tempFolder));
         rootHandlerRegistry.RegisterRootHandler(new LogsRootHandler(logsFolder));

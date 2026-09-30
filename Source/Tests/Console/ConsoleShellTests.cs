@@ -35,6 +35,24 @@ public class ConsoleShellTests
         ConsoleShell.ClassifyFamily(executable).Should().Be(expected);
     }
 
+    [TestCase("/bin/zsh", "/bin/zsh")]
+    [TestCase("/opt/homebrew/bin/bash", "/opt/homebrew/bin/bash")]
+    public void ResolvePosix_ZshOrBash_IsTheUsersLoginShell(string loginShell, string expected)
+    {
+        ConsoleShell.ResolvePosix(loginShell).Executable.Should().Be(expected);
+    }
+
+    [TestCase("/usr/bin/fish")]
+    [TestCase("/bin/tcsh")]
+    [TestCase("")]
+    [TestCase(null)]
+    public void ResolvePosix_AnyOtherShell_IsThePlatformDefault(string? loginShell)
+    {
+        var expected = OperatingSystem.IsMacOS() ? "/bin/zsh" : "/bin/bash";
+
+        ConsoleShell.ResolvePosix(loginShell).Executable.Should().Be(expected);
+    }
+
     [TestCase("/bin/zsh", true)]
     [TestCase("/usr/local/bin/zsh", true)]
     [TestCase("/bin/bash", false)]

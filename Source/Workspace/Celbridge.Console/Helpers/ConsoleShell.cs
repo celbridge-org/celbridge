@@ -19,12 +19,16 @@ public sealed record ConsoleShell(string Executable, ConsoleShellFamily Family)
     /// Whether this shell is zsh. The POSIX family shares a quoting dialect but not a prompt syntax, so
     /// anything written in zsh's own syntax has to name the shell rather than the family.
     /// </summary>
-    public bool IsZsh => Path.GetFileNameWithoutExtension(Executable)
-        .Equals("zsh", StringComparison.OrdinalIgnoreCase);
+    public bool IsZsh => IsNamed(Executable, "zsh");
 
     /// <summary>
-    /// Resolves the platform default shell. Each is resolvable without a PATH probe: powershell.exe ships
-    /// in System32, and the Unix path honours the user's $SHELL.
+    /// Whether this shell is bash.
+    /// </summary>
+    public bool IsBash => IsNamed(Executable, "bash");
+
+    /// <summary>
+    /// Resolves the shell a console runs. Each is resolvable without a PATH probe: powershell.exe ships in
+    /// System32, and on macOS and Linux the shell is the user's $SHELL or a rooted default.
     /// </summary>
     public static ConsoleShell Resolve()
     {
@@ -33,18 +37,29 @@ public sealed record ConsoleShell(string Executable, ConsoleShellFamily Family)
             return new ConsoleShell("powershell.exe", ConsoleShellFamily.PowerShell);
         }
 
-        var loginShell = Environment.GetEnvironmentVariable("SHELL");
-        if (!string.IsNullOrEmpty(loginShell))
+        return ResolvePosix(Environment.GetEnvironmentVariable("SHELL"));
+    }
+
+    /// <summary>
+    /// The shell a console runs on macOS and Linux: the user's login shell when it is zsh or bash, and
+    /// otherwise the platform's default, since the console's start-up files are written for those two.
+    /// </summary>
+    public static ConsoleShell ResolvePosix(string? loginShell)
+    {
+        var isSupported = !string.IsNullOrEmpty(loginShell) &&
+            (IsNamed(loginShell, "zsh") || IsNamed(loginShell, "bash"));
+        if (isSupported)
         {
-            return new ConsoleShell(loginShell, ClassifyFamily(loginShell));
+            return new ConsoleShell(loginShell!, ConsoleShellFamily.Posix);
         }
 
-        if (OperatingSystem.IsMacOS())
-        {
-            return new ConsoleShell("/bin/zsh", ConsoleShellFamily.Posix);
-        }
+        var defaultShell = OperatingSystem.IsMacOS() ? "/bin/zsh" : "/bin/bash";
+        return new ConsoleShell(defaultShell, ConsoleShellFamily.Posix);
+    }
 
-        return new ConsoleShell("/bin/bash", ConsoleShellFamily.Posix);
+    private static bool IsNamed(string executable, string name)
+    {
+        return Path.GetFileNameWithoutExtension(executable).Equals(name, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

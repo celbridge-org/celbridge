@@ -31,6 +31,19 @@ public class ConsoleDocumentConfigParserTests
     }
 
     [Test]
+    public void Parse_UseShellProfile_IsOnUnlessTurnedOff()
+    {
+        Parse("[session]\ntype = \"shell\"").Value.UseShellProfile.Should().BeTrue();
+        Parse("[session]\nuse_shell_profile = true").Value.UseShellProfile.Should().BeTrue();
+
+        var result = Parse("[session]\nuse_shell_profile = false");
+
+        result.IsFailure.Should().BeFalse();
+        result.Value.UseShellProfile.Should().BeFalse();
+        result.Value.UnknownFields.Should().BeEmpty();
+    }
+
+    [Test]
     public void Parse_EmptyText_YieldsTheDefaultShellConfig()
     {
         var result = Parse(string.Empty);

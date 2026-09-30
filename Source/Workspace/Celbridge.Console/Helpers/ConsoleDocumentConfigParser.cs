@@ -31,6 +31,12 @@ public sealed record ConsoleDocumentConfig(
     /// "session.shell.entrypoint"). The document still launches, so this is advisory.
     /// </summary>
     public IReadOnlyList<string> UnknownFields { get; init; } = Array.Empty<string>();
+
+    /// <summary>
+    /// Whether the console's shell runs the user's own start-up files and starts from everything the
+    /// application inherited. Off, it starts clean. On unless the document turns it off.
+    /// </summary>
+    public bool UseShellProfile { get; init; } = true;
 }
 
 /// <summary>
@@ -113,7 +119,8 @@ public static class ConsoleDocumentConfigParser
             ReadTextList(session?.DisabledRunners),
             ReadTriggers(session))
         {
-            UnknownFields = CollectUnknownFields(document, optionKeysBySessionType)
+            UnknownFields = CollectUnknownFields(document, optionKeysBySessionType),
+            UseShellProfile = session?.UseShellProfile ?? true,
         };
 
         return config;
