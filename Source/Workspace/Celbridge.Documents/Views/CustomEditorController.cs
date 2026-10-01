@@ -269,6 +269,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         // A page still loading is not listening for the rename yet, so it waits for the page's load.
         if (_page.TryDeferRename())
         {
+            _logger.LogDebug("Deferred a rename until the editor page loads: {Resource}", _viewModel.FileResource);
             return;
         }
 
@@ -279,6 +280,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     {
         try
         {
+            _logger.LogDebug("Telling the editor page about a rename: {Resource}", _viewModel.FileResource);
             await host.NotifyRenamedAsync(CreateDocumentMetadata());
         }
         catch (Exception ex)
