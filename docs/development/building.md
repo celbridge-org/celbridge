@@ -97,6 +97,8 @@ python run_tests.py
 
 The venv is for running the tests only. The wheel build (`build.py`) takes its interpreter from uv and never looks for a venv, so where the venv lives has no bearing on the build.
 
+Behavior visible only in the running application gets agent test cases in the same change, so an agent implementing a feature or fixing a defect adds them without being asked. Agent tests drive the real application on a real platform, for behavior such as which control a keystroke reaches or what environment a console starts with. They live in the private `celbridge-tests` repository, checked out beside this one, whose `docs/writing_tests.md` says how a case is added. From a session in this checkout, the `add-agent-tests` skill adds cases and the `run-agent-tests` skill runs them.
+
 ## Linting
 
 JavaScript is linted with ESLint from the `Source/` folder:

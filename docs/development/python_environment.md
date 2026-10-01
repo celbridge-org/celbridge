@@ -128,7 +128,7 @@ A new console always starts with Celbridge's uv and Celbridge's Python. After th
 what they like. Nothing can change which `uv`, `uvx` and `celbridge-py` a new console finds, or which
 interpreter its REPL uses. That includes software installed on the machine, the environment Celbridge was
 launched with, the user's shell profile, and uv's configuration files. If any of these changes what a new
-console finds, that is a bug. The agent tests' Environment Isolation plan checks for it with a hostile
+console finds, that is a bug. The agent tests' Environment Isolation test file checks for it with a hostile
 launch environment and a hostile profile.
 
 Each `.console` document has a `use_shell_profile` setting, which is on by default. The settings form calls
@@ -252,6 +252,6 @@ than surfacing at the first console launch.
   `uv_python_installs` that appears in a project's `.celbridge/python`, or changes there after a console
   runs, means something is still scoping them per-project.
 
-The agent tests' Python Environment plan covers this area case by case. No unit suite reaches it — the
+The agent tests' Python Environment test file covers this area case by case. No unit suite reaches it — the
 interpreter, the tool install and the REPL's launch all happen by running uv — so a change that stops every
 python console starting passes the whole .NET suite.
