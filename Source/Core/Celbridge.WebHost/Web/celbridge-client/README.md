@@ -27,7 +27,7 @@ celbridge-client/
 ├── platform.js           # Which operating system the page runs on
 ├── types.js              # JSDoc type definitions
 ├── celbridge.css         # Shared editor styles
-├── celbridge-tokens.css  # Generated design tokens (see docs/development/design_tokens.md)
+├── celbridge-tokens.css  # Generated design tokens
 ├── api/                  # API modules
 │   ├── dialog-api.js     # Dialog operations
 │   ├── document-api.js   # Document operations
