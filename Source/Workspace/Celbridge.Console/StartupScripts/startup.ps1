@@ -181,6 +181,13 @@ if ($global:CelbridgeStartup.History -and (Get-Command Set-PSReadLineOption -Err
     Set-PSReadLineOption -HistorySavePath $global:CelbridgeStartup.History
 }
 
+# Celbridge sends Ctrl+U ahead of an injected command to clear any partial input. PSReadLine's default Windows
+# edit mode has no binding for it, so the key would be typed into the line as a literal ^U. This is set after the
+# profiles so a profile cannot unbind it.
+if (Get-Command Set-PSReadLineKeyHandler -ErrorAction SilentlyContinue) {
+    Set-PSReadLineKeyHandler -Chord Ctrl+u -Function BackwardDeleteLine
+}
+
 $global:CelbridgePrompt = CelbridgeChoosePrompt
 $function:global:prompt = $function:CelbridgeFirstPrompt
 
