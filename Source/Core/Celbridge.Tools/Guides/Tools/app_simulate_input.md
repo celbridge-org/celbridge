@@ -12,10 +12,10 @@ build cannot perform the operation at all, so there is nothing for a flag to gat
 
 Driving the app from outside — clicks, typing, ordinary shortcuts — is the job of whatever automation the
 caller already has. This tool covers the gap where that automation cannot produce a particular input at
-all, so a behaviour is otherwise untestable. The Escape key is the case that prompted it: the desktop
-automation used to run the agent tests reports success for Escape and delivers nothing, which makes
-"cancel the current edit" impossible to exercise. Reach for this tool only for that kind of gap, not as a
-general substitute for driving the UI.
+all, so a behaviour is otherwise untestable. The Escape key is the case that prompted it: desktop
+automation tools can report success for Escape and deliver nothing, which makes "cancel the current edit"
+impossible to exercise. Reach for this tool only for that kind of gap, not as a general substitute for
+driving the UI.
 
 It runs outside the command queue, so it still works while a modal dialog is open — which is when a caller
 most needs it, because an open dialog holds every queued tool until it is answered.
