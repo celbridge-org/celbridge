@@ -284,9 +284,9 @@ internal sealed class ConsoleSession : IDisposable
             return;
         }
 
-        // Once the console is visible, the script is typed into whatever is reading input. That is either the
-        // shell at its prompt, or the program the command started. Nothing is typed when the session type runs
-        // the script itself.
+        // The script is typed once the shell's output has settled, into whatever is reading input. That is either the
+        // shell at its prompt, or the program the command started. Nothing is typed when the session type runs the
+        // script itself.
         var injectedLines = new List<string>();
         if (!startupInvocation.HandlesStartupScript)
         {
@@ -572,8 +572,9 @@ internal sealed class ConsoleSession : IDisposable
         // with whatever the user had half-typed at the prompt.
         var text = "\u0015" + invocation;
 
-        // During start-up, a programmatic injection waits until the console is visible and the script is typed.
-        // A Run issued as the console opens then arrives as type-ahead for the starting REPL.
+        // Until start-up ends, a programmatic injection is held back. Start-up ends once the shell's ready marker has
+        // arrived and the start-up script has been typed. A Run issued as the console opens then arrives as type-ahead
+        // for the starting REPL.
         lock (_gateLock)
         {
             if (_startupGateClosed)
