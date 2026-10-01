@@ -52,4 +52,14 @@ public class ConsoleShellTests
 
         shell.IsZsh.Should().Be(expected);
     }
+
+    [TestCase("/bin/zsh", ConsoleShellFamily.Posix, "\u0015")]
+    [TestCase("/bin/bash", ConsoleShellFamily.Posix, "\u0015")]
+    [TestCase("powershell.exe", ConsoleShellFamily.PowerShell, "")]
+    public void ClearLineKey_IsCtrlUOnlyForPosixShells(string executable, ConsoleShellFamily family, string expected)
+    {
+        var shell = new ConsoleShell(executable, family);
+
+        shell.ClearLineKey.Should().Be(expected);
+    }
 }

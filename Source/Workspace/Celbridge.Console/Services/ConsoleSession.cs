@@ -65,6 +65,7 @@ internal sealed class ConsoleSession : IDisposable
     private Timer? _markerTimeout;
     private int? _trackedProcessId;
     private bool _disposed;
+    private string _clearLineKey = string.Empty;
 
     public ConsoleSession(
         IServiceProvider serviceProvider,
@@ -266,6 +267,7 @@ internal sealed class ConsoleSession : IDisposable
         // Every session runs the platform's shell. Its start-up files show the console and then run the command.
         // The session type only chooses the command.
         var shell = ConsoleShell.Resolve();
+        _clearLineKey = shell.ClearLineKey;
 
         var workingDirectory = ConsoleWorkingFolder.Resolve(config.WorkingDirectory, projectFolderPath);
 
@@ -568,9 +570,9 @@ internal sealed class ConsoleSession : IDisposable
 
     public void InjectInvocation(string invocation)
     {
-        // Clear any partial input (Ctrl+U, U+0015) before submitting, so the invocation is not concatenated
-        // with whatever the user had half-typed at the prompt.
-        var text = "\u0015" + invocation;
+        // Clear any partial input before submitting, so the invocation is not concatenated with whatever the
+        // user had half-typed at the prompt. A shell with no safe clear key gets the invocation alone.
+        var text = _clearLineKey + invocation;
 
         // Until start-up ends, a programmatic injection is held back. Start-up ends once the shell's ready marker has
         // arrived and the start-up script has been typed. A Run issued as the console opens then arrives as type-ahead
