@@ -19,6 +19,15 @@ public class ConsoleStartupShellTests
     private const string CelbridgeToolBin = "/celbridge/uv_bin";
     private const string CelbridgeCache = "/celbridge/cache";
     private const string DecoyPrompt = "decoy> ";
+    private const string ZshCompactPrompt = "%F{cyan}%1~%f %# ";
+    private const string BashCompactPrompt = @"\[\e[36m\]\W\[\e[m\] \$ ";
+
+    // Reads, at a later prompt, whether the decoy's prompt command ran and whether the first-prompt hook is still
+    // registered.
+    private const string PromptCommandChecks = """
+        printf 'CEL%s %s=%s\n' TEST MARK "${DECOY_MARK-<unset>}"
+        case "${PROMPT_COMMAND[*]}" in *_celbridge_first_prompt*) printf 'CEL%s %s=%s\n' TEST HOOK_LEFT yes ;; *) printf 'CEL%s %s=%s\n' TEST HOOK_LEFT no ;; esac
+        """;
 
     private static readonly string PosixMarker = ConsoleReadyMarker.For(new ConsoleShell("/bin/zsh", ConsoleShellFamily.Posix), hasCommand: false)!.ScanText;
 
@@ -212,6 +221,74 @@ public class ConsoleStartupShellTests
     }
 
     [Test]
+    public void Zsh_CompactPrompt_SurvivesAProfileThatReplacesTheHookList()
+    {
+        File.AppendAllText(Path.Combine(_home, ".zshrc"), "precmd_functions=(decoy_prompt)\n");
+
+        var results = RunShell("zsh", useShellProfile: true);
+
+        results["FIRST_PROMPT"].Should().Be(ZshCompactPrompt);
+        results["LATER_PROMPT"].Should().Be(ZshCompactPrompt);
+    }
+
+    // A hook that stopped at an unset variable would restore nothing. Each hook resets the options it relies on
+    // while it runs.
+    [TestCase("zsh", "setopt NO_UNSET\n")]
+    [TestCase("bash", "set -u\n")]
+    public void FirstPrompt_Restores_WhenTheProfileMakesUnsetVariablesAnError(string shellName, string options)
+    {
+        File.AppendAllText(Path.Combine(_home, shellName == "zsh" ? ".zshrc" : ".bash_profile"), options);
+
+        var results = RunShell(shellName, useShellProfile: true, compactPrompt: false);
+
+        results["VIRTUAL_ENV"].Should().Be("<unset>");
+        results["UV_CACHE_DIR"].Should().Be(CelbridgeCache);
+        results["CELBRIDGE_CONSOLE_RESTORE"].Should().Be("<unset>");
+        _standardOutput.Should().Contain(PosixMarker);
+    }
+
+    // bash-preexec rearranges PROMPT_COMMAND at the first prompt when it installs itself. The decoy does the same:
+    // it puts decoy_mark first, and decoy_mark records that it ran.
+    [Test]
+    public void Bash_FirstPromptHook_KeepsChangesAnotherPromptCommandMakes()
+    {
+        File.AppendAllText(Path.Combine(_home, ".bash_profile"), """
+            decoy_mark() { DECOY_MARK=1; }
+            decoy_rearrange() { [ -n "${DECOY_DONE-}" ] && return; DECOY_DONE=1; PROMPT_COMMAND="decoy_mark"$'\n'"$PROMPT_COMMAND"; }
+            PROMPT_COMMAND="$PROMPT_COMMAND"$'\n'"decoy_rearrange"
+
+            """);
+
+        var results = RunShell("bash", useShellProfile: true, PromptCommandChecks);
+
+        results["MARK"].Should().Be("1", "the decoy's change to PROMPT_COMMAND is kept");
+        results["HOOK_LEFT"].Should().Be("no");
+        results["LATER_PROMPT"].Should().Be(BashCompactPrompt);
+    }
+
+    [Test]
+    public void Bash_FirstPromptHook_KeepsChangesAnotherPromptCommandMakes_InAnArray()
+    {
+        if (!BashHasPromptCommandArrays())
+        {
+            Assert.Ignore("PROMPT_COMMAND can be an array only from bash 5.1, on macOS and Linux.");
+        }
+
+        File.AppendAllText(Path.Combine(_home, ".bash_profile"), """
+            decoy_mark() { DECOY_MARK=1; }
+            decoy_rearrange() { [ -n "${DECOY_DONE-}" ] && return; DECOY_DONE=1; PROMPT_COMMAND=(decoy_mark "${PROMPT_COMMAND[@]}"); }
+            PROMPT_COMMAND=(decoy_prompt "history -a" decoy_rearrange)
+
+            """);
+
+        var results = RunShell("bash", useShellProfile: true, PromptCommandChecks);
+
+        results["MARK"].Should().Be("1", "the decoy's change to PROMPT_COMMAND is kept");
+        results["HOOK_LEFT"].Should().Be("no");
+        results["LATER_PROMPT"].Should().Be(BashCompactPrompt);
+    }
+
+    [Test]
     public void PowerShell_FirstPrompt_PutsCelbridgeSettingsBackOnTop()
     {
         if (!OperatingSystem.IsWindows())
@@ -229,7 +306,9 @@ public class ConsoleStartupShellTests
             $env:Path = 'C:\decoy\bin;' + $env:Path
             Set-Alias -Name uv -Value 'C:\decoy\bin\uv.exe' -Scope Global
             function global:celbridge-py { 'decoy' }
+            $global:celbridgeRoot = 'mine'
             prompt | Out-Null
+            "CELTEST USER_GLOBAL=$global:celbridgeRoot"
             "CELTEST VIRTUAL_ENV=$env:VIRTUAL_ENV"
             "CELTEST UV_CACHE_DIR=$env:UV_CACHE_DIR"
             "CELTEST UV_INDEX_URL=$env:UV_INDEX_URL"
@@ -238,6 +317,8 @@ public class ConsoleStartupShellTests
             "CELTEST UV_ALIAS=$(Test-Path Alias:uv)"
             "CELTEST CELBRIDGE_PY_FUNCTION=$(Test-Path Function:celbridge-py)"
             "CELTEST RESTORE=$env:CELBRIDGE_CONSOLE_RESTORE"
+            $leftBehind = @((Get-ChildItem Function:Celbridge*, Variable:Celbridge*).Name) -ne 'celbridgeRoot'
+            "CELTEST LEFT_BEHIND=$leftBehind"
             """;
         var results = RunPowerShell(script, new Dictionary<string, string>
         {
@@ -255,6 +336,8 @@ public class ConsoleStartupShellTests
         results["UV_ALIAS"].Should().Be("False");
         results["CELBRIDGE_PY_FUNCTION"].Should().Be("False");
         results["RESTORE"].Should().BeEmpty();
+        results["USER_GLOBAL"].Should().Be("mine", "the start-up removes only its own variables");
+        results["LEFT_BEHIND"].Should().BeEmpty("the first prompt removes everything the start-up defined");
     }
 
     [TestCase(true, "PS work> ")]
@@ -438,6 +521,32 @@ public class ConsoleStartupShellTests
         _standardOutput.IndexOf("CELTEST COMMAND=", StringComparison.Ordinal).Should().BeGreaterThan(markerIndex);
     }
 
+    // cmd's echo prints the command line it received, so the test sees the arguments exactly as the program does.
+    // An empty argument, a quote inside an argument with a space, and a trailing backslash each need quoting that
+    // Windows PowerShell does not do itself.
+    [Test]
+    public void PowerShell_Command_PassesAProgramsArgumentsQuoted()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Ignore("PowerShell consoles run on Windows only.");
+        }
+
+        var command = new[] { "cmd.exe", "/c", "echo", "CELTEST", "LINE=", "", "plain", "a b", "print(\"hi there\")", @"a b\" };
+        var script = ConsoleStartupFiles.BuildPowerShellStartup() + """
+
+            "CELTEST ARGUMENT_LINE=$env:CELBRIDGE_CONSOLE_ARGUMENTS"
+            """;
+
+        var results = RunPowerShell(script, new Dictionary<string, string>
+        {
+            [ConsoleStartupFiles.CommandVariable] = string.Join('\n', command),
+        });
+
+        results["LINE"].Should().Be(@" """" plain ""a b"" ""print(\""hi there\"")"" ""a b\\""");
+        results["ARGUMENT_LINE"].Should().BeEmpty("the start-up removes the variable once the program has run");
+    }
+
     // Runs the start-up in a working folder, with $PROFILE pointing only at a decoy profile. The start-up loads
     // the decoy as if it were the user's profile. The decoy sets its own variable, and a prompt that sets a
     // virtual environment each time it runs.
@@ -481,12 +590,17 @@ public class ConsoleStartupShellTests
 
     private Dictionary<string, string> RunPowerShell(string script, IReadOnlyDictionary<string, string> environment)
     {
-        var encodedScript = Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
+        // Redirected output uses the console's code page, which loses the marker character. A console window takes
+        // Unicode, so the test asks for UTF-8 to see what a console would show.
+        var utf8Script = "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8\n" + script;
+        var encodedScript = Convert.ToBase64String(Encoding.Unicode.GetBytes(utf8Script));
 
         var startInfo = new ProcessStartInfo("powershell.exe")
         {
             RedirectStandardOutput = true,
             RedirectStandardError = true,
+            StandardOutputEncoding = Encoding.UTF8,
+            StandardErrorEncoding = Encoding.UTF8,
             UseShellExecute = false,
         };
         foreach (var argument in new[] { "-NoLogo", "-NoProfile", "-NonInteractive", "-EncodedCommand", encodedScript })
@@ -504,6 +618,29 @@ public class ConsoleStartupShellTests
     private static string PowerShellQuote(string text)
     {
         return text.Replace("'", "''");
+    }
+
+    private static bool BashHasPromptCommandArrays()
+    {
+        if (OperatingSystem.IsWindows() ||
+            !File.Exists("/bin/bash"))
+        {
+            return false;
+        }
+
+        var startInfo = new ProcessStartInfo("/bin/bash")
+        {
+            RedirectStandardOutput = true,
+            UseShellExecute = false,
+        };
+        startInfo.ArgumentList.Add("-c");
+        startInfo.ArgumentList.Add("echo $(( BASH_VERSINFO[0] * 100 + BASH_VERSINFO[1] ))");
+
+        using var process = Process.Start(startInfo)!;
+        var output = process.StandardOutput.ReadToEnd();
+        process.WaitForExit();
+
+        return int.TryParse(output.Trim(), out var version) && version >= 501;
     }
 
     private Dictionary<string, string> Run(ProcessStartInfo startInfo, string? standardInput)

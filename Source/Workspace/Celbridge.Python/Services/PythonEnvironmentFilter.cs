@@ -1,3 +1,5 @@
+using Celbridge.Utilities;
+
 namespace Celbridge.Python.Services;
 
 /// <summary>
@@ -53,17 +55,12 @@ public static class PythonEnvironmentFilter
         "celbridge-py",
     };
 
-    // Variable names are case-insensitive only on Windows.
-    private static StringComparison NameComparison => OperatingSystem.IsWindows()
-        ? StringComparison.OrdinalIgnoreCase
-        : StringComparison.Ordinal;
-
     /// <summary>
     /// Whether the filter removes a variable of this name.
     /// </summary>
     public static bool Removes(string name)
     {
-        var comparison = NameComparison;
+        var comparison = EnvironmentVariableNames.Comparison;
 
         var isKept = KeptNames.Any(keptName => string.Equals(name, keptName, comparison)) ||
             KeptPrefixes.Any(prefix => name.StartsWith(prefix, comparison));

@@ -31,7 +31,7 @@ Two corollaries follow, and most of the layout below exists to serve them:
 | `<app data>/Python/` | `bin/` (uv, uvx), the wheel, `uv_tools/` (the celbridge-py environment), `uv_bin/` (the celbridge-py command), `installed_version.txt` | Deleted and rebuilt whenever the marker mismatches |
 | `<app data>/PythonCache/` | `uv_cache/`, `uv_python_installs/` | Never deleted by an install, and never safe to delete by hand. Shared by the tool and by every project |
 | `<project>/.celbridge/python/` | `ipython/` (the profile), `uv_tools/` and `uv_bin/` (tools the **user** installs in this project) | Belongs to the project; safe to delete at any time |
-| `<project>/.celbridge/console/` | The generated start-up files, in a folder for each shell a console has run, and `history/` (each shell's history) | Belongs to the project. The start-up files are checked and rewritten before each console starts |
+| `<project>/.celbridge/console/` | The generated start-up files, in a folder for each shell a console has run, and `history/` (each shell's history) | Belongs to the project. The first console in a workspace rewrites any start-up file that is missing or out of date |
 
 `<app data>` is `ApplicationData.Current.LocalFolder` on packaged Windows, which the OS removes on
 uninstall, and `~/Library/Application Support/Celbridge/` elsewhere.
@@ -137,25 +137,34 @@ it "Use My Shell Profile".
 | | Shell profile on (the default) | Shell profile off |
 |---|---|---|
 | Starting environment | Everything Celbridge inherited, minus the variables that control uv or Python | Only what a shell and the network need, plus the system PATH |
-| The user's profile | Runs, as in a new terminal window | Does not run |
+| The user's profile | Runs, as in a login shell | Does not run |
 | Before the first prompt | The uv and Python variables are removed again. Celbridge's values and the console's own are restored | Celbridge's values and the console's own are applied |
 
 The variables that control uv or Python are `UV`, every `UV_*` variable, every `PYTHON*` variable,
 `VIRTUAL_ENV` and `CONDA_PREFIX`. uv's index and network settings are kept, so a mirror or a proxy still
 works. `PythonEnvironmentFilter` defines this rule, and the installer's `uv tool install` uses it too. The
 console's own `[session.environment]` table always wins, over both Celbridge's defaults and the profile.
+That includes PATH, when the table sets one.
 
-Before each console starts, Celbridge writes start-up files for its shell into the project data folder,
-under `console/zsh`, `console/bash` or `console/powershell`. zsh finds them through `ZDOTDIR`, and bash
-through `--rcfile`. PowerShell receives its start-up script on the command line, with `-NoProfile`, because
-an execution policy can block a script file. The files contain no values. Every value reaches them through
-environment variables, so nothing from the user's environment is written to disk. Both settings are passed
-this way too, so all consoles share one set of files for each shell.
+The first console in a workspace writes the start-up files for its shell into the project data folder, under
+`console/zsh`, `console/bash` or `console/powershell`. Every later console in the workspace reuses them. zsh
+finds them through `ZDOTDIR`, and bash through `--rcfile`. PowerShell receives its start-up script on the
+command line, with `-NoProfile`, because an execution policy can block a script file.
 
-When the shell profile is on, the files run the user's own start-up files. Then a one-time hook runs just
-before the first prompt, after any prompt hooks the user's files added. The hook applies the filter again,
-and restores Celbridge's values and the console's own. It moves Celbridge's folders back to the front of
-PATH, and removes any alias or function named `uv`, `uvx` or `celbridge-py`.
+The scripts are kept in `Source/Workspace/Celbridge.Console/StartupScripts/` and embedded in the application.
+`ConsoleStartupFiles` fills in the filter's lists of variables and commands from `PythonEnvironmentFilter` as
+it writes them. Every other value reaches them through environment variables, so nothing from the user's
+environment is written to disk. Both settings are passed this way too, so all consoles share one set of files
+for each shell.
+
+When the shell profile is on, the files run the user's own start-up files, as a login shell does. This
+matches a macOS terminal window. bash reads the first of `~/.bash_profile`, `~/.bash_login` and `~/.profile`,
+so on Linux `~/.bashrc` runs only when that file reads it, as the usual `~/.profile` does.
+
+Then a one-time hook runs just before the first prompt, after any prompt hooks the user's files added. It
+runs with its own shell options, so options the user's files set do not change it. The hook applies the
+filter again, and restores Celbridge's values and the console's own. It moves Celbridge's folders back to the
+front of PATH, and removes any alias or function named `uv`, `uvx` or `celbridge-py`.
 
 Next, the same hook shows the console. It clears the screen and prints the ready marker, and the host drops
 everything the shell printed before the marker. Finally, the hook runs the console's command in the
@@ -163,9 +172,10 @@ console's working folder, for example `celbridge-py` in a python console. PowerS
 end of its start-up script, and restores Celbridge's settings again at its first prompt.
 
 The command reaches the files in one variable, with the executable and each argument on a line of its own.
-The files split it only at line breaks, so no argument needs quoting. Nothing is typed at the prompt, so the
-shell's history holds only what the user types. A console's own `script` is still typed once the console is
-visible, into whatever is reading input.
+The files split it only at line breaks, so no argument needs quoting. Windows PowerShell does not quote a
+program's arguments properly, so its start-up quotes them itself before passing them on. Nothing is typed at
+the prompt, so the shell's history holds only what the user types. A console's own `script` is still typed
+once the console is visible, into whatever is reading input.
 
 The files also control the prompt when `compact_prompt` is on, which is the default. The settings form calls
 it "Compact Prompt". A hook that runs after every other prompt hook sets a compact prompt, showing the
@@ -180,7 +190,9 @@ project's own tool bin folder. Project content then cannot shadow the applicatio
 console runs `celbridge-py` by its full path, so nothing on PATH can replace it.
 
 Celbridge's own uv calls pass `--no-config`, so no `uv.toml` can block them. These are the REPL's launch and
-the tool install. A uv the user types reads configuration files as usual, because the user's own project may
+the tool install. They also ignore a package index or TLS setting kept only in a `uv.toml`. A user behind a
+mirror or a proxy sets these through `UV_INDEX_URL`, `UV_DEFAULT_INDEX` or `UV_NATIVE_TLS` instead, which the
+filter keeps. A uv the user types reads configuration files as usual, because the user's own project may
 depend on its `[tool.uv]` settings. A configuration file still cannot move it off the application's
 interpreters and cache, because uv gives the environment variables Celbridge sets priority over
 configuration files.

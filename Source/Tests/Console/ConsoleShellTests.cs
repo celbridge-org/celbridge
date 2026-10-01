@@ -23,18 +23,6 @@ public class ConsoleShellTests
         }
     }
 
-    [TestCase("powershell.exe", ConsoleShellFamily.PowerShell)]
-    [TestCase("pwsh", ConsoleShellFamily.PowerShell)]
-    [TestCase(@"C:\Program Files\PowerShell\7\pwsh.exe", ConsoleShellFamily.PowerShell)]
-    [TestCase("cmd.exe", ConsoleShellFamily.Cmd)]
-    [TestCase("/bin/zsh", ConsoleShellFamily.Posix)]
-    [TestCase("/bin/bash", ConsoleShellFamily.Posix)]
-    [TestCase("/usr/bin/fish", ConsoleShellFamily.Posix)]
-    public void ClassifyFamily_ByExecutableName(string executable, ConsoleShellFamily expected)
-    {
-        ConsoleShell.ClassifyFamily(executable).Should().Be(expected);
-    }
-
     [TestCase("/bin/zsh", "/bin/zsh")]
     [TestCase("/opt/homebrew/bin/bash", "/opt/homebrew/bin/bash")]
     public void ResolvePosix_ZshOrBash_IsTheUsersLoginShell(string loginShell, string expected)
@@ -53,14 +41,14 @@ public class ConsoleShellTests
         ConsoleShell.ResolvePosix(loginShell).Executable.Should().Be(expected);
     }
 
-    [TestCase("/bin/zsh", true)]
-    [TestCase("/usr/local/bin/zsh", true)]
-    [TestCase("/bin/bash", false)]
-    [TestCase("/usr/bin/fish", false)]
-    [TestCase("powershell.exe", false)]
-    public void IsZsh_ByExecutableName(string executable, bool expected)
+    [TestCase("/bin/zsh", ConsoleShellFamily.Posix, true)]
+    [TestCase("/usr/local/bin/zsh", ConsoleShellFamily.Posix, true)]
+    [TestCase("/bin/bash", ConsoleShellFamily.Posix, false)]
+    [TestCase("/usr/bin/fish", ConsoleShellFamily.Posix, false)]
+    [TestCase("powershell.exe", ConsoleShellFamily.PowerShell, false)]
+    public void IsZsh_ByExecutableName(string executable, ConsoleShellFamily family, bool expected)
     {
-        var shell = new ConsoleShell(executable, ConsoleShell.ClassifyFamily(executable));
+        var shell = new ConsoleShell(executable, family);
 
         shell.IsZsh.Should().Be(expected);
     }

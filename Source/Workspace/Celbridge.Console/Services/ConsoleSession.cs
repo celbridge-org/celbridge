@@ -1,8 +1,5 @@
-﻿using System.Text.RegularExpressions;
-using Celbridge.Console.Helpers;
-using Celbridge.FileSystem;
+﻿using Celbridge.Console.Helpers;
 using Celbridge.Logging;
-using Celbridge.Projects;
 using Celbridge.Utilities;
 using Celbridge.WebHost;
 using Celbridge.Workspace;
@@ -29,11 +26,6 @@ internal sealed class ConsoleSession : IDisposable
     // can take far longer than any fixed budget while still making progress.
     private const int MarkerSilenceTimeoutMs = 10000;
 
-    private const string PathVariableName = "PATH";
-
-    // A valid POSIX shell variable name.
-    private static readonly Regex ShellVariableNamePattern = new("^[A-Za-z_][A-Za-z0-9_]*$", RegexOptions.Compiled);
-
     private readonly IWebViewAdapter _webViewAdapter;
     private readonly IServiceProvider _serviceProvider;
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -42,6 +34,7 @@ internal sealed class ConsoleSession : IDisposable
 
     // The registered providers, collected and checked once by the session service.
     private readonly IReadOnlyList<IConsoleSessionProvider> _sessionProviders;
+    private readonly SharedConsoleStartupWrite _startupWrite;
     private readonly IReadOnlyList<ConsoleSessionType> _sessionTypes;
 
     // The size a view reports for this session, which the launch waits on before it creates the pty.
@@ -77,12 +70,14 @@ internal sealed class ConsoleSession : IDisposable
         IServiceProvider serviceProvider,
         IWorkspaceWrapper workspaceWrapper,
         ResourceKey resource,
-        IReadOnlyList<IConsoleSessionProvider> sessionProviders)
+        IReadOnlyList<IConsoleSessionProvider> sessionProviders,
+        SharedConsoleStartupWrite startupWrite)
     {
         _serviceProvider = serviceProvider;
         _workspaceWrapper = workspaceWrapper;
         Resource = resource;
         _sessionProviders = sessionProviders;
+        _startupWrite = startupWrite;
         _sessionTypes = sessionProviders.Select(provider => provider.SessionType).ToList();
         _logger = serviceProvider.GetRequiredService<ILogger<ConsoleSession>>();
         _webViewAdapter = ServiceLocator.AcquireService<IWebViewAdapter>();
@@ -320,11 +315,11 @@ internal sealed class ConsoleSession : IDisposable
         var launchEnvironment = ConsoleStartingEnvironment.Build(inheritedEnvironment, config.UseShellProfile);
 
         // If the console sets its own PATH, the contributors add to it. Otherwise they add to the starting PATH.
-        var setsPath = environmentCopy.Keys.Any(IsPathVariable);
+        var setsPath = environmentCopy.Keys.Any(EnvironmentVariableNames.IsPath);
         if (!setsPath &&
-            launchEnvironment.TryGetValue(PathVariableName, out var startingPath))
+            launchEnvironment.TryGetValue(EnvironmentVariableNames.PathName, out var startingPath))
         {
-            environmentCopy[PathVariableName] = startingPath;
+            environmentCopy[EnvironmentVariableNames.PathName] = startingPath;
         }
 
         foreach (var contributor in _serviceProvider.GetServices<IConsoleEnvironmentContributor>())
@@ -345,7 +340,9 @@ internal sealed class ConsoleSession : IDisposable
             launchEnvironment[pair.Key] = pair.Value;
         }
 
-        launchEnvironment[ConsoleStartupFiles.RestoreVariable] = BuildRestoreList(environmentCopy);
+        launchEnvironment[ConsoleStartupFiles.RestoreVariable] = ConsoleStartupFiles.BuildRestoreList(
+            environmentCopy.Keys,
+            restoresPath: setsPath);
 
         var userZdotdir = inheritedEnvironment.GetValueOrDefault("ZDOTDIR");
         var launchResult = await BuildShellLaunchAsync(shell, config, userZdotdir, command, workingDirectory);
@@ -540,9 +537,9 @@ internal sealed class ConsoleSession : IDisposable
         _terminalSize = new TerminalSize(cols, rows);
     }
 
-    // Writes the start-up files into the project data folder. Then builds the shell's command line, and the
-    // variables that point the shell at those files. The start-up files show the console and run its command.
-    // If they cannot be written, the console fails instead of starting a shell that would do neither.
+    // Builds the shell's command line, and the variables that point the shell at its start-up files. The first
+    // console in the workspace writes those files. They show the console and run its command, so if they cannot
+    // be written, the console fails instead of starting a shell that would do neither.
     private async Task<Result<ConsoleShellLaunch>> BuildShellLaunchAsync(
         ConsoleShell shell,
         ConsoleDocumentConfig config,
@@ -550,15 +547,7 @@ internal sealed class ConsoleSession : IDisposable
         IReadOnlyList<string> command,
         string workingFolder)
     {
-        var projectDataFolderPath = _serviceProvider.GetRequiredService<IProjectService>()
-            .CurrentProject?.ProjectDataFolderPath;
-        if (string.IsNullOrEmpty(projectDataFolderPath))
-        {
-            return Result<ConsoleShellLaunch>.Fail("No project is loaded, so the console has nowhere to write its start-up files.");
-        }
-
-        var fileSystem = _serviceProvider.GetRequiredService<ILocalFileSystem>();
-        var writeResult = await ConsoleStartupWriter.WriteAsync(fileSystem, projectDataFolderPath, shell);
+        var writeResult = await _startupWrite.GetAsync();
         if (writeResult.IsFailure)
         {
             return Result<ConsoleShellLaunch>.Fail("The console could not write its start-up files.")
@@ -575,28 +564,6 @@ internal sealed class ConsoleSession : IDisposable
         };
 
         return ConsoleShellLaunch.Build(shell, options);
-    }
-
-    // The names of the variables the start-up restores after the user's files run. This is every variable the
-    // session sets, except PATH. For PATH, the start-up moves Celbridge's folders to the front instead. Names
-    // that are not valid shell variables are left out, because no profile can change them.
-    private static string BuildRestoreList(IReadOnlyDictionary<string, string> sessionEnvironment)
-    {
-        var names = sessionEnvironment.Keys
-            .Where(name => !IsPathVariable(name))
-            .Where(name => !name.StartsWith(ConsoleStartupFiles.VariablePrefix, StringComparison.Ordinal))
-            .Where(name => ShellVariableNamePattern.IsMatch(name))
-            .OrderBy(name => name, StringComparer.Ordinal);
-
-        return string.Join(' ', names);
-    }
-
-    // Variable names are case-insensitive only on Windows.
-    private static bool IsPathVariable(string name)
-    {
-        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-
-        return string.Equals(name, PathVariableName, comparison);
     }
 
     public void InjectInvocation(string invocation)

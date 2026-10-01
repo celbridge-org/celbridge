@@ -1,3 +1,5 @@
+using Celbridge.Utilities;
+
 namespace Celbridge.Console.Helpers;
 
 /// <summary>
@@ -7,8 +9,6 @@ namespace Celbridge.Console.Helpers;
 /// </summary>
 public static class ConsoleStartingEnvironment
 {
-    private const string PathVariableName = "PATH";
-
     // The system folders a clean console starts with on macOS and Linux. The login shell's system start-up files
     // add the rest. On macOS they read /etc/paths.
     private const string PosixSystemPath = "/usr/bin:/bin:/usr/sbin:/sbin";
@@ -73,18 +73,12 @@ public static class ConsoleStartingEnvironment
         "LC_",
     };
 
-    // Variable names are case-insensitive on Windows. A console's PATH then replaces an inherited Path, instead
-    // of sitting beside it.
-    private static StringComparer NameComparer => OperatingSystem.IsWindows()
-        ? StringComparer.OrdinalIgnoreCase
-        : StringComparer.Ordinal;
-
     /// <summary>
     /// The environment the application inherited.
     /// </summary>
     public static Dictionary<string, string> ReadInherited()
     {
-        var environment = new Dictionary<string, string>(NameComparer);
+        var environment = new Dictionary<string, string>(EnvironmentVariableNames.Comparer);
 
         foreach (System.Collections.DictionaryEntry entry in Environment.GetEnvironmentVariables())
         {
@@ -103,7 +97,9 @@ public static class ConsoleStartingEnvironment
     /// </summary>
     public static Dictionary<string, string> Build(IReadOnlyDictionary<string, string> inherited, bool useShellProfile)
     {
-        var environment = new Dictionary<string, string>(NameComparer);
+        // Names compare as the platform compares them. On Windows, a PATH set later then replaces an inherited
+        // Path instead of sitting beside it.
+        var environment = new Dictionary<string, string>(EnvironmentVariableNames.Comparer);
 
         if (useShellProfile)
         {
@@ -123,7 +119,7 @@ public static class ConsoleStartingEnvironment
             }
         }
 
-        environment[PathVariableName] = ReadSystemPath();
+        environment[EnvironmentVariableNames.PathName] = ReadSystemPath();
 
         return environment;
     }
@@ -150,7 +146,7 @@ public static class ConsoleStartingEnvironment
             return PosixSystemPath;
         }
 
-        var systemPath = Environment.GetEnvironmentVariable(PathVariableName, EnvironmentVariableTarget.Machine);
+        var systemPath = Environment.GetEnvironmentVariable(EnvironmentVariableNames.PathName, EnvironmentVariableTarget.Machine);
 
         return systemPath ?? string.Empty;
     }

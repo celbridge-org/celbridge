@@ -1,5 +1,6 @@
 using Celbridge.Console;
 using Celbridge.Logging;
+using Celbridge.Utilities;
 
 namespace Celbridge.Python.Services;
 
@@ -10,8 +11,6 @@ namespace Celbridge.Python.Services;
 /// </summary>
 public sealed class PythonEnvironmentContributor : IConsoleEnvironmentContributor
 {
-    private const string PathVariableName = "PATH";
-
     private readonly IPythonLaunchService _launchService;
     private readonly ILogger<PythonEnvironmentContributor> _logger;
 
@@ -63,12 +62,12 @@ public sealed class PythonEnvironmentContributor : IConsoleEnvironmentContributo
     {
         foreach (var key in environment.Keys)
         {
-            if (string.Equals(key, PathVariableName, StringComparison.OrdinalIgnoreCase))
+            if (EnvironmentVariableNames.IsPath(key))
             {
                 return key;
             }
         }
 
-        return PathVariableName;
+        return EnvironmentVariableNames.PathName;
     }
 }

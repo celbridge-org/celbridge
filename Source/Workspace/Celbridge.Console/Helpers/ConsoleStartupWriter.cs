@@ -3,9 +3,8 @@ using Celbridge.FileSystem;
 namespace Celbridge.Console.Helpers;
 
 /// <summary>
-/// Writes the start-up files for a console's shell into the project data folder before the console starts.
-/// A file is only written when it is missing or its content differs. After an upgrade, or when the folder is
-/// deleted, the next console writes the files again.
+/// Writes the start-up files for a console's shell into the project data folder. A file is only written when it
+/// is missing or its content differs, so after an upgrade only the changed files are rewritten.
 /// </summary>
 public static class ConsoleStartupWriter
 {

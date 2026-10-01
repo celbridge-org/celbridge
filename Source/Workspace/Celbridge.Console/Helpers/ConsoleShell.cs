@@ -7,7 +7,6 @@ public enum ConsoleShellFamily
 {
     PowerShell,
     Posix,
-    Cmd,
 }
 
 /// <summary>
@@ -60,25 +59,5 @@ public sealed record ConsoleShell(string Executable, ConsoleShellFamily Family)
     private static bool IsNamed(string executable, string name)
     {
         return Path.GetFileNameWithoutExtension(executable).Equals(name, StringComparison.OrdinalIgnoreCase);
-    }
-
-    /// <summary>
-    /// Classifies a shell executable's command dialect by its file name.
-    /// </summary>
-    public static ConsoleShellFamily ClassifyFamily(string shellExecutable)
-    {
-        var fileName = Path.GetFileNameWithoutExtension(shellExecutable);
-        if (fileName.Contains("powershell", StringComparison.OrdinalIgnoreCase) ||
-            fileName.Equals("pwsh", StringComparison.OrdinalIgnoreCase))
-        {
-            return ConsoleShellFamily.PowerShell;
-        }
-
-        if (fileName.Equals("cmd", StringComparison.OrdinalIgnoreCase))
-        {
-            return ConsoleShellFamily.Cmd;
-        }
-
-        return ConsoleShellFamily.Posix;
     }
 }

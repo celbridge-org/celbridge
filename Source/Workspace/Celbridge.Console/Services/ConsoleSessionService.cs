@@ -1,7 +1,9 @@
 using Celbridge.Console.Helpers;
 using Celbridge.Documents;
+using Celbridge.FileSystem;
 using Celbridge.Logging;
 using Celbridge.Messaging;
+using Celbridge.Projects;
 using Celbridge.Python;
 using Celbridge.Server;
 using Celbridge.WebHost;
@@ -39,6 +41,9 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
     private readonly ConsoleProxyListener _proxyListener;
     private readonly ConsoleTriggerScheduler _triggerScheduler;
 
+    // The first console in the workspace writes the start-up files, and every later console reuses them.
+    private readonly SharedConsoleStartupWrite _startupWrite;
+
     private readonly IReadOnlyList<IConsoleSessionProvider> _sessionProviders;
     private readonly IReadOnlyList<ConsoleSessionType> _sessionTypes;
 
@@ -61,6 +66,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         _sessionTypes = _sessionProviders.Select(provider => provider.SessionType).ToList();
 
         _triggerScheduler = new ConsoleTriggerScheduler(FireTrigger);
+        _startupWrite = new SharedConsoleStartupWrite(WriteStartupFilesAsync);
 
         var tcpTransport = serviceProvider.GetRequiredService<ITcpTransport>();
         var listenerLogger = serviceProvider.GetRequiredService<ILogger<ConsoleProxyListener>>();
@@ -97,7 +103,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
 
             if (!_sessions.TryGetValue(resource, out var session))
             {
-                session = new ConsoleSession(_serviceProvider, _workspaceWrapper, resource, _sessionProviders);
+                session = new ConsoleSession(_serviceProvider, _workspaceWrapper, resource, _sessionProviders, _startupWrite);
                 session.StateChanged += OnSessionStateChanged;
                 _sessions[resource] = session;
             }
@@ -126,6 +132,20 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         {
             _logger.LogError(exception, "Failed to start the console session for '{Resource}'", resource);
         }
+    }
+
+    // Writes the start-up files for the platform's shell into the project data folder.
+    private async Task<Result<ConsoleStartupOptions>> WriteStartupFilesAsync()
+    {
+        var projectDataFolderPath = _serviceProvider.GetRequiredService<IProjectService>()
+            .CurrentProject?.ProjectDataFolderPath;
+        if (string.IsNullOrEmpty(projectDataFolderPath))
+        {
+            return Result<ConsoleStartupOptions>.Fail("No project is loaded, so the console has nowhere to write its start-up files.");
+        }
+
+        var fileSystem = _serviceProvider.GetRequiredService<ILocalFileSystem>();
+        return await ConsoleStartupWriter.WriteAsync(fileSystem, projectDataFolderPath, ConsoleShell.Resolve());
     }
 
     // Launches the session, waiting for that launch only when this caller supplied the size it is waiting

@@ -41,6 +41,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The shells' start-up scripts. ConsoleStartupFiles reads them as text, fills in a few values, and writes
+         them into the project's console folder. -->
+    <EmbeddedResource Include="StartupScripts\*" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\Core\Celbridge.FileSystem\Celbridge.FileSystem.csproj" />
     <ProjectReference Include="..\..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
     <ProjectReference Include="..\..\Core\Celbridge.UserInterface\Celbridge.UserInterface.csproj" />
