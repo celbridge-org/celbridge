@@ -33,7 +33,7 @@ public class ConsoleReadyMarkerTests
     [Test]
     public void PosixPrintfSource_EscapesTheBytesTheHostScansFor()
     {
-        // The literal source must differ from the bytes printf writes, so an echo of it never matches.
+        // The source text must differ from the bytes printf writes, so an echo of the source never matches.
         var printed = ConsoleReadyMarker.PosixPrintfSource.Replace(@"\033", "\u001b").Replace(@"\007", "\u0007");
 
         printed.Should().Be(ConsoleReadyMarker.For(Zsh, hasCommand: false)!.ScanText);

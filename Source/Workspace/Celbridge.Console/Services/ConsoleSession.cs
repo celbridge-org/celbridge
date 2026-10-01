@@ -10,9 +10,9 @@ using Celbridge.Workspace;
 namespace Celbridge.Console.Services;
 
 /// <summary>
-/// One running console session, owned by the session service independently of any document view. It owns the
-/// pty, consumes the ready marker so its scrollback starts on a clean screen, types the console's script,
-/// buffers output while no view is attached, and forwards output live to the attached view.
+/// One running console session. The session service owns it, separately from any document view. The session
+/// runs the pty and drops the shell's start-up output, so the scrollback starts on a clean screen. It types the
+/// console's script, buffers output while no view is attached, and sends output to the attached view.
 /// </summary>
 internal sealed class ConsoleSession : IDisposable
 {
@@ -31,7 +31,7 @@ internal sealed class ConsoleSession : IDisposable
 
     private const string PathVariableName = "PATH";
 
-    // A name a POSIX shell can hold as a variable.
+    // A valid POSIX shell variable name.
     private static readonly Regex ShellVariableNamePattern = new("^[A-Za-z_][A-Za-z0-9_]*$", RegexOptions.Compiled);
 
     private readonly IWebViewAdapter _webViewAdapter;
@@ -47,9 +47,8 @@ internal sealed class ConsoleSession : IDisposable
     // The size a view reports for this session, which the launch waits on before it creates the pty.
     private readonly PendingViewSize _pendingViewSize = new();
 
-    // Input and programmatic injections wait until the start-up is done: the ready marker has arrived, or
-    // been given up on, and the console's script has been typed. The two awaited steps are guarded by
-    // _gateLock.
+    // Input and programmatic injections wait until start-up is done. Start-up is done when the ready marker has
+    // arrived or timed out, and the console's script has been typed. _gateLock guards both flags.
     private readonly object _gateLock = new();
     private readonly List<string> _bufferedInjections = new();
     private volatile bool _startupGateClosed;
@@ -269,8 +268,8 @@ internal sealed class ConsoleSession : IDisposable
 
         var startupInvocation = invocationResult.Value;
 
-        // Every session runs the platform shell, on start-up files that reveal the console and then run its
-        // command. The session type only decides the command.
+        // Every session runs the platform's shell. Its start-up files show the console and then run the command.
+        // The session type only chooses the command.
         var shell = ConsoleShell.Resolve();
 
         var workingDirectory = ConsoleWorkingFolder.Resolve(config.WorkingDirectory, projectFolderPath);
@@ -282,15 +281,17 @@ internal sealed class ConsoleSession : IDisposable
             command.AddRange(startupInvocation.Arguments);
         }
 
-        // The start-up receives the command one part to a line, so a part holding a line break would arrive as two.
+        // The start-up receives each part of the command on a line of its own. A part with a line break in it
+        // would arrive as two parts.
         if (command.Any(part => part.Contains('\n')))
         {
-            Fail("An argument of the console's command holds a line break, which the console cannot pass on.");
+            Fail("The console's command cannot have an argument that contains a line break.");
             return;
         }
 
-        // The script is typed into whatever reads input once the console is revealed: the shell at its prompt,
-        // or the program the command started. A session type that runs the script itself types nothing.
+        // Once the console is visible, the script is typed into whatever is reading input. That is either the
+        // shell at its prompt, or the program the command started. Nothing is typed when the session type runs
+        // the script itself.
         var injectedLines = new List<string>();
         if (!startupInvocation.HandlesStartupScript)
         {
@@ -312,13 +313,13 @@ internal sealed class ConsoleSession : IDisposable
             }
         }
 
-        // A console starts from the environment the application inherited, or with the shell profile off from
-        // only the essentials, less what the contributors filter out. Nothing from however Celbridge was
-        // launched can then undo what they set up.
+        // A console starts from the environment Celbridge inherited. With the shell profile off, it keeps only
+        // the essential variables. The contributors then remove inherited variables that would undo their
+        // settings.
         var inheritedEnvironment = ConsoleStartingEnvironment.ReadInherited();
         var launchEnvironment = ConsoleStartingEnvironment.Build(inheritedEnvironment, config.UseShellProfile);
 
-        // The contributors extend the console's own PATH when it sets one, and otherwise the one it starts with.
+        // If the console sets its own PATH, the contributors add to it. Otherwise they add to the starting PATH.
         var setsPath = environmentCopy.Keys.Any(IsPathVariable);
         if (!setsPath &&
             launchEnvironment.TryGetValue(PathVariableName, out var startingPath))
@@ -364,8 +365,8 @@ internal sealed class ConsoleSession : IDisposable
         terminal.ProcessExited += OnTerminalProcessExited;
         SetTerminalSize(terminal, fallbackCols, fallbackRows);
 
-        // The gate closes before the pty starts, so nothing typed can reach the console before it is revealed.
-        // The marker scanner keeps the buffer clean of the shell-startup noise.
+        // The gate closes before the pty starts, so nothing typed reaches the console before it is visible.
+        // The marker scanner keeps the shell's start-up output out of the buffer.
         var readyMarker = ConsoleReadyMarker.For(shell, command.Count > 0);
         lock (_gateLock)
         {
@@ -423,7 +424,8 @@ internal sealed class ConsoleSession : IDisposable
         LaunchedConfigToml = tomlText;
         SetState(ConsoleSessionRunState.Running);
 
-        // The silence window starts with the shell, so one that prints nothing before its marker still reveals.
+        // Start the silence timer with the shell, so the console still shows if the shell prints nothing before
+        // its marker.
         lock (_streamLock)
         {
             ArmMarkerSilenceTimer();
@@ -538,9 +540,9 @@ internal sealed class ConsoleSession : IDisposable
         _terminalSize = new TerminalSize(cols, rows);
     }
 
-    // The shell's command line and the variables that point it at its start-up files, which are written into
-    // the project data folder first. The start-up files reveal the console and run its command, so a console
-    // whose files cannot be written fails rather than start a shell that would do neither.
+    // Writes the start-up files into the project data folder. Then builds the shell's command line, and the
+    // variables that point the shell at those files. The start-up files show the console and run its command.
+    // If they cannot be written, the console fails instead of starting a shell that would do neither.
     private async Task<Result<ConsoleShellLaunch>> BuildShellLaunchAsync(
         ConsoleShell shell,
         ConsoleDocumentConfig config,
@@ -575,9 +577,9 @@ internal sealed class ConsoleSession : IDisposable
         return ConsoleShellLaunch.Build(shell, options);
     }
 
-    // The variables Celbridge guarantees, which the start-up puts back after the user's files have run: all
-    // that this session sets except PATH, whose folders the start-up moves to the front instead. A name no
-    // shell can hold as a variable is one no profile can change either.
+    // The names of the variables the start-up restores after the user's files run. This is every variable the
+    // session sets, except PATH. For PATH, the start-up moves Celbridge's folders to the front instead. Names
+    // that are not valid shell variables are left out, because no profile can change them.
     private static string BuildRestoreList(IReadOnlyDictionary<string, string> sessionEnvironment)
     {
         var names = sessionEnvironment.Keys
@@ -589,7 +591,7 @@ internal sealed class ConsoleSession : IDisposable
         return string.Join(' ', names);
     }
 
-    // Names are case-insensitive on Windows alone.
+    // Variable names are case-insensitive only on Windows.
     private static bool IsPathVariable(string name)
     {
         var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
@@ -603,8 +605,8 @@ internal sealed class ConsoleSession : IDisposable
         // with whatever the user had half-typed at the prompt.
         var text = "\u0015" + invocation;
 
-        // A programmatic injection during startup waits for the reveal and the script rather than racing
-        // them, so a Run issued at console open still lands as type-ahead for the starting REPL.
+        // During start-up, a programmatic injection waits until the console is visible and the script is typed.
+        // A Run issued as the console opens then arrives as type-ahead for the starting REPL.
         lock (_gateLock)
         {
             if (_startupGateClosed)
@@ -653,8 +655,8 @@ internal sealed class ConsoleSession : IDisposable
         OpenStartupGateWhenDone();
     }
 
-    // Called once the marker has arrived, the silence window has revealed the console without it, or the
-    // process has exited. Caller must not hold _streamLock.
+    // Called when the marker arrives, when the silence timer shows the console without it, or when the process
+    // exits. The caller must not hold _streamLock.
     private void OnMarkerSettled()
     {
         lock (_gateLock)
@@ -665,8 +667,8 @@ internal sealed class ConsoleSession : IDisposable
         OpenStartupGateWhenDone();
     }
 
-    // Ends the startup phase once both awaited steps are done: the input gate reopens, and the programmatic
-    // injections buffered meanwhile are submitted in order.
+    // Ends start-up once both steps are done. The input gate reopens, and the buffered programmatic injections
+    // are submitted in order.
     private void OpenStartupGateWhenDone()
     {
         List<string> bufferedInjections;

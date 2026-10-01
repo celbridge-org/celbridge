@@ -139,7 +139,7 @@ def test_build_bootstrap_command_omits_absent_options():
 
 
 def test_build_bootstrap_command_reads_no_configuration_file():
-    """Test that the launch tells uv to read no uv.toml, which could stop the REPL starting."""
+    """Test that the launch tells uv not to read uv.toml, which could stop the REPL from starting."""
     resolved = ResolvedLaunch(None, [], False, [])
     environ = {
         "CELBRIDGE_UV": "/apps/python/uv",

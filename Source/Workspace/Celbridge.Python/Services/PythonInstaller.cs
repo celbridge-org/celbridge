@@ -667,8 +667,8 @@ public class PythonInstaller : IPythonInstaller
         _logger.LogInformation("celbridge tool installed successfully in {DurationMs}ms", installTimer.ElapsedMilliseconds);
     }
 
-    // No configuration file is read, so a user's uv.toml can neither stop the install nor change what it
-    // installs.
+    // --no-config stops uv reading any configuration file. A user's uv.toml then cannot block the install or
+    // change what it installs.
     internal static IReadOnlyList<string> BuildToolInstallArguments(string pythonVersion, string wheelPath)
     {
         var arguments = new List<string>
@@ -685,9 +685,8 @@ public class PythonInstaller : IPythonInstaller
         return arguments;
     }
 
-    // The environment the application inherited, less the variables that steer uv or Python, with the
-    // install's own folders on top. Returns the names it removed. The filter also takes UV_PYTHON_PREFERENCE,
-    // which uv refuses alongside --managed-python.
+    // Removes the inherited variables that control uv or Python, then sets the install's own folders. Returns the
+    // names it removed. This also removes UV_PYTHON_PREFERENCE, because uv rejects it alongside --managed-python.
     internal IReadOnlyList<string> PrepareToolInstallEnvironment(IDictionary<string, string?> environment)
     {
         var removedNames = PythonEnvironmentFilter.Apply(environment);

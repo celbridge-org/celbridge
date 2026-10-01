@@ -276,8 +276,9 @@ internal sealed class UnixPtyTerminal : IPtyBackend
     }
 
     /// <summary>
-    /// Builds the null-terminated environment array for posix_spawn: the given environment, or this process's
-    /// when none is given, plus a default TERM so the child behaves as an interactive terminal.
+    /// Builds the null-terminated environment array for posix_spawn. It uses the given environment, or this
+    /// process's environment when none is given. It adds a default TERM, so the child acts as an interactive
+    /// terminal.
     /// </summary>
     private static string?[] BuildEnvironmentArray(Dictionary<string, string>? environmentVariables)
     {

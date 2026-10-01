@@ -7,9 +7,10 @@ using Celbridge.Console.Helpers;
 namespace Celbridge.Tests.Console;
 
 /// <summary>
-/// Starts real shells on the generated start-up files, with a hostile environment and a decoy profile in a
-/// decoy home, and reads back what the first prompt sees, and the prompt at a later one. Each check prints its
-/// result through printf, so the shell's echo of the command, which carries the format string, never matches.
+/// Starts real shells with the generated start-up files. Each shell gets a hostile environment and a decoy
+/// profile in a decoy home. The tests read back what the first prompt sees, and the prompt at a later one.
+/// Each check prints its result with printf. The shell's echo of the command shows only the format string, so
+/// the echo never matches.
 /// </summary>
 [TestFixture]
 public class ConsoleStartupShellTests
@@ -58,22 +59,22 @@ public class ConsoleStartupShellTests
     {
         var results = RunShell(shellName, useShellProfile: true);
 
-        results["DECOY_PROFILE"].Should().Be("1", "the user's profile runs in pass-through mode");
+        results["DECOY_PROFILE"].Should().Be("1", "the user's profile runs when the shell profile is on");
         results["VIRTUAL_ENV"].Should().Be("<unset>");
         results["UV_PYTHON"].Should().Be("<unset>");
         results["PYTHONPATH"].Should().Be("<unset>");
-        results["UV_INDEX_URL"].Should().Be("https://mirror.example", "uv's index settings pass through");
-        results["UV_CACHE_DIR"].Should().Be(CelbridgeCache, "Celbridge's value goes back on top");
-        results["MY_TABLE"].Should().Be("table", "the console's own table goes back on top");
+        results["UV_INDEX_URL"].Should().Be("https://mirror.example", "uv's index settings are kept");
+        results["UV_CACHE_DIR"].Should().Be(CelbridgeCache, "Celbridge's value is restored");
+        results["MY_TABLE"].Should().Be("table", "the console's own value is restored");
         results["PATH"].Should().StartWith($"{CelbridgeBin}:{CelbridgeToolBin}:");
-        results["UV_COMMAND"].Should().BeEmpty("no alias stands in for uv");
-        results["CELBRIDGE_PY_COMMAND"].Should().BeEmpty("no function stands in for celbridge-py");
+        results["UV_COMMAND"].Should().BeEmpty("no alias replaces uv");
+        results["CELBRIDGE_PY_COMMAND"].Should().BeEmpty("no function replaces celbridge-py");
         results["CELBRIDGE_CONSOLE_RESTORE"].Should().Be("<unset>");
-        _standardOutput.Should().Contain(PosixMarker, "a console with no command is revealed all the same");
+        _standardOutput.Should().Contain(PosixMarker, "a console with no command is still shown");
     }
 
-    // The start-up splits the command at line breaks alone, so no argument is quoted, split or expanded on the
-    // way, and an empty one survives.
+    // The start-up splits the command only at line breaks. No argument is quoted, split or expanded, and an
+    // empty argument is kept.
     [TestCase("zsh")]
     [TestCase("bash")]
     public void Command_RunsAfterTheMarker_WithEachArgumentIntact(string shellName)
@@ -117,7 +118,7 @@ public class ConsoleStartupShellTests
 
         // The temporary folder can sit behind a symbolic link, which pwd -P resolves.
         results["FOLDER"].Should().EndWith(Path.Combine(Path.GetFileName(_root), "work"));
-        results["INHERITED"].Should().Be("<unset>", "the command starts without the variables that carried it");
+        results["INHERITED"].Should().Be("<unset>", "the command starts without the start-up's variables");
     }
 
     [TestCase("zsh")]
@@ -132,7 +133,7 @@ public class ConsoleStartupShellTests
         results["PATH"].Should().StartWith($"{CelbridgeBin}:{CelbridgeToolBin}:");
     }
 
-    // Closing a console kills its shell, which then has no chance to save, so the shell is killed here too.
+    // Closing a console kills its shell before it can save. The test kills the shell the same way.
     [TestCase("zsh", "zsh_history")]
     [TestCase("bash", "bash_history")]
     public void History_LandsInTheProjectFile_AsEachCommandIsEntered(string shellName, string historyFileName)
@@ -207,7 +208,7 @@ public class ConsoleStartupShellTests
         var results = RunShell("zsh", useShellProfile: true, userZdotdir: userZdotdir);
 
         results["DECOY_PROFILE"].Should().Be("1", "the user's files are read from their own ZDOTDIR");
-        results["ZDOTDIR"].Should().Be(userZdotdir, "anything started from the console reads the user's own files");
+        results["ZDOTDIR"].Should().Be(userZdotdir, "a shell started from the console reads the user's own files");
     }
 
     [Test]
@@ -218,7 +219,7 @@ public class ConsoleStartupShellTests
             Assert.Ignore("PowerShell consoles run on Windows only.");
         }
 
-        // What a profile might do, then the prompt PowerShell draws before it reads the first command.
+        // Acts like a profile, then draws the prompt PowerShell shows before the first command.
         var script = ConsoleStartupFiles.BuildPowerShellStartup() + """
 
             $env:VIRTUAL_ENV = 'C:\decoy\venv'
@@ -266,8 +267,8 @@ public class ConsoleStartupShellTests
         results["LATER_PROMPT"].Should().Be(expected);
     }
 
-    // The decoy's prompt sets a virtual environment, as a tool's prompt hook might, and the first prompt is where
-    // Celbridge's settings go back on top.
+    // The decoy's prompt sets a virtual environment, as a tool's prompt hook might. Celbridge's settings must be
+    // restored after that, at the first prompt.
     [Test]
     public void PowerShell_FirstPrompt_RestoresAfterTheProfilesPromptRuns()
     {
@@ -286,8 +287,8 @@ public class ConsoleStartupShellTests
         results["DECOY_PROFILE"].Should().Be(expected);
     }
 
-    // A profile that would steer uv and Python away from Celbridge's install if it won, and sets its own prompt
-    // before each prompt, with shell specific set-up first.
+    // Writes a decoy profile that points uv and Python away from Celbridge's install, and sets its own prompt
+    // before each prompt. The shell-specific set-up comes first.
     private void WriteDecoyProfile(string path, string shellSpecific)
     {
         var profile = shellSpecific +
@@ -342,7 +343,7 @@ public class ConsoleStartupShellTests
         };
         var launch = ConsoleShellLaunch.Build(shell, options);
 
-        // Input from a pipe rather than a terminal, so the shell is told it is interactive.
+        // Input comes from a pipe, not a terminal, so the shell must be told it is interactive.
         var commandLine = shell.IsZsh ? launch.CommandLine + " -i" : launch.CommandLine;
         var startInfo = new ProcessStartInfo("/bin/sh")
         {
@@ -382,7 +383,8 @@ public class ConsoleStartupShellTests
             "ZDOTDIR",
             "CELBRIDGE_CONSOLE_RESTORE",
         };
-        // zsh's PS1 is its PROMPT. The first line runs at the first prompt, and each line after at a new one.
+        // In zsh, PS1 is the same as PROMPT. The first line runs at the first prompt, and each later line at a
+        // new prompt.
         var input = new StringBuilder();
         input.Append("printf 'CEL%s %s=%s\\n' TEST FIRST_PROMPT \"$PS1\"\n");
         foreach (var name in names)
@@ -413,7 +415,7 @@ public class ConsoleStartupShellTests
         Directory.CreateDirectory(workingFolder);
         var command = new[] { "cmd.exe", "/c", "echo", "CELTEST", "COMMAND=ran" };
 
-        // The start-up leaves the shell where the command ran, and what follows reads that back.
+        // After the start-up, the shell stays in the folder where the command ran. The lines below read it back.
         var script = ConsoleStartupFiles.BuildPowerShellStartup() + """
 
             "CELTEST FOLDER=$((Get-Location).Path)"
@@ -430,14 +432,14 @@ public class ConsoleStartupShellTests
 
         results["COMMAND"].Should().Be("ran");
         results["FOLDER"].Should().Be(workingFolder);
-        results["INHERITED"].Should().BeEmpty("the command starts without the variables that carried it");
+        results["INHERITED"].Should().BeEmpty("the command starts without the start-up's variables");
         var markerIndex = _standardOutput.IndexOf(ConsoleReadyMarker.PowerShellCharacter);
         markerIndex.Should().BeGreaterThanOrEqualTo(0);
         _standardOutput.IndexOf("CELTEST COMMAND=", StringComparison.Ordinal).Should().BeGreaterThan(markerIndex);
     }
 
-    // Runs the start-up in a working folder with $PROFILE naming a decoy profile alone, which the start-up loads
-    // as it would the user's own. The decoy sets a variable of its own, and a prompt of its own that sets a
+    // Runs the start-up in a working folder, with $PROFILE pointing only at a decoy profile. The start-up loads
+    // the decoy as if it were the user's profile. The decoy sets its own variable, and a prompt that sets a
     // virtual environment each time it runs.
     private Dictionary<string, string> RunPowerShellOnDecoyProfile(bool useShellProfile, bool compactPrompt)
     {

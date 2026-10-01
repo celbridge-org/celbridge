@@ -423,8 +423,8 @@ public class CommandService : ICommandService
             return;
         }
 
-        // The UI thread can stay busy for the whole timeout, and the next command then runs anyway. The wait
-        // ends without throwing, since a timeout exception would stop the debugger during every busy stretch.
+        // If the UI thread stays busy for the whole timeout, the next command runs anyway. The wait does not
+        // throw on timeout, because an exception would stop the debugger every time the UI thread is busy.
         await Task.WhenAny(idle.Task, Task.Delay(UserInterfaceYieldTimeout));
     }
 

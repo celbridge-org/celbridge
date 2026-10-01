@@ -4,8 +4,8 @@ using Celbridge.Utilities;
 namespace Celbridge.Console.Helpers;
 
 /// <summary>
-/// What a console's start-up needs: the folder of generated files, the project's shell history folder, and the
-/// console's settings. The settings default to a console document's own defaults.
+/// The inputs to a console's start-up: the folder of generated files, the project's shell history folder, and
+/// the console's settings. Each setting defaults to the same value as in a console document.
 /// </summary>
 public sealed record ConsoleStartupOptions(
     string StartupFolder,
@@ -22,14 +22,14 @@ public sealed record ConsoleStartupOptions(
     public bool CompactPrompt { get; init; } = true;
 
     /// <summary>
-    /// The folder zsh would have read the user's own files from, when the application inherited one.
+    /// The user's own ZDOTDIR folder, if Celbridge inherited one.
     /// </summary>
     public string? UserZdotdir { get; init; }
 
     /// <summary>
-    /// The console's command, the executable first and then its arguments, which the start-up runs once the
-    /// console is revealed. Empty for a console that leaves the shell at its prompt. No part may hold a line
-    /// break, since the start-up receives the parts one to a line.
+    /// The console's command: the executable, then its arguments. The start-up runs it once the console is
+    /// visible. It is empty when the console just shows the shell's prompt. No part may contain a line break,
+    /// because the start-up receives each part on a line of its own.
     /// </summary>
     public IReadOnlyList<string> Command { get; init; } = Array.Empty<string>();
 
@@ -50,7 +50,8 @@ public sealed record ConsoleShellLaunch(string CommandLine, IReadOnlyDictionary<
     private const string PowerShellHistoryFile = "powershell_history.txt";
 
     /// <summary>
-    /// The launch of a shell on its generated start-up files. A shell with none starts as it is.
+    /// Builds the launch for a shell that uses the generated start-up files. A shell with no start-up files
+    /// starts plainly.
     /// </summary>
     public static ConsoleShellLaunch Build(ConsoleShell shell, ConsoleStartupOptions options)
     {
@@ -74,7 +75,7 @@ public sealed record ConsoleShellLaunch(string CommandLine, IReadOnlyDictionary<
 
         if (shell.IsZsh)
         {
-            // A login shell, as a terminal starts, reading its start-up files from the generated folder.
+            // Start a login shell, as a terminal does. ZDOTDIR points it at the generated start-up files.
             environment["ZDOTDIR"] = Path.Combine(options.StartupFolder, ConsoleStartupFiles.ZshFolder);
             environment[ConsoleStartupFiles.HistoryVariable] = Path.Combine(options.HistoryFolder, ZshHistoryFile);
             if (options.UseShellProfile &&
@@ -92,8 +93,8 @@ public sealed record ConsoleShellLaunch(string CommandLine, IReadOnlyDictionary<
 
         if (shell.IsBash)
         {
-            // bash reads an rc file only when it is not a login shell, so the generated file reads the login
-            // files itself.
+            // bash reads an rc file only when it is not a login shell. The generated rc file runs the login files
+            // itself.
             environment[ConsoleStartupFiles.HistoryVariable] = Path.Combine(options.HistoryFolder, BashHistoryFile);
 
             var bashCommandLine = new CommandLineBuilder(shell.Executable)
@@ -108,7 +109,7 @@ public sealed record ConsoleShellLaunch(string CommandLine, IReadOnlyDictionary<
         {
             environment[ConsoleStartupFiles.HistoryVariable] = Path.Combine(options.HistoryFolder, PowerShellHistoryFile);
 
-            // Encoded so no character in the start-up needs quoting for the command line.
+            // Encode the script, so none of its characters need quoting on the command line.
             var startup = ConsoleStartupFiles.BuildPowerShellStartup();
             var encodedStartup = Convert.ToBase64String(Encoding.Unicode.GetBytes(startup));
 

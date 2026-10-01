@@ -1,9 +1,9 @@
 namespace Celbridge.Resources.Helpers;
 
 /// <summary>
-/// Keeps the project data folder out of version control with a .gitignore of its own, whatever the project's
-/// root .gitignore says. The folder holds machine-specific state and the shell and IPython histories, which
-/// can hold anything the user typed.
+/// Keeps the project data folder out of version control with its own .gitignore, whatever the project's root
+/// .gitignore says. The folder holds machine-specific state and the shell and IPython histories. The histories
+/// can contain anything the user typed.
 /// </summary>
 public static class DataFolderGitIgnore
 {

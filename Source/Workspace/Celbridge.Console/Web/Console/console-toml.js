@@ -148,7 +148,7 @@ export function serializeConsoleToml(config) {
     if (config.workingDirectory) {
         lines.push(`working_directory = ${quote(config.workingDirectory)}`);
     }
-    // On is the default for both, so only a console that turns one off writes its key.
+    // Both settings default to on, so a key is only written when its setting is off.
     if (config.useShellProfile === false) {
         lines.push('use_shell_profile = false');
     }

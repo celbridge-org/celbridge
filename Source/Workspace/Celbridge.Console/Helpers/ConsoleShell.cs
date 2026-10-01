@@ -27,8 +27,8 @@ public sealed record ConsoleShell(string Executable, ConsoleShellFamily Family)
     public bool IsBash => IsNamed(Executable, "bash");
 
     /// <summary>
-    /// Resolves the shell a console runs. Each is resolvable without a PATH probe: powershell.exe ships in
-    /// System32, and on macOS and Linux the shell is the user's $SHELL or a rooted default.
+    /// Returns the shell a console runs, without searching PATH. Windows uses powershell.exe, which always ships
+    /// in System32. macOS and Linux use the user's $SHELL, or a default given by its full path.
     /// </summary>
     public static ConsoleShell Resolve()
     {
@@ -41,8 +41,8 @@ public sealed record ConsoleShell(string Executable, ConsoleShellFamily Family)
     }
 
     /// <summary>
-    /// The shell a console runs on macOS and Linux: the user's login shell when it is zsh or bash, and
-    /// otherwise the platform's default, since the console's start-up files are written for those two.
+    /// The shell a console runs on macOS and Linux. This is the user's login shell when it is zsh or bash.
+    /// Otherwise it is the platform's default shell, because the start-up files only support zsh and bash.
     /// </summary>
     public static ConsoleShell ResolvePosix(string? loginShell)
     {

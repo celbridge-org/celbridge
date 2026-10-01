@@ -4,10 +4,9 @@ using Celbridge.Logging;
 namespace Celbridge.Python.Services;
 
 /// <summary>
-/// Gives every console the shared Python host-integration environment (host ports, tool feature flags,
-/// version, per-project folders) and puts the uv bin folders on its PATH, so the installed celbridge-py
-/// command starts a fully-featured cel-connected REPL from any console type or a terminal a console
-/// spawns. Keeps the uv and Python settings the application inherited out of every console.
+/// Adds the shared Python environment to every console, and puts the uv bin folders on its PATH. The installed
+/// celbridge-py command can then start a connected REPL from any console, or from a terminal a console starts.
+/// Also removes the uv and Python settings Celbridge inherited.
 /// </summary>
 public sealed class PythonEnvironmentContributor : IConsoleEnvironmentContributor
 {
@@ -48,8 +47,8 @@ public sealed class PythonEnvironmentContributor : IConsoleEnvironmentContributo
             }
         }
 
-        // A merge, so a console-configured PATH keeps its entries and gains the uv bin folders. The start-up
-        // moves the same folders back to the front after the user's profile has run.
+        // Merge, so a PATH set by the console keeps its entries and gains the uv bin folders. After the user's
+        // profile runs, the start-up moves these folders back to the front.
         var pathKey = ResolvePathKey(environment);
         environment.TryGetValue(pathKey, out var basePath);
         environment[pathKey] = _launchService.BuildConsolePath(basePath ?? string.Empty);

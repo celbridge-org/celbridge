@@ -7,8 +7,8 @@ namespace Celbridge.Console;
 public interface IConsoleEnvironmentContributor
 {
     /// <summary>
-    /// Removes the variables that would undo what this contributor sets up from the environment the
-    /// application inherited, which every console starts from.
+    /// Removes inherited variables that would undo this contributor's settings. Every console starts from the
+    /// inherited environment.
     /// </summary>
     void FilterInheritedEnvironment(IDictionary<string, string> inheritedEnvironment);
 

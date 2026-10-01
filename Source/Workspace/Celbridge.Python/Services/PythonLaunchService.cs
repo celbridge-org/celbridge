@@ -17,19 +17,19 @@ public sealed record PythonLaunchRequest(
     IReadOnlyList<string> Dependencies);
 
 /// <summary>
-/// The resolved startup: the installed celbridge-py tool to run, and the per-console environment
-/// carrying its launch defaults.
+/// The resolved startup: the installed celbridge-py tool to run, and the per-console variables that hold its
+/// launch defaults.
 /// </summary>
 public sealed record PythonStartupResult(
     string Executable,
     IReadOnlyDictionary<string, string> Environment);
 
 /// <summary>
-/// Builds the startup command and shared environment for Python sessions, owning all the Python-specific
-/// launch machinery. The console's command is the installed celbridge-py by its full path, so nothing on the
-/// shell's PATH can stand in for it. The console's interpreter version and dependencies ride per-console
-/// environment variables that the tool reads as launch defaults, so retyping celbridge-py after exiting the
-/// REPL reproduces the same environment. The uv and wheel locations ride the shared console environment.
+/// Builds the startup command and shared environment for Python sessions. The console's command is the full path
+/// of the installed celbridge-py, so nothing on the shell's PATH can replace it. The interpreter version and
+/// dependencies are passed in per-console variables, which celbridge-py reads as launch defaults. Running
+/// celbridge-py again after leaving the REPL then gives the same environment. The uv and wheel locations are in
+/// the shared console environment.
 /// </summary>
 public interface IPythonLaunchService
 {
@@ -40,9 +40,9 @@ public interface IPythonLaunchService
     Task<Result<PythonStartupResult>> BuildStartupAsync(PythonLaunchRequest request);
 
     /// <summary>
-    /// The folders a console puts at the front of PATH, in order: the app's uv and tool bin folders, then the
-    /// project's own uv tool bin folder, so uv, uvx, celbridge-py and any tool the user installs in the
-    /// project resolve in a console.
+    /// The folders a console puts at the front of PATH, in order. These are the app's uv and tool bin folders,
+    /// then the project's uv tool bin folder. A console can then find uv, uvx, celbridge-py and any tool
+    /// installed in the project.
     /// </summary>
     IReadOnlyList<string> GetConsolePathFolders();
 
@@ -124,10 +124,10 @@ public sealed class PythonLaunchService : IPythonLaunchService
             .Where(dependency => !string.IsNullOrWhiteSpace(dependency))
             .ToList();
 
-        // These per-console variables are the launch defaults the console's celbridge-py reads, making it
-        // re-exec through uv (located via the shared console environment) with this console's interpreter and
-        // packages. Dependencies are newline-separated because PEP 508 specifiers can contain commas and
-        // semicolons. Offline mode is not among them: celbridge-py measures the cache itself at launch.
+        // celbridge-py reads these per-console variables as launch defaults. It uses them to run again through uv
+        // with this console's interpreter and packages. Dependencies are separated by newlines, because PEP 508
+        // specifiers can contain commas and semicolons. Offline mode is not passed, because celbridge-py checks
+        // the cache itself at launch.
         var startupEnvironment = new Dictionary<string, string>
         {
             ["CELBRIDGE_PYTHON_VERSION"] = request.PythonVersion,
@@ -149,8 +149,8 @@ public sealed class PythonLaunchService : IPythonLaunchService
         return result;
     }
 
-    // The app's folders come first, so they outrank the project's. A project can hold a celbridge-py of its
-    // own, and a stale shim ahead of the installed one would be found first.
+    // The app's folders come first, so they take priority over the project's. A project can contain its own
+    // celbridge-py, and a stale copy there must not be found first.
     public IReadOnlyList<string> GetConsolePathFolders()
     {
         var folders = new List<string>
@@ -163,7 +163,7 @@ public sealed class PythonLaunchService : IPythonLaunchService
         return folders;
     }
 
-    // Each folder is moved to the front even when the base already carried it.
+    // Each folder moves to the front, even if the base PATH already contains it.
     public string BuildConsolePath(string basePath)
     {
         var consolePath = basePath;
@@ -223,8 +223,8 @@ public sealed class PythonLaunchService : IPythonLaunchService
             ["UV_TOOL_DIR"] = ProjectUvToolsFolder,
             ["UV_TOOL_BIN_DIR"] = ProjectUvBinFolder,
 
-            // Where a typed uv python install links the interpreters it installs, which uv otherwise puts in
-            // the user's own ~/.local/bin.
+            // Where uv python install links the interpreters it installs. Without this, uv links them in the
+            // user's ~/.local/bin.
             ["UV_PYTHON_BIN_DIR"] = ProjectUvBinFolder,
 
             // A bare uv venv downloads the interpreter it needs into the project. Left to uv's default it

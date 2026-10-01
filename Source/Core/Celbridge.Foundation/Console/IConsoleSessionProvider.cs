@@ -1,14 +1,13 @@
 namespace Celbridge.Console;
 
 /// <summary>
-/// The command a session type runs in its console's shell once the shell is up: an executable (or
-/// command name resolved on the shell's PATH), its arguments, and optional environment variables seeded
-/// into the session so a manual re-run of the command reproduces the same launch. An empty executable
-/// means the session is just the plain shell with no command. Environment entries are merged
-/// add-if-absent, so a value the console's own [session.environment] sets wins. HandlesStartupScript says
-/// the provider has arranged to run the console's startup script itself, so the host must not also type it
-/// into the pty: a runtime that discards pending input as it takes over the terminal (an interactive
-/// interpreter, typically) has to receive the script through its own startup mechanism instead.
+/// The command a session type runs in the console's shell once the shell has started. Executable can be a path
+/// or a command name the shell finds on its PATH. An empty Executable means the console is just the shell.
+/// Environment holds variables added to the session, so running the command again by hand gives the same
+/// launch. A variable the console's own [session.environment] sets keeps its value.
+/// HandlesStartupScript means the provider runs the console's startup script itself, so the host must not type
+/// it into the pty. An interactive interpreter can discard pending input as it starts, so it needs the script
+/// passed some other way.
 /// </summary>
 public sealed record ConsoleStartupInvocation(
     string Executable,
@@ -64,9 +63,8 @@ public sealed record ConsoleSessionType(
     IReadOnlyList<ConsoleRunner> BuiltInRunners);
 
 /// <summary>
-/// Builds the startup command for one console session type. Every console session runs the platform shell
-/// in the shared console environment. A session type only decides what command, if any, runs in that shell
-/// once it is up.
+/// Builds the startup command for one console session type. Every console session runs the platform's shell
+/// with the shared console environment. The session type only chooses the command to run in that shell, if any.
 /// </summary>
 public interface IConsoleSessionProvider
 {

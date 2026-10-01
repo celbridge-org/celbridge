@@ -3,9 +3,9 @@ using Celbridge.FileSystem;
 namespace Celbridge.Console.Helpers;
 
 /// <summary>
-/// Writes the start-up files for a console's shell into the project data folder before the console starts,
-/// rewriting any that are missing or differ. An upgraded application or a deleted folder is then put right by
-/// the next console.
+/// Writes the start-up files for a console's shell into the project data folder before the console starts.
+/// A file is only written when it is missing or its content differs. After an upgrade, or when the folder is
+/// deleted, the next console writes the files again.
 /// </summary>
 public static class ConsoleStartupWriter
 {
@@ -13,7 +13,7 @@ public static class ConsoleStartupWriter
     private const string HistoryFolderName = "history";
 
     /// <summary>
-    /// Writes the shell's start-up files and makes the history folder, and returns where they are.
+    /// Writes the shell's start-up files, creates the history folder, and returns both locations.
     /// </summary>
     public static async Task<Result<ConsoleStartupOptions>> WriteAsync(
         ILocalFileSystem fileSystem,
@@ -58,8 +58,9 @@ public static class ConsoleStartupWriter
         return options;
     }
 
-    // Whether the file already holds the content. A missing file is probed rather than read, since the read
-    // would throw an exception the debugger breaks on. The first console in a project finds every file missing.
+    // Whether the file already has this content. The file's existence is checked before it is read, because
+    // reading a missing file throws an exception that stops the debugger. Every file is missing for a project's
+    // first console.
     private static async Task<bool> HoldsContentAsync(ILocalFileSystem fileSystem, string filePath, string content)
     {
         var infoResult = await fileSystem.GetInfoAsync(filePath);

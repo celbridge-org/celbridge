@@ -49,7 +49,7 @@ public class ConsoleStartupWriterTests
         options.HistoryFolder.Should().Be(Path.Combine(_dataFolder, "console", "history"));
         File.Exists(Path.Combine(options.StartupFolder, expectedFile)).Should().BeTrue();
 
-        // Both modes share the shell's files, so there is no folder for either mode.
+        // Both modes use the same files, so there is no folder for each mode.
         var folders = Directory.GetDirectories(options.StartupFolder).Select(Path.GetFileName);
         folders.Should().BeEquivalentTo("history", Path.GetDirectoryName(expectedFile));
     }
@@ -90,7 +90,7 @@ public class ConsoleStartupWriterTests
             AppDomain.CurrentDomain.FirstChanceException -= OnFirstChanceException;
         }
 
-        thrown.Should().BeEmpty("a file not written yet is probed rather than read");
+        thrown.Should().BeEmpty("a missing file is checked for, not read");
     }
 
     [Test]

@@ -1,20 +1,20 @@
 namespace Celbridge.Console.Helpers;
 
 /// <summary>
-/// The environment a console starts from, before Celbridge's own variables go on top. With the shell profile
-/// on it is everything the application inherited. With it off it is only what a working shell and the network
-/// need, so the console is the same however the application was launched.
+/// Builds the environment a console starts from, before Celbridge adds its own variables. With the shell profile
+/// on, this is everything Celbridge inherited. With it off, it is only what the shell and the network need.
+/// A clean console is then the same however Celbridge was launched.
 /// </summary>
 public static class ConsoleStartingEnvironment
 {
     private const string PathVariableName = "PATH";
 
-    // The system folders a clean console starts with on macOS and Linux. The login shell's system start-up
-    // files complete it, from /etc/paths on macOS.
+    // The system folders a clean console starts with on macOS and Linux. The login shell's system start-up files
+    // add the rest. On macOS they read /etc/paths.
     private const string PosixSystemPath = "/usr/bin:/bin:/usr/sbin:/sbin";
 
-    // What a clean console keeps: the session, the locale, the network, and on Windows the system's own
-    // variables. A variable missing from here is missing only from a clean console, and visibly so.
+    // The variables a clean console keeps: session, locale and network variables, and the Windows system
+    // variables. Leaving a variable off this list only affects clean consoles.
     private static readonly HashSet<string> CleanNames = new(StringComparer.OrdinalIgnoreCase)
     {
         "HOME",
@@ -73,8 +73,8 @@ public static class ConsoleStartingEnvironment
         "LC_",
     };
 
-    // Names are case-insensitive on Windows, so a console's PATH replaces an inherited Path rather than
-    // sitting beside it.
+    // Variable names are case-insensitive on Windows. A console's PATH then replaces an inherited Path, instead
+    // of sitting beside it.
     private static StringComparer NameComparer => OperatingSystem.IsWindows()
         ? StringComparer.OrdinalIgnoreCase
         : StringComparer.Ordinal;
@@ -99,7 +99,7 @@ public static class ConsoleStartingEnvironment
     }
 
     /// <summary>
-    /// The environment a console starts from, given what the application inherited.
+    /// Returns the environment a console starts from, given the inherited environment.
     /// </summary>
     public static Dictionary<string, string> Build(IReadOnlyDictionary<string, string> inherited, bool useShellProfile)
     {
@@ -141,8 +141,8 @@ public static class ConsoleStartingEnvironment
         return CleanPrefixes.Any(prefix => name.StartsWith(prefix, StringComparison.Ordinal));
     }
 
-    // Windows keeps the system's PATH in the registry, apart from the part each user adds. This is a runtime
-    // operating-system selector, like the shell a console runs.
+    // Windows stores the system PATH in the registry, separate from each user's additions. The operating system
+    // is checked at runtime, as it is when choosing the console's shell.
     private static string ReadSystemPath()
     {
         if (!OperatingSystem.IsWindows())

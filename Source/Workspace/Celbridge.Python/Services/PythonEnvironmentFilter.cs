@@ -1,16 +1,16 @@
 namespace Celbridge.Python.Services;
 
 /// <summary>
-/// The rule that keeps uv and Python settings Celbridge did not choose out of the processes it starts. It matches
-/// every variable that steers uv or the interpreter, except uv's index and network settings. The console's
-/// start-up files apply the same rule after the user's profile, generated from these lists.
+/// Removes the uv and Python settings Celbridge did not choose from the processes it starts. It matches every
+/// variable that controls uv or the interpreter, except uv's index and network settings. The console start-up
+/// files are generated from these lists, and apply the same rule after the user's profile runs.
 /// </summary>
 public static class PythonEnvironmentFilter
 {
-    // uv is configured only through its own variables and its configuration files, and chooses an interpreter
-    // using an active virtual or conda environment. Python's own start-up variables all begin with PYTHON. The
-    // prefixes also catch the variables uv adds in later releases. uv run sets UV to its own executable for the
-    // programs it starts.
+    // uv reads its settings only from its own variables and its configuration files. It also picks an interpreter
+    // from an active virtual or conda environment. Python's own start-up variables all begin with PYTHON. The
+    // prefixes also match variables that later uv releases add. uv run sets UV to its own path for the programs
+    // it starts.
     public static IReadOnlyList<string> RemovedPrefixes { get; } = new[]
     {
         "UV_",
@@ -24,8 +24,8 @@ public static class PythonEnvironmentFilter
         "CONDA_PREFIX",
     };
 
-    // uv's index and network settings, which a user behind a mirror or a proxy needs, and which cannot move an
-    // interpreter or a folder.
+    // uv's index and network settings. A user behind a mirror or a proxy needs them, and they cannot change the
+    // interpreter or any folder.
     public static IReadOnlyList<string> KeptPrefixes { get; } = new[]
     {
         "UV_INDEX",
@@ -43,8 +43,8 @@ public static class PythonEnvironmentFilter
     };
 
     /// <summary>
-    /// The commands the application provides in every console, which no alias or function a profile defines
-    /// may stand in for.
+    /// The commands Celbridge provides in every console. A profile's alias or function with one of these names
+    /// is removed.
     /// </summary>
     public static IReadOnlyList<string> CommandNames { get; } = new[]
     {
@@ -53,7 +53,7 @@ public static class PythonEnvironmentFilter
         "celbridge-py",
     };
 
-    // Environment names are case-insensitive on Windows alone.
+    // Variable names are case-insensitive only on Windows.
     private static StringComparison NameComparison => OperatingSystem.IsWindows()
         ? StringComparison.OrdinalIgnoreCase
         : StringComparison.Ordinal;

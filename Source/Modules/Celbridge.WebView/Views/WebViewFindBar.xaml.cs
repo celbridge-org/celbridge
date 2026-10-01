@@ -107,8 +107,8 @@ public sealed partial class WebViewFindBar : UserControl
 
     private void DebounceTimer_Tick(Microsoft.UI.Dispatching.DispatcherQueueTimer sender, object args)
     {
-        // A search selects its match in the page, which takes the caret from a page field. Once the keyboard has
-        // left the bar, the user has moved on, so a search still waiting for typing to pause is dropped.
+        // A search selects its match in the page, which moves the caret out of any page field. If the keyboard
+        // has left the find bar, the user has moved on, so the pending search is dropped.
         if (!HoldsKeyboard())
         {
             return;

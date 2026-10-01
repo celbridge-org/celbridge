@@ -33,14 +33,14 @@ public sealed record ConsoleDocumentConfig(
     public IReadOnlyList<string> UnknownFields { get; init; } = Array.Empty<string>();
 
     /// <summary>
-    /// Whether the console's shell runs the user's own start-up files and starts from everything the
-    /// application inherited. Off, it starts clean. On unless the document turns it off.
+    /// Whether the console's shell runs the user's own start-up files and keeps the full inherited environment.
+    /// When off, the shell starts clean. On by default.
     /// </summary>
     public bool UseShellProfile { get; init; } = true;
 
     /// <summary>
-    /// Whether the console replaces the shell's prompt with a compact one before every prompt. Off, nothing
-    /// touches the prompt. On unless the document turns it off.
+    /// Whether the console replaces the shell's prompt with a compact one. When off, the prompt is left alone.
+    /// On by default.
     /// </summary>
     public bool CompactPrompt { get; init; } = true;
 }
