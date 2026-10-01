@@ -7,9 +7,9 @@ using Celbridge.Workspace;
 namespace Celbridge.Console.Services;
 
 /// <summary>
-/// One running console session, owned by the session service independently of any document view. It owns the
-/// pty, injects the startup lines, consumes the ready marker so its scrollback starts on a clean screen,
-/// buffers output while no view is attached, and forwards output live to the attached view.
+/// One running console session. The session service owns it, separately from any document view. The session
+/// runs the pty and drops the shell's start-up output, so the scrollback starts on a clean screen. It types the
+/// console's script, buffers output while no view is attached, and sends output to the attached view.
 /// </summary>
 internal sealed class ConsoleSession : IDisposable
 {
@@ -34,14 +34,19 @@ internal sealed class ConsoleSession : IDisposable
 
     // The registered providers, collected and checked once by the session service.
     private readonly IReadOnlyList<IConsoleSessionProvider> _sessionProviders;
+    private readonly SharedConsoleStartupWrite _startupWrite;
     private readonly IReadOnlyList<ConsoleSessionType> _sessionTypes;
 
     // The size a view reports for this session, which the launch waits on before it creates the pty.
     private readonly PendingViewSize _pendingViewSize = new();
 
+    // Input and programmatic injections wait until start-up is done. Start-up is done when the ready marker has
+    // arrived or timed out, and the console's script has been typed. _gateLock guards both flags.
     private readonly object _gateLock = new();
     private readonly List<string> _bufferedInjections = new();
-    private volatile bool _startupInjectionPending;
+    private volatile bool _startupGateClosed;
+    private bool _awaitingMarker;
+    private bool _awaitingScript;
 
     private readonly object _streamLock = new();
     private readonly DiagnosticSequenceScanner _diagnosticScanner = new();
@@ -57,7 +62,6 @@ internal sealed class ConsoleSession : IDisposable
     private TerminalSize _terminalSize = new(0, 0);
 
     private StartupInjector? _startupInjector;
-    private List<string>? _deferredInjectionLines;
     private Timer? _markerTimeout;
     private int? _trackedProcessId;
     private bool _disposed;
@@ -66,12 +70,14 @@ internal sealed class ConsoleSession : IDisposable
         IServiceProvider serviceProvider,
         IWorkspaceWrapper workspaceWrapper,
         ResourceKey resource,
-        IReadOnlyList<IConsoleSessionProvider> sessionProviders)
+        IReadOnlyList<IConsoleSessionProvider> sessionProviders,
+        SharedConsoleStartupWrite startupWrite)
     {
         _serviceProvider = serviceProvider;
         _workspaceWrapper = workspaceWrapper;
         Resource = resource;
         _sessionProviders = sessionProviders;
+        _startupWrite = startupWrite;
         _sessionTypes = sessionProviders.Select(provider => provider.SessionType).ToList();
         _logger = serviceProvider.GetRequiredService<ILogger<ConsoleSession>>();
         _webViewAdapter = ServiceLocator.AcquireService<IWebViewAdapter>();
@@ -257,35 +263,35 @@ internal sealed class ConsoleSession : IDisposable
 
         var startupInvocation = invocationResult.Value;
 
-        // Every session runs the platform shell. The session type only decides what is injected into it.
-        // The injected line clears the shell-startup noise and emits the ready marker, so the buffer
-        // begins on a clean screen.
+        // Every session runs the platform's shell. Its start-up files show the console and then run the command.
+        // The session type only chooses the command.
         var shell = ConsoleShell.Resolve();
-        var shellCommandLine = new CommandLineBuilder(shell.Executable).ToString();
 
         var workingDirectory = ConsoleWorkingFolder.Resolve(config.WorkingDirectory, projectFolderPath);
 
-        var composedStartup = ShellCommandComposer.Compose(
-            shell,
-            startupInvocation,
-            workingDirectory: workingDirectory);
-        var injectedCommandLine = composedStartup.Line;
-        var hasInjectedLine = !string.IsNullOrEmpty(injectedCommandLine);
-
-        var injectedLines = new List<string>();
-        if (hasInjectedLine)
+        var command = new List<string>();
+        if (!string.IsNullOrWhiteSpace(startupInvocation.Executable))
         {
-            injectedLines.Add(injectedCommandLine);
+            command.Add(startupInvocation.Executable);
+            command.AddRange(startupInvocation.Arguments);
         }
+
+        // The start-up receives each part of the command on a line of its own. A part with a line break in it
+        // would arrive as two parts.
+        if (command.Any(part => part.Contains('\n')))
+        {
+            Fail("The console's command cannot have an argument that contains a line break.");
+            return;
+        }
+
+        // The script is typed once the shell's output has settled, into whatever is reading input. That is either the
+        // shell at its prompt, or the program the command started. Nothing is typed when the session type runs the
+        // script itself.
+        var injectedLines = new List<string>();
         if (!startupInvocation.HandlesStartupScript)
         {
             injectedLines.AddRange(ConsoleStartupScript.SplitLines(config.StartupScript));
         }
-
-        var terminal = _serviceProvider.GetRequiredService<ITerminal>();
-        terminal.OutputReceived += OnTerminalOutput;
-        terminal.ProcessExited += OnTerminalProcessExited;
-        SetTerminalSize(terminal, fallbackCols, fallbackRows);
 
         var environmentCopy = new Dictionary<string, string>(environment);
 
@@ -302,10 +308,25 @@ internal sealed class ConsoleSession : IDisposable
             }
         }
 
+        // A console starts from the environment Celbridge inherited. With the shell profile off, it keeps only
+        // the essential variables. The contributors then remove inherited variables that would undo their
+        // settings.
+        var inheritedEnvironment = ConsoleStartingEnvironment.ReadInherited();
+        var launchEnvironment = ConsoleStartingEnvironment.Build(inheritedEnvironment, config.UseShellProfile);
+
+        // If the console sets its own PATH, the contributors add to it. Otherwise they add to the starting PATH.
+        var setsPath = environmentCopy.Keys.Any(EnvironmentVariableNames.IsPath);
+        if (!setsPath &&
+            launchEnvironment.TryGetValue(EnvironmentVariableNames.PathName, out var startingPath))
+        {
+            environmentCopy[EnvironmentVariableNames.PathName] = startingPath;
+        }
+
         foreach (var contributor in _serviceProvider.GetServices<IConsoleEnvironmentContributor>())
         {
             try
             {
+                contributor.FilterInheritedEnvironment(launchEnvironment);
                 await contributor.ContributeAsync(sessionContext, environmentCopy);
             }
             catch (Exception exception)
@@ -314,15 +335,48 @@ internal sealed class ConsoleSession : IDisposable
             }
         }
 
-        // Gate input before the pty starts, so nothing typed can reach the shell prompt ahead of the
-        // injected lines. The marker scanner keeps the buffer clean of the shell-startup noise.
-        _startupInjectionPending = injectedLines.Count > 0;
-        _markerPersistsOnScreen = composedStartup.MarkerPersistsOnScreen;
+        foreach (var pair in environmentCopy)
+        {
+            launchEnvironment[pair.Key] = pair.Value;
+        }
+
+        launchEnvironment[ConsoleStartupFiles.RestoreVariable] = ConsoleStartupFiles.BuildRestoreList(
+            environmentCopy.Keys,
+            restoresPath: setsPath);
+
+        var userZdotdir = inheritedEnvironment.GetValueOrDefault("ZDOTDIR");
+        var launchResult = await BuildShellLaunchAsync(shell, config, userZdotdir, command, workingDirectory);
+        if (launchResult.IsFailure)
+        {
+            Fail(launchResult.FirstErrorMessage);
+            return;
+        }
+        var shellLaunch = launchResult.Value;
+        foreach (var pair in shellLaunch.Environment)
+        {
+            launchEnvironment[pair.Key] = pair.Value;
+        }
+
+        var terminal = _serviceProvider.GetRequiredService<ITerminal>();
+        terminal.OutputReceived += OnTerminalOutput;
+        terminal.ProcessExited += OnTerminalProcessExited;
+        SetTerminalSize(terminal, fallbackCols, fallbackRows);
+
+        // The gate closes before the pty starts, so nothing typed reaches the console before it is visible.
+        // The marker scanner keeps the shell's start-up output out of the buffer.
+        var readyMarker = ConsoleReadyMarker.For(shell, command.Count > 0);
+        lock (_gateLock)
+        {
+            _awaitingMarker = readyMarker is not null;
+            _awaitingScript = injectedLines.Count > 0;
+            _startupGateClosed = _awaitingMarker || _awaitingScript;
+        }
+        _markerPersistsOnScreen = readyMarker?.PersistsOnScreen ?? false;
         _markerSeen = false;
         _markerRevealed = false;
-        if (composedStartup.ScanMarker is not null)
+        if (readyMarker is not null)
         {
-            _markerScanner = new StartupMarkerScanner(composedStartup.ScanMarker);
+            _markerScanner = new StartupMarkerScanner(readyMarker.ScanText);
         }
 
         // Held until a view reports the size it will be read at, so the shell paints into a view that is
@@ -336,12 +390,17 @@ internal sealed class ConsoleSession : IDisposable
 
         try
         {
-            terminal.Start(shellCommandLine, workingDirectory, environmentCopy);
+            terminal.Start(shellLaunch.CommandLine, workingDirectory, launchEnvironment);
         }
         catch (Exception exception)
         {
             _logger.LogError(exception, "Failed to start the console session");
-            _startupInjectionPending = false;
+            lock (_gateLock)
+            {
+                _startupGateClosed = false;
+                _awaitingMarker = false;
+                _awaitingScript = false;
+            }
             _markerScanner = null;
             terminal.OutputReceived -= OnTerminalOutput;
             terminal.ProcessExited -= OnTerminalProcessExited;
@@ -359,33 +418,19 @@ internal sealed class ConsoleSession : IDisposable
             SetTerminalSize(terminal, startupSize.Cols, startupSize.Rows);
         }
 
-        var startedAtViewSize = startupSize is not null;
-
         LaunchedConfigToml = tomlText;
         SetState(ConsoleSessionRunState.Running);
 
+        // Start the silence timer with the shell, so the console still shows if the shell prints nothing before
+        // its marker.
+        lock (_streamLock)
+        {
+            ArmMarkerSilenceTimer();
+        }
+
         if (injectedLines.Count > 0)
         {
-            // A plain shell's reveal is held until the terminal has a real size, which arrives on the
-            // first resize (at attach). Injecting at the headless guess would draw the revealed prompt at
-            // the wrong width, and zsh's PROMPT_SP fill would leave a stray marker glyph when the view
-            // renders at its own width. A command console injects immediately: its own output takes over
-            // after the marker, so no shell prompt is drawn at the guessed width.
-            var deferUntilSized = !startedAtViewSize &&
-                string.IsNullOrWhiteSpace(startupInvocation.Executable) &&
-                composedStartup.ScanMarker is not null;
-
-            if (deferUntilSized)
-            {
-                lock (_gateLock)
-                {
-                    _deferredInjectionLines = injectedLines;
-                }
-            }
-            else
-            {
-                _startupInjector = StartupInjector.Begin(terminal, injectedLines, CompleteStartup);
-            }
+            _startupInjector = StartupInjector.Begin(terminal, injectedLines, OnScriptInjected);
         }
 
         // Track the child so the workspace-scoped owner tears it down on project close or app crash.
@@ -426,7 +471,7 @@ internal sealed class ConsoleSession : IDisposable
 
     public void Input(string data)
     {
-        if (_startupInjectionPending)
+        if (_startupGateClosed)
         {
             return;
         }
@@ -476,21 +521,6 @@ internal sealed class ConsoleSession : IDisposable
         {
             SetTerminalSize(_terminal, cols, rows);
         }
-
-        // A deferred reveal waits for this first real size, so the revealed prompt is drawn at the width it
-        // will be shown at.
-        List<string>? deferredInjectionLines;
-        lock (_gateLock)
-        {
-            deferredInjectionLines = _deferredInjectionLines;
-            _deferredInjectionLines = null;
-        }
-
-        if (deferredInjectionLines is not null &&
-            _terminal is not null)
-        {
-            _startupInjector = StartupInjector.Begin(_terminal, deferredInjectionLines, CompleteStartup);
-        }
     }
 
     // A size the pty already has is not applied again: a backend that acts on the request redraws, and a
@@ -507,17 +537,47 @@ internal sealed class ConsoleSession : IDisposable
         _terminalSize = new TerminalSize(cols, rows);
     }
 
+    // Builds the shell's command line, and the variables that point the shell at its start-up files. The first
+    // console in the workspace writes those files. They show the console and run its command, so if they cannot
+    // be written, the console fails instead of starting a shell that would do neither.
+    private async Task<Result<ConsoleShellLaunch>> BuildShellLaunchAsync(
+        ConsoleShell shell,
+        ConsoleDocumentConfig config,
+        string? userZdotdir,
+        IReadOnlyList<string> command,
+        string workingFolder)
+    {
+        var writeResult = await _startupWrite.GetAsync();
+        if (writeResult.IsFailure)
+        {
+            return Result<ConsoleShellLaunch>.Fail("The console could not write its start-up files.")
+                .WithErrors(writeResult);
+        }
+
+        var options = writeResult.Value with
+        {
+            UseShellProfile = config.UseShellProfile,
+            CompactPrompt = config.CompactPrompt,
+            UserZdotdir = userZdotdir,
+            Command = command,
+            WorkingFolder = workingFolder,
+        };
+
+        return ConsoleShellLaunch.Build(shell, options);
+    }
+
     public void InjectInvocation(string invocation)
     {
         // Clear any partial input (Ctrl+U, U+0015) before submitting, so the invocation is not concatenated
         // with whatever the user had half-typed at the prompt.
         var text = "\u0015" + invocation;
 
-        // A programmatic injection during startup queues behind the startup lines rather than racing
-        // them, so a Run issued at console open still lands as type-ahead for the starting REPL.
+        // Until start-up ends, a programmatic injection is held back. Start-up ends once the shell's ready marker has
+        // arrived and the start-up script has been typed. A Run issued as the console opens then arrives as type-ahead
+        // for the starting REPL.
         lock (_gateLock)
         {
-            if (_startupInjectionPending)
+            if (_startupGateClosed)
             {
                 _bufferedInjections.Add(text);
                 return;
@@ -552,15 +612,44 @@ internal sealed class ConsoleSession : IDisposable
         }
     }
 
-    // Ends the startup phase, on the injector's worker once the startup lines have been written: the input
-    // gate reopens, buffered programmatic injections flush behind them, and the marker scan is put on a
-    // clock so a marker that never arrives cannot suppress output forever.
-    private void CompleteStartup()
+    // Called on the injector's worker once the script has been typed.
+    private void OnScriptInjected()
+    {
+        lock (_gateLock)
+        {
+            _awaitingScript = false;
+        }
+
+        OpenStartupGateWhenDone();
+    }
+
+    // Called when the marker arrives, when the silence timer shows the console without it, or when the process
+    // exits. The caller must not hold _streamLock.
+    private void OnMarkerSettled()
+    {
+        lock (_gateLock)
+        {
+            _awaitingMarker = false;
+        }
+
+        OpenStartupGateWhenDone();
+    }
+
+    // Ends start-up once both steps are done. The input gate reopens, and the buffered programmatic injections
+    // are submitted in order.
+    private void OpenStartupGateWhenDone()
     {
         List<string> bufferedInjections;
         lock (_gateLock)
         {
-            _startupInjectionPending = false;
+            if (!_startupGateClosed ||
+                _awaitingMarker ||
+                _awaitingScript)
+            {
+                return;
+            }
+
+            _startupGateClosed = false;
             bufferedInjections = new List<string>(_bufferedInjections);
             _bufferedInjections.Clear();
         }
@@ -568,11 +657,6 @@ internal sealed class ConsoleSession : IDisposable
         if (bufferedInjections.Count > 0)
         {
             _ = SubmitBufferedAsync(bufferedInjections);
-        }
-
-        lock (_streamLock)
-        {
-            ArmMarkerSilenceTimer();
         }
     }
 
@@ -637,6 +721,7 @@ internal sealed class ConsoleSession : IDisposable
             Resource,
             MarkerSilenceTimeoutMs);
 
+        OnMarkerSettled();
         attachedView?.OnStartupComplete();
     }
 
@@ -719,6 +804,7 @@ internal sealed class ConsoleSession : IDisposable
         string forwarded;
         IReadOnlyList<string> diagnostics;
         var startupCompleted = false;
+        var markerArrived = false;
         var markerPending = false;
 
         lock (_streamLock)
@@ -740,6 +826,7 @@ internal sealed class ConsoleSession : IDisposable
                 if (found && !_markerSeen)
                 {
                     _markerSeen = true;
+                    markerArrived = true;
                     startupCompleted = !_markerRevealed;
                     StopMarkerSilenceTimer();
 
@@ -766,6 +853,11 @@ internal sealed class ConsoleSession : IDisposable
 
         LogDiagnostics(diagnostics);
 
+        if (markerArrived)
+        {
+            OnMarkerSettled();
+        }
+
         if (markerPending)
         {
             return;
@@ -791,6 +883,7 @@ internal sealed class ConsoleSession : IDisposable
 
         // A marker that never arrived must not swallow the session's final output.
         ReleaseMarkerScan();
+        OnMarkerSettled();
         FlushHeldDiagnosticText();
 
         SetState(ConsoleSessionRunState.Ended);
@@ -871,9 +964,10 @@ internal sealed class ConsoleSession : IDisposable
 
         lock (_gateLock)
         {
-            _startupInjectionPending = false;
+            _startupGateClosed = false;
+            _awaitingMarker = false;
+            _awaitingScript = false;
             _bufferedInjections.Clear();
-            _deferredInjectionLines = null;
         }
 
         lock (_streamLock)

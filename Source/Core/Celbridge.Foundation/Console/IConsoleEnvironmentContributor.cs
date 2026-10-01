@@ -7,6 +7,12 @@ namespace Celbridge.Console;
 public interface IConsoleEnvironmentContributor
 {
     /// <summary>
+    /// Removes inherited variables that would undo this contributor's settings. Every console starts from the
+    /// inherited environment.
+    /// </summary>
+    void FilterInheritedEnvironment(IDictionary<string, string> inheritedEnvironment);
+
+    /// <summary>
     /// Adds or amends environment variables for a session about to launch. Called after the session
     /// provider builds its launch spec, so a variable the provider already set is visible here.
     /// </summary>

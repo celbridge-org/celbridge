@@ -80,6 +80,18 @@ describe('configsEqual', () => {
         expect(configsEqual(base, other)).toBe(true);
     });
 
+    it('treats turning the shell profile off as a change that needs a reopen', () => {
+        const base = { type: 'shell' };
+        expect(configsEqual(base, { ...base, useShellProfile: true })).toBe(true);
+        expect(configsEqual(base, { ...base, useShellProfile: false })).toBe(false);
+    });
+
+    it('treats turning the compact prompt off as a change that needs a reopen', () => {
+        const base = { type: 'shell' };
+        expect(configsEqual(base, { ...base, compactPrompt: true })).toBe(true);
+        expect(configsEqual(base, { ...base, compactPrompt: false })).toBe(false);
+    });
+
     it('is false when a launch-affecting field differs', () => {
         const a = { type: 'shell', optionsBySessionType: { shell: { executable: 'pwsh' } } };
         const b = { type: 'shell', optionsBySessionType: { shell: { executable: 'bash' } } };
@@ -108,6 +120,8 @@ describe('buildStartConfig', () => {
         expect(built).toEqual({
             type: 'python',
             workingDirectory: '',
+            useShellProfile: true,
+            compactPrompt: true,
             sessionTypeOptions: {},
             environment: {},
             runners: [{ extensions: ['.py'], command: '%run "{resource}"' }],
@@ -137,6 +151,8 @@ describe('buildStartConfig', () => {
         expect(buildStartConfig({})).toEqual({
             type: 'shell',
             workingDirectory: '',
+            useShellProfile: true,
+            compactPrompt: true,
             sessionTypeOptions: {},
             environment: {},
             runners: [],

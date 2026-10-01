@@ -107,7 +107,31 @@ public sealed partial class WebViewFindBar : UserControl
 
     private void DebounceTimer_Tick(Microsoft.UI.Dispatching.DispatcherQueueTimer sender, object args)
     {
+        // A search selects its match in the page, which moves the caret out of any page field. If the keyboard
+        // has left the find bar, the user has moved on, so the pending search is dropped.
+        if (!HoldsKeyboard())
+        {
+            return;
+        }
+
         StartFind();
+    }
+
+    private bool HoldsKeyboard()
+    {
+        if (XamlRoot is null)
+        {
+            return false;
+        }
+
+        var focusedElement = Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(XamlRoot) as DependencyObject;
+        if (focusedElement is null)
+        {
+            return false;
+        }
+
+        return VisualTree.GetAncestors(focusedElement, includeSelf: true)
+            .Any(ancestor => ReferenceEquals(ancestor, this));
     }
 
     private void FindTextBox_KeyDown(object sender, KeyRoutedEventArgs e)

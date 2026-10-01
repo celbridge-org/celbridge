@@ -28,6 +28,8 @@
  * @typedef {Object} ConsoleConfig
  * @property {string} type
  * @property {string} workingDirectory
+ * @property {boolean} useShellProfile whether the shell runs the user's own start-up files
+ * @property {boolean} compactPrompt whether the console replaces the shell's prompt with a compact one
  * @property {Object<string,Object<string,(string|string[])>>} optionsBySessionType each type's own table, keyed by type id
  * @property {Object<string,string>} environment
  * @property {ConsoleRunner[]} runners
@@ -41,6 +43,8 @@ export function defaultConsoleConfig() {
     return {
         type: 'shell',
         workingDirectory: '',
+        useShellProfile: true,
+        compactPrompt: true,
         optionsBySessionType: {},
         environment: {},
         runners: [],
@@ -143,6 +147,13 @@ export function serializeConsoleToml(config) {
     lines.push(`type = ${quote(config.type || 'shell')}`);
     if (config.workingDirectory) {
         lines.push(`working_directory = ${quote(config.workingDirectory)}`);
+    }
+    // Both settings default to on, so a key is only written when its setting is off.
+    if (config.useShellProfile === false) {
+        lines.push('use_shell_profile = false');
+    }
+    if (config.compactPrompt === false) {
+        lines.push('compact_prompt = false');
     }
     if (config.disabledBuiltInRunners && config.disabledBuiltInRunners.length > 0) {
         lines.push(`disabled_runners = [${config.disabledBuiltInRunners.map(quote).join(', ')}]`);
@@ -260,6 +271,10 @@ function assignValue(config, section, currentTable, key, rawValue, sessionTypeId
             config.type = parseScalar(rawValue);
         } else if (key === 'working_directory') {
             config.workingDirectory = parseScalar(rawValue);
+        } else if (key === 'use_shell_profile') {
+            config.useShellProfile = parseBoolean(rawValue);
+        } else if (key === 'compact_prompt') {
+            config.compactPrompt = parseBoolean(rawValue);
         } else if (key === 'disabled_runners') {
             config.disabledBuiltInRunners = parseArray(rawValue);
         }
@@ -379,6 +394,16 @@ function unescapeBasicString(inner) {
         result += character;
     }
     return result;
+}
+
+function parseBoolean(rawValue) {
+    if (rawValue === 'true') {
+        return true;
+    }
+    if (rawValue === 'false') {
+        return false;
+    }
+    throw new Error(`Invalid boolean value in .console config: "${rawValue}"`);
 }
 
 function parseArray(rawValue) {

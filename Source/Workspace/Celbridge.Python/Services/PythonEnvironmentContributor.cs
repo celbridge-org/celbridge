@@ -1,22 +1,36 @@
 using Celbridge.Console;
+using Celbridge.Logging;
+using Celbridge.Utilities;
 
 namespace Celbridge.Python.Services;
 
 /// <summary>
-/// Gives every console the shared Python host-integration environment (host ports, tool feature flags,
-/// version, per-project folders) and puts the uv bin folders on its PATH, so the installed celbridge-py
-/// command starts a fully-featured cel-connected REPL from any console type or a terminal a console
-/// spawns.
+/// Adds the shared Python environment to every console, and puts the uv bin folders on its PATH. The installed
+/// celbridge-py command can then start a connected REPL from any console, or from a terminal a console starts.
+/// Also removes the uv and Python settings Celbridge inherited.
 /// </summary>
 public sealed class PythonEnvironmentContributor : IConsoleEnvironmentContributor
 {
-    private const string PathVariableName = "PATH";
-
     private readonly IPythonLaunchService _launchService;
+    private readonly ILogger<PythonEnvironmentContributor> _logger;
 
-    public PythonEnvironmentContributor(IPythonLaunchService launchService)
+    public PythonEnvironmentContributor(
+        IPythonLaunchService launchService,
+        ILogger<PythonEnvironmentContributor> logger)
     {
         _launchService = launchService;
+        _logger = logger;
+    }
+
+    public void FilterInheritedEnvironment(IDictionary<string, string> inheritedEnvironment)
+    {
+        var removedNames = PythonEnvironmentFilter.Apply(inheritedEnvironment);
+        if (removedNames.Count > 0)
+        {
+            _logger.LogDebug(
+                "Left the inherited uv and Python variables out of the console: {Names}",
+                string.Join(", ", removedNames));
+        }
     }
 
     public async Task ContributeAsync(ConsoleSessionContext context, IDictionary<string, string> environment)
@@ -32,10 +46,14 @@ public sealed class PythonEnvironmentContributor : IConsoleEnvironmentContributo
             }
         }
 
-        // A merge, so a console-configured PATH keeps its entries and gains the uv bin folders.
+        // Merge, so a PATH set by the console keeps its entries and gains the uv bin folders. After the user's
+        // profile runs, the start-up moves these folders back to the front.
         var pathKey = ResolvePathKey(environment);
         environment.TryGetValue(pathKey, out var basePath);
-        environment[pathKey] = _launchService.BuildConsolePath(basePath);
+        environment[pathKey] = _launchService.BuildConsolePath(basePath ?? string.Empty);
+        environment[ConsoleEnvironmentVariables.PathFolders] = string.Join(
+            Path.PathSeparator,
+            _launchService.GetConsolePathFolders());
     }
 
     // Windows environment names are case-insensitive and its canonical spelling is Path, so a console that
@@ -44,12 +62,12 @@ public sealed class PythonEnvironmentContributor : IConsoleEnvironmentContributo
     {
         foreach (var key in environment.Keys)
         {
-            if (string.Equals(key, PathVariableName, StringComparison.OrdinalIgnoreCase))
+            if (EnvironmentVariableNames.IsPath(key))
             {
                 return key;
             }
         }
 
-        return PathVariableName;
+        return EnvironmentVariableNames.PathName;
     }
 }

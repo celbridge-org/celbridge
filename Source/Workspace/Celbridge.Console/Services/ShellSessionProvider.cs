@@ -3,8 +3,8 @@ using Celbridge.Utilities;
 namespace Celbridge.Console.Services;
 
 /// <summary>
-/// The built-in "shell" session type. With no executable the session is just the platform shell; with one,
-/// the executable and its arguments are injected as a command once the shell is up.
+/// The built-in "shell" session type. Without an executable, the session is just the platform's shell. With
+/// one, the shell runs the executable and its arguments as the console's command.
 /// </summary>
 public sealed class ShellSessionProvider : IConsoleSessionProvider
 {

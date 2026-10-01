@@ -70,9 +70,7 @@ public sealed class ConPtyTerminal : IPtyBackend
             IntPtr.Zero,
             IntPtr.Zero);
 
-        // Build the environment block for the child process.
-        // When custom environment variables are provided, merge them with the
-        // current process environment to create a per-process environment block.
+        // The child's environment is the one provided, or this process's when none is.
         var environmentBlockPointer = IntPtr.Zero;
         int creationFlags = EXTENDED_STARTUPINFO_PRESENT;
 
@@ -328,34 +326,21 @@ public sealed class ConPtyTerminal : IPtyBackend
     }
 
     /// <summary>
-    /// Builds a Unicode environment block for CreateProcess by cloning the current
-    /// process environment and merging in the provided custom variables.
+    /// Builds a Unicode environment block for CreateProcess from the given environment.
     /// The block format is: VAR1=VALUE1\0VAR2=VALUE2\0...\0\0 (double-null terminated).
     /// Environment variables are sorted by name as required by CreateProcess.
     /// </summary>
     private static IntPtr BuildEnvironmentBlock(Dictionary<string, string> environmentVariables)
     {
-        // Start with the current process environment
-        var mergedEnvironment = new SortedDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (System.Collections.DictionaryEntry entry in Environment.GetEnvironmentVariables())
-        {
-            var key = entry.Key?.ToString();
-            var value = entry.Value?.ToString();
-            if (key != null && value != null)
-            {
-                mergedEnvironment[key] = value;
-            }
-        }
-
-        // Merge in the custom variables (overwriting any existing values)
+        var sortedEnvironment = new SortedDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var entry in environmentVariables)
         {
-            mergedEnvironment[entry.Key] = entry.Value;
+            sortedEnvironment[entry.Key] = entry.Value;
         }
 
         // Build the null-delimited, double-null-terminated Unicode string
         var blockBuilder = new StringBuilder();
-        foreach (var entry in mergedEnvironment)
+        foreach (var entry in sortedEnvironment)
         {
             blockBuilder.Append(entry.Key);
             blockBuilder.Append('=');

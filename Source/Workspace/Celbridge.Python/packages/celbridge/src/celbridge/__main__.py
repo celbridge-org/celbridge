@@ -100,8 +100,9 @@ def _resolve_launch(environ, arguments) -> ResolvedLaunch:
 def _build_uv_run_command(resolved: ResolvedLaunch, environ, payload):
     """Build the uv run command that runs payload in the launch's environment.
 
-    The cache is passed as a flag, which outranks any UV_CACHE_DIR a console or a shell profile has set,
-    holding the REPL to the cache the host warmed.
+    The cache is passed as a flag, which takes priority over any UV_CACHE_DIR a console or a shell profile
+    set. The REPL then uses the cache the host prepared. --no-config stops uv reading any configuration
+    file, so a user's uv.toml cannot stop the REPL starting or change what it runs on.
     """
     uv_path = environ.get('CELBRIDGE_UV')
     wheel_path = environ.get('CELBRIDGE_WHEEL')
@@ -111,7 +112,7 @@ def _build_uv_run_command(resolved: ResolvedLaunch, environ, payload):
             "environment (CELBRIDGE_UV and CELBRIDGE_WHEEL are not set)."
         )
 
-    command = [uv_path, 'run']
+    command = [uv_path, 'run', '--no-config']
 
     cache_dir = environ.get('CELBRIDGE_UV_CACHE_DIR')
     if cache_dir:

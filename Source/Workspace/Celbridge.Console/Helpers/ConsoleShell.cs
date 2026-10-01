@@ -7,7 +7,6 @@ public enum ConsoleShellFamily
 {
     PowerShell,
     Posix,
-    Cmd,
 }
 
 /// <summary>
@@ -19,12 +18,16 @@ public sealed record ConsoleShell(string Executable, ConsoleShellFamily Family)
     /// Whether this shell is zsh. The POSIX family shares a quoting dialect but not a prompt syntax, so
     /// anything written in zsh's own syntax has to name the shell rather than the family.
     /// </summary>
-    public bool IsZsh => Path.GetFileNameWithoutExtension(Executable)
-        .Equals("zsh", StringComparison.OrdinalIgnoreCase);
+    public bool IsZsh => IsNamed(Executable, "zsh");
 
     /// <summary>
-    /// Resolves the platform default shell. Each is resolvable without a PATH probe: powershell.exe ships
-    /// in System32, and the Unix path honours the user's $SHELL.
+    /// Whether this shell is bash.
+    /// </summary>
+    public bool IsBash => IsNamed(Executable, "bash");
+
+    /// <summary>
+    /// Returns the shell a console runs, without searching PATH. Windows uses powershell.exe, which always ships
+    /// in System32. macOS and Linux use the user's $SHELL, or a default given by its full path.
     /// </summary>
     public static ConsoleShell Resolve()
     {
@@ -33,37 +36,28 @@ public sealed record ConsoleShell(string Executable, ConsoleShellFamily Family)
             return new ConsoleShell("powershell.exe", ConsoleShellFamily.PowerShell);
         }
 
-        var loginShell = Environment.GetEnvironmentVariable("SHELL");
-        if (!string.IsNullOrEmpty(loginShell))
-        {
-            return new ConsoleShell(loginShell, ClassifyFamily(loginShell));
-        }
-
-        if (OperatingSystem.IsMacOS())
-        {
-            return new ConsoleShell("/bin/zsh", ConsoleShellFamily.Posix);
-        }
-
-        return new ConsoleShell("/bin/bash", ConsoleShellFamily.Posix);
+        return ResolvePosix(Environment.GetEnvironmentVariable("SHELL"));
     }
 
     /// <summary>
-    /// Classifies a shell executable's command dialect by its file name.
+    /// The shell a console runs on macOS and Linux. This is the user's login shell when it is zsh or bash.
+    /// Otherwise it is the platform's default shell, because the start-up files only support zsh and bash.
     /// </summary>
-    public static ConsoleShellFamily ClassifyFamily(string shellExecutable)
+    public static ConsoleShell ResolvePosix(string? loginShell)
     {
-        var fileName = Path.GetFileNameWithoutExtension(shellExecutable);
-        if (fileName.Contains("powershell", StringComparison.OrdinalIgnoreCase) ||
-            fileName.Equals("pwsh", StringComparison.OrdinalIgnoreCase))
+        var isSupported = !string.IsNullOrEmpty(loginShell) &&
+            (IsNamed(loginShell, "zsh") || IsNamed(loginShell, "bash"));
+        if (isSupported)
         {
-            return ConsoleShellFamily.PowerShell;
+            return new ConsoleShell(loginShell!, ConsoleShellFamily.Posix);
         }
 
-        if (fileName.Equals("cmd", StringComparison.OrdinalIgnoreCase))
-        {
-            return ConsoleShellFamily.Cmd;
-        }
+        var defaultShell = OperatingSystem.IsMacOS() ? "/bin/zsh" : "/bin/bash";
+        return new ConsoleShell(defaultShell, ConsoleShellFamily.Posix);
+    }
 
-        return ConsoleShellFamily.Posix;
+    private static bool IsNamed(string executable, string name)
+    {
+        return Path.GetFileNameWithoutExtension(executable).Equals(name, StringComparison.OrdinalIgnoreCase);
     }
 }

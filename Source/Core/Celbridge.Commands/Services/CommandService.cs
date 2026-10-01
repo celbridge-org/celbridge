@@ -423,14 +423,12 @@ public class CommandService : ICommandService
             return;
         }
 
-        try
-        {
-            await idle.Task.WaitAsync(UserInterfaceYieldTimeout);
-        }
-        catch (TimeoutException)
-        {
-            // The UI thread stayed busy for the whole timeout. The next command runs anyway.
-        }
+        // If the UI thread stays busy for the whole timeout, the next command runs anyway. The wait does not
+        // throw on timeout, because an exception would stop the debugger every time the UI thread is busy.
+        // The timer is stopped when the wait ends, so it does not outlive a quick yield.
+        using var timeout = new CancellationTokenSource();
+        await Task.WhenAny(idle.Task, Task.Delay(UserInterfaceYieldTimeout, timeout.Token));
+        timeout.Cancel();
     }
 
     private T CreateCommand<T>() where T : IExecutableCommand

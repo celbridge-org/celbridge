@@ -43,6 +43,8 @@ export function createConsoleSettings({ client }) {
     const typeFieldsElement = document.getElementById('type-fields');
     const workingDirectoryInput = document.getElementById('working-directory');
     const environmentInput = document.getElementById('environment');
+    const useShellProfileSwitch = document.getElementById('use-shell-profile');
+    const compactPromptSwitch = document.getElementById('compact-prompt');
     const reopenSettingsButton = document.getElementById('reopen-settings');
     const builtInRunnerList = document.getElementById('runner-built-in');
     const builtInRunnerTemplate = document.getElementById('built-in-runner-template');
@@ -180,6 +182,8 @@ export function createConsoleSettings({ client }) {
         environmentInput.value = Object.entries(config.environment || {})
             .map(([name, value]) => `${name}=${value}`)
             .join('\n');
+        useShellProfileSwitch.setAttribute('aria-checked', String(config.useShellProfile !== false));
+        compactPromptSwitch.setAttribute('aria-checked', String(config.compactPrompt !== false));
         disabledBuiltInRunners = config.disabledBuiltInRunners || [];
         runnerCards.populate(config.runners);
         triggerCards.populate(config.triggers);
@@ -207,7 +211,7 @@ export function createConsoleSettings({ client }) {
             const isOff = isBuiltInRunnerDisabled(runner.builtInId);
             card.classList.toggle('off', isOff);
 
-            const toggle = card.querySelector('.built-in-switch');
+            const toggle = card.querySelector('.toggle-switch');
             toggle.setAttribute('aria-checked', String(!isOff));
             toggle.disabled = !isFormEditable();
 
@@ -266,6 +270,8 @@ export function createConsoleSettings({ client }) {
         return {
             type,
             workingDirectory: workingDirectoryInput.value.trim(),
+            useShellProfile: useShellProfileSwitch.getAttribute('aria-checked') === 'true',
+            compactPrompt: compactPromptSwitch.getAttribute('aria-checked') === 'true',
             optionsBySessionType,
             environment: parseEnvironmentLines(environmentInput.value),
             runners: runnerCards.read(),
@@ -453,6 +459,13 @@ export function createConsoleSettings({ client }) {
 
     for (const field of formFields) {
         field.addEventListener('input', onFormInput);
+    }
+    for (const toggleSwitch of [useShellProfileSwitch, compactPromptSwitch]) {
+        toggleSwitch.addEventListener('click', () => {
+            const isOn = toggleSwitch.getAttribute('aria-checked') === 'true';
+            toggleSwitch.setAttribute('aria-checked', String(!isOn));
+            onFormInput();
+        });
     }
 
     // The host mirrors the writable state as its enum name, so Writable is the only editable value. A view

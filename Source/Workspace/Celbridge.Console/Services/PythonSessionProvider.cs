@@ -6,8 +6,8 @@ using Celbridge.Utilities;
 namespace Celbridge.Console.Services;
 
 /// <summary>
-/// The python session type: injects a celbridge-py command into the session's shell, starting an IPython
-/// REPL that dials the shared cel-proxy JSON-RPC server and exposes cel.* against the workspace.
+/// The python session type. It runs celbridge-py in the session's shell, which starts an IPython REPL. The REPL
+/// connects to the shared cel-proxy JSON-RPC server and provides cel.* for the workspace.
 /// </summary>
 public sealed class PythonSessionProvider : IConsoleSessionProvider
 {

@@ -61,6 +61,8 @@ export function buildStartConfig(config) {
     return {
         type,
         workingDirectory: config.workingDirectory || '',
+        useShellProfile: config.useShellProfile !== false,
+        compactPrompt: config.compactPrompt !== false,
         sessionTypeOptions: (config.optionsBySessionType || {})[type] || {},
         environment: config.environment || {},
         runners: (config.runners || []).map((runner) => ({

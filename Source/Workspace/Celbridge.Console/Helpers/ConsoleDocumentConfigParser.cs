@@ -31,6 +31,18 @@ public sealed record ConsoleDocumentConfig(
     /// "session.shell.entrypoint"). The document still launches, so this is advisory.
     /// </summary>
     public IReadOnlyList<string> UnknownFields { get; init; } = Array.Empty<string>();
+
+    /// <summary>
+    /// Whether the console's shell runs the user's own start-up files and keeps the full inherited environment.
+    /// When off, the shell starts clean. On by default.
+    /// </summary>
+    public bool UseShellProfile { get; init; } = true;
+
+    /// <summary>
+    /// Whether the console replaces the shell's prompt with a compact one. When off, the prompt is left alone.
+    /// On by default.
+    /// </summary>
+    public bool CompactPrompt { get; init; } = true;
 }
 
 /// <summary>
@@ -113,7 +125,9 @@ public static class ConsoleDocumentConfigParser
             ReadTextList(session?.DisabledRunners),
             ReadTriggers(session))
         {
-            UnknownFields = CollectUnknownFields(document, optionKeysBySessionType)
+            UnknownFields = CollectUnknownFields(document, optionKeysBySessionType),
+            UseShellProfile = session?.UseShellProfile ?? true,
+            CompactPrompt = session?.CompactPrompt ?? true,
         };
 
         return config;
