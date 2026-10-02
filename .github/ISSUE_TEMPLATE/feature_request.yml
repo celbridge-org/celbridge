@@ -1,0 +1,25 @@
+name: Feature request
+description: Suggest something Celbridge could do.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: Start with a post on the [community forum](https://celbridge.discourse.group/), and open a feature request once the discussion shows it needs a change to Celbridge itself. Search the existing issues first, and add to a matching one rather than opening another.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The task or workflow, and what makes it hard today. The problem matters more than a proposed solution.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: What would help?
+      description: How you imagine Celbridge could support it, if you have an idea.
+  - type: input
+    id: forum-discussion
+    attributes:
+      label: Forum discussion
+      description: A link to the forum thread where the idea was discussed.
+      placeholder: "https://celbridge.discourse.group/t/..."

@@ -1,0 +1,46 @@
+name: Bug report
+description: Report something in Celbridge that isn't working.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Search the existing issues first, and add to a matching one rather than opening another. For questions, use the [community forum](https://celbridge.discourse.group/).
+  - type: input
+    id: version
+    attributes:
+      label: Celbridge version
+      placeholder: "1.2.0"
+    validations:
+      required: true
+  - type: input
+    id: operating-system
+    attributes:
+      label: Operating system
+      description: Your operating system and its version.
+      placeholder: "Windows 11 Pro 25H2"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The steps that make the problem happen, starting from opening Celbridge.
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What happened?
+      description: What you expected to happen, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: attachments
+    attributes:
+      label: Screenshots and logs
+      description: |
+        Drag in a screenshot or recording if the problem is visible, and the log file from the run where the problem happened. Celbridge writes one log file per run, and File > Show Log opens the folder that holds them. The folder is `%LOCALAPPDATA%\Packages\org.celbridge.Celbridge_f09fs4qsgr17a\LocalState\Logs` on Windows and `~/Library/Application Support/Celbridge/Logs` on macOS.

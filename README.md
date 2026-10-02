@@ -1,193 +1,105 @@
-# Table of Contents
-- [What is Celbridge?](#what-is-celbridge-)
-- [Key Features](#key-features)
-- [Getting Started](#getting-started)
-  * [Installation](#installation)
-  * [Building From Source](#building-from-source)
-  * [Documentation](#documentation)
-- [Support](#support)
-- [Roadmap](#roadmap)
-- [Who are we?](#who-are-we-)
-- [Contributions](#contributions)
-- [Credits](#credits)
+# Celbridge
 
-# What is Celbridge?
+<!-- Q: What is Celbridge, and why would I want it? -->
 
-Celbridge is an open source data workbench that provides a bridge between spreadsheets and Python scripting. Edit spreadsheets and write Python scripts side-by-side in a user-friendly graphical interface, making it easy to enter, analyze, and automate your data. 
+Build custom tools for your game dev team.
 
-Project website: [celbridge.org](https://celbridge.org)
+Tools are plain HTML files that live in your project. Your team opens the project in Celbridge and starts editing straight away. Celbridge is free and open source, and runs on Windows and macOS.
 
-**The goals of Celbridge are to:**
+<!-- Q: What does it look like? -->
 
-* Make **common tasks with data** easier and more accessible.
-* Keep your data **local-first** and **private** by default.
-* Act as **a bridge** between Python scripting and widely used filetypes such as Excel, CSV, Markdown, JSON, HTML, CSS, etc.
-* Support easy extensibility via **Python packages**, with a core editor application written in [.NET](https://dotnet.microsoft.com/en-us/) using [Uno Platform](https://platform.uno/).
-* Provide quick access to the **web applications** you regularly use (e.g. dashboards, support portals, docs, etc).
+![The Celbridge workbench with a branching story open in a node editor, a Python script beside a console that has just run it, and the project's files in the Explorer](docs/images/celbridge.webp)
 
-> [!NOTE]
-> Many thanks to [MESCIUS SpreadJS](https://developer.mescius.com/spreadjs) for sponsoring Celbridge and supporting open source developers!
+<!-- Q: Where do I get it, and how do I learn to use it? -->
 
-<br>
-<a href="https://github.com/celbridge-org/celbridge/blob/main/docs/images/data_import.gif" alt="Celbridge screenshot GIF">
-  <img width="600" height="600" src="https://github.com/celbridge-org/celbridge/blob/main/docs/images/data_import.gif?raw=true">
-</a>
-<br>
+Download Celbridge from [celbridge.org](https://celbridge.org/download/). The documentation is at [learn.celbridge.org](https://learn.celbridge.org/).
 
-# Key Features
+## Community
 
-> [!NOTE]
-> Celbridge is still in **early development**. Any update may introduce incompatibilities with previous versions or breaking architectural changes, so always back up any data before upgrading.
+<!-- Q: Where do I get help, and how can I get involved? -->
 
-## Privacy and Security
+Share what you build, ask questions and discuss feature ideas on the [community forum](https://celbridge.discourse.group/). Report bugs in [issues](https://github.com/celbridge-org/celbridge/issues). [CONTRIBUTING.md](CONTRIBUTING.md) explains the ways you can contribute.
 
-* Celbridge is designed to keep your data local and private by default.
-* All files in Celbridge are managed locally on your machine, not in the cloud — unless you upload them yourself.
-
-## Python Integration
-
-* An integrated Python interpreter, with configurable Python version and packages.
-* Fast and easy package installation using [uv](https://docs.astral.sh/uv/): no need to manage virtual environments. 
-* An integrated read–eval–print loop (REPL), featuring
-    * Syntax highlighting
-    * Command history
-    * Command completion
-    * [IPython](https://ipython.readthedocs.io/en/stable/index.html) magic commands (%run, %alias, %ls, etc.)
-    * [pdb](https://docs.python.org/3/library/pdb.html#module-pdb) command line debugger
-* Run Python scripts with a single click. 
-
-## Spreadsheets and Data Processing
-
-* Edit `.xlsx` files using a powerful built-in spreadsheet editor, powered by [MESCIUS SpreadJS](https://developer.mescius.com/spreadjs/docs/overview). 
-* Supports all common Excel functionality, including formulas, graph and table generation, images, pivot tables, etc.
-* Does **not require Excel** to be installed on your machine.
-
-<img width="400" heigth="400" src="https://github.com/celbridge-org/celbridge/blob/main/docs/images/excel_spreadsheet.png?raw=true">
-
-## File Explorer
-
-* Create, move, drag, drop, copy, and paste files, with full undo/redo support.
-* Built-in support for viewing and printing PDFs, images, audio and other media. 
-
-## Text Editor 
-
-* Fully featured text editor based on [Monaco](https://microsoft.github.io/monaco-editor/), the editor used in [Visual Studio Code](https://code.visualstudio.com/). 
-* Supports all popular text formats and programming languages.
-* Features:
-  * Syntax highlighting
-  * Search and replace
-  * Formatting
-  * Copy and paste, full undo/redo
-  * Multi-cursor editing
-  * Command palette 
-
-## Markdown Documentation
-
-* Markdown documentation editor with syntax highlighting and split-screen preview.
-* A preview window that updates as you type, rendered using [Markdig](https://github.com/xoofx/markdig).
-* Display images and other media by linking to local project files or using a URL.
-
-## Web App Integration
-
-* Create a `.webapp` file to allow you to open any web page as a tabbed document. 
-* Provides quick access to the web applications you regularly use (e.g. dashboards, support portals, docs, etc).
-* Quickly navigate back to web pages using bookmark-like functionality. No more searching through open tabs!
-* Files are download directly to your project folder.
-
-## Planned Features
-
-* Privacy-first AI: bring your own model (BYOM), run LLMs locally, **keep control of your data**.
-* A Python-based extension system to allow the community to add custom functionality.
-
-# Getting Started
-
-## Installation 
-
-Celbridge is distributed as a `.msix` installer for Windows.
-
-> [!NOTE]
-> Celbridge currently runs on Windows only. A macOS version is planned, and Linux/WASM versions may be possible depending on demand.
-
-1. Download and run the latest `.msix` installer from the [downloads page](https://www.celbridge.org/download) page of the [Celbridge.org](https://www.celbridge.org) website. 
-2. When prompted, click `Install` (if this is your first time installing the program) or `Update`. 
-3. Install the .NET Desktop Runtime if prompted by the installer.  
-4. Launch Celbridge from the Start menu, if it doesn't launch automatically. 
-
-Each release includes an example project that demonstrates the core features of Celbridge. Access this example project as follows: 
-1. Launch Celbridge. 
-2. From the home menu, click `New example project`.
-
-> [!NOTE] 
-> If an existing project opens instead of the home menu, click the home button in the navigation bar to the left of the explorer panel. 
-
-3. Enter a name for the example project (e.g. "celbridge_examples") and select a location for it. 
-4. Celbridge will generate a new example project. Each folder in this project contains an example of a core feature of Celbridge. For example, the `01_markdown` folder demonstrates how to work with Markdown files. 
-5. To get started with each feature, see the `readme.md` files contained in the example folders. 
-
-## Building From Source
-
-1. Clone the Celbridge git repo on your machine.
-2. Install the latest version of Visual Studio (the free [Community Edition](https://visualstudio.microsoft.com/vs/community/) works fine).
-3. Follow the Visual Studio setup instructions for [Uno Platform](https://platform.uno/docs/articles/get-started-vs-2022.html?tabs=ubuntu1804) development.
-4. Open `Celbridge.slnx` in Visual Studio.
-5. In `Solution Explorer`, right click on the `Celbridge.Application` project and select `Set as Startup Project`.
-6. Select the `Celbridge.Application (WinAppSDK Packaged)` and `net10.0-windows10.0.22621` targets in the Visual Studio configuration toolbar.
-7. Build and run the application.
-
-If you encounter build errors, try restarting Visual Studio. If this fails, do a clean build.
-
-Note that enabling the spreadsheet editing feature in Celbridge requires a valid license for MESCIUS SpreadJS.
-
-## Documentation
-
-Celbridge documentation is a work-in-progress. The [Getting Started](https://github.com/celbridge-org/celbridge/blob/main/docs/getting_started.md) document explains how to navigate the Celbridge interface and outlines its main functionality. 
-
-There is now a separate website for the growing documentation about the Celbridge workbench application:
-- [Celbridge-docs](https://celbridge-org.github.io/celbridge-docs/)
+<!-- Q: Is there anything else to discover? -->
 
 *Mysterious note:* The first 🥚 is like the second. The second belongs to the third. The third is shorter than itself, and sits in the middle.
 
-# Support
+## Building from source
 
-If you encounter any issues with Celbridge, please open a [ticket](https://github.com/celbridge-org/celbridge/issues). You're also welcome to look for help and support on our [community forums](https://celbridge.discourse.group/). 
+<!-- Q: Can I build Celbridge myself, and what do I need? -->
 
-# Roadmap
+Celbridge is a C# application built with [.NET](https://dotnet.microsoft.com/) and [Uno Platform](https://platform.uno/). `global.json` pins the .NET SDK and Uno SDK versions. The first build downloads uv and a Python interpreter, so it needs an internet connection.
 
-Our goal is to turn Celbridge into a robust data processing tool suitable for use in production environments, backed by a friendly and helpful user community. 
+<!-- Q: Is anything missing from a build I make myself? -->
 
-# Who are we?
+A build from source has no spreadsheet editor. The editor uses [MESCIUS SpreadJS](https://developer.mescius.com/spreadjs), which needs a commercial license.
 
-We're a small team led by [Chris Gregan](https://github.com/chrisgregan). Chris has worked in games development for over 20 years — most recently he was Lead Tools Programmer at [Romero Games](https://romerogames.com/). He has a lot of experience with many programming languages and technologies, his favourites being Python, C#, and .NET.  
+### Windows
 
-Chris is currently doing a Research Masters with [Technological University Dublin](https://www.tudublin.ie/). Chris also created the [Fungus](https://github.com/snozbot/fungus) visual scripting tool for the Unity game engine. That project is now maintained by [the community](https://github.com/Atelier-Mycelia/Amanita).
+<!-- Q: How do I build it on Windows? -->
 
-# Contributions
+Celbridge supports Windows 11.
 
-All feedback and contributions are very welcome! If you'd like to contribute a new feature, please open an issue first so we can discuss the best way to implement it. We have a strong vision for the architecture of Celbridge that we hope will allow the project to scale successfully. 
+1. Install [Visual Studio 2026](https://visualstudio.microsoft.com/vs/). The free Community edition works.
+2. Follow the [Uno Platform setup for Visual Studio](https://platform.uno/docs/articles/get-started-vs-2022.html).
+3. Open `Celbridge.slnx`, and set `Celbridge.Application` as the startup project.
+4. Choose `Celbridge (WinAppSDK Packaged)` from the debug target list, then build and run.
 
-# Credits
+<!-- Q: What if the build fails? -->
+
+If a build fails after pulling changes, rebuild the solution.
+
+### macOS
+
+<!-- Q: How do I build it on macOS? -->
+
+1. Install the .NET 10 SDK.
+2. Follow the [Uno Platform setup](https://platform.uno/docs/articles/get-started.html), whose `uno-check` tool installs the remaining prerequisites. Use [JetBrains Rider](https://platform.uno/docs/articles/get-started-rider.html) or [VS Code](https://platform.uno/docs/articles/get-started-vscode.html) as the IDE.
+3. Build and run from the repository root:
+
+   ```bash
+   dotnet run --project Source/Celbridge/Celbridge.Application.csproj -f net10.0-desktop
+   ```
+
+## License
+
+<!-- Q: Can I use, change and share Celbridge? -->
+
+Celbridge is released under the [MIT License](LICENSE.txt). Every third-party component included in Celbridge is listed with its license and copyright notice in [THIRD-PARTY-LICENSES.txt](THIRD-PARTY-LICENSES.txt).
+
+## Credits
+
+<!-- Q: Who makes Celbridge? -->
+
+Celbridge is made by a small team led by [Chris Gregan](https://github.com/chrisgregan). The [About page](https://celbridge.org/about/) introduces the team.
+
+<!-- Q: Who else has helped? -->
 
 Thank you to everyone who has contributed to Celbridge, especially [Katie Canning](https://katiewrites.games/), [Matt Smith](https://github.com/dr-matt-smith), [Matt Johnson](https://github.com/amazinggitboy) and [Ruth Shields](https://www.linkedin.com/in/ruth-shields-b0662788/).
 
+<!-- Q: Who made the project possible? -->
+
 This project was made possible by the Sabbatical Policy at [Romero Games](https://romerogames.com/). Huge thanks to Brenda Romero🏅 & John Romero and all of the incredible team at Romero Games for their support. ❤️❤️❤️
+
+<!-- Q: Who sponsors Celbridge? -->
 
 Many thanks to [MESCIUS SpreadJS](https://developer.mescius.com/spreadjs) for sponsoring Celbridge and supporting open source developers!
 
-Celbridge is built on many fantastic open source projects, including:
-* [.NET](https://dotnet.microsoft.com/)
-* [Uno Platform](https://platform.uno/)
-* [WebView2](https://developer.microsoft.com/microsoft-edge/webview2/)
-* [Monaco Editor](https://microsoft.github.io/monaco-editor/)
-* [xterm.js](https://xtermjs.org/)
-* [Python](https://www.python.org/)
-* [IPython](https://ipython.org/)
-* [uv](https://docs.astral.sh/uv/)
-* [ClosedXML](https://github.com/ClosedXML/ClosedXML)
-* [marked](https://marked.js.org/)
-* [highlight.js](https://highlightjs.org/)
-* [Model Context Protocol C# SDK](https://github.com/modelcontextprotocol/csharp-sdk)
-* [Nerd Fonts](https://www.nerdfonts.com/)
-* [Bootstrap Icons](https://icons.getbootstrap.com/)
-* [Cascadia Code](https://github.com/microsoft/cascadia-code)
+<!-- Q: What is Celbridge built on? -->
 
-Every third-party component included in Celbridge is listed with its license and copyright notice in `THIRD-PARTY-LICENSES.txt`.
+Celbridge is built on many fantastic open source projects, including:
+- [.NET](https://dotnet.microsoft.com/)
+- [Uno Platform](https://platform.uno/)
+- [WebView2](https://developer.microsoft.com/microsoft-edge/webview2/)
+- [Monaco Editor](https://microsoft.github.io/monaco-editor/)
+- [xterm.js](https://xtermjs.org/)
+- [Python](https://www.python.org/)
+- [IPython](https://ipython.org/)
+- [uv](https://docs.astral.sh/uv/)
+- [ClosedXML](https://github.com/ClosedXML/ClosedXML)
+- [marked](https://marked.js.org/)
+- [highlight.js](https://highlightjs.org/)
+- [Model Context Protocol C# SDK](https://github.com/modelcontextprotocol/csharp-sdk)
+- [Nerd Fonts](https://www.nerdfonts.com/)
+- [Bootstrap Icons](https://icons.getbootstrap.com/)
+- [Cascadia Code](https://github.com/microsoft/cascadia-code)
