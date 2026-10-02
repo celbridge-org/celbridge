@@ -254,7 +254,7 @@ public class AgentResponseFilterTests
             FeatureFlags: new Dictionary<string, bool>(),
             FocusedPanel: "Documents",
             ActiveUtility: "",
-            LayoutMode: new LayoutModeInfo(new Dictionary<string, bool>
+            LayoutMode: new LayoutModeInfo("Default", false, new Dictionary<string, bool>
             {
                 ["utility"] = true,
                 ["main"] = true,
@@ -644,7 +644,7 @@ public class AgentResponseFilterTests
             FeatureFlags: new Dictionary<string, bool>(),
             FocusedPanel: "None",
             ActiveUtility: "",
-            LayoutMode: new LayoutModeInfo(new Dictionary<string, bool>
+            LayoutMode: new LayoutModeInfo("Default", false, new Dictionary<string, bool>
             {
                 ["utility"] = true,
                 ["main"] = true,

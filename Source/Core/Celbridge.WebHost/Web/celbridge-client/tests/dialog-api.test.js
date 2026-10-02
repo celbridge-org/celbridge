@@ -124,16 +124,21 @@ describe('DialogAPI dialogs that wait for the user', () => {
         return { dialog: new DialogAPI(transport), sent, respond };
     }
 
-    it('resolves a file the user picks long after the default timeout', async () => {
+    it.each([
+        ['pickImage', (dialog) => dialog.pickImage(['.png']), { path: '/tmp/late.png' }, '/tmp/late.png'],
+        ['pickFile', (dialog) => dialog.pickFile(['.txt']), { path: '/tmp/late.txt' }, '/tmp/late.txt'],
+        ['pickIcon', (dialog) => dialog.pickIcon(''), { iconName: 'bs-gear' }, 'bs-gear'],
+        ['showAlert', (dialog) => dialog.showAlert('Title', 'Message'), {}, undefined]
+    ])('resolves %s when the user answers long after the default timeout', async (_, open, result, expected) => {
         const { dialog, sent, respond } = createHostedDialog();
 
-        const pending = dialog.pickFile(['.png']);
+        const pending = open(dialog);
 
         vi.advanceTimersByTime(300000);
 
-        respond(sent[0].id, { path: '/tmp/late.png' });
+        respond(sent[0].id, result);
 
-        await expect(pending).resolves.toBe('/tmp/late.png');
+        await expect(pending).resolves.toBe(expected);
     });
 
     it('keeps the default timeout for a notification, which the user never answers', async () => {

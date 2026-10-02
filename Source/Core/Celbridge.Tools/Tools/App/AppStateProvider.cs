@@ -3,15 +3,16 @@ using Celbridge.Messaging;
 using Celbridge.Platform;
 using Celbridge.Projects;
 using Celbridge.Settings;
+using Celbridge.UserInterface;
 using Celbridge.Utilities;
 
 namespace Celbridge.Tools;
 
 /// <summary>
-/// Workspace layout snapshot reported as part of app_get_state. Maps each workspace area token to whether
-/// that area is currently on screen.
+/// Workspace layout snapshot reported as part of app_get_state: the layout mode, whether the window fills the
+/// screen, and each workspace area token mapped to whether that area is currently on screen.
 /// </summary>
-public record class LayoutModeInfo(IReadOnlyDictionary<string, bool> AreaVisibility);
+public record class LayoutModeInfo(string Mode, bool IsFullScreen, IReadOnlyDictionary<string, bool> AreaVisibility);
 
 /// <summary>
 /// A project package in the app_get_state package summary, with the package version its manifest declares.
@@ -55,6 +56,7 @@ internal sealed class AppStateProvider : IAppStateProvider
     private readonly IFeatureFlags _featureFlags;
     private readonly IFocusService _focusService;
     private readonly ILayoutService _layoutService;
+    private readonly IWindowModeService _windowModeService;
     private readonly ISpotlightRegistry _spotlightRegistry;
 
     // The most recently broadcast active Utility Panel item, cached from ActiveUtilityChangedMessage so
@@ -69,6 +71,7 @@ internal sealed class AppStateProvider : IAppStateProvider
         IFeatureFlags featureFlags,
         IFocusService focusService,
         ILayoutService layoutService,
+        IWindowModeService windowModeService,
         ISpotlightRegistry spotlightRegistry,
         IMessengerService messengerService)
     {
@@ -78,6 +81,7 @@ internal sealed class AppStateProvider : IAppStateProvider
         _featureFlags = featureFlags;
         _focusService = focusService;
         _layoutService = layoutService;
+        _windowModeService = windowModeService;
         _spotlightRegistry = spotlightRegistry;
 
         // This provider is a singleton, so the subscription lives for the app lifetime (no unregister needed).
@@ -135,7 +139,9 @@ internal sealed class AppStateProvider : IAppStateProvider
             areaVisibility[area.ToToken()] = presentedAreas.Contains(area);
         }
 
-        var layoutMode = new LayoutModeInfo(areaVisibility);
+        var mode = _windowModeService.LayoutMode.ToString();
+        var isFullScreen = _windowModeService.IsFullScreen;
+        var layoutMode = new LayoutModeInfo(mode, isFullScreen, areaVisibility);
 
         var spotlightLandmarks = _spotlightRegistry.GetLandmarks()
             .Select(landmark => landmark.Id)
