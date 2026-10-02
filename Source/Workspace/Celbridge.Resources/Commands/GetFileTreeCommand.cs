@@ -88,7 +88,10 @@ public class GetFileTreeCommand : CommandBase, IGetFileTreeCommand
                     var childNode = await BuildSnapshotAsync(
                         resourceFileSystem, entry.Resource.ResourceName, childEntriesResult.Value,
                         remainingDepth - 1, globRegex, typeFilter);
-                    if (childNode is not null && showFolders)
+                    // The "file" filter still keeps folders that contain matching
+                    // files (or unexplored children) so nested matches stay reachable.
+                    if (childNode is not null &&
+                        (showFolders || childNode.Children.Count > 0 || childNode.Truncated))
                     {
                         children.Add(childNode);
                     }
