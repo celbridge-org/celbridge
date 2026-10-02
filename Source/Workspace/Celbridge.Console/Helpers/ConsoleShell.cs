@@ -26,6 +26,13 @@ public sealed record ConsoleShell(string Executable, ConsoleShellFamily Family)
     public bool IsBash => IsNamed(Executable, "bash");
 
     /// <summary>
+    /// The key sent ahead of an injected command to clear any partial input, or empty when the shell has no
+    /// safe one. A POSIX shell clears the line on Ctrl+U. PowerShell's Windows edit mode, and cmd started from
+    /// it, have no binding for Ctrl+U and would type it into the line as a literal ^U.
+    /// </summary>
+    public string ClearLineKey => Family == ConsoleShellFamily.Posix ? "\u0015" : string.Empty;
+
+    /// <summary>
     /// Returns the shell a console runs, without searching PATH. Windows uses powershell.exe, which always ships
     /// in System32. macOS and Linux use the user's $SHELL, or a default given by its full path.
     /// </summary>
