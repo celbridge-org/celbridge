@@ -254,8 +254,10 @@ public class ResourceCommandTests
     }
 
     [Test]
-    public async Task GetFileTree_WithFileOnlyFilter_OmitsFolders()
+    public async Task GetFileTree_WithFileOnlyFilter_KeepsFoldersContainingFiles()
     {
+        Directory.CreateDirectory(Path.Combine(_projectFolderPath, "Empty"));
+
         var command = new GetFileTreeCommand(_workspaceWrapper)
         {
             Resource = ResourceKey.Empty,
@@ -268,7 +270,35 @@ public class ResourceCommandTests
         result.IsSuccess.Should().BeTrue();
         var root = command.ResultValue.Root;
         Guard.IsNotNull(root);
-        root.Children.Should().OnlyContain(childNode => !childNode.IsFolder);
+
+        // Folders survive only as structure around files; empty folders are dropped.
+        root.Children.Select(childNode => childNode.Name)
+            .Should().BeEquivalentTo(new[] { FolderName, RootFileName, BinaryFileName });
+
+        var subFolder = root.Children.Single(childNode => childNode.Name == FolderName);
+        subFolder.Children.Should().ContainSingle(childNode => childNode.Name == NestedFileName);
+    }
+
+    [Test]
+    public async Task GetFileTree_WithFileOnlyFilterAndGlob_FindsNestedMatches()
+    {
+        var command = new GetFileTreeCommand(_workspaceWrapper)
+        {
+            Resource = ResourceKey.Empty,
+            Depth = 3,
+            Glob = "*.md",
+            TypeFilter = "file"
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        var root = command.ResultValue.Root;
+        Guard.IsNotNull(root);
+
+        var subFolder = root.Children.Should().ContainSingle().Subject;
+        subFolder.Name.Should().Be(FolderName);
+        subFolder.Children.Should().ContainSingle(childNode => childNode.Name == NestedFileName);
     }
 
     // Registers a logs: root backed by a fresh temp folder pre-populated with the

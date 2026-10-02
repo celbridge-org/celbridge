@@ -213,16 +213,39 @@ public class FileToolHelpersTests
     }
 
     [Test]
-    public void BuildTree_TypeFilterFile_OnlyFileNodesReturned()
+    public void BuildTree_TypeFilterFile_KeepsFoldersContainingFiles()
     {
         var subFolder = MakeFolder("sub", MakeFile("nested.cs"));
-        var root = MakeFolder("root", subFolder, MakeFile("top.cs"));
+        var emptyFolder = MakeFolder("empty");
+        var root = MakeFolder("root", subFolder, emptyFolder, MakeFile("top.cs"));
 
         var result = FileToolHelpers.BuildTree(root, remainingDepth: 3, globRegex: null, typeFilter: "file");
 
-        result!.Children.Should().HaveCount(1);
-        result.Children.Single().Should().BeOfType<TreeFileNode>();
-        ((TreeFileNode)result.Children.Single()).Name.Should().Be("top.cs");
+        result!.Children.Should().HaveCount(2);
+        result.Children.OfType<TreeFileNode>().Single().Name.Should().Be("top.cs");
+
+        var subNode = result.Children.OfType<TreeFolderNode>().Single();
+        subNode.Name.Should().Be("sub");
+        subNode.Children.Should().ContainSingle()
+            .Which.Should().BeOfType<TreeFileNode>()
+            .Which.Name.Should().Be("nested.cs");
+    }
+
+    [Test]
+    public void BuildTree_TypeFilterFileWithGlob_FindsNestedMatches()
+    {
+        var dataFolder = MakeFolder("data", MakeFile("farm.schema.json"), MakeFile("farm.json"));
+        var srcFolder = MakeFolder("src", dataFolder);
+        var root = MakeFolder("root", srcFolder, MakeFile("deno.json"));
+
+        var globRegex = new Regex(GlobHelper.GlobToRegex("*.schema.json"), RegexOptions.IgnoreCase);
+        var result = FileToolHelpers.BuildTree(root, remainingDepth: 3, globRegex, typeFilter: "file");
+
+        var srcNode = result!.Children.Should().ContainSingle().Which.Should().BeOfType<TreeFolderNode>().Subject;
+        var dataNode = srcNode.Children.Should().ContainSingle().Which.Should().BeOfType<TreeFolderNode>().Subject;
+        dataNode.Children.Should().ContainSingle()
+            .Which.Should().BeOfType<TreeFileNode>()
+            .Which.Name.Should().Be("farm.schema.json");
     }
 
     [Test]
