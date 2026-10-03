@@ -44,6 +44,7 @@ public static class ServiceConfiguration
         services.AddSingleton<IApplicationShell, ApplicationShell>();
         services.AddSingleton<MainMenuUtils>();
         services.AddSingleton<IInputSimulationService, InputSimulationService>();
+        services.AddSingleton<IControlLookupService, ControlLookupService>();
         services.AddSingleton<INotificationCentre, NotificationCentre>();
         services.AddSingleton<NotificationComposer>();
         services.AddSingleton<IDownloadService, DownloadService>();

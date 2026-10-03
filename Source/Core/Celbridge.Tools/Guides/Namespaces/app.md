@@ -23,3 +23,5 @@ The `app` namespace covers application-level concerns that are not tied to a spe
 - `app_simulate_input` *(debug builds only)* — performs a test-automation input operation the calling harness cannot deliver itself; the `key` operation posts a named key press into the app's own event queue. macOS and Windows.
 - `app_spotlight` — highlight a named UI landmark with a callout to show the user where it is; an empty target clears the current spotlight.
 - `app_answer_dialog` *(debug builds only)* — schedules an automated answer for the next modal dialog, so a script can drive a flow that would otherwise block on user interaction. Used by integration tests for the dialog-driven tools such as `explorer_rename`.
+- `app_find_controls` *(debug builds only)* — finds the app's own controls by automation ID, name or control type, with each one's frame and state, for a test harness that cannot read them from the platform.
+- `app_invoke_control` *(debug builds only)* — performs the default action of one of the app's own controls, as assistive technology does.
