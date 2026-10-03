@@ -8,7 +8,7 @@ before the step under test.
 
 It takes the same `automationId`, `name` and `controlType` as `ui_find_controls`, and acts on the first showing,
 enabled control that matches and has a default action. On macOS that includes the menu bar's items and the window's
-buttons.
+buttons, and on Windows the caption buttons.
 
 ## Returns
 
@@ -25,7 +25,7 @@ The action is the first the control supports, in this order: `Invoke` presses a 
 flips a toggle, `Expand` opens a submenu or a drop-down, and `Select` selects an item in a list.
 
 A menu bar item's action is `Invoke`, which chooses the item as a click on it would. An item that opens a submenu
-has no default action. A window button's action is `Invoke`, which presses it.
+has no default action. A window button's action, or a caption button's, is `Invoke`, which presses it.
 
 ## Gotchas
 

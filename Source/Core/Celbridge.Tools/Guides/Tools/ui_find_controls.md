@@ -23,6 +23,12 @@ On macOS it also reports the parts AppKit draws natively:
   hidden is not reported. That includes a web view in a background tab, and every web view while a modal dialog is
   open.
 
+On Windows it also reports the caption buttons the Windows App SDK draws. Each is a `Button` whose automation ID
+and name are `Minimize`, `Maximize` or `Close`, as UI Automation reports them. `Restore` takes the place of
+`Maximize` while the window is maximized. The window's content extends into its title bar, so the buttons sit at
+the top right of the content, with a `y` of 0. They are not reported while the window is minimized or in full
+screen.
+
 ## Parameters
 
 Give at least one. Each one given must equal the control's own value exactly, and the call fails when none is
@@ -55,14 +61,15 @@ given.
 ```
 
 - `bounds` is in device-independent pixels, measured from the top left of the window's content, which sits below
-  the window's own title bar where the platform draws one. Multiply by `rasterizationScale` for physical pixels.
+  the title bar on macOS and takes in the title bar on Windows. Multiply by `rasterizationScale` for physical
+  pixels.
 - `isChecked` appears only for a control that can be toggled or selected, and `value` only for one that holds a
   value, such as a text field's text.
 - An empty `controls` list means nothing matched. It is not an error.
 
 ## Gotchas
 
-- Controls come in tree order. An open popup's controls come after the window's, and the parts AppKit draws come
-  last.
+- Controls come in tree order. An open popup's controls come after the window's, and the parts the platform draws
+  natively come last.
 - Find a menu bar item by its name. Its automation ID is usually the name of its action, which many items share.
 - A control scrolled out of its view still shows, so its bounds can lie outside its scroll viewer.

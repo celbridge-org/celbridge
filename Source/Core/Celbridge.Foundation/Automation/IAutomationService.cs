@@ -2,7 +2,7 @@ namespace Celbridge.Automation;
 
 /// <summary>
 /// A control's frame in device-independent pixels, measured from the top left of the main window's content. A
-/// control above the content, such as a button in the window's title bar, has a negative Y.
+/// control above the content, such as a button in a title bar above it, has a negative Y.
 /// </summary>
 public record ControlBounds(double X, double Y, double Width, double Height);
 
