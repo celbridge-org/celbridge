@@ -1,13 +1,15 @@
 namespace Celbridge.Automation;
 
 /// <summary>
-/// A control's frame in device-independent pixels, measured from the top left of the main window's content.
+/// A control's frame in device-independent pixels, measured from the top left of the main window's content. A
+/// control above the content, such as a button in the window's title bar, has a negative Y.
 /// </summary>
 public record ControlBounds(double X, double Y, double Width, double Height);
 
 /// <summary>
-/// One of the application's own controls, as its automation peer describes it. IsChecked is null for a control
-/// that cannot be toggled or selected, and Value is null for a control that holds no value.
+/// One of the application's own controls, as its automation peer describes it. A control the platform draws
+/// natively is described as the platform's accessibility describes it. IsChecked is null for a control that cannot
+/// be toggled or selected, and Value is null for a control that holds no value.
 /// </summary>
 public record ControlInfo(
     string AutomationId,
@@ -46,12 +48,14 @@ public record ControlInvocation(ControlInfo Control, ControlAction Action);
 
 /// <summary>
 /// Reads and acts on the application's own controls the way assistive technology does, for test automation. It
-/// covers the main window and its open popups, and answers while a modal dialog holds the command queue.
+/// covers the main window, its open popups and the parts the platform draws natively, such as a menu bar. It
+/// answers while a modal dialog holds the command queue.
 /// </summary>
 public interface IAutomationService
 {
     /// <summary>
-    /// Returns every showing control, in tree order with the open popups' controls last.
+    /// Returns every showing control. The window's controls come first in tree order, then the open popups'
+    /// controls, then the native controls.
     /// </summary>
     Task<Result<ControlSnapshot>> GetControlsAsync();
 

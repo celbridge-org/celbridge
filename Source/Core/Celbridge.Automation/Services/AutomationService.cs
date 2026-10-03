@@ -2,13 +2,17 @@ using Celbridge.UserInterface;
 
 namespace Celbridge.Automation.Services;
 
-public class AutomationService : IAutomationService
+internal class AutomationService : IAutomationService
 {
     private readonly IUserInterfaceService _userInterfaceService;
+    private readonly INativeControlReader _nativeControlReader;
 
-    public AutomationService(IUserInterfaceService userInterfaceService)
+    public AutomationService(
+        IUserInterfaceService userInterfaceService,
+        INativeControlReader nativeControlReader)
     {
         _userInterfaceService = userInterfaceService;
+        _nativeControlReader = nativeControlReader;
     }
 
     public Task<Result<ControlSnapshot>> GetControlsAsync()
@@ -29,7 +33,7 @@ public class AutomationService : IAutomationService
         }
 
         var controls = new List<ControlInfo>();
-        foreach (var showingControl in VisualTreeReader.ReadControls(xamlRoot))
+        foreach (var showingControl in ReadControls(xamlRoot))
         {
             controls.Add(showingControl.Info);
         }
@@ -50,7 +54,7 @@ public class AutomationService : IAutomationService
             return Result.Fail("The application has no window content to search.");
         }
 
-        foreach (var showingControl in VisualTreeReader.ReadControls(xamlRoot))
+        foreach (var showingControl in ReadControls(xamlRoot))
         {
             var control = showingControl.Info;
             if (!control.IsEnabled ||
@@ -59,7 +63,7 @@ public class AutomationService : IAutomationService
                 continue;
             }
 
-            var action = VisualTreeReader.PerformDefaultAction(showingControl.Peer);
+            var action = showingControl.PerformDefaultAction();
             if (action is null)
             {
                 continue;
@@ -70,6 +74,19 @@ public class AutomationService : IAutomationService
         }
 
         return Result.Fail("No showing, enabled control that matches has a default action.");
+    }
+
+    private IEnumerable<ShowingControl> ReadControls(XamlRoot xamlRoot)
+    {
+        foreach (var showingControl in VisualTreeReader.ReadControls(xamlRoot, _nativeControlReader))
+        {
+            yield return showingControl;
+        }
+
+        foreach (var showingControl in _nativeControlReader.ReadControls())
+        {
+            yield return showingControl;
+        }
     }
 
     // The visual tree belongs to the UI thread, and the caller is a tool request arriving on its own thread. The

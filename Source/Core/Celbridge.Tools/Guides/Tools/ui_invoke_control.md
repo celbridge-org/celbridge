@@ -7,7 +7,8 @@ before the step under test.
 **Debug-only.** In a release build the tool refuses with "available in debug builds only".
 
 It takes the same `automationId`, `name` and `controlType` as `ui_find_controls`, and acts on the first showing,
-enabled control that matches and has a default action.
+enabled control that matches and has a default action. On macOS that includes the menu bar's items and the window's
+buttons.
 
 ## Returns
 
@@ -23,7 +24,11 @@ The control it acted on, described as `ui_find_controls` describes it, and the a
 The action is the first the control supports, in this order: `Invoke` presses a button or a menu item, `Toggle`
 flips a toggle, `Expand` opens a submenu or a drop-down, and `Select` selects an item in a list.
 
+A menu bar item's action is `Invoke`, which chooses the item as a click on it would. An item that opens a submenu
+has no default action. A window button's action is `Invoke`, which presses it.
+
 ## Gotchas
 
 - The call fails when no showing, enabled control matches, or none that matches has a default action.
 - The call does not wait for what the action starts. A modal dialog the action opens then holds the command queue.
+- Pressing the window's close button closes the window, which quits the application.

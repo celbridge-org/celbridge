@@ -16,14 +16,15 @@ which would otherwise wait on the user.
   the application's own event queue, skips part of the route real input takes. A test about that routing sends
   real input.
 - **Frames are in the window's own coordinates.** A control's `bounds` are device-independent pixels from the top
-  left of the window's content, below the title bar where the platform draws one.
+  left of the window's content, below the title bar where the platform draws one. A control in the title bar has a
+  negative `y`.
 
 ## Tools
 
 **Controls.**
 
 - `ui_find_controls` — find the app's own controls by automation ID, name or control type, with each one's frame
-  and state.
+  and state. On macOS that includes the menu bar's items and the window's buttons.
 - `ui_invoke_control` — perform the default action of one of the app's own controls, as assistive technology does.
 
 **Input.**

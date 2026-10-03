@@ -6,9 +6,17 @@ using Windows.Foundation;
 namespace Celbridge.Automation;
 
 /// <summary>
-/// A showing element with the automation peer that describes it, and that description.
+/// Describes a web view as a pane whose class name is the WebView2 type's full name.
 /// </summary>
-internal record ShowingControl(FrameworkElement Element, AutomationPeer Peer, ControlInfo Info);
+// UNO-BUG: Uno's WebView2 creates no automation peer.
+internal class WebViewAutomationPeer : FrameworkElementAutomationPeer
+{
+    public WebViewAutomationPeer(WebView2 owner) : base(owner) { }
+
+    protected override string GetClassNameCore() => typeof(WebView2).FullName ?? nameof(WebView2);
+
+    protected override AutomationControlType GetAutomationControlTypeCore() => AutomationControlType.Pane;
+}
 
 /// <summary>
 /// Reads the application's own controls from the visual tree, as their automation peers describe them.
@@ -16,10 +24,11 @@ internal record ShowingControl(FrameworkElement Element, AutomationPeer Peer, Co
 internal static class VisualTreeReader
 {
     /// <summary>
-    /// Every element with a size and an automation peer, in the window's content and then in each open popup. The
-    /// walk does not enter a collapsed element.
+    /// Every element with a size and an automation peer, in the window's content and then in each open popup. An
+    /// element drawn by a native view takes that view's frame. The walk does not enter a collapsed element, or an
+    /// element whose native view is not showing.
     /// </summary>
-    public static IEnumerable<ShowingControl> ReadControls(XamlRoot xamlRoot)
+    public static IEnumerable<ShowingControl> ReadControls(XamlRoot xamlRoot, INativeControlReader nativeControlReader)
     {
         var roots = new List<DependencyObject>();
         if (xamlRoot.Content is not null)
@@ -60,12 +69,22 @@ internal static class VisualTreeReader
                 frameworkElement.ActualWidth > 0 &&
                 frameworkElement.ActualHeight > 0)
             {
-                var peer = FrameworkElementAutomationPeer.FromElement(frameworkElement) ??
-                    FrameworkElementAutomationPeer.CreatePeerForElement(frameworkElement);
+                var peer = FindPeer(frameworkElement);
                 if (peer is not null)
                 {
                     var info = Describe(frameworkElement, peer);
-                    yield return new ShowingControl(frameworkElement, peer, info);
+
+                    var nativeView = nativeControlReader.FindNativeView(frameworkElement);
+                    if (nativeView is not null)
+                    {
+                        if (!nativeView.IsShowing)
+                        {
+                            continue;
+                        }
+                        info = info with { Bounds = nativeView.Bounds };
+                    }
+
+                    yield return new ShowingControl(info, () => PerformDefaultAction(peer));
                 }
             }
 
@@ -78,11 +97,24 @@ internal static class VisualTreeReader
         }
     }
 
+    private static AutomationPeer? FindPeer(FrameworkElement element)
+    {
+        var peer = FrameworkElementAutomationPeer.FromElement(element) ??
+            FrameworkElementAutomationPeer.CreatePeerForElement(element);
+        if (peer is null &&
+            element is WebView2 webView)
+        {
+            peer = new WebViewAutomationPeer(webView);
+        }
+
+        return peer;
+    }
+
     /// <summary>
     /// Performs the first default action the peer supports, in the order Invoke, Toggle, Expand and Select.
     /// Returns null when the peer supports none of them.
     /// </summary>
-    public static ControlAction? PerformDefaultAction(AutomationPeer peer)
+    private static ControlAction? PerformDefaultAction(AutomationPeer peer)
     {
         if (peer.GetPattern(PatternInterface.Invoke) is IInvokeProvider invoke)
         {

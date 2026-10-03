@@ -11,5 +11,7 @@ public static class ServiceConfiguration
         //
 
         services.AddSingleton<IAutomationService, AutomationService>();
+
+        Platform.PlatformServiceConfiguration.ConfigureServices(services);
     }
 }

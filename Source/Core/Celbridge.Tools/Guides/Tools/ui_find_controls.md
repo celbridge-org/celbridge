@@ -7,7 +7,21 @@ needs to know where a control is and what it holds, where the platform's accessi
 **Debug-only.** In a release build the tool refuses with "available in debug builds only".
 
 It searches the main window's content and every open popup, which holds the flyouts, menus and dialogs. It reports
-only controls that show: an element with a size whose ancestors are all visible.
+only controls that show: an element with a size whose ancestors are all visible. A web view is a `Pane` of class
+`Microsoft.UI.Xaml.Controls.WebView2`.
+
+On macOS it also reports the parts AppKit draws natively:
+
+- **The menu bar's items.** Each is a `MenuItem` of class `NSMenuItem`, named by its title, whether or not its menu
+  is open. Its `isEnabled` and `isChecked` are what the menu would show if it opened now. `isChecked` is true while
+  the item shows a mark, and is absent for an item that opens a submenu. An item has no frame in the window, so its
+  bounds are all zero.
+- **The window's buttons.** Each is a `Button` whose automation ID is its accessibility subrole: `AXCloseButton`,
+  `AXMinimizeButton`, and `AXFullScreenButton` or `AXZoomButton`. They sit in the title bar above the content, so
+  their `y` is negative. They are not reported while the window is minimized or in full screen.
+- **The web views' frames.** A web view's bounds are the frame of its native view. A web view whose native view is
+  hidden is not reported. That includes a web view in a background tab, and every web view while a modal dialog is
+  open.
 
 ## Parameters
 
@@ -48,5 +62,7 @@ given.
 
 ## Gotchas
 
-- Controls come in tree order, and an open popup's controls come after the window's.
+- Controls come in tree order. An open popup's controls come after the window's, and the parts AppKit draws come
+  last.
+- Find a menu bar item by its name. Its automation ID is usually the name of its action, which many items share.
 - A control scrolled out of its view still shows, so its bounds can lie outside its scroll viewer.
