@@ -1,29 +1,33 @@
 using System.Text.Json;
-using Celbridge.UserInterface;
+using Celbridge.Automation;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
 namespace Celbridge.Tools;
 
 /// <summary>
-/// Result returned by app_invoke_control: the control that was invoked and the default action it performed, which
+/// Result returned by ui_invoke_control: the control that was invoked and the default action it performed, which
 /// is Invoke, Toggle, Expand or Select.
 /// </summary>
 public record class InvokedControlResult(ControlInfo Control, string Action);
 
-public partial class AppTools
+public partial class UITools
 {
-    /// <summary>Perform the default action of one of the app's own controls, as assistive technology does (test automation, debug builds only).</summary>
-    [McpServerTool(Name = "app_invoke_control", ReadOnly = false, Idempotent = false)]
-    [ToolAlias("app.invoke_control")]
+    /// <summary>Perform the default action of one of the app's own controls, as assistive technology does (debug builds only).</summary>
+    [McpServerTool(Name = "ui_invoke_control", ReadOnly = false, Idempotent = false)]
+    [ToolAlias("ui.invoke_control")]
     [RelatedGuides]
     public async partial Task<CallToolResult> InvokeControl(string automationId = "", string name = "", string controlType = "")
     {
 #if DEBUG
-        var lookupService = GetRequiredService<IControlLookupService>();
         var query = new ControlQuery(automationId, name, controlType);
+        if (ControlQueryMatcher.IsEmpty(query))
+        {
+            return ToolResponse.Error(EmptyQueryMessage);
+        }
 
-        var invokeResult = await lookupService.InvokeControlAsync(query);
+        var automationService = GetRequiredService<IAutomationService>();
+        var invokeResult = await automationService.InvokeControlAsync(control => ControlQueryMatcher.Matches(query, control));
         if (invokeResult.IsFailure)
         {
             return ToolResponse.Error(invokeResult);
@@ -37,7 +41,7 @@ public partial class AppTools
         // Test automation is a debug-build facility. The tool stays declared so its guide stays paired
         // with a registered tool, and refuses when called.
         await Task.CompletedTask;
-        return ToolResponse.Error("app_invoke_control is available in debug builds only.");
+        return ToolResponse.Error("ui_invoke_control is available in debug builds only.");
 #endif
     }
 }

@@ -4,11 +4,11 @@ using ModelContextProtocol.Server;
 
 namespace Celbridge.Tools;
 
-public partial class AppTools
+public partial class UITools
 {
-    /// <summary>Schedule an automated answer for the next modal dialog (test automation, debug builds only).</summary>
-    [McpServerTool(Name = "app_answer_dialog", ReadOnly = false, Idempotent = false)]
-    [ToolAlias("app.answer_dialog")]
+    /// <summary>Schedule an automated answer for the next modal dialog (debug builds only).</summary>
+    [McpServerTool(Name = "ui_answer_dialog", ReadOnly = false, Idempotent = false)]
+    [ToolAlias("ui.answer_dialog")]
     [RelatedGuides]
     public partial CallToolResult AnswerDialog(string dialogKind, string payload = "", int delayMs = 250)
     {
@@ -25,7 +25,7 @@ public partial class AppTools
         return ToolResponse.Success("ok");
 #else
         // The tool stays declared so its guide stays paired with a registered tool.
-        return ToolResponse.Error("app_answer_dialog is available in debug builds only.");
+        return ToolResponse.Error("ui_answer_dialog is available in debug builds only.");
 #endif
     }
 }

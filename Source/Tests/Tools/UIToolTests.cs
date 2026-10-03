@@ -1,0 +1,152 @@
+using System.Text.Json;
+using Celbridge.Automation;
+using Celbridge.Server;
+using Celbridge.Tools;
+using ModelContextProtocol.Protocol;
+
+namespace Celbridge.Tests.Tools;
+
+/// <summary>
+/// Tests for the UITools MCP tool methods and the control query they filter by.
+/// </summary>
+[TestFixture]
+public class UIToolTests
+{
+    private static readonly ControlInfo ToggleButton = new(
+        "bottom-area-toggle-button",
+        "Toggle Bottom Panel",
+        "Button",
+        "Button",
+        new ControlBounds(10, 4, 32, 32),
+        true,
+        null,
+        null);
+
+    private static readonly ControlInfo SearchField = new(
+        "search-field",
+        "Search",
+        "Edit",
+        "TextBox",
+        new ControlBounds(60, 4, 200, 32),
+        true,
+        null,
+        "query");
+
+    private IApplicationServiceProvider _services = null!;
+    private IAutomationService _automationService = null!;
+
+    [SetUp]
+    public void SetUp()
+    {
+        _services = Substitute.For<IApplicationServiceProvider>();
+        _automationService = Substitute.For<IAutomationService>();
+        _services.GetRequiredService<IAutomationService>().Returns(_automationService);
+    }
+
+    [Test]
+    public void Matches_EveryNamedFieldEqual_Matches()
+    {
+        var query = new ControlQuery("bottom-area-toggle-button", "Toggle Bottom Panel", "Button");
+
+        ControlQueryMatcher.Matches(query, ToggleButton).Should().BeTrue();
+    }
+
+    [Test]
+    public void Matches_AnEmptyFieldMatchesAnyValue()
+    {
+        var query = new ControlQuery(string.Empty, string.Empty, "Button");
+
+        ControlQueryMatcher.Matches(query, ToggleButton).Should().BeTrue();
+    }
+
+    [Test]
+    public void Matches_OneFieldDiffers_DoesNotMatch()
+    {
+        var query = new ControlQuery("bottom-area-toggle-button", string.Empty, "MenuItem");
+
+        ControlQueryMatcher.Matches(query, ToggleButton).Should().BeFalse();
+    }
+
+    [Test]
+    public void Matches_ComparesExactly()
+    {
+        var differentCase = new ControlQuery(string.Empty, "toggle bottom panel", string.Empty);
+        var prefix = new ControlQuery("bottom-area", string.Empty, string.Empty);
+
+        ControlQueryMatcher.Matches(differentCase, ToggleButton).Should().BeFalse();
+        ControlQueryMatcher.Matches(prefix, ToggleButton).Should().BeFalse();
+    }
+
+    [Test]
+    public void IsEmpty_NoFieldNamed_IsEmpty()
+    {
+        ControlQueryMatcher.IsEmpty(new ControlQuery(string.Empty, string.Empty, string.Empty)).Should().BeTrue();
+        ControlQueryMatcher.IsEmpty(new ControlQuery(string.Empty, "OK", string.Empty)).Should().BeFalse();
+    }
+
+    [Test]
+    public async Task FindControls_ReturnsOnlyTheControlsThatMatch()
+    {
+        var controls = new List<ControlInfo>
+        {
+            ToggleButton,
+            SearchField
+        };
+        var snapshot = new ControlSnapshot(controls, 1920, 948, 2);
+        _automationService.GetControlsAsync().Returns(Task.FromResult<Result<ControlSnapshot>>(snapshot));
+
+        var tools = new UITools(_services);
+        var root = ParseResult(await tools.FindControls(controlType: "Edit"));
+
+        var found = root.GetProperty("controls");
+        found.GetArrayLength().Should().Be(1);
+        found[0].GetProperty("automationId").GetString().Should().Be("search-field");
+        found[0].GetProperty("value").GetString().Should().Be("query");
+        root.GetProperty("contentWidth").GetDouble().Should().Be(1920);
+        root.GetProperty("rasterizationScale").GetDouble().Should().Be(2);
+    }
+
+    [Test]
+    public async Task FindControls_EmptyQuery_FailsWithoutReadingTheControls()
+    {
+        var tools = new UITools(_services);
+        var result = await tools.FindControls();
+
+        result.IsError.Should().BeTrue();
+        await _automationService.DidNotReceive().GetControlsAsync();
+    }
+
+    [Test]
+    public async Task InvokeControl_PassesAMatchForTheQuery()
+    {
+        Func<ControlInfo, bool>? passedMatch = null;
+        var invocation = new ControlInvocation(ToggleButton, ControlAction.Invoke);
+        _automationService
+            .InvokeControlAsync(Arg.Do<Func<ControlInfo, bool>>(match => passedMatch = match))
+            .Returns(Task.FromResult<Result<ControlInvocation>>(invocation));
+
+        var tools = new UITools(_services);
+        var root = ParseResult(await tools.InvokeControl(automationId: "bottom-area-toggle-button"));
+
+        root.GetProperty("action").GetString().Should().Be("Invoke");
+        passedMatch.Should().NotBeNull();
+        passedMatch!(ToggleButton).Should().BeTrue();
+        passedMatch(SearchField).Should().BeFalse();
+    }
+
+    [Test]
+    public async Task InvokeControl_EmptyQuery_FailsWithoutInvoking()
+    {
+        var tools = new UITools(_services);
+        var result = await tools.InvokeControl();
+
+        result.IsError.Should().BeTrue();
+        await _automationService.DidNotReceiveWithAnyArgs().InvokeControlAsync(default!);
+    }
+
+    private static JsonElement ParseResult(CallToolResult result)
+    {
+        var json = result.Content.OfType<TextContentBlock>().Single().Text;
+        return JsonDocument.Parse(json).RootElement;
+    }
+}

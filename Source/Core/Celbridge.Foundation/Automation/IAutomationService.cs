@@ -1,10 +1,4 @@
-namespace Celbridge.UserInterface;
-
-/// <summary>
-/// What a control lookup matches. Each field that is not empty must equal the control's own value, and an empty
-/// field matches every control.
-/// </summary>
-public record ControlQuery(string AutomationId, string Name, string ControlType);
+namespace Celbridge.Automation;
 
 /// <summary>
 /// A control's frame in device-independent pixels, measured from the top left of the main window's content.
@@ -26,9 +20,9 @@ public record ControlInfo(
     string? Value);
 
 /// <summary>
-/// The controls a lookup found, with the size and rasterization scale of the main window's content.
+/// The application's showing controls, with the size and rasterization scale of the main window's content.
 /// </summary>
-public record ControlLookupResult(
+public record ControlSnapshot(
     IReadOnlyList<ControlInfo> Controls,
     double ContentWidth,
     double ContentHeight,
@@ -51,20 +45,19 @@ public enum ControlAction
 public record ControlInvocation(ControlInfo Control, ControlAction Action);
 
 /// <summary>
-/// Finds and invokes the application's own controls the way assistive technology does, for test automation. It
-/// searches the main window and its open popups, and answers while a modal dialog holds the command queue.
+/// Reads and acts on the application's own controls the way assistive technology does, for test automation. It
+/// covers the main window and its open popups, and answers while a modal dialog holds the command queue.
 /// </summary>
-public interface IControlLookupService
+public interface IAutomationService
 {
     /// <summary>
-    /// Finds every showing control that matches the query, in tree order with the open popups' controls last.
-    /// Fails when every field of the query is empty.
+    /// Returns every showing control, in tree order with the open popups' controls last.
     /// </summary>
-    Task<Result<ControlLookupResult>> FindControlsAsync(ControlQuery query);
+    Task<Result<ControlSnapshot>> GetControlsAsync();
 
     /// <summary>
-    /// Performs the default action of the first showing, enabled control that matches the query and has one.
-    /// Fails when no such control is found.
+    /// Performs the default action of the first showing, enabled control that the match accepts and that has a
+    /// default action. Fails when there is no such control.
     /// </summary>
-    Task<Result<ControlInvocation>> InvokeControlAsync(ControlQuery query);
+    Task<Result<ControlInvocation>> InvokeControlAsync(Func<ControlInfo, bool> match);
 }

@@ -119,6 +119,7 @@ class CelProxy:
         "file": "Read files, search, and query project structure",
         "guides": "Browse and search the agent guide library",
         "spreadsheet": "Read, modify, and format .xlsx workbooks",
+        "ui": "Test automation of the app's own controls, keys, and dialogs",
         "webview": "Devtools-style automation of HTML and contribution editors",
         "workshop": "Publish packages and pages to a workshop, and install packages",
     }

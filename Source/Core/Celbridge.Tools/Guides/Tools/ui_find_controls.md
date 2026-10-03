@@ -1,4 +1,4 @@
-# app_find_controls
+# ui_find_controls
 
 Finds the application's own controls by automation ID, name or control type, and reports each one's frame and
 state as its automation peer describes it. It is for a test harness that drives the application from outside and
@@ -7,8 +7,7 @@ needs to know where a control is and what it holds, where the platform's accessi
 **Debug-only.** In a release build the tool refuses with "available in debug builds only".
 
 It searches the main window's content and every open popup, which holds the flyouts, menus and dialogs. It reports
-only controls that show: an element with a size whose ancestors are all visible. It runs on the UI thread rather
-than through the command queue, so it answers while a modal dialog holds that queue.
+only controls that show: an element with a size whose ancestors are all visible.
 
 ## Parameters
 

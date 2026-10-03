@@ -1,4 +1,12 @@
-namespace Celbridge.UserInterface.Helpers;
+using Celbridge.Automation;
+
+namespace Celbridge.Tools;
+
+/// <summary>
+/// What a control lookup matches. Each field that is not empty must equal the control's own value, and an empty
+/// field matches every control.
+/// </summary>
+public record ControlQuery(string AutomationId, string Name, string ControlType);
 
 /// <summary>
 /// Decides whether a control lookup's query matches a control.
