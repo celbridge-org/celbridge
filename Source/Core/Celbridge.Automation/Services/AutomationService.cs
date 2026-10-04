@@ -1,4 +1,5 @@
 using Celbridge.UserInterface;
+using Celbridge.WebHost;
 
 namespace Celbridge.Automation.Services;
 
@@ -6,13 +7,16 @@ internal class AutomationService : IAutomationService
 {
     private readonly IUserInterfaceService _userInterfaceService;
     private readonly INativeControlReader _nativeControlReader;
+    private readonly IDocumentWebViewToolBridge _toolBridge;
 
     public AutomationService(
         IUserInterfaceService userInterfaceService,
-        INativeControlReader nativeControlReader)
+        INativeControlReader nativeControlReader,
+        IDocumentWebViewToolBridge toolBridge)
     {
         _userInterfaceService = userInterfaceService;
         _nativeControlReader = nativeControlReader;
+        _toolBridge = toolBridge;
     }
 
     public Task<Result<ControlSnapshot>> GetControlsAsync()
@@ -23,6 +27,19 @@ internal class AutomationService : IAutomationService
     public Task<Result<ControlInvocation>> InvokeControlAsync(Func<ControlInfo, bool> match)
     {
         return RunOnUIThreadAsync(() => InvokeControl(match));
+    }
+
+    public async Task<Result<PageElementSnapshot>> FindPageElementsAsync(ResourceKey resource, QueryOptions options)
+    {
+        // The web view's frame is read once the page has answered, which can wait for the page to load.
+        var locateResult = await _toolBridge.LocateAsync(resource, options);
+        if (locateResult.IsFailure)
+        {
+            return Result.Fail(locateResult);
+        }
+        var locateJson = locateResult.Value;
+
+        return await RunOnUIThreadAsync(() => PlacePageElements(resource, locateJson));
     }
 
     private Result<ControlSnapshot> GetControls()
@@ -74,6 +91,56 @@ internal class AutomationService : IAutomationService
         }
 
         return Result.Fail("No showing, enabled control that matches has a default action.");
+    }
+
+    private Result<PageElementSnapshot> PlacePageElements(ResourceKey resource, string locateJson)
+    {
+        if (_userInterfaceService.XamlRoot is not XamlRoot xamlRoot)
+        {
+            return Result.Fail("The application has no window content to place the page in.");
+        }
+
+        var webViewBounds = FindWebViewBounds(xamlRoot, resource);
+        if (webViewBounds is null)
+        {
+            return Result.Fail($"The web view of '{resource}' is not showing, so its page has no frame in the window.");
+        }
+
+        var placeResult = PageElementPlacement.Place(locateJson, webViewBounds, xamlRoot.RasterizationScale);
+        if (placeResult.IsFailure)
+        {
+            return Result.Fail(placeResult);
+        }
+        var location = placeResult.Value;
+
+        var snapshot = new PageElementSnapshot(
+            location.Frame,
+            location.TotalMatches,
+            location.Elements,
+            webViewBounds,
+            location.DevicePixelRatio,
+            xamlRoot.Size.Width,
+            xamlRoot.Size.Height,
+            xamlRoot.RasterizationScale);
+
+        return snapshot;
+    }
+
+    // A document's web view takes the document's resource key as its automation ID.
+    private ControlBounds? FindWebViewBounds(XamlRoot xamlRoot, ResourceKey resource)
+    {
+        var automationId = resource.ToString();
+        foreach (var showingControl in VisualTreeReader.ReadControls(xamlRoot, _nativeControlReader))
+        {
+            var control = showingControl.Info;
+            if (control.ClassName == WebViewAutomationPeer.WebViewClassName &&
+                control.AutomationId == automationId)
+            {
+                return control.Bounds;
+            }
+        }
+
+        return null;
     }
 
     private IEnumerable<ShowingControl> ReadControls(XamlRoot xamlRoot)

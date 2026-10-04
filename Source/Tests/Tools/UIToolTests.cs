@@ -2,6 +2,7 @@ using System.Text.Json;
 using Celbridge.Automation;
 using Celbridge.Server;
 using Celbridge.Tools;
+using Celbridge.WebHost;
 using ModelContextProtocol.Protocol;
 
 namespace Celbridge.Tests.Tools;
@@ -142,6 +143,46 @@ public class UIToolTests
 
         result.IsError.Should().BeTrue();
         await _automationService.DidNotReceiveWithAnyArgs().InvokeControlAsync(default!);
+    }
+
+    [Test]
+    public async Task FindPageElements_PassesTheSelectorAndFrameToTheService()
+    {
+        QueryOptions? passedOptions = null;
+        var snapshot = new PageElementSnapshot(
+            "top",
+            0,
+            new List<PageElementInfo>(),
+            new ControlBounds(300, 100, 800, 600),
+            2,
+            1920,
+            948,
+            2);
+        _automationService
+            .FindPageElementsAsync(Arg.Any<ResourceKey>(), Arg.Do<QueryOptions>(options => passedOptions = options))
+            .Returns(Task.FromResult<Result<PageElementSnapshot>>(snapshot));
+
+        var tools = new UITools(_services);
+        var root = ParseResult(await tools.FindPageElements("docs/page.html", selector: "#run", frame: "top"));
+
+        passedOptions.Should().NotBeNull();
+        passedOptions!.Mode.Should().Be(new SelectorQuery("#run"));
+        passedOptions.Frame.Should().Be("top");
+        root.GetProperty("webViewBounds").GetProperty("x").GetDouble().Should().Be(300);
+        root.GetProperty("devicePixelRatio").GetDouble().Should().Be(2);
+    }
+
+    [Test]
+    public async Task FindPageElements_NeedsExactlyOneMode()
+    {
+        var tools = new UITools(_services);
+
+        var none = await tools.FindPageElements("docs/page.html");
+        var two = await tools.FindPageElements("docs/page.html", selector: "#run", text: "Run");
+
+        none.IsError.Should().BeTrue();
+        two.IsError.Should().BeTrue();
+        await _automationService.DidNotReceiveWithAnyArgs().FindPageElementsAsync(default, default!);
     }
 
     private static JsonElement ParseResult(CallToolResult result)

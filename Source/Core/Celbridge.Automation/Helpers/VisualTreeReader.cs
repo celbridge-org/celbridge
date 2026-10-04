@@ -8,12 +8,15 @@ namespace Celbridge.Automation;
 /// <summary>
 /// Describes a web view as a pane whose class name is the WebView2 type's full name.
 /// </summary>
-// UNO-BUG: Uno's WebView2 creates no automation peer.
+// UNO-BUG: Uno's WebView2 has no automation peer of its own. An unnamed one gets no peer, and a named one gets a
+// generic peer that reports neither its role nor its type.
 internal class WebViewAutomationPeer : FrameworkElementAutomationPeer
 {
+    public static readonly string WebViewClassName = typeof(WebView2).FullName ?? nameof(WebView2);
+
     public WebViewAutomationPeer(WebView2 owner) : base(owner) { }
 
-    protected override string GetClassNameCore() => typeof(WebView2).FullName ?? nameof(WebView2);
+    protected override string GetClassNameCore() => WebViewClassName;
 
     protected override AutomationControlType GetAutomationControlTypeCore() => AutomationControlType.Pane;
 }
@@ -101,8 +104,8 @@ internal static class VisualTreeReader
     {
         var peer = FrameworkElementAutomationPeer.FromElement(element) ??
             FrameworkElementAutomationPeer.CreatePeerForElement(element);
-        if (peer is null &&
-            element is WebView2 webView)
+        if (element is WebView2 webView &&
+            peer?.GetClassName() != WebViewAutomationPeer.WebViewClassName)
         {
             peer = new WebViewAutomationPeer(webView);
         }

@@ -299,9 +299,7 @@
         var value = el.value;
         if (typeof value === 'string' && value) return value.trim();
 
-        var text = (el.textContent || '').replace(/\s+/g, ' ').trim();
-        if (text.length > 200) text = text.slice(0, 200) + '...';
-        return text;
+        return collapsedText(el);
     }
 
     function cssEscape(value) {
@@ -998,18 +996,17 @@
         };
     };
 
-    handlers.query = function (args) {
-        args = args || {};
-        var target = resolveTarget(args.frame, false);
+    // The elements in the frame that one of the query modes matches: a CSS selector, an ARIA role with an
+    // optional accessible name, or visible text.
+    function findMatches(target, args, handlerName) {
         var role = args.role;
         var name = args.name;
         var text = args.text;
         var selector = args.selector;
-        var maxResults = args.maxResults > 0 ? args.maxResults : 20;
 
         var modes = [role, text, selector].filter(function (v) { return typeof v === 'string' && v.length > 0; });
         if (modes.length !== 1) {
-            throw new Error("query requires exactly one of 'role', 'text', or 'selector'");
+            throw new Error(handlerName + " requires exactly one of 'role', 'text', or 'selector'");
         }
 
         var matches;
@@ -1025,18 +1022,156 @@
             matches = matchByText(target.document, text);
         }
 
+        return {
+            mode: selector ? 'selector' : (role ? 'role' : 'text'),
+            matches: matches
+        };
+    }
+
+    handlers.query = function (args) {
+        args = args || {};
+        var target = resolveTarget(args.frame, false);
+        var maxResults = args.maxResults > 0 ? args.maxResults : 20;
+        var found = findMatches(target, args, 'query');
+
         var results = [];
-        for (var i = 0; i < matches.length && i < maxResults; i++) {
-            results.push(describeElement(matches[i], {}));
+        for (var i = 0; i < found.matches.length && i < maxResults; i++) {
+            results.push(describeElement(found.matches[i], {}));
         }
         return {
             frame: target.name,
-            mode: selector ? 'selector' : (role ? 'role' : 'text'),
-            totalMatches: matches.length,
+            mode: found.mode,
+            totalMatches: found.matches.length,
             returned: results.length,
             elements: results
         };
     };
+
+    // Finds elements as the query does, and places each one in the page's viewport. The page's device pixel
+    // ratio lets the host turn the page's CSS pixels into the window's.
+    handlers.locate = function (args) {
+        args = args || {};
+        var target = resolveTarget(args.frame, false);
+        var maxResults = args.maxResults > 0 ? args.maxResults : 20;
+        var found = findMatches(target, args, 'locate');
+
+        var results = [];
+        for (var i = 0; i < found.matches.length && i < maxResults; i++) {
+            results.push(locateElement(found.matches[i]));
+        }
+        return {
+            frame: target.name,
+            totalMatches: found.matches.length,
+            devicePixelRatio: window.devicePixelRatio || 1,
+            elements: results
+        };
+    };
+
+    function locateElement(el) {
+        var placement = placeInPage(el);
+        return {
+            tag: el.tagName ? el.tagName.toLowerCase() : '',
+            selector: buildUniqueSelector(el),
+            role: getElementRole(el),
+            accessibleName: getAccessibleName(el),
+            visible: isElementVisible(el),
+            rect: placement.rect,
+            inView: placement.inView,
+            text: collapsedText(el),
+            value: editableValue(el),
+            checked: checkedState(el),
+            disabled: isDisabled(el),
+            focused: holdsKeyboard(el)
+        };
+    }
+
+    // An element's rectangle in the page's viewport, and whether its center shows. Each frame that holds the
+    // element offsets the rectangle by where the frame's viewport sits in its parent. The center shows when it
+    // lies inside every frame's viewport and inside the page's own.
+    function placeInPage(el) {
+        var rect = el.getBoundingClientRect();
+        var x = rect.left;
+        var y = rect.top;
+        var centerX = x + rect.width / 2;
+        var centerY = y + rect.height / 2;
+        var inView = true;
+
+        var view = el.ownerDocument.defaultView;
+        while (view && view !== window && view.frameElement) {
+            var box = getFrameViewportBox(view.frameElement);
+            if (!isInside(centerX, centerY, box.width, box.height)) {
+                inView = false;
+            }
+            x += box.x;
+            y += box.y;
+            centerX += box.x;
+            centerY += box.y;
+            view = view.frameElement.ownerDocument.defaultView;
+        }
+
+        if (!isInside(centerX, centerY, window.innerWidth || 0, window.innerHeight || 0)) {
+            inView = false;
+        }
+
+        return {
+            rect: { x: x, y: y, width: rect.width, height: rect.height },
+            inView: inView
+        };
+    }
+
+    function isInside(x, y, width, height) {
+        return x >= 0 && y >= 0 && x < width && y < height;
+    }
+
+    // The element's text with its white space collapsed, cut short when it is long.
+    function collapsedText(el) {
+        var text = (el.textContent || '').replace(/\s+/g, ' ').trim();
+        if (text.length > 200) text = text.slice(0, 200) + '...';
+        return text;
+    }
+
+    // The value of a text field, a text area or a select element. Null for every other element.
+    function editableValue(el) {
+        var tag = el.localName;
+        if (tag === 'input') {
+            var type = (el.type || '').toLowerCase();
+            if (['checkbox', 'radio', 'button', 'submit', 'reset', 'image'].indexOf(type) !== -1) {
+                return null;
+            }
+        } else if (tag !== 'textarea' && tag !== 'select') {
+            return null;
+        }
+        return typeof el.value === 'string' ? el.value : null;
+    }
+
+    // Whether a check box, radio button, option, or element that declares a checked, pressed or selected state is
+    // on. Null for an element with no on or off state.
+    function checkedState(el) {
+        if (el.localName === 'input' && (el.type === 'checkbox' || el.type === 'radio')) {
+            return el.checked === true;
+        }
+        if (el.localName === 'option') {
+            return el.selected === true;
+        }
+        var declared = el.getAttribute('aria-checked') || el.getAttribute('aria-pressed') || el.getAttribute('aria-selected');
+        if (declared === 'true') return true;
+        if (declared === 'false') return false;
+        return null;
+    }
+
+    function isDisabled(el) {
+        if (typeof el.matches === 'function' && el.matches(':disabled')) {
+            return true;
+        }
+        return !!(el.closest && el.closest('[aria-disabled="true"]'));
+    }
+
+    // An element holds the keyboard when it is its document's active element and that document has focus. A
+    // document has focus only while its web view holds the keyboard.
+    function holdsKeyboard(el) {
+        var ownerDocument = el.ownerDocument;
+        return ownerDocument.activeElement === el && ownerDocument.hasFocus();
+    }
 
     function matchByRoleAndName(targetDocument, role, name) {
         var candidates = targetDocument.querySelectorAll('*');

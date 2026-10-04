@@ -29,4 +29,8 @@
     <ProjectReference Include="..\..\Core\Celbridge.WebHost\Celbridge.WebHost.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Celbridge.Tests" />
+  </ItemGroup>
+
 </Project>

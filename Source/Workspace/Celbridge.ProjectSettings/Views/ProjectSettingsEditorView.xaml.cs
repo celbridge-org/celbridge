@@ -209,6 +209,11 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
         // This view is laid out by the platform, so it needs no size until it is shown.
     }
 
+    public void SetAccessibleName(string name)
+    {
+        // The settings are native controls, and each one carries its own name.
+    }
+
     public async Task<Result> NavigateToLocation(string location)
     {
         await Task.CompletedTask;

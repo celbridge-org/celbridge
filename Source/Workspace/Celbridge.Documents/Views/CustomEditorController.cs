@@ -138,6 +138,9 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     // The WebView2 control, acquired from the factory.
     private WebView2? WebView { get; set; }
 
+    // The name the WebView takes for assistive technology, held until the WebView is acquired.
+    private string _accessibleName = string.Empty;
+
     private WebViewLoadDiagnostics? _diagnostics;
 
     // Routes the page's downloads through the download service, so a file a package editor offers lands
@@ -239,17 +242,35 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     }
 
     /// <summary>
-    /// Moves the WebView tool bridge registration onto the view model's current file resource. Called after a
-    /// rename, which reuses this controller and its WebView rather than building a new one.
+    /// Names the WebView for assistive technology, now or once it is acquired.
+    /// </summary>
+    public void SetAccessibleName(string name)
+    {
+        _accessibleName = name;
+        if (WebView is not null)
+        {
+            AutomationProperties.SetName(WebView, name);
+        }
+    }
+
+    /// <summary>
+    /// Moves the WebView tool bridge registration and the WebView's automation ID onto the view model's current
+    /// file resource. Called after a rename, which reuses this controller and its WebView rather than building a
+    /// new one.
     /// </summary>
     public void RekeyToolBridgeRegistration()
     {
+        var newResource = _viewModel.FileResource;
+
+        if (WebView is not null)
+        {
+            AutomationProperties.SetAutomationId(WebView, newResource.ToString());
+        }
+
         if (_toolBridge is null)
         {
             return;
         }
-
-        var newResource = _viewModel.FileResource;
 
         _toolBridge.Rekey(_toolBridgeRegisteredResource, newResource);
         _toolBridgeRegisteredResource = newResource;
@@ -399,6 +420,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         try
         {
             WebView = await _webViewFactory.AcquireAsync();
+            AutomationProperties.SetName(WebView, _accessibleName);
+            AutomationProperties.SetAutomationId(WebView, _viewModel.FileResource.ToString());
             _webViewContainer.Children.Add(WebView);
 
             // Attach and detach are what a dock or tab switch does to the surface, so both are logged with

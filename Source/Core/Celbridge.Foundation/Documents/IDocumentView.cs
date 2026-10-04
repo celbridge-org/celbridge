@@ -36,6 +36,11 @@ public interface IDocumentView : IWorkspaceItem
     void SetPresentedSize(double width, double height);
 
     /// <summary>
+    /// Gives the document's content the name its tab shows, for assistive technology.
+    /// </summary>
+    void SetAccessibleName(string name);
+
+    /// <summary>
     /// Navigate to a specific location within the document.
     /// </summary>
     Task<Result> NavigateToLocation(string location);

@@ -573,6 +573,29 @@ public partial class DocumentWebViewToolBridgeTests
         capturedExpression.Should().Contain("button");
         capturedExpression.Should().Contain("Save");
     }
+
+    [Test]
+    public async Task LocateAsync_CallsTheLocateHandlerWithTheQuery()
+    {
+        string? capturedExpression = null;
+        _bridge.Register(
+            _resource,
+            evalAsync: expression =>
+            {
+                capturedExpression = expression;
+                return Task.FromResult("{\"ok\":true,\"value\":{\"frame\":\"top\",\"totalMatches\":0,\"devicePixelRatio\":2,\"elements\":[]}}");
+            },
+            reloadAsync: _ => Task.CompletedTask);
+        _bridge.NotifyContentReady(_resource);
+
+        var result = await _bridge.LocateAsync(_resource, new QueryOptions(new SelectorQuery("#run"), Frame: "top"));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().Contain("devicePixelRatio");
+        capturedExpression.Should().NotBeNull();
+        CallsHandler(capturedExpression!, "locate").Should().BeTrue();
+        capturedExpression.Should().Contain("#run");
+    }
 }
 
 public partial class DocumentWebViewToolBridgeTests

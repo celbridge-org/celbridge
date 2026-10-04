@@ -47,6 +47,9 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
 
     private WebView2? _webView;
 
+    // The name the WebView takes for assistive technology, held until the WebView is acquired.
+    private string _accessibleName = string.Empty;
+
     private int _processFailures;
     // Set on the first initialization attempt, so LoadContent and Loaded share a single run.
     private Task? _initializeWebViewTask;
@@ -221,6 +224,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
         try
         {
             _webView = await _webViewFactory.AcquireAsync();
+            AutomationProperties.SetName(_webView, _accessibleName);
+            AutomationProperties.SetAutomationId(_webView, FileResource.ToString());
 
             // A page with no background of its own sits on a white canvas, as it does in a browser. The
             // factory's transparent default would show the app behind it, which leaves the page's default
@@ -862,6 +867,23 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
         AutomationProperties.SetName(PlaceholderContent, name);
     }
 
+    public override async Task<Result> SetFileResource(ResourceKey fileResource)
+    {
+        var setResult = await base.SetFileResource(fileResource);
+        if (setResult.IsFailure)
+        {
+            return setResult;
+        }
+
+        // A rename reuses this view, so the WebView's automation ID follows the resource.
+        if (_webView is not null)
+        {
+            AutomationProperties.SetAutomationId(_webView, FileResource.ToString());
+        }
+
+        return setResult;
+    }
+
     public override async Task<Result> LoadContent()
     {
         var loadResult = await ViewModel.LoadContent();
@@ -993,6 +1015,15 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
     }
 
     public override IEditTarget EditTarget { get; } = new PlatformEditTarget();
+
+    public override void SetAccessibleName(string name)
+    {
+        _accessibleName = name;
+        if (_webView is not null)
+        {
+            AutomationProperties.SetName(_webView, name);
+        }
+    }
 
     public override void FocusDocument()
     {
