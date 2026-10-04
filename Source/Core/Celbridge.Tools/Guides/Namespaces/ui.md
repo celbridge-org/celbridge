@@ -7,9 +7,8 @@ application from outside, and for scripts that drive a flow which would otherwis
 
 ## Must-knows
 
-- **Test automation builds only.** Every Debug build has the `ui` tools. A Release build has them only when built
-  with `-p:CelbridgeTestAutomation=true`, and otherwise every `ui` tool refuses. `app_get_state` reports
-  `hasTestAutomation` as `true` when they work.
+- **Debug builds only.** A Release build has neither the `ui` tools nor their guides. `app_get_state` reports
+  `configuration` as `Debug` when the tools are there.
 - **They answer while a dialog is open.** Each runs on the UI thread rather than through the command queue, so it
   still answers while a modal dialog holds that queue. `ui_press_key` with `Escape` cancels an open dialog, and
   `Return` accepts it. `ui_find_page_elements` also waits for the page to answer.

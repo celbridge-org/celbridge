@@ -126,15 +126,16 @@ internal class AutomationService : IAutomationService
         return snapshot;
     }
 
-    // A document's web view takes the document's resource key as its automation ID.
+    // A document's web view takes the document's resource key as its automation ID. The walk describes only the web
+    // views.
     private ControlBounds? FindWebViewBounds(XamlRoot xamlRoot, ResourceKey resource)
     {
         var automationId = resource.ToString();
-        foreach (var showingControl in VisualTreeReader.ReadControls(xamlRoot, _nativeControlReader))
+        var webViews = VisualTreeReader.ReadControls(xamlRoot, _nativeControlReader, element => element is WebView2);
+        foreach (var showingControl in webViews)
         {
             var control = showingControl.Info;
-            if (control.ClassName == WebViewAutomationPeer.WebViewClassName &&
-                control.AutomationId == automationId)
+            if (control.AutomationId == automationId)
             {
                 return control.Bounds;
             }

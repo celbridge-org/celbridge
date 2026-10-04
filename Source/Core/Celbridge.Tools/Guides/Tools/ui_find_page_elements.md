@@ -5,8 +5,7 @@ Finds elements in an open document's page and reports each one's frame in the wi
 real input, or reads where an element is and what it holds. To read a page without placing it in the window,
 `webview_query` is enough.
 
-**Test automation builds only.** In a build without test automation, such as an ordinary Release build, the tool
-refuses with "available only in builds with test automation".
+**Debug builds only.** A Release build has neither this tool nor its guide.
 
 ## Parameters
 

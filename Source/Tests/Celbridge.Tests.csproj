@@ -51,6 +51,11 @@
     <ProjectReference Include="..\Workspace\Celbridge.WorkspaceUI\Celbridge.WorkspaceUI.csproj" />
   </ItemGroup>
 
+  <!-- A Release build of Celbridge.Tools leaves out the ui tools, so their tests build in Debug only. -->
+  <ItemGroup Condition="'$(Configuration)' != 'Debug'">
+    <Compile Remove="Tools\UIToolTests.cs" />
+  </ItemGroup>
+
   <ItemGroup>
     <!--
       Test-only NLog config that drops the console target. Suppresses incidental

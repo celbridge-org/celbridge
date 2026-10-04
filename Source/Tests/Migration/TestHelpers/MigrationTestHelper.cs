@@ -21,7 +21,7 @@ public static class MigrationTestHelper
     public static IAppEnvironment CreateMockEnvironmentService(string appVersion)
     {
         var mock = Substitute.For<IAppEnvironment>();
-        mock.GetEnvironmentInfo().Returns(new EnvironmentInfo(appVersion, "Test", "Debug", true));
+        mock.GetEnvironmentInfo().Returns(new EnvironmentInfo(appVersion, "Test", "Debug"));
         return mock;
     }
 

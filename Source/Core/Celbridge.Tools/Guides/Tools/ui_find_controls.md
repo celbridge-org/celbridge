@@ -4,8 +4,7 @@ Finds the application's own controls by automation ID, name or control type, and
 state as its automation peer describes it. It is for a test harness that drives the application from outside and
 needs to know where a control is and what it holds, where the platform's accessibility tree cannot say.
 
-**Test automation builds only.** In a build without test automation, such as an ordinary Release build, the tool
-refuses with "available only in builds with test automation".
+**Debug builds only.** A Release build has neither this tool nor its guide.
 
 It searches the main window's content and every open popup, which holds the flyouts, menus and dialogs. It reports
 only controls that show: an element with a size whose ancestors are all visible. A web view is a `Pane` of class

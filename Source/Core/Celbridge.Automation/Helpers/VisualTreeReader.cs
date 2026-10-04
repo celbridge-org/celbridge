@@ -29,9 +29,13 @@ internal static class VisualTreeReader
     /// <summary>
     /// Every element with a size and an automation peer, in the window's content and then in each open popup. An
     /// element drawn by a native view takes that view's frame. The walk does not enter a collapsed element, or an
-    /// element whose native view is not showing.
+    /// element whose native view is not showing. When include is given, the walk describes only the elements it
+    /// accepts, and still passes through the rest.
     /// </summary>
-    public static IEnumerable<ShowingControl> ReadControls(XamlRoot xamlRoot, INativeControlReader nativeControlReader)
+    public static IEnumerable<ShowingControl> ReadControls(
+        XamlRoot xamlRoot,
+        INativeControlReader nativeControlReader,
+        Func<FrameworkElement, bool>? include = null)
     {
         var roots = new List<DependencyObject>();
         if (xamlRoot.Content is not null)
@@ -70,7 +74,8 @@ internal static class VisualTreeReader
 
             if (current is FrameworkElement frameworkElement &&
                 frameworkElement.ActualWidth > 0 &&
-                frameworkElement.ActualHeight > 0)
+                frameworkElement.ActualHeight > 0 &&
+                (include is null || include(frameworkElement)))
             {
                 var peer = FindPeer(frameworkElement);
                 if (peer is not null)

@@ -13,13 +13,12 @@ public record class InvokedControlResult(ControlInfo Control, string Action);
 
 public partial class UITools
 {
-    /// <summary>Perform the default action of one of the app's own controls, as assistive technology does (test automation builds only).</summary>
+    /// <summary>Perform the default action of one of the app's own controls, as assistive technology does (test automation, Debug builds only).</summary>
     [McpServerTool(Name = "ui_invoke_control", ReadOnly = false, Idempotent = false)]
     [ToolAlias("ui.invoke_control")]
     [RelatedGuides]
     public async partial Task<CallToolResult> InvokeControl(string automationId = "", string name = "", string controlType = "")
     {
-#if TEST_AUTOMATION
         var query = new ControlQuery(automationId, name, controlType);
         if (ControlQueryMatcher.IsEmpty(query))
         {
@@ -37,10 +36,5 @@ public partial class UITools
         var result = new InvokedControlResult(invocation.Control, invocation.Action.ToString());
         var json = JsonSerializer.Serialize(result, JsonOptions);
         return ToolResponse.Success(json);
-#else
-        // The tool stays declared so its guide stays paired with a registered tool, and refuses when called.
-        await Task.CompletedTask;
-        return ToolResponse.TestAutomationUnavailable("ui_invoke_control");
-#endif
     }
 }

@@ -31,6 +31,12 @@
     <EmbeddedResource Remove="Guides\README.md" />
   </ItemGroup>
 
+  <!-- The ui tools are test automation, so only a Debug build has them and their guides. -->
+  <ItemGroup Condition="'$(Configuration)' != 'Debug'">
+    <Compile Remove="Tools\UI\**" />
+    <EmbeddedResource Remove="Guides\Namespaces\ui.md;Guides\Tools\ui_*.md" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\..\Core\Celbridge.FileSystem\Celbridge.FileSystem.csproj" />
     <ProjectReference Include="..\..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />

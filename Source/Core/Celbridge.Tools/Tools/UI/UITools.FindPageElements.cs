@@ -8,7 +8,7 @@ namespace Celbridge.Tools;
 
 public partial class UITools
 {
-    /// <summary>Find elements of a document's page by CSS selector, ARIA role or text, with their frames in the window and state (test automation builds only).</summary>
+    /// <summary>Find elements of a document's page by CSS selector, ARIA role or text, with their frames in the window and state (test automation, Debug builds only).</summary>
     [McpServerTool(Name = "ui_find_page_elements", ReadOnly = true, Idempotent = true)]
     [ToolAlias("ui.find_page_elements")]
     [RelatedGuides("resource_keys")]
@@ -21,7 +21,6 @@ public partial class UITools
         string frame = "",
         int maxResults = 20)
     {
-#if TEST_AUTOMATION
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
             return ToolResponse.InvalidResourceKey(resource);
@@ -62,10 +61,5 @@ public partial class UITools
 
         var json = JsonSerializer.Serialize(snapshot, JsonOptions);
         return ToolResponse.Success(json);
-#else
-        // The tool stays declared so its guide stays paired with a registered tool, and refuses when called.
-        await Task.CompletedTask;
-        return ToolResponse.TestAutomationUnavailable("ui_find_page_elements");
-#endif
     }
 }

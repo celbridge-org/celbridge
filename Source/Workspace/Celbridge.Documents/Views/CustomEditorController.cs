@@ -1542,6 +1542,15 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
             if (deleteSelection)
             {
+                // The copy can wait for the clipboard, so the cut reads the selection again and deletes it only
+                // while it still holds the copied text.
+                var currentText = await host.Rpc.InvokeAsync<string?>(EditorRpcMethods.GetSelectedText);
+                if (currentText != selectedText)
+                {
+                    _logger.LogWarning("The selection changed while the cut waited for the clipboard, so the cut kept it");
+                    return;
+                }
+
                 await host.Rpc.NotifyWithParameterObjectAsync(EditorRpcMethods.InsertText, new { text = string.Empty });
             }
         }
