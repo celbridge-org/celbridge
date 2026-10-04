@@ -1,4 +1,5 @@
 using Celbridge.DataTransfer;
+using Celbridge.WorkspaceUI.Helpers;
 using Windows.ApplicationModel.DataTransfer;
 
 namespace Celbridge.WorkspaceUI.Platform;
@@ -48,10 +49,7 @@ public sealed class WinRtFileClipboard : IFileClipboard
         // Carry the paths as text as well, so a paste into a text surface yields them instead of nothing.
         dataPackage.SetText(string.Join(Environment.NewLine, files.Select(file => file.Path)));
 
-        Clipboard.SetContent(dataPackage);
-        Clipboard.Flush();
-
-        return Result.Ok();
+        return await ClipboardWriter.SetContentAsync(dataPackage, flush: true);
     }
 
     public DataTransferMode? GetFileTransferMode()

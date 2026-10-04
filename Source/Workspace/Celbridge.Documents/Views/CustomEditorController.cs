@@ -1505,7 +1505,17 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
                 return;
             }
 
-            _commandService.Execute<ICopyTextToClipboardCommand>(command => command.Text = selectedText);
+            // Run the copy now instead of queuing it, so a cut doesn't wait behind other commands.
+            var copyResult = await _commandService.ExecuteImmediate<ICopyTextToClipboardCommand>(command =>
+            {
+                command.Text = selectedText;
+            });
+            if (copyResult.IsFailure)
+            {
+                // Keep the selection, so a failed cut loses nothing.
+                _logger.LogError(copyResult, "Failed to copy the editor selection to the clipboard");
+                return;
+            }
 
             if (deleteSelection)
             {

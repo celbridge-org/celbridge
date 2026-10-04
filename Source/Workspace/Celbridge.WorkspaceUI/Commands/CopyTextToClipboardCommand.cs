@@ -1,6 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.DataTransfer;
 using Celbridge.Logging;
+using Celbridge.WorkspaceUI.Helpers;
 using Windows.ApplicationModel.DataTransfer;
 
 namespace Celbridge.WorkspaceUI.Commands;
@@ -31,9 +32,6 @@ public class CopyTextToClipboardCommand : CommandBase, ICopyTextToClipboardComma
             dataPackage.RequestedOperation = DataPackageOperation.Copy; 
         }
 
-        Clipboard.SetContent(dataPackage);
-
-        await Task.CompletedTask;
-        return Result.Ok();
+        return await ClipboardWriter.SetContentAsync(dataPackage);
     }
 }

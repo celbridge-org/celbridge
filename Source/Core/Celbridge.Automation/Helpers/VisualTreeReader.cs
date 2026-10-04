@@ -156,7 +156,7 @@ internal static class VisualTreeReader
         var frame = transform.TransformBounds(new Rect(0, 0, element.ActualWidth, element.ActualHeight));
         var bounds = new ControlBounds(frame.X, frame.Y, frame.Width, frame.Height);
 
-        var value = (peer.GetPattern(PatternInterface.Value) as IValueProvider)?.Value;
+        var value = ReadValue(element, peer);
 
         var control = new ControlInfo(
             automationId ?? string.Empty,
@@ -169,6 +169,25 @@ internal static class VisualTreeReader
             value);
 
         return control;
+    }
+
+    /// <summary>
+    /// Returns the control's value from its peer's value provider, or null if the peer has none. WinUI's TextBox
+    /// peer doesn't expose a value provider to managed code, so for a TextBox this returns its Text.
+    /// </summary>
+    private static string? ReadValue(FrameworkElement element, AutomationPeer peer)
+    {
+        if (peer.GetPattern(PatternInterface.Value) is IValueProvider valueProvider)
+        {
+            return valueProvider.Value;
+        }
+
+        if (element is TextBox textBox)
+        {
+            return textBox.Text;
+        }
+
+        return null;
     }
 
     private static bool? CheckedState(AutomationPeer peer)

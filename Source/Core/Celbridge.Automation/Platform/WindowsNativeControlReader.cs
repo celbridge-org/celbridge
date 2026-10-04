@@ -4,27 +4,28 @@ using Celbridge.UserInterface;
 namespace Celbridge.Automation.Platform;
 
 /// <summary>
-/// Reads the caption buttons the Windows App SDK draws for the main window, whose content extends into its title
-/// bar. A frame is in device-independent pixels from the top left of the window's client area, which the content
-/// fills. Call on the UI thread, which owns the window.
+/// Reads the minimize, maximize and close buttons that the Windows App SDK draws in the main window's title bar.
+/// Frames are in device-independent pixels, measured from the top left of the window's client area. Call this on
+/// the UI thread.
 /// </summary>
 internal class WindowsNativeControlReader : INativeControlReader
 {
-    // The child window that draws the caption buttons side by side, in equal widths.
+    // The class of the child window that draws the caption buttons. The buttons sit side by side and are equally
+    // wide.
     private const string CaptionControlsClassName = "ReunionWindowingCaptionControls";
 
     private const int StyleIndex = -16;
     private const int MinimizeBoxStyle = 0x00020000;
     private const int MaximizeBoxStyle = 0x00010000;
 
-    // WM_SYSCOMMAND and the commands a click on each caption button sends.
+    // WM_SYSCOMMAND, and the command that each caption button sends when clicked.
     private const uint SystemCommandMessage = 0x0112;
     private const nint MinimizeCommand = 0xF020;
     private const nint MaximizeCommand = 0xF030;
     private const nint RestoreCommand = 0xF120;
     private const nint CloseCommand = 0xF060;
 
-    // The dots per inch of a device-independent pixel.
+    // The DPI at 100% scaling, where one device-independent pixel is one physical pixel.
     private const double StandardDpi = 96;
 
     private record CaptionButton(string AutomationId, nint Command, bool IsEnabled);
@@ -66,13 +67,13 @@ internal class WindowsNativeControlReader : INativeControlReader
 
     public NativeView? FindNativeView(FrameworkElement element)
     {
-        // WinUI composites a WebView2's page within the control, so its frame is the layout's.
+        // WinUI draws a WebView2's page inside the control itself, so the layout already gives the right frame.
         return null;
     }
 
     private static void ReadCaptionButtons(IntPtr window, List<ShowingControl> controls)
     {
-        // A minimized window keeps its caption buttons' window, far outside the screen.
+        // When the main window is minimized, the caption button window still exists but sits far off screen.
         var captionControls = FindWindowEx(window, IntPtr.Zero, CaptionControlsClassName, null);
         if (captionControls == IntPtr.Zero ||
             IsIconic(window) ||
@@ -97,7 +98,8 @@ internal class WindowsNativeControlReader : INativeControlReader
             var button = buttons[index];
             var bounds = new ControlBounds(left + index * width, top, width, height);
 
-            // As UI Automation reports these buttons in English: named by their automation IDs, with no class name.
+            // Match UI Automation, which names these buttons by their English automation IDs and gives no class
+            // name.
             var info = new ControlInfo(
                 button.AutomationId,
                 button.AutomationId,
@@ -112,7 +114,7 @@ internal class WindowsNativeControlReader : INativeControlReader
         }
     }
 
-    // A window's style says which caption buttons work. A disabled window's buttons all do nothing.
+    // The window style determines which caption buttons are active. If the window is disabled, none of them are.
     private static List<CaptionButton> DescribeCaptionButtons(IntPtr window)
     {
         var isEnabled = IsWindowEnabled(window);
@@ -136,7 +138,8 @@ internal class WindowsNativeControlReader : INativeControlReader
         return buttons;
     }
 
-    // Posting the command lets the window act on it after the automation call returns, as it would after a click.
+    // Post rather than send, so the window handles the command after the automation call returns, as it would
+    // after a real click.
     private static ControlAction? PressCaptionButton(IntPtr window, nint command)
     {
         if (!PostMessage(window, SystemCommandMessage, command, 0))
