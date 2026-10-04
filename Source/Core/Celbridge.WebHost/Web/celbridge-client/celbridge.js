@@ -11,6 +11,7 @@ import { LogAPI } from './api/log-api.js';
 import { ViewAPI } from './api/view-api.js';
 import { ToolsAPI } from './api/tools-api.js';
 import { ResourcesAPI } from './api/resources-api.js';
+import { UtilityAPI } from './api/utility-api.js';
 
 /**
  * @typedef {import('./types.js').InitializeResult} InitializeResult
@@ -84,6 +85,12 @@ export class Celbridge {
     resources;
 
     /**
+     * What a utility editor shows on its rail button: `client.utility.setIndicator('danger', 'Recording')`.
+     * @type {UtilityAPI}
+     */
+    utility;
+
+    /**
      * Host capability proxy (`cel.*`) and raw tool dispatch (`list`, `call`).
      * Populated from the tools the host offers this editor, fetched over the
      * bridge via `tools/list` during `initialize()`.
@@ -154,6 +161,7 @@ export class Celbridge {
         this.localization = new LocalizationAPI(this.#transport);
         this.log = new LogAPI(this.#transport);
         this.resources = new ResourcesAPI(this.#transport);
+        this.utility = new UtilityAPI(this.#transport);
         this.#exposeCelGlobal = options.exposeCelGlobal !== false;
 
         // Release the active element when the host signals that focus moved to another panel. Wired

@@ -83,6 +83,22 @@ Where a utility actually is comes from workspace state, which the user writes by
 
 Once a utility is a tab the user moves it like any other tab, to any section they like, and it is restored wherever they left it. `dock-area` names where it lands the first time, not where it is allowed to be.
 
+## Marking the rail button
+
+A utility is often out of sight, but its rail button is always on screen. A state the user must stay aware of while working elsewhere, such as a recorder that is recording, belongs on the button:
+
+```js
+await client.utility.setIndicator('danger', 'Recording', 'bs-record-circle-fill');   // red, filled, with a pop
+await client.utility.clearIndicator();
+```
+
+- Tones are `danger` (red), `caution` (amber), `success` (green) and `accent`. `none` clears the mark.
+- The glyph takes the tone's colour. On a focused button the tone replaces the accent fill, with a white glyph, so the mark never disappears into the selection.
+- Turning a tone on plays a brief pop and flash. Changing only the label does not.
+- The label is a short state word added to the button's tooltip, as in "File Change History (Recording)".
+- The optional icon replaces the manifest's glyph while the mark is on. A filled variant of an outline icon reads far better in colour.
+- The mark is cleared when the page reloads, so a page that restores a state sets it again. A document editor has no rail button, and the call is refused for one.
+
 ## Never an ordinary project file
 
 A utility is never created as a normal project file — it does not appear in New File, text search, the Explorer tree, or the "Reopen with..." picker. Its `utils:` resource is reachable only through the utility itself: its rail button, or docking it into a document tab.

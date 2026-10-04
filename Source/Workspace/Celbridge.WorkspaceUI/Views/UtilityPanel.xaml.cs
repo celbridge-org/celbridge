@@ -20,6 +20,10 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     private readonly IFocusService _focusService;
     private readonly ISettingsService _settings;
     private readonly IMessengerService _messengerService;
+
+    // The indicator each utility last set on its rail button. Kept apart from the buttons so a utility that
+    // reports its state before the rail is built still shows it once its button exists.
+    private readonly Dictionary<EditorId, UtilityIndicatorChangedMessage> _indicators = new();
     private readonly ISpotlightRegistry _spotlightRegistry;
     private readonly ICommandService _commandService;
     private readonly ILayoutService _layoutService;
@@ -146,6 +150,10 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         // Show the Explorer by default
         ShowUtilityInPanel(BuiltInUtilityIds.Explorer);
 
+        // Registered for the panel's lifetime rather than while loaded: a utility can report its state while
+        // the project is still loading, before the panel has entered the visual tree.
+        _messengerService.Register<UtilityIndicatorChangedMessage>(this, OnUtilityIndicatorChanged);
+
         Loaded += UtilityPanel_Loaded;
         Unloaded += UtilityPanel_Unloaded;
     }
@@ -240,6 +248,11 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 
         _buttons[itemId] = railButton;
 
+        if (_indicators.TryGetValue(itemId, out var indicator))
+        {
+            railButton.SetIndicator(indicator.Tone, indicator.Label, indicator.IconName, animate: false);
+        }
+
         return railButton;
     }
 
@@ -330,6 +343,23 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
             Path = new PropertyPath(nameof(UtilityItemViewModel.IsFocused)),
             Mode = BindingMode.OneWay
         });
+    }
+
+    private void OnUtilityIndicatorChanged(object recipient, UtilityIndicatorChangedMessage message)
+    {
+        if (message.Tone == UtilityIndicatorTone.None)
+        {
+            _indicators.Remove(message.UtilityId);
+        }
+        else
+        {
+            _indicators[message.UtilityId] = message;
+        }
+
+        if (_buttons.TryGetValue(message.UtilityId, out var railButton))
+        {
+            railButton.SetIndicator(message.Tone, message.Label, message.IconName, animate: true);
+        }
     }
 
     private void UtilityPanel_Loaded(object sender, RoutedEventArgs e)
@@ -702,6 +732,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
 
     public void ClearRailItems()
     {
+        _indicators.Clear();
         RemoveBuiltRailItems();
         RefreshRailButtons();
     }

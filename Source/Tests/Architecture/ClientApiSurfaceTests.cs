@@ -76,6 +76,11 @@ public class ClientApiSurfaceTests
             "loadDescriptors",
             "setDescriptors"
         },
+        ["api/utility-api.js"] = new[]
+        {
+            "clearIndicator",
+            "setIndicator"
+        },
         ["api/view-api.js"] = new[]
         {
             "canMeasure",
