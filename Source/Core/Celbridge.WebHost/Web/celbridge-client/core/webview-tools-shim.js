@@ -1047,8 +1047,8 @@
         };
     };
 
-    // Finds elements as the query does, and places each one in the page's viewport. The page's device pixel
-    // ratio lets the host turn the page's CSS pixels into the window's.
+    // Finds elements the same way as query, and returns each one's rectangle in the page's viewport. The result
+    // includes devicePixelRatio, so the host can convert the page's CSS pixels to window coordinates.
     handlers.locate = function (args) {
         args = args || {};
         var target = resolveTarget(args.frame, false);
@@ -1085,9 +1085,9 @@
         };
     }
 
-    // An element's rectangle in the page's viewport, and whether its center shows. Each frame that holds the
-    // element offsets the rectangle by where the frame's viewport sits in its parent. The center shows when it
-    // lies inside every frame's viewport and inside the page's own.
+    // Returns the element's rectangle in the top page's viewport, and whether its center is visible. For each
+    // enclosing frame, the rectangle is offset by the position of the frame's viewport in its parent. The center
+    // is visible when it lies inside every enclosing frame's viewport and inside the top page's viewport.
     function placeInPage(el) {
         var rect = el.getBoundingClientRect();
         var x = rect.left;
@@ -1166,8 +1166,8 @@
         return !!(el.closest && el.closest('[aria-disabled="true"]'));
     }
 
-    // An element holds the keyboard when it is its document's active element and that document has focus. A
-    // document has focus only while its web view holds the keyboard.
+    // An element has keyboard focus when it is its document's active element and that document has focus. A
+    // document only has focus while its web view has keyboard focus.
     function holdsKeyboard(el) {
         var ownerDocument = el.ownerDocument;
         return ownerDocument.activeElement === el && ownerDocument.hasFocus();

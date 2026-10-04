@@ -8,7 +8,7 @@ namespace Celbridge.Tools;
 [McpServerToolType]
 public partial class UITools : AgentToolBase
 {
-    // The error a control lookup gives when its query names nothing to match.
+    // The error a control lookup returns when every field of its query is empty.
     private const string EmptyQueryMessage =
         "Name at least one of the automation ID, the name and the control type to match.";
 

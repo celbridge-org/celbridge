@@ -3,7 +3,7 @@ using Celbridge.Automation;
 namespace Celbridge.Tests.Tools;
 
 /// <summary>
-/// Tests for placing the elements a page reports in CSS pixels in the window's content.
+/// Tests for converting the element rectangles a page reports in CSS pixels to bounds in the window's content.
 /// </summary>
 [TestFixture]
 public class PageElementPlacementTests

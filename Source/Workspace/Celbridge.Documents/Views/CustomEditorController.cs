@@ -138,7 +138,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     // The WebView2 control, acquired from the factory.
     private WebView2? WebView { get; set; }
 
-    // The name the WebView takes for assistive technology, held until the WebView is acquired.
+    // The WebView's accessible name, stored until the WebView is acquired.
     private string _accessibleName = string.Empty;
 
     private WebViewLoadDiagnostics? _diagnostics;
@@ -242,7 +242,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     }
 
     /// <summary>
-    /// Names the WebView for assistive technology, now or once it is acquired.
+    /// Sets the WebView's accessible name, now or once the WebView is acquired.
     /// </summary>
     public void SetAccessibleName(string name)
     {
@@ -1542,8 +1542,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
             if (deleteSelection)
             {
-                // The copy can wait for the clipboard, so the cut reads the selection again and deletes it only
-                // while it still holds the copied text.
+                // The copy can wait for a busy clipboard, and the selection can change meanwhile. Delete the
+                // selection only if it still holds the copied text.
                 var currentText = await host.Rpc.InvokeAsync<string?>(EditorRpcMethods.GetSelectedText);
                 if (currentText != selectedText)
                 {

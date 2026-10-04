@@ -27,10 +27,10 @@ internal class WebViewAutomationPeer : FrameworkElementAutomationPeer
 internal static class VisualTreeReader
 {
     /// <summary>
-    /// Every element with a size and an automation peer, in the window's content and then in each open popup. An
-    /// element drawn by a native view takes that view's frame. The walk does not enter a collapsed element, or an
-    /// element whose native view is not showing. When include is given, the walk describes only the elements it
-    /// accepts, and still passes through the rest.
+    /// Returns every element that has a size and an automation peer, first in the window's content and then in each
+    /// open popup. An element drawn by a native view uses that view's frame. The walk skips collapsed elements and
+    /// elements whose native view is hidden, along with their children. When include is given, only the elements
+    /// it accepts are returned, but the walk still visits the children of the others.
     /// </summary>
     public static IEnumerable<ShowingControl> ReadControls(
         XamlRoot xamlRoot,
@@ -153,7 +153,7 @@ internal static class VisualTreeReader
 
     private static ControlInfo Describe(FrameworkElement element, AutomationPeer peer)
     {
-        // An element without an automation ID of its own is known by its name, as UI Automation reports it.
+        // UI Automation identifies an element that has no automation ID by its name, so this does the same.
         var automationId = peer.GetAutomationId();
         if (string.IsNullOrEmpty(automationId))
         {

@@ -5,9 +5,9 @@ using static Celbridge.Utilities.Platform.ObjectiveCRuntime;
 namespace Celbridge.Automation.Platform;
 
 /// <summary>
-/// Reads what AppKit draws for the application: the menu bar's items, the main window's buttons and the native
-/// web views. A frame is in points from the top left of the window's content view, which holds the managed
-/// content. Call on the main (UI) thread, where AppKit is safe.
+/// Reads the controls AppKit draws for the application: the menu bar's items, the main window's buttons and the
+/// native web views. Frames are in points from the top left of the window's content view, which holds the managed
+/// content. Call this on the main (UI) thread, since AppKit is not thread safe.
 /// </summary>
 internal class MacOSNativeControlReader : INativeControlReader
 {
@@ -40,8 +40,8 @@ internal class MacOSNativeControlReader : INativeControlReader
         public double Height;
     }
 
-    // A CGRect is four doubles, which the ARM64 ABI passes and returns in the floating point registers. So the
-    // struct marshals by value through plain objc_msgSend.
+    // On ARM64, a CGRect (four doubles) is passed and returned in floating point registers, so plain objc_msgSend
+    // can marshal it by value.
     [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
     private static extern CGRect SendMessageReturnCGRect(IntPtr receiver, IntPtr selector);
 
@@ -99,7 +99,8 @@ internal class MacOSNativeControlReader : INativeControlReader
 
     private static void ReadMenuItems(IntPtr menu, List<ShowingControl> controls)
     {
-        // Validation sets each item's enabled state. Celbridge's own items also set their marks as they validate.
+        // Updating the menu validates each item, which sets its enabled state. Celbridge's own items also set their
+        // check marks during validation.
         SendMessage(menu, GetSelector("update"));
 
         var count = SendMessageReturnNint(menu, GetSelector("numberOfItems"));
@@ -125,7 +126,8 @@ internal class MacOSNativeControlReader : INativeControlReader
 
     private static ShowingControl DescribeMenuItem(IntPtr menu, nint index, IntPtr item, IntPtr submenu)
     {
-        // An item that opens a submenu shows no mark. Pressing it would open the menu, which blocks until it closes.
+        // An item that opens a submenu has no check mark. It reports no action either, since pressing it would open
+        // a menu that blocks until it closes.
         bool? isChecked = null;
         var hasAction = false;
         if (submenu == IntPtr.Zero)
@@ -172,8 +174,8 @@ internal class MacOSNativeControlReader : INativeControlReader
                 continue;
             }
 
-            // The button's cell is its accessibility element. It gives the button no title or identifier, and its
-            // subrole names the button in every language.
+            // The button's cell is its accessibility element. The cell has no title or identifier, so the button's
+            // subrole, which is the same in every language, serves as its automation ID.
             var cell = SendMessage(button, GetSelector("cell"));
             var info = new ControlInfo(
                 ReadNSString(SendMessage(cell, GetSelector("accessibilitySubrole"))),
@@ -196,8 +198,8 @@ internal class MacOSNativeControlReader : INativeControlReader
         return ControlAction.Invoke;
     }
 
-    // The application has one window of Uno's class. Live windows are subclasses of it, so the class is matched by
-    // kind.
+    // The application has one window of Uno's UNOWindow class. The live window is a subclass of it, so the match
+    // uses isKindOfClass.
     private static IntPtr FindMainWindow(IntPtr application)
     {
         var windowClass = GetClass("UNOWindow");

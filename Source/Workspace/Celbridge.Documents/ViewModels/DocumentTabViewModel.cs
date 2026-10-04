@@ -173,7 +173,7 @@ public partial class DocumentTabViewModel : ObservableObject
     private IDocumentView? _documentView;
 
     /// <summary>
-    /// The tab's document view, which takes the tab's name for assistive technology.
+    /// The tab's document view. Setting it gives the view the tab's name as its accessible name.
     /// </summary>
     public IDocumentView? DocumentView
     {

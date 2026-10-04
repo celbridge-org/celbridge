@@ -39,8 +39,8 @@ jobs:
       # No unit test reads the uv archive or the celbridge wheel, and generating them would pull uv and a
       # managed interpreter onto the runner. Building either app head generates both, which is where a
       # break surfaces. The build warns that the output cannot run Python.
-      # The tests build in Debug, as a local dotnet test does, since a Release build leaves out the ui
-      # tools and their tests.
+      # The tests build in Debug, as a local dotnet test does. A Release build leaves out the ui tools and
+      # their tests.
       - name: Build tests
         run: dotnet build Source/Tests/Celbridge.Tests.csproj --no-restore --configuration Debug -p:SkipPythonAssets=true
 

@@ -31,7 +31,7 @@ internal class AutomationService : IAutomationService
 
     public async Task<Result<PageElementSnapshot>> FindPageElementsAsync(ResourceKey resource, QueryOptions options)
     {
-        // The web view's frame is read once the page has answered, which can wait for the page to load.
+        // Locating can wait for the page to load, so the web view's frame is read only after the page responds.
         var locateResult = await _toolBridge.LocateAsync(resource, options);
         if (locateResult.IsFailure)
         {
@@ -126,8 +126,7 @@ internal class AutomationService : IAutomationService
         return snapshot;
     }
 
-    // A document's web view takes the document's resource key as its automation ID. The walk describes only the web
-    // views.
+    // A document's web view uses the document's resource key as its automation ID. The walk returns only web views.
     private ControlBounds? FindWebViewBounds(XamlRoot xamlRoot, ResourceKey resource)
     {
         var automationId = resource.ToString();
@@ -157,9 +156,8 @@ internal class AutomationService : IAutomationService
         }
     }
 
-    // The visual tree belongs to the UI thread, and the caller is a tool request arriving on its own thread. The
-    // dispatcher is used rather than the command queue, so a call still answers while a modal dialog holds the
-    // queue.
+    // Tool requests arrive on a background thread, but only the UI thread can read the visual tree. This uses the
+    // dispatcher rather than the command queue, so a call still returns while a modal dialog blocks the queue.
     private Task<Result<T>> RunOnUIThreadAsync<T>(Func<Result<T>> operation) where T : notnull
     {
         if (_userInterfaceService.MainWindow is not Window mainWindow)

@@ -17,8 +17,8 @@ public partial class UITools
             return ToolResponse.Error("Name the key to press, e.g. \"Escape\".");
         }
 
-        // The service delivers the press straight to the UI thread, so it still lands while a modal dialog
-        // holds the command queue.
+        // The service sends the press straight to the UI thread, so it still arrives while a modal dialog
+        // blocks the command queue.
         var inputSimulationService = GetRequiredService<IInputSimulationService>();
 
         var pressResult = await inputSimulationService.PressKeyAsync(key, modifiers);

@@ -47,7 +47,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
 
     private WebView2? _webView;
 
-    // The name the WebView takes for assistive technology, held until the WebView is acquired.
+    // The WebView's accessible name, stored until the WebView is acquired.
     private string _accessibleName = string.Empty;
 
     private int _processFailures;

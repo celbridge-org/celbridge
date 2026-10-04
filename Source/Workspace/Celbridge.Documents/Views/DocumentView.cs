@@ -164,7 +164,7 @@ public abstract partial class DocumentView : UserControl, IDocumentView
         // A view whose content the platform lays out needs no size until it is shown.
     }
 
-    // Each document view names the web view that shows its content.
+    // Each document view sets the accessible name of the web view that shows its content.
     public abstract void SetAccessibleName(string name);
 
     public virtual async Task<Result> NavigateToLocation(string location)

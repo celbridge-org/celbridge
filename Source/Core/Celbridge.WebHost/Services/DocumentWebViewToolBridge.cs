@@ -306,7 +306,7 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
         return await InvokeShimHandlerAsync(resource, "locate", args);
     }
 
-    // The arguments of the shim's query handlers: the fields of the query's mode, with the other modes' fields null.
+    // Builds the arguments for the shim's query handlers. Only the query mode's fields are set, and the rest are null.
     private static object BuildQueryArgs(QueryOptions options)
     {
         string? role = null;

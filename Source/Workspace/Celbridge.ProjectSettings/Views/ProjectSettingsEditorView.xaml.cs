@@ -211,7 +211,7 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
 
     public void SetAccessibleName(string name)
     {
-        // The settings are native controls, and each one carries its own name.
+        // The settings are native controls with their own accessible names, so this view sets none.
     }
 
     public async Task<Result> NavigateToLocation(string location)

@@ -3,8 +3,8 @@ using System.Text.Json;
 namespace Celbridge.Automation;
 
 /// <summary>
-/// The elements a page found in one of its frames, placed in the window's content, with the frame's name, the
-/// number of matches before the results were capped, and the page's device pixel ratio.
+/// The elements a page found in one of its frames, with their bounds in the window's content. It also carries the
+/// frame's name, the match count before the results were capped, and the page's device pixel ratio.
 /// </summary>
 internal record PageLocation(
     string Frame,
@@ -13,7 +13,7 @@ internal record PageLocation(
     IReadOnlyList<PageElementInfo> Elements);
 
 /// <summary>
-/// Places the elements a page reports in CSS pixels in the window's content, in device-independent pixels.
+/// Converts the element rectangles a page reports in CSS pixels to bounds in the window's content.
 /// </summary>
 internal static class PageElementPlacement
 {
@@ -23,8 +23,8 @@ internal static class PageElementPlacement
     };
 
     /// <summary>
-    /// Reads the page's answer to a locate call and places each element from the web view's top left. A CSS pixel
-    /// spans the page's device pixel ratio divided by the rasterization scale, in device-independent pixels.
+    /// Parses the page's locate result and offsets each element by the web view's top left corner. One CSS pixel
+    /// is devicePixelRatio / rasterizationScale device-independent pixels.
     /// </summary>
     public static Result<PageLocation> Place(string locateJson, ControlBounds webViewBounds, double rasterizationScale)
     {
@@ -81,7 +81,7 @@ internal static class PageElementPlacement
         return location;
     }
 
-    // The page's answer to a locate call, with each element's rectangle in the page's viewport in CSS pixels.
+    // The page's locate result. Each element's rectangle is in CSS pixels, relative to the page's viewport.
     private sealed record LocateAnswer(
         string Frame,
         int TotalMatches,

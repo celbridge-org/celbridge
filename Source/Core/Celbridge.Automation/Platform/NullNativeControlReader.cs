@@ -1,7 +1,7 @@
 namespace Celbridge.Automation.Platform;
 
 /// <summary>
-/// The native control reader for platforms where the visual tree holds every control the API reports.
+/// The native control reader for platforms with no native controls, where the visual tree holds every control.
 /// </summary>
 internal class NullNativeControlReader : INativeControlReader
 {

@@ -51,7 +51,7 @@
     <ProjectReference Include="..\Workspace\Celbridge.WorkspaceUI\Celbridge.WorkspaceUI.csproj" />
   </ItemGroup>
 
-  <!-- A Release build of Celbridge.Tools leaves out the ui tools, so their tests build in Debug only. -->
+  <!-- A Release build of Celbridge.Tools has no ui tools, so their tests only build in Debug. -->
   <ItemGroup Condition="'$(Configuration)' != 'Debug'">
     <Compile Remove="Tools\UIToolTests.cs" />
   </ItemGroup>

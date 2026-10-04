@@ -3,8 +3,8 @@ using Celbridge.Automation;
 namespace Celbridge.Tools;
 
 /// <summary>
-/// What a control lookup matches. Each field that is not empty must equal the control's own value, and an empty
-/// field matches every control.
+/// The fields a control lookup matches on. Each non-empty field must exactly equal the control's value. An empty
+/// field matches any control.
 /// </summary>
 public record ControlQuery(string AutomationId, string Name, string ControlType);
 
@@ -14,7 +14,7 @@ public record ControlQuery(string AutomationId, string Name, string ControlType)
 public static class ControlQueryMatcher
 {
     /// <summary>
-    /// Whether the query names nothing to match, which would match every control.
+    /// True when every field is empty, so the query would match every control.
     /// </summary>
     public static bool IsEmpty(ControlQuery query)
     {
@@ -24,7 +24,7 @@ public static class ControlQueryMatcher
     }
 
     /// <summary>
-    /// Whether every field the query names equals the control's own value, compared exactly.
+    /// True when every non-empty field exactly equals the control's value.
     /// </summary>
     public static bool Matches(ControlQuery query, ControlInfo control)
     {

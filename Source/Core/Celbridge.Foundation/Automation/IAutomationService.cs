@@ -4,14 +4,14 @@ namespace Celbridge.Automation;
 
 /// <summary>
 /// A control's frame in device-independent pixels, measured from the top left of the main window's content. A
-/// control above the content, such as a button in a title bar above it, has a negative Y.
+/// control above the content, such as a title bar button, has a negative Y.
 /// </summary>
 public record ControlBounds(double X, double Y, double Width, double Height);
 
 /// <summary>
-/// One of the application's own controls, as its automation peer describes it. A control the platform draws
-/// natively is described as the platform's accessibility describes it. IsChecked is null for a control that cannot
-/// be toggled or selected, and Value is null for a control that holds no value.
+/// One of the application's own controls, described by its automation peer, or by the platform's accessibility API
+/// for a control the platform draws natively. IsChecked is null for a control that cannot be toggled or selected,
+/// and Value is null for a control that has no value.
 /// </summary>
 public record ControlInfo(
     string AutomationId,
@@ -49,11 +49,11 @@ public enum ControlAction
 public record ControlInvocation(ControlInfo Control, ControlAction Action);
 
 /// <summary>
-/// One element of a document's page. Selector is unique within the frame that holds the element, and Bounds is in
-/// the same coordinates as a control's. IsInView is true when the element's center lies inside every frame that
-/// holds it and inside the web view. Value is the text of a text field, a text area or a select element, and is
-/// null for any other element. IsChecked is null for an element with no on or off state. IsFocused is true while
-/// the element holds the keyboard.
+/// One element of a document's page. Selector is unique within the element's frame, and Bounds uses the same
+/// coordinates as ControlBounds. IsInView is true when the element's center lies inside every enclosing frame and
+/// inside the web view. Value is the text of a text field, a text area or a select element, and is null for any
+/// other element. IsChecked is null for an element with no on or off state. IsFocused is true when the element
+/// has keyboard focus.
 /// </summary>
 public record PageElementInfo(
     string Tag,
@@ -70,9 +70,9 @@ public record PageElementInfo(
     bool IsFocused);
 
 /// <summary>
-/// The elements of a document's page that a lookup found in one frame, with the frame's name and the number of
-/// matches before the results were capped. It carries the frame of the web view that shows the page, the page's
-/// device pixel ratio, and the size and rasterization scale of the main window's content.
+/// The elements a lookup found in one frame of a document's page. It also carries the frame's name, the match
+/// count before the results were capped, the bounds of the web view that shows the page, the page's device pixel
+/// ratio, and the size and rasterization scale of the main window's content.
 /// </summary>
 public record PageElementSnapshot(
     string Frame,
@@ -86,8 +86,8 @@ public record PageElementSnapshot(
 
 /// <summary>
 /// Reads and acts on the application's own controls the way assistive technology does, for test automation. It
-/// covers the main window, its open popups and the parts the platform draws natively, such as a menu bar. It
-/// answers while a modal dialog holds the command queue.
+/// covers the main window, its open popups and the controls the platform draws natively, such as a menu bar. It
+/// still works while a modal dialog blocks the command queue.
 /// </summary>
 public interface IAutomationService
 {
@@ -104,8 +104,8 @@ public interface IAutomationService
     Task<Result<ControlInvocation>> InvokeControlAsync(Func<ControlInfo, bool> match);
 
     /// <summary>
-    /// Finds the elements that the query matches in one frame of a document's page, each with its frame in the
-    /// window. Fails when the document has no page the tools can reach, or when its web view is not showing.
+    /// Finds the elements that the query matches in one frame of a document's page, each with its bounds in the
+    /// window. Fails when the document has no page the tools can reach, or when its web view is hidden.
     /// </summary>
     Task<Result<PageElementSnapshot>> FindPageElementsAsync(ResourceKey resource, QueryOptions options);
 }
