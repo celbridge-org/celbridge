@@ -61,6 +61,12 @@ public class ClientApiSurfaceTests
             "info",
             "warn"
         },
+        ["api/resources-api.js"] = new[]
+        {
+            "onChanged",
+            "subscribe",
+            "unsubscribe"
+        },
         ["api/tools-api.js"] = new[]
         {
             "call",

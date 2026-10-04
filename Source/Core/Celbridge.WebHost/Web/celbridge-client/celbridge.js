@@ -10,6 +10,7 @@ import { LocalizationAPI } from './api/localization-api.js';
 import { LogAPI } from './api/log-api.js';
 import { ViewAPI } from './api/view-api.js';
 import { ToolsAPI } from './api/tools-api.js';
+import { ResourcesAPI } from './api/resources-api.js';
 
 /**
  * @typedef {import('./types.js').InitializeResult} InitializeResult
@@ -74,6 +75,13 @@ export class Celbridge {
      * @type {LogAPI}
      */
     log;
+
+    /**
+     * Project resource change notifications: files created, changed, deleted or renamed, however the change
+     * was made. Subscribe with `client.resources.subscribe(patterns)`.
+     * @type {ResourcesAPI}
+     */
+    resources;
 
     /**
      * Host capability proxy (`cel.*`) and raw tool dispatch (`list`, `call`).
@@ -145,6 +153,7 @@ export class Celbridge {
         this.view = new ViewAPI(this.#viewState);
         this.localization = new LocalizationAPI(this.#transport);
         this.log = new LogAPI(this.#transport);
+        this.resources = new ResourcesAPI(this.#transport);
         this.#exposeCelGlobal = options.exposeCelGlobal !== false;
 
         // Release the active element when the host signals that focus moved to another panel. Wired

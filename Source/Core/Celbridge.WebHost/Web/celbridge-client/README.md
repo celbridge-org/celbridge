@@ -34,6 +34,7 @@ celbridge-client/
 │   ├── input-api.js      # Input events (keyboard, link clicks, scroll)
 │   ├── localization-api.js
 │   ├── log-api.js        # Host application log
+│   ├── resources-api.js  # Project file change notifications
 │   ├── tools-api.js      # Host capability proxy (cel.*)
 │   └── view-api.js       # Viewport trust: when a page may measure its own box
 ├── core/
