@@ -247,6 +247,7 @@ public class AgentResponseFilterTests
         _appStateProvider.State = new AppStateResult(
             Version: "9.9.9-fake",
             Configuration: "Debug",
+            HasTestAutomation: true,
             IsLoaded: true,
             ProjectName: "ProbeProject",
             Packages: new List<ProjectPackageSummary> { new ProjectPackageSummary("acme-widget", "2.1.0") },
@@ -637,6 +638,7 @@ public class AgentResponseFilterTests
         public AppStateResult State { get; set; } = new AppStateResult(
             Version: "1.0.0-test",
             Configuration: "Debug",
+            HasTestAutomation: true,
             IsLoaded: true,
             ProjectName: "TestProject",
             Packages: new List<ProjectPackageSummary>(),

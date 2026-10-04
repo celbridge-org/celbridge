@@ -85,6 +85,7 @@ public class UIToolTests
         ControlQueryMatcher.IsEmpty(new ControlQuery(string.Empty, "OK", string.Empty)).Should().BeFalse();
     }
 
+#if TEST_AUTOMATION
     [Test]
     public async Task FindControls_ReturnsOnlyTheControlsThatMatch()
     {
@@ -184,6 +185,30 @@ public class UIToolTests
         two.IsError.Should().BeTrue();
         await _automationService.DidNotReceiveWithAnyArgs().FindPageElementsAsync(default, default!);
     }
+#else
+    [Test]
+    public async Task EveryTool_WithoutTestAutomation_RefusesWithoutActing()
+    {
+        var tools = new UITools(_services);
+
+        var results = new List<CallToolResult>
+        {
+            await tools.FindControls(controlType: "Button"),
+            await tools.InvokeControl(automationId: "bottom-area-toggle-button"),
+            await tools.FindPageElements("docs/page.html", selector: "#run"),
+            await tools.PressKey("Escape"),
+            tools.AnswerDialog("Confirmation")
+        };
+
+        foreach (var result in results)
+        {
+            result.IsError.Should().BeTrue();
+            var message = result.Content.OfType<TextContentBlock>().Single().Text;
+            message.Should().Contain("is available only in builds with test automation");
+        }
+        _automationService.ReceivedCalls().Should().BeEmpty();
+    }
+#endif
 
     private static JsonElement ParseResult(CallToolResult result)
     {

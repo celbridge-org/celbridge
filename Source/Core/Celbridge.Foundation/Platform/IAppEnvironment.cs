@@ -1,9 +1,10 @@
 namespace Celbridge.Platform;
 
 /// <summary>
-/// A snapshot of the running application's version, platform, and build configuration.
+/// A snapshot of the running application's version, platform, and build configuration, and whether the build
+/// has the test automation tools.
 /// </summary>
-public record EnvironmentInfo(string AppVersion, string Platform, string Configuration);
+public record EnvironmentInfo(string AppVersion, string Platform, string Configuration, bool HasTestAutomation);
 
 /// <summary>
 /// Provides facts about the running application: a version, platform, and build-configuration snapshot,

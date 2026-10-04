@@ -4,7 +4,8 @@ Performs the default action of one of the application's own controls, the way as
 a test harness that needs a step done whose input route is not what the test is about, such as showing an area
 before the step under test.
 
-**Debug-only.** In a release build the tool refuses with "available in debug builds only".
+**Test automation builds only.** In a build without test automation, such as an ordinary Release build, the tool
+refuses with "available only in builds with test automation".
 
 It takes the same `automationId`, `name` and `controlType` as `ui_find_controls`, and acts on the first showing,
 enabled control that matches and has a default action. On macOS that includes the menu bar's items and the window's

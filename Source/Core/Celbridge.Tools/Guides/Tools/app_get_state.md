@@ -11,7 +11,8 @@ Early in a session, before any project-scoped work. An agent's first tool call i
 A JSON object with these fields:
 
 - `version` (string) — the running app's version, in the three-part `MAJOR.MINOR.PATCH` form.
-- `configuration` (string) — the build configuration, `Debug` or `Release`. The test automation tools in the `ui` namespace work only in a `Debug` build.
+- `configuration` (string) — the build configuration, `Debug` or `Release`.
+- `hasTestAutomation` (bool) — whether the build has the test automation tools in the `ui` namespace. Every `Debug` build has them, and a `Release` build has them only when built for testing.
 - `isLoaded` (bool) — whether a project is currently loaded.
 - `projectName` (string) — the project name, empty when no project is loaded.
 - `packages` (array) — each project package as the project loaded, with its `name` and `packageVersion`. Bundled packages are omitted, and the list is empty when no project is loaded. `app_list_packages` reports the same packages with their folders.

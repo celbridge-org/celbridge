@@ -3,9 +3,10 @@
 Posts a key-down and key-up for a named key into the application's own event queue, for a key that an external
 harness cannot deliver.
 
-**Debug-only.** The tool is declared in every build so its guide stays paired with a registered tool, but in a
-release build it refuses with "available in debug builds only". There is no feature flag: a release build cannot
-press the key at all, so there is nothing for a flag to gate.
+**Test automation builds only.** The tool is declared in every build so its guide stays paired with a registered
+tool, but in a build without test automation, such as an ordinary Release build, it refuses with "available only in
+builds with test automation". There is no feature flag: such a build cannot press the key at all, so there is
+nothing for a flag to gate.
 
 ## What it is for
 

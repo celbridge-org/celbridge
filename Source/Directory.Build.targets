@@ -38,6 +38,15 @@
   </PropertyGroup>
 
   <!--
+    TEST_AUTOMATION compiles in the tools that drive the application's own controls for automated tests. Every
+    Debug build defines it. A Release build defines it only when built with CelbridgeTestAutomation=true, so a
+    Release build made for testing has the tools and an ordinary Release build refuses them.
+  -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug' or '$(CelbridgeTestAutomation)' == 'true'">
+    <DefineConstants>$(DefineConstants);TEST_AUTOMATION</DefineConstants>
+  </PropertyGroup>
+
+  <!--
     On the packaged Windows head the Uno SDK marks every project's Assets content to be copied to the output,
     libraries included. The application then receives each library's assets as files of its own, and the MSIX
     carries them twice: under the library's folder, where the library layout puts them and where they are read

@@ -4,7 +4,7 @@ Schedules an automated answer for the next modal dialog of the named kind, so a 
 
 The dialog actually displays briefly before auto-closing. This is by design: an integration test exercises the real end-to-end UI flow, screenshots are useful, and the audit trail matches what a real user would have done.
 
-**Debug-only.** The tool is declared in every build so its guide stays paired with a registered tool, but in a release build it refuses with "available in debug builds only". There is no feature flag. `app_get_state` reports `configuration` as `Debug` when the tool can answer dialogs.
+**Test automation builds only.** The tool is declared in every build so its guide stays paired with a registered tool, but in a build without test automation, such as an ordinary Release build, it refuses with "available only in builds with test automation". There is no feature flag. `app_get_state` reports `hasTestAutomation` as `true` when the tool can answer dialogs.
 
 ## When to call it
 

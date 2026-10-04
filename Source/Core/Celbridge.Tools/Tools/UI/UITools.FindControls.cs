@@ -7,13 +7,13 @@ namespace Celbridge.Tools;
 
 public partial class UITools
 {
-    /// <summary>Find the app's own controls by automation ID, name or control type, with their frames and state (debug builds only).</summary>
+    /// <summary>Find the app's own controls by automation ID, name or control type, with their frames and state (test automation builds only).</summary>
     [McpServerTool(Name = "ui_find_controls", ReadOnly = true, Idempotent = true)]
     [ToolAlias("ui.find_controls")]
     [RelatedGuides]
     public async partial Task<CallToolResult> FindControls(string automationId = "", string name = "", string controlType = "")
     {
-#if DEBUG
+#if TEST_AUTOMATION
         var query = new ControlQuery(automationId, name, controlType);
         if (ControlQueryMatcher.IsEmpty(query))
         {
@@ -41,10 +41,9 @@ public partial class UITools
         var json = JsonSerializer.Serialize(result, JsonOptions);
         return ToolResponse.Success(json);
 #else
-        // Test automation is a debug-build facility. The tool stays declared so its guide stays paired
-        // with a registered tool, and refuses when called.
+        // The tool stays declared so its guide stays paired with a registered tool, and refuses when called.
         await Task.CompletedTask;
-        return ToolResponse.Error("ui_find_controls is available in debug builds only.");
+        return ToolResponse.TestAutomationUnavailable("ui_find_controls");
 #endif
     }
 }

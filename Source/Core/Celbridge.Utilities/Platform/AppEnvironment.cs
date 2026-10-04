@@ -39,7 +39,13 @@ public sealed class AppEnvironment : IAppEnvironment
         var configuration = "Release";
 #endif
 
-        return new EnvironmentInfo(appVersion, platform, configuration);
+#if TEST_AUTOMATION
+        var hasTestAutomation = true;
+#else
+        var hasTestAutomation = false;
+#endif
+
+        return new EnvironmentInfo(appVersion, platform, configuration, hasTestAutomation);
     }
 
     public string LocalApplicationDataFolderPath

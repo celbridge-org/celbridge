@@ -25,6 +25,7 @@ public record class ProjectPackageSummary(string Name, string PackageVersion);
 public record class AppStateResult(
     string Version,
     string Configuration,
+    bool HasTestAutomation,
     bool IsLoaded,
     string ProjectName,
     IReadOnlyList<ProjectPackageSummary> Packages,
@@ -151,6 +152,7 @@ internal sealed class AppStateProvider : IAppStateProvider
         return new AppStateResult(
             Version: environmentInfo.AppVersion,
             Configuration: environmentInfo.Configuration,
+            HasTestAutomation: environmentInfo.HasTestAutomation,
             IsLoaded: isLoaded,
             ProjectName: projectName,
             Packages: packages,

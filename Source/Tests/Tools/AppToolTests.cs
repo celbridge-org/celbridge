@@ -89,6 +89,21 @@ public class AppToolTests
     }
 
     [Test]
+    public void GetState_ReportsTestAutomationApartFromTheConfiguration()
+    {
+        WireAppStateDependencies(configuration: "Release", hasTestAutomation: true);
+        var projectService = Substitute.For<IProjectService>();
+        projectService.CurrentProject.Returns((IProject?)null);
+        _services.GetRequiredService<IProjectService>().Returns(projectService);
+
+        var tools = new AppTools(_services);
+        var root = ParseResult(tools.GetState());
+
+        root.GetProperty("configuration").GetString().Should().Be("Release");
+        root.GetProperty("hasTestAutomation").GetBoolean().Should().BeTrue();
+    }
+
+    [Test]
     public void GetState_DoesNotIncludeAgentDocs()
     {
         // The agentDocs pointer is intentionally absent because the orientation
@@ -393,13 +408,14 @@ public class AppToolTests
         bool inspectorVisible = false,
         bool consoleVisible = false,
         string appVersion = "0.0.0",
-        string configuration = "Debug")
+        string configuration = "Debug",
+        bool hasTestAutomation = true)
     {
         var featureFlags = Substitute.For<IFeatureFlags>();
         featureFlags.IsEnabled(Arg.Any<string>()).Returns(false);
 
         var environmentService = Substitute.For<IAppEnvironment>();
-        var environmentInfo = new EnvironmentInfo(appVersion, "Windows", configuration);
+        var environmentInfo = new EnvironmentInfo(appVersion, "Windows", configuration, hasTestAutomation);
         environmentService.GetEnvironmentInfo().Returns(environmentInfo);
 
         var focusService = Substitute.For<IFocusService>();

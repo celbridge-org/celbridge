@@ -171,6 +171,12 @@ public static class ToolResponse
             $"Unknown spotlight target: '{target}'. Valid landmarks: {validTargets}.",
             HelperTroubleshooters[nameof(SpotlightTargetNotFound)]);
 
+    /// <summary>
+    /// Standardised response for a test automation tool called in a build without test automation.
+    /// </summary>
+    public static CallToolResult TestAutomationUnavailable(string toolName) =>
+        Error($"{toolName} is available only in builds with test automation.");
+
     private static CallToolResult ErrorWithTroubleshooter(string message, string troubleshooterName)
     {
         var capped = CapErrorMessage(message);
