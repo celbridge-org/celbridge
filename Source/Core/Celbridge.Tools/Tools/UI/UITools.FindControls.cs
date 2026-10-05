@@ -14,7 +14,7 @@ public partial class UITools
     public async partial Task<CallToolResult> FindControls(string automationId = "", string name = "", string controlType = "")
     {
         var query = new ControlQuery(automationId, name, controlType);
-        if (ControlQueryMatcher.IsEmpty(query))
+        if (query.IsEmpty)
         {
             return ToolResponse.Error(EmptyQueryMessage);
         }
@@ -30,7 +30,7 @@ public partial class UITools
         var matching = new List<ControlInfo>();
         foreach (var control in snapshot.Controls)
         {
-            if (ControlQueryMatcher.Matches(query, control))
+            if (query.Matches(control))
             {
                 matching.Add(control);
             }

@@ -6,31 +6,24 @@ namespace Celbridge.Tools;
 /// The fields a control lookup matches on. Each non-empty field must exactly equal the control's value. An empty
 /// field matches any control.
 /// </summary>
-public record ControlQuery(string AutomationId, string Name, string ControlType);
-
-/// <summary>
-/// Decides whether a control lookup's query matches a control.
-/// </summary>
-public static class ControlQueryMatcher
+public record ControlQuery(string AutomationId, string Name, string ControlType)
 {
     /// <summary>
     /// True when every field is empty, so the query would match every control.
     /// </summary>
-    public static bool IsEmpty(ControlQuery query)
-    {
-        return string.IsNullOrEmpty(query.AutomationId) &&
-            string.IsNullOrEmpty(query.Name) &&
-            string.IsNullOrEmpty(query.ControlType);
-    }
+    public bool IsEmpty =>
+        string.IsNullOrEmpty(AutomationId) &&
+        string.IsNullOrEmpty(Name) &&
+        string.IsNullOrEmpty(ControlType);
 
     /// <summary>
     /// True when every non-empty field exactly equals the control's value.
     /// </summary>
-    public static bool Matches(ControlQuery query, ControlInfo control)
+    public bool Matches(ControlInfo control)
     {
-        return FieldMatches(query.AutomationId, control.AutomationId) &&
-            FieldMatches(query.Name, control.Name) &&
-            FieldMatches(query.ControlType, control.ControlType);
+        return FieldMatches(AutomationId, control.AutomationId) &&
+            FieldMatches(Name, control.Name) &&
+            FieldMatches(ControlType, control.ControlType);
     }
 
     private static bool FieldMatches(string wanted, string actual)

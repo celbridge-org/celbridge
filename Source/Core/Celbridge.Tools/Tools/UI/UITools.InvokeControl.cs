@@ -20,13 +20,13 @@ public partial class UITools
     public async partial Task<CallToolResult> InvokeControl(string automationId = "", string name = "", string controlType = "")
     {
         var query = new ControlQuery(automationId, name, controlType);
-        if (ControlQueryMatcher.IsEmpty(query))
+        if (query.IsEmpty)
         {
             return ToolResponse.Error(EmptyQueryMessage);
         }
 
         var automationService = GetRequiredService<IAutomationService>();
-        var invokeResult = await automationService.InvokeControlAsync(control => ControlQueryMatcher.Matches(query, control));
+        var invokeResult = await automationService.InvokeControlAsync(query.Matches);
         if (invokeResult.IsFailure)
         {
             return ToolResponse.Error(invokeResult);

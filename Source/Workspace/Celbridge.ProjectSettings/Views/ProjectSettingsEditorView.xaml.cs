@@ -211,7 +211,7 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
 
     public void SetAccessibleName(string name)
     {
-        // The settings are native controls with their own accessible names, so this view sets none.
+        AutomationProperties.SetName(this, name);
     }
 
     public async Task<Result> NavigateToLocation(string location)

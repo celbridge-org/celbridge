@@ -36,7 +36,7 @@ public interface IDocumentView : IWorkspaceItem
     void SetPresentedSize(double width, double height);
 
     /// <summary>
-    /// Sets the accessible name of the document's content to the name its tab shows.
+    /// Sets the name that assistive technology reports for the document's content.
     /// </summary>
     void SetAccessibleName(string name);
 

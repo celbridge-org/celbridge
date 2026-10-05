@@ -49,7 +49,7 @@ public class UIToolTests
     {
         var query = new ControlQuery("bottom-area-toggle-button", "Toggle Bottom Panel", "Button");
 
-        ControlQueryMatcher.Matches(query, ToggleButton).Should().BeTrue();
+        query.Matches(ToggleButton).Should().BeTrue();
     }
 
     [Test]
@@ -57,7 +57,7 @@ public class UIToolTests
     {
         var query = new ControlQuery(string.Empty, string.Empty, "Button");
 
-        ControlQueryMatcher.Matches(query, ToggleButton).Should().BeTrue();
+        query.Matches(ToggleButton).Should().BeTrue();
     }
 
     [Test]
@@ -65,7 +65,7 @@ public class UIToolTests
     {
         var query = new ControlQuery("bottom-area-toggle-button", string.Empty, "MenuItem");
 
-        ControlQueryMatcher.Matches(query, ToggleButton).Should().BeFalse();
+        query.Matches(ToggleButton).Should().BeFalse();
     }
 
     [Test]
@@ -74,15 +74,15 @@ public class UIToolTests
         var differentCase = new ControlQuery(string.Empty, "toggle bottom panel", string.Empty);
         var prefix = new ControlQuery("bottom-area", string.Empty, string.Empty);
 
-        ControlQueryMatcher.Matches(differentCase, ToggleButton).Should().BeFalse();
-        ControlQueryMatcher.Matches(prefix, ToggleButton).Should().BeFalse();
+        differentCase.Matches(ToggleButton).Should().BeFalse();
+        prefix.Matches(ToggleButton).Should().BeFalse();
     }
 
     [Test]
     public void IsEmpty_NoFieldNamed_IsEmpty()
     {
-        ControlQueryMatcher.IsEmpty(new ControlQuery(string.Empty, string.Empty, string.Empty)).Should().BeTrue();
-        ControlQueryMatcher.IsEmpty(new ControlQuery(string.Empty, "OK", string.Empty)).Should().BeFalse();
+        new ControlQuery(string.Empty, string.Empty, string.Empty).IsEmpty.Should().BeTrue();
+        new ControlQuery(string.Empty, "OK", string.Empty).IsEmpty.Should().BeFalse();
     }
 
     [Test]

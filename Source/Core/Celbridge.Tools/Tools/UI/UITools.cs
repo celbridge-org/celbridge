@@ -9,8 +9,7 @@ namespace Celbridge.Tools;
 public partial class UITools : AgentToolBase
 {
     // The error a control lookup returns when every field of its query is empty.
-    private const string EmptyQueryMessage =
-        "Name at least one of the automation ID, the name and the control type to match.";
+    private const string EmptyQueryMessage = "At least one of automationId, name or controlType is required.";
 
     public UITools(IApplicationServiceProvider services) : base(services) { }
 }

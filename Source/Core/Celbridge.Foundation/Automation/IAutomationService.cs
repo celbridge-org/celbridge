@@ -9,9 +9,8 @@ namespace Celbridge.Automation;
 public record ControlBounds(double X, double Y, double Width, double Height);
 
 /// <summary>
-/// One of the application's own controls, described by its automation peer, or by the platform's accessibility API
-/// for a control the platform draws natively. IsChecked is null for a control that cannot be toggled or selected,
-/// and Value is null for a control that has no value.
+/// One of the application's own controls, whether the application or the platform draws it. IsChecked is null for
+/// a control that cannot be toggled or selected, and Value is null for a control that has no value.
 /// </summary>
 public record ControlInfo(
     string AutomationId,
@@ -85,9 +84,8 @@ public record PageElementSnapshot(
     double RasterizationScale);
 
 /// <summary>
-/// Reads and acts on the application's own controls the way assistive technology does, for test automation. It
-/// covers the main window, its open popups and the controls the platform draws natively, such as a menu bar. It
-/// still works while a modal dialog blocks the command queue.
+/// Finds and invokes the application's own controls, and finds the elements of a document's page, for test
+/// automation. Every call returns while a modal dialog is open.
 /// </summary>
 public interface IAutomationService
 {
