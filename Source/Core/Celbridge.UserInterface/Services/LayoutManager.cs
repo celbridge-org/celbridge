@@ -18,6 +18,7 @@ public class LayoutManager : IWindowModeService, ILayoutService
 
     private LayoutMode _layoutMode = LayoutMode.Default;
     private bool _isFullScreen;
+    private bool _isMaximized;
     private BottomAreaAlignment _bottomAreaAlignment = WorkspaceConstants.BottomAreaAlignment;
 
     // The areas the Default layout shows while the project has no saved choice, worked out from the tabs open
@@ -41,6 +42,13 @@ public class LayoutManager : IWindowModeService, ILayoutService
 
         // Listen for when the user exits fullscreen by dragging the window (Windows built-in behavior)
         _messengerService.Register<ExitedFullscreenViaDragMessage>(this, OnExitedFullscreenViaDrag);
+
+        _messengerService.Register<WindowMaximizedChangedMessage>(this, OnWindowMaximizedChanged);
+    }
+
+    private void OnWindowMaximizedChanged(object recipient, WindowMaximizedChangedMessage message)
+    {
+        _isMaximized = message.IsMaximized;
     }
 
     // The typed workspace settings facade, or null when no workspace is loaded.
@@ -109,6 +117,8 @@ public class LayoutManager : IWindowModeService, ILayoutService
     public LayoutMode LayoutMode => _layoutMode;
 
     public bool IsFullScreen => _isFullScreen;
+
+    public bool IsMaximized => _isMaximized;
 
     public Result RequestLayoutTransition(LayoutTransition transition)
     {

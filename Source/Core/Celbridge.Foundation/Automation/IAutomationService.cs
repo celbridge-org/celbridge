@@ -11,6 +11,7 @@ public record ControlBounds(double X, double Y, double Width, double Height);
 /// <summary>
 /// One of the application's own controls, whether the application or the platform draws it. IsChecked is null for
 /// a control that cannot be toggled or selected, and Value is null for a control that has no value.
+/// HasKeyboardFocus is true for the one control that holds the keyboard.
 /// </summary>
 public record ControlInfo(
     string AutomationId,
@@ -20,7 +21,8 @@ public record ControlInfo(
     ControlBounds Bounds,
     bool IsEnabled,
     bool? IsChecked,
-    string? Value);
+    string? Value,
+    bool HasKeyboardFocus = false);
 
 /// <summary>
 /// The application's showing controls, with the size and rasterization scale of the main window's content.

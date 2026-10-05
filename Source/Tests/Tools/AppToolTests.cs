@@ -161,6 +161,24 @@ public class AppToolTests
     }
 
     [Test]
+    public void GetState_WithTheWindowMaximized_ReportsItMaximized()
+    {
+        WireAppStateDependencies();
+        var projectService = Substitute.For<IProjectService>();
+        projectService.CurrentProject.Returns((IProject?)null);
+        _services.GetRequiredService<IProjectService>().Returns(projectService);
+
+        _services.GetRequiredService<IWindowModeService>().IsMaximized.Returns(true);
+
+        var tools = new AppTools(_services);
+        var root = ParseResult(tools.GetState());
+
+        var layoutMode = root.GetProperty("layoutMode");
+        layoutMode.GetProperty("isMaximized").GetBoolean().Should().BeTrue();
+        layoutMode.GetProperty("isFullScreen").GetBoolean().Should().BeFalse();
+    }
+
+    [Test]
     public void GetState_IncludesFeatureFlagsForEveryKnownFlag()
     {
         var featureFlags = WireAppStateDependencies();

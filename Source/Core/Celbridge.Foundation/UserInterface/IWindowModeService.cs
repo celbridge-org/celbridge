@@ -18,6 +18,11 @@ public interface IWindowModeService
     bool IsFullScreen { get; }
 
     /// <summary>
+    /// Whether the window is maximized, as its presenter last reported rather than as the settings remember it.
+    /// </summary>
+    bool IsMaximized { get; }
+
+    /// <summary>
     /// Requests a layout transition (a layout-mode change or the fullscreen toggle).
     /// </summary>
     Result RequestLayoutTransition(LayoutTransition transition);

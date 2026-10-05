@@ -38,6 +38,11 @@ public record LayoutModeChangedMessage(LayoutMode LayoutMode);
 public record FullScreenChangedMessage(bool IsFullScreen);
 
 /// <summary>
+/// Message sent when the window's presenter changes between maximized and not maximized.
+/// </summary>
+public record WindowMaximizedChangedMessage(bool IsMaximized);
+
+/// <summary>
 /// Message sent to request the window state (maximized/restored) to be synchronized
 /// with the current editor settings.
 /// </summary>
