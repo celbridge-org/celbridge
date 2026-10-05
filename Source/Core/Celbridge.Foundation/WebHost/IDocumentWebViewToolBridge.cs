@@ -245,6 +245,14 @@ public interface IDocumentWebViewToolBridge
     Task<Result<string>> QueryAsync(ResourceKey resource, QueryOptions options);
 
     /// <summary>
+    /// Locates elements by ARIA role + accessible name, visible text, or CSS selector. Each element carries
+    /// its rectangle in the page's viewport in CSS pixels, whether its center is in view, its text and value,
+    /// and whether it is checked, disabled or focused. The result also carries the page's devicePixelRatio.
+    /// Waits for the editor's content-ready signal (with timeout) before dispatching.
+    /// </summary>
+    Task<Result<string>> LocateAsync(ResourceKey resource, QueryOptions options);
+
+    /// <summary>
     /// Returns metadata for the element matched by the selector: tag, attributes,
     /// curated computed styles, accessible role and name, bounding rectangle, visibility,
     /// and a child preview. Waits for the editor's content-ready signal (with timeout)

@@ -1,4 +1,4 @@
-namespace Celbridge.UserInterface;
+namespace Celbridge.Automation;
 
 /// <summary>
 /// Delivers synthetic input into the application's own event queue, for input an external test harness

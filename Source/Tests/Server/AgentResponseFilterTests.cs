@@ -143,7 +143,7 @@ public class AgentResponseFilterTests
         var session = new AgentSessionState("session-1");
 
         var duringDialog = await _filter.ApplyAutoAttachAsync(
-            BuildSuccess("simulate input result"), session, "app_simulate_input");
+            BuildSuccess("press key result"), session, "ui_press_key");
 
         duringDialog.AttachedNames.Should().NotContain(AgentResponseFilter.AppStateBlockName);
         duringDialog.AttachedNames.Should().NotContain(AgentResponseFilter.DocumentStateBlockName);
@@ -152,7 +152,7 @@ public class AgentResponseFilterTests
         _dialogService.IsDialogOpen = false;
 
         var afterDialog = await _filter.ApplyAutoAttachAsync(
-            BuildSuccess("later result"), session, "app_simulate_input");
+            BuildSuccess("later result"), session, "ui_press_key");
 
         afterDialog.AttachedNames.Should().Contain(AgentResponseFilter.AppStateBlockName);
         afterDialog.AttachedNames.Should().Contain(AgentResponseFilter.DocumentStateBlockName);
@@ -254,7 +254,7 @@ public class AgentResponseFilterTests
             FeatureFlags: new Dictionary<string, bool>(),
             FocusedPanel: "Documents",
             ActiveUtility: "",
-            LayoutMode: new LayoutModeInfo(new Dictionary<string, bool>
+            LayoutMode: new LayoutModeInfo("Default", false, new Dictionary<string, bool>
             {
                 ["utility"] = true,
                 ["main"] = true,
@@ -644,7 +644,7 @@ public class AgentResponseFilterTests
             FeatureFlags: new Dictionary<string, bool>(),
             FocusedPanel: "None",
             ActiveUtility: "",
-            LayoutMode: new LayoutModeInfo(new Dictionary<string, bool>
+            LayoutMode: new LayoutModeInfo("Default", false, new Dictionary<string, bool>
             {
                 ["utility"] = true,
                 ["main"] = true,

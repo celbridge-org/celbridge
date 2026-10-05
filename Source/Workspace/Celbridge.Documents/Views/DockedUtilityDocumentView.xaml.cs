@@ -53,6 +53,11 @@ public sealed partial class DockedUtilityDocumentView : DocumentView
 
     public override IEditTarget EditTarget => _controller;
 
+    public override void SetAccessibleName(string name)
+    {
+        _controller.SetAccessibleName(name);
+    }
+
     // The Utility Panel owns the controller and its view model, and keeps using both after this tab closes.
     protected override bool ClearsEditTargetOnClose => false;
 

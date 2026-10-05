@@ -330,6 +330,7 @@ public partial class App : Application
     public static void ConfigureServices(IServiceCollection services)
     {
         Server.ServiceConfiguration.ConfigureServices(services);
+        Automation.ServiceConfiguration.ConfigureServices(services);
         Commands.ServiceConfiguration.ConfigureServices(services);
         FileSystem.ServiceConfiguration.ConfigureServices(services);
         Logging.ServiceConfiguration.ConfigureServices(services);

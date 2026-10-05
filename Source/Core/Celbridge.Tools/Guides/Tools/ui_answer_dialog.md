@@ -1,16 +1,16 @@
-# app_answer_dialog
+# ui_answer_dialog
 
 Schedules an automated answer for the next modal dialog of the named kind, so a script can drive a flow that would otherwise block on user interaction. When a dialog of that kind is displayed, the timer begins; after the delay the answer is broadcast and the dialog closes itself with an affirmative response (OK, Confirm, Create, Delete, Rename — whichever the dialog's affirmative action is).
 
 The dialog actually displays briefly before auto-closing. This is by design: an integration test exercises the real end-to-end UI flow, screenshots are useful, and the audit trail matches what a real user would have done.
 
-**Debug-only.** The tool is declared in every build so its guide stays paired with a registered tool, but in a release build it refuses with "available in debug builds only". There is no feature flag. `app_get_state` reports `configuration` as `Debug` when the tool can answer dialogs.
+**Debug builds only.** A Release build has neither this tool nor its guide.
 
 ## When to call it
 
 Right before triggering the call that opens the modal dialog. Order matters:
 
-1. Call `app_answer_dialog(dialogKind, payload?, delayMs?)` to schedule the answer.
+1. Call `ui_answer_dialog(dialogKind, payload?, delayMs?)` to schedule the answer.
 2. Call the tool that triggers the dialog (e.g. `explorer_rename`, `explorer_delete`).
 
 The delay timer starts when the matching dialog is displayed, not when this call returns — so it's fine for agent timing to vary between the schedule and the dialog appearing.
@@ -39,38 +39,38 @@ The schedule itself is fire-and-forget: the tool returns immediately after recor
 
 ## Examples
 
-### Python (`cel.app.answer_dialog`)
+### Python (`cel.ui.answer_dialog`)
 
 ```python
 # Confirm the next workshop_unpublish_package prompt.
-cel.app.answer_dialog("Confirmation")
+cel.ui.answer_dialog("Confirmation")
 cel.workshop.unpublish_package("test-integration-pkg")
 
 # Provide rename text for the next explorer_rename.
-cel.app.answer_dialog("InputText", "Renamed.txt")
+cel.ui.answer_dialog("InputText", "Renamed.txt")
 cel.explorer.rename("/Folder/Old.txt")
 
 # Close the next alert (e.g. one raised by a failed operation).
-cel.app.answer_dialog("Alert")
+cel.ui.answer_dialog("Alert")
 do_something_that_triggers_alert()
 
 # Pick a specific resource in the next resource-picker dialog.
-cel.app.answer_dialog("ResourcePicker", "Folder/picked.txt")
+cel.ui.answer_dialog("ResourcePicker", "Folder/picked.txt")
 trigger_resource_pick()
 
 # Give a slow-loading dialog more headroom.
-cel.app.answer_dialog("Confirmation", delayMs=500)
+cel.ui.answer_dialog("Confirmation", delayMs=500)
 cel.workshop.delete_package("heavy-package", "3")
 ```
 
 ### JavaScript
 
 ```javascript
-await app.answerDialog("Alert");                              // close info alert
-await app.answerDialog("Confirmation");                       // confirm
-await app.answerDialog("InputText", "Renamed.txt");           // rename
-await app.answerDialog("ResourcePicker", "docs/photo.png");   // pick a file
-await app.answerDialog("Confirmation", "", 500);              // longer delay
+await ui.answerDialog("Alert");                              // close info alert
+await ui.answerDialog("Confirmation");                       // confirm
+await ui.answerDialog("InputText", "Renamed.txt");           // rename
+await ui.answerDialog("ResourcePicker", "docs/photo.png");   // pick a file
+await ui.answerDialog("Confirmation", "", 500);              // longer delay
 ```
 
 ## Gotchas

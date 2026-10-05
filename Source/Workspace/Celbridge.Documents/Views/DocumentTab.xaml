@@ -8,6 +8,7 @@
     xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
     xmlns:services="using:Celbridge.UserInterface.Services"
     DataContext="{x:Bind ViewModel}"
+    AutomationProperties.Name="{x:Bind ViewModel.DocumentName, Mode=OneWay}"
     VerticalContentAlignment="Stretch"
     DoubleTapped="DocumentTab_DoubleTapped"
     Tapped="DocumentTab_Tapped"

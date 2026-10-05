@@ -23,6 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Core\Celbridge.Automation\Celbridge.Automation.csproj" />
     <ProjectReference Include="..\Core\Celbridge.Server\Celbridge.Server.csproj" />
     <ProjectReference Include="..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
     <ProjectReference Include="..\Core\Celbridge.FileSystem\Celbridge.FileSystem.csproj" />
@@ -48,6 +49,11 @@
     <ProjectReference Include="..\Core\Celbridge.Tools\Celbridge.Tools.csproj" />
     <ProjectReference Include="..\Workspace\Celbridge.Workspace\Celbridge.Workspace.csproj" />
     <ProjectReference Include="..\Workspace\Celbridge.WorkspaceUI\Celbridge.WorkspaceUI.csproj" />
+  </ItemGroup>
+
+  <!-- A Release build of Celbridge.Tools has no ui tools, so their tests only build in Debug. -->
+  <ItemGroup Condition="'$(Configuration)' != 'Debug'">
+    <Compile Remove="Tools\UIToolTests.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,3 +1,4 @@
+using Celbridge.Automation;
 using Celbridge.Dialog;
 using Celbridge.Downloads;
 using Celbridge.Localization;

@@ -36,6 +36,11 @@ public interface IDocumentView : IWorkspaceItem
     void SetPresentedSize(double width, double height);
 
     /// <summary>
+    /// Sets the name that assistive technology reports for the document's content.
+    /// </summary>
+    void SetAccessibleName(string name);
+
+    /// <summary>
     /// Navigate to a specific location within the document.
     /// </summary>
     Task<Result> NavigateToLocation(string location);

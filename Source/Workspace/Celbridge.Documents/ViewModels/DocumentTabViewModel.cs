@@ -155,6 +155,7 @@ public partial class DocumentTabViewModel : ObservableObject
     partial void OnDocumentNameChanged(string? oldValue, string newValue)
     {
         OnPropertyChanged(nameof(TabTooltip));
+        DocumentView?.SetAccessibleName(newValue);
     }
 
     partial void OnEditorDisplayNameChanged(string? oldValue, string newValue)
@@ -169,7 +170,20 @@ public partial class DocumentTabViewModel : ObservableObject
         RefreshSaveState();
     }
 
-    public IDocumentView? DocumentView { get; set; }
+    private IDocumentView? _documentView;
+
+    /// <summary>
+    /// The tab's document view. Setting it gives the view the tab's name as its accessible name.
+    /// </summary>
+    public IDocumentView? DocumentView
+    {
+        get => _documentView;
+        set
+        {
+            _documentView = value;
+            _documentView?.SetAccessibleName(DocumentName);
+        }
+    }
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private ResourceKeyChangedMessage? _pendingResourceKeyChangedMessage;

@@ -490,6 +490,80 @@ describe('webview-tools-shim frame handlers', () => {
     });
 });
 
+describe('webview-tools-shim locate handler', () => {
+    it('places an element in the page with its state and the page pixel ratio', () => {
+        const html = '<!doctype html><html><body><input id="name" value="Ada"><input id="agree" type="checkbox" checked>'
+            + '<button id="off" disabled>Off</button><div id="pressed" role="button" aria-pressed="false">Bold</div></body></html>';
+        const { context, dom } = runShimInDom(html);
+        const bridge = context[BRIDGE_KEY];
+        const document = dom.window.document;
+        placeElement(document.getElementById('name'), { left: 10, top: 20, width: 200, height: 24 });
+
+        const name = invoke(bridge, 'locate', { selector: '#name' }).value;
+        const agree = invoke(bridge, 'locate', { selector: '#agree' }).value.elements[0];
+        const off = invoke(bridge, 'locate', { selector: '#off' }).value.elements[0];
+        const pressed = invoke(bridge, 'locate', { role: 'button', name: 'Bold' }).value.elements[0];
+
+        expect(name.frame).toBe('top');
+        expect(name.devicePixelRatio).toBe(dom.window.devicePixelRatio);
+        expect(name.elements[0]).toMatchObject({
+            tag: 'input',
+            selector: '#name',
+            rect: { x: 10, y: 20, width: 200, height: 24 },
+            inView: true,
+            value: 'Ada',
+            checked: null,
+            disabled: false
+        });
+        expect(agree).toMatchObject({ value: null, checked: true });
+        expect(off).toMatchObject({ disabled: true, text: 'Off' });
+        expect(pressed.checked).toBe(false);
+    });
+
+    it('reports whether an element holds the keyboard', () => {
+        const { context, dom } = runShimInDom('<!doctype html><html><body><input id="first"><input id="second"></body></html>');
+        const bridge = context[BRIDGE_KEY];
+        dom.window.document.getElementById('second').focus();
+
+        expect(invoke(bridge, 'locate', { selector: '#first' }).value.elements[0].focused).toBe(false);
+        expect(invoke(bridge, 'locate', { selector: '#second' }).value.elements[0].focused).toBe(true);
+    });
+
+    it('offsets an element in a frame by the frame viewport, border included', () => {
+        const { bridge, frame } = runShimWithFrame({ frameContent: '<p id="inside">In view</p><p id="below">Away</p>' });
+        placeFrame(frame, { left: 100, top: 40, width: 600, height: 400 });
+        Object.defineProperty(frame, 'clientLeft', { value: 2 });
+        Object.defineProperty(frame, 'clientTop', { value: 3 });
+        const frameDocument = frame.contentDocument;
+        placeElement(frameDocument.getElementById('inside'), { left: 10, top: 20, width: 50, height: 30 });
+        placeElement(frameDocument.getElementById('below'), { left: 10, top: 900, width: 50, height: 40 });
+
+        const inside = invoke(bridge, 'locate', { selector: '#inside' }).value;
+        const below = invoke(bridge, 'locate', { selector: '#below' }).value.elements[0];
+
+        expect(inside.frame).toBe('#preview');
+        expect(inside.elements[0]).toMatchObject({ rect: { x: 112, y: 63, width: 50, height: 30 }, inView: true });
+        expect(below).toMatchObject({ rect: { x: 112, y: 943, width: 50, height: 40 }, inView: false });
+    });
+
+    it('counts an element in a frame outside the page viewport as out of view', () => {
+        const { bridge, frame, dom } = runShimWithFrame({ frameContent: '<p id="inside">In view</p>' });
+        placeFrame(frame, { left: dom.window.innerWidth + 10, top: 40, width: 600, height: 400 });
+        placeElement(frame.contentDocument.getElementById('inside'), { left: 10, top: 20, width: 50, height: 30 });
+
+        expect(invoke(bridge, 'locate', { selector: '#inside' }).value.elements[0].inView).toBe(false);
+    });
+
+    it('rejects ambiguous mode arguments', () => {
+        const { context } = runShimInDom('<!doctype html><html><body></body></html>');
+
+        const result = invoke(context[BRIDGE_KEY], 'locate', { text: 'Save', selector: 'button' });
+
+        expect(result.ok).toBe(false);
+        expect(result.error).toContain("locate requires exactly one");
+    });
+});
+
 describe('webview-tools-shim frame buffers', () => {
     it('drains the console of the page and of the shims in its frames, naming the frame of each entry', () => {
         const { bridge, context, frame } = runShimWithFrame();

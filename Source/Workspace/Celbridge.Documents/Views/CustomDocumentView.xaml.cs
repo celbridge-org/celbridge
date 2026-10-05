@@ -66,6 +66,11 @@ public sealed partial class CustomDocumentView : DocumentView
         _controller.SetPresentedSize(width, height);
     }
 
+    public override void SetAccessibleName(string name)
+    {
+        _controller.SetAccessibleName(name);
+    }
+
     public override async Task<Result> SetFileResource(ResourceKey fileResource)
     {
         var previousResource = FileResource;

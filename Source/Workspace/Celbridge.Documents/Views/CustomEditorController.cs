@@ -138,6 +138,9 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     // The WebView2 control, acquired from the factory.
     private WebView2? WebView { get; set; }
 
+    // The WebView's accessible name, stored until the WebView is acquired.
+    private string _accessibleName = string.Empty;
+
     private WebViewLoadDiagnostics? _diagnostics;
 
     // Routes the page's downloads through the download service, so a file a package editor offers lands
@@ -239,17 +242,35 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     }
 
     /// <summary>
-    /// Moves the WebView tool bridge registration onto the view model's current file resource. Called after a
-    /// rename, which reuses this controller and its WebView rather than building a new one.
+    /// Sets the WebView's accessible name, now or once the WebView is acquired.
+    /// </summary>
+    public void SetAccessibleName(string name)
+    {
+        _accessibleName = name;
+        if (WebView is not null)
+        {
+            AutomationProperties.SetName(WebView, name);
+        }
+    }
+
+    /// <summary>
+    /// Moves the WebView tool bridge registration and the WebView's automation ID onto the view model's current
+    /// file resource. Called after a rename, which reuses this controller and its WebView rather than building a
+    /// new one.
     /// </summary>
     public void RekeyToolBridgeRegistration()
     {
+        var newResource = _viewModel.FileResource;
+
+        if (WebView is not null)
+        {
+            AutomationProperties.SetAutomationId(WebView, newResource.ToString());
+        }
+
         if (_toolBridge is null)
         {
             return;
         }
-
-        var newResource = _viewModel.FileResource;
 
         _toolBridge.Rekey(_toolBridgeRegisteredResource, newResource);
         _toolBridgeRegisteredResource = newResource;
@@ -399,6 +420,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         try
         {
             WebView = await _webViewFactory.AcquireAsync();
+            AutomationProperties.SetName(WebView, _accessibleName);
+            AutomationProperties.SetAutomationId(WebView, _viewModel.FileResource.ToString());
             _webViewContainer.Children.Add(WebView);
 
             // Attach and detach are what a dock or tab switch does to the surface, so both are logged with
@@ -1505,10 +1528,29 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
                 return;
             }
 
-            _commandService.Execute<ICopyTextToClipboardCommand>(command => command.Text = selectedText);
+            // Run the copy now instead of queuing it, so a cut doesn't wait behind other commands.
+            var copyResult = await _commandService.ExecuteImmediate<ICopyTextToClipboardCommand>(command =>
+            {
+                command.Text = selectedText;
+            });
+            if (copyResult.IsFailure)
+            {
+                // Keep the selection, so a failed cut loses nothing.
+                _logger.LogError(copyResult, "Failed to copy the editor selection to the clipboard");
+                return;
+            }
 
             if (deleteSelection)
             {
+                // The copy can wait for a busy clipboard, and the selection can change meanwhile. Delete the
+                // selection only if it still holds the copied text.
+                var currentText = await host.Rpc.InvokeAsync<string?>(EditorRpcMethods.GetSelectedText);
+                if (currentText != selectedText)
+                {
+                    _logger.LogWarning("The selection changed while the cut waited for the clipboard, so the cut kept it");
+                    return;
+                }
+
                 await host.Rpc.NotifyWithParameterObjectAsync(EditorRpcMethods.InsertText, new { text = string.Empty });
             }
         }

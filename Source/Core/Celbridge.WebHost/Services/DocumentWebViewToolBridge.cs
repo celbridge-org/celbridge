@@ -294,6 +294,21 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
 
     public async Task<Result<string>> QueryAsync(ResourceKey resource, QueryOptions options)
     {
+        var args = BuildQueryArgs(options);
+
+        return await InvokeShimHandlerAsync(resource, "query", args);
+    }
+
+    public async Task<Result<string>> LocateAsync(ResourceKey resource, QueryOptions options)
+    {
+        var args = BuildQueryArgs(options);
+
+        return await InvokeShimHandlerAsync(resource, "locate", args);
+    }
+
+    // Builds the arguments for the shim's query handlers. Only the query mode's fields are set, and the rest are null.
+    private static object BuildQueryArgs(QueryOptions options)
+    {
         string? role = null;
         string? name = null;
         string? text = null;
@@ -323,7 +338,7 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
             maxResults = options.MaxResults
         };
 
-        return await InvokeShimHandlerAsync(resource, "query", args);
+        return args;
     }
 
     public async Task<Result<string>> InspectAsync(ResourceKey resource, InspectOptions options)

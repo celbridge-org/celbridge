@@ -8,6 +8,7 @@ using Celbridge.Resources;
 using Celbridge.Server;
 using Celbridge.Settings;
 using Celbridge.Tools;
+using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using ModelContextProtocol.Protocol;
 
@@ -137,6 +138,7 @@ public class AppToolTests
         _services.GetRequiredService<IProjectService>().Returns(projectService);
 
         // Focus shows the Bottom area on its own, with Main off screen.
+        _services.GetRequiredService<IWindowModeService>().LayoutMode.Returns(LayoutMode.Focus);
         var layoutService = _services.GetRequiredService<ILayoutService>();
         var presentedAreas = new HashSet<WorkspaceArea>
         {
@@ -147,7 +149,11 @@ public class AppToolTests
         var tools = new AppTools(_services);
         var root = ParseResult(tools.GetState());
 
-        var areaVisibility = root.GetProperty("layoutMode").GetProperty("areaVisibility");
+        var layoutMode = root.GetProperty("layoutMode");
+        layoutMode.GetProperty("mode").GetString().Should().Be("Focus");
+        layoutMode.GetProperty("isFullScreen").GetBoolean().Should().BeFalse();
+
+        var areaVisibility = layoutMode.GetProperty("areaVisibility");
         areaVisibility.GetProperty("utility").GetBoolean().Should().BeFalse();
         areaVisibility.GetProperty("main").GetBoolean().Should().BeFalse();
         areaVisibility.GetProperty("side").GetBoolean().Should().BeFalse();
@@ -425,6 +431,10 @@ public class AppToolTests
         _services.GetRequiredService<IFocusService>().Returns(focusService);
         _services.GetRequiredService<ILayoutService>().Returns(layoutService);
 
+        var windowModeService = Substitute.For<IWindowModeService>();
+        windowModeService.LayoutMode.Returns(LayoutMode.Default);
+        _services.GetRequiredService<IWindowModeService>().Returns(windowModeService);
+
         // No workspace is loaded until a test wires one, so the package summary starts empty.
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.IsWorkspaceLoaded.Returns(false);
@@ -447,6 +457,7 @@ public class AppToolTests
                 featureFlags,
                 focusService,
                 layoutService,
+                _services.GetRequiredService<IWindowModeService>(),
                 spotlightRegistry,
                 Substitute.For<IMessengerService>()));
 

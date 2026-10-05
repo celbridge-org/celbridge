@@ -118,6 +118,7 @@ public sealed partial class CustomUtilityView : UserControl, IWorkspaceItem
         ApplyDockArea(resolvedEditor.Contribution.UtilityDescriptor);
 
         PanelHeaderControl.Title = displayName;
+        _controller.SetAccessibleName(displayName);
 
         var registry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         var resolveResult = registry.ResolveResourcePath(resource);
