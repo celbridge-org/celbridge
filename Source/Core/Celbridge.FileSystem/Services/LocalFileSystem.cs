@@ -1,3 +1,4 @@
+using System.Runtime.ExceptionServices;
 using System.Text;
 
 namespace Celbridge.FileSystem.Services;
@@ -353,13 +354,26 @@ public sealed class LocalFileSystem : ILocalFileSystem
     // Deletes, moves and copies have no asynchronous form in System.IO, so they run on a worker thread
     // rather than on the caller's. The command queue calls them from the UI thread, where one that waits
     // on a file antivirus is still scanning would freeze the application until the scan ends.
-    private static Task<bool> RunOnWorkerThreadAsync(Action operation)
+    // The worker returns the operation's exception, and this method rethrows it. An exception escaping the
+    // worker stops the debugger as user-unhandled, even though the caller catches it.
+    private static async Task<bool> RunOnWorkerThreadAsync(Action operation)
     {
-        return Task.Run(() =>
+        var failure = await Task.Run<ExceptionDispatchInfo?>(() =>
         {
-            operation();
-            return true;
-        });
+            try
+            {
+                operation();
+                return null;
+            }
+            catch (Exception ex)
+            {
+                return ExceptionDispatchInfo.Capture(ex);
+            }
+        }).ConfigureAwait(false);
+
+        failure?.Throw();
+
+        return true;
     }
 
     // Reads short-circuit FileNotFoundException and DirectoryNotFoundException
