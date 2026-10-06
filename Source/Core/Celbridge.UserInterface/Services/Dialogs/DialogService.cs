@@ -34,6 +34,13 @@ public class DialogService : IDialogService
     // Completes once the open dialog has closed and the keyboard has been returned.
     private Task _dialogClosed = Task.CompletedTask;
 
+    // The requests waiting for the open dialog to close, each to open a dialog of its own.
+    private int _requestsWaiting;
+
+    // How long a request waits for a closing dialog. Closing takes about 200 ms, so a dialog still open after
+    // this has stopped closing, and the request is refused.
+    internal TimeSpan ClosingWaitLimit { get; set; } = TimeSpan.FromSeconds(5);
+
     public DialogService(
         ILogger<DialogService> logger,
         IDialogFactory dialogFactory,
@@ -195,7 +202,9 @@ public class DialogService : IDialogService
 
             _messengerService.Send(new ModalDialogClosedMessage());
 
-            SetProgressDialogSuppressed(false);
+            // A request waiting for this dialog opens its own next, so the progress dialog stays hidden rather
+            // than showing in between. Two dialogs showing at once would throw.
+            SetProgressDialogSuppressed(_requestsWaiting > 0);
 
             ReturnKeyboard(focusedPanel, notedFocus);
 
@@ -223,7 +232,7 @@ public class DialogService : IDialogService
     // When a dialog starts to close, WinUI gives the keyboard back to the control that opened it, about 200 ms
     // before the dialog has closed. A key pressed on that control in that time asks for a dialog while this
     // one is still open, so the request waits for it to close. A request while a dialog is open and not
-    // closing is refused.
+    // closing is refused. A caller that gets true opens its dialog straight away.
     private async Task<bool> WaitForClosingDialogAsync()
     {
         if (!_isDialogOpen)
@@ -236,9 +245,17 @@ public class DialogService : IDialogService
             return false;
         }
 
-        await _dialogClosed;
+        _requestsWaiting++;
+        try
+        {
+            await Task.WhenAny(_dialogClosed, Task.Delay(ClosingWaitLimit));
+        }
+        finally
+        {
+            _requestsWaiting--;
+        }
 
-        // Another request waiting for the same dialog may have opened its own first.
+        // The dialog may have stopped closing, or another request waiting for it may have opened its own first.
         return !_isDialogOpen;
     }
 
@@ -365,14 +382,14 @@ public class DialogService : IDialogService
 
     public async Task<Result<ResourceKey>> ShowResourcePickerDialogAsync(IReadOnlyList<string> extensions, string? title = null, bool showPreview = false)
     {
-        if (!await WaitForClosingDialogAsync())
-        {
-            return RefuseSecondDialog();
-        }
-
         if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return Result<ResourceKey>.Fail("Cannot show resource picker: no project is currently loaded.");
+        }
+
+        if (!await WaitForClosingDialogAsync())
+        {
+            return RefuseSecondDialog();
         }
 
         var dialog = _dialogFactory.CreateResourcePickerDialog(extensions, title, showPreview);
@@ -382,14 +399,14 @@ public class DialogService : IDialogService
 
     public async Task<Result<ResourceKey>> ShowFolderPickerDialogAsync(string? title = null)
     {
-        if (!await WaitForClosingDialogAsync())
-        {
-            return RefuseSecondDialog();
-        }
-
         if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
             return Result<ResourceKey>.Fail("Cannot show folder picker: no project is currently loaded.");
+        }
+
+        if (!await WaitForClosingDialogAsync())
+        {
+            return RefuseSecondDialog();
         }
 
         var dialog = _dialogFactory.CreateFolderPickerDialog(title);

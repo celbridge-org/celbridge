@@ -121,5 +121,9 @@ public static class ServiceConfiguration
         // Created now to track managed focus from the start, including where the keyboard was before the first
         // popup.
         ServiceLocator.AcquireService<IManagedFocus>();
+
+        // Created now to hear the window's maximized state, which the window reports once as it opens and then
+        // only when it changes.
+        ServiceLocator.AcquireService<IWindowModeService>();
     }
 }

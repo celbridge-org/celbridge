@@ -91,11 +91,12 @@ public class ManagedFocus : IManagedFocus
     {
         var focusedElement = FocusedElement;
 
-        // A closing popup returns focus to the window content. On the Skia heads, focus can still be in the popup
-        // when a dialog opens, on the menu item that asked for it. The noted element is then the one the popup
-        // returns focus to.
+        // A menu closes once an item is chosen, and returns focus to the window content. On the Skia heads, focus
+        // can still be on the chosen item when a dialog it asked for opens. The noted element is then the one the
+        // menu returns focus to. Any other popup, such as a flyout, stays open, so focus in it is noted as it is.
         if (focusedElement is not null
             && FocusTracking.GetFocusLocation(focusedElement) == FocusLocation.Popup
+            && IsInMenu(focusedElement)
             && _lastContentFocus is not null
             && _lastContentFocus.TryGetTarget(out var contentElement))
         {
@@ -103,6 +104,20 @@ public class ManagedFocus : IManagedFocus
         }
 
         return new NotedFocus(this, focusedElement);
+    }
+
+    private static bool IsInMenu(UIElement element)
+    {
+        foreach (var ancestor in VisualTree.GetAncestors(element, includeSelf: true))
+        {
+            if (ancestor is MenuFlyoutPresenter
+                || ancestor is MenuFlyoutItemBase)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public void YieldFocus()

@@ -37,8 +37,8 @@ public interface IManagedFocus
     /// <summary>
     /// Notes the element holding managed keyboard focus, so it can later be checked for focus or given it
     /// back, as it must be once a modal dialog or anything else that took the keyboard has gone. When focus
-    /// is in a popup, the noted element is the one that held focus in the window content before the popup.
-    /// A closing popup returns focus to that element.
+    /// is in an open menu, the noted element is the one that held focus in the window content before the menu.
+    /// A menu closes once an item is chosen, and returns focus to that element.
     /// </summary>
     INotedFocus NoteFocus();
 

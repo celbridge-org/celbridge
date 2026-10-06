@@ -16,6 +16,7 @@ public class DialogServiceClosingTests
 {
     private TaskCompletionSource<bool> _firstAnswer = null!;
     private IConfirmationDialog _secondDialog = null!;
+    private IDialogFactory _dialogFactory = null!;
     private DialogService _dialogService = null!;
 
     [SetUp]
@@ -28,10 +29,10 @@ public class DialogServiceClosingTests
         _secondDialog = Substitute.For<IConfirmationDialog>();
         _secondDialog.ShowDialogAsync().Returns(Task.FromResult(true));
 
-        var dialogFactory = Substitute.For<IDialogFactory>();
-        dialogFactory.CreateConfirmationDialog("First", Arg.Any<string>(), Arg.Any<ConfirmationDialogOptions?>())
+        _dialogFactory = Substitute.For<IDialogFactory>();
+        _dialogFactory.CreateConfirmationDialog("First", Arg.Any<string>(), Arg.Any<ConfirmationDialogOptions?>())
             .Returns(firstDialog);
-        dialogFactory.CreateConfirmationDialog("Second", Arg.Any<string>(), Arg.Any<ConfirmationDialogOptions?>())
+        _dialogFactory.CreateConfirmationDialog("Second", Arg.Any<string>(), Arg.Any<ConfirmationDialogOptions?>())
             .Returns(_secondDialog);
 
         var managedFocus = Substitute.For<IManagedFocus>();
@@ -39,7 +40,7 @@ public class DialogServiceClosingTests
 
         _dialogService = new DialogService(
             Substitute.For<ILogger<DialogService>>(),
-            dialogFactory,
+            _dialogFactory,
             Substitute.For<IFocusService>(),
             managedFocus,
             Substitute.For<IWebViewFocusRegistry>(),
@@ -78,5 +79,40 @@ public class DialogServiceClosingTests
 
         _firstAnswer.SetResult(false);
         await first;
+    }
+
+    [Test]
+    public async Task ADialogThatStopsClosing_RefusesTheWaitingRequest()
+    {
+        // A dialog can cancel its closing and stay open. The request waiting for it is then refused rather than
+        // held until the dialog closes.
+        _dialogService.ClosingWaitLimit = TimeSpan.FromMilliseconds(50);
+        var first = _dialogService.ShowConfirmationDialogAsync("First", "Message");
+        _dialogService.OnDialogStartedClosing();
+
+        var secondResult = await _dialogService.ShowConfirmationDialogAsync("Second", "Message");
+
+        secondResult.IsFailure.Should().BeTrue();
+        _ = _secondDialog.DidNotReceive().ShowDialogAsync();
+
+        _firstAnswer.SetResult(false);
+        await first;
+    }
+
+    [Test]
+    public async Task TheProgressDialog_StaysHiddenWhileARequestWaitsForAClosingDialog()
+    {
+        // Showing the progress dialog between the two would put two dialogs on screen as the second one opens.
+        var first = _dialogService.ShowConfirmationDialogAsync("First", "Message");
+        using var token = _dialogService.AcquireProgressDialog("Working");
+        _dialogService.OnDialogStartedClosing();
+        var second = _dialogService.ShowConfirmationDialogAsync("Second", "Message");
+
+        _firstAnswer.SetResult(false);
+        await first;
+        await second;
+
+        _ = _secondDialog.Received(1).ShowDialogAsync();
+        _dialogFactory.Received(1).CreateProgressDialog();
     }
 }
