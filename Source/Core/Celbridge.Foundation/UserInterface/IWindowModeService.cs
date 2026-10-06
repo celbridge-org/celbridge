@@ -18,7 +18,7 @@ public interface IWindowModeService
     bool IsFullScreen { get; }
 
     /// <summary>
-    /// Whether the window is maximized, as its presenter last reported rather than as the settings remember it.
+    /// Whether the window is maximized. It comes from the window's presenter, not from the saved settings.
     /// </summary>
     bool IsMaximized { get; }
 

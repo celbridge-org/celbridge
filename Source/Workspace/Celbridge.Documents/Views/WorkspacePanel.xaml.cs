@@ -484,7 +484,8 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
     }
 
     // Resolves the active document's tab, but only while the documents panel holds focus. The close shortcuts
-    // must not close a hidden document when the user is working in the console or another panel.
+    // must not close a hidden document when the user is working in the console or another panel. They also
+    // must not close the document behind a modal dialog, which doesn't change the focused panel.
     private DocumentTab? GetFocusedActiveDocumentTab()
     {
         if (_isShuttingDown)
@@ -492,7 +493,8 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
             return null;
         }
 
-        if (_focusService.FocusedPanel != FocusPanelId.Documents)
+        if (_focusService.FocusedPanel != FocusPanelId.Documents
+            || _dialogService.IsDialogOpen)
         {
             return null;
         }
@@ -633,8 +635,27 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
             && ViewModel.IsAreaVisible(pendingFocus.Area))
         {
             _pendingRevealFocus = null;
-            FocusActivatedDocument(pendingFocus.Document);
+            FocusAfterNextLayout(pendingFocus.Document);
         }
+    }
+
+    // Focuses a document in an area that was just shown, after the next layout pass puts the area on screen. A
+    // web view ignores a focus request it gets before then. Calling FocusActivatedDocument straight away isn't
+    // enough, because its low-priority callback can run before that pass when the dispatcher is idle.
+    private void FocusAfterNextLayout(ResourceKey fileResource)
+    {
+        void OnLayoutUpdated(object? sender, object e)
+        {
+            LayoutUpdated -= OnLayoutUpdated;
+            if (_isShuttingDown)
+            {
+                return;
+            }
+
+            FocusActivatedDocument(fileResource);
+        }
+
+        LayoutUpdated += OnLayoutUpdated;
     }
 
     // Shows or hides the collapsible areas to match the workspace area visibility. Hiding an area

@@ -9,7 +9,7 @@ namespace Celbridge.Tests.UserInterface;
 /// <summary>
 /// Tests for what the download list offers. Clear All removes only the downloads that have finished, so
 /// it has nothing to do while every download is still running. A canceled download stays in the list but
-/// is neither a failure nor counted by the badge.
+/// is neither a failure nor counted by the badge. The summary counts downloads by outcome, even a single one.
 /// </summary>
 [TestFixture]
 public class DownloadBadgeViewModelTests
@@ -74,6 +74,27 @@ public class DownloadBadgeViewModelTests
 
         _viewModel.HasFailure.Should().BeTrue();
         _viewModel.BadgeCount.Should().Be(2);
+    }
+
+    [TestCase(DownloadStatus.InProgress, "1 download in progress.")]
+    [TestCase(DownloadStatus.Succeeded, "1 download completed.")]
+    [TestCase(DownloadStatus.Failed, "1 download failed.")]
+    public void ALoneDownload_IsSummarisedByItsOutcome(DownloadStatus status, string expected)
+    {
+        ShowDownloads(CreateEntry(1, status));
+
+        _viewModel.Summary.Should().Be(expected);
+    }
+
+    [Test]
+    public void SeveralDownloads_AreSummarisedByACountOfEachOutcome()
+    {
+        ShowDownloads(
+            CreateEntry(1, DownloadStatus.Succeeded),
+            CreateEntry(2, DownloadStatus.Succeeded),
+            CreateEntry(3, DownloadStatus.Failed));
+
+        _viewModel.Summary.Should().Be("1 download failed. 2 downloads completed.");
     }
 
     private void ShowDownloads(params DownloadEntry[] downloads)

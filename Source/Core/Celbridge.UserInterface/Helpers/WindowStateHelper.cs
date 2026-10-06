@@ -290,8 +290,8 @@ public sealed class WindowStateHelper
         _appWindow.MoveAndResize(bounds);
     }
 
-    // Reports the presenter's maximized state whenever it changes, including during a window mode change or
-    // while full screen, when the settings are left alone.
+    // Reports whenever the presenter's maximized state changes. That includes changes during a window mode
+    // change or while full screen, which don't update the saved settings.
     private void PublishMaximizedState()
     {
         var isMaximized = _appWindow?.Presenter is OverlappedPresenter presenter &&

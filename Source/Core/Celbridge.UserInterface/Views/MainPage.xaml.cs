@@ -1,5 +1,7 @@
 using Celbridge.Commands;
+using Celbridge.Dialog;
 using Celbridge.Logging;
+using Celbridge.Platform;
 using Celbridge.UserInterface.Platform;
 using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.ViewModels;
@@ -193,7 +195,50 @@ public partial class MainPage : Page
         if (OnKeyDown(e.Key))
         {
             e.Handled = true;
+            return;
         }
+
+        if (!e.Handled
+            && TryRouteEditShortcut(e.Key))
+        {
+            e.Handled = true;
+        }
+    }
+
+    // Sends an unhandled edit shortcut to the surface the Edit menu would act on. For example, Ctrl+C pressed while
+    // a title bar button has the keyboard copies from the document last edited. Text controls handle their own
+    // shortcuts, so they're skipped. Only the packaged Windows head needs this: on macOS the native key monitor
+    // routes these shortcuts first, and on Windows keys typed in a web page never reach this handler.
+    private bool TryRouteEditShortcut(VirtualKey key)
+    {
+#if WINDOWS
+        if (!EditKeyboard.IsCommandModifierDown()
+            || EditKeyboard.IsAltDown())
+        {
+            return false;
+        }
+
+        var textControlEditing = ServiceLocator.AcquireService<ITextControlEditing>();
+        if (textControlEditing.IsTextControlFocused)
+        {
+            return false;
+        }
+
+        var platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
+        var intent = EditShortcuts.ResolveIntent(key, EditKeyboard.IsShiftDown(), platformInfo.TreatsCtrlYAsRedo);
+        if (intent is null)
+        {
+            return false;
+        }
+
+        var commandService = ServiceLocator.AcquireService<ICommandService>();
+        var isDialogOpen = ServiceLocator.AcquireService<IDialogService>().IsDialogOpen;
+        var routing = EditVerbRouter.Perform(intent.Value, _focusService, textControlEditing, commandService, isDialogOpen);
+
+        return routing == EditRouting.Surface;
+#else
+        return false;
+#endif
     }
 
     private bool IsTextBoxFocused()

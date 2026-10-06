@@ -1,51 +1,28 @@
+using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
 using Windows.System;
 
 namespace Celbridge.Explorer.Views;
 
 /// <summary>
-/// One command-modifier chord the resource tree answers to directly: the key, whether Shift is held, and
-/// the verb it performs. Delete and Rename are not chords (no command modifier) and stay outside this table.
-/// </summary>
-internal sealed partial record ExplorerEditShortcut(VirtualKey Key, bool Shift, EditIntent Intent);
-
-/// <summary>
-/// The command-modifier chords the resource tree answers to directly, declared once.
+/// The command-modifier chords the resource tree handles itself: the standard edit chords plus Duplicate.
+/// Delete and Rename aren't chords, so they aren't in this table.
 /// </summary>
 internal static class ExplorerEditShortcuts
 {
-    public static IReadOnlyList<ExplorerEditShortcut> All { get; } = new ExplorerEditShortcut[]
-    {
-        new(VirtualKey.Z, false, EditIntent.Undo),
-        new(VirtualKey.Z, true, EditIntent.Redo),
-        new(VirtualKey.A, false, EditIntent.SelectAll),
-        new(VirtualKey.D, false, EditIntent.Duplicate),
-        new(VirtualKey.C, false, EditIntent.Copy),
-        new(VirtualKey.X, false, EditIntent.Cut),
-        new(VirtualKey.V, false, EditIntent.Paste)
-    };
+    public static EditShortcut Duplicate { get; } = new(VirtualKey.D, false, EditIntent.Duplicate);
 
     /// <summary>
-    /// The verb the given chord names, or null when it names none.
+    /// Returns the verb the chord performs in the tree, or null if it performs none.
     /// </summary>
     public static EditIntent? ResolveIntent(VirtualKey key, bool shift, bool treatsCtrlYAsRedo)
     {
-        if (treatsCtrlYAsRedo
-            && key == VirtualKey.Y
-            && !shift)
+        if (key == Duplicate.Key
+            && shift == Duplicate.Shift)
         {
-            return EditIntent.Redo;
+            return Duplicate.Intent;
         }
 
-        foreach (var shortcut in All)
-        {
-            if (shortcut.Key == key
-                && shortcut.Shift == shift)
-            {
-                return shortcut.Intent;
-            }
-        }
-
-        return null;
+        return EditShortcuts.ResolveIntent(key, shift, treatsCtrlYAsRedo);
     }
 }

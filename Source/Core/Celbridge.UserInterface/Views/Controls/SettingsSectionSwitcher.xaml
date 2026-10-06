@@ -34,6 +34,7 @@
       <ItemsControl.ItemTemplate>
         <DataTemplate x:DataType="controls:SettingsSection">
           <controls:IconToggleButton Style="{StaticResource RailButtonStyle}"
+                                     AutomationProperties.Name="{x:Bind Label}"
                                      IsChecked="{x:Bind IsSelected, Mode=OneWay}"
                                      Click="RailButton_Click">
             <Grid ColumnSpacing="10">

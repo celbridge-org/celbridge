@@ -236,6 +236,15 @@ const editor = new Editor({
 // Store editor in context for modules
 ctx.editor = editor;
 
+// The editor uses Tab to indent list items and move between table cells. Anywhere else it ignores Tab, and the
+// browser would move the keyboard out of the page into the app's own controls. The editor's handlers run first,
+// so this cancels only a Tab they didn't use.
+editorEl.addEventListener('keydown', (event) => {
+    if (event.key === 'Tab' && !event.defaultPrevented) {
+        event.preventDefault();
+    }
+});
+
 // Initialize popover modules
 initImagePopover(ctx);
 initLinkPopover(ctx);
