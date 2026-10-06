@@ -1,7 +1,9 @@
 using Celbridge.Messaging;
 using Celbridge.Messaging.Services;
+using Celbridge.Platform;
 using Celbridge.Settings;
 using Celbridge.UserInterface;
+using Celbridge.UserInterface.Helpers.FullScreen;
 using Celbridge.UserInterface.Services;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
@@ -17,6 +19,8 @@ public class LayoutManagerTests
     private ISettingsService _settingsService = null!;
     private IBindableWorkspaceSettings _workspaceSettings = null!;
     private List<OpenDocumentInfo> _openDocuments = null!;
+    private IPlatformInfo _platformInfo = null!;
+    private IFullScreenController _fullScreenController = null!;
     private LayoutManager _layoutManager = null!;
 
     [SetUp]
@@ -55,7 +59,11 @@ public class LayoutManagerTests
 
         var logger = _serviceProvider.GetRequiredService<ILogger<LayoutManager>>();
 
-        _layoutManager = new LayoutManager(logger, _messengerService, _settingsService, workspaceWrapper);
+        _platformInfo = Substitute.For<IPlatformInfo>();
+        _fullScreenController = Substitute.For<IFullScreenController>();
+
+        _layoutManager = new LayoutManager(logger, _messengerService, _settingsService, workspaceWrapper,
+            _platformInfo, _fullScreenController);
     }
 
     [TearDown]
@@ -201,6 +209,19 @@ public class LayoutManagerTests
 
         _layoutManager.LayoutMode.Should().Be(LayoutMode.Focus);
         _layoutManager.IsFullScreen.Should().BeTrue();
+    }
+
+    [Test]
+    public void NativeFullScreen_ReportsTheWindowState()
+    {
+        _platformInfo.HasNativeFullScreenAffordance.Returns(true);
+        _fullScreenController.IsFullScreen.Returns(true);
+
+        _layoutManager.IsFullScreen.Should().BeTrue();
+
+        _fullScreenController.IsFullScreen.Returns(false);
+
+        _layoutManager.IsFullScreen.Should().BeFalse();
     }
 
     [Test]

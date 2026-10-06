@@ -117,5 +117,9 @@ public static class ServiceConfiguration
         // Before any project loads, so the notifications its load raises are recorded.
         var notificationComposer = ServiceLocator.AcquireService<NotificationComposer>();
         notificationComposer.Start();
+
+        // Created now to track managed focus from the start, including where the keyboard was before the first
+        // popup.
+        ServiceLocator.AcquireService<IManagedFocus>();
     }
 }

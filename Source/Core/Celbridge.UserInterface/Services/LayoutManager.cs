@@ -1,5 +1,7 @@
 using Celbridge.Logging;
+using Celbridge.Platform;
 using Celbridge.Settings;
+using Celbridge.UserInterface.Helpers.FullScreen;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
 
@@ -15,6 +17,8 @@ public class LayoutManager : IWindowModeService, ILayoutService
     private readonly IMessengerService _messengerService;
     private readonly ISettingsService _settingsService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IPlatformInfo _platformInfo;
+    private readonly IFullScreenController _fullScreenController;
 
     private LayoutMode _layoutMode = LayoutMode.Default;
     private bool _isFullScreen;
@@ -30,12 +34,16 @@ public class LayoutManager : IWindowModeService, ILayoutService
         ILogger<LayoutManager> logger,
         IMessengerService messengerService,
         ISettingsService settingsService,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        IPlatformInfo platformInfo,
+        IFullScreenController fullScreenController)
     {
         _logger = logger;
         _messengerService = messengerService;
         _settingsService = settingsService;
         _workspaceWrapper = workspaceWrapper;
+        _platformInfo = platformInfo;
+        _fullScreenController = fullScreenController;
 
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
         _messengerService.Register<AreaPresentationChangedMessage>(this, OnAreaPresentationChanged);
@@ -116,7 +124,11 @@ public class LayoutManager : IWindowModeService, ILayoutService
 
     public LayoutMode LayoutMode => _layoutMode;
 
-    public bool IsFullScreen => _isFullScreen;
+    // Where the window chrome offers fullscreen, the user enters it there without the app. Only the window
+    // knows the state.
+    public bool IsFullScreen => _platformInfo.HasNativeFullScreenAffordance
+        ? _fullScreenController.IsFullScreen
+        : _isFullScreen;
 
     public bool IsMaximized => _isMaximized;
 

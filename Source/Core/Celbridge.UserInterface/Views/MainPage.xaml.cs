@@ -89,8 +89,10 @@ public partial class MainPage : Page
         var focusServiceForKeyMonitor = ServiceLocator.AcquireService<IFocusService>();
         var commandService = ServiceLocator.AcquireService<ICommandService>();
         var textControlEditing = ServiceLocator.AcquireService<ITextControlEditing>();
+        var managedFocus = ServiceLocator.AcquireService<IManagedFocus>();
         MacOSKeyEventMonitor.Start(
-            focusServiceForKeyMonitor, textControlEditing, _webViewFocusRegistry, _messengerService, commandService, _logger);
+            focusServiceForKeyMonitor, textControlEditing, _webViewFocusRegistry, _messengerService, commandService,
+            managedFocus, focusReconciler, _logger);
 
         // Undo native first-responder resigns caused by managed-focus housekeeping, which would otherwise
         // deactivate the focused web surface (hidden caret, beeping keys). macOS-only. A no-op elsewhere.
