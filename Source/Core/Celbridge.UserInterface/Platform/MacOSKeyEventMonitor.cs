@@ -46,6 +46,8 @@ internal static class MacOSKeyEventMonitor
     private static IWebViewFocusRegistry? _webViewFocusRegistry;
     private static IMessengerService? _messengerService;
     private static ICommandService? _commandService;
+    private static IManagedFocus? _managedFocus;
+    private static IFocusReconciler? _focusReconciler;
     private static ILogger? _logger;
 
     public static void Start(
@@ -54,6 +56,8 @@ internal static class MacOSKeyEventMonitor
         IWebViewFocusRegistry webViewFocusRegistry,
         IMessengerService messengerService,
         ICommandService commandService,
+        IManagedFocus managedFocus,
+        IFocusReconciler focusReconciler,
         ILogger logger)
     {
         if (!OperatingSystem.IsMacOS())
@@ -72,6 +76,8 @@ internal static class MacOSKeyEventMonitor
         _webViewFocusRegistry = webViewFocusRegistry;
         _messengerService = messengerService;
         _commandService = commandService;
+        _managedFocus = managedFocus;
+        _focusReconciler = focusReconciler;
         _logger = logger;
 
         var nsEventClass = GetClass("NSEvent");
@@ -126,6 +132,14 @@ internal static class MacOSKeyEventMonitor
         // Runs on the main thread during event dispatch. Never let an exception cross back into AppKit.
         try
         {
+            // When Uno dismisses a menu, managed focus stays on the menu's item until the reconcile queued at
+            // close moves it. A key pressed before then would activate that item, so focus is reconciled before
+            // the key is dispatched.
+            if (_managedFocus?.FocusLocation == FocusLocation.Detached)
+            {
+                _focusReconciler?.Reconcile();
+            }
+
             var keyCode = SendMessageReturnNuint(nsEvent, GetSelector("keyCode")) & 0xFFFF;
             var modifierFlags = SendMessageReturnNuint(nsEvent, GetSelector("modifierFlags"));
 

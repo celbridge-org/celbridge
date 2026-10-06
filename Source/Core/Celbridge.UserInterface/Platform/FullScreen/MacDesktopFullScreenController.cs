@@ -15,15 +15,25 @@ public sealed class MacDesktopFullScreenController : IFullScreenController
 {
     private readonly ILogger<MacDesktopFullScreenController> _logger;
 
+    // Cached on the UI thread whenever the window changes, so reads from other threads never call into AppKit.
+    private bool _isFullScreen;
+
     public MacDesktopFullScreenController(ILogger<MacDesktopFullScreenController> logger)
     {
         _logger = logger;
     }
 
-    public bool IsFullScreen => GetNativeFullScreenState();
+    public bool IsFullScreen => _isFullScreen;
 
     public void Initialize(AppWindow appWindow)
     {
+        _isFullScreen = GetNativeFullScreenState();
+        appWindow.Changed += OnAppWindowChanged;
+    }
+
+    private void OnAppWindowChanged(AppWindow sender, AppWindowChangedEventArgs args)
+    {
+        _isFullScreen = GetNativeFullScreenState();
     }
 
     public Result EnterFullScreen()

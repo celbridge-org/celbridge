@@ -66,6 +66,8 @@ given.
   pixels.
 - `isChecked` appears only for a control that can be toggled or selected, and `value` only for one that holds a
   value, such as a text field's text.
+- `hasKeyboardFocus` is true for the one control that holds the keyboard, and false for every other. A control the
+  platform draws natively always reports false.
 - An empty `controls` list means nothing matched. It is not an error.
 
 ## Gotchas

@@ -31,7 +31,8 @@ public class UIToolTests
         new ControlBounds(60, 4, 200, 32),
         true,
         null,
-        "query");
+        "query",
+        HasKeyboardFocus: true);
 
     private IApplicationServiceProvider _services = null!;
     private IAutomationService _automationService = null!;
@@ -103,6 +104,7 @@ public class UIToolTests
         found.GetArrayLength().Should().Be(1);
         found[0].GetProperty("automationId").GetString().Should().Be("search-field");
         found[0].GetProperty("value").GetString().Should().Be("query");
+        found[0].GetProperty("hasKeyboardFocus").GetBoolean().Should().BeTrue();
         root.GetProperty("contentWidth").GetDouble().Should().Be(1920);
         root.GetProperty("rasterizationScale").GetDouble().Should().Be(2);
     }

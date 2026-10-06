@@ -10,7 +10,8 @@
   SecondaryButtonText="{x:Bind CancelString}"
   IsPrimaryButtonEnabled="{x:Bind ViewModel.IsCreateButtonEnabled, Mode=OneWay}"
   PrimaryButtonClick="CreateButtonClick"
-  SecondaryButtonClick="CancelButtonClick">
+  SecondaryButtonClick="CancelButtonClick"
+  Opened="Dialog_Opened">
 
   <StackPanel Orientation="Vertical"
               HorizontalAlignment="Stretch"
@@ -81,7 +82,6 @@
              Text="{x:Bind ViewModel.ProjectName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
              ToolTipService.ToolTip="{x:Bind ProjectNameTooltipString}"
              ToolTipService.Placement="Bottom"
-             Loaded="ProjectNameTextBox_Loaded"
              KeyDown="ProjectNameTextBox_KeyDown"/>
 
     <!-- Select folder grid -->

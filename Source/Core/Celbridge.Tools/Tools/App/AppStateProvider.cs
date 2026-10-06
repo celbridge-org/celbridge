@@ -10,9 +10,9 @@ namespace Celbridge.Tools;
 
 /// <summary>
 /// Workspace layout snapshot reported as part of app_get_state: the layout mode, whether the window fills the
-/// screen, and each workspace area token mapped to whether that area is currently on screen.
+/// screen or is maximized, and each workspace area token mapped to whether that area is currently on screen.
 /// </summary>
-public record class LayoutModeInfo(string Mode, bool IsFullScreen, IReadOnlyDictionary<string, bool> AreaVisibility);
+public record class LayoutModeInfo(string Mode, bool IsFullScreen, bool IsMaximized, IReadOnlyDictionary<string, bool> AreaVisibility);
 
 /// <summary>
 /// A project package in the app_get_state package summary, with the package version its manifest declares.
@@ -141,7 +141,8 @@ internal sealed class AppStateProvider : IAppStateProvider
 
         var mode = _windowModeService.LayoutMode.ToString();
         var isFullScreen = _windowModeService.IsFullScreen;
-        var layoutMode = new LayoutModeInfo(mode, isFullScreen, areaVisibility);
+        var isMaximized = _windowModeService.IsMaximized;
+        var layoutMode = new LayoutModeInfo(mode, isFullScreen, isMaximized, areaVisibility);
 
         var spotlightLandmarks = _spotlightRegistry.GetLandmarks()
             .Select(landmark => landmark.Id)

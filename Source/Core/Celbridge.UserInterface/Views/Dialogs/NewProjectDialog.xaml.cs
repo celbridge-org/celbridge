@@ -50,7 +50,9 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
         this.EnableThemeSync();
     }
 
-    private void ProjectNameTextBox_Loaded(object sender, RoutedEventArgs e)
+    // Focuses the name field once the dialog has opened. On the Skia heads the dialog takes the keyboard as it
+    // opens, so a field focused any earlier loses it.
+    private void Dialog_Opened(ContentDialog sender, ContentDialogOpenedEventArgs args)
     {
         ProjectNameTextBox.Focus(FocusState.Programmatic);
     }

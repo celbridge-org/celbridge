@@ -1,7 +1,9 @@
 using Celbridge.Messaging;
 using Celbridge.Messaging.Services;
+using Celbridge.Platform;
 using Celbridge.Settings;
 using Celbridge.UserInterface;
+using Celbridge.UserInterface.Helpers.FullScreen;
 using Celbridge.UserInterface.Services;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
@@ -44,7 +46,8 @@ public class SetBottomAreaAlignmentCommandTests
 
         var logger = _serviceProvider.GetRequiredService<ILogger<LayoutManager>>();
 
-        _layoutManager = new LayoutManager(logger, messengerService, settingsService, workspaceWrapper);
+        _layoutManager = new LayoutManager(logger, messengerService, settingsService, workspaceWrapper,
+            Substitute.For<IPlatformInfo>(), Substitute.For<IFullScreenController>());
     }
 
     [TearDown]

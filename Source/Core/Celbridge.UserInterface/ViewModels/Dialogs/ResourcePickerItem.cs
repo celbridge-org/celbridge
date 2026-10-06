@@ -71,4 +71,9 @@ public class ResourcePickerItem
         DisplayTextLower = DisplayText.ToLowerInvariant();
         ReadOnlyMessage = readOnlyMessage ?? string.Empty;
     }
+
+    /// <summary>
+    /// Gives the list item its accessible name, since the list reads an item's name from ToString.
+    /// </summary>
+    public override string ToString() => DisplayText;
 }

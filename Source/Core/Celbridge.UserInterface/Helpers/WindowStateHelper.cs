@@ -26,6 +26,7 @@ public sealed class WindowStateHelper
     private bool _isApplyingWindowMode;
     private bool _isTransitioningFromFullscreen;
     private AppWindowPresenterKind _previousPresenterKind;
+    private bool _isMaximized;
 
     public WindowStateHelper(
         ILogger<WindowStateHelper> logger,
@@ -85,6 +86,8 @@ public sealed class WindowStateHelper
             {
                 _overlappedPresenter.Maximize();
             }
+
+            PublishMaximizedState();
 
             // Track window state changes
             _appWindow.Changed += OnAppWindowChanged;
@@ -287,8 +290,25 @@ public sealed class WindowStateHelper
         _appWindow.MoveAndResize(bounds);
     }
 
+    // Sends WindowMaximizedChangedMessage whenever the maximized state changes. It also reports changes made
+    // during a window mode change or while full screen, which aren't saved to the settings.
+    private void PublishMaximizedState()
+    {
+        var isMaximized = _appWindow?.Presenter is OverlappedPresenter presenter &&
+            presenter.State == OverlappedPresenterState.Maximized;
+        if (isMaximized == _isMaximized)
+        {
+            return;
+        }
+
+        _isMaximized = isMaximized;
+        _messengerService.Send(new WindowMaximizedChangedMessage(isMaximized));
+    }
+
     private void OnAppWindowChanged(AppWindow sender, AppWindowChangedEventArgs args)
     {
+        PublishMaximizedState();
+
         // Ignore changes while we're in the middle of applying a window mode change, or while a
         // fullscreen mode is active, to avoid saving fullscreen dimensions as the preferred window
         // bounds. The desktop emulation keeps an overlapped presenter, so IsFullScreen is the only

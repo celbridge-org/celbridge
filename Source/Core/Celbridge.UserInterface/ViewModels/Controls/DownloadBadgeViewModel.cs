@@ -151,17 +151,12 @@ public class DownloadBadgeViewModel
         Summary = ComposeSummary(downloads);
     }
 
-    // A lone download is summarised by its file name, and several by a count of each outcome.
+    // Summarises the downloads as a count per outcome, even when there's only one. The list shows the file names.
     private string ComposeSummary(IReadOnlyList<DownloadEntry> downloads)
     {
         if (downloads.Count == 0)
         {
             return string.Empty;
-        }
-
-        if (downloads.Count == 1)
-        {
-            return downloads[0].FileName;
         }
 
         var inProgressCount = downloads.Count(download => download.Status == DownloadStatus.InProgress);

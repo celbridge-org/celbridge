@@ -16,6 +16,10 @@ public class ManagedFocus : IManagedFocus
     private ContentControl? _placeholder;
     private bool _reportedFocusFailure;
 
+    // The last element in the window content that had managed focus. A popup returns the keyboard to it when it
+    // closes. Held as a weak reference because the element can be removed from the window.
+    private WeakReference<UIElement>? _lastContentFocus;
+
     public ManagedFocus(
         IUserInterfaceService userInterfaceService,
         IPlatformInfo platformInfo,
@@ -24,6 +28,36 @@ public class ManagedFocus : IManagedFocus
         _userInterfaceService = userInterfaceService;
         _platformInfo = platformInfo;
         _logger = logger;
+
+        Microsoft.UI.Xaml.Input.FocusManager.GotFocus += OnGotFocus;
+    }
+
+    private void OnGotFocus(object? sender, Microsoft.UI.Xaml.Input.FocusManagerGotFocusEventArgs e)
+    {
+        if (e.NewFocusedElement is not UIElement element)
+        {
+            return;
+        }
+
+        if (ReferenceEquals(element, _placeholder))
+        {
+            // The placeholder takes focus when a web surface has the keyboard or nothing has it. Either way
+            // there's no control to return focus to, so the last one is forgotten. While a popup is open, the
+            // placeholder only gets focus briefly as focus moves through the popup's root, so that case is
+            // ignored.
+            if (element.XamlRoot is null
+                || VisualTreeHelper.GetOpenPopupsForXamlRoot(element.XamlRoot).Count == 0)
+            {
+                _lastContentFocus = null;
+            }
+
+            return;
+        }
+
+        if (FocusTracking.GetFocusLocation(element) == FocusLocation.MainContent)
+        {
+            _lastContentFocus = new WeakReference<UIElement>(element);
+        }
     }
 
     public UIElement? FocusedElement
@@ -56,7 +90,36 @@ public class ManagedFocus : IManagedFocus
 
     public INotedFocus NoteFocus()
     {
-        return new NotedFocus(this, FocusedElement);
+        var focusedElement = FocusedElement;
+
+        // Choosing a menu item closes the menu and returns focus to the window content. On the Skia heads, focus
+        // can still be on the chosen item when the dialog it requested opens. In that case, the element the menu
+        // will return focus to is noted instead. Other popups, such as flyouts, stay open, so focus inside them is
+        // noted as is.
+        if (focusedElement is not null
+            && FocusTracking.GetFocusLocation(focusedElement) == FocusLocation.Popup
+            && IsInMenu(focusedElement)
+            && _lastContentFocus is not null
+            && _lastContentFocus.TryGetTarget(out var contentElement))
+        {
+            focusedElement = contentElement;
+        }
+
+        return new NotedFocus(this, focusedElement);
+    }
+
+    private static bool IsInMenu(UIElement element)
+    {
+        foreach (var ancestor in VisualTree.GetAncestors(element, includeSelf: true))
+        {
+            if (ancestor is MenuFlyoutPresenter
+                || ancestor is MenuFlyoutItemBase)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public void YieldFocus()

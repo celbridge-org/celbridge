@@ -28,4 +28,9 @@ public class IconPickerItem
         IconNameLower = IconName.ToLowerInvariant();
         KeywordTextLower = string.Join(' ', catalogEntry.Keywords).ToLowerInvariant();
     }
+
+    /// <summary>
+    /// Gives the list item its accessible name, since the list reads an item's name from ToString.
+    /// </summary>
+    public override string ToString() => IconName;
 }

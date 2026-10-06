@@ -48,6 +48,7 @@
 
             <TextBox Grid.Column="0"
                      IsSpellCheckEnabled="False"
+                     AutomationProperties.Name="{x:Bind ResourceLabel}"
                      Text="{x:Bind Resource, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
                      KeyDown="CommitField_KeyDown" />
 
@@ -79,6 +80,7 @@
                      Style="{StaticResource FieldLabelTextStyle}" />
           <ComboBox HorizontalAlignment="Left"
                     MinWidth="128"
+                    AutomationProperties.Name="{x:Bind AreaLabel}"
                     ItemsSource="{x:Bind AreaOptions}"
                     SelectedIndex="{x:Bind SelectedAreaIndex, Mode=TwoWay}" />
           <TextBlock Text="{x:Bind AreaHint}"

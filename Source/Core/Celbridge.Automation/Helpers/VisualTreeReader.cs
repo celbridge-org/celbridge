@@ -51,6 +51,8 @@ internal static class VisualTreeReader
             }
         }
 
+        var focusedElement = Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(xamlRoot) as DependencyObject;
+
         var visited = new HashSet<DependencyObject>(ReferenceEqualityComparer.Instance);
         var pending = new Stack<DependencyObject>();
         for (int index = roots.Count - 1; index >= 0; index--)
@@ -80,7 +82,8 @@ internal static class VisualTreeReader
                 var peer = FindPeer(frameworkElement);
                 if (peer is not null)
                 {
-                    var info = Describe(frameworkElement, peer);
+                    var hasKeyboardFocus = ReferenceEquals(frameworkElement, focusedElement);
+                    var info = Describe(frameworkElement, peer, hasKeyboardFocus);
 
                     var nativeView = nativeControlReader.FindNativeView(frameworkElement);
                     if (nativeView is not null)
@@ -151,7 +154,7 @@ internal static class VisualTreeReader
         return null;
     }
 
-    private static ControlInfo Describe(FrameworkElement element, AutomationPeer peer)
+    private static ControlInfo Describe(FrameworkElement element, AutomationPeer peer, bool hasKeyboardFocus)
     {
         // UI Automation identifies an element that has no automation ID by its name, so this does the same.
         var automationId = peer.GetAutomationId();
@@ -174,7 +177,8 @@ internal static class VisualTreeReader
             bounds,
             peer.IsEnabled(),
             CheckedState(peer),
-            value);
+            value,
+            hasKeyboardFocus);
 
         return control;
     }
