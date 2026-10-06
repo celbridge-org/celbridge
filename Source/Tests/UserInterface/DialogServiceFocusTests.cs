@@ -122,13 +122,30 @@ public class DialogServiceFocusTests
     }
 
     [Test]
-    public async Task ADialogOpenedWhileNoPanelHeldTheKeyboard_RefocusesNothing()
+    public async Task AControlInNoPanel_IsGivenTheKeyboardBack()
     {
+        // A title bar button, for example. Even the packaged Windows head can leave the keyboard elsewhere,
+        // such as after a confirmation that opened as the New Project dialog closed.
         _focusService.FocusedPanel.Returns(FocusPanelId.None);
+        _notedFocus.IsFocusBack.Returns(false);
+        _notedFocus.TryReturnFocus().Returns(true);
 
         await _dialogService.ShowAlertDialogAsync("Title", "Message");
 
-        _notedFocus.DidNotReceive().TryReturnFocus();
+        _notedFocus.Received(1).TryReturnFocus();
+        _focusService.DidNotReceive().RefocusPanel(Arg.Any<FocusPanelId>());
+    }
+
+    [Test]
+    public async Task ADialogOpenedWhileNoPanelHeldTheKeyboard_RefocusesNoPanel()
+    {
+        // Nothing held the keyboard, or a control in a menu that has since closed did.
+        _focusService.FocusedPanel.Returns(FocusPanelId.None);
+        _notedFocus.IsFocusBack.Returns(false);
+        _notedFocus.TryReturnFocus().Returns(false);
+
+        await _dialogService.ShowAlertDialogAsync("Title", "Message");
+
         _focusService.DidNotReceive().RefocusPanel(Arg.Any<FocusPanelId>());
     }
 }

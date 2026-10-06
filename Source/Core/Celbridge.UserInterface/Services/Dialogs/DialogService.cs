@@ -28,6 +28,12 @@ public class DialogService : IDialogService
     // Read by the command loop, which does not run on the UI thread that writes it.
     private volatile bool _isDialogOpen;
 
+    // Set once the open dialog has started to close.
+    private bool _isDialogClosing;
+
+    // Completes once the open dialog has closed and the keyboard has been returned.
+    private Task _dialogClosed = Task.CompletedTask;
+
     public DialogService(
         ILogger<DialogService> logger,
         IDialogFactory dialogFactory,
@@ -53,7 +59,7 @@ public class DialogService : IDialogService
 
     public async Task ShowAlertDialogAsync(string titleText, string messageText)
     {
-        if (IsDialogOpen)
+        if (!await WaitForClosingDialogAsync())
         {
             RefuseSecondDialog();
             return;
@@ -61,7 +67,7 @@ public class DialogService : IDialogService
 
         var dialog = _dialogFactory.CreateAlertDialog(titleText, messageText);
         _answerScheduler.OnDialogShown(DialogKind.Alert);
-        await ShowDialogAsync(async () =>
+        await ShowDialogAsync(dialog, async () =>
         {
             await dialog.ShowDialogAsync();
             return true;
@@ -70,14 +76,14 @@ public class DialogService : IDialogService
 
     public async Task<Result<bool>> ShowConfirmationDialogAsync(string titleText, string messageText, ConfirmationDialogOptions? options = null)
     {
-        if (IsDialogOpen)
+        if (!await WaitForClosingDialogAsync())
         {
             return RefuseSecondDialog();
         }
 
         var dialog = _dialogFactory.CreateConfirmationDialog(titleText, messageText, options);
         _answerScheduler.OnDialogShown(DialogKind.Confirmation);
-        var showResult = await ShowDialogAsync(dialog.ShowDialogAsync);
+        var showResult = await ShowDialogAsync(dialog, dialog.ShowDialogAsync);
         return Result<bool>.Ok(showResult);
     }
 
@@ -96,7 +102,7 @@ public class DialogService : IDialogService
 
     public async Task ShowSettingsDialogAsync(string sectionKey)
     {
-        if (IsDialogOpen)
+        if (!await WaitForClosingDialogAsync())
         {
             RefuseSecondDialog();
             return;
@@ -106,7 +112,7 @@ public class DialogService : IDialogService
 
         try
         {
-            await ShowDialogAsync(async () =>
+            await ShowDialogAsync(dialog, async () =>
             {
                 await dialog.ShowDialogAsync();
                 return true;
@@ -119,10 +125,10 @@ public class DialogService : IDialogService
         }
     }
 
-    // Logs and fails a request to show a dialog while another one is on screen. The command queue and the
-    // macOS menu bar are both held while a dialog is open, so this should be unreachable. It is the
-    // backstop that turns whatever slips through into a diagnosable failure rather than a ContentDialog
-    // throw.
+    // Logs and fails a request to show a dialog while another one is open. The command queue and the macOS
+    // menu bar are both held while a dialog is open, and a request made while one is closing waits for it,
+    // so this should be unreachable. It is the backstop that turns whatever slips through into a
+    // diagnosable failure rather than a ContentDialog throw.
     private Result.FailureResult RefuseSecondDialog([CallerMemberName] string dialogName = "")
     {
         _logger.LogError("Cannot show dialog '{DialogName}' because another dialog is already open", dialogName);
@@ -146,9 +152,19 @@ public class DialogService : IDialogService
         UpdateProgressDialog();
     }
 
-    private async Task<T> ShowDialogAsync<T>(Func<Task<T>> showDialog, [CallerMemberName] string dialogName = "")
+    private async Task<T> ShowDialogAsync<T>(object dialog, Func<Task<T>> showDialog, [CallerMemberName] string dialogName = "")
     {
         _isDialogOpen = true;
+
+        var dialogClosed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _dialogClosed = dialogClosed.Task;
+
+        var contentDialog = dialog as ContentDialog;
+        if (contentDialog is not null)
+        {
+            contentDialog.Closing += OnDialogClosing;
+        }
+
         SetProgressDialogSuppressed(true);
         using var occlusionMonitorScope = MacOSModalOcclusionMonitor.BeginDialogScope(dialogName);
 
@@ -170,29 +186,72 @@ public class DialogService : IDialogService
         {
             // Cleared first so the command queue starts draining as the dialog comes down.
             _isDialogOpen = false;
+            _isDialogClosing = false;
+
+            if (contentDialog is not null)
+            {
+                contentDialog.Closing -= OnDialogClosing;
+            }
 
             _messengerService.Send(new ModalDialogClosedMessage());
 
             SetProgressDialogSuppressed(false);
 
             ReturnKeyboard(focusedPanel, notedFocus);
+
+            // Last, so a dialog waiting for this one opens after the keyboard has been returned.
+            dialogClosed.SetResult();
         }
     }
 
-    // A modal dialog moves keyboard focus into itself. Closing it hands focus back to the control that opened
-    // it on the packaged Windows head, but not reliably on the Skia heads, which can leave it on the first
-    // focusable element of another panel, or of the same one. So the control is given the keyboard back
-    // unless it already has it, and its panel takes over when the control no longer can. A web
-    // surface keeps its focus report through the dialog and only gets its caret back when its document
-    // takes focus again, so its panel is always refocused.
-    private void ReturnKeyboard(FocusPanelId focusedPanel, INotedFocus notedFocus)
+    private void OnDialogClosing(ContentDialog sender, ContentDialogClosingEventArgs args)
     {
-        // No panel held the keyboard, so there is none to give it back to.
-        if (focusedPanel == FocusPanelId.None)
+        // A dialog that cancels its closing stays open.
+        if (!args.Cancel)
         {
-            return;
+            OnDialogStartedClosing();
+        }
+    }
+
+    // Separate from the event handler, so the unit tests can start a dialog closing.
+    internal void OnDialogStartedClosing()
+    {
+        _isDialogClosing = true;
+    }
+
+    // Returns whether a new dialog may open, waiting first for an open dialog that has started to close.
+    // When a dialog starts to close, WinUI gives the keyboard back to the control that opened it, about 200 ms
+    // before the dialog has closed. A key pressed on that control in that time asks for a dialog while this
+    // one is still open, so the request waits for it to close. A request while a dialog is open and not
+    // closing is refused.
+    private async Task<bool> WaitForClosingDialogAsync()
+    {
+        if (!_isDialogOpen)
+        {
+            return true;
         }
 
+        if (!_isDialogClosing)
+        {
+            return false;
+        }
+
+        await _dialogClosed;
+
+        // Another request waiting for the same dialog may have opened its own first.
+        return !_isDialogOpen;
+    }
+
+    // A modal dialog moves keyboard focus into itself. Closing it usually hands focus back to the control that
+    // opened it on the packaged Windows head, but not reliably on the Skia heads, which can leave it on the
+    // first focusable element of another panel, or of the same one. Even the packaged Windows head can leave
+    // it in the Explorer after a confirmation that opened as the New Project dialog closed. So the control is
+    // given the keyboard back unless it already has it, and its panel takes over when the control no longer
+    // can. That includes a control in no panel, such as a title bar button. A web surface keeps its focus
+    // report through the dialog and only gets its caret back when its document takes focus again, so its
+    // panel is always refocused.
+    private void ReturnKeyboard(FocusPanelId focusedPanel, INotedFocus notedFocus)
+    {
         if (!_webViewFocusRegistry.HasFocusedSurface)
         {
             if (notedFocus.IsFocusBack)
@@ -205,6 +264,12 @@ public class DialogService : IDialogService
                 _logger.LogTrace("Returned the keyboard to the control that held it before a dialog opened");
                 return;
             }
+        }
+
+        // No panel held the keyboard, so there is none to give it back to.
+        if (focusedPanel == FocusPanelId.None)
+        {
+            return;
         }
 
         _logger.LogTrace("Returning the keyboard to {Panel} after a dialog closed", focusedPanel);
@@ -254,53 +319,53 @@ public class DialogService : IDialogService
 
     public async Task<Result<NewProjectConfig>> ShowNewProjectDialogAsync()
     {
-        if (IsDialogOpen)
+        if (!await WaitForClosingDialogAsync())
         {
             return RefuseSecondDialog();
         }
 
         var dialog = _dialogFactory.CreateNewProjectDialog();
-        return await ShowDialogAsync(dialog.ShowDialogAsync);
+        return await ShowDialogAsync(dialog, dialog.ShowDialogAsync);
     }
 
     public async Task<Result<string>> ShowInputTextDialogAsync(string titleText, string messageText, string defaultText, Range selectionRange, IValidator validator, string? submitButtonKey = null)
     {
-        if (IsDialogOpen)
+        if (!await WaitForClosingDialogAsync())
         {
             return RefuseSecondDialog();
         }
 
         var dialog = _dialogFactory.CreateInputTextDialog(titleText, messageText, defaultText, selectionRange, validator, submitButtonKey);
         _answerScheduler.OnDialogShown(DialogKind.InputText);
-        return await ShowDialogAsync(dialog.ShowDialogAsync);
+        return await ShowDialogAsync(dialog, dialog.ShowDialogAsync);
     }
 
     public async Task<Result<string>> ShowSecretInputDialogAsync(string titleText, string headerText, string? submitButtonKey = null)
     {
-        if (IsDialogOpen)
+        if (!await WaitForClosingDialogAsync())
         {
             return RefuseSecondDialog();
         }
 
         var dialog = _dialogFactory.CreateSecretInputDialog(titleText, headerText, submitButtonKey);
         _answerScheduler.OnDialogShown(DialogKind.SecretInput);
-        return await ShowDialogAsync(dialog.ShowDialogAsync);
+        return await ShowDialogAsync(dialog, dialog.ShowDialogAsync);
     }
 
     public async Task<Result<NewFileConfig>> ShowNewFileDialogAsync(string defaultFileName, Range selectionRange, IValidator validator)
     {
-        if (IsDialogOpen)
+        if (!await WaitForClosingDialogAsync())
         {
             return RefuseSecondDialog();
         }
 
         var dialog = _dialogFactory.CreateNewFileDialog(defaultFileName, selectionRange, validator);
-        return await ShowDialogAsync(dialog.ShowDialogAsync);
+        return await ShowDialogAsync(dialog, dialog.ShowDialogAsync);
     }
 
     public async Task<Result<ResourceKey>> ShowResourcePickerDialogAsync(IReadOnlyList<string> extensions, string? title = null, bool showPreview = false)
     {
-        if (IsDialogOpen)
+        if (!await WaitForClosingDialogAsync())
         {
             return RefuseSecondDialog();
         }
@@ -312,12 +377,12 @@ public class DialogService : IDialogService
 
         var dialog = _dialogFactory.CreateResourcePickerDialog(extensions, title, showPreview);
         _answerScheduler.OnDialogShown(DialogKind.ResourcePicker);
-        return await ShowDialogAsync(dialog.ShowDialogAsync);
+        return await ShowDialogAsync(dialog, dialog.ShowDialogAsync);
     }
 
     public async Task<Result<ResourceKey>> ShowFolderPickerDialogAsync(string? title = null)
     {
-        if (IsDialogOpen)
+        if (!await WaitForClosingDialogAsync())
         {
             return RefuseSecondDialog();
         }
@@ -329,30 +394,30 @@ public class DialogService : IDialogService
 
         var dialog = _dialogFactory.CreateFolderPickerDialog(title);
         _answerScheduler.OnDialogShown(DialogKind.ResourcePicker);
-        return await ShowDialogAsync(dialog.ShowDialogAsync);
+        return await ShowDialogAsync(dialog, dialog.ShowDialogAsync);
     }
 
     public async Task<Result<string>> ShowIconPickerDialogAsync(string searchText = "")
     {
-        if (IsDialogOpen)
+        if (!await WaitForClosingDialogAsync())
         {
             return RefuseSecondDialog();
         }
 
         var dialog = _dialogFactory.CreateIconPickerDialog(searchText);
         _answerScheduler.OnDialogShown(DialogKind.IconPicker);
-        return await ShowDialogAsync(dialog.ShowDialogAsync);
+        return await ShowDialogAsync(dialog, dialog.ShowDialogAsync);
     }
 
     public async Task<Result<ChoiceDialogResult>> ShowChoiceDialogAsync(string titleText, string messageText, IReadOnlyList<string> options, int defaultIndex = 0, ChoiceDialogCheckbox? checkbox = null, string? primaryButtonText = null, string? secondaryButtonText = null)
     {
-        if (IsDialogOpen)
+        if (!await WaitForClosingDialogAsync())
         {
             return RefuseSecondDialog();
         }
 
         var dialog = _dialogFactory.CreateChoiceDialog(titleText, messageText, options, defaultIndex, checkbox, primaryButtonText, secondaryButtonText);
-        return await ShowDialogAsync(dialog.ShowDialogAsync);
+        return await ShowDialogAsync(dialog, dialog.ShowDialogAsync);
     }
 
     public void ScheduleAnswer(DialogKind dialogKind, string payload = "", int delayMs = 250)

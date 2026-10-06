@@ -76,10 +76,13 @@ public sealed partial class SecretInputDialog : ContentDialog, ISecretInputDialo
 
             _pressedEnter = true;
             Hide();
+            // Handled, so the key goes no further once the dialog has given the keyboard back.
+            e.Handled = true;
         }
         else if (e.Key == VirtualKey.Escape)
         {
             Hide();
+            e.Handled = true;
         }
     }
 

@@ -68,6 +68,8 @@ public sealed partial class IconPickerDialog : ContentDialog, IIconPickerDialog
         else if (e.Key == VirtualKey.Escape)
         {
             Hide();
+            // Handled, so the key goes no further once the dialog has given the keyboard back.
+            e.Handled = true;
         }
     }
 
@@ -86,10 +88,13 @@ public sealed partial class IconPickerDialog : ContentDialog, IIconPickerDialog
         {
             _confirmed = true;
             Hide();
+            // Handled, so the key goes no further once the dialog has given the keyboard back.
+            e.Handled = true;
         }
         else if (e.Key == VirtualKey.Escape)
         {
             Hide();
+            e.Handled = true;
         }
     }
 

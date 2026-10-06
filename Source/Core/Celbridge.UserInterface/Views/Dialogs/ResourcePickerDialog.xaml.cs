@@ -62,6 +62,8 @@ public sealed partial class ResourcePickerDialog : ContentDialog, IResourcePicke
         else if (e.Key == VirtualKey.Escape)
         {
             Hide();
+            // Handled, so the key goes no further once the dialog has given the keyboard back.
+            e.Handled = true;
         }
     }
 
@@ -74,17 +76,22 @@ public sealed partial class ResourcePickerDialog : ContentDialog, IResourcePicke
         }
     }
 
-    // Previewed, since the list takes Enter for itself before it would bubble up to a KeyDown handler.
+    // Previewed, since the list takes Enter for itself before it would bubble up to a KeyDown handler. The key
+    // is marked handled because WinUI gives the keyboard back to the control that opened the dialog as soon as
+    // the dialog starts to close, and then delivers this same key to that control. Unhandled, an Enter that
+    // chose an item would also press the button that opened the picker, and open it again.
     private void ResourceListView_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
     {
         if (e.Key == VirtualKey.Enter && ViewModel.SelectedItem is not null)
         {
             _confirmed = true;
             Hide();
+            e.Handled = true;
         }
         else if (e.Key == VirtualKey.Escape)
         {
             Hide();
+            e.Handled = true;
         }
     }
 
