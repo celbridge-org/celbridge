@@ -8,8 +8,8 @@ using Celbridge.Workspace;
 namespace Celbridge.Tests.UserInterface;
 
 /// <summary>
-/// Covers a dialog requested while another is open: it waits for one that has started to close, and is
-/// refused otherwise.
+/// Tests requesting a dialog while another is open. The request waits if the open dialog has started to close, and
+/// is refused otherwise.
 /// </summary>
 [TestFixture]
 public class DialogServiceClosingTests

@@ -124,8 +124,8 @@ public class LayoutManager : IWindowModeService, ILayoutService
 
     public LayoutMode LayoutMode => _layoutMode;
 
-    // Where the window chrome offers fullscreen, the user enters it there without the app. Only the window
-    // knows the state.
+    // Where the window frame has its own full screen button, the user can enter full screen without going through
+    // the app, so the state comes from the window.
     public bool IsFullScreen => _platformInfo.HasNativeFullScreenAffordance
         ? _fullScreenController.IsFullScreen
         : _isFullScreen;

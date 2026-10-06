@@ -132,9 +132,9 @@ internal static class MacOSKeyEventMonitor
         // Runs on the main thread during event dispatch. Never let an exception cross back into AppKit.
         try
         {
-            // Uno leaves managed focus on the item of a menu it has just dismissed. The reconcile queued as the
-            // menu closes moves it later. A key pressed in between would run the dismissed item, so focus is
-            // corrected before the key is dispatched.
+            // When Uno dismisses a menu, managed focus stays on the menu's item until the reconcile queued at
+            // close moves it. A key pressed before then would activate that item, so focus is reconciled before
+            // the key is dispatched.
             if (_managedFocus?.FocusLocation == FocusLocation.Detached)
             {
                 _focusReconciler?.Reconcile();

@@ -207,10 +207,10 @@ public partial class MainPage : Page
         }
     }
 
-    // Sends an unhandled edit shortcut to the surface the Edit menu would act on. For example, Ctrl+C pressed while
-    // a title bar button has the keyboard copies from the document last edited. Text controls handle their own
-    // shortcuts, so they're skipped. Only the packaged Windows head needs this: on macOS the native key monitor
-    // routes these shortcuts first, and on Windows keys typed in a web page never reach this handler.
+    // Sends an unhandled edit shortcut to the surface the Edit menu would act on. For example, Ctrl+C pressed
+    // while a title bar button has the keyboard copies from the document last edited. Text controls handle their
+    // own shortcuts, so they're skipped. Only the packaged Windows head needs this. On macOS the native key
+    // monitor routes these shortcuts first. On Windows, keys typed in a web page never reach this handler.
     private bool TryRouteEditShortcut(VirtualKey key)
     {
 #if WINDOWS

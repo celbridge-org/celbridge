@@ -122,8 +122,8 @@ public static class ServiceConfiguration
         // popup.
         ServiceLocator.AcquireService<IManagedFocus>();
 
-        // Created now to hear the window's maximized state, which the window reports once as it opens and then
-        // only when it changes.
+        // Created now so it receives the window's maximized state. The window reports that once when it opens,
+        // then only when it changes.
         ServiceLocator.AcquireService<IWindowModeService>();
     }
 }

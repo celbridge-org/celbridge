@@ -66,7 +66,7 @@ public sealed partial class InputTextDialog : ContentDialog, IInputTextDialog
             // Set a flag so that we can tell that the user pressed Enter
             _pressedEnter = true;
             Hide();
-            // Handled, so the key goes no further once the dialog has given the keyboard back.
+            // Handled, so the key doesn't reach the control that gets the keyboard back as the dialog closes.
             e.Handled = true;
         }
         else if (e.Key == VirtualKey.Escape)

@@ -124,8 +124,8 @@ public class DialogServiceFocusTests
     [Test]
     public async Task AControlInNoPanel_IsGivenTheKeyboardBack()
     {
-        // A title bar button, for example. Even the packaged Windows head can leave the keyboard elsewhere,
-        // such as after a confirmation that opened as the New Project dialog closed.
+        // For example, a title bar button. Even the packaged Windows head can leave the keyboard somewhere else,
+        // such as when a confirmation opens as the New Project dialog closes.
         _focusService.FocusedPanel.Returns(FocusPanelId.None);
         _notedFocus.IsFocusBack.Returns(false);
         _notedFocus.TryReturnFocus().Returns(true);

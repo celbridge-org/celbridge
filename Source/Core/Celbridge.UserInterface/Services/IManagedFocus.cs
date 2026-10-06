@@ -35,10 +35,10 @@ public interface IManagedFocus
     FocusLocation FocusLocation { get; }
 
     /// <summary>
-    /// Notes the element holding managed keyboard focus, so it can later be checked for focus or given it
-    /// back, as it must be once a modal dialog or anything else that took the keyboard has gone. When focus
-    /// is in an open menu, the noted element is the one that held focus in the window content before the menu.
-    /// A menu closes once an item is chosen, and returns focus to that element.
+    /// Records which element has managed keyboard focus, so a caller can later check whether it still has focus,
+    /// or give focus back to it after a modal dialog or anything else that took the keyboard has gone. If focus is
+    /// in an open menu, this records the element that had focus before the menu opened, because choosing an item
+    /// closes the menu and returns focus there.
     /// </summary>
     INotedFocus NoteFocus();
 

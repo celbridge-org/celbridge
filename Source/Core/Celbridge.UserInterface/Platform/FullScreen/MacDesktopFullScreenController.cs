@@ -15,8 +15,7 @@ public sealed class MacDesktopFullScreenController : IFullScreenController
 {
     private readonly ILogger<MacDesktopFullScreenController> _logger;
 
-    // Updated on the UI thread whenever the window changes. A reader on another thread then never calls into
-    // AppKit.
+    // Cached on the UI thread whenever the window changes, so reads from other threads never call into AppKit.
     private bool _isFullScreen;
 
     public MacDesktopFullScreenController(ILogger<MacDesktopFullScreenController> logger)

@@ -34,11 +34,11 @@ public class DialogService : IDialogService
     // Completes once the open dialog has closed and the keyboard has been returned.
     private Task _dialogClosed = Task.CompletedTask;
 
-    // The requests waiting for the open dialog to close, each to open a dialog of its own.
+    // How many requests are waiting for the open dialog to close so they can open their own.
     private int _requestsWaiting;
 
-    // How long a request waits for a closing dialog. Closing takes about 200 ms, so a dialog still open after
-    // this has stopped closing, and the request is refused.
+    // How long a request waits for a closing dialog before it's refused. Closing takes about 200 ms, so a dialog
+    // that's still open after this long has stopped closing.
     internal TimeSpan ClosingWaitLimit { get; set; } = TimeSpan.FromSeconds(5);
 
     public DialogService(
@@ -132,10 +132,10 @@ public class DialogService : IDialogService
         }
     }
 
-    // Logs and fails a request to show a dialog while another one is open. The command queue and the macOS
-    // menu bar are both held while a dialog is open, and a request made while one is closing waits for it,
-    // so this should be unreachable. It is the backstop that turns whatever slips through into a
-    // diagnosable failure rather than a ContentDialog throw.
+    // Logs and fails a request to show a dialog while another one is open. This should be unreachable. The command
+    // queue and the macOS menu bar are both held while a dialog is open, and a request made while a dialog is
+    // closing waits for it. This backstop turns anything that slips through into a diagnosable failure rather than
+    // a ContentDialog exception.
     private Result.FailureResult RefuseSecondDialog([CallerMemberName] string dialogName = "")
     {
         _logger.LogError("Cannot show dialog '{DialogName}' because another dialog is already open", dialogName);
@@ -202,13 +202,13 @@ public class DialogService : IDialogService
 
             _messengerService.Send(new ModalDialogClosedMessage());
 
-            // A request waiting for this dialog opens its own next, so the progress dialog stays hidden rather
-            // than showing in between. Two dialogs showing at once would throw.
+            // Keeps the progress dialog hidden if a request is waiting to open its own dialog next. Showing it in
+            // between would put two dialogs on screen at once, which throws.
             SetProgressDialogSuppressed(_requestsWaiting > 0);
 
             ReturnKeyboard(focusedPanel, notedFocus);
 
-            // Last, so a dialog waiting for this one opens after the keyboard has been returned.
+            // Done last, so a waiting dialog opens only after the keyboard has been returned.
             dialogClosed.SetResult();
         }
     }
@@ -222,17 +222,16 @@ public class DialogService : IDialogService
         }
     }
 
-    // Separate from the event handler, so the unit tests can start a dialog closing.
+    // Separate from the event handler so the unit tests can call it.
     internal void OnDialogStartedClosing()
     {
         _isDialogClosing = true;
     }
 
-    // Returns whether a new dialog may open, waiting first for an open dialog that has started to close.
-    // When a dialog starts to close, WinUI gives the keyboard back to the control that opened it, about 200 ms
-    // before the dialog has closed. A key pressed on that control in that time asks for a dialog while this
-    // one is still open, so the request waits for it to close. A request while a dialog is open and not
-    // closing is refused. A caller that gets true opens its dialog straight away.
+    // Returns true if a new dialog can open now. If the open dialog has started to close, this waits for it to
+    // finish first. If it's open and not closing, this returns false. WinUI gives the keyboard back to the control
+    // that opened a dialog about 200 ms before the dialog has closed, and a key pressed on that control in that
+    // time can request another dialog. A caller that gets true must open its dialog straight away.
     private async Task<bool> WaitForClosingDialogAsync()
     {
         if (!_isDialogOpen)
@@ -255,18 +254,17 @@ public class DialogService : IDialogService
             _requestsWaiting--;
         }
 
-        // The dialog may have stopped closing, or another request waiting for it may have opened its own first.
+        // False if the dialog stopped closing, or if another waiting request opened its dialog first.
         return !_isDialogOpen;
     }
 
-    // A modal dialog moves keyboard focus into itself. Closing it usually hands focus back to the control that
-    // opened it on the packaged Windows head, but not reliably on the Skia heads, which can leave it on the
-    // first focusable element of another panel, or of the same one. Even the packaged Windows head can leave
-    // it in the Explorer after a confirmation that opened as the New Project dialog closed. So the control is
-    // given the keyboard back unless it already has it, and its panel takes over when the control no longer
-    // can. That includes a control in no panel, such as a title bar button. A web surface keeps its focus
-    // report through the dialog and only gets its caret back when its document takes focus again, so its
-    // panel is always refocused.
+    // Gives the keyboard back to whatever held it before the dialog opened, since closing a dialog doesn't
+    // reliably do that. On the Skia heads, focus can land on the first focusable element of any panel. Even the
+    // packaged Windows head can leave focus in the Explorer when a confirmation opens as the New Project dialog
+    // closes. The control that held the keyboard gets it back first, unless it already has it. If the control
+    // can't take it, its panel is refocused instead. This also applies to a control outside any panel, such as a
+    // title bar button. A web surface still reports focus while the dialog is open, but only gets its caret back
+    // when its document takes focus again, so its panel is always refocused.
     private void ReturnKeyboard(FocusPanelId focusedPanel, INotedFocus notedFocus)
     {
         if (!_webViewFocusRegistry.HasFocusedSurface)
