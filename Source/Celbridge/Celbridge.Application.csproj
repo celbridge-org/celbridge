@@ -57,6 +57,12 @@
     <UnoMacOSEntitlements>$(MSBuildProjectDirectory)/Platforms/Desktop/Entitlements.plist</UnoMacOSEntitlements>
   </PropertyGroup>
 
+  <!-- A Debug build of the packaged Windows head is registered beside any installed release, and both are named
+       Celbridge. Its icon draws a badge over the logo, to tell the two apart in Start and on the taskbar. -->
+  <PropertyGroup Condition="$(TargetFramework.Contains('-windows')) AND '$(Configuration)' == 'Debug'">
+    <UnoIconForegroundFile>Branding\debug_badge.svg</UnoIconForegroundFile>
+  </PropertyGroup>
+
   <PropertyGroup>
     <!-- Workaround for https://github.com/unoplatform/uno/issues/18552 -->
     <PlatformTarget Condition=" '$(PlatformTarget)' == '' AND $(Platform) == 'AnyCPU' AND '$(NETCoreSdkRuntimeIdentifier)' == 'win-x86'">x86</PlatformTarget>
