@@ -11,7 +11,7 @@ COMPONENTS
 Bundled components
 ------------------
 
-.NET Runtime 10.0.11
+.NET Runtime 10.0.12
     License: MIT
     Source: https://github.com/dotnet/runtime
     Copyright (c) .NET Foundation and Contributors
