@@ -52,32 +52,95 @@ public class DocumentViewFactory
             return CreateForRequestedEditor(fileResource, requestedEditorId);
         }
 
-        var sidecarView = await CreateFromSidecarPreferenceAsync(fileResource);
-        if (sidecarView is not null)
+        await foreach (var factory in ResolveFactoriesAsync(fileResource))
         {
-            return sidecarView.OkResult<IDocumentView>();
+            var createResult = factory.CreateDocumentView(fileResource);
+            if (createResult.IsSuccess)
+            {
+                return createResult;
+            }
+
+            _logger.LogWarning(createResult,
+                $"Editor '{factory.EditorId}' failed to create view for '{fileResource}'; falling through");
         }
 
-        var associatedEditorView = CreateFromEditorAssociations(fileResource);
-        if (associatedEditorView is not null)
-        {
-            return associatedEditorView.OkResult<IDocumentView>();
-        }
-
-        var factoryView = CreateFromResolvedFactory(fileResource);
-        if (factoryView is not null)
-        {
-            return factoryView.OkResult<IDocumentView>();
-        }
-
-        return CreateTextFallback(fileResource);
+        return Result<IDocumentView>.Fail($"No document editor can open the file: '{fileResource}'");
     }
 
-    // Sidecar 'editor' field — the user's per-file "Open With X" choice. Wins over the
-    // editor-associations map and the resolution-order fallback. Returns the view on success, or null
-    // when no override is set, the editor is unregistered, it cannot handle the resource, or
-    // construction fails (logged before fall-through).
-    private async Task<IDocumentView?> CreateFromSidecarPreferenceAsync(ResourceKey fileResource)
+    /// <summary>
+    /// The editor the resource opens with when none is requested, or Empty when no editor can open it.
+    /// </summary>
+    public async Task<EditorId> ResolveEditorIdAsync(ResourceKey fileResource)
+    {
+        await foreach (var factory in ResolveFactoriesAsync(fileResource))
+        {
+            return factory.EditorId;
+        }
+
+        return EditorId.Empty;
+    }
+
+    // The factories that can open the resource, most preferred first: the sidecar's editor, the
+    // project's editor association, the first factory in resolution order, and for a text file every
+    // factory that claims it and then the code editor. Lazy, so a file is sniffed only when nothing
+    // earlier claims it.
+    private async IAsyncEnumerable<IDocumentEditorFactory> ResolveFactoriesAsync(ResourceKey fileResource)
+    {
+        var sidecarFactory = await GetSidecarFactoryAsync(fileResource);
+        if (sidecarFactory is not null)
+        {
+            yield return sidecarFactory;
+        }
+
+        // The [celbridge].editor-associations entry whose extension is the longest matching suffix of
+        // the file name. Entries are validated at workspace load, so a failed lookup just falls through.
+        var associatedResult = _documentEditorRegistry.GetAssociatedEditorFactory(fileResource);
+        if (associatedResult.IsSuccess)
+        {
+            yield return associatedResult.Value;
+        }
+
+        // First factory in resolution order: declared editors in declaration order, then built-ins in
+        // their pinned order. Placeholder factories (package.toml, *.celbridge, *.editor.toml) reserve
+        // extensions but never produce a view.
+        var factoryResult = _documentEditorRegistry.GetFactory(fileResource);
+        if (factoryResult.IsSuccess
+            && !factoryResult.Value.IsPlaceholder)
+        {
+            yield return factoryResult.Value;
+        }
+
+        // Markdown is plain text, so it can still be edited as text when no Markdown editor is
+        // available. WebViewDocument and FileViewer are not text-representable, so they never open as
+        // text.
+        var viewType = _fileTypeClassifier.GetDocumentViewType(fileResource);
+        if (viewType != DocumentViewType.TextDocument
+            && viewType != DocumentViewType.Markdown)
+        {
+            yield break;
+        }
+
+        foreach (var factory in _documentEditorRegistry.GetAllFactories())
+        {
+            if (!factory.IsPlaceholder
+                && factory.CanHandleResource(fileResource))
+            {
+                yield return factory;
+            }
+        }
+
+        // The bundled Monaco-based code editor, by id rather than by extension match, so it opens any
+        // text file even when its extension is not in the code editor's extension list.
+        var codeEditorResult = _documentEditorRegistry.GetFactoryById(DocumentConstants.CodeEditorId);
+        if (codeEditorResult.IsSuccess)
+        {
+            yield return codeEditorResult.Value;
+        }
+    }
+
+    // The sidecar 'editor' field is the user's per-file "Open With X" choice. Null when no override is
+    // set, the editor is unregistered, or it cannot handle the resource.
+    private async Task<IDocumentEditorFactory?> GetSidecarFactoryAsync(ResourceKey fileResource)
     {
         var sidecarEditorResult = await _preferenceStore.GetSidecarPreferenceAsync(fileResource);
         if (sidecarEditorResult.IsFailure
@@ -100,81 +163,7 @@ public class DocumentViewFactory
             return null;
         }
 
-        var createResult = sidecarFactory.CreateDocumentView(fileResource);
-        if (createResult.IsSuccess)
-        {
-            return createResult.Value;
-        }
-
-        _logger.LogWarning(createResult,
-            $"Sidecar editor '{sidecarEditorId}' failed to create view for '{fileResource}'; falling through");
-        return null;
-    }
-
-    // Editor associations: the [celbridge].editor-associations entry whose extension is the
-    // longest matching suffix of the file name. Entries are validated at workspace load, so a
-    // failed lookup here just falls through.
-    private IDocumentView? CreateFromEditorAssociations(ResourceKey fileResource)
-    {
-        var factoryResult = _documentEditorRegistry.GetAssociatedEditorFactory(fileResource);
-        if (factoryResult.IsFailure)
-        {
-            return null;
-        }
-
-        var factory = factoryResult.Value;
-        var createResult = factory.CreateDocumentView(fileResource);
-        if (createResult.IsSuccess)
-        {
-            return createResult.Value;
-        }
-
-        _logger.LogWarning(createResult,
-            $"Associated editor '{factory.EditorId}' failed to create view for '{fileResource}'; falling through");
-        return null;
-    }
-
-    // First factory in resolution order for the resource: declared editors in declaration
-    // order, then built-ins in their pinned order. Placeholder factories (package.toml, *.celbridge,
-    // *.editor.toml) reserve extensions but never produce a view, so they are skipped here.
-    private IDocumentView? CreateFromResolvedFactory(ResourceKey fileResource)
-    {
-        var factoryResult = _documentEditorRegistry.GetFactory(fileResource);
-        if (factoryResult.IsFailure
-            || factoryResult.Value.IsPlaceholder)
-        {
-            return null;
-        }
-
-        var factory = factoryResult.Value;
-        var createResult = factory.CreateDocumentView(fileResource);
-        if (createResult.IsSuccess)
-        {
-            return createResult.Value;
-        }
-
-        _logger.LogWarning(createResult, $"Factory failed to create document view for: '{fileResource}'");
-        return null;
-    }
-
-    private Result<IDocumentView> CreateTextFallback(ResourceKey fileResource)
-    {
-        var viewType = _fileTypeClassifier.GetDocumentViewType(fileResource);
-        if (viewType == DocumentViewType.UnsupportedFormat)
-        {
-            return Result.Fail($"File resource is not a supported document format: '{fileResource}'");
-        }
-
-        // Markdown is plain text, so it can still be edited as text when no Markdown editor is
-        // available. WebViewDocument and FileViewer are not text-representable, so they fail here
-        // rather than opening as text.
-        if (viewType != DocumentViewType.TextDocument
-            && viewType != DocumentViewType.Markdown)
-        {
-            return Result.Fail($"Failed to create document view for file: '{fileResource}'");
-        }
-
-        return CreateTextDocumentView(fileResource);
+        return sidecarFactory;
     }
 
     private Result<IDocumentView> CreateForRequestedEditor(ResourceKey fileResource, EditorId requestedEditorId)
@@ -204,46 +193,6 @@ public class DocumentViewFactory
         }
 
         return createResult;
-    }
-
-    private Result<IDocumentView> CreateTextDocumentView(ResourceKey fileResource)
-    {
-        // Try every non-placeholder factory. Placeholders never produce a view.
-        foreach (var factory in _documentEditorRegistry.GetAllFactories())
-        {
-            if (factory.IsPlaceholder)
-            {
-                continue;
-            }
-
-            if (factory.CanHandleResource(fileResource))
-            {
-                var createResult = factory.CreateDocumentView(fileResource);
-                if (createResult.IsSuccess)
-                {
-                    return createResult;
-                }
-            }
-        }
-
-        // Default to the bundled Monaco-based code editor. Constructed by id, not
-        // by extension match, so the code editor opens any text file even when
-        // its extension is not in the code editor's extension list.
-        var codeEditorFactoryResult = _documentEditorRegistry.GetFactoryById(DocumentConstants.CodeEditorId);
-        if (codeEditorFactoryResult.IsFailure)
-        {
-            return Result<IDocumentView>.Fail($"Code editor '{DocumentConstants.CodeEditorId}' is not registered, so no text view could be created for: '{fileResource}'")
-                .WithErrors(codeEditorFactoryResult);
-        }
-
-        var codeEditorResult = codeEditorFactoryResult.Value.CreateDocumentView(fileResource);
-        if (codeEditorResult.IsFailure)
-        {
-            return Result<IDocumentView>.Fail($"Code editor '{DocumentConstants.CodeEditorId}' failed to create view for: '{fileResource}'")
-                .WithErrors(codeEditorResult);
-        }
-
-        return codeEditorResult;
     }
 
     private static bool IsCodeEditor(EditorId editorId)

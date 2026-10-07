@@ -1209,7 +1209,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         return location?.Tab.Content as IDocumentView;
     }
 
-    public async Task<Result> ChangeDocumentResource(ResourceKey oldResource, DocumentViewType oldDocumentType, ResourceKey newResource, string newResourcePath, DocumentViewType newDocumentType)
+    public async Task<Result> ChangeDocumentResource(ResourceKey oldResource, ResourceKey newResource, string newResourcePath, EditorId newEditorId)
     {
         // Find the document tab for the old resource
         var location = SectionContainer.FindDocumentTab(oldResource);
@@ -1226,7 +1226,9 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         var oldDocumentView = documentTab.Content as IDocumentView;
         Guard.IsNotNull(oldDocumentView);
 
-        if (oldDocumentType == newDocumentType)
+        // The editor is resolved from the file name, so a rename can change it. The same editor keeps the
+        // view and its state. A different one takes a new view, which reads the file afresh.
+        if (oldDocumentView.EditorId == newEditorId)
         {
             var setResult = await oldDocumentView.SetFileResource(newResource);
             if (setResult.IsFailure)

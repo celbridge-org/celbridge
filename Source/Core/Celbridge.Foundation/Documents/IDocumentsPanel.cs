@@ -121,9 +121,10 @@ public interface IDocumentsPanel
     Task<Result> NavigateToLocation(ResourceKey fileResource, string location);
 
     /// <summary>
-    /// Change the resource of an opened document.
+    /// Change the resource of an opened document. The view is kept when the new resource opens with the
+    /// same editor, and replaced with that editor's view otherwise.
     /// </summary>
-    Task<Result> ChangeDocumentResource(ResourceKey oldResource, DocumentViewType oldDocumentType, ResourceKey newResource, string newResourcePath, DocumentViewType newDocumentType);
+    Task<Result> ChangeDocumentResource(ResourceKey oldResource, ResourceKey newResource, string newResourcePath, EditorId newEditorId);
 
     /// <summary>
     /// Closes all open documents and cleans up their resources. Called when the workspace is being unloaded.

@@ -568,6 +568,14 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
 
     private void OnDocumentResourceChanged(object recipient, DocumentResourceChangedMessage message)
     {
+        // A console renamed to another file type opens in another editor, so its session ends here as it
+        // would when the document closed.
+        if (!IsConsoleResource(message.NewResource))
+        {
+            EndSession(message.OldResource);
+            return;
+        }
+
         lock (_sessionsLock)
         {
             if (_sessions.TryGetValue(message.OldResource, out var session))
