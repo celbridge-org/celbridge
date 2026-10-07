@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Drawn over the logo in a Debug build of the packaged Windows head, to tell it apart from an installed release.
+     It sits outside Assets so that no build packages it as an image of its own. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <circle cx="190" cy="190" r="60" fill="#F76707" stroke="#272832" stroke-width="8"/>
+  <g fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="172,166 150,190 172,214"/>
+    <polyline points="208,166 230,190 208,214"/>
+    <line x1="198" y1="162" x2="182" y2="218"/>
+  </g>
+</svg>
