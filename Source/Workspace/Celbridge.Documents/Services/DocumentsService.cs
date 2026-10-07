@@ -592,28 +592,34 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     private void OnDocumentResourceChangedMessage(object recipient, DocumentResourceChangedMessage message)
     {
-        var oldResource = message.OldResource.ToString();
-        var newResource = message.NewResource.ToString();
+        var oldResource = message.OldResource;
+        var newResource = message.NewResource;
+
+        var isOpen = GetOpenDocuments().Any(document => document.FileResource == oldResource);
+        if (!isOpen)
+        {
+            return;
+        }
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var resolveResult = resourceRegistry.ResolveResourcePath(message.NewResource);
+        var resolveResult = resourceRegistry.ResolveResourcePath(newResource);
         if (resolveResult.IsFailure)
         {
-            _logger.LogError(resolveResult, $"Failed to resolve path for renamed resource: '{message.NewResource}'");
+            _logger.LogError(resolveResult, $"Failed to resolve path for renamed resource: '{newResource}'");
             return;
         }
         var newResourcePath = resolveResult.Value;
 
-        var oldDocumentType = _fileTypeHelper.GetDocumentViewType(oldResource);
-        var newDocumentType = _fileTypeHelper.GetDocumentViewType(newResource);
-
         var changeDocumentResource = async Task () =>
         {
             var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
-            var infoResult = await resourceFileSystem.GetInfoAsync(message.NewResource);
+            var infoResult = await resourceFileSystem.GetInfoAsync(newResource);
             Guard.IsTrue(infoResult.IsSuccess && infoResult.Value.Kind == StorageItemKind.File);
 
-            var changeResult = await DocumentsPanel.ChangeDocumentResource(oldResource, oldDocumentType, newResource, newResourcePath, newDocumentType);
+            // The new name may open with another editor, in which case the panel replaces the view.
+            var newEditorId = await _viewFactory.ResolveEditorIdAsync(newResource);
+
+            var changeResult = await DocumentsPanel.ChangeDocumentResource(oldResource, newResource, newResourcePath, newEditorId);
             if (changeResult.IsFailure)
             {
                 // Log the error and close the document to get back to a consistent state

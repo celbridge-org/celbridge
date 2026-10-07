@@ -8,7 +8,7 @@ namespace Celbridge.Tests.Documents;
 /// Covers DocumentViewFactory.CreateAsync across each step of the resolution chain: sidecar wins,
 /// requested editor used directly, the project editor-associations map, the first factory in
 /// resolution order, and the text-file fallback that prefers the code editor and skips placeholder
-/// factories.
+/// factories. ResolveEditorIdAsync walks the same chain and names the editor without creating a view.
 /// </summary>
 [TestFixture]
 public class DocumentViewFactoryTests
@@ -352,6 +352,66 @@ public class DocumentViewFactoryTests
         var result = await CreateFactory().CreateAsync(new ResourceKey("doc.xyz"), EditorId.Empty);
 
         result.IsFailure.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task ResolveEditorIdAsync_SidecarEditor_WinsOverEverythingElse()
+    {
+        var sidecarEditorId = new EditorId("test.sidecar-editor");
+        var defaultFactory = CreateFakeFactory(
+            new EditorId("test.default-editor"), ".md", Substitute.For<IDocumentView>());
+        var sidecarFactory = CreateFakeFactory(sidecarEditorId, ".md", Substitute.For<IDocumentView>());
+        _registry.RegisterFactory(defaultFactory);
+        _registry.RegisterFactory(sidecarFactory);
+
+        StubSidecarEditor("test.sidecar-editor");
+
+        var editorId = await CreateFactory().ResolveEditorIdAsync(new ResourceKey("doc.md"));
+
+        editorId.Should().Be(sidecarEditorId);
+    }
+
+    [Test]
+    public async Task ResolveEditorIdAsync_FollowsTheFileExtension()
+    {
+        // A rename across extensions resolves to the editor that claims the new name.
+        var consoleEditorId = new EditorId("test.console");
+        var consoleFactory = CreateFakeFactory(consoleEditorId, ".console", Substitute.For<IDocumentView>());
+        var codeFactory = CreateFakeFactory(DocumentConstants.CodeEditorId, ".txt", Substitute.For<IDocumentView>());
+        _registry.RegisterFactory(consoleFactory);
+        _registry.RegisterFactory(codeFactory);
+
+        var factory = CreateFactory();
+        var consoleResolved = await factory.ResolveEditorIdAsync(new ResourceKey("doc.console"));
+        var textResolved = await factory.ResolveEditorIdAsync(new ResourceKey("doc.txt"));
+
+        consoleResolved.Should().Be(consoleEditorId);
+        textResolved.Should().Be(DocumentConstants.CodeEditorId);
+    }
+
+    [Test]
+    public async Task ResolveEditorIdAsync_TextFallback_IsTheCodeEditor()
+    {
+        // Unknown extension, sniffer reports text, no factory claims it.
+        _textBinarySniffer.IsTextFile(Arg.Any<string>()).Returns(Result<bool>.Ok(true));
+
+        var codeFactory = CreateFakeFactory(
+            DocumentConstants.CodeEditorId, ".cs", Substitute.For<IDocumentView>(), canHandle: false);
+        _registry.RegisterFactory(codeFactory);
+
+        var editorId = await CreateFactory().ResolveEditorIdAsync(new ResourceKey("doc.xyz"));
+
+        editorId.Should().Be(DocumentConstants.CodeEditorId);
+    }
+
+    [Test]
+    public async Task ResolveEditorIdAsync_IsEmptyWhenNoEditorCanOpenTheFile()
+    {
+        _textBinarySniffer.IsTextFile(Arg.Any<string>()).Returns(Result<bool>.Ok(false));
+
+        var editorId = await CreateFactory().ResolveEditorIdAsync(new ResourceKey("doc.xyz"));
+
+        editorId.IsEmpty.Should().BeTrue();
     }
 
     private DocumentViewFactory CreateFactory()
