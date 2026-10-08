@@ -34,7 +34,9 @@ celbridge-client/
 │   ├── input-api.js      # Input events (keyboard, link clicks, scroll)
 │   ├── localization-api.js
 │   ├── log-api.js        # Host application log
+│   ├── resources-api.js  # Project file change notifications
 │   ├── tools-api.js      # Host capability proxy (cel.*)
+│   ├── utility-api.js    # A utility's rail button indicator
 │   └── view-api.js       # Viewport trust: when a page may measure its own box
 ├── core/
 │   ├── rpc-transport.js  # JSON-RPC 2.0 transport layer

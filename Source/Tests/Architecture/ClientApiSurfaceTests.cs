@@ -61,6 +61,12 @@ public class ClientApiSurfaceTests
             "info",
             "warn"
         },
+        ["api/resources-api.js"] = new[]
+        {
+            "onChanged",
+            "subscribe",
+            "unsubscribe"
+        },
         ["api/tools-api.js"] = new[]
         {
             "call",
@@ -69,6 +75,11 @@ public class ClientApiSurfaceTests
             "list",
             "loadDescriptors",
             "setDescriptors"
+        },
+        ["api/utility-api.js"] = new[]
+        {
+            "clearIndicator",
+            "setIndicator"
         },
         ["api/view-api.js"] = new[]
         {

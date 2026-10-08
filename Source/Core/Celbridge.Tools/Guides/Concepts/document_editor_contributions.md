@@ -100,6 +100,25 @@ client.viewState.onChanged((viewState) => {
 - **`onRenamed(metadata)`** — the document was renamed or moved, and it stays open in the same editor. `metadata` carries the new `resourceKey`, `fileName` and `filePath`. Update anything the editor derived from them at `onContent`, such as a URL built with `projectUrl()` or a syntax mode chosen by extension. An editor that uses only its content can leave this out.
 - **`onRequestState()` / `onRestoreState(stateJson)`** — opaque string round-trip for scroll, selection, pending view state. Survives external reloads and session restore. Return `null` if nothing to preserve.
 
+## Watching project files (optional)
+
+`onExternalChange` covers only the editor's own document. An editor that needs to know about other files — a test runner, a linter panel, a history recorder — subscribes to project resource changes:
+
+```js
+client.resources.onChanged(({ kind, resource, oldResource }) => {
+    // kind: "created" | "changed" | "deleted" | "renamed"
+    // resource: canonical key ("project:src/main.py"), ready for cel.file.read(resource)
+    // oldResource: the previous key, for a rename only
+});
+await client.resources.subscribe(['*.py', 'web/**/*.js']);   // omit or [] for every file
+```
+
+- Every change to a file in the project tree is reported, however it was made: an editor's save, an agent, git, another application. The hidden roots (`temp:`, `logs:`, `utils:`) are never reported.
+- Changes are collapsed per file until it has been quiet for about 300 ms, so one save (which the watcher sees as several events) is one notification. A file created and deleted inside that window is not reported; one deleted and recreated is `changed`. A rename is reported at once.
+- Patterns use the resource glob syntax: no slash (`*.py`) matches a file name at any depth; with a slash (`src/**/*.ts`) matches from the project root. Calling `subscribe` again replaces the patterns; `unsubscribe()` stops.
+- Nothing is sent until the page subscribes, and a reloaded page starts unsubscribed. A utility editor lives for the whole project session, so it is the natural home for a subscription that should run all the time.
+- With no patterns, folders can appear too. Filter on what you need.
+
 ## Styling
 
 Link the shared stylesheet to inherit the host's fonts and colors, so a WebView editor reads as part of the native app rather than a foreign web page:

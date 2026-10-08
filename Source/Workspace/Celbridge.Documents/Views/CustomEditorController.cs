@@ -80,6 +80,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
     private CustomDocumentHandler? _documentHandler;
     private PackageToolsHandler? _toolsHandler;
+    private CustomResourceEventsHandler? _resourceEventsHandler;
+    private CustomUtilityIndicatorHandler? _utilityIndicatorHandler;
 
     // A package-declared channel (e.g. the console terminal I/O bridge) registered as an additional RPC
     // target set, plus the host adapter it talks through. Null for editors whose package declares no
@@ -563,6 +565,22 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         Host.AddLocalRpcTarget<IHostDocument>(_documentHandler);
         Host.AddLocalRpcTarget<IHostDialog>(dialogHandler);
 
+        // Resource change events reach the page only once it subscribes, so registering the target costs an
+        // editor that never asks nothing.
+        var resourceEventsHost = Host;
+        _resourceEventsHandler = new CustomResourceEventsHandler(
+            _messengerService,
+            _logger,
+            notification => resourceEventsHost.Rpc.NotifyWithParameterObjectAsync(ResourceRpcMethods.Changed, notification));
+        Host.AddLocalRpcTarget<IHostResources>(_resourceEventsHandler);
+
+        Guard.IsNotNull(_resolvedEditor);
+        _utilityIndicatorHandler = new CustomUtilityIndicatorHandler(
+            _messengerService,
+            _resolvedEditor.EditorId,
+            _contribution.IsUtility);
+        Host.AddLocalRpcTarget<IHostUtility>(_utilityIndicatorHandler);
+
         var mcpToolBridge = _serviceProvider.GetService<IMcpToolBridge>();
         if (mcpToolBridge is not null)
         {
@@ -632,6 +650,11 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
                 if (_page.OnNavigating(uri))
                 {
                     _toolBridge?.NotifyContentLoading(_toolBridgeRegisteredResource);
+
+                    // A subscription belongs to the page that made it. A reloaded page subscribes again if it
+                    // wants events, and must not receive any it did not ask for.
+                    _resourceEventsHandler?.Unsubscribe();
+                    _utilityIndicatorHandler?.Reset();
                 }
                 return;
             }
@@ -795,6 +818,12 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             _proxyChannel.Rebound -= OnHostChannelRebound;
             _proxyChannel = null;
         }
+
+        _resourceEventsHandler?.Dispose();
+        _resourceEventsHandler = null;
+
+        _utilityIndicatorHandler?.Reset();
+        _utilityIndicatorHandler = null;
 
         _appStateConnection?.Dispose();
         _viewStateConnection?.Dispose();

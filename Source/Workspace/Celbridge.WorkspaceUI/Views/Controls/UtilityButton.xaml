@@ -47,6 +47,27 @@
                 Background="Transparent"
                 IsHitTestVisible="False" />
 
+        <!-- The indicator tones, held as ThemeResource brushes on collapsed swatches so each resolves for the
+             button's actual theme and follows a theme change. A lookup in Application.Resources from code can
+             return the other theme's brush. -->
+        <Grid Visibility="Collapsed">
+            <Border x:Name="DangerSwatch" Background="{ThemeResource SystemFillColorCriticalBrush}" />
+            <Border x:Name="CautionSwatch" Background="{ThemeResource SystemFillColorCautionBrush}" />
+            <Border x:Name="SuccessSwatch" Background="{ThemeResource SystemFillColorSuccessBrush}" />
+            <Border x:Name="AccentSwatch" Background="{ThemeResource AccentBrush}" />
+        </Grid>
+
+        <!-- Indicator fill, shown in a utility's indicator tone in place of the accent fill while the button is
+             selected and focused, so the mark never disappears into the selection. Not hit-testable. -->
+        <Border x:Name="IndicatorFill"
+                Width="32"
+                Height="32"
+                CornerRadius="{StaticResource IconButtonCornerRadius}"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Visibility="Collapsed"
+                IsHitTestVisible="False" />
+
         <!-- Attention flash overlay, pulsed to the accent color by FlashAttention. Over the fill and under the
              glyph, and not hit-testable. -->
         <Border x:Name="AttentionOverlay"
@@ -82,11 +103,17 @@
 
         <!-- Icon centered in the cell, above the button but passing clicks through to it. Sized to the icon so
              the pip aligns to the glyph's corner. -->
-        <Grid Width="{StaticResource IconSizeMedium}"
+        <Grid x:Name="IconHost"
+              Width="{StaticResource IconSizeMedium}"
               Height="{StaticResource IconSizeMedium}"
               HorizontalAlignment="Center"
               VerticalAlignment="Center"
+              RenderTransformOrigin="0.5,0.5"
               IsHitTestVisible="False">
+            <!-- Scaled by the indicator's pop when a utility turns an indicator on. -->
+            <Grid.RenderTransform>
+                <ScaleTransform x:Name="IconScale" ScaleX="1" ScaleY="1" />
+            </Grid.RenderTransform>
             <!-- The Viewbox measures the glyph unconstrained then scales it to fit the box. A bare FontIcon
                  sized to its own box clips glyphs whose ink reaches the top of the em (e.g. the Search
                  magnifying glass); the Viewbox gives every glyph the same fitted headroom. -->
