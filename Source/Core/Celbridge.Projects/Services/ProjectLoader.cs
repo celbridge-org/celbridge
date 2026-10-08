@@ -116,16 +116,17 @@ public class ProjectLoader : IProjectLoader
                 break;
             }
 
-            case MigrationStatus.IncompatibleVersion:
+            case MigrationStatus.NewerCelbridgeVersion:
+            case MigrationStatus.UnsupportedCelbridgeVersion:
             {
-                // Project was created with a newer version of Celbridge - cannot load
-                _logger.LogError($"Cannot load project '{projectName}' - created with newer Celbridge version");
+                // This version of Celbridge cannot open the project
+                _logger.LogError($"Cannot load project '{projectName}' - Celbridge version v{migrationResult.OldVersion} is not supported by application version v{migrationResult.NewVersion}");
                 _settingsService.Set(SettingCatalog.Project.PreviousProject, string.Empty);
 
                 _loadReporter.RecordMigrationResult(migrationResult, userConfirmedUpgrade: false, userCancelledUpgrade: false);
                 _loadReporter.RecordLoadOutcome(loadSucceeded: false, loadResult: null);
 
-                await ShowLoadFailedAlertAsync(projectFilePath);
+                await ShowCelbridgeVersionAlertAsync(projectName, migrationResult);
 
                 return Result.Fail($"Failed to load project: '{projectFilePath}'")
                     .WithErrors(migrationResult.OperationResult);
@@ -198,6 +199,25 @@ public class ProjectLoader : IProjectLoader
     {
         var title = _stringLocalizer.GetString("ProjectConfigErrorAlert_Title");
         var message = _stringLocalizer.GetString("ProjectConfigErrorAlert_Message", projectName);
+        await _dialogService.ShowAlertDialogAsync(title, message);
+    }
+
+    private async Task ShowCelbridgeVersionAlertAsync(string projectName, MigrationResult migrationResult)
+    {
+        string title;
+        string message;
+
+        if (migrationResult.Status == MigrationStatus.NewerCelbridgeVersion)
+        {
+            title = _stringLocalizer.GetString("ProjectNewerVersionAlert_Title");
+            message = _stringLocalizer.GetString("ProjectNewerVersionAlert_Message", projectName, migrationResult.OldVersion, migrationResult.NewVersion);
+        }
+        else
+        {
+            title = _stringLocalizer.GetString("ProjectUnsupportedVersionAlert_Title");
+            message = _stringLocalizer.GetString("ProjectUnsupportedVersionAlert_Message", projectName, migrationResult.OldVersion, ProjectConstants.MinimumSupportedCelbridgeVersion);
+        }
+
         await _dialogService.ShowAlertDialogAsync(title, message);
     }
 

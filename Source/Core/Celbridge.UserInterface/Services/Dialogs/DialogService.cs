@@ -72,6 +72,8 @@ public class DialogService : IDialogService
             return;
         }
 
+        _logger.LogInformation("Showing alert '{Title}': {Message}", titleText, messageText);
+
         var dialog = _dialogFactory.CreateAlertDialog(titleText, messageText);
         _answerScheduler.OnDialogShown(DialogKind.Alert);
         await ShowDialogAsync(dialog, async () =>

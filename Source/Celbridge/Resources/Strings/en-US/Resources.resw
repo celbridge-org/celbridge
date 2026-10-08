@@ -1563,6 +1563,18 @@ Open with default application instead?</value>
   <data name="ProjectConfigErrorAlert_Message" xml:space="preserve">
     <value>The project "{0}" has a configuration error. See the project load report for details.</value>
   </data>
+  <data name="ProjectNewerVersionAlert_Title" xml:space="preserve">
+    <value>Newer Version Required</value>
+  </data>
+  <data name="ProjectNewerVersionAlert_Message" xml:space="preserve">
+    <value>The project "{0}" was last opened with Celbridge v{1}, which is newer than this version (v{2}). Install Celbridge v{1} or later to open it.</value>
+  </data>
+  <data name="ProjectUnsupportedVersionAlert_Title" xml:space="preserve">
+    <value>Project Not Supported</value>
+  </data>
+  <data name="ProjectUnsupportedVersionAlert_Message" xml:space="preserve">
+    <value>The project "{0}" was last opened with Celbridge v{1}. This version of Celbridge cannot open projects from before v{2}. Open it with Celbridge v{1}, or start a new project.</value>
+  </data>
   <data name="DialogButton_Create" xml:space="preserve">
     <value>Create</value>
   </data>
