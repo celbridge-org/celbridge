@@ -32,11 +32,6 @@ public sealed class SyntheticOriginEditorLoader : ICustomEditorLoader
 
     public bool CanLoad(PackageInfo package) => package.Name == SpreadsheetPackageName;
 
-    // Both origin-faking mechanisms (the WebView2 virtual host and WKWebView loadHTMLString) produce an http
-    // faked origin that receives the bridge URL, so every head reaches the host over the loopback WebSocket.
-    // Only the mechanism in LoadAsync differs by platform.
-    public HostChannelTransport GetTransport(PackageInfo package) => HostChannelTransport.LoopbackWebSocket;
-
     // http (not https) on every head: the faked-origin page must open the insecure loopback WebSocket and
     // fetch the http loopback assets without a mixed-content block. The licence validates on the hostname.
     public string GetAllowedNavigationOrigin(CustomEditorLoadRequest request) => $"http://{SyntheticHost}/";

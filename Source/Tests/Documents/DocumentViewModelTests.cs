@@ -334,6 +334,44 @@ public class DocumentViewModelTests
         reloadRequested.Should().BeFalse();
     }
 
+    [Test]
+    public async Task OnResourceChanged_RaisesReload_WhenFileChangesWhileItIsLoaded()
+    {
+        // An external writer changes the file just after the load reads it. The tracking info describes the file
+        // as it was before the read, so the watcher's event for that write still reads as a change.
+        await File.WriteAllTextAsync(_tempFilePath, "content as read");
+
+        var fileSystem = Substitute.For<IResourceFileSystem>();
+        fileSystem.GetInfoAsync(Arg.Any<ResourceKey>())
+            .Returns(call => _resourceFileSystem.GetInfoAsync(call.Arg<ResourceKey>()));
+        fileSystem.ReadAllTextAsync(Arg.Any<ResourceKey>())
+            .Returns(call => ReadThenWriteAsync(call.Arg<ResourceKey>()));
+
+        var loadingVm = new TestDocumentViewModel(fileSystem);
+        loadingVm.FileResource = new ResourceKey("test.md");
+        loadingVm.FilePath = _tempFilePath;
+
+        var loadResult = await loadingVm.LoadDocument();
+        loadResult.IsSuccess.Should().BeTrue();
+        loadResult.Value.Should().Be("content as read");
+
+        var reloadRequested = false;
+        loadingVm.ReloadRequested += (_, _) => reloadRequested = true;
+
+        _messengerService.Send(new ResourceChangedMessage(loadingVm.FileResource));
+
+        reloadRequested.Should().BeTrue();
+
+        loadingVm.Cleanup();
+
+        async Task<Result<string>> ReadThenWriteAsync(ResourceKey resource)
+        {
+            var readResult = await _resourceFileSystem.ReadAllTextAsync(resource);
+            await File.WriteAllTextAsync(_tempFilePath, "content written while the load was reading");
+            return readResult;
+        }
+    }
+
     /// <summary>
     /// Minimal test subclass that exposes DocumentViewModel base class functionality
     /// for testing text file operations and file-change monitoring.

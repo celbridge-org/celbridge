@@ -2,10 +2,17 @@ namespace Celbridge.WebHost;
 
 /// <summary>
 /// A deliberately narrow view of a custom editor's JSON-RPC host, handed to a channel. It grants only what
-/// a channel needs to reach the editor: registering inbound RPC targets and sending outbound calls.
+/// a channel needs to reach the editor: the document's resource, registering inbound RPC targets and sending
+/// outbound calls.
 /// </summary>
 public interface ICustomEditorChannelHost
 {
+    /// <summary>
+    /// The resource of the document the editor shows. A rename that keeps the editor changes it, so a channel
+    /// reads it each time it needs it.
+    /// </summary>
+    ResourceKey Resource { get; }
+
     /// <summary>
     /// Registers a target whose methods handle inbound RPC calls from the editor. Must be called before the
     /// host starts listening.

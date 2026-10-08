@@ -136,11 +136,6 @@ public sealed class WindowsWebViewAdapter : IWebViewAdapter
         return new ScreenshotData(request.Format, width, height, bytes);
     }
 
-    public void PostMessageToWeb(CoreWebView2 coreWebView2, string json)
-    {
-        coreWebView2.PostWebMessageAsString(json);
-    }
-
     public async Task InstallDocumentStartScriptAsync(CoreWebView2 coreWebView2, string script)
     {
         await coreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(script);

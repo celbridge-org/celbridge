@@ -5,7 +5,7 @@ namespace Celbridge.WebHost;
 /// <summary>
 /// The inputs a channel provider needs to create a channel for one open editor view.
 /// </summary>
-public sealed record CustomEditorChannelContext(ResolvedEditor ResolvedEditor, ResourceKey FileResource);
+public sealed record CustomEditorChannelContext(ResolvedEditor ResolvedEditor);
 
 /// <summary>
 /// The abstraction a package registers in DI to give a custom editor type a channel. Several can be

@@ -96,11 +96,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     private double _presentedWidth;
     private double _presentedHeight;
 
-    // JSON-RPC infrastructure. Teardown detaches the WebView2 channel or disposes the deferred
-    // WebSocket channel, depending on the transport the host channel factory selected.
-    private Action? _hostChannelTeardown;
-
-    // Set when the WebSocket transport is in use, to resync the editor after a reconnect.
+    // The channel the JSON-RPC host runs on. The page's WebSocket binds to it when the page connects, and
+    // again after a reconnect.
     private ProxyHostChannel? _proxyChannel;
 
     // WebView tool bridge registration tracking. Only set when the package allows the
@@ -522,24 +519,18 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
                 args.ProcessFailedKind, args.Reason, args.ExitCode);
         };
 
-        // Wire up the JSON-RPC host channel. The loader's declared transport selects between the loopback
-        // WebSocket (the page derives the socket URL from its own origin plus a connection token) and the
-        // WebView2 message channel (for a page that is not same-origin with the loopback server).
-        var useWebSocketChannel = editorLoader.GetTransport(_contribution.Package) == HostChannelTransport.LoopbackWebSocket;
+        // Wire up the JSON-RPC host channel. The page opens a WebSocket back to the loopback server, and the
+        // connection token in its address binds that socket to this channel.
         var hostChannelBroker = _serviceProvider.GetRequiredService<IHostChannelBroker>();
-        var hostChannelSetup = HostChannelFactory.Create(WebView.CoreWebView2, useWebSocketChannel, hostChannelBroker);
-        _hostChannelTeardown = hostChannelSetup.Teardown;
-        var connectionToken = hostChannelSetup.ConnectionToken;
+        var pendingConnection = hostChannelBroker.CreatePendingConnection();
+        var connectionToken = pendingConnection.Token;
+        _proxyChannel = pendingConnection.Channel;
         var logTarget = new WebSurfaceLogTarget(() => _viewModel.FileResource.ToString(), _webSurfaceLog);
-        Host = new CelbridgeHost(hostChannelSetup.Channel, logTarget);
+        Host = new CelbridgeHost(_proxyChannel, logTarget);
 
         // A reconnected transport (e.g. after an OS suspend dropped the socket) may have lost messages
         // that were in transit when the previous socket died, so resync the editor on every rebind.
-        if (hostChannelSetup.Channel is ProxyHostChannel proxyChannel)
-        {
-            _proxyChannel = proxyChannel;
-            proxyChannel.Rebound += OnHostChannelRebound;
-        }
+        _proxyChannel.Rebound += OnHostChannelRebound;
 
         Host.AddLocalRpcTarget<IHostInput>(this);
         Host.AddLocalRpcTarget<IHostContext>(this);
@@ -670,10 +661,10 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             return;
         }
 
-        var context = new CustomEditorChannelContext(_resolvedEditor, _viewModel.FileResource);
+        var context = new CustomEditorChannelContext(_resolvedEditor);
         var channel = provider.Create(context);
 
-        _channelHost = new CustomEditorChannelHost(Host);
+        _channelHost = new CustomEditorChannelHost(Host, _viewModel);
         channel.RegisterTargets(_channelHost);
         _channel = channel;
     }
@@ -790,22 +781,22 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             _isSized = false;
         }
 
-        if (_proxyChannel is not null)
+        var proxyChannel = _proxyChannel;
+        if (proxyChannel is not null)
         {
-            _proxyChannel.Rebound -= OnHostChannelRebound;
+            proxyChannel.Rebound -= OnHostChannelRebound;
             _proxyChannel = null;
         }
 
         _appStateConnection?.Dispose();
         _viewStateConnection?.Dispose();
         Host?.Dispose();
-        _hostChannelTeardown?.Invoke();
+        proxyChannel?.Dispose();
 
         _appStateConnection = null;
         _viewStateConnection = null;
         _viewState = null;
         Host = null;
-        _hostChannelTeardown = null;
     }
 
     private async Task TryInjectToolBridgeShimAsync()
@@ -1690,11 +1681,11 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             // async void: catch everything so a faulty editor cannot crash the process.
             try
             {
-                await ReloadWithStatePreservationAsync();
-                // Sync the ViewModel's external-change tracking with the disk
-                // content we just loaded so duplicate watcher events for this
-                // write hash-match the cache on the next iteration.
+                // Sync the ViewModel's external-change tracking with the disk content the editor is about to load,
+                // so duplicate watcher events for this write match the cache on the next iteration. It is recorded
+                // before the editor reads the file, so a change that lands during the read still differs from it.
                 await _viewModel.UpdateFileTrackingInfoAsync();
+                await ReloadWithStatePreservationAsync();
             }
             catch (Exception ex)
             {

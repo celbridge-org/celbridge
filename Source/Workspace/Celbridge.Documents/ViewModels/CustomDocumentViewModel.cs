@@ -64,15 +64,18 @@ public partial class CustomDocumentViewModel : DocumentViewModel
     /// </summary>
     public async Task<string> LoadTextContentAsync()
     {
+        // The tracking info is recorded before the file is read, so a change that lands during the read still
+        // differs from the record.
         if (IsExternalContent)
         {
             var provider = FindContentProvider();
             if (provider is not null)
             {
+                await UpdateFileTrackingInfoAsync();
+
                 var generateResult = await provider.LoadContentAsync(FileResource);
                 if (generateResult.IsSuccess)
                 {
-                    await UpdateFileTrackingInfoAsync();
                     return generateResult.Value;
                 }
             }
@@ -88,6 +91,8 @@ public partial class CustomDocumentViewModel : DocumentViewModel
             return await GetDefaultTemplateContentAsync();
         }
 
+        await UpdateFileTrackingInfoAsync();
+
         if (IsBinary)
         {
             var bytesResult = await resourceFileSystem.ReadAllBytesAsync(FileResource);
@@ -101,7 +106,6 @@ public partial class CustomDocumentViewModel : DocumentViewModel
                 return await GetDefaultTemplateContentAsync();
             }
 
-            await UpdateFileTrackingInfoAsync();
             return Convert.ToBase64String(bytes);
         }
 
@@ -117,7 +121,6 @@ public partial class CustomDocumentViewModel : DocumentViewModel
             return await GetDefaultTemplateContentAsync();
         }
 
-        await UpdateFileTrackingInfoAsync();
         return content;
     }
 

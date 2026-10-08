@@ -133,12 +133,6 @@ public interface IWebViewAdapter
     Task<ScreenshotData> CaptureScreenshotAsync(WebView2 webView, ScreenshotRequest request);
 
     /// <summary>
-    /// Posts a host-to-page message. Uses CoreWebView2 web messaging on Windows. On the Skia heads, where that
-    /// direction is unimplemented, it invokes the client's receive function via ExecuteScriptAsync.
-    /// </summary>
-    void PostMessageToWeb(CoreWebView2 coreWebView2, string json);
-
-    /// <summary>
     /// Installs a script that runs at document-start on every navigation, before page scripts. Uses the managed
     /// document-start API on Windows and a native WKUserScript on macOS.
     /// </summary>

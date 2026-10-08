@@ -450,6 +450,22 @@ describe('webview-tools-shim frame handlers', () => {
         expect(invoke(bridge, 'getHtml').pending).toBe(true);
     });
 
+    it('loads the source again for a frame whose first page has not arrived', () => {
+        const { bridge, frame } = runShimWithFrame();
+        // A browser keeps the frame's blank page until the page its source names arrives. The test DOM would move
+        // the frame to the source at once, so the frame reports a source while its document stays blank.
+        const getAttribute = frame.getAttribute.bind(frame);
+        frame.getAttribute = (name) => name === 'src' ? 'https://127.0.0.1/page.html' : getAttribute(name);
+        const sourcesSet = [];
+        frame.setAttribute = (name, value) => sourcesSet.push([name, value]);
+
+        const reload = invoke(bridge, 'reload');
+
+        expect(reload.value).toEqual({ frame: '#preview', top: false });
+        expect(sourcesSet).toEqual([['src', 'https://127.0.0.1/page.html']]);
+        expect(invoke(bridge, 'getHtml').pending).toBe(true);
+    });
+
     it('leaves a reload of the page itself to the host', () => {
         const { bridge } = runShimWithFrame({ markContentFrame: false });
 
