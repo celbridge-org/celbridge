@@ -43,6 +43,7 @@
     <controls:IconButton x:Name="CollapseButton"
                          Grid.Column="4"
                          ToolTipService.ToolTip="{x:Bind CollapseButtonTooltip}"
+                         AutomationProperties.Name="{x:Bind CollapseButtonTooltip}"
                          Margin="0,0,8,0"
                          VerticalAlignment="Center"
                          Click="CollapseButton_Click">

@@ -14,6 +14,7 @@
     <controls:IconButton x:Name="NewFileButton"
                          AutomationProperties.AutomationId="new-file-button"
                          ToolTipService.ToolTip="{x:Bind NewFileTooltipString}"
+                         AutomationProperties.Name="{x:Bind NewFileTooltipString}"
                          Click="NewFileButton_Click">
       <controls:Icon
                 Symbol="FileAdd"
@@ -22,6 +23,7 @@
     <controls:IconButton x:Name="NewFolderButton"
                          AutomationProperties.AutomationId="new-folder-button"
                          ToolTipService.ToolTip="{x:Bind NewFolderTooltipString}"
+                         AutomationProperties.Name="{x:Bind NewFolderTooltipString}"
                          Click="NewFolderButton_Click">
       <controls:Icon
                 Symbol="FolderAdd"
@@ -30,6 +32,7 @@
     <controls:IconButton x:Name="CollapseFoldersButton"
                          AutomationProperties.AutomationId="collapse-folders-button"
                          ToolTipService.ToolTip="{x:Bind CollapseFoldersTooltipString}"
+                         AutomationProperties.Name="{x:Bind CollapseFoldersTooltipString}"
                          Click="CollapseFoldersButton_Click">
       <controls:Icon
                 Symbol="Collapse"

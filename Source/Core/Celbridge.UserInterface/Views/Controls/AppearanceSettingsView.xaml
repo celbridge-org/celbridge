@@ -19,6 +19,7 @@
       <ComboBox Grid.Column="1"
                 VerticalAlignment="Center"
                 HorizontalAlignment="Left"
+                AutomationProperties.Name="{x:Bind ApplicationThemeString}"
                 ItemsSource="{x:Bind ViewModel.ThemeOptions}"
                 SelectedItem="{x:Bind ViewModel.SelectedTheme, Mode=TwoWay}"
                 DisplayMemberPath="DisplayName"/>

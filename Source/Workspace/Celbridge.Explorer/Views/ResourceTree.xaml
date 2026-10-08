@@ -34,6 +34,7 @@
         <!-- Expand/Collapse chevron button (hidden for project folder) -->
         <Button Grid.Column="0"
                 Click="ExpanderButton_Click"
+                AutomationProperties.Name="{x:Bind IsExpanded, Converter={StaticResource ExpanderNameConverter}}"
                 Visibility="{x:Bind ChevronVisibility}"
                 Style="{StaticResource TreeExpanderButtonStyle}">
           <controls:Icon
@@ -82,6 +83,7 @@
 
     <!-- Converters -->
     <converters:ExpanderGlyphConverter x:Key="ExpanderGlyphConverter"/>
+    <converters:ExpanderNameConverter x:Key="ExpanderNameConverter"/>
     <converters:BoolToFontWeightConverter x:Key="ProjectFolderFontWeightConverter"/>
   </UserControl.Resources>
 
