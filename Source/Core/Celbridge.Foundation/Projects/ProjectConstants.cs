@@ -14,7 +14,7 @@ public static class ProjectConstants
     /// Oldest Celbridge version whose projects this build can open. A project whose celbridge-version is
     /// below it is rejected rather than upgraded, because no migration steps span the gap to it.
     /// </summary>
-    public const string MinimumSupportedCelbridgeVersion = "0.3.0";
+    public const string MinimumSupportedCelbridgeVersion = "1.0.0";
 
     /// <summary>
     /// File containing the workspace settings data.

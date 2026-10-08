@@ -57,7 +57,7 @@ public static class MigrationTestHelper
 
         var content = """
             [celbridge
-            celbridge-version = "0.1.5"
+            celbridge-version = "1.0.0"
             """;
 
         File.WriteAllText(projectPath, content);

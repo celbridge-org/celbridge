@@ -330,8 +330,8 @@ public class ProjectMigrationServiceTests
         // A project older than the supported floor has no migration path to the current
         // version, so it is rejected rather than offered an upgrade that would only
         // rewrite its version number.
-        var appVersion = "0.3.0";
-        var celbridgeVersion = "0.2.7";
+        var appVersion = "1.0.0";
+        var celbridgeVersion = "0.3.0";
         _mockEnvironmentService = MigrationTestHelper.CreateMockEnvironmentService(appVersion);
         var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, _registry, _fileSystem);
         var projectPath = MigrationTestHelper.CreateTempProjectFile(celbridgeVersion);
@@ -360,7 +360,7 @@ public class ProjectMigrationServiceTests
     {
         // The floor is inclusive: a project exactly at the minimum supported version still
         // upgrades normally.
-        var appVersion = "0.4.0";
+        var appVersion = "1.1.0";
         var celbridgeVersion = ProjectConstants.MinimumSupportedCelbridgeVersion;
         _mockEnvironmentService = MigrationTestHelper.CreateMockEnvironmentService(appVersion);
         var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, _registry, _fileSystem);

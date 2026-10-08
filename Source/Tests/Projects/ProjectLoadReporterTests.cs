@@ -122,7 +122,7 @@ public class ProjectLoadReporterTests
         // makes the load report worth opening when nothing is wrong.
         _reporter.BeginLoad(_projectFilePath);
         _reporter.RecordMigrationResult(
-            MigrationResult.WithVersions(MigrationStatus.Complete, Result.Ok(), "0.2.7", "1.0.0"),
+            MigrationResult.WithVersions(MigrationStatus.Complete, Result.Ok(), "1.2.0", "1.3.0"),
             userConfirmedUpgrade: false,
             userCancelledUpgrade: false);
         _reporter.RecordResourceCounts(fileCount: 412, folderCount: 37);
@@ -140,8 +140,8 @@ public class ProjectLoadReporterTests
 
         var facts = GetSectionFacts(report, "Summary");
         facts["Resources"].Should().Be("412 files in 37 folders");
-        facts["Celbridge version"].Should().Be("0.2.7");
-        facts["Application version"].Should().Be("1.0.0");
+        facts["Celbridge version"].Should().Be("1.2.0");
+        facts["Application version"].Should().Be("1.3.0");
         facts["Migration status"].Should().Be("Complete");
         facts["Outcome"].Should().Be("Loaded");
     }
@@ -181,7 +181,7 @@ public class ProjectLoadReporterTests
     {
         _reporter.BeginLoad(_projectFilePath);
         _reporter.RecordMigrationResult(
-            MigrationResult.WithVersions(MigrationStatus.UpgradeRequired, Result.Ok(), "0.2.7", "1.0.0"),
+            MigrationResult.WithVersions(MigrationStatus.UpgradeRequired, Result.Ok(), "1.2.0", "1.3.0"),
             userConfirmedUpgrade: false,
             userCancelledUpgrade: true);
         _reporter.RecordLoadOutcome(loadSucceeded: false, loadResult: null);
