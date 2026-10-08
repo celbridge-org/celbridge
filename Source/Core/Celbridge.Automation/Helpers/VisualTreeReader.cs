@@ -22,13 +22,28 @@ internal class WebViewAutomationPeer : FrameworkElementAutomationPeer
 }
 
 /// <summary>
+/// Describes an element that has an automation ID but no automation peer, such as a layout area. Reports it as a
+/// pane, with the element type's full name as its class name.
+/// </summary>
+internal class LayoutAutomationPeer : FrameworkElementAutomationPeer
+{
+    public LayoutAutomationPeer(FrameworkElement owner) : base(owner) { }
+
+    protected override string GetClassNameCore() => Owner.GetType().FullName ?? Owner.GetType().Name;
+
+    protected override string GetAutomationIdCore() => AutomationProperties.GetAutomationId(Owner);
+
+    protected override AutomationControlType GetAutomationControlTypeCore() => AutomationControlType.Pane;
+}
+
+/// <summary>
 /// Reads the application's own controls from the visual tree, as their automation peers describe them.
 /// </summary>
 internal static class VisualTreeReader
 {
     /// <summary>
-    /// Returns every element that has a size and an automation peer, first in the window's content and then in each
-    /// open popup. An element drawn by a native view uses that view's frame. The walk skips collapsed elements and
+    /// Returns every element that has a size and an automation peer or an automation ID. Reads the window's content
+    /// first, then each open popup. An element drawn by a native view uses that view's frame. The walk skips collapsed elements and
     /// elements whose native view is hidden, along with their children. When include is given, only the elements
     /// it accepts are returned, but the walk still visits the children of the others.
     /// </summary>
@@ -116,6 +131,14 @@ internal static class VisualTreeReader
             peer?.GetClassName() != WebViewAutomationPeer.WebViewClassName)
         {
             peer = new WebViewAutomationPeer(webView);
+        }
+
+        // A layout element such as a Grid has no automation peer. Give it one when it has an automation ID, so the
+        // tools can find it by that ID, as Spotlight does.
+        if (peer is null &&
+            !string.IsNullOrEmpty(AutomationProperties.GetAutomationId(element)))
+        {
+            peer = new LayoutAutomationPeer(element);
         }
 
         return peer;
