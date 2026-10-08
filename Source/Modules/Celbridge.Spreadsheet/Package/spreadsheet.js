@@ -76,7 +76,10 @@ async function deserializeExcelData(base64Data, viewState = null, preserveView =
                 client.document.notifyImportComplete(false, error?.message || 'Import failed');
                 reject(error);
             }, {
-                fileType: GC.Spread.Sheets.FileType.excel
+                fileType: GC.Spread.Sheets.FileType.excel,
+                // Recalculate every formula on import. Otherwise SpreadJS shows the result saved in the file,
+                // and some libraries, such as openpyxl, save no results, so those formula cells show blank.
+                fullRecalc: true
             });
         });
     } catch (err) {

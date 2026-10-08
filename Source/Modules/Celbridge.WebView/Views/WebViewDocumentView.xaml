@@ -16,6 +16,7 @@
             <controls:IconButton Padding="8,0"
                                  VerticalAlignment="Center"
                                  ToolTipService.ToolTip="{x:Bind Url, Mode=OneWay}"
+                                 AutomationProperties.Name="{x:Bind DisplayName, Mode=OneWay}"
                                  Click="BookmarkButton_Click">
                 <StackPanel Orientation="Horizontal"
                             Spacing="6">
@@ -66,6 +67,7 @@
                                          VerticalAlignment="Center"
                                          IsEnabled="{x:Bind ViewModel.IsBackEnabled, Mode=OneWay}"
                                          ToolTipService.ToolTip="{x:Bind BackTooltipString}"
+                                         AutomationProperties.Name="{x:Bind BackTooltipString}"
                                          Click="BackButton_Click">
                         <controls:Icon Symbol="Back" FontSize="{StaticResource IconSizeMedium}" />
                     </controls:IconButton>
@@ -73,6 +75,7 @@
                                          VerticalAlignment="Center"
                                          IsEnabled="{x:Bind ViewModel.IsForwardEnabled, Mode=OneWay}"
                                          ToolTipService.ToolTip="{x:Bind ForwardTooltipString}"
+                                         AutomationProperties.Name="{x:Bind ForwardTooltipString}"
                                          Click="ForwardButton_Click">
                         <controls:Icon Symbol="Forward" FontSize="{StaticResource IconSizeMedium}" />
                     </controls:IconButton>
@@ -93,6 +96,7 @@
                                          VerticalAlignment="Center"
                                          IsEnabled="{x:Bind ViewModel.IsHomeEnabled, Mode=OneWay}"
                                          ToolTipService.ToolTip="{x:Bind HomeTooltipString}"
+                                         AutomationProperties.Name="{x:Bind HomeTooltipString}"
                                          Click="HomeButton_Click">
                         <controls:Icon Symbol="Home" FontSize="{StaticResource IconSizeMedium}" />
                     </controls:IconButton>
@@ -125,6 +129,7 @@
                                          VerticalAlignment="Center"
                                          IsEnabled="{x:Bind ViewModel.CanOpenInBrowser, Mode=OneWay}"
                                          ToolTipService.ToolTip="{x:Bind OpenInBrowserTooltipString}"
+                                         AutomationProperties.Name="{x:Bind OpenInBrowserTooltipString}"
                                          Click="OpenInBrowserButton_Click">
                         <controls:Icon Symbol="Reveal" FontSize="{StaticResource IconSizeMedium}" />
                     </controls:IconButton>
@@ -134,6 +139,7 @@
                     <controls:IconToggleButton x:Name="SettingsButton"
                                                VerticalAlignment="Center"
                                                ToolTipService.ToolTip="{x:Bind SettingsTooltipString}"
+                                               AutomationProperties.Name="{x:Bind SettingsTooltipString}"
                                                IsChecked="{x:Bind ViewModel.IsSettingsOpen, Mode=TwoWay}">
                         <controls:Icon Symbol="Sliders" FontSize="{StaticResource IconSizeMedium}" />
                     </controls:IconToggleButton>
@@ -180,6 +186,7 @@
                                      Grid.Column="1"
                                      VerticalAlignment="Center"
                                      ToolTipService.ToolTip="{x:Bind ManageBookmarksTooltipString}"
+                                     AutomationProperties.Name="{x:Bind ManageBookmarksTooltipString}"
                                      Click="ManageBookmarksButton_Click">
                     <controls:Icon Symbol="More" FontSize="{StaticResource IconSizeMedium}" />
                 </controls:IconButton>

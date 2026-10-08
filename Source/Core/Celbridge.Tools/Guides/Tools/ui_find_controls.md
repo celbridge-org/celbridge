@@ -9,7 +9,8 @@ needs to know where a control is and what it holds, where the platform's accessi
 It searches the main window's content and every open popup, which holds the flyouts, menus and dialogs. It reports
 only controls that show: an element with a size whose ancestors are all visible. A web view is a `Pane` of class
 `Microsoft.UI.Xaml.Controls.WebView2`. A document's web view takes the document's resource key as its automation ID,
-such as `project:notes/today.md`, and the name its tab shows.
+such as `project:notes/today.md`, and the name its tab shows. A layout element that carries an automation ID is a
+`Pane` whose class is the element's type, such as the document areas `main-area`, `bottom-area` and `side-area`.
 
 On macOS it also reports the parts AppKit draws natively:
 

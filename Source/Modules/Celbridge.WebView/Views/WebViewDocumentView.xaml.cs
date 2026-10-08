@@ -810,6 +810,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
         var key = ViewModel.IsNavigating ? "WebView_UrlBar_StopTooltip" : "WebView_UrlBar_ReloadTooltip";
         string tooltip = _stringLocalizer.GetString(key);
         ToolTipService.SetToolTip(ReloadOrStopButton, tooltip);
+        AutomationProperties.SetName(ReloadOrStopButton, tooltip);
     }
 
     private void UpdateBookmarkPageButton()
@@ -821,6 +822,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
         var key = isBookmarked ? "WebView_UrlBar_EditBookmarkTooltip" : "WebView_UrlBar_BookmarkPageTooltip";
         string tooltip = _stringLocalizer.GetString(key);
         ToolTipService.SetToolTip(BookmarkPageButton, tooltip);
+        AutomationProperties.SetName(BookmarkPageButton, tooltip);
     }
 
     private void UpdatePlaceholderHint()

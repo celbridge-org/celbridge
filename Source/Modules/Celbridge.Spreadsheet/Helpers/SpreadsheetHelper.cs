@@ -9,9 +9,9 @@ internal static class SpreadsheetHelper
     private const string XlsxExtension = ".xlsx";
 
     // Saves with EvaluateFormulasBeforeSaving so consumers reading cached
-    // values (headless readers, SpreadJS on reload) see fresh results without a
-    // separate recalc step. Per-cell evaluation failures skip the cached value
-    // for that cell but the file still saves.
+    // values, such as headless readers, see fresh results without a separate
+    // recalc step. Per-cell evaluation failures skip the cached value for that
+    // cell but the file still saves.
     public static void RecalculateInto(XLWorkbook workbook, Stream destination)
     {
         var saveOptions = new SaveOptions

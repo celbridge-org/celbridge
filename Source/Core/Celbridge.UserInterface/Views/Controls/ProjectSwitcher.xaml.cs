@@ -238,8 +238,10 @@ public sealed partial class ProjectSwitcher : UserControl
 
     private void ApplyTooltips()
     {
-        ToolTipService.SetToolTip(WorkspaceButton, _stringLocalizer.GetString("TitleBar_SwitchProjectTooltip"));
+        var switchProjectTooltip = _stringLocalizer.GetString("TitleBar_SwitchProjectTooltip");
+        ToolTipService.SetToolTip(WorkspaceButton, switchProjectTooltip);
         ToolTipService.SetPlacement(WorkspaceButton, PlacementMode.Bottom);
+        AutomationProperties.SetName(WorkspaceButton, switchProjectTooltip);
     }
 
     private void WorkspaceButton_Click(object sender, RoutedEventArgs e)
