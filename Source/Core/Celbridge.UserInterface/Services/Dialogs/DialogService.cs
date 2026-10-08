@@ -72,6 +72,8 @@ public class DialogService : IDialogService
             return;
         }
 
+        _logger.LogInformation("Showing alert '{Title}': {Message}", titleText, messageText);
+
         var dialog = _dialogFactory.CreateAlertDialog(titleText, messageText);
         _answerScheduler.OnDialogShown(DialogKind.Alert);
         await ShowDialogAsync(dialog, async () =>
@@ -130,6 +132,22 @@ public class DialogService : IDialogService
             // Callers start this without awaiting it, so a failure here has nowhere else to surface.
             _logger.LogError(exception, "Failed to show the settings dialog");
         }
+    }
+
+    public async Task ShowAboutDialogAsync()
+    {
+        if (!await WaitForClosingDialogAsync())
+        {
+            RefuseSecondDialog();
+            return;
+        }
+
+        var dialog = _dialogFactory.CreateAboutDialog();
+        await ShowDialogAsync(dialog, async () =>
+        {
+            await dialog.ShowDialogAsync();
+            return true;
+        });
     }
 
     // Logs and fails a request to show a dialog while another one is open. This should be unreachable. The command

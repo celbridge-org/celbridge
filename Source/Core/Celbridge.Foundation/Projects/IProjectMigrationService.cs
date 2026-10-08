@@ -23,7 +23,12 @@ public enum MigrationStatus
     /// <summary>
     /// Project celbridge-version is newer than the application version.
     /// </summary>
-    IncompatibleVersion,
+    NewerCelbridgeVersion,
+
+    /// <summary>
+    /// Project celbridge-version is older than the oldest version this application can open.
+    /// </summary>
+    UnsupportedCelbridgeVersion,
 
     /// <summary>
     /// Project celbridge-version is invalid or not specified.

@@ -33,7 +33,7 @@ The project file stores project-level configuration as TOML. Host-level declarat
 
 ```toml
 [celbridge]
-celbridge-version = "0.4.0"
+celbridge-version = "1.3.0"
 project-version   = "0.1.0"
 disabled-packages = ["acme.unused"]                            # opt a discovered package out
 editor-associations = { ".png" = "acme.pixel-editor.pixel" }   # pin an extension to one editor

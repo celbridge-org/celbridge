@@ -115,8 +115,8 @@ public class ProjectFactoryTests
         var projectPath = CreateValidProjectFile();
         var migrationResult = new MigrationResult(
             Status: MigrationStatus.Failed,
-            OldVersion: "0.1.0",
-            NewVersion: "1.0.0",
+            OldVersion: "1.2.0",
+            NewVersion: "1.3.0",
             OperationResult: Result.Fail("Migration failed"));
 
         try

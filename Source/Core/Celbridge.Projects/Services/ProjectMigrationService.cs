@@ -228,7 +228,7 @@ public class ProjectMigrationService : IProjectMigrationService
                             $"Projects from before v{ProjectConstants.MinimumSupportedCelbridgeVersion} are not supported. " +
                             $"Open it with the version of Celbridge that created it, or start a new project.");
 
-                        return MigrationResult.FromStatus(MigrationStatus.IncompatibleVersion, errorResult);
+                        return MigrationResult.WithVersions(MigrationStatus.UnsupportedCelbridgeVersion, errorResult, recordedCelbridgeVersion, currentApplicationVersion);
                     }
 
                     _logger.LogInformation(
@@ -247,7 +247,7 @@ public class ProjectMigrationService : IProjectMigrationService
                         $"Your current Celbridge version is v{currentApplicationVersion}. " +
                         $"Please upgrade Celbridge or correct the version number in the .celbridge file.");
 
-                    return MigrationResult.FromStatus(MigrationStatus.IncompatibleVersion, errorResult);
+                    return MigrationResult.WithVersions(MigrationStatus.NewerCelbridgeVersion, errorResult, recordedCelbridgeVersion, currentApplicationVersion);
                 }
 
             case VersionComparisonState.InvalidVersion:

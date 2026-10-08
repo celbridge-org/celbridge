@@ -159,7 +159,7 @@ public class ProjectMigrationServiceTests
     }
 
     [Test]
-    public async Task CheckMigrationAsync_NewerCelbridgeVersion_ReturnsIncompatibleVersion()
+    public async Task CheckMigrationAsync_NewerCelbridgeVersion_ReturnsNewerCelbridgeVersion()
     {
         // Arrange
         var appVersion = "1.0.0";
@@ -174,9 +174,11 @@ public class ProjectMigrationServiceTests
             var result = await service.CheckMigrationAsync(projectPath);
 
             // Assert
-            result.Status.Should().Be(MigrationStatus.IncompatibleVersion);
+            result.Status.Should().Be(MigrationStatus.NewerCelbridgeVersion);
             result.OperationResult.IsFailure.Should().BeTrue();
             result.OperationResult.DiagnosticReport.Should().Contain("newer version");
+            result.OldVersion.Should().Be(celbridgeVersion);
+            result.NewVersion.Should().Be(appVersion);
         }
         finally
         {
@@ -325,13 +327,13 @@ public class ProjectMigrationServiceTests
     }
 
     [Test]
-    public async Task CheckMigrationAsync_BelowMinimumSupportedVersion_ReturnsIncompatibleVersion()
+    public async Task CheckMigrationAsync_BelowMinimumSupportedVersion_ReturnsUnsupportedCelbridgeVersion()
     {
         // A project older than the supported floor has no migration path to the current
         // version, so it is rejected rather than offered an upgrade that would only
         // rewrite its version number.
-        var appVersion = "0.3.0";
-        var celbridgeVersion = "0.2.7";
+        var appVersion = "1.0.0";
+        var celbridgeVersion = "0.3.0";
         _mockEnvironmentService = MigrationTestHelper.CreateMockEnvironmentService(appVersion);
         var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, _registry, _fileSystem);
         var projectPath = MigrationTestHelper.CreateTempProjectFile(celbridgeVersion);
@@ -342,8 +344,10 @@ public class ProjectMigrationServiceTests
             var result = await service.CheckMigrationAsync(projectPath);
 
             // Assert
-            result.Status.Should().Be(MigrationStatus.IncompatibleVersion);
+            result.Status.Should().Be(MigrationStatus.UnsupportedCelbridgeVersion);
             result.OperationResult.IsFailure.Should().BeTrue();
+            result.OldVersion.Should().Be(celbridgeVersion);
+            result.NewVersion.Should().Be(appVersion);
 
             // The file is left untouched so the project still opens in the version that created it.
             var unchangedVersion = MigrationTestHelper.ReadVersionFromFile(projectPath);
@@ -360,7 +364,7 @@ public class ProjectMigrationServiceTests
     {
         // The floor is inclusive: a project exactly at the minimum supported version still
         // upgrades normally.
-        var appVersion = "0.4.0";
+        var appVersion = "1.1.0";
         var celbridgeVersion = ProjectConstants.MinimumSupportedCelbridgeVersion;
         _mockEnvironmentService = MigrationTestHelper.CreateMockEnvironmentService(appVersion);
         var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, _registry, _fileSystem);

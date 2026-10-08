@@ -1,8 +1,7 @@
 namespace Celbridge.Community;
 
 /// <summary>
-/// The Celbridge site pages the community resources link out to. The Community document bookmarks them and
-/// the Home page links to them directly.
+/// The Celbridge web pages the application links out to.
 /// </summary>
 public static class CommunityUrls
 {
@@ -20,4 +19,9 @@ public static class CommunityUrls
     /// The community discussion forum.
     /// </summary>
     public const string Forum = "https://celbridge.discourse.group/";
+
+    /// <summary>
+    /// The Celbridge source repository.
+    /// </summary>
+    public const string GitHub = "https://github.com/celbridge-org/celbridge";
 }

@@ -54,6 +54,11 @@ public interface IDialogService
     Task ShowSettingsDialogAsync(string sectionKey);
 
     /// <summary>
+    /// Display the About Dialog, which shows the application's version.
+    /// </summary>
+    Task ShowAboutDialogAsync();
+
+    /// <summary>
     /// Display a New Project Dialog with template selection.
     /// </summary>
     Task<Result<NewProjectConfig>> ShowNewProjectDialogAsync();

@@ -58,6 +58,12 @@ public class DialogFactory : IDialogFactory
         return WithFocusGuard(dialog);
     }
 
+    public IAboutDialog CreateAboutDialog()
+    {
+        var dialog = new AboutDialog();
+        return WithFocusGuard(dialog);
+    }
+
     public INewProjectDialog CreateNewProjectDialog()
     {
         var dialog = new NewProjectDialog();
