@@ -698,34 +698,6 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
         return new ScreenshotData(request.Format, snapshot.Width, snapshot.Height, snapshot.Bytes);
     }
 
-    public void PostMessageToWeb(CoreWebView2 coreWebView2, string json)
-    {
-        // UNO-BUG: PostWebMessageAsString is unimplemented on the Skia WebView2.
-        // The C#->JS half of web messaging never delivers, so push the message by invoking a JS dispatch
-        // function via ExecuteScriptAsync, which the client transport registers. The JS->C# direction
-        // (chrome.webview.postMessage -> WebMessageReceived) works. Serializing the JSON yields a
-        // safely-escaped JS string literal.
-        var encodedJson = JsonSerializer.Serialize(json);
-        var script = $"window.__hostReceiveMessage && window.__hostReceiveMessage({encodedJson});";
-
-        // ExecuteScriptAsync is the C#->JS push on Skia. Observe the operation instead of discarding it, so a
-        // delivery fault (the script never ran) is surfaced rather than lost silently.
-        var executeScriptOperation = coreWebView2.ExecuteScriptAsync(script);
-        _ = ObserveExecuteScriptAsync();
-
-        async Task ObserveExecuteScriptAsync()
-        {
-            try
-            {
-                await executeScriptOperation;
-            }
-            catch (Exception observeException)
-            {
-                _logger.LogError(observeException, "Failed to deliver host->editor message via ExecuteScriptAsync");
-            }
-        }
-    }
-
     public async Task InstallDocumentStartScriptAsync(CoreWebView2 coreWebView2, string script)
     {
         // The Skia WebView2 does not implement AddScriptToExecuteOnDocumentCreatedAsync, so document-start

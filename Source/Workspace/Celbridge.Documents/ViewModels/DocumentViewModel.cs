@@ -128,10 +128,13 @@ public abstract partial class DocumentViewModel : ObservableObject
 
     /// <summary>
     /// Loads text content from the file at FilePath.
-    /// Updates file tracking info after a successful load.
+    /// Updates file tracking info before the read.
     /// </summary>
     protected async Task<Result<string>> LoadTextFromFileAsync()
     {
+        // Recorded before the read, so a change that lands during the read still differs from the record.
+        await UpdateFileTrackingInfoAsync();
+
         var resourceFileSystem = GetFileSystem();
         var readResult = await resourceFileSystem.ReadAllTextAsync(FileResource);
         if (readResult.IsFailure)
@@ -140,7 +143,6 @@ public abstract partial class DocumentViewModel : ObservableObject
                 .WithErrors(readResult);
         }
 
-        await UpdateFileTrackingInfoAsync();
         return readResult.Value;
     }
 
@@ -300,9 +302,9 @@ public abstract partial class DocumentViewModel : ObservableObject
 
     /// <summary>
     /// Reads the current disk size + mtime and caches them as the new tracking
-    /// baseline. Called after every save and after every external reload so the
-    /// next watcher event for the same content matches the cache and
-    /// short-circuits. The body is effectively synchronous because GetInfoAsync
+    /// baseline. Called after every save, and before every load or external
+    /// reload reads the file, so the next watcher event for the same content
+    /// matches the cache and short-circuits. The body is effectively synchronous because GetInfoAsync
     /// is a single stat call with no real awaits; this matters so the UI thread
     /// cannot pump a watcher's ResourceChangedMessage between our write
     /// returning and the cache becoming current.

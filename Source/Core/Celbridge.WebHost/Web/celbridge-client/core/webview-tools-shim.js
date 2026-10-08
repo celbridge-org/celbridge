@@ -687,13 +687,20 @@
         };
     };
 
-    // Reloads a frame's page. The host reloads the page itself, so for the top frame this only names it.
+    // Reloads a frame's page. The host reloads the page itself, so for the top frame this only names it. A frame
+    // still holds its initial blank page until its first page arrives, and reloading the blank page would cancel
+    // that page. Such a frame loads its source again instead.
     handlers.reload = function (args) {
         args = args || {};
         var target = resolveTarget(args.frame, true);
         if (target.element) {
             target.window[reloadingKey] = true;
-            target.window.location.reload();
+            var source = target.element.getAttribute('src');
+            if (source && target.document.URL === 'about:blank') {
+                target.element.setAttribute('src', source);
+            } else {
+                target.window.location.reload();
+            }
         }
         return {
             frame: target.name,

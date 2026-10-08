@@ -11,20 +11,26 @@ namespace Celbridge.Console.Services;
 internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSessionRpc, IConsoleView
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly ResourceKey _fileResource;
 
     private ICustomEditorChannelHost? _host;
     private bool _disposed;
 
-    public ConsoleSessionChannel(
-        IServiceProvider serviceProvider,
-        ResourceKey fileResource)
+    public ConsoleSessionChannel(IServiceProvider serviceProvider)
     {
-        _fileResource = fileResource;
         _workspaceWrapper = serviceProvider.GetRequiredService<IWorkspaceWrapper>();
     }
 
     private IConsoleSessionService Sessions => _workspaceWrapper.WorkspaceService.ConsoleService.Sessions;
+
+    // A rename moves the session to the document's new resource, so every call reads the current one.
+    private ResourceKey Resource
+    {
+        get
+        {
+            Guard.IsNotNull(_host);
+            return _host.Resource;
+        }
+    }
 
     public void RegisterTargets(ICustomEditorChannelHost host)
     {
@@ -34,29 +40,29 @@ internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSess
 
     public async Task<ConsoleAttachResult> AttachAsync(int cols, int rows)
     {
-        var snapshot = await Sessions.AttachAsync(_fileResource, this, cols, rows);
+        var snapshot = await Sessions.AttachAsync(Resource, this, cols, rows);
         return ToResult(snapshot, Sessions.GetSessionTypes());
     }
 
     public async Task<ConsoleAttachResult> ReopenAsync(int cols, int rows)
     {
-        var snapshot = await Sessions.ReopenAsync(_fileResource, cols, rows);
+        var snapshot = await Sessions.ReopenAsync(Resource, cols, rows);
         return ToResult(snapshot, Sessions.GetSessionTypes());
     }
 
     public void OnInput(string data)
     {
-        Sessions.Input(_fileResource, data);
+        Sessions.Input(Resource, data);
     }
 
     public void OnSubmit(string invocation)
     {
-        Sessions.SubmitInvocation(_fileResource, invocation);
+        Sessions.SubmitInvocation(Resource, invocation);
     }
 
     public void OnResize(int cols, int rows)
     {
-        Sessions.Resize(_fileResource, cols, rows);
+        Sessions.Resize(Resource, cols, rows);
     }
 
     public void OnOutput(string text)
@@ -126,9 +132,10 @@ internal sealed class ConsoleSessionChannel : ICustomEditorChannel, IConsoleSess
 
         _disposed = true;
 
-        if (_workspaceWrapper.HasWorkspaceService)
+        if (_host is not null
+            && _workspaceWrapper.HasWorkspaceService)
         {
-            Sessions.Detach(_fileResource, this);
+            Sessions.Detach(_host.Resource, this);
         }
 
         _host = null;

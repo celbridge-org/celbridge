@@ -26,6 +26,6 @@ public sealed class ConsoleSessionChannelProvider : ICustomEditorChannelProvider
 
     public ICustomEditorChannel Create(CustomEditorChannelContext context)
     {
-        return new ConsoleSessionChannel(_serviceProvider, context.FileResource);
+        return new ConsoleSessionChannel(_serviceProvider);
     }
 }

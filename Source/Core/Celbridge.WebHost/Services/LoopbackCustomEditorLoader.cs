@@ -17,8 +17,6 @@ internal sealed class LoopbackCustomEditorLoader : ICustomEditorLoader
 
     public bool CanLoad(PackageInfo package) => true;
 
-    public HostChannelTransport GetTransport(PackageInfo package) => HostChannelTransport.LoopbackWebSocket;
-
     public string GetAllowedNavigationOrigin(CustomEditorLoadRequest request)
     {
         return _fileServer.GetPackageUrl(request.PackageUrlName, string.Empty);
@@ -27,9 +25,17 @@ internal sealed class LoopbackCustomEditorLoader : ICustomEditorLoader
     public Task LoadAsync(CustomEditorLoadRequest request)
     {
         var entryUrl = _fileServer.GetPackageUrl(request.PackageUrlName, request.EntryPoint);
-        var navigationUrl = HostChannelFactory.AppendConnectionToken(entryUrl, request.ConnectionToken);
+        var navigationUrl = AppendConnectionToken(entryUrl, request.ConnectionToken);
         request.WebView.CoreWebView2.Navigate(navigationUrl);
 
         return Task.CompletedTask;
+    }
+
+    // The page reads the token from location.search and opens its WebSocket with it.
+    private static string AppendConnectionToken(string navigationUrl, string connectionToken)
+    {
+        var separator = navigationUrl.Contains('?') ? '&' : '?';
+
+        return $"{navigationUrl}{separator}__hostToken={connectionToken}";
     }
 }
