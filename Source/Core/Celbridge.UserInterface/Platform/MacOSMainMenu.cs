@@ -51,8 +51,6 @@ internal static class MacOSMainMenu
 
     private static readonly Dictionary<long, string> _recentProjectPaths = new();
 
-    private const string GitHubUrl = "https://github.com/celbridge-org/celbridge";
-
     public static bool Install()
     {
         if (!OperatingSystem.IsMacOS())
@@ -566,8 +564,7 @@ internal static class MacOSMainMenu
                 break;
 
             case TagHelpWebsite:
-                var commandService = ServiceLocator.AcquireService<ICommandService>();
-                commandService.Execute<IOpenBrowserCommand>(command => command.URL = CommunityUrls.Celbridge);
+                viewModel.ShowWebsite();
                 break;
         }
     }
@@ -591,7 +588,7 @@ internal static class MacOSMainMenu
         var links = new List<MacAboutLink>
         {
             new(stringLocalizer.GetString("Menu_About_Website"), CommunityUrls.Celbridge),
-            new(stringLocalizer.GetString("Menu_About_GitHub"), GitHubUrl)
+            new(stringLocalizer.GetString("Menu_About_GitHub"), CommunityUrls.GitHub)
         };
 
         MacOSMenuInterop.ShowAboutPanel(links);

@@ -677,6 +677,8 @@ public class AgentResponseFilterTests
 
         public Task ShowSettingsDialogAsync(string sectionKey) => throw new NotSupportedException();
 
+        public Task ShowAboutDialogAsync() => throw new NotSupportedException();
+
         public Task<Result<NewProjectConfig>> ShowNewProjectDialogAsync() => throw new NotSupportedException();
 
         public Task<Result<string>> ShowInputTextDialogAsync(string titleText, string messageText, string defaultText, Range selectionRange, IValidator validator, string? submitButtonKey = null) => throw new NotSupportedException();

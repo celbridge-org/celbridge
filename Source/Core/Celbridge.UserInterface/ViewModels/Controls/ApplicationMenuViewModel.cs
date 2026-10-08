@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.Community;
 using Celbridge.Projects;
 using Celbridge.Settings;
 using Celbridge.UserInterface.Services;
@@ -8,7 +9,7 @@ namespace Celbridge.UserInterface.ViewModels.Controls;
 
 /// <summary>
 /// Shared view model for the application-level menu commands: project operations, the recent projects
-/// list, application logs, settings and exit.
+/// list, application logs, settings, help and exit.
 /// </summary>
 public partial class ApplicationMenuViewModel : ObservableObject
 {
@@ -105,6 +106,16 @@ public partial class ApplicationMenuViewModel : ObservableObject
     public void ShowSettings()
     {
         _commandService.Execute<IShowSettingsCommand>();
+    }
+
+    public void ShowWebsite()
+    {
+        _commandService.Execute<IOpenBrowserCommand>(command => command.URL = CommunityUrls.Celbridge);
+    }
+
+    public void ShowAbout()
+    {
+        _commandService.Execute<IShowAboutCommand>();
     }
 
     public void ExitApplication()

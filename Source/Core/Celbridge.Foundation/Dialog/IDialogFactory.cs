@@ -29,6 +29,11 @@ public interface IDialogFactory
     ISettingsDialog CreateSettingsDialog(string sectionKey);
 
     /// <summary>
+    /// Create an About Dialog showing the application's version.
+    /// </summary>
+    IAboutDialog CreateAboutDialog();
+
+    /// <summary>
     /// Create a New Project Dialog with template selection.
     /// </summary>
     INewProjectDialog CreateNewProjectDialog();

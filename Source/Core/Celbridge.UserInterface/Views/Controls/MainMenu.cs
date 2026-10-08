@@ -56,6 +56,8 @@ public class MainMenu
 
         _menuFlyout.Items.Add(CreateViewSubItem());
 
+        _menuFlyout.Items.Add(CreateHelpSubItem());
+
         _menuFlyout.Items.Add(new MenuFlyoutSeparator());
 
         var settingsItem = CreateMenuItem(
@@ -311,6 +313,30 @@ public class MainMenu
         viewSubItem.Items.Add(CreateThemeSubItem());
 
         return viewSubItem;
+    }
+
+    private MenuFlyoutSubItem CreateHelpSubItem()
+    {
+        var helpSubItem = new MenuFlyoutSubItem
+        {
+            Text = _stringLocalizer.GetString("Menu_Help")
+        };
+
+        helpSubItem.Items.Add(CreateMenuItem(
+            iconSymbol: IconSymbol.Home,
+            label: _stringLocalizer.GetString("Menu_HelpWebsite"),
+            isEnabled: true,
+            onClick: (sender, e) => ViewModel.ShowWebsite()));
+
+        helpSubItem.Items.Add(new MenuFlyoutSeparator());
+
+        helpSubItem.Items.Add(CreateMenuItem(
+            iconSymbol: IconSymbol.Info,
+            label: _stringLocalizer.GetString("Menu_About"),
+            isEnabled: true,
+            onClick: (sender, e) => ViewModel.ShowAbout()));
+
+        return helpSubItem;
     }
 
     private MenuFlyoutSubItem CreateThemeSubItem()

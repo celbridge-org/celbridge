@@ -134,6 +134,22 @@ public class DialogService : IDialogService
         }
     }
 
+    public async Task ShowAboutDialogAsync()
+    {
+        if (!await WaitForClosingDialogAsync())
+        {
+            RefuseSecondDialog();
+            return;
+        }
+
+        var dialog = _dialogFactory.CreateAboutDialog();
+        await ShowDialogAsync(dialog, async () =>
+        {
+            await dialog.ShowDialogAsync();
+            return true;
+        });
+    }
+
     // Logs and fails a request to show a dialog while another one is open. This should be unreachable. The command
     // queue and the macOS menu bar are both held while a dialog is open, and a request made while a dialog is
     // closing waits for it. This backstop turns anything that slips through into a diagnosable failure rather than

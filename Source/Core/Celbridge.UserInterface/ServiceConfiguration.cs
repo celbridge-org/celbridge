@@ -70,6 +70,7 @@ public static class ServiceConfiguration
         services.AddTransient<ISetLanguageCommand, SetLanguageCommand>();
         services.AddTransient<IAlertCommand, AlertCommand>();
         services.AddTransient<IShowSettingsCommand, ShowSettingsCommand>();
+        services.AddTransient<IShowAboutCommand, ShowAboutCommand>();
         services.AddTransient<IConfirmActionCommand, ConfirmActionCommand>();
         services.AddTransient<ISpotlightCommand, SpotlightCommand>();
         services.AddTransient<IShowLogsCommand, ShowLogsCommand>();
@@ -93,6 +94,7 @@ public static class ServiceConfiguration
         services.AddTransient<ApplicationMenuViewModel>();
         services.AddTransient<ViewMenuViewModel>();
         services.AddTransient<AlertDialogViewModel>();
+        services.AddTransient<AboutDialogViewModel>();
         services.AddTransient<ConfirmationDialogViewModel>();
         services.AddTransient<ProgressDialogViewModel>();
         services.AddTransient<NewProjectDialogViewModel>();
