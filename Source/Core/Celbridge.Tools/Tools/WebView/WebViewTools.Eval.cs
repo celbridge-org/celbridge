@@ -40,7 +40,7 @@ public partial class WebViewTools
         Logger.LogInformation("webview_eval resource={Resource} frame={Frame} expressionLength={Length}", resourceKey, frame, expression.Length);
         Logger.LogDebug("webview_eval expression={Expression}", expression);
 
-        var toolBridge = GetRequiredService<IDocumentWebViewToolBridge>();
+        var toolBridge = GetRequiredService<IWebViewToolBridge>();
         var evalResult = await toolBridge.EvalAsync(resourceKey, expression, frame);
         if (evalResult.IsFailure)
         {

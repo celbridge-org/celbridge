@@ -17,7 +17,7 @@ internal sealed record ConsoleEntry(
 {
     // The frame the entry was logged in. A result names its frame once, so each entry leaves it out.
     [JsonIgnore]
-    public string Frame { get; init; } = DocumentWebViewToolBridge.TopFrame;
+    public string Frame { get; init; } = WebViewToolBridge.TopFrame;
 
     public static ConsoleEntry? FromJson(JsonElement element)
     {
@@ -71,10 +71,10 @@ internal sealed record ConsoleEntry(
         if (element.TryGetProperty("frame", out var frameElement) &&
             frameElement.ValueKind == JsonValueKind.String)
         {
-            return frameElement.GetString() ?? DocumentWebViewToolBridge.TopFrame;
+            return frameElement.GetString() ?? WebViewToolBridge.TopFrame;
         }
 
-        return DocumentWebViewToolBridge.TopFrame;
+        return WebViewToolBridge.TopFrame;
     }
 }
 
@@ -103,7 +103,7 @@ internal sealed partial record NetworkEntry(
     string? Error)
 {
     // The frame that made the request.
-    public string Frame { get; init; } = DocumentWebViewToolBridge.TopFrame;
+    public string Frame { get; init; } = WebViewToolBridge.TopFrame;
 
     public static NetworkEntry? FromJson(JsonElement element)
     {

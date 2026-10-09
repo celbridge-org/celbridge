@@ -9,8 +9,9 @@ namespace Celbridge.WebHost;
 public interface IWebSurfaceLog
 {
     /// <summary>
-    /// Logs one entry reported by the named surface, at the level the page asked for. An unknown level is
-    /// logged as debug. Messages beyond the surface's rate limit are dropped, with one warning per window.
+    /// Logs one entry reported by a web view's page, at the level the page asked for. An unknown level is
+    /// logged as debug. Messages beyond the view's rate limit are dropped, with one warning per window. Safe to
+    /// call from any thread.
     /// </summary>
-    void Write(string surfaceName, string? level, string? message);
+    void Write(IWebView view, string? level, string? message);
 }

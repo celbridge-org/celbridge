@@ -31,7 +31,7 @@ public partial class WebViewTools
 
         Logger.LogInformation("webview_click resource={Resource} selector={Selector} frame={Frame}", resourceKey, selector, frame);
 
-        var toolBridge = GetRequiredService<IDocumentWebViewToolBridge>();
+        var toolBridge = GetRequiredService<IWebViewToolBridge>();
         var options = new ClickOptions(selector, frame);
         var clickResult = await toolBridge.ClickAsync(resourceKey, options);
         if (clickResult.IsFailure)

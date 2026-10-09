@@ -4,7 +4,6 @@ using Celbridge.WebHost;
 using Celbridge.WebHost.Platform;
 using Celbridge.Workspace;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.Tests.WebHost;
 
@@ -224,57 +223,6 @@ public class WebViewFocusRegistryTests
         }
     }
 
-    // A view with no control. Close raises Closing.
-    private sealed class FakeWebView : IWebView
-    {
-        private EventHandler? _closing;
-
-        public FakeWebView(string resource)
-        {
-            Resource = new ResourceKey(resource);
-        }
-
-        public ResourceKey Resource { get; }
-
-        public string AccessibleName => Resource.ResourceName;
-
-        public int ClosingSubscriberCount => _closing?.GetInvocationList().Length ?? 0;
-
-        public event EventHandler? Closing
-        {
-            add => _closing += value;
-            remove => _closing -= value;
-        }
-
-        public event EventHandler<WebNavigationStartingEventArgs>? NavigationStarting
-        {
-            add { }
-            remove { }
-        }
-
-        public event EventHandler<WebNavigationCompletedEventArgs>? NavigationCompleted
-        {
-            add { }
-            remove { }
-        }
-
-        public void Close()
-        {
-            _closing?.Invoke(this, EventArgs.Empty);
-        }
-
-        public Task AddDocumentStartScriptAsync(string script) => Task.CompletedTask;
-
-        public Task<string> EvalAsync(string expression) => Task.FromResult("null");
-
-        public Task ReloadAsync(bool clearCache) => Task.CompletedTask;
-
-        public Task<ScreenshotData> CaptureScreenshotAsync(ScreenshotRequest request)
-        {
-            throw new NotSupportedException();
-        }
-    }
-
     // The dispatcher is internal, so it is stubbed by hand. A view with no control never attaches.
     private sealed class StubMessageDispatcher : IWebSurfaceMessageDispatcher
     {
@@ -282,11 +230,11 @@ public class WebViewFocusRegistryTests
         {
         }
 
-        public void Attach(CoreWebView2 coreWebView, Func<string> getSurfaceName)
+        public void Attach(IWebView view)
         {
         }
 
-        public void Detach(CoreWebView2 coreWebView)
+        public void Detach(IWebView view)
         {
         }
     }

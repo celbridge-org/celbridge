@@ -24,7 +24,7 @@ internal sealed class WebSurfaceLogListener
     private void OnLog(WebSurfaceMessage message)
     {
         _webSurfaceLog.Write(
-            message.SurfaceName,
+            message.View,
             WebMessageEnvelope.ReadString(message.Parameters, "level"),
             WebMessageEnvelope.ReadString(message.Parameters, "message"));
     }

@@ -176,9 +176,9 @@ public sealed class WebViewLoadDiagnostics
     /// Logs a navigation that did not arrive. A navigation the host itself declined is reported as the
     /// ordinary outcome it is, so an enforced navigation policy does not read as a broken page.
     /// </summary>
-    public void LogNavigationFailed(IWebView view, string? url, CoreWebView2WebErrorStatus status)
+    public void LogNavigationFailed(IWebView view, string? url, WebNavigationCompletedEventArgs completion)
     {
-        if (status == CoreWebView2WebErrorStatus.OperationCanceled)
+        if (completion.Result == WebNavigationResult.Cancelled)
         {
             if (IsNarrationEnabled)
             {
@@ -192,7 +192,7 @@ public sealed class WebViewLoadDiagnostics
             "Navigation failed for {Resource} at {Url} with status {Status} ({Surface})",
             view.Resource,
             url,
-            status,
+            completion.ErrorStatus,
             DescribeSurface(view));
     }
 

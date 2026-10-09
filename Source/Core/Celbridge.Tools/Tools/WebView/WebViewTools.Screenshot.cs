@@ -70,7 +70,7 @@ public partial class WebViewTools
             fileResource = resolveResult.Value;
         }
 
-        var toolBridge = GetRequiredService<IDocumentWebViewToolBridge>();
+        var toolBridge = GetRequiredService<IWebViewToolBridge>();
         var scopedSelector = string.IsNullOrEmpty(selector) ? null : selector;
         var clampedSettleMs = settleMs < 0 ? 0 : settleMs;
         var options = new ScreenshotOptions(format, quality, maxEdge, scopedSelector, clampedSettleMs, frame);

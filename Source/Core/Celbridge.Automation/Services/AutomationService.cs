@@ -7,12 +7,12 @@ internal class AutomationService : IAutomationService
 {
     private readonly IUserInterfaceService _userInterfaceService;
     private readonly INativeControlReader _nativeControlReader;
-    private readonly IDocumentWebViewToolBridge _toolBridge;
+    private readonly IWebViewToolBridge _toolBridge;
 
     public AutomationService(
         IUserInterfaceService userInterfaceService,
         INativeControlReader nativeControlReader,
-        IDocumentWebViewToolBridge toolBridge)
+        IWebViewToolBridge toolBridge)
     {
         _userInterfaceService = userInterfaceService;
         _nativeControlReader = nativeControlReader;

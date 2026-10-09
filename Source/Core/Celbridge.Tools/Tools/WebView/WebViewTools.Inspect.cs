@@ -32,7 +32,7 @@ public partial class WebViewTools
         Logger.LogInformation("webview_inspect resource={Resource} selector={Selector} childPreviewLimit={ChildPreviewLimit} frame={Frame}",
             resourceKey, selector, childPreviewLimit, frame);
 
-        var toolBridge = GetRequiredService<IDocumentWebViewToolBridge>();
+        var toolBridge = GetRequiredService<IWebViewToolBridge>();
         var options = new InspectOptions(selector, childPreviewLimit, frame);
         var inspectResult = await toolBridge.InspectAsync(resourceKey, options);
         if (inspectResult.IsFailure)

@@ -58,7 +58,7 @@ public partial class WebViewTools
             mode = new SelectorQuery(selector);
         }
 
-        var toolBridge = GetRequiredService<IDocumentWebViewToolBridge>();
+        var toolBridge = GetRequiredService<IWebViewToolBridge>();
         var options = new QueryOptions(mode, maxResults, frame);
         var queryResult = await toolBridge.QueryAsync(resourceKey, options);
         if (queryResult.IsFailure)

@@ -33,7 +33,7 @@ public partial class WebViewTools
         Logger.LogInformation("webview_get_network resource={Resource} tail={Tail} includeHeaders={IncludeHeaders} includeBodies={IncludeBodies} since={Since} frame={Frame}",
             resourceKey, tail, includeHeaders, includeBodies, sinceTimestampMs, frame);
 
-        var toolBridge = GetRequiredService<IDocumentWebViewToolBridge>();
+        var toolBridge = GetRequiredService<IWebViewToolBridge>();
         long? since = sinceTimestampMs > 0 ? sinceTimestampMs : null;
         var options = new NetworkQueryOptions(tail, includeHeaders, includeBodies, since, frame);
         var networkResult = await toolBridge.GetNetworkAsync(resourceKey, options);

@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Celbridge.Logging;
 
 namespace Celbridge.WebHost;
@@ -7,9 +8,10 @@ internal sealed class WebSurfaceLog : IWebSurfaceLog
     private readonly ILogger<WebSurfaceLog> _logger;
     private readonly TimeProvider _timeProvider;
 
-    // Per surface, how many entries have been written in the window that started at WindowStart. A page in a
-    // render loop can report on every frame, so the log (and the disk it lands on) needs a ceiling.
-    private readonly Dictionary<string, SurfaceRate> _rates = new(StringComparer.Ordinal);
+    // Each view's count of entries in its current window. A page in a render loop can report on every frame, so
+    // the log needs a ceiling. The weak keys let an entry go with its view, and a rename keeps the view's count.
+    private readonly ConditionalWeakTable<IWebView, SurfaceRate> _rates = new();
+    private readonly object _ratesLock = new();
 
     private static readonly TimeSpan RateWindow = TimeSpan.FromSeconds(10);
     private const int MaxEntriesPerWindow = 50;
@@ -28,14 +30,16 @@ internal sealed class WebSurfaceLog : IWebSurfaceLog
         _timeProvider = timeProvider;
     }
 
-    public void Write(string surfaceName, string? level, string? message)
+    public void Write(IWebView view, string? level, string? message)
     {
         if (string.IsNullOrWhiteSpace(message))
         {
             return;
         }
 
-        var allowance = TakeAllowance(surfaceName);
+        var surfaceName = view.Resource.ToString();
+
+        var allowance = TakeAllowance(view);
         if (allowance == RateAllowance.Denied)
         {
             return;
@@ -75,29 +79,35 @@ internal sealed class WebSurfaceLog : IWebSurfaceLog
         }
     }
 
-    private RateAllowance TakeAllowance(string surfaceName)
+    private RateAllowance TakeAllowance(IWebView view)
     {
         var now = _timeProvider.GetUtcNow();
 
-        if (!_rates.TryGetValue(surfaceName, out var rate)
-            || now - rate.WindowStart >= RateWindow)
+        lock (_ratesLock)
         {
-            _rates[surfaceName] = new SurfaceRate(now, 1);
-            return RateAllowance.Allowed;
+            var rate = _rates.GetValue(view, _ => new SurfaceRate { WindowStart = now });
+            if (now - rate.WindowStart >= RateWindow)
+            {
+                rate.WindowStart = now;
+                rate.Count = 0;
+            }
+
+            rate.Count++;
+
+            if (rate.Count < MaxEntriesPerWindow)
+            {
+                return RateAllowance.Allowed;
+            }
+
+            return rate.Count == MaxEntriesPerWindow ? RateAllowance.LastBeforeLimit : RateAllowance.Denied;
         }
-
-        var count = rate.Count + 1;
-        _rates[surfaceName] = rate with { Count = count };
-
-        if (count < MaxEntriesPerWindow)
-        {
-            return RateAllowance.Allowed;
-        }
-
-        return count == MaxEntriesPerWindow ? RateAllowance.LastBeforeLimit : RateAllowance.Denied;
     }
 
-    private sealed record SurfaceRate(DateTimeOffset WindowStart, int Count);
+    private sealed class SurfaceRate
+    {
+        public DateTimeOffset WindowStart;
+        public int Count;
+    }
 
     private enum RateAllowance
     {

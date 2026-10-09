@@ -10,9 +10,10 @@ internal sealed class WebSurfaceMessageDispatcher : IWebSurfaceMessageDispatcher
 
     private readonly Dictionary<string, Action<WebSurfaceMessage>> _handlers = new(StringComparer.Ordinal);
 
-    // Attached surfaces, keyed by the CoreWebView2 the subscription was made on. Accessed only on the UI
-    // thread: Attach and Detach run from view lifecycle, and the event they subscribe raises there.
-    private readonly Dictionary<CoreWebView2, AttachedSurface> _surfaces = new();
+    // Each attached view's message handler. Used only on the UI thread, where views attach and detach and the
+    // event raises.
+    private readonly Dictionary<IWebView, TypedEventHandler<CoreWebView2, CoreWebView2WebMessageReceivedEventArgs>>
+        _messageHandlers = new();
 
     // The handled method names, held as an array because every message from every surface is tested against
     // all of them before it is worth parsing.
@@ -29,41 +30,46 @@ internal sealed class WebSurfaceMessageDispatcher : IWebSurfaceMessageDispatcher
         _handledMethods = _handlers.Keys.ToArray();
     }
 
-    public void Attach(CoreWebView2 coreWebView, Func<string> getSurfaceName)
+    public void Attach(IWebView view)
     {
-        if (_surfaces.TryGetValue(coreWebView, out var attachedSurface))
+        if (_messageHandlers.ContainsKey(view)
+            || GetCoreWebView2(view) is not CoreWebView2 coreWebView)
         {
-            _surfaces[coreWebView] = attachedSurface with { GetSurfaceName = getSurfaceName };
             return;
         }
 
-        // The CoreWebView2 handed to the event is a different managed projection of the same native object
-        // than the one attached here, so it cannot be used to find the surface. Each subscription closes over
-        // the key it was attached under.
+        // The handler closes over the view rather than reading the event's sender. On the packaged Windows head
+        // the sender can be a different managed object for the same native view.
         TypedEventHandler<CoreWebView2, CoreWebView2WebMessageReceivedEventArgs> messageHandler =
-            (_, args) => OnWebMessageReceived(coreWebView, args);
+            (_, args) => OnWebMessageReceived(view, args);
 
-        _surfaces[coreWebView] = new AttachedSurface(getSurfaceName, messageHandler);
+        _messageHandlers[view] = messageHandler;
         coreWebView.WebMessageReceived += messageHandler;
     }
 
-    public void Detach(CoreWebView2 coreWebView)
+    public void Detach(IWebView view)
     {
-        if (!_surfaces.Remove(coreWebView, out var attachedSurface))
+        if (!_messageHandlers.Remove(view, out var messageHandler)
+            || GetCoreWebView2(view) is not CoreWebView2 coreWebView)
         {
             return;
         }
 
-        coreWebView.WebMessageReceived -= attachedSurface.MessageHandler;
+        coreWebView.WebMessageReceived -= messageHandler;
     }
 
-    private void OnWebMessageReceived(CoreWebView2 coreWebView, CoreWebView2WebMessageReceivedEventArgs e)
+    private static CoreWebView2? GetCoreWebView2(IWebView view)
+    {
+        return (view as WebViewBase)?.CoreWebView2;
+    }
+
+    private void OnWebMessageReceived(IWebView view, CoreWebView2WebMessageReceivedEventArgs e)
     {
         // This handler runs on the UI thread alongside the host channel reading the same event, so an
         // escaping exception would be fatal. A malformed web message must never crash the host.
         try
         {
-            if (!_surfaces.TryGetValue(coreWebView, out var attachedSurface))
+            if (!_messageHandlers.ContainsKey(view))
             {
                 return;
             }
@@ -89,10 +95,7 @@ internal sealed class WebSurfaceMessageDispatcher : IWebSurfaceMessageDispatcher
                 return;
             }
 
-            var surfaceMessage = new WebSurfaceMessage(
-                coreWebView,
-                attachedSurface.GetSurfaceName(),
-                notification.Parameters);
+            var surfaceMessage = new WebSurfaceMessage(view, notification.Parameters);
 
             handler.Invoke(surfaceMessage);
         }
@@ -116,8 +119,4 @@ internal sealed class WebSurfaceMessageDispatcher : IWebSurfaceMessageDispatcher
 
         return false;
     }
-
-    private sealed record AttachedSurface(
-        Func<string> GetSurfaceName,
-        TypedEventHandler<CoreWebView2, CoreWebView2WebMessageReceivedEventArgs> MessageHandler);
 }

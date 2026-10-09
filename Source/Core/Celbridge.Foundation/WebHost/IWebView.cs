@@ -1,5 +1,3 @@
-using Microsoft.Web.WebView2.Core;
-
 namespace Celbridge.WebHost;
 
 /// <summary>
@@ -24,9 +22,36 @@ public sealed class WebNavigationStartingEventArgs : EventArgs
 }
 
 /// <summary>
-/// The outcome of a navigation.
+/// How a navigation ended.
 /// </summary>
-public sealed record WebNavigationCompletedEventArgs(bool IsSuccess, CoreWebView2WebErrorStatus WebErrorStatus);
+public enum WebNavigationResult
+{
+    /// <summary>
+    /// The page loaded.
+    /// </summary>
+    Succeeded,
+
+    /// <summary>
+    /// The navigation was cancelled before the page arrived, such as by the host.
+    /// </summary>
+    Cancelled,
+
+    /// <summary>
+    /// The connection was aborted before the page arrived.
+    /// </summary>
+    Aborted,
+
+    /// <summary>
+    /// The page could not be loaded.
+    /// </summary>
+    Failed
+}
+
+/// <summary>
+/// The outcome of a navigation. ErrorStatus is the platform's name for why the navigation did not succeed, and is
+/// empty when it did.
+/// </summary>
+public sealed record WebNavigationCompletedEventArgs(WebNavigationResult Result, string ErrorStatus);
 
 /// <summary>
 /// A web view as services see it. Members are called on the UI thread unless their summary says otherwise.

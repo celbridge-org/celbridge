@@ -14,7 +14,7 @@ public static class ServiceConfiguration
         services.AddSingleton<WebSurfaceLogListener>();
         services.AddSingleton<IWebSurfaceMessageDispatcher, WebSurfaceMessageDispatcher>();
         services.AddSingleton<IWebViewFocusRegistry, WebViewFocusRegistry>();
-        services.AddSingleton<IDocumentWebViewToolBridge, DocumentWebViewToolBridge>();
+        services.AddSingleton<IWebViewToolBridge, WebViewToolBridge>();
         services.AddTransient<IGetWebViewToolSupportCommand, GetWebViewToolSupportCommand>();
         services.AddTransient<IClearBrowsingDataCommand, ClearBrowsingDataCommand>();
 

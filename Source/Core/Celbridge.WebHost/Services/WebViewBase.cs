@@ -458,14 +458,33 @@ public abstract class WebViewBase : IEditorWebView
     /// </summary>
     protected abstract void CloseControl(Panel? container);
 
+    internal static WebNavigationCompletedEventArgs CreateNavigationCompletedEventArgs(
+        bool isSuccess,
+        CoreWebView2WebErrorStatus status)
+    {
+        if (isSuccess)
+        {
+            return new WebNavigationCompletedEventArgs(WebNavigationResult.Succeeded, string.Empty);
+        }
+
+        var result = status switch
+        {
+            CoreWebView2WebErrorStatus.OperationCanceled => WebNavigationResult.Cancelled,
+            CoreWebView2WebErrorStatus.ConnectionAborted => WebNavigationResult.Aborted,
+            _ => WebNavigationResult.Failed
+        };
+
+        return new WebNavigationCompletedEventArgs(result, status.ToString());
+    }
+
     protected void RaiseNavigationStarting(WebNavigationStartingEventArgs args)
     {
         NavigationStarting?.Invoke(this, args);
     }
 
-    protected void RaiseNavigationCompleted(WebNavigationCompletedEventArgs args)
+    protected void RaiseNavigationCompleted(bool isSuccess, CoreWebView2WebErrorStatus status)
     {
-        NavigationCompleted?.Invoke(this, args);
+        NavigationCompleted?.Invoke(this, CreateNavigationCompletedEventArgs(isSuccess, status));
 
         foreach (var script in _documentStartScripts.ToList())
         {

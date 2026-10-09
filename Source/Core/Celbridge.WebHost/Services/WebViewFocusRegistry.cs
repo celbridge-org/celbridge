@@ -300,7 +300,7 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         // The focus-lost signal comes back through the page rather than either of the gain paths above,
         // because neither the managed nor the native layer observes the keyboard leaving the web content.
         // It arrives over the message bus, which the surface joins here for as long as it is registered.
-        _messageDispatcher.Attach(coreWebView, () => view.Resource.ToString());
+        _messageDispatcher.Attach(view);
 
         coreWebView.NavigationCompleted += OnNavigationCompleted;
 
@@ -447,7 +447,7 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         webView.GotFocus -= OnWebViewGotFocus;
         coreWebView.NavigationCompleted -= OnNavigationCompleted;
 
-        _messageDispatcher.Detach(coreWebView);
+        _messageDispatcher.Detach(view);
     }
 
     // Null for a view without a control, as in a test. Such a view takes part in the focus model only.
@@ -498,13 +498,9 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
 
     private void OnFocusLostMessage(WebSurfaceMessage message)
     {
-        foreach (var registration in _registrations.Values)
+        if (_registrations.TryGetValue(message.View, out var registration))
         {
-            if (ReferenceEquals(GetCoreWebView2(registration.View), message.Surface))
-            {
-                OnFocusLost(registration);
-                return;
-            }
+            OnFocusLost(registration);
         }
     }
 

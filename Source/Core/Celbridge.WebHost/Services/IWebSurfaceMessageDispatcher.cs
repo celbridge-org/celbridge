@@ -1,13 +1,12 @@
 using System.Text.Json;
-using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.WebHost;
 
 /// <summary>
-/// One notification a hosted page posted to its host over the native web message bus, carrying the surface it
-/// came from and the parameters the page sent with it.
+/// One notification a hosted page posted to its host over the native web message bus, carrying the view it came
+/// from and the parameters the page sent with it.
 /// </summary>
-internal sealed record WebSurfaceMessage(CoreWebView2 Surface, string SurfaceName, JsonElement Parameters);
+internal sealed record WebSurfaceMessage(IWebView View, JsonElement Parameters);
 
 /// <summary>
 /// Routes the notifications hosted pages post over the native web message bus to the handler registered for
@@ -25,14 +24,12 @@ internal interface IWebSurfaceMessageDispatcher
     void AddHandler(string method, Action<WebSurfaceMessage> handler);
 
     /// <summary>
-    /// Begins routing the surface's messages, named by getSurfaceName. The name is read for each message, so a
-    /// renamed surface reports under its new name. Attaching a surface that is already attached replaces
-    /// getSurfaceName and keeps the existing subscription.
+    /// Begins routing the view's messages. Attaching a view that is already attached has no effect.
     /// </summary>
-    void Attach(CoreWebView2 coreWebView, Func<string> getSurfaceName);
+    void Attach(IWebView view);
 
     /// <summary>
-    /// Stops routing the surface's messages. Safe to call for a surface that was never attached.
+    /// Stops routing the view's messages. Safe to call for a view that was never attached.
     /// </summary>
-    void Detach(CoreWebView2 coreWebView);
+    void Detach(IWebView view);
 }

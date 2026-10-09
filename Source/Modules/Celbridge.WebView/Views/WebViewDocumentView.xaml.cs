@@ -14,7 +14,6 @@ using Celbridge.WebView.ViewModels;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Xaml.Automation;
-using Microsoft.Web.WebView2.Core;
 using Windows.System;
 
 namespace Celbridge.WebView.Views;
@@ -308,7 +307,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
         // the page it left.
         if (outcome == NavigationOutcome.Failed)
         {
-            Diagnostics.LogNavigationFailed(webView, ViewModel.NavigationDestination, e.WebErrorStatus);
+            Diagnostics.LogNavigationFailed(webView, ViewModel.NavigationDestination, e);
         }
         else if (outcome == NavigationOutcome.Aborted)
         {
@@ -323,7 +322,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
         UpdateNavigationState();
 
         // Runs after the navigation state settles so the probe reads the address the page committed to.
-        if (e.IsSuccess)
+        if (e.Result == WebNavigationResult.Succeeded)
         {
             _ = ProbeLoadedContentAsync(webView);
         }
@@ -339,14 +338,14 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
         WebNavigationCompletedEventArgs e,
         bool isReplacedByDownload)
     {
-        if (e.IsSuccess)
+        if (e.Result == WebNavigationResult.Succeeded)
         {
             return NavigationOutcome.Loaded;
         }
 
         if (isReplacedByDownload
-            || e.WebErrorStatus == CoreWebView2WebErrorStatus.ConnectionAborted
-            || e.WebErrorStatus == CoreWebView2WebErrorStatus.OperationCanceled)
+            || e.Result == WebNavigationResult.Aborted
+            || e.Result == WebNavigationResult.Cancelled)
         {
             return NavigationOutcome.Aborted;
         }

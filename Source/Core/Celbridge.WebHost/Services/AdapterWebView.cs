@@ -193,7 +193,7 @@ internal sealed class AdapterWebView : WebViewBase
 
     private void CoreWebView2_NavigationCompleted(CoreWebView2 sender, CoreWebView2NavigationCompletedEventArgs args)
     {
-        RaiseNavigationCompleted(new WebNavigationCompletedEventArgs(args.IsSuccess, args.WebErrorStatus));
+        RaiseNavigationCompleted(args.IsSuccess, args.WebErrorStatus);
     }
 
     private void CoreWebView2_HistoryChanged(CoreWebView2 sender, object args)

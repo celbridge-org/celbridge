@@ -9,7 +9,7 @@ public interface ICustomEditorChannelHost
 {
     /// <summary>
     /// The resource of the document the editor shows. A rename that keeps the editor changes it, so a channel
-    /// reads it each time it needs it.
+    /// reads it each time it needs it. Safe to read from any thread.
     /// </summary>
     ResourceKey Resource { get; }
 

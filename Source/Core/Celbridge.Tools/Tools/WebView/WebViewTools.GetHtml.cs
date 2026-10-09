@@ -32,7 +32,7 @@ public partial class WebViewTools
         Logger.LogInformation("webview_get_html resource={Resource} selector={Selector} maxDepth={MaxDepth} frame={Frame}",
             resourceKey, selector, clampedDepth, frame);
 
-        var toolBridge = GetRequiredService<IDocumentWebViewToolBridge>();
+        var toolBridge = GetRequiredService<IWebViewToolBridge>();
         var scopedSelector = string.IsNullOrEmpty(selector) ? null : selector;
         var options = new GetHtmlOptions(scopedSelector, clampedDepth, frame);
         var htmlResult = await toolBridge.GetHtmlAsync(resourceKey, options);

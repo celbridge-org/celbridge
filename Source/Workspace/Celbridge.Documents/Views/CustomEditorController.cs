@@ -100,11 +100,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     // again after a reconnect.
     private ProxyHostChannel? _proxyChannel;
 
-    // WebView tool bridge registration tracking. Only set when the package allows the
-    // webview_* tools and the registration has succeeded. The field doubles as a guard
-    // for unregistration.
-    private IDocumentWebViewToolBridge? _toolBridge;
-    private ResourceKey _toolBridgeRegisteredResource;
+    // The tool bridge the web view is registered with, or null when the package blocks the webview_* tools.
+    private IWebViewToolBridge? _toolBridge;
 
     // The web page the editor runs in.
     private readonly EditorPage _page = new();
@@ -238,22 +235,11 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     }
 
     /// <summary>
-    /// Moves the web view and its tool bridge registration to the view model's current file resource. A rename
-    /// keeps this controller and its web view, so it calls this.
+    /// Sets the resource the web view shows. A web view acquired later takes the view model's resource.
     /// </summary>
-    public void RekeyToolBridgeRegistration()
+    public void SetResource(ResourceKey resource)
     {
-        var newResource = _viewModel.FileResource;
-
-        _webView?.SetResource(newResource);
-
-        if (_toolBridge is null)
-        {
-            return;
-        }
-
-        _toolBridge.Rekey(_toolBridgeRegisteredResource, newResource);
-        _toolBridgeRegisteredResource = newResource;
+        _webView?.SetResource(resource);
     }
 
     /// <summary>
@@ -490,7 +476,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         var pendingConnection = hostChannelBroker.CreatePendingConnection();
         var connectionToken = pendingConnection.Token;
         _proxyChannel = pendingConnection.Channel;
-        var logTarget = new WebSurfaceLogTarget(() => _viewModel.FileResource.ToString(), _webSurfaceLog);
+        var logTarget = new WebSurfaceLogTarget(webView, _webSurfaceLog);
         Host = new CelbridgeHost(_proxyChannel, logTarget);
 
         // A reconnected transport (e.g. after an OS suspend dropped the socket) may have lost messages
@@ -594,9 +580,10 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
         if (uri.StartsWith(_allowedNavigationPrefix))
         {
-            if (_page.OnNavigating(uri))
+            if (_page.OnNavigating(uri)
+                && _webView is not null)
             {
-                _toolBridge?.NotifyContentLoading(_toolBridgeRegisteredResource);
+                _toolBridge?.NotifyContentLoading(_webView);
             }
             return;
         }
@@ -611,6 +598,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         Guard.IsNotNull(_contribution);
         Guard.IsNotNull(_resolvedEditor);
         Guard.IsNotNull(Host);
+        Guard.IsNotNull(_webView);
 
         ICustomEditorChannelProvider? provider = null;
         foreach (var candidate in _serviceProvider.GetServices<ICustomEditorChannelProvider>())
@@ -630,7 +618,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         var context = new CustomEditorChannelContext(_resolvedEditor);
         var channel = provider.Create(context);
 
-        _channelHost = new CustomEditorChannelHost(Host, _viewModel);
+        _channelHost = new CustomEditorChannelHost(Host, _webView);
         channel.RegisterTargets(_channelHost);
         _channel = channel;
     }
@@ -708,9 +696,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             _channelHost = null;
         }
 
-        // The bridge and the focus registry drop the web view as it closes.
+        // The tool bridge and the focus registry drop the web view as it closes.
         _toolBridge = null;
-        _toolBridgeRegisteredResource = ResourceKey.Empty;
 
         if (_documentHandler is not null)
         {
@@ -743,7 +730,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
     private async Task TryInjectToolBridgeShimAsync(IEditorWebView webView)
     {
-        var toolBridge = _serviceProvider.GetService<IDocumentWebViewToolBridge>();
+        var toolBridge = _serviceProvider.GetService<IWebViewToolBridge>();
         if (toolBridge is null)
         {
             return;
@@ -784,9 +771,9 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             return;
         }
 
-        if (!args.IsSuccess)
+        if (args.Result != WebNavigationResult.Succeeded)
         {
-            Diagnostics.LogNavigationFailed(webView, webView.Source, args.WebErrorStatus);
+            Diagnostics.LogNavigationFailed(webView, webView.Source, args);
             return;
         }
 
@@ -896,22 +883,14 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             return;
         }
 
-        var toolBridge = _serviceProvider.GetService<IDocumentWebViewToolBridge>();
+        var toolBridge = _serviceProvider.GetService<IWebViewToolBridge>();
         if (toolBridge is null)
         {
             return;
         }
 
-        var resource = _viewModel.FileResource;
-        if (resource.IsEmpty)
-        {
-            return;
-        }
-
-        toolBridge.RegisterWebView(resource, webView);
-
+        toolBridge.Register(webView);
         _toolBridge = toolBridge;
-        _toolBridgeRegisteredResource = resource;
     }
 
     public void OnKeyboardShortcut(string key, bool ctrlKey, bool shiftKey, bool altKey)
@@ -956,7 +935,10 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         // Tool bridge readiness fires for every reason — initial load, external reload,
         // and programmatic webview_reload — so gated webview_* calls unblock as soon
         // as the editor signals it has reinitialised post-navigation.
-        _toolBridge?.NotifyContentReady(_toolBridgeRegisteredResource);
+        if (_webView is not null)
+        {
+            _toolBridge?.NotifyContentReady(_webView);
+        }
 
         if (reason != ContentLoadedReason.Initial)
         {

@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text.Json;
 using Celbridge.Commands;
@@ -8,12 +7,10 @@ using Celbridge.Logging;
 namespace Celbridge.WebHost.Services;
 
 /// <summary>
-/// Maintains a registry of WebViews registered with the webview_* MCP tool namespace,
-/// keyed by their document resource. Routes eval and reload calls from those tools
-/// to the registered WebView via the delegates supplied at registration time. The
-/// delegates are responsible for marshalling onto the UI thread.
+/// Runs the webview_* tools against registered web views. A tool call names a resource, and the bridge finds the
+/// view that shows it.
 /// </summary>
-public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
+public partial class WebViewToolBridge : IWebViewToolBridge
 {
     private const string ShimRelativePath = "Celbridge.WebHost/Web/celbridge-client/core/webview-tools-shim.js";
 
@@ -33,15 +30,15 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
 
     private readonly TimeSpan _contentReadyTimeout;
     private readonly ICommandService _commandService;
-    private readonly ILogger<DocumentWebViewToolBridge> _logger;
+    private readonly ILogger<WebViewToolBridge> _logger;
     private readonly ILocalFileSystem _fileSystem;
 
-    public DocumentWebViewToolBridge(ICommandService commandService, ILogger<DocumentWebViewToolBridge> logger, ILocalFileSystem fileSystem)
+    public WebViewToolBridge(ICommandService commandService, ILogger<WebViewToolBridge> logger, ILocalFileSystem fileSystem)
         : this(commandService, logger, fileSystem, DefaultContentReadyTimeout) { }
 
     // Test-friendly constructor so unit tests can use a short timeout without
     // waiting through the 5-second default for every gated-but-never-ready case.
-    internal DocumentWebViewToolBridge(ICommandService commandService, ILogger<DocumentWebViewToolBridge> logger, ILocalFileSystem fileSystem, TimeSpan contentReadyTimeout)
+    internal WebViewToolBridge(ICommandService commandService, ILogger<WebViewToolBridge> logger, ILocalFileSystem fileSystem, TimeSpan contentReadyTimeout)
     {
         _contentReadyTimeout = contentReadyTimeout;
         _commandService = commandService;
@@ -49,7 +46,7 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
         _fileSystem = fileSystem;
     }
 
-    // Cap accumulated console history per resource. Older entries are evicted FIFO
+    // Cap accumulated console history per view. Older entries are evicted FIFO
     // when the cap is hit. The shim has its own bounded ring. This cap protects the
     // host from a runaway editor that logs forever.
     private const int ConsoleHistoryCap = 2000;
@@ -63,7 +60,11 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
-    private readonly ConcurrentDictionary<ResourceKey, WebViewToolBridgeEntry> _entries = new();
+    // The registered views' entries, oldest first. Tool calls read it on server threads, and views register and
+    // close on the UI thread.
+    private readonly object _entriesLock = new();
+    private readonly List<WebViewToolBridgeEntry> _entries = new();
+
     private readonly object _shimLock = new();
     private string? _cachedShimScript;
 
@@ -98,57 +99,60 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
         }
     }
 
-    public void Register(
-        ResourceKey resource,
-        Func<string, Task<string>> evalAsync,
-        Func<bool, Task> reloadAsync,
-        Func<ScreenshotRequest, Task<ScreenshotData>>? screenshotAsync = null)
+    public void Register(IWebView view)
     {
-        var entry = new WebViewToolBridgeEntry(evalAsync, reloadAsync, screenshotAsync);
-        _entries[resource] = entry;
-    }
-
-    public void Rekey(ResourceKey oldResource, ResourceKey newResource)
-    {
-        if (oldResource == newResource)
+        lock (_entriesLock)
         {
-            return;
+            if (_entries.Any(entry => entry.View == view))
+            {
+                return;
+            }
+
+            _entries.Add(new WebViewToolBridgeEntry(view));
         }
 
-        // The entry holds no resource state of its own, so the move carries the accumulated
-        // console and network history and the content-ready gate across with it.
-        if (!_entries.TryRemove(oldResource, out var entry))
-        {
-            return;
-        }
-
-        _entries[newResource] = entry;
+        view.Closing += (_, _) => RemoveEntry(view);
     }
 
-    public void Unregister(ResourceKey resource)
+    public void NotifyContentReady(IWebView view)
     {
-        _entries.TryRemove(resource, out _);
+        FindEntry(view)?.NotifyContentReady();
     }
 
-    public void NotifyContentReady(ResourceKey resource)
+    public void NotifyContentLoading(IWebView view)
     {
-        if (_entries.TryGetValue(resource, out var entry))
+        FindEntry(view)?.NotifyContentLoading();
+    }
+
+    private void RemoveEntry(IWebView view)
+    {
+        lock (_entriesLock)
         {
-            entry.NotifyContentReady();
+            _entries.RemoveAll(entry => entry.View == view);
         }
     }
 
-    public void NotifyContentLoading(ResourceKey resource)
+    private WebViewToolBridgeEntry? FindEntry(IWebView view)
     {
-        if (_entries.TryGetValue(resource, out var entry))
+        lock (_entriesLock)
         {
-            entry.NotifyContentLoading();
+            return _entries.Find(entry => entry.View == view);
+        }
+    }
+
+    // The view registered last answers, so the search runs from the newest entry.
+    private WebViewToolBridgeEntry? FindEntry(ResourceKey resource)
+    {
+        lock (_entriesLock)
+        {
+            return _entries.FindLast(entry => entry.View.Resource == resource);
         }
     }
 
     public async Task<Result<WebViewEvalResult>> EvalAsync(ResourceKey resource, string expression, string? frame = null)
     {
-        if (!_entries.TryGetValue(resource, out var entry))
+        var entry = FindEntry(resource);
+        if (entry is null)
         {
             return Result.Fail(await GetUnavailableReasonAsync(resource));
         }
@@ -172,7 +176,7 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
         {
             try
             {
-                var valueJson = await entry.EvalAsync(expression);
+                var valueJson = await entry.View.EvalAsync(expression);
                 return new WebViewEvalResult(TopFrame, valueJson);
             }
             catch (Exception ex)
@@ -211,7 +215,8 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
 
     public async Task<Result<string>> ReloadAsync(ResourceKey resource, bool clearCache, string? frame = null)
     {
-        if (!_entries.TryGetValue(resource, out var entry))
+        var entry = FindEntry(resource);
+        if (entry is null)
         {
             return Result.Fail(await GetUnavailableReasonAsync(resource));
         }
@@ -237,12 +242,12 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
         entry.NotifyContentLoading();
         try
         {
-            await entry.ReloadAsync(clearCache);
+            await entry.View.ReloadAsync(clearCache);
             return TopFrame;
         }
         catch (Exception ex)
         {
-            // The reload delegate failed before NavigationCompleted could fire,
+            // The reload failed before NavigationCompleted could fire,
             // so the gate would otherwise stay closed and every later tool call
             // would block until the 5-second timeout. Mark the entry as failed
             // so subsequent tool calls fail fast with the reload error rather
@@ -256,7 +261,8 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
 
     public async Task<Result<string>> GetConsoleAsync(ResourceKey resource, ConsoleQueryOptions options)
     {
-        if (!_entries.TryGetValue(resource, out var entry))
+        var entry = FindEntry(resource);
+        if (entry is null)
         {
             return Result.Fail(await GetUnavailableReasonAsync(resource));
         }
@@ -378,7 +384,8 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
 
     public async Task<Result<string>> GetNetworkAsync(ResourceKey resource, NetworkQueryOptions options)
     {
-        if (!_entries.TryGetValue(resource, out var entry))
+        var entry = FindEntry(resource);
+        if (entry is null)
         {
             return Result.Fail(await GetUnavailableReasonAsync(resource));
         }
@@ -403,14 +410,10 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
 
     public async Task<Result<WebViewScreenshot>> ScreenshotAsync(ResourceKey resource, ScreenshotOptions options)
     {
-        if (!_entries.TryGetValue(resource, out var entry))
+        var entry = FindEntry(resource);
+        if (entry is null)
         {
             return Result.Fail(await GetUnavailableReasonAsync(resource));
-        }
-
-        if (!entry.HasScreenshotDelegate)
-        {
-            return Result.Fail($"Screenshot is not supported for the WebView registered for resource '{resource}'. The hosting platform did not provide a native screenshot API.");
         }
 
         var format = string.IsNullOrEmpty(options.Format) ? "jpeg" : options.Format.ToLowerInvariant();
@@ -439,7 +442,7 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
 
         try
         {
-            var data = await entry.ScreenshotAsync(request);
+            var data = await entry.View.CaptureScreenshotAsync(request);
             return new WebViewScreenshot(frameClip.Frame, data);
         }
         catch (Exception ex)
@@ -523,7 +526,7 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
         {
             var argsJson = "{}";
             var expression = BuildInvokeExpression("flushNetwork", argsJson);
-            var raw = await entry.EvalAsync(expression);
+            var raw = await entry.View.EvalAsync(expression);
 
             using var doc = JsonDocument.Parse(raw);
             var root = doc.RootElement;
@@ -561,7 +564,8 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
 
     private async Task<Result<string>> InvokeShimHandlerAsync(ResourceKey resource, string handlerName, object args)
     {
-        if (!_entries.TryGetValue(resource, out var entry))
+        var entry = FindEntry(resource);
+        if (entry is null)
         {
             return Result.Fail(await GetUnavailableReasonAsync(resource));
         }
@@ -607,7 +611,7 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
             string responseJson;
             try
             {
-                responseJson = await entry.EvalAsync(expression);
+                responseJson = await entry.View.EvalAsync(expression);
             }
             catch (Exception ex)
             {
@@ -740,7 +744,7 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
         {
             var argsJson = "{}";
             var expression = BuildInvokeExpression("flushConsole", argsJson);
-            var raw = await entry.EvalAsync(expression);
+            var raw = await entry.View.EvalAsync(expression);
 
             using var doc = JsonDocument.Parse(raw);
             var root = doc.RootElement;
@@ -856,9 +860,6 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
     private sealed class WebViewToolBridgeEntry
     {
         private readonly object _gate = new();
-        private readonly Func<string, Task<string>> _evalAsync;
-        private readonly Func<bool, Task> _reloadAsync;
-        private readonly Func<ScreenshotRequest, Task<ScreenshotData>>? _screenshotAsync;
         private readonly List<ConsoleEntry> _consoleHistory = new();
         private readonly List<NetworkEntry> _networkHistory = new();
         private TaskCompletionSource _readyTcs;
@@ -868,31 +869,13 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
         // through the content-ready timeout.
         private string? _failureReason;
 
-        public WebViewToolBridgeEntry(
-            Func<string, Task<string>> evalAsync,
-            Func<bool, Task> reloadAsync,
-            Func<ScreenshotRequest, Task<ScreenshotData>>? screenshotAsync)
+        public WebViewToolBridgeEntry(IWebView view)
         {
-            _evalAsync = evalAsync;
-            _reloadAsync = reloadAsync;
-            _screenshotAsync = screenshotAsync;
+            View = view;
             _readyTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         }
 
-        public Task<string> EvalAsync(string expression) => _evalAsync(expression);
-
-        public Task ReloadAsync(bool clearCache) => _reloadAsync(clearCache);
-
-        public bool HasScreenshotDelegate => _screenshotAsync is not null;
-
-        public Task<ScreenshotData> ScreenshotAsync(ScreenshotRequest request)
-        {
-            if (_screenshotAsync is null)
-            {
-                throw new InvalidOperationException("No screenshot delegate registered for this WebView entry.");
-            }
-            return _screenshotAsync(request);
-        }
+        public IWebView View { get; }
 
         public void NotifyContentReady()
         {

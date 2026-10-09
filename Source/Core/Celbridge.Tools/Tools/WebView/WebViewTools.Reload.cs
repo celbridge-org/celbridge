@@ -26,7 +26,7 @@ public partial class WebViewTools
 
         Logger.LogInformation("webview_reload resource={Resource} clearCache={ClearCache} frame={Frame}", resourceKey, clearCache, frame);
 
-        var toolBridge = GetRequiredService<IDocumentWebViewToolBridge>();
+        var toolBridge = GetRequiredService<IWebViewToolBridge>();
         var reloadResult = await toolBridge.ReloadAsync(resourceKey, clearCache, frame);
         if (reloadResult.IsFailure)
         {
