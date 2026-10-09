@@ -11,10 +11,12 @@ import { ViewMode } from './view-mode-controller.js';
 import { PreviewPipeline } from './preview-pipeline.js';
 import { initializeToolbar, pressToolbarReloadButton, setToolbarReadOnly } from './toolbar.js';
 import { initializeLanguageMap, getLanguageForFile } from './language-mapper.js';
+import { TypeScriptProjectSupport } from './typescript-project.js';
 import { log, warn } from './logger.js';
 
 let editorController = null;
 let previewPipeline = null;
+const typeScriptSupport = new TypeScriptProjectSupport();
 
 // Configure AMD loader and load Monaco
 require.config({ paths: { 'vs': './min/vs' } });
@@ -198,6 +200,10 @@ async function initialize() {
             onInitialContent: async (content, metadata) => {
                 const language = getLanguageForFile(metadata?.fileName || '');
                 editorController.setLanguage(language);
+
+                // Loads the project files a TypeScript or JavaScript document imports in the background, so the
+                // content is reported loaded without waiting on them.
+                typeScriptSupport.attach(editorController.getModel(), metadata?.resourceKey);
 
                 const previewReady = previewPipeline?.handleInitialContent(content, metadata?.resourceKey);
 
