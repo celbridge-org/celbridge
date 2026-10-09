@@ -1,0 +1,10 @@
+{
+  "name": "celbridge-code-editor-deno-types-vendor",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Vendored Deno namespace declarations for the Celbridge code editor's TypeScript checker",
+  "type": "module",
+  "scripts": {
+    "vendor": "node vendor.js"
+  }
+}

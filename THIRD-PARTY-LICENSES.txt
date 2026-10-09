@@ -28,6 +28,12 @@ Cascadia Mono
     Source: https://github.com/microsoft/cascadia-code
     Copyright (c) 2019 - Present, Microsoft Corporation, with Reserved Font Name Cascadia Code.
 
+Deno type declarations 2.9.6
+    License: MIT
+    Source: https://github.com/denoland/deno
+    Copyright 2018-2026 the Deno authors
+    Note: The Deno namespace declarations from `deno types`, loaded by the code editor's TypeScript checker.
+
 highlight.js 11.11.1
     License: BSD-3-Clause
     Source: https://github.com/highlightjs/highlight.js

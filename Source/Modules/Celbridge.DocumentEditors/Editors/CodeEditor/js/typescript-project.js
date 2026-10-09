@@ -4,7 +4,9 @@
 // loopback server serves under /project/, and adds each file it finds at the file:/// path the worker resolves
 // the import to. Relative imports, JSON imports, and packages in node_modules that ship type declarations then
 // type check instead of showing as errors. Type packages the project lists in package.json or tsconfig.json
-// load up front, because they declare globals (such as Bun or process) that no import names.
+// load up front, because they declare globals (such as Bun or process) that no import names. A project with a
+// deno.json also gets the Deno namespace, which ships with the editor because Deno keeps its types in the deno
+// executable, and its import map, whose remote packages are declared as modules of unknown shape.
 
 import { projectUrl } from '/assets/celbridge-client/api/document-api.js';
 import { warn } from './logger.js';
@@ -50,6 +52,14 @@ const NodeBuiltins = new Set([
     'v8', 'vm', 'worker_threads', 'zlib'
 ]);
 
+// Where the bundled Deno declarations and the declarations written for a Deno project's remote imports are
+// added. Neither exists in the project folder.
+const DenoTypesPath = '__celbridge/deno.d.ts';
+const DenoModulesPath = '__celbridge/deno-modules.d.ts';
+
+// Specifiers Deno fetches from outside the project, which have no files here to check against.
+const DenoRemoteSpecifiers = ['jsr:*', 'npm:*', 'https://*', 'http://*', 'node:*'];
+
 // Stops a large dependency tree from loading without end.
 const DefaultMaxFiles = 3000;
 
@@ -62,8 +72,11 @@ const MaxDescribedJsonLength = 512 * 1024;
  */
 export class ProjectTypeLoader {
     #fetchText;
+    #fetchDenoTypes;
     #addLib;
     #maxFiles;
+    // The entries of a Deno project's import map, as { key, target }, or empty for any other project.
+    #importMap = [];
     // Path to the promise of the file's text, or of null when the file does not exist.
     #files = new Map();
     // Package name to the promise of whether the package was found.
@@ -76,11 +89,13 @@ export class ProjectTypeLoader {
     /**
      * @param {Object} options
      * @param {(path: string) => Promise<string|null>} options.fetchText - Reads a project file, or null.
+     * @param {() => Promise<string|null>} [options.fetchDenoTypes] - Reads the bundled Deno declarations.
      * @param {(path: string, content: string) => void} options.addLib - Hands a file to the TypeScript worker.
      * @param {number} [options.maxFiles]
      */
-    constructor({ fetchText, addLib, maxFiles = DefaultMaxFiles }) {
+    constructor({ fetchText, fetchDenoTypes = async () => null, addLib, maxFiles = DefaultMaxFiles }) {
         this.#fetchText = fetchText;
+        this.#fetchDenoTypes = fetchDenoTypes;
         this.#addLib = addLib;
         this.#maxFiles = maxFiles;
     }
@@ -95,12 +110,15 @@ export class ProjectTypeLoader {
 
     /**
      * Loads the type packages the project names in package.json (its @types dependencies) and in tsconfig.json
-     * (compilerOptions.types), and returns tsconfig.json's boolean compiler options, such as `strict`.
+     * (compilerOptions.types), and the Deno declarations and import map of a project with a deno.json. Returns
+     * the compiler options the project's configuration adds: the boolean flags, such as `strict`, and the paths
+     * a Deno import map maps to project files.
      */
     async loadProjectTypes() {
-        const [packageJson, tsconfig] = await Promise.all([
+        const [packageJson, tsconfig, denoConfig] = await Promise.all([
             this.#fetchJson('package.json', false),
-            this.#fetchJson('tsconfig.json', true)
+            this.#fetchJson('tsconfig.json', true),
+            this.#fetchDenoConfig()
         ]);
 
         const compilerOptions = tsconfig?.compilerOptions ?? {};
@@ -124,13 +142,80 @@ export class ProjectTypeLoader {
 
         await Promise.all([...typePackages].map((name) => this.#loadTypesPackage(name)));
 
-        const booleanOptions = {};
-        for (const [key, value] of Object.entries(compilerOptions)) {
-            if (typeof value === 'boolean') {
-                booleanOptions[key] = value;
+        const projectOptions = booleanOptions(compilerOptions);
+
+        if (denoConfig) {
+            // Deno type checks strictly unless deno.json says otherwise.
+            Object.assign(projectOptions, { strict: true }, booleanOptions(denoConfig.compilerOptions ?? {}));
+            Object.assign(projectOptions, await this.#loadDeno(denoConfig));
+        }
+
+        return projectOptions;
+    }
+
+    // Reads deno.json or deno.jsonc, and folds in the imports of the separate import map file it may name.
+    async #fetchDenoConfig() {
+        const config = await this.#fetchJson('deno.json', true) ?? await this.#fetchJson('deno.jsonc', true);
+        if (!config) {
+            return null;
+        }
+
+        let imports = config.imports ?? {};
+        const importMapPath = typeof config.importMap === 'string' ? joinPath('', config.importMap) : null;
+        if (importMapPath) {
+            const importMap = await this.#fetchJson(importMapPath, true);
+            imports = { ...(importMap?.imports ?? {}), ...imports };
+        }
+
+        return { ...config, imports };
+    }
+
+    // Adds the Deno namespace declarations and records the import map. An entry that maps to project files or to
+    // a package in node_modules becomes a `paths` mapping the worker resolves, and any other entry, such as a
+    // jsr: package Deno keeps in its own cache, is declared as a module of unknown shape so it is not an error.
+    async #loadDeno(denoConfig) {
+        const denoTypes = await this.#fetchDenoTypes();
+        if (denoTypes !== null) {
+            this.#addLib(DenoTypesPath, denoTypes);
+        }
+
+        this.#importMap = Object.entries(denoConfig.imports)
+            .filter(([key, target]) => key && typeof target === 'string')
+            .map(([key, target]) => ({ key, target }));
+
+        const paths = {};
+        const remoteModules = [...DenoRemoteSpecifiers];
+
+        for (const { key, target } of this.#importMap) {
+            const isPrefix = key.endsWith('/');
+            const local = localImportTarget(target);
+            const npm = npmImportTarget(target);
+            let mapped = null;
+
+            if (local !== null) {
+                mapped = local;
+            } else if (npm && await this.#loadPackage(npm.name)) {
+                mapped = `node_modules/${npm.name}${npm.subpath ? `/${npm.subpath}` : ''}`;
+            }
+
+            if (mapped !== null) {
+                paths[isPrefix ? `${key}*` : key] = [isPrefix ? `${mapped ? mapped.replace(/\/?$/, '/') : ''}*` : mapped];
+                continue;
+            }
+
+            if (isPrefix) {
+                remoteModules.push(`${key}*`);
+            } else {
+                // Deno lets a mapped package be imported by its subpaths too, such as @std/assert/equals.
+                remoteModules.push(key, `${key}/*`);
             }
         }
-        return booleanOptions;
+
+        this.#addLib(DenoModulesPath,
+            remoteModules.map((name) => `declare module ${JSON.stringify(name)};`).join('\n') + '\n');
+
+        // The worker has no tsconfig.json to resolve paths against, so they resolve from the project root.
+        return Object.keys(paths).length > 0 ? { baseUrl: 'file:///', paths } : {};
     }
 
     /**
@@ -174,6 +259,18 @@ export class ProjectTypeLoader {
             return;
         }
 
+        const mapped = matchImportMap(this.#importMap, specifier);
+        if (mapped) {
+            const local = localImportTarget(mapped);
+            const npm = npmImportTarget(mapped);
+            if (local !== null) {
+                await this.#loadFirst(moduleCandidates(local));
+            } else if (npm) {
+                await this.#loadPackageModule(npm.name, npm.subpath);
+            }
+            return;
+        }
+
         if (specifier.startsWith('node:') || NodeBuiltins.has(specifier)) {
             await this.#loadTypesPackage('node');
             return;
@@ -185,10 +282,13 @@ export class ProjectTypeLoader {
         }
 
         const { name, subpath } = splitPackageSpecifier(specifier);
-        if (!name) {
-            return;
+        if (name) {
+            await this.#loadPackageModule(name, subpath);
         }
+    }
 
+    // Loads a package from node_modules, or its @types package, and the subpath of it an import names.
+    async #loadPackageModule(name, subpath) {
         if (!subpath) {
             if (!await this.#loadPackage(name)) {
                 await this.#loadPackage(typesPackageName(name));
@@ -359,7 +459,7 @@ export class TypeScriptProjectSupport {
             defaults.javascript.addExtraLib(content, uri);
         };
 
-        this.#loader = new ProjectTypeLoader({ fetchText: fetchProjectText, addLib });
+        this.#loader = new ProjectTypeLoader({ fetchText: fetchProjectText, fetchDenoTypes, addLib });
         this.#loader.excludePath(path);
 
         const setCompilerOptions = (options) => {
@@ -368,22 +468,23 @@ export class TypeScriptProjectSupport {
         };
 
         // Monaco's stock options resolve no imports, so these replace them before the worker first checks the
-        // document. tsconfig.json's own flags, such as `strict`, follow once it has loaded.
+        // document. The project's own options, such as `strict`, follow once its configuration has loaded.
         setCompilerOptions(DefaultCompilerOptions);
 
-        model.onDidChangeContent(() => this.#scheduleScan());
-
-        const [projectOptions] = await Promise.all([
-            this.#loader.loadProjectTypes().catch((error) => {
-                warn('typescript: project types failed to load', error);
-                return {};
-            }),
-            this.#scan()
-        ]);
+        // The configuration loads before the first scan, because a Deno import map decides where imports lead.
+        let projectOptions = {};
+        try {
+            projectOptions = await this.#loader.loadProjectTypes();
+        } catch (error) {
+            warn('typescript: project types failed to load', error);
+        }
 
         if (Object.keys(projectOptions).length > 0) {
             setCompilerOptions({ ...DefaultCompilerOptions, ...projectOptions });
         }
+
+        model.onDidChangeContent(() => this.#scheduleScan());
+        await this.#scan();
     }
 
     #scheduleScan() {
@@ -429,6 +530,15 @@ export function modelUri(path) {
 // package, which only ever arrives raw from a specifier or a node_modules lookup.
 function libUri(path) {
     return modelUri(path).toString().replace(/%40/g, '@');
+}
+
+async function fetchDenoTypes() {
+    try {
+        const response = await fetch(new URL('../lib/deno.d.ts', import.meta.url));
+        return response.ok ? await response.text() : null;
+    } catch {
+        return null;
+    }
 }
 
 async function fetchProjectText(path) {
@@ -531,6 +641,49 @@ function declarationCandidates(base) {
 
     const stem = base.replace(/\.[cm]?jsx?$/, '');
     return [`${stem}.d.ts`, `${stem}/index.d.ts`, `${stem}.ts`];
+}
+
+function booleanOptions(compilerOptions) {
+    const options = {};
+    for (const [key, value] of Object.entries(compilerOptions)) {
+        if (typeof value === 'boolean') {
+            options[key] = value;
+        }
+    }
+    return options;
+}
+
+// The target a specifier maps to through a Deno import map: an exact key's target, or else the target of the
+// longest key ending in "/" that prefixes the specifier, with the rest of the specifier appended.
+function matchImportMap(entries, specifier) {
+    let best = null;
+    for (const { key, target } of entries) {
+        if (key === specifier) {
+            return target;
+        }
+        if (key.endsWith('/') && specifier.startsWith(key) && (!best || key.length > best.key.length)) {
+            best = { key, target };
+        }
+    }
+    return best ? best.target + specifier.slice(best.key.length) : null;
+}
+
+// The project path an import map target names, or null for a target outside the project folder.
+function localImportTarget(target) {
+    if (!target.startsWith('./') && !target.startsWith('../') && !target.startsWith('/')) {
+        return null;
+    }
+    const path = joinPath('', target);
+    return path === null ? null : path + (target.endsWith('/') && path ? '/' : '');
+}
+
+// The package and subpath an `npm:` target names, without its version, or null for any other target.
+function npmImportTarget(target) {
+    if (!target.startsWith('npm:')) {
+        return null;
+    }
+    const { name, subpath } = splitPackageSpecifier(target.slice('npm:'.length).replace(/^\//, ''));
+    return name ? { name: name.replace(/(.)@[^/]*$/, '$1'), subpath } : null;
 }
 
 function isScriptPath(path) {

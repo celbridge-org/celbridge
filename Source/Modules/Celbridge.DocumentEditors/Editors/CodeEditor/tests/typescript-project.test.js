@@ -144,6 +144,98 @@ describe('ProjectTypeLoader', () => {
     });
 });
 
+describe('ProjectTypeLoader in a Deno project', () => {
+    function createDenoLoader(files) {
+        const libs = new Map();
+        const loader = new ProjectTypeLoader({
+            fetchText: async (path) => (path in files ? files[path] : null),
+            fetchDenoTypes: async () => 'declare namespace Deno {}',
+            addLib: (path, content) => libs.set(path, content)
+        });
+        return { loader, libs };
+    }
+
+    it('adds the Deno declarations and makes strict the default', async () => {
+        const { loader, libs } = createDenoLoader({
+            'deno.jsonc': '{\n  // comment\n  "compilerOptions": { "noImplicitOverride": true },\n}'
+        });
+
+        const options = await loader.loadProjectTypes();
+
+        expect(options).toEqual({ strict: true, noImplicitOverride: true });
+        expect(libs.get('__celbridge/deno.d.ts')).toBe('declare namespace Deno {}');
+    });
+
+    it('lets deno.json turn strict off', async () => {
+        const { loader } = createDenoLoader({ 'deno.json': '{ "compilerOptions": { "strict": false } }' });
+
+        expect(await loader.loadProjectTypes()).toEqual({ strict: false });
+    });
+
+    it('maps import map entries for project files and installed npm packages to paths', async () => {
+        const { loader } = createDenoLoader({
+            'deno.json': JSON.stringify({
+                imports: { '@/': './src/', 'helpers': './src/helpers.ts', 'chalk': 'npm:chalk@5' }
+            }),
+            'node_modules/chalk/package.json': '{ "types": "index.d.ts" }',
+            'node_modules/chalk/index.d.ts': ''
+        });
+
+        const options = await loader.loadProjectTypes();
+
+        expect(options.baseUrl).toBe('file:///');
+        expect(options.paths).toEqual({
+            '@/*': ['src/*'],
+            'helpers': ['src/helpers.ts'],
+            'chalk': ['node_modules/chalk']
+        });
+    });
+
+    it('declares remote import map entries and remote specifiers as modules', async () => {
+        const { loader, libs } = createDenoLoader({
+            'deno.json': JSON.stringify({ imports: { '@std/assert': 'jsr:@std/assert@^1', 'lodash': 'npm:lodash@4' } })
+        });
+
+        await loader.loadProjectTypes();
+        const modules = libs.get('__celbridge/deno-modules.d.ts');
+
+        for (const name of ['@std/assert', '@std/assert/*', 'lodash', 'jsr:*', 'npm:*', 'https://*', 'node:*']) {
+            expect(modules).toContain(`declare module ${JSON.stringify(name)};`);
+        }
+    });
+
+    it('reads the imports of a separate import map file', async () => {
+        const { loader } = createDenoLoader({
+            'deno.json': '{ "importMap": "./import_map.json" }',
+            'import_map.json': '{ "imports": { "~/": "./lib/" } }'
+        });
+
+        expect((await loader.loadProjectTypes()).paths).toEqual({ '~/*': ['lib/*'] });
+    });
+
+    it('loads the project files an import map entry leads to', async () => {
+        const { loader, libs } = createDenoLoader({
+            'deno.json': JSON.stringify({ imports: { '@/': './src/', 'chalk': 'npm:chalk@5' } }),
+            'src/util/deep.ts': 'export const deep = 1;',
+            'node_modules/chalk/package.json': '{ "types": "index.d.ts" }',
+            'node_modules/chalk/index.d.ts': ''
+        });
+
+        await loader.loadProjectTypes();
+        await loadFor(loader, 'main.ts', "import { deep } from '@/util/deep.ts';\nimport chalk from 'chalk';");
+
+        expect(libs.has('src/util/deep.ts')).toBe(true);
+        expect(libs.has('node_modules/chalk/index.d.ts')).toBe(true);
+    });
+
+    it('adds nothing for Deno to a project without deno.json', async () => {
+        const { loader, libs } = createDenoLoader({});
+
+        expect(await loader.loadProjectTypes()).toEqual({});
+        expect(libs.size).toBe(0);
+    });
+});
+
 describe('describeJson', () => {
     it('types a value it cannot parse as any', () => {
         expect(describeJson('{ not json')).toBe('declare const value: any;\nexport default value;\n');

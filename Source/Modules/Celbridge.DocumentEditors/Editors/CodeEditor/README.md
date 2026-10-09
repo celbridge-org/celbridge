@@ -67,6 +67,18 @@ Link clicks are the controller's, so every preview treats them alike: a link to 
 scrolls there, a relative path, an `http` or `https` URL or a `mailto:` address goes to the host, and any
 other link is left to the page.
 
+## TypeScript and JavaScript
+
+Monaco's TypeScript worker cannot read the file system, so `js/typescript-project.js` follows a
+document's imports through the project folder and hands each file it finds to the worker with
+`addExtraLib`. It covers relative imports, JSON imports, packages in `node_modules` with their
+`@types` fallback, and the type packages `package.json` and `tsconfig.json` name.
+
+A project with a `deno.json` or `deno.jsonc` also gets the Deno namespace from `lib/deno.d.ts`,
+which `lib/build/vendor.js` extracts from `deno types`, and its import map: entries that lead to
+project files or installed npm packages resolve, and remote ones (`jsr:`, `https:`, an npm package
+that is not installed) are declared as modules of unknown shape.
+
 ## References
 
 - `markdown.editor.toml` — live example of a preview-enabled document.
