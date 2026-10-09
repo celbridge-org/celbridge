@@ -1,6 +1,4 @@
 using Celbridge.Logging;
-using Microsoft.Web.WebView2.Core;
-using Windows.Foundation;
 
 namespace Celbridge.WebHost;
 
@@ -9,11 +7,6 @@ internal sealed class WebSurfaceMessageDispatcher : IWebSurfaceMessageDispatcher
     private readonly ILogger<WebSurfaceMessageDispatcher> _logger;
 
     private readonly Dictionary<string, Action<WebSurfaceMessage>> _handlers = new(StringComparer.Ordinal);
-
-    // Each attached view's message handler. Used only on the UI thread, where views attach and detach and the
-    // event raises.
-    private readonly Dictionary<IWebView, TypedEventHandler<CoreWebView2, CoreWebView2WebMessageReceivedEventArgs>>
-        _messageHandlers = new();
 
     // The handled method names, held as an array because every message from every surface is tested against
     // all of them before it is worth parsing.
@@ -30,56 +23,19 @@ internal sealed class WebSurfaceMessageDispatcher : IWebSurfaceMessageDispatcher
         _handledMethods = _handlers.Keys.ToArray();
     }
 
-    public void Attach(IWebView view)
+    // The handler closes over the view, so the dispatcher keeps no record of it. The view drops the handler when
+    // it closes.
+    public void Observe(IWebView view)
     {
-        if (_messageHandlers.ContainsKey(view)
-            || GetCoreWebView2(view) is not CoreWebView2 coreWebView)
-        {
-            return;
-        }
-
-        // The handler closes over the view rather than reading the event's sender. On the packaged Windows head
-        // the sender can be a different managed object for the same native view.
-        TypedEventHandler<CoreWebView2, CoreWebView2WebMessageReceivedEventArgs> messageHandler =
-            (_, args) => OnWebMessageReceived(view, args);
-
-        _messageHandlers[view] = messageHandler;
-        coreWebView.WebMessageReceived += messageHandler;
+        view.WebMessageReceived += (_, message) => OnWebMessageReceived(view, message);
     }
 
-    public void Detach(IWebView view)
+    // A malformed web message must never crash the host.
+    private void OnWebMessageReceived(IWebView view, string message)
     {
-        if (!_messageHandlers.Remove(view, out var messageHandler)
-            || GetCoreWebView2(view) is not CoreWebView2 coreWebView)
-        {
-            return;
-        }
-
-        coreWebView.WebMessageReceived -= messageHandler;
-    }
-
-    private static CoreWebView2? GetCoreWebView2(IWebView view)
-    {
-        return (view as WebViewBase)?.CoreWebView2;
-    }
-
-    private void OnWebMessageReceived(IWebView view, CoreWebView2WebMessageReceivedEventArgs e)
-    {
-        // This handler runs on the UI thread alongside the host channel reading the same event, so an
-        // escaping exception would be fatal. A malformed web message must never crash the host.
         try
         {
-            if (!_messageHandlers.ContainsKey(view))
-            {
-                return;
-            }
-
-            // Read as JSON rather than through TryGetWebMessageAsString, which throws on the macOS WKWebView
-            // head where a message arrives as JSON rather than a string. That would cost a thrown exception
-            // per message per surface, only to reach a discriminator.
-            var message = e.WebMessageAsJson;
-            if (string.IsNullOrEmpty(message)
-                || !MentionsHandledMethod(message))
+            if (!MentionsHandledMethod(message))
             {
                 return;
             }

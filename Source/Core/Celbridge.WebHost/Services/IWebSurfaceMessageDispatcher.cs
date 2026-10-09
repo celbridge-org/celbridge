@@ -24,12 +24,7 @@ internal interface IWebSurfaceMessageDispatcher
     void AddHandler(string method, Action<WebSurfaceMessage> handler);
 
     /// <summary>
-    /// Begins routing the view's messages. Attaching a view that is already attached has no effect.
+    /// Routes the view's messages for as long as the view lives. Call it once for each view.
     /// </summary>
-    void Attach(IWebView view);
-
-    /// <summary>
-    /// Stops routing the view's messages. Safe to call for a view that was never attached.
-    /// </summary>
-    void Detach(IWebView view);
+    void Observe(IWebView view);
 }

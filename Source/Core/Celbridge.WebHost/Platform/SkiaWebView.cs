@@ -7,12 +7,12 @@ namespace Celbridge.WebHost.Platform;
 /// A web view on an Uno Skia head. Where Uno leaves the WebView2 surface unimplemented, it runs script in the page
 /// instead. MacOSWebView extends it with the native WKWebView interop.
 /// </summary>
-internal class SkiaWebView : WebViewBase
+public class SkiaWebView : WebViewBase
 {
     private readonly CoreWebView2 _coreWebView2;
     private readonly ILogger _logger;
 
-    public SkiaWebView(WebView2 control, SkiaWebViewPlatform platform, ILogger logger)
+    internal SkiaWebView(WebView2 control, SkiaWebViewPlatform platform, ILogger logger)
         : base(control, platform, logger)
     {
         _coreWebView2 = CoreWebView2!;
@@ -67,16 +67,13 @@ internal class SkiaWebView : WebViewBase
     {
     }
 
-    // The Skia WebView2 does not implement AddScriptToExecuteOnDocumentCreatedAsync, so the script runs again
-    // after each navigation instead.
-    protected internal override async Task InstallDocumentStartScriptAsync(string script)
+    // The Skia WebView2 does not implement AddScriptToExecuteOnDocumentCreatedAsync, so the script runs after
+    // each navigation instead.
+    protected override async Task<bool> InstallDocumentStartScriptAsync(string script)
     {
         await Task.CompletedTask;
-    }
 
-    protected internal override async Task RerunDocumentStartScriptAsync(string script)
-    {
-        await _coreWebView2.ExecuteScriptAsync(script);
+        return false;
     }
 
     // The platform keeps the page's viewport in step with the control.

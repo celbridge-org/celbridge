@@ -37,6 +37,7 @@ celbridge-client/
 │   ├── tools-api.js      # Host capability proxy (cel.*)
 │   └── view-api.js       # Viewport trust: when a page may measure its own box
 ├── core/
+│   ├── focus-lost-reporter.js  # Classic script every web view injects to report losing the keyboard
 │   ├── rpc-transport.js  # JSON-RPC 2.0 transport layer
 │   ├── state-store.js    # Read-only mirrors of host app and per-view state
 │   └── webview-tools-shim.js  # Classic script injected for the webview_* tools

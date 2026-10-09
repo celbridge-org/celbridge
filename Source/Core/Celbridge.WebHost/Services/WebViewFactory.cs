@@ -2,13 +2,14 @@ using Celbridge.Logging;
 
 namespace Celbridge.WebHost.Services;
 
-public class WebViewFactory : IWebViewFactory, IDisposable
+internal class WebViewFactory : IWebViewFactory, IDisposable
 {
     // How many views are kept ready ahead of time.
     private const int PrewarmCount = 3;
 
     private readonly ILogger<WebViewFactory> _logger;
     private readonly IWebViewPlatform _webViewPlatform;
+    private readonly IWebSurfaceMessageDispatcher _messageDispatcher;
 
     // Views that have been created but not handed out. A view never comes back once its owner has it.
     private readonly Queue<WebViewBase> _prewarmQueue = new();
@@ -19,10 +20,12 @@ public class WebViewFactory : IWebViewFactory, IDisposable
 
     public WebViewFactory(
         ILogger<WebViewFactory> logger,
-        IWebViewPlatform webViewPlatform)
+        IWebViewPlatform webViewPlatform,
+        IWebSurfaceMessageDispatcher messageDispatcher)
     {
         _logger = logger;
         _webViewPlatform = webViewPlatform;
+        _messageDispatcher = messageDispatcher;
 
         // Start prewarming but don't await it. The queue fills in the background.
         _prewarmTask = PrewarmAsync();
@@ -128,7 +131,9 @@ public class WebViewFactory : IWebViewFactory, IDisposable
         Guard.IsNotNull(webView);
 
         // Applied here because a prewarmed view has not navigated yet.
-        webView.Configure(options);
+        await webView.ConfigureAsync(options);
+
+        _messageDispatcher.Observe(webView);
 
         return webView;
     }

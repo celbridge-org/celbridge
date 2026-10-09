@@ -28,6 +28,12 @@ public interface IWebViewPlatform
     bool SupportsLiveBrowsingDataClear { get; }
 
     /// <summary>
+    /// Whether the most recent mouse press landed in a web view. It is answered before the managed pointer
+    /// pipeline raises that press. False where the platform cannot tell.
+    /// </summary>
+    bool IsLastPressInWebView { get; }
+
+    /// <summary>
     /// Creates a web view whose page is ready but has not navigated.
     /// </summary>
     Task<WebViewBase> CreateWebViewAsync();

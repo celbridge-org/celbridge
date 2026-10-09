@@ -16,8 +16,8 @@ public sealed record WebViewFocusContext(
 
 /// <summary>
 /// The single integration point for hosted web-surface focus on the Skia heads, where WebView and host focus
-/// are not integrated. One registration per surface replaces the per-view GotFocus, native-monitor, and grant
-/// wiring: the registry owns those signals and reports each surface's focus to the focus service.
+/// are not integrated. The registry reads each registered view's focus signals and reports the view's focus to
+/// the focus service.
 /// </summary>
 public interface IWebViewFocusRegistry
 {
@@ -53,13 +53,6 @@ public interface IWebViewFocusRegistry
     /// Whether the given web view is the hosted surface whose focus report is current.
     /// </summary>
     bool IsFocusedSurface(IWebView view);
-
-    /// <summary>
-    /// Whether the pointer press being dispatched landed on a registered web surface. The native click
-    /// monitor answers before the managed pointer pipeline raises the press, so a managed handler can tell a
-    /// press meant for a page from one meant for the managed tree. False on heads without that monitor.
-    /// </summary>
-    bool IsPressOnWebSurface { get; }
 
     /// <summary>
     /// Makes the focused surface's web view the platform keyboard focus target, with no focus report and

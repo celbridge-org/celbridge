@@ -2,20 +2,19 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Celbridge.Logging;
 using Microsoft.UI.Dispatching;
-using Microsoft.Web.WebView2.Core;
 using static Celbridge.Utilities.Platform.ObjectiveCRuntime;
 
 namespace Celbridge.WebHost.Platform;
 
 /// <summary>
-/// macOS IWebViewFocusMonitor. Installs an AppKit local mouse-down monitor and hit-tests each click
-/// against the registered WKWebViews' native view hierarchies. Hit-testing is the discriminator
-/// because Uno keeps its Skia canvas (UNOMetalFlippedView) as the window's first responder even for
-/// clicks that land inside a hosted WKWebView, so responder state cannot tell the two apart. The
-/// whole click is handled on the native side, so this signal needs neither the managed GotFocus
-/// event nor any script injected into the page. macOS-only.
+/// Tells each web view when a click lands in it. A click inside a WKWebView raises no managed GotFocus, and a
+/// click on content that cannot take focus, such as rendered markdown, raises no DOM focus event either. An AppKit
+/// local mouse-down monitor hit-tests each click against the native view hierarchy instead. Hit-testing is the
+/// discriminator because Uno keeps its Skia canvas (UNOMetalFlippedView) as the window's first responder even for
+/// clicks that land inside a hosted WKWebView, so responder state cannot tell the two apart. One monitor serves
+/// every web view in the process. macOS-only.
 /// </summary>
-internal class MacOSWebViewFocusMonitor : IWebViewFocusMonitor
+internal static class MacOSWebViewFocusMonitor
 {
     private const string LibObjC = "/usr/lib/libobjc.A.dylib";
     private const string LibSystem = "/usr/lib/libSystem.dylib";
@@ -44,13 +43,8 @@ internal class MacOSWebViewFocusMonitor : IWebViewFocusMonitor
 
     private static readonly IntPtr RtldDefault = new(-2);
 
-    // The AppKit monitor and its UnmanagedCallersOnly callback are process-global, so the state is
-    // static; DI creates a single instance. All access happens on the main thread: Register and
-    // Unregister run from view lifecycle handlers and the monitor callback runs during AppKit event
-    // dispatch.
-    private static readonly Dictionary<IntPtr, Action> _callbacksByHandle = new();
-    private static readonly Dictionary<CoreWebView2, IntPtr> _handlesByWebView = new();
-
+    // The AppKit monitor and its UnmanagedCallersOnly callback are process-global. All access happens on the main
+    // thread: the monitor is installed from web view creation, and its callback runs during AppKit event dispatch.
     private static bool _isLastPressInWebView;
     private static bool _monitorInstalled;
     private static IntPtr _monitor;
@@ -58,57 +52,16 @@ internal class MacOSWebViewFocusMonitor : IWebViewFocusMonitor
     private static DispatcherQueue? _dispatcherQueue;
     private static ILogger? _logger;
 
-    public MacOSWebViewFocusMonitor(ILogger<MacOSWebViewFocusMonitor> logger)
-    {
-        _logger = logger;
-    }
+    /// <summary>
+    /// Whether the most recent mouse press landed in a web view. It is answered before the managed pointer
+    /// pipeline raises that press.
+    /// </summary>
+    public static bool IsLastPressInWebView => _isLastPressInWebView;
 
-    public void Register(CoreWebView2 coreWebView, Action onFocusSignal)
-    {
-        if (!OperatingSystem.IsMacOS())
-        {
-            return;
-        }
-
-        if (!MacOSWebViewInterop.TryGetNativeWebViewHandle(coreWebView, out var handle, out var detail))
-        {
-            _logger?.LogDebug($"Could not resolve the native web view for focus monitoring: {detail}");
-            return;
-        }
-
-        // Re-registration replaces the previous entry, including a stale handle entry if the web
-        // view's native view was recreated since the last registration.
-        if (_handlesByWebView.TryGetValue(coreWebView, out var previousHandle)
-            && previousHandle != handle)
-        {
-            _callbacksByHandle.Remove(previousHandle);
-        }
-
-        _handlesByWebView[coreWebView] = handle;
-        _callbacksByHandle[handle] = onFocusSignal;
-
-        _dispatcherQueue ??= DispatcherQueue.GetForCurrentThread();
-        EnsureMonitorInstalled();
-    }
-
-    public void Unregister(CoreWebView2 coreWebView)
-    {
-        if (!OperatingSystem.IsMacOS())
-        {
-            return;
-        }
-
-        if (!_handlesByWebView.Remove(coreWebView, out var handle))
-        {
-            return;
-        }
-
-        _callbacksByHandle.Remove(handle);
-    }
-
-    public bool IsLastPressInWebView => _isLastPressInWebView;
-
-    private static void EnsureMonitorInstalled()
+    /// <summary>
+    /// Installs the monitor, on the main thread, before any web view can be clicked. Later calls do nothing.
+    /// </summary>
+    public static void Install(ILogger logger)
     {
         if (_monitorInstalled)
         {
@@ -116,6 +69,8 @@ internal class MacOSWebViewFocusMonitor : IWebViewFocusMonitor
         }
 
         _monitorInstalled = true;
+        _logger = logger;
+        _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
 
         var nsEventClass = GetClass("NSEvent");
         var selector = GetSelector("addLocalMonitorForEventsMatchingMask:handler:");
@@ -172,18 +127,17 @@ internal class MacOSWebViewFocusMonitor : IWebViewFocusMonitor
             // first, so a hit test that throws leaves no answer from an earlier press.
             _isLastPressInWebView = false;
 
-            var matchedHandle = FindClickedRegisteredWebView(nsEvent);
-            _isLastPressInWebView = matchedHandle != IntPtr.Zero;
+            var clickedView = FindClickedWebView(nsEvent);
+            _isLastPressInWebView = clickedView is not null;
 
-            // Every click inside a registered web view is signalled. Whether it is a change of focus is
-            // the registry's to decide: focus can leave a surface with no click at all (a shortcut opening
-            // the find bar, Tab, a programmatic move), and a monitor comparing this click against the last
-            // one would stay silent on the click that brings the keyboard back.
-            if (matchedHandle != IntPtr.Zero
-                && _callbacksByHandle.TryGetValue(matchedHandle, out var callback))
+            // Every click inside a web view is signalled. Whether it is a change of focus is the focus
+            // registry's to decide: focus can leave a surface with no click at all (a shortcut opening the
+            // find bar, Tab, a programmatic move), and a monitor comparing this click against the last one
+            // would stay silent on the click that brings the keyboard back.
+            if (clickedView is not null)
             {
-                // Defer so the callback's UI work runs after AppKit finishes dispatching the click.
-                _dispatcherQueue?.TryEnqueue(() => callback());
+                // Defer so the view's focus handlers run after AppKit finishes dispatching the click.
+                _dispatcherQueue?.TryEnqueue(clickedView.OnClicked);
             }
         }
         catch (Exception exception)
@@ -195,18 +149,18 @@ internal class MacOSWebViewFocusMonitor : IWebViewFocusMonitor
         return nsEvent;
     }
 
-    private static IntPtr FindClickedRegisteredWebView(IntPtr nsEvent)
+    private static MacOSWebView? FindClickedWebView(IntPtr nsEvent)
     {
         var window = SendMessage(nsEvent, GetSelector("window"));
         if (window == IntPtr.Zero)
         {
-            return IntPtr.Zero;
+            return null;
         }
 
         var contentView = SendMessage(window, GetSelector("contentView"));
         if (contentView == IntPtr.Zero)
         {
-            return IntPtr.Zero;
+            return null;
         }
 
         // locationInWindow is in window coordinates, which match the content view's superview (the
@@ -214,19 +168,20 @@ internal class MacOSWebViewFocusMonitor : IWebViewFocusMonitor
         var location = SendMessageReturnNSPoint(nsEvent, GetSelector("locationInWindow"));
         var hitView = SendMessageHitTest(contentView, GetSelector("hitTest:"), location);
 
-        // A click inside a WKWebView hits one of its descendant views, so walk up from the hit view
-        // comparing against the registered web view handles.
+        // A click inside a WKWebView hits one of its descendant views, so walk up from the hit view to the
+        // first one that is a web view's native view.
         var view = hitView;
         while (view != IntPtr.Zero)
         {
-            if (_callbacksByHandle.ContainsKey(view))
+            var webView = MacOSWebView.FromNativeHandle(view);
+            if (webView is not null)
             {
-                return view;
+                return webView;
             }
             view = SendMessage(view, GetSelector("superview"));
         }
 
-        return IntPtr.Zero;
+        return null;
     }
 
     [StructLayout(LayoutKind.Sequential)]

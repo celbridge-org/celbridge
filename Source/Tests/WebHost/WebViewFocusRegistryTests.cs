@@ -1,7 +1,7 @@
 using Celbridge.Messaging;
 using Celbridge.Tests.Helpers;
+using Celbridge.UserInterface;
 using Celbridge.WebHost;
-using Celbridge.WebHost.Platform;
 using Celbridge.Workspace;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -9,7 +9,8 @@ namespace Celbridge.Tests.WebHost;
 
 /// <summary>
 /// Unit tests for the web view focus registry. A test cannot create a WebView2 control, so these views have
-/// none and the tests cover the focus model only.
+/// none and the tests cover the focus model only. A focus loss the registry accepts waits on the UI thread's
+/// queue, which a view without a control has none of, so the loss tests cover the reports it ignores.
 /// </summary>
 [TestFixture]
 public class WebViewFocusRegistryTests
@@ -18,6 +19,9 @@ public class WebViewFocusRegistryTests
     private IFocusService _focusService = null!;
     private IFocusReconciler _focusReconciler = null!;
     private List<FocusClaim> _claims = null!;
+    private RecordingLogger<WebViewFocusRegistry> _logger = null!;
+    private MessageHandler<object, MainWindowDeactivatedMessage>? _onWindowDeactivated;
+    private MessageHandler<object, ModalDialogOpenedMessage>? _onModalDialogOpened;
     private WebViewFocusRegistry _registry = null!;
 
     [SetUp]
@@ -39,12 +43,20 @@ public class WebViewFocusRegistryTests
             .When(service => service.OnFocusReceived(Arg.Any<FocusClaim>()))
             .Do(call => _claims.Add(call.Arg<FocusClaim>()));
 
+        var messengerService = Substitute.For<IMessengerService>();
+        messengerService
+            .When(service => service.Register(Arg.Any<object>(), Arg.Any<MessageHandler<object, MainWindowDeactivatedMessage>>()))
+            .Do(call => _onWindowDeactivated = call.Arg<MessageHandler<object, MainWindowDeactivatedMessage>>());
+        messengerService
+            .When(service => service.Register(Arg.Any<object>(), Arg.Any<MessageHandler<object, ModalDialogOpenedMessage>>()))
+            .Do(call => _onModalDialogOpened = call.Arg<MessageHandler<object, ModalDialogOpenedMessage>>());
+
+        _logger = new RecordingLogger<WebViewFocusRegistry>();
+
         _registry = new WebViewFocusRegistry(
             _focusService,
-            new NullWebViewFocusMonitor(),
-            Substitute.For<IMessengerService>(),
-            new StubMessageDispatcher(),
-            new NullLogger<WebViewFocusRegistry>());
+            messengerService,
+            _logger);
     }
 
     [TearDown]
@@ -139,6 +151,102 @@ public class WebViewFocusRegistryTests
 
         // The registry observes the view once, however many times it registers.
         view.ClosingSubscriberCount.Should().Be(1);
+        view.FocusGainedSubscriberCount.Should().Be(1);
+    }
+
+    [Test]
+    public void FocusGained_RegisteredView_ReportsItsFocus()
+    {
+        var view = new FakeWebView("notes.md");
+        var focusContext = new TestFocusContext(FocusPanelId.Documents);
+        _registry.Register(view, focusContext.Create());
+
+        view.RaiseFocusGained();
+
+        _claims.Should().ContainSingle();
+        _claims[0].Panel.Should().Be(FocusPanelId.Documents);
+        _registry.IsFocusedSurface(view).Should().BeTrue();
+        focusContext.FocusGainedCount.Should().Be(1);
+        focusContext.DomGrantCount.Should().Be(0);
+        _focusReconciler.Received(1).Reconcile();
+    }
+
+    [Test]
+    public void FocusGained_ViewThatHoldsTheKeyboard_ReportsNothingMore()
+    {
+        var view = new FakeWebView("notes.md");
+        var focusContext = new TestFocusContext(FocusPanelId.Documents);
+        _registry.Register(view, focusContext.Create());
+        _registry.GrantFocus(view);
+
+        view.RaiseFocusGained();
+
+        _claims.Should().ContainSingle();
+        focusContext.FocusGainedCount.Should().Be(1);
+    }
+
+    [Test]
+    public void FocusGained_ClosedView_ReportsNothing()
+    {
+        var view = new FakeWebView("notes.md");
+        _registry.Register(view, new TestFocusContext(FocusPanelId.Documents).Create());
+
+        view.Close();
+        view.RaiseFocusGained();
+
+        _claims.Should().BeEmpty();
+        view.FocusGainedSubscriberCount.Should().Be(0);
+    }
+
+    [Test]
+    public void FocusLost_ViewWithoutTheKeyboard_IsIgnored()
+    {
+        var focusedView = new FakeWebView("focused.md");
+        var otherView = new FakeWebView("other.md");
+        _registry.Register(focusedView, new TestFocusContext(FocusPanelId.Documents).Create());
+        _registry.Register(otherView, new TestFocusContext(FocusPanelId.Documents).Create());
+        _registry.GrantFocus(focusedView);
+
+        otherView.RaiseFocusLost();
+
+        ShouldHaveIgnoredFocusLoss("it no longer holds focus");
+        _registry.IsFocusedSurface(focusedView).Should().BeTrue();
+    }
+
+    [Test]
+    public void FocusLost_WhileTheHostWindowIsInactive_IsIgnored()
+    {
+        var view = new FakeWebView("notes.md");
+        _registry.Register(view, new TestFocusContext(FocusPanelId.Documents).Create());
+        _registry.GrantFocus(view);
+        _onWindowDeactivated!.Invoke(this, new MainWindowDeactivatedMessage());
+
+        view.RaiseFocusLost();
+
+        ShouldHaveIgnoredFocusLoss("the host window is not active");
+        _registry.IsFocusedSurface(view).Should().BeTrue();
+    }
+
+    [Test]
+    public void FocusLost_WhileAModalDialogIsOpen_IsIgnored()
+    {
+        var view = new FakeWebView("notes.md");
+        _registry.Register(view, new TestFocusContext(FocusPanelId.Documents).Create());
+        _registry.GrantFocus(view);
+        _onModalDialogOpened!.Invoke(this, new ModalDialogOpenedMessage());
+
+        view.RaiseFocusLost();
+
+        ShouldHaveIgnoredFocusLoss("a modal dialog holds the keyboard");
+        _registry.IsFocusedSurface(view).Should().BeTrue();
+    }
+
+    private void ShouldHaveIgnoredFocusLoss(string reason)
+    {
+        _logger.EntriesAt(LogEntryLevel.Debug)
+            .Should().ContainSingle(entry => entry.Message!.StartsWith("Ignored a focus loss"))
+            .Which.Message.Should().EndWith(reason);
+        _focusService.DidNotReceive().ClearFocus();
     }
 
     [Test]
@@ -219,22 +327,6 @@ public class WebViewFocusRegistryTests
                     return Task.CompletedTask;
                 },
                 OnFocusGained: () => FocusGainedCount++);
-        }
-    }
-
-    // The dispatcher is internal, so it is stubbed by hand. A view with no control never attaches.
-    private sealed class StubMessageDispatcher : IWebSurfaceMessageDispatcher
-    {
-        public void AddHandler(string method, Action<WebSurfaceMessage> handler)
-        {
-        }
-
-        public void Attach(IWebView view)
-        {
-        }
-
-        public void Detach(IWebView view)
-        {
         }
     }
 }

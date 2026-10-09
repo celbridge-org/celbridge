@@ -4,11 +4,12 @@ namespace Celbridge.Tests.WebHost;
 
 /// <summary>
 /// A web view with no control, for the services that take one. The page's evaluation, reload and capture are
-/// settable. Close raises Closing.
+/// settable. Close raises Closing, and the page's messages and focus signals can be raised.
 /// </summary>
 internal sealed class FakeWebView : IWebView
 {
     private EventHandler? _closing;
+    private EventHandler? _focusGained;
 
     public FakeWebView(string resource)
         : this(new ResourceKey(resource))
@@ -33,6 +34,8 @@ internal sealed class FakeWebView : IWebView
 
     public int ClosingSubscriberCount => _closing?.GetInvocationList().Length ?? 0;
 
+    public int FocusGainedSubscriberCount => _focusGained?.GetInvocationList().Length ?? 0;
+
     public event EventHandler? Closing
     {
         add => _closing += value;
@@ -51,9 +54,34 @@ internal sealed class FakeWebView : IWebView
         remove { }
     }
 
+    public event EventHandler<string>? WebMessageReceived;
+
+    public event EventHandler? FocusGained
+    {
+        add => _focusGained += value;
+        remove => _focusGained -= value;
+    }
+
+    public event EventHandler? FocusLost;
+
     public void Close()
     {
         _closing?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void PostMessage(string message)
+    {
+        WebMessageReceived?.Invoke(this, message);
+    }
+
+    public void RaiseFocusGained()
+    {
+        _focusGained?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void RaiseFocusLost()
+    {
+        FocusLost?.Invoke(this, EventArgs.Empty);
     }
 
     public Task AddDocumentStartScriptAsync(string script) => Task.CompletedTask;

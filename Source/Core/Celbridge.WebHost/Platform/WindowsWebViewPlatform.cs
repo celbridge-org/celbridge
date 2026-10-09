@@ -27,6 +27,9 @@ internal sealed class WindowsWebViewPlatform : IWebViewPlatform
 
     public bool SupportsLiveBrowsingDataClear => true;
 
+    // A press in a web view never reaches the managed tree here, since the page lives in its own child window.
+    public bool IsLastPressInWebView => false;
+
     public async Task<WebViewBase> CreateWebViewAsync()
     {
         // A transparent background stops the view showing white for a moment when its tab is switched to. Similar

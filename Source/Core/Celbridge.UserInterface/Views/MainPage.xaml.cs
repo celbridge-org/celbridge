@@ -23,6 +23,7 @@ public partial class MainPage : Page
     private IMessengerService _messengerService;
     private IFocusService _focusService;
     private IWebViewFocusRegistry _webViewFocusRegistry;
+    private IWebViewPlatform _webViewPlatform;
     private readonly ILogger<MainPage> _logger;
 
     private Grid _layoutRoot;
@@ -37,6 +38,7 @@ public partial class MainPage : Page
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _focusService = ServiceLocator.AcquireService<IFocusService>();
         _webViewFocusRegistry = ServiceLocator.AcquireService<IWebViewFocusRegistry>();
+        _webViewPlatform = ServiceLocator.AcquireService<IWebViewPlatform>();
         _logger = ServiceLocator.AcquireService<ILogger<MainPage>>();
 
         ViewModel = ServiceLocator.AcquireService<MainPageViewModel>();
@@ -172,7 +174,7 @@ public partial class MainPage : Page
         // clears focus on release. The page sees its window blur, which closes any popover the click opened.
         // Marking the press handled stops Uno clearing focus.
         if (e.GetCurrentPoint(null).Properties.IsLeftButtonPressed
-            && _webViewFocusRegistry.IsPressOnWebSurface)
+            && _webViewPlatform.IsLastPressInWebView)
         {
             e.Handled = true;
         }

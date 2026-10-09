@@ -79,15 +79,11 @@ internal sealed class WindowsWebView : WebViewBase
     {
     }
 
-    protected internal override async Task InstallDocumentStartScriptAsync(string script)
+    protected override async Task<bool> InstallDocumentStartScriptAsync(string script)
     {
         await _coreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(script);
-    }
 
-    // The installed script runs on every navigation, so it is never run again here.
-    protected internal override async Task RerunDocumentStartScriptAsync(string script)
-    {
-        await Task.CompletedTask;
+        return true;
     }
 
     // XAML arranges the packaged WebView2, so its page's viewport already follows the control, and there is no

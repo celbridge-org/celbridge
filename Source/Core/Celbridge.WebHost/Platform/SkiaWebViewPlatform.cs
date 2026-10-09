@@ -74,6 +74,9 @@ internal sealed class SkiaWebViewPlatform : IWebViewPlatform
     // WKWebsiteDataStore instead. The Windows and Linux Skia heads have no such path.
     public bool SupportsLiveBrowsingDataClear => OperatingSystem.IsMacOS();
 
+    // Only macOS hit-tests each press against the native web views.
+    public bool IsLastPressInWebView => OperatingSystem.IsMacOS() && MacOSWebViewFocusMonitor.IsLastPressInWebView;
+
     public async Task<WebViewBase> CreateWebViewAsync()
     {
         // A transparent background stops the view showing white for a moment when its tab is switched to. Similar
@@ -83,12 +86,12 @@ internal sealed class SkiaWebViewPlatform : IWebViewPlatform
             DefaultBackgroundColor = Colors.Transparent
         };
 
-        await InitializeAsync(control);
+        var nativeHandle = await InitializeAsync(control);
 
         // Created after initialization, so the view never sees the hidden host it was initialized in.
         if (OperatingSystem.IsMacOS())
         {
-            return new MacOSWebView(control, this, _macOSWebViewLogger);
+            return new MacOSWebView(control, nativeHandle, this, _macOSWebViewLogger);
         }
 
         return new SkiaWebView(control, this, _skiaWebViewLogger);
@@ -96,8 +99,9 @@ internal sealed class SkiaWebViewPlatform : IWebViewPlatform
 
     // EnsureCoreWebView2Async never completes for a control that is not parented to a window. The control is
     // parented in the hidden, window-rooted host for the duration of initialization, then detached so the owner
-    // can place it in its own container with the CoreWebView2 already live.
-    private async Task InitializeAsync(WebView2 control)
+    // can place it in its own container with the CoreWebView2 already live. Returns the pinned native view on
+    // macOS, or zero.
+    private async Task<IntPtr> InitializeAsync(WebView2 control)
     {
         var host = await EnsureInitHostAsync();
         host.Children.Add(control);
@@ -121,8 +125,10 @@ internal sealed class SkiaWebViewPlatform : IWebViewPlatform
             if (OperatingSystem.IsMacOS() &&
                 control.CoreWebView2 is not null)
             {
-                PrepareNativeWebView(control, control.CoreWebView2);
+                return PrepareNativeWebView(control, control.CoreWebView2);
             }
+
+            return IntPtr.Zero;
         }
         finally
         {
@@ -131,14 +137,21 @@ internal sealed class SkiaWebViewPlatform : IWebViewPlatform
     }
 
     // Runs before the control leaves the init host. Leaving it is the control's first Unloaded, and Uno disposes
-    // the native view on every Unloaded.
-    private void PrepareNativeWebView(WebView2 control, CoreWebView2 coreWebView2)
+    // the native view on every Unloaded. Returns the pinned native view, or zero when it did not resolve.
+    private IntPtr PrepareNativeWebView(WebView2 control, CoreWebView2 coreWebView2)
     {
+        // Key forwarding checks which key a web view last received, and a click in a web view is its focus
+        // signal, so both are observed before any web view can take input.
+        MacOSWebViewInterop.ObserveKeyDownDelivery();
+        MacOSWebViewFocusMonitor.Install(_logger);
+
         // Pin the native WKWebView for the process lifetime and keep it schedulable while hidden. Uno's native
         // element disposes the view on every Unloaded and later touches the stale handle, which is a
         // use-after-free.
-        if (MacOSWebViewInterop.TryGetNativeWebViewHandle(coreWebView2, out var nativeWebViewHandle, out var detail))
+        var nativeWebViewHandle = IntPtr.Zero;
+        if (MacOSWebViewInterop.TryGetNativeWebViewHandle(coreWebView2, out var resolvedHandle, out var detail))
         {
+            nativeWebViewHandle = resolvedHandle;
             PinNativeWebView(nativeWebViewHandle);
             KeepSelectionWhileUnfocused(nativeWebViewHandle);
             ApplyInitialViewportSize(nativeWebViewHandle);
@@ -156,6 +169,8 @@ internal sealed class SkiaWebViewPlatform : IWebViewPlatform
         // Loaded register it again.
         control.Unloaded -= Control_Unloaded;
         control.Unloaded += Control_Unloaded;
+
+        return nativeWebViewHandle;
     }
 
     private void Control_Unloaded(object sender, RoutedEventArgs e)
@@ -199,21 +214,11 @@ internal sealed class SkiaWebViewPlatform : IWebViewPlatform
     /// <summary>
     /// Pins a native WKWebView for the process lifetime and keeps its page running while it is hidden. WebKit
     /// suspends a hidden page's process, which stalls host-to-editor RPC for a background document tab until the
-    /// tab is shown again. Pinning a view twice has no effect.
+    /// tab is shown again. Each native view is pinned once, when it first resolves.
     /// </summary>
     internal void PinNativeWebView(IntPtr nativeWebViewHandle)
     {
-        if (nativeWebViewHandle == IntPtr.Zero)
-        {
-            _logger.LogWarning("Cannot pin a null native WKWebView handle, so this web view keeps neither its native view nor its background page activity");
-            return;
-        }
-
         var applied = MacOSWebViewInterop.RetainNativeWebView(nativeWebViewHandle);
-        if (applied is null)
-        {
-            return;
-        }
 
         if (applied.Count < MacOSWebViewInterop.BackgroundPageActivityPreferenceCount)
         {
@@ -323,13 +328,14 @@ internal sealed class SkiaWebViewPlatform : IWebViewPlatform
     }
 
     /// <summary>
-    /// Routes a macOS web view's downloads through the download service.
+    /// Routes a macOS web view's downloads through the download service. A zero handle gets a handler that routes
+    /// nothing.
     /// </summary>
-    internal IWebViewDownloadHandler RouteDownloads(CoreWebView2 coreWebView2)
+    internal IWebViewDownloadHandler RouteDownloads(IntPtr nativeWebViewHandle)
     {
         _downloadRouter ??= new MacOSWebViewDownloadRouter(_downloadRouterLogger, _localizerService, _downloadService);
 
-        return _downloadRouter.Attach(coreWebView2);
+        return _downloadRouter.Attach(nativeWebViewHandle);
     }
 
     public async Task ClearBrowsingDataAsync()

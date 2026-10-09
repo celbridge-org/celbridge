@@ -10,29 +10,30 @@ namespace Celbridge.WebHost.Platform;
 /// </summary>
 public static partial class MacOSWebViewInterop
 {
-    // Where each web view's commits are reported, keyed by native web view. Touched only on the main thread.
-    private static readonly Dictionary<IntPtr, Action<string>> _commitListeners = new();
+    // Where every web view's commits are reported, with the native web view and the committed address. Touched
+    // only on the main thread.
+    private static Action<IntPtr, string>? _commitListener;
 
     // The implementation the commit hook took the place of, which Uno's web view does not have.
     private static IntPtr _originalDidCommitNavigation;
 
     /// <summary>
-    /// Reports the address of each page the web view commits to, as WebKit commits it, and returns the
-    /// registration that stops the reports again. Returns null with the reason in detail when the web view's
-    /// navigation delegate cannot be hooked.
+    /// Reports the address of each page the web view commits to, as WebKit commits it, to the listener. One
+    /// listener hears every web view's commits, so each call names the same one. Returns false with the reason in
+    /// detail when the web view's navigation delegate cannot be hooked.
     /// </summary>
     // UNO-BUG: UNOWebView implements no didCommitNavigation, and sets CoreWebView2.Source only once a page has
     // finished loading.
-    public static IDisposable? ObserveNavigationCommits(IntPtr webView, Action<string> onCommitted, out string detail)
+    public static bool ObserveNavigationCommits(IntPtr webView, Action<IntPtr, string> listener, out string detail)
     {
         if (!TryHookNavigationDelegate(webView, out detail))
         {
-            return null;
+            return false;
         }
 
-        _commitListeners[webView] = onCommitted;
+        _commitListener = listener;
 
-        return new WebViewRegistration<Action<string>>(_commitListeners, webView, onCommitted);
+        return true;
     }
 
     private static unsafe void InstallCommitHook(IntPtr delegateClass)
@@ -55,7 +56,8 @@ public static partial class MacOSWebViewInterop
                 CallOriginalImplementation(_originalDidCommitNavigation, self, selector, webView, navigation);
             }
 
-            if (!_commitListeners.TryGetValue(webView, out var onCommitted))
+            var listener = _commitListener;
+            if (listener is null)
             {
                 return;
             }
@@ -66,7 +68,7 @@ public static partial class MacOSWebViewInterop
                 return;
             }
 
-            onCommitted(url);
+            listener(webView, url);
         }
         catch
         {
@@ -171,32 +173,5 @@ public static partial class MacOSWebViewInterop
         }
 
         return ReadNSString(SendMessage(url, GetSelector("absoluteString")));
-    }
-
-    // Removes what a surface registered for a web view, such as where its commits are reported.
-    private sealed class WebViewRegistration<T> : IDisposable
-        where T : class
-    {
-        private readonly Dictionary<IntPtr, T> _registrations;
-        private readonly IntPtr _webView;
-        private readonly T _registered;
-
-        public WebViewRegistration(Dictionary<IntPtr, T> registrations, IntPtr webView, T registered)
-        {
-            _registrations = registrations;
-            _webView = webView;
-            _registered = registered;
-        }
-
-        // Only what is still registered for the web view, so a late dispose cannot undo what another surface
-        // has registered for it since.
-        public void Dispose()
-        {
-            if (_registrations.TryGetValue(_webView, out var current) &&
-                ReferenceEquals(current, _registered))
-            {
-                _registrations.Remove(_webView);
-            }
-        }
     }
 }

@@ -85,6 +85,23 @@ public interface IWebView
     event EventHandler<WebNavigationCompletedEventArgs>? NavigationCompleted;
 
     /// <summary>
+    /// Raised when the page posts a message to its host over the native message bus. The argument is the message
+    /// as JSON.
+    /// </summary>
+    event EventHandler<string>? WebMessageReceived;
+
+    /// <summary>
+    /// Raised when the view may have taken the keyboard: it gained focus, or a click landed in it. It can be raised
+    /// while the view already holds the keyboard.
+    /// </summary>
+    event EventHandler? FocusGained;
+
+    /// <summary>
+    /// Raised when the page reports that the keyboard left it.
+    /// </summary>
+    event EventHandler? FocusLost;
+
+    /// <summary>
     /// Adds a script that runs before the page's own scripts on every later navigation. Adding the same script
     /// twice has no effect.
     /// </summary>

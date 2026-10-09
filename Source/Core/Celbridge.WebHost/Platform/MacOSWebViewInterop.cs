@@ -108,10 +108,6 @@ public static partial class MacOSWebViewInterop
     // Bounds the wait, so a clear that never calls back is reported as a failure rather than hanging.
     private static readonly TimeSpan ClearBrowsingDataTimeout = TimeSpan.FromSeconds(30);
 
-    // Web views already pinned, so the several resolution points that call RetainNativeWebView take
-    // one retain each.
-    private static readonly HashSet<IntPtr> _pinnedWebViews = new();
-
     // WKPreferences SPI that keeps a hidden page's process schedulable.
     private static readonly string[] BackgroundPageActivitySelectors =
     [
@@ -189,25 +185,12 @@ public static partial class MacOSWebViewInterop
     /// side's owning reference while managed code keeps the raw handle; a later reattach or message then
     /// crashes on the freed view. Pinning the view turns those touches into calls on a live object. The
     /// WebContent renderer is still reclaimed by CloseNativeWebView, so what leaks is the view shell only.
-    /// Returns the background page activity preferences applied to a newly pinned view, or null when
-    /// nothing was pinned.
+    /// Each call takes a retain, so a view is pinned once. Returns the background page activity preferences
+    /// applied to the view.
     /// </summary>
     // UNO-BUG: MacOSNativeElement disposes the native view on Unloaded while the handle stays in use.
-    public static IReadOnlyList<string>? RetainNativeWebView(IntPtr webView)
+    public static IReadOnlyList<string> RetainNativeWebView(IntPtr webView)
     {
-        if (webView == IntPtr.Zero)
-        {
-            return null;
-        }
-
-        lock (_pinnedWebViews)
-        {
-            if (!_pinnedWebViews.Add(webView))
-            {
-                return null;
-            }
-        }
-
         SendMessage(webView, GetSelector("retain"));
 
         return EnableBackgroundPageActivity(webView);

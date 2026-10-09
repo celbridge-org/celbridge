@@ -2,7 +2,6 @@ using Celbridge.Downloads;
 using Celbridge.Localization;
 using Celbridge.Logging;
 using Microsoft.UI.Dispatching;
-using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.WebHost.Platform;
 
@@ -11,7 +10,8 @@ namespace Celbridge.WebHost.Platform;
 /// fires. The native download delegate reports a download's destination request, finish and failure, and
 /// a timer reads its progress while it runs. The service decides where a download goes, and this relays
 /// the signals and reports the outcome. One router serves every web view, because the native hooks are
-/// process-wide, and all of it runs on the main thread, where WebKit calls back.
+/// process-wide. WebKit names only the native web view, so the router asks the view that holds it for its
+/// handler. All of it runs on the main thread, where WebKit calls back.
 /// </summary>
 internal sealed class MacOSWebViewDownloadRouter : IMacOSDownloadListener
 {
@@ -23,9 +23,6 @@ internal sealed class MacOSWebViewDownloadRouter : IMacOSDownloadListener
     private readonly ILocalizerService _localizerService;
     private readonly IDownloadService _downloadService;
     private readonly DispatcherQueue _dispatcherQueue;
-
-    // The surfaces routing their downloads, keyed by the native web view behind each.
-    private readonly Dictionary<IntPtr, DownloadHandler> _handlers = new();
 
     // The downloads WebKit is running, keyed by the native download, from the moment WebKit asks where to
     // write one until it ends.
@@ -45,37 +42,37 @@ internal sealed class MacOSWebViewDownloadRouter : IMacOSDownloadListener
     }
 
     /// <summary>
-    /// Starts routing the web view's downloads through the download service. A web view whose native view
-    /// cannot be reached gets a handler that routes nothing, so its downloads keep WebKit's own handling.
+    /// Starts routing the native web view's downloads through the download service. A web view whose hooks
+    /// cannot be installed gets a handler that routes nothing, so its downloads keep WebKit's own handling.
     /// </summary>
-    public IWebViewDownloadHandler Attach(CoreWebView2 coreWebView2)
+    public IWebViewDownloadHandler Attach(IntPtr webView)
     {
-        if (!MacOSWebViewInterop.TryGetNativeWebViewHandle(coreWebView2, out var webView, out var detail))
-        {
-            _logger.LogWarning($"Downloads from a web view will not reach the project: its native view could not be resolved ({detail})");
-            return new DownloadHandler(this, IntPtr.Zero);
-        }
-
         if (!MacOSWebViewInterop.RouteDownloads(webView, this, out var routeDetail))
         {
             _logger.LogWarning($"Downloads from a web view will not reach the project: {routeDetail}");
-            return new DownloadHandler(this, IntPtr.Zero);
+            return new DownloadHandler(isRouting: false);
         }
 
-        var handler = new DownloadHandler(this, webView);
-        _handlers[webView] = handler;
-
-        return handler;
+        return new DownloadHandler(isRouting: true);
     }
 
     public bool IsRoutingDownloads(IntPtr webView)
     {
-        return _handlers.ContainsKey(webView);
+        return FindHandler(webView) is not null;
+    }
+
+    // The handler of the view whose native view this is, while it routes downloads.
+    private static DownloadHandler? FindHandler(IntPtr webView)
+    {
+        return MacOSWebView.FromNativeHandle(webView)?.DownloadHandler is DownloadHandler { IsRouting: true } handler
+            ? handler
+            : null;
     }
 
     public MacNavigationResponsePolicy DecideNavigationResponse(IntPtr webView, MacNavigationResponse response)
     {
-        if (!_handlers.TryGetValue(webView, out var handler))
+        var handler = FindHandler(webView);
+        if (handler is null)
         {
             return response.CanShowMimeType
                 ? MacNavigationResponsePolicy.Allow
@@ -227,22 +224,6 @@ internal sealed class MacOSWebViewDownloadRouter : IMacOSDownloadListener
             : contentDisposition.Substring(0, parameterStart);
 
         return string.Equals(dispositionType.Trim(), "attachment", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private void Detach(DownloadHandler handler)
-    {
-        if (handler.WebView == IntPtr.Zero)
-        {
-            return;
-        }
-
-        // Only the handler still registered for the view, so a late detach cannot unroute a view another
-        // surface has attached since.
-        if (_handlers.TryGetValue(handler.WebView, out var registeredHandler) &&
-            registeredHandler == handler)
-        {
-            _handlers.Remove(handler.WebView);
-        }
     }
 
     private async Task BeginAsync(DownloadTransfer transfer, string suggestedFileName, string sourceUrl)
@@ -418,18 +399,16 @@ internal sealed class MacOSWebViewDownloadRouter : IMacOSDownloadListener
         }
     }
 
+    // One view's handler. Its view holds it, which is how the router reaches it.
     private sealed class DownloadHandler : IWebViewDownloadHandler
     {
-        private readonly MacOSWebViewDownloadRouter _router;
-
-        public DownloadHandler(MacOSWebViewDownloadRouter router, IntPtr webView)
+        public DownloadHandler(bool isRouting)
         {
-            _router = router;
-            WebView = webView;
+            IsRouting = isRouting;
         }
 
-        // Zero for a handler that routes nothing.
-        public IntPtr WebView { get; }
+        // False for a handler that routes nothing, and once its view has closed.
+        public bool IsRouting { get; private set; }
 
         public event EventHandler? DownloadStarted;
 
@@ -440,7 +419,7 @@ internal sealed class MacOSWebViewDownloadRouter : IMacOSDownloadListener
 
         public void Detach()
         {
-            _router.Detach(this);
+            IsRouting = false;
         }
     }
 

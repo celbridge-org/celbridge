@@ -23,6 +23,9 @@ public abstract class WebViewBase : IEditorWebView
     private readonly DispatcherQueue? _dispatcherQueue;
     private readonly List<string> _documentStartScripts = new();
 
+    // The scripts the platform could not install. They run after each navigation instead.
+    private readonly List<string> _scriptsRunAfterNavigation = new();
+
     // Guards the resource and the accessible name. Tool calls read them on server threads, and a rename sets them
     // on the UI thread.
     private readonly object _identityLock = new();
@@ -57,6 +60,7 @@ public abstract class WebViewBase : IEditorWebView
         control.Loaded += Control_Loaded;
         control.Unloaded += Control_Unloaded;
         control.SizeChanged += Control_SizeChanged;
+        control.GotFocus += Control_GotFocus;
 
         if (CoreWebView2 is null)
         {
@@ -73,6 +77,7 @@ public abstract class WebViewBase : IEditorWebView
         CoreWebView2.HistoryChanged += CoreWebView2_HistoryChanged;
         CoreWebView2.NewWindowRequested += CoreWebView2_NewWindowRequested;
         CoreWebView2.ProcessFailed += CoreWebView2_ProcessFailed;
+        CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
     }
 
     /// <summary>
@@ -98,7 +103,7 @@ public abstract class WebViewBase : IEditorWebView
     /// <summary>
     /// Returns the view that owns a control, or null if the element is not a view's control.
     /// </summary>
-    internal static WebViewBase? FromControl(DependencyObject element)
+    public static WebViewBase? FromControl(DependencyObject element)
     {
         return element.GetValue(ControlMark.WebViewProperty) as WebViewBase;
     }
@@ -109,9 +114,14 @@ public abstract class WebViewBase : IEditorWebView
     protected WebViewOptions Options => _options;
 
     /// <summary>
+    /// The handler routing the page's downloads, once the view is configured.
+    /// </summary>
+    internal IWebViewDownloadHandler? DownloadHandler => _downloadHandler;
+
+    /// <summary>
     /// Applies the options the view was acquired with. The factory calls it once, when it hands the view out.
     /// </summary>
-    internal void Configure(WebViewOptions options)
+    internal async Task ConfigureAsync(WebViewOptions options)
     {
         _options = options;
 
@@ -125,6 +135,16 @@ public abstract class WebViewBase : IEditorWebView
         // Downloads go through the download service, so they land in the project.
         _downloadHandler = CreateDownloadHandler();
         _downloadHandler.DownloadStarted += DownloadHandler_DownloadStarted;
+
+        // Installed before the owner's first navigation, so the first page reports its losses too.
+        try
+        {
+            await AddDocumentStartScriptAsync(WebViewFocusLostScript.Source);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to install the focus-lost listener, so the page cannot report losing the keyboard");
+        }
     }
 
     public ResourceKey Resource
@@ -240,6 +260,12 @@ public abstract class WebViewBase : IEditorWebView
 
     public event EventHandler? DownloadStarted;
 
+    public event EventHandler<string>? WebMessageReceived;
+
+    public event EventHandler? FocusGained;
+
+    public event EventHandler? FocusLost;
+
     public event EventHandler<string>? NavigationCommitted
     {
         add
@@ -271,7 +297,11 @@ public abstract class WebViewBase : IEditorWebView
 
         _documentStartScripts.Add(script);
 
-        await InstallDocumentStartScriptAsync(script);
+        var installed = await InstallDocumentStartScriptAsync(script);
+        if (!installed)
+        {
+            _scriptsRunAfterNavigation.Add(script);
+        }
     }
 
     public Task<string> EvalAsync(string expression)
@@ -371,6 +401,8 @@ public abstract class WebViewBase : IEditorWebView
 
     private void Control_Loaded(object sender, RoutedEventArgs e)
     {
+        OnAttached();
+
         // A view reattached at its old size raises no SizeChanged, so the size is applied here.
         ApplyViewportSize();
 
@@ -388,6 +420,21 @@ public abstract class WebViewBase : IEditorWebView
     private void Control_SizeChanged(object sender, SizeChangedEventArgs e)
     {
         ApplyViewportSize();
+    }
+
+    // Managed focus is the focus signal on the packaged Windows head, where it also fires for clicks on content
+    // that raises no DOM focus event.
+    private void Control_GotFocus(object sender, RoutedEventArgs e)
+    {
+        RaiseFocusGained();
+    }
+
+    /// <summary>
+    /// Raises FocusGained for a focus signal the subclass observes.
+    /// </summary>
+    protected void RaiseFocusGained()
+    {
+        FocusGained?.Invoke(this, EventArgs.Empty);
     }
 
     // Sets the page's viewport size. After layout it uses the layout size. Before layout it uses the presented
@@ -497,6 +544,41 @@ public abstract class WebViewBase : IEditorWebView
     }
 
     /// <summary>
+    /// Whether the platform still routes the keyboard to the view. The focus manager answers this, so it is only
+    /// right once a focus change has finished: inside a focus event it still names the element focus is leaving.
+    /// </summary>
+    internal virtual bool HoldsKeyboard()
+    {
+        var xamlRoot = Control?.XamlRoot;
+        if (xamlRoot is null)
+        {
+            return false;
+        }
+
+        var focusedElement = Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(xamlRoot);
+
+        return ReferenceEquals(focusedElement, Control);
+    }
+
+    /// <summary>
+    /// Sends a native key-down event straight to the page, bypassing the managed key pipeline. Returns whether it
+    /// was sent. False where the host never delivers keys to a page itself.
+    /// </summary>
+    internal virtual bool SendKeyDown(IntPtr nativeKeyEvent)
+    {
+        return false;
+    }
+
+    /// <summary>
+    /// Sends a native key-down event to the page unless a web view has already received it. Returns whether it was
+    /// sent.
+    /// </summary>
+    internal virtual bool ForwardKeyDown(IntPtr nativeKeyEvent)
+    {
+        return false;
+    }
+
+    /// <summary>
     /// Describes the native view behind the page for the log. Empty where the platform has nothing to report.
     /// </summary>
     internal virtual string DescribeNativeSurface()
@@ -517,15 +599,17 @@ public abstract class WebViewBase : IEditorWebView
     }
 
     /// <summary>
-    /// Installs a script that runs at document start on each later navigation.
+    /// Called when the control enters the visual tree, before the view raises Attached.
     /// </summary>
-    protected internal abstract Task InstallDocumentStartScriptAsync(string script);
+    protected virtual void OnAttached()
+    {
+    }
 
     /// <summary>
-    /// Runs a document-start script again after a navigation completes. A platform whose installed scripts run
-    /// on every navigation can do nothing.
+    /// Installs a script that runs at document start on each later navigation. Returns false where the platform
+    /// cannot, and the view then runs the script after each navigation instead.
     /// </summary>
-    protected internal abstract Task RerunDocumentStartScriptAsync(string script);
+    protected abstract Task<bool> InstallDocumentStartScriptAsync(string script);
 
     /// <summary>
     /// Sets the geometry the page reads as its viewport, and returns whether the platform applied it.
@@ -569,6 +653,7 @@ public abstract class WebViewBase : IEditorWebView
             CoreWebView2.HistoryChanged -= CoreWebView2_HistoryChanged;
             CoreWebView2.NewWindowRequested -= CoreWebView2_NewWindowRequested;
             CoreWebView2.ProcessFailed -= CoreWebView2_ProcessFailed;
+            CoreWebView2.WebMessageReceived -= CoreWebView2_WebMessageReceived;
         }
 
         _navigationCommitted = null;
@@ -636,21 +721,24 @@ public abstract class WebViewBase : IEditorWebView
     {
         NavigationCompleted?.Invoke(this, CreateNavigationCompletedEventArgs(args.IsSuccess, args.WebErrorStatus));
 
-        foreach (var script in _documentStartScripts.ToList())
+        foreach (var script in _scriptsRunAfterNavigation.ToList())
         {
-            _ = RerunScriptAfterNavigationAsync(script);
+            _ = RunScriptAfterNavigationAsync(script);
         }
     }
 
-    private async Task RerunScriptAfterNavigationAsync(string script)
+    private async Task RunScriptAfterNavigationAsync(string script)
     {
         try
         {
-            await RerunDocumentStartScriptAsync(script);
+            if (CoreWebView2 is not null)
+            {
+                await CoreWebView2.ExecuteScriptAsync(script);
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to run a document-start script again after a navigation of {Resource}", Resource);
+            _logger.LogWarning(ex, "Failed to run a document-start script after a navigation of {Resource}", Resource);
         }
     }
 
@@ -689,6 +777,40 @@ public abstract class WebViewBase : IEditorWebView
         _logger.LogError(
             "WebView ProcessFailed for {Resource}: Kind={Kind}, Reason={Reason}, ExitCode={ExitCode}",
             Resource, args.ProcessFailedKind, args.Reason, args.ExitCode);
+    }
+
+    // Raised inside a native callback, where an exception would end the process.
+    private void CoreWebView2_WebMessageReceived(CoreWebView2 sender, CoreWebView2WebMessageReceivedEventArgs args)
+    {
+        try
+        {
+            // Read as JSON rather than through TryGetWebMessageAsString, which throws on the macOS head, where a
+            // message arrives as JSON rather than a string.
+            var message = args.WebMessageAsJson;
+            if (string.IsNullOrEmpty(message))
+            {
+                return;
+            }
+
+            if (IsFocusLostReport(message))
+            {
+                FocusLost?.Invoke(this, EventArgs.Empty);
+            }
+
+            WebMessageReceived?.Invoke(this, message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to handle a message from the page of {Resource}", Resource);
+        }
+    }
+
+    // Every message the page sends arrives here, including editor content, so the method name only pre-filters
+    // which messages are worth parsing.
+    private static bool IsFocusLostReport(string message)
+    {
+        return message.Contains(InputRpcMethods.FocusLost, StringComparison.Ordinal)
+            && WebMessageEnvelope.TryRead(message, InputRpcMethods.FocusLost) is not null;
     }
 
     private void DownloadHandler_DownloadStarted(object? sender, EventArgs e)
@@ -787,6 +909,9 @@ public abstract class WebViewBase : IEditorWebView
         NewWindowRequested = null;
         HistoryChanged = null;
         DownloadStarted = null;
+        WebMessageReceived = null;
+        FocusGained = null;
+        FocusLost = null;
     }
 
     private void ReleaseControl()
@@ -799,6 +924,7 @@ public abstract class WebViewBase : IEditorWebView
         Control.Loaded -= Control_Loaded;
         Control.Unloaded -= Control_Unloaded;
         Control.SizeChanged -= Control_SizeChanged;
+        Control.GotFocus -= Control_GotFocus;
 
         Control.ClearValue(ControlMark.WebViewProperty);
     }
