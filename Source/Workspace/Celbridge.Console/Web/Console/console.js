@@ -30,6 +30,8 @@ const wheelProfile = isMacOS() ? MACOS_WHEEL_PROFILE : DEFAULT_WHEEL_PROFILE;
 const term = new Terminal({
     theme: initialIsDark ? darkTheme : lightTheme,
     fontFamily: "'Cascadia Mono', monospace",
+    // xterm adjusts any text color below WCAG AA contrast against its background.
+    minimumContrastRatio: 4.5,
     allowProposedApi: true,
     // The paths xterm scrolls itself take the same sensitivity as the wheel handler below.
     scrollSensitivity: wheelProfile.scrollback.sensitivity,
