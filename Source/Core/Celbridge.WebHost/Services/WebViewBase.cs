@@ -1,4 +1,5 @@
 using Celbridge.Logging;
+using Celbridge.WebHost.Services;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.Web.WebView2.Core;
@@ -13,6 +14,11 @@ public abstract class WebViewBase : IEditorWebView
     // A screenshot first waits about two frames. A page can report its content ready before it paints.
     private const int PaintBackstopMilliseconds = 50;
 
+    // Shared assets, such as Bootstrap Icons, that every page can load.
+    private const string SharedAssetsHostName = "shared.celbridge";
+    private const string SharedAssetsFolderPath = "Celbridge.WebHost/Web";
+
+    private readonly IWebViewPlatform _platform;
     private readonly ILogger _logger;
     private readonly DispatcherQueue? _dispatcherQueue;
     private readonly List<string> _documentStartScripts = new();
@@ -29,10 +35,15 @@ public abstract class WebViewBase : IEditorWebView
     private double _presentedHeight;
     private bool _isDisposed;
 
-    protected WebViewBase(WebView2? control, ILogger logger)
+    private IWebViewDownloadHandler? _downloadHandler;
+    private IDisposable? _navigationCommits;
+    private EventHandler<string>? _navigationCommitted;
+
+    protected WebViewBase(WebView2? control, IWebViewPlatform platform, ILogger logger)
     {
         Control = control;
         CoreWebView2 = control?.CoreWebView2;
+        _platform = platform;
         _logger = logger;
         _dispatcherQueue = control?.DispatcherQueue;
 
@@ -46,6 +57,22 @@ public abstract class WebViewBase : IEditorWebView
         control.Loaded += Control_Loaded;
         control.Unloaded += Control_Unloaded;
         control.SizeChanged += Control_SizeChanged;
+
+        if (CoreWebView2 is null)
+        {
+            return;
+        }
+
+        CoreWebView2.SetVirtualHostNameToFolderMapping(
+            SharedAssetsHostName,
+            SharedAssetsFolderPath,
+            CoreWebView2HostResourceAccessKind.Allow);
+
+        CoreWebView2.NavigationStarting += CoreWebView2_NavigationStarting;
+        CoreWebView2.NavigationCompleted += CoreWebView2_NavigationCompleted;
+        CoreWebView2.HistoryChanged += CoreWebView2_HistoryChanged;
+        CoreWebView2.NewWindowRequested += CoreWebView2_NewWindowRequested;
+        CoreWebView2.ProcessFailed += CoreWebView2_ProcessFailed;
     }
 
     /// <summary>
@@ -57,6 +84,11 @@ public abstract class WebViewBase : IEditorWebView
     /// The control's CoreWebView2. It is read once, so every caller gets the same object.
     /// </summary>
     internal CoreWebView2? CoreWebView2 { get; }
+
+    /// <summary>
+    /// What the view has observed about whether its page still works.
+    /// </summary>
+    internal WebViewHealthTracker Health { get; } = new();
 
     /// <summary>
     /// True once the view is disposed.
@@ -89,6 +121,10 @@ public abstract class WebViewBase : IEditorWebView
         }
 
         ApplyOptions(options);
+
+        // Downloads go through the download service, so they land in the project.
+        _downloadHandler = CreateDownloadHandler();
+        _downloadHandler.DownloadStarted += DownloadHandler_DownloadStarted;
     }
 
     public ResourceKey Resource
@@ -178,6 +214,12 @@ public abstract class WebViewBase : IEditorWebView
         }
     }
 
+    public bool SupportsVirtualHostMapping => _platform.SupportsVirtualHostMapping;
+
+    public bool ProvidesBuiltInFind => _platform.ProvidesBuiltInFind;
+
+    public bool CanSizeUnarrangedViewport => _platform.CanSizeUnarrangedViewport;
+
     public event EventHandler? Closing;
 
     public event EventHandler<WebNavigationStartingEventArgs>? NavigationStarting;
@@ -198,7 +240,25 @@ public abstract class WebViewBase : IEditorWebView
 
     public event EventHandler? DownloadStarted;
 
-    public abstract event EventHandler<string>? NavigationCommitted;
+    public event EventHandler<string>? NavigationCommitted
+    {
+        add
+        {
+            _navigationCommitted += value;
+
+            // Commits are observed only once a handler subscribes, so most views never observe them.
+            _navigationCommits ??= ObserveNavigationCommits(OnNavigationCommitted);
+        }
+        remove
+        {
+            _navigationCommitted -= value;
+        }
+    }
+
+    private void OnNavigationCommitted(string url)
+    {
+        _navigationCommitted?.Invoke(this, url);
+    }
 
     public async Task AddDocumentStartScriptAsync(string script)
     {
@@ -377,21 +437,46 @@ public abstract class WebViewBase : IEditorWebView
         IsSizedChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    public abstract string Source { get; }
+    public string Source => CoreWebView2?.Source ?? string.Empty;
 
-    public abstract void Navigate(string url);
+    public void Navigate(string url)
+    {
+        if (Control is null)
+        {
+            return;
+        }
+
+        Control.Source = new Uri(url, UriKind.Absolute);
+    }
+
+    public void MapVirtualHost(string hostName, string folderPath)
+    {
+        CoreWebView2?.SetVirtualHostNameToFolderMapping(
+            hostName,
+            folderPath,
+            CoreWebView2HostResourceAccessKind.Allow);
+    }
+
+    public bool CanGoBack => Control?.CanGoBack ?? false;
+
+    public bool CanGoForward => Control?.CanGoForward ?? false;
+
+    public void GoBack()
+    {
+        Control?.GoBack();
+    }
+
+    public void GoForward()
+    {
+        Control?.GoForward();
+    }
+
+    public WebViewHealth GetHealth()
+    {
+        return Health.GetHealth();
+    }
 
     public abstract void LoadHtmlString(string html, string baseUrl);
-
-    public abstract void MapVirtualHost(string hostName, string folderPath);
-
-    public abstract bool CanGoBack { get; }
-
-    public abstract bool CanGoForward { get; }
-
-    public abstract void GoBack();
-
-    public abstract void GoForward();
 
     public abstract Task StopAsync();
 
@@ -403,7 +488,21 @@ public abstract class WebViewBase : IEditorWebView
 
     public abstract void StopFind();
 
-    public abstract WebViewHealth GetHealth();
+    /// <summary>
+    /// Gives the page keyboard focus, as a click inside the view does.
+    /// </summary>
+    internal virtual void FocusPage()
+    {
+        Control?.Focus(FocusState.Programmatic);
+    }
+
+    /// <summary>
+    /// Describes the native view behind the page for the log. Empty where the platform has nothing to report.
+    /// </summary>
+    internal virtual string DescribeNativeSurface()
+    {
+        return string.Empty;
+    }
 
     /// <summary>
     /// Applies the options that need the native view.
@@ -420,13 +519,13 @@ public abstract class WebViewBase : IEditorWebView
     /// <summary>
     /// Installs a script that runs at document start on each later navigation.
     /// </summary>
-    protected abstract Task InstallDocumentStartScriptAsync(string script);
+    protected internal abstract Task InstallDocumentStartScriptAsync(string script);
 
     /// <summary>
     /// Runs a document-start script again after a navigation completes. A platform whose installed scripts run
     /// on every navigation can do nothing.
     /// </summary>
-    protected abstract Task RerunDocumentStartScriptAsync(string script);
+    protected internal abstract Task RerunDocumentStartScriptAsync(string script);
 
     /// <summary>
     /// Sets the geometry the page reads as its viewport, and returns whether the platform applied it.
@@ -449,14 +548,54 @@ public abstract class WebViewBase : IEditorWebView
     protected abstract Task<ScreenshotData> CaptureScreenshotCoreAsync(ScreenshotRequest request);
 
     /// <summary>
-    /// Removes the subclass's event subscriptions and releases its native resources.
+    /// Creates the handler that routes the page's downloads through the download service.
     /// </summary>
-    protected abstract void ReleaseResources();
+    protected abstract IWebViewDownloadHandler CreateDownloadHandler();
 
     /// <summary>
-    /// Removes the control from its container and closes it, along with its native view.
+    /// Starts reporting each address the page commits to. Disposing the result stops it.
     /// </summary>
-    protected abstract void CloseControl(Panel? container);
+    protected abstract IDisposable ObserveNavigationCommits(NavigationCommitted onCommitted);
+
+    /// <summary>
+    /// Removes the view's event subscriptions and releases its native resources.
+    /// </summary>
+    protected virtual void ReleaseResources()
+    {
+        if (CoreWebView2 is not null)
+        {
+            CoreWebView2.NavigationStarting -= CoreWebView2_NavigationStarting;
+            CoreWebView2.NavigationCompleted -= CoreWebView2_NavigationCompleted;
+            CoreWebView2.HistoryChanged -= CoreWebView2_HistoryChanged;
+            CoreWebView2.NewWindowRequested -= CoreWebView2_NewWindowRequested;
+            CoreWebView2.ProcessFailed -= CoreWebView2_ProcessFailed;
+        }
+
+        _navigationCommitted = null;
+        _navigationCommits?.Dispose();
+        _navigationCommits = null;
+
+        if (_downloadHandler is not null)
+        {
+            _downloadHandler.DownloadStarted -= DownloadHandler_DownloadStarted;
+            _downloadHandler.Detach();
+            _downloadHandler = null;
+        }
+    }
+
+    /// <summary>
+    /// Removes the control from its container and closes it.
+    /// </summary>
+    protected virtual void CloseControl(Panel? container)
+    {
+        if (Control is null)
+        {
+            return;
+        }
+
+        container?.Children.Remove(Control);
+        Control.Close();
+    }
 
     internal static WebNavigationCompletedEventArgs CreateNavigationCompletedEventArgs(
         bool isSuccess,
@@ -477,14 +616,25 @@ public abstract class WebViewBase : IEditorWebView
         return new WebNavigationCompletedEventArgs(result, status.ToString());
     }
 
-    protected void RaiseNavigationStarting(WebNavigationStartingEventArgs args)
+    private void CoreWebView2_NavigationStarting(CoreWebView2 sender, CoreWebView2NavigationStartingEventArgs args)
     {
-        NavigationStarting?.Invoke(this, args);
+        // A navigation can give the page a new renderer, so the process reading starts again from here. Only a
+        // change with no navigation behind it is reported.
+        Health.RecordNavigation(args.Uri);
+
+        var navigationArgs = new WebNavigationStartingEventArgs(args.Uri ?? string.Empty);
+
+        NavigationStarting?.Invoke(this, navigationArgs);
+
+        if (navigationArgs.Cancel)
+        {
+            args.Cancel = true;
+        }
     }
 
-    protected void RaiseNavigationCompleted(bool isSuccess, CoreWebView2WebErrorStatus status)
+    private void CoreWebView2_NavigationCompleted(CoreWebView2 sender, CoreWebView2NavigationCompletedEventArgs args)
     {
-        NavigationCompleted?.Invoke(this, CreateNavigationCompletedEventArgs(isSuccess, status));
+        NavigationCompleted?.Invoke(this, CreateNavigationCompletedEventArgs(args.IsSuccess, args.WebErrorStatus));
 
         foreach (var script in _documentStartScripts.ToList())
         {
@@ -504,17 +654,44 @@ public abstract class WebViewBase : IEditorWebView
         }
     }
 
-    protected void RaiseNewWindowRequested(string uri)
-    {
-        NewWindowRequested?.Invoke(this, uri);
-    }
-
-    protected void RaiseHistoryChanged()
+    private void CoreWebView2_HistoryChanged(CoreWebView2 sender, object args)
     {
         HistoryChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    protected void RaiseDownloadStarted()
+    // No new window ever opens. The owner can follow the address in the same view.
+    private void CoreWebView2_NewWindowRequested(CoreWebView2 sender, CoreWebView2NewWindowRequestedEventArgs args)
+    {
+        args.Handled = true;
+
+        var uri = args.Uri;
+        if (string.IsNullOrEmpty(uri))
+        {
+            return;
+        }
+
+        // Raised inside a native callback, where an exception would end the process.
+        try
+        {
+            NewWindowRequested?.Invoke(this, uri);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to handle a new window requested by the page of {Resource}", Resource);
+        }
+    }
+
+    // Only the packaged Windows head raises ProcessFailed. The macOS view reads its renderer's process itself.
+    private void CoreWebView2_ProcessFailed(CoreWebView2 sender, CoreWebView2ProcessFailedEventArgs args)
+    {
+        Health.RecordProcessFailed();
+
+        _logger.LogError(
+            "WebView ProcessFailed for {Resource}: Kind={Kind}, Reason={Reason}, ExitCode={ExitCode}",
+            Resource, args.ProcessFailedKind, args.Reason, args.ExitCode);
+    }
+
+    private void DownloadHandler_DownloadStarted(object? sender, EventArgs e)
     {
         DownloadStarted?.Invoke(this, EventArgs.Empty);
     }

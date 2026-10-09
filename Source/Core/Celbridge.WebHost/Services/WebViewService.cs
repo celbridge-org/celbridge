@@ -7,16 +7,16 @@ public class WebViewService : IWebViewService
 {
     private readonly IFeatureFlags _featureFlags;
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly IWebViewAdapter _webViewAdapter;
+    private readonly IWebViewPlatform _webViewPlatform;
 
     public WebViewService(
         IFeatureFlags featureFlags,
         IWorkspaceWrapper workspaceWrapper,
-        IWebViewAdapter webViewAdapter)
+        IWebViewPlatform webViewPlatform)
     {
         _featureFlags = featureFlags;
         _workspaceWrapper = workspaceWrapper;
-        _webViewAdapter = webViewAdapter;
+        _webViewPlatform = webViewPlatform;
     }
 
     public bool IsDevToolsFeatureEnabled()
@@ -31,7 +31,7 @@ public class WebViewService : IWebViewService
 
     // Clearing goes through the platform's own data store API, which the packaged Windows head and macOS
     // both expose. The Windows and Linux Skia heads have neither, so they report false.
-    public bool CanClearBrowsingData => _webViewAdapter.SupportsLiveBrowsingDataClear;
+    public bool CanClearBrowsingData => _webViewPlatform.SupportsLiveBrowsingDataClear;
 
     public WebViewToolSupport GetWebViewToolSupport(ResourceKey resource)
     {

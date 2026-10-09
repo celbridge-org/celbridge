@@ -3,7 +3,6 @@ using System.Text;
 using System.Text.Json;
 using Celbridge.Logging;
 using Celbridge.Settings;
-using Microsoft.Web.WebView2.Core;
 using Windows.Foundation;
 
 namespace Celbridge.WebHost.Services;
@@ -86,7 +85,6 @@ public sealed class WebViewLoadDiagnostics
     // How often a surface being resized logs its geometry. A drag raises a size change per frame.
     private static readonly TimeSpan ViewportSizeLogInterval = TimeSpan.FromSeconds(1);
 
-    private readonly IWebViewAdapter _webViewAdapter;
     private readonly IFeatureFlags _featureFlags;
     private readonly ILogger _logger;
 
@@ -94,9 +92,8 @@ public sealed class WebViewLoadDiagnostics
     private bool _lastViewportSizeWasArranged;
     private int _viewportSizesSinceLog;
 
-    public WebViewLoadDiagnostics(IWebViewAdapter webViewAdapter, IFeatureFlags featureFlags, ILogger logger)
+    public WebViewLoadDiagnostics(IFeatureFlags featureFlags, ILogger logger)
     {
-        _webViewAdapter = webViewAdapter;
         _featureFlags = featureFlags;
         _logger = logger;
     }
@@ -108,17 +105,18 @@ public sealed class WebViewLoadDiagnostics
 
     /// <summary>
     /// The surface a load runs against, for the log: the control's tree and layout state, and the native
-    /// state the adapter can see behind it.
+    /// state the view can see behind it.
     /// </summary>
     public string DescribeSurface(IWebView view)
     {
-        if (!IsOpen(view, out var webView))
+        if (view is not WebViewBase webViewBase ||
+            !IsOpen(view, out var webView))
         {
             return "webview=none";
         }
 
-        var native = webView.CoreWebView2 is CoreWebView2 coreWebView
-            ? _webViewAdapter.DescribeNativeSurface(coreWebView)
+        var native = webView.CoreWebView2 is not null
+            ? webViewBase.DescribeNativeSurface()
             : "native=none";
 
         return $"loaded={webView.IsLoaded} size={webView.ActualWidth:F0}x{webView.ActualHeight:F0} "

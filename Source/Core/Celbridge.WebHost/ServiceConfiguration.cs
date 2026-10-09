@@ -22,17 +22,17 @@ public static class ServiceConfiguration
         // custom loader, which resolves ahead of it (the view picks the last matching loader).
         services.AddSingleton<ICustomEditorLoader, LoopbackCustomEditorLoader>();
 
-        // The per-platform WebView adapter (WebView2 SDK on Windows, Skia/native fallbacks elsewhere).
+        // The web view platform for this head (WebView2 SDK on Windows, Skia/native fallbacks elsewhere).
         Platform.PlatformServiceConfiguration.ConfigureServices(services);
     }
 
     /// <summary>
-    /// Instantiates the WebViewFactory early so it can pre-warm the WebView2 pool in the background while
-    /// the application starts up, and opens the diagnostic plane's native message bus entrance.
+    /// Instantiates the WebViewFactory early so it can prewarm web views in the background while the application
+    /// starts up, and opens the diagnostic plane's native message bus entrance.
     /// </summary>
     public static void Initialize()
     {
-        // Force early instantiation of WebViewFactory to start pre-warming the WebView2 pool
+        // Force early instantiation of WebViewFactory to start prewarming web views
         var webViewFactory = ServiceLocator.AcquireService<IWebViewFactory>();
         Guard.IsNotNull(webViewFactory);
 

@@ -17,74 +17,53 @@ internal enum PageProcessChange
 }
 
 /// <summary>
-/// Counts what the host has observed about each hosted page still working, keyed by the page. A page is
-/// counted only while it is tracked, so an observation that arrives after the page is closed is discarded
-/// rather than resurrecting its entry. Every member is safe to call from any thread.
+/// Counts what the host has observed about one web view's page still working. Every member is safe to call
+/// from any thread.
 /// </summary>
-internal sealed class PageHealthTracker<TPage>
-    where TPage : class
+internal sealed class WebViewHealthTracker
 {
     // Distinguishes a process id that has never been read from one read as absent.
     private const long UnknownProcessId = -1;
 
-    private sealed class PageCounters
-    {
-        public int WakeFailures;
-        public int ProcessFailures;
-        public long ProcessId = UnknownProcessId;
-        public string Address = string.Empty;
-    }
-
     private readonly object _lock = new();
-    private readonly Dictionary<TPage, PageCounters> _pages = new();
 
-    public void Track(TPage page)
-    {
-        lock (_lock)
-        {
-            _pages[page] = new PageCounters();
-        }
-    }
-
-    public void Untrack(TPage page)
-    {
-        lock (_lock)
-        {
-            _pages.Remove(page);
-        }
-    }
+    private int _wakeFailures;
+    private int _processFailures;
+    private long _processId = UnknownProcessId;
+    private string _address = string.Empty;
 
     /// <summary>
     /// Clears the page's missed wakes and returns how many were cleared, so a caller can report a recovery.
     /// </summary>
-    public int RecordWakeSucceeded(TPage page)
+    public int RecordWakeSucceeded()
     {
         lock (_lock)
         {
-            if (!_pages.TryGetValue(page, out var counters))
-            {
-                return 0;
-            }
-
-            var clearedFailures = counters.WakeFailures;
-            counters.WakeFailures = 0;
+            var clearedFailures = _wakeFailures;
+            _wakeFailures = 0;
             return clearedFailures;
         }
     }
 
     /// <summary>
-    /// Counts a missed wake and returns the page's consecutive total, or zero when it is no longer tracked.
+    /// Counts a missed wake and returns the page's consecutive total.
     /// </summary>
-    public int RecordWakeFailed(TPage page)
+    public int RecordWakeFailed()
     {
         lock (_lock)
         {
-            if (!_pages.TryGetValue(page, out var counters))
-            {
-                return 0;
-            }
+            return ++_wakeFailures;
+        }
+    }
 
-            return ++counters.WakeFailures;
+    /// <summary>
+    /// Counts a failure of the page's rendering process that the platform reported.
+    /// </summary>
+    public void RecordProcessFailed()
+    {
+        lock (_lock)
+        {
+            _processFailures++;
         }
     }
 
@@ -94,27 +73,26 @@ internal sealed class PageHealthTracker<TPage>
     /// and a swap the navigation asked for is not a renderer failing. The address is kept because a page
     /// whose renderer has gone can no longer report one, and that is when naming it matters most.
     /// </summary>
-    public void RecordNavigation(TPage page, string? address)
+    public void RecordNavigation(string? address)
     {
         lock (_lock)
         {
-            if (_pages.TryGetValue(page, out var counters))
-            {
-                counters.ProcessId = UnknownProcessId;
-                counters.Address = address ?? string.Empty;
-            }
+            _processId = UnknownProcessId;
+            _address = address ?? string.Empty;
         }
     }
 
     /// <summary>
-    /// The address this page last navigated to, or an empty string when it has not navigated or is not
-    /// tracked.
+    /// The address the page last navigated to, or an empty string when it has not navigated.
     /// </summary>
-    public string GetAddress(TPage page)
+    public string Address
     {
-        lock (_lock)
+        get
         {
-            return _pages.TryGetValue(page, out var counters) ? counters.Address : string.Empty;
+            lock (_lock)
+            {
+                return _address;
+            }
         }
     }
 
@@ -122,18 +100,17 @@ internal sealed class PageHealthTracker<TPage>
     /// Records the process rendering the page, counting a process failure when it goes absent. A negative id
     /// means the platform could not report one and leaves the page's state untouched.
     /// </summary>
-    public PageProcessChange RecordProcessId(TPage page, long processId)
+    public PageProcessChange RecordProcessId(long processId)
     {
         lock (_lock)
         {
-            if (processId < 0
-                || !_pages.TryGetValue(page, out var counters))
+            if (processId < 0)
             {
                 return PageProcessChange.None;
             }
 
-            var previousProcessId = counters.ProcessId;
-            counters.ProcessId = processId;
+            var previousProcessId = _processId;
+            _processId = processId;
 
             if (processId == 0)
             {
@@ -143,7 +120,7 @@ internal sealed class PageHealthTracker<TPage>
                     return PageProcessChange.None;
                 }
 
-                counters.ProcessFailures++;
+                _processFailures++;
                 return PageProcessChange.Gone;
             }
 
@@ -165,13 +142,11 @@ internal sealed class PageHealthTracker<TPage>
         }
     }
 
-    public WebViewHealth GetHealth(TPage page)
+    public WebViewHealth GetHealth()
     {
         lock (_lock)
         {
-            return _pages.TryGetValue(page, out var counters)
-                ? new WebViewHealth(counters.WakeFailures, counters.ProcessFailures)
-                : WebViewHealth.Healthy;
+            return new WebViewHealth(_wakeFailures, _processFailures);
         }
     }
 }

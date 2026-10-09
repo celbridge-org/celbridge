@@ -1,46 +1,36 @@
 using Celbridge.Logging;
-using Celbridge.WebHost.Platform;
-using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.WebHost.Services;
 
 public class WebViewFactory : IWebViewFactory, IDisposable
 {
-    private const int DefaultPoolSize = 3;
-    private const string SharedAssetsHostName = "shared.celbridge";
-    private const string SharedAssetsFolderPath = "Celbridge.WebHost/Web";
+    // How many views are kept ready ahead of time.
+    private const int PrewarmCount = 3;
 
     private readonly ILogger<WebViewFactory> _logger;
-    private readonly ILogger<AdapterWebView> _webViewLogger;
-    private readonly IWebViewAdapter _webViewAdapter;
-    private readonly Queue<WebViewBase> _pool;
-    private readonly int _maxPoolSize;
+    private readonly IWebViewPlatform _webViewPlatform;
+
+    // Views that have been created but not handed out. A view never comes back once its owner has it.
+    private readonly Queue<WebViewBase> _prewarmQueue = new();
     private readonly object _lock = new();
     private bool _isShuttingDown = false;
 
-    private Task? _initializationTask = null;
+    private Task? _prewarmTask = null;
 
-    public WebViewFactory()
-        : this(DefaultPoolSize)
+    public WebViewFactory(
+        ILogger<WebViewFactory> logger,
+        IWebViewPlatform webViewPlatform)
     {
+        _logger = logger;
+        _webViewPlatform = webViewPlatform;
+
+        // Start prewarming but don't await it. The queue fills in the background.
+        _prewarmTask = PrewarmAsync();
     }
 
-    public WebViewFactory(int poolSize)
+    private async Task PrewarmAsync()
     {
-        _logger = ServiceLocator.AcquireService<ILogger<WebViewFactory>>();
-        _webViewLogger = ServiceLocator.AcquireService<ILogger<AdapterWebView>>();
-        _webViewAdapter = ServiceLocator.AcquireService<IWebViewAdapter>();
-        _maxPoolSize = poolSize;
-        _pool = new Queue<WebViewBase>();
-
-        // Start initialization but don't await it.
-        // This allows the WebView pool to be populated in the background.
-        _initializationTask = InitializePoolAsync();
-    }
-
-    private async Task InitializePoolAsync()
-    {
-        for (int i = 0; i < _maxPoolSize; i++)
+        for (int i = 0; i < PrewarmCount; i++)
         {
             lock (_lock)
             {
@@ -52,7 +42,7 @@ public class WebViewFactory : IWebViewFactory, IDisposable
 
             try
             {
-                var webView = await CreateWebViewAsync();
+                var webView = await _webViewPlatform.CreateWebViewAsync();
 
                 lock (_lock)
                 {
@@ -61,22 +51,22 @@ public class WebViewFactory : IWebViewFactory, IDisposable
                         DisposeWebView(webView);
                         return;
                     }
-                    _pool.Enqueue(webView);
+                    _prewarmQueue.Enqueue(webView);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Failed to create WebView2 instance {i + 1} of {_maxPoolSize} during pool initialization");
+                _logger.LogError(ex, $"Failed to prewarm web view {i + 1} of {PrewarmCount}");
             }
         }
 
-        int poolCount;
+        int prewarmedCount;
         lock (_lock)
         {
-            poolCount = _pool.Count;
+            prewarmedCount = _prewarmQueue.Count;
         }
 
-        _logger.LogDebug($"WebViewFactory initialized with {poolCount} of {_maxPoolSize} instances");
+        _logger.LogDebug($"WebViewFactory prewarmed {prewarmedCount} of {PrewarmCount} web views");
     }
 
     public async Task<IEditorWebView> AcquireAsync(WebViewOptions options)
@@ -89,16 +79,16 @@ public class WebViewFactory : IWebViewFactory, IDisposable
         {
             if (_isShuttingDown)
             {
-                throw new InvalidOperationException("Cannot acquire WebView2 instances during shutdown");
+                throw new InvalidOperationException("Cannot acquire web views during shutdown");
             }
 
-            // Try to get an instance from the pool first (don't wait for initialization)
-            if (_pool.Count > 0)
+            // Take a prewarmed view first, without waiting for prewarming to finish.
+            if (_prewarmQueue.Count > 0)
             {
-                webView = _pool.Dequeue();
+                webView = _prewarmQueue.Dequeue();
 
-                // Trigger replenishment if pool is running low
-                if (_pool.Count < _maxPoolSize)
+                // Top the queue up as it runs low.
+                if (_prewarmQueue.Count < PrewarmCount)
                 {
                     shouldReplenish = true;
                 }
@@ -107,32 +97,32 @@ public class WebViewFactory : IWebViewFactory, IDisposable
             {
                 needsCreation = true;
 
-                // Replenish from the empty pool too, otherwise the pool stays empty for the rest of
-                // the session and every later acquire pays full WebView2 creation inline.
+                // Replenish from the empty queue too, otherwise it stays empty for the rest of the session and
+                // every later acquire pays full WebView2 creation inline.
                 shouldReplenish = true;
             }
         }
 
-        // CreateWebViewAsync is an expensive async operation, so we avoid holding the lock
-        // during the await to prevent blocking other threads from accessing the pool.
+        // Creating a view is an expensive async operation, so we avoid holding the lock during the await to
+        // prevent blocking other threads from reaching the queue.
         if (needsCreation)
         {
-            webView = await CreateWebViewAsync();
+            webView = await _webViewPlatform.CreateWebViewAsync();
 
             lock (_lock)
             {
                 if (_isShuttingDown)
                 {
                     DisposeWebView(webView);
-                    throw new InvalidOperationException("Cannot acquire WebView2 instances during shutdown");
+                    throw new InvalidOperationException("Cannot acquire web views during shutdown");
                 }
             }
         }
 
-        // Replenish pool in the background
+        // Replenish the queue in the background
         if (shouldReplenish)
         {
-            _ = ReplenishPoolAsync();
+            _ = ReplenishPrewarmQueueAsync();
         }
 
         Guard.IsNotNull(webView);
@@ -143,25 +133,25 @@ public class WebViewFactory : IWebViewFactory, IDisposable
         return webView;
     }
 
-    private async Task ReplenishPoolAsync()
+    private async Task ReplenishPrewarmQueueAsync()
     {
         try
         {
-            var webView = await CreateWebViewAsync();
+            var webView = await _webViewPlatform.CreateWebViewAsync();
 
             lock (_lock)
             {
-                if (_isShuttingDown || _pool.Count >= _maxPoolSize)
+                if (_isShuttingDown || _prewarmQueue.Count >= PrewarmCount)
                 {
                     DisposeWebView(webView);
                     return;
                 }
-                _pool.Enqueue(webView);
+                _prewarmQueue.Enqueue(webView);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to create WebView2 instance for pool replenishment");
+            _logger.LogError(ex, "Failed to prewarm a web view to replenish the queue");
         }
     }
 
@@ -170,7 +160,7 @@ public class WebViewFactory : IWebViewFactory, IDisposable
         try
         {
             // Synchronous wrapper for ShutdownAsync with timeout protection.
-            // This is safe to call during Dispose() as it won't block indefinitely.        
+            // This is safe to call during Dispose() as it won't block indefinitely.
             var shutdownTask = ShutdownAsync();
             if (!shutdownTask.Wait(TimeSpan.FromSeconds(3)))
             {
@@ -195,23 +185,23 @@ public class WebViewFactory : IWebViewFactory, IDisposable
 
     private async Task ShutdownAsync()
     {
-        if (_initializationTask != null && !_initializationTask.IsCompleted)
+        if (_prewarmTask != null && !_prewarmTask.IsCompleted)
         {
-            // Initialization is still in progress.
+            // Prewarming is still in progress.
             // Wait briefly but don't block indefinitely
             try
             {
                 var timeoutTask = Task.Delay(2000);
-                var completedTask = await Task.WhenAny(_initializationTask, timeoutTask).ConfigureAwait(false);
+                var completedTask = await Task.WhenAny(_prewarmTask, timeoutTask).ConfigureAwait(false);
 
                 if (completedTask == timeoutTask)
                 {
-                    _logger.LogWarning("Pool initialization did not complete within timeout. Proceeding with cleanup.");
+                    _logger.LogWarning("Prewarming did not complete within timeout. Proceeding with cleanup.");
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "An exception occurred during pool initialization while shutting down");
+                _logger.LogWarning(ex, "An exception occurred during prewarming while shutting down");
             }
         }
 
@@ -219,10 +209,10 @@ public class WebViewFactory : IWebViewFactory, IDisposable
         {
             _isShuttingDown = true;
 
-            // Clean up pooled instances
-            while (_pool.Count > 0)
+            // Close the views that were never handed out
+            while (_prewarmQueue.Count > 0)
             {
-                var webView = _pool.Dequeue();
+                var webView = _prewarmQueue.Dequeue();
                 DisposeWebView(webView);
             }
         }
@@ -244,27 +234,5 @@ public class WebViewFactory : IWebViewFactory, IDisposable
         {
             // Ignore exceptions during cleanup
         }
-    }
-
-    private async Task<WebViewBase> CreateWebViewAsync()
-    {
-        var webView = new WebView2();
-
-        // This fixes a visual bug where the WebView2 control would show a white background briefly when
-        // switching between tabs. Similar issue described here: https://github.com/MicrosoftEdge/WebView2Feedback/issues/1412
-        webView.DefaultBackgroundColor = Colors.Transparent;
-
-        MacOSHostedViewOpacityRepair.RepairOnAttach(webView);
-
-        await _webViewAdapter.EnsureCoreWebView2Async(webView);
-
-        // Map shared assets (Bootstrap Icons, etc.) for all factory-created WebViews
-        webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
-            SharedAssetsHostName,
-            SharedAssetsFolderPath,
-            CoreWebView2HostResourceAccessKind.Allow);
-
-        // Created after initialization, so the view never sees the hidden host the Skia heads initialize in.
-        return new AdapterWebView(webView, _webViewAdapter, _webViewLogger);
     }
 }

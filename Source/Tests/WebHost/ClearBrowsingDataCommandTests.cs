@@ -1,59 +1,50 @@
 using Celbridge.Tests.Helpers;
 using Celbridge.WebHost;
 using Celbridge.WebHost.Commands;
-using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.Tests.WebHost;
 
 /// <summary>
-/// Unit tests for the clear browsing data command. The clear itself happens inside the platform adapter,
-/// so the tests assert which store the command reaches for rather than the state of any WebView.
+/// Unit tests for the clear browsing data command. The clear itself happens inside the web view platform, so the
+/// tests assert whether the command asks for it and how it reports the outcome.
 /// </summary>
 [TestFixture]
 public class ClearBrowsingDataCommandTests
 {
-    private IWebViewAdapter _webViewAdapter = null!;
-    private IWebViewFactory _webViewFactory = null!;
+    private IWebViewPlatform _webViewPlatform = null!;
 
     [SetUp]
     public void Setup()
     {
-        _webViewAdapter = Substitute.For<IWebViewAdapter>();
-        _webViewFactory = Substitute.For<IWebViewFactory>();
+        _webViewPlatform = Substitute.For<IWebViewPlatform>();
 
-        _webViewAdapter.SupportsLiveBrowsingDataClear.Returns(true);
+        _webViewPlatform.SupportsLiveBrowsingDataClear.Returns(true);
     }
 
     [Test]
-    public async Task PlatformCannotClear_FailsWithoutTouchingTheAdapter()
+    public async Task PlatformCannotClear_FailsWithoutClearing()
     {
-        _webViewAdapter.SupportsLiveBrowsingDataClear.Returns(false);
+        _webViewPlatform.SupportsLiveBrowsingDataClear.Returns(false);
 
         var result = await CreateCommand().ExecuteAsync();
 
         result.IsFailure.Should().BeTrue();
-        await _webViewAdapter.DidNotReceive().ClearBrowsingDataAsync(Arg.Any<CoreWebView2?>());
+        await _webViewPlatform.DidNotReceive().ClearBrowsingDataAsync();
     }
 
     [Test]
-    public async Task StoreReachableWithoutAnInstance_ClearsWithoutAcquiringAWebView()
+    public async Task PlatformCanClear_ClearsAndSucceeds()
     {
-        // The macOS shape: the default WKWebsiteDataStore is process-wide, so taking an instance from the
-        // pool would cost a WebView creation for nothing.
-        _webViewAdapter.BrowsingDataClearRequiresInstance.Returns(false);
-
         var result = await CreateCommand().ExecuteAsync();
 
         result.IsSuccess.Should().BeTrue();
-        await _webViewFactory.DidNotReceive().AcquireAsync(Arg.Any<WebViewOptions>());
-        await _webViewAdapter.Received(1).ClearBrowsingDataAsync(null);
+        await _webViewPlatform.Received(1).ClearBrowsingDataAsync();
     }
 
     [Test]
-    public async Task AdapterThrows_ReportsAFailure()
+    public async Task ClearThrows_ReportsAFailure()
     {
-        _webViewAdapter.BrowsingDataClearRequiresInstance.Returns(false);
-        _webViewAdapter.ClearBrowsingDataAsync(Arg.Any<CoreWebView2?>())
+        _webViewPlatform.ClearBrowsingDataAsync()
             .Returns(Task.FromException(new InvalidOperationException("The clear did not complete")));
 
         var result = await CreateCommand().ExecuteAsync();
@@ -65,7 +56,6 @@ public class ClearBrowsingDataCommandTests
     {
         return new ClearBrowsingDataCommand(
             new NullLogger<ClearBrowsingDataCommand>(),
-            _webViewAdapter,
-            _webViewFactory);
+            _webViewPlatform);
     }
 }

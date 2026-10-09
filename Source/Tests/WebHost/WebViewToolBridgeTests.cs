@@ -186,6 +186,28 @@ public partial class WebViewToolBridgeTests
     }
 
     [Test]
+    public async Task ReloadAsync_ViewRefuses_ReturnsItsReasonAndKeepsThePageReady()
+    {
+        // A short content-ready timeout, so a gate the refusal left closed fails the eval rather than hanging.
+        var fastBridge = new WebViewToolBridge(_commandService, _logger, _fileSystem, TimeSpan.FromMilliseconds(100));
+        var view = new FakeWebView(_resource)
+        {
+            Evaluate = _ => Task.FromResult("\"ok\""),
+            Reload = _ => throw new NotSupportedException("This page cannot be reloaded.")
+        };
+        fastBridge.Register(view);
+        fastBridge.NotifyContentReady(view);
+
+        var reloadResult = await fastBridge.ReloadAsync(_resource, clearCache: false);
+        reloadResult.IsFailure.Should().BeTrue();
+        reloadResult.FirstErrorMessage.Should().Contain("This page cannot be reloaded.");
+
+        // The view refused before reloading, so the page that was showing still answers.
+        var evalResult = await fastBridge.EvalAsync(_resource, "x");
+        evalResult.IsSuccess.Should().BeTrue();
+    }
+
+    [Test]
     public async Task NotifyContentLoading_AfterFailure_ClearsTheFailureReason()
     {
         var fastBridge = new WebViewToolBridge(_commandService, _logger, _fileSystem, TimeSpan.FromMilliseconds(100));

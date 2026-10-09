@@ -6,6 +6,20 @@ namespace Celbridge.WebHost;
 public sealed record WebViewViewportSize(double Width, double Height, bool IsArranged);
 
 /// <summary>
+/// Options for a whole-page find. Find always wraps, as a browser's does. OnMatchStateChanged is called on the UI
+/// thread as the find advances, so a find bar can show its state.
+/// </summary>
+public sealed record FindOptions(
+    bool CaseSensitive = false,
+    Action<FindMatchState>? OnMatchStateChanged = null);
+
+/// <summary>
+/// The progress of a find. MatchFound says whether there is a match to step to. MatchCount and ActiveMatchIndex,
+/// counted from 1, are null when the platform does not report them.
+/// </summary>
+public sealed record FindMatchState(bool MatchFound, int? MatchCount = null, int? ActiveMatchIndex = null);
+
+/// <summary>
 /// The web view an owner holds. It adds the members only the owner calls.
 /// </summary>
 public interface IEditorWebView : IWebView, IDisposable
@@ -46,6 +60,11 @@ public interface IEditorWebView : IWebView, IDisposable
     event EventHandler<WebViewViewportSize>? ViewportSized;
 
     /// <summary>
+    /// True when the view can give its page a viewport size before it is laid out.
+    /// </summary>
+    bool CanSizeUnarrangedViewport { get; }
+
+    /// <summary>
     /// True when the page's viewport has a real size, and false while it has only a placeholder.
     /// </summary>
     bool IsSized { get; }
@@ -71,7 +90,13 @@ public interface IEditorWebView : IWebView, IDisposable
     void LoadHtmlString(string html, string baseUrl);
 
     /// <summary>
-    /// Serves a local folder under a virtual host name. Not every platform supports this.
+    /// True when a page the view loads from a mapped virtual host has that host as its origin.
+    /// </summary>
+    bool SupportsVirtualHostMapping { get; }
+
+    /// <summary>
+    /// Serves a local folder under a virtual host name. A page loaded from it has the host as its origin only
+    /// where SupportsVirtualHostMapping is true.
     /// </summary>
     void MapVirtualHost(string hostName, string folderPath);
 
@@ -115,6 +140,11 @@ public interface IEditorWebView : IWebView, IDisposable
     /// Stops the navigation in progress.
     /// </summary>
     Task StopAsync();
+
+    /// <summary>
+    /// True when the page has a find bar of its own, so the owner adds none.
+    /// </summary>
+    bool ProvidesBuiltInFind { get; }
 
     /// <summary>
     /// Finds a term in the page and selects the first match. A new call replaces the find in progress. Not every

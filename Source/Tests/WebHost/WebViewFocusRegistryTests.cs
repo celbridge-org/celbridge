@@ -41,7 +41,6 @@ public class WebViewFocusRegistryTests
 
         _registry = new WebViewFocusRegistry(
             _focusService,
-            Substitute.For<IWebViewAdapter>(),
             new NullWebViewFocusMonitor(),
             Substitute.For<IMessengerService>(),
             new StubMessageDispatcher(),

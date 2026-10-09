@@ -9,14 +9,14 @@ public static class PlatformServiceConfiguration
 {
     public static void ConfigureServices(IServiceCollection services)
     {
-        // The WebView adapter is chosen at compile time, not by a runtime OS check: the packaged Windows head
+        // The web view platform is chosen at compile time, not by a runtime OS check: the packaged Windows head
         // drives the WebView2 SDK directly, while every Uno Skia head (desktop Windows and macOS) falls back to
         // ExecuteScriptAsync and the native WKWebView interop. A runtime check could not tell the packaged head
-        // from the desktop Windows head, which need different adapters.
+        // from the desktop Windows head, which need different platforms.
 #if WINDOWS
-        services.AddSingleton<IWebViewAdapter, WindowsWebViewAdapter>();
+        services.AddSingleton<IWebViewPlatform, WindowsWebViewPlatform>();
 #else
-        services.AddSingleton<IWebViewAdapter, SkiaWebViewAdapter>();
+        services.AddSingleton<IWebViewPlatform, SkiaWebViewPlatform>();
 #endif
 
         // The focus monitor is a genuine runtime OS selection: the AppKit first-responder signal

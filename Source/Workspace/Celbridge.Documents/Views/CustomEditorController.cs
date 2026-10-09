@@ -54,7 +54,6 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     private readonly IServiceProvider _serviceProvider;
     private readonly IWebViewFactory _webViewFactory;
     private readonly IWebViewService _webViewService;
-    private readonly IWebViewAdapter _webViewAdapter;
     private readonly IWebViewFocusRegistry _webViewFocusRegistry;
     private readonly IWebSurfaceLog _webSurfaceLog;
     private readonly ILanguageService _languageService;
@@ -176,7 +175,6 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         _reportWriter = serviceProvider.GetRequiredService<IReportWriter>();
         _webViewFactory = serviceProvider.GetRequiredService<IWebViewFactory>();
         _webViewService = serviceProvider.GetRequiredService<IWebViewService>();
-        _webViewAdapter = ServiceLocator.AcquireService<IWebViewAdapter>();
         _webViewFocusRegistry = ServiceLocator.AcquireService<IWebViewFocusRegistry>();
         _webSurfaceLog = ServiceLocator.AcquireService<IWebSurfaceLog>();
         _languageService = ServiceLocator.AcquireService<ILanguageService>();
@@ -530,13 +528,13 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         _viewState.SetValue("writable", _writableState.ToString());
         // The preview find bar is built only where the WebView backend has no find bar of its own. Where it
         // does (Chromium's WebView2), the package stays hands-off and Ctrl+F reaches the built-in bar.
-        _viewState.SetValue("providesBuiltInFind", _webViewAdapter.ProvidesBuiltInFind ? "true" : "false");
+        _viewState.SetValue("providesBuiltInFind", webView.ProvidesBuiltInFind ? "true" : "false");
         // A page that measures its viewport before this surface is arranged is reading a placeholder.
         _viewState.SetValue("isSized", webView.IsSized ? "true" : "false");
         // Whether a size can reach a page the platform is not displaying.
         _viewState.SetValue(
             "canSizeUnarranged",
-            _webViewAdapter.CanSizeUnarrangedViewport ? "true" : "false");
+            webView.CanSizeUnarrangedViewport ? "true" : "false");
         _viewStateConnection = _viewState.RegisterConnection(
             snapshot => capturedHost.Rpc.NotifyWithParameterObjectAsync(StateRpcMethods.ViewStateChanged, snapshot));
 
@@ -750,7 +748,6 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     }
 
     private WebViewLoadDiagnostics Diagnostics => _diagnostics ??= new WebViewLoadDiagnostics(
-        _webViewAdapter,
         _serviceProvider.GetRequiredService<IFeatureFlags>(),
         _logger);
 

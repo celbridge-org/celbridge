@@ -1,4 +1,7 @@
-using Celbridge.Logging;
+using Celbridge.Downloads;
+using Celbridge.Localization;
+using Celbridge.Tests.Helpers;
+using Celbridge.UserInterface;
 using Celbridge.WebHost.Platform;
 
 namespace Celbridge.Tests.WebHost;
@@ -6,33 +9,40 @@ namespace Celbridge.Tests.WebHost;
 [TestFixture]
 public class WebViewDevToolsStateTests
 {
-    private ILogger<SkiaWebViewAdapter> _logger = null!;
-    private SkiaWebViewAdapter _adapter = null!;
+    private RecordingLogger<SkiaWebViewPlatform> _logger = null!;
+    private SkiaWebViewPlatform _platform = null!;
 
     [SetUp]
     public void SetUp()
     {
-        _logger = Substitute.For<ILogger<SkiaWebViewAdapter>>();
-        _adapter = new SkiaWebViewAdapter(_logger);
+        _logger = new RecordingLogger<SkiaWebViewPlatform>();
+        _platform = new SkiaWebViewPlatform(
+            _logger,
+            new NullLogger<SkiaWebView>(),
+            new NullLogger<MacOSWebView>(),
+            new NullLogger<MacOSWebViewDownloadRouter>(),
+            Substitute.For<IUserInterfaceService>(),
+            Substitute.For<ILocalizerService>(),
+            Substitute.For<IDownloadService>());
     }
 
     [Test]
     public void ReportRemoteInspectionOnce_CalledForEveryWebView_ReportsOnlyTheFirst()
     {
-        _adapter.ReportRemoteInspectionOnce(enabled: true, applied: true);
-        _adapter.ReportRemoteInspectionOnce(enabled: true, applied: true);
-        _adapter.ReportRemoteInspectionOnce(enabled: false, applied: true);
+        _platform.ReportRemoteInspectionOnce(enabled: true, applied: true);
+        _platform.ReportRemoteInspectionOnce(enabled: true, applied: true);
+        _platform.ReportRemoteInspectionOnce(enabled: false, applied: true);
 
-        _logger.Received(1).LogDebug(Arg.Any<string?>(), Arg.Any<object?[]>());
-        _logger.DidNotReceive().LogWarning(Arg.Any<string?>(), Arg.Any<object?[]>());
+        _logger.EntriesAt(LogEntryLevel.Debug).Should().HaveCount(1);
+        _logger.EntriesAt(LogEntryLevel.Warning).Should().BeEmpty();
     }
 
     [Test]
     public void ReportRemoteInspectionOnce_SettingNotAccepted_WarnsThatPagesCannotBeInspected()
     {
-        _adapter.ReportRemoteInspectionOnce(enabled: true, applied: false);
+        _platform.ReportRemoteInspectionOnce(enabled: true, applied: false);
 
-        _logger.Received(1).LogWarning(Arg.Any<string?>(), Arg.Any<object?[]>());
-        _logger.DidNotReceive().LogDebug(Arg.Any<string?>(), Arg.Any<object?[]>());
+        _logger.EntriesAt(LogEntryLevel.Warning).Should().HaveCount(1);
+        _logger.EntriesAt(LogEntryLevel.Debug).Should().BeEmpty();
     }
 }

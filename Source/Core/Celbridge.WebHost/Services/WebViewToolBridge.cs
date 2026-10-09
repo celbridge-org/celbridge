@@ -239,11 +239,22 @@ public partial class WebViewToolBridge : IWebViewToolBridge
             return reloadedFrame.Name;
         }
 
+        var wasContentReady = entry.IsContentReady;
         entry.NotifyContentLoading();
         try
         {
             await entry.View.ReloadAsync(clearCache);
             return TopFrame;
+        }
+        catch (NotSupportedException ex)
+        {
+            // The view refused before reloading, so the page that was showing is still there.
+            if (wasContentReady)
+            {
+                entry.NotifyContentReady();
+            }
+
+            return Result.Fail($"WebView reload is not supported for resource '{resource}': {ex.Message}");
         }
         catch (Exception ex)
         {
@@ -876,6 +887,18 @@ public partial class WebViewToolBridge : IWebViewToolBridge
         }
 
         public IWebView View { get; }
+
+        // True when the content-ready signal has arrived and no reload has failed since.
+        public bool IsContentReady
+        {
+            get
+            {
+                lock (_gate)
+                {
+                    return _readyTcs.Task.IsCompleted && _failureReason is null;
+                }
+            }
+        }
 
         public void NotifyContentReady()
         {

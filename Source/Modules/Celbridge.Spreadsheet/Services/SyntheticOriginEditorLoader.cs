@@ -17,16 +17,13 @@ public sealed class SyntheticOriginEditorLoader : ICustomEditorLoader
 
     private readonly IFileServer _fileServer;
     private readonly ILocalFileSystem _localFileSystem;
-    private readonly IWebViewAdapter _webViewAdapter;
 
     public SyntheticOriginEditorLoader(
         IFileServer fileServer,
-        ILocalFileSystem localFileSystem,
-        IWebViewAdapter webViewAdapter)
+        ILocalFileSystem localFileSystem)
     {
         _fileServer = fileServer;
         _localFileSystem = localFileSystem;
-        _webViewAdapter = webViewAdapter;
     }
 
     public bool CanLoad(PackageInfo package) => package.Name == SpreadsheetPackageName;
@@ -42,7 +39,7 @@ public sealed class SyntheticOriginEditorLoader : ICustomEditorLoader
         // heads (their virtual-host mapping serves the same content same-origin), but harmless there.
         _fileServer.RegisterCrossOriginReader($"http://{SyntheticHost}");
 
-        if (_webViewAdapter.SupportsVirtualHostMapping)
+        if (request.WebView.SupportsVirtualHostMapping)
         {
             // The Windows heads map the package folder to the synthetic-origin virtual host and navigate to it
             // over http. The licence validates on the hostname, not the scheme.

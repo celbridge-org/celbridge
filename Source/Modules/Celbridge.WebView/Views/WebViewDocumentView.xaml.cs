@@ -41,7 +41,6 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IWebViewFactory _webViewFactory;
     private readonly IWebViewService _webViewService;
-    private readonly IWebViewAdapter _webViewAdapter;
     private readonly IWebViewFocusRegistry _webViewFocusRegistry;
 
     private IEditorWebView? _webView;
@@ -93,7 +92,6 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
         _stringLocalizer = stringLocalizer;
         _webViewFactory = webViewFactory;
         _webViewService = webViewService;
-        _webViewAdapter = ServiceLocator.AcquireService<IWebViewAdapter>();
         _webViewFocusRegistry = ServiceLocator.AcquireService<IWebViewFocusRegistry>();
 
         ViewModel = serviceProvider.GetRequiredService<WebViewDocumentViewModel>();
@@ -356,7 +354,6 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
     // The load diagnostics shared with the custom editor controller: the surface a load runs against, and
     // the probe of what a completed navigation actually produced.
     private WebViewLoadDiagnostics Diagnostics => _diagnostics ??= new WebViewLoadDiagnostics(
-        _webViewAdapter,
         _serviceProvider.GetRequiredService<IFeatureFlags>(),
         _logger);
 
@@ -1031,8 +1028,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
     // live, and its backend has no find UI of its own (the Windows Chromium heads do, so they report false
     // and keep their built-in bar).
     public override bool CanFind => ViewModel.IsPageOnScreen
-        && !_webViewAdapter.ProvidesBuiltInFind
-        && _webView is not null;
+        && _webView is not null
+        && !_webView.ProvidesBuiltInFind;
 
     public override bool TryBeginFind()
     {

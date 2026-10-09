@@ -87,19 +87,21 @@ public static partial class MacOSWebViewInterop
 
     private static readonly IntPtr RtldDefault = new(-2);
 
-    // Single snapshot in flight at a time: snapshots are serialized through the command queue and run on
-    // the main thread, so a second concurrent snapshot would clobber this field.
+    // One global block answers every snapshot, so one snapshot is in flight at a time. The capture awaits
+    // WebKit's callback on the main thread, so a second call can arrive meanwhile. It waits at the gate, rather
+    // than replacing this field and taking the first call's completion.
+    private static readonly SemaphoreSlim _snapshotGate = new(1, 1);
     private static TaskCompletionSource<IntPtr>? _snapshotCompletion;
     private static IntPtr _snapshotBlock;
 
     // Single find in flight at a time. Find runs on the main thread and completes near-instantly, and the
     // host find bar issues one call per keystroke or step, so a fresh call simply supersedes the previous
-    // callback (last find wins), matching the single-in-flight snapshot pattern above.
+    // callback (last find wins).
     private static Action<bool>? _findCompletionCallback;
     private static IntPtr _findBlock;
 
-    // Single clear in flight at a time: the clear is application-wide and runs from the command queue,
-    // matching the single-in-flight snapshot pattern above.
+    // One clear in flight at a time, guarded as the snapshot is.
+    private static readonly SemaphoreSlim _clearBrowsingDataGate = new(1, 1);
     private static TaskCompletionSource? _clearBrowsingDataCompletion;
     private static IntPtr _clearBrowsingDataBlock;
 
@@ -624,15 +626,6 @@ public static partial class MacOSWebViewInterop
     }
 
     /// <summary>
-    /// Calls -[WKWebView stopLoading], the macOS replacement for the unimplemented CoreWebView2.Stop().
-    /// Unlike a window.stop() fallback this also cancels a navigation that has not yet produced a document.
-    /// </summary>
-    public static void StopLoading(IntPtr webView)
-    {
-        SendMessage(webView, GetSelector("stopLoading"));
-    }
-
-    /// <summary>
     /// Sets the size of the native view's frame, which is what the page reads as its viewport, holding the
     /// origin Uno arranged it at.
     /// </summary>
@@ -772,6 +765,19 @@ public static partial class MacOSWebViewInterop
     /// displays.
     /// </summary>
     public static async Task<MacWebViewSnapshot?> TakeSnapshotAsync(IntPtr webView, MacSnapshotRequest request)
+    {
+        await _snapshotGate.WaitAsync();
+        try
+        {
+            return await TakeOneSnapshotAsync(webView, request);
+        }
+        finally
+        {
+            _snapshotGate.Release();
+        }
+    }
+
+    private static async Task<MacWebViewSnapshot?> TakeOneSnapshotAsync(IntPtr webView, MacSnapshotRequest request)
     {
         _snapshotCompletion = new TaskCompletionSource<IntPtr>();
         var completionBlock = EnsureSnapshotBlock();
@@ -946,6 +952,19 @@ public static partial class MacOSWebViewInterop
     /// within the timeout.
     /// </summary>
     public static async Task<bool> ClearBrowsingDataAsync()
+    {
+        await _clearBrowsingDataGate.WaitAsync();
+        try
+        {
+            return await ClearBrowsingDataOnceAsync();
+        }
+        finally
+        {
+            _clearBrowsingDataGate.Release();
+        }
+    }
+
+    private static async Task<bool> ClearBrowsingDataOnceAsync()
     {
         var dataStoreClass = GetClass("WKWebsiteDataStore");
         if (dataStoreClass == IntPtr.Zero)

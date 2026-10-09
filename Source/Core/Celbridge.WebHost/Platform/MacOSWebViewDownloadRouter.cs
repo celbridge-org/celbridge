@@ -33,11 +33,14 @@ internal sealed class MacOSWebViewDownloadRouter : IMacOSDownloadListener
 
     private DispatcherQueueTimer? _progressTimer;
 
-    public MacOSWebViewDownloadRouter()
+    public MacOSWebViewDownloadRouter(
+        ILogger<MacOSWebViewDownloadRouter> logger,
+        ILocalizerService localizerService,
+        IDownloadService downloadService)
     {
-        _logger = ServiceLocator.AcquireService<ILogger<MacOSWebViewDownloadRouter>>();
-        _localizerService = ServiceLocator.AcquireService<ILocalizerService>();
-        _downloadService = ServiceLocator.AcquireService<IDownloadService>();
+        _logger = logger;
+        _localizerService = localizerService;
+        _downloadService = downloadService;
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
     }
 

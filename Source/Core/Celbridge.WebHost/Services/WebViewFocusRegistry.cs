@@ -30,7 +30,6 @@ internal sealed class WebViewFocusRegistration : IFocusSurface
 internal class WebViewFocusRegistry : IWebViewFocusRegistry
 {
     private readonly IFocusService _focusService;
-    private readonly IWebViewAdapter _webViewAdapter;
     private readonly IWebViewFocusMonitor _webViewFocusMonitor;
     private readonly IMessengerService _messengerService;
     private readonly IWebSurfaceMessageDispatcher _messageDispatcher;
@@ -46,10 +45,10 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
     // another surface or panel (via the wrapped release callback in Report), and when its view closes.
     private WebViewFocusRegistration? _focusedRegistration;
 
-    // The surfaces that already have the focus-lost script. It is installed once per surface, because a redock
+    // The views that already have the focus-lost script. It is installed once per view, because a redock
     // registers the same view again and a script cannot be removed on every head. Weak keys never keep a web
     // view alive.
-    private readonly ConditionalWeakTable<CoreWebView2, object> _surfacesWithFocusLostScript = new();
+    private readonly ConditionalWeakTable<WebViewBase, object> _surfacesWithFocusLostScript = new();
 
     // Whether the host window currently holds the keyboard. A page blurs both when focus moves to another
     // part of the application and when the whole window is deactivated, and only the first is focus leaving
@@ -65,9 +64,8 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
 
     // Reports the surface losing the keyboard, which the managed layer cannot see: on the packaged Windows
     // head the web content lives in its own child window, so a click on the caption or on any non-focusable
-    // region moves the keyboard off it without moving managed focus at all. Injected at document start
-    // through the adapter seam rather than carried by the client bundle, so a page we did not author reports
-    // its losses too.
+    // region moves the keyboard off it without moving managed focus at all. The view injects it at document
+    // start rather than the client bundle carrying it, so a page we did not author reports its losses too.
     //
     // Interpolated so the method names come from the same constants the host dispatches on: this script is a
     // third client of the web channel, and one written as a string literal is invisible to the contract tests
@@ -199,14 +197,12 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
 
     public WebViewFocusRegistry(
         IFocusService focusService,
-        IWebViewAdapter webViewAdapter,
         IWebViewFocusMonitor webViewFocusMonitor,
         IMessengerService messengerService,
         IWebSurfaceMessageDispatcher messageDispatcher,
         ILogger<WebViewFocusRegistry> logger)
     {
         _focusService = focusService;
-        _webViewAdapter = webViewAdapter;
         _webViewFocusMonitor = webViewFocusMonitor;
         _messengerService = messengerService;
         _messageDispatcher = messageDispatcher;
@@ -302,12 +298,13 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         // It arrives over the message bus, which the surface joins here for as long as it is registered.
         _messageDispatcher.Attach(view);
 
-        coreWebView.NavigationCompleted += OnNavigationCompleted;
+        view.NavigationCompleted += OnNavigationCompleted;
 
-        if (!_surfacesWithFocusLostScript.TryGetValue(coreWebView, out _))
+        if (view is WebViewBase webViewBase &&
+            !_surfacesWithFocusLostScript.TryGetValue(webViewBase, out _))
         {
-            _surfacesWithFocusLostScript.Add(coreWebView, new object());
-            _ = InstallFocusLostScriptAsync(coreWebView);
+            _surfacesWithFocusLostScript.Add(webViewBase, new object());
+            _ = InstallFocusLostScriptAsync(webViewBase);
         }
     }
 
@@ -400,16 +397,16 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         }
     }
 
-    private async Task InstallFocusLostScriptAsync(CoreWebView2 coreWebView)
+    private async Task InstallFocusLostScriptAsync(WebViewBase view)
     {
         try
         {
-            await _webViewAdapter.InstallDocumentStartScriptAsync(coreWebView, FocusLostScript);
+            await view.InstallDocumentStartScriptAsync(FocusLostScript);
 
             // Document-start injection reaches the next navigation, not the current one, and a surface
             // registers once its content has already loaded. Run the listener against the document showing
             // now as well; installing twice is a no-op.
-            await _webViewAdapter.ReinjectDocumentStartScriptAsync(coreWebView, FocusLostScript);
+            await view.RerunDocumentStartScriptAsync(FocusLostScript);
         }
         catch (Exception ex)
         {
@@ -420,11 +417,16 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
     // Document-start injection is unavailable on the Windows Skia head, which re-delivers after each
     // navigation instead. The listener guards against installing twice, so re-delivery is a no-op on the
     // heads whose injected script already survived the navigation.
-    private async void OnNavigationCompleted(CoreWebView2 sender, CoreWebView2NavigationCompletedEventArgs args)
+    private async void OnNavigationCompleted(object? sender, WebNavigationCompletedEventArgs args)
     {
+        if (sender is not WebViewBase view)
+        {
+            return;
+        }
+
         try
         {
-            await _webViewAdapter.ReinjectDocumentStartScriptAsync(sender, FocusLostScript);
+            await view.RerunDocumentStartScriptAsync(FocusLostScript);
         }
         catch (Exception ex)
         {
@@ -439,13 +441,13 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
     {
         var webView = GetControl(view);
         if (webView is null ||
-            GetCoreWebView2(view) is not CoreWebView2 coreWebView)
+            GetCoreWebView2(view) is null)
         {
             return;
         }
 
         webView.GotFocus -= OnWebViewGotFocus;
-        coreWebView.NavigationCompleted -= OnNavigationCompleted;
+        view.NavigationCompleted -= OnNavigationCompleted;
 
         _messageDispatcher.Detach(view);
     }
@@ -653,15 +655,15 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
 
         _logger.LogTrace("Applying platform focus to web surface {Surface}", registration.SurfaceName);
 
-        var webView = GetControl(registration.View);
-        if (webView is null)
+        if (registration.View is not WebViewBase view ||
+            view.Control is null)
         {
             return;
         }
 
         // Keyboard focus only: no report (app-level focus state has not changed) and no DOM-side grant
         // (the page's caret is exactly where the user put it and must not move).
-        _webViewAdapter.FocusWebView(webView);
+        view.FocusPage();
     }
 
     // Whether keyboard focus is currently on this surface's WebView control. The focus manager is asked for
