@@ -10,6 +10,7 @@ import celbridge from '/assets/celbridge-client/celbridge.js';
 import { ContentLoadedReason } from '/assets/celbridge-client/api/document-api.js';
 import { isWindows } from '/assets/celbridge-client/platform.js';
 import { log } from './logger.js';
+import { modelUri, resourcePath } from './typescript-project.js';
 
 // The smallest width and height, in pixels, at which the editor counts as laid out. Monaco lays out a
 // collapsed editor at 5 by 5.
@@ -106,6 +107,10 @@ export class EditorController {
      */
     refreshEditAvailability() {
         this.#notifyEditAvailability();
+    }
+
+    getModel() {
+        return this.#editor ? this.#editor.getModel() : null;
     }
 
     setLanguage(language) {
@@ -542,6 +547,7 @@ export class EditorController {
         await celbridge.initializeDocument({
             onContent: async (content, metadata) => {
                 log('editor: initial content received', { length: content ? content.length : 0 });
+                this.#useModelForResource(metadata?.resourceKey);
                 if (content) {
                     this.#editor.setValue(content);
                 }
@@ -758,6 +764,29 @@ export class EditorController {
             // Focus the editor to make the cursor visible
             this.#editor.focus();
         });
+    }
+
+    // Replaces the editor's anonymous model with one named by the document's file:/// path, before any content
+    // arrives, so the TypeScript worker resolves the document's relative imports against its folder. The
+    // model keeps that name after a rename or a move.
+    #useModelForResource(resourceKey) {
+        const path = resourcePath(resourceKey);
+        if (!path || typeof monaco.editor.createModel !== 'function') {
+            return;
+        }
+
+        const previousModel = this.#editor.getModel();
+        const uri = modelUri(path);
+        if (previousModel?.uri?.toString() === uri.toString()) {
+            return;
+        }
+
+        const model = monaco.editor.createModel('', previousModel?.getLanguageId?.() ?? 'plaintext', uri);
+        this.#editor.setModel(model);
+        previousModel?.dispose();
+
+        this.#setupLineEndings();
+        this.#setupContentChangeListener();
     }
 
     #markSaved() {
