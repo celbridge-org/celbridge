@@ -1,6 +1,8 @@
 // Adapted from the VS Code Dark+ and Light+ color schemes
 // https://github.com/microsoft/vscode/blob/main/extensions/theme-defaults/themes/dark_plus.json
 // https://github.com/microsoft/vscode/blob/main/extensions/theme-defaults/themes/light_plus.json
+// The ANSI colors are VS Code's terminal defaults.
+// https://github.com/microsoft/vscode/blob/main/src/vs/workbench/contrib/terminal/common/terminalColorRegistry.ts
 
 const VSCodeDarkPlus = {
     foreground: '#D4D4D4',
@@ -10,20 +12,20 @@ const VSCodeDarkPlus = {
 
     black: '#000000',
     red: '#cd3131',
-    green: '#6a9955',
-    yellow: '#CE9178',
+    green: '#0dbc79',
+    yellow: '#e5e510',
     blue: '#2472c8',
-    magenta: '#C586C0',
+    magenta: '#bc3fbc',
     cyan: '#11a8cd',
     white: '#e5e5e5',
 
     brightBlack: '#666666',
     brightRed: '#f14c4c',
-    brightGreen: '#b5cea8',
-    brightYellow: '#DCDCAA',
-    brightBlue: '#569cd6',
-    brightMagenta: '#daadd6',
-    brightCyan: '#9cdcfe',
+    brightGreen: '#23d18b',
+    brightYellow: '#f5f543',
+    brightBlue: '#3b8eea',
+    brightMagenta: '#d670d6',
+    brightCyan: '#29b8db',
     brightWhite: '#e5e5e5'
 };
 
@@ -34,22 +36,22 @@ const VSCodeLightPlus = {
     selectionBackground: 'rgba(0,0,0,0.13)', // subtle dark highlight
 
     black: '#000000',
-    red: '#e51400',
-    green: '#0f9d58',
-    yellow: '#b36b00',
+    red: '#cd3131',
+    green: '#107c10',
+    yellow: '#949800',
     blue: '#0451a5',
-    magenta: '#a315a8',
-    cyan: '#008cba',
-    white: '#ffffff',
+    magenta: '#bc05bc',
+    cyan: '#0598bc',
+    white: '#555555',
 
     brightBlack: '#666666',
     brightRed: '#f14c4c',
-    brightGreen: '#89d88b',
-    brightYellow: '#ffea00',
-    brightBlue: '#4e8ae9',
-    brightMagenta: '#d16abc',
-    brightCyan: '#9cdcfe',
-    brightWhite: '#f7f7f7'
+    brightGreen: '#14ce14',
+    brightYellow: '#b5ba00',
+    brightBlue: '#3b8eea',
+    brightMagenta: '#d670d6',
+    brightCyan: '#29b8db',
+    brightWhite: '#a5a5a5'
 };
 
 window.VSCodeTerminalThemes = {
