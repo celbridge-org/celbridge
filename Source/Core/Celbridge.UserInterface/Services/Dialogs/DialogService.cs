@@ -150,10 +150,10 @@ public class DialogService : IDialogService
         });
     }
 
-    // Logs and fails a request to show a dialog while another one is open. This should be unreachable. The command
-    // queue and the macOS menu bar are both held while a dialog is open, and a request made while a dialog is
-    // closing waits for it. This backstop turns anything that slips through into a diagnosable failure rather than
-    // a ContentDialog exception.
+    // Logs and fails a request to show a dialog while another one is open. The command queue and the macOS menu bar
+    // are both held while a dialog is open. A request made while a dialog is closing waits for it. A control behind
+    // a dialog can still be pressed before the dialog reaches the screen, and this refuses what that press asks for.
+    // Anything else that slips through becomes a diagnosable failure rather than a ContentDialog exception.
     private Result.FailureResult RefuseSecondDialog([CallerMemberName] string dialogName = "")
     {
         _logger.LogError("Cannot show dialog '{DialogName}' because another dialog is already open", dialogName);
@@ -187,6 +187,7 @@ public class DialogService : IDialogService
         var contentDialog = dialog as ContentDialog;
         if (contentDialog is not null)
         {
+            contentDialog.Opened += OnDialogOpened;
             contentDialog.Closing += OnDialogClosing;
         }
 
@@ -215,6 +216,7 @@ public class DialogService : IDialogService
 
             if (contentDialog is not null)
             {
+                contentDialog.Opened -= OnDialogOpened;
                 contentDialog.Closing -= OnDialogClosing;
             }
 
@@ -229,6 +231,12 @@ public class DialogService : IDialogService
             // Done last, so a waiting dialog opens only after the keyboard has been returned.
             dialogClosed.SetResult();
         }
+    }
+
+    private void OnDialogOpened(ContentDialog sender, ContentDialogOpenedEventArgs args)
+    {
+        // The factory's focus guard handles Opened first, so the dialog holds the keyboard by now.
+        _logger.LogDebug("Opened dialog '{DialogType}'", sender.GetType().Name);
     }
 
     private void OnDialogClosing(ContentDialog sender, ContentDialogClosingEventArgs args)
