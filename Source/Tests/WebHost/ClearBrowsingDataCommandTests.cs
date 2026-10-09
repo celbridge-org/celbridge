@@ -45,7 +45,7 @@ public class ClearBrowsingDataCommandTests
         var result = await CreateCommand().ExecuteAsync();
 
         result.IsSuccess.Should().BeTrue();
-        await _webViewFactory.DidNotReceive().AcquireAsync();
+        await _webViewFactory.DidNotReceive().AcquireAsync(Arg.Any<WebViewOptions>());
         await _webViewAdapter.Received(1).ClearBrowsingDataAsync(null);
     }
 

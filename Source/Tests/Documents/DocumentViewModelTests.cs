@@ -372,6 +372,45 @@ public class DocumentViewModelTests
         }
     }
 
+    [Test]
+    public async Task OnResourceChanged_DoesNotRaiseReload_WhenTheSavesOwnChangeArrivesBeforeTheSaveRecordsIt()
+    {
+        // The watcher reports the save's own write before the save has recorded the file's new size and time.
+        await File.WriteAllTextAsync(_tempFilePath, "content before the save");
+
+        var fileSystem = Substitute.For<IResourceFileSystem>();
+        fileSystem.GetInfoAsync(Arg.Any<ResourceKey>())
+            .Returns(call => _resourceFileSystem.GetInfoAsync(call.Arg<ResourceKey>()));
+        fileSystem.ReadAllTextAsync(Arg.Any<ResourceKey>())
+            .Returns(call => _resourceFileSystem.ReadAllTextAsync(call.Arg<ResourceKey>()));
+        fileSystem.WriteAllBytesAsync(Arg.Any<ResourceKey>(), Arg.Any<byte[]>())
+            .Returns(call => WriteThenReportAsync(call.Arg<ResourceKey>(), call.Arg<byte[]>()));
+
+        var savingVm = new TestDocumentViewModel(fileSystem);
+        savingVm.FileResource = new ResourceKey("test.md");
+        savingVm.FilePath = _tempFilePath;
+
+        var loadResult = await savingVm.LoadDocument();
+        loadResult.IsSuccess.Should().BeTrue();
+
+        var reloadRequested = false;
+        savingVm.ReloadRequested += (_, _) => reloadRequested = true;
+
+        var saveResult = await savingVm.SaveDocumentContent("content the save wrote, longer than before");
+        saveResult.IsSuccess.Should().BeTrue();
+
+        reloadRequested.Should().BeFalse();
+
+        savingVm.Cleanup();
+
+        async Task<Result> WriteThenReportAsync(ResourceKey resource, byte[] bytes)
+        {
+            var writeResult = await _resourceFileSystem.WriteAllBytesAsync(resource, bytes);
+            _messengerService.Send(new ResourceChangedMessage(resource));
+            return writeResult;
+        }
+    }
+
     /// <summary>
     /// Minimal test subclass that exposes DocumentViewModel base class functionality
     /// for testing text file operations and file-change monitoring.

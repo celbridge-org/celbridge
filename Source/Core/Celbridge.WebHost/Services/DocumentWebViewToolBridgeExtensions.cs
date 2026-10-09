@@ -1,161 +1,25 @@
-using Microsoft.UI.Dispatching;
-using Microsoft.Web.WebView2.Core;
-
 namespace Celbridge.WebHost;
 
 /// <summary>
-/// Registers a WebView2 with the tool bridge, marshalling its eval, reload, and
-/// screenshot calls onto the UI thread before delegating the per-platform work to
-/// the WebView adapter.
+/// Registers web views with the tool bridge.
 /// </summary>
 public static class DocumentWebViewToolBridgeExtensions
 {
-    // ~2 frames at 60fps. Content-ready can fire before the first paint commits,
-    // so this gives every capture a minimum of one frame of paint headroom.
-    private const int PaintBackstopMs = 50;
-
     /// <summary>
-    /// Registers a WebView2 with the tool bridge. Must be called from the UI
-    /// thread. The current DispatcherQueue is captured for the registration's
-    /// lifetime.
+    /// Registers a web view with the tool bridge under a resource. The bridge drops the view when it closes.
     /// </summary>
-    public static void RegisterWebView2(
+    public static void RegisterWebView(
         this IDocumentWebViewToolBridge bridge,
         ResourceKey resource,
-        WebView2 webView,
-        IWebViewAdapter webViewAdapter)
+        IWebView webView)
     {
-        var dispatcherQueue = DispatcherQueue.GetForCurrentThread()
-            ?? throw new InvalidOperationException(
-                "RegisterWebView2 must be called from a thread with a DispatcherQueue (typically the UI thread).");
-
-        var coreWebView2 = webView.CoreWebView2;
-
         bridge.Register(
             resource,
-            expression => DispatchEvalAsync(coreWebView2, dispatcherQueue, expression, webViewAdapter),
-            clearCache => DispatchReloadAsync(coreWebView2, dispatcherQueue, clearCache, webViewAdapter),
-            request => DispatchScreenshotAsync(webView, dispatcherQueue, request, webViewAdapter));
-    }
+            webView.EvalAsync,
+            webView.ReloadAsync,
+            webView.CaptureScreenshotAsync);
 
-    private static Task<string> DispatchEvalAsync(
-        CoreWebView2 coreWebView2,
-        DispatcherQueue dispatcherQueue,
-        string expression,
-        IWebViewAdapter webViewAdapter)
-    {
-        var tcs = new TaskCompletionSource<string>();
-
-        var enqueued = dispatcherQueue.TryEnqueue(async () =>
-        {
-            try
-            {
-                var result = await webViewAdapter.EvalAsync(coreWebView2, expression);
-                tcs.TrySetResult(result);
-            }
-            catch (Exception ex)
-            {
-                tcs.TrySetException(ex);
-            }
-        });
-
-        if (!enqueued)
-        {
-            tcs.TrySetException(new InvalidOperationException("Failed to dispatch eval to the UI thread"));
-        }
-
-        return tcs.Task;
-    }
-
-    private static Task DispatchReloadAsync(
-        CoreWebView2 coreWebView2,
-        DispatcherQueue dispatcherQueue,
-        bool clearCache,
-        IWebViewAdapter webViewAdapter)
-    {
-        var tcs = new TaskCompletionSource();
-
-        var enqueued = dispatcherQueue.TryEnqueue(async () =>
-        {
-            try
-            {
-                await webViewAdapter.ReloadAsync(coreWebView2, clearCache);
-                tcs.TrySetResult();
-            }
-            catch (Exception ex)
-            {
-                tcs.TrySetException(ex);
-            }
-        });
-
-        if (!enqueued)
-        {
-            tcs.TrySetException(new InvalidOperationException("Failed to dispatch reload to the UI thread"));
-        }
-
-        return tcs.Task;
-    }
-
-    private static Task<ScreenshotData> DispatchScreenshotAsync(
-        WebView2 webView,
-        DispatcherQueue dispatcherQueue,
-        ScreenshotRequest request,
-        IWebViewAdapter webViewAdapter)
-    {
-        var tcs = new TaskCompletionSource<ScreenshotData>();
-
-        var enqueued = dispatcherQueue.TryEnqueue(async () =>
-        {
-            try
-            {
-                // A tab that is not on screen is not drawn, so the capture would hang. Fail
-                // fast both before and after the settle delay.
-                if (!IsRenderableNow(webView))
-                {
-                    throw new InvalidOperationException(
-                        "Screenshot requires the target document to be on screen. Its tab is not " +
-                        "the one its section is showing, or its area is hidden, so it is not drawn. " +
-                        "Bring it to the front with document_activate before calling webview_screenshot.");
-                }
-
-                var totalSettleMs = PaintBackstopMs + request.SettleMs;
-                if (totalSettleMs > 0)
-                {
-                    await Task.Delay(totalSettleMs);
-                }
-
-                if (!IsRenderableNow(webView))
-                {
-                    throw new InvalidOperationException(
-                        "Screenshot target went off screen during the settle delay. " +
-                        "Bring the document tab to the front and retry.");
-                }
-
-                var data = await webViewAdapter.CaptureScreenshotAsync(webView, request);
-                tcs.TrySetResult(data);
-            }
-            catch (Exception ex)
-            {
-                tcs.TrySetException(ex);
-            }
-        });
-
-        if (!enqueued)
-        {
-            tcs.TrySetException(new InvalidOperationException("Failed to dispatch screenshot to the UI thread"));
-        }
-
-        return tcs.Task;
-    }
-
-    // True when the WebView2 is parented in the visual tree and visible. TabView
-    // unloads the tabs it is not showing, so IsLoaded going false is the signal that
-    // the renderer has paused and a screenshot cannot complete.
-    private static bool IsRenderableNow(WebView2 webView)
-    {
-        return webView.IsLoaded
-            && webView.Visibility == Microsoft.UI.Xaml.Visibility.Visible
-            && webView.ActualWidth > 0
-            && webView.ActualHeight > 0;
+        // A rename moves the registration, so the resource is read when the view closes.
+        webView.Closing += (sender, e) => bridge.Unregister(webView.Resource);
     }
 }

@@ -1,20 +1,18 @@
 namespace Celbridge.WebHost;
 
 /// <summary>
-/// Factory for acquiring WebView2 instances.
+/// Hands out web views. It creates some ahead of time, so a document can open without waiting for one.
 /// </summary>
 public interface IWebViewFactory
 {
     /// <summary>
-    /// Acquires a WebView2 instance from the pool.
-    /// If the pool is empty, a new instance will be created.
-    /// The returned WebView2 has CoreWebView2 initialized but has not navigated to any URL.
-    /// The caller is responsible for closing the WebView2 when done.
+    /// Returns a web view set up with the given options. The page is ready but has not navigated. The caller
+    /// owns the view and disposes it.
     /// </summary>
-    Task<WebView2> AcquireAsync();
+    Task<IEditorWebView> AcquireAsync(WebViewOptions options);
 
     /// <summary>
-    /// Shuts down the pool and disposes all WebView2 instances.
+    /// Closes the views created ahead of time. Views already handed out are left to their owners.
     /// </summary>
     void Shutdown();
 }

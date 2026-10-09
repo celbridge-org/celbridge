@@ -8,6 +8,25 @@ using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.WebHost;
 
+/// <summary>
+/// One registration of a web view. The focus service compares registrations by reference, so each one is a
+/// separate surface.
+/// </summary>
+internal sealed class WebViewFocusRegistration : IFocusSurface
+{
+    public WebViewFocusRegistration(IWebView view, WebViewFocusContext context)
+    {
+        View = view;
+        Context = context;
+    }
+
+    public IWebView View { get; }
+
+    public WebViewFocusContext Context { get; }
+
+    public string SurfaceName => View.Resource.ToString();
+}
+
 internal class WebViewFocusRegistry : IWebViewFocusRegistry
 {
     private readonly IFocusService _focusService;
@@ -17,19 +36,19 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
     private readonly IWebSurfaceMessageDispatcher _messageDispatcher;
     private readonly ILogger<WebViewFocusRegistry> _logger;
 
-    // Keyed by CoreWebView2, the stable surface identity shared with the native monitor. Accessed only on the UI
-    // thread: Register/Unregister run from view lifecycle, and every gain signal is marshalled to the UI thread
-    // before it reaches the registry.
-    private readonly Dictionary<CoreWebView2, WebViewFocusRegistration> _registrations = new();
+    // Used only on the UI thread. Views register and close there, and focus signals are marshalled there.
+    private readonly Dictionary<IWebView, WebViewFocusRegistration> _registrations = new();
+
+    // The views whose Closing event the registry has subscribed to.
+    private readonly HashSet<IWebView> _observedViews = new();
 
     // The surface whose focus report is current. Cleared when the focus service releases it in favour of
-    // another surface or panel (via the wrapped release callback in Report), and on Unregister.
+    // another surface or panel (via the wrapped release callback in Report), and when its view closes.
     private WebViewFocusRegistration? _focusedRegistration;
 
-    // Which surfaces already carry the focus-lost listener. Document-start scripts live as long as the
-    // CoreWebView2 and cannot be removed on every head, so installing once per surface rather than once per
-    // registration keeps a redock (which unregisters and re-registers a live surface) from stacking copies.
-    // Weak keys so tracking a surface never keeps its web view alive.
+    // The surfaces that already have the focus-lost script. It is installed once per surface, because a redock
+    // registers the same view again and a script cannot be removed on every head. Weak keys never keep a web
+    // view alive.
     private readonly ConditionalWeakTable<CoreWebView2, object> _surfacesWithFocusLostScript = new();
 
     // Whether the host window currently holds the keyboard. A page blurs both when focus moves to another
@@ -173,10 +192,10 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         })();
         """;
 
-    // A grant for a surface that had not registered yet, applied when that web view registers. A freshly
-    // opened document is activated before its web view finishes initializing. Dropped when the user moves
-    // focus elsewhere in the meantime, and when the web view is torn down before it ever registers.
-    private WebView2? _pendingGrant;
+    // A grant for a view that has not registered yet. It applies when the view registers, since a new document
+    // is activated before its web view is ready. It is dropped if the user moves focus elsewhere first, or if
+    // the view closes before registering.
+    private IWebView? _pendingGrant;
 
     public WebViewFocusRegistry(
         IFocusService focusService,
@@ -211,31 +230,61 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         _logger.LogDebug("Host window {Activation}", isActive ? "activated" : "deactivated");
     }
 
-    public void Register(WebViewFocusRegistration registration)
+    public void Register(IWebView view, WebViewFocusContext focusContext)
     {
-        var coreWebView = registration.WebView.CoreWebView2;
-        if (coreWebView is null)
-        {
-            _logger.LogWarning("Cannot register a web surface for focus tracking before its CoreWebView2 is ready");
-            return;
-        }
+        var registration = new WebViewFocusRegistration(view, focusContext);
+        var webView = GetControl(view);
 
-        // A pooled WebView reacquired for a new surface keeps its CoreWebView2, so drop the previous
-        // registration's subscriptions before replacing it.
+        // A redock registers a live view under a new focus context, as when a utility moves between the Utility
+        // Panel and a document tab. The keyboard never left the view, so the focus model follows it to the new
+        // panel.
         var replacesFocusedSurface = false;
-        if (_registrations.TryGetValue(coreWebView, out var previousRegistration))
+        if (_registrations.TryGetValue(view, out var previousRegistration))
         {
-            DetachSurfaceHandlers(registration.WebView, coreWebView);
-
-            // A live surface can be re-registered under a new contract without the user ever moving focus
-            // off it: docking a utility between the Utility Panel and a document tab re-points the same web
-            // view at a different panel. The keyboard never left, so the model has to follow the surface to
-            // its new panel rather than go on naming the old one.
+            DetachSurfaceHandlers(view);
             replacesFocusedSurface = ReferenceEquals(_focusedRegistration, previousRegistration);
         }
 
-        _registrations[coreWebView] = registration;
+        _registrations[view] = registration;
+        ObserveClosing(view);
 
+        if (webView is not null &&
+            GetCoreWebView2(view) is CoreWebView2 coreWebView)
+        {
+            AttachSurfaceHandlers(view, webView, coreWebView);
+        }
+
+        if (replacesFocusedSurface)
+        {
+            // Granted rather than merely reported: the new registration is a different surface identity to
+            // the focus service, so reporting it releases the old one, and releasing drops the page's caret.
+            // The grant puts it back, which is what a redock should leave behind anyway.
+            GrantFocus(view);
+            return;
+        }
+
+        if (!ReferenceEquals(_pendingGrant, view))
+        {
+            return;
+        }
+
+        _pendingGrant = null;
+
+        // The grant was issued for a panel the user has since moved away from, so applying it now would
+        // pull the keyboard back off whatever they turned to while the surface was initializing.
+        if (_focusService.FocusedPanel != focusContext.Panel)
+        {
+            _logger.LogDebug(
+                "Dropped a deferred focus grant: focus moved to {Panel} while the surface was initializing",
+                _focusService.FocusedPanel);
+            return;
+        }
+
+        GrantFocus(view);
+    }
+
+    private void AttachSurfaceHandlers(IWebView view, WebView2 webView, CoreWebView2 coreWebView)
+    {
         // Key forwarding checks which key a web view last received, so recording has to start before any web
         // view gets a key.
         if (OperatingSystem.IsMacOS())
@@ -245,13 +294,13 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
 
         // The managed GotFocus is the Windows gain signal and also fires for clicks on non-focusable content
         // that raise no DOM focus event. The native monitor is the macOS equivalent; a no-op elsewhere.
-        registration.WebView.GotFocus += OnWebViewGotFocus;
-        _webViewFocusMonitor.Register(coreWebView, () => OnNativeFocusSignal(coreWebView));
+        webView.GotFocus += OnWebViewGotFocus;
+        _webViewFocusMonitor.Register(coreWebView, () => OnNativeFocusSignal(view));
 
         // The focus-lost signal comes back through the page rather than either of the gain paths above,
         // because neither the managed nor the native layer observes the keyboard leaving the web content.
         // It arrives over the message bus, which the surface joins here for as long as it is registered.
-        _messageDispatcher.Attach(coreWebView, registration.GetSurfaceName);
+        _messageDispatcher.Attach(coreWebView, () => view.Resource.ToString());
 
         coreWebView.NavigationCompleted += OnNavigationCompleted;
 
@@ -260,78 +309,70 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
             _surfacesWithFocusLostScript.Add(coreWebView, new object());
             _ = InstallFocusLostScriptAsync(coreWebView);
         }
-
-        if (replacesFocusedSurface)
-        {
-            // Granted rather than merely reported: the new registration is a different surface identity to
-            // the focus service, so reporting it releases the old one, and releasing drops the page's caret.
-            // The grant puts it back, which is what a redock should leave behind anyway.
-            GrantFocus(registration.WebView);
-            return;
-        }
-
-        if (!ReferenceEquals(_pendingGrant, registration.WebView))
-        {
-            return;
-        }
-
-        _pendingGrant = null;
-
-        // The grant was issued for a panel the user has since moved away from, so applying it now would
-        // pull the keyboard back off whatever they turned to while the surface was initializing.
-        if (_focusService.FocusedPanel != registration.Panel)
-        {
-            _logger.LogDebug(
-                "Dropped a deferred focus grant: focus moved to {Panel} while the surface was initializing",
-                _focusService.FocusedPanel);
-            return;
-        }
-
-        GrantFocus(registration.WebView);
     }
 
-    public void Unregister(CoreWebView2 coreWebView)
+    // Subscribed once per view, however many times it registers.
+    private void ObserveClosing(IWebView view)
     {
-        if (!_registrations.Remove(coreWebView, out var registration))
+        if (_observedViews.Add(view))
+        {
+            view.Closing += OnViewClosing;
+        }
+    }
+
+    // Drops a closed view's registration.
+    private void OnViewClosing(object? sender, EventArgs e)
+    {
+        if (sender is not IWebView view)
         {
             return;
         }
 
-        // A web view torn down before a deferred grant reached it must not keep the intent alive: web views
-        // are pooled, so the same instance reacquired for another document would take the stale grant.
-        if (ReferenceEquals(_pendingGrant, registration.WebView))
+        view.Closing -= OnViewClosing;
+        _observedViews.Remove(view);
+
+        // A view can close before a deferred grant reaches it.
+        if (ReferenceEquals(_pendingGrant, view))
         {
             _pendingGrant = null;
         }
 
-        var torndownSurfaceHeldFocus = ReferenceEquals(_focusedRegistration, registration);
-        if (torndownSurfaceHeldFocus)
+        if (!_registrations.Remove(view, out var registration))
+        {
+            return;
+        }
+
+        var closedSurfaceHeldFocus = ReferenceEquals(_focusedRegistration, registration);
+        if (closedSurfaceHeldFocus)
         {
             _focusedRegistration = null;
         }
 
-        DetachSurfaceHandlers(registration.WebView, coreWebView);
-        _webViewFocusMonitor.Unregister(coreWebView);
+        DetachSurfaceHandlers(view);
 
-        if (torndownSurfaceHeldFocus)
+        if (GetCoreWebView2(view) is CoreWebView2 coreWebView)
+        {
+            _webViewFocusMonitor.Unregister(coreWebView);
+        }
+
+        if (closedSurfaceHeldFocus)
         {
             ClearFocusUnlessAnotherSurfaceClaims(registration);
         }
 
-        // Invalidate the edit context on teardown so a closed editor cannot leave the Edit menu enabled. The
+        // Invalidate the edit context on close so a closed editor cannot leave the Edit menu enabled. The
         // focus service keeps a newer target that has replaced this one.
-        _focusService.ClearEditTarget(registration.EditTarget);
+        _focusService.ClearEditTarget(registration.Context.EditTarget);
     }
 
-    public void GrantFocus(WebView2 webView)
+    public void GrantFocus(IWebView view)
     {
-        var coreWebView = webView.CoreWebView2;
-        if (coreWebView is null
-            || !_registrations.TryGetValue(coreWebView, out var registration))
+        if (!_registrations.TryGetValue(view, out var registration))
         {
-            // The surface is still initializing, so hold the intent until it registers. A later grant
-            // supersedes this one, so the surface the user last acted on is the one that takes focus.
-            _pendingGrant = webView;
+            // The view is still initializing, so hold the intent until it registers. A later grant supersedes
+            // this one, so the view the user last acted on is the one that takes focus.
+            _pendingGrant = view;
+            ObserveClosing(view);
             _logger.LogDebug("Focus granted to a web surface that has not registered yet; deferred until it does");
 
             return;
@@ -346,14 +387,14 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         // produces. The optional DOM-side focus then places the caret.
         Report(registration);
 
-        _ = registration.GrantDomFocus?.Invoke();
+        _ = registration.Context.GrantDomFocus?.Invoke();
     }
 
     private void OnWebViewGotFocus(object sender, RoutedEventArgs e)
     {
         if (sender is WebView2 webView
-            && webView.CoreWebView2 is not null
-            && _registrations.TryGetValue(webView.CoreWebView2, out var registration))
+            && WebViewBase.FromControl(webView) is WebViewBase view
+            && _registrations.TryGetValue(view, out var registration))
         {
             Report(registration);
         }
@@ -394,21 +435,39 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
     // Drops everything Register subscribed on the surface itself. The document-start script is deliberately
     // left in place: it cannot be removed on every head, and the surface is tracked so it is never installed
     // twice.
-    private void DetachSurfaceHandlers(WebView2 webView, CoreWebView2 coreWebView)
+    private void DetachSurfaceHandlers(IWebView view)
     {
+        var webView = GetControl(view);
+        if (webView is null ||
+            GetCoreWebView2(view) is not CoreWebView2 coreWebView)
+        {
+            return;
+        }
+
         webView.GotFocus -= OnWebViewGotFocus;
         coreWebView.NavigationCompleted -= OnNavigationCompleted;
 
         _messageDispatcher.Detach(coreWebView);
     }
 
-    // The surface holding the keyboard has been torn down, so nothing holds it any more. Deferred rather
-    // than applied here because closing a document activates the next one, which claims focus a step later:
-    // clearing now would take the caret straight back off it. If nothing has claimed by then, the focus model
-    // is left naming a panel whose surface is gone, and the focus indicator would show a caret nobody has.
+    // Null for a view without a control, as in a test. Such a view takes part in the focus model only.
+    private static WebView2? GetControl(IWebView view)
+    {
+        return (view as WebViewBase)?.Control;
+    }
+
+    private static CoreWebView2? GetCoreWebView2(IWebView view)
+    {
+        return (view as WebViewBase)?.CoreWebView2;
+    }
+
+    // The surface holding the keyboard has closed, so nothing holds it any more. Deferred rather than applied
+    // here because closing a document activates the next one, which claims focus a step later: clearing now
+    // would take the caret straight back off it. If nothing has claimed by then, the focus model is left naming
+    // a panel whose surface is gone, and the focus indicator would show a caret nobody has.
     private void ClearFocusUnlessAnotherSurfaceClaims(WebViewFocusRegistration registration)
     {
-        var dispatcherQueue = registration.WebView.DispatcherQueue;
+        var dispatcherQueue = GetControl(registration.View)?.DispatcherQueue;
         if (dispatcherQueue is null)
         {
             return;
@@ -430,7 +489,7 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
                     }
 
                     _logger.LogDebug(
-                        "Cleared focus after the focused web surface {Surface} was torn down",
+                        "Cleared focus after the focused web surface {Surface} closed",
                         registration.SurfaceName);
 
                     _focusService.ClearFocus();
@@ -439,9 +498,13 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
 
     private void OnFocusLostMessage(WebSurfaceMessage message)
     {
-        if (_registrations.TryGetValue(message.Surface, out var registration))
+        foreach (var registration in _registrations.Values)
         {
-            OnFocusLost(registration);
+            if (ReferenceEquals(GetCoreWebView2(registration.View), message.Surface))
+            {
+                OnFocusLost(registration);
+                return;
+            }
         }
     }
 
@@ -481,10 +544,16 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
             return;
         }
 
+        var dispatcherQueue = GetControl(registration.View)?.DispatcherQueue;
+        if (dispatcherQueue is null)
+        {
+            return;
+        }
+
         // Queued below the focus reconcile, which the resign that caused this blur queues at the same
         // priority and therefore ahead of it. Reading the settled state is what separates a blur the host
         // caused from one the user did.
-        registration.WebView.DispatcherQueue.TryEnqueue(
+        dispatcherQueue.TryEnqueue(
             Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
             () =>
             {
@@ -529,7 +598,7 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         // question has to be put to macOS itself: is that view the window's first responder? It has to be
         // asked because the host gives that up and takes it straight back whenever it moves focus anywhere,
         // and the page reports the gap in between as an ordinary blur.
-        var coreWebView = registration.WebView.CoreWebView2;
+        var coreWebView = GetCoreWebView2(registration.View);
         if (coreWebView is null)
         {
             return false;
@@ -544,10 +613,10 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         return Platform.MacOSWebViewInterop.IsWebViewFirstResponder(nativeHandle);
     }
 
-    private void OnNativeFocusSignal(CoreWebView2 coreWebView)
+    private void OnNativeFocusSignal(IWebView view)
     {
         // Arrives from the native click monitor on the UI thread when a click lands inside this surface.
-        if (!_registrations.TryGetValue(coreWebView, out var registration))
+        if (!_registrations.TryGetValue(view, out var registration))
         {
             return;
         }
@@ -565,15 +634,15 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
     public bool IsRegisteredWebSurface(DependencyObject element)
     {
         return element is WebView2 webView
-            && webView.CoreWebView2 is not null
-            && _registrations.ContainsKey(webView.CoreWebView2);
+            && WebViewBase.FromControl(webView) is WebViewBase view
+            && _registrations.ContainsKey(view);
     }
 
     public bool HasFocusedSurface => _focusedRegistration is not null;
 
-    public bool IsFocusedSurface(WebView2 webView)
+    public bool IsFocusedSurface(IWebView view)
     {
-        return ReferenceEquals(_focusedRegistration?.WebView, webView);
+        return ReferenceEquals(_focusedRegistration?.View, view);
     }
 
     public bool IsPressOnWebSurface => _webViewFocusMonitor.IsLastPressInWebView;
@@ -588,9 +657,15 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
 
         _logger.LogTrace("Applying platform focus to web surface {Surface}", registration.SurfaceName);
 
+        var webView = GetControl(registration.View);
+        if (webView is null)
+        {
+            return;
+        }
+
         // Keyboard focus only: no report (app-level focus state has not changed) and no DOM-side grant
         // (the page's caret is exactly where the user put it and must not move).
-        _webViewAdapter.FocusWebView(registration.WebView);
+        _webViewAdapter.FocusWebView(webView);
     }
 
     // Whether keyboard focus is currently on this surface's WebView control. The focus manager is asked for
@@ -599,7 +674,8 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
     // native view inside the control instead.
     private static bool HoldsManagedFocus(WebViewFocusRegistration registration)
     {
-        var xamlRoot = registration.WebView.XamlRoot;
+        var webView = GetControl(registration.View);
+        var xamlRoot = webView?.XamlRoot;
         if (xamlRoot is null)
         {
             return false;
@@ -607,7 +683,7 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
 
         var focusedElement = Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(xamlRoot);
 
-        return ReferenceEquals(focusedElement, registration.WebView);
+        return ReferenceEquals(focusedElement, webView);
     }
 
     public bool TryForwardKeyEvent(IntPtr nativeKeyEvent)
@@ -619,7 +695,7 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
             return false;
         }
 
-        var coreWebView = registration.WebView.CoreWebView2;
+        var coreWebView = GetCoreWebView2(registration.View);
         if (coreWebView is null)
         {
             return false;
@@ -651,7 +727,7 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         }
 
         // The edit target comes from the registration, so the key stays with the surface holding the keyboard.
-        if (registration.EditTarget.TryHandleTabKey(shift))
+        if (registration.Context.EditTarget.TryHandleTabKey(shift))
         {
             return true;
         }
@@ -661,7 +737,7 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
             return false;
         }
 
-        var coreWebView = registration.WebView.CoreWebView2;
+        var coreWebView = GetCoreWebView2(registration.View);
         if (coreWebView is null)
         {
             return true;
@@ -695,12 +771,12 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         // would leave the two driving each other without end.
         if (!wasAlreadyFocused)
         {
-            registration.OnFocusGained?.Invoke();
+            registration.Context.OnFocusGained?.Invoke();
         }
         Action releaseFocus = () => ReleaseSurface(registration);
         var claim = FocusClaim.FromWebSurface(
-            registration.Panel,
-            registration.EditTarget,
+            registration.Context.Panel,
+            registration.Context.EditTarget,
             registration,
             releaseFocus);
         _focusService.OnFocusReceived(claim);
@@ -723,6 +799,6 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
             _focusedRegistration = null;
         }
 
-        registration.ReleaseFocus();
+        registration.Context.ReleaseFocus();
     }
 }

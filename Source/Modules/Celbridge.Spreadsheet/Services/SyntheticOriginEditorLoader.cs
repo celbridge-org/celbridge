@@ -2,7 +2,6 @@ using System.Text.Json;
 using Celbridge.Packages;
 using Celbridge.Server;
 using Celbridge.WebHost;
-using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.Spreadsheet.Services;
 
@@ -47,28 +46,23 @@ public sealed class SyntheticOriginEditorLoader : ICustomEditorLoader
         {
             // The Windows heads map the package folder to the synthetic-origin virtual host and navigate to it
             // over http. The licence validates on the hostname, not the scheme.
-            request.WebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
-                SyntheticHost,
-                request.Package.PackageFolder,
-                CoreWebView2HostResourceAccessKind.Allow);
+            request.WebView.MapVirtualHost(SyntheticHost, request.Package.PackageFolder);
 
             // The virtual-host page is a faked origin and cannot derive the loopback socket URL from its own
             // location, so the full host channel URL is passed as a query parameter it reads synchronously. A
             // document-start global would be cleaner, but the Skia WebView2 does not implement that API.
             var hostChannelUrl = $"ws://127.0.0.1:{request.ServerPort}/ws/host?token={request.ConnectionToken}";
             var entryUrl = $"http://{SyntheticHost}/{request.EntryPoint}?__hostChannelUrl={Uri.EscapeDataString(hostChannelUrl)}";
-            request.WebView.CoreWebView2.Navigate(entryUrl);
+            request.WebView.Navigate(entryUrl);
             return;
         }
 
-        // The Skia heads create the WebView in place, so it is window-rooted and never re-parented: its
-        // context is stable and the page can be loaded directly.
         var html = await BuildSyntheticOriginHtmlAsync(request);
 
         // http (not https) origin so the cross-origin http loopback resource fetches are not blocked as mixed
         // content. The licence validates on the hostname, not the scheme.
         var syntheticOriginUrl = $"http://{SyntheticHost}/";
-        _webViewAdapter.LoadHtmlString(request.WebView.CoreWebView2, html, syntheticOriginUrl);
+        request.WebView.LoadHtmlString(html, syntheticOriginUrl);
     }
 
     /// <summary>

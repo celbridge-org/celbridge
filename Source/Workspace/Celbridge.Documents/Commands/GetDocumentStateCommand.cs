@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Utilities;
+using Celbridge.WebHost;
 using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Commands;
@@ -15,7 +16,7 @@ public class GetDocumentStateCommand : CommandBase, IGetDocumentStateCommand
             new[] { DocumentSection.MainLeft },
             Array.Empty<OpenDocumentInfo>(),
             new Dictionary<DocumentSection, ResourceKey>(),
-            new Dictionary<ResourceKey, DocumentHealth>(),
+            new Dictionary<ResourceKey, WebViewHealth>(),
             ResourceKey.Empty);
 
     public GetDocumentStateCommand(IWorkspaceWrapper workspaceWrapper)
@@ -45,11 +46,11 @@ public class GetDocumentStateCommand : CommandBase, IGetDocumentStateCommand
         }
 
         // Only documents with something to report, so a healthy workspace carries nothing.
-        var unhealthyDocuments = new Dictionary<ResourceKey, DocumentHealth>();
+        var unhealthyDocuments = new Dictionary<ResourceKey, WebViewHealth>();
         foreach (var openDocument in openDocuments)
         {
             var documentView = documentsPanel.GetDocumentView(openDocument.FileResource);
-            var health = documentView?.GetHealth() ?? DocumentHealth.Healthy;
+            var health = documentView?.GetHealth() ?? WebViewHealth.Healthy;
             if (!health.IsHealthy)
             {
                 unhealthyDocuments[openDocument.FileResource] = health;

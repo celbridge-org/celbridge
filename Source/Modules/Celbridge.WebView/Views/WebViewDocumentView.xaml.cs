@@ -45,18 +45,16 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
     private readonly IWebViewAdapter _webViewAdapter;
     private readonly IWebViewFocusRegistry _webViewFocusRegistry;
 
-    private WebView2? _webView;
+    private IEditorWebView? _webView;
 
-    // The WebView's accessible name, stored until the WebView is acquired.
+    // The web view's accessible name, stored until the web view is acquired.
     private string _accessibleName = string.Empty;
 
-    private int _processFailures;
     // Set on the first initialization attempt, so LoadContent and Loaded share a single run.
     private Task? _initializeWebViewTask;
-    private IWebViewDownloadHandler? _downloadHandler;
 
-    // Reports each address the page commits to, which is when the address bar follows the page.
-    private IDisposable? _navigationCommits;
+    // Set when the document closes. A web view that arrives after that is disposed straight away.
+    private bool _isClosed;
 
     // The section the settings reopen on, carried until the surface is built on first use.
     private string _settingsSectionKey = string.Empty;
@@ -194,9 +192,9 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
 
         // Paired with the completion below, so a page that never arrives can be told from one that arrived
         // and failed.
-        Diagnostics.LogNavigation("Navigating", Surface, destination.AbsoluteUri);
+        Diagnostics.LogNavigation("Navigating", _webView, destination.AbsoluteUri);
 
-        _webView.Source = destination;
+        _webView.Navigate(destination.AbsoluteUri);
     }
 
     private async void WebViewDocumentView_Loaded(object sender, RoutedEventArgs e)
@@ -208,8 +206,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
     }
 
     // Initialization runs once, from whichever of LoadContent and Loaded comes first. LoadContent is
-    // awaited by the open command, so the WebView and its webview_* tool bridge registration exist by
-    // the time document_open returns rather than whenever the tab happens to render.
+    // awaited by the open command, so the web view exists by the time document_open returns rather than
+    // whenever the tab happens to render.
     private async Task EnsureWebViewInitializedAsync()
     {
         _initializeWebViewTask ??= InitializeWebViewAsync();
@@ -223,61 +221,37 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
         // unobserved failure would crash the process rather than leaving an empty document.
         try
         {
-            _webView = await _webViewFactory.AcquireAsync();
-            AutomationProperties.SetName(_webView, _accessibleName);
-            AutomationProperties.SetAutomationId(_webView, FileResource.ToString());
+            var webView = await _webViewFactory.AcquireAsync(CreateWebViewOptions());
+            if (_isClosed)
+            {
+                webView.Dispose();
+                return;
+            }
 
-            // A page with no background of its own sits on a white canvas, as it does in a browser. The
-            // factory's transparent default would show the app behind it, which leaves the page's default
-            // black text on the dark theme.
-            _webView.DefaultBackgroundColor = Colors.White;
-
-            AppWebViewContainer.Children.Add(_webView);
+            _webView = webView;
+            webView.SetResource(FileResource);
+            webView.SetAccessibleName(_accessibleName);
 
             // Attach and detach are what a tab switch does to the surface, so both are logged with the state
             // they leave it in. A navigation that starts on its own after one is the page being reloaded.
-            _webView.Loaded += WebView_Loaded;
-            _webView.Unloaded += WebView_Unloaded;
+            webView.Attached += WebView_Attached;
+            webView.Detached += WebView_Detached;
+
+            webView.NavigationStarting += WebView_NavigationStarting;
+            webView.NavigationCommitted += WebView_NavigationCommitted;
+            webView.NavigationCompleted += WebView_NavigationCompleted;
+            webView.NewWindowRequested += WebView_NewWindowRequested;
+            webView.HistoryChanged += WebView_HistoryChanged;
+            webView.DownloadStarted += WebView_DownloadStarted;
+
+            webView.AttachTo(AppWebViewContainer);
 
             // An external page runs no client script, so there is no DOM focus to release or grant. The
             // registry's native click monitor tracks focus on the page instead.
-            RegisterWebSurfaceFocus(_webView, releaseFocus: () => { });
-
-            var devToolsEnabled = _webViewService.IsDevToolsFeatureEnabled();
-            _webViewAdapter.SetDevToolsEnabled(_webView.CoreWebView2, devToolsEnabled, FileResource.ResourceName);
-
-            // The page is browsed content rather than application chrome, so user zoom stays enabled.
-            _webViewAdapter.SetZoomControlEnabled(_webView.CoreWebView2, true);
-            // The macOS WKWebView default UA is otherwise flagged as an unsupported browser by some sites.
-            var environmentInfo = _serviceProvider.GetRequiredService<IAppEnvironment>().GetEnvironmentInfo();
-            _webViewAdapter.SetApplicationUserAgent(_webView.CoreWebView2, $"Celbridge/{environmentInfo.AppVersion}");
+            RegisterWebSurfaceFocus(webView, releaseFocus: () => { });
 
             // No host RPC channel is opened. The page is untrusted third-party content, and the native message
             // bus is unauthenticated, so a channel would let the page drive host RPC methods.
-
-            DetachDownloadHandler();
-            _downloadHandler = _webViewAdapter.AttachDownloadHandler(_webView.CoreWebView2);
-            _downloadHandler.DownloadStarted += CoreWebView2_DownloadStarted;
-
-            _navigationCommits?.Dispose();
-            _navigationCommits = _webViewAdapter.ObserveNavigationCommits(_webView.CoreWebView2, OnNavigationCommitted);
-
-            _webView.CoreWebView2.NewWindowRequested -= WebView_NewWindowRequested;
-            _webView.CoreWebView2.NewWindowRequested += WebView_NewWindowRequested;
-
-            _webView.CoreWebView2.HistoryChanged -= CoreWebView2_HistoryChanged;
-            _webView.CoreWebView2.HistoryChanged += CoreWebView2_HistoryChanged;
-
-            _webView.CoreWebView2.NavigationCompleted -= CoreWebView2_NavigationCompleted;
-            _webView.CoreWebView2.NavigationCompleted += CoreWebView2_NavigationCompleted;
-
-            _webView.CoreWebView2.NavigationStarting -= CoreWebView2_NavigationStarting;
-            _webView.CoreWebView2.NavigationStarting += CoreWebView2_NavigationStarting;
-
-            // Raised only by the packaged Windows head's WebView2. The Skia heads report a dead renderer
-            // through the web view adapter instead.
-            _webView.CoreWebView2.ProcessFailed -= CoreWebView2_ProcessFailed;
-            _webView.CoreWebView2.ProcessFailed += CoreWebView2_ProcessFailed;
 
             TryNavigate();
         }
@@ -288,55 +262,45 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
         }
     }
 
+    private WebViewOptions CreateWebViewOptions()
+    {
+        // The macOS WKWebView default UA is otherwise flagged as an unsupported browser by some sites.
+        var environmentInfo = _serviceProvider.GetRequiredService<IAppEnvironment>().GetEnvironmentInfo();
+
+        return new WebViewOptions
+        {
+            // A page with no background of its own sits on white, as in a browser. On a transparent view, the
+            // page's default black text would sit on the dark theme.
+            BackgroundColor = Colors.White,
+            IsDevToolsEnabled = _webViewService.IsDevToolsFeatureEnabled(),
+
+            // The page is browsed content rather than application chrome, so user zoom stays enabled.
+            IsZoomEnabled = true,
+            UserAgentToken = $"Celbridge/{environmentInfo.AppVersion}",
+        };
+    }
+
     /// <summary>
-    /// Tears down the WebView and its event handlers. Safe to call multiple times and from partially
-    /// initialized states.
+    /// Disposes the web view. Safe to call more than once, and before the web view exists.
     /// </summary>
     private void TeardownWebViewState()
     {
-        if (_webView?.CoreWebView2 is not null)
-        {
-            _webViewFocusRegistry.Unregister(_webView.CoreWebView2);
-
-            DetachDownloadHandler();
-
-            _navigationCommits?.Dispose();
-            _navigationCommits = null;
-
-            _webView.CoreWebView2.NewWindowRequested -= WebView_NewWindowRequested;
-            _webView.CoreWebView2.HistoryChanged -= CoreWebView2_HistoryChanged;
-            _webView.CoreWebView2.NavigationCompleted -= CoreWebView2_NavigationCompleted;
-            _webView.CoreWebView2.NavigationStarting -= CoreWebView2_NavigationStarting;
-            _webView.CoreWebView2.ProcessFailed -= CoreWebView2_ProcessFailed;
-        }
-
-        if (_webView is not null)
-        {
-            _webView.Loaded -= WebView_Loaded;
-            _webView.Unloaded -= WebView_Unloaded;
-
-            _webViewAdapter.CloseWebView(_webView, AppWebViewContainer);
-
-            _webView = null;
-        }
+        _webView?.Dispose();
+        _webView = null;
     }
 
-    private void CoreWebView2_HistoryChanged(object? sender, object e)
+    private void WebView_HistoryChanged(object? sender, EventArgs e)
     {
         UpdateNavigationState();
     }
 
-    private void CoreWebView2_ProcessFailed(object? sender, CoreWebView2ProcessFailedEventArgs e)
+    private void WebView_NavigationCompleted(object? sender, WebNavigationCompletedEventArgs e)
     {
-        _processFailures++;
+        if (sender is not IEditorWebView webView)
+        {
+            return;
+        }
 
-        _logger.LogError(
-            "WebView ProcessFailed: Kind={Kind}, Reason={Reason}, ExitCode={ExitCode}",
-            e.ProcessFailedKind, e.Reason, e.ExitCode);
-    }
-
-    private void CoreWebView2_NavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
-    {
         var outcome = ResolveNavigationOutcome(e, _isNavigationReplacedByDownload);
         _isNavigationReplacedByDownload = false;
 
@@ -344,15 +308,15 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
         // the page it left.
         if (outcome == NavigationOutcome.Failed)
         {
-            Diagnostics.LogNavigationFailed(Surface, ViewModel.NavigationDestination, e.WebErrorStatus);
+            Diagnostics.LogNavigationFailed(webView, ViewModel.NavigationDestination, e.WebErrorStatus);
         }
         else if (outcome == NavigationOutcome.Aborted)
         {
-            Diagnostics.LogNavigation("Navigation abandoned", Surface, ViewModel.NavigationDestination);
+            Diagnostics.LogNavigation("Navigation abandoned", webView, ViewModel.NavigationDestination);
         }
         else
         {
-            Diagnostics.LogNavigation("Navigation completed", Surface, ViewModel.CurrentUrl);
+            Diagnostics.LogNavigation("Navigation completed", webView, ViewModel.CurrentUrl);
         }
 
         ViewModel.NotifyNavigationCompleted(outcome);
@@ -361,7 +325,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
         // Runs after the navigation state settles so the probe reads the address the page committed to.
         if (e.IsSuccess)
         {
-            _ = ProbeLoadedContentAsync();
+            _ = ProbeLoadedContentAsync(webView);
         }
     }
 
@@ -372,7 +336,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
     // there the download is announced before the navigation it replaced ends, so that one is already known
     // to be abandoned.
     private static NavigationOutcome ResolveNavigationOutcome(
-        CoreWebView2NavigationCompletedEventArgs e,
+        WebNavigationCompletedEventArgs e,
         bool isReplacedByDownload)
     {
         if (e.IsSuccess)
@@ -397,9 +361,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
         _serviceProvider.GetRequiredService<IFeatureFlags>(),
         _logger);
 
-    private WebViewSurface Surface => new(FileResource.ToString(), _webView);
-
-    private async Task ProbeLoadedContentAsync()
+    private async Task ProbeLoadedContentAsync(IEditorWebView webView)
     {
         // The blank page a document rests on between addresses is empty by design.
         var probedUrl = ViewModel.CurrentUrl;
@@ -409,7 +371,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
             return;
         }
 
-        var probe = await Diagnostics.ProbeAsync(Surface);
+        var probe = await Diagnostics.ProbeAsync(webView);
         if (probe is null)
         {
             return;
@@ -423,7 +385,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
             return;
         }
 
-        Diagnostics.LogProbe(Surface, probedUrl, probe);
+        Diagnostics.LogProbe(webView, probedUrl, probe);
 
         if (probe.IsEmpty)
         {
@@ -433,49 +395,69 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
         }
     }
 
-    private void WebView_Loaded(object sender, RoutedEventArgs e)
+    private void WebView_Attached(object? sender, EventArgs e)
     {
-        _ = Diagnostics.LogSurfaceAsync("WebView attached", Surface);
+        if (sender is not IEditorWebView webView)
+        {
+            return;
+        }
+
+        _ = Diagnostics.LogSurfaceAsync("WebView attached", webView);
 
         // A document that loaded while detached raised no navigation events, so its completion was never
         // probed. Attach is the first moment the host hears from it again.
-        _ = ProbeLoadedContentAsync();
+        _ = ProbeLoadedContentAsync(webView);
     }
 
-    private void WebView_Unloaded(object sender, RoutedEventArgs e)
+    private void WebView_Detached(object? sender, EventArgs e)
     {
-        _ = Diagnostics.LogSurfaceAsync("WebView detached", Surface);
+        if (sender is not IEditorWebView webView)
+        {
+            return;
+        }
 
-        // Unloaded fires before Uno has taken the native view apart, so the state the surface is left in
-        // while the tab is away is only readable once that work has run.
+        _ = Diagnostics.LogSurfaceAsync("WebView detached", webView);
+
+        // Detach is raised before Uno takes the native view apart. The settled state is logged once that work
+        // has run.
         DispatcherQueue.TryEnqueue(
             Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
-            () => { _ = Diagnostics.LogSurfaceAsync("WebView detached, settled", Surface); });
+            () => { _ = Diagnostics.LogSurfaceAsync("WebView detached, settled", webView); });
     }
 
-    private void CoreWebView2_NavigationStarting(CoreWebView2 sender, CoreWebView2NavigationStartingEventArgs args)
+    private void WebView_NavigationStarting(object? sender, WebNavigationStartingEventArgs args)
     {
+        if (sender is not IEditorWebView webView)
+        {
+            return;
+        }
+
         // A start with no Navigating line before it is the page reloading on its own, which is what a
         // redirect looks like and what a re-attach must not.
-        Diagnostics.LogNavigation("Navigation starting", Surface, args.Uri);
+        Diagnostics.LogNavigation("Navigation starting", webView, args.Uri);
 
         _isNavigationReplacedByDownload = false;
 
-        ViewModel.NotifyNavigationStarted(args.Uri ?? string.Empty);
+        ViewModel.NotifyNavigationStarted(args.Uri);
     }
 
     // The address bar follows the page from here, as a browser's does: once a navigation commits, rather than
     // as it starts.
-    private void OnNavigationCommitted(string url)
+    private void WebView_NavigationCommitted(object? sender, string url)
     {
-        Diagnostics.LogNavigation("Navigation committed", Surface, url);
+        if (sender is not IEditorWebView webView)
+        {
+            return;
+        }
+
+        Diagnostics.LogNavigation("Navigation committed", webView, url);
 
         ViewModel.NotifyNavigationCommitted(url);
     }
 
     // A navigation whose response turned out to be an attachment is abandoned for the download, and the page
     // the document is showing stays on screen.
-    private void CoreWebView2_DownloadStarted(object? sender, EventArgs e)
+    private void WebView_DownloadStarted(object? sender, EventArgs e)
     {
         // Chromium has already ended the navigation by now. WebKit has not, and ends it with a failure. A
         // navigation that started while the view was detached reported no start, so this is not gated on
@@ -483,18 +465,6 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
         _isNavigationReplacedByDownload = true;
 
         ViewModel.NotifyDownloadStarted();
-    }
-
-    private void DetachDownloadHandler()
-    {
-        if (_downloadHandler is null)
-        {
-            return;
-        }
-
-        _downloadHandler.DownloadStarted -= CoreWebView2_DownloadStarted;
-        _downloadHandler.Detach();
-        _downloadHandler = null;
     }
 
     private void UpdateNavigationState()
@@ -528,7 +498,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
 
     private async void ReloadOrStopButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_webView?.CoreWebView2 is not CoreWebView2 coreWebView2)
+        var webView = _webView;
+        if (webView is null)
         {
             return;
         }
@@ -537,18 +508,15 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
         {
             if (ViewModel.IsNavigating)
             {
-                // Unlike the other navigation commands, Stop has no equivalent on the WebView2 control, and
-                // the CoreWebView2 member behind it is unimplemented on the Skia heads, so it goes through
-                // the adapter.
                 ViewModel.NotifyNavigationStopped();
-                await _webViewAdapter.StopAsync(coreWebView2);
+                await webView.StopAsync();
             }
             else
             {
                 // Reload acts on the page, not on the address box, so an uncommitted edit there is
                 // dropped rather than left standing over a page it does not name.
                 SyncAddressText();
-                await _webViewAdapter.ReloadAsync(coreWebView2, clearCache: true);
+                await webView.ReloadAsync(clearCache: true);
             }
         }
         catch (Exception ex)
@@ -877,11 +845,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
             return setResult;
         }
 
-        // A rename reuses this view, so the WebView's automation ID follows the resource.
-        if (_webView is not null)
-        {
-            AutomationProperties.SetAutomationId(_webView, FileResource.ToString());
-        }
+        // A rename reuses this view, so its web view follows the resource.
+        _webView?.SetResource(FileResource);
 
         return setResult;
     }
@@ -945,16 +910,9 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
         return JsonSerializer.Serialize(editorState, EditorStateSerializerOptions);
     }
 
-    public override DocumentHealth GetHealth()
+    public override WebViewHealth GetHealth()
     {
-        var coreWebView2 = _webView?.CoreWebView2;
-        if (coreWebView2 is null)
-        {
-            return new DocumentHealth(0, _processFailures);
-        }
-
-        var pageHealth = _webViewAdapter.GetPageHealth(coreWebView2);
-        return pageHealth with { ProcessFailures = pageHealth.ProcessFailures + _processFailures };
+        return _webView?.GetHealth() ?? WebViewHealth.Healthy;
     }
 
     public override async Task RestoreEditorStateAsync(string state)
@@ -999,20 +957,11 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
         ViewModel.ShowUrlBar = true;
     }
 
-    private void WebView_NewWindowRequested(CoreWebView2 sender, CoreWebView2NewWindowRequestedEventArgs args)
+    // A browser document has no tabs, so it opens the address itself, and Back returns. The URL bar button is
+    // the way to the system browser, which also keeps downloads in the project. The page asked for the window,
+    // so this counts as the page's own navigation.
+    private void WebView_NewWindowRequested(object? sender, string url)
     {
-        args.Handled = true;
-
-        var url = args.Uri;
-        if (string.IsNullOrEmpty(url))
-        {
-            return;
-        }
-
-        // A browser document has no tabs to open, so it goes there itself and Back returns. Leaving for
-        // the system browser is what the URL bar button is for, and taking a download with it would put
-        // the file outside the project. The page asked for the window, so it is followed as the page's own
-        // navigation.
         FollowPageNavigation(url);
     }
 
@@ -1021,10 +970,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
     public override void SetAccessibleName(string name)
     {
         _accessibleName = name;
-        if (_webView is not null)
-        {
-            AutomationProperties.SetName(_webView, name);
-        }
+        _webView?.SetAccessibleName(name);
     }
 
     public override void FocusDocument()
@@ -1087,7 +1033,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
     // and keep their built-in bar).
     public override bool CanFind => ViewModel.IsPageOnScreen
         && !_webViewAdapter.ProvidesBuiltInFind
-        && _webView?.CoreWebView2 is not null;
+        && _webView is not null;
 
     public override bool TryBeginFind()
     {
@@ -1113,34 +1059,25 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
 
     async Task IWebViewFindTarget.StartFindAsync(string term, FindOptions options)
     {
-        if (_webView?.CoreWebView2 is CoreWebView2 coreWebView2)
+        if (_webView is not null)
         {
-            await _webViewAdapter.StartFindAsync(coreWebView2, term, options);
+            await _webView.StartFindAsync(term, options);
         }
     }
 
     void IWebViewFindTarget.FindNext()
     {
-        if (_webView?.CoreWebView2 is CoreWebView2 coreWebView2)
-        {
-            _webViewAdapter.FindNext(coreWebView2);
-        }
+        _webView?.FindNext();
     }
 
     void IWebViewFindTarget.FindPrevious()
     {
-        if (_webView?.CoreWebView2 is CoreWebView2 coreWebView2)
-        {
-            _webViewAdapter.FindPrevious(coreWebView2);
-        }
+        _webView?.FindPrevious();
     }
 
     void IWebViewFindTarget.StopFind()
     {
-        if (_webView?.CoreWebView2 is CoreWebView2 coreWebView2)
-        {
-            _webViewAdapter.StopFind(coreWebView2);
-        }
+        _webView?.StopFind();
     }
 
     public override async Task PrepareToClose()
@@ -1148,6 +1085,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
         ViewModel.NavigateRequested -= ViewModel_NavigateRequested;
 
+        _isClosed = true;
         TeardownWebViewState();
 
         await base.PrepareToClose();

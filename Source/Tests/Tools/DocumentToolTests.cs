@@ -2,6 +2,7 @@ using System.Text.Json;
 using Celbridge.Commands;
 using Celbridge.Server;
 using Celbridge.Tools;
+using Celbridge.WebHost;
 using ModelContextProtocol.Protocol;
 
 namespace Celbridge.Tests.Tools;
@@ -55,7 +56,7 @@ public class DocumentToolTests
                 new(activeResource, new DocumentAddress(0, DocumentSection.MainLeft, 0), EditorId.Empty)
             },
             new Dictionary<DocumentSection, ResourceKey>(),
-            new Dictionary<ResourceKey, DocumentHealth>(),
+            new Dictionary<ResourceKey, WebViewHealth>(),
             activeResource);
         StubGetStateSnapshot(snapshot);
 
@@ -87,9 +88,9 @@ public class DocumentToolTests
                 new(resource, new DocumentAddress(0, DocumentSection.MainLeft, 0), EditorId.Empty)
             },
             new Dictionary<DocumentSection, ResourceKey>(),
-            new Dictionary<ResourceKey, DocumentHealth>
+            new Dictionary<ResourceKey, WebViewHealth>
             {
-                [resource] = new DocumentHealth(WakeFailures: 3, ProcessFailures: 1)
+                [resource] = new WebViewHealth(WakeFailures: 3, ProcessFailures: 1)
             },
             resource);
         StubGetStateSnapshot(snapshot);
@@ -123,7 +124,7 @@ public class DocumentToolTests
                 [DocumentSection.MainLeft] = activeResource,
                 [DocumentSection.MainRight] = otherResource
             },
-            new Dictionary<ResourceKey, DocumentHealth>(),
+            new Dictionary<ResourceKey, WebViewHealth>(),
             activeResource);
         StubGetStateSnapshot(snapshot);
 
@@ -159,7 +160,7 @@ public class DocumentToolTests
                 new(resource, new DocumentAddress(0, DocumentSection.MainLeft, 0), new EditorId("celbridge.html"))
             },
             new Dictionary<DocumentSection, ResourceKey>(),
-            new Dictionary<ResourceKey, DocumentHealth>(),
+            new Dictionary<ResourceKey, WebViewHealth>(),
             resource);
         StubGetStateSnapshot(snapshot);
 
@@ -181,7 +182,7 @@ public class DocumentToolTests
                 new(resource, new DocumentAddress(0, DocumentSection.MainLeft, 0), EditorId.Empty)
             },
             new Dictionary<DocumentSection, ResourceKey>(),
-            new Dictionary<ResourceKey, DocumentHealth>(),
+            new Dictionary<ResourceKey, WebViewHealth>(),
             resource);
         StubGetStateSnapshot(snapshot);
 
@@ -199,7 +200,7 @@ public class DocumentToolTests
             new List<DocumentSection> { DocumentSection.MainLeft },
             new List<OpenDocumentInfo>(),
             new Dictionary<DocumentSection, ResourceKey>(),
-            new Dictionary<ResourceKey, DocumentHealth>(),
+            new Dictionary<ResourceKey, WebViewHealth>(),
             ResourceKey.Empty);
         StubGetStateSnapshot(snapshot);
 

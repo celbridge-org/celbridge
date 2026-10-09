@@ -1,5 +1,3 @@
-using Celbridge.Documents;
-
 namespace Celbridge.WebHost.Services;
 
 /// <summary>
@@ -167,13 +165,13 @@ internal sealed class PageHealthTracker<TPage>
         }
     }
 
-    public DocumentHealth GetHealth(TPage page)
+    public WebViewHealth GetHealth(TPage page)
     {
         lock (_lock)
         {
             return _pages.TryGetValue(page, out var counters)
-                ? new DocumentHealth(counters.WakeFailures, counters.ProcessFailures)
-                : DocumentHealth.Healthy;
+                ? new WebViewHealth(counters.WakeFailures, counters.ProcessFailures)
+                : WebViewHealth.Healthy;
         }
     }
 }

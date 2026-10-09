@@ -34,6 +34,11 @@ public abstract partial class DocumentViewModel : ObservableObject
     private long _lastSavedFileSize;
     private DateTime? _lastSavedFileMtime;
 
+    // Set while a save writes the file and records its size and mtime. The watcher can report the save's own
+    // write in that window, so a change reported then is checked once the record is current.
+    private bool _isSaving;
+    private bool _hasChangeDuringSave;
+
     /// <summary>
     /// Marks the document as having unsaved changes and resets the save timer.
     /// </summary>
@@ -104,6 +109,17 @@ public abstract partial class DocumentViewModel : ObservableObject
             return;
         }
 
+        if (_isSaving)
+        {
+            _hasChangeDuringSave = true;
+            return;
+        }
+
+        await CheckForExternalChangeAsync();
+    }
+
+    private async Task CheckForExternalChangeAsync()
+    {
         // Self-events from our own writes match the cached size + mtime and are
         // ignored. Genuine external changes differ and proceed.
         if (await IsFileChangedExternallyAsync())
@@ -189,6 +205,28 @@ public abstract partial class DocumentViewModel : ObservableObject
             return Result.Ok();
         }
 
+        Result writeResult;
+        _isSaving = true;
+        try
+        {
+            writeResult = await WriteAndRecordAsync(bytes);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+
+        if (_hasChangeDuringSave)
+        {
+            _hasChangeDuringSave = false;
+            await CheckForExternalChangeAsync();
+        }
+
+        return writeResult;
+    }
+
+    private async Task<Result> WriteAndRecordAsync(byte[] bytes)
+    {
         var resourceFileSystem = GetFileSystem();
         var writeResult = await resourceFileSystem.WriteAllBytesAsync(FileResource, bytes);
         if (writeResult.IsFailure)
@@ -200,9 +238,8 @@ public abstract partial class DocumentViewModel : ObservableObject
 
         // Post-write interleave check: if the on-disk size disagrees with what
         // we wrote, an external writer slipped in between WriteAllBytesAsync
-        // returning and our cache refresh. Same-size interleaves slip past this
-        // check but get picked up by the watcher's own subsequent event (which
-        // will mtime-mismatch the cache and fire a reload via OnResourceChanged).
+        // returning and our cache refresh. An interleaved write of the same size
+        // is not detected.
         if (_lastSavedFileSize != bytes.Length)
         {
             _logger?.LogDebug($"External write interleaved with save for '{FileResource}', requesting reload");
@@ -304,10 +341,7 @@ public abstract partial class DocumentViewModel : ObservableObject
     /// Reads the current disk size + mtime and caches them as the new tracking
     /// baseline. Called after every save, and before every load or external
     /// reload reads the file, so the next watcher event for the same content
-    /// matches the cache and short-circuits. The body is effectively synchronous because GetInfoAsync
-    /// is a single stat call with no real awaits; this matters so the UI thread
-    /// cannot pump a watcher's ResourceChangedMessage between our write
-    /// returning and the cache becoming current.
+    /// matches the cache and short-circuits.
     /// </summary>
     public virtual async Task UpdateFileTrackingInfoAsync()
     {

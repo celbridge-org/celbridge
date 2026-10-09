@@ -26,7 +26,7 @@ internal sealed class LoopbackCustomEditorLoader : ICustomEditorLoader
     {
         var entryUrl = _fileServer.GetPackageUrl(request.PackageUrlName, request.EntryPoint);
         var navigationUrl = AppendConnectionToken(entryUrl, request.ConnectionToken);
-        request.WebView.CoreWebView2.Navigate(navigationUrl);
+        request.WebView.Navigate(navigationUrl);
 
         return Task.CompletedTask;
     }

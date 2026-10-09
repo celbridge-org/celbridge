@@ -28,12 +28,11 @@ public interface ICustomEditorLoader
 }
 
 /// <summary>
-/// The inputs a loader needs to place a custom editor's entry page into its WebView. The view has
-/// already created the control and brought up its CoreWebView2 before the loader runs. The page passes the
+/// The inputs a loader needs to load a custom editor's entry page into its web view. The page sends the
 /// connection token back when it opens its WebSocket to the host.
 /// </summary>
 public sealed record CustomEditorLoadRequest(
-    WebView2 WebView,
+    IEditorWebView WebView,
     PackageInfo Package,
     string PackageUrlName,
     string EntryPoint,

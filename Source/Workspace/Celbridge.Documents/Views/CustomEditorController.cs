@@ -19,7 +19,6 @@ using Celbridge.WebHost;
 using Celbridge.WebHost.Services;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
-using Microsoft.Web.WebView2.Core;
 using Windows.ApplicationModel.DataTransfer;
 
 namespace Celbridge.Documents.Views;
@@ -31,7 +30,7 @@ namespace Celbridge.Documents.Views;
 public sealed record CustomEditorFocusContext(FocusPanelId Panel, Action OnFocusGained);
 
 /// <summary>
-/// Drives a custom (WebView-based) editor: it acquires and tears down the WebView, owns the JSON-RPC
+/// Drives a custom (WebView-based) editor: it acquires and disposes its web view, owns the JSON-RPC
 /// host channel and its RPC targets, mirrors app/view state, bridges the webview_* tools, coordinates saves
 /// and external reloads, and implements the edit-target and link-routing behaviour.
 /// </summary>
@@ -62,8 +61,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
     private readonly CustomDocumentViewModel _viewModel;
 
-    // The container the WebView currently lives in, and the focus identity it reports through. Both are
-    // reassigned by Redock when a utility moves between areas. The WebView is moved, never rebuilt.
+    // The container the web view currently lives in, and the focus identity it reports through. Both are
+    // reassigned by Redock when a utility moves between areas. The web view is moved, never rebuilt.
     private Panel _webViewContainer;
     private CustomEditorFocusContext _focusContext;
 
@@ -92,7 +91,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     // This editor's own state store, mirrored to its WebView over the viewState channel.
     private IStateStore? _viewState;
     private IDisposable? _viewStateConnection;
-    private bool _isSized;
+
+    // The presented size, kept until the web view exists.
     private double _presentedWidth;
     private double _presentedHeight;
 
@@ -132,36 +132,26 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     // flow returns only when the WebView and host are ready for RPCs.
     private TaskCompletionSource<Result>? _initTcs;
 
-    // The WebView2 control, acquired from the factory.
-    private WebView2? WebView { get; set; }
+    // Set by Teardown. A web view that arrives after that is disposed straight away.
+    private bool _isTornDown;
 
-    // The WebView's accessible name, stored until the WebView is acquired.
+    // The web view the editor runs in, acquired from the factory.
+    private IEditorWebView? _webView;
+
+    // The web view's accessible name, stored until the web view is acquired.
     private string _accessibleName = string.Empty;
 
+    // The editor's own origin. Every other navigation is cancelled.
+    private string _allowedNavigationPrefix = string.Empty;
+
     private WebViewLoadDiagnostics? _diagnostics;
-
-    // Routes the page's downloads through the download service, so a file a package editor offers lands
-    // in the project rather than in the operating system's Downloads folder.
-    private IWebViewDownloadHandler? _downloadHandler;
-
-    // Counted for the lifetime of the controller, so a page that has died and recovered still reports it.
-    private int _processFailures;
 
     // The Celbridge host for JSON-RPC communication with the WebView.
     private CelbridgeHost? Host { get; set; }
 
-    public DocumentHealth GetHealth()
+    public WebViewHealth GetHealth()
     {
-        var coreWebView2 = WebView?.CoreWebView2;
-        if (coreWebView2 is null)
-        {
-            return new DocumentHealth(0, _processFailures);
-        }
-
-        // The adapter observes the page in the WebView, this controller observes the control in front of it,
-        // and each head reports through whichever of the two works there.
-        var pageHealth = _webViewAdapter.GetPageHealth(coreWebView2);
-        return pageHealth with { ProcessFailures = pageHealth.ProcessFailures + _processFailures };
+        return _webView?.GetHealth() ?? WebViewHealth.Healthy;
     }
 
     /// <summary>
@@ -239,30 +229,23 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     }
 
     /// <summary>
-    /// Sets the WebView's accessible name, now or once the WebView is acquired.
+    /// Sets the web view's accessible name, now or once the web view is acquired.
     /// </summary>
     public void SetAccessibleName(string name)
     {
         _accessibleName = name;
-        if (WebView is not null)
-        {
-            AutomationProperties.SetName(WebView, name);
-        }
+        _webView?.SetAccessibleName(name);
     }
 
     /// <summary>
-    /// Moves the WebView tool bridge registration and the WebView's automation ID onto the view model's current
-    /// file resource. Called after a rename, which reuses this controller and its WebView rather than building a
-    /// new one.
+    /// Moves the web view and its tool bridge registration to the view model's current file resource. A rename
+    /// keeps this controller and its web view, so it calls this.
     /// </summary>
     public void RekeyToolBridgeRegistration()
     {
         var newResource = _viewModel.FileResource;
 
-        if (WebView is not null)
-        {
-            AutomationProperties.SetAutomationId(WebView, newResource.ToString());
-        }
+        _webView?.SetResource(newResource);
 
         if (_toolBridge is null)
         {
@@ -412,23 +395,33 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
         var editorLoader = ResolveCustomEditorLoader(_contribution.Package);
 
-        // The factory hands back a control with CoreWebView2 already live (pre-warmed where possible), so
-        // the host is configured immediately and init is signalled once the editor's navigation has started.
+        // The factory returns a view whose page is ready, often prewarmed. The host is configured at once, and
+        // init completes when the editor's navigation starts.
         try
         {
-            WebView = await _webViewFactory.AcquireAsync();
-            AutomationProperties.SetName(WebView, _accessibleName);
-            AutomationProperties.SetAutomationId(WebView, _viewModel.FileResource.ToString());
-            _webViewContainer.Children.Add(WebView);
+            var webView = await _webViewFactory.AcquireAsync(CreateWebViewOptions());
+            if (_isTornDown)
+            {
+                webView.Dispose();
+                _initTcs!.TrySetResult(Result.Fail($"The editor closed before its web view was ready: {_contribution.Package.Name}"));
+                return;
+            }
 
-            // Attach and detach are what a dock or tab switch does to the surface, so both are logged with
-            // the state they leave it in.
-            WebView.Loaded += WebView_Loaded;
-            WebView.Unloaded += WebView_Unloaded;
-            WebView.SizeChanged += WebView_SizeChanged;
+            _webView = webView;
+            webView.SetResource(_viewModel.FileResource);
+            webView.SetAccessibleName(_accessibleName);
 
-            // The section reports its size before a view exists to take it, so it is applied here too.
-            ApplyViewportSize();
+            // Attach and detach are what a dock or tab switch does to the surface, so both are logged with the
+            // state they leave it in.
+            webView.Attached += WebView_Attached;
+            webView.Detached += WebView_Detached;
+            webView.ViewportSized += WebView_ViewportSized;
+            webView.IsSizedChanged += WebView_IsSizedChanged;
+
+            webView.AttachTo(_webViewContainer);
+
+            // The section may have reported its size before the view existed.
+            webView.SetPresentedSize(_presentedWidth, _presentedHeight);
 
             await ConfigureWebViewHostAsync(editorLoader);
 
@@ -444,39 +437,31 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         }
     }
 
-    // Names the page the way the document tab labels it: a utility by its display name, a document by its
-    // file name. A utility's resource key carries its package and extension, which reads as machine text.
-    private string GetDevToolsTargetName()
+    private WebViewOptions CreateWebViewOptions()
     {
         Guard.IsNotNull(_contribution);
-
-        if (!_contribution.IsUtility)
-        {
-            return _viewModel.FileResource.ResourceName;
-        }
-
-        var localizationService = _serviceProvider.GetRequiredService<IPackageLocalizationService>();
-
-        return PackageDisplayText.Resolve(localizationService, _contribution.Package, _contribution.DisplayName);
-    }
-
-    // Configures a live WebView (CoreWebView2 ready): host channel, RPC targets, tool bridge, navigation gate,
-    // and the editor load.
-    private async Task ConfigureWebViewHostAsync(ICustomEditorLoader editorLoader)
-    {
-        Guard.IsNotNull(_contribution);
-        Guard.IsNotNull(WebView);
 
         // DevTools is off when the hosting package blocks it (sensitive material)
         // or when the user has not enabled the WebViewDevTools feature flag.
-        var devToolsBlocked = _contribution.Package.DevToolsBlocked;
-        var devToolsEnabled = !devToolsBlocked && _webViewService.IsDevToolsFeatureEnabled();
-        _webViewAdapter.SetDevToolsEnabled(WebView.CoreWebView2, devToolsEnabled, GetDevToolsTargetName());
+        var devToolsEnabled = !_contribution.Package.DevToolsBlocked && _webViewService.IsDevToolsFeatureEnabled();
 
-        // A custom editor is application chrome, not a browsable page, so disable WebView zoom (Ctrl+/-,
-        // Ctrl+scroll). It reads as part of the app and follows OS display scaling like the native panels.
-        // The .webview browser keeps zoom.
-        _webViewAdapter.SetZoomControlEnabled(WebView.CoreWebView2, false);
+        // A custom editor is application chrome, not a browsable page, so zoom is off. It follows OS display
+        // scaling like the native panels.
+        return new WebViewOptions
+        {
+            IsDevToolsEnabled = devToolsEnabled,
+            IsZoomEnabled = false,
+        };
+    }
+
+    // Configures a live web view: host channel, RPC targets, tool bridge, navigation gate, and the editor load.
+    private async Task ConfigureWebViewHostAsync(ICustomEditorLoader editorLoader)
+    {
+        Guard.IsNotNull(_contribution);
+        Guard.IsNotNull(_webView);
+
+        var webView = _webView;
+        var devToolsBlocked = _contribution.Package.DevToolsBlocked;
 
         // Register this editor's web surface. It hosts an edit target (this) for the Edit commands.
         RegisterWebSurfaceFocus();
@@ -496,28 +481,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         // so that no tool surface is exposed for those packages.
         if (!devToolsBlocked)
         {
-            await TryInjectToolBridgeShimAsync();
+            await TryInjectToolBridgeShimAsync(webView);
         }
-
-        _downloadHandler?.Detach();
-        _downloadHandler = _webViewAdapter.AttachDownloadHandler(WebView.CoreWebView2);
-
-        // Block all new window requests
-        WebView.CoreWebView2.NewWindowRequested += (s, args) =>
-        {
-            args.Handled = true;
-        };
-
-        // Raised only by the packaged Windows head's WebView2. The Skia heads report a dead renderer
-        // through the web view adapter instead.
-        WebView.CoreWebView2.ProcessFailed += (s, args) =>
-        {
-            _processFailures++;
-
-            _logger.LogError(
-                "WebView ProcessFailed: Kind={Kind}, Reason={Reason}, ExitCode={ExitCode}",
-                args.ProcessFailedKind, args.Reason, args.ExitCode);
-        };
 
         // Wire up the JSON-RPC host channel. The page opens a WebSocket back to the loopback server, and the
         // connection token in its address binds that socket to this channel.
@@ -581,7 +546,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         // does (Chromium's WebView2), the package stays hands-off and Ctrl+F reaches the built-in bar.
         _viewState.SetValue("providesBuiltInFind", _webViewAdapter.ProvidesBuiltInFind ? "true" : "false");
         // A page that measures its viewport before this surface is arranged is reading a placeholder.
-        _viewState.SetValue("isSized", _isSized ? "true" : "false");
+        _viewState.SetValue("isSized", webView.IsSized ? "true" : "false");
         // Whether a size can reach a page the platform is not displaying.
         _viewState.SetValue(
             "canSizeUnarranged",
@@ -599,43 +564,44 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         var entryPoint = _contribution.EntryPoint;
         var serverPort = _serviceProvider.GetRequiredService<IServerService>().Port;
         var loadRequest = new CustomEditorLoadRequest(
-            WebView!,
+            webView,
             _contribution.Package,
             packageUrlName,
             entryPoint,
             connectionToken,
             serverPort);
 
-        // Block all navigations except the editor's own origin. A navigation of the editor page itself also
-        // resets the tool bridge's content-ready gate so webview_* tool calls block until the new page signals
-        // readiness. A frame loading inside the page leaves the gate open.
-        var allowedNavigationPrefix = editorLoader.GetAllowedNavigationOrigin(loadRequest);
-        WebView!.NavigationStarting += (s, args) =>
-        {
-            var uri = args.Uri;
-            if (string.IsNullOrEmpty(uri))
-            {
-                return;
-            }
+        _allowedNavigationPrefix = editorLoader.GetAllowedNavigationOrigin(loadRequest);
+        webView.NavigationStarting += WebView_NavigationStarting;
+        webView.NavigationStarting += OnNavigationStarting_Diagnostics;
+        webView.NavigationCompleted += OnNavigationCompleted_Diagnostics;
 
-            if (uri.StartsWith(allowedNavigationPrefix))
-            {
-                if (_page.OnNavigating(uri))
-                {
-                    _toolBridge?.NotifyContentLoading(_toolBridgeRegisteredResource);
-                }
-                return;
-            }
-
-            args.Cancel = true;
-        };
-
-        WebView!.CoreWebView2.NavigationStarting += OnNavigationStarting_Diagnostics;
-        WebView!.CoreWebView2.NavigationCompleted += OnNavigationCompleted_Diagnostics;
-
-        Diagnostics.LogNavigation($"Navigating to {_contribution.Package.Name}", Surface, entryPoint);
+        Diagnostics.LogNavigation($"Navigating to {_contribution.Package.Name}", webView, entryPoint);
 
         await editorLoader.LoadAsync(loadRequest);
+    }
+
+    // Blocks all navigations except the editor's own origin. A navigation of the editor page itself also
+    // resets the tool bridge's content-ready gate so webview_* tool calls block until the new page signals
+    // readiness. A frame loading inside the page leaves the gate open.
+    private void WebView_NavigationStarting(object? sender, WebNavigationStartingEventArgs args)
+    {
+        var uri = args.Uri;
+        if (string.IsNullOrEmpty(uri))
+        {
+            return;
+        }
+
+        if (uri.StartsWith(_allowedNavigationPrefix))
+        {
+            if (_page.OnNavigating(uri))
+            {
+                _toolBridge?.NotifyContentLoading(_toolBridgeRegisteredResource);
+            }
+            return;
+        }
+
+        args.Cancel = true;
     }
 
     // Resolves the first channel provider that handles this editor's contribution and attaches its channel
@@ -669,61 +635,56 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         _channel = channel;
     }
 
-    // Registers this editor's web surface with the focus registry using the consumer-supplied panel identity
+    // Registers this editor's web view with the focus registry using the consumer-supplied panel identity
     // and focus-gained side effect. The controller is the surface's edit target and owns the DOM focus
     // release and its counterpart grant.
     private void RegisterWebSurfaceFocus()
     {
-        Guard.IsNotNull(WebView);
+        Guard.IsNotNull(_webView);
 
-        var registration = new WebViewFocusRegistration(
-            WebView,
-            () => _viewModel.FileResource.ToString(),
+        var webViewFocusContext = new WebViewFocusContext(
             _focusContext.Panel,
             EditTarget: this,
             ReleaseFocus: ReleaseFocus,
             GrantDomFocus: GrantDomFocusAsync,
             OnFocusGained: _focusContext.OnFocusGained);
 
-        _webViewFocusRegistry.Register(registration);
+        _webViewFocusRegistry.Register(_webView, webViewFocusContext);
     }
 
     /// <summary>
-    /// Moves the live WebView into a new container and re-points its focus registration at it, without tearing
-    /// it down or reloading it. This is the dock primitive: a utility keeps one WebView (and all its live state)
-    /// while it moves between areas (the Utility Panel and a document tab). Called before the WebView
+    /// Moves the live web view into a new container and re-points its focus registration at it, without
+    /// disposing or reloading it. This is the dock primitive: a utility keeps one web view (and all its live
+    /// state) while it moves between areas (the Utility Panel and a document tab). Called before the web view
     /// is acquired, it just records the target container so the pending init lands there.
     /// </summary>
     public void Redock(Panel newContainer, CustomEditorFocusContext focusContext)
     {
         _focusContext = focusContext;
+        _webViewContainer = newContainer;
 
-        if (WebView is null)
+        if (_webView is null)
         {
-            // Not yet initialized. The pending init adds the WebView to this container and registers focus.
-            _webViewContainer = newContainer;
+            // Not yet initialized. The pending init adds the web view to this container and registers focus.
             return;
         }
 
-        // The registration is replaced rather than dropped and remade: unregistering means the surface is
-        // going away, which releases the keyboard it is holding, and a redock is the one case where a live
-        // surface changes panel without the user moving focus off it.
-        if (!ReferenceEquals(newContainer, _webViewContainer))
-        {
-            _webViewContainer.Children.Remove(WebView);
-            newContainer.Children.Add(WebView);
-            _webViewContainer = newContainer;
-        }
+        _webView.AttachTo(newContainer);
 
+        // The registration is replaced rather than dropped and remade: dropping it means the surface is going
+        // away, which releases the keyboard it is holding, and a redock is the one case where a live surface
+        // changes panel without the user moving focus off it.
         RegisterWebSurfaceFocus();
     }
 
     /// <summary>
     /// Tears down the editor: unsubscribes from the view model, resets content-loaded state, and disposes the
-    /// WebView, host channel, and associated handlers. Safe to call multiple times.
+    /// web view, host channel, and associated handlers. Safe to call multiple times.
     /// </summary>
     public void Teardown()
     {
+        _isTornDown = true;
+
         _viewModel.ReloadRequested -= ViewModel_ReloadRequested;
         _messengerService.Unregister<LanguageChangedMessage>(this);
 
@@ -732,13 +693,13 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         TeardownWebViewState();
     }
 
-    // Tears down the WebView, host channel, and associated handlers. Safe to call multiple times and from
+    // Disposes the web view, host channel, and associated handlers. Safe to call multiple times and from
     // partially initialized states.
     private void TeardownWebViewState()
     {
-        // Dispose the channel before the host: its pty raises output and exit on background threads, so
-        // unsubscribing and disposing it must complete before the host it notifies through is gone. Marking
-        // the adapter disposed first turns any in-flight outbound notification into a no-op.
+        // Dispose the channel before the web view and the host: its pty raises output and exit on background
+        // threads, so unsubscribing and disposing it must complete before the host it notifies through is gone.
+        // Marking the adapter disposed first turns any in-flight outbound notification into a no-op.
         if (_channel is not null)
         {
             _channelHost?.MarkDisposed();
@@ -747,39 +708,20 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             _channelHost = null;
         }
 
-        if (_toolBridge is not null)
-        {
-            _toolBridge.Unregister(_toolBridgeRegisteredResource);
-            _toolBridge = null;
-            _toolBridgeRegisteredResource = ResourceKey.Empty;
-        }
+        // The bridge and the focus registry drop the web view as it closes.
+        _toolBridge = null;
+        _toolBridgeRegisteredResource = ResourceKey.Empty;
 
         if (_documentHandler is not null)
         {
             _documentHandler.ContentLoaded -= SetContentLoaded;
         }
 
-        if (WebView is not null)
-        {
-            WebView.Loaded -= WebView_Loaded;
-            WebView.Unloaded -= WebView_Unloaded;
-            WebView.SizeChanged -= WebView_SizeChanged;
+        _webView?.Dispose();
+        _webView = null;
 
-            if (WebView.CoreWebView2 is not null)
-            {
-                _downloadHandler?.Detach();
-                _downloadHandler = null;
-
-                WebView.CoreWebView2.NavigationStarting -= OnNavigationStarting_Diagnostics;
-                WebView.CoreWebView2.NavigationCompleted -= OnNavigationCompleted_Diagnostics;
-                _webViewFocusRegistry.Unregister(WebView.CoreWebView2);
-            }
-
-            _webViewAdapter.CloseWebView(WebView, _webViewContainer);
-
-            WebView = null;
-            _isSized = false;
-        }
+        // The JSON-RPC host is disposed after the web view. It talks to the page over the loopback WebSocket,
+        // not through the view.
 
         var proxyChannel = _proxyChannel;
         if (proxyChannel is not null)
@@ -799,54 +741,24 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         Host = null;
     }
 
-    private async Task TryInjectToolBridgeShimAsync()
+    private async Task TryInjectToolBridgeShimAsync(IEditorWebView webView)
     {
-        var coreWebView2 = WebView?.CoreWebView2;
-        if (coreWebView2 is null)
-        {
-            return;
-        }
-
         var toolBridge = _serviceProvider.GetService<IDocumentWebViewToolBridge>();
         if (toolBridge is null)
         {
             return;
         }
 
-        // Install the tool bridge shim as a document-start script so it wraps console/fetch before page
-        // scripts run -- required for get_console / get_network capture. The Skia heads also re-deliver it
-        // per navigation through OnNavigationCompleted_ReinjectShim.
+        // A document-start script wraps console and fetch before the page's scripts run. The get_console and
+        // get_network tools need that.
         try
         {
             var script = toolBridge.GetShimScript();
-            await _webViewAdapter.InstallDocumentStartScriptAsync(coreWebView2, script);
+            await webView.AddDocumentStartScriptAsync(script);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to install the document-start WebView tool bridge shim");
-        }
-
-        coreWebView2.NavigationCompleted += OnNavigationCompleted_ReinjectShim;
-    }
-
-    private async void OnNavigationCompleted_ReinjectShim(CoreWebView2 sender, CoreWebView2NavigationCompletedEventArgs args)
-    {
-        // async void event handler: swallow exceptions to protect the process. The bridge caches the shim
-        // after the first read, and the shim is idempotent. Re-injection is a no-op on Windows, where the
-        // document-start script persists across navigations.
-        if (_toolBridge is null)
-        {
-            return;
-        }
-
-        try
-        {
-            var script = _toolBridge.GetShimScript();
-            await _webViewAdapter.ReinjectDocumentStartScriptAsync(sender, script);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to re-inject the WebView tool bridge shim");
         }
     }
 
@@ -855,43 +767,45 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         _serviceProvider.GetRequiredService<IFeatureFlags>(),
         _logger);
 
-    // An editor page is never legitimately empty, so an empty probe on one is a failed load.
-    private WebViewSurface Surface => new(_viewModel.FileResource.ToString(), WebView);
-
-    private void OnNavigationStarting_Diagnostics(CoreWebView2 sender, CoreWebView2NavigationStartingEventArgs args)
+    private void OnNavigationStarting_Diagnostics(object? sender, WebNavigationStartingEventArgs args)
     {
-        Diagnostics.LogNavigation("Navigation starting", Surface, args.Uri);
+        if (sender is not IEditorWebView webView)
+        {
+            return;
+        }
+
+        Diagnostics.LogNavigation("Navigation starting", webView, args.Uri);
     }
 
-    private void OnNavigationCompleted_Diagnostics(CoreWebView2 sender, CoreWebView2NavigationCompletedEventArgs args)
+    private void OnNavigationCompleted_Diagnostics(object? sender, WebNavigationCompletedEventArgs args)
     {
+        if (sender is not IEditorWebView webView)
+        {
+            return;
+        }
+
         if (!args.IsSuccess)
         {
-            Diagnostics.LogNavigationFailed(Surface, sender.Source, args.WebErrorStatus);
+            Diagnostics.LogNavigationFailed(webView, webView.Source, args.WebErrorStatus);
             return;
         }
 
-        Diagnostics.LogNavigation("Navigation completed", Surface, sender.Source);
-        _ = ProbeLoadedContentAsync();
+        Diagnostics.LogNavigation("Navigation completed", webView, webView.Source);
+        _ = ProbeLoadedContentAsync(webView);
     }
 
-    private async Task ProbeLoadedContentAsync()
+    // An editor page is never legitimately empty, so an empty probe on one is a failed load.
+    private async Task ProbeLoadedContentAsync(IEditorWebView webView)
     {
-        var coreWebView = WebView?.CoreWebView2;
-        if (coreWebView is null)
-        {
-            return;
-        }
-
         // The blank page the control starts on is empty by design.
-        var url = coreWebView.Source;
+        var url = webView.Source;
         if (string.IsNullOrEmpty(url)
             || url.StartsWith("about:", StringComparison.OrdinalIgnoreCase))
         {
             return;
         }
 
-        var probe = await Diagnostics.ProbeAsync(Surface);
+        var probe = await Diagnostics.ProbeAsync(webView);
         if (probe is null)
         {
             return;
@@ -899,30 +813,65 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
         // The probe reports on a completion that has already happened, so a navigation started while it was
         // in flight owns the document now and this verdict is about a page that has been left.
-        if (WebView?.CoreWebView2 is not CoreWebView2 currentWebView
-            || !string.Equals(currentWebView.Source, url, StringComparison.Ordinal))
+        if (!ReferenceEquals(_webView, webView)
+            || !string.Equals(webView.Source, url, StringComparison.Ordinal))
         {
             return;
         }
 
-        Diagnostics.LogProbe(Surface, url, probe);
+        Diagnostics.LogProbe(webView, url, probe);
     }
 
-    private void WebView_Loaded(object sender, RoutedEventArgs e)
+    private void WebView_Attached(object? sender, EventArgs e)
     {
-        // A surface reattached at the size it already had raises no size change of its own.
-        ApplyViewportSize();
+        if (sender is not IEditorWebView webView)
+        {
+            return;
+        }
 
-        _ = Diagnostics.LogSurfaceAsync("WebView attached", Surface);
+        _ = Diagnostics.LogSurfaceAsync("WebView attached", webView);
 
         // An editor that loaded while detached raised no navigation events, so its completion was never
         // probed. Attach is the first moment the host hears from it again.
-        _ = ProbeLoadedContentAsync();
+        _ = ProbeLoadedContentAsync(webView);
     }
 
-    private void WebView_SizeChanged(object sender, SizeChangedEventArgs e)
+    private void WebView_Detached(object? sender, EventArgs e)
     {
-        ApplyViewportSize();
+        if (sender is not IEditorWebView webView)
+        {
+            return;
+        }
+
+        _ = Diagnostics.LogSurfaceAsync("WebView detached", webView);
+
+        // Detach is raised before Uno takes the native view apart. The settled state is logged once that work
+        // has run.
+        _webViewContainer.DispatcherQueue.TryEnqueue(
+            Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
+            () => { _ = Diagnostics.LogSurfaceAsync("WebView detached, settled", webView); });
+    }
+
+    private void WebView_ViewportSized(object? sender, WebViewViewportSize size)
+    {
+        if (sender is not IEditorWebView webView)
+        {
+            return;
+        }
+
+        Diagnostics.LogViewportSize(webView, size.Width, size.Height, size.IsArranged);
+    }
+
+    // Tells the page whether its viewport is a real size. It runs only when the answer changes, since the state
+    // store pushes every set to the page.
+    private void WebView_IsSizedChanged(object? sender, EventArgs e)
+    {
+        if (sender is not IEditorWebView webView)
+        {
+            return;
+        }
+
+        _viewState?.SetValue("isSized", webView.IsSized ? "true" : "false");
     }
 
     public void SetPresentedSize(double width, double height)
@@ -936,76 +885,13 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         _presentedWidth = width;
         _presentedHeight = height;
 
-        ApplyViewportSize();
-    }
-
-    // Gives the surface the geometry its page reads as its viewport: its own once it has been laid out,
-    // and until then the size its section presents documents at. A page handed neither measures a
-    // placeholder it cannot tell from a real layout, so it is told which it has.
-    private void ApplyViewportSize()
-    {
-        if (WebView is null)
-        {
-            return;
-        }
-
-        var isArranged = WebView.ActualWidth > 0 && WebView.ActualHeight > 0;
-
-        var width = isArranged ? WebView.ActualWidth : _presentedWidth;
-        var height = isArranged ? WebView.ActualHeight : _presentedHeight;
-        if (width <= 0 ||
-            height <= 0)
-        {
-            return;
-        }
-
-        // Sized before the page is told its measurement counts, so what it measures is that size.
-        var applied = _webViewAdapter.SetViewportSize(WebView, width, height);
-
-        Diagnostics.LogViewportSize(Surface, width, height, isArranged);
-
-        // An arranged surface's page reports the geometry it was arranged at. An unarranged one reports
-        // what the host gave it, and where the host cannot give it any, whatever the platform left it with
-        // - which is not a size to measure against.
-        if (!isArranged &&
-            !applied)
-        {
-            return;
-        }
-
-        // Reported on the transition only, since the state store pushes to the page on every set.
-        if (_isSized)
-        {
-            return;
-        }
-
-        _isSized = true;
-        _viewState?.SetValue("isSized", "true");
-    }
-
-    private void WebView_Unloaded(object sender, RoutedEventArgs e)
-    {
-        // A detached surface keeps the geometry it was left with, which the next arrange or the next size
-        // its section reports replaces.
-        if (_isSized)
-        {
-            _isSized = false;
-            _viewState?.SetValue("isSized", "false");
-        }
-
-        _ = Diagnostics.LogSurfaceAsync("WebView detached", Surface);
-
-        // Unloaded fires before Uno has taken the native view apart, so the state the surface is left in
-        // while the tab is away is only readable once that work has run.
-        _webViewContainer.DispatcherQueue.TryEnqueue(
-            Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
-            () => { _ = Diagnostics.LogSurfaceAsync("WebView detached, settled", Surface); });
+        _webView?.SetPresentedSize(width, height);
     }
 
     private void TryRegisterWithToolBridge()
     {
-        var webView = WebView;
-        if (webView?.CoreWebView2 is null)
+        var webView = _webView;
+        if (webView is null)
         {
             return;
         }
@@ -1022,7 +908,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             return;
         }
 
-        toolBridge.RegisterWebView2(resource, webView, _webViewAdapter);
+        toolBridge.RegisterWebView(resource, webView);
 
         _toolBridge = toolBridge;
         _toolBridgeRegisteredResource = resource;
@@ -1105,8 +991,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
         // A grant made before the page loaded could not reach it, so it is sent again now. It comes after
         // the state restore because the restored view mode decides whether the editor takes focus.
-        if (WebView is not null
-            && _webViewFocusRegistry.IsFocusedSurface(WebView))
+        if (_webView is not null
+            && _webViewFocusRegistry.IsFocusedSurface(_webView))
         {
             _ = GrantDomFocusAsync();
         }
@@ -1390,13 +1276,13 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     {
         // A tab click focuses the web content (native first responder on macOS, where no managed GotFocus
         // follows). The registry gives it focus and reports it, releasing the previously focused surface.
-        if (WebView is null)
+        if (_webView is null)
         {
             _logger.LogWarning("Cannot focus the editor's web content before its WebView is created");
             return;
         }
 
-        _webViewFocusRegistry.GrantFocus(WebView);
+        _webViewFocusRegistry.GrantFocus(_webView);
     }
 
     private void ReleaseFocus()

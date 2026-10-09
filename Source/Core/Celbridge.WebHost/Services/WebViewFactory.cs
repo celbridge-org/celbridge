@@ -11,8 +11,9 @@ public class WebViewFactory : IWebViewFactory, IDisposable
     private const string SharedAssetsFolderPath = "Celbridge.WebHost/Web";
 
     private readonly ILogger<WebViewFactory> _logger;
+    private readonly ILogger<AdapterWebView> _webViewLogger;
     private readonly IWebViewAdapter _webViewAdapter;
-    private readonly Queue<WebView2> _pool;
+    private readonly Queue<WebViewBase> _pool;
     private readonly int _maxPoolSize;
     private readonly object _lock = new();
     private bool _isShuttingDown = false;
@@ -27,9 +28,10 @@ public class WebViewFactory : IWebViewFactory, IDisposable
     public WebViewFactory(int poolSize)
     {
         _logger = ServiceLocator.AcquireService<ILogger<WebViewFactory>>();
+        _webViewLogger = ServiceLocator.AcquireService<ILogger<AdapterWebView>>();
         _webViewAdapter = ServiceLocator.AcquireService<IWebViewAdapter>();
         _maxPoolSize = poolSize;
-        _pool = new Queue<WebView2>();
+        _pool = new Queue<WebViewBase>();
 
         // Start initialization but don't await it.
         // This allows the WebView pool to be populated in the background.
@@ -56,7 +58,7 @@ public class WebViewFactory : IWebViewFactory, IDisposable
                 {
                     if (_isShuttingDown)
                     {
-                        CloseWebView(webView);
+                        DisposeWebView(webView);
                         return;
                     }
                     _pool.Enqueue(webView);
@@ -77,9 +79,9 @@ public class WebViewFactory : IWebViewFactory, IDisposable
         _logger.LogDebug($"WebViewFactory initialized with {poolCount} of {_maxPoolSize} instances");
     }
 
-    public async Task<WebView2> AcquireAsync()
+    public async Task<IEditorWebView> AcquireAsync(WebViewOptions options)
     {
-        WebView2? webView = null;
+        WebViewBase? webView = null;
         bool needsCreation = false;
         bool shouldReplenish = false;
 
@@ -121,7 +123,7 @@ public class WebViewFactory : IWebViewFactory, IDisposable
             {
                 if (_isShuttingDown)
                 {
-                    CloseWebView(webView);
+                    DisposeWebView(webView);
                     throw new InvalidOperationException("Cannot acquire WebView2 instances during shutdown");
                 }
             }
@@ -134,6 +136,10 @@ public class WebViewFactory : IWebViewFactory, IDisposable
         }
 
         Guard.IsNotNull(webView);
+
+        // Applied here because a prewarmed view has not navigated yet.
+        webView.Configure(options);
+
         return webView;
     }
 
@@ -147,7 +153,7 @@ public class WebViewFactory : IWebViewFactory, IDisposable
             {
                 if (_isShuttingDown || _pool.Count >= _maxPoolSize)
                 {
-                    CloseWebView(webView);
+                    DisposeWebView(webView);
                     return;
                 }
                 _pool.Enqueue(webView);
@@ -217,23 +223,22 @@ public class WebViewFactory : IWebViewFactory, IDisposable
             while (_pool.Count > 0)
             {
                 var webView = _pool.Dequeue();
-                CloseWebView(webView);
+                DisposeWebView(webView);
             }
         }
 
         _logger.LogDebug("WebViewFactory shutdown complete");
     }
 
-    // Closed through the adapter rather than WebView2.Close, which reaches neither the macOS native
-    // teardown nor the per-view state the adapter holds while a view is alive.
-    private void CloseWebView(WebView2? webView)
+    // Disposes a view that was never handed out.
+    private void DisposeWebView(WebViewBase? webView)
     {
         if (webView == null)
             return;
 
         try
         {
-            _webViewAdapter.CloseWebView(webView, container: null);
+            webView.Dispose();
         }
         catch
         {
@@ -241,7 +246,7 @@ public class WebViewFactory : IWebViewFactory, IDisposable
         }
     }
 
-    private async Task<WebView2> CreateWebViewAsync()
+    private async Task<WebViewBase> CreateWebViewAsync()
     {
         var webView = new WebView2();
 
@@ -259,6 +264,7 @@ public class WebViewFactory : IWebViewFactory, IDisposable
             SharedAssetsFolderPath,
             CoreWebView2HostResourceAccessKind.Allow);
 
-        return webView;
+        // Created after initialization, so the view never sees the hidden host the Skia heads initialize in.
+        return new AdapterWebView(webView, _webViewAdapter, _webViewLogger);
     }
 }

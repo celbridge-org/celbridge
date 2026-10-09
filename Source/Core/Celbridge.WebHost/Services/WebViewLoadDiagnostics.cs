@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Text.Json;
 using Celbridge.Logging;
@@ -6,11 +7,6 @@ using Microsoft.Web.WebView2.Core;
 using Windows.Foundation;
 
 namespace Celbridge.WebHost.Services;
-
-/// <summary>
-/// The surface a diagnostic line describes: the name it is logged under, and the control behind it.
-/// </summary>
-public sealed record WebViewSurface(string Name, WebView2? WebView);
 
 /// <summary>
 /// What the probe of a completed navigation found: the host's reading of the page's report, and whether it
@@ -114,10 +110,9 @@ public sealed class WebViewLoadDiagnostics
     /// The surface a load runs against, for the log: the control's tree and layout state, and the native
     /// state the adapter can see behind it.
     /// </summary>
-    public string DescribeSurface(WebViewSurface surface)
+    public string DescribeSurface(IWebView view)
     {
-        var webView = surface.WebView;
-        if (webView is null)
+        if (!IsOpen(view, out var webView))
         {
             return "webview=none";
         }
@@ -128,6 +123,21 @@ public sealed class WebViewLoadDiagnostics
 
         return $"loaded={webView.IsLoaded} size={webView.ActualWidth:F0}x{webView.ActualHeight:F0} "
             + $"{DescribeControlPosition(webView)} xamlRoot={webView.XamlRoot is not null} {native}".TrimEnd();
+    }
+
+    // A view that has closed has nothing left to describe or probe.
+    private static bool IsOpen(IWebView view, [NotNullWhen(true)] out WebView2? webView)
+    {
+        webView = null;
+        if (view is not WebViewBase webViewBase
+            || webViewBase.IsDisposed)
+        {
+            return false;
+        }
+
+        webView = webViewBase.Control;
+
+        return webView is not null;
     }
 
     /// <summary>
@@ -152,27 +162,27 @@ public sealed class WebViewLoadDiagnostics
     /// <summary>
     /// Logs a navigation reaching one of its stages.
     /// </summary>
-    public void LogNavigation(string moment, WebViewSurface surface, string? url)
+    public void LogNavigation(string moment, IWebView view, string? url)
     {
         if (!IsNarrationEnabled)
         {
             return;
         }
 
-        _logger.LogDebug("{Moment} for {Resource} at {Url} ({Surface})", moment, surface.Name, url, DescribeSurface(surface));
+        _logger.LogDebug("{Moment} for {Resource} at {Url} ({Surface})", moment, view.Resource, url, DescribeSurface(view));
     }
 
     /// <summary>
     /// Logs a navigation that did not arrive. A navigation the host itself declined is reported as the
     /// ordinary outcome it is, so an enforced navigation policy does not read as a broken page.
     /// </summary>
-    public void LogNavigationFailed(WebViewSurface surface, string? url, CoreWebView2WebErrorStatus status)
+    public void LogNavigationFailed(IWebView view, string? url, CoreWebView2WebErrorStatus status)
     {
         if (status == CoreWebView2WebErrorStatus.OperationCanceled)
         {
             if (IsNarrationEnabled)
             {
-                _logger.LogDebug("Navigation cancelled for {Resource} at {Url} ({Surface})", surface.Name, url, DescribeSurface(surface));
+                _logger.LogDebug("Navigation cancelled for {Resource} at {Url} ({Surface})", view.Resource, url, DescribeSurface(view));
             }
 
             return;
@@ -180,10 +190,10 @@ public sealed class WebViewLoadDiagnostics
 
         _logger.LogWarning(
             "Navigation failed for {Resource} at {Url} with status {Status} ({Surface})",
-            surface.Name,
+            view.Resource,
             url,
             status,
-            DescribeSurface(surface));
+            DescribeSurface(view));
     }
 
     /// <summary>
@@ -191,36 +201,36 @@ public sealed class WebViewLoadDiagnostics
     /// because the host cannot see it: whether the offset survives a detach says whether a tab switch is
     /// what resets it.
     /// </summary>
-    public async Task LogSurfaceAsync(string moment, WebViewSurface surface)
+    public async Task LogSurfaceAsync(string moment, IWebView view)
     {
         if (!IsNarrationEnabled)
         {
             return;
         }
 
-        var described = DescribeSurface(surface);
+        var described = DescribeSurface(view);
 
         var scrollY = "n/a";
-        if (surface.WebView?.CoreWebView2 is CoreWebView2 coreWebView)
+        if (IsOpen(view, out _))
         {
             try
             {
-                scrollY = await _webViewAdapter.EvalAsync(coreWebView, "window.scrollY");
+                scrollY = await view.EvalAsync("window.scrollY");
             }
             catch (Exception ex)
             {
-                _logger.LogDebug(ex, "Could not read the scroll offset of {Resource}", surface.Name);
+                _logger.LogDebug(ex, "Could not read the scroll offset of {Resource}", view.Resource);
             }
         }
 
-        _logger.LogDebug("{Moment} for {Resource} ({Surface}) scrollY={ScrollY}", moment, surface.Name, described, scrollY);
+        _logger.LogDebug("{Moment} for {Resource} ({Surface}) scrollY={ScrollY}", moment, view.Resource, described, scrollY);
     }
 
     /// <summary>
     /// Logs the geometry a surface was sized to, sampled once a second. The count says how many size changes
     /// the sampled one stands for.
     /// </summary>
-    public void LogViewportSize(WebViewSurface surface, double width, double height, bool isArranged)
+    public void LogViewportSize(IWebView view, double width, double height, bool isArranged)
     {
         if (!IsNarrationEnabled)
         {
@@ -245,20 +255,20 @@ public sealed class WebViewLoadDiagnostics
 
         _logger.LogDebug(
             "Viewport sized for {Resource} to {Viewport} arranged={Arranged} changes={Changes} ({Surface})",
-            surface.Name,
+            view.Resource,
             $"{width:F0}x{height:F0}",
             isArranged,
             sizeChanges,
-            DescribeSurface(surface));
+            DescribeSurface(view));
     }
 
     /// <summary>
     /// Probes the document the page currently holds. Null when the page gave no verdict: the probe could not
     /// run, the document is still the blank page a load starts from, or it is still parsing.
     /// </summary>
-    public async Task<WebViewContentProbe?> ProbeAsync(WebViewSurface surface)
+    public async Task<WebViewContentProbe?> ProbeAsync(IWebView view)
     {
-        var (outcome, probe) = await ReadProbeAsync(surface);
+        var (outcome, probe) = await ReadProbeAsync(view);
         if (outcome != ProbeOutcome.StillParsing)
         {
             return probe;
@@ -269,32 +279,32 @@ public sealed class WebViewLoadDiagnostics
         // the response delivered would otherwise be spent on a document that had not received it yet.
         if (IsNarrationEnabled)
         {
-            _logger.LogDebug("The document of {Resource} was still parsing, so it is probed once more", surface.Name);
+            _logger.LogDebug("The document of {Resource} was still parsing, so it is probed once more", view.Resource);
         }
 
         await Task.Delay(StillParsingRetryDelay);
 
-        var (_, settledProbe) = await ReadProbeAsync(surface);
+        var (_, settledProbe) = await ReadProbeAsync(view);
         return settledProbe;
     }
 
-    private async Task<(ProbeOutcome Outcome, WebViewContentProbe? Probe)> ReadProbeAsync(WebViewSurface surface)
+    private async Task<(ProbeOutcome Outcome, WebViewContentProbe? Probe)> ReadProbeAsync(IWebView view)
     {
-        if (surface.WebView?.CoreWebView2 is not CoreWebView2 coreWebView)
+        if (!IsOpen(view, out _))
         {
             return (ProbeOutcome.NoVerdict, null);
         }
 
         try
         {
-            var result = await _webViewAdapter.EvalAsync(coreWebView, ContentProbeScript);
+            var result = await view.EvalAsync(ContentProbeScript);
             var outcome = ReadContentProbe(result, out var probe);
 
             return (outcome, outcome == ProbeOutcome.Read ? probe : null);
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Could not probe the content loaded by {Resource}", surface.Name);
+            _logger.LogDebug(ex, "Could not probe the content loaded by {Resource}", view.Resource);
             return (ProbeOutcome.NoVerdict, null);
         }
     }
@@ -303,16 +313,16 @@ public sealed class WebViewLoadDiagnostics
     /// Writes the probe to the log: a warning for an empty document, which is a failed load, and a debug
     /// line otherwise.
     /// </summary>
-    public void LogProbe(WebViewSurface surface, string url, WebViewContentProbe probe)
+    public void LogProbe(IWebView view, string url, WebViewContentProbe probe)
     {
         if (probe.IsEmpty)
         {
             _logger.LogWarning(
                 "Navigation for {Resource} completed at {Url} but produced an empty document: {Probe} ({Surface})",
-                surface.Name,
+                view.Resource,
                 url,
                 probe.Reading,
-                DescribeSurface(surface));
+                DescribeSurface(view));
             return;
         }
 
@@ -321,7 +331,7 @@ public sealed class WebViewLoadDiagnostics
             return;
         }
 
-        _logger.LogDebug("Content probe for {Resource} at {Url}: {Probe} ({Surface})", surface.Name, url, probe.Reading, DescribeSurface(surface));
+        _logger.LogDebug("Content probe for {Resource} at {Url}: {Probe} ({Surface})", view.Resource, url, probe.Reading, DescribeSurface(view));
     }
 
     // Reads the page's report into a reading the host built itself. The report is page-authored, so nothing

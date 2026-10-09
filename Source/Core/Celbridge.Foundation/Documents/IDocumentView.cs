@@ -1,3 +1,4 @@
+using Celbridge.WebHost;
 using Celbridge.Workspace;
 
 namespace Celbridge.Documents;
@@ -79,9 +80,9 @@ public interface IDocumentView : IWorkspaceItem
     Task RestoreEditorStateAsync(string state);
 
     /// <summary>
-    /// What the host knows about this document's hosted page still working.
+    /// The health of the document's web view. A document with no web view is always healthy.
     /// </summary>
-    DocumentHealth GetHealth();
+    WebViewHealth GetHealth();
 
     /// <summary>
     /// True when the document can currently begin a find of its own (its content is ready). Drives the

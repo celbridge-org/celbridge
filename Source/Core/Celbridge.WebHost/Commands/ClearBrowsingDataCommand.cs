@@ -26,17 +26,18 @@ public class ClearBrowsingDataCommand : CommandBase, IClearBrowsingDataCommand
             return Result.Fail("Clearing browsing data is not supported on this platform");
         }
 
-        WebView2? webView = null;
+        IEditorWebView? webView = null;
         try
         {
             if (_webViewAdapter.BrowsingDataClearRequiresInstance)
             {
-                // Every WebView in the application shares one store, so a pooled instance reaches the same
-                // store an open document would, and is available whether or not a project is loaded.
-                webView = await _webViewFactory.AcquireAsync();
+                // Every web view shares one store. A view of its own reaches it whether or not a project is
+                // loaded.
+                webView = await _webViewFactory.AcquireAsync(WebViewOptions.Default);
             }
 
-            await _webViewAdapter.ClearBrowsingDataAsync(webView?.CoreWebView2);
+            var coreWebView2 = (webView as WebViewBase)?.CoreWebView2;
+            await _webViewAdapter.ClearBrowsingDataAsync(coreWebView2);
         }
         catch (Exception ex)
         {
@@ -45,12 +46,8 @@ public class ClearBrowsingDataCommand : CommandBase, IClearBrowsingDataCommand
         }
         finally
         {
-            if (webView is not null)
-            {
-                // The acquired instance was never parented, so there is no container to detach it from. The
-                // pool replenishes itself in the background.
-                _webViewAdapter.CloseWebView(webView, container: null);
-            }
+            // The factory replaces the view in the background.
+            webView?.Dispose();
         }
 
         return Result.Ok();

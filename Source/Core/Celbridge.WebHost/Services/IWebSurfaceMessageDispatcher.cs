@@ -27,8 +27,7 @@ internal interface IWebSurfaceMessageDispatcher
     /// <summary>
     /// Begins routing the surface's messages, named by getSurfaceName. The name is read for each message, so a
     /// renamed surface reports under its new name. Attaching a surface that is already attached replaces
-    /// getSurfaceName and keeps the existing subscription. A pooled web view reused for another document
-    /// then reports under that document's name.
+    /// getSurfaceName and keeps the existing subscription.
     /// </summary>
     void Attach(CoreWebView2 coreWebView, Func<string> getSurfaceName);
 

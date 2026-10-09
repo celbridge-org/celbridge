@@ -1,31 +1,18 @@
 using Celbridge.Workspace;
-using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.WebHost;
 
 /// <summary>
-/// A hosted web surface's complete focus contract, supplied once at registration. The registry converges the
-/// surface's focus-gain signals (managed GotFocus on Windows, the macOS native click monitor) onto a single
-/// report of its Panel, EditTarget, and ReleaseFocus. Every surface has an edit target. ReleaseFocus drops
-/// the surface's DOM caret when focus leaves it (the JS blur). GrantDomFocus is the optional DOM-side focus
-/// the grant path applies after native focus. A grant can reach the page before it is ready to act on one,
-/// so a view re-sends the DOM grant when its page signals readiness, if the surface still holds the
-/// keyboard. OnFocusGained is an optional side effect run when the surface gains focus (a
-/// document reports itself as the active document). GetSurfaceName names the surface in focus diagnostics and
-/// in the page's log entries, so two surfaces of the same kind can be told apart. It is read on every use,
-/// so a renamed document shows its new name.
+/// How a web view takes part in focus tracking. Panel and EditTarget go with each focus report. ReleaseFocus
+/// drops the page's caret when focus leaves the view. GrantDomFocus, if set, places the caret after the view
+/// takes native focus. OnFocusGained, if set, runs when the view gains focus.
 /// </summary>
-public sealed record WebViewFocusRegistration(
-    WebView2 WebView,
-    Func<string> GetSurfaceName,
+public sealed record WebViewFocusContext(
     FocusPanelId Panel,
     IEditTarget EditTarget,
     Action ReleaseFocus,
     Func<Task>? GrantDomFocus = null,
-    Action? OnFocusGained = null) : IFocusSurface
-{
-    public string SurfaceName => GetSurfaceName();
-}
+    Action? OnFocusGained = null);
 
 /// <summary>
 /// The single integration point for hosted web-surface focus on the Skia heads, where WebView and host focus
@@ -35,24 +22,19 @@ public sealed record WebViewFocusRegistration(
 public interface IWebViewFocusRegistry
 {
     /// <summary>
-    /// Registers a web surface and begins observing its managed GotFocus and native click focus. Registering a
-    /// surface whose CoreWebView2 is already registered replaces the previous registration.
+    /// Registers a web view under the given focus context and starts tracking its focus. Registering a view again
+    /// replaces its registration. The focus service treats the new registration as a new surface. When the view
+    /// closes, the registry drops it and clears its edit target if that target is still current.
     /// </summary>
-    void Register(WebViewFocusRegistration registration);
+    void Register(IWebView view, WebViewFocusContext focusContext);
 
     /// <summary>
-    /// Stops observing the surface and, if its edit target is still the current one, clears it so a torn-down
-    /// editor stops receiving Edit commands. Safe to call for a surface that was never registered.
-    /// </summary>
-    void Unregister(CoreWebView2 coreWebView);
-
-    /// <summary>
-    /// Gives the surface keyboard focus (native first responder on macOS, managed focus on Windows), applies its
+    /// Gives the view keyboard focus (native first responder on macOS, managed focus on Windows), applies its
     /// optional DOM-side focus, and reports the focus. Used by tab clicks, document opens, the console title
-    /// bar, the find bar, and layout-mode changes. A surface that has not registered yet takes focus as soon as
+    /// bar, the find bar, and layout-mode changes. A view that has not registered yet takes focus as soon as
     /// it registers, unless a later grant supersedes it.
     /// </summary>
-    void GrantFocus(WebView2 webView);
+    void GrantFocus(IWebView view);
 
     /// <summary>
     /// Whether the element is a web surface registered here. The registry reports a web surface's focus
@@ -70,7 +52,7 @@ public interface IWebViewFocusRegistry
     /// <summary>
     /// Whether the given web view is the hosted surface whose focus report is current.
     /// </summary>
-    bool IsFocusedSurface(WebView2 webView);
+    bool IsFocusedSurface(IWebView view);
 
     /// <summary>
     /// Whether the pointer press being dispatched landed on a registered web surface. The native click

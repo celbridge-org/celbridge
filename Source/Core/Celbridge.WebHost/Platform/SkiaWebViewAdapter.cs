@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Celbridge.Documents;
 using Celbridge.Logging;
 using Celbridge.UserInterface;
 using Celbridge.WebHost.Services;
@@ -347,7 +346,7 @@ public sealed class SkiaWebViewAdapter : IWebViewAdapter
             TaskScheduler.Default);
     }
 
-    public DocumentHealth GetPageHealth(CoreWebView2 coreWebView2)
+    public WebViewHealth GetPageHealth(CoreWebView2 coreWebView2)
     {
         return _pageHealth.GetHealth(coreWebView2);
     }

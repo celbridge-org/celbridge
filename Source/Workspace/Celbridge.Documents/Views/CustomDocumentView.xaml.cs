@@ -1,6 +1,7 @@
 using Celbridge.Documents.ViewModels;
 using Celbridge.Messaging;
 using Celbridge.Packages;
+using Celbridge.WebHost;
 using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Views;
@@ -120,7 +121,7 @@ public sealed partial class CustomDocumentView : DocumentView
         return _controller.RestoreEditorStateAsync(state);
     }
 
-    public override DocumentHealth GetHealth() => _controller.GetHealth();
+    public override WebViewHealth GetHealth() => _controller.GetHealth();
 
     public override async Task PrepareToClose()
     {

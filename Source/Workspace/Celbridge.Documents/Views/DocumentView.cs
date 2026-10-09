@@ -202,18 +202,18 @@ public abstract partial class DocumentView : UserControl, IDocumentView
     }
 
     // A document with no hosted page has nothing that can stop responding.
-    public virtual DocumentHealth GetHealth() => DocumentHealth.Healthy;
+    public virtual WebViewHealth GetHealth() => WebViewHealth.Healthy;
 
     // A document with no find of its own offers the host none, and leaves the find shortcut to its content.
     public virtual bool CanFind => false;
 
     public virtual bool TryBeginFind() => false;
 
-    // Registers a hosted web surface with the focus registry using the Documents-panel contract the web-view
-    // document editors share. releaseFocus drops the surface's caret when focus leaves it, and grantDomFocus
+    // Registers a hosted web view with the focus registry using the Documents-panel focus context the web-view
+    // document editors share. releaseFocus drops the page's caret when focus leaves it, and grantDomFocus
     // hands it back.
     protected void RegisterWebSurfaceFocus(
-        WebView2 webView,
+        IWebView webView,
         Action releaseFocus,
         Func<Task>? grantDomFocus = null)
     {
@@ -224,16 +224,14 @@ public abstract partial class DocumentView : UserControl, IDocumentView
         var messengerService = ServiceLocator.AcquireService<IMessengerService>();
         var webViewFocusRegistry = ServiceLocator.AcquireService<IWebViewFocusRegistry>();
 
-        var registration = new WebViewFocusRegistration(
-            webView,
-            () => FileResource.ToString(),
+        var focusContext = new WebViewFocusContext(
             FocusPanelId.Documents,
             EditTarget: EditTarget,
             ReleaseFocus: releaseFocus,
             GrantDomFocus: grantDomFocus,
             OnFocusGained: () => messengerService.Send(new DocumentViewFocusedMessage(FileResource)));
 
-        webViewFocusRegistry.Register(registration);
+        webViewFocusRegistry.Register(webView, focusContext);
     }
 
     public abstract IEditTarget EditTarget { get; }

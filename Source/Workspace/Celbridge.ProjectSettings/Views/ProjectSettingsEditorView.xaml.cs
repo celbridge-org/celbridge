@@ -5,6 +5,7 @@ using Celbridge.Resources;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.UserInterface.Views.Controls;
+using Celbridge.WebHost;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -266,7 +267,7 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
         await Task.CompletedTask;
     }
 
-    public DocumentHealth GetHealth() => DocumentHealth.Healthy;
+    public WebViewHealth GetHealth() => WebViewHealth.Healthy;
 
     // The settings form has no find of its own, so the host offers none.
     public bool CanFind => false;

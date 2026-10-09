@@ -1,3 +1,4 @@
+using Celbridge.WebHost;
 using Celbridge.WebHost.Services;
 
 namespace Celbridge.Tests.WebHost;
@@ -23,7 +24,7 @@ public class PageHealthTrackerTests
     [Test]
     public void TrackedPage_StartsHealthy()
     {
-        _tracker.GetHealth(_page).Should().Be(DocumentHealth.Healthy);
+        _tracker.GetHealth(_page).Should().Be(WebViewHealth.Healthy);
         _tracker.GetHealth(_page).IsHealthy.Should().BeTrue();
     }
 
@@ -141,7 +142,7 @@ public class PageHealthTrackerTests
         _tracker.RecordWakeFailed(untrackedPage).Should().Be(0);
         _tracker.RecordProcessId(untrackedPage, 100).Should().Be(PageProcessChange.None);
 
-        _tracker.GetHealth(untrackedPage).Should().Be(DocumentHealth.Healthy);
+        _tracker.GetHealth(untrackedPage).Should().Be(WebViewHealth.Healthy);
     }
 
     [Test]
@@ -153,7 +154,7 @@ public class PageHealthTrackerTests
         // A wake already in flight when the page closed still faults, and must not re-add it.
         _tracker.RecordWakeFailed(_page);
 
-        _tracker.GetHealth(_page).Should().Be(DocumentHealth.Healthy);
+        _tracker.GetHealth(_page).Should().Be(WebViewHealth.Healthy);
     }
 
     [Test]
@@ -166,7 +167,7 @@ public class PageHealthTrackerTests
         _tracker.Untrack(_page);
         _tracker.Track(_page);
 
-        _tracker.GetHealth(_page).Should().Be(DocumentHealth.Healthy);
+        _tracker.GetHealth(_page).Should().Be(WebViewHealth.Healthy);
     }
 
     [Test]
