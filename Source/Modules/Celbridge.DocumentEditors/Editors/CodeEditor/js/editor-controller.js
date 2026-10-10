@@ -794,8 +794,14 @@ export class EditorController {
         // Report edit availability to the host whenever the selection or focus changes.
         // Paste/undo/redo are offered whenever the editor is writable and no-op when there is nothing to do.
         this.#editor.onDidChangeCursorSelection(() => this.#notifyEditAvailability());
-        this.#editor.onDidFocusEditorText(() => this.#notifyEditAvailability());
-        this.#editor.onDidBlurEditorText(() => this.#notifyEditAvailability());
+        this.#editor.onDidFocusEditorText(() => {
+            this.#logCaretChange('the editor took the caret');
+            this.#notifyEditAvailability();
+        });
+        this.#editor.onDidBlurEditorText(() => {
+            this.#logCaretChange('the editor lost the caret');
+            this.#notifyEditAvailability();
+        });
 
         // Monaco raises nothing for the keyboard moving to a control outside the editor, so the page's own
         // focus changes drive the report as well.
@@ -804,6 +810,14 @@ export class EditorController {
         // A report made while the page has no window focus gives the verbs to the editor. Report again when
         // focus comes back, so the verbs go to whatever the page has focused.
         window.addEventListener('focus', () => this.#notifyEditAvailability());
+    }
+
+    // Logs the caret moving into or out of the editor text. The page's own focus lines say only that the window
+    // took the keyboard, which an editor without the caret also reports, so a key that went astray needs both.
+    #logCaretChange(message) {
+        if (celbridge.isHosted) {
+            celbridge.log.debug(message);
+        }
     }
 
     // Whether an edit verb belongs to the platform rather than the host: the keyboard is in one of the

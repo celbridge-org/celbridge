@@ -601,7 +601,18 @@ public abstract class WebViewBase : IEditorWebView
     /// </summary>
     internal virtual void FocusPage()
     {
-        Control?.Focus(FocusState.Programmatic);
+        if (Control is null)
+        {
+            return;
+        }
+
+        // The platform refuses focus for a control it cannot focus, such as one in a hidden area, and the keyboard
+        // then stays where it was. Nothing else records the refusal, so a page left without the keyboard is explained
+        // here.
+        if (!Control.Focus(FocusState.Programmatic))
+        {
+            _logger.LogDebug("The platform refused keyboard focus for the web view of {Resource}", Resource);
+        }
     }
 
     /// <summary>

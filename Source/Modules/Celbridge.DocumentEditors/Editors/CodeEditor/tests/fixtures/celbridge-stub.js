@@ -35,6 +35,12 @@ const celbridge = {
         onReloadKey: (handler) => { __capturedHandlers.onReloadKey = handler; },
         watchShortcutKeys: (target) => { __shortcutKeyTargets.push(target); }
     },
+    log: {
+        debug: () => {},
+        info: () => {},
+        warn: () => {},
+        error: () => {}
+    },
     initializeDocument: async (handlers) => {
         Object.assign(__capturedHandlers, handlers);
     },
