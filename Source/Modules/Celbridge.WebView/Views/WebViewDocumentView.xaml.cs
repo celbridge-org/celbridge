@@ -5,7 +5,6 @@ using Celbridge.Documents.ViewModels;
 using Celbridge.Documents.Views;
 using Celbridge.Logging;
 using Celbridge.Platform;
-using Celbridge.Settings;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.WebHost;
@@ -56,11 +55,6 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
 
     // The section the settings reopen on, carried until the surface is built on first use.
     private string _settingsSectionKey = string.Empty;
-
-    // Set when a download replaces the navigation in flight, which then reports itself failed.
-    private bool _isNavigationReplacedByDownload;
-
-    private WebViewLoadDiagnostics? _diagnostics;
 
     public WebViewDocumentViewModel ViewModel { get; }
 
@@ -182,16 +176,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
 
     private void LoadDestination(Uri destination)
     {
-        if (_webView is null)
-        {
-            return;
-        }
-
-        // Paired with the completion below, so a page that never arrives can be told from one that arrived
-        // and failed.
-        Diagnostics.LogNavigation("Navigating", _webView, destination.AbsoluteUri);
-
-        _webView.Navigate(destination.AbsoluteUri);
+        _webView?.Navigate(destination.AbsoluteUri);
     }
 
     private async void WebViewDocumentView_Loaded(object sender, RoutedEventArgs e)
@@ -229,17 +214,13 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
             webView.SetResource(FileResource);
             webView.SetAccessibleName(_accessibleName);
 
-            // Attach and detach are what a tab switch does to the surface, so both are logged with the state
-            // they leave it in. A navigation that starts on its own after one is the page being reloaded.
-            webView.Attached += WebView_Attached;
-            webView.Detached += WebView_Detached;
-
             webView.NavigationStarting += WebView_NavigationStarting;
             webView.NavigationCommitted += WebView_NavigationCommitted;
             webView.NavigationCompleted += WebView_NavigationCompleted;
             webView.NewWindowRequested += WebView_NewWindowRequested;
             webView.HistoryChanged += WebView_HistoryChanged;
             webView.DownloadStarted += WebView_DownloadStarted;
+            webView.LoadedEmpty += WebView_LoadedEmpty;
 
             webView.AttachTo(AppWebViewContainer);
 
@@ -293,147 +274,33 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
 
     private void WebView_NavigationCompleted(object? sender, WebNavigationCompletedEventArgs e)
     {
-        if (sender is not IEditorWebView webView)
-        {
-            return;
-        }
-
-        var outcome = ResolveNavigationOutcome(e, _isNavigationReplacedByDownload);
-        _isNavigationReplacedByDownload = false;
-
-        // A navigation that never arrived is logged by where it was heading, since the address bar still names
-        // the page it left.
-        if (outcome == NavigationOutcome.Failed)
-        {
-            Diagnostics.LogNavigationFailed(webView, ViewModel.NavigationDestination, e);
-        }
-        else if (outcome == NavigationOutcome.Aborted)
-        {
-            Diagnostics.LogNavigation("Navigation abandoned", webView, ViewModel.NavigationDestination);
-        }
-        else
-        {
-            Diagnostics.LogNavigation("Navigation completed", webView, ViewModel.CurrentUrl);
-        }
-
-        ViewModel.NotifyNavigationCompleted(outcome);
+        ViewModel.NotifyNavigationCompleted(ResolveNavigationOutcome(e));
         UpdateNavigationState();
-
-        // Runs after the navigation state settles so the probe reads the address the page committed to.
-        if (e.Result == WebNavigationResult.Succeeded)
-        {
-            _ = ProbeLoadedContentAsync(webView);
-        }
     }
 
-    // Chromium reports three cases the same way: a navigation it turned into a download, one a later
-    // navigation superseded, and one the user stopped. None is a page that failed to load, and in each the
-    // old page is still on screen, so the placeholder would describe a failure that did not happen. A page
-    // that genuinely could not be fetched reports why. The macOS head reports every failure alike, but
-    // there the download is announced before the navigation it replaced ends, so that one is already known
-    // to be abandoned.
-    private static NavigationOutcome ResolveNavigationOutcome(
-        WebNavigationCompletedEventArgs e,
-        bool isReplacedByDownload)
+    // A navigation that was cancelled or abandoned, such as one a later navigation superseded, one the user stopped
+    // or one that became a download, is not a page that failed to load. The old page is still on screen, so the
+    // placeholder would describe a failure that did not happen. A page that genuinely could not be fetched reports
+    // why.
+    private static NavigationOutcome ResolveNavigationOutcome(WebNavigationCompletedEventArgs e)
     {
-        if (e.Result == WebNavigationResult.Succeeded)
+        return e.Result switch
         {
-            return NavigationOutcome.Loaded;
-        }
-
-        if (isReplacedByDownload
-            || e.Result == WebNavigationResult.Aborted
-            || e.Result == WebNavigationResult.Cancelled)
-        {
-            return NavigationOutcome.Aborted;
-        }
-
-        return NavigationOutcome.Failed;
+            WebNavigationResult.Succeeded => NavigationOutcome.Loaded,
+            WebNavigationResult.Failed => NavigationOutcome.Failed,
+            _ => NavigationOutcome.Aborted
+        };
     }
 
-    // The load diagnostics shared with the custom editor controller: the surface a load runs against, and
-    // the probe of what a completed navigation actually produced.
-    private WebViewLoadDiagnostics Diagnostics => _diagnostics ??= new WebViewLoadDiagnostics(
-        _serviceProvider.GetRequiredService<IFeatureFlags>(),
-        _logger);
-
-    private async Task ProbeLoadedContentAsync(IEditorWebView webView)
+    // An empty page is reported as the failure it is, so the document shows the load-failed placeholder and its
+    // reload rather than a blank page the user cannot tell from a slow one.
+    private void WebView_LoadedEmpty(object? sender, EventArgs e)
     {
-        // The blank page a document rests on between addresses is empty by design.
-        var probedUrl = ViewModel.CurrentUrl;
-        if (string.IsNullOrEmpty(probedUrl)
-            || probedUrl.StartsWith("about:", StringComparison.OrdinalIgnoreCase))
-        {
-            return;
-        }
-
-        var probe = await Diagnostics.ProbeAsync(webView);
-        if (probe is null)
-        {
-            return;
-        }
-
-        // The probe reports on a completion that has already happened, so a navigation started while it
-        // was in flight owns the document now, and this verdict is about a page already gone.
-        if (ViewModel.IsNavigating
-            || !string.Equals(ViewModel.CurrentUrl, probedUrl, StringComparison.Ordinal))
-        {
-            return;
-        }
-
-        Diagnostics.LogProbe(webView, probedUrl, probe);
-
-        if (probe.IsEmpty)
-        {
-            // Reported as the failure it is, so the document shows the load-failed placeholder and its reload
-            // rather than a blank page the user cannot tell from a slow one.
-            ViewModel.NotifyNavigationCompleted(NavigationOutcome.Failed);
-        }
-    }
-
-    private void WebView_Attached(object? sender, EventArgs e)
-    {
-        if (sender is not IEditorWebView webView)
-        {
-            return;
-        }
-
-        _ = Diagnostics.LogSurfaceAsync("WebView attached", webView);
-
-        // A document that loaded while detached raised no navigation events, so its completion was never
-        // probed. Attach is the first moment the host hears from it again.
-        _ = ProbeLoadedContentAsync(webView);
-    }
-
-    private void WebView_Detached(object? sender, EventArgs e)
-    {
-        if (sender is not IEditorWebView webView)
-        {
-            return;
-        }
-
-        _ = Diagnostics.LogSurfaceAsync("WebView detached", webView);
-
-        // Detach is raised before Uno takes the native view apart. The settled state is logged once that work
-        // has run.
-        DispatcherQueue.TryEnqueue(
-            Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
-            () => { _ = Diagnostics.LogSurfaceAsync("WebView detached, settled", webView); });
+        ViewModel.NotifyNavigationCompleted(NavigationOutcome.Failed);
     }
 
     private void WebView_NavigationStarting(object? sender, WebNavigationStartingEventArgs args)
     {
-        if (sender is not IEditorWebView webView)
-        {
-            return;
-        }
-
-        // A start with no Navigating line before it is the page reloading on its own, which is what a
-        // redirect looks like and what a re-attach must not.
-        Diagnostics.LogNavigation("Navigation starting", webView, args.Uri);
-
-        _isNavigationReplacedByDownload = false;
-
         ViewModel.NotifyNavigationStarted(args.Uri);
     }
 
@@ -441,13 +308,6 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
     // as it starts.
     private void WebView_NavigationCommitted(object? sender, string url)
     {
-        if (sender is not IEditorWebView webView)
-        {
-            return;
-        }
-
-        Diagnostics.LogNavigation("Navigation committed", webView, url);
-
         ViewModel.NotifyNavigationCommitted(url);
     }
 
@@ -455,11 +315,6 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
     // the document is showing stays on screen.
     private void WebView_DownloadStarted(object? sender, EventArgs e)
     {
-        // Chromium has already ended the navigation by now. WebKit has not, and ends it with a failure. A
-        // navigation that started while the view was detached reported no start, so this is not gated on
-        // one being known to be in flight.
-        _isNavigationReplacedByDownload = true;
-
         ViewModel.NotifyDownloadStarted();
     }
 

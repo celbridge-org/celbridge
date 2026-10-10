@@ -34,6 +34,12 @@ let lastVisibleScrollPercentage = 0;
 // still holds the old document, and a scroll applied to it would be lost.
 let isAwaitingDocument = true;
 
+// The address the last refresh asked for, and the address it replaced while that one was still loading. WebKit
+// can finish the replaced navigation and drop the newer one, which leaves the frame on the old address. This
+// happens after a rename that arrives while the editor is loading, because the page first loads the old address.
+let requestedUrl = null;
+let replacedUrl = null;
+
 /**
  * Stores the frame the preview navigates. The page is loaded by refresh, so there is nothing to load yet.
  * @param {HTMLIFrameElement} iframe
@@ -42,6 +48,14 @@ export function initialize(iframe) {
     iframeElement = iframe;
 
     iframe.addEventListener('load', () => {
+        // The frame finished a navigation that a later refresh replaced, so it is asked for the current
+        // address again, once.
+        if (isShowingReplacedAddress()) {
+            replacedUrl = null;
+            iframe.src = requestedUrl;
+            return;
+        }
+
         isAwaitingDocument = false;
         iframe.removeAttribute('aria-busy');
         listenForScroll();
@@ -77,6 +91,9 @@ export function refresh(url) {
         !isAwaitingDocument) {
         pendingScrollPercentage = getVisibleScrollPercentage();
     }
+
+    replacedUrl = isAwaitingDocument ? requestedUrl : null;
+    requestedUrl = url;
 
     isAwaitingDocument = true;
     iframeElement.setAttribute('data-cel-content-frame', '');
@@ -142,6 +159,27 @@ function getVisibleScrollPercentage() {
     }
 
     return readScrollPercentage();
+}
+
+// True when the frame shows the address the last refresh replaced, rather than the one it asked for. A page
+// that has navigated itself elsewhere shows neither. A page on another origin has no document to read, and
+// counts as neither.
+function isShowingReplacedAddress() {
+    if (replacedUrl === null) {
+        return false;
+    }
+
+    const shownUrl = iframeElement.contentDocument?.URL;
+    if (!shownUrl) {
+        return false;
+    }
+
+    return shownUrl === resolveUrl(replacedUrl) &&
+        shownUrl !== resolveUrl(requestedUrl);
+}
+
+function resolveUrl(url) {
+    return new URL(url, document.baseURI).href;
 }
 
 function hasLayout() {

@@ -38,7 +38,7 @@ internal sealed class WindowsWebView : WebViewBase
     }
 
     // This head maps a virtual host to a real https origin instead, so nothing loads an HTML string here.
-    public override void LoadHtmlString(string html, string baseUrl)
+    protected override void LoadHtmlStringCore(string html, string baseUrl)
     {
         throw new NotSupportedException("Loading an HTML string with a base URL is not supported on this platform.");
     }

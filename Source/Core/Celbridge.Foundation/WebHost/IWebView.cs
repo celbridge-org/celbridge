@@ -37,7 +37,8 @@ public enum WebNavigationResult
     Cancelled,
 
     /// <summary>
-    /// The connection was aborted before the page arrived.
+    /// The navigation ended before its page arrived, because the connection was aborted or the response became a
+    /// download.
     /// </summary>
     Aborted,
 

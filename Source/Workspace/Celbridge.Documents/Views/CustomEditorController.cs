@@ -12,7 +12,6 @@ using Celbridge.Packages;
 using Celbridge.Projects;
 using Celbridge.Reports;
 using Celbridge.Server;
-using Celbridge.Settings;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.WebHost;
@@ -139,8 +138,6 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
     // The editor's own origin. Every other navigation is cancelled.
     private string _allowedNavigationPrefix = string.Empty;
-
-    private WebViewLoadDiagnostics? _diagnostics;
 
     // The Celbridge host for JSON-RPC communication with the WebView.
     private CelbridgeHost? Host { get; set; }
@@ -395,11 +392,6 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             webView.SetResource(_viewModel.FileResource);
             webView.SetAccessibleName(_accessibleName);
 
-            // Attach and detach are what a dock or tab switch does to the surface, so both are logged with the
-            // state they leave it in.
-            webView.Attached += WebView_Attached;
-            webView.Detached += WebView_Detached;
-            webView.ViewportSized += WebView_ViewportSized;
             webView.IsSizedChanged += WebView_IsSizedChanged;
 
             webView.AttachTo(_webViewContainer);
@@ -557,10 +549,6 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
         _allowedNavigationPrefix = editorLoader.GetAllowedNavigationOrigin(loadRequest);
         webView.NavigationStarting += WebView_NavigationStarting;
-        webView.NavigationStarting += OnNavigationStarting_Diagnostics;
-        webView.NavigationCompleted += OnNavigationCompleted_Diagnostics;
-
-        Diagnostics.LogNavigation($"Navigating to {_contribution.Package.Name}", webView, entryPoint);
 
         await editorLoader.LoadAsync(loadRequest);
     }
@@ -745,105 +733,6 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         {
             _logger.LogWarning(ex, "Failed to install the document-start WebView tool bridge shim");
         }
-    }
-
-    private WebViewLoadDiagnostics Diagnostics => _diagnostics ??= new WebViewLoadDiagnostics(
-        _serviceProvider.GetRequiredService<IFeatureFlags>(),
-        _logger);
-
-    private void OnNavigationStarting_Diagnostics(object? sender, WebNavigationStartingEventArgs args)
-    {
-        if (sender is not IEditorWebView webView)
-        {
-            return;
-        }
-
-        Diagnostics.LogNavigation("Navigation starting", webView, args.Uri);
-    }
-
-    private void OnNavigationCompleted_Diagnostics(object? sender, WebNavigationCompletedEventArgs args)
-    {
-        if (sender is not IEditorWebView webView)
-        {
-            return;
-        }
-
-        if (args.Result != WebNavigationResult.Succeeded)
-        {
-            Diagnostics.LogNavigationFailed(webView, webView.Source, args);
-            return;
-        }
-
-        Diagnostics.LogNavigation("Navigation completed", webView, webView.Source);
-        _ = ProbeLoadedContentAsync(webView);
-    }
-
-    // An editor page is never legitimately empty, so an empty probe on one is a failed load.
-    private async Task ProbeLoadedContentAsync(IEditorWebView webView)
-    {
-        // The blank page the control starts on is empty by design.
-        var url = webView.Source;
-        if (string.IsNullOrEmpty(url)
-            || url.StartsWith("about:", StringComparison.OrdinalIgnoreCase))
-        {
-            return;
-        }
-
-        var probe = await Diagnostics.ProbeAsync(webView);
-        if (probe is null)
-        {
-            return;
-        }
-
-        // The probe reports on a completion that has already happened, so a navigation started while it was
-        // in flight owns the document now and this verdict is about a page that has been left.
-        if (!ReferenceEquals(_webView, webView)
-            || !string.Equals(webView.Source, url, StringComparison.Ordinal))
-        {
-            return;
-        }
-
-        Diagnostics.LogProbe(webView, url, probe);
-    }
-
-    private void WebView_Attached(object? sender, EventArgs e)
-    {
-        if (sender is not IEditorWebView webView)
-        {
-            return;
-        }
-
-        _ = Diagnostics.LogSurfaceAsync("WebView attached", webView);
-
-        // An editor that loaded while detached raised no navigation events, so its completion was never
-        // probed. Attach is the first moment the host hears from it again.
-        _ = ProbeLoadedContentAsync(webView);
-    }
-
-    private void WebView_Detached(object? sender, EventArgs e)
-    {
-        if (sender is not IEditorWebView webView)
-        {
-            return;
-        }
-
-        _ = Diagnostics.LogSurfaceAsync("WebView detached", webView);
-
-        // Detach is raised before Uno takes the native view apart. The settled state is logged once that work
-        // has run.
-        _webViewContainer.DispatcherQueue.TryEnqueue(
-            Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
-            () => { _ = Diagnostics.LogSurfaceAsync("WebView detached, settled", webView); });
-    }
-
-    private void WebView_ViewportSized(object? sender, WebViewViewportSize size)
-    {
-        if (sender is not IEditorWebView webView)
-        {
-            return;
-        }
-
-        Diagnostics.LogViewportSize(webView, size.Width, size.Height, size.IsArranged);
     }
 
     // Tells the page whether its viewport is a real size. It runs only when the answer changes, since the state

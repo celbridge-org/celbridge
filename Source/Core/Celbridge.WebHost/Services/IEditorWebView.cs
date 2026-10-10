@@ -1,11 +1,6 @@
 namespace Celbridge.WebHost;
 
 /// <summary>
-/// A viewport size the view gave its page. IsArranged is true when the size came from layout.
-/// </summary>
-public sealed record WebViewViewportSize(double Width, double Height, bool IsArranged);
-
-/// <summary>
 /// Options for a whole-page find. Find always wraps, as a browser's does. OnMatchStateChanged is called on the UI
 /// thread as the find advances, so a find bar can show its state.
 /// </summary>
@@ -40,24 +35,9 @@ public interface IEditorWebView : IWebView, IDisposable
     void AttachTo(Panel container);
 
     /// <summary>
-    /// Raised when the view enters the visual tree.
-    /// </summary>
-    event EventHandler? Attached;
-
-    /// <summary>
-    /// Raised when the view leaves the visual tree.
-    /// </summary>
-    event EventHandler? Detached;
-
-    /// <summary>
     /// Sets the size to give the page until the view is laid out.
     /// </summary>
     void SetPresentedSize(double width, double height);
-
-    /// <summary>
-    /// Raised each time the view sets its page's viewport size.
-    /// </summary>
-    event EventHandler<WebViewViewportSize>? ViewportSized;
 
     /// <summary>
     /// True when the view can give its page a viewport size before it is laid out.
@@ -173,7 +153,14 @@ public interface IEditorWebView : IWebView, IDisposable
     WebViewHealth GetHealth();
 
     /// <summary>
-    /// Raised when a navigation becomes a download.
+    /// Raised when a navigation becomes a download. The navigation then completes as aborted.
     /// </summary>
     event EventHandler? DownloadStarted;
+
+    /// <summary>
+    /// Raised when the page turns out to be an empty document, which is a load that failed although it reported
+    /// success. The view checks after each successful navigation and each time it is attached, and drops a finding
+    /// about a page that a navigation is leaving.
+    /// </summary>
+    event EventHandler? LoadedEmpty;
 }

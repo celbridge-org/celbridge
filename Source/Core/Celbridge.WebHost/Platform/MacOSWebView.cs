@@ -215,7 +215,7 @@ public sealed class MacOSWebView : SkiaWebView
 
     // Calls -[WKWebView loadHTMLString:baseURL:], so the document has the base URL as its origin. Uno serves a
     // mapped virtual host from a file URL here, so a page that needs the host as its origin is loaded this way.
-    public override void LoadHtmlString(string html, string baseUrl)
+    protected override void LoadHtmlStringCore(string html, string baseUrl)
     {
         if (!TryGetNativeHandle(out var nativeHandle, out var detail))
         {

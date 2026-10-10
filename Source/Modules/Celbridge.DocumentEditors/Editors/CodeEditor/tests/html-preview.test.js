@@ -24,11 +24,12 @@ class FakeResizeObserver {
     disconnect() {}
 }
 
-// A freshly loaded page: a scroll range of 800, scrolled to the top.
-function createPage() {
+// A freshly loaded page at the address, with a scroll range of 800, scrolled to the top.
+function createPage(url) {
     const scrollListeners = [];
 
     return {
+        URL: url,
         body: {},
         scrollingElement: {
             scrollHeight: 1000,
@@ -48,6 +49,11 @@ function createPage() {
             scrollListeners.forEach((listener) => listener());
         }
     };
+}
+
+// An address as the frame's document reports it.
+function absoluteUrl(url) {
+    return new URL(url, document.baseURI).href;
 }
 
 // A stand-in for the preview frame. jsdom cannot load a page into a real one, and lays nothing out.
@@ -85,9 +91,10 @@ function createFrame() {
         hasAttribute(name) {
             return attributes.has(name);
         },
-        // Replaces the document with a newly loaded page, as a navigation does, and fires the frame's load.
-        loadPage() {
-            this.contentDocument = createPage();
+        // Replaces the document with a newly loaded page, as a navigation does, and fires the frame's load. The
+        // page's address is the one the frame's src names, unless the test gives another.
+        loadPage(url = absoluteUrl(src)) {
+            this.contentDocument = createPage(url);
             loadListeners.forEach((listener) => listener());
 
             return this.contentDocument.scrollingElement;
@@ -149,6 +156,54 @@ describe('HTML preview module', () => {
 
         expect(frame.navigations).toEqual([pageUrl, pageUrl]);
         expect(frame.getAttribute('aria-busy')).toBe('true');
+    });
+
+    it('asks again for the current address when the frame finishes a navigation a refresh replaced', () => {
+        const oldUrl = '/project/docs/old.html';
+        previewModule.refresh(oldUrl);
+        previewModule.refresh(pageUrl);
+
+        frame.loadPage(absoluteUrl(oldUrl));
+
+        expect(frame.navigations).toEqual([oldUrl, pageUrl, pageUrl]);
+        expect(frame.getAttribute('aria-busy')).toBe('true');
+
+        frame.loadPage();
+
+        expect(frame.hasAttribute('aria-busy')).toBe(false);
+    });
+
+    it('asks again for the current address only once', () => {
+        const oldUrl = '/project/docs/old.html';
+        previewModule.refresh(oldUrl);
+        previewModule.refresh(pageUrl);
+
+        frame.loadPage(absoluteUrl(oldUrl));
+        frame.loadPage(absoluteUrl(oldUrl));
+
+        expect(frame.navigations).toEqual([oldUrl, pageUrl, pageUrl]);
+        expect(frame.hasAttribute('aria-busy')).toBe(false);
+    });
+
+    it('leaves a page that navigated itself away while it loaded', () => {
+        previewModule.refresh('/project/docs/old.html');
+        previewModule.refresh(pageUrl);
+
+        frame.loadPage(absoluteUrl('/project/docs/elsewhere.html'));
+
+        expect(frame.navigations).toEqual(['/project/docs/old.html', pageUrl]);
+        expect(frame.hasAttribute('aria-busy')).toBe(false);
+    });
+
+    it('does not count a refresh made after the page loaded as replacing it', () => {
+        const oldUrl = '/project/docs/old.html';
+        previewModule.refresh(oldUrl);
+        frame.loadPage();
+        previewModule.refresh(pageUrl);
+
+        frame.loadPage(absoluteUrl(oldUrl));
+
+        expect(frame.navigations).toEqual([oldUrl, pageUrl]);
     });
 
     it('marks the frame as the content frame once it shows the page', () => {

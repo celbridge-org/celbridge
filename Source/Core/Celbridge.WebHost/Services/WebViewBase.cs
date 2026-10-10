@@ -1,4 +1,5 @@
 using Celbridge.Logging;
+using Celbridge.Settings;
 using Celbridge.WebHost.Services;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Automation;
@@ -41,6 +42,23 @@ public abstract class WebViewBase : IEditorWebView
     private IWebViewDownloadHandler? _downloadHandler;
     private IDisposable? _navigationCommits;
     private EventHandler<string>? _navigationCommitted;
+
+    // Created when the view is handed out, so a view waiting in the prewarm queue logs nothing.
+    private WebViewLoadDiagnostics? _diagnostics;
+
+    // Counts the navigations the view has started or heard of. A probe's verdict stands only if none started while
+    // it ran.
+    private int _navigationCount;
+
+    // True from a reported navigation start until its completion. On the Skia heads a navigation made while the view
+    // is detached may never report a start, so the owner's own navigations do not set it.
+    private bool _isNavigationInFlight;
+
+    // Where the latest navigation was heading, for the log when its page does not arrive.
+    private string _navigationDestination = string.Empty;
+
+    // Set when a download replaces the navigation in flight.
+    private bool _isNavigationReplacedByDownload;
 
     protected WebViewBase(WebView2? control, IWebViewPlatform platform, ILogger logger)
     {
@@ -121,9 +139,11 @@ public abstract class WebViewBase : IEditorWebView
     /// <summary>
     /// Applies the options the view was acquired with. The factory calls it once, when it hands the view out.
     /// </summary>
-    internal async Task ConfigureAsync(WebViewOptions options)
+    internal async Task ConfigureAsync(WebViewOptions options, IFeatureFlags featureFlags)
     {
         _options = options;
+
+        _diagnostics = new WebViewLoadDiagnostics(this, featureFlags, _logger);
 
         if (Control is not null)
         {
@@ -246,12 +266,6 @@ public abstract class WebViewBase : IEditorWebView
 
     public event EventHandler<WebNavigationCompletedEventArgs>? NavigationCompleted;
 
-    public event EventHandler? Attached;
-
-    public event EventHandler? Detached;
-
-    public event EventHandler<WebViewViewportSize>? ViewportSized;
-
     public event EventHandler? IsSizedChanged;
 
     public event EventHandler<string>? NewWindowRequested;
@@ -259,6 +273,8 @@ public abstract class WebViewBase : IEditorWebView
     public event EventHandler? HistoryChanged;
 
     public event EventHandler? DownloadStarted;
+
+    public event EventHandler? LoadedEmpty;
 
     public event EventHandler<string>? WebMessageReceived;
 
@@ -283,6 +299,8 @@ public abstract class WebViewBase : IEditorWebView
 
     private void OnNavigationCommitted(string url)
     {
+        _diagnostics?.LogNavigation("Navigation committed", url);
+
         _navigationCommitted?.Invoke(this, url);
     }
 
@@ -399,6 +417,8 @@ public abstract class WebViewBase : IEditorWebView
 
     public bool IsSized { get; private set; }
 
+    // Attach and detach are what a tab switch or a dock does to the surface, so both are logged with the state they
+    // leave it in.
     private void Control_Loaded(object sender, RoutedEventArgs e)
     {
         OnAttached();
@@ -406,7 +426,17 @@ public abstract class WebViewBase : IEditorWebView
         // A view reattached at its old size raises no SizeChanged, so the size is applied here.
         ApplyViewportSize();
 
-        Attached?.Invoke(this, EventArgs.Empty);
+        var diagnostics = _diagnostics;
+        if (diagnostics is null)
+        {
+            return;
+        }
+
+        _ = diagnostics.LogSurfaceAsync("WebView attached");
+
+        // On the Skia heads a page that loaded while the view was detached raised no navigation events, so its load
+        // was never probed. Attach is the first moment the view hears from it again.
+        _ = ProbeContentAsync();
     }
 
     private void Control_Unloaded(object sender, RoutedEventArgs e)
@@ -414,7 +444,19 @@ public abstract class WebViewBase : IEditorWebView
         // A detached view's size is stale until it is laid out again.
         SetIsSized(false);
 
-        Detached?.Invoke(this, EventArgs.Empty);
+        var diagnostics = _diagnostics;
+        if (diagnostics is null)
+        {
+            return;
+        }
+
+        _ = diagnostics.LogSurfaceAsync("WebView detached");
+
+        // Detach is raised before Uno takes the native view apart. The settled state is logged once that work has
+        // run.
+        _dispatcherQueue?.TryEnqueue(
+            DispatcherQueuePriority.Low,
+            () => { _ = diagnostics.LogSurfaceAsync("WebView detached, settled"); });
     }
 
     private void Control_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -460,7 +502,7 @@ public abstract class WebViewBase : IEditorWebView
         // Set before IsSized changes, so the page measures the new size.
         var applied = SetNativeViewportSize(width, height);
 
-        ViewportSized?.Invoke(this, new WebViewViewportSize(width, height, isArranged));
+        _diagnostics?.LogViewportSize(width, height, isArranged);
 
         // Before layout, a size the platform did not apply leaves the viewport a placeholder.
         if (!isArranged &&
@@ -493,7 +535,28 @@ public abstract class WebViewBase : IEditorWebView
             return;
         }
 
+        NoteNavigation(url);
+
         Control.Source = new Uri(url, UriKind.Absolute);
+    }
+
+    public void LoadHtmlString(string html, string baseUrl)
+    {
+        NoteNavigation(baseUrl);
+
+        LoadHtmlStringCore(html, baseUrl);
+    }
+
+    // Records a navigation the owner makes. On the Skia heads a view navigated while detached reports none of it,
+    // so the view counts it here. Paired with the completion, the log line tells a page that never arrives from
+    // one that arrived and failed.
+    private void NoteNavigation(string url)
+    {
+        _navigationCount++;
+        _navigationDestination = url;
+        _isNavigationReplacedByDownload = false;
+
+        _diagnostics?.LogNavigation("Navigating", url);
     }
 
     public void MapVirtualHost(string hostName, string folderPath)
@@ -522,8 +585,6 @@ public abstract class WebViewBase : IEditorWebView
     {
         return Health.GetHealth();
     }
-
-    public abstract void LoadHtmlString(string html, string baseUrl);
 
     public abstract Task StopAsync();
 
@@ -599,11 +660,16 @@ public abstract class WebViewBase : IEditorWebView
     }
 
     /// <summary>
-    /// Called when the control enters the visual tree, before the view raises Attached.
+    /// Called when the control enters the visual tree.
     /// </summary>
     protected virtual void OnAttached()
     {
     }
+
+    /// <summary>
+    /// Loads an HTML string as a page whose origin is baseUrl.
+    /// </summary>
+    protected abstract void LoadHtmlStringCore(string html, string baseUrl);
 
     /// <summary>
     /// Installs a script that runs at document start on each later navigation. Returns false where the platform
@@ -703,27 +769,119 @@ public abstract class WebViewBase : IEditorWebView
 
     private void CoreWebView2_NavigationStarting(CoreWebView2 sender, CoreWebView2NavigationStartingEventArgs args)
     {
-        // A navigation can give the page a new renderer, so the process reading starts again from here. Only a
-        // change with no navigation behind it is reported.
-        Health.RecordNavigation(args.Uri);
-
-        var navigationArgs = new WebNavigationStartingEventArgs(args.Uri ?? string.Empty);
-
-        NavigationStarting?.Invoke(this, navigationArgs);
-
-        if (navigationArgs.Cancel)
+        if (OnNavigationStarting(args.Uri ?? string.Empty))
         {
             args.Cancel = true;
         }
     }
 
+    /// <summary>
+    /// Raises NavigationStarting for a navigation the platform reports, and returns whether a handler cancelled it.
+    /// </summary>
+    internal bool OnNavigationStarting(string uri)
+    {
+        // A navigation can give the page a new renderer, so the process reading starts again from here. Only a
+        // change with no navigation behind it is reported.
+        Health.RecordNavigation(uri);
+
+        _navigationCount++;
+        _isNavigationReplacedByDownload = false;
+        if (uri.Length > 0)
+        {
+            _navigationDestination = uri;
+        }
+
+        // A start with no Navigating line before it is the page navigating on its own, as a redirect does.
+        _diagnostics?.LogNavigation("Navigation starting", uri);
+
+        var navigationArgs = new WebNavigationStartingEventArgs(uri);
+
+        NavigationStarting?.Invoke(this, navigationArgs);
+
+        if (navigationArgs.Cancel)
+        {
+            return true;
+        }
+
+        _isNavigationInFlight = true;
+
+        return false;
+    }
+
     private void CoreWebView2_NavigationCompleted(CoreWebView2 sender, CoreWebView2NavigationCompletedEventArgs args)
     {
-        NavigationCompleted?.Invoke(this, CreateNavigationCompletedEventArgs(args.IsSuccess, args.WebErrorStatus));
+        OnNavigationCompleted(CreateNavigationCompletedEventArgs(args.IsSuccess, args.WebErrorStatus));
+    }
+
+    /// <summary>
+    /// Raises NavigationCompleted for a navigation the platform reports ended, then probes a page that loaded.
+    /// </summary>
+    internal void OnNavigationCompleted(WebNavigationCompletedEventArgs completion)
+    {
+        // A navigation that became a download leaves the old page on screen, so it was abandoned rather than failed.
+        // WebKit announces the download first and then ends the navigation with a failure. Chromium ends it as
+        // aborted before announcing the download.
+        if (_isNavigationReplacedByDownload
+            && completion.Result == WebNavigationResult.Failed)
+        {
+            completion = completion with { Result = WebNavigationResult.Aborted };
+        }
+
+        _isNavigationReplacedByDownload = false;
+        _isNavigationInFlight = false;
+
+        if (completion.Result == WebNavigationResult.Succeeded)
+        {
+            _diagnostics?.LogNavigation("Navigation completed", Source);
+        }
+        else
+        {
+            // Logged by where it was heading, since the page that did not arrive has no address of its own.
+            _diagnostics?.LogNavigationNotLoaded(_navigationDestination, completion);
+        }
+
+        NavigationCompleted?.Invoke(this, completion);
 
         foreach (var script in _scriptsRunAfterNavigation.ToList())
         {
             _ = RunScriptAfterNavigationAsync(script);
+        }
+
+        // Probed after the owner has heard of the completion.
+        if (completion.Result == WebNavigationResult.Succeeded)
+        {
+            _ = ProbeContentAsync();
+        }
+    }
+
+    // Probes the page, logs what it holds, and raises LoadedEmpty for an empty document. A verdict about a page that
+    // a navigation is leaving is dropped.
+    private async Task ProbeContentAsync()
+    {
+        var diagnostics = _diagnostics;
+        if (diagnostics is null
+            || _isDisposed
+            || _isNavigationInFlight)
+        {
+            return;
+        }
+
+        var navigationCount = _navigationCount;
+
+        var probe = await diagnostics.ProbeAsync();
+        if (probe is null
+            || _isDisposed
+            || _isNavigationInFlight
+            || _navigationCount != navigationCount)
+        {
+            return;
+        }
+
+        diagnostics.LogProbe(probe);
+
+        if (probe.IsEmpty)
+        {
+            LoadedEmpty?.Invoke(this, EventArgs.Empty);
         }
     }
 
@@ -815,6 +973,10 @@ public abstract class WebViewBase : IEditorWebView
 
     private void DownloadHandler_DownloadStarted(object? sender, EventArgs e)
     {
+        // A navigation that started while the view was detached reported no start, so this is not gated on one being
+        // known to be in flight.
+        _isNavigationReplacedByDownload = true;
+
         DownloadStarted?.Invoke(this, EventArgs.Empty);
     }
 
@@ -902,13 +1064,11 @@ public abstract class WebViewBase : IEditorWebView
         Closing = null;
         NavigationStarting = null;
         NavigationCompleted = null;
-        Attached = null;
-        Detached = null;
-        ViewportSized = null;
         IsSizedChanged = null;
         NewWindowRequested = null;
         HistoryChanged = null;
         DownloadStarted = null;
+        LoadedEmpty = null;
         WebMessageReceived = null;
         FocusGained = null;
         FocusLost = null;
