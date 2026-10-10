@@ -9,21 +9,16 @@ namespace Celbridge.WebHost.Platform;
 /// </summary>
 public class SkiaWebView : WebViewBase
 {
-    private readonly CoreWebView2 _coreWebView2;
-    private readonly ILogger _logger;
-
     internal SkiaWebView(WebView2 control, SkiaWebViewPlatform platform, ILogger logger)
         : base(control, platform, logger)
     {
-        _coreWebView2 = CoreWebView2!;
-        _logger = logger;
     }
 
     // Only the developer tools setting applies, and it reaches the real WebView2 behind the Windows-under-Skia head.
     // No Skia head implements zoom control. Sites already recognise the default User-Agent of these heads.
     protected override void ApplyOptions(WebViewOptions options)
     {
-        _coreWebView2.Settings.AreDevToolsEnabled = options.IsDevToolsEnabled;
+        LiveCoreWebView2.Settings.AreDevToolsEnabled = options.IsDevToolsEnabled;
     }
 
     protected override void LoadHtmlStringCore(string html, string baseUrl)
@@ -36,7 +31,7 @@ public class SkiaWebView : WebViewBase
     {
         await Task.CompletedTask;
 
-        _coreWebView2.Stop();
+        LiveCoreWebView2.Stop();
     }
 
     // Uno's Reload reaches the native view, so it also recovers a page whose script has hung. The HTTP cache is
@@ -45,14 +40,14 @@ public class SkiaWebView : WebViewBase
     {
         await Task.CompletedTask;
 
-        _coreWebView2.Reload();
+        LiveCoreWebView2.Reload();
     }
 
     public override async Task StartFindAsync(string term, FindOptions options)
     {
         await Task.CompletedTask;
 
-        _logger.LogDebug("Whole-page find is not implemented on this Skia head");
+        Logger.LogDebug("Whole-page find is not implemented on this Skia head");
     }
 
     public override void FindNext()
@@ -107,7 +102,7 @@ public class SkiaWebView : WebViewBase
     /// </summary>
     protected virtual async Task<string> EvaluateAsync(string expression)
     {
-        var result = await _coreWebView2.ExecuteScriptAsync(expression);
+        var result = await LiveCoreWebView2.ExecuteScriptAsync(expression);
 
         return result ?? "null";
     }
@@ -123,12 +118,12 @@ public class SkiaWebView : WebViewBase
     // from WebKit.
     protected override IWebViewDownloadHandler CreateDownloadHandler()
     {
-        return WebView2DownloadHandler.Attach(_coreWebView2);
+        return WebView2DownloadHandler.Attach(LiveCoreWebView2);
     }
 
     // On the Windows Skia head, Uno passes on WebView2's Source, which changes as a navigation commits.
     protected override IDisposable ObserveNavigationCommits(NavigationCommitted onCommitted)
     {
-        return new SourceChangedObserver(_coreWebView2, onCommitted);
+        return new SourceChangedObserver(LiveCoreWebView2, onCommitted);
     }
 }

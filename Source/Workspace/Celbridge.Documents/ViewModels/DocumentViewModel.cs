@@ -205,24 +205,22 @@ public abstract partial class DocumentViewModel : ObservableObject
             return Result.Ok();
         }
 
-        Result writeResult;
         _isSaving = true;
         try
         {
-            writeResult = await WriteAndRecordAsync(bytes);
+            return await WriteAndRecordAsync(bytes);
         }
         finally
         {
             _isSaving = false;
-        }
 
-        if (_hasChangeDuringSave)
-        {
-            _hasChangeDuringSave = false;
-            await CheckForExternalChangeAsync();
+            // Checked even when the write throws, so every change reported during the save gets its check.
+            if (_hasChangeDuringSave)
+            {
+                _hasChangeDuringSave = false;
+                await CheckForExternalChangeAsync();
+            }
         }
-
-        return writeResult;
     }
 
     private async Task<Result> WriteAndRecordAsync(byte[] bytes)

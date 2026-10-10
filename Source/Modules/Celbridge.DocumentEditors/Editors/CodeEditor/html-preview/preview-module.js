@@ -34,12 +34,12 @@ let lastVisibleScrollPercentage = 0;
 // still holds the old document, and a scroll applied to it would be lost.
 let isAwaitingDocument = true;
 
-// requestedUrl is the address the last refresh asked for. replacedUrl is the address that refresh replaced while
-// the replaced address was still loading. WebKit can finish the replaced navigation and drop the newer one, which
-// leaves the frame on the old address. A rename that arrives while the editor is loading causes this, because the
+// requestedUrl is the address the last refresh asked for. replacedUrls holds the addresses that later refreshes
+// replaced while they were still loading. WebKit can finish a replaced navigation and drop the newer one, which
+// leaves the frame on an old address. A rename that arrives while the editor is loading causes this, because the
 // page first loads the old address.
 let requestedUrl = null;
-let replacedUrl = null;
+let replacedUrls = [];
 
 /**
  * Stores the frame the preview navigates. The page is loaded by refresh, so there is nothing to load yet.
@@ -52,7 +52,7 @@ export function initialize(iframe) {
         // The frame finished a navigation that a later refresh replaced, so it is asked for the current
         // address again, once.
         if (isShowingReplacedAddress()) {
-            replacedUrl = null;
+            replacedUrls = [];
             iframe.src = requestedUrl;
             return;
         }
@@ -93,7 +93,11 @@ export function refresh(url) {
         pendingScrollPercentage = getVisibleScrollPercentage();
     }
 
-    replacedUrl = isAwaitingDocument ? requestedUrl : null;
+    if (!isAwaitingDocument) {
+        replacedUrls = [];
+    } else if (requestedUrl !== null) {
+        replacedUrls.push(requestedUrl);
+    }
     requestedUrl = url;
 
     isAwaitingDocument = true;
@@ -162,11 +166,11 @@ function getVisibleScrollPercentage() {
     return readScrollPercentage();
 }
 
-// True when the frame shows the address the last refresh replaced. False when the frame shows the address that
-// refresh asked for, a page that navigated itself elsewhere, or a page on another origin, whose document is out of
-// reach.
+// True when the frame shows an address that a later refresh replaced. False when the frame shows the address the
+// last refresh asked for, a page that navigated itself elsewhere, or a page on another origin, whose document is out
+// of reach.
 function isShowingReplacedAddress() {
-    if (replacedUrl === null) {
+    if (replacedUrls.length === 0) {
         return false;
     }
 
@@ -175,8 +179,8 @@ function isShowingReplacedAddress() {
         return false;
     }
 
-    return shownUrl === resolveUrl(replacedUrl) &&
-        shownUrl !== resolveUrl(requestedUrl);
+    return shownUrl !== resolveUrl(requestedUrl) &&
+        replacedUrls.some((url) => resolveUrl(url) === shownUrl);
 }
 
 function resolveUrl(url) {

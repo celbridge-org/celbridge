@@ -195,6 +195,19 @@ describe('HTML preview module', () => {
         expect(frame.hasAttribute('aria-busy')).toBe(false);
     });
 
+    it('asks again for the current address when the frame finishes the earliest of several replaced navigations', () => {
+        const oldUrl = '/project/docs/old.html';
+        const middleUrl = '/project/docs/middle.html';
+        previewModule.refresh(oldUrl);
+        previewModule.refresh(middleUrl);
+        previewModule.refresh(pageUrl);
+
+        frame.loadPage(absoluteUrl(oldUrl));
+
+        expect(frame.navigations).toEqual([oldUrl, middleUrl, pageUrl, pageUrl]);
+        expect(frame.getAttribute('aria-busy')).toBe('true');
+    });
+
     it('does not count a refresh made after the page loaded as replacing it', () => {
         const oldUrl = '/project/docs/old.html';
         previewModule.refresh(oldUrl);

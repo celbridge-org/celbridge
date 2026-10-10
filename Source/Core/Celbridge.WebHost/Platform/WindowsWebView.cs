@@ -16,8 +16,6 @@ internal sealed class WindowsWebView : WebViewBase
     // view, and the CDP call then never returns.
     private static readonly TimeSpan ScreenshotCaptureTimeout = TimeSpan.FromSeconds(5);
 
-    private readonly CoreWebView2 _coreWebView2;
-    private readonly ILogger _logger;
     private readonly Microsoft.UI.Xaml.Input.KeyEventHandler _controlKeyDownHandler;
 
     // Whether a key has reached the control since the control last took focus. Once one key goes astray, the keys
@@ -27,11 +25,9 @@ internal sealed class WindowsWebView : WebViewBase
     public WindowsWebView(WebView2 control, WindowsWebViewPlatform platform, ILogger logger)
         : base(control, platform, logger)
     {
-        _coreWebView2 = CoreWebView2!;
-        _logger = logger;
-
-        // On this head, the control's own key events fire only for keys that went to the host instead of the page.
-        // The handler is registered with handledEventsToo, so it also sees keys that another handler marked handled.
+        // On this head, an ordinary key raises the control's own key events only when it went to the host instead of
+        // the page. The handler is registered with handledEventsToo, so it also sees keys that another handler marked
+        // handled.
         _controlKeyDownHandler = Control_KeyDown;
         control.AddHandler(UIElement.KeyDownEvent, _controlKeyDownHandler, handledEventsToo: true);
         control.GotFocus += Control_GotFocus;
@@ -44,16 +40,34 @@ internal sealed class WindowsWebView : WebViewBase
 
     private void Control_KeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
     {
-        if (_isKeyOnControlReported)
+        if (_isKeyOnControlReported ||
+            IsAcceleratorKey(e.Key))
         {
             return;
         }
 
         _isKeyOnControlReported = true;
-        _logger.LogDebug(
+        Logger.LogDebug(
             "A key reached the control of the web view for {Resource} rather than its page, with the control's focus state {FocusState}",
             Resource,
             Control?.FocusState);
+    }
+
+    // WebView2 passes an accelerator key to the host as well as the page. An accelerator key is a key pressed with
+    // Control or Alt, Escape, or a function key. An accelerator key reaching the control says nothing about where the
+    // keyboard is.
+    private static bool IsAcceleratorKey(Windows.System.VirtualKey key)
+    {
+        return IsKeyDown(Windows.System.VirtualKey.Control)
+            || IsKeyDown(Windows.System.VirtualKey.Menu)
+            || key == Windows.System.VirtualKey.Escape
+            || (key >= Windows.System.VirtualKey.F1 && key <= Windows.System.VirtualKey.F24);
+    }
+
+    private static bool IsKeyDown(Windows.System.VirtualKey key)
+    {
+        return Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(key)
+            .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
     }
 
     protected override void ReleaseResources()
@@ -69,14 +83,14 @@ internal sealed class WindowsWebView : WebViewBase
 
     protected override void ApplyOptions(WebViewOptions options)
     {
-        _coreWebView2.Settings.AreDevToolsEnabled = options.IsDevToolsEnabled;
-        _coreWebView2.Settings.IsZoomControlEnabled = options.IsZoomEnabled;
+        LiveCoreWebView2.Settings.AreDevToolsEnabled = options.IsDevToolsEnabled;
+        LiveCoreWebView2.Settings.IsZoomControlEnabled = options.IsZoomEnabled;
 
         // Sites already recognise the WebView2 User-Agent, so the application token is appended to it. The options
         // are applied once, so the token is never appended twice.
         if (!string.IsNullOrEmpty(options.UserAgentToken))
         {
-            _coreWebView2.Settings.UserAgent = $"{_coreWebView2.Settings.UserAgent} {options.UserAgentToken}";
+            LiveCoreWebView2.Settings.UserAgent = $"{LiveCoreWebView2.Settings.UserAgent} {options.UserAgentToken}";
         }
     }
 
@@ -90,18 +104,18 @@ internal sealed class WindowsWebView : WebViewBase
     {
         await Task.CompletedTask;
 
-        _coreWebView2.Stop();
+        LiveCoreWebView2.Stop();
     }
 
     protected override async Task ReloadPageAsync(bool clearCache)
     {
         if (clearCache)
         {
-            await _coreWebView2.Profile.ClearBrowsingDataAsync(
+            await LiveCoreWebView2.Profile.ClearBrowsingDataAsync(
                 CoreWebView2BrowsingDataKinds.CacheStorage | CoreWebView2BrowsingDataKinds.DiskCache);
         }
 
-        _coreWebView2.Reload();
+        LiveCoreWebView2.Reload();
     }
 
     // Chromium's built-in find bar serves this head, so the host never drives find here.
@@ -124,7 +138,7 @@ internal sealed class WindowsWebView : WebViewBase
 
     protected override async Task<bool> InstallDocumentStartScriptAsync(string script)
     {
-        await _coreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(script);
+        await LiveCoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(script);
 
         return true;
     }
@@ -138,13 +152,13 @@ internal sealed class WindowsWebView : WebViewBase
 
     protected override async Task<string> EvalScriptAsync(string expression)
     {
-        return await _coreWebView2.ExecuteScriptAsync(expression);
+        return await LiveCoreWebView2.ExecuteScriptAsync(expression);
     }
 
     protected override async Task<ScreenshotData> CaptureScreenshotCoreAsync(ScreenshotRequest request)
     {
         var paramsJson = BuildCaptureScreenshotParams(request);
-        var captureTask = _coreWebView2
+        var captureTask = LiveCoreWebView2
             .CallDevToolsProtocolMethodAsync("Page.captureScreenshot", paramsJson)
             .AsTask();
 
@@ -183,13 +197,13 @@ internal sealed class WindowsWebView : WebViewBase
 
     protected override IWebViewDownloadHandler CreateDownloadHandler()
     {
-        return WebView2DownloadHandler.Attach(_coreWebView2);
+        return WebView2DownloadHandler.Attach(LiveCoreWebView2);
     }
 
     // WebView2 changes Source as a navigation commits.
     protected override IDisposable ObserveNavigationCommits(NavigationCommitted onCommitted)
     {
-        return new SourceChangedObserver(_coreWebView2, onCommitted);
+        return new SourceChangedObserver(LiveCoreWebView2, onCommitted);
     }
 
     private static string BuildCaptureScreenshotParams(ScreenshotRequest request)

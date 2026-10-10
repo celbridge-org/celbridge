@@ -5,7 +5,8 @@ namespace Celbridge.Tests.WebHost;
 
 /// <summary>
 /// A view built on WebViewBase with no control, for testing the shared view itself. The page answers each
-/// evaluation through Evaluate, and the download handler can report a download.
+/// evaluation through Evaluate, and the download handler can report a download. ApplyingOptions and
+/// InstallingScript stand in for the platform's own steps, so a test can make either one fail.
 /// </summary>
 internal sealed class ControlFreeWebView : WebViewBase
 {
@@ -15,6 +16,10 @@ internal sealed class ControlFreeWebView : WebViewBase
     }
 
     public Func<string, Task<string>> Evaluate { get; set; } = _ => Task.FromResult("null");
+
+    public Action<WebViewOptions> ApplyingOptions { get; set; } = _ => { };
+
+    public Func<string, Task<bool>> InstallingScript { get; set; } = _ => Task.FromResult(true);
 
     public FakeDownloadHandler Downloads { get; } = new();
 
@@ -36,13 +41,14 @@ internal sealed class ControlFreeWebView : WebViewBase
 
     protected override void ApplyOptions(WebViewOptions options)
     {
+        ApplyingOptions(options);
     }
 
     protected override void LoadHtmlStringCore(string html, string baseUrl)
     {
     }
 
-    protected override Task<bool> InstallDocumentStartScriptAsync(string script) => Task.FromResult(true);
+    protected override Task<bool> InstallDocumentStartScriptAsync(string script) => InstallingScript(script);
 
     protected override bool SetNativeViewportSize(double width, double height) => true;
 

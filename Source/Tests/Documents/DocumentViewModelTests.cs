@@ -411,6 +411,45 @@ public class DocumentViewModelTests
         }
     }
 
+    [Test]
+    public async Task OnResourceChanged_RaisesReload_WhenAnExternalChangeArrivesDuringASaveThatThrows()
+    {
+        // An external writer changes the file while the save writes it, and the save's write then throws.
+        await File.WriteAllTextAsync(_tempFilePath, "content before the save");
+
+        var fileSystem = Substitute.For<IResourceFileSystem>();
+        fileSystem.GetInfoAsync(Arg.Any<ResourceKey>())
+            .Returns(call => _resourceFileSystem.GetInfoAsync(call.Arg<ResourceKey>()));
+        fileSystem.ReadAllTextAsync(Arg.Any<ResourceKey>())
+            .Returns(call => _resourceFileSystem.ReadAllTextAsync(call.Arg<ResourceKey>()));
+        fileSystem.WriteAllBytesAsync(Arg.Any<ResourceKey>(), Arg.Any<byte[]>())
+            .Returns(call => WriteExternallyThenThrowAsync(call.Arg<ResourceKey>()));
+
+        var savingVm = new TestDocumentViewModel(fileSystem);
+        savingVm.FileResource = new ResourceKey("test.md");
+        savingVm.FilePath = _tempFilePath;
+
+        var loadResult = await savingVm.LoadDocument();
+        loadResult.IsSuccess.Should().BeTrue();
+
+        var reloadRequested = false;
+        savingVm.ReloadRequested += (_, _) => reloadRequested = true;
+
+        var save = async () => await savingVm.SaveDocumentContent("content the save meant to write");
+        await save.Should().ThrowAsync<IOException>();
+
+        reloadRequested.Should().BeTrue();
+
+        savingVm.Cleanup();
+
+        async Task<Result> WriteExternallyThenThrowAsync(ResourceKey resource)
+        {
+            await File.WriteAllTextAsync(_tempFilePath, "content an external writer put there, longer than before");
+            _messengerService.Send(new ResourceChangedMessage(resource));
+            throw new IOException("The write failed");
+        }
+    }
+
     /// <summary>
     /// Minimal test subclass that exposes DocumentViewModel base class functionality
     /// for testing text file operations and file-change monitoring.

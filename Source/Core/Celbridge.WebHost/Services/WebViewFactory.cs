@@ -134,8 +134,17 @@ internal class WebViewFactory : IWebViewFactory, IDisposable
 
         Guard.IsNotNull(webView);
 
-        // Applied here because a prewarmed view has not navigated yet.
-        await webView.ConfigureAsync(options, _featureFlags);
+        // Applied here because a prewarmed view has not navigated yet. A view that fails to configure is closed here,
+        // because the caller never receives it.
+        try
+        {
+            await webView.ConfigureAsync(options, _featureFlags);
+        }
+        catch
+        {
+            DisposeWebView(webView);
+            throw;
+        }
 
         _messageDispatcher.Observe(webView);
 
@@ -229,7 +238,7 @@ internal class WebViewFactory : IWebViewFactory, IDisposable
         _logger.LogDebug("WebViewFactory shutdown complete");
     }
 
-    // Disposes a view that was never handed out.
+    // Disposes a view that its caller never received.
     private void DisposeWebView(WebViewBase? webView)
     {
         if (webView == null)

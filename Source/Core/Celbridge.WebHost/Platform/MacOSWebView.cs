@@ -36,9 +36,7 @@ public sealed class MacOSWebView : SkiaWebView
     // process, so its address always belongs to the same view. Used only on the main thread.
     private static readonly Dictionary<IntPtr, MacOSWebView> ViewsByNativeHandle = new();
 
-    private readonly CoreWebView2 _coreWebView2;
     private readonly SkiaWebViewPlatform _platform;
-    private readonly ILogger _logger;
 
     // The native WKWebView, held from the moment it resolves. A held native view is pinned.
     private IntPtr _nativeHandle;
@@ -62,9 +60,7 @@ public sealed class MacOSWebView : SkiaWebView
     internal MacOSWebView(WebView2 control, IntPtr nativeHandle, SkiaWebViewPlatform platform, ILogger logger)
         : base(control, platform, logger)
     {
-        _coreWebView2 = CoreWebView2!;
         _platform = platform;
-        _logger = logger;
 
         if (nativeHandle != IntPtr.Zero)
         {
@@ -100,7 +96,7 @@ public sealed class MacOSWebView : SkiaWebView
                 return false;
             }
 
-            if (!MacOSWebViewInterop.TryGetNativeWebViewHandle(_coreWebView2, out var resolvedHandle, out detail))
+            if (!MacOSWebViewInterop.TryGetNativeWebViewHandle(LiveCoreWebView2, out var resolvedHandle, out detail))
             {
                 nativeHandle = IntPtr.Zero;
                 return false;
@@ -130,7 +126,7 @@ public sealed class MacOSWebView : SkiaWebView
         {
             if (!TryGetNativeHandle(out _, out var detail))
             {
-                _logger.LogWarning(
+                Logger.LogWarning(
                     "The native view of the web view for {Resource} could not be resolved, so its clicks, downloads and navigation commits are not reported: {Detail}",
                     Resource,
                     detail);
@@ -139,10 +135,10 @@ public sealed class MacOSWebView : SkiaWebView
             return;
         }
 
-        if (MacOSWebViewInterop.TryGetNativeWebViewHandle(_coreWebView2, out var currentHandle, out _) &&
+        if (MacOSWebViewInterop.TryGetNativeWebViewHandle(LiveCoreWebView2, out var currentHandle, out _) &&
             currentHandle != _nativeHandle)
         {
-            _logger.LogWarning(
+            Logger.LogWarning(
                 "Uno replaced the native view of the web view for {Resource}, so its clicks, downloads and navigation commits are no longer reported",
                 Resource);
         }
@@ -186,7 +182,7 @@ public sealed class MacOSWebView : SkiaWebView
     {
         if (!TryGetNativeHandle(out var nativeHandle, out var detail))
         {
-            _logger.LogWarning("Could not set the WebView developer tools state: {Detail}", detail);
+            Logger.LogWarning("Could not set the WebView developer tools state: {Detail}", detail);
             return;
         }
 
@@ -205,7 +201,7 @@ public sealed class MacOSWebView : SkiaWebView
     {
         if (!TryGetNativeHandle(out var nativeHandle, out var detail))
         {
-            _logger.LogWarning("Could not set the WebView User-Agent: {Detail}", detail);
+            Logger.LogWarning("Could not set the WebView User-Agent: {Detail}", detail);
             return;
         }
 
@@ -264,7 +260,7 @@ public sealed class MacOSWebView : SkiaWebView
 
         if (!TryGetNativeHandle(out var nativeHandle, out var detail))
         {
-            _logger.LogWarning("Could not start find: {Detail}", detail);
+            Logger.LogWarning("Could not start find: {Detail}", detail);
             return;
         }
 
@@ -289,7 +285,7 @@ public sealed class MacOSWebView : SkiaWebView
         _findSession = null;
 
         // findString leaves the last match selected. Clear it so no highlight lingers after the bar closes.
-        var clearOperation = _coreWebView2.ExecuteScriptAsync("window.getSelection().removeAllRanges()");
+        var clearOperation = LiveCoreWebView2.ExecuteScriptAsync("window.getSelection().removeAllRanges()");
         _ = ObserveClearAsync();
 
         async Task ObserveClearAsync()
@@ -300,7 +296,7 @@ public sealed class MacOSWebView : SkiaWebView
             }
             catch (Exception clearException)
             {
-                _logger.LogError(clearException, "Failed to clear the find selection");
+                Logger.LogError(clearException, "Failed to clear the find selection");
             }
         }
     }
@@ -341,7 +337,7 @@ public sealed class MacOSWebView : SkiaWebView
 
         if (!TryGetNativeHandle(out var nativeHandle, out var detail))
         {
-            _logger.LogWarning("Could not install a document-start script, so it runs after each navigation instead: {Detail}", detail);
+            Logger.LogWarning("Could not install a document-start script, so it runs after each navigation instead: {Detail}", detail);
             return false;
         }
 
@@ -372,7 +368,7 @@ public sealed class MacOSWebView : SkiaWebView
     {
         if (!TryGetNativeHandle(out var nativeHandle, out var detail))
         {
-            _logger.LogWarning("Could not focus the WebView natively: {Detail}", detail);
+            Logger.LogWarning("Could not focus the WebView natively: {Detail}", detail);
             return;
         }
 
@@ -387,7 +383,7 @@ public sealed class MacOSWebView : SkiaWebView
     {
         if (!TryGetNativeHandle(out var nativeHandle, out var detail))
         {
-            _logger.LogWarning("Could not read the web view's native focus: {Detail}", detail);
+            Logger.LogWarning("Could not read the web view's native focus: {Detail}", detail);
             return false;
         }
 
@@ -399,7 +395,7 @@ public sealed class MacOSWebView : SkiaWebView
     {
         if (!TryGetNativeHandle(out var nativeHandle, out var detail))
         {
-            _logger.LogWarning("Could not deliver a key to the web view: {Detail}", detail);
+            Logger.LogWarning("Could not deliver a key to the web view: {Detail}", detail);
             return false;
         }
 
@@ -443,7 +439,7 @@ public sealed class MacOSWebView : SkiaWebView
     // The page encodes its value itself. A value JSON cannot represent then reads as null.
     protected override async Task<string> EvaluateAsync(string expression)
     {
-        var encodedResult = await _coreWebView2.ExecuteScriptAsync(BuildPageEncodedScript(expression));
+        var encodedResult = await LiveCoreWebView2.ExecuteScriptAsync(BuildPageEncodedScript(expression));
 
         return DecodePageEncodedResult(encodedResult);
     }
@@ -537,13 +533,13 @@ public sealed class MacOSWebView : SkiaWebView
 
         if (!TryGetNativeHandle(out var nativeHandle, out var detail))
         {
-            _logger.LogWarning("A page's navigations are reported only once it has finished loading: its native view could not be resolved ({Detail})", detail);
+            Logger.LogWarning("A page's navigations are reported only once it has finished loading: its native view could not be resolved ({Detail})", detail);
             return sourceObserver;
         }
 
         if (!MacOSWebViewInterop.ObserveNavigationCommits(nativeHandle, OnNativeNavigationCommitted, out var commitDetail))
         {
-            _logger.LogWarning("A page's navigations are reported only once it has finished loading: {Detail}", commitDetail);
+            Logger.LogWarning("A page's navigations are reported only once it has finished loading: {Detail}", commitDetail);
             return sourceObserver;
         }
 
@@ -580,7 +576,7 @@ public sealed class MacOSWebView : SkiaWebView
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to report a navigation commit");
+            Logger.LogError(ex, "Failed to report a navigation commit");
         }
     }
 
@@ -602,7 +598,7 @@ public sealed class MacOSWebView : SkiaWebView
                 var clearedFailures = Health.RecordWakeSucceeded();
                 if (clearedFailures > 0)
                 {
-                    _logger.LogInformation(
+                    Logger.LogInformation(
                         "A hosted page is responding again after {FailureCount} missed wake(s)",
                         clearedFailures);
                 }
@@ -626,7 +622,7 @@ public sealed class MacOSWebView : SkiaWebView
                 if (consecutiveFailures == 1
                     || consecutiveFailures % FailuresPerReport == 0)
                 {
-                    _logger.LogWarning(
+                    Logger.LogWarning(
                         ex,
                         "A hosted page has missed {FailureCount} consecutive wake(s)",
                         consecutiveFailures);
@@ -642,7 +638,7 @@ public sealed class MacOSWebView : SkiaWebView
     // faulted and a page that returned undefined identically.
     private async Task WakePageAsync(CancellationToken cancellationToken)
     {
-        var wakeTask = _coreWebView2.ExecuteScriptAsync("0").AsTask(cancellationToken);
+        var wakeTask = LiveCoreWebView2.ExecuteScriptAsync("0").AsTask(cancellationToken);
         var timeoutTask = Task.Delay(TimeSpan.FromSeconds(WakeTimeoutSeconds), cancellationToken);
 
         if (await Task.WhenAny(wakeTask, timeoutTask) == timeoutTask)
@@ -681,15 +677,15 @@ public sealed class MacOSWebView : SkiaWebView
         switch (change)
         {
             case PageProcessChange.Gone:
-                _logger.LogWarning("The WebContent process behind {PageUrl} is no longer running", pageUrl);
+                Logger.LogWarning("The WebContent process behind {PageUrl} is no longer running", pageUrl);
                 break;
 
             case PageProcessChange.Relaunched:
-                _logger.LogInformation("WebKit relaunched the WebContent process behind {PageUrl}", pageUrl);
+                Logger.LogInformation("WebKit relaunched the WebContent process behind {PageUrl}", pageUrl);
                 break;
 
             case PageProcessChange.Replaced:
-                _logger.LogInformation(
+                Logger.LogInformation(
                     "WebKit swapped the WebContent process behind {PageUrl} without a navigation", pageUrl);
                 break;
         }
@@ -719,7 +715,7 @@ public sealed class MacOSWebView : SkiaWebView
 
         try
         {
-            var source = _coreWebView2.Source;
+            var source = LiveCoreWebView2.Source;
 
             return string.IsNullOrEmpty(source) ? "a hosted page" : source;
         }
@@ -757,7 +753,7 @@ public sealed class MacOSWebView : SkiaWebView
         var nativeHandle = _nativeHandle;
         if (nativeHandle == IntPtr.Zero)
         {
-            MacOSWebViewInterop.TryGetNativeWebViewHandle(_coreWebView2, out nativeHandle, out _);
+            MacOSWebViewInterop.TryGetNativeWebViewHandle(LiveCoreWebView2, out nativeHandle, out _);
         }
 
         // The dispose hook keeps a detached page loading, so the closing page is stopped here. Stopping works through
@@ -781,11 +777,11 @@ public sealed class MacOSWebView : SkiaWebView
     {
         try
         {
-            _coreWebView2.Stop();
+            LiveCoreWebView2.Stop();
         }
         catch (Exception exception)
         {
-            _logger.LogWarning(exception, "Could not stop a closing web view's page from loading");
+            Logger.LogWarning(exception, "Could not stop a closing web view's page from loading");
         }
     }
 }

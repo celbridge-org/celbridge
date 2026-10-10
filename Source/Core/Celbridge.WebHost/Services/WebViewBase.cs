@@ -50,11 +50,6 @@ public abstract class WebViewBase : IEditorWebView
     // before and after it runs, and drops its result if it changed, since that result describes a page being replaced.
     private int _navigationCount;
 
-    // The platform reports when a navigation starts and when it completes, and this flag is true in between. The
-    // probe skips the page while this flag is true. The owner's own navigations do not set this flag. On the Skia
-    // heads, a view that navigates while detached may never report the completion, and the flag would stay true.
-    private bool _isNavigationInFlight;
-
     // Where the latest navigation was heading, for the log when its page does not arrive.
     private string _navigationDestination = string.Empty;
 
@@ -108,6 +103,14 @@ public abstract class WebViewBase : IEditorWebView
     /// The control's CoreWebView2. It is read once, so every caller gets the same object.
     /// </summary>
     internal CoreWebView2? CoreWebView2 { get; }
+
+    /// <summary>
+    /// The control's CoreWebView2, for a head's view. A head's view always has a live control, so this is never null.
+    /// </summary>
+    protected CoreWebView2 LiveCoreWebView2 =>
+        CoreWebView2 ?? throw new InvalidOperationException("The web view has no CoreWebView2");
+
+    protected ILogger Logger => _logger;
 
     /// <summary>
     /// What the view has observed about whether its page still works.
@@ -316,7 +319,17 @@ public abstract class WebViewBase : IEditorWebView
 
         _documentStartScripts.Add(script);
 
-        var installed = await InstallDocumentStartScriptAsync(script);
+        bool installed;
+        try
+        {
+            installed = await InstallDocumentStartScriptAsync(script);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to install a document-start script for {Resource}, so it runs after each navigation instead", Resource);
+            installed = false;
+        }
+
         if (!installed)
         {
             _scriptsRunAfterNavigation.Add(script);
@@ -810,14 +823,7 @@ public abstract class WebViewBase : IEditorWebView
 
         NavigationStarting?.Invoke(this, navigationArgs);
 
-        if (navigationArgs.Cancel)
-        {
-            return true;
-        }
-
-        _isNavigationInFlight = true;
-
-        return false;
+        return navigationArgs.Cancel;
     }
 
     private void CoreWebView2_NavigationCompleted(CoreWebView2 sender, CoreWebView2NavigationCompletedEventArgs args)
@@ -841,7 +847,6 @@ public abstract class WebViewBase : IEditorWebView
         }
 
         _isNavigationReplacedByDownload = false;
-        _isNavigationInFlight = false;
 
         if (completion.Result == WebNavigationResult.Succeeded)
         {
@@ -868,13 +873,13 @@ public abstract class WebViewBase : IEditorWebView
     }
 
     // Probes the page, logs what it holds, and raises LoadedEmpty for an empty document. The result is dropped if a
-    // navigation starts while the probe runs.
+    // navigation starts while the probe runs. A page still loading when the probe starts is probed all the same,
+    // because a document that is still parsing gets a second look.
     private async Task ProbeContentAsync()
     {
         var diagnostics = _diagnostics;
         if (diagnostics is null
-            || _isDisposed
-            || _isNavigationInFlight)
+            || _isDisposed)
         {
             return;
         }
@@ -884,7 +889,6 @@ public abstract class WebViewBase : IEditorWebView
         var probe = await diagnostics.ProbeAsync();
         if (probe is null
             || _isDisposed
-            || _isNavigationInFlight
             || _navigationCount != navigationCount)
         {
             return;
