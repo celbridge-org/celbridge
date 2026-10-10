@@ -23,9 +23,11 @@ html, body {
     min-height: 0;
     width: 100%;
     /* Hidden until first content arrives so the user never sees an empty Monaco buffer
-       before the host's initialize round-trip completes. main.js toggles .is-loaded. */
+       before the host's initialize round-trip completes. main.js toggles .is-loaded.
+       The reveal is instant: content that fades in from opacity 0 does not count as the page's
+       first contentful paint, so Chromium goes on holding the new page, and dropping keys, until
+       its paint holding times out. */
     opacity: 0;
-    transition: opacity 0.1s ease-in;
 }
 
 #split-root.is-loaded {

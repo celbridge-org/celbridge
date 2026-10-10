@@ -17,11 +17,55 @@ internal sealed class WindowsWebView : WebViewBase
     private static readonly TimeSpan ScreenshotCaptureTimeout = TimeSpan.FromSeconds(5);
 
     private readonly CoreWebView2 _coreWebView2;
+    private readonly ILogger _logger;
+    private readonly Microsoft.UI.Xaml.Input.KeyEventHandler _controlKeyDownHandler;
+
+    // Whether a key has reached the control since it last took focus. While keys go astray, every key after the
+    // first does too, so one line per focus is enough.
+    private bool _isKeyOnControlReported;
 
     public WindowsWebView(WebView2 control, WindowsWebViewPlatform platform, ILogger logger)
         : base(control, platform, logger)
     {
         _coreWebView2 = CoreWebView2!;
+        _logger = logger;
+
+        // A key the page receives never raises the control's own key events on this head, so a key that does went to
+        // the host rather than the page. Registered with handledEventsToo, so a handler that marks the key handled
+        // cannot hide it.
+        _controlKeyDownHandler = Control_KeyDown;
+        control.AddHandler(UIElement.KeyDownEvent, _controlKeyDownHandler, handledEventsToo: true);
+        control.GotFocus += Control_GotFocus;
+    }
+
+    private void Control_GotFocus(object sender, RoutedEventArgs e)
+    {
+        _isKeyOnControlReported = false;
+    }
+
+    private void Control_KeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
+    {
+        if (_isKeyOnControlReported)
+        {
+            return;
+        }
+
+        _isKeyOnControlReported = true;
+        _logger.LogDebug(
+            "A key reached the control of the web view for {Resource} rather than its page, with the control's focus state {FocusState}",
+            Resource,
+            Control?.FocusState);
+    }
+
+    protected override void ReleaseResources()
+    {
+        base.ReleaseResources();
+
+        if (Control is not null)
+        {
+            Control.RemoveHandler(UIElement.KeyDownEvent, _controlKeyDownHandler);
+            Control.GotFocus -= Control_GotFocus;
+        }
     }
 
     protected override void ApplyOptions(WebViewOptions options)
