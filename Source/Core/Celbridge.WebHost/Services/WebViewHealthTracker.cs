@@ -17,7 +17,7 @@ internal enum PageProcessChange
 }
 
 /// <summary>
-/// Counts what the host has observed about one web view's page still working. Every member is safe to call
+/// Counts what the host has observed about the health of one web view's page. Every member is safe to call
 /// from any thread.
 /// </summary>
 internal sealed class WebViewHealthTracker

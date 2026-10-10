@@ -10,8 +10,8 @@ namespace Celbridge.WebHost.Platform;
 /// fires. The native download delegate reports a download's destination request, finish and failure, and
 /// a timer reads its progress while it runs. The service decides where a download goes, and this relays
 /// the signals and reports the outcome. One router serves every web view, because the native hooks are
-/// process-wide. WebKit names only the native web view, so the router asks the view that holds it for its
-/// handler. All of it runs on the main thread, where WebKit calls back.
+/// process-wide. WebKit names only the native web view, so the router finds the handler through the view that
+/// holds that native web view. The router runs entirely on the main thread, where WebKit calls back.
 /// </summary>
 internal sealed class MacOSWebViewDownloadRouter : IMacOSDownloadListener
 {
@@ -42,8 +42,8 @@ internal sealed class MacOSWebViewDownloadRouter : IMacOSDownloadListener
     }
 
     /// <summary>
-    /// Starts routing the native web view's downloads through the download service. A web view whose hooks
-    /// cannot be installed gets a handler that routes nothing, so its downloads keep WebKit's own handling.
+    /// Starts routing the native web view's downloads through the download service. If the hooks fail to install,
+    /// the web view gets an inert handler and its downloads keep WebKit's own handling.
     /// </summary>
     public IWebViewDownloadHandler Attach(IntPtr webView)
     {
@@ -61,7 +61,7 @@ internal sealed class MacOSWebViewDownloadRouter : IMacOSDownloadListener
         return FindHandler(webView) is not null;
     }
 
-    // The handler of the view whose native view this is, while it routes downloads.
+    // Returns the handler of the view that holds this native web view, or null when that handler is not routing.
     private static DownloadHandler? FindHandler(IntPtr webView)
     {
         return MacOSWebView.FromNativeHandle(webView)?.DownloadHandler is DownloadHandler { IsRouting: true } handler
@@ -399,7 +399,7 @@ internal sealed class MacOSWebViewDownloadRouter : IMacOSDownloadListener
         }
     }
 
-    // One view's handler. Its view holds it, which is how the router reaches it.
+    // One view's download handler. The view holds the handler, and the router reaches the handler through the view.
     private sealed class DownloadHandler : IWebViewDownloadHandler
     {
         public DownloadHandler(bool isRouting)

@@ -7,8 +7,8 @@ using Microsoft.UI.Dispatching;
 namespace Celbridge.WebHost;
 
 /// <summary>
-/// One registration of a web view. The focus service compares registrations by reference, so each one is a
-/// separate surface.
+/// One registration of a web view. The focus service compares registrations by reference, so each registration
+/// is a separate surface.
 /// </summary>
 internal sealed class WebViewFocusRegistration : IFocusSurface
 {
@@ -37,8 +37,8 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
     // The views whose events the registry has subscribed to.
     private readonly HashSet<IWebView> _observedViews = new();
 
-    // The surface whose focus report is current. Cleared when the focus service releases it in favour of
-    // another surface or panel (via the wrapped release callback in Report), and when its view closes.
+    // The surface whose focus report is current. Cleared when the focus service releases the surface for another
+    // surface or panel, and when the surface's view closes.
     private WebViewFocusRegistration? _focusedRegistration;
 
     // Whether the host window currently holds the keyboard. A page blurs both when focus moves to another
@@ -53,9 +53,9 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
     // Resolved lazily: the reconciler depends on this registry, so constructor-injecting it here would cycle.
     private IFocusReconciler? _focusReconciler;
 
-    // A grant for a view that has not registered yet. It applies when the view registers, since a new document
-    // is activated before its web view is ready. It is dropped if the user moves focus elsewhere first, or if
-    // the view closes before registering.
+    // A grant for a view that has not registered yet. The grant applies when the view registers, because a new
+    // document is activated before its web view is ready. The grant is dropped if the user moves focus elsewhere
+    // first, or if the view closes before registering.
     private IWebView? _pendingGrant;
 
     public WebViewFocusRegistry(
@@ -84,9 +84,9 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
     {
         var registration = new WebViewFocusRegistration(view, focusContext);
 
-        // A redock registers a live view under a new focus context, as when a utility moves between the Utility
-        // Panel and a document tab. The keyboard never left the view, so the focus model follows it to the new
-        // panel.
+        // A redock registers a live view under a new focus context, for example when a utility moves between the
+        // Utility Panel and a document tab. The keyboard never left the view, so the focus model moves with the
+        // view to the new panel.
         var replacesFocusedSurface =
             _registrations.TryGetValue(view, out var previousRegistration) &&
             ReferenceEquals(_focusedRegistration, previousRegistration);
@@ -164,8 +164,8 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
             ClearFocusUnlessAnotherSurfaceClaims(registration);
         }
 
-        // Invalidate the edit context on close so a closed editor cannot leave the Edit menu enabled. The
-        // focus service keeps a newer target that has replaced this one.
+        // Clear the edit target on close so a closed editor cannot leave the Edit menu enabled. If a newer edit
+        // target has already replaced this registration's target, the focus service keeps the newer target.
         _focusService.ClearEditTarget(registration.Context.EditTarget);
     }
 
@@ -173,8 +173,8 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
     {
         if (!_registrations.TryGetValue(view, out var registration))
         {
-            // The view is still initializing, so hold the intent until it registers. A later grant supersedes
-            // this one, so the view the user last acted on is the one that takes focus.
+            // The view is still initializing, so hold the grant until the view registers. A later grant replaces
+            // this pending grant, so the view the user acted on last takes focus.
             _pendingGrant = view;
             ObserveView(view);
             _logger.LogDebug("Focus granted to a web surface that has not registered yet; deferred until it does");
@@ -194,8 +194,8 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         _ = registration.Context.GrantDomFocus?.Invoke();
     }
 
-    // A view raises this for managed focus and, on macOS, for a click inside it. A gain by the surface that
-    // already holds the keyboard changes nothing.
+    // A view raises FocusGained when it gains managed focus and, on macOS, when a click lands inside it. A gain by
+    // the surface that already holds the keyboard changes nothing.
     private void OnViewFocusGained(object? sender, EventArgs e)
     {
         if (sender is not IWebView view ||
@@ -223,10 +223,10 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         return (view as WebViewBase)?.Control?.DispatcherQueue;
     }
 
-    // The surface holding the keyboard has closed, so nothing holds it any more. Deferred rather than applied
-    // here because closing a document activates the next one, which claims focus a step later: clearing now
-    // would take the caret straight back off it. If nothing has claimed by then, the focus model is left naming
-    // a panel whose surface is gone, and the focus indicator would show a caret nobody has.
+    // Clears focus after the focused surface closes, if no other surface has claimed focus by then. The clear is
+    // deferred because closing a document activates the next document, which claims focus a step later. An
+    // immediate clear would take the caret straight off that next document. The clear itself keeps the focus model
+    // from naming a panel whose surface is gone, and the focus indicator from showing a caret on that panel.
     private void ClearFocusUnlessAnotherSurfaceClaims(WebViewFocusRegistration registration)
     {
         var dispatcherQueue = GetDispatcherQueue(registration.View);
@@ -331,9 +331,9 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
             });
     }
 
-    // Whether the keyboard still belongs to this surface. A page reports a blur every time it loses focus,
-    // including when the host moved focus around and handed it straight back, so the page's own report cannot
-    // tell that apart from the user clicking away. The platform can, so the view asks it.
+    // Whether the keyboard still belongs to this surface. A page reports a blur every time it loses focus, even
+    // when the host moves focus away and hands it straight back. The page's report cannot tell that case from the
+    // user clicking away. The platform can tell, so the view asks the platform.
     private static bool HoldsPlatformKeyboardFocus(WebViewFocusRegistration registration)
     {
         return (registration.View as WebViewBase)?.HoldsKeyboard() == true;
@@ -397,9 +397,9 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
             return false;
         }
 
-        // Deliver the key straight to the page so it applies its own Tab behaviour (moving between form
-        // fields). Reported handled even when it cannot be delivered: a swallowed Tab beats one the managed
-        // focus loop uses to walk focus out of the document.
+        // Deliver the key straight to the page so the page applies its own Tab behaviour, such as moving
+        // between form fields. The key is reported handled even when it cannot be delivered. An unhandled Tab
+        // would reach the managed focus loop, which moves focus out of the document.
         (registration.View as WebViewBase)?.SendKeyDown(nativeKeyEvent);
 
         return true;
@@ -428,10 +428,10 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
             releaseFocus);
         _focusService.OnFocusReceived(claim);
 
-        // Applied here rather than only on the grant path so every claim converges, however it arrived: a
-        // click landing inside a native web view raises the view's focus gain without any managed focus
-        // change, so without this the managed control the user last used keeps consuming keys the page
-        // should receive. The model is updated first because the reconciler derives from it.
+        // Reconcile on every claim, including those a click makes outside the grant path. A click inside a native web
+        // view raises the view's focus gain while managed focus stays where it was. The reconcile moves the keys to
+        // the page, away from the managed control the user last used. The focus model is updated first because the
+        // reconciler derives its state from the model.
         _focusReconciler ??= ServiceLocator.AcquireService<IFocusReconciler>();
         _focusReconciler.Reconcile();
     }

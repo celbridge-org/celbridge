@@ -46,12 +46,13 @@ public abstract class WebViewBase : IEditorWebView
     // Created when the view is handed out, so a view waiting in the prewarm queue logs nothing.
     private WebViewLoadDiagnostics? _diagnostics;
 
-    // Counts the navigations the view has started or heard of. A probe's verdict stands only if none started while
-    // it ran.
+    // Goes up with every navigation, whether the owner made it or the platform reported it starting. The probe reads it
+    // before and after it runs, and drops its result if it changed, since that result describes a page being replaced.
     private int _navigationCount;
 
-    // True from a reported navigation start until its completion. On the Skia heads a navigation made while the view
-    // is detached may never report a start, so the owner's own navigations do not set it.
+    // The platform reports when a navigation starts and when it completes, and this flag is true in between. The
+    // probe skips the page while this flag is true. The owner's own navigations do not set this flag. On the Skia
+    // heads, a view that navigates while detached may never report the completion, and the flag would stay true.
     private bool _isNavigationInFlight;
 
     // Where the latest navigation was heading, for the log when its page does not arrive.
@@ -156,7 +157,7 @@ public abstract class WebViewBase : IEditorWebView
         _downloadHandler = CreateDownloadHandler();
         _downloadHandler.DownloadStarted += DownloadHandler_DownloadStarted;
 
-        // Installed before the owner's first navigation, so the first page reports its losses too.
+        // Installed before the owner's first navigation, so the first page reports its focus losses too.
         try
         {
             await AddDocumentStartScriptAsync(WebViewFocusLostScript.Source);
@@ -343,7 +344,7 @@ public abstract class WebViewBase : IEditorWebView
 
     private async Task<ScreenshotData> CaptureOnScreenAsync(ScreenshotRequest request)
     {
-        // A view that is off screen is not drawn, so a capture would never complete.
+        // A capture waits for a drawn frame, and only a view on screen is drawn.
         if (!IsOnScreen())
         {
             throw new InvalidOperationException(
@@ -417,8 +418,8 @@ public abstract class WebViewBase : IEditorWebView
 
     public bool IsSized { get; private set; }
 
-    // Attach and detach are what a tab switch or a dock does to the surface, so both are logged with the state they
-    // leave it in.
+    // A tab switch or a dock attaches and detaches the surface. Both events are logged with the state they leave
+    // the surface in.
     private void Control_Loaded(object sender, RoutedEventArgs e)
     {
         OnAttached();
@@ -434,8 +435,8 @@ public abstract class WebViewBase : IEditorWebView
 
         _ = diagnostics.LogSurfaceAsync("WebView attached");
 
-        // On the Skia heads a page that loaded while the view was detached raised no navigation events, so its load
-        // was never probed. Attach is the first moment the view hears from it again.
+        // On the Skia heads, a page that loaded while the view was detached raised no navigation events. Attach is then
+        // the first chance to probe the page.
         _ = ProbeContentAsync();
     }
 
@@ -452,8 +453,8 @@ public abstract class WebViewBase : IEditorWebView
 
         _ = diagnostics.LogSurfaceAsync("WebView detached");
 
-        // Detach is raised before Uno takes the native view apart. The settled state is logged once that work has
-        // run.
+        // Unloaded is raised before Uno takes the native view apart. The settled state is logged after Uno has
+        // finished.
         _dispatcherQueue?.TryEnqueue(
             DispatcherQueuePriority.Low,
             () => { _ = diagnostics.LogSurfaceAsync("WebView detached, settled"); });
@@ -464,8 +465,8 @@ public abstract class WebViewBase : IEditorWebView
         ApplyViewportSize();
     }
 
-    // Managed focus is the focus signal on the packaged Windows head, where it also fires for clicks on content
-    // that raises no DOM focus event.
+    // Managed focus is the focus signal on the packaged Windows head. There, GotFocus also fires for a click on
+    // content that raises no DOM focus event.
     private void Control_GotFocus(object sender, RoutedEventArgs e)
     {
         RaiseFocusGained();
@@ -547,9 +548,9 @@ public abstract class WebViewBase : IEditorWebView
         LoadHtmlStringCore(html, baseUrl);
     }
 
-    // Records a navigation the owner makes. On the Skia heads a view navigated while detached reports none of it,
-    // so the view counts it here. Paired with the completion, the log line tells a page that never arrives from
-    // one that arrived and failed.
+    // Records a navigation the owner makes. On the Skia heads, a view that navigates while detached reports no
+    // navigation events, so the view counts the navigation here. Paired with the completion line, the Navigating
+    // log line tells a page that never arrived from a page that arrived and failed.
     private void NoteNavigation(string url)
     {
         _navigationCount++;
@@ -606,9 +607,8 @@ public abstract class WebViewBase : IEditorWebView
             return;
         }
 
-        // The platform refuses focus for a control it cannot focus, such as one in a hidden area, and the keyboard
-        // then stays where it was. Nothing else records the refusal, so a page left without the keyboard is explained
-        // here.
+        // The platform refuses focus to a control in a hidden area, for example, and the keyboard stays where it was.
+        // This log line is the only record of the refusal.
         if (!Control.Focus(FocusState.Programmatic))
         {
             _logger.LogDebug("The platform refused keyboard focus for the web view of {Resource}", Resource);
@@ -616,8 +616,9 @@ public abstract class WebViewBase : IEditorWebView
     }
 
     /// <summary>
-    /// Whether the platform still routes the keyboard to the view. The focus manager answers this, so it is only
-    /// right once a focus change has finished: inside a focus event it still names the element focus is leaving.
+    /// Whether the platform still routes the keyboard to the view. The answer comes from the focus manager, so it is
+    /// only correct after a focus change has finished. Inside a focus event, the focus manager still names the
+    /// element that focus is leaving.
     /// </summary>
     internal virtual bool HoldsKeyboard()
     {
@@ -633,8 +634,8 @@ public abstract class WebViewBase : IEditorWebView
     }
 
     /// <summary>
-    /// Sends a native key-down event straight to the page, bypassing the managed key pipeline. Returns whether it
-    /// was sent. False where the host never delivers keys to a page itself.
+    /// Sends a native key-down event straight to the page, bypassing the managed key pipeline. Returns whether the
+    /// event was sent. Always false where the host never delivers keys to a page itself.
     /// </summary>
     internal virtual bool SendKeyDown(IntPtr nativeKeyEvent)
     {
@@ -642,8 +643,8 @@ public abstract class WebViewBase : IEditorWebView
     }
 
     /// <summary>
-    /// Sends a native key-down event to the page unless a web view has already received it. Returns whether it was
-    /// sent.
+    /// Sends a native key-down event to the page unless a web view has already received the event. Returns whether
+    /// the event was sent.
     /// </summary>
     internal virtual bool ForwardKeyDown(IntPtr nativeKeyEvent)
     {
@@ -684,7 +685,7 @@ public abstract class WebViewBase : IEditorWebView
 
     /// <summary>
     /// Installs a script that runs at document start on each later navigation. Returns false where the platform
-    /// cannot, and the view then runs the script after each navigation instead.
+    /// cannot install the script. The view then runs the script after each navigation instead.
     /// </summary>
     protected abstract Task<bool> InstallDocumentStartScriptAsync(string script);
 
@@ -714,7 +715,7 @@ public abstract class WebViewBase : IEditorWebView
     protected abstract IWebViewDownloadHandler CreateDownloadHandler();
 
     /// <summary>
-    /// Starts reporting each address the page commits to. Disposing the result stops it.
+    /// Starts reporting each address the page commits to. Disposing the result stops the reports.
     /// </summary>
     protected abstract IDisposable ObserveNavigationCommits(NavigationCommitted onCommitted);
 
@@ -791,7 +792,7 @@ public abstract class WebViewBase : IEditorWebView
     /// </summary>
     internal bool OnNavigationStarting(string uri)
     {
-        // A navigation can give the page a new renderer, so the process reading starts again from here. Only a
+        // A navigation can give the page a new renderer process, so the tracked process resets here. Only a process
         // change with no navigation behind it is reported.
         Health.RecordNavigation(uri);
 
@@ -802,7 +803,7 @@ public abstract class WebViewBase : IEditorWebView
             _navigationDestination = uri;
         }
 
-        // A start with no Navigating line before it is the page navigating on its own, as a redirect does.
+        // In the log, a start with no Navigating line before it is the page navigating on its own, as in a redirect.
         _diagnostics?.LogNavigation("Navigation starting", uri);
 
         var navigationArgs = new WebNavigationStartingEventArgs(uri);
@@ -825,13 +826,14 @@ public abstract class WebViewBase : IEditorWebView
     }
 
     /// <summary>
-    /// Raises NavigationCompleted for a navigation the platform reports ended, then probes a page that loaded.
+    /// Raises NavigationCompleted when the platform reports that a navigation ended. If the page loaded, the view
+    /// then probes it.
     /// </summary>
     internal void OnNavigationCompleted(WebNavigationCompletedEventArgs completion)
     {
-        // A navigation that became a download leaves the old page on screen, so it was abandoned rather than failed.
-        // WebKit announces the download first and then ends the navigation with a failure. Chromium ends it as
-        // aborted before announcing the download.
+        // A navigation that became a download leaves the old page on screen, so the navigation counts as aborted, not
+        // failed. WebKit announces the download first and then ends the navigation with a failure, which is changed
+        // to aborted here. Chromium ends the navigation as aborted before announcing the download.
         if (_isNavigationReplacedByDownload
             && completion.Result == WebNavigationResult.Failed)
         {
@@ -847,7 +849,7 @@ public abstract class WebViewBase : IEditorWebView
         }
         else
         {
-            // Logged by where it was heading, since the page that did not arrive has no address of its own.
+            // Logged by the navigation's destination, because only a page that arrives has an address of its own.
             _diagnostics?.LogNavigationNotLoaded(_navigationDestination, completion);
         }
 
@@ -865,8 +867,8 @@ public abstract class WebViewBase : IEditorWebView
         }
     }
 
-    // Probes the page, logs what it holds, and raises LoadedEmpty for an empty document. A verdict about a page that
-    // a navigation is leaving is dropped.
+    // Probes the page, logs what it holds, and raises LoadedEmpty for an empty document. The result is dropped if a
+    // navigation starts while the probe runs.
     private async Task ProbeContentAsync()
     {
         var diagnostics = _diagnostics;
@@ -953,8 +955,8 @@ public abstract class WebViewBase : IEditorWebView
     {
         try
         {
-            // Read as JSON rather than through TryGetWebMessageAsString, which throws on the macOS head, where a
-            // message arrives as JSON rather than a string.
+            // TryGetWebMessageAsString throws on the macOS head, because a message arrives there as JSON, not as a
+            // string. WebMessageAsJson works on every head.
             var message = args.WebMessageAsJson;
             if (string.IsNullOrEmpty(message))
             {
@@ -974,8 +976,8 @@ public abstract class WebViewBase : IEditorWebView
         }
     }
 
-    // Every message the page sends arrives here, including editor content, so the method name only pre-filters
-    // which messages are worth parsing.
+    // Every message the page sends arrives here, including editor content. The substring check is a cheap
+    // pre-filter, and only a message that passes it is parsed.
     private static bool IsFocusLostReport(string message)
     {
         return message.Contains(InputRpcMethods.FocusLost, StringComparison.Ordinal)
@@ -984,8 +986,8 @@ public abstract class WebViewBase : IEditorWebView
 
     private void DownloadHandler_DownloadStarted(object? sender, EventArgs e)
     {
-        // A navigation that started while the view was detached reported no start, so this is not gated on one being
-        // known to be in flight.
+        // Set even when no navigation is known to be in flight. A navigation that started while the view was
+        // detached reported no start.
         _isNavigationReplacedByDownload = true;
 
         DownloadStarted?.Invoke(this, EventArgs.Empty);
@@ -1100,7 +1102,7 @@ public abstract class WebViewBase : IEditorWebView
         Control.ClearValue(ControlMark.WebViewProperty);
     }
 
-    // Registered on first use. A view without a control, as in a test, never registers it.
+    // Registered when the first view with a control is created. Tests build views without a control.
     private static class ControlMark
     {
         public static readonly DependencyProperty WebViewProperty = DependencyProperty.RegisterAttached(

@@ -18,9 +18,9 @@ public static partial class MacOSWebViewInterop
     private static IntPtr _originalDidCommitNavigation;
 
     /// <summary>
-    /// Reports the address of each page the web view commits to, as WebKit commits it, to the listener. One
-    /// listener hears every web view's commits, so each call names the same one. Returns false with the reason in
-    /// detail when the web view's navigation delegate cannot be hooked.
+    /// Reports to the listener the address of each page the web view commits to, as WebKit commits it. One
+    /// listener hears every web view's commits, so every call must pass the same listener. Returns false with the
+    /// reason in detail when the web view's navigation delegate cannot be hooked.
     /// </summary>
     // UNO-BUG: UNOWebView implements no didCommitNavigation, and sets CoreWebView2.Source only once a page has
     // finished loading.

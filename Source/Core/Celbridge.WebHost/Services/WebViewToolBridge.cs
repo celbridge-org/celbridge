@@ -258,11 +258,9 @@ public partial class WebViewToolBridge : IWebViewToolBridge
         }
         catch (Exception ex)
         {
-            // The reload failed before NavigationCompleted could fire,
-            // so the gate would otherwise stay closed and every later tool call
-            // would block until the 5-second timeout. Mark the entry as failed
-            // so subsequent tool calls fail fast with the reload error rather
-            // than dispatching against a broken page state.
+            // The reload failed before NavigationCompleted could fire. Without the failure mark, the gate would stay
+            // closed and every later tool call would block until the 5-second timeout. With it, later tool calls
+            // fail fast with the reload error and never run against a broken page.
             var reason = $"The last WebView reload failed: {ex.Message}";
             entry.NotifyContentFailed(reason);
             return Result.Fail($"WebView reload failed for resource '{resource}': {ex.Message}")

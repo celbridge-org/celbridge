@@ -187,9 +187,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
         await EnsureWebViewInitializedAsync();
     }
 
-    // Initialization runs once, from whichever of LoadContent and Loaded comes first. LoadContent is
-    // awaited by the open command, so the web view exists by the time document_open returns rather than
-    // whenever the tab happens to render.
+    // Initialization runs once, from whichever of LoadContent and Loaded comes first. The open command awaits
+    // LoadContent, so the web view exists by the time document_open returns. Loaded waits for the tab to render.
     private async Task EnsureWebViewInitializedAsync()
     {
         _initializeWebViewTask ??= InitializeWebViewAsync();
@@ -242,7 +241,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
 
     private WebViewOptions CreateWebViewOptions()
     {
-        // The macOS WKWebView default UA is otherwise flagged as an unsupported browser by some sites.
+        // Some sites flag the default macOS WKWebView UA as an unsupported browser. On macOS, a User-Agent token
+        // replaces that UA.
         var environmentInfo = _serviceProvider.GetRequiredService<IAppEnvironment>().GetEnvironmentInfo();
 
         return new WebViewOptions
@@ -278,10 +278,10 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
         UpdateNavigationState();
     }
 
-    // A navigation that was cancelled or abandoned, such as one a later navigation superseded, one the user stopped
-    // or one that became a download, is not a page that failed to load. The old page is still on screen, so the
-    // placeholder would describe a failure that did not happen. A page that genuinely could not be fetched reports
-    // why.
+    // Only a failed navigation means the page failed to load. A cancelled or abandoned navigation leaves the old
+    // page on screen, so a placeholder would describe a failure that did not happen. Such a navigation may be one a
+    // later navigation superseded, one the user stopped, or one that became a download. A page that genuinely
+    // could not be fetched reports why.
     private static NavigationOutcome ResolveNavigationOutcome(WebNavigationCompletedEventArgs e)
     {
         return e.Result switch
@@ -292,8 +292,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
         };
     }
 
-    // An empty page is reported as the failure it is, so the document shows the load-failed placeholder and its
-    // reload rather than a blank page the user cannot tell from a slow one.
+    // An empty page is reported as a failure, so the document shows the load-failed placeholder and its reload. A
+    // blank page would look the same as a slow one to the user.
     private void WebView_LoadedEmpty(object? sender, EventArgs e)
     {
         ViewModel.NotifyNavigationCompleted(NavigationOutcome.Failed);
@@ -808,9 +808,9 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
         ViewModel.ShowUrlBar = true;
     }
 
-    // A browser document has no tabs, so it opens the address itself, and Back returns. The URL bar button is
-    // the way to the system browser, which also keeps downloads in the project. The page asked for the window,
-    // so this counts as the page's own navigation.
+    // A browser document has no tabs, so the document opens the new window's address itself, and Back returns.
+    // Opening the address here also keeps its downloads in the project. The URL bar button is the way to the
+    // system browser. The page asked for the window, so this counts as the page's own navigation.
     private void WebView_NewWindowRequested(object? sender, string url)
     {
         FollowPageNavigation(url);

@@ -8,8 +8,8 @@ namespace Celbridge.WebHost;
 public interface ICustomEditorChannelHost
 {
     /// <summary>
-    /// The resource of the document the editor shows. A rename that keeps the editor changes it, so a channel
-    /// reads it each time it needs it. Safe to read from any thread.
+    /// The resource of the document the editor shows. A rename that keeps the editor open changes this value, so
+    /// read it each time it is needed. Safe to read from any thread.
     /// </summary>
     ResourceKey Resource { get; }
 

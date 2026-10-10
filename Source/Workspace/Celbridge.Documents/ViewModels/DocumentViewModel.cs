@@ -35,7 +35,7 @@ public abstract partial class DocumentViewModel : ObservableObject
     private DateTime? _lastSavedFileMtime;
 
     // Set while a save writes the file and records its size and mtime. The watcher can report the save's own
-    // write in that window, so a change reported then is checked once the record is current.
+    // write during that window. A change reported then is checked once the record is current.
     private bool _isSaving;
     private bool _hasChangeDuringSave;
 

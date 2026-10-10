@@ -44,7 +44,7 @@ public class WebViewHealthTrackerTests
         _tracker.RecordWakeSucceeded().Should().Be(2);
         _tracker.GetHealth().WakeFailures.Should().Be(0);
 
-        // A page that never missed a wake has nothing to report as recovered.
+        // Only a page that missed a wake can report a recovery.
         _tracker.RecordWakeSucceeded().Should().Be(0);
     }
 
@@ -57,7 +57,7 @@ public class WebViewHealthTrackerTests
 
         _tracker.RecordWakeSucceeded();
 
-        // The wake succeeds against the relaunched process, which does not undo the death it replaced.
+        // The wake succeeds against the relaunched process, but the earlier process death still counts.
         _tracker.GetHealth().ProcessFailures.Should().Be(1);
     }
 
@@ -91,8 +91,8 @@ public class WebViewHealthTrackerTests
     [Test]
     public void ReplacedProcess_IsReportedWithoutCountingAFailure()
     {
-        // WebKit gives a page it has suspended in the background a new renderer, and the page goes on
-        // working, so the swap is reported without marking the document unhealthy.
+        // WebKit can give a page it suspended in the background a new renderer. The page goes on working, so
+        // the swap is reported without marking the document unhealthy.
         _tracker.RecordProcessId(100);
 
         _tracker.RecordProcessId(200).Should().Be(PageProcessChange.Replaced);
@@ -102,7 +102,7 @@ public class WebViewHealthTrackerTests
     [Test]
     public void ProcessChangeAfterANavigation_IsNotAChange()
     {
-        // A navigation swaps the prewarmed process for the page's own, which no renderer failing caused.
+        // A navigation swaps the prewarmed process for the page's own. No renderer failed.
         _tracker.RecordProcessId(100);
         _tracker.RecordNavigation("https://example.com/");
 
@@ -134,7 +134,7 @@ public class WebViewHealthTrackerTests
     [Test]
     public void ProcessAbsentOnFirstReading_IsNotAFailure()
     {
-        // A page whose renderer has not started yet has not lost one.
+        // Process id 0 means the renderer is still starting, which leaves the failure count at zero.
         _tracker.RecordProcessId(0).Should().Be(PageProcessChange.None);
         _tracker.GetHealth().ProcessFailures.Should().Be(0);
     }
@@ -144,7 +144,7 @@ public class WebViewHealthTrackerTests
     {
         _tracker.RecordProcessId(100);
 
-        // A head that cannot report an id must not read as a renderer that has gone away.
+        // Process id -1 means the head cannot read the id, which leaves the last known renderer in place.
         _tracker.RecordProcessId(-1).Should().Be(PageProcessChange.None);
         _tracker.GetHealth().ProcessFailures.Should().Be(0);
 

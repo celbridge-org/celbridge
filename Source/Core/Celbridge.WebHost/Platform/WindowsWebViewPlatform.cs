@@ -1,5 +1,5 @@
-// Compiled only under WINDOWS, as the DI selection is, so the Skia build never links against the WinAppSDK
-// WebView2 surface.
+// Compiled only under WINDOWS, so the Skia build never links against the WinAppSDK WebView2 surface. The DI
+// selection is gated on the same symbol.
 #if WINDOWS
 using Celbridge.Logging;
 using Microsoft.Web.WebView2.Core;
@@ -53,9 +53,9 @@ internal sealed class WindowsWebViewPlatform : IWebViewPlatform
         {
             await control.EnsureCoreWebView2Async();
 
-            // AllSite covers cookies together with the DOM storage kinds, so the three kinds below are exactly the
-            // cookies, cached credentials, site data and HTTP cache the action promises. Browsing and download
-            // history and the profile's own settings are deliberately left alone.
+            // These three kinds clear exactly the cookies, cached credentials, site data and HTTP cache that the
+            // action promises. AllSite covers cookies and the DOM storage kinds. Browsing history, download history
+            // and the profile's own settings are deliberately left alone.
             await control.CoreWebView2.Profile.ClearBrowsingDataAsync(
                 CoreWebView2BrowsingDataKinds.AllSite |
                 CoreWebView2BrowsingDataKinds.PasswordAutosave |

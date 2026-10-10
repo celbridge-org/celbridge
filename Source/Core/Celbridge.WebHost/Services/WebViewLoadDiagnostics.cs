@@ -7,8 +7,8 @@ using Windows.Foundation;
 namespace Celbridge.WebHost.Services;
 
 /// <summary>
-/// What the probe of a page found: the host's reading of the page's report, and whether it describes a document the
-/// response left empty.
+/// What the probe of a page found. Reading is the host's reading of the page's report. IsEmpty says whether the
+/// report describes a document the response left empty.
 /// </summary>
 internal sealed record WebViewContentProbe(string Reading, bool IsEmpty);
 
@@ -34,8 +34,8 @@ internal enum ProbeOutcome
 }
 
 /// <summary>
-/// Diagnostics for one view's page loads: each navigation, attach and detach logged with the surface the load runs
-/// against, and a probe of what a load actually produced. Each view owns one.
+/// Diagnostics for one view's page loads. Each navigation, attach and detach is logged with the surface the load
+/// runs against. A probe reports what a load actually produced. Each view owns one.
 /// </summary>
 internal sealed class WebViewLoadDiagnostics
 {
@@ -104,8 +104,8 @@ internal sealed class WebViewLoadDiagnostics
     // the timeline around it, which is the bulk of the volume.
     private bool IsNarrationEnabled => _featureFlags.IsEnabled(FeatureFlagConstants.WebViewLoadDiagnostics);
 
-    // The surface a load runs against: the control's tree and layout state, and the native state the view can
-    // see behind it.
+    // Describes the surface a load runs against. The description covers the control's tree and layout state, and
+    // the native state the view can see behind the control.
     private string DescribeSurface()
     {
         var webView = _view.Control;
@@ -156,9 +156,9 @@ internal sealed class WebViewLoadDiagnostics
     }
 
     /// <summary>
-    /// Logs a navigation that ended without its page. Only a failure is a warning. A navigation the host cancelled,
-    /// or one that was abandoned or became a download, is reported as the ordinary outcome it is, so it does not
-    /// read as a broken page.
+    /// Logs a navigation that ended without its page. Only a failure is logged as a warning. A navigation the host
+    /// cancelled, an abandoned navigation and one that became a download are ordinary outcomes, and are logged as
+    /// such.
     /// </summary>
     public void LogNavigationNotLoaded(string? url, WebNavigationCompletedEventArgs completion)
     {

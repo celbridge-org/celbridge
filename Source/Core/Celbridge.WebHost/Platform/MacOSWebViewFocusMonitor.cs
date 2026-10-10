@@ -7,12 +7,11 @@ using static Celbridge.Utilities.Platform.ObjectiveCRuntime;
 namespace Celbridge.WebHost.Platform;
 
 /// <summary>
-/// Tells each web view when a click lands in it. A click inside a WKWebView raises no managed GotFocus, and a
-/// click on content that cannot take focus, such as rendered markdown, raises no DOM focus event either. An AppKit
-/// local mouse-down monitor hit-tests each click against the native view hierarchy instead. Hit-testing is the
-/// discriminator because Uno keeps its Skia canvas (UNOMetalFlippedView) as the window's first responder even for
-/// clicks that land inside a hosted WKWebView, so responder state cannot tell the two apart. One monitor serves
-/// every web view in the process. macOS-only.
+/// Tells each web view when a click lands in it. One AppKit local mouse-down monitor serves every web view in the
+/// process, and hit-tests each click against the native view hierarchy. macOS-only.
+/// The monitor is the one signal that sees every click in a WKWebView. Managed GotFocus misses all of them. DOM focus
+/// events miss clicks on content that cannot take focus, such as rendered markdown. Responder state misses them
+/// too, because Uno keeps its Skia canvas (UNOMetalFlippedView) as the window's first responder.
 /// </summary>
 internal static class MacOSWebViewFocusMonitor
 {
@@ -44,7 +43,8 @@ internal static class MacOSWebViewFocusMonitor
     private static readonly IntPtr RtldDefault = new(-2);
 
     // The AppKit monitor and its UnmanagedCallersOnly callback are process-global. All access happens on the main
-    // thread: the monitor is installed from web view creation, and its callback runs during AppKit event dispatch.
+    // thread. The monitor is installed when a web view is created, and its callback runs during AppKit event
+    // dispatch.
     private static bool _isLastPressInWebView;
     private static bool _monitorInstalled;
     private static IntPtr _monitor;
@@ -53,8 +53,8 @@ internal static class MacOSWebViewFocusMonitor
     private static ILogger? _logger;
 
     /// <summary>
-    /// Whether the most recent mouse press landed in a web view. It is answered before the managed pointer
-    /// pipeline raises that press.
+    /// Whether the most recent mouse press landed in a web view. The monitor records the answer before the managed
+    /// pointer pipeline raises that press.
     /// </summary>
     public static bool IsLastPressInWebView => _isLastPressInWebView;
 
@@ -130,10 +130,10 @@ internal static class MacOSWebViewFocusMonitor
             var clickedView = FindClickedWebView(nsEvent);
             _isLastPressInWebView = clickedView is not null;
 
-            // Every click inside a web view is signalled. Whether it is a change of focus is the focus
-            // registry's to decide: focus can leave a surface with no click at all (a shortcut opening the
-            // find bar, Tab, a programmatic move), and a monitor comparing this click against the last one
-            // would stay silent on the click that brings the keyboard back.
+            // Every click inside a web view is signalled, including a repeat click on the same view. Focus can
+            // leave a surface with no click at all, such as through Tab, a shortcut or a programmatic move. The
+            // next click must then bring the keyboard back. The focus registry decides whether a click changes
+            // focus.
             if (clickedView is not null)
             {
                 // Defer so the view's focus handlers run after AppKit finishes dispatching the click.
@@ -168,8 +168,8 @@ internal static class MacOSWebViewFocusMonitor
         var location = SendMessageReturnNSPoint(nsEvent, GetSelector("locationInWindow"));
         var hitView = SendMessageHitTest(contentView, GetSelector("hitTest:"), location);
 
-        // A click inside a WKWebView hits one of its descendant views, so walk up from the hit view to the
-        // first one that is a web view's native view.
+        // A click inside a WKWebView hits one of the WKWebView's descendant views. Walk up from the hit view to
+        // the first view that is a web view's native view.
         var view = hitView;
         while (view != IntPtr.Zero)
         {

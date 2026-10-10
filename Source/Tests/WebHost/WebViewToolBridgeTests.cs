@@ -188,7 +188,7 @@ public partial class WebViewToolBridgeTests
     [Test]
     public async Task ReloadAsync_ViewRefuses_ReturnsItsReasonAndKeepsThePageReady()
     {
-        // A short content-ready timeout, so a gate the refusal left closed fails the eval rather than hanging.
+        // A short content-ready timeout, so the eval fails fast if the refusal left the gate closed.
         var fastBridge = new WebViewToolBridge(_commandService, _logger, _fileSystem, TimeSpan.FromMilliseconds(100));
         var view = new FakeWebView(_resource)
         {

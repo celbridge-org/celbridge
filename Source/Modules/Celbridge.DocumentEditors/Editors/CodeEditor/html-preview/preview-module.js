@@ -34,9 +34,10 @@ let lastVisibleScrollPercentage = 0;
 // still holds the old document, and a scroll applied to it would be lost.
 let isAwaitingDocument = true;
 
-// The address the last refresh asked for, and the address it replaced while that one was still loading. WebKit
-// can finish the replaced navigation and drop the newer one, which leaves the frame on the old address. This
-// happens after a rename that arrives while the editor is loading, because the page first loads the old address.
+// requestedUrl is the address the last refresh asked for. replacedUrl is the address that refresh replaced while
+// the replaced address was still loading. WebKit can finish the replaced navigation and drop the newer one, which
+// leaves the frame on the old address. A rename that arrives while the editor is loading causes this, because the
+// page first loads the old address.
 let requestedUrl = null;
 let replacedUrl = null;
 
@@ -161,9 +162,9 @@ function getVisibleScrollPercentage() {
     return readScrollPercentage();
 }
 
-// True when the frame shows the address the last refresh replaced, rather than the one it asked for. A page
-// that has navigated itself elsewhere shows neither. A page on another origin has no document to read, and
-// counts as neither.
+// True when the frame shows the address the last refresh replaced. False when the frame shows the address that
+// refresh asked for, a page that navigated itself elsewhere, or a page on another origin, whose document is out of
+// reach.
 function isShowingReplacedAddress() {
     if (replacedUrl === null) {
         return false;

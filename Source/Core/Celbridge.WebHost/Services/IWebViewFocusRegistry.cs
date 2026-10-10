@@ -15,24 +15,23 @@ public sealed record WebViewFocusContext(
     Action? OnFocusGained = null);
 
 /// <summary>
-/// The single integration point for hosted web-surface focus on the Skia heads, where WebView and host focus
-/// are not integrated. The registry reads each registered view's focus signals and reports the view's focus to
-/// the focus service.
+/// Tracks the focus of every registered web view and reports it to the focus service. The registry is the single
+/// place where a hosted page's focus reaches the focus service.
 /// </summary>
 public interface IWebViewFocusRegistry
 {
     /// <summary>
     /// Registers a web view under the given focus context and starts tracking its focus. Registering a view again
     /// replaces its registration. The focus service treats the new registration as a new surface. When the view
-    /// closes, the registry drops it and clears its edit target if that target is still current.
+    /// closes, the registry drops the registration and clears the view's edit target if that edit target is still
+    /// current.
     /// </summary>
     void Register(IWebView view, WebViewFocusContext focusContext);
 
     /// <summary>
     /// Gives the view keyboard focus (native first responder on macOS, managed focus on Windows), applies its
-    /// optional DOM-side focus, and reports the focus. Used by tab clicks, document opens, the console title
-    /// bar, the find bar, and layout-mode changes. A view that has not registered yet takes focus as soon as
-    /// it registers, unless a later grant supersedes it.
+    /// optional DOM-side focus, and reports the focus. A grant to a view that has not registered yet waits, and
+    /// applies when the view registers. A later grant replaces the waiting grant.
     /// </summary>
     void GrantFocus(IWebView view);
 
@@ -55,9 +54,8 @@ public interface IWebViewFocusRegistry
     bool IsFocusedSurface(IWebView view);
 
     /// <summary>
-    /// Makes the focused surface's web view the platform keyboard focus target, with no focus report and
-    /// no DOM-side caret change (the page's caret stays exactly where the user put it). The reconciler's
-    /// native apply step; a no-op when no hosted surface holds focus.
+    /// Moves the platform keyboard focus to the web view of the surface that holds focus. The focus service and the
+    /// page's caret stay as they are. The call takes effect only while a hosted surface holds focus.
     /// </summary>
     void FocusFocusedSurface();
 

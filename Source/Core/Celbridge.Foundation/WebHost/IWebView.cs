@@ -49,13 +49,14 @@ public enum WebNavigationResult
 }
 
 /// <summary>
-/// The outcome of a navigation. ErrorStatus is the platform's name for why the navigation did not succeed, and is
-/// empty when it did.
+/// The outcome of a navigation. ErrorStatus is the platform's name for why the navigation did not succeed. It is
+/// empty after a successful navigation.
 /// </summary>
 public sealed record WebNavigationCompletedEventArgs(WebNavigationResult Result, string ErrorStatus);
 
 /// <summary>
-/// A web view as services see it. Members are called on the UI thread unless their summary says otherwise.
+/// The service-facing interface to a web view. Members are called on the UI thread unless their summary says
+/// otherwise.
 /// </summary>
 public interface IWebView
 {
@@ -92,8 +93,8 @@ public interface IWebView
     event EventHandler<string>? WebMessageReceived;
 
     /// <summary>
-    /// Raised when the view may have taken the keyboard: it gained focus, or a click landed in it. It can be raised
-    /// while the view already holds the keyboard.
+    /// Raised when the view may have taken the keyboard, because the view gained focus or a click landed in it. The
+    /// event can fire while the view already holds the keyboard.
     /// </summary>
     event EventHandler? FocusGained;
 

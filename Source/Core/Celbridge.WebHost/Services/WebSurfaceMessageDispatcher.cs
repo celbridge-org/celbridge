@@ -23,8 +23,8 @@ internal sealed class WebSurfaceMessageDispatcher : IWebSurfaceMessageDispatcher
         _handledMethods = _handlers.Keys.ToArray();
     }
 
-    // The handler closes over the view, so the dispatcher keeps no record of it. The view drops the handler when
-    // it closes.
+    // The handler closes over the view, so the dispatcher keeps no record of the view. The view drops the handler
+    // when the view closes.
     public void Observe(IWebView view)
     {
         view.WebMessageReceived += (_, message) => OnWebMessageReceived(view, message);

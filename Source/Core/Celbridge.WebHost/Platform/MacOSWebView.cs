@@ -12,7 +12,7 @@ namespace Celbridge.WebHost.Platform;
 public sealed class MacOSWebView : SkiaWebView
 {
     // How long a hosted page may go without being woken. A hidden page's event loop stops entirely after
-    // roughly seven minutes, so a page that has gone quiet is running again well inside the timeouts that
+    // roughly seven minutes. At this interval a stopped page is running again well inside the timeouts that
     // wait on it.
     private const int KeepAliveIntervalSeconds = 30;
 
@@ -26,16 +26,14 @@ public sealed class MacOSWebView : SkiaWebView
     // milliseconds, so this only has to outlast a page busy with its own work.
     private const int WakeTimeoutSeconds = 10;
 
-    // The macOS WKWebView UA prefix (the OS and AppleWebKit build tokens) is frozen by Apple for fingerprinting
-    // resistance, so it is stable to hardcode. The Version and Safari tokens are appended to match Safari's UA:
-    // Gmail and similar sniffers reject the bare WKWebView UA (which omits both) as an unsupported browser. The
-    // Version value is the installed Safari's real version, read at runtime so it never goes stale.
+    // The OS and AppleWebKit build tokens of the macOS WKWebView UA. Apple froze these tokens to resist
+    // fingerprinting, so they are safe to hardcode.
     private const string UserAgentPrefix =
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)";
 
-    // Every view whose native view has resolved, keyed by its native handle. WebKit and AppKit report to the
-    // application with only the native view, and this is how they reach the view. A pinned native view is never
-    // freed, so no other view can take its address. Used only on the main thread.
+    // Every view whose native view has resolved, keyed by its native handle. WebKit and AppKit callbacks carry only
+    // the native view, and this map finds the view from it. A pinned native view stays allocated for the life of the
+    // process, so its address always belongs to the same view. Used only on the main thread.
     private static readonly Dictionary<IntPtr, MacOSWebView> ViewsByNativeHandle = new();
 
     private readonly CoreWebView2 _coreWebView2;
@@ -55,12 +53,12 @@ public sealed class MacOSWebView : SkiaWebView
 
     private FindSession? _findSession;
 
-    // The base URL of the last page loaded from an HTML string. The page is still showing while the view's
-    // address is this one.
+    // The base URL of the last page loaded from an HTML string. That page is still showing while the view's
+    // address matches this URL.
     private string? _htmlStringBaseUrl;
 
-    // The platform resolves the native view and pins it while the control is still in its init host. It passes
-    // zero when the native view did not resolve, and the view resolves it later.
+    // The platform resolves the native view and pins it while the control is still in its init host. The platform
+    // passes zero when the native view did not resolve, and the view resolves the native view later.
     internal MacOSWebView(WebView2 control, IntPtr nativeHandle, SkiaWebViewPlatform platform, ILogger logger)
         : base(control, platform, logger)
     {
@@ -94,7 +92,7 @@ public sealed class MacOSWebView : SkiaWebView
     {
         if (_nativeHandle == IntPtr.Zero)
         {
-            // A closed view must not enter the map, so it resolves nothing.
+            // A closed view stays out of the map, so the resolve stops here.
             if (IsDisposed)
             {
                 nativeHandle = IntPtr.Zero;
@@ -123,9 +121,9 @@ public sealed class MacOSWebView : SkiaWebView
         ViewsByNativeHandle[nativeHandle] = this;
     }
 
-    // Clicks, downloads and commits reach the view only once its native view has resolved, so a failure here is
-    // reported. A native view that resolves differently later has been replaced by Uno, and the view still holds
-    // the old one.
+    // Clicks, downloads and commits reach the view only after its native view resolves, so a failure to resolve is
+    // reported. A later resolution to a different native view means Uno replaced the native view, and this view
+    // still holds the old one.
     protected override void OnAttached()
     {
         if (_nativeHandle == IntPtr.Zero)
@@ -181,8 +179,9 @@ public sealed class MacOSWebView : SkiaWebView
         ApplyDevToolsState(enabled: true);
     }
 
-    // The WebView2 setting never reaches WebKit, so the native view is opted into remote inspection instead. That
-    // lists the page in Safari's Develop menu, which otherwise identifies every hosted editor by its index.html URL.
+    // The WebView2 developer tools setting never reaches WebKit, so the native view is opted into remote
+    // inspection instead. Remote inspection lists the page in Safari's Develop menu under its accessible name.
+    // Without the name, the menu shows every hosted editor as its index.html URL.
     private void ApplyDevToolsState(bool enabled)
     {
         if (!TryGetNativeHandle(out var nativeHandle, out var detail))
@@ -199,8 +198,9 @@ public sealed class MacOSWebView : SkiaWebView
         _platform.ReportRemoteInspectionOnce(enabled, inspectable && named);
     }
 
-    // The default WKWebView UA omits the Safari token some sites sniff for, and they flag it as unsupported. It is
-    // replaced with a Safari-compatible UA that carries the application token.
+    // Replaces the default WKWebView UA with Safari's, plus the application token. The default UA omits the
+    // Version and Safari tokens, and some sites, Gmail among them, reject it as an unsupported browser. The
+    // Version value is the installed Safari's real version, read at runtime so it never goes stale.
     private void SetApplicationUserAgent(string applicationToken)
     {
         if (!TryGetNativeHandle(out var nativeHandle, out var detail))
@@ -213,8 +213,9 @@ public sealed class MacOSWebView : SkiaWebView
         MacOSWebViewInterop.SetCustomUserAgent(nativeHandle, userAgent);
     }
 
-    // Calls -[WKWebView loadHTMLString:baseURL:], so the document has the base URL as its origin. Uno serves a
-    // mapped virtual host from a file URL here, so a page that needs the host as its origin is loaded this way.
+    // Calls -[WKWebView loadHTMLString:baseURL:], which gives the document the base URL as its origin. On this
+    // head Uno serves a mapped virtual host from a file URL. A page that needs the virtual host as its origin is
+    // therefore loaded from a string.
     protected override void LoadHtmlStringCore(string html, string baseUrl)
     {
         if (!TryGetNativeHandle(out var nativeHandle, out var detail))
@@ -228,9 +229,9 @@ public sealed class MacOSWebView : SkiaWebView
         _htmlStringBaseUrl = baseUrl;
     }
 
-    // WebKit reloads a page loaded from an HTML string by requesting its base URL. That loads something other than
-    // the string, or fails for an address that only names an origin, such as the spreadsheet's. The page is then
-    // left blank, and its editor never reports its content ready. Only loading the string again restores it.
+    // WebKit reloads a page loaded from an HTML string by requesting the base URL. That request loads some other
+    // page, or fails when the base URL names only an origin, as the spreadsheet's does. Either way the page is left
+    // blank, and its editor never reports its content ready. Only loading the string again restores the page.
     protected override async Task ReloadPageAsync(bool clearCache)
     {
         if (IsShowingHtmlString())
@@ -349,8 +350,8 @@ public sealed class MacOSWebView : SkiaWebView
         return true;
     }
 
-    // Uno pushes the frame on its own arrange pass, a beat after the control has its size, and the page can
-    // measure inside that gap.
+    // Uno pushes the native frame on its own arrange pass, a beat after the control has its size. The page can
+    // measure inside that gap, so the frame is set here as soon as the size is known.
     protected override bool SetNativeViewportSize(double width, double height)
     {
         if (!TryGetNativeHandle(out var nativeHandle, out _))
@@ -363,10 +364,10 @@ public sealed class MacOSWebView : SkiaWebView
         return true;
     }
 
-    // Programmatic managed focus flips the WebView's input routing to the managed pipeline, where keys never
-    // reach the web content. Making the native WKWebView the window's first responder reproduces the state a
-    // click inside the view establishes. The reconciler yields managed focus before this runs, because Uno
-    // resigns the native first responder whenever it applies managed focus.
+    // Makes the native WKWebView the window's first responder, the state a click inside the view sets up.
+    // Programmatic managed focus would flip the WebView's input routing to the managed pipeline, where keys never
+    // reach the web content. The reconciler yields managed focus before this runs. Uno resigns the native first
+    // responder whenever it applies managed focus.
     internal override void FocusPage()
     {
         if (!TryGetNativeHandle(out var nativeHandle, out var detail))
@@ -378,9 +379,10 @@ public sealed class MacOSWebView : SkiaWebView
         MacOSWebViewInterop.MakeWebViewFirstResponder(nativeHandle);
     }
 
-    // The keyboard goes to the native view inside the control rather than to the control, so macOS itself is
-    // asked whether that view is the window's first responder. The host gives that up and takes it straight back
-    // whenever it moves focus, and the page reports the gap in between as an ordinary blur.
+    // The keyboard goes to the native view inside the control, so this asks macOS whether the native view is the
+    // window's first responder. The page's own focus reports cannot be trusted here. Whenever the host moves
+    // focus, the native view loses first responder and gets it straight back. The page reports that brief gap as
+    // an ordinary blur.
     internal override bool HoldsKeyboard()
     {
         if (!TryGetNativeHandle(out var nativeHandle, out var detail))
@@ -406,7 +408,8 @@ public sealed class MacOSWebView : SkiaWebView
         return true;
     }
 
-    // WebKit sends a key the page left unhandled back through the application, and the page already has it.
+    // WebKit sends a key the page left unhandled back through the application. The page has already seen that
+    // key, so it is not sent again.
     internal override bool ForwardKeyDown(IntPtr nativeKeyEvent)
     {
         if (MacOSWebViewInterop.HasWebViewReceivedKeyDown(nativeKeyEvent))
@@ -417,8 +420,8 @@ public sealed class MacOSWebView : SkiaWebView
         return SendKeyDown(nativeKeyEvent);
     }
 
-    // On the macOS Skia head, whether the WKWebView sits in a window decides whether a load it starts runs on a
-    // surface the platform can see.
+    // On the macOS Skia head, a load runs on a surface the platform can see only when the WKWebView sits in a
+    // window.
     internal override string DescribeNativeSurface()
     {
         if (!TryGetNativeHandle(out var nativeHandle, out _))
@@ -451,9 +454,9 @@ public sealed class MacOSWebView : SkiaWebView
     /// null, as it does on WebView2.
     /// </summary>
     // UNO-BUG: Uno encodes the result with NSJSONSerialization. A value that refers to itself, such as window,
-    // makes it recurse until the main thread's stack overflows, and the application hangs. Uno also escapes
-    // the quotes in a returned string but not its backslashes. NSJSONSerialization escapes an array
-    // correctly, so the JSON comes back inside one.
+    // makes NSJSONSerialization recurse until the main thread's stack overflows, and the application hangs. Uno
+    // also escapes the quotes in a returned string but not its backslashes. NSJSONSerialization escapes an array
+    // correctly, so the page's JSON comes back inside an array.
     internal static string BuildPageEncodedScript(string expression)
     {
         // A trailing semicolon is not allowed inside the parentheses. The line breaks stop a trailing line
@@ -517,8 +520,8 @@ public sealed class MacOSWebView : SkiaWebView
         return new ScreenshotData(request.Format, snapshot.Width, snapshot.Height, snapshot.Bytes);
     }
 
-    // WebKit takes the download, since no Skia head raises WebView2's DownloadStarting. A view whose native view
-    // has not resolved gets a handler that routes nothing.
+    // WebKit takes the download, since the Skia heads never raise WebView2's DownloadStarting. A view whose native
+    // view is still unresolved gets an inert handler.
     protected override IWebViewDownloadHandler CreateDownloadHandler()
     {
         TryGetNativeHandle(out var nativeHandle, out _);
@@ -526,8 +529,8 @@ public sealed class MacOSWebView : SkiaWebView
         return _platform.RouteDownloads(nativeHandle);
     }
 
-    // Uno changes Source only once a page has finished loading, or for a fragment link, so WebKit's own commit
-    // reports a new page as it arrives. WebKit's commits stop reaching the view when it closes and leaves the map.
+    // Uno changes Source only when a page finishes loading or follows a fragment link. WebKit's own commit reports
+    // a new page as it arrives. WebKit's commits stop reaching the view once the view closes and leaves the map.
     protected override IDisposable ObserveNavigationCommits(NavigationCommitted onCommitted)
     {
         var sourceObserver = base.ObserveNavigationCommits(onCommitted);
@@ -555,9 +558,8 @@ public sealed class MacOSWebView : SkiaWebView
         FromNativeHandle(nativeHandle)?.ReportNavigationCommit(url);
     }
 
-    // Reports WebKit's address in the form Uno gives Source, so a commit and the finished load that
-    // follows name the page alike. Runs inside WebKit's commit callback, so a failing handler is contained
-    // here.
+    // Reports WebKit's address in the form Uno gives Source, so a commit and the finished load that follows
+    // name the page alike. This runs inside WebKit's commit callback, so a failing handler is caught here.
     private void ReportNavigationCommit(string url)
     {
         var onCommitted = _onNativeCommit;
@@ -582,10 +584,10 @@ public sealed class MacOSWebView : SkiaWebView
         }
     }
 
-    // Wakes the page until the view closes. WebKit stops a hidden page's event loop after a few minutes, so it
-    // services no host RPC until the user activates it, and evaluating a trivial script restarts it. The delay
-    // must resume on the UI thread, where the script evaluation has to run, so the awaits here are never
-    // configured away from the dispatcher.
+    // Wakes the page until the view closes. WebKit stops a hidden page's event loop after a few minutes. A
+    // stopped page services no host RPC until the user activates it. Evaluating a trivial script restarts the
+    // event loop. The script evaluation has to run on the UI thread, so the awaits here are never configured
+    // away from the dispatcher.
     private async Task KeepPageAwakeAsync(CancellationToken cancellationToken)
     {
         while (true)
@@ -613,7 +615,7 @@ public sealed class MacOSWebView : SkiaWebView
             }
             catch (ObjectDisposedException)
             {
-                // The view was torn down without closing, so there is nothing left to wake.
+                // The view was torn down before it closed, so the wake ends here.
                 return;
             }
             catch (Exception ex)
@@ -630,14 +632,13 @@ public sealed class MacOSWebView : SkiaWebView
                         consecutiveFailures);
                 }
 
-                // A dead renderer faults the wake rather than answering it, so the process is read on
-                // the failure path too.
+                // A dead renderer faults the wake, so the process is read on the failure path too.
                 ObserveWebContentProcess();
             }
         }
     }
 
-    // Faults are the signal here, so this deliberately bypasses EvalAsync, which reports a page that
+    // The wake needs to see faults, so the script runs on the core directly. EvalAsync reports a page that
     // faulted and a page that returned undefined identically.
     private async Task WakePageAsync(CancellationToken cancellationToken)
     {
@@ -646,9 +647,9 @@ public sealed class MacOSWebView : SkiaWebView
 
         if (await Task.WhenAny(wakeTask, timeoutTask) == timeoutTask)
         {
-            // WebKit runs the completion handler on the page's own run loop, so a page whose loop has
-            // stopped never answers and never faults. Without this the loop would await it forever and
-            // silently stop waking the page.
+            // WebKit runs the completion handler on the page's own run loop. A page whose run loop has
+            // stopped stays silent forever. The timeout ends the wait, so the wake loop records the miss and
+            // carries on.
             ObserveAbandonedTask(wakeTask);
             throw new TimeoutException($"The page did not answer a wake within {WakeTimeoutSeconds}s");
         }
@@ -665,8 +666,8 @@ public sealed class MacOSWebView : SkiaWebView
             TaskScheduler.Default);
     }
 
-    // Reads which process is rendering the page and reports what changed since the last reading. The page is
-    // named, because a report that names none leaves the reader guessing which of the open documents it is.
+    // Reads which process is rendering the page and reports what changed since the last reading. Each report
+    // names the page, so the reader can tell which open document it concerns.
     private void ObserveWebContentProcess()
     {
         var change = Health.RecordProcessId(ReadWebContentProcessId());
@@ -694,8 +695,8 @@ public sealed class MacOSWebView : SkiaWebView
         }
     }
 
-    // Negative when the native view cannot be reached, which a page with no running renderer reports as zero
-    // and must not be confused with.
+    // Negative when the native view cannot be reached. A page with no running renderer reports zero, and the two
+    // cases must stay distinct.
     private long ReadWebContentProcessId()
     {
         if (!TryGetNativeHandle(out var nativeHandle, out _))
@@ -708,8 +709,8 @@ public sealed class MacOSWebView : SkiaWebView
 
     private string DescribePageUrl()
     {
-        // A page whose renderer has gone reports no address of its own, so the one recorded when it
-        // navigated is the fallback, and only a page that never navigated goes unnamed.
+        // A page whose renderer has gone reports no address of its own. The address recorded when the page
+        // navigated names it instead. Only a page that never navigated goes unnamed.
         var address = Health.Address;
         if (!string.IsNullOrEmpty(address))
         {
@@ -746,20 +747,21 @@ public sealed class MacOSWebView : SkiaWebView
         base.ReleaseResources();
     }
 
-    // The macOS head leaks the WKWebView with no native destroy, and WebKit relaunches a renderer for the
-    // still-alive view if the process is merely killed. WKWebView's _close teardown SPI runs after the control
-    // leaves the tree. It ends the renderer and marks the view closed, so it is not relaunched.
+    // The macOS head keeps every WKWebView alive, so the native view leaks. Killing the renderer process alone
+    // fails, because WebKit relaunches a renderer for the live native view. WKWebView's _close teardown SPI runs
+    // once the control leaves the tree. _close ends the renderer and marks the native view closed, which stops
+    // WebKit relaunching the renderer.
     protected override void CloseControl(Panel? container)
     {
-        // A native view that never resolved is resolved here only to close it, so the closed view is not held.
+        // An unresolved native view is resolved here only to close it. The handle stays in this method, out of the map.
         var nativeHandle = _nativeHandle;
         if (nativeHandle == IntPtr.Zero)
         {
             MacOSWebViewInterop.TryGetNativeWebViewHandle(_coreWebView2, out nativeHandle, out _);
         }
 
-        // The dispose hook keeps a detached page loading, so a closing page is stopped here. This needs no
-        // native handle, so it still works when the teardown below cannot run.
+        // The dispose hook keeps a detached page loading, so the closing page is stopped here. Stopping works through
+        // the managed control, so the page stops even when the teardown below is skipped.
         StopLoading();
 
         try

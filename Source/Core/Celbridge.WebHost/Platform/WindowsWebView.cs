@@ -1,5 +1,5 @@
-// Compiled only under WINDOWS, as the DI selection is, so the Skia build never links against the WinAppSDK
-// WebView2 surface.
+// Compiled only under WINDOWS, so the Skia build never links against the WinAppSDK WebView2 surface. The DI
+// selection is gated on the same symbol.
 #if WINDOWS
 using System.Text.Json;
 using Celbridge.Logging;
@@ -12,16 +12,16 @@ namespace Celbridge.WebHost.Platform;
 /// </summary>
 internal sealed class WindowsWebView : WebViewBase
 {
-    // Bounds the wait for Page.captureScreenshot. A WinUI tab that is not being shown pauses the WebView2
-    // renderer, which would otherwise leave the CDP call hanging.
+    // Bounds the wait for Page.captureScreenshot. WinUI pauses the WebView2 renderer of a tab that is out of
+    // view, and the CDP call then never returns.
     private static readonly TimeSpan ScreenshotCaptureTimeout = TimeSpan.FromSeconds(5);
 
     private readonly CoreWebView2 _coreWebView2;
     private readonly ILogger _logger;
     private readonly Microsoft.UI.Xaml.Input.KeyEventHandler _controlKeyDownHandler;
 
-    // Whether a key has reached the control since it last took focus. While keys go astray, every key after the
-    // first does too, so one line per focus is enough.
+    // Whether a key has reached the control since the control last took focus. Once one key goes astray, the keys
+    // after it go astray too, so one log line per focus is enough.
     private bool _isKeyOnControlReported;
 
     public WindowsWebView(WebView2 control, WindowsWebViewPlatform platform, ILogger logger)
@@ -30,9 +30,8 @@ internal sealed class WindowsWebView : WebViewBase
         _coreWebView2 = CoreWebView2!;
         _logger = logger;
 
-        // A key the page receives never raises the control's own key events on this head, so a key that does went to
-        // the host rather than the page. Registered with handledEventsToo, so a handler that marks the key handled
-        // cannot hide it.
+        // On this head, the control's own key events fire only for keys that went to the host instead of the page.
+        // The handler is registered with handledEventsToo, so it also sees keys that another handler marked handled.
         _controlKeyDownHandler = Control_KeyDown;
         control.AddHandler(UIElement.KeyDownEvent, _controlKeyDownHandler, handledEventsToo: true);
         control.GotFocus += Control_GotFocus;
@@ -73,8 +72,8 @@ internal sealed class WindowsWebView : WebViewBase
         _coreWebView2.Settings.AreDevToolsEnabled = options.IsDevToolsEnabled;
         _coreWebView2.Settings.IsZoomControlEnabled = options.IsZoomEnabled;
 
-        // Sites already recognise the WebView2 User-Agent, so the application token is appended to it rather than
-        // replacing it. The options are applied once, so the token is never appended twice.
+        // Sites already recognise the WebView2 User-Agent, so the application token is appended to it. The options
+        // are applied once, so the token is never appended twice.
         if (!string.IsNullOrEmpty(options.UserAgentToken))
         {
             _coreWebView2.Settings.UserAgent = $"{_coreWebView2.Settings.UserAgent} {options.UserAgentToken}";
@@ -130,8 +129,8 @@ internal sealed class WindowsWebView : WebViewBase
         return true;
     }
 
-    // XAML arranges the packaged WebView2, so its page's viewport already follows the control, and there is no
-    // geometry to give a control XAML has not arranged.
+    // XAML arranges the packaged WebView2, so the page's viewport already follows the control. Before XAML arranges
+    // the control, the control has no geometry to give.
     protected override bool SetNativeViewportSize(double width, double height)
     {
         return false;
@@ -149,7 +148,7 @@ internal sealed class WindowsWebView : WebViewBase
             .CallDevToolsProtocolMethodAsync("Page.captureScreenshot", paramsJson)
             .AsTask();
 
-        // Bounded wait so a tab switch mid-capture surfaces as a timeout instead of an indefinite hang.
+        // Bounded wait, so a tab switch mid-capture surfaces as a timeout.
         var winner = await Task.WhenAny(captureTask, Task.Delay(ScreenshotCaptureTimeout));
         if (winner != captureTask)
         {

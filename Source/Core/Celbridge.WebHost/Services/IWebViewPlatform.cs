@@ -1,13 +1,13 @@
 namespace Celbridge.WebHost;
 
 /// <summary>
-/// What the web views of one platform share: their capabilities, the browsing data they all use, and how each
-/// is created. Each head has its own implementation.
+/// The web view services of one platform: its capability flags, web view creation, and the browsing data that all
+/// web views share. Each head has its own implementation.
 /// </summary>
 public interface IWebViewPlatform
 {
     /// <summary>
-    /// True when a page a web view loads from a mapped virtual host has that host as its origin.
+    /// True when a page loaded from a mapped virtual host has that virtual host as its origin.
     /// </summary>
     bool SupportsVirtualHostMapping { get; }
 
@@ -17,8 +17,8 @@ public interface IWebViewPlatform
     bool ProvidesBuiltInFind { get; }
 
     /// <summary>
-    /// True when a web view can give its page a viewport size before it is laid out. Where it cannot, a page
-    /// that has not been shown has no size to report.
+    /// True when a web view can give its page a viewport size before the view is laid out. On other platforms, a
+    /// page reports a size only once it has been shown.
     /// </summary>
     bool CanSizeUnarrangedViewport { get; }
 
@@ -28,8 +28,8 @@ public interface IWebViewPlatform
     bool SupportsLiveBrowsingDataClear { get; }
 
     /// <summary>
-    /// Whether the most recent mouse press landed in a web view. It is answered before the managed pointer
-    /// pipeline raises that press. False where the platform cannot tell.
+    /// Whether the most recent mouse press landed in a web view. The value is already current when the managed
+    /// pointer pipeline raises that press. False where the platform cannot tell.
     /// </summary>
     bool IsLastPressInWebView { get; }
 
@@ -39,8 +39,8 @@ public interface IWebViewPlatform
     Task<WebViewBase> CreateWebViewAsync();
 
     /// <summary>
-    /// Clears the cookies, cached credentials, site data and HTTP cache that every web view shares. Does nothing
-    /// where SupportsLiveBrowsingDataClear is false. Throws if the clear does not complete.
+    /// Clears the browsing data that every web view shares. Callers check SupportsLiveBrowsingDataClear first.
+    /// Throws if the clear does not complete.
     /// </summary>
     Task ClearBrowsingDataAsync();
 }

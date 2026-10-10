@@ -87,16 +87,15 @@ public static partial class MacOSWebViewInterop
 
     private static readonly IntPtr RtldDefault = new(-2);
 
-    // One global block answers every snapshot, so one snapshot is in flight at a time. The capture awaits
-    // WebKit's callback on the main thread, so a second call can arrive meanwhile. It waits at the gate, rather
-    // than replacing this field and taking the first call's completion.
+    // One global block answers every snapshot, so only one snapshot may be in flight. The capture awaits
+    // WebKit's callback on the main thread, so a second call can arrive meanwhile. The second call waits at the
+    // gate. Without the gate, the second call would replace the completion and take the first call's result.
     private static readonly SemaphoreSlim _snapshotGate = new(1, 1);
     private static TaskCompletionSource<IntPtr>? _snapshotCompletion;
     private static IntPtr _snapshotBlock;
 
-    // Single find in flight at a time. Find runs on the main thread and completes near-instantly, and the
-    // host find bar issues one call per keystroke or step, so a fresh call simply supersedes the previous
-    // callback (last find wins).
+    // One find in flight at a time. Find runs on the main thread and completes almost at once. A new call
+    // replaces the previous call's callback, so the last find wins.
     private static Action<bool>? _findCompletionCallback;
     private static IntPtr _findBlock;
 
@@ -182,11 +181,11 @@ public static partial class MacOSWebViewInterop
     /// <summary>
     /// Retains the native WKWebView for the lifetime of the process and keeps it schedulable while hidden.
     /// Uno's MacOSNativeElement calls uno_native_dispose on every Unloaded event, which drops the native
-    /// side's owning reference while managed code keeps the raw handle; a later reattach or message then
+    /// side's owning reference while managed code keeps the raw handle. A later reattach or message then
     /// crashes on the freed view. Pinning the view turns those touches into calls on a live object. The
     /// WebContent renderer is still reclaimed by CloseNativeWebView, so what leaks is the view shell only.
-    /// Each call takes a retain, so a view is pinned once. Returns the background page activity preferences
-    /// applied to the view.
+    /// Each call takes another retain, so pin each view only once. Returns the background page activity
+    /// preferences applied to the view.
     /// </summary>
     // UNO-BUG: MacOSNativeElement disposes the native view on Unloaded while the handle stays in use.
     public static IReadOnlyList<string> RetainNativeWebView(IntPtr webView)
@@ -928,7 +927,7 @@ public static partial class MacOSWebViewInterop
     }
 
     /// <summary>
-    /// Clears the cookies, cached credentials, site data and HTTP cache of the default WKWebsiteDataStore
+    /// Clears every kind of website data in the default WKWebsiteDataStore
     /// through -[WKWebsiteDataStore removeDataOfTypes:modifiedSince:completionHandler:]. Every WKWebView in
     /// the application shares that store, so the clear reaches all of them, including live views, and takes
     /// effect immediately. Returns false if WebKit does not expose the store or the clear does not complete

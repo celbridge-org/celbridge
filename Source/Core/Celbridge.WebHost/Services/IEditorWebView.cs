@@ -2,7 +2,7 @@ namespace Celbridge.WebHost;
 
 /// <summary>
 /// Options for a whole-page find. Find always wraps, as a browser's does. OnMatchStateChanged is called on the UI
-/// thread as the find advances, so a find bar can show its state.
+/// thread as the find advances.
 /// </summary>
 public sealed record FindOptions(
     bool CaseSensitive = false,
@@ -15,7 +15,7 @@ public sealed record FindOptions(
 public sealed record FindMatchState(bool MatchFound, int? MatchCount = null, int? ActiveMatchIndex = null);
 
 /// <summary>
-/// The web view an owner holds. It adds the members only the owner calls.
+/// The owner-facing interface to a web view. It adds the members that only the view's owner calls.
 /// </summary>
 public interface IEditorWebView : IWebView, IDisposable
 {
@@ -40,7 +40,7 @@ public interface IEditorWebView : IWebView, IDisposable
     void SetPresentedSize(double width, double height);
 
     /// <summary>
-    /// True when the view can give its page a viewport size before it is laid out.
+    /// True when the view can give its page a viewport size before the view is laid out.
     /// </summary>
     bool CanSizeUnarrangedViewport { get; }
 
@@ -70,19 +70,19 @@ public interface IEditorWebView : IWebView, IDisposable
     void LoadHtmlString(string html, string baseUrl);
 
     /// <summary>
-    /// True when a page the view loads from a mapped virtual host has that host as its origin.
+    /// True when a page loaded from a mapped virtual host has that virtual host as its origin.
     /// </summary>
     bool SupportsVirtualHostMapping { get; }
 
     /// <summary>
-    /// Serves a local folder under a virtual host name. A page loaded from it has the host as its origin only
-    /// where SupportsVirtualHostMapping is true.
+    /// Serves a local folder under a virtual host name. A page loaded from the virtual host has that host as its
+    /// origin only where SupportsVirtualHostMapping is true.
     /// </summary>
     void MapVirtualHost(string hostName, string folderPath);
 
     /// <summary>
-    /// Raised with the new address when a navigation commits. A navigation that never commits, such as one that
-    /// becomes a download, raises nothing.
+    /// Raised with the new address when a navigation commits, and only then. A navigation that becomes a download
+    /// never commits.
     /// </summary>
     event EventHandler<string>? NavigationCommitted;
 
@@ -158,9 +158,9 @@ public interface IEditorWebView : IWebView, IDisposable
     event EventHandler? DownloadStarted;
 
     /// <summary>
-    /// Raised when the page turns out to be an empty document, which is a load that failed although it reported
-    /// success. The view checks after each successful navigation and each time it is attached, and drops a finding
-    /// about a page that a navigation is leaving.
+    /// Raised when the page turns out to be an empty document. An empty document is a load that failed but reported
+    /// success. The view checks the page after each successful navigation and each time the view is attached. A
+    /// check is dropped if a navigation leaves the page before the check finishes.
     /// </summary>
     event EventHandler? LoadedEmpty;
 }

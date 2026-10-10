@@ -813,7 +813,8 @@ export class EditorController {
     }
 
     // Logs the caret moving into or out of the editor text. The page's own focus lines say only that the window
-    // took the keyboard, which an editor without the caret also reports, so a key that went astray needs both.
+    // took the keyboard, and an editor without the caret reports that too. Tracing a key that went astray needs
+    // both kinds of line.
     #logCaretChange(message) {
         if (celbridge.isHosted) {
             celbridge.log.debug(message);

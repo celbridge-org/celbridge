@@ -1,7 +1,7 @@
 namespace Celbridge.WebHost;
 
 /// <summary>
-/// Hands out web views. It creates some ahead of time, so a document can open without waiting for one.
+/// Hands out web views, some of them created ahead of time.
 /// </summary>
 public interface IWebViewFactory
 {

@@ -4,8 +4,8 @@ using Microsoft.Web.WebView2.Core;
 namespace Celbridge.WebHost.Platform;
 
 /// <summary>
-/// A web view on an Uno Skia head. Where Uno leaves the WebView2 surface unimplemented, it runs script in the page
-/// instead. MacOSWebView extends it with the native WKWebView interop.
+/// A web view on an Uno Skia head. Where Uno leaves the WebView2 surface unimplemented, the view runs script in the
+/// page instead.
 /// </summary>
 public class SkiaWebView : WebViewBase
 {
@@ -19,8 +19,8 @@ public class SkiaWebView : WebViewBase
         _logger = logger;
     }
 
-    // The developer tools setting reaches the real WebView2 behind the Windows-under-Skia head. No Skia head
-    // implements zoom control, and sites recognise the default User-Agent here.
+    // Only the developer tools setting applies, and it reaches the real WebView2 behind the Windows-under-Skia head.
+    // No Skia head implements zoom control. Sites already recognise the default User-Agent of these heads.
     protected override void ApplyOptions(WebViewOptions options)
     {
         _coreWebView2.Settings.AreDevToolsEnabled = options.IsDevToolsEnabled;
@@ -82,11 +82,10 @@ public class SkiaWebView : WebViewBase
         return false;
     }
 
-    // WebKit's evaluateJavaScript faults on JS exceptions and syntax errors (WKError 4), on unsupported return
-    // types such as Promises (WKError 5), and on an undefined result (surfaced by Uno as an
-    // ArgumentNullException). WebView2 returns the JSON literal "null" silently in the equivalent cases. The
-    // faults are normalised so common errors and undefined results read as None on Python callers across
-    // platforms.
+    // WebKit faults where WebView2 silently returns the JSON literal "null". These faults are normalised to "null",
+    // so common errors and undefined results read alike on every platform. evaluateJavaScript faults on a JS
+    // exception or syntax error (WKError 4), and on an unsupported return type such as a Promise (WKError 5). Uno
+    // surfaces an undefined result as an ArgumentNullException.
     protected override async Task<string> EvalScriptAsync(string expression)
     {
         try
@@ -120,8 +119,8 @@ public class SkiaWebView : WebViewBase
         throw new InvalidOperationException("Screenshots are not supported on this platform.");
     }
 
-    // No Skia head raises WebView2's DownloadStarting, so the handler is never called here. MacOSWebView takes
-    // downloads from WebKit instead.
+    // The Skia heads never raise WebView2's DownloadStarting, so this handler stays idle. On macOS, downloads come
+    // from WebKit.
     protected override IWebViewDownloadHandler CreateDownloadHandler()
     {
         return WebView2DownloadHandler.Attach(_coreWebView2);

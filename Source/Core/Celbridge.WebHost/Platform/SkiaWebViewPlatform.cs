@@ -29,8 +29,7 @@ internal sealed class SkiaWebViewPlatform : IWebViewPlatform
     private readonly ILocalizerService _localizerService;
     private readonly IDownloadService _downloadService;
 
-    // Hidden, window-rooted host used to initialize WebView2 controls, where EnsureCoreWebView2Async never
-    // completes for a control that has not been parented to a window.
+    // Hidden, window-rooted host that WebView2 controls are initialized in.
     private Panel? _initHost;
 
     private bool _checkedBackgroundActivity;
@@ -97,10 +96,10 @@ internal sealed class SkiaWebViewPlatform : IWebViewPlatform
         return new SkiaWebView(control, this, _skiaWebViewLogger);
     }
 
-    // EnsureCoreWebView2Async never completes for a control that is not parented to a window. The control is
-    // parented in the hidden, window-rooted host for the duration of initialization, then detached so the owner
-    // can place it in its own container with the CoreWebView2 already live. Returns the pinned native view on
-    // macOS, or zero.
+    // EnsureCoreWebView2Async completes only for a control parented to a window. The control is
+    // parented in the hidden, window-rooted host while it initializes, then detached. The owner then places the
+    // control in its own container with the CoreWebView2 already live. Returns the pinned native view on macOS,
+    // or zero.
     private async Task<IntPtr> InitializeAsync(WebView2 control)
     {
         var host = await EnsureInitHostAsync();
@@ -136,12 +135,13 @@ internal sealed class SkiaWebViewPlatform : IWebViewPlatform
         }
     }
 
-    // Runs before the control leaves the init host. Leaving it is the control's first Unloaded, and Uno disposes
-    // the native view on every Unloaded. Returns the pinned native view, or zero when it did not resolve.
+    // Runs before the control leaves the init host. Leaving the init host raises the control's first Unloaded, and
+    // Uno disposes the native view on every Unloaded. Returns the pinned native view, or zero when the native view
+    // did not resolve.
     private IntPtr PrepareNativeWebView(WebView2 control, CoreWebView2 coreWebView2)
     {
-        // Key forwarding checks which key a web view last received, and a click in a web view is its focus
-        // signal, so both are observed before any web view can take input.
+        // Key forwarding checks which key a web view last received. A click in a web view is that view's focus
+        // signal. Both are observed before any web view can take input.
         MacOSWebViewInterop.ObserveKeyDownDelivery();
         MacOSWebViewFocusMonitor.Install(_logger);
 
@@ -164,9 +164,9 @@ internal sealed class SkiaWebViewPlatform : IWebViewPlatform
         KeepLoadingWhenDetached();
 
         // UNO-BUG: the script message handler is registered on every Loaded and never removed. The second load
-        // of a control then aborts the process inside WebKit. This control sees a second load as soon as it
-        // leaves the init host for its real container, so drop the handler on every Unloaded and let Uno's next
-        // Loaded register it again.
+        // of a control then aborts the process inside WebKit. This control loads a second time when it moves
+        // from the init host to its real container. The handler is therefore dropped on every Unloaded, and
+        // Uno's next Loaded registers it again.
         control.Unloaded -= Control_Unloaded;
         control.Unloaded += Control_Unloaded;
 
@@ -191,10 +191,10 @@ internal sealed class SkiaWebViewPlatform : IWebViewPlatform
         }
     }
 
-    // UNO-BUG: the native frame is arranged only while the control is in the visual tree.
-    // A surface that loads while it is not (a document restored into a background tab, a utility running
-    // from project load) reports a zero-sized window to its page: layout collapses, and a page that derives
-    // geometry from the viewport at startup divides by zero and stays broken even after the real arrange
+    // UNO-BUG: the native frame is arranged only while the control is in the visual tree. A surface that loads
+    // outside the tree reports a zero-sized window to its page. A document restored into a background tab does
+    // this, and so does a utility running from project load. The page's layout collapses. A page that derives
+    // geometry from the viewport at startup divides by zero, and stays broken even after the real arrange
     // arrives. The placeholder is the size of the window, so a page cannot tell it from a real layout.
     private void ApplyInitialViewportSize(IntPtr nativeWebViewHandle)
     {
@@ -238,9 +238,9 @@ internal sealed class SkiaWebViewPlatform : IWebViewPlatform
         _logger.LogDebug("Background page activity preferences applied: {Applied}", string.Join(", ", applied));
     }
 
-    // Managed focus moves resign the web view's first responder status, and WebKit discards the page's
-    // selection when that happens, so a selection the user just made in a hosted page disappears. Reported
-    // once per session because losing the SPI brings the disappearing selection back.
+    // A managed focus move resigns the web view's first responder status. WebKit then discards the page's
+    // selection, so a selection the user just made in a hosted page disappears. The outcome is reported once per
+    // session, because losing the SPI brings the disappearing selection back.
     private void KeepSelectionWhileUnfocused(IntPtr nativeWebViewHandle)
     {
         var maintained = MacOSWebViewInterop.MaintainInactiveSelection(nativeWebViewHandle);
@@ -262,9 +262,8 @@ internal sealed class SkiaWebViewPlatform : IWebViewPlatform
             "WebKit no longer exposes the inactive selection setting, so a selection in a hosted page is lost when focus moves");
     }
 
-    // A web view leaves the visual tree whenever its document goes to a background tab, and without this a
-    // page still loading at that moment never finishes. Installed once, before the first web view leaves the
-    // host it was initialized in.
+    // A web view leaves the visual tree whenever its document goes to a background tab. This hook lets a page still
+    // loading at that moment finish. The hook is installed once, before the first web view leaves its init host.
     private void KeepLoadingWhenDetached()
     {
         if (_checkedLoadingWhenDetached)
@@ -359,8 +358,8 @@ internal sealed class SkiaWebViewPlatform : IWebViewPlatform
             return _initHost;
         }
 
-        // The factory prewarms views from application startup, before the window content exists, so wait for the
-        // root grid rather than failing the first views.
+        // The factory prewarms views from application startup, before the window content exists, so the first views
+        // wait for the root grid.
         var pollInterval = TimeSpan.FromMilliseconds(100);
         var rootGridWait = TimeSpan.Zero;
 

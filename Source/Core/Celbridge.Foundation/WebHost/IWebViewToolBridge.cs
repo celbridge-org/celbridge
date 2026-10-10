@@ -94,10 +94,10 @@ public sealed record NetworkQueryOptions(
 /// MaxEdge caps the longer side in pixels (0 disables downscaling). When
 /// Selector is provided, the screenshot is clipped to the matched element's
 /// bounding rect. Otherwise it shows the frame the call acts on. SettleMs is an
-/// additional delay (in milliseconds) the platform applies after the editor's
-/// content-ready signal and before the capture, on top of a small fixed paint
-/// backstop. Callers bump it when a recent layout-changing operation (such as
-/// document_open) may not yet have committed to a stable visual state.
+/// extra delay in milliseconds between the editor's content-ready signal and the
+/// capture. It adds to a short fixed delay that lets the page paint. A caller
+/// raises SettleMs when a recent layout change, such as document_open, may not
+/// have settled on screen yet.
 /// </summary>
 public sealed record ScreenshotOptions(
     string Format = "jpeg",
@@ -147,25 +147,27 @@ public sealed record WebViewEvalResult(string Frame, string Value);
 public interface IWebViewToolBridge
 {
     /// <summary>
-    /// Returns the in-page tool shim. A view the tools reach installs it as a document-start script.
+    /// Returns the in-page tool shim. The tools work only in a web view that installs the shim as a document-start
+    /// script.
     /// </summary>
     string GetShimScript();
 
     /// <summary>
-    /// Registers a web view. Tool calls find it by its current resource until it closes. When two views show
-    /// the same resource, the one registered last answers. Registering a view again has no effect.
+    /// Registers a web view. Until the view closes, tool calls find the view by the resource it currently shows.
+    /// When two views show the same resource, the view registered last answers. Registering a view again has no
+    /// effect.
     /// </summary>
     void Register(IWebView view);
 
     /// <summary>
-    /// Tells the tools the view's content has loaded, so calls waiting for it go ahead. No effect if the view
-    /// is not registered.
+    /// Tells the tools the view's content has loaded, so calls waiting for the content go ahead. Applies only to a
+    /// registered view.
     /// </summary>
     void NotifyContentReady(IWebView view);
 
     /// <summary>
     /// Tells the tools the view has started loading new content, so later calls wait for the next
-    /// NotifyContentReady. No effect if the view is not registered.
+    /// NotifyContentReady. Applies only to a registered view.
     /// </summary>
     void NotifyContentLoading(IWebView view);
 
@@ -250,8 +252,8 @@ public interface IWebViewToolBridge
     /// <summary>
     /// Captures a screenshot of the frame. Supports JPEG and PNG. The JPEG quality
     /// parameter is ignored for PNG. When a selector is supplied, the output is clipped
-    /// to the element's bounding rectangle. The longer edge is capped at MaxEdge unless
-    /// MaxEdge is non-positive. Fails if the web view is not on screen, or the platform cannot capture it.
+    /// to the element's bounding rectangle. The longer edge is capped at MaxEdge when
+    /// MaxEdge is positive. Fails if the web view is off screen or the platform fails to capture it.
     /// </summary>
     Task<Result<WebViewScreenshot>> ScreenshotAsync(ResourceKey resource, ScreenshotOptions options);
 }

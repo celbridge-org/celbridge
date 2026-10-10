@@ -1,8 +1,8 @@
 namespace Celbridge.WebHost;
 
 /// <summary>
-/// Routes one web view's downloads through the download service. The view creates it when it is handed out, and
-/// detaches it when it closes.
+/// Routes one web view's downloads through the download service, from when the view is handed out until it
+/// closes.
 /// </summary>
 public interface IWebViewDownloadHandler
 {

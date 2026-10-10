@@ -210,8 +210,8 @@ public abstract partial class DocumentView : UserControl, IDocumentView
     public virtual bool TryBeginFind() => false;
 
     // Registers a hosted web view with the focus registry using the Documents-panel focus context the web-view
-    // document editors share. releaseFocus drops the page's caret when focus leaves it, and grantDomFocus
-    // hands it back.
+    // document editors share. releaseFocus drops the page's caret when focus leaves the page, and grantDomFocus
+    // gives the caret back.
     protected void RegisterWebSurfaceFocus(
         IWebView webView,
         Action releaseFocus,

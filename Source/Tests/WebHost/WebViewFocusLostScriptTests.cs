@@ -4,8 +4,8 @@ using Celbridge.WebHost;
 namespace Celbridge.Tests.WebHost;
 
 /// <summary>
-/// Unit tests for the focus-lost script. It builds its messages by hand, so the web channel's contract tests do not
-/// see its method names, and these tests hold them to the host's.
+/// Unit tests for the focus-lost script. The script builds its messages by hand, so the web channel's contract tests
+/// never see its method names. These tests check that the script's method names match the host's.
 /// </summary>
 [TestFixture]
 public class WebViewFocusLostScriptTests

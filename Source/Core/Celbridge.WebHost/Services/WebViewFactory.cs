@@ -104,14 +104,14 @@ internal class WebViewFactory : IWebViewFactory, IDisposable
             {
                 needsCreation = true;
 
-                // Replenish from the empty queue too, otherwise it stays empty for the rest of the session and
-                // every later acquire pays full WebView2 creation inline.
+                // Replenish an empty queue too. Otherwise the queue stays empty for the rest of the session, and
+                // every later acquire pays for a full WebView2 creation inline.
                 shouldReplenish = true;
             }
         }
 
-        // Creating a view is an expensive async operation, so we avoid holding the lock during the await to
-        // prevent blocking other threads from reaching the queue.
+        // Creating a view is slow, so the lock is not held during the await. Other threads can reach the queue
+        // meanwhile.
         if (needsCreation)
         {
             webView = await _webViewPlatform.CreateWebViewAsync();

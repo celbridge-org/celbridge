@@ -8,9 +8,9 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Celbridge.Tests.WebHost;
 
 /// <summary>
-/// Unit tests for the web view focus registry. A test cannot create a WebView2 control, so these views have
-/// none and the tests cover the focus model only. A focus loss the registry accepts waits on the UI thread's
-/// queue, which a view without a control has none of, so the loss tests cover the reports it ignores.
+/// Unit tests for the web view focus registry. The views here are fakes, since only the running application can
+/// create a WebView2 control, so the tests cover the focus model only. A focus loss the registry accepts waits on
+/// the queue of a real control's UI thread. So the loss tests cover only the reports the registry ignores.
 /// </summary>
 [TestFixture]
 public class WebViewFocusRegistryTests
@@ -125,7 +125,7 @@ public class WebViewFocusRegistryTests
         _registry.HasFocusedSurface.Should().BeFalse();
         _focusService.Received(1).ClearEditTarget(focusContext.EditTarget);
 
-        // A grant to a closed view finds no registration, so nothing is reported.
+        // A grant to a closed view finds its registration gone, so the claims stay as they were.
         _registry.GrantFocus(view);
         _claims.Should().ContainSingle();
     }

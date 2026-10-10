@@ -1,9 +1,9 @@
 namespace Celbridge.WebHost;
 
 /// <summary>
-/// The script that reports the keyboard leaving a page. The managed layer cannot see this: on the packaged Windows
-/// head the web content lives in its own child window, so a click on the caption or on any non-focusable region
-/// moves the keyboard off it without moving managed focus at all. Every view installs it at document start.
+/// The script that reports the keyboard leaving a page. Every view installs it at document start. The managed layer
+/// cannot see the keyboard leave. On the packaged Windows head the web content lives in its own child window. A
+/// click on the caption or on any non-focusable region moves the keyboard off the page without moving managed focus.
 /// </summary>
 internal static class WebViewFocusLostScript
 {

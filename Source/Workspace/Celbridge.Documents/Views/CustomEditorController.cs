@@ -127,7 +127,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     // flow returns only when the WebView and host are ready for RPCs.
     private TaskCompletionSource<Result>? _initTcs;
 
-    // Set by Teardown. A web view that arrives after that is disposed straight away.
+    // Set by Teardown. A web view acquired after teardown is disposed straight away.
     private bool _isTornDown;
 
     // The web view the editor runs in, acquired from the factory.
@@ -553,8 +553,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         await editorLoader.LoadAsync(loadRequest);
     }
 
-    // Blocks all navigations except the editor's own origin. A navigation of the editor page itself also
-    // resets the tool bridge's content-ready gate so webview_* tool calls block until the new page signals
+    // Cancels every navigation outside the editor's own origin. A navigation of the editor page itself also
+    // resets the tool bridge's content-ready gate, so webview_* tool calls wait until the new page signals
     // readiness. A frame loading inside the page leaves the gate open.
     private void WebView_NavigationStarting(object? sender, WebNavigationStartingEventArgs args)
     {
@@ -609,9 +609,9 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         _channel = channel;
     }
 
-    // Registers this editor's web view with the focus registry using the consumer-supplied panel identity
-    // and focus-gained side effect. The controller is the surface's edit target and owns the DOM focus
-    // release and its counterpart grant.
+    // Registers this editor's web view with the focus registry, under the panel and focus-gained side effect
+    // the consumer supplied. The controller is the surface's edit target, and it releases and grants the
+    // page's DOM focus.
     private void RegisterWebSurfaceFocus()
     {
         Guard.IsNotNull(_webView);
@@ -627,10 +627,10 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     }
 
     /// <summary>
-    /// Moves the live web view into a new container and re-points its focus registration at it, without
-    /// disposing or reloading it. This is the dock primitive: a utility keeps one web view (and all its live
-    /// state) while it moves between areas (the Utility Panel and a document tab). Called before the web view
-    /// is acquired, it just records the target container so the pending init lands there.
+    /// Moves the live web view into a new container and points its focus registration at the new panel. The web
+    /// view is not disposed or reloaded, so it keeps all its live state. A utility docks this way when it moves
+    /// between the Utility Panel and a document tab. Before the web view is acquired, Redock only records the
+    /// container, and the pending init attaches the web view there.
     /// </summary>
     public void Redock(Panel newContainer, CustomEditorFocusContext focusContext)
     {
@@ -645,9 +645,9 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
         _webView.AttachTo(newContainer);
 
-        // The registration is replaced rather than dropped and remade: dropping it means the surface is going
-        // away, which releases the keyboard it is holding, and a redock is the one case where a live surface
-        // changes panel without the user moving focus off it.
+        // Registering again replaces the registration. Dropping the registration would release the keyboard,
+        // because a drop means the surface is going away. A redock is the one case where a live surface changes
+        // panel while the user's focus stays on it.
         RegisterWebSurfaceFocus();
     }
 
@@ -671,9 +671,10 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     // partially initialized states.
     private void TeardownWebViewState()
     {
-        // Dispose the channel before the web view and the host: its pty raises output and exit on background
-        // threads, so unsubscribing and disposing it must complete before the host it notifies through is gone.
-        // Marking the adapter disposed first turns any in-flight outbound notification into a no-op.
+        // Dispose the channel before the web view and the host. The channel's pty raises output and exit events
+        // on background threads, and the channel notifies through the host. Unsubscribing and disposing the
+        // channel must finish before the host is gone. Marking the adapter disposed first turns any in-flight
+        // outbound notification into a no-op.
         if (_channel is not null)
         {
             _channelHost?.MarkDisposed();
@@ -735,8 +736,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         }
     }
 
-    // Tells the page whether its viewport is a real size. It runs only when the answer changes, since the state
-    // store pushes every set to the page.
+    // Tells the page whether its viewport is a real size. The state store pushes every set to the page, so the
+    // value is set only when IsSized changes.
     private void WebView_IsSizedChanged(object? sender, EventArgs e)
     {
         if (sender is not IEditorWebView webView)
