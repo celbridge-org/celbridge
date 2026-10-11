@@ -644,7 +644,7 @@ This file could not be saved</value>
     <value>Clear Browsing Data</value>
   </data>
   <data name="Settings_WebView_ClearBrowsingDataHint" xml:space="preserve">
-    <value>Every web page in Celbridge shares one set of cookies, cached credentials and site data, so this clears them everywhere rather than just for the current document.</value>
+    <value>Every web page in Celbridge shares one set of cookies, cached credentials, site data and cache, so this clears them everywhere rather than just for the current document.</value>
   </data>
   <data name="Settings_WebView_ClearConfirmMessage" xml:space="preserve">
     <value>Clear the cookies, cached credentials, site data and cache shared by every web page in Celbridge? You will be signed out of any sites you are signed in to. This cannot be undone.</value>

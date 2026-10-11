@@ -25,7 +25,7 @@ public class LayoutMinimumContainmentTests
         Path.Combine("Modules", "Celbridge.WebView", "Views", "WebViewDocumentView.xaml.cs"),
 
         // The viewport a headless WebView is rendered at, which no surface is laid out against.
-        Path.Combine("Core", "Celbridge.WebHost", "Platform", "SkiaWebViewAdapter.cs"),
+        Path.Combine("Core", "Celbridge.WebHost", "Platform", "SkiaWebViewPlatform.cs"),
 
         // How much of a restored window's title bar has to stay on screen, which is a placement check rather
         // than a size floor.

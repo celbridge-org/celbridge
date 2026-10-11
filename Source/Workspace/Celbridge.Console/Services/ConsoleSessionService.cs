@@ -24,7 +24,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
     private const int DefaultCols = 120;
     private const int DefaultRows = 30;
 
-    private readonly IWebViewAdapter _webViewAdapter;
+    private readonly IWebViewPlatform _webViewPlatform;
     private readonly IServiceProvider _serviceProvider;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IMessengerService _messengerService;
@@ -59,7 +59,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         _workspaceWrapper = workspaceWrapper;
         _messengerService = messengerService;
         _logger = logger;
-        _webViewAdapter = ServiceLocator.AcquireService<IWebViewAdapter>();
+        _webViewPlatform = ServiceLocator.AcquireService<IWebViewPlatform>();
         _pythonInstaller = serviceProvider.GetRequiredService<IPythonInstaller>();
 
         _sessionProviders = ResolveSessionProviders(serviceProvider);
@@ -157,7 +157,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         var hasViewSize = cols > 0 && rows > 0;
 
         if (!hasViewSize &&
-            !_webViewAdapter.CanSizeUnarrangedViewport)
+            !_webViewPlatform.CanSizeUnarrangedViewport)
         {
             session.ReportNoViewSize();
         }

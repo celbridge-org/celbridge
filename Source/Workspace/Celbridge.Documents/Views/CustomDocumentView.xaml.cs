@@ -1,6 +1,7 @@
 using Celbridge.Documents.ViewModels;
 using Celbridge.Messaging;
 using Celbridge.Packages;
+using Celbridge.WebHost;
 using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Views;
@@ -81,9 +82,8 @@ public sealed partial class CustomDocumentView : DocumentView
             return setResult;
         }
 
-        // A rename reuses this view, so the bridge entry has to follow the resource. Left on the old
-        // key, every webview_* call for the renamed document finds no registration.
-        _controller.RekeyToolBridgeRegistration();
+        // A rename reuses this view, so its web view follows the resource.
+        _controller.SetResource(FileResource);
 
         // The page keeps the name and path it opened with, so it is told the new ones.
         if (!previousResource.IsEmpty
@@ -120,7 +120,7 @@ public sealed partial class CustomDocumentView : DocumentView
         return _controller.RestoreEditorStateAsync(state);
     }
 
-    public override DocumentHealth GetHealth() => _controller.GetHealth();
+    public override WebViewHealth GetHealth() => _controller.GetHealth();
 
     public override async Task PrepareToClose()
     {

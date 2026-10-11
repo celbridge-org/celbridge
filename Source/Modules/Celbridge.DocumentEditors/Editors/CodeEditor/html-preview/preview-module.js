@@ -34,6 +34,13 @@ let lastVisibleScrollPercentage = 0;
 // still holds the old document, and a scroll applied to it would be lost.
 let isAwaitingDocument = true;
 
+// requestedUrl is the address the last refresh asked for. replacedUrls holds the addresses that later refreshes
+// replaced while they were still loading. WebKit can finish a replaced navigation and drop the newer one, which
+// leaves the frame on an old address. A rename that arrives while the editor is loading causes this, because the
+// page first loads the old address.
+let requestedUrl = null;
+let replacedUrls = [];
+
 /**
  * Stores the frame the preview navigates. The page is loaded by refresh, so there is nothing to load yet.
  * @param {HTMLIFrameElement} iframe
@@ -42,6 +49,14 @@ export function initialize(iframe) {
     iframeElement = iframe;
 
     iframe.addEventListener('load', () => {
+        // The frame finished a navigation that a later refresh replaced, so it is asked for the current
+        // address again, once.
+        if (isShowingReplacedAddress()) {
+            replacedUrls = [];
+            iframe.src = requestedUrl;
+            return;
+        }
+
         isAwaitingDocument = false;
         iframe.removeAttribute('aria-busy');
         listenForScroll();
@@ -77,6 +92,13 @@ export function refresh(url) {
         !isAwaitingDocument) {
         pendingScrollPercentage = getVisibleScrollPercentage();
     }
+
+    if (!isAwaitingDocument) {
+        replacedUrls = [];
+    } else if (requestedUrl !== null) {
+        replacedUrls.push(requestedUrl);
+    }
+    requestedUrl = url;
 
     isAwaitingDocument = true;
     iframeElement.setAttribute('data-cel-content-frame', '');
@@ -142,6 +164,27 @@ function getVisibleScrollPercentage() {
     }
 
     return readScrollPercentage();
+}
+
+// True when the frame shows an address that a later refresh replaced. False when the frame shows the address the
+// last refresh asked for, a page that navigated itself elsewhere, or a page on another origin, whose document is out
+// of reach.
+function isShowingReplacedAddress() {
+    if (replacedUrls.length === 0) {
+        return false;
+    }
+
+    const shownUrl = iframeElement.contentDocument?.URL;
+    if (!shownUrl) {
+        return false;
+    }
+
+    return shownUrl !== resolveUrl(requestedUrl) &&
+        replacedUrls.some((url) => resolveUrl(url) === shownUrl);
+}
+
+function resolveUrl(url) {
+    return new URL(url, document.baseURI).href;
 }
 
 function hasLayout() {

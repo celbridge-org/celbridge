@@ -27,7 +27,7 @@ public partial class WebViewTools
         Logger.LogInformation("webview_get_console resource={Resource} tail={Tail} includeDebug={IncludeDebug} since={Since} frame={Frame}",
             resourceKey, tail, includeDebug, sinceTimestampMs, frame);
 
-        var toolBridge = GetRequiredService<IDocumentWebViewToolBridge>();
+        var toolBridge = GetRequiredService<IWebViewToolBridge>();
         long? since = sinceTimestampMs > 0 ? sinceTimestampMs : null;
         var options = new ConsoleQueryOptions(tail, includeDebug, since, frame);
         var consoleResult = await toolBridge.GetConsoleAsync(resourceKey, options);

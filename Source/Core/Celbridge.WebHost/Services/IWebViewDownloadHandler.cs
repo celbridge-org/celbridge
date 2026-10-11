@@ -1,8 +1,8 @@
 namespace Celbridge.WebHost;
 
 /// <summary>
-/// Routes one hosted web view's downloads through the download service, from when a surface attaches it
-/// until the surface detaches it. Created by IWebViewAdapter.AttachDownloadHandler.
+/// Routes one web view's downloads through the download service, from when the view is handed out until it
+/// closes.
 /// </summary>
 public interface IWebViewDownloadHandler
 {

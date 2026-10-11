@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.WebHost;
 
 namespace Celbridge.Documents;
 
@@ -9,7 +10,7 @@ public record class DocumentStateSnapshot(
     IReadOnlyList<DocumentSection> VisibleSections,
     IReadOnlyList<OpenDocumentInfo> OpenDocuments,
     IReadOnlyDictionary<DocumentSection, ResourceKey> SelectedDocuments,
-    IReadOnlyDictionary<ResourceKey, DocumentHealth> UnhealthyDocuments,
+    IReadOnlyDictionary<ResourceKey, WebViewHealth> UnhealthyDocuments,
     ResourceKey ActiveDocument);
 
 /// <summary>

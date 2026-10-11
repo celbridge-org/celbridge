@@ -26,7 +26,7 @@ internal sealed class ConsoleSession : IDisposable
     // can take far longer than any fixed budget while still making progress.
     private const int MarkerSilenceTimeoutMs = 10000;
 
-    private readonly IWebViewAdapter _webViewAdapter;
+    private readonly IWebViewPlatform _webViewPlatform;
     private readonly IServiceProvider _serviceProvider;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ILogger<ConsoleSession> _logger;
@@ -81,7 +81,7 @@ internal sealed class ConsoleSession : IDisposable
         _startupWrite = startupWrite;
         _sessionTypes = sessionProviders.Select(provider => provider.SessionType).ToList();
         _logger = serviceProvider.GetRequiredService<ILogger<ConsoleSession>>();
-        _webViewAdapter = ServiceLocator.AcquireService<IWebViewAdapter>();
+        _webViewPlatform = ServiceLocator.AcquireService<IWebViewPlatform>();
     }
 
     public ResourceKey Resource { get; private set; }
@@ -175,7 +175,7 @@ internal sealed class ConsoleSession : IDisposable
     // ends the wait without reaching this. It is short there because the only thing left to reach it is a
     // view that never attaches, and a console in a background tab must not wait on that.
     private int ViewSizeTimeoutMs =>
-        _webViewAdapter.CanSizeUnarrangedViewport ? 30000 : 5000;
+        _webViewPlatform.CanSizeUnarrangedViewport ? 30000 : 5000;
 
     public async Task StartAsync(int fallbackCols, int fallbackRows, int rpcPort)
     {

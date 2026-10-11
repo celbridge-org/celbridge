@@ -22,6 +22,7 @@ public class WebSurfaceLogTests
     private RecordingLogger<WebSurfaceLog> _logger = null!;
     private FakeTimeProvider _timeProvider = null!;
     private WebSurfaceLog _webSurfaceLog = null!;
+    private FakeWebView _editor = null!;
 
     [SetUp]
     public void SetUp()
@@ -29,6 +30,7 @@ public class WebSurfaceLogTests
         _logger = new RecordingLogger<WebSurfaceLog>();
         _timeProvider = new FakeTimeProvider();
         _webSurfaceLog = new WebSurfaceLog(_logger, _timeProvider);
+        _editor = new FakeWebView("project:docs/editor.html");
     }
 
     // The sink logs the page's text as an argument rather than part of the template, so what a page said is
@@ -41,9 +43,9 @@ public class WebSurfaceLogTests
     [Test]
     public void Write_MapsTheLevelThePageAskedFor()
     {
-        _webSurfaceLog.Write("editor", "error", "import failed");
-        _webSurfaceLog.Write("editor", "warn", "slow frame");
-        _webSurfaceLog.Write("editor", "info", "ready");
+        _webSurfaceLog.Write(_editor, "error", "import failed");
+        _webSurfaceLog.Write(_editor, "warn", "slow frame");
+        _webSurfaceLog.Write(_editor, "info", "ready");
 
         ReportedText(_logger.EntriesAt(LogEntryLevel.Error).Single()).Should().Be("import failed");
         ReportedText(_logger.EntriesAt(LogEntryLevel.Warning).Single()).Should().Be("slow frame");
@@ -53,8 +55,8 @@ public class WebSurfaceLogTests
     [Test]
     public void Write_WithAnUnknownLevel_LogsAsDebug()
     {
-        _webSurfaceLog.Write("editor", "banana", "something happened");
-        _webSurfaceLog.Write("editor", null, "something else happened");
+        _webSurfaceLog.Write(_editor, "banana", "something happened");
+        _webSurfaceLog.Write(_editor, null, "something else happened");
 
         _logger.EntriesAt(LogEntryLevel.Debug).Should().HaveCount(2);
     }
@@ -62,19 +64,19 @@ public class WebSurfaceLogTests
     [Test]
     public void Write_WithNoMessage_LogsNothing()
     {
-        _webSurfaceLog.Write("editor", "error", null);
-        _webSurfaceLog.Write("editor", "error", "   ");
+        _webSurfaceLog.Write(_editor, "error", null);
+        _webSurfaceLog.Write(_editor, "error", "   ");
 
         _logger.Entries.Should().BeEmpty();
     }
 
     [Test]
-    public void Write_NamesTheSurfaceThatReported()
+    public void Write_NamesTheViewByItsResource()
     {
-        _webSurfaceLog.Write("notes.note", "error", "import failed");
+        _webSurfaceLog.Write(_editor, "error", "import failed");
 
         var entry = _logger.EntriesAt(LogEntryLevel.Error).Single();
-        entry.Arguments[0].Should().Be("notes.note");
+        entry.Arguments[0].Should().Be("project:docs/editor.html");
     }
 
     [Test]
@@ -82,7 +84,7 @@ public class WebSurfaceLogTests
     {
         for (var i = 0; i < 200; i++)
         {
-            _webSurfaceLog.Write("noisy", "info", $"message {i}");
+            _webSurfaceLog.Write(_editor, "info", $"message {i}");
         }
 
         // The entries up to the limit, and no more however long the page keeps going.
@@ -90,20 +92,21 @@ public class WebSurfaceLogTests
         _logger.EntriesAt(LogEntryLevel.Warning).Should().HaveCount(1);
 
         _timeProvider.Advance(TimeSpan.FromSeconds(11));
-        _webSurfaceLog.Write("noisy", "info", "after the window");
+        _webSurfaceLog.Write(_editor, "info", "after the window");
 
         _logger.EntriesAt(LogEntryLevel.Information).Should().HaveCount(50);
     }
 
     [Test]
-    public void Write_RateLimitsEachSurfaceSeparately()
+    public void Write_RateLimitsEachViewSeparately()
     {
         for (var i = 0; i < 200; i++)
         {
-            _webSurfaceLog.Write("noisy", "info", $"message {i}");
+            _webSurfaceLog.Write(_editor, "info", $"message {i}");
         }
 
-        _webSurfaceLog.Write("quiet", "info", "still heard");
+        var quietView = new FakeWebView("project:docs/quiet.html");
+        _webSurfaceLog.Write(quietView, "info", "still heard");
 
         var informationEntries = _logger.EntriesAt(LogEntryLevel.Information);
         informationEntries.Should().HaveCount(50);
@@ -115,20 +118,34 @@ public class WebSurfaceLogTests
     {
         var message = new string('x', 5000);
 
-        _webSurfaceLog.Write("editor", "error", message);
+        _webSurfaceLog.Write(_editor, "error", message);
 
         var entry = _logger.EntriesAt(LogEntryLevel.Error).Single();
         ReportedText(entry).Length.Should().BeLessThan(2100);
     }
 
     [Test]
-    public void LogTarget_AfterTheSurfaceIsRenamed_NamesItsNewName()
+    public void Write_AfterTheViewIsRenamed_KeepsItsRateLimit()
     {
-        var surfaceName = "project:docs/old.html";
-        var logTarget = new WebSurfaceLogTarget(() => surfaceName, _webSurfaceLog);
+        for (var i = 0; i < 200; i++)
+        {
+            _webSurfaceLog.Write(_editor, "info", $"message {i}");
+        }
+
+        _editor.Resource = new ResourceKey("project:docs/renamed.html");
+        _webSurfaceLog.Write(_editor, "info", "after the rename");
+
+        _logger.EntriesAt(LogEntryLevel.Information).Should().HaveCount(49);
+    }
+
+    [Test]
+    public void LogTarget_AfterTheViewIsRenamed_NamesItsNewResource()
+    {
+        var view = new FakeWebView("project:docs/old.html");
+        var logTarget = new WebSurfaceLogTarget(view, _webSurfaceLog);
 
         logTarget.OnLog("error", "before the rename");
-        surfaceName = "project:docs/new.html";
+        view.Resource = new ResourceKey("project:docs/new.html");
         logTarget.OnLog("error", "after the rename");
 
         var surfaceNames = _logger.EntriesAt(LogEntryLevel.Error)

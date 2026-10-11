@@ -35,7 +35,7 @@ public class WebViewServiceSupportTests
         _webViewService = new WebViewService(
             Substitute.For<IFeatureFlags>(),
             _workspaceWrapper,
-            Substitute.For<IWebViewAdapter>());
+            Substitute.For<IWebViewPlatform>());
     }
 
     [Test]

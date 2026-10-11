@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using Celbridge.WebHost;
 using Celbridge.WebHost.Platform;
 using static Celbridge.Utilities.Platform.ObjectiveCRuntime;
 
@@ -77,8 +78,8 @@ internal class MacOSNativeControlReader : INativeControlReader
 
         // A web view whose native view cannot be found draws nothing.
         var notShowing = new NativeView(false, NoFrame);
-        if (webView.CoreWebView2 is null ||
-            !MacOSWebViewInterop.TryGetNativeWebViewHandle(webView.CoreWebView2, out var nativeWebView, out _))
+        if (WebViewBase.FromControl(webView) is not MacOSWebView view ||
+            !view.TryGetNativeHandle(out var nativeWebView, out _))
         {
             return notShowing;
         }

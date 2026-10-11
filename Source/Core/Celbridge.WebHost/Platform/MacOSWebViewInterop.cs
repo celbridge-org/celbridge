@@ -87,28 +87,25 @@ public static partial class MacOSWebViewInterop
 
     private static readonly IntPtr RtldDefault = new(-2);
 
-    // Single snapshot in flight at a time: snapshots are serialized through the command queue and run on
-    // the main thread, so a second concurrent snapshot would clobber this field.
+    // One global block answers every snapshot, so only one snapshot may be in flight. The capture awaits
+    // WebKit's callback on the main thread, so a second call can arrive meanwhile. The second call waits at the
+    // gate. Without the gate, the second call would replace the completion and take the first call's result.
+    private static readonly SemaphoreSlim _snapshotGate = new(1, 1);
     private static TaskCompletionSource<IntPtr>? _snapshotCompletion;
     private static IntPtr _snapshotBlock;
 
-    // Single find in flight at a time. Find runs on the main thread and completes near-instantly, and the
-    // host find bar issues one call per keystroke or step, so a fresh call simply supersedes the previous
-    // callback (last find wins), matching the single-in-flight snapshot pattern above.
+    // One find in flight at a time. Find runs on the main thread and completes almost at once. A new call
+    // replaces the previous call's callback, so the last find wins.
     private static Action<bool>? _findCompletionCallback;
     private static IntPtr _findBlock;
 
-    // Single clear in flight at a time: the clear is application-wide and runs from the command queue,
-    // matching the single-in-flight snapshot pattern above.
+    // One clear in flight at a time, guarded as the snapshot is.
+    private static readonly SemaphoreSlim _clearBrowsingDataGate = new(1, 1);
     private static TaskCompletionSource? _clearBrowsingDataCompletion;
     private static IntPtr _clearBrowsingDataBlock;
 
     // Bounds the wait, so a clear that never calls back is reported as a failure rather than hanging.
     private static readonly TimeSpan ClearBrowsingDataTimeout = TimeSpan.FromSeconds(30);
-
-    // Web views already pinned, so the several resolution points that call RetainNativeWebView take
-    // one retain each.
-    private static readonly HashSet<IntPtr> _pinnedWebViews = new();
 
     // WKPreferences SPI that keeps a hidden page's process schedulable.
     private static readonly string[] BackgroundPageActivitySelectors =
@@ -184,28 +181,15 @@ public static partial class MacOSWebViewInterop
     /// <summary>
     /// Retains the native WKWebView for the lifetime of the process and keeps it schedulable while hidden.
     /// Uno's MacOSNativeElement calls uno_native_dispose on every Unloaded event, which drops the native
-    /// side's owning reference while managed code keeps the raw handle; a later reattach or message then
+    /// side's owning reference while managed code keeps the raw handle. A later reattach or message then
     /// crashes on the freed view. Pinning the view turns those touches into calls on a live object. The
     /// WebContent renderer is still reclaimed by CloseNativeWebView, so what leaks is the view shell only.
-    /// Returns the background page activity preferences applied to a newly pinned view, or null when
-    /// nothing was pinned.
+    /// Each call takes another retain, so pin each view only once. Returns the background page activity
+    /// preferences applied to the view.
     /// </summary>
     // UNO-BUG: MacOSNativeElement disposes the native view on Unloaded while the handle stays in use.
-    public static IReadOnlyList<string>? RetainNativeWebView(IntPtr webView)
+    public static IReadOnlyList<string> RetainNativeWebView(IntPtr webView)
     {
-        if (webView == IntPtr.Zero)
-        {
-            return null;
-        }
-
-        lock (_pinnedWebViews)
-        {
-            if (!_pinnedWebViews.Add(webView))
-            {
-                return null;
-            }
-        }
-
         SendMessage(webView, GetSelector("retain"));
 
         return EnableBackgroundPageActivity(webView);
@@ -624,15 +608,6 @@ public static partial class MacOSWebViewInterop
     }
 
     /// <summary>
-    /// Calls -[WKWebView stopLoading], the macOS replacement for the unimplemented CoreWebView2.Stop().
-    /// Unlike a window.stop() fallback this also cancels a navigation that has not yet produced a document.
-    /// </summary>
-    public static void StopLoading(IntPtr webView)
-    {
-        SendMessage(webView, GetSelector("stopLoading"));
-    }
-
-    /// <summary>
     /// Sets the size of the native view's frame, which is what the page reads as its viewport, holding the
     /// origin Uno arranged it at.
     /// </summary>
@@ -772,6 +747,19 @@ public static partial class MacOSWebViewInterop
     /// displays.
     /// </summary>
     public static async Task<MacWebViewSnapshot?> TakeSnapshotAsync(IntPtr webView, MacSnapshotRequest request)
+    {
+        await _snapshotGate.WaitAsync();
+        try
+        {
+            return await TakeOneSnapshotAsync(webView, request);
+        }
+        finally
+        {
+            _snapshotGate.Release();
+        }
+    }
+
+    private static async Task<MacWebViewSnapshot?> TakeOneSnapshotAsync(IntPtr webView, MacSnapshotRequest request)
     {
         _snapshotCompletion = new TaskCompletionSource<IntPtr>();
         var completionBlock = EnsureSnapshotBlock();
@@ -939,13 +927,26 @@ public static partial class MacOSWebViewInterop
     }
 
     /// <summary>
-    /// Clears the cookies, cached credentials, site data and HTTP cache of the default WKWebsiteDataStore
+    /// Clears every kind of website data in the default WKWebsiteDataStore
     /// through -[WKWebsiteDataStore removeDataOfTypes:modifiedSince:completionHandler:]. Every WKWebView in
     /// the application shares that store, so the clear reaches all of them, including live views, and takes
     /// effect immediately. Returns false if WebKit does not expose the store or the clear does not complete
     /// within the timeout.
     /// </summary>
     public static async Task<bool> ClearBrowsingDataAsync()
+    {
+        await _clearBrowsingDataGate.WaitAsync();
+        try
+        {
+            return await ClearBrowsingDataOnceAsync();
+        }
+        finally
+        {
+            _clearBrowsingDataGate.Release();
+        }
+    }
+
+    private static async Task<bool> ClearBrowsingDataOnceAsync()
     {
         var dataStoreClass = GetClass("WKWebsiteDataStore");
         if (dataStoreClass == IntPtr.Zero)

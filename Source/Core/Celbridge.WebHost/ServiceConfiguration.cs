@@ -14,7 +14,7 @@ public static class ServiceConfiguration
         services.AddSingleton<WebSurfaceLogListener>();
         services.AddSingleton<IWebSurfaceMessageDispatcher, WebSurfaceMessageDispatcher>();
         services.AddSingleton<IWebViewFocusRegistry, WebViewFocusRegistry>();
-        services.AddSingleton<IDocumentWebViewToolBridge, DocumentWebViewToolBridge>();
+        services.AddSingleton<IWebViewToolBridge, WebViewToolBridge>();
         services.AddTransient<IGetWebViewToolSupportCommand, GetWebViewToolSupportCommand>();
         services.AddTransient<IClearBrowsingDataCommand, ClearBrowsingDataCommand>();
 
@@ -22,17 +22,16 @@ public static class ServiceConfiguration
         // custom loader, which resolves ahead of it (the view picks the last matching loader).
         services.AddSingleton<ICustomEditorLoader, LoopbackCustomEditorLoader>();
 
-        // The per-platform WebView adapter (WebView2 SDK on Windows, Skia/native fallbacks elsewhere).
         Platform.PlatformServiceConfiguration.ConfigureServices(services);
     }
 
     /// <summary>
-    /// Instantiates the WebViewFactory early so it can pre-warm the WebView2 pool in the background while
-    /// the application starts up, and opens the diagnostic plane's native message bus entrance.
+    /// Instantiates the WebViewFactory early, so it prewarms web views in the background while the application
+    /// starts up. Also opens the native message bus entrance to the diagnostic plane.
     /// </summary>
     public static void Initialize()
     {
-        // Force early instantiation of WebViewFactory to start pre-warming the WebView2 pool
+        // Force early instantiation of WebViewFactory to start prewarming web views
         var webViewFactory = ServiceLocator.AcquireService<IWebViewFactory>();
         Guard.IsNotNull(webViewFactory);
 

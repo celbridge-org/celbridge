@@ -69,8 +69,11 @@ export default [
     },
 
     {
-        // Injected into the page as a classic script rather than imported as a module.
-        files: ['Core/Celbridge.WebHost/Web/celbridge-client/core/webview-tools-shim.js'],
+        // Injected into the page as a plain script rather than imported as a module.
+        files: [
+            'Core/Celbridge.WebHost/Web/celbridge-client/core/focus-lost-reporter.js',
+            'Core/Celbridge.WebHost/Web/celbridge-client/core/webview-tools-shim.js'
+        ],
         languageOptions: {
             sourceType: 'script'
         }

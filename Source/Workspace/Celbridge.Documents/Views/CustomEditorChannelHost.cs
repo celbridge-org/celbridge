@@ -1,4 +1,3 @@
-using Celbridge.Documents.ViewModels;
 using Celbridge.Host;
 using Celbridge.WebHost;
 
@@ -12,16 +11,16 @@ namespace Celbridge.Documents.Views;
 internal sealed class CustomEditorChannelHost : ICustomEditorChannelHost
 {
     private readonly CelbridgeHost _host;
-    private readonly CustomDocumentViewModel _viewModel;
+    private readonly IWebView _webView;
     private bool _disposed;
 
-    public CustomEditorChannelHost(CelbridgeHost host, CustomDocumentViewModel viewModel)
+    public CustomEditorChannelHost(CelbridgeHost host, IWebView webView)
     {
         _host = host;
-        _viewModel = viewModel;
+        _webView = webView;
     }
 
-    public ResourceKey Resource => _viewModel.FileResource;
+    public ResourceKey Resource => _webView.Resource;
 
     public void MarkDisposed()
     {

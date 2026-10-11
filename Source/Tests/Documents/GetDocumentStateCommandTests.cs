@@ -1,4 +1,5 @@
 using Celbridge.Documents.Commands;
+using Celbridge.WebHost;
 using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Documents;
@@ -79,10 +80,10 @@ public class GetDocumentStateCommandTests
         var wellDocument = new ResourceKey("src/main.cs");
 
         var sickView = Substitute.For<IDocumentView>();
-        sickView.GetHealth().Returns(new DocumentHealth(WakeFailures: 4, ProcessFailures: 2));
+        sickView.GetHealth().Returns(new WebViewHealth(WakeFailures: 4, ProcessFailures: 2));
 
         var wellView = Substitute.For<IDocumentView>();
-        wellView.GetHealth().Returns(DocumentHealth.Healthy);
+        wellView.GetHealth().Returns(WebViewHealth.Healthy);
 
         var documentsPanel = Substitute.For<IDocumentsPanel>();
         documentsPanel.GetDocumentView(sickDocument).Returns(sickView);
@@ -114,7 +115,7 @@ public class GetDocumentStateCommandTests
         var document = new ResourceKey("notes/readme.md");
 
         var documentView = Substitute.For<IDocumentView>();
-        documentView.GetHealth().Returns(DocumentHealth.Healthy);
+        documentView.GetHealth().Returns(WebViewHealth.Healthy);
 
         var documentsPanel = Substitute.For<IDocumentsPanel>();
         documentsPanel.GetDocumentView(document).Returns(documentView);
