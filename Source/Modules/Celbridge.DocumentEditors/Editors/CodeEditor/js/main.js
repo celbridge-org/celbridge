@@ -21,8 +21,35 @@ require.config({ paths: { 'vs': './min/vs' } });
 require(['vs/editor/editor.main'], () => {
     routeClipboardCommandsThroughHost();
     declareClipboardShortcuts();
+    configureTypeScriptChecking();
     initialize();
 });
+
+// TypeScript diagnostics about files the worker cannot see. Each one reports a module, a referenced file or a
+// global's type package as missing.
+const unseenProjectFileDiagnostics = [
+    2307, 2732, 2792,
+    2688, 6053,
+    2580, 2581, 2582, 2591, 2592, 2593, 2867, 2868
+];
+
+// Monaco's TypeScript worker sees only the open document, never the rest of the project or its tsconfig.json.
+// Imports would all show as errors, so the worker ignores the diagnostics that depend on those files.
+// Monaco's default module and JSX options reject import() and JSX, so modern values replace them.
+function configureTypeScriptChecking() {
+    const typescript = monaco.typescript;
+    for (const defaults of [typescript.typescriptDefaults, typescript.javascriptDefaults]) {
+        defaults.setCompilerOptions({
+            ...defaults.getCompilerOptions(),
+            module: typescript.ModuleKind.ESNext,
+            jsx: typescript.JsxEmit.Preserve
+        });
+        defaults.setDiagnosticsOptions({
+            ...defaults.getDiagnosticsOptions(),
+            diagnosticCodesToIgnore: unseenProjectFileDiagnostics
+        });
+    }
+}
 
 // Points Cut and Paste at the host, because the macOS WebView refuses Monaco's own clipboard access.
 // Registering a command under an existing id wins, since Monaco resolves an id to the most recently
