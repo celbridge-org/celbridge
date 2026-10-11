@@ -1,3 +1,4 @@
+using Celbridge.Automation;
 using Celbridge.Logging;
 using Celbridge.WebHost;
 
@@ -6,12 +7,13 @@ namespace Celbridge.Tests.WebHost;
 /// <summary>
 /// A view built on WebViewBase with no control, for testing the shared view itself. The page answers each
 /// evaluation through Evaluate, and the download handler can report a download. ApplyingOptions and
-/// InstallingScript stand in for the platform's own steps, so a test can make either one fail.
+/// InstallingScript stand in for the platform's own steps, so a test can make either one fail. Events go to the
+/// automation service the test passes, or to a substitute.
 /// </summary>
 internal sealed class ControlFreeWebView : WebViewBase
 {
-    public ControlFreeWebView(IWebViewPlatform platform, ILogger logger)
-        : base(null, platform, logger)
+    public ControlFreeWebView(IWebViewPlatform platform, ILogger logger, IAutomationService? automationService = null)
+        : base(null, platform, logger, automationService ?? Substitute.For<IAutomationService>())
     {
     }
 

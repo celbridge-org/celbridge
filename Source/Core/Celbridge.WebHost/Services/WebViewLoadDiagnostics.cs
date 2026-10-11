@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using Celbridge.Automation;
 using Celbridge.Logging;
 using Celbridge.Settings;
 using Windows.Foundation;
@@ -87,16 +88,18 @@ internal sealed class WebViewLoadDiagnostics
     private readonly WebViewBase _view;
     private readonly IFeatureFlags _featureFlags;
     private readonly ILogger _logger;
+    private readonly IAutomationService _automationService;
 
     private DateTime _lastViewportSizeLogTime;
     private bool _lastViewportSizeWasArranged;
     private int _viewportSizesSinceLog;
 
-    public WebViewLoadDiagnostics(WebViewBase view, IFeatureFlags featureFlags, ILogger logger)
+    public WebViewLoadDiagnostics(WebViewBase view, IFeatureFlags featureFlags, ILogger logger, IAutomationService automationService)
     {
         _view = view;
         _featureFlags = featureFlags;
         _logger = logger;
+        _automationService = automationService;
     }
 
     // Read per call rather than cached, because a project's overrides are applied when it loads and can
@@ -179,6 +182,10 @@ internal sealed class WebViewLoadDiagnostics
             url,
             completion.ErrorStatus,
             DescribeSurface());
+        _automationService.LogEvent(new WebViewNavigationFailedEvent(
+            _view.Resource.ToString(),
+            url ?? string.Empty,
+            completion.ErrorStatus));
     }
 
     /// <summary>

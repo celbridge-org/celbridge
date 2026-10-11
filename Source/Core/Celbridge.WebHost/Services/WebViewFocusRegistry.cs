@@ -1,3 +1,4 @@
+using Celbridge.Automation;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
@@ -29,6 +30,7 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
 {
     private readonly IFocusService _focusService;
     private readonly IMessengerService _messengerService;
+    private readonly IAutomationService _automationService;
     private readonly ILogger<WebViewFocusRegistry> _logger;
 
     // Used only on the UI thread. Views register and close there, and focus signals are marshalled there.
@@ -61,10 +63,12 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
     public WebViewFocusRegistry(
         IFocusService focusService,
         IMessengerService messengerService,
+        IAutomationService automationService,
         ILogger<WebViewFocusRegistry> logger)
     {
         _focusService = focusService;
         _messengerService = messengerService;
+        _automationService = automationService;
         _logger = logger;
 
         _messengerService.Register<MainWindowActivatedMessage>(this, (_, _) => OnHostWindowActivationChanged(true));
@@ -418,6 +422,7 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         // would leave the two driving each other without end.
         if (!wasAlreadyFocused)
         {
+            _automationService.LogEvent(new WebSurfaceFocusedEvent(registration.SurfaceName));
             registration.Context.OnFocusGained?.Invoke();
         }
         Action releaseFocus = () => ReleaseSurface(registration);

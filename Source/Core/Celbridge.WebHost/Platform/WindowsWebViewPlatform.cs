@@ -1,6 +1,7 @@
 // Compiled only under WINDOWS, so the Skia build never links against the WinAppSDK WebView2 surface. The DI
 // selection is gated on the same symbol.
 #if WINDOWS
+using Celbridge.Automation;
 using Celbridge.Logging;
 using Microsoft.Web.WebView2.Core;
 
@@ -12,10 +13,12 @@ namespace Celbridge.WebHost.Platform;
 internal sealed class WindowsWebViewPlatform : IWebViewPlatform
 {
     private readonly ILogger<WindowsWebView> _webViewLogger;
+    private readonly IAutomationService _automationService;
 
-    public WindowsWebViewPlatform(ILogger<WindowsWebView> webViewLogger)
+    public WindowsWebViewPlatform(ILogger<WindowsWebView> webViewLogger, IAutomationService automationService)
     {
         _webViewLogger = webViewLogger;
+        _automationService = automationService;
     }
 
     public bool SupportsVirtualHostMapping => true;
@@ -42,7 +45,7 @@ internal sealed class WindowsWebViewPlatform : IWebViewPlatform
         // The packaged WebView2 initializes without being attached to the visual tree.
         await control.EnsureCoreWebView2Async();
 
-        return new WindowsWebView(control, this, _webViewLogger);
+        return new WindowsWebView(control, this, _webViewLogger, _automationService);
     }
 
     // The shared profile hangs off a live CoreWebView2, so a web view is created to reach it and closed after.

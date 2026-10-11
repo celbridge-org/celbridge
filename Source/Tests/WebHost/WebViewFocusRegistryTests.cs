@@ -1,3 +1,4 @@
+using Celbridge.Automation;
 using Celbridge.Messaging;
 using Celbridge.Tests.Helpers;
 using Celbridge.UserInterface;
@@ -20,6 +21,7 @@ public class WebViewFocusRegistryTests
     private IFocusReconciler _focusReconciler = null!;
     private List<FocusClaim> _claims = null!;
     private RecordingLogger<WebViewFocusRegistry> _logger = null!;
+    private IAutomationService _automationService = null!;
     private MessageHandler<object, MainWindowDeactivatedMessage>? _onWindowDeactivated;
     private MessageHandler<object, ModalDialogOpenedMessage>? _onModalDialogOpened;
     private WebViewFocusRegistry _registry = null!;
@@ -52,10 +54,12 @@ public class WebViewFocusRegistryTests
             .Do(call => _onModalDialogOpened = call.Arg<MessageHandler<object, ModalDialogOpenedMessage>>());
 
         _logger = new RecordingLogger<WebViewFocusRegistry>();
+        _automationService = Substitute.For<IAutomationService>();
 
         _registry = new WebViewFocusRegistry(
             _focusService,
             messengerService,
+            _automationService,
             _logger);
     }
 
@@ -93,6 +97,7 @@ public class WebViewFocusRegistryTests
         focusContext.FocusGainedCount.Should().Be(1);
         focusContext.DomGrantCount.Should().Be(1);
         _focusReconciler.Received(1).Reconcile();
+        _automationService.Received(1).LogEvent(new WebSurfaceFocusedEvent(view.Resource.ToString()));
     }
 
     [Test]
@@ -169,6 +174,7 @@ public class WebViewFocusRegistryTests
         focusContext.FocusGainedCount.Should().Be(1);
         focusContext.DomGrantCount.Should().Be(0);
         _focusReconciler.Received(1).Reconcile();
+        _automationService.Received(1).LogEvent(new WebSurfaceFocusedEvent(view.Resource.ToString()));
     }
 
     [Test]
@@ -183,6 +189,7 @@ public class WebViewFocusRegistryTests
 
         _claims.Should().ContainSingle();
         focusContext.FocusGainedCount.Should().Be(1);
+        _automationService.Received(1).LogEvent(Arg.Any<WebSurfaceFocusedEvent>());
     }
 
     [Test]

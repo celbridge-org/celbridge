@@ -1,3 +1,6 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Celbridge.Logging;
 using Celbridge.UserInterface;
 using Celbridge.WebHost;
 
@@ -5,18 +8,56 @@ namespace Celbridge.Automation.Services;
 
 internal class AutomationService : IAutomationService
 {
-    private readonly IUserInterfaceService _userInterfaceService;
-    private readonly INativeControlReader _nativeControlReader;
-    private readonly IWebViewToolBridge _toolBridge;
-
-    public AutomationService(
-        IUserInterfaceService userInterfaceService,
-        INativeControlReader nativeControlReader,
-        IWebViewToolBridge toolBridge)
+    private static readonly JsonSerializerOptions EventJsonOptions = new()
     {
-        _userInterfaceService = userInterfaceService;
-        _nativeControlReader = nativeControlReader;
-        _toolBridge = toolBridge;
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        Converters = { new JsonStringEnumConverter() }
+    };
+
+    private readonly ILogger<AutomationService> _logger;
+
+    // Some services that report events are dependencies of these services. Taking these through the constructor
+    // would make those reporters depend on themselves. They are acquired on first use instead.
+    private IUserInterfaceService? _userInterfaceService;
+    private INativeControlReader? _nativeControlReader;
+    private IWebViewToolBridge? _toolBridge;
+
+    private IUserInterfaceService UserInterfaceService =>
+        _userInterfaceService ??= ServiceLocator.AcquireService<IUserInterfaceService>();
+
+    private INativeControlReader NativeControlReader =>
+        _nativeControlReader ??= ServiceLocator.AcquireService<INativeControlReader>();
+
+    private IWebViewToolBridge ToolBridge =>
+        _toolBridge ??= ServiceLocator.AcquireService<IWebViewToolBridge>();
+
+    public AutomationService(ILogger<AutomationService> logger)
+    {
+        _logger = logger;
+    }
+
+    public void LogEvent(AutomationEvent automationEvent)
+    {
+        // Events are reported from native callbacks and from install steps. An event that fails to format must not
+        // end the process or fail the step.
+        try
+        {
+            _logger.LogDebug("{AutomationEvent}", FormatEvent(automationEvent));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to log the automation event {EventName}", automationEvent.GetType().Name);
+        }
+    }
+
+    /// <summary>
+    /// Formats an event as its log line: the record's name, followed by its properties as a JSON object.
+    /// </summary>
+    internal static string FormatEvent(AutomationEvent automationEvent)
+    {
+        var eventType = automationEvent.GetType();
+        var fields = JsonSerializer.Serialize(automationEvent, eventType, EventJsonOptions);
+        return $"{eventType.Name} {fields}";
     }
 
     public Task<Result<ControlSnapshot>> GetControlsAsync()
@@ -32,7 +73,7 @@ internal class AutomationService : IAutomationService
     public async Task<Result<PageElementSnapshot>> FindPageElementsAsync(ResourceKey resource, QueryOptions options)
     {
         // Locating can wait for the page to load, so the web view's frame is read only after the page responds.
-        var locateResult = await _toolBridge.LocateAsync(resource, options);
+        var locateResult = await ToolBridge.LocateAsync(resource, options);
         if (locateResult.IsFailure)
         {
             return Result.Fail(locateResult);
@@ -44,7 +85,7 @@ internal class AutomationService : IAutomationService
 
     private Result<ControlSnapshot> GetControls()
     {
-        if (_userInterfaceService.XamlRoot is not XamlRoot xamlRoot)
+        if (UserInterfaceService.XamlRoot is not XamlRoot xamlRoot)
         {
             return Result.Fail("The application has no window content to read.");
         }
@@ -66,7 +107,7 @@ internal class AutomationService : IAutomationService
 
     private Result<ControlInvocation> InvokeControl(Func<ControlInfo, bool> match)
     {
-        if (_userInterfaceService.XamlRoot is not XamlRoot xamlRoot)
+        if (UserInterfaceService.XamlRoot is not XamlRoot xamlRoot)
         {
             return Result.Fail("The application has no window content to search.");
         }
@@ -95,7 +136,7 @@ internal class AutomationService : IAutomationService
 
     private Result<PageElementSnapshot> PlacePageElements(ResourceKey resource, string locateJson)
     {
-        if (_userInterfaceService.XamlRoot is not XamlRoot xamlRoot)
+        if (UserInterfaceService.XamlRoot is not XamlRoot xamlRoot)
         {
             return Result.Fail("The application has no window content to place the page in.");
         }
@@ -130,7 +171,7 @@ internal class AutomationService : IAutomationService
     private ControlBounds? FindWebViewBounds(XamlRoot xamlRoot, ResourceKey resource)
     {
         var automationId = resource.ToString();
-        var webViews = VisualTreeReader.ReadControls(xamlRoot, _nativeControlReader, element => element is WebView2);
+        var webViews = VisualTreeReader.ReadControls(xamlRoot, NativeControlReader, element => element is WebView2);
         foreach (var showingControl in webViews)
         {
             var control = showingControl.Info;
@@ -145,12 +186,12 @@ internal class AutomationService : IAutomationService
 
     private IEnumerable<ShowingControl> ReadControls(XamlRoot xamlRoot)
     {
-        foreach (var showingControl in VisualTreeReader.ReadControls(xamlRoot, _nativeControlReader))
+        foreach (var showingControl in VisualTreeReader.ReadControls(xamlRoot, NativeControlReader))
         {
             yield return showingControl;
         }
 
-        foreach (var showingControl in _nativeControlReader.ReadControls())
+        foreach (var showingControl in NativeControlReader.ReadControls())
         {
             yield return showingControl;
         }
@@ -160,7 +201,7 @@ internal class AutomationService : IAutomationService
     // dispatcher rather than the command queue, so a call still returns while a modal dialog blocks the queue.
     private Task<Result<T>> RunOnUIThreadAsync<T>(Func<Result<T>> operation) where T : notnull
     {
-        if (_userInterfaceService.MainWindow is not Window mainWindow)
+        if (UserInterfaceService.MainWindow is not Window mainWindow)
         {
             return Task.FromResult<Result<T>>(Result.Fail("The application has no main window to read."));
         }

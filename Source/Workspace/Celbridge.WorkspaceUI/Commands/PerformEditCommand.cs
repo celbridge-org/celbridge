@@ -1,3 +1,4 @@
+using Celbridge.Automation;
 using Celbridge.Commands;
 
 namespace Celbridge.WorkspaceUI.Commands;
@@ -5,12 +6,16 @@ namespace Celbridge.WorkspaceUI.Commands;
 public class PerformEditCommand : CommandBase, IPerformEditCommand
 {
     private readonly IFocusService _focusService;
+    private readonly IAutomationService _automationService;
 
     public EditIntent Intent { get; set; }
 
-    public PerformEditCommand(IFocusService focusService)
+    public PerformEditCommand(
+        IFocusService focusService,
+        IAutomationService automationService)
     {
         _focusService = focusService;
+        _automationService = automationService;
     }
 
     public override async Task<Result> ExecuteAsync()
@@ -22,6 +27,7 @@ public class PerformEditCommand : CommandBase, IPerformEditCommand
             && target.CanPerformEdit(Intent))
         {
             target.PerformEdit(Intent);
+            _automationService.LogEvent(new EditCommandPerformedEvent(Intent));
         }
 
         return Result.Ok();

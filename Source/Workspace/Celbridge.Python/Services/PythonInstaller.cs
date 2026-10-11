@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Formats.Tar;
 using System.IO.Compression;
+using Celbridge.Automation;
 using Celbridge.Platform;
 using Celbridge.FileSystem;
 using Celbridge.Logging;
@@ -53,6 +54,7 @@ public class PythonInstaller : IPythonInstaller
     private readonly ILogger<PythonInstaller> _logger;
     private readonly IAppEnvironment _appEnvironment;
     private readonly IPythonConfigService _pythonConfigService;
+    private readonly IAutomationService _automationService;
 
     private readonly SemaphoreSlim _installGate = new(1, 1);
     private Result? _installResult;
@@ -62,12 +64,14 @@ public class PythonInstaller : IPythonInstaller
         ILocalFileSystem fileSystem,
         ILogger<PythonInstaller> logger,
         IAppEnvironment appEnvironment,
-        IPythonConfigService pythonConfigService)
+        IPythonConfigService pythonConfigService,
+        IAutomationService automationService)
     {
         _fileSystem = fileSystem;
         _logger = logger;
         _appEnvironment = appEnvironment;
         _pythonConfigService = pythonConfigService;
+        _automationService = automationService;
     }
 
     public string PythonFolderPath => Path.Combine(_appEnvironment.LocalApplicationDataFolderPath, PythonFolderName);
@@ -196,17 +200,21 @@ public class PythonInstaller : IPythonInstaller
                 if (await IsToolInstalledAsync())
                 {
                     _logger.LogInformation("Python support files are current at {Path}", pythonFolderPath);
+                    _automationService.LogEvent(new PythonSupportFilesCurrentEvent());
                     return Result.Ok();
                 }
 
                 _logger.LogInformation("Republishing the celbridge tool at {Path}", pythonFolderPath);
+                _automationService.LogEvent(new PythonToolRepublishingEvent());
                 await InstallCelbridgeToolAsync(pythonFolderPath);
                 return Result.Ok();
             }
 
             _logger.LogInformation("Running full Python reinstall at {Path}", pythonFolderPath);
+            _automationService.LogEvent(new PythonReinstallStartedEvent());
             await ReinstallAsync(pythonFolderPath, versionContent);
             _logger.LogInformation("Python reinstall completed");
+            _automationService.LogEvent(new PythonReinstallCompletedEvent());
 
             return Result.Ok();
         }
@@ -244,6 +252,7 @@ public class PythonInstaller : IPythonInstaller
                 {
                     _logger.LogInformation("Waited {DurationMs}ms for another Celbridge instance to finish installing Python",
                         waitTimer.ElapsedMilliseconds);
+                    _automationService.LogEvent(new PythonInstallWaitedEvent(waitTimer.ElapsedMilliseconds));
                 }
 
                 return installLock;
@@ -253,6 +262,7 @@ public class PythonInstaller : IPythonInstaller
                 if (!hasWaited)
                 {
                     _logger.LogInformation("Waiting for another Celbridge instance to finish installing Python");
+                    _automationService.LogEvent(new PythonInstallWaitingEvent());
                     hasWaited = true;
                 }
 
@@ -281,6 +291,7 @@ public class PythonInstaller : IPythonInstaller
             if (IsAnotherInstanceRunning())
             {
                 _logger.LogDebug("Left the temporary environments in the uv cache in place because another Celbridge instance is running");
+                _automationService.LogEvent(new TemporaryEnvironmentsKeptEvent());
                 return;
             }
 
@@ -331,6 +342,7 @@ public class PythonInstaller : IPythonInstaller
             removedCount,
             folderPaths.Count,
             removalTimer.ElapsedMilliseconds);
+        _automationService.LogEvent(new TemporaryEnvironmentsRemovedEvent(removedCount, folderPaths.Count));
     }
 
     private static bool IsAnotherInstanceRunning()
@@ -665,6 +677,7 @@ public class PythonInstaller : IPythonInstaller
         }
 
         _logger.LogInformation("celbridge tool installed successfully in {DurationMs}ms", installTimer.ElapsedMilliseconds);
+        _automationService.LogEvent(new PythonToolInstalledEvent(installTimer.ElapsedMilliseconds));
     }
 
     // --no-config stops uv reading any configuration file. A user's uv.toml then cannot block the install or

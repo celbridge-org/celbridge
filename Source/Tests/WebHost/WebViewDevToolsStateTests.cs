@@ -1,3 +1,4 @@
+using Celbridge.Automation;
 using Celbridge.Downloads;
 using Celbridge.Localization;
 using Celbridge.Tests.Helpers;
@@ -23,7 +24,8 @@ public class WebViewDevToolsStateTests
             new NullLogger<MacOSWebViewDownloadRouter>(),
             Substitute.For<IUserInterfaceService>(),
             Substitute.For<ILocalizerService>(),
-            Substitute.For<IDownloadService>());
+            Substitute.For<IDownloadService>(),
+            Substitute.For<IAutomationService>());
     }
 
     [Test]

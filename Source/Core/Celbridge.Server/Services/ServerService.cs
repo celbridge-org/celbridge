@@ -1,3 +1,4 @@
+using Celbridge.Automation;
 using Celbridge.Host;
 using Celbridge.Platform;
 using Celbridge.Messaging;
@@ -25,6 +26,7 @@ public class ServerService : IServerService, IDisposable
     private readonly AgentMonitor _agentMonitor;
     private readonly IHostChannelBroker _hostChannelBroker;
     private readonly IAppEnvironment _appEnvironment;
+    private readonly IAutomationService _automationService;
     private readonly ILogger<ServerService> _logger;
 
     private WebApplication? _webApplication;
@@ -44,6 +46,7 @@ public class ServerService : IServerService, IDisposable
         AgentMonitor agentMonitor,
         IHostChannelBroker hostChannelBroker,
         IAppEnvironment appEnvironment,
+        IAutomationService automationService,
         ILogger<ServerService> logger)
     {
         _agentServer = agentServer;
@@ -54,6 +57,7 @@ public class ServerService : IServerService, IDisposable
         _agentMonitor = agentMonitor;
         _hostChannelBroker = hostChannelBroker;
         _appEnvironment = appEnvironment;
+        _automationService = automationService;
         _logger = logger;
     }
 
@@ -138,6 +142,7 @@ public class ServerService : IServerService, IDisposable
 
             Status = ServerStatus.Ready;
             _logger.LogInformation("Server started on port {Port}", Port);
+            _automationService.LogEvent(new ServerStartedEvent(Port));
 
             _messengerService.Send(new ProjectFileServerReadyMessage());
         }

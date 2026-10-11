@@ -1,3 +1,4 @@
+using Celbridge.Automation;
 using Celbridge.Logging;
 using Microsoft.Web.WebView2.Core;
 
@@ -9,8 +10,8 @@ namespace Celbridge.WebHost.Platform;
 /// </summary>
 public class SkiaWebView : WebViewBase
 {
-    internal SkiaWebView(WebView2 control, SkiaWebViewPlatform platform, ILogger logger)
-        : base(control, platform, logger)
+    internal SkiaWebView(WebView2 control, SkiaWebViewPlatform platform, ILogger logger, IAutomationService automationService)
+        : base(control, platform, logger, automationService)
     {
     }
 

@@ -1,3 +1,4 @@
+using Celbridge.Automation;
 using Celbridge.Settings;
 using Celbridge.Tests.Helpers;
 using Celbridge.WebHost;
@@ -21,6 +22,7 @@ public class WebViewLoadReportTests
     private static readonly WebNavigationCompletedEventArgs Failed = new(WebNavigationResult.Failed, "Unknown");
 
     private RecordingLogger<ControlFreeWebView> _logger = null!;
+    private IAutomationService _automationService = null!;
     private ControlFreeWebView _view = null!;
     private int _loadedEmptyCount;
     private List<WebNavigationResult> _completions = null!;
@@ -29,7 +31,8 @@ public class WebViewLoadReportTests
     public async Task SetUp()
     {
         _logger = new RecordingLogger<ControlFreeWebView>();
-        _view = new ControlFreeWebView(Substitute.For<IWebViewPlatform>(), _logger);
+        _automationService = Substitute.For<IAutomationService>();
+        _view = new ControlFreeWebView(Substitute.For<IWebViewPlatform>(), _logger, _automationService);
         await _view.ConfigureAsync(WebViewOptions.Default, Substitute.For<IFeatureFlags>());
 
         _loadedEmptyCount = 0;
@@ -121,6 +124,7 @@ public class WebViewLoadReportTests
 
         _completions.Should().Equal(WebNavigationResult.Aborted);
         _logger.EntriesAt(LogEntryLevel.Warning).Should().BeEmpty();
+        _automationService.DidNotReceive().LogEvent(Arg.Any<WebViewNavigationFailedEvent>());
     }
 
     // Chromium ends the navigation before it announces the download, so the download is still recorded when the
@@ -137,5 +141,6 @@ public class WebViewLoadReportTests
 
         _completions.Should().Equal(WebNavigationResult.Aborted, WebNavigationResult.Failed);
         _logger.EntriesAt(LogEntryLevel.Warning).Should().ContainSingle(entry => entry.Message!.StartsWith("Navigation failed"));
+        _automationService.Received(1).LogEvent(Arg.Is<WebViewNavigationFailedEvent>(failure => failure.Status == "Unknown"));
     }
 }

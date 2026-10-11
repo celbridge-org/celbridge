@@ -1,4 +1,5 @@
 using System.Globalization;
+using Celbridge.Automation;
 using Celbridge.Logging;
 using Celbridge.Platform;
 using Celbridge.Settings;
@@ -17,6 +18,7 @@ public class UserInterfaceService : IUserInterfaceService
     private IWebViewStateService _webViewStateService;
     private readonly IPlatformInfo _platformInfo;
     private readonly IWindowActivationMonitor _windowActivationMonitor;
+    private readonly IAutomationService _automationService;
 
     private Window? _mainWindow;
     private XamlRoot? _xamlRoot;
@@ -34,7 +36,8 @@ public class UserInterfaceService : IUserInterfaceService
         IWebViewStateService webViewStateService,
         Helpers.WindowStateHelper windowStateHelper,
         IPlatformInfo platformInfo,
-        IWindowActivationMonitor windowActivationMonitor)
+        IWindowActivationMonitor windowActivationMonitor,
+        IAutomationService automationService)
     {
         _logger = logger;
         _messengerService = messengerService;
@@ -43,6 +46,7 @@ public class UserInterfaceService : IUserInterfaceService
         _windowStateHelper = windowStateHelper;
         _platformInfo = platformInfo;
         _windowActivationMonitor = windowActivationMonitor;
+        _automationService = automationService;
     }
 
     public Result Initialize(object mainWindow, object xamlRoot)
@@ -232,6 +236,7 @@ public class UserInterfaceService : IUserInterfaceService
         }
 
         _logger.LogInformation("Applied theme: {Theme} (setting: {Setting})", UserInterfaceTheme, theme);
+        _automationService.LogEvent(new ThemeAppliedEvent(UserInterfaceTheme, theme));
 
         // Notify in-app (XAML) components that the theme has changed
         var message = new ThemeChangedMessage(UserInterfaceTheme);

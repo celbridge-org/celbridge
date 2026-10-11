@@ -87,10 +87,17 @@ public record PageElementSnapshot(
 
 /// <summary>
 /// Finds and invokes the application's own controls, and finds the elements of a document's page, for test
-/// automation. Every call returns while a modal dialog is open.
+/// automation. It also logs the moments that automation depends on. Every call returns while a modal dialog is
+/// open.
 /// </summary>
 public interface IAutomationService
 {
+    /// <summary>
+    /// Writes the event to the log as one Debug line. The line holds the event's name, followed by its fields as a
+    /// JSON object.
+    /// </summary>
+    void LogEvent(AutomationEvent automationEvent);
+
     /// <summary>
     /// Returns every showing control. The window's controls come first in tree order, then the open popups'
     /// controls, then the native controls.
