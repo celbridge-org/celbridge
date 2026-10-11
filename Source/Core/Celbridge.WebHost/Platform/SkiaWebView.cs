@@ -18,7 +18,7 @@ public class SkiaWebView : WebViewBase
     // No Skia head implements zoom control. Sites already recognise the default User-Agent of these heads.
     protected override void ApplyOptions(WebViewOptions options)
     {
-        LiveCoreWebView2.Settings.AreDevToolsEnabled = options.IsDevToolsEnabled;
+        LiveCoreWebView2.Settings.AreDevToolsEnabled = options.AreDevToolsEnabled;
     }
 
     protected override void LoadHtmlStringCore(string html, string baseUrl)

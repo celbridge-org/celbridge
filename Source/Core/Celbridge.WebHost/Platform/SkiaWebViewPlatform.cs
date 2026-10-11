@@ -17,10 +17,6 @@ internal sealed class SkiaWebViewPlatform : IWebViewPlatform
     private const double MinimumViewportWidth = 1024;
     private const double MinimumViewportHeight = 768;
 
-    // Used only when the installed Safari version cannot be read. Kept comfortably above Gmail's minimum so the
-    // UA still passes. The real version is preferred whenever available.
-    private const string FallbackSafariVersion = "18.0";
-
     private readonly ILogger<SkiaWebViewPlatform> _logger;
     private readonly ILogger<SkiaWebView> _skiaWebViewLogger;
     private readonly ILogger<MacOSWebView> _macOSWebViewLogger;
@@ -36,7 +32,6 @@ internal sealed class SkiaWebViewPlatform : IWebViewPlatform
     private bool _checkedInactiveSelection;
     private bool _checkedLoadingWhenDetached;
     private bool _reportedRemoteInspection;
-    private string? _safariVersion;
 
     // Routes every web view's downloads on macOS, created with the first view that routes its downloads.
     private MacOSWebViewDownloadRouter? _downloadRouter;
@@ -307,23 +302,6 @@ internal sealed class SkiaWebViewPlatform : IWebViewPlatform
         }
 
         _logger.LogDebug("Hosted pages are not inspectable: web inspection is disabled");
-    }
-
-    /// <summary>
-    /// The installed Safari's version, read once.
-    /// </summary>
-    internal string SafariVersion => _safariVersion ??= ResolveSafariVersion();
-
-    private string ResolveSafariVersion()
-    {
-        var version = MacOSWebViewInterop.GetSafariVersion();
-        if (string.IsNullOrEmpty(version))
-        {
-            _logger.LogWarning("Could not read the installed Safari version; falling back to {Fallback}", FallbackSafariVersion);
-            return FallbackSafariVersion;
-        }
-
-        return version;
     }
 
     /// <summary>

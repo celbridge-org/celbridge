@@ -51,7 +51,7 @@
 
   <ItemGroup>
     <!-- Every web view injects it, so it is read from the assembly rather than from the output folder. -->
-    <EmbeddedResource Include="Web\celbridge-client\core\focus-lost-reporter.js" LogicalName="Celbridge.WebHost.FocusLostReporter.js" />
+    <EmbeddedResource Include="Web\celbridge-client\core\focus-lost-reporter.js" />
   </ItemGroup>
 
   <ItemGroup>

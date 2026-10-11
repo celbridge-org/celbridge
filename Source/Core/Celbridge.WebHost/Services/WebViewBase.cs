@@ -990,8 +990,8 @@ public abstract class WebViewBase : IEditorWebView
 
     private void DownloadHandler_DownloadStarted(object? sender, EventArgs e)
     {
-        // Set even when no navigation is known to be in flight. A navigation that started while the view was
-        // detached reported no start.
+        // Set even when no navigation is known to be in flight. The view is not told when a navigation starts while
+        // it is detached.
         _isNavigationReplacedByDownload = true;
 
         DownloadStarted?.Invoke(this, EventArgs.Empty);

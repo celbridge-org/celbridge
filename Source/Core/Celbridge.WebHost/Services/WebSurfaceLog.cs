@@ -8,8 +8,9 @@ internal sealed class WebSurfaceLog : IWebSurfaceLog
     private readonly ILogger<WebSurfaceLog> _logger;
     private readonly TimeProvider _timeProvider;
 
-    // Each view's count of entries in its current window. A page in a render loop can report on every frame, so
-    // the log needs a ceiling. The weak keys let an entry go with its view, and a rename keeps the view's count.
+    // Each view's count of log entries in the current window. A page in a render loop can report on every frame, so
+    // the log needs a ceiling. The table holds each view weakly, so a closed view's count is freed with the view.
+    // Counts follow the view rather than its resource, so a rename keeps them.
     private readonly ConditionalWeakTable<IWebView, SurfaceRate> _rates = new();
     private readonly object _ratesLock = new();
 

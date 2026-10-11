@@ -250,7 +250,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
             // A page with no background of its own sits on white, as in a browser. On a transparent view, the
             // page's default black text would sit on the dark theme.
             BackgroundColor = Colors.White,
-            IsDevToolsEnabled = _webViewService.IsDevToolsFeatureEnabled(),
+            AreDevToolsEnabled = _webViewService.IsDevToolsFeatureEnabled(),
 
             // The page is browsed content rather than application chrome, so user zoom stays enabled.
             IsZoomEnabled = true,
@@ -304,8 +304,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IWebViewFindTarg
         ViewModel.NotifyNavigationStarted(args.Uri);
     }
 
-    // The address bar follows the page from here, as a browser's does: once a navigation commits, rather than
-    // as it starts.
+    // The address bar shows a page's address when its navigation commits, not when it starts. A browser's address
+    // bar does the same.
     private void WebView_NavigationCommitted(object? sender, string url)
     {
         ViewModel.NotifyNavigationCommitted(url);

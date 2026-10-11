@@ -7,8 +7,9 @@ namespace Celbridge.WebHost;
 /// </summary>
 internal static class WebViewFocusLostScript
 {
-    // The source file is Web/celbridge-client/core/focus-lost-reporter.js, embedded under this name.
-    private const string ResourceName = "Celbridge.WebHost.FocusLostReporter.js";
+    // The embedded name of Web/celbridge-client/core/focus-lost-reporter.js. MSBuild changes the hyphens in folder
+    // names to underscores, but not those in the file name.
+    private const string ResourceName = "Celbridge.WebHost.Web.celbridge_client.core.focus-lost-reporter.js";
 
     /// <summary>
     /// The script's source, read once from the assembly.

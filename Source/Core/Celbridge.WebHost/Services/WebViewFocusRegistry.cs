@@ -161,7 +161,7 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         if (ReferenceEquals(_focusedRegistration, registration))
         {
             _focusedRegistration = null;
-            ClearFocusUnlessAnotherSurfaceClaims(registration);
+            ClearFocusAfterClose(registration);
         }
 
         // Clear the edit target on close so a closed editor cannot leave the Edit menu enabled. If a newer edit
@@ -227,7 +227,7 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
     // deferred because closing a document activates the next document, which claims focus a step later. An
     // immediate clear would take the caret straight off that next document. The clear itself keeps the focus model
     // from naming a panel whose surface is gone, and the focus indicator from showing a caret on that panel.
-    private void ClearFocusUnlessAnotherSurfaceClaims(WebViewFocusRegistration registration)
+    private void ClearFocusAfterClose(WebViewFocusRegistration registration)
     {
         var dispatcherQueue = GetDispatcherQueue(registration.View);
         if (dispatcherQueue is null)

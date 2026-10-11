@@ -31,6 +31,13 @@ public sealed class MacOSWebView : SkiaWebView
     private const string UserAgentPrefix =
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)";
 
+    // Used only when the installed Safari version cannot be read. Kept comfortably above Gmail's minimum so the
+    // UA still passes. The real version is preferred whenever available.
+    private const string FallbackSafariVersion = "18.0";
+
+    // The installed Safari's version, read by the first view that sets its UA. Used only on the main thread.
+    private static string? _safariVersion;
+
     // Every view whose native view has resolved, keyed by its native handle. WebKit and AppKit callbacks carry only
     // the native view, and this map finds the view from it. A pinned native view stays allocated for the life of the
     // process, so its address always belongs to the same view. Used only on the main thread.
@@ -156,7 +163,7 @@ public sealed class MacOSWebView : SkiaWebView
     {
         base.ApplyOptions(options);
 
-        ApplyDevToolsState(options.IsDevToolsEnabled);
+        ApplyDevToolsState(options.AreDevToolsEnabled);
 
         if (!string.IsNullOrEmpty(options.UserAgentToken))
         {
@@ -167,7 +174,7 @@ public sealed class MacOSWebView : SkiaWebView
     // Safari's Develop menu lists the page under its accessible name.
     protected override void OnAccessibleNameChanged()
     {
-        if (!Options.IsDevToolsEnabled)
+        if (!Options.AreDevToolsEnabled)
         {
             return;
         }
@@ -205,8 +212,21 @@ public sealed class MacOSWebView : SkiaWebView
             return;
         }
 
-        var userAgent = $"{UserAgentPrefix} Version/{_platform.SafariVersion} Safari/605.1.15 {applicationToken}";
+        _safariVersion ??= ReadSafariVersion();
+        var userAgent = $"{UserAgentPrefix} Version/{_safariVersion} Safari/605.1.15 {applicationToken}";
         MacOSWebViewInterop.SetCustomUserAgent(nativeHandle, userAgent);
+    }
+
+    private string ReadSafariVersion()
+    {
+        var version = MacOSWebViewInterop.GetSafariVersion();
+        if (string.IsNullOrEmpty(version))
+        {
+            Logger.LogWarning("Could not read the installed Safari version; falling back to {Fallback}", FallbackSafariVersion);
+            return FallbackSafariVersion;
+        }
+
+        return version;
     }
 
     // Calls -[WKWebView loadHTMLString:baseURL:], which gives the document the base URL as its origin. On this

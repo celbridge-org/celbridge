@@ -425,7 +425,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         // scaling like the native panels.
         return new WebViewOptions
         {
-            IsDevToolsEnabled = devToolsEnabled,
+            AreDevToolsEnabled = devToolsEnabled,
             IsZoomEnabled = false,
         };
     }
@@ -671,10 +671,9 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     // partially initialized states.
     private void TeardownWebViewState()
     {
-        // Dispose the channel before the web view and the host. The channel's pty raises output and exit events
-        // on background threads, and the channel notifies through the host. Unsubscribing and disposing the
-        // channel must finish before the host is gone. Marking the adapter disposed first turns any in-flight
-        // outbound notification into a no-op.
+        // Dispose the channel before the web view and the host. A channel can send notifications from a background
+        // thread, as the console's does with the output and exit of its terminal, and each one goes through the host.
+        // Marking the channel host disposed first turns a notification already under way into a no-op.
         if (_channel is not null)
         {
             _channelHost?.MarkDisposed();

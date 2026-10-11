@@ -83,7 +83,7 @@ internal sealed class WindowsWebView : WebViewBase
 
     protected override void ApplyOptions(WebViewOptions options)
     {
-        LiveCoreWebView2.Settings.AreDevToolsEnabled = options.IsDevToolsEnabled;
+        LiveCoreWebView2.Settings.AreDevToolsEnabled = options.AreDevToolsEnabled;
         LiveCoreWebView2.Settings.IsZoomControlEnabled = options.IsZoomEnabled;
 
         // Sites already recognise the WebView2 User-Agent, so the application token is appended to it. The options

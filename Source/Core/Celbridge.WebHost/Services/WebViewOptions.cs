@@ -18,9 +18,10 @@ public sealed record WebViewOptions
     public Color BackgroundColor { get; init; } = Colors.Transparent;
 
     /// <summary>
-    /// Whether the page can be opened in the developer tools.
+    /// Whether the developer tools can inspect the page. On Windows they open from the page itself. On macOS the page
+    /// is listed in Safari's Develop menu.
     /// </summary>
-    public bool IsDevToolsEnabled { get; init; }
+    public bool AreDevToolsEnabled { get; init; }
 
     /// <summary>
     /// Whether the user can zoom the page.
