@@ -1,3 +1,4 @@
+using Celbridge.Automation;
 using Celbridge.Dialog;
 using Celbridge.Messaging;
 using Celbridge.UserInterface.Services;
@@ -34,7 +35,8 @@ public class DialogServiceAnswerTests
             Substitute.For<IManagedFocus>(),
             Substitute.For<IWebViewFocusRegistry>(),
             _workspaceWrapper,
-            _messengerService);
+            _messengerService,
+            Substitute.For<IAutomationService>());
 
         // The DialogService awaits dialog.ShowDialogAsync; stub something sensible.
         var fakeConfirm = Substitute.For<IConfirmationDialog>();

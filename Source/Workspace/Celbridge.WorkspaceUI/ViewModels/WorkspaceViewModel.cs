@@ -1,3 +1,4 @@
+using Celbridge.Automation;
 using Celbridge.Dialog;
 using Celbridge.Projects;
 using Celbridge.Settings;
@@ -23,6 +24,7 @@ public partial class WorkspaceViewModel : ObservableObject
     private readonly IWorkspaceService _workspaceService;
     private readonly IDialogService _dialogService;
     private readonly IProjectService _projectService;
+    private readonly IAutomationService _automationService;
     private readonly WorkspaceLoader _workspaceLoader;
 
     public CancellationTokenSource? LoadCancellation { get; set; }
@@ -37,6 +39,7 @@ public partial class WorkspaceViewModel : ObservableObject
         IFeatureFlags featureFlags,
         IDialogService dialogService,
         IProjectService projectService,
+        IAutomationService automationService,
         WorkspaceLoader workspaceLoader)
     {
         _logger = logger;
@@ -47,6 +50,7 @@ public partial class WorkspaceViewModel : ObservableObject
         _featureFlags = featureFlags;
         _dialogService = dialogService;
         _projectService = projectService;
+        _automationService = automationService;
         _workspaceLoader = workspaceLoader;
 
         // Create the workspace service and notify the user interface service
@@ -141,6 +145,11 @@ public partial class WorkspaceViewModel : ObservableObject
         stopWatch.Stop();
         var elapsed = (long)stopWatch.Elapsed.TotalMilliseconds;
         _logger.LogDebug($"Workspace loaded in {elapsed} ms");
+
+        if (loadResult.IsSuccess)
+        {
+            _automationService.LogEvent(new WorkspaceLoadedEvent(elapsed));
+        }
 
     }
 }

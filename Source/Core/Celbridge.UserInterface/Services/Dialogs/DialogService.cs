@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using Celbridge.Automation;
 using Celbridge.Dialog;
 using Celbridge.Logging;
 using Celbridge.Projects;
@@ -18,6 +19,7 @@ public class DialogService : IDialogService
     private readonly IWebViewFocusRegistry _webViewFocusRegistry;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IMessengerService _messengerService;
+    private readonly IAutomationService _automationService;
     private readonly DialogAnswerScheduler _answerScheduler;
     private readonly object _tokenLock = new();
     private IProgressDialog? _progressDialog;
@@ -48,7 +50,8 @@ public class DialogService : IDialogService
         IManagedFocus managedFocus,
         IWebViewFocusRegistry webViewFocusRegistry,
         IWorkspaceWrapper workspaceWrapper,
-        IMessengerService messengerService)
+        IMessengerService messengerService,
+        IAutomationService automationService)
     {
         _logger = logger;
         _dialogFactory = dialogFactory;
@@ -57,6 +60,7 @@ public class DialogService : IDialogService
         _webViewFocusRegistry = webViewFocusRegistry;
         _workspaceWrapper = workspaceWrapper;
         _messengerService = messengerService;
+        _automationService = automationService;
         _answerScheduler = new DialogAnswerScheduler(logger, messengerService);
 
         _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloaded);
@@ -73,6 +77,7 @@ public class DialogService : IDialogService
         }
 
         _logger.LogInformation("Showing alert '{Title}': {Message}", titleText, messageText);
+        _automationService.LogEvent(new AlertShownEvent(titleText, messageText));
 
         var dialog = _dialogFactory.CreateAlertDialog(titleText, messageText);
         _answerScheduler.OnDialogShown(DialogKind.Alert);
@@ -236,7 +241,7 @@ public class DialogService : IDialogService
     private void OnDialogOpened(ContentDialog sender, ContentDialogOpenedEventArgs args)
     {
         // The factory's focus guard handles Opened first, so the dialog holds the keyboard by now.
-        _logger.LogDebug("Opened dialog '{DialogType}'", sender.GetType().Name);
+        _automationService.LogEvent(new DialogOpenedEvent(sender.GetType().Name));
     }
 
     private void OnDialogClosing(ContentDialog sender, ContentDialogClosingEventArgs args)

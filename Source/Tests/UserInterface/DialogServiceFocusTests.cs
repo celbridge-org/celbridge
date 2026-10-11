@@ -1,3 +1,4 @@
+using Celbridge.Automation;
 using Celbridge.Dialog;
 using Celbridge.Messaging;
 using Celbridge.UserInterface.Services;
@@ -47,7 +48,8 @@ public class DialogServiceFocusTests
             _managedFocus,
             _webViewFocusRegistry,
             Substitute.For<IWorkspaceWrapper>(),
-            Substitute.For<IMessengerService>());
+            Substitute.For<IMessengerService>(),
+            Substitute.For<IAutomationService>());
     }
 
     [Test]
