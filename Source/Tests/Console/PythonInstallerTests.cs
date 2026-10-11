@@ -1,3 +1,4 @@
+using Celbridge.Automation;
 using Celbridge.Platform;
 using Celbridge.Python;
 using Celbridge.Python.Services;
@@ -73,6 +74,7 @@ public class PythonInstallerTests
             Substitute.For<ILocalFileSystem>(),
             Substitute.For<ILogger<PythonInstaller>>(),
             appEnvironment,
-            Substitute.For<IPythonConfigService>());
+            Substitute.For<IPythonConfigService>(),
+            Substitute.For<IAutomationService>());
     }
 }

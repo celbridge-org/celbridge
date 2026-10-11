@@ -1,3 +1,4 @@
+using Celbridge.Automation;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
@@ -29,6 +30,7 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
 {
     private readonly IFocusService _focusService;
     private readonly IMessengerService _messengerService;
+    private readonly IAutomationService _automationService;
     private readonly ILogger<WebViewFocusRegistry> _logger;
 
     // Used only on the UI thread. Views register and close there, and focus signals are marshalled there.
@@ -61,10 +63,12 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
     public WebViewFocusRegistry(
         IFocusService focusService,
         IMessengerService messengerService,
+        IAutomationService automationService,
         ILogger<WebViewFocusRegistry> logger)
     {
         _focusService = focusService;
         _messengerService = messengerService;
+        _automationService = automationService;
         _logger = logger;
 
         _messengerService.Register<MainWindowActivatedMessage>(this, (_, _) => OnHostWindowActivationChanged(true));
@@ -185,6 +189,7 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         _pendingGrant = null;
 
         _logger.LogDebug("Focus granted to web surface {Surface}", registration.SurfaceName);
+        _automationService.LogEvent(new WebSurfaceFocusGrantedEvent(registration.SurfaceName));
 
         // Reporting applies the claim, which also releases the previously focused surface immediately
         // rather than waiting for the JS focus round trip that a surface with no DOM-side grant never

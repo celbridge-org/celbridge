@@ -2,6 +2,7 @@
 // selection is gated on the same symbol.
 #if WINDOWS
 using System.Text.Json;
+using Celbridge.Automation;
 using Celbridge.Logging;
 using Microsoft.Web.WebView2.Core;
 
@@ -22,8 +23,8 @@ internal sealed class WindowsWebView : WebViewBase
     // after it go astray too, so one log line per focus is enough.
     private bool _isKeyOnControlReported;
 
-    public WindowsWebView(WebView2 control, WindowsWebViewPlatform platform, ILogger logger)
-        : base(control, platform, logger)
+    public WindowsWebView(WebView2 control, WindowsWebViewPlatform platform, ILogger logger, IAutomationService automationService)
+        : base(control, platform, logger, automationService)
     {
         // On this head, an ordinary key raises the control's own key events only when it went to the host instead of
         // the page. The handler is registered with handledEventsToo, so it also sees keys that another handler marked

@@ -1,3 +1,4 @@
+using Celbridge.Automation;
 using Celbridge.Logging;
 using Celbridge.Settings;
 using Celbridge.WebHost.Services;
@@ -21,6 +22,7 @@ public abstract class WebViewBase : IEditorWebView
 
     private readonly IWebViewPlatform _platform;
     private readonly ILogger _logger;
+    private readonly IAutomationService _automationService;
     private readonly DispatcherQueue? _dispatcherQueue;
     private readonly List<string> _documentStartScripts = new();
 
@@ -56,12 +58,13 @@ public abstract class WebViewBase : IEditorWebView
     // Set when a download replaces the navigation in flight.
     private bool _isNavigationReplacedByDownload;
 
-    protected WebViewBase(WebView2? control, IWebViewPlatform platform, ILogger logger)
+    protected WebViewBase(WebView2? control, IWebViewPlatform platform, ILogger logger, IAutomationService automationService)
     {
         Control = control;
         CoreWebView2 = control?.CoreWebView2;
         _platform = platform;
         _logger = logger;
+        _automationService = automationService;
         _dispatcherQueue = control?.DispatcherQueue;
 
         if (control is null)
@@ -147,7 +150,7 @@ public abstract class WebViewBase : IEditorWebView
     {
         _options = options;
 
-        _diagnostics = new WebViewLoadDiagnostics(this, featureFlags, _logger);
+        _diagnostics = new WebViewLoadDiagnostics(this, featureFlags, _logger, _automationService);
 
         if (Control is not null)
         {
@@ -952,6 +955,10 @@ public abstract class WebViewBase : IEditorWebView
         _logger.LogError(
             "WebView ProcessFailed for {Resource}: Kind={Kind}, Reason={Reason}, ExitCode={ExitCode}",
             Resource, args.ProcessFailedKind, args.Reason, args.ExitCode);
+        _automationService.LogEvent(new WebViewProcessFailedEvent(
+            args.ProcessFailedKind.ToString(),
+            args.Reason.ToString(),
+            args.ExitCode));
     }
 
     // Raised inside a native callback, where an exception would end the process.

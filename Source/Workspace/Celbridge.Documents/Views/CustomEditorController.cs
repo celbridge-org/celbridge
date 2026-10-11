@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Celbridge.Automation;
 using Celbridge.Commands;
 using Celbridge.DataTransfer;
 using Celbridge.Dialog;
@@ -56,6 +57,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     private readonly IWebViewFocusRegistry _webViewFocusRegistry;
     private readonly IWebSurfaceLog _webSurfaceLog;
     private readonly ILanguageService _languageService;
+    private readonly IAutomationService _automationService;
 
     private readonly CustomDocumentViewModel _viewModel;
 
@@ -172,6 +174,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         _reportWriter = serviceProvider.GetRequiredService<IReportWriter>();
         _webViewFactory = serviceProvider.GetRequiredService<IWebViewFactory>();
         _webViewService = serviceProvider.GetRequiredService<IWebViewService>();
+        _automationService = serviceProvider.GetRequiredService<IAutomationService>();
         _webViewFocusRegistry = ServiceLocator.AcquireService<IWebViewFocusRegistry>();
         _webSurfaceLog = ServiceLocator.AcquireService<IWebSurfaceLog>();
         _languageService = ServiceLocator.AcquireService<ILanguageService>();
@@ -1282,6 +1285,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             {
                 // Keep the selection, so a failed cut loses nothing.
                 _logger.LogError(copyResult, "Failed to copy the editor selection to the clipboard");
+                _automationService.LogEvent(new ClipboardCopyFailedEvent());
                 return;
             }
 
@@ -1302,6 +1306,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to copy the editor selection to the clipboard");
+            _automationService.LogEvent(new ClipboardCopyFailedEvent());
         }
     }
 

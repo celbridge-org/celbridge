@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Celbridge.Automation;
 using Celbridge.Logging;
 using Celbridge.WebHost.Services;
 using Microsoft.Web.WebView2.Core;
@@ -64,8 +65,13 @@ public sealed class MacOSWebView : SkiaWebView
 
     // The platform resolves the native view and pins it while the control is still in its init host. The platform
     // passes zero when the native view did not resolve, and the view resolves the native view later.
-    internal MacOSWebView(WebView2 control, IntPtr nativeHandle, SkiaWebViewPlatform platform, ILogger logger)
-        : base(control, platform, logger)
+    internal MacOSWebView(
+        WebView2 control,
+        IntPtr nativeHandle,
+        SkiaWebViewPlatform platform,
+        ILogger logger,
+        IAutomationService automationService)
+        : base(control, platform, logger, automationService)
     {
         _platform = platform;
 

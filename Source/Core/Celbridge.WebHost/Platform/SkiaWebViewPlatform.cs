@@ -1,5 +1,6 @@
 using Celbridge.Downloads;
 using Celbridge.Localization;
+using Celbridge.Automation;
 using Celbridge.Logging;
 using Celbridge.UserInterface;
 using Microsoft.Web.WebView2.Core;
@@ -24,6 +25,7 @@ internal sealed class SkiaWebViewPlatform : IWebViewPlatform
     private readonly IUserInterfaceService _userInterfaceService;
     private readonly ILocalizerService _localizerService;
     private readonly IDownloadService _downloadService;
+    private readonly IAutomationService _automationService;
 
     // Hidden, window-rooted host that WebView2 controls are initialized in.
     private Panel? _initHost;
@@ -43,7 +45,8 @@ internal sealed class SkiaWebViewPlatform : IWebViewPlatform
         ILogger<MacOSWebViewDownloadRouter> downloadRouterLogger,
         IUserInterfaceService userInterfaceService,
         ILocalizerService localizerService,
-        IDownloadService downloadService)
+        IDownloadService downloadService,
+        IAutomationService automationService)
     {
         _logger = logger;
         _skiaWebViewLogger = skiaWebViewLogger;
@@ -52,6 +55,7 @@ internal sealed class SkiaWebViewPlatform : IWebViewPlatform
         _userInterfaceService = userInterfaceService;
         _localizerService = localizerService;
         _downloadService = downloadService;
+        _automationService = automationService;
     }
 
     // Windows-under-Skia hosts a real WebView2 that implements virtual-host mapping. macOS WKWebView and the
@@ -85,10 +89,10 @@ internal sealed class SkiaWebViewPlatform : IWebViewPlatform
         // Created after initialization, so the view never sees the hidden host it was initialized in.
         if (OperatingSystem.IsMacOS())
         {
-            return new MacOSWebView(control, nativeHandle, this, _macOSWebViewLogger);
+            return new MacOSWebView(control, nativeHandle, this, _macOSWebViewLogger, _automationService);
         }
 
-        return new SkiaWebView(control, this, _skiaWebViewLogger);
+        return new SkiaWebView(control, this, _skiaWebViewLogger, _automationService);
     }
 
     // EnsureCoreWebView2Async completes only for a control parented to a window. The control is
