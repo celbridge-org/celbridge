@@ -115,6 +115,8 @@ public abstract class WebViewBase : IEditorWebView
 
     protected ILogger Logger => _logger;
 
+    protected IAutomationService AutomationService => _automationService;
+
     /// <summary>
     /// What the view has observed about whether its page still works.
     /// </summary>
@@ -956,9 +958,8 @@ public abstract class WebViewBase : IEditorWebView
             "WebView ProcessFailed for {Resource}: Kind={Kind}, Reason={Reason}, ExitCode={ExitCode}",
             Resource, args.ProcessFailedKind, args.Reason, args.ExitCode);
         _automationService.LogEvent(new WebViewProcessFailedEvent(
-            args.ProcessFailedKind.ToString(),
-            args.Reason.ToString(),
-            args.ExitCode));
+            Resource.ToString(),
+            $"Kind={args.ProcessFailedKind}, Reason={args.Reason}, ExitCode={args.ExitCode}"));
     }
 
     // Raised inside a native callback, where an exception would end the process.

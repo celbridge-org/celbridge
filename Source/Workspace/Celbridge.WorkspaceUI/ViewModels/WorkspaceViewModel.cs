@@ -150,7 +150,6 @@ public partial class WorkspaceViewModel : ObservableObject
         {
             _automationService.LogEvent(new WorkspaceLoadedEvent(elapsed));
         }
-
     }
 }
 

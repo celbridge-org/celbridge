@@ -97,7 +97,7 @@ public class WebViewFocusRegistryTests
         focusContext.FocusGainedCount.Should().Be(1);
         focusContext.DomGrantCount.Should().Be(1);
         _focusReconciler.Received(1).Reconcile();
-        _automationService.Received(1).LogEvent(new WebSurfaceFocusGrantedEvent(view.Resource.ToString()));
+        _automationService.Received(1).LogEvent(new WebSurfaceFocusedEvent(view.Resource.ToString()));
     }
 
     [Test]
@@ -174,6 +174,7 @@ public class WebViewFocusRegistryTests
         focusContext.FocusGainedCount.Should().Be(1);
         focusContext.DomGrantCount.Should().Be(0);
         _focusReconciler.Received(1).Reconcile();
+        _automationService.Received(1).LogEvent(new WebSurfaceFocusedEvent(view.Resource.ToString()));
     }
 
     [Test]
@@ -188,6 +189,7 @@ public class WebViewFocusRegistryTests
 
         _claims.Should().ContainSingle();
         focusContext.FocusGainedCount.Should().Be(1);
+        _automationService.Received(1).LogEvent(Arg.Any<WebSurfaceFocusedEvent>());
     }
 
     [Test]

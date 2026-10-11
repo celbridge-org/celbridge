@@ -38,7 +38,16 @@ internal class AutomationService : IAutomationService
 
     public void LogEvent(AutomationEvent automationEvent)
     {
-        _logger.LogDebug("{AutomationEvent}", FormatEvent(automationEvent));
+        // Events are reported from native callbacks and from install steps. An event that fails to format must not
+        // end the process or fail the step.
+        try
+        {
+            _logger.LogDebug("{AutomationEvent}", FormatEvent(automationEvent));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to log the automation event {EventName}", automationEvent.GetType().Name);
+        }
     }
 
     /// <summary>

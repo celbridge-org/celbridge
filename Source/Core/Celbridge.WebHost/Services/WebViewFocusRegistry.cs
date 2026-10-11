@@ -189,7 +189,6 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         _pendingGrant = null;
 
         _logger.LogDebug("Focus granted to web surface {Surface}", registration.SurfaceName);
-        _automationService.LogEvent(new WebSurfaceFocusGrantedEvent(registration.SurfaceName));
 
         // Reporting applies the claim, which also releases the previously focused surface immediately
         // rather than waiting for the JS focus round trip that a surface with no DOM-side grant never
@@ -423,6 +422,7 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         // would leave the two driving each other without end.
         if (!wasAlreadyFocused)
         {
+            _automationService.LogEvent(new WebSurfaceFocusedEvent(registration.SurfaceName));
             registration.Context.OnFocusGained?.Invoke();
         }
         Action releaseFocus = () => ReleaseSurface(registration);

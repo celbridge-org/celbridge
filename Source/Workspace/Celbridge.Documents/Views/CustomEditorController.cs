@@ -1306,7 +1306,6 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to copy the editor selection to the clipboard");
-            _automationService.LogEvent(new ClipboardCopyFailedEvent());
         }
     }
 

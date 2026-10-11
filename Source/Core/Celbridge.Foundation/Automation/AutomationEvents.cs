@@ -53,9 +53,9 @@ public record ClipboardCopyFailedEvent : AutomationEvent;
 public record ThemeAppliedEvent(UserInterfaceTheme Theme, ApplicationColorTheme Setting) : AutomationEvent;
 
 /// <summary>
-/// A web surface was granted focus. Surface is the surface's name.
+/// A web surface took the keyboard, through a grant or a click. Surface is the surface's name.
 /// </summary>
-public record WebSurfaceFocusGrantedEvent(string Surface) : AutomationEvent;
+public record WebSurfaceFocusedEvent(string Surface) : AutomationEvent;
 
 /// <summary>
 /// A web view's navigation failed. Resource is the resource the view shows, Url is where the navigation was
@@ -64,9 +64,10 @@ public record WebSurfaceFocusGrantedEvent(string Surface) : AutomationEvent;
 public record WebViewNavigationFailedEvent(string Resource, string Url, string Status) : AutomationEvent;
 
 /// <summary>
-/// A web view's process failed. Kind, Reason and ExitCode are as the platform reports them.
+/// The process behind a web view's page failed. Resource is the resource the view shows, and Detail is the
+/// platform's account of the failure.
 /// </summary>
-public record WebViewProcessFailedEvent(string Kind, string Reason, int ExitCode) : AutomationEvent;
+public record WebViewProcessFailedEvent(string Resource, string Detail) : AutomationEvent;
 
 /// <summary>
 /// The Python install found the support files current, so it installed nothing.

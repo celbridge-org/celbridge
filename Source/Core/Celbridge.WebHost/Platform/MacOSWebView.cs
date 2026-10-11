@@ -704,6 +704,9 @@ public sealed class MacOSWebView : SkiaWebView
         {
             case PageProcessChange.Gone:
                 Logger.LogWarning("The WebContent process behind {PageUrl} is no longer running", pageUrl);
+                AutomationService.LogEvent(new WebViewProcessFailedEvent(
+                    Resource.ToString(),
+                    "The WebContent process is no longer running"));
                 break;
 
             case PageProcessChange.Relaunched:

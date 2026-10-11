@@ -42,7 +42,17 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
         await _commandService.ExecuteImmediate<IUnloadProjectCommand>();
 
         // Delegate to ProjectLoader for the complete loading workflow
-        var loadResult = await _projectLoader.LoadProjectAsync(ProjectFilePath);
+        Result loadResult;
+        try
+        {
+            loadResult = await _projectLoader.LoadProjectAsync(ProjectFilePath);
+        }
+        catch (Exception ex)
+        {
+            loadResult = Result.Fail($"Failed to load project: '{ProjectFilePath}'")
+                .WithException(ex);
+        }
+
         if (loadResult.IsFailure)
         {
             _automationService.LogEvent(new ProjectLoadFailedEvent(ProjectFilePath));
