@@ -2,12 +2,16 @@
 // loads before this file.
 
 import { SETTINGS } from './settings.js';
+import { loadConfig } from './config.js';
 import { GameScene } from './game-scene.js';
+
+// Apply config/gameplay.csv before anything reads the settings.
+await loadConfig();
 
 new Phaser.Game({
   type: Phaser.AUTO,
-  width: SETTINGS.WIDTH,
-  height: SETTINGS.HEIGHT,
+  width: SETTINGS.screen.width,
+  height: SETTINGS.screen.height,
   backgroundColor: '#05060a',
   // Scale the canvas to fit the window, keeping its shape.
   scale: {

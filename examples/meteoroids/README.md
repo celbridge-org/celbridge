@@ -22,10 +22,15 @@ The preview doesn't reload when files change. After an edit, press F5 or the pre
 game/
   index.html          loads Phaser, then js/main.js
   js/
-    main.js           Phaser game config
-    settings.js       every number worth tweaking
+    main.js           loads the config, then starts Phaser
+    config.js         applies config/gameplay.csv over settings.js
+    settings.js       every number worth tweaking, and the gameplay defaults
     assets.js         image and sound files, by key
     game-scene.js     the whole game, in one scene
+  config/
+    gameplay.xlsx     the gameplay settings, edited here
+    export_config.py  exports gameplay.xlsx to gameplay.csv
+    gameplay.csv      the settings the game loads
   lib/phaser.min.js   Phaser 4.2.1, vendored so the game runs offline
   sprites/            PNGs made with the Emoji Sprite Generator
   sounds/             WAVs made with the Sound FX Editor
@@ -35,7 +40,7 @@ tools/
   emoji-sprite/       Emoji Sprite Generator
   image-editor/       Image Editor
   sound-fx/           Sound FX Editor
-python.console        the Python console that opens on load
+python.console        the Python console that opens on load, and exports the config on change
 ```
 
 ## How the game works
@@ -43,15 +48,16 @@ python.console        the Python console that opens on load
 `index.html` loads Phaser with a classic `<script>` tag, which defines the global `Phaser`, and then loads `js/main.js` as an ES module. There's no bundler and no npm.
 
 - **`main.js`** sets up a 960 × 720 game that scales to fit the panel, with Arcade Physics. Set `arcade.debug` to `true` to see the physics bodies.
-- **`settings.js`** holds the speeds, sizes, scores, timings and wave sizes. Change a number and reload.
+- **`config.js`** fetches `config/gameplay.csv` and writes each value into `SETTINGS`. `main.js` waits for it before starting Phaser, so the scene only ever sees the configured numbers.
+- **`settings.js`** holds the speeds, sizes, scores, timings and wave sizes. The gameplay numbers in it are defaults that the spreadsheet overrides; the rest, such as sprite sizes and art angles, you change here and reload.
 - **`assets.js`** maps short keys (`'ship'`, `'bang'`) to files. The rest of the code only uses the keys, so you can reskin the game by pointing a key at a different file.
 - **`game-scene.js`** is the whole game: one `Phaser.Scene` with a `state` string (`ready`, `playing`, `respawning`, `gameover`). Starting a new game calls `scene.restart()`, so there's no reset code.
 
 A few details worth knowing:
 
-- Arcade Physics bodies are rectangles, so the overlap checks pass a `circlesTouch` callback that confirms each hit by distance. `HITBOX_SCALE` makes hitboxes a little smaller than the art, so near misses feel fair.
-- Phaser measures angles from pointing right, but the 🚀 artwork points up and to the right. `SHIP_ART_ANGLE` (and `FLAME_ART_ANGLE` for the 🔥) corrects for this. If you swap in art that faces another way, change that number.
-- Bullets come from a pooled group whose size is `MAX_BULLETS`, so firing does nothing while the pool is full.
+- Arcade Physics bodies are rectangles, so the overlap checks pass a `circlesTouch` callback that confirms each hit by distance. `collision.hitboxScale` makes hitboxes a little smaller than the art, so near misses feel fair.
+- Phaser measures angles from pointing right, but the 🚀 artwork points up and to the right. `ship.artAngle` (and `flame.artAngle` for the 🔥) corrects for this. If you swap in art that faces another way, change that number.
+- Bullets come from a pooled group whose size is `bullet.maxCount`, so firing does nothing while the pool is full.
 - Every rock size plays the same `bang` sound at a different playback rate.
 - A missing sound is skipped, and a missing image shows Phaser's placeholder, so the game still runs while you replace assets.
 
@@ -83,6 +89,27 @@ This tool opens `.wav` files and synthesises retro sound effects with [jsfxr](ht
 Every change is saved into the `.wav`, so reloading the game plays the new version. The synth settings are stored inside the file, so you can reopen a sound and keep tweaking it. A WAV made elsewhere opens read-only.
 
 To add a sound, use **New File** in the Explorer and choose one of the Sound FX presets as the starting point. Add the file to `SOUNDS` in `assets.js`, and play it with `this.playSound('key')`.
+
+## Tune the gameplay
+
+The main gameplay numbers, such as ship speed, rock scores, wave sizes and lives, are set in the spreadsheet `game/config/gameplay.xlsx`. Each row is a setting, its value and a description. The game can't read a spreadsheet, so a Python script, `game/config/export_config.py`, exports the settings to `game/config/gameplay.csv`, which the game loads when it starts.
+
+1. Open `game/config/gameplay.xlsx` and change some values.
+2. Reload the game.
+
+The export runs by itself. `python.console` declares a trigger that runs the script whenever the spreadsheet changes:
+
+```toml
+[[session.trigger]]
+pattern = "game/config/gameplay.xlsx"
+command = "%run game/config/export_config.py"
+```
+
+The console has to be open for the trigger to fire, and it opens with the project. Watch it for the script's output: a count of the settings written, or an error naming the row to fix. To export by hand, run `%run game/config/export_config.py` in the console. Add another `[[session.trigger]]` block to run a command when a different file changes.
+
+The script reads the sheet through the `cel` proxy (`cel.spreadsheet.read_sheet`), checks that every value is a number, and writes the CSV with `cel.file.write`. Setting names are lower case, with dots between levels and underscores between words. Each one maps onto the camelCase path in `settings.js`, so `ship.turn_speed` sets `SETTINGS.ship.turnSpeed` and `rocks.large.score` sets `SETTINGS.rocks.large.score`.
+
+To make another number configurable, add a row naming it in that form, such as `ship.size` for `SETTINGS.ship.size`. The game ignores, with a console warning, any name that isn't a number in `settings.js`, and it falls back on the defaults in `settings.js` if the CSV is missing.
 
 ## Things to try
 

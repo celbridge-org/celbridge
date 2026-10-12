@@ -37,23 +37,23 @@ export class GameScene extends Phaser.Scene {
 
   create() {
     this.score = 0;
-    this.lives = S.START_LIVES;
+    this.lives = S.lives.start;
     this.wave = 0;
     this.heading = -90;           // the direction the ship faces; starts pointing up
     this.invulnerableUntil = 0;
     this.waveClearing = false;
 
     // Physics groups. The bullet group is a pool: get() reuses a spent bullet, or
-    // returns null once MAX_BULLETS are already flying.
+    // returns null once bullet.maxCount are already flying.
     this.rocks = this.physics.add.group();
-    this.bullets = this.physics.add.group({ maxSize: S.MAX_BULLETS });
+    this.bullets = this.physics.add.group({ maxSize: S.bullet.maxCount });
 
     // The flame is created before the ship so it is drawn underneath it.
     this.flame = this.add.image(0, 0, 'flame').setVisible(false);
-    this.ship = this.physics.add.sprite(S.WIDTH / 2, S.HEIGHT / 2, 'ship');
-    this.ship.setDisplaySize(S.SHIP_SIZE, S.SHIP_SIZE);
-    this.ship.setDrag(S.SHIP_DRAG);
-    this.ship.body.setMaxSpeed(S.SHIP_MAX_SPEED);
+    this.ship = this.physics.add.sprite(S.screen.width / 2, S.screen.height / 2, 'ship');
+    this.ship.setDisplaySize(S.ship.size, S.ship.size);
+    this.ship.setDrag(S.ship.drag);
+    this.ship.body.setMaxSpeed(S.ship.maxSpeed);
 
     if (this.cache.audio.exists('thrust')) {
       this.thrustSound = this.sound.add('thrust', { loop: true, volume: 0.5 });
@@ -77,16 +77,16 @@ export class GameScene extends Phaser.Scene {
     } else {
       this.state = 'ready';
       this.ship.disableBody(true, true);
-      this.spawnLargeRocks(S.START_ROCKS);
+      this.spawnLargeRocks(S.waves.startRocks);
       this.showMessage('METEOROIDS\n\npress SPACE to start');
     }
   }
 
   update(time, delta) {
     // Anything that flies off one edge comes back on the opposite edge.
-    this.physics.world.wrap(this.ship, S.SHIP_SIZE / 2);
-    this.physics.world.wrap(this.rocks, S.ROCKS.large.size / 2);
-    this.physics.world.wrap(this.bullets, S.BULLET_SIZE);
+    this.physics.world.wrap(this.ship, S.ship.size / 2);
+    this.physics.world.wrap(this.rocks, S.rocks.large.size / 2);
+    this.physics.world.wrap(this.bullets, S.bullet.size);
 
     this.expireBullets(time);
 
@@ -102,7 +102,7 @@ export class GameScene extends Phaser.Scene {
     if (!this.waveClearing && this.rocks.countActive() === 0) {
       this.waveClearing = true;
       this.playSound('level-up');
-      this.time.delayedCall(S.WAVE_DELAY, () => this.startWave());
+      this.time.delayedCall(S.waves.delay, () => this.startWave());
     }
   }
 
@@ -113,15 +113,15 @@ export class GameScene extends Phaser.Scene {
     const right = this.cursors.right.isDown || this.wasd.D.isDown;
     const thrust = this.cursors.up.isDown || this.wasd.W.isDown;
 
-    if (left) this.heading -= S.SHIP_TURN_SPEED * seconds;
-    if (right) this.heading += S.SHIP_TURN_SPEED * seconds;
+    if (left) this.heading -= S.ship.turnSpeed * seconds;
+    if (right) this.heading += S.ship.turnSpeed * seconds;
 
     // The artwork doesn't face right, so turn the sprite to make up the difference.
-    this.ship.angle = this.heading - S.SHIP_ART_ANGLE;
+    this.ship.angle = this.heading - S.ship.artAngle;
 
     if (thrust) {
       // Push in the direction the ship is facing.
-      this.physics.velocityFromAngle(this.heading, S.SHIP_THRUST, this.ship.body.acceleration);
+      this.physics.velocityFromAngle(this.heading, S.ship.thrust, this.ship.body.acceleration);
     } else {
       this.ship.setAcceleration(0);
     }
@@ -136,10 +136,10 @@ export class GameScene extends Phaser.Scene {
     this.flame.setVisible(thrusting);
 
     if (thrusting) {
-      const behind = this.physics.velocityFromAngle(this.heading + 180, S.FLAME_OFFSET);
+      const behind = this.physics.velocityFromAngle(this.heading + 180, S.flame.offset);
       this.flame.setPosition(this.ship.x + behind.x, this.ship.y + behind.y);
-      this.flame.angle = this.heading + 180 - S.FLAME_ART_ANGLE;
-      this.flame.setDisplaySize(S.FLAME_SIZE, S.FLAME_SIZE * Phaser.Math.FloatBetween(0.8, 1.2));
+      this.flame.angle = this.heading + 180 - S.flame.artAngle;
+      this.flame.setDisplaySize(S.flame.size, S.flame.size * Phaser.Math.FloatBetween(0.8, 1.2));
     }
 
     if (!this.thrustSound) return;
@@ -148,7 +148,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   fireBullet() {
-    const nose = this.physics.velocityFromAngle(this.heading, S.SHIP_SIZE / 2);
+    const nose = this.physics.velocityFromAngle(this.heading, S.ship.size / 2);
     const x = this.ship.x + nose.x;
     const y = this.ship.y + nose.y;
 
@@ -156,11 +156,11 @@ export class GameScene extends Phaser.Scene {
     if (!bullet) return; // too many bullets already flying
 
     bullet.enableBody(true, x, y, true, true);
-    bullet.setDisplaySize(S.BULLET_SIZE, S.BULLET_SIZE);
+    bullet.setDisplaySize(S.bullet.size, S.bullet.size);
     // Bullet speed, plus the ship's own speed so you can't outrun your bullets.
-    this.physics.velocityFromAngle(this.heading, S.BULLET_SPEED, bullet.body.velocity);
+    this.physics.velocityFromAngle(this.heading, S.bullet.speed, bullet.body.velocity);
     bullet.body.velocity.add(this.ship.body.velocity);
-    bullet.setData('expiresAt', this.time.now + S.BULLET_LIFETIME);
+    bullet.setData('expiresAt', this.time.now + S.bullet.lifetime);
 
     this.playSound('shoot');
   }
@@ -177,7 +177,7 @@ export class GameScene extends Phaser.Scene {
 
     this.breakRock(rock);
     this.playSound('die');
-    this.showExplosion(ship.x, ship.y, S.SHIP_SIZE * 2.5);
+    this.showExplosion(ship.x, ship.y, S.ship.size * 2.5);
 
     ship.disableBody(true, true);
     this.updateFlame(false);
@@ -185,7 +185,7 @@ export class GameScene extends Phaser.Scene {
     this.updateLives();
 
     this.state = 'respawning';
-    this.time.delayedCall(S.RESPAWN_DELAY, () => {
+    this.time.delayedCall(S.lives.respawnDelay, () => {
       if (this.lives > 0) this.respawnShip();
       else this.gameOver();
     });
@@ -193,19 +193,19 @@ export class GameScene extends Phaser.Scene {
 
   respawnShip() {
     this.heading = -90;
-    this.ship.enableBody(true, S.WIDTH / 2, S.HEIGHT / 2, true, true);
+    this.ship.enableBody(true, S.screen.width / 2, S.screen.height / 2, true, true);
     this.ship.setVelocity(0);
     this.ship.setAcceleration(0);
-    this.ship.angle = this.heading - S.SHIP_ART_ANGLE;
+    this.ship.angle = this.heading - S.ship.artAngle;
 
     // Blink while invulnerable, so it's obvious rocks can't hurt you yet.
-    this.invulnerableUntil = this.time.now + S.INVULNERABLE_TIME;
+    this.invulnerableUntil = this.time.now + S.lives.invulnerableTime;
     this.tweens.add({
       targets: this.ship,
       alpha: 0.2,
       duration: 100,
       yoyo: true,
-      repeat: S.INVULNERABLE_TIME / 200 - 1,
+      repeat: S.lives.invulnerableTime / 200 - 1,
       onComplete: () => this.ship.setAlpha(1),
     });
 
@@ -223,7 +223,7 @@ export class GameScene extends Phaser.Scene {
     this.wave += 1;
     this.waveClearing = false;
     this.waveText.setText(`WAVE ${this.wave}`);
-    this.spawnLargeRocks(Math.min(S.START_ROCKS + this.wave - 1, S.MAX_ROCKS));
+    this.spawnLargeRocks(Math.min(S.waves.startRocks + this.wave - 1, S.waves.maxRocks));
   }
 
   // New rocks appear along the screen edges, but never right on top of the ship.
@@ -232,20 +232,20 @@ export class GameScene extends Phaser.Scene {
       let x, y;
       do {
         if (Math.random() < 0.5) {
-          x = Phaser.Math.Between(0, S.WIDTH);
+          x = Phaser.Math.Between(0, S.screen.width);
           y = 0;
         } else {
           x = 0;
-          y = Phaser.Math.Between(0, S.HEIGHT);
+          y = Phaser.Math.Between(0, S.screen.height);
         }
-      } while (Phaser.Math.Distance.Between(x, y, this.ship.x, this.ship.y) < S.SAFE_RADIUS);
+      } while (Phaser.Math.Distance.Between(x, y, this.ship.x, this.ship.y) < S.waves.safeRadius);
 
       this.spawnRock(x, y, 'large');
     }
   }
 
   spawnRock(x, y, sizeName) {
-    const type = S.ROCKS[sizeName];
+    const type = S.rocks[sizeName];
     const rock = this.rocks.create(x, y, 'rock');
     rock.setDisplaySize(type.size, type.size);
     rock.setData('size', sizeName);
@@ -254,7 +254,7 @@ export class GameScene extends Phaser.Scene {
     const direction = Phaser.Math.Between(0, 359);
     const speed = Phaser.Math.Between(type.minSpeed, type.maxSpeed);
     this.physics.velocityFromAngle(direction, speed, rock.body.velocity);
-    rock.setAngularVelocity(Phaser.Math.Between(-S.ROCK_SPIN, S.ROCK_SPIN));
+    rock.setAngularVelocity(Phaser.Math.Between(-S.rocks.spin, S.rocks.spin));
   }
 
   bulletHitRock(bullet, rock) {
@@ -266,7 +266,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   breakRock(rock) {
-    const type = S.ROCKS[rock.getData('size')];
+    const type = S.rocks[rock.getData('size')];
 
     this.addScore(type.score);
     this.playSound('bang', { rate: type.soundRate });
@@ -282,7 +282,7 @@ export class GameScene extends Phaser.Scene {
   // Overlap check: do the two objects' circles touch?
   circlesTouch(a, b) {
     const distance = Phaser.Math.Distance.Between(a.x, a.y, b.x, b.y);
-    return distance < (a.displayWidth + b.displayWidth) / 2 * S.HITBOX_SCALE;
+    return distance < (a.displayWidth + b.displayWidth) / 2 * S.collision.hitboxScale;
   }
 
   // ---------------------------------------------------------------- effects
@@ -307,15 +307,15 @@ export class GameScene extends Phaser.Scene {
   // ---------------------------------------------------------------- HUD
 
   createHud() {
-    this.scoreText = this.add.text(S.WIDTH - 16, 12, '0', HUD_FONT).setOrigin(1, 0).setDepth(10);
-    this.waveText = this.add.text(S.WIDTH / 2, 12, '', HUD_FONT).setOrigin(0.5, 0).setDepth(10);
-    this.message = this.add.text(S.WIDTH / 2, S.HEIGHT / 2, '', { ...HUD_FONT, align: 'center' })
+    this.scoreText = this.add.text(S.screen.width - 16, 12, '0', HUD_FONT).setOrigin(1, 0).setDepth(10);
+    this.waveText = this.add.text(S.screen.width / 2, 12, '', HUD_FONT).setOrigin(0.5, 0).setDepth(10);
+    this.message = this.add.text(S.screen.width / 2, S.screen.height / 2, '', { ...HUD_FONT, align: 'center' })
       .setOrigin(0.5)
       .setDepth(10);
 
     // One ❤️ per life; lost lives are hidden.
     this.lifeIcons = [];
-    for (let i = 0; i < S.START_LIVES; i++) {
+    for (let i = 0; i < S.lives.start; i++) {
       const icon = this.add.image(28 + i * 36, 30, 'life').setDisplaySize(28, 28).setDepth(10);
       this.lifeIcons.push(icon);
     }
