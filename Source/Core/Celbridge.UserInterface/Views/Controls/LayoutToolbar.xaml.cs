@@ -13,6 +13,7 @@ public sealed partial class LayoutToolbar : UserControl
     private readonly IWindowModeService _windowModeService;
     private readonly ILayoutService _layoutService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IPlatformInfo _platformInfo;
 
     private bool _isUpdatingUI = false;
 
@@ -20,8 +21,8 @@ public sealed partial class LayoutToolbar : UserControl
     {
         InitializeComponent();
 
-        var platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
-        if (platformInfo.HasNativeFullScreenAffordance)
+        _platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
+        if (_platformInfo.HasNativeFullScreenAffordance)
         {
             // macOS provides fullscreen natively through the title-bar green button, so the app does not
             // offer its own Full Screen toggle. The Default/Focus/Presentation layout modes remain available.
@@ -142,7 +143,11 @@ public sealed partial class LayoutToolbar : UserControl
         ToolTipService.SetToolTip(FocusModeRadio, focusModeTooltip);
         ToolTipService.SetPlacement(FocusModeRadio, PlacementMode.Bottom);
 
-        var presentationModeTooltip = _stringLocalizer.GetString("LayoutToolbar_PresentationModeTooltip");
+        // Presentation leaves full screen alone when the window has its own full screen button.
+        var presentationModeTooltipKey = _platformInfo.HasNativeFullScreenAffordance
+            ? "LayoutToolbar_PresentationModeTooltip"
+            : "LayoutToolbar_PresentationModeFullScreenTooltip";
+        var presentationModeTooltip = _stringLocalizer.GetString(presentationModeTooltipKey);
         ToolTipService.SetToolTip(PresentationModeRadio, presentationModeTooltip);
         ToolTipService.SetPlacement(PresentationModeRadio, PlacementMode.Bottom);
 

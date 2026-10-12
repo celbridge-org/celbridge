@@ -8,8 +8,7 @@ using Celbridge.Workspace;
 namespace Celbridge.UserInterface.Services;
 
 /// <summary>
-/// Centralized manager for the window layout mode (chrome level) and panel visibility. The layout mode
-/// and the fullscreen state are independent: changing one does not change the other.
+/// Centralized manager for the window layout mode (chrome level), full screen and panel visibility.
 /// </summary>
 public class LayoutManager : IWindowModeService, ILayoutService
 {
@@ -24,6 +23,9 @@ public class LayoutManager : IWindowModeService, ILayoutService
     private bool _isFullScreen;
     private bool _isMaximized;
     private BottomAreaAlignment _bottomAreaAlignment = WorkspaceConstants.BottomAreaAlignment;
+
+    // True when entering Presentation turned full screen on. Leaving Presentation then turns it off again.
+    private bool _presentationEnteredFullScreen;
 
     // The areas the Default layout shows while the project has no saved choice, worked out from the tabs open
     // at each workspace load and each layout reset. Leaving Focus or Presentation does not work them out
@@ -253,8 +255,7 @@ public class LayoutManager : IWindowModeService, ILayoutService
 
     private void OnExitedFullscreenViaDrag(object recipient, ExitedFullscreenViaDragMessage message)
     {
-        // The window has exited fullscreen via drag, so sync our fullscreen state. The layout mode is
-        // independent of fullscreen and is left unchanged.
+        // The window has exited fullscreen via drag, so sync our fullscreen state.
         if (_isFullScreen)
         {
             _logger.LogDebug("Detected fullscreen exit via drag, clearing fullscreen state");
@@ -418,12 +419,48 @@ public class LayoutManager : IWindowModeService, ILayoutService
         }
 
         var oldMode = _layoutMode;
+
+        // Fill the screen before hiding the chrome, and leave full screen only after the chrome is back.
+        if (newMode == LayoutMode.Presentation)
+        {
+            EnterPresentationFullScreen();
+        }
+
         _layoutMode = newMode;
 
         var message = new LayoutModeChangedMessage(newMode);
         _messengerService.Send(message);
 
         _logger.LogDebug($"Layout mode changed: {oldMode} -> {newMode}");
+
+        if (oldMode == LayoutMode.Presentation)
+        {
+            LeavePresentationFullScreen();
+        }
+    }
+
+    private void EnterPresentationFullScreen()
+    {
+        // On macOS the window's own button controls full screen, so Presentation leaves it alone.
+        if (_platformInfo.HasNativeFullScreenAffordance
+            || _isFullScreen)
+        {
+            return;
+        }
+
+        _presentationEnteredFullScreen = true;
+        SetFullScreenInternal(true);
+    }
+
+    private void LeavePresentationFullScreen()
+    {
+        if (!_presentationEnteredFullScreen)
+        {
+            return;
+        }
+
+        _presentationEnteredFullScreen = false;
+        SetFullScreenInternal(false);
     }
 
     private void SetFullScreenInternal(bool isFullScreen)
@@ -439,5 +476,14 @@ public class LayoutManager : IWindowModeService, ILayoutService
         _messengerService.Send(message);
 
         _logger.LogDebug($"Fullscreen changed: {isFullScreen}");
+
+        // Switch to Focus if full screen ends during Presentation, for example when the user drags the window
+        // down from the top of the screen. Focus shows the toolbar again.
+        if (!isFullScreen
+            && _layoutMode == LayoutMode.Presentation)
+        {
+            _presentationEnteredFullScreen = false;
+            TransitionToLayoutMode(LayoutMode.Focus);
+        }
     }
 }

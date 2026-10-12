@@ -107,7 +107,7 @@ public class LayoutManagerTests
         _layoutManager.LayoutMode.Should().Be(LayoutMode.Focus);
         _layoutManager.VisibleAreas.Should().BeEquivalentTo(VisibleAreas());
 
-        // Fullscreen is independent of the layout mode.
+        // Focus leaves full screen alone.
         _layoutManager.IsFullScreen.Should().BeFalse();
     }
 
@@ -119,6 +119,87 @@ public class LayoutManagerTests
         result.IsSuccess.Should().BeTrue();
         _layoutManager.LayoutMode.Should().Be(LayoutMode.Presentation);
         _layoutManager.VisibleAreas.Should().BeEquivalentTo(VisibleAreas());
+        _layoutManager.IsFullScreen.Should().BeTrue();
+    }
+
+    [Test]
+    public void TransitionToFocus_FromPresentation_EndsTheFullScreenPresentationStarted()
+    {
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Presentation);
+
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Focus);
+
+        _layoutManager.LayoutMode.Should().Be(LayoutMode.Focus);
+        _layoutManager.IsFullScreen.Should().BeFalse();
+    }
+
+    [Test]
+    public void TransitionToDefault_FromPresentation_EndsTheFullScreenPresentationStarted()
+    {
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Presentation);
+
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Default);
+
+        _layoutManager.LayoutMode.Should().Be(LayoutMode.Default);
+        _layoutManager.IsFullScreen.Should().BeFalse();
+    }
+
+    [Test]
+    public void TransitionToPresentation_FromFullScreen_KeepsFullScreenAfterwards()
+    {
+        _layoutManager.RequestLayoutTransition(LayoutTransition.ToggleFullScreen);
+
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Presentation);
+        _layoutManager.IsFullScreen.Should().BeTrue();
+
+        // Full screen was on before Presentation, so it stays on afterwards.
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Default);
+
+        _layoutManager.LayoutMode.Should().Be(LayoutMode.Default);
+        _layoutManager.IsFullScreen.Should().BeTrue();
+    }
+
+    [Test]
+    public void TransitionToPresentation_WithNativeFullScreen_LeavesFullScreenAlone()
+    {
+        _platformInfo.HasNativeFullScreenAffordance.Returns(true);
+
+        bool messageReceived = false;
+        var recipient = new object();
+        _messengerService.Register<FullScreenChangedMessage>(recipient, (r, m) => messageReceived = true);
+
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Presentation);
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Default);
+
+        messageReceived.Should().BeFalse();
+    }
+
+    [Test]
+    public void FullScreenEndingDuringPresentation_MovesToFocus()
+    {
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Presentation);
+
+        // The user dragged the window down from the top of the screen.
+        _messengerService.Send(new ExitedFullscreenViaDragMessage());
+
+        _layoutManager.LayoutMode.Should().Be(LayoutMode.Focus);
+        _layoutManager.VisibleAreas.Should().BeEquivalentTo(VisibleAreas());
+        _layoutManager.IsFullScreen.Should().BeFalse();
+
+        // Full screen is already off, so leaving Focus doesn't change it.
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Default);
+
+        _layoutManager.IsFullScreen.Should().BeFalse();
+    }
+
+    [Test]
+    public void ToggleFullScreen_DuringPresentation_MovesToFocus()
+    {
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Presentation);
+
+        _layoutManager.RequestLayoutTransition(LayoutTransition.ToggleFullScreen);
+
+        _layoutManager.LayoutMode.Should().Be(LayoutMode.Focus);
         _layoutManager.IsFullScreen.Should().BeFalse();
     }
 
@@ -178,6 +259,16 @@ public class LayoutManagerTests
     }
 
     [Test]
+    public void ToggleFocus_FromPresentation_EndsTheFullScreenPresentationStarted()
+    {
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Presentation);
+
+        _layoutManager.RequestLayoutTransition(LayoutTransition.ToggleFocus);
+
+        _layoutManager.IsFullScreen.Should().BeFalse();
+    }
+
+    [Test]
     public void ToggleFullScreen_FromWindowed_EntersFullScreen()
     {
         var result = _layoutManager.RequestLayoutTransition(LayoutTransition.ToggleFullScreen);
@@ -225,7 +316,7 @@ public class LayoutManagerTests
     }
 
     [Test]
-    public void LayoutModeChange_DoesNotChangeFullScreen()
+    public void FocusChange_DoesNotChangeFullScreen()
     {
         _layoutManager.RequestLayoutTransition(LayoutTransition.ToggleFullScreen);
 
@@ -312,6 +403,17 @@ public class LayoutManagerTests
     }
 
     [Test]
+    public void SetAreaVisibility_InPresentationMode_EndsTheFullScreenPresentationStarted()
+    {
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Presentation);
+
+        _layoutManager.SetAreaVisibility(WorkspaceArea.Utility, true);
+
+        _layoutManager.LayoutMode.Should().Be(LayoutMode.Default);
+        _layoutManager.IsFullScreen.Should().BeFalse();
+    }
+
+    [Test]
     public void SetAreaVisibility_Main_FailsAndLeavesTheLayoutAlone()
     {
         var result = _layoutManager.SetAreaVisibility(WorkspaceArea.Main, false);
@@ -366,6 +468,17 @@ public class LayoutManagerTests
         var result = _layoutManager.RequestLayoutTransition(LayoutTransition.ResetLayout);
 
         result.IsSuccess.Should().BeTrue();
+        _layoutManager.IsFullScreen.Should().BeFalse();
+        _layoutManager.LayoutMode.Should().Be(LayoutMode.Default);
+    }
+
+    [Test]
+    public void ResetLayout_FromPresentation_EndsFullScreen()
+    {
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Presentation);
+
+        _layoutManager.RequestLayoutTransition(LayoutTransition.ResetLayout);
+
         _layoutManager.IsFullScreen.Should().BeFalse();
         _layoutManager.LayoutMode.Should().Be(LayoutMode.Default);
     }
