@@ -1,0 +1,7 @@
+[package]
+name = "image-editor"
+title = "Image Editor"
+package-version = "1.0.0"
+
+[contributes]
+editors = ["image.editor.toml"]

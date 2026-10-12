@@ -1,0 +1,319 @@
+/* Fonts, colours, theme switching and the controls' look come from celbridge.css. */
+
+html, body {
+    height: 100%;
+    overflow: hidden;
+}
+
+#app {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+#app[hidden],
+[hidden] {
+    display: none !important;
+}
+
+.toolbar {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    min-height: 40px;
+    padding: 0 6px;
+    border-bottom: 1px solid var(--cel-divider-subtle);
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+}
+
+.toolbar-separator {
+    flex: 0 0 1px;
+    align-self: stretch;
+    margin: 8px 4px;
+    background: var(--cel-divider);
+}
+
+.toolbar-spacer {
+    flex: 1 1 auto;
+    min-width: 8px;
+}
+
+.cel-icon-button:disabled {
+    opacity: 0.4;
+    cursor: default;
+    background: transparent;
+}
+
+.toolbar .cel-icon-button[aria-pressed="true"] {
+    background: var(--cel-button-active-bg);
+}
+
+/* Opens below the About button at the right end of the toolbar. */
+.about-popover {
+    inset: 44px 8px auto auto;
+    margin: 0;
+    max-width: 320px;
+    padding: 10px 12px;
+    border: 1px solid var(--cel-control-border);
+    border-radius: var(--cel-radius-control);
+    background: var(--cel-control-bg);
+    color: var(--cel-text-primary);
+    font-size: var(--cel-font-size-small);
+    line-height: 1.5;
+}
+
+.notice {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: var(--cel-notice-bg);
+    border-bottom: 1px solid var(--cel-warning-text);
+    font-size: var(--cel-font-size-small);
+}
+
+.notice > span {
+    flex: 1 1 auto;
+}
+
+#waveform-area {
+    flex: 0 0 auto;
+    padding: 10px 12px 6px;
+    border-bottom: 1px solid var(--cel-divider-subtle);
+}
+
+#waveform {
+    display: block;
+    width: 100%;
+    height: 120px;
+    border: 1px solid var(--cel-control-border);
+    border-radius: var(--cel-radius-control);
+    background: var(--cel-control-bg);
+    box-sizing: border-box;
+}
+
+#waveform-info {
+    display: flex;
+    gap: 16px;
+    margin-top: 4px;
+    font-size: var(--cel-font-size-small);
+    color: var(--cel-text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+#waveform-info span:empty {
+    display: none;
+}
+
+.preset-bar {
+    flex: 0 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--cel-divider-subtle);
+}
+
+.preset-bar .toolbar-separator {
+    margin: 4px 2px;
+}
+
+.preset-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.replace-panel {
+    flex: 0 0 auto;
+    padding: 10px 12px;
+    background: var(--cel-notice-bg);
+    border-bottom: 1px solid var(--cel-warning-text);
+}
+
+.replace-panel p {
+    margin: 0 0 8px;
+}
+
+.replace-warning {
+    font-weight: var(--cel-font-weight-strong);
+}
+
+.replace-hint {
+    font-size: var(--cel-font-size-small);
+    color: var(--cel-text-secondary);
+}
+
+.replace-footer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 8px;
+}
+
+#settings {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 12px;
+}
+
+.settings-top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px 32px;
+    margin-bottom: 16px;
+}
+
+.setting-label {
+    display: block;
+    margin-bottom: 4px;
+    font-size: var(--cel-font-size-small);
+    font-weight: var(--cel-font-weight-strong);
+}
+
+.volume-setting {
+    flex: 1 1 240px;
+    max-width: 420px;
+}
+
+.segmented {
+    display: inline-flex;
+    border: 1px solid var(--cel-control-border);
+    border-radius: var(--cel-radius-control);
+    overflow: hidden;
+}
+
+.segmented button {
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    border-right: 1px solid var(--cel-control-border);
+    background: var(--cel-control-bg);
+    color: var(--cel-text-primary);
+    padding: 4px 12px;
+}
+
+.segmented button:last-child {
+    border-right: none;
+}
+
+.segmented button:hover:not(:disabled) {
+    background: var(--cel-control-hover-bg);
+}
+
+.segmented button[aria-checked="true"] {
+    background: var(--cel-accent);
+    color: var(--cel-accent-text);
+}
+
+.segmented button:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+/* Groups flow into as many columns as fit, and stack into one on a narrow tab. */
+.groups {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+    align-items: start;
+}
+
+.group {
+    margin: 0;
+    padding: 8px 12px 10px;
+    border: 1px solid var(--cel-panel-edge);
+    border-radius: var(--cel-radius-card);
+    min-width: 0;
+}
+
+.group legend {
+    padding: 0 4px;
+    font-size: var(--cel-font-size-small);
+    font-weight: var(--cel-font-weight-strong);
+}
+
+.group[data-inactive="true"] {
+    opacity: 0.55;
+}
+
+.slider {
+    display: grid;
+    grid-template-columns: minmax(80px, 1fr) minmax(90px, 1.6fr);
+    grid-template-rows: auto auto;
+    column-gap: 10px;
+    align-items: center;
+    margin: 4px 0;
+}
+
+.slider-label {
+    grid-column: 1;
+    grid-row: 1 / 3;
+    font-size: var(--cel-font-size-small);
+}
+
+.slider-track {
+    position: relative;
+    grid-column: 2;
+    grid-row: 1;
+}
+
+.slider input[type="range"] {
+    display: block;
+    width: 100%;
+    margin: 0;
+}
+
+/* The zero point of a signed slider. */
+.slider-track[data-signed="true"]::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: -2px;
+    bottom: -2px;
+    width: 1px;
+    background: var(--cel-text-secondary);
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.slider-value {
+    grid-column: 2;
+    grid-row: 2;
+    font-size: var(--cel-font-size-small);
+    color: var(--cel-text-secondary);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.error-view {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    height: 100%;
+    padding: 24px;
+    box-sizing: border-box;
+    color: var(--cel-text-secondary);
+    text-align: center;
+}
+
+.error-view i {
+    font-size: 40px;
+}
+
+.error-view p {
+    max-width: 360px;
+    margin: 0;
+    line-height: 1.5;
+}

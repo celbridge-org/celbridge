@@ -1,0 +1,14 @@
+[celbridge]
+celbridge-version = "1.4.0"
+
+# 'hide' keeps resources out of the Explorer tree. 'search-exclude' also keeps them out of search.
+# Both take glob patterns, e.g. "Python/.venv/**".
+[celbridge.resources]
+hide = [".gitignore", ".DS_Store", "Thumbs.db", "desktop.ini"]
+search-exclude = ["node_modules", "bin", "obj", "dist", ".venv", "__pycache__"]
+
+[[shortcut]]
+resource = "python.console"
+icon = "bs-terminal"
+area = "bottom"
+open-on-load = true

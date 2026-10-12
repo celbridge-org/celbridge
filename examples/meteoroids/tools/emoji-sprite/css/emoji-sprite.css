@@ -1,0 +1,180 @@
+/* Fonts, colours, theme switching, the toolbar rail, the section surface, the form fields and the controls'
+   look all come from celbridge.css. Everything here is the utility's own: how the panel fills the document,
+   the emoji field, and the grid of generated sprites. */
+
+html, body {
+    height: 100%;
+    overflow: hidden;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+}
+
+/* The section surface fills whatever the rail leaves, inset from the document edge by the same margin the
+   host's own settings surfaces keep. */
+#content {
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    padding: var(--cel-settings-inset);
+}
+
+/* This utility usually sits in the Utility Panel rather than filling a document, so the surface is bordered
+   to read as a panel of its own against the narrow column. */
+#content > .cel-section-switcher > .cel-section-area {
+    border: 1px solid var(--cel-panel-edge);
+    border-radius: var(--cel-radius-panel);
+}
+
+/* ── Fields ── */
+
+/* The panel and the set's fields are both columns, so the emoji field below can take the height the
+   fixed-size fields leave instead of the panel ending in dead space. */
+#panel,
+#editor {
+    display: flex;
+    flex-direction: column;
+}
+
+/* No min-height: 0 here or on .fill-field: the panel is the scroller, so these must keep their content
+   height and let the results push the panel into scrolling, rather than shrink until the fields overlap. */
+#editor {
+    flex: 1 1 auto;
+}
+
+/* Beats the display:flex above, which would otherwise defeat the hidden attribute. */
+#editor[hidden] {
+    display: none;
+}
+
+.fill-field {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+}
+
+/* Below this the field stops giving height back and the panel scrolls instead, so a short panel — or a
+   long grid of results under it — still leaves a usable field rather than a sliver of one. The script
+   raises the floor to the height of the glyphs themselves, so every glyph shows without the field
+   scrolling inside the panel. */
+.fill-field textarea {
+    flex: 1 1 auto;
+    min-height: max(90px, var(--content-height, 0px));
+    resize: none;
+}
+
+/* The output folder and the button onto the folder picker, on one row. */
+.picker-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.picker-row input {
+    flex: 1;
+    min-width: 0;
+}
+
+.picker-row .cel-icon-button {
+    flex: none;
+}
+
+/* Wide enough for a four-digit resolution and the number spinner beside it, and no wider — the output
+   folder takes the rest of the row. */
+#size-input {
+    width: 86px;
+}
+
+/* The field holds emoji rather than prose, so it is set large enough to tell one glyph from another. */
+#glyph-input {
+    font-size: var(--cel-icon-size-large);
+    line-height: 1.4;
+}
+
+/* Stands in for the fields of a set that does not exist yet. */
+.empty-message {
+    margin: 0;
+    font-size: var(--cel-font-size-small);
+    color: var(--cel-text-secondary);
+}
+
+/* ── Toolbar ── */
+
+/* Deleting a set takes two clicks; the armed state says the next one lands. The icon stays put so the rail
+   keeps its geometry — the colour and the tooltip are what change. */
+#set-delete.armed {
+    color: var(--cel-error-text);
+    background: var(--cel-button-hover-bg);
+}
+
+/* ── Results ── */
+
+/* Keeps its natural height in the column rather than being squeezed by the field above it. */
+#results {
+    flex: 0 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-content: flex-start;
+}
+
+.result {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    width: 84px;
+    padding: 8px 4px;
+    border: 1px solid var(--cel-divider);
+    border-radius: var(--cel-radius-card);
+    background: var(--cel-chrome-bg);
+}
+
+/* A written sprite is a button onto its PNG, sized to the image alone — the file name is its tooltip. */
+.result.sprite {
+    width: auto;
+    margin: 0;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+}
+
+.result.sprite:hover {
+    background: var(--cel-button-hover-bg);
+}
+
+.result img {
+    width: 48px;
+    height: 48px;
+    image-rendering: auto;
+}
+
+/* Placeholder keeps the card the same height when there is no preview to show. */
+.result .no-preview {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--cel-icon-size-large);
+    color: var(--cel-text-secondary);
+}
+
+.result .name {
+    font-family: var(--cel-font-mono);
+    font-size: var(--cel-font-size-small);
+    color: var(--cel-text-secondary);
+    word-break: break-all;
+    text-align: center;
+}
+
+.result.failed {
+    border-color: var(--cel-error-text);
+}
+
+.result.failed .name {
+    color: var(--cel-error-text);
+}

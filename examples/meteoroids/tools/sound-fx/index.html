@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sound FX Editor</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="/assets/bootstrap-icons/bootstrap-icons.css">
+    <link rel="stylesheet" href="/assets/celbridge-client/celbridge.css">
+    <link rel="stylesheet" href="css/sound-fx.css">
+    <!-- jsfxr 1.4.1, unmodified. Classic scripts that define window.RIFFWAVE and window.jsfxr, riffwave first. -->
+    <script src="lib/riffwave.js"></script>
+    <script src="lib/sfxr.js"></script>
+</head>
+<body>
+    <div id="app" hidden>
+        <div id="toolbar" class="toolbar" role="toolbar" data-loc-key="SFX_Toolbar_Label" data-loc-attr="aria-label">
+            <button id="play" class="cel-icon-button" type="button"
+                    data-loc-key="SFX_Play" data-loc-attr="title,aria-label"><i class="bi bi-play-fill"></i></button>
+            <button id="play-on-change" class="cel-icon-button" type="button" aria-pressed="true"
+                    data-loc-key="SFX_PlayOnChange" data-loc-attr="title,aria-label"><i class="bi bi-volume-up"></i></button>
+            <div class="toolbar-separator" data-sound-fx></div>
+            <button id="undo" class="cel-icon-button" type="button" data-edit data-sound-fx
+                    data-loc-key="SFX_Undo" data-loc-attr="title,aria-label"><i class="bi bi-arrow-90deg-left"></i></button>
+            <button id="redo" class="cel-icon-button" type="button" data-edit data-sound-fx
+                    data-loc-key="SFX_Redo" data-loc-attr="title,aria-label"><i class="bi bi-arrow-90deg-right"></i></button>
+            <div class="toolbar-spacer"></div>
+            <button id="about" class="cel-icon-button" type="button" popovertarget="about-popover"
+                    data-loc-key="SFX_About_Button" data-loc-attr="title,aria-label"><i class="bi bi-info-circle"></i></button>
+        </div>
+
+        <div id="about-popover" class="about-popover" popover data-loc-key="SFX_About"></div>
+
+        <div id="notice" class="notice" hidden>
+            <i class="bi bi-info-circle"></i>
+            <span id="notice-text"></span>
+            <button id="notice-dismiss" class="cel-icon-button" type="button" hidden
+                    data-loc-key="SFX_Dismiss" data-loc-attr="title,aria-label"><i class="bi bi-x-lg"></i></button>
+        </div>
+
+        <div id="waveform-area">
+            <canvas id="waveform"></canvas>
+            <div id="waveform-info">
+                <span id="info-duration"></span>
+                <span id="info-format"></span>
+                <span id="info-size"></span>
+            </div>
+        </div>
+
+        <div id="preset-bar" class="preset-bar" role="toolbar" data-sound-fx
+             data-loc-key="SFX_Presets_Label" data-loc-attr="aria-label">
+            <div id="preset-buttons" class="preset-buttons"></div>
+            <div class="toolbar-separator"></div>
+            <button id="mutate" type="button" data-edit
+                    data-loc-key="SFX_Mutate" data-loc-title="SFX_Mutate_Tooltip"></button>
+            <button id="random" type="button" data-edit
+                    data-loc-key="SFX_Random" data-loc-title="SFX_Random_Tooltip"></button>
+        </div>
+
+        <!-- Replaces the preset bar for a WAV without Sound FX settings. -->
+        <div id="plain-bar" class="preset-bar" data-plain hidden>
+            <button id="start-from-preset" type="button" data-edit data-loc-key="SFX_StartFromPreset"></button>
+        </div>
+
+        <div id="replace-panel" class="replace-panel" role="dialog" hidden>
+            <p id="replace-warning" class="replace-warning"></p>
+            <p class="replace-hint" data-loc-key="SFX_Confirm_Choose"></p>
+            <div id="replace-buttons" class="preset-buttons"></div>
+            <div class="replace-footer">
+                <button id="replace-cancel" type="button" data-loc-key="SFX_Cancel"></button>
+            </div>
+        </div>
+
+        <div id="settings" data-sound-fx>
+            <div class="settings-top">
+                <div class="setting">
+                    <span class="setting-label" id="wave-type-label" data-loc-key="SFX_WaveType"></span>
+                    <div id="wave-type" class="segmented" role="radiogroup" aria-labelledby="wave-type-label"></div>
+                </div>
+                <div id="volume-row" class="setting volume-setting"></div>
+            </div>
+            <div id="groups" class="groups"></div>
+        </div>
+    </div>
+
+    <div id="error-view" class="error-view" hidden>
+        <i class="bi bi-file-earmark-x"></i>
+        <p id="error-text"></p>
+    </div>
+
+    <script type="module" src="js/sound-fx.js"></script>
+</body>
+</html>
