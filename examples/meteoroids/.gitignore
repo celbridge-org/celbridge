@@ -1,0 +1,59 @@
+# Celbridge project metadata
+.celbridge/
+
+# Files downloaded from web pages, kept here until moved where they are needed
+/downloads/
+
+# Build output
+bin/
+obj/
+build/
+dist/
+*.egg-info/
+
+# Installed dependencies
+node_modules/
+.venv/
+venv/
+
+# Compiled Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.so
+
+# Tool output
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+
+# Editor and tooling
+.vs/
+.vscode/
+.idea/
+.claude/
+.mcp.json
+
+# Environment and secrets
+.env
+
+# OS cruft
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Temporary and backup files
+*.tmp
+*.bak
+*.swp
+*.swo
+*.swn
+*.crdownload
+*.part
+~$*

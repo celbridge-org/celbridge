@@ -1,0 +1,51 @@
+{
+    "EmojiSprite_DisplayName": "Emoji Sprite Generator",
+    "EmojiSprite_Description": "Generate emoji sprites from Noto Color Emoji",
+
+    "EmojiSprite_Section_Title": "Sprite sets",
+    "EmojiSprite_Section_Description": "Turns emoji into PNG sprites a game can draw.",
+
+    "EmojiSprite_Toolbar_New": "New sprite set",
+    "EmojiSprite_Toolbar_Duplicate": "Duplicate this sprite set",
+    "EmojiSprite_Toolbar_Delete": "Delete this sprite set",
+    "EmojiSprite_Toolbar_DeleteConfirm": "Click again to delete this sprite set",
+
+    "EmojiSprite_SetLabel": "Sprite set",
+    "EmojiSprite_NoSets": "No sprite sets yet. Create one to begin.",
+    "EmojiSprite_NameLabel": "Name",
+    "EmojiSprite_GlyphsLabel": "Emoji characters",
+    "EmojiSprite_GlyphsPlaceholder": "Paste or type the emoji to generate, e.g. 😀😎⚽",
+    "EmojiSprite_SizeLabel": "Resolution (px)",
+    "EmojiSprite_FolderLabel": "Output folder",
+    "EmojiSprite_FolderPlaceholder": "packages/my-game/prototype/emoji",
+    "EmojiSprite_FolderBrowse": "Choose a folder",
+    "EmojiSprite_GenerateButton": "Generate sprites",
+
+    "EmojiSprite_NewSet_Name": "New sprite set",
+    "EmojiSprite_Set_Fallback": "Sprite set",
+    "EmojiSprite_Set_Unnamed": "(unnamed)",
+    "EmojiSprite_Set_Copy": "{0} copy",
+
+    "EmojiSprite_GlyphCount_One": "1 glyph",
+    "EmojiSprite_GlyphCount_Many": "{0} glyphs",
+
+    "EmojiSprite_Error_NoGlyphs": "Enter at least one emoji character.",
+    "EmojiSprite_Error_Size": "Resolution must be between 16 and 1024 pixels.",
+    "EmojiSprite_Error_NoFolder": "Enter an output folder.",
+    "EmojiSprite_Error_Failed": "Generation failed: {0}",
+    "EmojiSprite_Error_InitFailed": "Failed to initialize the Celbridge connection.",
+    "EmojiSprite_Error_NamesUnavailable": "Emoji names are unavailable, so sprites are being named by code point.",
+
+    "EmojiSprite_Status_Starting_One": "Generating 1 sprite…",
+    "EmojiSprite_Status_Starting_Many": "Generating {0} sprites…",
+    "EmojiSprite_Status_Progress": "Generating… {0}/{1}",
+    "EmojiSprite_Status_Done_One": "Wrote 1 sprite to {0}",
+    "EmojiSprite_Status_Done_Many": "Wrote {0} sprites to {1}",
+    "EmojiSprite_Status_DoneWithFailures": "Wrote {0} of {1} sprites to {2}; {3} failed",
+
+    "EmojiSprite_Sprite_NoArtwork": "Noto has no artwork named {0}.svg",
+    "EmojiSprite_Sprite_FetchFailed": "fetch failed (HTTP {0})",
+    "EmojiSprite_Sprite_InvalidSvg": "artwork is not valid SVG",
+    "EmojiSprite_Sprite_Blank": "rendered blank",
+    "EmojiSprite_Result_FailedTooltip": "{0} — {1}"
+}

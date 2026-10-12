@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emoji Sprite</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="/assets/bootstrap-icons/bootstrap-icons.css">
+    <link rel="stylesheet" href="/assets/celbridge-client/celbridge.css">
+    <link rel="stylesheet" href="css/emoji-sprite.css">
+</head>
+<body>
+    <!-- The actions that add and remove sprite sets, as the shared rail laid across the top of the panel.
+         Editing a set happens in the fields below; creating and destroying one is a different kind of act,
+         so it lives here rather than inline beside the picker. -->
+    <div id="toolbar" class="cel-rail cel-rail-horizontal">
+        <button class="cel-rail-button" id="set-new" type="button"
+                data-loc-key="EmojiSprite_Toolbar_New" data-loc-attr="title,aria-label"><i class="bi bi-plus-square"></i></button>
+        <button class="cel-rail-button" id="set-duplicate" type="button"
+                data-loc-key="EmojiSprite_Toolbar_Duplicate" data-loc-attr="title,aria-label"><i class="bi bi-copy"></i></button>
+
+        <!-- Deleting a set is the one action here with no undo, so it sits in a section of its own. -->
+        <div class="cel-rail-separator"></div>
+        <button class="cel-rail-button" id="set-delete" type="button"
+                data-loc-key="EmojiSprite_Toolbar_Delete" data-loc-attr="title,aria-label"><i class="bi bi-trash3"></i></button>
+    </div>
+
+    <div id="content">
+        <!-- The panel is the section surface the host's settings pages are built on: a header, a notice slot
+             for anything that went wrong, the fields, and the primary action in the footer. -->
+        <div class="cel-section-switcher">
+            <div class="cel-section-area">
+                <div class="cel-section-header">
+                    <h1 data-loc-key="EmojiSprite_Section_Title"></h1>
+                    <p data-loc-key="EmojiSprite_Section_Description"></p>
+                </div>
+                <div id="notice" class="cel-section-notice" role="alert" hidden></div>
+                <div class="cel-section-content">
+                    <section id="panel">
+                        <label class="field">
+                            <span class="field-label" data-loc-key="EmojiSprite_SetLabel"></span>
+                            <select id="set-select"></select>
+                        </label>
+
+                        <p id="empty" class="empty-message" data-loc-key="EmojiSprite_NoSets" hidden></p>
+
+                        <!-- The selected set's own fields. Hidden wholesale when there is no set to edit. -->
+                        <div id="editor">
+                            <label class="field">
+                                <span class="field-label" data-loc-key="EmojiSprite_NameLabel"></span>
+                                <input type="text" id="name-input" spellcheck="false" autocomplete="off">
+                            </label>
+
+                            <!-- The one field with no natural size: it takes whatever height the others leave. -->
+                            <label class="field fill-field">
+                                <span class="field-label" data-loc-key="EmojiSprite_GlyphsLabel"></span>
+                                <textarea id="glyph-input" spellcheck="false"
+                                          data-loc-key="EmojiSprite_GlyphsPlaceholder" data-loc-attr="placeholder"></textarea>
+                                <span class="field-hint" id="glyph-count"></span>
+                            </label>
+
+                            <label class="field">
+                                <span class="field-label" data-loc-key="EmojiSprite_SizeLabel"></span>
+                                <input type="number" id="size-input" min="16" max="1024" step="1" value="128">
+                            </label>
+
+                            <!-- A div rather than a label, because a label wrapping the browse button would
+                                 redirect clicks on it to the input. -->
+                            <div class="field">
+                                <label class="field-label" for="folder-input" data-loc-key="EmojiSprite_FolderLabel"></label>
+                                <div class="picker-row">
+                                    <input type="text" id="folder-input" spellcheck="false" autocomplete="off"
+                                           list="folder-list"
+                                           data-loc-key="EmojiSprite_FolderPlaceholder" data-loc-attr="placeholder">
+                                    <button type="button" id="folder-browse" class="cel-icon-button"
+                                            data-loc-key="EmojiSprite_FolderBrowse" data-loc-attr="title,aria-label"><i class="bi bi-folder2-open"></i></button>
+                                </div>
+                                <!-- Filled from the project's folder tree. A list rather than a fixed choice,
+                                     because the output folder often does not exist until the run creates it. -->
+                                <datalist id="folder-list"></datalist>
+                            </div>
+
+                            <div id="results"></div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <!-- Generating is what the panel is for, so it gets the footer the shared surface reserves for a
+                 page's primary action, with the run's progress reading out under it. -->
+            <div class="cel-section-footer">
+                <button id="generate-btn" class="cel-accent" type="button" data-loc-key="EmojiSprite_GenerateButton"></button>
+                <p id="status"></p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="js/emoji-sprite.js"></script>
+</body>
+</html>

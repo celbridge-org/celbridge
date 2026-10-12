@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Editor</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="/assets/bootstrap-icons/bootstrap-icons.css">
+    <link rel="stylesheet" href="/assets/celbridge-client/celbridge.css">
+    <link rel="stylesheet" href="css/image-editor.css">
+</head>
+<body>
+    <div id="app" hidden>
+        <div id="toolbar" class="toolbar" role="toolbar" data-loc-key="IE_Toolbar_Label" data-loc-attr="aria-label">
+            <button id="undo" class="cel-icon-button" type="button" data-edit
+                    data-loc-key="IE_Undo" data-loc-attr="title,aria-label"><i class="bi bi-arrow-90deg-left"></i></button>
+            <button id="redo" class="cel-icon-button" type="button" data-edit
+                    data-loc-key="IE_Redo" data-loc-attr="title,aria-label"><i class="bi bi-arrow-90deg-right"></i></button>
+            <div class="toolbar-separator"></div>
+            <button id="crop" class="cel-icon-button" type="button" data-edit
+                    data-loc-key="IE_Crop" data-loc-attr="title,aria-label"><i class="bi bi-crop"></i></button>
+            <button id="resize" class="cel-icon-button" type="button" data-edit
+                    data-loc-key="IE_Resize" data-loc-attr="title,aria-label"><i class="bi bi-aspect-ratio"></i></button>
+            <div class="toolbar-separator"></div>
+            <button id="rotate-left" class="cel-icon-button" type="button" data-edit
+                    data-loc-key="IE_RotateLeft" data-loc-attr="title,aria-label"><i class="bi bi-arrow-counterclockwise"></i></button>
+            <button id="rotate-right" class="cel-icon-button" type="button" data-edit
+                    data-loc-key="IE_RotateRight" data-loc-attr="title,aria-label"><i class="bi bi-arrow-clockwise"></i></button>
+            <button id="flip-horizontal" class="cel-icon-button" type="button" data-edit
+                    data-loc-key="IE_FlipHorizontal" data-loc-attr="title,aria-label"><i class="bi bi-symmetry-vertical"></i></button>
+            <button id="flip-vertical" class="cel-icon-button" type="button" data-edit
+                    data-loc-key="IE_FlipVertical" data-loc-attr="title,aria-label"><i class="bi bi-symmetry-horizontal"></i></button>
+            <div class="toolbar-separator"></div>
+            <button id="zoom-actual" class="cel-icon-button" type="button"
+                    data-loc-key="IE_ZoomActual" data-loc-attr="title,aria-label"><span class="glyph-text">1:1</span></button>
+            <button id="zoom-out" class="cel-icon-button" type="button"
+                    data-loc-key="IE_ZoomOut" data-loc-attr="title,aria-label"><i class="bi bi-zoom-out"></i></button>
+            <button id="zoom-in" class="cel-icon-button" type="button"
+                    data-loc-key="IE_ZoomIn" data-loc-attr="title,aria-label"><i class="bi bi-zoom-in"></i></button>
+            <span id="zoom-label" class="zoom-label"></span>
+            <div class="toolbar-spacer"></div>
+            <button id="save-settings" class="cel-icon-button" type="button" data-edit hidden
+                    data-loc-key="IE_SaveSettings" data-loc-attr="title,aria-label"><i class="bi bi-sliders"></i></button>
+        </div>
+
+        <!-- Replaces the toolbar while crop mode is on. -->
+        <div id="crop-bar" class="toolbar" role="toolbar" hidden data-loc-key="IE_Crop" data-loc-attr="aria-label">
+            <label class="inline-field"><span>X</span><input id="crop-x" type="number" min="0" step="1"></label>
+            <label class="inline-field"><span>Y</span><input id="crop-y" type="number" min="0" step="1"></label>
+            <label class="inline-field"><span data-loc-key="IE_Short_Width"></span><input id="crop-width" type="number" min="1" step="1"></label>
+            <label class="inline-field"><span data-loc-key="IE_Short_Height"></span><input id="crop-height" type="number" min="1" step="1"></label>
+            <div class="toolbar-spacer"></div>
+            <button id="crop-cancel" type="button" data-loc-key="IE_Cancel"></button>
+            <button id="crop-apply" class="cel-accent" type="button" data-loc-key="IE_Apply"></button>
+        </div>
+
+        <div id="notice" class="notice" hidden>
+            <i class="bi bi-info-circle"></i>
+            <span id="notice-text"></span>
+        </div>
+
+        <div id="stage" tabindex="0">
+            <canvas id="view"></canvas>
+        </div>
+
+        <div id="status-bar">
+            <span id="status-dimensions"></span>
+            <span id="status-format"></span>
+            <span id="status-size"></span>
+            <span id="status-metadata"></span>
+            <span class="status-spacer"></span>
+            <span id="status-pointer"></span>
+            <span id="status-zoom"></span>
+        </div>
+
+        <div id="resize-panel" class="popover" role="dialog" hidden data-loc-key="IE_Resize_Title" data-loc-attr="aria-label">
+            <div class="popover-row">
+                <label class="field">
+                    <span class="field-label" data-loc-key="IE_Width"></span>
+                    <input id="resize-width" type="number" min="1" max="16384" step="1">
+                </label>
+                <button id="resize-lock" class="cel-icon-button lock-button" type="button" aria-pressed="true"
+                        data-loc-key="IE_Resize_Lock" data-loc-attr="title,aria-label"><i class="bi bi-link-45deg"></i></button>
+                <label class="field">
+                    <span class="field-label" data-loc-key="IE_Height"></span>
+                    <input id="resize-height" type="number" min="1" max="16384" step="1">
+                </label>
+            </div>
+            <label class="field">
+                <span class="field-label" data-loc-key="IE_Percentage"></span>
+                <input id="resize-percent" type="number" min="0.01" step="any">
+            </label>
+            <label class="field">
+                <span class="field-label" data-loc-key="IE_Resampling"></span>
+                <select id="resize-resampling">
+                    <option value="smooth" data-loc-key="IE_Resampling_Smooth"></option>
+                    <option value="pixelated" data-loc-key="IE_Resampling_Pixelated"></option>
+                </select>
+            </label>
+            <p id="resize-summary" class="popover-summary"></p>
+            <span id="resize-warning" class="field-warning" hidden></span>
+            <div class="popover-footer">
+                <button id="resize-cancel" type="button" data-loc-key="IE_Cancel"></button>
+                <button id="resize-apply" class="cel-accent" type="button" data-loc-key="IE_Apply"></button>
+            </div>
+        </div>
+
+        <div id="settings-panel" class="popover" role="dialog" hidden data-loc-key="IE_SaveSettings" data-loc-attr="aria-label">
+            <p class="popover-summary" data-loc-key="IE_SaveSettings_Description"></p>
+            <label id="settings-quality-field" class="field">
+                <span class="field-label" data-loc-key="IE_Quality"></span>
+                <span class="range-row">
+                    <input id="settings-quality" type="range" min="1" max="100" step="1">
+                    <output id="settings-quality-value"></output>
+                </span>
+            </label>
+            <label id="settings-lossless-field" class="field checkbox-field">
+                <input id="settings-lossless" type="checkbox">
+                <span data-loc-key="IE_Lossless"></span>
+            </label>
+            <div class="popover-footer">
+                <button id="settings-close" type="button" data-loc-key="IE_Close"></button>
+            </div>
+        </div>
+    </div>
+
+    <div id="error-view" class="error-view" hidden>
+        <i class="bi bi-file-earmark-x"></i>
+        <p id="error-text"></p>
+    </div>
+
+    <script type="module" src="js/image-editor.js"></script>
+</body>
+</html>

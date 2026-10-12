@@ -1,0 +1,37 @@
+[editor]
+id = "image-document"
+type = "document"
+entry-point = "index.html"
+binary = true
+display-name = "IE_Editor_Name"
+description = "IE_Editor_Description"
+
+# Established types in the host's file type catalog, which supplies their icons. The manifest still has to
+# name each type.
+[[file-types]]
+extension = ".png"
+display-name = "IE_FileType_Png"
+
+[[file-types]]
+extension = ".jpg"
+display-name = "IE_FileType_Jpeg"
+
+[[file-types]]
+extension = ".jpeg"
+display-name = "IE_FileType_Jpeg"
+
+[[file-types]]
+extension = ".webp"
+display-name = "IE_FileType_Webp"
+
+[[file-types]]
+extension = ".gif"
+display-name = "IE_FileType_Gif"
+
+[[file-types]]
+extension = ".bmp"
+display-name = "IE_FileType_Bmp"
+
+[[file-types]]
+extension = ".ico"
+display-name = "IE_FileType_Ico"

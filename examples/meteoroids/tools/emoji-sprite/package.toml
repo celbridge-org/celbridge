@@ -1,0 +1,8 @@
+# Emoji-To-Sprite — generates PNG sprite sheets from Noto Color Emoji artwork.
+
+[package]
+name = "emoji-sprite"
+title = "Emoji Sprite"
+
+[contributes]
+editors = ["emoji-sprite.editor.toml"]

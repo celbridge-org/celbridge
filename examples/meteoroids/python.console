@@ -1,0 +1,6 @@
+[session]
+type = "python"
+
+[[session.trigger]]
+pattern = "game/config/gameplay.xlsx"
+command = "%run game/config/export_config.py"

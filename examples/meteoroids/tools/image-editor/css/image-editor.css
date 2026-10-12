@@ -1,0 +1,336 @@
+/* Fonts, colours, theme switching and the controls' look come from celbridge.css. */
+
+html, body {
+    height: 100%;
+    overflow: hidden;
+}
+
+#app {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+
+    /* The checkerboard under transparent pixels, one pair of tones per theme. */
+    --ie-checker-light: #ffffff;
+    --ie-checker-dark: #e0e0e0;
+}
+
+[data-theme="dark"] #app {
+    --ie-checker-light: #3a3a3a;
+    --ie-checker-dark: #2e2e2e;
+}
+
+#app[hidden],
+[hidden] {
+    display: none !important;
+}
+
+.toolbar {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    min-height: 40px;
+    padding: 0 6px;
+    border-bottom: 1px solid var(--cel-divider-subtle);
+    overflow: hidden;
+}
+
+/* Controls keep their size and the bar clips when the document is too narrow to show it all. */
+.toolbar > :not(.toolbar-spacer) {
+    flex-shrink: 0;
+}
+
+.toolbar-separator {
+    flex: 0 0 1px;
+    align-self: stretch;
+    margin: 8px 4px;
+    background: var(--cel-divider);
+}
+
+.toolbar-spacer {
+    flex: 1 1 auto;
+    min-width: 8px;
+}
+
+.toolbar .cel-icon-button:disabled {
+    opacity: 0.4;
+    cursor: default;
+    background: transparent;
+}
+
+.toolbar .cel-icon-button[aria-pressed="true"] {
+    background: var(--cel-button-active-bg);
+}
+
+/* The button whose panel is open. */
+.toolbar .cel-icon-button[aria-expanded="true"] {
+    background: var(--cel-button-hover-bg);
+}
+
+.glyph-text {
+    font-size: var(--cel-font-size-small);
+    font-weight: var(--cel-font-weight-strong);
+}
+
+.zoom-label {
+    min-width: 48px;
+    padding: 0 4px;
+    font-size: var(--cel-font-size-small);
+    font-variant-numeric: tabular-nums;
+    color: var(--cel-text-secondary);
+    text-align: center;
+}
+
+.inline-field {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 6px;
+    margin: 0 4px;
+    font-size: var(--cel-font-size-small);
+}
+
+.inline-field input[type="number"] {
+    width: 76px;
+}
+
+#crop-bar button:not(.cel-icon-button) {
+    flex: 0 0 auto;
+    margin-left: 4px;
+}
+
+.notice {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: var(--cel-notice-bg);
+    border-bottom: 1px solid var(--cel-warning-text);
+    font-size: var(--cel-font-size-small);
+}
+
+.notice > span {
+    flex: 1 1 auto;
+}
+
+#stage {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    outline: none;
+}
+
+#view {
+    position: absolute;
+    inset: 0;
+    display: block;
+    touch-action: none;
+}
+
+/* Only an image larger than the view on some axis can be dragged. Crop mode sets its own cursors inline. */
+#view[data-pannable="true"] {
+    cursor: grab;
+}
+
+/* Overlay scrollbars, shown on an axis only while the image overflows the view on it. */
+.ie-scrollbar {
+    position: absolute;
+    z-index: 1;
+    border-radius: 4px;
+}
+
+.ie-scrollbar-x {
+    left: 4px;
+    right: 16px;
+    bottom: 4px;
+    height: 8px;
+}
+
+.ie-scrollbar-y {
+    top: 4px;
+    bottom: 16px;
+    right: 4px;
+    width: 8px;
+}
+
+.ie-scrollbar:hover {
+    background: color-mix(in srgb, var(--cel-text-secondary) 15%, transparent);
+}
+
+.ie-scrollbar-thumb {
+    position: absolute;
+    border-radius: 4px;
+    background: var(--cel-text-secondary);
+    opacity: 0.5;
+}
+
+.ie-scrollbar-x .ie-scrollbar-thumb {
+    top: 0;
+    bottom: 0;
+}
+
+.ie-scrollbar-y .ie-scrollbar-thumb {
+    left: 0;
+    right: 0;
+}
+
+.ie-scrollbar-thumb:hover,
+.ie-scrollbar-thumb[data-dragging="true"] {
+    opacity: 0.8;
+}
+
+#view[data-space-held="true"] {
+    cursor: grab !important;
+}
+
+#view[data-panning="true"] {
+    cursor: grabbing !important;
+}
+
+#status-bar {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-height: 26px;
+    padding: 0 10px;
+    border-top: 1px solid var(--cel-divider-subtle);
+    font-size: var(--cel-font-size-small);
+    color: var(--cel-text-secondary);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.status-spacer {
+    flex: 1 1 auto;
+}
+
+#status-bar span:empty {
+    display: none;
+}
+
+/* Panels anchored under the toolbar button that opened them. */
+.popover {
+    position: absolute;
+    z-index: 10;
+    width: 300px;
+    max-width: calc(100% - 16px);
+    max-height: calc(100% - 56px);
+    overflow-y: auto;
+    padding: 14px;
+    background: var(--cel-content-bg);
+    border: 1px solid var(--cel-panel-edge);
+    border-radius: var(--cel-radius-card);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.popover .field:last-of-type {
+    margin-bottom: 8px;
+}
+
+.popover-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+}
+
+.popover-row .field {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.popover input[type="number"],
+.popover input[type="text"],
+.popover select {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.lock-button {
+    flex: 0 0 auto;
+    margin-bottom: 12px;
+}
+
+.lock-button[aria-pressed="true"] {
+    color: var(--cel-accent);
+}
+
+.range-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.range-row input {
+    flex: 1 1 auto;
+}
+
+.range-row output {
+    min-width: 28px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.checkbox-field {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+}
+
+.field input[type="color"] {
+    display: block;
+    width: 64px;
+    height: 32px;
+    padding: 2px;
+    border: 1px solid var(--cel-control-border);
+    border-radius: var(--cel-radius-control);
+    background: none;
+    cursor: pointer;
+}
+
+.popover-summary {
+    margin: 0 0 12px;
+    font-size: var(--cel-font-size-small);
+    color: var(--cel-text-secondary);
+}
+
+.popover .field-warning {
+    display: block;
+    margin-bottom: 8px;
+}
+
+.popover-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.error-view {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    height: 100%;
+    padding: 24px;
+    box-sizing: border-box;
+    color: var(--cel-text-secondary);
+    text-align: center;
+}
+
+.error-view i {
+    font-size: 40px;
+}
+
+.error-view p {
+    max-width: 360px;
+    margin: 0;
+    line-height: 1.5;
+}

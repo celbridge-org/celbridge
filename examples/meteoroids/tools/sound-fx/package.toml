@@ -1,0 +1,7 @@
+[package]
+name = "sound-fx"
+title = "Sound FX"
+package-version = "1.0.0"
+
+[contributes]
+editors = ["sound.editor.toml"]

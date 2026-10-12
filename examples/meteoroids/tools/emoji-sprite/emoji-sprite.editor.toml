@@ -1,0 +1,11 @@
+[editor]
+id = "generator"
+type = "utility"
+entry-point = "index.html"
+display-name = "EmojiSprite_DisplayName"
+description = "EmojiSprite_Description"
+
+[utility]
+resource-extension = "._emojisprite"
+template = "templates/default._emojisprite"
+icon = "bs-emoji-smile"
