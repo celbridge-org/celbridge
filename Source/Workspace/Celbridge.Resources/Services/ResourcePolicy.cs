@@ -132,23 +132,6 @@ public sealed class ResourcePolicy : IResourcePolicy
     {
         var rules = new List<CompiledPolicyRule>();
 
-        // The hidden project metadata folder is invisible to every consumer
-        // by design. Reads of files under it must use ILocalFileSystem with
-        // raw paths.
-        rules.Add(new CompiledPolicyRule(
-            source: PolicyRuleSource.SystemDeny,
-            pattern: ProjectConstants.CelbridgeFolder,
-            gatedActions: ResourceAction.Read | ResourceAction.Write,
-            description: "The project metadata folder is reserved by Celbridge and cannot be addressed as a resource.",
-            matcher: CompileReservedMatcher(ProjectConstants.CelbridgeFolder)));
-
-        rules.Add(new CompiledPolicyRule(
-            source: PolicyRuleSource.SystemDeny,
-            pattern: $"{ProjectConstants.CelbridgeFolder}/**",
-            gatedActions: ResourceAction.Read | ResourceAction.Write,
-            description: "Files under the project metadata folder are reserved by Celbridge.",
-            matcher: CompileReservedMatcher($"{ProjectConstants.CelbridgeFolder}/**")));
-
         rules.Add(new CompiledPolicyRule(
             source: PolicyRuleSource.SystemDeny,
             pattern: ProjectConstants.GitFolder,

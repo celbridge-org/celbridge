@@ -12,6 +12,7 @@ public static class ServiceConfiguration
         //
 
         services.AddSingleton<IProjectService, ProjectService>();
+        services.AddSingleton<IDataFolderService, DataFolderService>();
         services.AddSingleton<IAppActivationService, AppActivationService>();
         services.AddSingleton<IProjectMigrationService, ProjectMigrationService>();
         services.AddSingleton<IProjectTemplateService, ProjectTemplateService>();

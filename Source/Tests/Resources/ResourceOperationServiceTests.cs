@@ -16,7 +16,9 @@ namespace Celbridge.Tests.Resources;
 [TestFixture]
 public class ResourceOperationServiceTests
 {
+    private string _testFolder = null!;
     private string _tempFolder = null!;
+    private string _dataFolder = null!;
     private IResourceRegistry _resourceRegistry = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
     private IResourceService _resourceService = null!;
@@ -28,11 +30,15 @@ public class ResourceOperationServiceTests
     [SetUp]
     public void Setup()
     {
-        _tempFolder = Path.Combine(
+        _testFolder = Path.Combine(
             Path.GetTempPath(),
             "Celbridge",
             nameof(ResourceOperationServiceTests),
             Guid.NewGuid().ToString("N"));
+
+        // The project folder. The data folder sits outside it, as the application data folder does.
+        _tempFolder = Path.Combine(_testFolder, "Project");
+        _dataFolder = Path.Combine(_testFolder, "Data");
         Directory.CreateDirectory(_tempFolder);
 
         _resourceRegistry = Substitute.For<IResourceRegistry>();
@@ -174,6 +180,7 @@ public class ResourceOperationServiceTests
             Path.Combine(projectFolderPath, projectFileName),
             Path.GetFileNameWithoutExtension(projectFileName),
             projectFolderPath,
+            _dataFolder,
             new ProjectConfig(),
             MigrationResult.Success(),
             ConfigIsHealthy: true,
@@ -185,9 +192,9 @@ public class ResourceOperationServiceTests
     [TearDown]
     public void TearDown()
     {
-        if (Directory.Exists(_tempFolder))
+        if (Directory.Exists(_testFolder))
         {
-            Directory.Delete(_tempFolder, true);
+            Directory.Delete(_testFolder, true);
         }
     }
 
@@ -310,7 +317,7 @@ public class ResourceOperationServiceTests
         deleteResult.Value.Should().BeFalse();
         File.Exists(path).Should().BeFalse();
         _operationService.CanUndo.Should().BeFalse();
-        Directory.Exists(Path.Combine(_tempFolder, ".celbridge", "trash")).Should().BeFalse("the delete skips the trash");
+        Directory.Exists(Path.Combine(_dataFolder, "trash")).Should().BeFalse("the delete skips the trash");
     }
 
     [Test]
@@ -352,10 +359,10 @@ public class ResourceOperationServiceTests
     {
         // The trash-based delete bypasses IResourceFileSystem.DeleteAsync, so this
         // guard at the service entry is the load-bearing one for the reserved folders.
-        var metadataFolder = Path.Combine(_tempFolder, ".celbridge");
+        var metadataFolder = Path.Combine(_tempFolder, ".git");
         Directory.CreateDirectory(metadataFolder);
 
-        var deleteResult = await _operationService.DeleteAsync(new ResourceKey(".celbridge"));
+        var deleteResult = await _operationService.DeleteAsync(new ResourceKey(".git"));
 
         deleteResult.IsFailure.Should().BeTrue();
         deleteResult.HasException<PolicyDenialError>().Should().BeTrue();
@@ -366,11 +373,11 @@ public class ResourceOperationServiceTests
     public async Task CreateFileAsync_DeniesByPolicy_WhenDestinationIsReserved()
     {
         var result = await _operationService.CreateFileAsync(
-            new ResourceKey(".celbridge/state.json"), new byte[] { 0x01 });
+            new ResourceKey(".git/config"), new byte[] { 0x01 });
 
         result.IsFailure.Should().BeTrue();
         result.HasException<PolicyDenialError>().Should().BeTrue();
-        File.Exists(Path.Combine(_tempFolder, ".celbridge", "state.json")).Should().BeFalse();
+        File.Exists(Path.Combine(_tempFolder, ".git", "config")).Should().BeFalse();
     }
 
     [Test]
@@ -396,10 +403,10 @@ public class ResourceOperationServiceTests
     [Test]
     public async Task MoveAsync_DeniesByPolicy_WhenSourceIsReserved()
     {
-        var metadataFolder = Path.Combine(_tempFolder, ".celbridge");
+        var metadataFolder = Path.Combine(_tempFolder, ".git");
         Directory.CreateDirectory(metadataFolder);
 
-        var result = await _operationService.MoveAsync(new ResourceKey(".celbridge"), new ResourceKey("Archive"));
+        var result = await _operationService.MoveAsync(new ResourceKey(".git"), new ResourceKey("Archive"));
 
         result.IsFailure.Should().BeTrue();
         result.HasException<PolicyDenialError>().Should().BeTrue();
@@ -418,7 +425,7 @@ public class ResourceOperationServiceTests
     [Test]
     public void CanAddToFolder_Fails_WhenFolderIsReserved()
     {
-        var result = _operationService.CanAddToFolder(new ResourceKey(".celbridge"));
+        var result = _operationService.CanAddToFolder(new ResourceKey(".git"));
 
         result.IsFailure.Should().BeTrue();
     }

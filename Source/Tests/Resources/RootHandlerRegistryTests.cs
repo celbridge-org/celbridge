@@ -90,7 +90,7 @@ public class RootHandlerRegistryTests
     [Test]
     public void GetResourceKey_DispatchesToLongestPrefixRoot()
     {
-        var tempBacking = Path.Combine(_projectFolderPath, ".celbridge", "temp");
+        var tempBacking = Path.Combine(_projectFolderPath, "nested", "temp");
         Directory.CreateDirectory(tempBacking);
 
         _rootRegistry.RegisterRootHandler(

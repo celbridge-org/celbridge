@@ -89,13 +89,13 @@ A utility is never created as a normal project file — it does not appear in Ne
 
 ## The `utils:` root and state file naming
 
-Utility state lives under the `utils:` root (`.celbridge/utils/`). Like `temp:` and `logs:` it is hidden from the Explorer, text search, and the New File dialog, and takes no sidecars. Unlike `temp:`, it is **not wiped on load** — it is the durable home for per-project utility state. `.celbridge/` is gitignored, so the state is local to the machine and never committed. See `resource_keys` for the root itself.
+Utility state lives under the `utils:` root. Like `temp:` and `logs:` it is hidden from the Explorer, text search, and the New File dialog, and takes no sidecars. Unlike `temp:`, it is **not wiped on load** — it is the durable home for per-project utility state. The state is local to the machine and stays with the project file's path, so it is never committed, and a project that is moved, renamed or opened on another machine starts without it, as it does after Celbridge is uninstalled. Keep nothing there that the user would miss. See `resource_keys` for the root itself.
 
 A utility's backing file is `utils:{package}.{contribution}{resource-extension}` — for a scratchpad utility (package `scratchpad`, contribution `scratchpad`, extension `._scratchpad`), `utils:scratchpad.scratchpad._scratchpad`. The path is derived from the contribution identity, so no extension-uniqueness rules are needed.
 
 ## Create-if-missing
 
-The backing file does not have to exist. When a utility is created on project load and its file is absent, the host seeds it from the manifest `template` (or an empty file when `template` is omitted) with a direct filesystem write, then proceeds. This also covers session restore and doubles as the recovery path when the user deletes the `.celbridge` folder. Author the template as the utility's default state (for example a scratchpad template of `{"text":""}`).
+The backing file does not have to exist. When a utility is created on project load and its file is absent, the host seeds it from the manifest `template` (or an empty file when `template` is omitted) with a direct filesystem write, then proceeds. This also covers session restore, and a project that starts without its utility state. Author the template as the utility's default state (for example a scratchpad template of `{"text":""}`).
 
 ## Persistence
 

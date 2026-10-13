@@ -5,22 +5,25 @@ namespace Celbridge.Projects.Services;
 /// <summary>
 /// Factory for creating Project instances.
 /// </summary>
-public class ProjectFactory
+internal class ProjectFactory
 {
     private readonly ILogger<ProjectFactory> _logger;
+    private readonly IDataFolderService _dataFolderService;
     private readonly ILocalFileSystem _fileSystem;
 
     public ProjectFactory(
         ILogger<ProjectFactory> logger,
+        IDataFolderService dataFolderService,
         ILocalFileSystem fileSystem)
     {
         _logger = logger;
+        _dataFolderService = dataFolderService;
         _fileSystem = fileSystem;
     }
 
     /// <summary>
-    /// Loads a project from the specified file path: parses its config and
-    /// returns a populated Project.
+    /// Loads a project from the specified file path: parses its config, creates its data folder if it has
+    /// none, and returns a populated Project.
     /// </summary>
     public async Task<Result<IProject>> LoadAsync(string projectFilePath, MigrationResult migrationResult)
     {
@@ -34,6 +37,14 @@ public class ProjectFactory
         {
             return Result<IProject>.Fail($"Project file does not exist: '{projectFilePath}'");
         }
+
+        var dataFolderResult = await _dataFolderService.EnsureDataFolderAsync(projectFilePath);
+        if (dataFolderResult.IsFailure)
+        {
+            return Result<IProject>.Fail($"Failed to load the project: '{projectFilePath}'")
+                .WithErrors(dataFolderResult);
+        }
+        var projectDataFolderPath = dataFolderResult.Value;
 
         try
         {
@@ -75,6 +86,7 @@ public class ProjectFactory
                 projectFilePath,
                 projectName,
                 projectFolderPath,
+                projectDataFolderPath,
                 config,
                 migrationResult,
                 configIsHealthy,

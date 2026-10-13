@@ -3,7 +3,7 @@ namespace Celbridge.Resources.Services.Roots;
 /// <summary>
 /// Resource root handler for the logs: virtual root. Backs operational diagnostic
 /// output from the host, Python scripts, agents, and console session loggers
-/// under .celbridge/logs/.
+/// in the project data folder's logs/.
 /// </summary>
 public class LogsRootHandler : ResourceRootHandlerBase
 {

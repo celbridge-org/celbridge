@@ -76,10 +76,9 @@ public class DownloadsFolderPathTests
     }
 
     [TestCase(".git")]
-    [TestCase(".celbridge")]
     [TestCase(".git/downloads")]
     [TestCase("assets/.git")]
-    [TestCase("vendor/.celbridge/temp")]
+    [TestCase("vendor/.git/hooks")]
     public void AFolderCelbridgeReserves_NamesNoFolder(string path)
     {
         // Nothing can be saved there, so a downloads folder there would refuse every download.
@@ -104,7 +103,8 @@ public class DownloadsFolderPathTests
     // The resource policy is what refuses a write, so the folder check has to agree with it about every
     // path, or the settings would accept a folder that every download then fails in.
     [TestCase(".git", true)]
-    [TestCase("assets/.celbridge", true)]
+    [TestCase("assets/.git", true)]
+    [TestCase("assets/.celbridge", false)]
     [TestCase(".github", false)]
     [TestCase("assets/incoming", false)]
     public void TheReservedCheck_AgreesWithTheResourcePolicy(string path, bool isReserved)

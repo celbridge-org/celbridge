@@ -10,7 +10,7 @@ namespace Celbridge.Projects.Services;
 /// <summary>
 /// In-memory accumulator of project-load state, written out as a report document on flush.
 /// </summary>
-public sealed class ProjectLoadReporter : IProjectLoadReporter
+internal sealed class ProjectLoadReporter : IProjectLoadReporter
 {
     /// <summary>
     /// Identifies every report this reporter writes.
@@ -22,7 +22,7 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
     private readonly IReportWriter _reportWriter;
     private readonly ILogger<ProjectLoadReporter> _logger;
     private readonly ILocalizerService _localizerService;
-    private readonly IProjectService _projectService;
+    private readonly IDataFolderService _dataFolderService;
 
     private string _projectFilePath = string.Empty;
     private DateTimeOffset? _loadStartedAt;
@@ -44,12 +44,12 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
         IReportWriter reportWriter,
         ILogger<ProjectLoadReporter> logger,
         ILocalizerService localizerService,
-        IProjectService projectService)
+        IDataFolderService dataFolderService)
     {
         _reportWriter = reportWriter;
         _logger = logger;
         _localizerService = localizerService;
-        _projectService = projectService;
+        _dataFolderService = dataFolderService;
     }
 
     public void BeginLoad(string projectFilePath)
@@ -116,7 +116,17 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
         {
             var report = BuildReport();
 
-            var writeResult = await ReportLocation.WriteReportAsync(_reportWriter, report, ResolveProjectDataFolderPath());
+            // The data folder is found from the project file's path, so a load that failed before a project
+            // existed reports to the same folder as the project's other reports.
+            var dataFolderResult = await _dataFolderService.EnsureDataFolderAsync(_projectFilePath);
+            if (dataFolderResult.IsFailure)
+            {
+                _logger.LogWarning(dataFolderResult, $"Failed to write project load report for: '{_projectFilePath}'");
+                return null;
+            }
+            var projectDataFolderPath = dataFolderResult.Value;
+
+            var writeResult = await ReportLocation.WriteReportAsync(_reportWriter, report, projectDataFolderPath);
             if (writeResult.IsFailure)
             {
                 _logger.LogWarning(writeResult, $"Failed to write project load report for: '{_projectFilePath}'");
@@ -138,23 +148,6 @@ public sealed class ProjectLoadReporter : IProjectLoadReporter
             _logger.LogWarning(ex, $"Failed to write project load report for: '{_projectFilePath}'");
             return null;
         }
-    }
-
-    // The data folder a project names is only known once its config has parsed, so the location is
-    // resolved at flush rather than at BeginLoad. A load that never got as far as a project writes to
-    // the default location, which is where a project naming no data folder keeps its reports anyway.
-    private string ResolveProjectDataFolderPath()
-    {
-        var project = _projectService.CurrentProject;
-        if (project is not null
-            && string.Equals(project.ProjectFilePath, _projectFilePath, StringComparison.OrdinalIgnoreCase))
-        {
-            return project.ProjectDataFolderPath;
-        }
-
-        var projectFolderPath = Path.GetDirectoryName(_projectFilePath) ?? string.Empty;
-
-        return ProjectDataFolder.ResolvePath(projectFolderPath, string.Empty);
     }
 
     private ReportDocument BuildReport()

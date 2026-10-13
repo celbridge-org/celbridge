@@ -28,7 +28,7 @@ public class DownloadServiceTests
         Path.Combine(Path.GetTempPath(), "celbridge-download-tests", "project");
 
     private static readonly string TempFolderPath =
-        Path.Combine(ProjectFolderPath, ".celbridge", "temp");
+        Path.Combine(Path.GetTempPath(), "celbridge-download-tests", "data", "temp");
 
     private IMessengerService _messengerService = null!;
     private ICommandService _commandService = null!;

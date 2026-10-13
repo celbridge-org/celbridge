@@ -1060,7 +1060,7 @@ Open with default application instead?</value>
     <value>Hidden in Explorer</value>
   </data>
   <data name="ProjectSettings_HideSubtitle" xml:space="preserve">
-    <value>Patterns to leave out of the tree, one per line. Hidden files can still be opened and edited. The .celbridge and .git folders are always hidden.</value>
+    <value>Patterns to leave out of the tree, one per line. Hidden files can still be opened and edited. The .git folder is always hidden.</value>
   </data>
   <data name="ProjectSettings_SearchExcludeTitle" xml:space="preserve">
     <value>Excluded from search</value>

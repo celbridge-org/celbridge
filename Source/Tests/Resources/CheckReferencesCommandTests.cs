@@ -22,7 +22,9 @@ namespace Celbridge.Tests.Resources;
 [TestFixture]
 public class CheckReferencesCommandTests
 {
+    private string _testFolderPath = null!;
     private string _projectFolderPath = null!;
+    private string _dataFolderPath = null!;
     private ResourceRegistry _resourceRegistry = null!;
     private RootHandlerRegistry _rootHandlerRegistry = null!;
     private IMessengerService _messengerService = null!;
@@ -35,11 +37,15 @@ public class CheckReferencesCommandTests
     [SetUp]
     public void Setup()
     {
-        _projectFolderPath = Path.Combine(
+        _testFolderPath = Path.Combine(
             Path.GetTempPath(),
             "Celbridge",
             nameof(CheckReferencesCommandTests),
             Guid.NewGuid().ToString("N"));
+
+        // The data folder sits outside the project folder, as the application data folder does.
+        _projectFolderPath = Path.Combine(_testFolderPath, "Project");
+        _dataFolderPath = Path.Combine(_testFolderPath, "Data");
         Directory.CreateDirectory(_projectFolderPath);
 
         _messengerService = new MessengerService();
@@ -80,7 +86,7 @@ public class CheckReferencesCommandTests
 
         var project = Substitute.For<IProject>();
         project.ProjectFilePath.Returns(Path.Combine(_projectFolderPath, "Project.celbridge"));
-        project.ProjectDataFolderPath.Returns(Path.Combine(_projectFolderPath, ".celbridge"));
+        project.ProjectDataFolderPath.Returns(_dataFolderPath);
 
         _projectService = Substitute.For<IProjectService>();
         _projectService.CurrentProject.Returns(project);
@@ -103,11 +109,11 @@ public class CheckReferencesCommandTests
     [TearDown]
     public void TearDown()
     {
-        if (Directory.Exists(_projectFolderPath))
+        if (Directory.Exists(_testFolderPath))
         {
             try
             {
-                Directory.Delete(_projectFolderPath, true);
+                Directory.Delete(_testFolderPath, true);
             }
             catch
             {
@@ -258,7 +264,7 @@ public class CheckReferencesCommandTests
 
     private JsonDocument ReadWrittenReport()
     {
-        var reportsFolderPath = Path.Combine(_projectFolderPath, ".celbridge", "logs", "reports");
+        var reportsFolderPath = Path.Combine(_dataFolderPath, "logs", "reports");
         var reportFilePath = Path.Combine(reportsFolderPath, $"{CheckReferencesCommand.ReportId}.report");
 
         return JsonDocument.Parse(File.ReadAllText(reportFilePath));
@@ -345,7 +351,7 @@ public class CheckReferencesCommandTests
 
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
 
-        var reportsFolderPath = Path.Combine(_projectFolderPath, ".celbridge", "logs", "reports");
+        var reportsFolderPath = Path.Combine(_dataFolderPath, "logs", "reports");
         var reportFiles = Directory.GetFiles(reportsFolderPath, "*.report");
         reportFiles.Select(Path.GetFileName)
             .Should().Equal($"{CheckReferencesCommand.ReportId}.report");
@@ -366,7 +372,7 @@ public class CheckReferencesCommandTests
 
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
 
-        Directory.Exists(Path.Combine(_projectFolderPath, ".celbridge")).Should().BeFalse();
+        Directory.Exists(_dataFolderPath).Should().BeFalse();
 
         _commandService.DidNotReceive().Execute<IOpenDocumentCommand>(
             Arg.Any<Action<IOpenDocumentCommand>>(),

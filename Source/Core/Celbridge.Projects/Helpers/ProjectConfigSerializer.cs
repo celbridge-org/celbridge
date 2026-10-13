@@ -40,10 +40,6 @@ public static class ProjectConfigSerializer
         {
             WriteKeyValue(builder, "description", TomlStringEncoder.EncodeBasicString(celbridge.Description));
         }
-        if (!string.IsNullOrEmpty(celbridge.DataFolder))
-        {
-            WriteKeyValue(builder, "data-folder", TomlStringEncoder.EncodeBasicString(celbridge.DataFolder));
-        }
         if (celbridge.EditorAssociations.Count > 0)
         {
             WriteKeyValue(builder, "editor-associations", RenderInlineTable(celbridge.EditorAssociations));

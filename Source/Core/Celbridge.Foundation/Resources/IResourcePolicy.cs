@@ -20,7 +20,7 @@ public enum ResourceAction
 public enum PolicyRuleSource
 {
     /// <summary>
-    /// Hard-coded non-overridable deny rule (e.g. ".celbridge/" project metadata folder).
+    /// Hard-coded non-overridable deny rule (e.g. the ".git/" metadata folder).
     /// </summary>
     SystemDeny,
 }
@@ -39,13 +39,13 @@ public interface IPolicyRule
 
     /// <summary>
     /// The pattern the rule matches on, as a synthetic literal for system rules
-    /// (e.g. ".celbridge/").
+    /// (e.g. ".git/").
     /// </summary>
     string Pattern { get; }
 
     /// <summary>
     /// Which actions this rule gates. A single rule may gate multiple actions:
-    /// the .celbridge/ system-deny rule denies Read and Write together.
+    /// the .git/ system-deny rule denies Read and Write together.
     /// </summary>
     ResourceAction GatedActions { get; }
 

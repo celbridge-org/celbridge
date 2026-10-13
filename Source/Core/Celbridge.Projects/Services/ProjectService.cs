@@ -7,7 +7,7 @@ using Celbridge.Utilities;
 
 namespace Celbridge.Projects.Services;
 
-public class ProjectService : IProjectService
+internal class ProjectService : IProjectService
 {
     private const int RecentProjectsMax = 10;
 
@@ -16,6 +16,7 @@ public class ProjectService : IProjectService
     private readonly IMessengerService _messengerService;
     private readonly ProjectFactory _projectFactory;
     private readonly IProjectTemplateService _projectTemplateService;
+    private readonly IDataFolderService _dataFolderService;
     private readonly ILocalFileSystem _fileSystem;
 
     public IProject? CurrentProject { get; private set; }
@@ -26,6 +27,7 @@ public class ProjectService : IProjectService
         IMessengerService messengerService,
         ProjectFactory projectFactory,
         IProjectTemplateService projectTemplateService,
+        IDataFolderService dataFolderService,
         ILocalFileSystem fileSystem)
     {
         _logger = logger;
@@ -33,6 +35,7 @@ public class ProjectService : IProjectService
         _messengerService = messengerService;
         _projectFactory = projectFactory;
         _projectTemplateService = projectTemplateService;
+        _dataFolderService = dataFolderService;
         _fileSystem = fileSystem;
 
         _messengerService.Register<ResourceKeyChangedMessage>(this, OnResourceKeyChanged);
@@ -65,10 +68,13 @@ public class ProjectService : IProjectService
 
         var newProjectFilePath = Path.Combine(project.ProjectFolderPath, newKey);
 
+        // The data folder stays the one the workspace loaded with. The renamed file finds a new one next time
+        // it opens.
         CurrentProject = new Project(
             newProjectFilePath,
             Path.GetFileNameWithoutExtension(newKey),
             project.ProjectFolderPath,
+            project.ProjectDataFolderPath,
             project.Config,
             project.MigrationResult,
             project.ConfigIsHealthy,
@@ -135,6 +141,14 @@ public class ProjectService : IProjectService
             if (existingInfo.IsSuccess && existingInfo.Value.Kind == StorageItemKind.File)
             {
                 return Result.Fail($"Failed to create project file because the file already exists: '{projectFilePath}'");
+            }
+
+            // A project deleted from this path leaves its data folder behind. The new project must not inherit it.
+            var clearResult = await _dataFolderService.ClearDataFolderAsync(projectFilePath);
+            if (clearResult.IsFailure)
+            {
+                return Result.Fail($"Failed to create project: '{config.ProjectFilePath}'")
+                    .WithErrors(clearResult);
             }
 
             var createResult = await _projectTemplateService.CreateFromTemplateAsync(

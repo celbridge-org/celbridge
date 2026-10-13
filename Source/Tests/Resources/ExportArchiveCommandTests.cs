@@ -90,7 +90,6 @@ public class ExportArchiveCommandTests
         WriteProjectFile("Acme.celbridge");
         WriteProjectFile("readme.md");
         WriteProjectFile("Folder/nested.md");
-        WriteProjectFile(".celbridge/settings/workspace_settings.json");
         WriteProjectFile(".git/config");
 
         var archiveFilePath = CreateEmptyFile(_exportFolderPath, "Acme.zip");

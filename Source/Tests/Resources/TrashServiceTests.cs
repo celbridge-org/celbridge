@@ -15,6 +15,7 @@ namespace Celbridge.Tests.Resources;
 [TestFixture]
 public class TrashServiceTests
 {
+    private string _testFolder = null!;
     private string _tempFolder = null!;
     private IResourceRegistry _resourceRegistry = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
@@ -23,11 +24,14 @@ public class TrashServiceTests
     [SetUp]
     public void Setup()
     {
-        _tempFolder = Path.Combine(
+        _testFolder = Path.Combine(
             Path.GetTempPath(),
             "Celbridge",
             nameof(TrashServiceTests),
             Guid.NewGuid().ToString("N"));
+
+        // The project folder. The data folder sits outside it, as the application data folder does.
+        _tempFolder = Path.Combine(_testFolder, "Project");
         Directory.CreateDirectory(_tempFolder);
 
         _resourceRegistry = Substitute.For<IResourceRegistry>();
@@ -52,12 +56,11 @@ public class TrashServiceTests
         var sidecarService = new SidecarService(_workspaceWrapper);
         resourceService.Sidecars.Returns(sidecarService);
 
-        // A real Project rather than a substitute, so the trash folder resolves through the same data
-        // folder logic the running application uses.
         var project = new Project(
             Path.Combine(_tempFolder, "Acme.celbridge"),
             "Acme",
             _tempFolder,
+            Path.Combine(_testFolder, "Data"),
             new ProjectConfig(),
             MigrationResult.Success(),
             ConfigIsHealthy: true,
@@ -77,10 +80,10 @@ public class TrashServiceTests
     [TearDown]
     public void TearDown()
     {
-        if (Directory.Exists(_tempFolder))
+        if (Directory.Exists(_testFolder))
         {
-            ClearReadOnlyRecursive(_tempFolder);
-            Directory.Delete(_tempFolder, true);
+            ClearReadOnlyRecursive(_testFolder);
+            Directory.Delete(_testFolder, true);
         }
     }
 

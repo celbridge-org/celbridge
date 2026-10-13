@@ -21,7 +21,6 @@ public static class ProjectConfigParser
     private const string CelbridgeVersionKey = "celbridge-version";
     private const string ProjectVersionKey = "project-version";
     private const string DescriptionKey = "description";
-    private const string DataFolderKey = "data-folder";
     private const string DisabledPackagesKey = "disabled-packages";
     private const string EditorAssociationsKey = "editor-associations";
     private const string FeaturesKey = "features";
@@ -47,7 +46,6 @@ public static class ProjectConfigParser
         CelbridgeVersionKey,
         ProjectVersionKey,
         DescriptionKey,
-        DataFolderKey,
         DisabledPackagesKey,
         EditorAssociationsKey,
         FeaturesKey,
@@ -362,7 +360,6 @@ public static class ProjectConfigParser
             CelbridgeVersion = ReadString(celbridgeTable, CelbridgeVersionKey),
             ProjectVersion = ReadProjectVersion(celbridgeTable, entryErrors),
             Description = ReadString(celbridgeTable, DescriptionKey),
-            DataFolder = ReadDataFolder(celbridgeTable, entryErrors),
             DisabledPackages = disabledPackages,
             EditorAssociations = editorAssociations
         };
@@ -384,30 +381,6 @@ public static class ProjectConfigParser
         }
 
         return projectVersion;
-    }
-
-    // An unusable name is dropped rather than applied, leaving project data where it already sits. The
-    // value builds filesystem paths inside the reserved .celbridge/ folder, so a path is not narrowed
-    // to its last segment: a project asking for one thing and silently getting another is worse than
-    // a project told its key was dropped.
-    private static string ReadDataFolder(TomlTable celbridgeTable, List<ProjectConfigEntryError> entryErrors)
-    {
-        var dataFolder = ReadString(celbridgeTable, DataFolderKey);
-        if (string.IsNullOrEmpty(dataFolder))
-        {
-            return string.Empty;
-        }
-
-        if (!ProjectDataFolder.IsValidFolderName(dataFolder))
-        {
-            entryErrors.Add(new ProjectConfigEntryError(
-                CelbridgeSectionName,
-                $"'{DataFolderKey}' value '{dataFolder}' must be a single folder name, not a path. The key was dropped."));
-
-            return string.Empty;
-        }
-
-        return dataFolder;
     }
 
     // An unusable path is dropped rather than applied, which leaves downloads going to the default folder.

@@ -16,7 +16,7 @@ public class EmbeddedResourceReaderTests
             ProjectsAssembly, "Celbridge.Projects.Assets.GitIgnore.txt");
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Contain(".celbridge/");
+        result.Value.Should().Contain("/downloads/");
     }
 
     [Test]

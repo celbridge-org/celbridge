@@ -15,12 +15,9 @@ public static class DownloadsFolderPath
     /// </summary>
     public static ResourceKey DefaultFolder { get; } = new ResourceKey(ProjectConstants.DownloadsFolder);
 
-    // The folders Celbridge reserves, matched as the resource policy matches them: by name, at any depth.
-    private static readonly ResourcePathMatcher[] ReservedFolderMatchers =
-    {
-        ResourcePathMatcher.Compile(ProjectConstants.CelbridgeFolder),
-        ResourcePathMatcher.Compile(ProjectConstants.GitFolder),
-    };
+    // The folder Celbridge reserves, matched as the resource policy matches it: by name, at any depth.
+    private static readonly ResourcePathMatcher ReservedFolderMatcher =
+        ResourcePathMatcher.Compile(ProjectConstants.GitFolder);
 
     /// <summary>
     /// Parses a folder path, ignoring whitespace and slashes at either end. Fails for an empty path, one
@@ -40,8 +37,8 @@ public static class DownloadsFolderPath
     }
 
     /// <summary>
-    /// Whether the path names a folder inside one Celbridge reserves, .celbridge or .git at any depth. Nothing
-    /// can be saved there, so the path is not a downloads folder.
+    /// Whether the path names a .git folder at any depth, or a folder inside one. Celbridge reserves
+    /// these folders, so nothing can be saved there.
     /// </summary>
     public static bool IsReserved(string path)
     {
@@ -87,7 +84,7 @@ public static class DownloadsFolderPath
 
     private static bool IsReservedFolder(ResourceKey folder)
     {
-        return ReservedFolderMatchers.Any(matcher => matcher.IsMatch(folder.Path, isFolder: true));
+        return ReservedFolderMatcher.IsMatch(folder.Path, isFolder: true);
     }
 
     // Where the folder is: as the project spells it when it exists, the path as given when nothing is
