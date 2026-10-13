@@ -52,13 +52,7 @@ public class ResourceOperationServiceTests
 
         // Inverse mapping (used by LocalResourceFileSystem's descendant-key enumeration on
         // folder moves and deletes).
-        _resourceRegistry.GetResourceKey(Arg.Any<string>()).Returns(call =>
-        {
-            var fullPath = call.Arg<string>();
-            var relativePart = Path.GetRelativePath(_tempFolder, fullPath)
-                .Replace(Path.DirectorySeparatorChar, '/');
-            return Result<ResourceKey>.Ok(new ResourceKey(relativePart));
-        });
+        _resourceRegistry.GetResourceKey(Arg.Any<string>()).Returns(call => MapToResourceKey(call.Arg<string>()));
 
         var resourceScanner = Substitute.For<IResourceScanner>();
         var referenceIndex = ResourceReferenceIndexTestHelper.Empty();
@@ -67,6 +61,7 @@ public class ResourceOperationServiceTests
 
         var rootHandlerRegistry = Substitute.For<IRootHandlerRegistry>();
         rootHandlerRegistry.RootHandlers.Returns(new Dictionary<string, IResourceRootHandler>());
+        rootHandlerRegistry.GetResourceKey(Arg.Any<string>()).Returns(call => MapToResourceKey(call.Arg<string>()));
 
         var resourceService = Substitute.For<IResourceService>();
         _resourceService = resourceService;
@@ -160,6 +155,13 @@ public class ResourceOperationServiceTests
 
         result.IsFailure.Should().BeTrue();
         result.FirstErrorMessage.Should().Contain("must keep its .celbridge extension");
+    }
+
+    private Result<ResourceKey> MapToResourceKey(string fullPath)
+    {
+        var relativePart = Path.GetRelativePath(_tempFolder, fullPath)
+            .Replace(Path.DirectorySeparatorChar, '/');
+        return Result<ResourceKey>.Ok(new ResourceKey(relativePart));
     }
 
     // A real Project rather than a substitute, so the guard runs the actual IsProjectFile comparison
@@ -275,6 +277,74 @@ public class ResourceOperationServiceTests
         var undoResult = await _operationService.UndoAsync();
         undoResult.IsSuccess.Should().BeTrue();
         File.Exists(Path.Combine(_tempFolder, "a.txt")).Should().BeFalse();
+    }
+
+    [Test]
+    public async Task DeleteAsync_UnderTheProjectRoot_CanBeUndone()
+    {
+        var path = Path.Combine(_tempFolder, "notes.txt");
+        await File.WriteAllTextAsync(path, "notes");
+
+        var deleteResult = await _operationService.DeleteAsync(new ResourceKey("notes.txt"));
+
+        deleteResult.IsSuccess.Should().BeTrue(deleteResult.MessageChain);
+        deleteResult.Value.Should().BeTrue();
+        File.Exists(path).Should().BeFalse();
+
+        var undoResult = await _operationService.UndoAsync();
+
+        undoResult.IsSuccess.Should().BeTrue();
+        (await File.ReadAllTextAsync(path)).Should().Be("notes");
+    }
+
+    [Test]
+    public async Task DeleteAsync_OutsideTheProjectRoot_DeletesWithoutUndo()
+    {
+        // Every key resolves under the temp folder in this fixture, whatever its root.
+        var path = Path.Combine(_tempFolder, "scratch.txt");
+        await File.WriteAllTextAsync(path, "scratch");
+
+        var deleteResult = await _operationService.DeleteAsync(new ResourceKey("temp:scratch.txt"));
+
+        deleteResult.IsSuccess.Should().BeTrue(deleteResult.MessageChain);
+        deleteResult.Value.Should().BeFalse();
+        File.Exists(path).Should().BeFalse();
+        _operationService.CanUndo.Should().BeFalse();
+        Directory.Exists(Path.Combine(_tempFolder, ".celbridge", "trash")).Should().BeFalse("the delete skips the trash");
+    }
+
+    [Test]
+    public async Task DeleteAsync_FolderThatHoldsALink_DeletesWithoutUndo()
+    {
+        var targetPath = Path.Combine(_tempFolder, "target.txt");
+        await File.WriteAllTextAsync(targetPath, "target");
+        var folderPath = Path.Combine(_tempFolder, "folder");
+        Directory.CreateDirectory(folderPath);
+        await File.WriteAllTextAsync(Path.Combine(folderPath, "plain.txt"), "plain");
+        File.CreateSymbolicLink(Path.Combine(folderPath, "link.txt"), targetPath);
+
+        var deleteResult = await _operationService.DeleteAsync(new ResourceKey("folder"));
+
+        deleteResult.IsSuccess.Should().BeTrue(deleteResult.MessageChain);
+        deleteResult.Value.Should().BeFalse();
+        Directory.Exists(folderPath).Should().BeFalse();
+        (await File.ReadAllTextAsync(targetPath)).Should().Be("target", "deleting a link leaves what it points at");
+        _operationService.CanUndo.Should().BeFalse();
+    }
+
+    [Test]
+    public async Task CreateAndCopy_OutsideTheProjectRoot_AreNotRecorded()
+    {
+        var createResult = await _operationService.CreateFileAsync(new ResourceKey("temp:created.txt"), new byte[] { 0x01 });
+        createResult.IsSuccess.Should().BeTrue(createResult.MessageChain);
+
+        await File.WriteAllTextAsync(Path.Combine(_tempFolder, "source.txt"), "source");
+        var copyResult = await _operationService.CopyAsync(new ResourceKey("source.txt"), new ResourceKey("temp:copied.txt"));
+        copyResult.IsSuccess.Should().BeTrue(copyResult.MessageChain);
+
+        File.Exists(Path.Combine(_tempFolder, "created.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(_tempFolder, "copied.txt")).Should().BeTrue();
+        _operationService.CanUndo.Should().BeFalse();
     }
 
     [Test]

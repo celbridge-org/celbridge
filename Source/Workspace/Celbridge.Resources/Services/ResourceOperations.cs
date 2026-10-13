@@ -8,9 +8,18 @@ namespace Celbridge.Resources.Services;
 /// </summary>
 internal abstract class FileOperation
 {
+    // Whether the operation goes on the undo stack.
+    public abstract bool IsUndoable { get; }
+
     public abstract Task<Result> ExecuteAsync();
     public abstract Task<Result> UndoAsync();
     public virtual Task<Result> RedoAsync() => ExecuteAsync();
+
+    // The other roots hold Celbridge's own files rather than the user's.
+    protected static bool IsUnderProjectRoot(ResourceKey resource)
+    {
+        return resource.Root == ResourceKey.DefaultRoot;
+    }
 }
 
 /// <summary>
@@ -21,6 +30,8 @@ internal abstract class FileOperation
 internal class FileOperationBatch : FileOperation
 {
     public List<FileOperation> Operations { get; } = new();
+
+    public override bool IsUndoable => Operations.All(operation => operation.IsUndoable);
 
     public override async Task<Result> ExecuteAsync()
     {
@@ -79,6 +90,8 @@ internal class CreateOperation : FileOperation
         _content = null;
         _resourceFileSystem = resourceFileSystem;
     }
+
+    public override bool IsUndoable => IsUnderProjectRoot(_resource);
 
     public override async Task<Result> ExecuteAsync()
     {
@@ -147,6 +160,9 @@ internal class CopyOperation : FileOperation
         _resourceFileSystem = resourceFileSystem;
     }
 
+    // A copy changes only its destination.
+    public override bool IsUndoable => IsUnderProjectRoot(_dest);
+
     public override async Task<Result> ExecuteAsync()
     {
         var copyResult = await _resourceFileSystem.CopyAsync(_source, _dest);
@@ -191,6 +207,9 @@ internal class MoveOperation : FileOperation
         _resourceFileSystem = resourceFileSystem;
     }
 
+    // The gateway moves within one root, so the destination's root is the source's too.
+    public override bool IsUndoable => IsUnderProjectRoot(_dest);
+
     public override async Task<Result> ExecuteAsync()
     {
         var moveResult = await _resourceFileSystem.MoveAsync(_source, _dest);
@@ -229,6 +248,8 @@ internal class DeleteOperation : FileOperation
         _resource = resource;
         _trashService = trashService;
     }
+
+    public override bool IsUndoable => IsUnderProjectRoot(_resource);
 
     public override async Task<Result> ExecuteAsync()
     {
@@ -293,6 +314,8 @@ internal class ImportExternalOperation : FileOperation
         _fileSystem = fileSystem;
         _logger = logger;
     }
+
+    public override bool IsUndoable => IsUnderProjectRoot(_dest);
 
     public override async Task<Result> ExecuteAsync()
     {

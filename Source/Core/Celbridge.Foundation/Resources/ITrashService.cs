@@ -19,17 +19,37 @@ public record TrashEntry(
     IReadOnlyList<ResourceKey> DescendantKeys);
 
 /// <summary>
-/// The workspace-scoped soft-delete service. Moves resources into the workspace
-/// trash folder, restores them on undo, and purges them when an undo operation
-/// is evicted from the undo stack or the redo stack is cleared. Owns the trash
-/// folder layout and the read-only attribute handling for delete-as-override.
+/// Attached to the failed Result when the trash refuses a resource that is a link,
+/// or a folder that holds one.
+/// </summary>
+public sealed class ResourceContainsLinkError : Exception
+{
+    /// <summary>
+    /// The path of the link the trash found.
+    /// </summary>
+    public string LinkPath { get; }
+
+    public ResourceContainsLinkError(string linkPath)
+        : base($"The trash does not take links: '{linkPath}'")
+    {
+        LinkPath = linkPath;
+    }
+}
+
+/// <summary>
+/// The workspace-scoped soft-delete service for resources under the project root.
+/// Moves resources into the workspace trash folder, restores them on undo, and
+/// purges them when an undo operation is evicted from the undo stack or the redo
+/// stack is cleared. Owns the trash folder layout and the read-only attribute
+/// handling for delete-as-override.
 /// </summary>
 public interface ITrashService
 {
     /// <summary>
-    /// Moves the resource into the workspace trash folder. Cascades the paired
-    /// sidecar. Returns a TrashEntry that uniquely identifies the soft-delete
-    /// for later restore or purge.
+    /// Moves the resource, which must be under the project root, into the workspace
+    /// trash folder. Cascades the paired sidecar. Returns a TrashEntry that uniquely
+    /// identifies the soft-delete for later restore or purge. A link, or a folder
+    /// that holds one, is refused with a ResourceContainsLinkError and left in place.
     /// </summary>
     Task<Result<TrashEntry>> MoveToTrashAsync(ResourceKey resource);
 

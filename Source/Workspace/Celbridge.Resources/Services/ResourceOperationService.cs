@@ -185,10 +185,10 @@ public class ResourceOperationService : IResourceOperationService
         return Result.Fail(error.Message).WithException(error);
     }
 
-    public async Task<Result> DeleteAsync(ResourceKey resource)
+    public async Task<Result<bool>> DeleteAsync(ResourceKey resource)
     {
         // The soft-delete path bypasses IResourceFileSystem because TrashService
-        // moves files into .celbridge/trash/ directly through the gateway. The
+        // moves files into the trash folder directly through the gateway. The
         // policy gate that lives on IResourceFileSystem.DeleteAsync would never
         // run, so the check is repeated here at the service entry.
         var infoResult = await ResourceFileSystem.GetInfoAsync(resource);
@@ -198,18 +198,43 @@ public class ResourceOperationService : IResourceOperationService
         var policyGateResult = Policy.Evaluate(resource, ResourceAction.Write, isFolder);
         if (policyGateResult.IsFailure)
         {
-            return policyGateResult;
+            return Result.Fail(policyGateResult);
         }
 
         var operation = new DeleteOperation(resource, TrashService);
-        var result = await operation.ExecuteAsync();
-
-        if (result.IsSuccess)
+        if (!operation.IsUndoable)
         {
-            AddOperation(operation);
+            return await DeleteWithoutUndoAsync(resource);
         }
 
-        return result;
+        var trashResult = await operation.ExecuteAsync();
+
+        // The trash takes no link, so a link or a folder that holds one is deleted outright.
+        if (trashResult.HasException<ResourceContainsLinkError>())
+        {
+            return await DeleteWithoutUndoAsync(resource);
+        }
+
+        if (trashResult.IsFailure)
+        {
+            return Result.Fail(trashResult);
+        }
+
+        AddOperation(operation);
+
+        return true;
+    }
+
+    // A plain delete through the gateway, which keeps nothing for undo.
+    private async Task<Result<bool>> DeleteWithoutUndoAsync(ResourceKey resource)
+    {
+        var deleteResult = await ResourceFileSystem.DeleteAsync(resource);
+        if (deleteResult.IsFailure)
+        {
+            return Result.Fail(deleteResult);
+        }
+
+        return false;
     }
 
     public async Task<WritableState> GetWritableStateAsync(ResourceKey resource)
@@ -429,6 +454,11 @@ public class ResourceOperationService : IResourceOperationService
 
     private void AddOperation(FileOperation operation)
     {
+        if (!operation.IsUndoable)
+        {
+            return;
+        }
+
         if (_currentBatch != null)
         {
             _currentBatch.Operations.Add(operation);

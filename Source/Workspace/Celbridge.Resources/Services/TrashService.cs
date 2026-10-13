@@ -38,6 +38,12 @@ public sealed class TrashService : ITrashService
 
     public async Task<Result<TrashEntry>> MoveToTrashAsync(ResourceKey resource)
     {
+        // The trash lays an item out by its path relative to the project folder.
+        if (resource.Root != ResourceKey.DefaultRoot)
+        {
+            return Result<TrashEntry>.Fail($"Only resources under the project root go to the trash: '{resource}'");
+        }
+
         var resolveResult = ResourceRegistry.ResolveResourcePath(resource);
         if (resolveResult.IsFailure)
         {
@@ -61,6 +67,11 @@ public sealed class TrashService : ITrashService
             return Result<TrashEntry>.Fail($"Resource does not exist: '{resource}'");
         }
 
+        if (info.Attributes.HasFlag(FileSystemAttributes.ReparsePoint))
+        {
+            return RefuseLink(originalPath);
+        }
+
         var trashId = Guid.NewGuid().ToString();
         var relativePath = Path.GetRelativePath(ResourceRegistry.ProjectFolderPath, originalPath);
         var trashBasePath = Path.Combine(TrashFolderPath, trashId);
@@ -76,8 +87,7 @@ public sealed class TrashService : ITrashService
             moveResult = await MoveFolderToTrashAsync(resource, originalPath, trashPath, trashBasePath, trashId);
         }
 
-        if (moveResult.IsSuccess
-            && resource.Root == ResourceKey.DefaultRoot)
+        if (moveResult.IsSuccess)
         {
             // Announce the soft-delete synchronously so subscribers update before
             // control returns. The watcher's own delete event still arrives later
@@ -189,6 +199,11 @@ public sealed class TrashService : ITrashService
             }
             foreach (var descendant in descendantsResult.Value)
             {
+                if (descendant.Attributes.HasFlag(FileSystemAttributes.ReparsePoint))
+                {
+                    return RefuseLink(descendant.FullPath);
+                }
+
                 var keyResult = ResourceRegistry.GetResourceKey(descendant.FullPath);
                 if (keyResult.IsFailure)
                 {
@@ -349,6 +364,15 @@ public sealed class TrashService : ITrashService
         }
 
         return Result.Ok();
+    }
+
+    // A move to the trash on another volume copies the item, and a copy replaces a link with what it
+    // points at. So the trash takes no link, and the item stays in place.
+    private static Result<TrashEntry> RefuseLink(string linkPath)
+    {
+        var error = new ResourceContainsLinkError(linkPath);
+
+        return Result<TrashEntry>.Fail(error.Message).WithException(error);
     }
 
     // Move a file into the trash subtree, creating any missing parent folders

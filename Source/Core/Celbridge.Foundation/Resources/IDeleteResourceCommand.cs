@@ -94,18 +94,20 @@ public enum DeleteResourceOutcome
 }
 
 /// <summary>
-/// Per-resource result entry inside a DeleteCommandResult. The three fields are
+/// Per-resource result entry inside a DeleteCommandResult. The fields are
 /// semantically independent: Outcome carries the typed result of deleting the
 /// parent resource; Sidecar carries the outcome of the best-effort .cel
 /// cascade; FailureMessage carries the human-readable diagnostic for the
 /// parent failure (null when Outcome is Deleted). Sidecar cascade failures are
 /// best-effort and surface through Sidecar + the host log, not through
-/// FailureMessage.
+/// FailureMessage. Undoable is true when an undo restores the deleted resource,
+/// and false whenever Outcome is not Deleted.
 /// </summary>
 public record DeleteResourceResult(
     ResourceKey Resource,
     DeleteResourceOutcome Outcome,
     SidecarOutcome Sidecar,
+    bool Undoable,
     string? FailureMessage);
 
 /// <summary>

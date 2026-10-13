@@ -1,6 +1,6 @@
 # explorer_move
 
-Moves a single resource (file or folder) to a new location in the project tree. The original is removed. This is also the silent rename path — pass a destination with a different name in the same parent folder to rename. Folder moves are recursive. The move is recorded on the explorer undo stack.
+Moves a single resource (file or folder) to a new location in the project tree. The original is removed. This is also the silent rename path — pass a destination with a different name in the same parent folder to rename. Folder moves are recursive. A move under `project:` is recorded on the explorer undo stack.
 
 A paired `.cel` sidecar moves alongside its parent. Every quoted `"project:<source>"` reference to the moved resource (and, for folder moves, every `"project:<source>/<child>"` reference under it) is rewritten in place across the project, so other files keep pointing at the new location. References must be in the canonical quoted form to participate — see [resource_keys](../Concepts/resource_keys.md).
 

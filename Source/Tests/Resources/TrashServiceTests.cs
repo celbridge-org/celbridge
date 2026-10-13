@@ -213,6 +213,59 @@ public class TrashServiceTests
     }
 
     [Test]
+    public async Task MoveToTrashAsync_FolderThatHoldsALink_IsRefusedAndLeftInPlace()
+    {
+        var targetPath = Path.Combine(_tempFolder, "target.txt");
+        await File.WriteAllTextAsync(targetPath, "target");
+
+        var resource = new ResourceKey("folder");
+        var folderPath = Path.Combine(_tempFolder, "folder");
+        Directory.CreateDirectory(folderPath);
+        var linkPath = Path.Combine(folderPath, "link.txt");
+        File.CreateSymbolicLink(linkPath, targetPath);
+        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(folderPath));
+
+        var result = await _trashService.MoveToTrashAsync(resource);
+
+        result.IsFailure.Should().BeTrue();
+        result.HasException<ResourceContainsLinkError>().Should().BeTrue();
+        new FileInfo(linkPath).LinkTarget.Should().Be(targetPath);
+        File.Exists(targetPath).Should().BeTrue();
+    }
+
+    [Test]
+    public async Task MoveToTrashAsync_Link_IsRefusedAndLeftInPlace()
+    {
+        var targetPath = Path.Combine(_tempFolder, "target.txt");
+        await File.WriteAllTextAsync(targetPath, "target");
+
+        var resource = new ResourceKey("link.txt");
+        var linkPath = Path.Combine(_tempFolder, "link.txt");
+        File.CreateSymbolicLink(linkPath, targetPath);
+        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(linkPath));
+
+        var result = await _trashService.MoveToTrashAsync(resource);
+
+        result.IsFailure.Should().BeTrue();
+        result.HasException<ResourceContainsLinkError>().Should().BeTrue();
+        new FileInfo(linkPath).LinkTarget.Should().Be(targetPath);
+    }
+
+    [Test]
+    public async Task MoveToTrashAsync_ResourceOutsideTheProjectRoot_IsRefused()
+    {
+        var resource = new ResourceKey("temp:scratch.txt");
+        var path = Path.Combine(_tempFolder, "scratch.txt");
+        await File.WriteAllTextAsync(path, "scratch");
+        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
+
+        var result = await _trashService.MoveToTrashAsync(resource);
+
+        result.IsFailure.Should().BeTrue();
+        File.Exists(path).Should().BeTrue();
+    }
+
+    [Test]
     public async Task RestoreFromTrashAsync_File_RestoresOriginalContent()
     {
         var resource = new ResourceKey("restore.txt");

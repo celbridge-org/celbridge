@@ -27,4 +27,8 @@
     <ProjectReference Include="..\..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Celbridge.Tests" />
+  </ItemGroup>
+
 </Project>

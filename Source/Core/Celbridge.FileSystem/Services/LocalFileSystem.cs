@@ -254,9 +254,24 @@ public sealed class LocalFileSystem : ILocalFileSystem
             _logger,
             operationLabel: "Move",
             path: source,
-            operation: () => RunOnWorkerThreadAsync(() => Directory.Move(source, dest))).ConfigureAwait(false);
+            operation: () => RunOnWorkerThreadAsync(() => Directory.Move(source, dest)),
+            shouldRetry: exception => !CrossVolumeFolderMove.IsCrossVolumeFailure(exception, source, dest)).ConfigureAwait(false);
 
-        return runResult.IsSuccess ? Result.Ok() : Result.Fail(runResult);
+        if (runResult.IsSuccess)
+        {
+            return Result.Ok();
+        }
+
+        var renameException = runResult.FirstException;
+        if (renameException is null
+            || !CrossVolumeFolderMove.IsCrossVolumeFailure(renameException, source, dest))
+        {
+            return Result.Fail(runResult);
+        }
+
+        // A rename cannot reach another volume, so the folder is copied there. The copy catches its own
+        // exceptions, so it needs no rethrow from the worker.
+        return await Task.Run(() => CrossVolumeFolderMove.Move(source, dest, _logger)).ConfigureAwait(false);
     }
 
     public async Task<Result> CopyFileAsync(string source, string dest)

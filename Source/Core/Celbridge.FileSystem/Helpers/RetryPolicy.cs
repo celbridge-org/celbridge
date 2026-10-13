@@ -1,4 +1,4 @@
-namespace Celbridge.FileSystem.Services;
+namespace Celbridge.FileSystem;
 
 /// <summary>
 /// Bounded-retry policy for the OS-level transient failure modes IO operations
