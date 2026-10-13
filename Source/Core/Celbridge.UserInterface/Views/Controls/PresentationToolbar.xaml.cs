@@ -11,7 +11,7 @@ namespace Celbridge.UserInterface.Views;
 /// in the View menu instead, so the strip is a non-interactive hint that points there and is shown only
 /// when Presentation mode is entered.
 /// </summary>
-public sealed partial class FullscreenToolbar : UserControl
+public sealed partial class PresentationToolbar : UserControl
 {
     private const double TriggerZoneHeight = 4; // pixels from top to trigger showing the toolbar
     private const double AutoHideDelay = 1.5; // seconds
@@ -38,14 +38,14 @@ public sealed partial class FullscreenToolbar : UserControl
         get
         {
             var stringKey = _isHintOnly
-                ? "FullScreenToolbar_ExitPresentationHint"
-                : "FullScreenToolbar_ExitPresentation";
+                ? "PresentationToolbar_ExitPresentationHint"
+                : "PresentationToolbar_ExitPresentation";
 
             return _stringLocalizer.GetString(stringKey);
         }
     }
 
-    public FullscreenToolbar()
+    public PresentationToolbar()
     {
         this.InitializeComponent();
 
@@ -84,11 +84,11 @@ public sealed partial class FullscreenToolbar : UserControl
         // Track mouse entering the trigger zone (this works even over WebView2)
         TriggerZone.PointerEntered += TriggerZone_PointerEntered;
 
-        Loaded += FullscreenToolbar_Loaded;
-        Unloaded += FullscreenToolbar_Unloaded;
+        Loaded += PresentationToolbar_Loaded;
+        Unloaded += PresentationToolbar_Unloaded;
     }
 
-    private void FullscreenToolbar_Loaded(object sender, RoutedEventArgs e)
+    private void PresentationToolbar_Loaded(object sender, RoutedEventArgs e)
     {
         // Register for layout mode changes
         _messengerService.Register<LayoutModeChangedMessage>(this, OnLayoutModeChanged);
@@ -107,14 +107,14 @@ public sealed partial class FullscreenToolbar : UserControl
         }
     }
 
-    private void FullscreenToolbar_Unloaded(object sender, RoutedEventArgs e)
+    private void PresentationToolbar_Unloaded(object sender, RoutedEventArgs e)
     {
         _hideTimer.Stop();
         ToolbarContainer.PointerEntered -= ToolbarContainer_PointerEntered;
         ToolbarContainer.PointerExited -= ToolbarContainer_PointerExited;
         TriggerZone.PointerEntered -= TriggerZone_PointerEntered;
-        Loaded -= FullscreenToolbar_Loaded;
-        Unloaded -= FullscreenToolbar_Unloaded;
+        Loaded -= PresentationToolbar_Loaded;
+        Unloaded -= PresentationToolbar_Unloaded;
         _messengerService.UnregisterAll(this);
     }
 
@@ -206,7 +206,7 @@ public sealed partial class FullscreenToolbar : UserControl
         // Reset interval to normal
         _hideTimer.Interval = _autoHideDelay;
 
-        // Only hide if not hovering over toolbar and still in fullscreen mode
+        // Only hide if not hovering over toolbar and still in Presentation mode
         if (_isToolbarHidden && !_isMouseOverToolbar)
         {
             HideToolbar(animate: true);

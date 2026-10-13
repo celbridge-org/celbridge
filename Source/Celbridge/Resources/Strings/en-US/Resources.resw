@@ -1387,7 +1387,7 @@ Open with default application instead?</value>
     <value>System</value>
   </data>
   <data name="LayoutToolbar_FullScreenModeTooltip" xml:space="preserve">
-    <value>Maximize the window for more working space</value>
+    <value>Make the window fill the screen</value>
   </data>
   <data name="LayoutToolbar_LayoutModeLabel" xml:space="preserve">
     <value>Layout</value>
@@ -1410,6 +1410,9 @@ Open with default application instead?</value>
   <data name="LayoutToolbar_PresentationModeTooltip" xml:space="preserve">
     <value>Show only the document content</value>
   </data>
+  <data name="LayoutToolbar_PresentationModeFullScreenTooltip" xml:space="preserve">
+    <value>Show only the document content, full screen</value>
+  </data>
   <data name="LayoutToolbar_BottomPanelLabel" xml:space="preserve">
     <value>Bottom Panel</value>
   </data>
@@ -1425,10 +1428,10 @@ Open with default application instead?</value>
   <data name="LayoutToolbar_AlignBottomPanelJustifyTooltip" xml:space="preserve">
     <value>Extend the bottom panel across the full width</value>
   </data>
-  <data name="FullScreenToolbar_ExitPresentation" xml:space="preserve">
+  <data name="PresentationToolbar_ExitPresentation" xml:space="preserve">
     <value>Exit Presentation</value>
   </data>
-  <data name="FullScreenToolbar_ExitPresentationHint" xml:space="preserve">
+  <data name="PresentationToolbar_ExitPresentationHint" xml:space="preserve">
     <value>To exit Presentation mode, choose another layout from the View menu</value>
   </data>
   <data name="TitleBar_MainMenuTooltip" xml:space="preserve">

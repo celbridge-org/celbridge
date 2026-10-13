@@ -1,8 +1,8 @@
 namespace Celbridge.UserInterface;
 
 /// <summary>
-/// Manages the window's layout mode and fullscreen state. The two are independent: the layout mode
-/// controls which chrome is visible, while fullscreen controls whether the window fills the screen.
+/// Manages the window's layout mode and full screen state. The layout mode sets which chrome is visible, and
+/// full screen sets whether the window fills the screen. Presentation also turns full screen on, except on macOS.
 /// </summary>
 public interface IWindowModeService
 {

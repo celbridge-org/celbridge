@@ -1,8 +1,7 @@
 namespace Celbridge.UserInterface;
 
 /// <summary>
-/// The workspace chrome level, from full editor to content-only. Orthogonal to fullscreen: a layout
-/// mode can be applied whether or not the window is filling the screen.
+/// The workspace chrome level, from full editor to content-only.
 /// </summary>
 public enum LayoutMode
 {
@@ -20,14 +19,14 @@ public enum LayoutMode
 
     /// <summary>
     /// As Focus, with the application toolbar and document tabs hidden as well, leaving only the
-    /// document content.
+    /// document content. Except on macOS, entering Presentation turns full screen on, and leaving it turns full
+    /// screen off again. If full screen was already on, it stays on.
     /// </summary>
     Presentation
 }
 
 /// <summary>
-/// A requested change to the window layout. Layout-mode transitions and the fullscreen toggle are
-/// independent: changing one does not change the other.
+/// A requested change to the window layout.
 /// </summary>
 public enum LayoutTransition
 {
@@ -53,7 +52,8 @@ public enum LayoutTransition
 
     /// <summary>
     /// Toggle the window's fullscreen state. Used on platforms without native window-chrome fullscreen
-    /// controls. On macOS the OS provides fullscreen through the native title bar.
+    /// controls. On macOS the OS provides fullscreen through the native title bar. Turning full screen off
+    /// during Presentation switches to Focus.
     /// </summary>
     ToggleFullScreen,
 

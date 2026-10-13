@@ -100,10 +100,9 @@
 
                         <MenuFlyoutSeparator/>
 
-                        <!-- Full Screen sits with Reset Layout rather than with the layout modes, which it is
-                             orthogonal to. It keeps toggle chrome so the accent fill shows while full screen
-                             is on. Windows only; macOS uses the native title-bar control, so this is
-                             collapsed in code-behind. -->
+                        <!-- Full Screen is a toggle button, so it shows the accent fill while full screen is on.
+                             The code-behind collapses it on macOS, where the title bar has its own full screen
+                             button. -->
                         <ToggleButton x:Name="FullScreenToggle"
                                       Click="FullScreenToggle_Click"
                                       HorizontalAlignment="Stretch">

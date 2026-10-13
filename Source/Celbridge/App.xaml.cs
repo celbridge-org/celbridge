@@ -32,7 +32,7 @@ public partial class App : Application
     protected Window? MainWindow { get; private set; }
     protected IHost? Host { get; private set; }
 
-    private FullscreenToolbar? _fullscreenToolbar;
+    private PresentationToolbar? _presentationToolbar;
 
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
@@ -207,19 +207,19 @@ public partial class App : Application
             // Create a Frame to act as the navigation context and navigate to the first page
             var rootFrame = new Frame();
 
-            // Create a root container Grid to hold both the Frame and the FullscreenToolbar overlay
+            // Create a root container Grid to hold both the Frame and the PresentationToolbar overlay
             rootGrid = new Grid
             {
                 Name = "RootContainer"
             };
             rootGrid.Children.Add(rootFrame);
 
-            // Add the Fullscreen toolbar overlay (appears in fullscreen modes). The control and its
+            // Add the Presentation toolbar overlay (appears in Presentation mode). The control and its
             // pointer-tracking use only cross-platform APIs, so it runs on every head.
-            _fullscreenToolbar = new FullscreenToolbar();
-            rootGrid.Children.Add(_fullscreenToolbar);
+            _presentationToolbar = new PresentationToolbar();
+            rootGrid.Children.Add(_presentationToolbar);
 
-            // Track mouse movement for Fullscreen toolbar
+            // Track mouse movement for the Presentation toolbar
             rootGrid.PointerMoved += OnRootGrid_PointerMoved;
 
             // Place the grid in the current Window
@@ -384,10 +384,10 @@ public partial class App : Application
 
     private void OnRootGrid_PointerMoved(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
     {
-        if (_fullscreenToolbar != null && MainWindow?.Content != null)
+        if (_presentationToolbar != null && MainWindow?.Content != null)
         {
             var position = e.GetCurrentPoint(MainWindow.Content).Position;
-            _fullscreenToolbar.OnPointerMoved(position.Y);
+            _presentationToolbar.OnPointerMoved(position.Y);
         }
     }
 
