@@ -472,18 +472,17 @@ public class LayoutManager : IWindowModeService, ILayoutService
 
         _isFullScreen = isFullScreen;
 
+        // Switch to Focus if full screen ends during Presentation, for example when the user drags the window
+        // down from the top of the screen. Focus brings the toolbar back before the window leaves full screen.
+        if (!isFullScreen
+            && _layoutMode == LayoutMode.Presentation)
+        {
+            TransitionToLayoutMode(LayoutMode.Focus);
+        }
+
         var message = new FullScreenChangedMessage(isFullScreen);
         _messengerService.Send(message);
 
         _logger.LogDebug($"Fullscreen changed: {isFullScreen}");
-
-        // Switch to Focus if full screen ends during Presentation, for example when the user drags the window
-        // down from the top of the screen. Focus shows the toolbar again.
-        if (!isFullScreen
-            && _layoutMode == LayoutMode.Presentation)
-        {
-            _presentationEnteredFullScreen = false;
-            TransitionToLayoutMode(LayoutMode.Focus);
-        }
     }
 }

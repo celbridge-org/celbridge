@@ -203,6 +203,23 @@ public class LayoutManagerTests
         _layoutManager.IsFullScreen.Should().BeFalse();
     }
 
+    [TestCase(LayoutTransition.Default, LayoutMode.Default)]
+    [TestCase(LayoutTransition.ToggleFullScreen, LayoutMode.Focus)]
+    public void PresentationFullScreen_ChangesTheWindowOutsideTheChrome(LayoutTransition leave, LayoutMode modeAfter)
+    {
+        var changes = new List<string>();
+        var recipient = new object();
+        _messengerService.Register<FullScreenChangedMessage>(recipient, (r, m) => changes.Add($"FullScreen {m.IsFullScreen}"));
+        _messengerService.Register<LayoutModeChangedMessage>(recipient, (r, m) => changes.Add($"Mode {m.LayoutMode}"));
+
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Presentation);
+        _layoutManager.RequestLayoutTransition(leave);
+
+        // The window fills the screen before the chrome hides, and the chrome comes back before the window leaves
+        // full screen.
+        changes.Should().Equal("FullScreen True", "Mode Presentation", $"Mode {modeAfter}", "FullScreen False");
+    }
+
     [Test]
     public void TransitionToDefault_FromFocus_RestoresThePreferredAreas()
     {
