@@ -3,7 +3,7 @@ namespace Celbridge.FileSystem;
 /// <summary>
 /// Moves a folder to another volume, where a rename cannot reach, by copying the tree and then deleting
 /// the source. A tree that holds a link is refused before anything is copied, since a copy would replace
-/// the link with what it points at.
+/// the link with what it points at. A move that fails leaves the source whole.
 /// </summary>
 internal static class CrossVolumeFolderMove
 {
@@ -76,31 +76,52 @@ internal static class CrossVolumeFolderMove
         }
         catch (Exception copyException)
         {
-            // Removing the partial copy leaves the source as the only copy, as it was before the move.
-            try
-            {
-                DeleteFolderTreeIfExists(dest);
-            }
-            catch (Exception cleanupException)
-            {
-                logger.LogWarning(cleanupException, $"Failed to remove the partial copy of a folder moved to another volume: '{dest}'");
-            }
+            RemoveCopy(dest, logger);
 
             return Result.Fail($"Failed to copy folder to another volume: '{source}' to '{dest}'")
                 .WithException(copyException);
         }
 
-        try
+        // The source is renamed aside on its own volume, then deleted. A delete could fail partway and leave
+        // the source half deleted. The rename fails whole instead, as when another program has a file open.
+        var asidePath = GetAsidePath(source);
+        var asideResult = RetryPolicy.Run(logger, "Move", source, () => Directory.Move(source, asidePath));
+        if (asideResult.IsFailure)
         {
-            DeleteFolderTreeIfExists(source);
+            RemoveCopy(dest, logger);
+
+            return Result.Fail($"Failed to move folder to another volume because the source could not be moved: '{source}'")
+                .WithErrors(asideResult);
         }
-        catch (Exception ex)
+
+        // The folder is whole at its destination by now, so a delete that fails only leaves the old copy behind.
+        var deleteResult = RetryPolicy.Run(logger, "Delete", asidePath, () => DeleteFolderTreeIfExists(asidePath));
+        if (deleteResult.IsFailure)
         {
-            return Result.Fail($"Copied folder to another volume but failed to delete the source: '{source}'")
-                .WithException(ex);
+            logger.LogWarning(deleteResult, $"Moved folder to another volume but failed to delete the source, which is left at: '{asidePath}'");
         }
 
         return Result.Ok();
+    }
+
+    // Removing the copy leaves the source as the only copy, as it was before the move.
+    private static void RemoveCopy(string dest, ILogger logger)
+    {
+        var removeResult = RetryPolicy.Run(logger, "Delete", dest, () => DeleteFolderTreeIfExists(dest));
+        if (removeResult.IsFailure)
+        {
+            logger.LogWarning(removeResult, $"Failed to remove the copy of a folder moved to another volume: '{dest}'");
+        }
+    }
+
+    // A sibling of the source keeps the rename on the source's volume. The name does not depend on the
+    // source's, so a long name cannot push it past the file system's limit.
+    private static string GetAsidePath(string source)
+    {
+        var fullSourcePath = System.IO.Path.TrimEndingDirectorySeparator(System.IO.Path.GetFullPath(source));
+        var parentPath = System.IO.Path.GetDirectoryName(fullSourcePath)!;
+
+        return System.IO.Path.Combine(parentPath, $".moving-{Guid.NewGuid():N}");
     }
 
     // The path of the first link in the tree, or null when it holds none. The walk never enters a link.

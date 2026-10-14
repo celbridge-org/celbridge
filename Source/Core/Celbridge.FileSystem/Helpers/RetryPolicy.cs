@@ -56,4 +56,48 @@ internal static class RetryPolicy
         return Result.Fail($"Failed to {operationLabel.ToLowerInvariant()} file after {MaxAttempts} attempts: '{path}'")
             .WithException(lastException!);
     }
+
+    /// <summary>
+    /// The blocking form of RunAsync, for work that already runs on a worker thread.
+    /// </summary>
+    public static Result Run(
+        ILogger logger,
+        string operationLabel,
+        string path,
+        Action operation)
+    {
+        IOException? lastException = null;
+
+        for (var attempt = 1; attempt <= MaxAttempts; attempt++)
+        {
+            try
+            {
+                operation();
+                if (attempt > 1)
+                {
+                    logger.LogWarning($"{operationLabel} succeeded for '{path}' on attempt {attempt} of {MaxAttempts} after transient IO failures");
+                }
+
+                return Result.Ok();
+            }
+            catch (IOException ex)
+            {
+                lastException = ex;
+                if (attempt < MaxAttempts)
+                {
+                    var delay = BaseRetryDelayMs * attempt;
+                    logger.LogWarning(ex, $"{operationLabel} attempt {attempt} failed for '{path}', retrying after {delay}ms");
+                    Thread.Sleep(delay);
+                }
+            }
+            catch (Exception ex)
+            {
+                return Result.Fail($"Failed to {operationLabel.ToLowerInvariant()} file: '{path}'")
+                    .WithException(ex);
+            }
+        }
+
+        return Result.Fail($"Failed to {operationLabel.ToLowerInvariant()} file after {MaxAttempts} attempts: '{path}'")
+            .WithException(lastException!);
+    }
 }

@@ -31,7 +31,8 @@ internal class FileOperationBatch : FileOperation
 {
     public List<FileOperation> Operations { get; } = new();
 
-    public override bool IsUndoable => Operations.All(operation => operation.IsUndoable);
+    // Only undoable operations join a batch.
+    public override bool IsUndoable => true;
 
     public override async Task<Result> ExecuteAsync()
     {

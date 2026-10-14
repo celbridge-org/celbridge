@@ -209,10 +209,17 @@ public class ResourceOperationService : IResourceOperationService
 
         var trashResult = await operation.ExecuteAsync();
 
-        // The trash takes no link, so a link or a folder that holds one is deleted outright.
+        // The trash takes no link, so a link or a folder that holds one is deleted outright. That changes
+        // the project tree as any new operation does, so the redo stack goes too.
         if (trashResult.HasException<ResourceContainsLinkError>())
         {
-            return await DeleteWithoutUndoAsync(resource);
+            var deleteResult = await DeleteWithoutUndoAsync(resource);
+            if (deleteResult.IsSuccess)
+            {
+                ClearRedoStack();
+            }
+
+            return deleteResult;
         }
 
         if (trashResult.IsFailure)

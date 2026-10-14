@@ -24,7 +24,7 @@ internal sealed class DataFolderService : IDataFolderService
         WriteIndented = true
     };
 
-    // What project.json records, so the integration test driver and a person can tell folders apart.
+    // What project.json records: the project file the folder belongs to.
     private sealed record ProjectInfo(string ProjectFilePath);
 
     private readonly ILogger<DataFolderService> _logger;
@@ -50,6 +50,15 @@ internal sealed class DataFolderService : IDataFolderService
 
     public async Task<Result<string>> EnsureDataFolderAsync(string projectFilePath)
     {
+        // A data folder belongs to a project file, so none is made for a path that holds no project.
+        var projectFileResult = await _fileSystem.GetInfoAsync(projectFilePath);
+        var projectFileExists = projectFileResult.IsSuccess
+            && projectFileResult.Value.Kind == StorageItemKind.File;
+        if (!projectFileExists)
+        {
+            return Result<string>.Fail($"Failed to create a data folder because the project file does not exist: '{projectFilePath}'");
+        }
+
         var dataFolderPath = GetDataFolderPath(projectFilePath);
 
         // project.json is written last, so a folder that has it is complete.
@@ -117,9 +126,11 @@ internal sealed class DataFolderService : IDataFolderService
 
         // Two spellings of one path that differ only in case name one file where the file system ignores
         // case, so they share a folder there.
-        var key = PathComparison.IsCaseInsensitiveFileSystem
-            ? fullPath.ToLowerInvariant()
-            : fullPath;
+        var key = fullPath;
+        if (PathComparison.IsCaseInsensitiveFileSystem)
+        {
+            key = fullPath.ToLowerInvariant();
+        }
 
         var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(key));
         var hash = Convert.ToHexStringLower(hashBytes)[..HashLength];

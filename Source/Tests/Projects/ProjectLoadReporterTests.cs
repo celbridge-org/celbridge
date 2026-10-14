@@ -42,6 +42,7 @@ public class ProjectLoadReporterTests
         Directory.CreateDirectory(_projectFolderPath);
 
         _projectFilePath = Path.Combine(_projectFolderPath, "test.celbridge");
+        File.WriteAllText(_projectFilePath, string.Empty);
 
         _fileSystem = new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>());
         var reportWriter = new ReportWriter(_fileSystem, MigrationTestHelper.CreateMockLogger<ReportWriter>());
@@ -55,8 +56,6 @@ public class ProjectLoadReporterTests
             _fileSystem);
         _dataFolderPath = dataFolderService.GetDataFolderPath(_projectFilePath);
 
-        // The project file is never written: a load that failed before a project existed still reports
-        // to the data folder of its path.
         _reporter = new ProjectLoadReporter(
             reportWriter,
             new NullLogger<ProjectLoadReporter>(),
@@ -125,6 +124,22 @@ public class ProjectLoadReporterTests
         // Without a project context, there is nothing to write and the path
         // cannot be derived. The reporter no-ops rather than creating an empty
         // file under an arbitrary path.
+        var result = await _reporter.FlushAsync();
+
+        result.Should().BeNull();
+        Directory.Exists(_dataFolderPath).Should().BeFalse();
+    }
+
+    [Test]
+    public async Task FlushAsync_ProjectFileMissing_WritesNoReportAndNoDataFolder()
+    {
+        // No workspace can open a report for a project file that is not there, and a data folder made for
+        // it would never be used.
+        File.Delete(_projectFilePath);
+
+        _reporter.BeginLoad(_projectFilePath);
+        _reporter.RecordLoadOutcome(loadSucceeded: false, loadResult: Result.Fail("Project file does not exist"));
+
         var result = await _reporter.FlushAsync();
 
         result.Should().BeNull();

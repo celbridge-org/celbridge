@@ -13,8 +13,8 @@ internal interface IDataFolderService
     string GetDataFolderPath(string projectFilePath);
 
     /// <summary>
-    /// Creates the data folder of the project file at the given path, with the project.json that names the
-    /// project file, unless the folder exists. Returns the folder's path.
+    /// Makes sure the data folder of the project file at the given path exists and holds the project.json
+    /// that names the project file. Fails when no project file exists at the path. Returns the folder's path.
     /// </summary>
     Task<Result<string>> EnsureDataFolderAsync(string projectFilePath);
 

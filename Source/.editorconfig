@@ -14,7 +14,6 @@ end_of_line = lf
 trim_trailing_whitespace = true
 insert_final_newline = true
 charset = utf-8
-dotnet_style_operator_placement_when_wrapping = beginning_of_line
 tab_width = 4
 indent_size = 4
 dotnet_style_coalesce_expression = true:suggestion

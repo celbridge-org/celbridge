@@ -36,7 +36,7 @@ public class CrossVolumeFolderMoveTests
     }
 
     [Test]
-    public void IsCrossVolumeFailure_RecognisesTheRootCheck()
+    public void IsCrossVolumeFailure_RecognizesTheRootCheck()
     {
         if (!OperatingSystem.IsWindows())
         {
@@ -52,7 +52,7 @@ public class CrossVolumeFolderMoveTests
 
     [TestCase(NotSameDeviceHResult)]
     [TestCase(CrossDeviceLinkErrno)]
-    public void IsCrossVolumeFailure_RecognisesTheRenameFailure(int hResult)
+    public void IsCrossVolumeFailure_RecognizesTheRenameFailure(int hResult)
     {
         var exception = new IOException("The system cannot move the file to a different disk drive.", hResult);
 
@@ -95,6 +95,7 @@ public class CrossVolumeFolderMoveTests
         File.ReadAllText(Path.Combine(destPath, "nested", "deep.txt")).Should().Be("deep");
         File.ReadAllText(Path.Combine(destPath, "nested", "locked.txt")).Should().Be("locked");
         Directory.Exists(Path.Combine(destPath, "nested", "empty")).Should().BeTrue();
+        Directory.EnumerateFileSystemEntries(_root).Should().ContainSingle("the source leaves nothing beside it");
     }
 
     [Test]
@@ -158,5 +159,49 @@ public class CrossVolumeFolderMoveTests
         Directory.Exists(destPath).Should().BeFalse();
         File.ReadAllText(Path.Combine(sourcePath, "a.txt")).Should().Be("first");
         File.ReadAllText(unreadablePath).Should().Be("last");
+    }
+
+    [Test]
+    public void Move_SourceThatCannotBeMoved_RemovesTheCopyAndKeepsTheSourceWhole()
+    {
+        var parentPath = Path.Combine(_root, "parent");
+        var sourcePath = Path.Combine(parentPath, "source");
+        Directory.CreateDirectory(sourcePath);
+        File.WriteAllText(Path.Combine(sourcePath, "a.txt"), "first");
+        var openPath = Path.Combine(sourcePath, "z.txt");
+        File.WriteAllText(openPath, "last");
+        var destPath = Path.Combine(_root, "dest");
+
+        // Windows refuses to rename a folder that holds a file another handle has open, though the copy can
+        // still read it. macOS and Linux rename it anyway, so the parent folder is made read-only instead.
+        FileStream? openHandle = null;
+        if (OperatingSystem.IsWindows())
+        {
+            openHandle = new FileStream(openPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        }
+        else
+        {
+            File.SetUnixFileMode(parentPath, UnixFileMode.UserRead | UnixFileMode.UserExecute);
+        }
+
+        Result result;
+        try
+        {
+            result = CrossVolumeFolderMove.Move(sourcePath, destPath, _logger);
+        }
+        finally
+        {
+            openHandle?.Dispose();
+            if (!OperatingSystem.IsWindows())
+            {
+                File.SetUnixFileMode(parentPath, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            }
+        }
+
+        result.IsFailure.Should().BeTrue();
+        Directory.Exists(destPath).Should().BeFalse("the copy is removed when the source cannot be moved");
+        File.ReadAllText(Path.Combine(sourcePath, "a.txt")).Should().Be("first");
+        File.ReadAllText(openPath).Should().Be("last");
+        Directory.EnumerateFileSystemEntries(parentPath).Should().ContainSingle("nothing is left beside the source");
     }
 }

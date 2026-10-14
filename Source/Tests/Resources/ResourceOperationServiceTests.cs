@@ -340,6 +340,26 @@ public class ResourceOperationServiceTests
     }
 
     [Test]
+    public async Task DeleteAsync_FolderThatHoldsALink_ClearsTheRedoStack()
+    {
+        var notesPath = Path.Combine(_tempFolder, "notes.txt");
+        await File.WriteAllTextAsync(notesPath, "notes");
+        await _operationService.DeleteAsync(new ResourceKey("notes.txt"));
+        await _operationService.UndoAsync();
+        _operationService.CanRedo.Should().BeTrue();
+
+        var folderPath = Path.Combine(_tempFolder, "folder");
+        Directory.CreateDirectory(folderPath);
+        File.CreateSymbolicLink(Path.Combine(folderPath, "link.txt"), notesPath);
+
+        var deleteResult = await _operationService.DeleteAsync(new ResourceKey("folder"));
+
+        deleteResult.IsSuccess.Should().BeTrue(deleteResult.MessageChain);
+        deleteResult.Value.Should().BeFalse();
+        _operationService.CanRedo.Should().BeFalse("the delete changed the tree the redo would replay against");
+    }
+
+    [Test]
     public async Task CreateAndCopy_OutsideTheProjectRoot_AreNotRecorded()
     {
         var createResult = await _operationService.CreateFileAsync(new ResourceKey("temp:created.txt"), new byte[] { 0x01 });

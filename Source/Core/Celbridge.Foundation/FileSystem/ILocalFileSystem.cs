@@ -171,7 +171,9 @@ public interface ILocalFileSystem
     /// <summary>
     /// Moves a folder from source to destination. The destination's parent folder
     /// must exist. A move to another volume copies the folder and then deletes the
-    /// source, and fails with the source untouched when the folder holds a link.
+    /// source. It fails with the source untouched when the folder holds a link, or
+    /// when the source cannot be moved, such as when another program has a file in
+    /// it open.
     /// </summary>
     Task<Result> MoveFolderAsync(string source, string dest);
 

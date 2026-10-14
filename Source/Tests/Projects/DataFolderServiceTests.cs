@@ -58,9 +58,11 @@ public class DataFolderServiceTests
         var dataFolderPath = _service.GetDataFolderPath(projectFilePath);
 
         // The hash is of the full path, folded to lower case where the file system ignores case.
-        var key = PathComparison.IsCaseInsensitiveFileSystem
-            ? projectFilePath.ToLowerInvariant()
-            : projectFilePath;
+        var key = projectFilePath;
+        if (PathComparison.IsCaseInsensitiveFileSystem)
+        {
+            key = projectFilePath.ToLowerInvariant();
+        }
         var hash = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(key)))[..16];
 
         dataFolderPath.Should().Be(Path.Combine(_appDataFolderPath, "Projects", $"Acme-{hash}"));
@@ -111,7 +113,7 @@ public class DataFolderServiceTests
     [Test]
     public async Task EnsureDataFolderAsync_CreatesTheFolderWithAProjectJsonNamingTheProjectFile()
     {
-        var projectFilePath = Path.Combine(_projectFolderPath, "Acme.celbridge");
+        var projectFilePath = CreateProjectFile("Acme.celbridge");
 
         var ensureResult = await _service.EnsureDataFolderAsync(projectFilePath);
 
@@ -127,7 +129,7 @@ public class DataFolderServiceTests
     [Test]
     public async Task EnsureDataFolderAsync_ExistingFolder_KeepsItsContents()
     {
-        var projectFilePath = Path.Combine(_projectFolderPath, "Acme.celbridge");
+        var projectFilePath = CreateProjectFile("Acme.celbridge");
         var dataFolderPath = (await _service.EnsureDataFolderAsync(projectFilePath)).Value;
 
         var settingsPath = Path.Combine(dataFolderPath, "settings", "workspace_settings.json");
@@ -141,9 +143,20 @@ public class DataFolderServiceTests
     }
 
     [Test]
+    public async Task EnsureDataFolderAsync_NoProjectFile_FailsAndCreatesNothing()
+    {
+        var projectFilePath = Path.Combine(_projectFolderPath, "Missing.celbridge");
+
+        var ensureResult = await _service.EnsureDataFolderAsync(projectFilePath);
+
+        ensureResult.IsFailure.Should().BeTrue();
+        Directory.Exists(_service.GetDataFolderPath(projectFilePath)).Should().BeFalse();
+    }
+
+    [Test]
     public async Task ClearDataFolderAsync_DeletesTheFolder()
     {
-        var projectFilePath = Path.Combine(_projectFolderPath, "Acme.celbridge");
+        var projectFilePath = CreateProjectFile("Acme.celbridge");
         var dataFolderPath = (await _service.EnsureDataFolderAsync(projectFilePath)).Value;
         await File.WriteAllTextAsync(Path.Combine(dataFolderPath, "history.txt"), "typed");
 
@@ -161,5 +174,14 @@ public class DataFolderServiceTests
         var clearResult = await _service.ClearDataFolderAsync(projectFilePath);
 
         clearResult.IsSuccess.Should().BeTrue(clearResult.MessageChain);
+    }
+
+    private string CreateProjectFile(string fileName)
+    {
+        Directory.CreateDirectory(_projectFolderPath);
+        var projectFilePath = Path.Combine(_projectFolderPath, fileName);
+        File.WriteAllText(projectFilePath, string.Empty);
+
+        return projectFilePath;
     }
 }
