@@ -58,7 +58,8 @@ internal static class RetryPolicy
     }
 
     /// <summary>
-    /// The blocking form of RunAsync, for work that already runs on a worker thread.
+    /// Runs the operation with the same retries as RunAsync, but blocks. Use it for work that already runs on
+    /// a worker thread.
     /// </summary>
     public static Result Run(
         ILogger logger,

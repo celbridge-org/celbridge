@@ -1,14 +1,14 @@
 namespace Celbridge.FileSystem;
 
 /// <summary>
-/// Moves a folder to another volume, where a rename cannot reach, by copying the tree and then deleting
-/// the source. A tree that holds a link is refused before anything is copied, since a copy would replace
-/// the link with what it points at. A move that fails leaves the source whole.
+/// Moves a folder to another volume by copying the tree and then deleting the source. Refuses a tree that
+/// contains a link before copying anything, because the copy would replace the link with its target. A
+/// failed move leaves the source intact.
 /// </summary>
 internal static class CrossVolumeFolderMove
 {
     // A rename between volumes fails in one of three ways. On Windows, .NET compares the two path roots
-    // before it touches the disk and throws a plain IOException of its own.
+    // before it touches the disk and throws its own generic IOException.
     private const int DotNetIOExceptionHResult = unchecked((int)0x80131620);
 
     // A junction or mount point that leads to another volume passes that check and fails with
@@ -18,7 +18,7 @@ internal static class CrossVolumeFolderMove
     // On macOS and Linux the rename fails with EXDEV, and .NET passes the errno through as the HResult.
     private const int CrossDeviceLinkErrno = 18;
 
-    // Whether a folder rename failed because the source and destination are on different volumes.
+    // Returns true if a folder rename failed because the source and destination are on different volumes.
     public static bool IsCrossVolumeFailure(Exception exception, string source, string dest)
     {
         if (exception is not IOException)
@@ -32,7 +32,7 @@ internal static class CrossVolumeFolderMove
             return true;
         }
 
-        // .NET throws the same plain IOException for a move onto the source itself, so the roots decide.
+        // .NET throws the same generic IOException when a folder is moved onto itself, so compare the roots.
         var sourceRoot = System.IO.Path.GetPathRoot(System.IO.Path.GetFullPath(source));
         var destRoot = System.IO.Path.GetPathRoot(System.IO.Path.GetFullPath(dest));
         bool rootsDiffer = !string.Equals(sourceRoot, destRoot, StringComparison.OrdinalIgnoreCase);
@@ -41,7 +41,7 @@ internal static class CrossVolumeFolderMove
             && rootsDiffer;
     }
 
-    // Blocks while it copies, so the caller runs it on a worker thread.
+    // Blocks while copying. Call it from a worker thread.
     public static Result Move(string source, string dest, ILogger logger)
     {
         logger.LogDebug($"Moving folder to another volume by copying it: '{source}' to '{dest}'");
@@ -61,7 +61,7 @@ internal static class CrossVolumeFolderMove
 
         if (linkPath is not null)
         {
-            return Result.Fail($"Failed to move folder to another volume because it holds a link: '{linkPath}'");
+            return Result.Fail($"Failed to move folder to another volume because it contains a link: '{linkPath}'");
         }
 
         if (Directory.Exists(dest)
@@ -82,8 +82,8 @@ internal static class CrossVolumeFolderMove
                 .WithException(copyException);
         }
 
-        // The source is renamed aside on its own volume, then deleted. A delete could fail partway and leave
-        // the source half deleted. The rename fails whole instead, as when another program has a file open.
+        // Rename the source on its own volume first, then delete it. If another program has a file open, the
+        // rename fails and leaves the source intact. A delete could fail partway and leave it half deleted.
         var asidePath = GetAsidePath(source);
         var asideResult = RetryPolicy.Run(logger, "Move", source, () => Directory.Move(source, asidePath));
         if (asideResult.IsFailure)
@@ -94,7 +94,7 @@ internal static class CrossVolumeFolderMove
                 .WithErrors(asideResult);
         }
 
-        // The folder is whole at its destination by now, so a delete that fails only leaves the old copy behind.
+        // The destination copy is complete, so a failed delete only leaves the old source behind.
         var deleteResult = RetryPolicy.Run(logger, "Delete", asidePath, () => DeleteFolderTreeIfExists(asidePath));
         if (deleteResult.IsFailure)
         {
@@ -104,7 +104,7 @@ internal static class CrossVolumeFolderMove
         return Result.Ok();
     }
 
-    // Removing the copy leaves the source as the only copy, as it was before the move.
+    // Deletes the destination copy after a failed move. Only the source remains.
     private static void RemoveCopy(string dest, ILogger logger)
     {
         var removeResult = RetryPolicy.Run(logger, "Delete", dest, () => DeleteFolderTreeIfExists(dest));
@@ -114,8 +114,8 @@ internal static class CrossVolumeFolderMove
         }
     }
 
-    // A sibling of the source keeps the rename on the source's volume. The name does not depend on the
-    // source's, so a long name cannot push it past the file system's limit.
+    // Returns a path beside the source, so the rename stays on the source's volume. The name doesn't include
+    // the source's name, so a long source name can't push the path past the file system's limit.
     private static string GetAsidePath(string source)
     {
         var fullSourcePath = System.IO.Path.TrimEndingDirectorySeparator(System.IO.Path.GetFullPath(source));
@@ -124,7 +124,7 @@ internal static class CrossVolumeFolderMove
         return System.IO.Path.Combine(parentPath, $".moving-{Guid.NewGuid():N}");
     }
 
-    // The path of the first link in the tree, or null when it holds none. The walk never enters a link.
+    // Returns the path of the first link in the tree, or null if there is none. Doesn't descend into links.
     private static string? FindLink(DirectoryInfo folder)
     {
         if (folder.Attributes.HasFlag(System.IO.FileAttributes.ReparsePoint))
@@ -151,8 +151,8 @@ internal static class CrossVolumeFolderMove
         return null;
     }
 
-    // File.Copy keeps a file's attributes. A folder keeps those that change how it shows or what it allows,
-    // so a hidden folder such as .git stays hidden.
+    // File.Copy keeps a file's attributes. Copy a folder's attributes explicitly, so a hidden folder such as
+    // .git stays hidden.
     private static void CopyFolderTree(DirectoryInfo sourceFolder, string destPath)
     {
         Directory.CreateDirectory(destPath);
@@ -179,7 +179,7 @@ internal static class CrossVolumeFolderMove
         }
     }
 
-    // A rename ignores read-only entries, so the delete that stands in for one clears the attribute first.
+    // A rename moves read-only entries too, so clear the read-only attribute before deleting each entry.
     private static void DeleteFolderTreeIfExists(string path)
     {
         var folder = new DirectoryInfo(path);
@@ -191,12 +191,13 @@ internal static class CrossVolumeFolderMove
 
     private static void DeleteFolderTree(DirectoryInfo folder)
     {
-        // Cleared before the children, because on macOS and Linux deleting an entry needs a writable folder.
+        // Clear the folder's read-only attribute before deleting its children. On macOS and Linux, deleting an
+        // entry needs a writable parent folder.
         ClearReadOnlyAttribute(folder);
 
         foreach (var entry in folder.EnumerateFileSystemInfos("*", SearchOption.TopDirectoryOnly))
         {
-            // A link is deleted as itself, never followed.
+            // Delete a link without following it.
             bool isLink = entry.Attributes.HasFlag(System.IO.FileAttributes.ReparsePoint);
             if (entry is DirectoryInfo childFolder
                 && !isLink)

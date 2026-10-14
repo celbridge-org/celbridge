@@ -133,8 +133,7 @@ public class ProjectLoadReporterTests
     [Test]
     public async Task FlushAsync_ProjectFileMissing_WritesNoReportAndNoDataFolder()
     {
-        // No workspace can open a report for a project file that is not there, and a data folder made for
-        // it would never be used.
+        // A missing project file can't be opened, so its report and data folder would never be used.
         File.Delete(_projectFilePath);
 
         _reporter.BeginLoad(_projectFilePath);
@@ -474,7 +473,7 @@ public class ProjectLoadReporterTests
         reportSummary.Should().NotBeNull();
         File.Exists(ResolveReportFilePath(reportSummary!.Resource)).Should().BeTrue();
 
-        // The folder is created as any data folder is, so it names its project file too.
+        // The reporter creates a normal data folder, so it also contains a project.json.
         File.Exists(Path.Combine(_dataFolderPath, "project.json")).Should().BeTrue();
     }
 

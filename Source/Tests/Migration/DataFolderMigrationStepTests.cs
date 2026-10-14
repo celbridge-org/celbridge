@@ -6,8 +6,8 @@ using Celbridge.Tests.Migration.TestHelpers;
 namespace Celbridge.Tests.Migration;
 
 /// <summary>
-/// Runs the step that moves a project's local data out of the project folder through the migration service,
-/// with the step the application ships and an application version that runs it.
+/// Tests DataFolderMigrationStep by running the migration service with the application's registered steps and
+/// an application version that triggers the step.
 /// </summary>
 [TestFixture]
 public class DataFolderMigrationStepTests
@@ -75,7 +75,7 @@ public class DataFolderMigrationStepTests
         upgradeResult.Status.Should().Be(MigrationStatus.Complete, upgradeResult.OperationResult.MessageChain);
         Directory.Exists(_celbridgeFolderPath).Should().BeFalse();
 
-        // Only the key's line goes. The rest of the file is as the user wrote it.
+        // Only the key's line is removed. The rest of the file is unchanged.
         var projectFileText = File.ReadAllText(_projectFilePath);
         projectFileText.Should().NotContain("data-folder");
         projectFileText.Should().Contain("# Acme's project file");
@@ -94,8 +94,8 @@ public class DataFolderMigrationStepTests
         await _migrationService.PerformMigrationUpgradeAsync(_projectFilePath);
         var migratedText = File.ReadAllText(_projectFilePath);
 
-        // A development build can leave a .celbridge folder in a project that already records this version.
-        // It is an ordinary folder there, so a second run leaves it alone.
+        // A development build can create a .celbridge folder in a project that already records this version.
+        // That's an ordinary folder, so a second run must not delete it.
         Directory.CreateDirectory(_celbridgeFolderPath);
 
         var checkResult = await _migrationService.CheckMigrationAsync(_projectFilePath);

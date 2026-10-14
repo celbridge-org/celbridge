@@ -22,7 +22,7 @@ public static class ProjectConstants
     public const string WorkspaceSettingsFile = "workspace_settings.json";
 
     /// <summary>
-    /// Git's metadata folder. Celbridge reserves it, so no resource can be read or written inside it.
+    /// Git's metadata folder. Celbridge reserves this folder, so resources inside it can't be read or written.
     /// </summary>
     public const string GitFolder = ".git";
 
@@ -38,7 +38,7 @@ public static class ProjectConstants
     public const string LogsFolder = "logs";
 
     /// <summary>
-    /// Sub-folder of the project data folder that backs the utils: virtual root. Holds the persistent
+    /// Sub-folder of the project data folder that backs the utils: virtual root. Contains the persistent
     /// state of utility documents. Not wiped on workspace load.
     /// </summary>
     public const string UtilsFolder = "utils";
@@ -49,13 +49,13 @@ public static class ProjectConstants
     public const string TrashFolder = "trash";
 
     /// <summary>
-    /// Sub-folder of the project data folder that holds what is this project's alone: its IPython
-    /// profile, and any uv tool the user installs here.
+    /// Sub-folder of the project data folder that contains the project's own Python state: its IPython
+    /// profile and any uv tools the user installs for the project.
     /// </summary>
     public const string PythonFolder = "python";
 
     /// <summary>
-    /// Sub-folder of the project data folder that holds the workspace settings database.
+    /// Sub-folder of the project data folder that contains the workspace settings database.
     /// </summary>
     public const string SettingsFolder = "settings";
 

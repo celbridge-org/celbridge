@@ -120,7 +120,7 @@ public class ProjectFactoryTests
             Directory.Exists(dataFolderPath).Should().BeTrue();
             dataFolderPath.Should().StartWith(_appDataFolder);
             Directory.EnumerateFileSystemEntries(Path.GetDirectoryName(projectPath)!)
-                .Should().ContainSingle("the project folder holds only the project file");
+                .Should().ContainSingle("the project folder contains only the project file");
         }
         finally
         {

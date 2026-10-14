@@ -36,7 +36,7 @@ public class ResourceOperationServiceTests
             nameof(ResourceOperationServiceTests),
             Guid.NewGuid().ToString("N"));
 
-        // The project folder. The data folder sits outside it, as the application data folder does.
+        // _tempFolder is the project folder. In the application, the data folder is outside it.
         _tempFolder = Path.Combine(_testFolder, "Project");
         _dataFolder = Path.Combine(_testFolder, "Data");
         Directory.CreateDirectory(_tempFolder);
@@ -307,7 +307,7 @@ public class ResourceOperationServiceTests
     [Test]
     public async Task DeleteAsync_OutsideTheProjectRoot_DeletesWithoutUndo()
     {
-        // Every key resolves under the temp folder in this fixture, whatever its root.
+        // This fixture resolves every key under _tempFolder, whatever its root.
         var path = Path.Combine(_tempFolder, "scratch.txt");
         await File.WriteAllTextAsync(path, "scratch");
 
@@ -321,7 +321,7 @@ public class ResourceOperationServiceTests
     }
 
     [Test]
-    public async Task DeleteAsync_FolderThatHoldsALink_DeletesWithoutUndo()
+    public async Task DeleteAsync_FolderThatContainsALink_DeletesWithoutUndo()
     {
         var targetPath = Path.Combine(_tempFolder, "target.txt");
         await File.WriteAllTextAsync(targetPath, "target");
@@ -340,7 +340,7 @@ public class ResourceOperationServiceTests
     }
 
     [Test]
-    public async Task DeleteAsync_FolderThatHoldsALink_ClearsTheRedoStack()
+    public async Task DeleteAsync_FolderThatContainsALink_ClearsTheRedoStack()
     {
         var notesPath = Path.Combine(_tempFolder, "notes.txt");
         await File.WriteAllTextAsync(notesPath, "notes");

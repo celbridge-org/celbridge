@@ -87,14 +87,14 @@ public sealed class PythonLaunchService : IPythonLaunchService
         _logger = logger;
     }
 
-    // What belongs to this project alone: its IPython profile, and the uv tools the user installs here.
-    // Under the project data folder, so two project files in one folder each get their own.
+    // Contains the project's IPython profile and the uv tools the user installs for it. It's under the project
+    // data folder, so two project files in one folder each get their own.
     private string ProjectPythonFolder => Path.Combine(
         _projectService.CurrentProject!.ProjectDataFolderPath,
         ProjectConstants.PythonFolder);
 
-    // The folders behind the temp: and logs: roots, so a script can read and write them directly, or hand a
-    // file there to another program.
+    // The folders behind the temp: and logs: roots. Scripts get their paths so they can read and write files
+    // there directly, or pass a file to another program.
     private string ProjectTempFolder => Path.Combine(
         _projectService.CurrentProject!.ProjectDataFolderPath,
         ProjectConstants.TempFolder);

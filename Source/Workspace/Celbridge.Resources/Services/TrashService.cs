@@ -38,7 +38,7 @@ public sealed class TrashService : ITrashService
 
     public async Task<Result<TrashEntry>> MoveToTrashAsync(ResourceKey resource)
     {
-        // The trash lays an item out by its path relative to the project folder.
+        // The trash stores each item at its path relative to the project folder.
         if (resource.Root != ResourceKey.DefaultRoot)
         {
             return Result<TrashEntry>.Fail($"Only resources under the project root go to the trash: '{resource}'");
@@ -366,8 +366,8 @@ public sealed class TrashService : ITrashService
         return Result.Ok();
     }
 
-    // A move to the trash on another volume copies the item, and a copy replaces a link with what it
-    // points at. So the trash takes no link, and the item stays in place.
+    // If the trash is on another volume, moving an item there copies it, and a copy replaces a link with its
+    // target. So the trash refuses links and leaves the item in place.
     private static Result<TrashEntry> RefuseLink(string linkPath)
     {
         var error = new ResourceContainsLinkError(linkPath);

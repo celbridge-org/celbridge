@@ -68,8 +68,8 @@ internal class ProjectService : IProjectService
 
         var newProjectFilePath = Path.Combine(project.ProjectFolderPath, newKey);
 
-        // The data folder stays the one the workspace loaded with. The renamed file finds a new one next time
-        // it opens.
+        // Keep the data folder the workspace loaded with. The renamed project gets a new data folder the next
+        // time it's opened.
         CurrentProject = new Project(
             newProjectFilePath,
             Path.GetFileNameWithoutExtension(newKey),

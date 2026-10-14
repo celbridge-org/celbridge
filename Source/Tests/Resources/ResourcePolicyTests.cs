@@ -39,8 +39,8 @@ public class ResourcePolicyTests
     [Test]
     public void Evaluate_AllowsAFolderNamedCelbridge()
     {
-        // Celbridge keeps a project's data in the application data folder, so a .celbridge folder that an
-        // earlier version left in the project is an ordinary folder.
+        // Celbridge keeps project data in the application data folder. A .celbridge folder left in the project
+        // by an earlier version is an ordinary folder.
         var policy = BuildPolicy();
 
         policy.Evaluate(new ResourceKey(".celbridge"), ResourceAction.Read, isFolder: true).IsSuccess.Should().BeTrue();

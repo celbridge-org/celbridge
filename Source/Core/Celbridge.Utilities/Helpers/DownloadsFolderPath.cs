@@ -15,7 +15,7 @@ public static class DownloadsFolderPath
     /// </summary>
     public static ResourceKey DefaultFolder { get; } = new ResourceKey(ProjectConstants.DownloadsFolder);
 
-    // The folder Celbridge reserves, matched as the resource policy matches it: by name, at any depth.
+    // Matches the reserved .git folder by name at any depth. Keep this in sync with the resource policy's rule.
     private static readonly ResourcePathMatcher ReservedFolderMatcher =
         ResourcePathMatcher.Compile(ProjectConstants.GitFolder);
 
@@ -37,8 +37,8 @@ public static class DownloadsFolderPath
     }
 
     /// <summary>
-    /// Whether the path names a .git folder at any depth, or a folder inside one. Celbridge reserves
-    /// these folders, so nothing can be saved there.
+    /// Returns true if the path names a .git folder at any depth, or a folder inside one. Celbridge
+    /// reserves these folders, so nothing can be saved there.
     /// </summary>
     public static bool IsReserved(string path)
     {

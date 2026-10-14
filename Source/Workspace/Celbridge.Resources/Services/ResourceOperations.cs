@@ -8,14 +8,14 @@ namespace Celbridge.Resources.Services;
 /// </summary>
 internal abstract class FileOperation
 {
-    // Whether the operation goes on the undo stack.
+    // True if the operation goes on the undo stack.
     public abstract bool IsUndoable { get; }
 
     public abstract Task<Result> ExecuteAsync();
     public abstract Task<Result> UndoAsync();
     public virtual Task<Result> RedoAsync() => ExecuteAsync();
 
-    // The other roots hold Celbridge's own files rather than the user's.
+    // Only the project root contains the user's files. The other roots contain Celbridge's own files.
     protected static bool IsUnderProjectRoot(ResourceKey resource)
     {
         return resource.Root == ResourceKey.DefaultRoot;
@@ -208,7 +208,7 @@ internal class MoveOperation : FileOperation
         _resourceFileSystem = resourceFileSystem;
     }
 
-    // The gateway moves within one root, so the destination's root is the source's too.
+    // The gateway only moves within one root, so the source and destination share a root.
     public override bool IsUndoable => IsUnderProjectRoot(_dest);
 
     public override async Task<Result> ExecuteAsync()

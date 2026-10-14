@@ -43,7 +43,7 @@ public class CheckReferencesCommandTests
             nameof(CheckReferencesCommandTests),
             Guid.NewGuid().ToString("N"));
 
-        // The data folder sits outside the project folder, as the application data folder does.
+        // In the application, the data folder is outside the project folder.
         _projectFolderPath = Path.Combine(_testFolderPath, "Project");
         _dataFolderPath = Path.Combine(_testFolderPath, "Data");
         Directory.CreateDirectory(_projectFolderPath);

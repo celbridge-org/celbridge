@@ -30,7 +30,7 @@ public class TrashServiceTests
             nameof(TrashServiceTests),
             Guid.NewGuid().ToString("N"));
 
-        // The project folder. The data folder sits outside it, as the application data folder does.
+        // _tempFolder is the project folder. In the application, the data folder is outside it.
         _tempFolder = Path.Combine(_testFolder, "Project");
         Directory.CreateDirectory(_tempFolder);
 
@@ -216,7 +216,7 @@ public class TrashServiceTests
     }
 
     [Test]
-    public async Task MoveToTrashAsync_FolderThatHoldsALink_IsRefusedAndLeftInPlace()
+    public async Task MoveToTrashAsync_FolderThatContainsALink_IsRefusedAndLeftInPlace()
     {
         var targetPath = Path.Combine(_tempFolder, "target.txt");
         await File.WriteAllTextAsync(targetPath, "target");

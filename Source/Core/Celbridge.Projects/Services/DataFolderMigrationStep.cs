@@ -4,13 +4,13 @@ using Celbridge.Logging;
 namespace Celbridge.Projects.Services;
 
 /// <summary>
-/// Moves a project's local data out of the project folder. Deletes the .celbridge folder that held it, and
-/// the data-folder key that named a folder inside that one. The project then starts with an empty data
-/// folder in the application data folder.
+/// Removes the local data that earlier versions kept in the project folder. Deletes the .celbridge folder and
+/// removes the data-folder key from the project file. The project then starts with an empty data folder in the
+/// application data folder.
 /// </summary>
 public sealed class DataFolderMigrationStep : IMigrationStep
 {
-    // The folder earlier versions kept a project's local data in. Nothing else names it any more.
+    // Earlier versions kept a project's local data in this folder.
     private const string CelbridgeFolderName = ".celbridge";
 
     private const string DataFolderKey = "data-folder";
@@ -28,8 +28,8 @@ public sealed class DataFolderMigrationStep : IMigrationStep
         return await RemoveDataFolderKeyAsync(context);
     }
 
-    // A folder that cannot be deleted is left as an ordinary folder in the project, so the failure is logged
-    // rather than failing the migration.
+    // If the folder can't be deleted, log the failure and continue. The folder stays in the project as an
+    // ordinary folder.
     private static async Task DeleteCelbridgeFolderAsync(MigrationContext context)
     {
         var celbridgeFolderPath = Path.Combine(context.ProjectFolderPath, CelbridgeFolderName);
@@ -52,7 +52,7 @@ public sealed class DataFolderMigrationStep : IMigrationStep
         context.Logger.LogInformation($"Deleted the project's {CelbridgeFolderName} folder: '{celbridgeFolderPath}'");
     }
 
-    // Removes the key's line from the [celbridge] table and leaves the rest of the file as the user wrote it.
+    // Removes the key's line from the [celbridge] table and leaves the rest of the file unchanged.
     private static async Task<Result> RemoveDataFolderKeyAsync(MigrationContext context)
     {
         var hasDataFolderKey = JsonPointerToml.TryResolve(context.Configuration, $"/celbridge/{DataFolderKey}", out _, out _);

@@ -163,8 +163,8 @@ public class ProjectServiceTests
     [Test]
     public void RenamingTheProjectFile_KeepsTheDataFolderTheWorkspaceLoadedWith()
     {
-        // Every open service resolved its paths against the data folder at load, so the renamed project
-        // keeps it until it is opened again.
+        // Open services resolved their paths against the data folder at load, so the renamed project keeps
+        // that folder until it's opened again.
         var project = LoadProjectNamed(NewestProject);
         project.ProjectDataFolderPath.Should().Be(MakeDataFolderPath(NewestProject));
 
@@ -255,8 +255,7 @@ public class ProjectServiceTests
         return Path.Combine(Path.GetTempPath(), "Data", Path.GetFileNameWithoutExtension(projectFilePath));
     }
 
-    // A stand-in for the data folder service, which is internal to Celbridge.Projects. It records each clear,
-    // and fails every clear once given a failure.
+    // A fake IDataFolderService that records each clear and returns ClearResult.
     private sealed class FakeDataFolderService : IDataFolderService
     {
         public List<string> ClearedPaths { get; } = new();

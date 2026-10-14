@@ -1,6 +1,6 @@
 # explorer_delete
 
-Deletes a resource. Folder deletes are recursive. A delete under `project:` is recorded on the explorer undo stack and can be reversed with `explorer_undo`, but undo only restores resources that the application itself deleted, so do not rely on it as a substitute for source control. A delete in another root, or of a symbolic link or junction or a folder that holds one, is permanent. See [undo_semantics](../Concepts/undo_semantics.md).
+Deletes a resource. Folder deletes are recursive. A delete under `project:` is recorded on the explorer undo stack and can be reversed with `explorer_undo`, but undo only restores resources that the application itself deleted, so do not rely on it as a substitute for source control. A delete in another root, or of a symbolic link or junction or a folder that contains one, is permanent. See [undo_semantics](../Concepts/undo_semantics.md).
 
 A paired `.cel` sidecar (e.g. `foo.png.cel` next to `foo.png`) is deleted alongside its parent and restored alongside its parent on undo.
 
@@ -59,7 +59,7 @@ Resource keys appear in their canonical `root:path` form (with the explicit `pro
   - `PermissionDenied` — an ACL / POSIX denial. The DOS read-only attribute is cleared before delete, so this is a genuine permissions problem that needs the right account or admin.
   - `IOFailure` — catch-all for disk full, network share gone, hardware error, and anything else not fitting the more specific reasons.
 - `sidecar` reports the outcome of the paired `.cel` cascade per resource: `NotPresent` (no sidecar existed, or the parent delete didn't run), `Cascaded` (the sidecar was deleted alongside its parent), `Failed` (the sidecar cascade encountered an error — surfaced to the log).
-- `undoable` is `true` when `explorer_undo` restores the resource. It is `false` for a delete outside `project:`, for a symbolic link or junction or a folder that holds one, and for a resource that was not deleted.
+- `undoable` is `true` when `explorer_undo` restores the resource. It is `false` for a delete outside `project:`, for a symbolic link or junction or a folder that contains one, and for a resource that was not deleted.
 - `failureMessage` is the human-readable detail. `null` when `outcome` is `Deleted`.
 - `referencers` maps each input resource to the resources outside the batch that referenced it. Populated when external references were detected, whether the batch proceeded (`BreakReferences` policy) or was gated (`CancelledByUser` / `BlockedByReferences`).
 

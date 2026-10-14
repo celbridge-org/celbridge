@@ -19,8 +19,8 @@ public record TrashEntry(
     IReadOnlyList<ResourceKey> DescendantKeys);
 
 /// <summary>
-/// Attached to the failed Result when the trash refuses a resource that is a link,
-/// or a folder that holds one.
+/// Attached to the failed Result when the trash refuses a link, or a folder that
+/// contains a link.
 /// </summary>
 public sealed class ResourceContainsLinkError : Exception
 {
@@ -30,7 +30,7 @@ public sealed class ResourceContainsLinkError : Exception
     public string LinkPath { get; }
 
     public ResourceContainsLinkError(string linkPath)
-        : base($"The trash does not take links: '{linkPath}'")
+        : base($"The trash does not accept links: '{linkPath}'")
     {
         LinkPath = linkPath;
     }
@@ -46,10 +46,11 @@ public sealed class ResourceContainsLinkError : Exception
 public interface ITrashService
 {
     /// <summary>
-    /// Moves the resource, which must be under the project root, into the workspace
-    /// trash folder. Cascades the paired sidecar. Returns a TrashEntry that uniquely
-    /// identifies the soft-delete for later restore or purge. A link, or a folder
-    /// that holds one, is refused with a ResourceContainsLinkError and left in place.
+    /// Moves the resource into the workspace trash folder. The resource must be under
+    /// the project root. Cascades the paired sidecar. Returns a TrashEntry that uniquely
+    /// identifies the soft-delete for later restore or purge. Refuses a link, or a
+    /// folder that contains a link, with a ResourceContainsLinkError and leaves it in
+    /// place.
     /// </summary>
     Task<Result<TrashEntry>> MoveToTrashAsync(ResourceKey resource);
 

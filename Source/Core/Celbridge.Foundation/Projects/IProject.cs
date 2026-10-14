@@ -21,8 +21,8 @@ public interface IProject
     string ProjectFolderPath { get; }
 
     /// <summary>
-    /// Returns the path to the folder this project's local data is written under, in the application data
-    /// folder. It stays the same while the project is open, even when the project file is renamed.
+    /// Returns the path to the folder in the application data folder that contains this project's local data.
+    /// The path doesn't change while the project is open, even if the project file is renamed.
     /// </summary>
     string ProjectDataFolderPath { get; }
 

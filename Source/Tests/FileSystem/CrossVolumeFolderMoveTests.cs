@@ -1,8 +1,8 @@
 namespace Celbridge.Tests.FileSystem;
 
 /// <summary>
-/// Tests for moving a folder to another volume. A second volume is not guaranteed where the tests run,
-/// so the tests call the copy that stands in for the rename directly.
+/// Tests for moving a folder to another volume. The test machine may not have a second volume, so the tests
+/// call CrossVolumeFolderMove.Move directly.
 /// </summary>
 [TestFixture]
 public class CrossVolumeFolderMoveTests
@@ -99,7 +99,7 @@ public class CrossVolumeFolderMoveTests
     }
 
     [Test]
-    public void Move_RefusesATreeThatHoldsALink()
+    public void Move_RefusesATreeThatContainsALink()
     {
         var targetPath = Path.Combine(_root, "target.txt");
         File.WriteAllText(targetPath, "target");
@@ -114,7 +114,7 @@ public class CrossVolumeFolderMoveTests
 
         result.IsFailure.Should().BeTrue();
         result.MessageChain.Should().Contain(linkPath);
-        Directory.Exists(destPath).Should().BeFalse("nothing is copied from a tree that holds a link");
+        Directory.Exists(destPath).Should().BeFalse("nothing is copied from a tree that contains a link");
         File.Exists(Path.Combine(sourcePath, "plain.txt")).Should().BeTrue();
         new FileInfo(linkPath).LinkTarget.Should().Be(targetPath);
     }
@@ -129,8 +129,8 @@ public class CrossVolumeFolderMoveTests
         File.WriteAllText(unreadablePath, "last");
         var destPath = Path.Combine(_root, "dest");
 
-        // Windows refuses to read a file another handle holds without sharing. macOS and Linux have no
-        // such lock, so the file is made unreadable instead.
+        // On Windows, open the file without sharing so the copy can't read it. macOS and Linux don't enforce
+        // that lock, so remove the file's permissions there instead.
         FileStream? lockHandle = null;
         if (OperatingSystem.IsWindows())
         {
@@ -172,8 +172,8 @@ public class CrossVolumeFolderMoveTests
         File.WriteAllText(openPath, "last");
         var destPath = Path.Combine(_root, "dest");
 
-        // Windows refuses to rename a folder that holds a file another handle has open, though the copy can
-        // still read it. macOS and Linux rename it anyway, so the parent folder is made read-only instead.
+        // On Windows, an open file blocks renaming its folder, but the copy can still read the file. macOS and
+        // Linux allow the rename, so make the parent folder read-only there instead.
         FileStream? openHandle = null;
         if (OperatingSystem.IsWindows())
         {

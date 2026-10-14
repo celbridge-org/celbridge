@@ -2,8 +2,8 @@ namespace Celbridge.Resources.Services.Roots;
 
 /// <summary>
 /// Resource root handler for the utils: virtual root. Backs the persistent state of utility
-/// documents in the project data folder's utils/. Unlike temp:, this root is never wiped on workspace load,
-/// so a utility's state survives across sessions.
+/// documents in the project data folder's utils/. This root is never wiped on workspace load, so a
+/// utility's state survives across sessions.
 /// </summary>
 public class UtilsRootHandler : ResourceRootHandlerBase
 {

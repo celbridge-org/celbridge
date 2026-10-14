@@ -8,7 +8,7 @@ Celbridge has three independent undo stacks, each scoped to a different surface.
 
 Only operations under `project:` go on the stack, and a copy counts when its destination is there. Creates, copies and moves in `temp:`, `logs:` and `utils:` are not recorded, and a delete there is permanent.
 
-A delete under `project:` moves the resource to the trash, and undo brings it back. A symbolic link or junction, or a folder that holds one, is deleted permanently instead. `explorer_delete` reports `"undoable": false` for every delete that undo cannot reverse. Do not call `explorer_undo` to recover such a delete, because it would reverse an earlier operation instead.
+A delete under `project:` moves the resource to the trash, and undo brings it back. A symbolic link or junction, or a folder that contains one, is deleted permanently instead. `explorer_delete` reports `"undoable": false` for every delete that undo cannot reverse. Do not call `explorer_undo` to recover such a delete, because it would reverse an earlier operation instead.
 
 Explorer undo cannot reverse:
 

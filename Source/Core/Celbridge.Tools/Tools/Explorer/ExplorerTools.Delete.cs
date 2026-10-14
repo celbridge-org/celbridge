@@ -6,7 +6,7 @@ namespace Celbridge.Tools;
 
 public partial class ExplorerTools
 {
-    /// <summary>Remove a file or folder; the result says whether explorer_undo can restore it.</summary>
+    /// <summary>Remove a file or folder. The result says whether explorer_undo can restore it.</summary>
     [McpServerTool(Name = "explorer_delete", Destructive = true, Idempotent = true)]
     [ToolAlias("explorer.delete")]
     [RelatedGuides("resource_keys", "undo_semantics")]

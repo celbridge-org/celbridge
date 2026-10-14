@@ -269,8 +269,8 @@ public sealed class LocalFileSystem : ILocalFileSystem
             return Result.Fail(runResult);
         }
 
-        // A rename cannot reach another volume, so the folder is copied there. The copy catches its own
-        // exceptions, so it needs no rethrow from the worker.
+        // A rename can't move a folder to another volume, so copy it there instead. The copy returns its
+        // failures as a Result and never throws.
         return await Task.Run(() => CrossVolumeFolderMove.Move(source, dest, _logger)).ConfigureAwait(false);
     }
 

@@ -11,9 +11,9 @@ internal sealed class DataFolderService : IDataFolderService
     private const string ProjectsFolderName = "Projects";
     private const string ProjectInfoFileName = "project.json";
 
-    // Enough of the project's name to hint at the project. The cut keeps paths short: the tools a user
-    // installs nest deep below the folder, and Python on Windows cannot open a path longer than 260
-    // characters unless long paths are enabled.
+    // The folder name uses only the start of the project's name, to keep paths short. Tools the user installs
+    // nest deep inside the folder, and Python on Windows can't open a path longer than 260 characters unless
+    // long paths are enabled.
     private const int NameLength = 16;
 
     private const int HashLength = 16;
@@ -24,7 +24,7 @@ internal sealed class DataFolderService : IDataFolderService
         WriteIndented = true
     };
 
-    // What project.json records: the project file the folder belongs to.
+    // project.json records the path of the project file that the folder belongs to.
     private sealed record ProjectInfo(string ProjectFilePath);
 
     private readonly ILogger<DataFolderService> _logger;
@@ -50,7 +50,7 @@ internal sealed class DataFolderService : IDataFolderService
 
     public async Task<Result<string>> EnsureDataFolderAsync(string projectFilePath)
     {
-        // A data folder belongs to a project file, so none is made for a path that holds no project.
+        // Only create a data folder for a project file that exists.
         var projectFileResult = await _fileSystem.GetInfoAsync(projectFilePath);
         var projectFileExists = projectFileResult.IsSuccess
             && projectFileResult.Value.Kind == StorageItemKind.File;
@@ -117,15 +117,15 @@ internal sealed class DataFolderService : IDataFolderService
         return Result.Ok();
     }
 
-    // The name makes a folder easy to identify, and the hash of the project file's path keeps two projects
-    // with one name apart. Links are not resolved, so a project reached through a link, a junction or another
-    // drive letter gets a folder of its own.
+    // The name makes the folder easy to identify. The hash of the project file's path keeps apart two projects
+    // with the same name. Links aren't resolved, so a project opened through a link, a junction or another
+    // drive letter gets its own folder.
     private static string GetFolderName(string projectFilePath)
     {
         var fullPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(projectFilePath));
 
-        // Two spellings of one path that differ only in case name one file where the file system ignores
-        // case, so they share a folder there.
+        // On a case-insensitive file system, paths that differ only in case name the same file, so they must
+        // share a folder.
         var key = fullPath;
         if (PathComparison.IsCaseInsensitiveFileSystem)
         {
@@ -138,7 +138,7 @@ internal sealed class DataFolderService : IDataFolderService
         var name = Path.GetFileNameWithoutExtension(fullPath);
         if (name.Length > NameLength)
         {
-            // A cut between the halves of a surrogate pair would leave a name that not every file system takes.
+            // Don't cut between the halves of a surrogate pair. Some file systems reject the resulting name.
             var cutLength = char.IsHighSurrogate(name[NameLength - 1])
                 ? NameLength - 1
                 : NameLength;

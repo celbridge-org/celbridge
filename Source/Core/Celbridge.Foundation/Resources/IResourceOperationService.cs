@@ -38,8 +38,8 @@ public enum WritableState
 /// The workspace-scoped resource operation service. Layers session-local undo
 /// and redo, batched grouping, and soft-delete trash on top of the IResourceFileSystem
 /// gateway. Only changes under the project root can be undone. Every method names
-/// its target with a ResourceKey; external imports keep a string source path
-/// because the source lies outside the registry by definition.
+/// its target with a ResourceKey. Imports take their external source as a string
+/// path, because it lies outside the registry.
 /// </summary>
 public interface IResourceOperationService
 {
@@ -70,9 +70,9 @@ public interface IResourceOperationService
 
     /// <summary>
     /// Deletes the resource. An undoable delete moves the resource and its paired
-    /// sidecar to the trash, and undo restores them. A link, or a folder that holds
-    /// one, is deleted outright and cannot be undone. The value is true when undo
-    /// can restore the resource.
+    /// sidecar to the trash, and undo restores them. A link, or a folder that
+    /// contains a link, is deleted permanently and can't be undone. Returns true if
+    /// undo can restore the resource.
     /// </summary>
     Task<Result<bool>> DeleteAsync(ResourceKey resource);
 

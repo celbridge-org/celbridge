@@ -10,7 +10,7 @@ using Celbridge.Utilities;
 namespace Celbridge.Tests.Projects;
 
 /// <summary>
-/// Covers the data folder's key, the project.json it holds, and clearing it for a new project.
+/// Tests how the data folder's path is derived, the project.json it contains, and clearing the folder.
 /// </summary>
 [TestFixture]
 public class DataFolderServiceTests
@@ -57,7 +57,7 @@ public class DataFolderServiceTests
 
         var dataFolderPath = _service.GetDataFolderPath(projectFilePath);
 
-        // The hash is of the full path, folded to lower case where the file system ignores case.
+        // Hash the full path, lowercased on a case-insensitive file system.
         var key = projectFilePath;
         if (PathComparison.IsCaseInsensitiveFileSystem)
         {
@@ -103,7 +103,7 @@ public class DataFolderServiceTests
         var lowerPath = _service.GetDataFolderPath(Path.Combine(_projectFolderPath, "acme.celbridge"));
         var upperPath = _service.GetDataFolderPath(Path.Combine(_projectFolderPath, "ACME.celbridge"));
 
-        // The name keeps the spelling it was given, so only the hash is compared.
+        // The name part keeps its original case, so compare only the hashes.
         var lowerHash = Path.GetFileName(lowerPath).Split('-')[^1];
         var upperHash = Path.GetFileName(upperPath).Split('-')[^1];
 

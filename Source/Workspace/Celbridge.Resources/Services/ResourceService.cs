@@ -97,10 +97,9 @@ public class ResourceService : IResourceService, IDisposable
         _tempFolderPath = tempFolder;
         _trashFolderPath = trashFolder;
 
-        // temp:/ is wiped on every workspace load, as well as when the workspace
-        // closes, since a crash skips the close. The contract is that nothing
-        // under temp: survives a reload; consumers needing persistence write
-        // under project: instead.
+        // temp:/ is wiped on every workspace load as well as on close, because a
+        // crash skips the close. Nothing under temp: survives a reload, so
+        // anything that must persist belongs under project:.
         TryDeleteFolder(tempFolder);
         SyncRunner.Run(() => _fileSystem.CreateFolderAsync(tempFolder));
         SyncRunner.Run(() => _fileSystem.CreateFolderAsync(logsFolder));
@@ -189,8 +188,8 @@ public class ResourceService : IResourceService, IDisposable
                 // Shutdown the resource monitor immediately
                 Monitor.Shutdown();
 
-                // Clean up the temp and trash folders on project close, so a data folder whose
-                // project is not open keeps no scratch files or deleted files.
+                // Delete the temp and trash folders on project close, so a closed project's data
+                // folder keeps no scratch files or deleted files.
                 TryDeleteFolder(_tempFolderPath);
                 TryDeleteFolder(_trashFolderPath);
             }
