@@ -181,7 +181,7 @@ public partial class App : Application
             // Windows activation passes the packaged head its arguments as a single string.
             var launchArgs = activatedEventArgs.Data as ILaunchActivatedEventArgs;
             var argumentText = launchArgs?.Arguments ?? string.Empty;
-            var arguments = ProjectCommandLine.SplitWindowsArguments(argumentText);
+            var arguments = Celbridge.Utilities.WindowsCommandLine.Split(argumentText);
             OpenCommandLineProject(arguments, appActivationService, logger);
         }
 #else
@@ -366,7 +366,7 @@ public partial class App : Application
         IAppActivationService appActivationService,
         ILogger logger)
     {
-        var projectFile = ProjectCommandLine.FindProjectFile(arguments, Environment.CurrentDirectory);
+        var projectFile = ProjectFileHelper.FindProjectFile(arguments, Environment.CurrentDirectory);
         if (projectFile is null)
         {
             return;

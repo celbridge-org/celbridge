@@ -1,42 +1,17 @@
 using System.Text;
 
-namespace Celbridge.Projects;
+namespace Celbridge.Utilities;
 
 /// <summary>
-/// Finds the project file named on the application's command line.
+/// Splits a command line into arguments by the rules Windows uses.
 /// </summary>
-public static class ProjectCommandLine
+public static class WindowsCommandLine
 {
     /// <summary>
-    /// Returns true if the path has the project file extension, in any case.
+    /// Splits an argument string into arguments. Whitespace separates arguments, double quotes group text that
+    /// contains whitespace, and a backslash escapes a double quote.
     /// </summary>
-    public static bool IsProjectFile(string path)
-    {
-        var extension = Path.GetExtension(path);
-        return string.Equals(extension, ProjectConstants.ProjectFileExtension, StringComparison.OrdinalIgnoreCase);
-    }
-
-    /// <summary>
-    /// Returns the full path of the first argument that has the project file extension, or null if there is
-    /// none. A relative path is resolved against the working folder.
-    /// </summary>
-    public static string? FindProjectFile(IEnumerable<string> arguments, string workingFolderPath)
-    {
-        var projectFileArgument = arguments.FirstOrDefault(IsProjectFile);
-        if (string.IsNullOrEmpty(projectFileArgument))
-        {
-            return null;
-        }
-
-        return Path.GetFullPath(projectFileArgument, workingFolderPath);
-    }
-
-    /// <summary>
-    /// Splits an argument string into arguments by the rules Windows uses to split a command line. Whitespace
-    /// separates arguments, double quotes group text that contains whitespace, and a backslash escapes a
-    /// double quote.
-    /// </summary>
-    public static IReadOnlyList<string> SplitWindowsArguments(string argumentText)
+    public static IReadOnlyList<string> Split(string argumentText)
     {
         var arguments = new List<string>();
         var argument = new StringBuilder();

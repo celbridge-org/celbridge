@@ -116,7 +116,7 @@ internal sealed class ProjectLoadReporter : IProjectLoadReporter
         {
             var report = BuildReport();
 
-            // The data folder depends only on the project file's path, so a load that fails before the project
+            // The data folder depends only on the project folder's path, so a load that fails before the project
             // exists still writes its report to the project's data folder.
             var dataFolderResult = await _projectDataFolderService.EnsureDataFolderAsync(_projectFilePath);
             if (dataFolderResult.IsFailure)

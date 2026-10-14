@@ -35,7 +35,7 @@ public class AppActivationService : IAppActivationService
 
     public void OnFilesActivated(IReadOnlyList<string> filePaths)
     {
-        var projectFilePath = filePaths.FirstOrDefault(ProjectCommandLine.IsProjectFile);
+        var projectFilePath = filePaths.FirstOrDefault(ProjectFileHelper.IsProjectFile);
         if (string.IsNullOrEmpty(projectFilePath))
         {
             return;

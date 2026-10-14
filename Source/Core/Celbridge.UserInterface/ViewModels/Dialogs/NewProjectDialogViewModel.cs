@@ -220,6 +220,18 @@ public partial class NewProjectDialogViewModel : ObservableObject
             return ValidationOutcome.Invalid("NewProjectDialog_ProjectFileAlreadyExists");
         }
 
+        // A folder contains at most one project file. A new subfolder contains none.
+        if (!CreateSubfolder)
+        {
+            var projectFilesResult = await _projectService.GetProjectFilesAsync(DestFolderPath);
+            var folderHasProject = projectFilesResult.IsSuccess
+                && projectFilesResult.Value.Count > 0;
+            if (folderHasProject)
+            {
+                return ValidationOutcome.Invalid("NewProjectDialog_FolderHasProject");
+            }
+        }
+
         return ValidationOutcome.Valid(destProjectFilePath);
     }
 

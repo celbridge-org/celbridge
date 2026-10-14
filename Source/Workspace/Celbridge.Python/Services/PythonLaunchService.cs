@@ -87,8 +87,8 @@ public sealed class PythonLaunchService : IPythonLaunchService
         _logger = logger;
     }
 
-    // Contains the project's IPython profile and the uv tools the user installs for it. It's under the project
-    // data folder, so two project files in one folder each get their own.
+    // Contains the project's IPython profile and the uv tools the user installs for it, in the project's data
+    // folder.
     private string ProjectPythonFolder => Path.Combine(
         _projectService.CurrentProject!.ProjectDataFolderPath,
         ProjectConstants.PythonFolder);
