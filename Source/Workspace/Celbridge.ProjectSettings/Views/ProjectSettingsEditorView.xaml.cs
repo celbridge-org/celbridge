@@ -31,6 +31,8 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
     public string ConfigErrorTitleText => _stringLocalizer.GetString("ProjectSettings_ConfigErrorTitle");
     public string ConfigErrorCaptionText => _stringLocalizer.GetString("ProjectSettings_ConfigErrorCaption");
     public string OpenInCodeEditorText => _stringLocalizer.GetString("ProjectSettings_OpenInCodeEditor");
+    public string ViewLoadReportText => _stringLocalizer.GetString("ProjectSettings_ViewLoadReport");
+    public string ViewLoadReportTooltip => _stringLocalizer.GetString("ProjectSettings_ViewLoadReportTooltip");
 
     public ProjectSettingsEditorView()
     {

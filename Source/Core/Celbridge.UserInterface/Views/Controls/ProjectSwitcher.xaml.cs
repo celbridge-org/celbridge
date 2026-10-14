@@ -1,8 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Documents;
 using Celbridge.Platform;
-using Celbridge.Projects;
-using Celbridge.Reports;
 using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.ViewModels.Controls;
 using Celbridge.Workspace;
@@ -22,8 +20,6 @@ public sealed partial class ProjectSwitcher : UserControl
     // Everything else in the menu is declared in XAML and stays in place.
     private readonly List<MenuFlyoutItemBase> _recentProjectItems = new();
 
-    private readonly IProjectLoadReporter _projectLoadReporter;
-
     private ApplicationMenuViewModel? _applicationMenuViewModel;
 
     public ProjectSwitcherViewModel ViewModel { get; }
@@ -32,7 +28,6 @@ public sealed partial class ProjectSwitcher : UserControl
     private string OpenProjectString => _stringLocalizer.GetString("MainMenu_OpenProject");
     private string ReloadProjectString => _stringLocalizer.GetString("MainMenu_ReloadProject");
     private string CloseProjectString => _stringLocalizer.GetString("MainMenu_CloseProject");
-    private string ProjectLoadReportString => _stringLocalizer.GetString("TitleBar_ProjectLoadReport");
     private string CurrentProjectHeaderString => _stringLocalizer.GetString("TitleBar_CurrentProjectHeader");
     private string RecentProjectsHeaderString => _stringLocalizer.GetString("TitleBar_RecentProjectsHeader");
 
@@ -40,7 +35,6 @@ public sealed partial class ProjectSwitcher : UserControl
     {
         // The menu's labels are bound one-time, so the localizer has to be in place before the XAML loads.
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
-        _projectLoadReporter = ServiceLocator.AcquireService<IProjectLoadReporter>();
         ViewModel = ServiceLocator.AcquireService<ProjectSwitcherViewModel>();
 
         this.InitializeComponent();
@@ -95,8 +89,6 @@ public sealed partial class ProjectSwitcher : UserControl
             CurrentProjectHeader.Visibility = Visibility.Collapsed;
             CurrentProjectItem.Visibility = Visibility.Collapsed;
             CurrentProjectSeparator.Visibility = Visibility.Collapsed;
-            ProjectLoadReportSeparator.Visibility = Visibility.Collapsed;
-            ProjectLoadReportItem.Visibility = Visibility.Collapsed;
         }
         else
         {
@@ -107,8 +99,6 @@ public sealed partial class ProjectSwitcher : UserControl
             CurrentProjectHeader.Visibility = Visibility.Visible;
             CurrentProjectItem.Visibility = Visibility.Visible;
             CurrentProjectSeparator.Visibility = Visibility.Visible;
-
-            UpdateProjectLoadReportItem();
         }
 
         var recentProjects = viewModel.GetRecentProjects();
@@ -186,34 +176,6 @@ public sealed partial class ProjectSwitcher : UserControl
 
         var commandService = ServiceLocator.AcquireService<ICommandService>();
         commandService.Execute<IActivateDocumentCommand>(command => command.FileResource = activeDocument);
-    }
-
-    private void UpdateProjectLoadReportItem()
-    {
-        var loadReport = _projectLoadReporter.WrittenReport;
-        if (loadReport is null)
-        {
-            // Nothing was recorded for this load, so there is no report to open. The separator goes with the
-            // item, which is last in the menu and would otherwise leave it dangling.
-            ProjectLoadReportSeparator.Visibility = Visibility.Collapsed;
-            ProjectLoadReportItem.Visibility = Visibility.Collapsed;
-            return;
-        }
-
-        ProjectLoadReportSeparator.Visibility = Visibility.Visible;
-        ProjectLoadReportItem.Visibility = Visibility.Visible;
-    }
-
-    private void OpenProjectLoadReport(object sender, RoutedEventArgs e)
-    {
-        var reportResource = _projectLoadReporter.WrittenReport?.Resource ?? ResourceKey.Empty;
-        if (reportResource.IsEmpty)
-        {
-            return;
-        }
-
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-        commandService.Execute<IOpenDocumentCommand>(command => command.FileResource = reportResource);
     }
 
     private async void OpenRecentProjectFromSwitcher(string projectFilePath)

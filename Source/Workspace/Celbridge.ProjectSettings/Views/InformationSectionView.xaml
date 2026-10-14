@@ -9,32 +9,72 @@
   </UserControl.Resources>
 
   <ScrollViewer Padding="12">
-    <StackPanel Spacing="12">
-      <StackPanel Spacing="2">
-        <TextBlock Text="{x:Bind DescriptionLabel}" Style="{StaticResource FieldLabelTextStyle}"/>
-        <TextBox ToolTipService.ToolTip="{x:Bind DescriptionTooltip}"
-                 AutomationProperties.Name="{x:Bind DescriptionLabel}"
+    <StackPanel Spacing="20">
+
+      <StackPanel Spacing="8">
+        <StackPanel Spacing="2">
+          <TextBlock Text="{x:Bind DescriptionLabel}"
+                     Style="{StaticResource SectionHeadingTextStyle}"/>
+          <TextBlock Text="{x:Bind DescriptionHint}"
+                     Style="{StaticResource SupportingTextStyle}"
+                     TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <TextBox AutomationProperties.Name="{x:Bind DescriptionLabel}"
                  AcceptsReturn="True"
                  TextWrapping="Wrap"
                  MinHeight="54"
                  Text="{x:Bind ViewModel.DescriptionText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
       </StackPanel>
-      <StackPanel Spacing="2" ToolTipService.ToolTip="{x:Bind CelbridgeVersionTooltip}">
-        <TextBlock Text="{x:Bind CelbridgeVersionLabel}" Style="{StaticResource FieldLabelTextStyle}"/>
+
+      <StackPanel Spacing="8">
+        <StackPanel Spacing="2">
+          <TextBlock Text="{x:Bind CelbridgeVersionLabel}"
+                     Style="{StaticResource SectionHeadingTextStyle}"/>
+          <TextBlock Text="{x:Bind CelbridgeVersionHint}"
+                     Style="{StaticResource SupportingTextStyle}"
+                     TextWrapping="Wrap"/>
+        </StackPanel>
+
         <TextBlock Text="{x:Bind ViewModel.CelbridgeVersionText, Mode=OneWay}"/>
       </StackPanel>
-      <StackPanel Spacing="2">
-        <TextBlock Text="{x:Bind ProjectVersionLabel}" Style="{StaticResource FieldLabelTextStyle}"/>
-        <TextBox ToolTipService.ToolTip="{x:Bind ProjectVersionTooltip}"
-                 AutomationProperties.Name="{x:Bind ProjectVersionLabel}"
+
+      <StackPanel Spacing="8">
+        <StackPanel Spacing="2">
+          <TextBlock Text="{x:Bind ProjectVersionLabel}"
+                     Style="{StaticResource SectionHeadingTextStyle}"/>
+          <TextBlock Text="{x:Bind ProjectVersionHint}"
+                     Style="{StaticResource SupportingTextStyle}"
+                     TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <TextBox AutomationProperties.Name="{x:Bind ProjectVersionLabel}"
                  PlaceholderText="{x:Bind ViewModel.ProjectVersionPlaceholder, Mode=OneWay}"
                  Text="{x:Bind ViewModel.ProjectVersionText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+
         <TextBlock Text="{x:Bind InvalidProjectVersionText}"
                    Style="{StaticResource SupportingTextStyle}"
                    Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                    TextWrapping="Wrap"
                    Visibility="{x:Bind ViewModel.IsProjectVersionInvalid, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
       </StackPanel>
+
+      <StackPanel Spacing="8">
+        <Button Content="{x:Bind OpenProjectDataText}"
+                Command="{x:Bind ViewModel.OpenProjectDataCommand}"/>
+        <TextBlock Text="{x:Bind OpenProjectDataHint}"
+                   Style="{StaticResource SupportingTextStyle}"
+                   TextWrapping="Wrap"/>
+      </StackPanel>
+
+      <StackPanel Spacing="8">
+        <Button Content="{x:Bind ViewLoadReportText}"
+                Command="{x:Bind ViewModel.OpenLoadReportCommand}"/>
+        <TextBlock Text="{x:Bind ViewLoadReportHint}"
+                   Style="{StaticResource SupportingTextStyle}"
+                   TextWrapping="Wrap"/>
+      </StackPanel>
+
     </StackPanel>
   </ScrollViewer>
 </UserControl>
