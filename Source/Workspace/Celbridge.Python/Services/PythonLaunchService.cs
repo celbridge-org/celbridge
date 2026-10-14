@@ -87,11 +87,21 @@ public sealed class PythonLaunchService : IPythonLaunchService
         _logger = logger;
     }
 
-    // What belongs to this project alone: its IPython profile, and the uv tools the user installs here.
-    // Under the project data folder, so two configurations in one project folder each get their own.
+    // Contains the project's IPython profile and the uv tools the user installs for it. It's under the project
+    // data folder, so two project files in one folder each get their own.
     private string ProjectPythonFolder => Path.Combine(
         _projectService.CurrentProject!.ProjectDataFolderPath,
         ProjectConstants.PythonFolder);
+
+    // The folders behind the temp: and logs: roots. Scripts get their paths so they can read and write files
+    // there directly, or pass a file to another program.
+    private string ProjectTempFolder => Path.Combine(
+        _projectService.CurrentProject!.ProjectDataFolderPath,
+        ProjectConstants.TempFolder);
+
+    private string ProjectLogsFolder => Path.Combine(
+        _projectService.CurrentProject!.ProjectDataFolderPath,
+        ProjectConstants.LogsFolder);
 
     private string ProjectUvBinFolder => Path.Combine(ProjectPythonFolder, ProjectUvBinFolderName);
 
@@ -234,6 +244,8 @@ public sealed class PythonLaunchService : IPythonLaunchService
             ["UV_MANAGED_PYTHON"] = "1",
             ["CELBRIDGE_MCP_PORT"] = _serverService.Port.ToString(),
             ["CELBRIDGE_PROJECT_FOLDER"] = _projectService.CurrentProject!.ProjectFolderPath,
+            ["CELBRIDGE_TEMP_FOLDER"] = ProjectTempFolder,
+            ["CELBRIDGE_LOGS_FOLDER"] = ProjectLogsFolder,
             ["CELBRIDGE_VERSION"] = celbridgeVersion,
             ["CELBRIDGE_IPYTHON_DIR"] = ipythonDir,
 

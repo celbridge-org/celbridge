@@ -1,14 +1,18 @@
+using Celbridge.Documents;
 using Celbridge.Projects;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 
 namespace Celbridge.ProjectSettings.ViewModels;
 
 /// <summary>
-/// Drives the Information section: the read-only Celbridge version plus the user-editable project version
-/// and description.
+/// Drives the Information section: the read-only Celbridge version, the user-editable project version
+/// and description, and the buttons that open the project's data folder and load report.
 /// </summary>
 public partial class InformationSectionViewModel : ProjectSettingsSectionViewModel
 {
+    private readonly IProjectLoadReporter _projectLoadReporter;
+
     // Commits are suppressed while Load populates the fields from disk, so building them does not write
     // them back.
     private bool _suppressCommit;
@@ -34,9 +38,12 @@ public partial class InformationSectionViewModel : ProjectSettingsSectionViewMod
     /// </summary>
     public string ProjectVersionPlaceholder => SemanticVersion.Default.ToString();
 
-    public InformationSectionViewModel(ProjectSettingsContext context)
+    public InformationSectionViewModel(
+        ProjectSettingsContext context,
+        IProjectLoadReporter projectLoadReporter)
         : base(context)
     {
+        _projectLoadReporter = projectLoadReporter;
     }
 
     public override void Load()
@@ -52,6 +59,24 @@ public partial class InformationSectionViewModel : ProjectSettingsSectionViewMod
         ProjectVersionText = config.Celbridge.ProjectVersion ?? string.Empty;
         DescriptionText = config.Celbridge.Description ?? string.Empty;
         _suppressCommit = false;
+    }
+
+    [RelayCommand]
+    private void OpenProjectData()
+    {
+        CommandService.Execute<IOpenProjectDataCommand>();
+    }
+
+    [RelayCommand]
+    private void OpenLoadReport()
+    {
+        var loadReport = _projectLoadReporter.WrittenReport;
+        if (loadReport is null)
+        {
+            return;
+        }
+
+        CommandService.Execute<IOpenDocumentCommand>(command => command.FileResource = loadReport.Resource);
     }
 
     partial void OnProjectVersionTextChanged(string value)

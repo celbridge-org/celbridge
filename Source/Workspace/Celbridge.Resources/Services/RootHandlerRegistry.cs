@@ -22,9 +22,8 @@ public sealed class RootHandlerRegistry : IRootHandlerRegistry
     {
         try
         {
-            // Longest-prefix-wins so a path under .celbridge/temp/ matches the
-            // temp handler rather than the project handler, which has the
-            // shorter project root prefix.
+            // The longest prefix wins. When one root's folder is inside another
+            // root's folder, a path in the inner folder matches the inner root.
             var normalizedPath = Path.GetFullPath(absolutePath);
 
             var comparison = PathComparison.Comparison;

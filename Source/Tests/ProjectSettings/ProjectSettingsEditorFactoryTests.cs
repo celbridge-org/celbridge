@@ -19,6 +19,9 @@ public class ProjectSettingsEditorFactoryTests
     private static string ProjectFolderPath =>
         OperatingSystem.IsWindows() ? @"C:\Projects\Acme" : "/projects/acme";
 
+    private static string ProjectDataFolderPath =>
+        OperatingSystem.IsWindows() ? @"C:\Data\Acme" : "/data/acme";
+
     private IProjectService _projectService = null!;
     private ProjectSettingsEditorFactory _factory = null!;
 
@@ -135,6 +138,7 @@ public class ProjectSettingsEditorFactoryTests
             Path.Combine(ProjectFolderPath, projectFileName),
             Path.GetFileNameWithoutExtension(projectFileName),
             ProjectFolderPath,
+            ProjectDataFolderPath,
             new ProjectConfig(),
             MigrationResult.Success(),
             ConfigIsHealthy: true,

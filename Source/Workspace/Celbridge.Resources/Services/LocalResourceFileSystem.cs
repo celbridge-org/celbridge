@@ -713,10 +713,18 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             var childName = Path.GetFileName(entry.FullPath);
             var childKey = folder.Combine(childName);
 
-            // The reserved folders are the only thing enumeration drops. The project's
+            // Enumeration drops the reserved folders and linked folders. The project's
             // hide patterns are a view filter the Explorer applies, so a hidden entry
             // is still listed here.
             if (EvaluatePolicy(childKey, ResourceAction.Read, isFolder: entry.IsFolder).IsFailure)
+            {
+                continue;
+            }
+
+            // The resolver refuses every path through a linked folder. A listing that
+            // offered one would hand the caller a folder it cannot open.
+            if (entry.IsFolder
+                && entry.Attributes.HasFlag(FileSystemAttributes.ReparsePoint))
             {
                 continue;
             }

@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Runtime.ExceptionServices;
 using Celbridge.Console.Helpers;
-using Celbridge.Resources.Helpers;
 using Celbridge.Tests.FileSystem;
 
 namespace Celbridge.Tests.Console;
@@ -91,18 +90,5 @@ public class ConsoleStartupWriterTests
         }
 
         thrown.Should().BeEmpty("a missing file is checked for, not read");
-    }
-
-    [Test]
-    public async Task DataFolderGitIgnore_IgnoresEverything_UnlessTheFolderHasOne()
-    {
-        var gitIgnorePath = Path.Combine(_dataFolder, ".gitignore");
-
-        (await DataFolderGitIgnore.EnsureAsync(_fileSystem, _dataFolder)).IsSuccess.Should().BeTrue();
-        File.ReadAllText(gitIgnorePath).Should().Be("*\n");
-
-        File.WriteAllText(gitIgnorePath, "logs/\n");
-        await DataFolderGitIgnore.EnsureAsync(_fileSystem, _dataFolder);
-        File.ReadAllText(gitIgnorePath).Should().Be("logs/\n");
     }
 }

@@ -2,10 +2,12 @@ using Celbridge.Tests.Localization;
 using System.Text.Json;
 using Celbridge.FileSystem.Services;
 using Celbridge.Packages;
+using Celbridge.Platform;
 using Celbridge.Projects;
 using Celbridge.Projects.Services;
 using Celbridge.Reports;
 using Celbridge.Resources;
+using Celbridge.Tests.Helpers;
 using Celbridge.Tests.Migration.TestHelpers;
 using Celbridge.Utilities;
 
@@ -20,42 +22,55 @@ namespace Celbridge.Tests.Projects;
 [TestFixture]
 public class ProjectLoadReporterTests
 {
+    private string _testFolderPath = null!;
     private string _projectFolderPath = null!;
     private string _projectFilePath = null!;
+    private string _dataFolderPath = null!;
     private ProjectLoadReporter _reporter = null!;
     private ILocalFileSystem _fileSystem = null!;
 
     [SetUp]
     public void Setup()
     {
-        _projectFolderPath = Path.Combine(
+        _testFolderPath = Path.Combine(
             Path.GetTempPath(),
             "Celbridge",
             nameof(ProjectLoadReporterTests),
             Guid.NewGuid().ToString("N"));
+
+        _projectFolderPath = Path.Combine(_testFolderPath, "Project");
         Directory.CreateDirectory(_projectFolderPath);
 
         _projectFilePath = Path.Combine(_projectFolderPath, "test.celbridge");
+        File.WriteAllText(_projectFilePath, string.Empty);
 
         _fileSystem = new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>());
         var reportWriter = new ReportWriter(_fileSystem, MigrationTestHelper.CreateMockLogger<ReportWriter>());
-        // No current project: the reports land in the default location, which is where a project that
-        // names no data folder keeps them.
+
+        var appEnvironment = Substitute.For<IAppEnvironment>();
+        appEnvironment.LocalApplicationDataFolderPath.Returns(Path.Combine(_testFolderPath, "AppData"));
+
+        var projectDataFolderService = new ProjectDataFolderService(
+            new NullLogger<ProjectDataFolderService>(),
+            appEnvironment,
+            _fileSystem);
+        _dataFolderPath = projectDataFolderService.GetDataFolderPath(_projectFilePath);
+
         _reporter = new ProjectLoadReporter(
             reportWriter,
-            MigrationTestHelper.CreateMockLogger<ProjectLoadReporter>(),
+            new NullLogger<ProjectLoadReporter>(),
             new TestLocalizerService(),
-            Substitute.For<IProjectService>());
+            projectDataFolderService);
     }
 
     [TearDown]
     public void TearDown()
     {
-        if (Directory.Exists(_projectFolderPath))
+        if (Directory.Exists(_testFolderPath))
         {
             try
             {
-                Directory.Delete(_projectFolderPath, recursive: true);
+                Directory.Delete(_testFolderPath, recursive: true);
             }
             catch
             {
@@ -112,7 +127,22 @@ public class ProjectLoadReporterTests
         var result = await _reporter.FlushAsync();
 
         result.Should().BeNull();
-        Directory.Exists(Path.Combine(_projectFolderPath, ".celbridge")).Should().BeFalse();
+        Directory.Exists(_dataFolderPath).Should().BeFalse();
+    }
+
+    [Test]
+    public async Task FlushAsync_ProjectFileMissing_WritesNoReportAndNoDataFolder()
+    {
+        // A missing project file can't be opened, so its report and data folder would never be used.
+        File.Delete(_projectFilePath);
+
+        _reporter.BeginLoad(_projectFilePath);
+        _reporter.RecordLoadOutcome(loadSucceeded: false, loadResult: Result.Fail("Project file does not exist"));
+
+        var result = await _reporter.FlushAsync();
+
+        result.Should().BeNull();
+        Directory.Exists(_dataFolderPath).Should().BeFalse();
     }
 
     [Test]
@@ -429,7 +459,7 @@ public class ProjectLoadReporterTests
     [Test]
     public async Task FlushAsync_CreatesReportsFolderWhenMissing()
     {
-        Directory.Exists(Path.Combine(_projectFolderPath, ".celbridge", "logs", "reports")).Should().BeFalse();
+        Directory.Exists(_dataFolderPath).Should().BeFalse();
 
         _reporter.BeginLoad(_projectFilePath);
         _reporter.RecordMigrationResult(
@@ -442,6 +472,9 @@ public class ProjectLoadReporterTests
 
         reportSummary.Should().NotBeNull();
         File.Exists(ResolveReportFilePath(reportSummary!.Resource)).Should().BeTrue();
+
+        // The reporter creates a normal data folder, so it also contains a project.json.
+        File.Exists(Path.Combine(_dataFolderPath, "project.json")).Should().BeTrue();
     }
 
     private async Task<JsonDocument> FlushAndReadAsync()
@@ -458,7 +491,7 @@ public class ProjectLoadReporterTests
     {
         var reportFileName = Path.GetFileName(reportResource.ToString());
 
-        return Path.Combine(_projectFolderPath, ".celbridge", "logs", "reports", reportFileName);
+        return Path.Combine(_dataFolderPath, "logs", "reports", reportFileName);
     }
 
     private static List<string?> GetSectionTitles(JsonDocument report)

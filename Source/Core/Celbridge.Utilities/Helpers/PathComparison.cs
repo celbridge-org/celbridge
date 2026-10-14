@@ -11,7 +11,7 @@ public static class PathComparison
     // Default APFS behaves like NTFS: case-insensitive but case-preserving. A
     // deliberately case-sensitive APFS volume is rare and not detected here, so
     // two paths differing solely by case are treated as one on such a volume.
-    private static bool IsCaseInsensitiveFileSystem =>
+    public static bool IsCaseInsensitiveFileSystem =>
         OperatingSystem.IsWindows() || OperatingSystem.IsMacOS();
 
     public static StringComparison Comparison =>

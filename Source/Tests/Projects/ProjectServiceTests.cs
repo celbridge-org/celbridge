@@ -24,6 +24,7 @@ public class ProjectServiceTests
     private ILocalFileSystem _fileSystem = null!;
     private IMessengerService _messengerService = null!;
     private IProjectTemplateService _projectTemplateService = null!;
+    private FakeProjectDataFolderService _projectDataFolderService = null!;
     private ProjectService _projectService = null!;
 
     [SetUp]
@@ -36,8 +37,11 @@ public class ProjectServiceTests
         StubProjectExists(OldestProject);
         StubProjectMissing(DeletedProject);
 
+        _projectDataFolderService = new FakeProjectDataFolderService();
+
         var projectFactory = new ProjectFactory(
             new NullLogger<ProjectFactory>(),
+            _projectDataFolderService,
             _fileSystem);
 
         _messengerService = new MessengerService();
@@ -49,7 +53,44 @@ public class ProjectServiceTests
             _messengerService,
             projectFactory,
             _projectTemplateService,
+            _projectDataFolderService,
             _fileSystem);
+    }
+
+    [Test]
+    public async Task CreateProject_ClearsTheDataFolderOfItsPathFirst()
+    {
+        // A project deleted from this path leaves its data folder behind. The new project must not inherit it.
+        var projectFilePath = MakeProjectFilePath("Created");
+        StubProjectMissing(projectFilePath);
+
+        var template = CreateEmptyTemplate();
+        var clearedBeforeTheTemplate = false;
+        _projectTemplateService.CreateFromTemplateAsync(projectFilePath, template, Arg.Any<bool>())
+            .Returns(_ =>
+            {
+                clearedBeforeTheTemplate = _projectDataFolderService.ClearedPaths.Contains(projectFilePath);
+                return Result.Ok();
+            });
+
+        var result = await _projectService.CreateProjectAsync(new NewProjectConfig(projectFilePath, template));
+
+        result.IsSuccess.Should().BeTrue();
+        clearedBeforeTheTemplate.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task CreateProject_DataFolderThatCannotBeCleared_CreatesNothing()
+    {
+        var projectFilePath = MakeProjectFilePath("Created");
+        StubProjectMissing(projectFilePath);
+        _projectDataFolderService.ClearResult = Result.Fail("The folder is in use");
+
+        var template = CreateEmptyTemplate();
+        var result = await _projectService.CreateProjectAsync(new NewProjectConfig(projectFilePath, template));
+
+        result.IsFailure.Should().BeTrue();
+        await _projectTemplateService.DidNotReceiveWithAnyArgs().CreateFromTemplateAsync(default!, default!, default);
     }
 
     [Test]
@@ -117,6 +158,21 @@ public class ProjectServiceTests
         current!.ProjectName.Should().Be("Renamed");
         current.ProjectFilePath.Should().Be(Path.Combine(project.ProjectFolderPath, "Renamed.celbridge"));
         current.ProjectFolderPath.Should().Be(project.ProjectFolderPath);
+    }
+
+    [Test]
+    public void RenamingTheProjectFile_KeepsTheDataFolderTheWorkspaceLoadedWith()
+    {
+        // Open services resolved their paths against the data folder at load, so the renamed project keeps
+        // that folder until it's opened again.
+        var project = LoadProjectNamed(NewestProject);
+        project.ProjectDataFolderPath.Should().Be(MakeDataFolderPath(NewestProject));
+
+        _messengerService.Send(new ResourceKeyChangedMessage(
+            new ResourceKey("Newest.celbridge"),
+            new ResourceKey("Renamed.celbridge")));
+
+        _projectService.CurrentProject!.ProjectDataFolderPath.Should().Be(project.ProjectDataFolderPath);
     }
 
     [Test]
@@ -192,6 +248,43 @@ public class ProjectServiceTests
     private static string MakeProjectFilePath(string projectName)
     {
         return Path.Combine(Path.GetTempPath(), projectName, $"{projectName}.celbridge");
+    }
+
+    private static string MakeDataFolderPath(string projectFilePath)
+    {
+        return Path.Combine(Path.GetTempPath(), "Data", Path.GetFileNameWithoutExtension(projectFilePath));
+    }
+
+    // A fake IProjectDataFolderService that records each clear and returns ClearResult.
+    private sealed class FakeProjectDataFolderService : IProjectDataFolderService
+    {
+        public List<string> ClearedPaths { get; } = new();
+
+        public Result ClearResult { get; set; } = Result.Ok();
+
+        public string GetDataFolderPath(string projectFilePath) => MakeDataFolderPath(projectFilePath);
+
+        public Task<Result<string>> EnsureDataFolderAsync(string projectFilePath)
+        {
+            return Task.FromResult(Result<string>.Ok(GetDataFolderPath(projectFilePath)));
+        }
+
+        public Task<Result> ClearDataFolderAsync(string projectFilePath)
+        {
+            ClearedPaths.Add(projectFilePath);
+            return Task.FromResult(ClearResult);
+        }
+    }
+
+    private static ProjectTemplate CreateEmptyTemplate()
+    {
+        return new ProjectTemplate
+        {
+            Id = "Empty",
+            Name = "Empty Project",
+            Description = "An empty project",
+            Icon = "bs-file-earmark"
+        };
     }
 
     [Test]

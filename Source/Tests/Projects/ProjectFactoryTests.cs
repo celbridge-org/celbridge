@@ -1,6 +1,8 @@
 using Celbridge.FileSystem.Services;
+using Celbridge.Platform;
 using Celbridge.Projects;
 using Celbridge.Projects.Services;
+using Celbridge.Tests.Helpers;
 using Celbridge.Tests.Migration.TestHelpers;
 
 namespace Celbridge.Tests.Projects;
@@ -13,14 +15,34 @@ public class ProjectFactoryTests
 {
     private ILogger<ProjectFactory> _mockLogger = null!;
     private ILocalFileSystem _fileSystem = null!;
+    private string _appDataFolder = null!;
     private ProjectFactory _factory = null!;
 
     [SetUp]
     public void Setup()
     {
-        _mockLogger = MigrationTestHelper.CreateMockLogger<ProjectFactory>();
+        _mockLogger = new NullLogger<ProjectFactory>();
         _fileSystem = new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>());
-        _factory = new ProjectFactory(_mockLogger, _fileSystem);
+
+        _appDataFolder = Path.Combine(Path.GetTempPath(), $"TestAppData_{Guid.NewGuid():N}");
+        var appEnvironment = Substitute.For<IAppEnvironment>();
+        appEnvironment.LocalApplicationDataFolderPath.Returns(_appDataFolder);
+
+        var projectDataFolderService = new ProjectDataFolderService(
+            new NullLogger<ProjectDataFolderService>(),
+            appEnvironment,
+            _fileSystem);
+
+        _factory = new ProjectFactory(_mockLogger, projectDataFolderService, _fileSystem);
+    }
+
+    [TearDown]
+    public void TearDown()
+    {
+        if (Directory.Exists(_appDataFolder))
+        {
+            Directory.Delete(_appDataFolder, recursive: true);
+        }
     }
 
     #region Input Validation Tests
@@ -75,6 +97,30 @@ public class ProjectFactoryTests
             result.Value.Should().NotBeNull();
             result.Value.ProjectFilePath.Should().Be(projectPath);
             result.Value.ProjectName.Should().Be(Path.GetFileNameWithoutExtension(projectPath));
+        }
+        finally
+        {
+            CleanupProjectFiles(projectPath);
+        }
+    }
+
+    [Test]
+    public async Task LoadAsync_CreatesTheDataFolderOutsideTheProjectFolder()
+    {
+        var projectPath = CreateValidProjectFile();
+        var migrationResult = CreateSuccessfulMigrationResult();
+
+        try
+        {
+            var result = await _factory.LoadAsync(projectPath, migrationResult);
+
+            result.IsSuccess.Should().BeTrue();
+
+            var dataFolderPath = result.Value.ProjectDataFolderPath;
+            Directory.Exists(dataFolderPath).Should().BeTrue();
+            dataFolderPath.Should().StartWith(_appDataFolder);
+            Directory.EnumerateFileSystemEntries(Path.GetDirectoryName(projectPath)!)
+                .Should().ContainSingle("the project folder contains only the project file");
         }
         finally
         {

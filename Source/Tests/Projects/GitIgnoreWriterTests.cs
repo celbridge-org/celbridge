@@ -6,7 +6,7 @@ namespace Celbridge.Tests.Projects;
 [TestFixture]
 public class GitIgnoreWriterTests
 {
-    private const string CelbridgeContents = "# Celbridge project metadata\n.celbridge/\n\n# Build output\nbin/\nobj/\n";
+    private const string CelbridgeContents = "# Files downloaded from web pages\n/downloads/\n\n# Build output\nbin/\nobj/\n";
 
     private ILocalFileSystem _fileSystem = null!;
     private string _tempRootPath = null!;
@@ -43,13 +43,13 @@ public class GitIgnoreWriterTests
 
         // The user's file is kept whole and the block goes after it, so their rules read first.
         mergedContents!.Should().StartWith(existingContents);
-        mergedContents.Should().Be(existingContents + "\n# Added by Celbridge\n.celbridge/\nobj/\n");
+        mergedContents.Should().Be(existingContents + "\n# Added by Celbridge\n/downloads/\nobj/\n");
     }
 
     [Test]
     public void Merge_EveryPatternAlreadyPresent_ReturnsNull()
     {
-        var existingContents = "obj/\nbin/\n.celbridge/\n";
+        var existingContents = "obj/\nbin/\n/downloads/\n";
 
         var mergedContents = GitIgnoreWriter.Merge(existingContents, CelbridgeContents);
 
@@ -68,38 +68,38 @@ public class GitIgnoreWriterTests
         var mergedContents = GitIgnoreWriter.Merge(existingContents, CelbridgeContents);
 
         mergedContents.Should().NotBeNull();
-        mergedContents!.Should().Be(existingContents + "\n# Added by Celbridge\n.celbridge/\nbin/\nobj/\n");
+        mergedContents!.Should().Be(existingContents + "\n# Added by Celbridge\n/downloads/\nbin/\nobj/\n");
     }
 
     [Test]
     public void Merge_ExistingBlock_IsRewrittenRatherThanRepeated()
     {
         // The block a previous release wrote, against a canonical file that has gained obj/ since.
-        var existingContents = "*.log\n\n# Added by Celbridge\n.celbridge/\nbin/\n";
+        var existingContents = "*.log\n\n# Added by Celbridge\n/downloads/\nbin/\n";
 
         var mergedContents = GitIgnoreWriter.Merge(existingContents, CelbridgeContents);
 
         mergedContents.Should().NotBeNull();
-        mergedContents!.Should().Be("*.log\n\n# Added by Celbridge\n.celbridge/\nbin/\nobj/\n");
+        mergedContents!.Should().Be("*.log\n\n# Added by Celbridge\n/downloads/\nbin/\nobj/\n");
     }
 
     [Test]
     public void Merge_ExistingBlock_KeepsLinesAddedInsideIt()
     {
-        var existingContents = "# Added by Celbridge\n.celbridge/\nbin/\nobj/\nmy-own-rule/\n";
+        var existingContents = "# Added by Celbridge\n/downloads/\nbin/\nobj/\nmy-own-rule/\n";
         var laterCelbridgeContents = CelbridgeContents + "\n# Tool output\n.ruff_cache/\n";
 
         var mergedContents = GitIgnoreWriter.Merge(existingContents, laterCelbridgeContents);
 
         // A line Celbridge does not ship was typed in by hand, so the rewrite carries it over.
         mergedContents.Should().NotBeNull();
-        mergedContents!.Should().Be("# Added by Celbridge\n.celbridge/\nbin/\nobj/\n.ruff_cache/\nmy-own-rule/\n");
+        mergedContents!.Should().Be("# Added by Celbridge\n/downloads/\nbin/\nobj/\n.ruff_cache/\nmy-own-rule/\n");
     }
 
     [Test]
     public void Merge_ExistingBlock_AlreadyCurrent_ReturnsNull()
     {
-        var existingContents = "*.log\n\n# Added by Celbridge\n.celbridge/\nbin/\nobj/\n";
+        var existingContents = "*.log\n\n# Added by Celbridge\n/downloads/\nbin/\nobj/\n";
 
         var mergedContents = GitIgnoreWriter.Merge(existingContents, CelbridgeContents);
 
@@ -110,7 +110,7 @@ public class GitIgnoreWriterTests
     public void Merge_PatternMovedOutOfTheBlock_IsNotPutBack()
     {
         // The user moved bin/ up into their own rules. The block does not claim it a second time.
-        var existingContents = "bin/\n\n# Added by Celbridge\n.celbridge/\nobj/\n";
+        var existingContents = "bin/\n\n# Added by Celbridge\n/downloads/\nobj/\n";
 
         var mergedContents = GitIgnoreWriter.Merge(existingContents, CelbridgeContents);
 
@@ -125,7 +125,7 @@ public class GitIgnoreWriterTests
         var mergedContents = GitIgnoreWriter.Merge(existingContents, CelbridgeContents);
 
         mergedContents.Should().NotBeNull();
-        mergedContents!.Should().Be(existingContents + "\r\n# Added by Celbridge\r\n.celbridge/\r\nbin/\r\nobj/\r\n");
+        mergedContents!.Should().Be(existingContents + "\r\n# Added by Celbridge\r\n/downloads/\r\nbin/\r\nobj/\r\n");
     }
 
     [Test]
@@ -136,7 +136,7 @@ public class GitIgnoreWriterTests
         var mergedContents = GitIgnoreWriter.Merge(existingContents, CelbridgeContents);
 
         mergedContents.Should().NotBeNull();
-        mergedContents!.Should().Be("*.log\n\n# Added by Celbridge\n.celbridge/\nbin/\nobj/\n");
+        mergedContents!.Should().Be("*.log\n\n# Added by Celbridge\n/downloads/\nbin/\nobj/\n");
     }
 
     [Test]
@@ -159,7 +159,7 @@ public class GitIgnoreWriterTests
 
         // The bundled resource is what lands, so a fresh file carries no merge marker.
         var gitIgnoreContents = await File.ReadAllTextAsync(gitIgnorePath);
-        gitIgnoreContents.Should().Contain(".celbridge/");
+        gitIgnoreContents.Should().Contain("node_modules/");
         gitIgnoreContents.Should().Contain("/downloads/");
         gitIgnoreContents.Should().NotContain("# Added by Celbridge");
     }
@@ -187,7 +187,7 @@ public class GitIgnoreWriterTests
         var gitIgnorePath = Path.Combine(_tempRootPath, ".gitignore");
 
         // A block from an older release, holding one of the patterns the canonical file ships today.
-        await File.WriteAllTextAsync(gitIgnorePath, "*.log\n\n# Added by Celbridge\n.celbridge/\n");
+        await File.WriteAllTextAsync(gitIgnorePath, "*.log\n\n# Added by Celbridge\nbin/\n");
 
         var result = await GitIgnoreWriter.WriteAsync(_tempRootPath, _fileSystem);
 

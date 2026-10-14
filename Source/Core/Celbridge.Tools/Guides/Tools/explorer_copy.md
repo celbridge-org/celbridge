@@ -1,6 +1,6 @@
 # explorer_copy
 
-Copies a single resource (file or folder) to a new location in the project tree. The original resource is left in place. Folder copies are recursive. The copy is recorded on the explorer undo stack and can be reversed with `explorer_undo`.
+Copies a single resource (file or folder) to a new location in the project tree. The original resource is left in place. Folder copies are recursive. A copy into `project:` is recorded on the explorer undo stack and can be reversed with `explorer_undo`.
 
 A paired `.cel` sidecar is copied alongside its parent. References inside the copied content are *not* rewritten — the copy points at the same targets as the original. If you want the copied content to reference the copies of its dependencies, edit the references after the copy (or rename them through `explorer_move`).
 
@@ -21,7 +21,7 @@ When one or more resources were refused or failed (a reserved path, a read-only 
 {
   "status": "partial_failure",
   "failedResources": [
-    { "resource": "project:source.txt", "message": "Write of 'project:.celbridge/keep.bak' was denied by the system policy pattern '.celbridge/**'." },
+    { "resource": "project:source.txt", "message": "Write of 'project:.git/keep.bak' was denied by the system policy pattern '.git/**'." },
     ...
   ]
 }

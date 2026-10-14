@@ -2,7 +2,7 @@ namespace Celbridge.Resources.Services.Roots;
 
 /// <summary>
 /// Resource root handler for the temp: virtual root. Backs scratch space and intermediate
-/// artifacts under .celbridge/temp/. Host policy puts sub-folder conventions on top
+/// artifacts in the project data folder's temp/. Host policy puts sub-folder conventions on top
 /// (temp:staging/..., temp:scratch/..., temp:cache/...).
 /// </summary>
 public class TempRootHandler : ResourceRootHandlerBase

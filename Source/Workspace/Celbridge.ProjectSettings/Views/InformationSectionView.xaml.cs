@@ -23,12 +23,16 @@ public sealed partial class InformationSectionView : UserControl
     }
 
     public string CelbridgeVersionLabel => _stringLocalizer.GetString("ProjectSettings_CelbridgeVersionLabel");
-    public string CelbridgeVersionTooltip => _stringLocalizer.GetString("ProjectSettings_CelbridgeVersionTooltip");
+    public string CelbridgeVersionHint => _stringLocalizer.GetString("ProjectSettings_CelbridgeVersionHint");
     public string ProjectVersionLabel => _stringLocalizer.GetString("ProjectSettings_ProjectVersionLabel");
-    public string ProjectVersionTooltip => _stringLocalizer.GetString("ProjectSettings_ProjectVersionTooltip");
+    public string ProjectVersionHint => _stringLocalizer.GetString("ProjectSettings_ProjectVersionHint");
     public string InvalidProjectVersionText => _stringLocalizer.GetString("ProjectSettings_InvalidProjectVersion");
     public string DescriptionLabel => _stringLocalizer.GetString("ProjectSettings_DescriptionLabel");
-    public string DescriptionTooltip => _stringLocalizer.GetString("ProjectSettings_DescriptionTooltip");
+    public string DescriptionHint => _stringLocalizer.GetString("ProjectSettings_DescriptionHint");
+    public string OpenProjectDataText => _stringLocalizer.GetString("ProjectSettings_OpenProjectData");
+    public string OpenProjectDataHint => _stringLocalizer.GetString("ProjectSettings_OpenProjectDataHint");
+    public string ViewLoadReportText => _stringLocalizer.GetString("ProjectSettings_ViewLoadReport");
+    public string ViewLoadReportHint => _stringLocalizer.GetString("ProjectSettings_ViewLoadReportHint");
 
     public InformationSectionView()
     {

@@ -434,19 +434,19 @@ public class ResourceRegistryTests
         // Register a temp root whose backing folder is nested inside the project folder.
         // A path under the nested folder should match the temp root (longer prefix),
         // not the project root (shorter prefix).
-        var tempBacking = Path.Combine(_resourceFolderPath, ".celbridge", "temp");
+        var tempBacking = Path.Combine(_resourceFolderPath, "nested", "temp");
         Directory.CreateDirectory(tempBacking);
 
         rootHandlerRegistry.RegisterRootHandler(new TempRootHandler(tempBacking));
 
-        // A path under the project tree but outside .celbridge/temp/ goes to project.
+        // A path under the project tree but outside the nested folder goes to project.
         var projectFilePath = Path.Combine(_resourceFolderPath, FileNameA);
         var projectKeyResult = resourceRegistry.GetResourceKey(projectFilePath);
         projectKeyResult.IsSuccess.Should().BeTrue();
         projectKeyResult.Value.Root.Should().Be(ResourceKey.DefaultRoot);
         projectKeyResult.Value.Path.Should().Be(FileNameA);
 
-        // A path under .celbridge/temp/ dispatches to the temp handler.
+        // A path under the nested folder dispatches to the temp handler.
         var tempFilePath = Path.Combine(tempBacking, "staging", "foo.txt");
         var tempKeyResult = resourceRegistry.GetResourceKey(tempFilePath);
         tempKeyResult.IsSuccess.Should().BeTrue();

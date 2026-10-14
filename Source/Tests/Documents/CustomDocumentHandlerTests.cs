@@ -43,22 +43,28 @@ public class CustomDocumentHandlerTests
         }
         """;
 
+    private string _testFolderPath = null!;
     private string _projectFolderPath = null!;
+    private string _dataFolderPath = null!;
     private CustomDocumentHandler _handler = null!;
 
     [SetUp]
     public void Setup()
     {
-        _projectFolderPath = Path.Combine(
+        _testFolderPath = Path.Combine(
             Path.GetTempPath(),
             "Celbridge",
             nameof(CustomDocumentHandlerTests),
             Guid.NewGuid().ToString("N"));
+
+        // In the application, the data folder is outside the project folder.
+        _projectFolderPath = Path.Combine(_testFolderPath, "Project");
+        _dataFolderPath = Path.Combine(_testFolderPath, "Data");
         Directory.CreateDirectory(_projectFolderPath);
 
         var project = Substitute.For<IProject>();
         project.ProjectFilePath.Returns(Path.Combine(_projectFolderPath, "Project.celbridge"));
-        project.ProjectDataFolderPath.Returns(Path.Combine(_projectFolderPath, ".celbridge"));
+        project.ProjectDataFolderPath.Returns(_dataFolderPath);
 
         var projectService = Substitute.For<IProjectService>();
         projectService.CurrentProject.Returns(project);
@@ -79,11 +85,11 @@ public class CustomDocumentHandlerTests
     [TearDown]
     public void TearDown()
     {
-        if (Directory.Exists(_projectFolderPath))
+        if (Directory.Exists(_testFolderPath))
         {
             try
             {
-                Directory.Delete(_projectFolderPath, true);
+                Directory.Delete(_testFolderPath, true);
             }
             catch
             {
@@ -100,7 +106,7 @@ public class CustomDocumentHandlerTests
         result.Resource.Should().Be("logs:reports/acme-tiles-convert.report");
 
         var reportPath = Path.Combine(
-            ReportLocation.ResolveFolderPath(Path.Combine(_projectFolderPath, ".celbridge")),
+            ReportLocation.ResolveFolderPath(_dataFolderPath),
             "acme-tiles-convert.report");
 
         File.Exists(reportPath).Should().BeTrue();
@@ -118,7 +124,7 @@ public class CustomDocumentHandlerTests
 
         await act.Should().ThrowAsync<ArgumentException>();
 
-        Directory.Exists(ReportLocation.ResolveFolderPath(Path.Combine(_projectFolderPath, ".celbridge")))
+        Directory.Exists(ReportLocation.ResolveFolderPath(_dataFolderPath))
             .Should().BeFalse();
     }
 

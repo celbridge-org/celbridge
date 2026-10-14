@@ -86,6 +86,7 @@ public interface IResourceFileSystem
     /// <summary>
     /// Returns the immediate children of a folder resource. Single-level only;
     /// recursive callers walk per-level. Fails when the resource is not a folder.
+    /// A linked folder is left out, since no path through it resolves.
     /// </summary>
     Task<Result<IReadOnlyList<FolderItem>>> EnumerateFolderAsync(ResourceKey folder);
 

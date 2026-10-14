@@ -14,4 +14,4 @@ When `false` (the default), the folder is created silently at `resource`. When `
 
 ## Returns
 
-`"ok"` on success. The creation is recorded on the explorer undo stack.
+`"ok"` on success. A creation under `project:` is recorded on the explorer undo stack.

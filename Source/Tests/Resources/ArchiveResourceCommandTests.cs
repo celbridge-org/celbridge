@@ -87,7 +87,6 @@ public class ArchiveResourceCommandTests
         WriteProjectFile("Acme.celbridge");
         WriteProjectFile("readme.md");
         WriteProjectFile("Folder/nested.md");
-        WriteProjectFile(".celbridge/settings/workspace_settings.json");
         WriteProjectFile(".git/config");
 
         var command = CreateCommand();

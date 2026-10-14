@@ -76,18 +76,6 @@
             <controls:Icon Symbol="Close"/>
           </MenuFlyoutItem.Icon>
         </MenuFlyoutItem>
-
-        <MenuFlyoutSeparator x:Name="ProjectLoadReportSeparator"/>
-
-        <!-- The only route to the report after a clean load, which leaves nothing in the notification badge. The
-             logs: root the report is written to is not enumerated in the Explorer. -->
-        <MenuFlyoutItem x:Name="ProjectLoadReportItem"
-                        Text="{x:Bind ProjectLoadReportString}"
-                        Click="OpenProjectLoadReport">
-          <MenuFlyoutItem.Icon>
-            <controls:Icon Symbol="Report"/>
-          </MenuFlyoutItem.Icon>
-        </MenuFlyoutItem>
       </MenuFlyout>
     </FlyoutBase.AttachedFlyout>
 

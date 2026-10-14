@@ -1,7 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Logging;
 using Celbridge.Projects;
-using Celbridge.Resources.Helpers;
 using Celbridge.Resources.Services.Roots;
 using Celbridge.UserInterface;
 using Celbridge.Workspace;
@@ -20,7 +19,8 @@ public class ResourceService : IResourceService, IDisposable
     private readonly IProjectService _projectService;
     private readonly ILocalFileSystem _fileSystem;
 
-    // Resolved once at construction, so the unload clears exactly the folder the load created.
+    // Resolved once at construction, so the unload clears exactly the folders the load created.
+    private readonly string _tempFolderPath;
     private readonly string _trashFolderPath;
 
     public IResourceRegistry Registry { get; }
@@ -94,11 +94,12 @@ public class ResourceService : IResourceService, IDisposable
         var logsFolder = Path.Combine(projectDataFolder, ProjectConstants.LogsFolder);
         var utilsFolder = Path.Combine(projectDataFolder, ProjectConstants.UtilsFolder);
         var trashFolder = Path.Combine(projectDataFolder, ProjectConstants.TrashFolder);
+        _tempFolderPath = tempFolder;
         _trashFolderPath = trashFolder;
 
-        // temp:/ is wiped on every workspace load. The contract is that nothing
-        // under temp: survives a reload; consumers needing persistence write
-        // under project: instead.
+        // temp:/ is wiped on every workspace load as well as on close, because a
+        // crash skips the close. Nothing under temp: survives a reload, so
+        // anything that must persist belongs under project:.
         TryDeleteFolder(tempFolder);
         SyncRunner.Run(() => _fileSystem.CreateFolderAsync(tempFolder));
         SyncRunner.Run(() => _fileSystem.CreateFolderAsync(logsFolder));
@@ -112,12 +113,6 @@ public class ResourceService : IResourceService, IDisposable
         // so previous-session trash content has no live handles.
         TryDeleteFolder(trashFolder);
         SyncRunner.Run(() => _fileSystem.CreateFolderAsync(trashFolder));
-
-        var gitIgnoreResult = SyncRunner.Run(() => DataFolderGitIgnore.EnsureAsync(_fileSystem, projectDataFolder));
-        if (gitIgnoreResult.IsFailure)
-        {
-            _logger.LogWarning("Failed to write the project data folder's .gitignore: {Error}", gitIgnoreResult.FirstErrorMessage);
-        }
 
         rootHandlerRegistry.RegisterRootHandler(new TempRootHandler(tempFolder));
         rootHandlerRegistry.RegisterRootHandler(new LogsRootHandler(logsFolder));
@@ -193,8 +188,9 @@ public class ResourceService : IResourceService, IDisposable
                 // Shutdown the resource monitor immediately
                 Monitor.Shutdown();
 
-                // Clean up the trash folder on project close.
-                // This ensures deleted files don't persist after the project is closed.
+                // Delete the temp and trash folders on project close, so a closed project's data
+                // folder keeps no scratch files or deleted files.
+                TryDeleteFolder(_tempFolderPath);
                 TryDeleteFolder(_trashFolderPath);
             }
 

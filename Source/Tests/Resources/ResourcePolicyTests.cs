@@ -37,15 +37,14 @@ public class ResourcePolicyTests
     }
 
     [Test]
-    public void Evaluate_DeniesCelbridgeMetadataFolder()
+    public void Evaluate_AllowsAFolderNamedCelbridge()
     {
+        // Celbridge keeps project data in the application data folder. A .celbridge folder left in the project
+        // by an earlier version is an ordinary folder.
         var policy = BuildPolicy();
 
-        var result = policy.Evaluate(new ResourceKey(".celbridge"), ResourceAction.Read, isFolder: true);
-        result.IsFailure.Should().BeTrue();
-        result.HasException<PolicyDenialError>().Should().BeTrue();
-
-        policy.Evaluate(new ResourceKey(".celbridge/state.json"), ResourceAction.Write).IsFailure.Should().BeTrue();
+        policy.Evaluate(new ResourceKey(".celbridge"), ResourceAction.Read, isFolder: true).IsSuccess.Should().BeTrue();
+        policy.Evaluate(new ResourceKey(".celbridge/state.json"), ResourceAction.Write).IsSuccess.Should().BeTrue();
     }
 
     [Test]

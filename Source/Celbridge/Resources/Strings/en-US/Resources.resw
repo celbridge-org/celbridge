@@ -379,9 +379,6 @@ This file could not be saved</value>
   <data name="Notification_ProjectLoadIssues_Many" xml:space="preserve">
     <value>The project loaded with {0} issues</value>
   </data>
-  <data name="TitleBar_ProjectLoadReport" xml:space="preserve">
-    <value>Project Load Report</value>
-  </data>
   <data name="NotificationCentre_Summary_Warnings_One" xml:space="preserve">
     <value>1 warning.</value>
   </data>
@@ -1060,7 +1057,7 @@ Open with default application instead?</value>
     <value>Hidden in Explorer</value>
   </data>
   <data name="ProjectSettings_HideSubtitle" xml:space="preserve">
-    <value>Patterns to leave out of the tree, one per line. Hidden files can still be opened and edited. The .celbridge and .git folders are always hidden.</value>
+    <value>Patterns to leave out of the tree, one per line. Hidden files can still be opened and edited. The .git folder is always hidden.</value>
   </data>
   <data name="ProjectSettings_SearchExcludeTitle" xml:space="preserve">
     <value>Excluded from search</value>
@@ -1239,8 +1236,8 @@ Open with default application instead?</value>
   <data name="ProjectSettings_DescriptionLabel" xml:space="preserve">
     <value>Description</value>
   </data>
-  <data name="ProjectSettings_DescriptionTooltip" xml:space="preserve">
-    <value>A description of what this project is for, shown to anyone who opens it.</value>
+  <data name="ProjectSettings_DescriptionHint" xml:space="preserve">
+    <value>What this project is for.</value>
   </data>
   <data name="ProjectSettings_EditorPickerTooltip" xml:space="preserve">
     <value>Choose which editor opens this file type.</value>
@@ -1311,14 +1308,29 @@ Open with default application instead?</value>
   <data name="ProjectSettings_ContributionType_Utility" xml:space="preserve">
     <value>Utility</value>
   </data>
-  <data name="ProjectSettings_CelbridgeVersionTooltip" xml:space="preserve">
-    <value>The version of Celbridge that last opened this project. Updated automatically.</value>
+  <data name="ProjectSettings_CelbridgeVersionHint" xml:space="preserve">
+    <value>The version of Celbridge that last opened this project.</value>
   </data>
-  <data name="ProjectSettings_ProjectVersionTooltip" xml:space="preserve">
-    <value>A version number you can set to track your project, for your own use.</value>
+  <data name="ProjectSettings_ProjectVersionHint" xml:space="preserve">
+    <value>Your own version number for this project.</value>
   </data>
   <data name="ProjectSettings_InvalidProjectVersion" xml:space="preserve">
     <value>This is not a three-part version such as 1.0.0, so it is not saved.</value>
+  </data>
+  <data name="ProjectSettings_OpenProjectData" xml:space="preserve">
+    <value>Open Project Data</value>
+  </data>
+  <data name="ProjectSettings_OpenProjectDataHint" xml:space="preserve">
+    <value>Opens the folder where Celbridge stores this project's local data.</value>
+  </data>
+  <data name="ProjectSettings_ViewLoadReport" xml:space="preserve">
+    <value>View Load Report</value>
+  </data>
+  <data name="ProjectSettings_ViewLoadReportHint" xml:space="preserve">
+    <value>Opens the report from this project's last load.</value>
+  </data>
+  <data name="ProjectSettings_ViewLoadReportTooltip" xml:space="preserve">
+    <value>Open the report from this project's last load.</value>
   </data>
   <data name="ProjectSettings_StringListPlaceholder" xml:space="preserve">
     <value>One value per line</value>

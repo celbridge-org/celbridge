@@ -15,6 +15,7 @@ namespace Celbridge.Tests.Resources;
 [TestFixture]
 public class TrashServiceTests
 {
+    private string _testFolder = null!;
     private string _tempFolder = null!;
     private IResourceRegistry _resourceRegistry = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
@@ -23,11 +24,14 @@ public class TrashServiceTests
     [SetUp]
     public void Setup()
     {
-        _tempFolder = Path.Combine(
+        _testFolder = Path.Combine(
             Path.GetTempPath(),
             "Celbridge",
             nameof(TrashServiceTests),
             Guid.NewGuid().ToString("N"));
+
+        // _tempFolder is the project folder. In the application, the data folder is outside it.
+        _tempFolder = Path.Combine(_testFolder, "Project");
         Directory.CreateDirectory(_tempFolder);
 
         _resourceRegistry = Substitute.For<IResourceRegistry>();
@@ -52,12 +56,11 @@ public class TrashServiceTests
         var sidecarService = new SidecarService(_workspaceWrapper);
         resourceService.Sidecars.Returns(sidecarService);
 
-        // A real Project rather than a substitute, so the trash folder resolves through the same data
-        // folder logic the running application uses.
         var project = new Project(
             Path.Combine(_tempFolder, "Acme.celbridge"),
             "Acme",
             _tempFolder,
+            Path.Combine(_testFolder, "Data"),
             new ProjectConfig(),
             MigrationResult.Success(),
             ConfigIsHealthy: true,
@@ -77,10 +80,10 @@ public class TrashServiceTests
     [TearDown]
     public void TearDown()
     {
-        if (Directory.Exists(_tempFolder))
+        if (Directory.Exists(_testFolder))
         {
-            ClearReadOnlyRecursive(_tempFolder);
-            Directory.Delete(_tempFolder, true);
+            ClearReadOnlyRecursive(_testFolder);
+            Directory.Delete(_testFolder, true);
         }
     }
 
@@ -210,6 +213,59 @@ public class TrashServiceTests
             "folder/nested",
             "folder/empty",
         });
+    }
+
+    [Test]
+    public async Task MoveToTrashAsync_FolderThatContainsALink_IsRefusedAndLeftInPlace()
+    {
+        var targetPath = Path.Combine(_tempFolder, "target.txt");
+        await File.WriteAllTextAsync(targetPath, "target");
+
+        var resource = new ResourceKey("folder");
+        var folderPath = Path.Combine(_tempFolder, "folder");
+        Directory.CreateDirectory(folderPath);
+        var linkPath = Path.Combine(folderPath, "link.txt");
+        File.CreateSymbolicLink(linkPath, targetPath);
+        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(folderPath));
+
+        var result = await _trashService.MoveToTrashAsync(resource);
+
+        result.IsFailure.Should().BeTrue();
+        result.HasException<ResourceContainsLinkError>().Should().BeTrue();
+        new FileInfo(linkPath).LinkTarget.Should().Be(targetPath);
+        File.Exists(targetPath).Should().BeTrue();
+    }
+
+    [Test]
+    public async Task MoveToTrashAsync_Link_IsRefusedAndLeftInPlace()
+    {
+        var targetPath = Path.Combine(_tempFolder, "target.txt");
+        await File.WriteAllTextAsync(targetPath, "target");
+
+        var resource = new ResourceKey("link.txt");
+        var linkPath = Path.Combine(_tempFolder, "link.txt");
+        File.CreateSymbolicLink(linkPath, targetPath);
+        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(linkPath));
+
+        var result = await _trashService.MoveToTrashAsync(resource);
+
+        result.IsFailure.Should().BeTrue();
+        result.HasException<ResourceContainsLinkError>().Should().BeTrue();
+        new FileInfo(linkPath).LinkTarget.Should().Be(targetPath);
+    }
+
+    [Test]
+    public async Task MoveToTrashAsync_ResourceOutsideTheProjectRoot_IsRefused()
+    {
+        var resource = new ResourceKey("temp:scratch.txt");
+        var path = Path.Combine(_tempFolder, "scratch.txt");
+        await File.WriteAllTextAsync(path, "scratch");
+        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
+
+        var result = await _trashService.MoveToTrashAsync(resource);
+
+        result.IsFailure.Should().BeTrue();
+        File.Exists(path).Should().BeTrue();
     }
 
     [Test]

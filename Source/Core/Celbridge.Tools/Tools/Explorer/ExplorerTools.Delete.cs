@@ -6,7 +6,7 @@ namespace Celbridge.Tools;
 
 public partial class ExplorerTools
 {
-    /// <summary>Remove a resource from the project (file or folder); undoable via explorer_undo.</summary>
+    /// <summary>Remove a file or folder. The result says whether explorer_undo can restore it.</summary>
     [McpServerTool(Name = "explorer_delete", Destructive = true, Idempotent = true)]
     [ToolAlias("explorer.delete")]
     [RelatedGuides("resource_keys", "undo_semantics")]
@@ -55,12 +55,14 @@ public partial class ExplorerTools
         //   - per-resource failures with typed reasons (NotFound, Locked, etc.)
         //   - batch outcomes that aren't a clean success
         //   - a sidecar that didn't cascade alongside its parent
+        //   - a delete that explorer_undo cannot reverse
         //   - external references that were touched (under break_references,
         //     these are now dangling; under any policy, the agent may want to
         //     follow up on them).
         if (detail.BatchOutcome == DeleteBatchOutcome.DeletedAll
             && detail.ResourceResults.All(r => r.Outcome == DeleteResourceOutcome.Deleted
-                && r.Sidecar != SidecarOutcome.Failed)
+                && r.Sidecar != SidecarOutcome.Failed
+                && r.Undoable)
             && detail.Referencers.Count == 0)
         {
             return ToolResponse.Success("ok");
@@ -74,6 +76,7 @@ public partial class ExplorerTools
                 resource = r.Resource.ToString(),
                 outcome = r.Outcome.ToString(),
                 sidecar = r.Sidecar.ToString(),
+                undoable = r.Undoable,
                 failureMessage = r.FailureMessage,
             }).ToArray(),
             referencers = detail.Referencers.ToDictionary(

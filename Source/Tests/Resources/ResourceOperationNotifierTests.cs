@@ -19,7 +19,9 @@ namespace Celbridge.Tests.Resources;
 [TestFixture]
 public class ResourceOperationNotifierTests
 {
+    private string _testFolderPath = null!;
     private string _projectFolderPath = null!;
+    private string _dataFolderPath = null!;
     private IMessengerService _messengerService = null!;
     private ResourceOperationNotifier _notifier = null!;
 
@@ -28,11 +30,15 @@ public class ResourceOperationNotifierTests
     [SetUp]
     public void Setup()
     {
-        _projectFolderPath = Path.Combine(
+        _testFolderPath = Path.Combine(
             Path.GetTempPath(),
             "Celbridge",
             nameof(ResourceOperationNotifierTests),
             Guid.NewGuid().ToString("N"));
+
+        // In the application, the data folder is outside the project folder.
+        _projectFolderPath = Path.Combine(_testFolderPath, "Project");
+        _dataFolderPath = Path.Combine(_testFolderPath, "Data");
         Directory.CreateDirectory(_projectFolderPath);
 
         _messengerService = new MessengerService();
@@ -40,7 +46,7 @@ public class ResourceOperationNotifierTests
 
         var project = Substitute.For<IProject>();
         project.ProjectFilePath.Returns(Path.Combine(_projectFolderPath, "Project.celbridge"));
-        project.ProjectDataFolderPath.Returns(Path.Combine(_projectFolderPath, ".celbridge"));
+        project.ProjectDataFolderPath.Returns(_dataFolderPath);
 
         var projectService = Substitute.For<IProjectService>();
         projectService.CurrentProject.Returns(project);
@@ -63,11 +69,11 @@ public class ResourceOperationNotifierTests
         _messengerService.UnregisterAll(this);
         _sentMessages.Clear();
 
-        if (Directory.Exists(_projectFolderPath))
+        if (Directory.Exists(_testFolderPath))
         {
             try
             {
-                Directory.Delete(_projectFolderPath, true);
+                Directory.Delete(_testFolderPath, true);
             }
             catch
             {
@@ -98,7 +104,7 @@ public class ResourceOperationNotifierTests
         _sentMessages[0].FailedResources.Should().HaveCount(1);
         _sentMessages[0].ReportResource.IsEmpty.Should().BeTrue();
 
-        Directory.Exists(ReportLocation.ResolveFolderPath(Path.Combine(_projectFolderPath, ".celbridge")))
+        Directory.Exists(ReportLocation.ResolveFolderPath(_dataFolderPath))
             .Should().BeFalse("one failure says everything the report would have said");
     }
 
@@ -254,7 +260,7 @@ public class ResourceOperationNotifierTests
     private JsonElement ReadReport(string reportFileName)
     {
         var reportsFolderPath = ReportLocation.ResolveFolderPath(
-            Path.Combine(_projectFolderPath, ".celbridge"));
+            _dataFolderPath);
 
         var reportPath = Path.Combine(reportsFolderPath, reportFileName);
         File.Exists(reportPath).Should().BeTrue();

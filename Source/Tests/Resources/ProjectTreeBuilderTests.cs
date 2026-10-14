@@ -231,6 +231,34 @@ public class ProjectTreeBuilderTests
     }
 
     [Test]
+    public async Task BuildTree_LeavesOutALinkedFolder()
+    {
+        // The resolver refuses every path through a linked folder, so the walk must not enter one.
+        var targetPath = Path.Combine(_projectFolderPath, "target");
+        Directory.CreateDirectory(targetPath);
+        File.WriteAllText(Path.Combine(targetPath, "inside.txt"), "x");
+        Directory.CreateSymbolicLink(Path.Combine(_projectFolderPath, "linked"), targetPath);
+
+        var buildResult = await _builder.BuildTreeAsync();
+
+        buildResult.IsSuccess.Should().BeTrue();
+        buildResult.Value.Children.Select(child => child.Name).Should().Equal("target");
+    }
+
+    [Test]
+    public async Task BuildTree_KeepsALinkedFile()
+    {
+        var targetPath = Path.Combine(_projectFolderPath, "target.txt");
+        File.WriteAllText(targetPath, "x");
+        File.CreateSymbolicLink(Path.Combine(_projectFolderPath, "linked.txt"), targetPath);
+
+        var buildResult = await _builder.BuildTreeAsync();
+
+        buildResult.IsSuccess.Should().BeTrue();
+        buildResult.Value.Children.Select(child => child.Name).Should().Equal("linked.txt", "target.txt");
+    }
+
+    [Test]
     public async Task BuildTree_FilesGetIcons()
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.txt"), "x");

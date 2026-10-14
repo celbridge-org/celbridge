@@ -16,7 +16,9 @@ namespace Celbridge.Tests.Resources;
 [TestFixture]
 public class ResourceOperationServiceTests
 {
+    private string _testFolder = null!;
     private string _tempFolder = null!;
+    private string _dataFolder = null!;
     private IResourceRegistry _resourceRegistry = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
     private IResourceService _resourceService = null!;
@@ -28,11 +30,15 @@ public class ResourceOperationServiceTests
     [SetUp]
     public void Setup()
     {
-        _tempFolder = Path.Combine(
+        _testFolder = Path.Combine(
             Path.GetTempPath(),
             "Celbridge",
             nameof(ResourceOperationServiceTests),
             Guid.NewGuid().ToString("N"));
+
+        // _tempFolder is the project folder. In the application, the data folder is outside it.
+        _tempFolder = Path.Combine(_testFolder, "Project");
+        _dataFolder = Path.Combine(_testFolder, "Data");
         Directory.CreateDirectory(_tempFolder);
 
         _resourceRegistry = Substitute.For<IResourceRegistry>();
@@ -52,13 +58,7 @@ public class ResourceOperationServiceTests
 
         // Inverse mapping (used by LocalResourceFileSystem's descendant-key enumeration on
         // folder moves and deletes).
-        _resourceRegistry.GetResourceKey(Arg.Any<string>()).Returns(call =>
-        {
-            var fullPath = call.Arg<string>();
-            var relativePart = Path.GetRelativePath(_tempFolder, fullPath)
-                .Replace(Path.DirectorySeparatorChar, '/');
-            return Result<ResourceKey>.Ok(new ResourceKey(relativePart));
-        });
+        _resourceRegistry.GetResourceKey(Arg.Any<string>()).Returns(call => MapToResourceKey(call.Arg<string>()));
 
         var resourceScanner = Substitute.For<IResourceScanner>();
         var referenceIndex = ResourceReferenceIndexTestHelper.Empty();
@@ -67,6 +67,7 @@ public class ResourceOperationServiceTests
 
         var rootHandlerRegistry = Substitute.For<IRootHandlerRegistry>();
         rootHandlerRegistry.RootHandlers.Returns(new Dictionary<string, IResourceRootHandler>());
+        rootHandlerRegistry.GetResourceKey(Arg.Any<string>()).Returns(call => MapToResourceKey(call.Arg<string>()));
 
         var resourceService = Substitute.For<IResourceService>();
         _resourceService = resourceService;
@@ -162,6 +163,13 @@ public class ResourceOperationServiceTests
         result.FirstErrorMessage.Should().Contain("must keep its .celbridge extension");
     }
 
+    private Result<ResourceKey> MapToResourceKey(string fullPath)
+    {
+        var relativePart = Path.GetRelativePath(_tempFolder, fullPath)
+            .Replace(Path.DirectorySeparatorChar, '/');
+        return Result<ResourceKey>.Ok(new ResourceKey(relativePart));
+    }
+
     // A real Project rather than a substitute, so the guard runs the actual IsProjectFile comparison
     // instead of a stub's default answer.
     private void StubCurrentProject(string projectFileName)
@@ -172,6 +180,7 @@ public class ResourceOperationServiceTests
             Path.Combine(projectFolderPath, projectFileName),
             Path.GetFileNameWithoutExtension(projectFileName),
             projectFolderPath,
+            _dataFolder,
             new ProjectConfig(),
             MigrationResult.Success(),
             ConfigIsHealthy: true,
@@ -183,9 +192,9 @@ public class ResourceOperationServiceTests
     [TearDown]
     public void TearDown()
     {
-        if (Directory.Exists(_tempFolder))
+        if (Directory.Exists(_testFolder))
         {
-            Directory.Delete(_tempFolder, true);
+            Directory.Delete(_testFolder, true);
         }
     }
 
@@ -278,14 +287,102 @@ public class ResourceOperationServiceTests
     }
 
     [Test]
+    public async Task DeleteAsync_UnderTheProjectRoot_CanBeUndone()
+    {
+        var path = Path.Combine(_tempFolder, "notes.txt");
+        await File.WriteAllTextAsync(path, "notes");
+
+        var deleteResult = await _operationService.DeleteAsync(new ResourceKey("notes.txt"));
+
+        deleteResult.IsSuccess.Should().BeTrue(deleteResult.MessageChain);
+        deleteResult.Value.Should().BeTrue();
+        File.Exists(path).Should().BeFalse();
+
+        var undoResult = await _operationService.UndoAsync();
+
+        undoResult.IsSuccess.Should().BeTrue();
+        (await File.ReadAllTextAsync(path)).Should().Be("notes");
+    }
+
+    [Test]
+    public async Task DeleteAsync_OutsideTheProjectRoot_DeletesWithoutUndo()
+    {
+        // This fixture resolves every key under _tempFolder, whatever its root.
+        var path = Path.Combine(_tempFolder, "scratch.txt");
+        await File.WriteAllTextAsync(path, "scratch");
+
+        var deleteResult = await _operationService.DeleteAsync(new ResourceKey("temp:scratch.txt"));
+
+        deleteResult.IsSuccess.Should().BeTrue(deleteResult.MessageChain);
+        deleteResult.Value.Should().BeFalse();
+        File.Exists(path).Should().BeFalse();
+        _operationService.CanUndo.Should().BeFalse();
+        Directory.Exists(Path.Combine(_dataFolder, "trash")).Should().BeFalse("the delete skips the trash");
+    }
+
+    [Test]
+    public async Task DeleteAsync_FolderThatContainsALink_DeletesWithoutUndo()
+    {
+        var targetPath = Path.Combine(_tempFolder, "target.txt");
+        await File.WriteAllTextAsync(targetPath, "target");
+        var folderPath = Path.Combine(_tempFolder, "folder");
+        Directory.CreateDirectory(folderPath);
+        await File.WriteAllTextAsync(Path.Combine(folderPath, "plain.txt"), "plain");
+        File.CreateSymbolicLink(Path.Combine(folderPath, "link.txt"), targetPath);
+
+        var deleteResult = await _operationService.DeleteAsync(new ResourceKey("folder"));
+
+        deleteResult.IsSuccess.Should().BeTrue(deleteResult.MessageChain);
+        deleteResult.Value.Should().BeFalse();
+        Directory.Exists(folderPath).Should().BeFalse();
+        (await File.ReadAllTextAsync(targetPath)).Should().Be("target", "deleting a link leaves what it points at");
+        _operationService.CanUndo.Should().BeFalse();
+    }
+
+    [Test]
+    public async Task DeleteAsync_FolderThatContainsALink_ClearsTheRedoStack()
+    {
+        var notesPath = Path.Combine(_tempFolder, "notes.txt");
+        await File.WriteAllTextAsync(notesPath, "notes");
+        await _operationService.DeleteAsync(new ResourceKey("notes.txt"));
+        await _operationService.UndoAsync();
+        _operationService.CanRedo.Should().BeTrue();
+
+        var folderPath = Path.Combine(_tempFolder, "folder");
+        Directory.CreateDirectory(folderPath);
+        File.CreateSymbolicLink(Path.Combine(folderPath, "link.txt"), notesPath);
+
+        var deleteResult = await _operationService.DeleteAsync(new ResourceKey("folder"));
+
+        deleteResult.IsSuccess.Should().BeTrue(deleteResult.MessageChain);
+        deleteResult.Value.Should().BeFalse();
+        _operationService.CanRedo.Should().BeFalse("the delete changed the tree the redo would replay against");
+    }
+
+    [Test]
+    public async Task CreateAndCopy_OutsideTheProjectRoot_AreNotRecorded()
+    {
+        var createResult = await _operationService.CreateFileAsync(new ResourceKey("temp:created.txt"), new byte[] { 0x01 });
+        createResult.IsSuccess.Should().BeTrue(createResult.MessageChain);
+
+        await File.WriteAllTextAsync(Path.Combine(_tempFolder, "source.txt"), "source");
+        var copyResult = await _operationService.CopyAsync(new ResourceKey("source.txt"), new ResourceKey("temp:copied.txt"));
+        copyResult.IsSuccess.Should().BeTrue(copyResult.MessageChain);
+
+        File.Exists(Path.Combine(_tempFolder, "created.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(_tempFolder, "copied.txt")).Should().BeTrue();
+        _operationService.CanUndo.Should().BeFalse();
+    }
+
+    [Test]
     public async Task DeleteAsync_DeniesByPolicy_WhenResourceIsReserved()
     {
         // The trash-based delete bypasses IResourceFileSystem.DeleteAsync, so this
         // guard at the service entry is the load-bearing one for the reserved folders.
-        var metadataFolder = Path.Combine(_tempFolder, ".celbridge");
+        var metadataFolder = Path.Combine(_tempFolder, ".git");
         Directory.CreateDirectory(metadataFolder);
 
-        var deleteResult = await _operationService.DeleteAsync(new ResourceKey(".celbridge"));
+        var deleteResult = await _operationService.DeleteAsync(new ResourceKey(".git"));
 
         deleteResult.IsFailure.Should().BeTrue();
         deleteResult.HasException<PolicyDenialError>().Should().BeTrue();
@@ -296,11 +393,11 @@ public class ResourceOperationServiceTests
     public async Task CreateFileAsync_DeniesByPolicy_WhenDestinationIsReserved()
     {
         var result = await _operationService.CreateFileAsync(
-            new ResourceKey(".celbridge/state.json"), new byte[] { 0x01 });
+            new ResourceKey(".git/config"), new byte[] { 0x01 });
 
         result.IsFailure.Should().BeTrue();
         result.HasException<PolicyDenialError>().Should().BeTrue();
-        File.Exists(Path.Combine(_tempFolder, ".celbridge", "state.json")).Should().BeFalse();
+        File.Exists(Path.Combine(_tempFolder, ".git", "config")).Should().BeFalse();
     }
 
     [Test]
@@ -326,10 +423,10 @@ public class ResourceOperationServiceTests
     [Test]
     public async Task MoveAsync_DeniesByPolicy_WhenSourceIsReserved()
     {
-        var metadataFolder = Path.Combine(_tempFolder, ".celbridge");
+        var metadataFolder = Path.Combine(_tempFolder, ".git");
         Directory.CreateDirectory(metadataFolder);
 
-        var result = await _operationService.MoveAsync(new ResourceKey(".celbridge"), new ResourceKey("Archive"));
+        var result = await _operationService.MoveAsync(new ResourceKey(".git"), new ResourceKey("Archive"));
 
         result.IsFailure.Should().BeTrue();
         result.HasException<PolicyDenialError>().Should().BeTrue();
@@ -348,7 +445,7 @@ public class ResourceOperationServiceTests
     [Test]
     public void CanAddToFolder_Fails_WhenFolderIsReserved()
     {
-        var result = _operationService.CanAddToFolder(new ResourceKey(".celbridge"));
+        var result = _operationService.CanAddToFolder(new ResourceKey(".git"));
 
         result.IsFailure.Should().BeTrue();
     }

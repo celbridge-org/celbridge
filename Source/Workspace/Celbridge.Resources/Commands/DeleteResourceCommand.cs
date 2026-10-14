@@ -198,6 +198,7 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
                         resource,
                         DeleteResourceOutcome.IOFailure,
                         SidecarOutcome.NotPresent,
+                        Undoable: false,
                         FailureMessage: infoResult.MessageChain));
                     failedResources.Add(new FailedResource(resource, infoResult.MessageChain));
                     continue;
@@ -212,6 +213,7 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
                         resource,
                         DeleteResourceOutcome.NotFound,
                         SidecarOutcome.NotPresent,
+                        Undoable: false,
                         FailureMessage: notFoundMessage));
                     failedResources.Add(new FailedResource(resource, notFoundMessage));
                     continue;
@@ -227,10 +229,12 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
                         resource,
                         classification.Outcome,
                         SidecarOutcome.NotPresent,
+                        Undoable: false,
                         FailureMessage: classification.Message));
                     failedResources.Add(new FailedResource(resource, classification.Message));
                     continue;
                 }
+                var undoable = deleteResult.Value;
 
                 // The FS layer's DeleteFileOperation handles the parent and the
                 // sidecar as one transactional unit — either both end up in the
@@ -240,6 +244,7 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
                     resource,
                     DeleteResourceOutcome.Deleted,
                     sidecarPresent ? SidecarOutcome.Cascaded : SidecarOutcome.NotPresent,
+                    Undoable: undoable,
                     FailureMessage: null));
             }
         }

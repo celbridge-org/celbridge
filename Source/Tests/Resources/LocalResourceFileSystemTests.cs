@@ -333,7 +333,7 @@ public class LocalResourceFileSystemTests
         // identical. This test pins the contract end-to-end against a temp:
         // key so a future regression in the resolution wiring surfaces here.
         var resource = new ResourceKey("temp:scratch.txt");
-        var stagingFolder = Path.Combine(_tempFolder, ".celbridge", "scratch");
+        var stagingFolder = Path.Combine(_tempFolder, "Data", "scratch");
         Directory.CreateDirectory(stagingFolder);
         var path = Path.Combine(stagingFolder, "scratch.txt");
         await File.WriteAllTextAsync(path, "scratch");
@@ -389,7 +389,7 @@ public class LocalResourceFileSystemTests
     {
         var sourceKey = new ResourceKey("temp:downloads/staged.bin");
         var destKey = new ResourceKey("downloads/report.bin");
-        var sourcePath = Path.Combine(_tempFolder, ".celbridge", "temp", "downloads", "staged.bin");
+        var sourcePath = Path.Combine(_tempFolder, "Data", "temp", "downloads", "staged.bin");
         var destPath = Path.Combine(_tempFolder, "downloads", "report.bin");
         Directory.CreateDirectory(Path.GetDirectoryName(sourcePath)!);
         await File.WriteAllTextAsync(sourcePath, "payload");
@@ -414,7 +414,7 @@ public class LocalResourceFileSystemTests
     {
         var sourceKey = new ResourceKey("temp:downloads/staged.bin");
         var destKey = new ResourceKey("downloads/report.bin");
-        var sourcePath = Path.Combine(_tempFolder, ".celbridge", "temp", "downloads", "staged.bin");
+        var sourcePath = Path.Combine(_tempFolder, "Data", "temp", "downloads", "staged.bin");
         var destPath = Path.Combine(_tempFolder, "downloads", "report.bin");
         Directory.CreateDirectory(Path.GetDirectoryName(sourcePath)!);
         await File.WriteAllTextAsync(sourcePath, "payload");
@@ -438,7 +438,7 @@ public class LocalResourceFileSystemTests
         var referencerKey = new ResourceKey("doc.json");
 
         var sourcePath = Path.Combine(_tempFolder, "source.txt");
-        var destPath = Path.Combine(_tempFolder, ".celbridge", "temp", "source.txt");
+        var destPath = Path.Combine(_tempFolder, "Data", "temp", "source.txt");
         var referencerPath = Path.Combine(_tempFolder, "doc.json");
         await File.WriteAllTextAsync(sourcePath, "data");
         await File.WriteAllTextAsync(referencerPath, "See \"project:source.txt\" for details.");

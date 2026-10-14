@@ -144,8 +144,8 @@ public partial class WorkshopTools
             }
         }
 
-        // Stage the downloaded zip under temp: so it lives in .celbridge/temp/
-        // (created at workspace load) and is reachable through the gateway.
+        // Stage the downloaded zip under temp: so the gateway can reach it. The
+        // workspace load creates the temp folder.
         var stagedArchive = new ResourceKey($"temp:{packageName}.zip");
         var writeArchiveResult = await resourceFileSystem.WriteAllBytesAsync(stagedArchive, packageBytes);
         if (writeArchiveResult.IsFailure)

@@ -97,6 +97,13 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
 
     public IRelayCommand ReloadProjectCommand { get; }
 
+    public IRelayCommand OpenInCodeEditorCommand { get; }
+
+    /// <summary>
+    /// The project file this editor presents, set by the view when the document opens.
+    /// </summary>
+    public ResourceKey FileResource { get; set; }
+
     public ProjectSettingsEditorViewModel(
         ILogger<ProjectSettingsEditorViewModel> logger,
         IProjectService projectService,
@@ -109,7 +116,8 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
         IPackageLocalizationService packageLocalization,
         IFileTypeCatalog fileTypeCatalog,
         IIconService iconService,
-        IDialogService dialogService)
+        IDialogService dialogService,
+        IProjectLoadReporter projectLoadReporter)
     {
         _logger = logger;
         _projectService = projectService;
@@ -120,13 +128,14 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
         _settings = settingsService;
 
         ReloadProjectCommand = new AsyncRelayCommand(ReloadProjectAsync);
+        OpenInCodeEditorCommand = new RelayCommand(OpenInCodeEditor);
 
         var project = projectService.CurrentProject;
         HasConfigError = project is not null && !project.ConfigIsHealthy;
         ConfigErrorDetail = project?.ConfigLoadFailure?.MessageChain ?? string.Empty;
 
         _context = new ProjectSettingsContext(workspaceWrapper, projectService, commandService, MarkPending);
-        InformationSection = new InformationSectionViewModel(_context);
+        InformationSection = new InformationSectionViewModel(_context, projectLoadReporter);
         ResourcesSection = new ResourcesSectionViewModel(_context, dialogService);
         PackagesSection = new PackagesSectionViewModel(_context, packageLocalization);
         FileEditorsSection = new FileEditorsSectionViewModel(_context, fileTypeCatalog);
@@ -416,15 +425,13 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
         _commandService.Execute<IReloadProjectCommand>();
     }
 
-    /// <summary>
-    /// Reopens the project file in the Code Editor, which is the only editor that can show a file the
-    /// config parser rejected.
-    /// </summary>
-    public void OpenInCodeEditor(ResourceKey fileResource)
+    // Reopens the project file in the Code Editor, which is the only editor that can show a file the
+    // config parser rejected.
+    private void OpenInCodeEditor()
     {
         _commandService.Execute<IOpenDocumentCommand>(command =>
         {
-            command.FileResource = fileResource;
+            command.FileResource = FileResource;
             command.EditorId = DocumentConstants.CodeEditorId;
             command.ForceReload = true;
         });

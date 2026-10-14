@@ -1,6 +1,6 @@
 # explorer_move
 
-Moves a single resource (file or folder) to a new location in the project tree. The original is removed. This is also the silent rename path — pass a destination with a different name in the same parent folder to rename. Folder moves are recursive. The move is recorded on the explorer undo stack.
+Moves a single resource (file or folder) to a new location in the project tree. The original is removed. This is also the silent rename path — pass a destination with a different name in the same parent folder to rename. Folder moves are recursive. A move under `project:` is recorded on the explorer undo stack.
 
 A paired `.cel` sidecar moves alongside its parent. Every quoted `"project:<source>"` reference to the moved resource (and, for folder moves, every `"project:<source>/<child>"` reference under it) is rewritten in place across the project, so other files keep pointing at the new location. References must be in the canonical quoted form to participate — see [resource_keys](../Concepts/resource_keys.md).
 
@@ -28,7 +28,7 @@ Both the compact `"ok"` string and the JSON `{"status":"ok", ...}` object indica
     ...
   ],
   "failedResources": [
-    { "resource": "project:source.txt", "message": "Write of 'project:.celbridge/keep.tmp' was denied by the system policy pattern '.celbridge/**'." },
+    { "resource": "project:source.txt", "message": "Write of 'project:.git/keep.tmp' was denied by the system policy pattern '.git/**'." },
     ...
   ]
 }
@@ -42,7 +42,7 @@ Resource keys appear in their canonical `root:path` form (with the explicit `pro
   - `"partial_failure"` — one or more resources in the batch were refused or failed (see `failedResources`). Still a success-flagged response.
 - `updatedReferencers` lists the files whose references were rewritten.
 - `skippedReferencers` lists the files the cascade couldn't update. `reason` is one of `ReadFailed` / `WriteFailed` / `ReadOnly` / `PermissionDenied`. `ReadOnly` is the DOS read-only attribute (trivially clearable); `PermissionDenied` is an ACL / POSIX denial (needs the right account or admin). The reference is left as-is and will surface at workspace load via the project-check reporter. Re-running the move after the blocker clears (clear the read-only flag, grant write access, close the editor that holds the lock) completes the cascade idempotently.
-- `failedResources` lists the resources whose move was refused or failed, each with the `message` explaining why. This is where **policy denials** surface: a source or destination inside a reserved folder (`.celbridge` or `.git`) appears here with the reason — not as a tool error.
+- `failedResources` lists the resources whose move was refused or failed, each with the `message` explaining why. This is where **policy denials** surface: a source or destination inside the reserved `.git` folder appears here with the reason — not as a tool error.
 
 ## Gotchas
 
