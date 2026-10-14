@@ -6,7 +6,7 @@ using Celbridge.Platform;
 
 namespace Celbridge.Projects.Services;
 
-internal sealed class DataFolderService : IDataFolderService
+internal sealed class ProjectDataFolderService : IProjectDataFolderService
 {
     private const string ProjectsFolderName = "Projects";
     private const string ProjectInfoFileName = "project.json";
@@ -27,12 +27,12 @@ internal sealed class DataFolderService : IDataFolderService
     // project.json records the path of the project file that the folder belongs to.
     private sealed record ProjectInfo(string ProjectFilePath);
 
-    private readonly ILogger<DataFolderService> _logger;
+    private readonly ILogger<ProjectDataFolderService> _logger;
     private readonly IAppEnvironment _appEnvironment;
     private readonly ILocalFileSystem _fileSystem;
 
-    public DataFolderService(
-        ILogger<DataFolderService> logger,
+    public ProjectDataFolderService(
+        ILogger<ProjectDataFolderService> logger,
         IAppEnvironment appEnvironment,
         ILocalFileSystem fileSystem)
     {

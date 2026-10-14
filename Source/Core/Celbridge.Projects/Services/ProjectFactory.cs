@@ -8,16 +8,16 @@ namespace Celbridge.Projects.Services;
 internal class ProjectFactory
 {
     private readonly ILogger<ProjectFactory> _logger;
-    private readonly IDataFolderService _dataFolderService;
+    private readonly IProjectDataFolderService _projectDataFolderService;
     private readonly ILocalFileSystem _fileSystem;
 
     public ProjectFactory(
         ILogger<ProjectFactory> logger,
-        IDataFolderService dataFolderService,
+        IProjectDataFolderService projectDataFolderService,
         ILocalFileSystem fileSystem)
     {
         _logger = logger;
-        _dataFolderService = dataFolderService;
+        _projectDataFolderService = projectDataFolderService;
         _fileSystem = fileSystem;
     }
 
@@ -38,7 +38,7 @@ internal class ProjectFactory
             return Result<IProject>.Fail($"Project file does not exist: '{projectFilePath}'");
         }
 
-        var dataFolderResult = await _dataFolderService.EnsureDataFolderAsync(projectFilePath);
+        var dataFolderResult = await _projectDataFolderService.EnsureDataFolderAsync(projectFilePath);
         if (dataFolderResult.IsFailure)
         {
             return Result<IProject>.Fail($"Failed to load the project: '{projectFilePath}'")

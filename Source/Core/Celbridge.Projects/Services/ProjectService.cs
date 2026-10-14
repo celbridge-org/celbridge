@@ -16,7 +16,7 @@ internal class ProjectService : IProjectService
     private readonly IMessengerService _messengerService;
     private readonly ProjectFactory _projectFactory;
     private readonly IProjectTemplateService _projectTemplateService;
-    private readonly IDataFolderService _dataFolderService;
+    private readonly IProjectDataFolderService _projectDataFolderService;
     private readonly ILocalFileSystem _fileSystem;
 
     public IProject? CurrentProject { get; private set; }
@@ -27,7 +27,7 @@ internal class ProjectService : IProjectService
         IMessengerService messengerService,
         ProjectFactory projectFactory,
         IProjectTemplateService projectTemplateService,
-        IDataFolderService dataFolderService,
+        IProjectDataFolderService projectDataFolderService,
         ILocalFileSystem fileSystem)
     {
         _logger = logger;
@@ -35,7 +35,7 @@ internal class ProjectService : IProjectService
         _messengerService = messengerService;
         _projectFactory = projectFactory;
         _projectTemplateService = projectTemplateService;
-        _dataFolderService = dataFolderService;
+        _projectDataFolderService = projectDataFolderService;
         _fileSystem = fileSystem;
 
         _messengerService.Register<ResourceKeyChangedMessage>(this, OnResourceKeyChanged);
@@ -144,7 +144,7 @@ internal class ProjectService : IProjectService
             }
 
             // A project deleted from this path leaves its data folder behind. The new project must not inherit it.
-            var clearResult = await _dataFolderService.ClearDataFolderAsync(projectFilePath);
+            var clearResult = await _projectDataFolderService.ClearDataFolderAsync(projectFilePath);
             if (clearResult.IsFailure)
             {
                 return Result.Fail($"Failed to create project: '{config.ProjectFilePath}'")

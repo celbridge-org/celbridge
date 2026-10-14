@@ -24,7 +24,7 @@ public class ProjectServiceTests
     private ILocalFileSystem _fileSystem = null!;
     private IMessengerService _messengerService = null!;
     private IProjectTemplateService _projectTemplateService = null!;
-    private FakeDataFolderService _dataFolderService = null!;
+    private FakeProjectDataFolderService _projectDataFolderService = null!;
     private ProjectService _projectService = null!;
 
     [SetUp]
@@ -37,11 +37,11 @@ public class ProjectServiceTests
         StubProjectExists(OldestProject);
         StubProjectMissing(DeletedProject);
 
-        _dataFolderService = new FakeDataFolderService();
+        _projectDataFolderService = new FakeProjectDataFolderService();
 
         var projectFactory = new ProjectFactory(
             new NullLogger<ProjectFactory>(),
-            _dataFolderService,
+            _projectDataFolderService,
             _fileSystem);
 
         _messengerService = new MessengerService();
@@ -53,7 +53,7 @@ public class ProjectServiceTests
             _messengerService,
             projectFactory,
             _projectTemplateService,
-            _dataFolderService,
+            _projectDataFolderService,
             _fileSystem);
     }
 
@@ -69,7 +69,7 @@ public class ProjectServiceTests
         _projectTemplateService.CreateFromTemplateAsync(projectFilePath, template, Arg.Any<bool>())
             .Returns(_ =>
             {
-                clearedBeforeTheTemplate = _dataFolderService.ClearedPaths.Contains(projectFilePath);
+                clearedBeforeTheTemplate = _projectDataFolderService.ClearedPaths.Contains(projectFilePath);
                 return Result.Ok();
             });
 
@@ -84,7 +84,7 @@ public class ProjectServiceTests
     {
         var projectFilePath = MakeProjectFilePath("Created");
         StubProjectMissing(projectFilePath);
-        _dataFolderService.ClearResult = Result.Fail("The folder is in use");
+        _projectDataFolderService.ClearResult = Result.Fail("The folder is in use");
 
         var template = CreateEmptyTemplate();
         var result = await _projectService.CreateProjectAsync(new NewProjectConfig(projectFilePath, template));
@@ -255,8 +255,8 @@ public class ProjectServiceTests
         return Path.Combine(Path.GetTempPath(), "Data", Path.GetFileNameWithoutExtension(projectFilePath));
     }
 
-    // A fake IDataFolderService that records each clear and returns ClearResult.
-    private sealed class FakeDataFolderService : IDataFolderService
+    // A fake IProjectDataFolderService that records each clear and returns ClearResult.
+    private sealed class FakeProjectDataFolderService : IProjectDataFolderService
     {
         public List<string> ClearedPaths { get; } = new();
 

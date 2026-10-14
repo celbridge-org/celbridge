@@ -28,12 +28,12 @@ public class ProjectFactoryTests
         var appEnvironment = Substitute.For<IAppEnvironment>();
         appEnvironment.LocalApplicationDataFolderPath.Returns(_appDataFolder);
 
-        var dataFolderService = new DataFolderService(
-            new NullLogger<DataFolderService>(),
+        var projectDataFolderService = new ProjectDataFolderService(
+            new NullLogger<ProjectDataFolderService>(),
             appEnvironment,
             _fileSystem);
 
-        _factory = new ProjectFactory(_mockLogger, dataFolderService, _fileSystem);
+        _factory = new ProjectFactory(_mockLogger, projectDataFolderService, _fileSystem);
     }
 
     [TearDown]

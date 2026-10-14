@@ -4,7 +4,7 @@ namespace Celbridge.Projects.Services;
 /// Manages the data folders in the application data folder that contain each project's local data. Each project
 /// file has its own data folder, found from the project file's path.
 /// </summary>
-internal interface IDataFolderService
+internal interface IProjectDataFolderService
 {
     /// <summary>
     /// Returns the path of the data folder for the project file at the given path. The folder may not exist

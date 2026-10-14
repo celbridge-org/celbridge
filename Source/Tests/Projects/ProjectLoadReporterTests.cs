@@ -50,17 +50,17 @@ public class ProjectLoadReporterTests
         var appEnvironment = Substitute.For<IAppEnvironment>();
         appEnvironment.LocalApplicationDataFolderPath.Returns(Path.Combine(_testFolderPath, "AppData"));
 
-        var dataFolderService = new DataFolderService(
-            new NullLogger<DataFolderService>(),
+        var projectDataFolderService = new ProjectDataFolderService(
+            new NullLogger<ProjectDataFolderService>(),
             appEnvironment,
             _fileSystem);
-        _dataFolderPath = dataFolderService.GetDataFolderPath(_projectFilePath);
+        _dataFolderPath = projectDataFolderService.GetDataFolderPath(_projectFilePath);
 
         _reporter = new ProjectLoadReporter(
             reportWriter,
             new NullLogger<ProjectLoadReporter>(),
             new TestLocalizerService(),
-            dataFolderService);
+            projectDataFolderService);
     }
 
     [TearDown]

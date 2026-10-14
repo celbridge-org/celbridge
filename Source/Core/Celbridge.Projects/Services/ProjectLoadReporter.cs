@@ -22,7 +22,7 @@ internal sealed class ProjectLoadReporter : IProjectLoadReporter
     private readonly IReportWriter _reportWriter;
     private readonly ILogger<ProjectLoadReporter> _logger;
     private readonly ILocalizerService _localizerService;
-    private readonly IDataFolderService _dataFolderService;
+    private readonly IProjectDataFolderService _projectDataFolderService;
 
     private string _projectFilePath = string.Empty;
     private DateTimeOffset? _loadStartedAt;
@@ -44,12 +44,12 @@ internal sealed class ProjectLoadReporter : IProjectLoadReporter
         IReportWriter reportWriter,
         ILogger<ProjectLoadReporter> logger,
         ILocalizerService localizerService,
-        IDataFolderService dataFolderService)
+        IProjectDataFolderService projectDataFolderService)
     {
         _reportWriter = reportWriter;
         _logger = logger;
         _localizerService = localizerService;
-        _dataFolderService = dataFolderService;
+        _projectDataFolderService = projectDataFolderService;
     }
 
     public void BeginLoad(string projectFilePath)
@@ -118,7 +118,7 @@ internal sealed class ProjectLoadReporter : IProjectLoadReporter
 
             // The data folder depends only on the project file's path, so a load that fails before the project
             // exists still writes its report to the project's data folder.
-            var dataFolderResult = await _dataFolderService.EnsureDataFolderAsync(_projectFilePath);
+            var dataFolderResult = await _projectDataFolderService.EnsureDataFolderAsync(_projectFilePath);
             if (dataFolderResult.IsFailure)
             {
                 _logger.LogWarning(dataFolderResult, $"Failed to write project load report for: '{_projectFilePath}'");

@@ -13,12 +13,12 @@ namespace Celbridge.Tests.Projects;
 /// Tests how the data folder's path is derived, the project.json it contains, and clearing the folder.
 /// </summary>
 [TestFixture]
-public class DataFolderServiceTests
+public class ProjectDataFolderServiceTests
 {
     private string _testFolderPath = null!;
     private string _appDataFolderPath = null!;
     private string _projectFolderPath = null!;
-    private DataFolderService _service = null!;
+    private ProjectDataFolderService _service = null!;
 
     [SetUp]
     public void Setup()
@@ -26,7 +26,7 @@ public class DataFolderServiceTests
         _testFolderPath = Path.Combine(
             Path.GetTempPath(),
             "Celbridge",
-            nameof(DataFolderServiceTests),
+            nameof(ProjectDataFolderServiceTests),
             Guid.NewGuid().ToString("N"));
 
         _appDataFolderPath = Path.Combine(_testFolderPath, "AppData");
@@ -35,8 +35,8 @@ public class DataFolderServiceTests
         var appEnvironment = Substitute.For<IAppEnvironment>();
         appEnvironment.LocalApplicationDataFolderPath.Returns(_appDataFolderPath);
 
-        _service = new DataFolderService(
-            new NullLogger<DataFolderService>(),
+        _service = new ProjectDataFolderService(
+            new NullLogger<ProjectDataFolderService>(),
             appEnvironment,
             TestFileSystem.CreateLocal());
     }

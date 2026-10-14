@@ -127,11 +127,6 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
         return sections;
     }
 
-    private void OpenInCodeEditorButton_Click(object sender, RoutedEventArgs e)
-    {
-        ViewModel.OpenInCodeEditor(FileResource);
-    }
-
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(ProjectSettingsEditorViewModel.HasPendingChanges))
@@ -162,6 +157,7 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
         // Existence is already checked by the documents service before the view is created, and nothing
         // here resolves the resource through the registry.
         FileResource = fileResource;
+        ViewModel.FileResource = fileResource;
 
         return Result.Ok();
     }
