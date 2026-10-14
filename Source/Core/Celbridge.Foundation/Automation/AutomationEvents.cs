@@ -16,9 +16,10 @@ public abstract record AutomationEvent;
 public record ServerStartedEvent(int Port) : AutomationEvent;
 
 /// <summary>
-/// The workspace has loaded. ElapsedMs is how long the load took, in milliseconds.
+/// The workspace has loaded. ProjectFile is the path of the project file, and ElapsedMs is how long the load
+/// took, in milliseconds.
 /// </summary>
-public record WorkspaceLoadedEvent(long ElapsedMs) : AutomationEvent;
+public record WorkspaceLoadedEvent(string ProjectFile, long ElapsedMs) : AutomationEvent;
 
 /// <summary>
 /// A project load failed, so the project did not open. It is reported after any alert the failure raised has

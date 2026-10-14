@@ -35,7 +35,7 @@ public class AppActivationService : IAppActivationService
 
     public void OnFilesActivated(IReadOnlyList<string> filePaths)
     {
-        var projectFilePath = filePaths.FirstOrDefault(IsProjectFile);
+        var projectFilePath = filePaths.FirstOrDefault(ProjectCommandLine.IsProjectFile);
         if (string.IsNullOrEmpty(projectFilePath))
         {
             return;
@@ -121,11 +121,5 @@ public class AppActivationService : IAppActivationService
         {
             command.ProjectFilePath = projectFilePath;
         });
-    }
-
-    private static bool IsProjectFile(string filePath)
-    {
-        var extension = Path.GetExtension(filePath);
-        return string.Equals(extension, ProjectConstants.ProjectFileExtension, StringComparison.OrdinalIgnoreCase);
     }
 }

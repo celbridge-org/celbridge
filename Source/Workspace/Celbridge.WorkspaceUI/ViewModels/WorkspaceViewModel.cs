@@ -148,7 +148,8 @@ public partial class WorkspaceViewModel : ObservableObject
 
         if (loadResult.IsSuccess)
         {
-            _automationService.LogEvent(new WorkspaceLoadedEvent(elapsed));
+            var projectFile = _projectService.CurrentProject?.ProjectFilePath ?? string.Empty;
+            _automationService.LogEvent(new WorkspaceLoadedEvent(projectFile, elapsed));
         }
     }
 }
