@@ -1,6 +1,7 @@
 using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Resources;
+using Celbridge.Resources.Helpers;
 using Celbridge.Resources.Services;
 using Celbridge.Tests.FileSystem;
 using Celbridge.UserInterface;
@@ -14,7 +15,7 @@ namespace Celbridge.Tests.Resources;
 /// supplied project folder. By default the [celbridge.resources] settings are empty.
 /// Pass searchExcludePatterns to bound the walk. The builder enumerates through the
 /// gateway, so the helper stands up the resource file system and a registry that
-/// resolves keys to paths under the project folder.
+/// resolves keys through the project root's real path resolver.
 /// </summary>
 internal static class ProjectTreeBuilderTestHelper
 {
@@ -23,18 +24,12 @@ internal static class ProjectTreeBuilderTestHelper
         IIconService? iconService = null,
         string[]? searchExcludePatterns = null)
     {
+        var pathResolver = new RootPathResolver(ResourceKey.DefaultRoot, projectFolderPath);
+
         var resourceRegistry = Substitute.For<IResourceRegistry>();
         resourceRegistry.ProjectFolderPath.Returns(projectFolderPath);
         resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>(), Arg.Any<bool>()).Returns(callInfo =>
-        {
-            var resourceKey = callInfo.Arg<ResourceKey>();
-            var relativePath = resourceKey.Path.Replace('/', Path.DirectorySeparatorChar);
-            var absolutePath = string.IsNullOrEmpty(relativePath)
-                ? projectFolderPath
-                : Path.Combine(projectFolderPath, relativePath);
-
-            return Result<string>.Ok(absolutePath);
-        });
+            pathResolver.ValidateAndResolve(callInfo.Arg<ResourceKey>()));
 
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Registry.Returns(resourceRegistry);
