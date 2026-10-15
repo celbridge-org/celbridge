@@ -27,7 +27,7 @@ public interface IProjectService
     /// Returns the full paths of the project files directly in the folder, ordered by path. A missing folder
     /// gives an empty list.
     /// </summary>
-    Task<Result<IReadOnlyList<string>>> GetProjectFilesAsync(string folderPath);
+    Task<Result<IReadOnlyList<string>>> FindProjectFilesAsync(string folderPath);
 
     /// <summary>
     /// Create a new project file and database using the specified config information. Fails without

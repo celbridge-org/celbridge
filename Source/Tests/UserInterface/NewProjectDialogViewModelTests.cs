@@ -34,7 +34,7 @@ public class NewProjectDialogViewModelTests
         var fileSystem = TestFileSystem.CreateLocal();
 
         _projectService = Substitute.For<IProjectService>();
-        _projectService.GetProjectFilesAsync(Arg.Any<string>())
+        _projectService.FindProjectFilesAsync(Arg.Any<string>())
             .Returns(callInfo => ProjectFileHelper.FindProjectFilesAsync(callInfo.Arg<string>(), fileSystem));
 
         _viewModel = new NewProjectDialogViewModel(
@@ -92,7 +92,7 @@ public class NewProjectDialogViewModelTests
         _viewModel.ProjectName = "Beta";
         await WaitForAsync(() => _viewModel.DestProjectFilePath == Path.Combine(emptyFolderPath, "Beta.celbridge"));
 
-        await _projectService.Received(1).GetProjectFilesAsync(emptyFolderPath);
+        await _projectService.Received(1).FindProjectFilesAsync(emptyFolderPath);
     }
 
     // Validation runs after a debounce, so the test waits for its outcome.

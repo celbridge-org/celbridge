@@ -145,7 +145,7 @@ internal class ProjectLoader : IProjectLoader
     private async Task<string?> FindOtherProjectFileAsync(string projectFilePath)
     {
         var projectFolderPath = ProjectFileHelper.GetProjectFolderPath(projectFilePath);
-        var projectFilesResult = await _projectService.GetProjectFilesAsync(projectFolderPath);
+        var projectFilesResult = await _projectService.FindProjectFilesAsync(projectFolderPath);
         if (projectFilesResult.IsFailure)
         {
             // The load goes ahead, and reports any problem reading the folder.
@@ -176,8 +176,8 @@ internal class ProjectLoader : IProjectLoader
         ForgetPreviousProject(projectFilePath);
 
         var otherFileName = Path.GetFileName(otherProjectFilePath);
-        var title = _stringLocalizer.GetString("AnotherProjectFileAlert_Title");
-        var message = _stringLocalizer.GetString("AnotherProjectFileAlert_Message", otherFileName);
+        var title = _stringLocalizer.GetString("MultipleProjectFilesAlert_Title");
+        var message = _stringLocalizer.GetString("MultipleProjectFilesAlert_Message", otherFileName);
         await _dialogService.ShowAlertDialogAsync(title, message);
 
         return Result.Fail($"Failed to load project because its folder contains another project file: '{otherProjectFilePath}'");

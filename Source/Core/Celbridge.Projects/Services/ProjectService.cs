@@ -131,7 +131,7 @@ internal class ProjectService : IProjectService
         return await _projectTemplateService.GetConflictingFileNamesAsync(config.ProjectFilePath, config.Template);
     }
 
-    public async Task<Result<IReadOnlyList<string>>> GetProjectFilesAsync(string folderPath)
+    public async Task<Result<IReadOnlyList<string>>> FindProjectFilesAsync(string folderPath)
     {
         return await ProjectFileHelper.FindProjectFilesAsync(folderPath, _fileSystem);
     }
@@ -144,7 +144,7 @@ internal class ProjectService : IProjectService
 
             // A folder contains at most one project file, and the data folder belongs to the folder.
             var projectFolderPath = ProjectFileHelper.GetProjectFolderPath(projectFilePath);
-            var projectFilesResult = await GetProjectFilesAsync(projectFolderPath);
+            var projectFilesResult = await FindProjectFilesAsync(projectFolderPath);
             if (projectFilesResult.IsFailure)
             {
                 return Result.Fail($"Failed to create project: '{projectFilePath}'")

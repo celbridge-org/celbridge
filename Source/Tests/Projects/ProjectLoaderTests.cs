@@ -178,7 +178,7 @@ public class ProjectLoaderTests
 
         result.IsFailure.Should().BeTrue();
         await _dialogService.Received(1).ShowAlertDialogAsync(
-            "Another Project File Found",
+            "Multiple Project Files",
             Arg.Is<string>(message => message.Contains("\"Current.celbridge\"")));
         AssertTheCurrentProjectStaysOpen();
         _projectLockService.Calls.Should().BeEmpty();
@@ -263,7 +263,7 @@ public class ProjectLoaderTests
     [Test]
     public async Task ACheckThatThrowsBeforeTheLock_ReportsTheFailure()
     {
-        _projectService.GetProjectFilesAsync(Arg.Any<string>())
+        _projectService.FindProjectFilesAsync(Arg.Any<string>())
             .Returns<Task<Result<IReadOnlyList<string>>>>(_ => throw new InvalidOperationException("The folder check threw"));
 
         var result = await _projectLoader.LoadProjectAsync(ProjectFilePath, ProjectLoadOrigin.RunningWindow);
@@ -435,7 +435,7 @@ public class ProjectLoaderTests
 
         result.IsFailure.Should().BeTrue();
         await _dialogService.Received(1).ShowAlertDialogAsync(
-            "Another Project File Found",
+            "Multiple Project Files",
             Arg.Is<string>(message => message.Contains("\"Other.celbridge\"")));
         AssertTheCurrentProjectStaysOpen();
         _projectLockService.Calls.Should().BeEmpty();
@@ -544,7 +544,7 @@ public class ProjectLoaderTests
     private void StubFolderProjectFiles(params string[] projectFilePaths)
     {
         IReadOnlyList<string> projectFiles = projectFilePaths.ToList();
-        _projectService.GetProjectFilesAsync(Arg.Any<string>()).Returns(projectFiles.OkResult());
+        _projectService.FindProjectFilesAsync(Arg.Any<string>()).Returns(projectFiles.OkResult());
     }
 
     private void StubMigration(MigrationStatus status, string oldVersion, string newVersion)

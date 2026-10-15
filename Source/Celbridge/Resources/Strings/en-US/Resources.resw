@@ -138,10 +138,10 @@
   <data name="LoadProjectFailedAlert_Title" xml:space="preserve">
     <value>Failed to Load Project</value>
   </data>
-  <data name="AnotherProjectFileAlert_Title" xml:space="preserve">
-    <value>Another Project File Found</value>
+  <data name="MultipleProjectFilesAlert_Title" xml:space="preserve">
+    <value>Multiple Project Files</value>
   </data>
-  <data name="AnotherProjectFileAlert_Message" xml:space="preserve">
+  <data name="MultipleProjectFilesAlert_Message" xml:space="preserve">
     <value>The project folder also contains "{0}". A folder can contain only one project file.</value>
   </data>
   <data name="ProjectAlreadyOpenAlert_Title" xml:space="preserve">

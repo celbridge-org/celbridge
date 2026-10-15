@@ -240,7 +240,7 @@ public partial class NewProjectDialogViewModel : ObservableObject
     {
         if (folderPath != _checkedFolderPath)
         {
-            var projectFilesResult = await _projectService.GetProjectFilesAsync(folderPath);
+            var projectFilesResult = await _projectService.FindProjectFilesAsync(folderPath);
             _checkedFolderHasProjectFile = projectFilesResult.IsSuccess
                 && projectFilesResult.Value.Count > 0;
             _checkedFolderPath = folderPath;
