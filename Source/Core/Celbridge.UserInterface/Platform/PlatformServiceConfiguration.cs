@@ -40,6 +40,10 @@ public static class PlatformServiceConfiguration
         // presenter as well as the WinAppSDK one, so what it branches on is the running OS, not the head.
         services.AddSingleton<IWindowSizeConstraints, WindowSizeConstraints>();
 
+        // One implementation for both heads. macOS places the native window, so the class branches on the running
+        // OS.
+        services.AddSingleton<IWindowPlacement, WindowPlacement>();
+
         // Both heads broadcast window activation identically, but the state enum on the activation event
         // args differs: WindowActivationState on the packaged head, CoreWindowActivationState on Skia.
 #if WINDOWS

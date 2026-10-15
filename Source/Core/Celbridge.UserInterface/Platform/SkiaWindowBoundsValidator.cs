@@ -30,12 +30,10 @@ public sealed class SkiaWindowBoundsValidator : IWindowBoundsValidator
             return false;
         }
 
-        // The saved bounds come from AppWindow, whose coordinate unit on the Skia head is ambiguous
-        // (points or physical pixels). NSScreen frames are in points with a bottom-left origin, so each
-        // screen is converted to a top-left rect and the saved title-bar strip is tested against it in
-        // both point space and pixel space. A hit in either accepts the restore, which keeps the unit
-        // ambiguity from silently rejecting a valid placement. The values are logged so the
-        // interpretation can be tightened once confirmed on device.
+        // The window saves its frame in points with a top-left origin. Settings can also hold bounds in
+        // physical pixels. NSScreen frames are in points with a bottom-left origin. Each screen is converted to a
+        // top-left rect, and the saved title-bar strip is tested against it in point space and in pixel space. A
+        // hit in either accepts the restore.
         var titleBarRect = WindowPlacementPolicy.GetTitleBarStrip(windowBounds);
 
         // The flip from a bottom-left to a top-left origin is relative to the primary display (the one

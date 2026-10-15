@@ -27,7 +27,7 @@ public partial class App : Application
     }
 
     // Log files from previous runs kept on disk. Each run writes one file, so this is a count of runs.
-    private const int RetainedLogFileCount = 50;
+    private const int RetainedLogFileCount = 100;
 
     protected Window? MainWindow { get; private set; }
     protected IHost? Host { get; private set; }
