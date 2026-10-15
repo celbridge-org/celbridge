@@ -1,3 +1,4 @@
+using System.Threading.Channels;
 using Celbridge.Commands;
 using Celbridge.Messaging;
 using Celbridge.Messaging.Services;
@@ -24,7 +25,7 @@ public class AppActivationServiceTests
     private string _previousProjectFile = null!;
     private IMessengerService _messengerService = null!;
     private ISettingsService _settingsService = null!;
-    private List<(string ProjectFilePath, ProjectLoadOrigin Origin)> _loads = null!;
+    private Channel<(string ProjectFilePath, ProjectLoadOrigin Origin)> _loads = null!;
     private AppActivationService _service = null!;
 
     [SetUp]
@@ -44,7 +45,8 @@ public class AppActivationServiceTests
         _settingsService = Substitute.For<ISettingsService>();
         _settingsService.Get(SettingCatalog.Project.PreviousProject).Returns(_previousProjectFile);
 
-        _loads = new();
+        // The startup flow can finish on another thread, so each load goes through a channel.
+        _loads = Channel.CreateUnbounded<(string ProjectFilePath, ProjectLoadOrigin Origin)>();
         var commandService = Substitute.For<ICommandService>();
         commandService.Execute<ILoadProjectCommand>(default, default!, default)
             .ReturnsForAnyArgs(callInfo =>
@@ -52,7 +54,7 @@ public class AppActivationServiceTests
                 var configure = callInfo.ArgAt<Action<ILoadProjectCommand>?>(0);
                 var command = Substitute.For<ILoadProjectCommand>();
                 configure?.Invoke(command);
-                _loads.Add((command.ProjectFilePath, command.Origin));
+                _loads.Writer.TryWrite((command.ProjectFilePath, command.Origin));
 
                 return Result.Ok();
             });
@@ -80,18 +82,18 @@ public class AppActivationServiceTests
         _service.OnFilesActivated([_launchProjectFile]);
 
         _messengerService.Send(new MainPageLoadedMessage());
-        await WaitForLoadAsync();
 
-        _loads.Should().Equal((_launchProjectFile, ProjectLoadOrigin.LaunchFile));
+        (await ReadLoadAsync()).Should().Be((_launchProjectFile, ProjectLoadOrigin.LaunchFile));
+        _loads.Reader.TryRead(out _).Should().BeFalse();
     }
 
     [Test]
     public async Task ALaunchThatNamesNoProject_OpensThePreviousProjectAsThePreviousProject()
     {
         _messengerService.Send(new MainPageLoadedMessage());
-        await WaitForLoadAsync();
 
-        _loads.Should().Equal((_previousProjectFile, ProjectLoadOrigin.PreviousProject));
+        (await ReadLoadAsync()).Should().Be((_previousProjectFile, ProjectLoadOrigin.PreviousProject));
+        _loads.Reader.TryRead(out _).Should().BeFalse();
     }
 
     [Test]
@@ -100,21 +102,21 @@ public class AppActivationServiceTests
         _service.OnFilesActivated([Path.Combine(_folderPath, "Missing", "Missing.celbridge")]);
 
         _messengerService.Send(new MainPageLoadedMessage());
-        await WaitForLoadAsync();
 
-        _loads.Should().Equal((_previousProjectFile, ProjectLoadOrigin.PreviousProject));
+        (await ReadLoadAsync()).Should().Be((_previousProjectFile, ProjectLoadOrigin.PreviousProject));
+        _loads.Reader.TryRead(out _).Should().BeFalse();
     }
 
     [Test]
     public async Task AProjectFileSentAfterStartup_OpensAsAnOpenFromARunningWindow()
     {
-        _settingsService.Get(SettingCatalog.Project.PreviousProject).Returns(string.Empty);
+        // The startup flow opens the previous project only once startup has completed.
         _messengerService.Send(new MainPageLoadedMessage());
+        (await ReadLoadAsync()).Should().Be((_previousProjectFile, ProjectLoadOrigin.PreviousProject));
 
         _service.OnFilesActivated([_launchProjectFile]);
-        await WaitForLoadAsync();
 
-        _loads.Should().Equal((_launchProjectFile, ProjectLoadOrigin.RunningWindow));
+        (await ReadLoadAsync()).Should().Be((_launchProjectFile, ProjectLoadOrigin.RunningWindow));
     }
 
     private string CreateProjectFile(string name)
@@ -128,18 +130,18 @@ public class AppActivationServiceTests
         return projectFilePath;
     }
 
-    // The startup flow runs from the message handler without being awaited, so the test waits for its load.
-    private async Task WaitForLoadAsync()
+    // The startup flow runs from the message handler without being awaited, so the test waits for each load.
+    private async Task<(string ProjectFilePath, ProjectLoadOrigin Origin)> ReadLoadAsync()
     {
-        var deadline = DateTime.UtcNow.AddMilliseconds(LoadTimeoutMilliseconds);
-        while (_loads.Count == 0)
+        using var timeout = new CancellationTokenSource(LoadTimeoutMilliseconds);
+        try
         {
-            if (DateTime.UtcNow > deadline)
-            {
-                Assert.Fail("The activation service opened no project.");
-            }
-
-            await Task.Delay(20);
+            return await _loads.Reader.ReadAsync(timeout.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            Assert.Fail("The activation service opened no project.");
+            throw;
         }
     }
 }

@@ -61,17 +61,40 @@ internal class ProjectLoader : IProjectLoader
 
     public async Task<Result> LoadProjectAsync(string projectFilePath, ProjectLoadOrigin origin)
     {
-        // This instance takes the lock of every project it opens, so this project is already open here.
-        if (_projectLockService.HoldsLock(projectFilePath))
+        Result loadResult;
+        try
         {
-            return Result.Ok();
+            loadResult = await OpenProjectAsync(projectFilePath, origin);
+        }
+        catch (Exception exception)
+        {
+            loadResult = Result.Fail($"Failed to load project: '{projectFilePath}'")
+                .WithException(exception);
         }
 
+        if (loadResult.IsFailure)
+        {
+            _automationService.LogEvent(new ProjectLoadFailedEvent(projectFilePath));
+        }
+
+        return loadResult;
+    }
+
+    private async Task<Result> OpenProjectAsync(string projectFilePath, ProjectLoadOrigin origin)
+    {
         // The checks run before the current project closes, so a refused project leaves the current project open.
         var otherProjectFilePath = await FindOtherProjectFileAsync(projectFilePath);
         if (otherProjectFilePath is not null)
         {
             return await RefuseOtherProjectFileAsync(projectFilePath, otherProjectFilePath);
+        }
+
+        // A folder contains one project file, so a project in the current project's folder is already open here.
+        // The lock belongs to the folder too, so the check also keeps the current project's unload from releasing the
+        // lock that the load takes.
+        if (IsInCurrentProjectFolder(projectFilePath))
+        {
+            return Result.Ok();
         }
 
         var lockTaken = await TakeLockAsync(projectFilePath);
@@ -80,38 +103,41 @@ internal class ProjectLoader : IProjectLoader
             return await RefuseOpenProjectAsync(projectFilePath, origin);
         }
 
-        // The load report goes in the project's data folder, which the lock now protects.
-        _loadReporter.BeginLoad(projectFilePath);
-
-        Result<bool> loadResult;
+        var workspaceLoaded = false;
         try
         {
-            loadResult = await LoadLockedProjectAsync(projectFilePath);
-        }
-        catch (Exception exception)
-        {
-            loadResult = Result<bool>.Fail($"Failed to load project: '{projectFilePath}'")
-                .WithException(exception);
+            var loadResult = await LoadLockedProjectAsync(projectFilePath);
+            if (loadResult.IsFailure)
+            {
+                return Result.Fail(loadResult);
+            }
+
+            workspaceLoaded = loadResult.Value;
+
+            return Result.Ok();
         }
         finally
         {
-            await _loadReporter.FlushAsync();
+            // A load that ends without a workspace leaves the project closed.
+            if (!workspaceLoaded)
+            {
+                _projectLockService.ReleaseLock(projectFilePath);
+            }
         }
+    }
 
-        // A load that ends without a workspace leaves the project closed.
-        var workspaceLoaded = loadResult.IsSuccess && loadResult.Value;
-        if (!workspaceLoaded)
+    private bool IsInCurrentProjectFolder(string projectFilePath)
+    {
+        var currentProject = _projectService.CurrentProject;
+        if (currentProject is null)
         {
-            _projectLockService.ReleaseLock(projectFilePath);
+            return false;
         }
 
-        if (loadResult.IsFailure)
-        {
-            _automationService.LogEvent(new ProjectLoadFailedEvent(projectFilePath));
-            return Result.Fail(loadResult);
-        }
+        var currentProjectFolderPath = ProjectFileHelper.GetProjectFolderPath(currentProject.ProjectFilePath);
+        var projectFolderPath = ProjectFileHelper.GetProjectFolderPath(projectFilePath);
 
-        return Result.Ok();
+        return string.Equals(currentProjectFolderPath, projectFolderPath, PathComparison.Comparison);
     }
 
     // Returns the path of a project file in the project's folder other than the one being opened, or null if
@@ -154,8 +180,6 @@ internal class ProjectLoader : IProjectLoader
         var message = _stringLocalizer.GetString("AnotherProjectFileAlert_Message", otherFileName);
         await _dialogService.ShowAlertDialogAsync(title, message);
 
-        _automationService.LogEvent(new ProjectLoadFailedEvent(projectFilePath));
-
         return Result.Fail($"Failed to load project because its folder contains another project file: '{otherProjectFilePath}'");
     }
 
@@ -173,8 +197,6 @@ internal class ProjectLoader : IProjectLoader
         var title = _stringLocalizer.GetString("ProjectAlreadyOpenAlert_Title");
         var message = _stringLocalizer.GetString("ProjectAlreadyOpenAlert_Message", projectName);
         await _dialogService.ShowAlertDialogAsync(title, message);
-
-        _automationService.LogEvent(new ProjectLoadFailedEvent(projectFilePath));
 
         if (origin == ProjectLoadOrigin.LaunchFile)
         {
@@ -196,6 +218,7 @@ internal class ProjectLoader : IProjectLoader
         var migrationResult = await _migrationService.CheckMigrationAsync(projectFilePath);
 
         // A version this build can't open, or a declined upgrade, ends the load before the current project closes.
+        // The refused load's report is written separately from the current project's load report.
         bool userConfirmedUpgrade = false;
         switch (migrationResult.Status)
         {
@@ -206,8 +229,7 @@ internal class ProjectLoader : IProjectLoader
                 _logger.LogError($"Cannot load project '{projectName}' - Celbridge version v{migrationResult.OldVersion} is not supported by application version v{migrationResult.NewVersion}");
                 ForgetPreviousProject(projectFilePath);
 
-                _loadReporter.RecordMigrationResult(migrationResult, userConfirmedUpgrade: false, userCancelledUpgrade: false);
-                _loadReporter.RecordLoadOutcome(loadSucceeded: false, loadResult: null);
+                await _loadReporter.WriteRefusedLoadReportAsync(projectFilePath, migrationResult, userCancelledUpgrade: false);
 
                 await ShowCelbridgeVersionAlertAsync(projectName, migrationResult);
 
@@ -225,8 +247,7 @@ internal class ProjectLoader : IProjectLoader
                 if (!confirmed)
                 {
                     _logger.LogInformation($"User cancelled project upgrade for '{projectName}'");
-                    _loadReporter.RecordMigrationResult(migrationResult, userConfirmedUpgrade: false, userCancelledUpgrade: true);
-                    _loadReporter.RecordLoadOutcome(loadSucceeded: false, loadResult: null);
+                    await _loadReporter.WriteRefusedLoadReportAsync(projectFilePath, migrationResult, userCancelledUpgrade: true);
 
                     // Not a failure. The user chose to keep the current project.
                     return false;
@@ -243,6 +264,53 @@ internal class ProjectLoader : IProjectLoader
         {
             _logger.LogWarning(unloadResult, "Failed to close the current project cleanly before loading another");
         }
+
+        // The current project's load report stays in use until the current project closes.
+        _loadReporter.BeginLoad(projectFilePath);
+
+        Result loadResult;
+        try
+        {
+            loadResult = await UpgradeAndLoadAsync(projectFilePath, migrationResult, userConfirmedUpgrade);
+        }
+        catch (Exception exception)
+        {
+            loadResult = Result.Fail($"Failed to load project: '{projectFilePath}'")
+                .WithException(exception);
+            _loadReporter.RecordLoadOutcome(loadSucceeded: false, loadResult);
+        }
+
+        // Written while the lock is held. Closing a project that failed to load releases the lock.
+        await _loadReporter.FlushAsync();
+
+        if (loadResult.IsFailure)
+        {
+            _settingsService.Set(SettingCatalog.Project.PreviousProject, string.Empty);
+
+            // The project service may already have the project, and the view may already exist. The unload takes both
+            // down, so the shell shows Home.
+            var closeResult = await _projectUnloader.UnloadProjectAsync();
+            if (closeResult.IsFailure)
+            {
+                _logger.LogError(closeResult, "Failed to close the project after its load failed");
+            }
+
+            await ShowLoadFailedAlertAsync(projectFilePath);
+
+            return Result<bool>.Fail($"Failed to load project: '{projectFilePath}'")
+                .WithErrors(loadResult);
+        }
+
+        _settingsService.Set(SettingCatalog.Project.PreviousProject, projectFilePath);
+
+        return true;
+    }
+
+    // Runs once the current project has closed. Upgrades the new project if the user confirmed the upgrade, then loads
+    // the project and shows the workspace.
+    private async Task<Result> UpgradeAndLoadAsync(string projectFilePath, MigrationResult migrationResult, bool userConfirmedUpgrade)
+    {
+        var projectName = Path.GetFileNameWithoutExtension(projectFilePath);
 
         if (userConfirmedUpgrade)
         {
@@ -273,27 +341,7 @@ internal class ProjectLoader : IProjectLoader
 
         _loadReporter.RecordLoadOutcome(loadResult.IsSuccess, loadResult);
 
-        if (loadResult.IsFailure)
-        {
-            _settingsService.Set(SettingCatalog.Project.PreviousProject, string.Empty);
-
-            // The view may already have been created when the load failed, so take it back down. No project
-            // is loaded, so the shell shows Home.
-            var closeResult = await _applicationShell.CloseWorkspaceAsync();
-            if (closeResult.IsFailure)
-            {
-                _logger.LogError(closeResult, "Failed to close the workspace after the project load failed");
-            }
-
-            await ShowLoadFailedAlertAsync(projectFilePath);
-
-            return Result<bool>.Fail($"Failed to load project: '{projectFilePath}'")
-                .WithErrors(loadResult);
-        }
-
-        _settingsService.Set(SettingCatalog.Project.PreviousProject, projectFilePath);
-
-        return true;
+        return loadResult;
     }
 
     // A refused project can't open as it stands, so the next launch skips it. The setting is cleared only when it

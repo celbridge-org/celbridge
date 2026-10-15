@@ -64,4 +64,11 @@ public interface IProjectLoadReporter
     /// failure. Never throws.
     /// </summary>
     Task<ProjectLoadReportSummary?> FlushAsync();
+
+    /// <summary>
+    /// Writes the report of a load that was refused before it began, because of the project's version or a
+    /// declined upgrade. A refused load leaves the current project open, so this call leaves the current load's
+    /// state and WrittenReport unchanged. Never throws.
+    /// </summary>
+    Task WriteRefusedLoadReportAsync(string projectFilePath, MigrationResult migrationResult, bool userCancelledUpgrade);
 }

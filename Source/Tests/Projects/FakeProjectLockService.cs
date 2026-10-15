@@ -14,11 +14,6 @@ internal sealed class FakeProjectLockService : IProjectLockService
 
     public Result<bool> TakeResult { get; set; } = true;
 
-    public bool HoldsLock(string projectFilePath)
-    {
-        return HeldProjectFiles.Contains(projectFilePath);
-    }
-
     public Task<Result<bool>> TryTakeLockAsync(string projectFilePath)
     {
         Calls.Add($"take {projectFilePath}");

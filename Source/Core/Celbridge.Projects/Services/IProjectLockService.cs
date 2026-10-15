@@ -9,14 +9,9 @@ namespace Celbridge.Projects.Services;
 internal interface IProjectLockService
 {
     /// <summary>
-    /// Returns true if this instance has the lock for the folder of the project file at the given path.
-    /// </summary>
-    bool HoldsLock(string projectFilePath);
-
-    /// <summary>
     /// Takes the lock for the folder of the project file at the given path, creating the project's data folder if
     /// needed. Returns true once this instance has the lock, including a lock this instance already had. Returns
-    /// false if another instance has the lock. Fails if the lock can't be taken for any other reason.
+    /// false if another process has the lock file open. Fails if the lock can't be taken for any other reason.
     /// </summary>
     Task<Result<bool>> TryTakeLockAsync(string projectFilePath);
 

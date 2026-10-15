@@ -6,6 +6,19 @@ internal sealed class ProjectLockService : IProjectLockService
 {
     private const string LockFileName = "instance.lock";
 
+    // On Windows, opening a file that another process has open fails with a sharing violation.
+    private const int SharingViolationHResult = unchecked((int)0x80070020);
+
+    // On macOS and Linux, .NET implements FileShare.None with an advisory lock. While another process has the lock,
+    // the open fails with EWOULDBLOCK, and .NET passes the errno through as the HResult. The errno's value differs
+    // between macOS and Linux.
+    private const int MacOSWouldBlockErrno = 35;
+    private const int LinuxWouldBlockErrno = 11;
+
+    // A process such as a virus scanner can have the lock file open for a moment. A refused open is therefore tried
+    // once more after this delay.
+    private static readonly TimeSpan RetryDelay = TimeSpan.FromMilliseconds(250);
+
     private readonly ILogger<ProjectLockService> _logger;
     private readonly IProjectDataFolderService _projectDataFolderService;
 
@@ -19,13 +32,6 @@ internal sealed class ProjectLockService : IProjectLockService
     {
         _logger = logger;
         _projectDataFolderService = projectDataFolderService;
-    }
-
-    public bool HoldsLock(string projectFilePath)
-    {
-        var dataFolderPath = _projectDataFolderService.GetDataFolderPath(projectFilePath);
-
-        return _heldLocks.ContainsKey(dataFolderPath);
     }
 
     public async Task<Result<bool>> TryTakeLockAsync(string projectFilePath)
@@ -46,18 +52,15 @@ internal sealed class ProjectLockService : IProjectLockService
         }
 
         var lockFilePath = Path.Combine(dataFolderPath, LockFileName);
+        FileStream? lockFile;
         try
         {
-            // When two instances open the file at once, exactly one succeeds. On macOS, .NET implements
-            // FileShare.None with an advisory lock that the kernel grants to one process.
-            var lockFile = new FileStream(lockFilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
-            _heldLocks[dataFolderPath] = lockFile;
-        }
-        catch (IOException exception)
-        {
-            // The open fails with an IOException when another process has the file open.
-            _logger.LogInformation($"Refused the lock for the project folder because another instance holds it: '{projectFolderPath}'. {exception.Message}");
-            return false;
+            lockFile = TryOpenLockFile(lockFilePath);
+            if (lockFile is null)
+            {
+                await Task.Delay(RetryDelay);
+                lockFile = TryOpenLockFile(lockFilePath);
+            }
         }
         catch (Exception exception)
         {
@@ -65,6 +68,13 @@ internal sealed class ProjectLockService : IProjectLockService
                 .WithException(exception);
         }
 
+        if (lockFile is null)
+        {
+            _logger.LogInformation($"Refused the lock for the project folder because another instance holds it: '{projectFolderPath}'");
+            return false;
+        }
+
+        _heldLocks[dataFolderPath] = lockFile;
         _logger.LogInformation($"Took the lock for the project folder: '{projectFolderPath}'");
 
         return true;
@@ -82,5 +92,31 @@ internal sealed class ProjectLockService : IProjectLockService
 
         var projectFolderPath = ProjectFileHelper.GetProjectFolderPath(projectFilePath);
         _logger.LogInformation($"Released the lock for the project folder: '{projectFolderPath}'");
+    }
+
+    // Returns the open lock file, or null if another process has the file open. Throws for any other failure.
+    private static FileStream? TryOpenLockFile(string lockFilePath)
+    {
+        try
+        {
+            // When two instances open the file at once, exactly one succeeds.
+            return new FileStream(lockFilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+        }
+        catch (IOException exception) when (IsHeldByAnotherProcess(exception))
+        {
+            return null;
+        }
+    }
+
+    private static bool IsHeldByAnotherProcess(IOException exception)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return exception.HResult == SharingViolationHResult;
+        }
+
+        var wouldBlockErrno = OperatingSystem.IsMacOS() ? MacOSWouldBlockErrno : LinuxWouldBlockErrno;
+
+        return exception.HResult == wouldBlockErrno;
     }
 }

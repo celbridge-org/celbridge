@@ -15,11 +15,12 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.Tests.Projects;
 
 /// <summary>
-/// Covers ProjectLoader's workflow. Each test starts with another project open in this instance. The checks that
-/// can refuse a project run before that project closes: a project already open here, a second project file in the
-/// folder, the lock, the version and the upgrade prompt. A lock that another instance holds has a different outcome
-/// for each way a load can start. The tests also cover when the lock is kept and released, and the alerts a refused
-/// version raises.
+/// Covers ProjectLoader's workflow. Each test starts with another project open in this instance. Some checks can
+/// refuse a project, and they run before that project closes. They cover a second project file in the folder, a
+/// project already open here, the lock, the version and the upgrade prompt. A lock that another instance has taken
+/// leads to a different outcome for each way a load can start. The tests also cover when the lock is kept and
+/// released, and the load report. They also cover a load that fails or throws, and the alerts a refused version
+/// raises.
 /// </summary>
 [TestFixture]
 public class ProjectLoaderTests
@@ -30,6 +31,8 @@ public class ProjectLoaderTests
 
     private IProjectMigrationService _migrationService = null!;
     private IProjectService _projectService = null!;
+    private IProject? _currentProject;
+    private Result<IProject> _projectLoadResult = null!;
     private FakeProjectLockService _projectLockService = null!;
     private IDialogService _dialogService = null!;
     private IApplicationShell _applicationShell = null!;
@@ -52,21 +55,31 @@ public class ProjectLoaderTests
         _automationService = Substitute.For<IAutomationService>();
         _loadReporter = Substitute.For<IProjectLoadReporter>();
 
-        // By default the project is current, and its workspace loads.
+        // Another project is open in this instance, and this instance has the project's lock. The project service
+        // tracks the current project as the loader and the unloader change it.
+        _currentProject = CreateProject(CurrentProjectFilePath);
+        _projectService.CurrentProject.Returns(_ => _currentProject);
+        _projectService.When(service => service.ClearCurrentProject()).Do(_ => _currentProject = null);
+        _projectLockService.HeldProjectFiles.Add(CurrentProjectFilePath);
+
+        // By default the project's version is current, and its workspace loads. A test changes the project service's answer
+        // through _projectLoadResult, since stubbing the call again would run this callback.
         _migrationService.CheckMigrationAsync(ProjectFilePath).Returns(MigrationResult.Success());
         StubFolderProjectFiles(ProjectFilePath);
-        _projectService.LoadProjectAsync(ProjectFilePath, Arg.Any<MigrationResult>())
-            .Returns(Result<IProject>.Ok(Substitute.For<IProject>()));
+        _projectLoadResult = Result<IProject>.Ok(CreateProject(ProjectFilePath));
+        _projectService.LoadProjectAsync(Arg.Any<string>(), Arg.Any<MigrationResult>())
+            .Returns(_ =>
+            {
+                if (_projectLoadResult.IsSuccess)
+                {
+                    _currentProject = _projectLoadResult.Value;
+                }
+
+                return _projectLoadResult;
+            });
         _applicationShell.ShowWorkspaceAsync(Arg.Any<CancellationTokenSource>()).Returns(Result.Ok());
         _applicationShell.CloseWorkspaceAsync().Returns(Result.Ok());
         _workspaceWrapper.IsWorkspaceLoaded.Returns(true);
-
-        // Another project is open in this instance, with its lock held.
-        var currentProject = Substitute.For<IProject>();
-        currentProject.ProjectName.Returns("Current");
-        currentProject.ProjectFilePath.Returns(CurrentProjectFilePath);
-        _projectService.CurrentProject.Returns(currentProject);
-        _projectLockService.HeldProjectFiles.Add(CurrentProjectFilePath);
 
         var projectUnloader = new ProjectUnloader(
             new NullLogger<ProjectUnloader>(),
@@ -114,32 +127,109 @@ public class ProjectLoaderTests
     }
 
     [Test]
-    public async Task AProjectThisInstanceHasOpen_IsNotLoadedAgain()
+    public async Task AProjectAlreadyOpenHere_IsNotLoadedAgain()
     {
-        _projectLockService.HeldProjectFiles.Add(ProjectFilePath);
+        StubFolderProjectFiles(CurrentProjectFilePath);
 
-        var result = await _projectLoader.LoadProjectAsync(ProjectFilePath, ProjectLoadOrigin.RunningWindow);
+        var result = await _projectLoader.LoadProjectAsync(CurrentProjectFilePath, ProjectLoadOrigin.RunningWindow);
+
+        result.IsSuccess.Should().BeTrue();
+        await _migrationService.DidNotReceiveWithAnyArgs().CheckMigrationAsync(default!);
+        AssertTheCurrentProjectStaysOpen();
+        _projectLockService.Calls.Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task AProjectOpenHereWithoutItsLock_IsNotLoadedAgain()
+    {
+        // When the lock fails for a reason other than another instance, the project opens without the lock.
+        _projectLockService.HeldProjectFiles.Clear();
+        StubFolderProjectFiles(CurrentProjectFilePath);
+
+        var result = await _projectLoader.LoadProjectAsync(CurrentProjectFilePath, ProjectLoadOrigin.RunningWindow);
 
         result.IsSuccess.Should().BeTrue();
         await _migrationService.DidNotReceiveWithAnyArgs().CheckMigrationAsync(default!);
         _projectService.DidNotReceive().ClearCurrentProject();
+        _projectLockService.Calls.Should().BeEmpty();
     }
 
     [Test]
-    public async Task ALoadThatFails_ReportsTheFailureAndReleasesTheLock()
+    public async Task AProjectFileRenamedOutsideCelbridge_IsTheProjectAlreadyOpenHere()
     {
-        _projectService.LoadProjectAsync(ProjectFilePath, Arg.Any<MigrationResult>())
-            .Returns(Result<IProject>.Fail("The load failed"));
+        // The open project's file now has another name, and that file is the only project file in the folder.
+        var renamedProjectFilePath = "/projects/Current/Renamed.celbridge";
+        StubFolderProjectFiles(renamedProjectFilePath);
+
+        var result = await _projectLoader.LoadProjectAsync(renamedProjectFilePath, ProjectLoadOrigin.RunningWindow);
+
+        result.IsSuccess.Should().BeTrue();
+        AssertTheCurrentProjectStaysOpen();
+        _projectLockService.Calls.Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task AnotherProjectFileInTheCurrentProjectsFolder_NamesTheCurrentProjectFile()
+    {
+        var copyProjectFilePath = "/projects/Current/Copy.celbridge";
+        StubFolderProjectFiles(copyProjectFilePath, CurrentProjectFilePath);
+
+        var result = await _projectLoader.LoadProjectAsync(copyProjectFilePath, ProjectLoadOrigin.RunningWindow);
+
+        result.IsFailure.Should().BeTrue();
+        await _dialogService.Received(1).ShowAlertDialogAsync(
+            "Another Project File Found",
+            Arg.Is<string>(message => message.Contains("\"Current.celbridge\"")));
+        AssertTheCurrentProjectStaysOpen();
+        _projectLockService.Calls.Should().BeEmpty();
+        _automationService.Received(1).LogEvent(new ProjectLoadFailedEvent(copyProjectFilePath));
+    }
+
+    [Test]
+    public async Task ALoadThatFails_ClosesTheProjectAndReleasesTheLock()
+    {
+        _projectLoadResult = Result<IProject>.Fail("The load failed");
 
         var result = await _projectLoader.LoadProjectAsync(ProjectFilePath, ProjectLoadOrigin.RunningWindow);
 
         result.IsFailure.Should().BeTrue();
-        _projectLockService.HeldProjectFiles.Should().NotContain(ProjectFilePath);
+        _currentProject.Should().BeNull();
+        _projectLockService.HeldProjectFiles.Should().BeEmpty();
         _automationService.Received(1).LogEvent(new ProjectLoadFailedEvent(ProjectFilePath));
     }
 
     [Test]
-    public async Task ALoadThatThrows_FailsAndReleasesTheLock()
+    public async Task AWorkspaceThatFailsToShow_ClosesTheProjectAndReleasesTheLock()
+    {
+        // The project service already has the project when the workspace fails to show.
+        _applicationShell.ShowWorkspaceAsync(Arg.Any<CancellationTokenSource>())
+            .Returns(Result.Fail("The workspace failed to show"));
+
+        var result = await _projectLoader.LoadProjectAsync(ProjectFilePath, ProjectLoadOrigin.RunningWindow);
+
+        result.IsFailure.Should().BeTrue();
+        _currentProject.Should().BeNull();
+        _projectLockService.HeldProjectFiles.Should().BeEmpty();
+        await _dialogService.Received(1).ShowAlertDialogAsync("Failed to Load Project", Arg.Any<string>());
+        _automationService.Received(1).LogEvent(new ProjectLoadFailedEvent(ProjectFilePath));
+    }
+
+    [Test]
+    public async Task AProjectOpenedAgainAfterAFailedLoad_KeepsItsLock()
+    {
+        _applicationShell.ShowWorkspaceAsync(Arg.Any<CancellationTokenSource>())
+            .Returns(Result.Fail("The workspace failed to show"), Result.Ok());
+        await _projectLoader.LoadProjectAsync(ProjectFilePath, ProjectLoadOrigin.RunningWindow);
+
+        var result = await _projectLoader.LoadProjectAsync(ProjectFilePath, ProjectLoadOrigin.RunningWindow);
+
+        result.IsSuccess.Should().BeTrue();
+        _currentProject!.ProjectFilePath.Should().Be(ProjectFilePath);
+        _projectLockService.HeldProjectFiles.Should().Equal(ProjectFilePath);
+    }
+
+    [Test]
+    public async Task ALoadThatThrowsBeforeTheCurrentProjectCloses_FailsAndLeavesTheCurrentProjectOpen()
     {
         _migrationService.CheckMigrationAsync(ProjectFilePath)
             .Returns<Task<MigrationResult>>(_ => throw new InvalidOperationException("The check threw"));
@@ -147,9 +237,54 @@ public class ProjectLoaderTests
         var result = await _projectLoader.LoadProjectAsync(ProjectFilePath, ProjectLoadOrigin.RunningWindow);
 
         result.IsFailure.Should().BeTrue();
+        AssertTheCurrentProjectStaysOpen();
         _projectLockService.HeldProjectFiles.Should().NotContain(ProjectFilePath);
+        _loadReporter.DidNotReceiveWithAnyArgs().BeginLoad(default!);
         _automationService.Received(1).LogEvent(new ProjectLoadFailedEvent(ProjectFilePath));
+    }
+
+    [Test]
+    public async Task ALoadThatThrowsAfterTheCurrentProjectCloses_ClosesTheProjectAndReportsIt()
+    {
+        _applicationShell.ShowWorkspaceAsync(Arg.Any<CancellationTokenSource>())
+            .Returns<Task<Result>>(_ => throw new InvalidOperationException("The workspace threw"));
+
+        var result = await _projectLoader.LoadProjectAsync(ProjectFilePath, ProjectLoadOrigin.RunningWindow);
+
+        result.IsFailure.Should().BeTrue();
+        _currentProject.Should().BeNull();
+        _projectLockService.HeldProjectFiles.Should().BeEmpty();
+        _loadReporter.Received(1).RecordLoadOutcome(Arg.Is(false), Arg.Any<Result?>());
         await _loadReporter.Received(1).FlushAsync();
+        await _dialogService.Received(1).ShowAlertDialogAsync("Failed to Load Project", Arg.Any<string>());
+        _automationService.Received(1).LogEvent(new ProjectLoadFailedEvent(ProjectFilePath));
+    }
+
+    [Test]
+    public async Task ACheckThatThrowsBeforeTheLock_ReportsTheFailure()
+    {
+        _projectService.GetProjectFilesAsync(Arg.Any<string>())
+            .Returns<Task<Result<IReadOnlyList<string>>>>(_ => throw new InvalidOperationException("The folder check threw"));
+
+        var result = await _projectLoader.LoadProjectAsync(ProjectFilePath, ProjectLoadOrigin.RunningWindow);
+
+        result.IsFailure.Should().BeTrue();
+        AssertTheCurrentProjectStaysOpen();
+        _projectLockService.Calls.Should().BeEmpty();
+        _automationService.Received(1).LogEvent(new ProjectLoadFailedEvent(ProjectFilePath));
+    }
+
+    [Test]
+    public async Task TheLoadReport_BeginsOnceTheCurrentProjectHasClosed()
+    {
+        await _projectLoader.LoadProjectAsync(ProjectFilePath, ProjectLoadOrigin.RunningWindow);
+
+        Received.InOrder(() =>
+        {
+            _projectService.ClearCurrentProject();
+            _loadReporter.BeginLoad(ProjectFilePath);
+            _loadReporter.FlushAsync();
+        });
     }
 
     [Test]
@@ -214,6 +349,17 @@ public class ProjectLoaderTests
     }
 
     [Test]
+    public async Task ANewerVersion_WritesItsReportApartFromTheCurrentLoad()
+    {
+        StubMigration(MigrationStatus.NewerCelbridgeVersion, "1.4.0", "1.3.0");
+
+        await _projectLoader.LoadProjectAsync(ProjectFilePath, ProjectLoadOrigin.RunningWindow);
+
+        await _loadReporter.Received(1).WriteRefusedLoadReportAsync(ProjectFilePath, Arg.Any<MigrationResult>(), Arg.Is(false));
+        _loadReporter.DidNotReceiveWithAnyArgs().BeginLoad(default!);
+    }
+
+    [Test]
     public async Task ANewerVersion_ClearsThePreviousProjectWhenItNamesThisProject()
     {
         StubMigration(MigrationStatus.NewerCelbridgeVersion, "1.4.0", "1.3.0");
@@ -249,6 +395,18 @@ public class ProjectLoaderTests
         await _migrationService.DidNotReceiveWithAnyArgs().PerformMigrationUpgradeAsync(default!);
         await _projectService.DidNotReceiveWithAnyArgs().LoadProjectAsync(default!, default!);
         _automationService.DidNotReceive().LogEvent(Arg.Any<ProjectLoadFailedEvent>());
+    }
+
+    [Test]
+    public async Task ADeclinedUpgrade_WritesItsReportApartFromTheCurrentLoad()
+    {
+        StubMigration(MigrationStatus.UpgradeRequired, "1.2.0", "1.3.0");
+        StubUpgradeAnswer(false);
+
+        await _projectLoader.LoadProjectAsync(ProjectFilePath, ProjectLoadOrigin.RunningWindow);
+
+        await _loadReporter.Received(1).WriteRefusedLoadReportAsync(ProjectFilePath, Arg.Any<MigrationResult>(), Arg.Is(true));
+        _loadReporter.DidNotReceiveWithAnyArgs().BeginLoad(default!);
     }
 
     [Test]
@@ -370,7 +528,17 @@ public class ProjectLoaderTests
     private void AssertTheCurrentProjectStaysOpen()
     {
         _projectService.DidNotReceive().ClearCurrentProject();
+        _currentProject!.ProjectFilePath.Should().Be(CurrentProjectFilePath);
         _projectLockService.HeldProjectFiles.Should().Contain(CurrentProjectFilePath);
+    }
+
+    private static IProject CreateProject(string projectFilePath)
+    {
+        var project = Substitute.For<IProject>();
+        project.ProjectName.Returns(Path.GetFileNameWithoutExtension(projectFilePath));
+        project.ProjectFilePath.Returns(projectFilePath);
+
+        return project;
     }
 
     private void StubFolderProjectFiles(params string[] projectFilePaths)

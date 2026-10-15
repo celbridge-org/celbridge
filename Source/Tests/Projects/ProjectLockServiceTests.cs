@@ -7,11 +7,17 @@ namespace Celbridge.Tests.Projects;
 
 /// <summary>
 /// Tests the project lock against real files. Each service acts as one instance of the application. Two services
-/// that share an application data folder contend for the same lock files.
+/// that share an application data folder contend for the same lock files. A test therefore checks that one service
+/// has a lock by having the other service ask for the lock and be refused.
 /// </summary>
 [TestFixture]
 public class ProjectLockServiceTests
 {
+    private const string LockFileName = "instance.lock";
+
+    // Shorter than the lock service's retry delay.
+    private const int MomentaryHoldMilliseconds = 50;
+
     private string _testFolderPath = null!;
     private string _projectFilePath = null!;
     private ProjectDataFolderService _dataFolderService = null!;
@@ -63,10 +69,10 @@ public class ProjectLockServiceTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeTrue();
-        _lockService.HoldsLock(_projectFilePath).Should().BeTrue();
+        await AssertAnotherInstanceIsRefusedAsync(_projectFilePath);
 
         var dataFolderPath = _dataFolderService.GetDataFolderPath(_projectFilePath);
-        File.Exists(Path.Combine(dataFolderPath, "instance.lock")).Should().BeTrue();
+        File.Exists(Path.Combine(dataFolderPath, LockFileName)).Should().BeTrue();
     }
 
     [Test]
@@ -88,7 +94,6 @@ public class ProjectLockServiceTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeFalse();
-        _lockService.HoldsLock(_projectFilePath).Should().BeFalse();
     }
 
     [Test]
@@ -99,7 +104,6 @@ public class ProjectLockServiceTests
 
         var result = await _lockService.TryTakeLockAsync(_projectFilePath);
 
-        _otherInstanceLockService.HoldsLock(_projectFilePath).Should().BeFalse();
         result.Value.Should().BeTrue();
     }
 
@@ -113,7 +117,7 @@ public class ProjectLockServiceTests
         var result = await _lockService.TryTakeLockAsync(_projectFilePath);
 
         result.Value.Should().BeTrue();
-        _lockService.HoldsLock(_projectFilePath).Should().BeTrue();
+        await AssertAnotherInstanceIsRefusedAsync(_projectFilePath);
     }
 
     [Test]
@@ -122,16 +126,51 @@ public class ProjectLockServiceTests
         await _lockService.TryTakeLockAsync(_projectFilePath);
 
         var renamedProjectFilePath = Path.Combine(Path.GetDirectoryName(_projectFilePath)!, "Renamed.celbridge");
+        File.Move(_projectFilePath, renamedProjectFilePath);
 
-        _lockService.HoldsLock(renamedProjectFilePath).Should().BeTrue();
+        await AssertAnotherInstanceIsRefusedAsync(renamedProjectFilePath);
     }
 
     [Test]
-    public void ReleasingALockThisInstanceDoesNotHold_DoesNothing()
+    public async Task ReleasingALockThisInstanceDoesNotHold_LeavesTheHoldersLock()
     {
-        _lockService.ReleaseLock(_projectFilePath);
+        await _lockService.TryTakeLockAsync(_projectFilePath);
 
-        _lockService.HoldsLock(_projectFilePath).Should().BeFalse();
+        _otherInstanceLockService.ReleaseLock(_projectFilePath);
+
+        await AssertAnotherInstanceIsRefusedAsync(_projectFilePath);
+    }
+
+    [Test]
+    public async Task ALockFileHeldOpenForAMoment_IsTakenOnTheRetry()
+    {
+        // A process such as a virus scanner can have the lock file open for a moment.
+        var lockFilePath = await CreateLockFilePathAsync();
+        var momentaryHold = new FileStream(lockFilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+        var releaseTask = Task.Run(async () =>
+        {
+            await Task.Delay(MomentaryHoldMilliseconds);
+            momentaryHold.Dispose();
+        });
+
+        var result = await _lockService.TryTakeLockAsync(_projectFilePath);
+        await releaseTask;
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task ALockFileThatCannotBeOpened_FailsRatherThanRefuses()
+    {
+        // Only another process with the lock file open refuses the lock. Any other failure to open the file is a
+        // failure.
+        var lockFilePath = await CreateLockFilePathAsync();
+        Directory.CreateDirectory(lockFilePath);
+
+        var result = await _lockService.TryTakeLockAsync(_projectFilePath);
+
+        result.IsFailure.Should().BeTrue();
     }
 
     [Test]
@@ -142,5 +181,22 @@ public class ProjectLockServiceTests
         var result = await _lockService.TryTakeLockAsync(missingProjectFilePath);
 
         result.IsFailure.Should().BeTrue();
+    }
+
+    // The other instance is refused the lock only while this instance has it.
+    private async Task AssertAnotherInstanceIsRefusedAsync(string projectFilePath)
+    {
+        var otherResult = await _otherInstanceLockService.TryTakeLockAsync(projectFilePath);
+
+        otherResult.IsSuccess.Should().BeTrue(otherResult.MessageChain);
+        otherResult.Value.Should().BeFalse();
+    }
+
+    private async Task<string> CreateLockFilePathAsync()
+    {
+        var dataFolderResult = await _dataFolderService.EnsureDataFolderAsync(_projectFilePath);
+        dataFolderResult.IsSuccess.Should().BeTrue(dataFolderResult.MessageChain);
+
+        return Path.Combine(dataFolderResult.Value, LockFileName);
     }
 }

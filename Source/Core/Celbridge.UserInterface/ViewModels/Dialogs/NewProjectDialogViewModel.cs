@@ -18,6 +18,10 @@ public partial class NewProjectDialogViewModel : ObservableObject
 
     private CancellationTokenSource? _validationCts;
 
+    // The folder that validation last checked for a project file, and whether it contains one.
+    private string? _checkedFolderPath;
+    private bool _checkedFolderHasProjectFile;
+
     [ObservableProperty]
     private bool _isCreateButtonEnabled;
 
@@ -221,18 +225,28 @@ public partial class NewProjectDialogViewModel : ObservableObject
         }
 
         // A folder contains at most one project file. A new subfolder contains none.
-        if (!CreateSubfolder)
+        if (!CreateSubfolder
+            && await FolderHasProjectFileAsync(DestFolderPath))
         {
-            var projectFilesResult = await _projectService.GetProjectFilesAsync(DestFolderPath);
-            var folderHasProject = projectFilesResult.IsSuccess
-                && projectFilesResult.Value.Count > 0;
-            if (folderHasProject)
-            {
-                return ValidationOutcome.Invalid("NewProjectDialog_FolderHasProject");
-            }
+            return ValidationOutcome.Invalid("NewProjectDialog_FolderHasProject");
         }
 
         return ValidationOutcome.Valid(destProjectFilePath);
+    }
+
+    // Lists the folder only when it differs from the folder checked last, since typing a name doesn't change the
+    // folder. A project file that appears while the dialog is open is caught when the project is created.
+    private async Task<bool> FolderHasProjectFileAsync(string folderPath)
+    {
+        if (folderPath != _checkedFolderPath)
+        {
+            var projectFilesResult = await _projectService.GetProjectFilesAsync(folderPath);
+            _checkedFolderHasProjectFile = projectFilesResult.IsSuccess
+                && projectFilesResult.Value.Count > 0;
+            _checkedFolderPath = folderPath;
+        }
+
+        return _checkedFolderHasProjectFile;
     }
 
     private void ApplyValidationOutcome(ValidationOutcome outcome)

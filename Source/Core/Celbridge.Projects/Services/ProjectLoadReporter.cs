@@ -150,6 +150,18 @@ internal sealed class ProjectLoadReporter : IProjectLoadReporter
         }
     }
 
+    public async Task WriteRefusedLoadReportAsync(string projectFilePath, MigrationResult migrationResult, bool userCancelledUpgrade)
+    {
+        // A separate reporter records the refused load, so this reporter keeps the state of the current project's
+        // load.
+        var refusedLoadReporter = new ProjectLoadReporter(_reportWriter, _logger, _localizerService, _projectDataFolderService);
+        refusedLoadReporter.BeginLoad(projectFilePath);
+        refusedLoadReporter.RecordMigrationResult(migrationResult, userConfirmedUpgrade: false, userCancelledUpgrade);
+        refusedLoadReporter.RecordLoadOutcome(loadSucceeded: false, loadResult: null);
+
+        await refusedLoadReporter.FlushAsync();
+    }
+
     private ReportDocument BuildReport()
     {
         var sections = new List<ReportSection>
