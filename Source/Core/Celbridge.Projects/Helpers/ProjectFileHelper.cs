@@ -1,8 +1,8 @@
 namespace Celbridge.Projects;
 
 /// <summary>
-/// Recognizes project files, finds the project files in a folder or on a command line, and finds a project
-/// file's folder.
+/// Recognizes project files, and finds the project files in a folder or on a command line. Also finds a project
+/// file's folder, and a second project file beside a project file.
 /// </summary>
 public static class ProjectFileHelper
 {
@@ -58,6 +58,18 @@ public static class ProjectFileHelper
             .ToList();
 
         return projectFilePaths.OkResult();
+    }
+
+    /// <summary>
+    /// Returns the first path in the list that names a project file other than the given one. Returns null if every
+    /// path names the given project file. File names match by the file system's rules for case.
+    /// </summary>
+    public static string? FindOtherProjectFile(string projectFilePath, IEnumerable<string> projectFilePaths)
+    {
+        var projectFileName = Path.GetFileName(projectFilePath);
+
+        return projectFilePaths.FirstOrDefault(path =>
+            !string.Equals(Path.GetFileName(path), projectFileName, PathComparison.Comparison));
     }
 
     /// <summary>

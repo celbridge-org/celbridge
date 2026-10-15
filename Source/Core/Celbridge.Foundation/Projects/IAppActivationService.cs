@@ -3,7 +3,8 @@ namespace Celbridge.Projects;
 /// <summary>
 /// Decides which project to open when the app is activated. A project file named by the operating system or the
 /// command line opens first. Otherwise the startup flow opens the project from the last session, once the main page
-/// has loaded.
+/// has loaded. Each load names how it started, which decides what happens when another instance has the project
+/// open.
 /// </summary>
 public interface IAppActivationService
 {

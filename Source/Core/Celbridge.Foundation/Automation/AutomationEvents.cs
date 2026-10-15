@@ -28,6 +28,12 @@ public record WorkspaceLoadedEvent(string ProjectFile, long ElapsedMs) : Automat
 public record ProjectLoadFailedEvent(string ProjectFile) : AutomationEvent;
 
 /// <summary>
+/// A launch skipped its previous project, because another instance has the project open. The launch shows Home
+/// instead. ProjectFile is the path of the project file.
+/// </summary>
+public record PreviousProjectSkippedEvent(string ProjectFile) : AutomationEvent;
+
+/// <summary>
 /// An alert is requested, before it is on screen. Title and Message are the alert's text.
 /// </summary>
 public record AlertShownEvent(string Title, string Message) : AutomationEvent;

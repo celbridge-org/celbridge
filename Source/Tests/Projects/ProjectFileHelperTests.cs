@@ -1,10 +1,12 @@
 using Celbridge.Projects;
 using Celbridge.Tests.FileSystem;
+using Celbridge.Utilities;
 
 namespace Celbridge.Tests.Projects;
 
 /// <summary>
-/// Tests finding a project file's folder, and finding project files in a folder and on a command line.
+/// Tests finding a project file's folder, and finding project files in a folder and on a command line. Also tests
+/// finding a second project file beside a project file.
 /// </summary>
 [TestFixture]
 public class ProjectFileHelperTests
@@ -135,6 +137,38 @@ public class ProjectFileHelperTests
         var projectFile = ProjectFileHelper.FindProjectFile(arguments, _workingFolderPath);
 
         projectFile.Should().BeNull();
+    }
+
+    [Test]
+    public void FindOtherProjectFile_OnlyTheProjectFile_ReturnsNull()
+    {
+        var projectFilePath = Path.Combine(_folderPath, "Acme.celbridge");
+
+        ProjectFileHelper.FindOtherProjectFile(projectFilePath, [projectFilePath]).Should().BeNull();
+    }
+
+    [Test]
+    public void FindOtherProjectFile_AnotherProjectFile_ReturnsIt()
+    {
+        var projectFilePath = Path.Combine(_folderPath, "Acme.celbridge");
+        var otherProjectFilePath = Path.Combine(_folderPath, "Other.celbridge");
+
+        var otherProjectFile = ProjectFileHelper.FindOtherProjectFile(
+            projectFilePath,
+            [projectFilePath, otherProjectFilePath]);
+
+        otherProjectFile.Should().Be(otherProjectFilePath);
+    }
+
+    [Test]
+    public void FindOtherProjectFile_TheSameNameInAnotherCase_FollowsTheFileSystem()
+    {
+        // A folder listing gives the name as it is on disk. That name can differ in case from the path being opened.
+        var projectFilePath = Path.Combine(_folderPath, "acme.celbridge");
+        var listedProjectFilePath = Path.Combine(_folderPath, "Acme.celbridge");
+        var expected = PathComparison.IsCaseInsensitiveFileSystem ? null : listedProjectFilePath;
+
+        ProjectFileHelper.FindOtherProjectFile(projectFilePath, [listedProjectFilePath]).Should().Be(expected);
     }
 
     private string WriteFile(string relativePath)

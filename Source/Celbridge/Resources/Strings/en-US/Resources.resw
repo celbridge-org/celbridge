@@ -144,6 +144,12 @@
   <data name="AnotherProjectFileAlert_Message" xml:space="preserve">
     <value>The project folder also contains "{0}". A folder can contain only one project file.</value>
   </data>
+  <data name="ProjectAlreadyOpenAlert_Title" xml:space="preserve">
+    <value>Project Already Open</value>
+  </data>
+  <data name="ProjectAlreadyOpenAlert_Message" xml:space="preserve">
+    <value>The project "{0}" is open in another Celbridge window.</value>
+  </data>
   <data name="NewProjectDialog_ProjectFolder" xml:space="preserve">
     <value>Project Folder</value>
   </data>
