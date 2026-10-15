@@ -4,7 +4,7 @@ using Celbridge.Workspace;
 
 namespace Celbridge.Projects.Commands;
 
-public class UnloadProjectCommand : CommandBase, IUnloadProjectCommand
+internal class UnloadProjectCommand : CommandBase, IUnloadProjectCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IProjectService _projectService;

@@ -28,6 +28,7 @@ public class ProjectLoadReporterTests
     private string _dataFolderPath = null!;
     private ProjectLoadReporter _reporter = null!;
     private ILocalFileSystem _fileSystem = null!;
+    private ProjectDataFolderService _projectDataFolderService = null!;
 
     [SetUp]
     public void Setup()
@@ -50,17 +51,17 @@ public class ProjectLoadReporterTests
         var appEnvironment = Substitute.For<IAppEnvironment>();
         appEnvironment.LocalApplicationDataFolderPath.Returns(Path.Combine(_testFolderPath, "AppData"));
 
-        var projectDataFolderService = new ProjectDataFolderService(
+        _projectDataFolderService = new ProjectDataFolderService(
             new NullLogger<ProjectDataFolderService>(),
             appEnvironment,
             _fileSystem);
-        _dataFolderPath = projectDataFolderService.GetDataFolderPath(_projectFilePath);
+        _dataFolderPath = _projectDataFolderService.GetDataFolderPath(_projectFilePath);
 
         _reporter = new ProjectLoadReporter(
             reportWriter,
             new NullLogger<ProjectLoadReporter>(),
             new TestLocalizerService(),
-            projectDataFolderService);
+            _projectDataFolderService);
     }
 
     [TearDown]
@@ -116,6 +117,35 @@ public class ProjectLoadReporterTests
         _reporter.BeginLoad(_projectFilePath);
 
         _reporter.WrittenReport.Should().BeNull();
+    }
+
+    [Test]
+    public async Task WriteRefusedLoadReportAsync_WritesTheRefusedProjectsReportAndKeepsTheCurrentLoad()
+    {
+        // A refused load leaves the current project open, and the current project's load report stays in use.
+        _reporter.BeginLoad(_projectFilePath);
+        _reporter.RecordLoadOutcome(loadSucceeded: true, loadResult: Result.Ok());
+        var currentReport = await _reporter.FlushAsync();
+
+        var refusedFolderPath = Path.Combine(_testFolderPath, "Refused");
+        Directory.CreateDirectory(refusedFolderPath);
+        var refusedProjectFilePath = Path.Combine(refusedFolderPath, "refused.celbridge");
+        File.WriteAllText(refusedProjectFilePath, string.Empty);
+
+        await _reporter.WriteRefusedLoadReportAsync(
+            refusedProjectFilePath,
+            MigrationResult.WithVersions(MigrationStatus.UpgradeRequired, Result.Ok(), "1.2.0", "1.3.0"),
+            userCancelledUpgrade: true);
+
+        _reporter.WrittenReport.Should().Be(currentReport);
+        (await _reporter.FlushAsync()).Should().Be(currentReport);
+
+        var refusedDataFolderPath = _projectDataFolderService.GetDataFolderPath(refusedProjectFilePath);
+        var refusedReportFileName = Path.GetFileName(currentReport!.Resource.ToString());
+        var refusedReportPath = Path.Combine(refusedDataFolderPath, "logs", "reports", refusedReportFileName);
+        using var refusedReport = JsonDocument.Parse(await File.ReadAllTextAsync(refusedReportPath));
+        GetSectionCodes(refusedReport, "Load")
+            .Should().Contain(ReportFindingCatalog.Project.UpgradeCancelled.Code);
     }
 
     [Test]

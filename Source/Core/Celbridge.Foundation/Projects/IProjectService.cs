@@ -24,9 +24,16 @@ public interface IProjectService
     Task<Result<IReadOnlyList<string>>> GetConflictingFileNamesAsync(NewProjectConfig config);
 
     /// <summary>
+    /// Returns the full paths of the project files directly in the folder, ordered by path. A missing folder
+    /// gives an empty list.
+    /// </summary>
+    Task<Result<IReadOnlyList<string>>> FindProjectFilesAsync(string folderPath);
+
+    /// <summary>
     /// Create a new project file and database using the specified config information. Fails without
-    /// writing anything when the destination folder already holds one of the files the template
-    /// writes, unless replaceExistingFiles asks for those files to be replaced.
+    /// writing anything when the destination folder already contains a project file. Also fails when the
+    /// folder contains one of the files the template writes, unless replaceExistingFiles asks for those
+    /// files to be replaced.
     /// </summary>
     Task<Result> CreateProjectAsync(NewProjectConfig config, bool replaceExistingFiles = false);
 

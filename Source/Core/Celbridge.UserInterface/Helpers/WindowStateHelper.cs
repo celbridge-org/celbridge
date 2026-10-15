@@ -19,6 +19,7 @@ public sealed class WindowStateHelper
     private readonly IFullScreenController _fullScreenController;
     private readonly IWindowBoundsValidator _windowBoundsValidator;
     private readonly IWindowSizeConstraints _windowSizeConstraints;
+    private readonly IWindowPlacement _windowPlacement;
     private readonly IPlatformInfo _platformInfo;
     private Window? _mainWindow;
     private AppWindow? _appWindow;
@@ -35,6 +36,7 @@ public sealed class WindowStateHelper
         IFullScreenController fullScreenController,
         IWindowBoundsValidator windowBoundsValidator,
         IWindowSizeConstraints windowSizeConstraints,
+        IWindowPlacement windowPlacement,
         IPlatformInfo platformInfo)
     {
         _logger = logger;
@@ -43,6 +45,7 @@ public sealed class WindowStateHelper
         _fullScreenController = fullScreenController;
         _windowBoundsValidator = windowBoundsValidator;
         _windowSizeConstraints = windowSizeConstraints;
+        _windowPlacement = windowPlacement;
         _platformInfo = platformInfo;
     }
 
@@ -256,6 +259,7 @@ public sealed class WindowStateHelper
         if (!_settingsService.Get(SettingCatalog.Window.UsePreferredGeometry))
         {
             _logger.LogDebug("UsePreferredWindowGeometry is false, using default window placement");
+            _windowPlacement.ApplyDefault(_appWindow, ComposeMinimumWindowSize());
             return;
         }
 
@@ -284,10 +288,11 @@ public sealed class WindowStateHelper
         if (!_windowBoundsValidator.IsTitleBarVisible(bounds))
         {
             _logger.LogDebug("Saved window position is off-screen, using default placement");
+            _windowPlacement.ApplyDefault(_appWindow, ComposeMinimumWindowSize());
             return;
         }
 
-        _appWindow.MoveAndResize(bounds);
+        _windowPlacement.Restore(_appWindow, bounds);
     }
 
     // Sends WindowMaximizedChangedMessage whenever the maximized state changes. It also reports changes made
@@ -383,13 +388,12 @@ public sealed class WindowStateHelper
             return;
         }
 
-        var position = _appWindow.Position;
-        var size = _appWindow.Size;
+        var bounds = _windowPlacement.GetBounds(_appWindow);
 
-        _settingsService.Set(SettingCatalog.Window.PreferredX, position.X);
-        _settingsService.Set(SettingCatalog.Window.PreferredY, position.Y);
-        _settingsService.Set(SettingCatalog.Window.PreferredWidth, size.Width);
-        _settingsService.Set(SettingCatalog.Window.PreferredHeight, size.Height);
+        _settingsService.Set(SettingCatalog.Window.PreferredX, bounds.X);
+        _settingsService.Set(SettingCatalog.Window.PreferredY, bounds.Y);
+        _settingsService.Set(SettingCatalog.Window.PreferredWidth, bounds.Width);
+        _settingsService.Set(SettingCatalog.Window.PreferredHeight, bounds.Height);
 
         // Mark that we now have valid saved geometry to restore on next startup
         _settingsService.Set(SettingCatalog.Window.UsePreferredGeometry, true);

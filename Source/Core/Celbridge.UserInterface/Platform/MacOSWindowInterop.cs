@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using Windows.Graphics;
 using static Celbridge.Utilities.Platform.ObjectiveCRuntime;
 
 namespace Celbridge.UserInterface.Platform;
@@ -17,7 +18,8 @@ internal readonly record struct MacScreen(
 /// <summary>
 /// Objective-C interop for the native AppKit window and screens behind Uno's macOS Skia head, which
 /// surfaces neither the NSWindow nor (on the Skia head) the DisplayArea APIs. Reads display geometry and
-/// native-fullscreen state, constrains the window's minimum size, and updates the window's first responder.
+/// native-fullscreen state, places the window, sets the window's minimum size, and updates the window's first
+/// responder.
 /// macOS-only. Call on the main (UI) thread, where AppKit is safe.
 /// </summary>
 internal static class MacOSWindowInterop
@@ -58,6 +60,15 @@ internal static class MacOSWindowInterop
     // CGSize struct marshals directly.
     [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
     private static extern void SendMessageVoidCGSize(IntPtr receiver, IntPtr selector, CGSize argument);
+
+    // The NSRect argument travels in the floating point registers. The BOOL after the NSRect marshals as one
+    // byte.
+    [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
+    private static extern void SendMessageVoidCGRectBool(
+        IntPtr receiver,
+        IntPtr selector,
+        CGRect rect,
+        [MarshalAs(UnmanagedType.I1)] bool argument);
 
     /// <summary>
     /// Reads the geometry of every attached display from NSScreen. Returns false off macOS or when the
@@ -149,6 +160,172 @@ internal static class MacOSWindowInterop
         };
 
         SendMessageVoidCGSize(window, GetSelector("setContentMinSize:"), minimumSize);
+    }
+
+    /// <summary>
+    /// Reads the work area of the screen that contains the window. The work area leaves out the menu bar and the
+    /// Dock. Falls back to the main screen while the window is on no screen. The rect is in macOS points with a
+    /// top-left origin on the primary screen. Returns false off macOS or when no screen can be resolved.
+    /// </summary>
+    public static bool TryGetMainWindowWorkArea(out RectInt32 workArea)
+    {
+        workArea = default;
+
+        if (!OperatingSystem.IsMacOS()
+            || !TryGetPrimaryScreenHeight(out var primaryHeight))
+        {
+            return false;
+        }
+
+        var window = GetMainWindow();
+        if (window == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        var screen = SendMessage(window, GetSelector("screen"));
+        if (screen == IntPtr.Zero)
+        {
+            screen = SendMessage(GetClass("NSScreen"), GetSelector("mainScreen"));
+        }
+
+        if (screen == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        workArea = ToTopLeft(SendMessageReturnCGRect(screen, GetSelector("visibleFrame")), primaryHeight);
+        return workArea.Width > 0 && workArea.Height > 0;
+    }
+
+    /// <summary>
+    /// Reads the work area of every attached screen. Each work area leaves out the menu bar and the Dock. The
+    /// rects are in macOS points with a top-left origin on the primary screen. Returns false off macOS or when
+    /// the screen list cannot be read.
+    /// </summary>
+    public static bool TryGetWorkAreas(out IReadOnlyList<RectInt32> workAreas)
+    {
+        workAreas = Array.Empty<RectInt32>();
+
+        if (!OperatingSystem.IsMacOS()
+            || !TryGetPrimaryScreenHeight(out var primaryHeight))
+        {
+            return false;
+        }
+
+        var screenArray = SendMessage(GetClass("NSScreen"), GetSelector("screens"));
+        var count = SendMessageReturnNint(screenArray, GetSelector("count"));
+
+        var objectAtIndexSelector = GetSelector("objectAtIndex:");
+        var visibleFrameSelector = GetSelector("visibleFrame");
+
+        var result = new List<RectInt32>((int)count);
+        for (nint index = 0; index < count; index++)
+        {
+            var screen = SendMessage(screenArray, objectAtIndexSelector, index);
+            if (screen == IntPtr.Zero)
+            {
+                continue;
+            }
+
+            result.Add(ToTopLeft(SendMessageReturnCGRect(screen, visibleFrameSelector), primaryHeight));
+        }
+
+        workAreas = result;
+        return result.Count > 0;
+    }
+
+    /// <summary>
+    /// Reads the window's frame, title bar included. The rect is in macOS points with a top-left origin on the
+    /// primary screen. Returns false off macOS or when the window or the screens cannot be resolved.
+    /// </summary>
+    public static bool TryGetMainWindowFrame(out RectInt32 frame)
+    {
+        frame = default;
+
+        if (!OperatingSystem.IsMacOS()
+            || !TryGetPrimaryScreenHeight(out var primaryHeight))
+        {
+            return false;
+        }
+
+        var window = GetMainWindow();
+        if (window == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        frame = ToTopLeft(SendMessageReturnCGRect(window, GetSelector("frame")), primaryHeight);
+        return frame.Width > 0 && frame.Height > 0;
+    }
+
+    /// <summary>
+    /// Moves and resizes the window to a frame, title bar included. The rect is in macOS points with a top-left
+    /// origin on the primary screen. Acts on macOS only, once the window and the screens resolve.
+    /// </summary>
+    public static void SetMainWindowFrame(RectInt32 frame)
+    {
+        if (!OperatingSystem.IsMacOS()
+            || !TryGetPrimaryScreenHeight(out var primaryHeight))
+        {
+            return;
+        }
+
+        var window = GetMainWindow();
+        if (window == IntPtr.Zero)
+        {
+            return;
+        }
+
+        var rect = new CGRect
+        {
+            Origin = new CGPoint
+            {
+                X = frame.X,
+                Y = primaryHeight - (frame.Y + frame.Height)
+            },
+            Size = new CGSize
+            {
+                Width = frame.Width,
+                Height = frame.Height
+            }
+        };
+
+        SendMessageVoidCGRectBool(window, GetSelector("setFrame:display:"), rect, true);
+    }
+
+    // AppKit measures screens and windows up from the primary screen's bottom edge. The primary screen comes
+    // first in the screen list, and it contains the menu bar.
+    private static bool TryGetPrimaryScreenHeight(out double height)
+    {
+        height = 0;
+
+        var screenArray = SendMessage(GetClass("NSScreen"), GetSelector("screens"));
+        if (screenArray == IntPtr.Zero
+            || SendMessageReturnNint(screenArray, GetSelector("count")) <= 0)
+        {
+            return false;
+        }
+
+        var primary = SendMessage(screenArray, GetSelector("objectAtIndex:"), (nint)0);
+        if (primary == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        height = SendMessageReturnCGRect(primary, GetSelector("frame")).Size.Height;
+        return height > 0;
+    }
+
+    private static RectInt32 ToTopLeft(CGRect rect, double primaryHeight)
+    {
+        return new RectInt32
+        {
+            X = (int)Math.Round(rect.Origin.X),
+            Y = (int)Math.Round(primaryHeight - (rect.Origin.Y + rect.Size.Height)),
+            Width = (int)Math.Round(rect.Size.Width),
+            Height = (int)Math.Round(rect.Size.Height)
+        };
     }
 
     /// <summary>

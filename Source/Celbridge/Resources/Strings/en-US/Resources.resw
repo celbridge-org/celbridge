@@ -138,6 +138,18 @@
   <data name="LoadProjectFailedAlert_Title" xml:space="preserve">
     <value>Failed to Load Project</value>
   </data>
+  <data name="MultipleProjectFilesAlert_Title" xml:space="preserve">
+    <value>Multiple Project Files</value>
+  </data>
+  <data name="MultipleProjectFilesAlert_Message" xml:space="preserve">
+    <value>The project folder also contains "{0}". A folder can contain only one project file.</value>
+  </data>
+  <data name="ProjectAlreadyOpenAlert_Title" xml:space="preserve">
+    <value>Project Already Open</value>
+  </data>
+  <data name="ProjectAlreadyOpenAlert_Message" xml:space="preserve">
+    <value>The project "{0}" is open in another Celbridge window.</value>
+  </data>
   <data name="NewProjectDialog_ProjectFolder" xml:space="preserve">
     <value>Project Folder</value>
   </data>
@@ -1739,6 +1751,9 @@ Open with default application instead?</value>
   </data>
   <data name="NewProjectDialog_SubfolderAlreadyExists" xml:space="preserve">
     <value>A folder with this name already exists in the selected location.</value>
+  </data>
+  <data name="NewProjectDialog_FolderHasProject" xml:space="preserve">
+    <value>The selected folder already contains a project file.</value>
   </data>
   <data name="CreateProject_FailedTitle" xml:space="preserve">
     <value>Project Creation Failed</value>

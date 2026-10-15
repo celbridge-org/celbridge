@@ -1,6 +1,6 @@
 # Project structure
 
-A Celbridge project is a folder on disk containing a `.celbridge` project file plus user content. The project file's parent folder is the **content root**: every resource key is relative to it. Celbridge keeps its own state for the project outside the project folder, in a data folder that belongs to the project file, and tools reach it only through the `temp:`, `logs:` and `utils:` roots (see `resource_keys`). Several project files in one folder each have a data folder of their own.
+A Celbridge project is a folder on disk containing a `.celbridge` project file plus user content. The project file's parent folder is the **content root**: every resource key is relative to it. A folder contains at most one project file, and Celbridge refuses to open or create a project in a folder that contains another. Celbridge keeps its own state for the project outside the project folder, in a data folder that belongs to the project folder, so renaming the project file keeps that state. Tools reach it only through the `temp:`, `logs:` and `utils:` roots (see `resource_keys`).
 
 A typical layout:
 

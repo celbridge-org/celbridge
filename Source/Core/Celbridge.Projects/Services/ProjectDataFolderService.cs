@@ -11,9 +11,9 @@ internal sealed class ProjectDataFolderService : IProjectDataFolderService
     private const string ProjectsFolderName = "Projects";
     private const string ProjectInfoFileName = "project.json";
 
-    // The folder name uses only the start of the project's name, to keep paths short. Tools the user installs
-    // nest deep inside the folder, and Python on Windows can't open a path longer than 260 characters unless
-    // long paths are enabled.
+    // The folder name uses only the start of the project folder's name, to keep paths short. Tools the user
+    // installs nest deep inside the folder, and Python on Windows can't open a path longer than 260 characters
+    // unless long paths are enabled.
     private const int NameLength = 16;
 
     private const int HashLength = 16;
@@ -24,8 +24,8 @@ internal sealed class ProjectDataFolderService : IProjectDataFolderService
         WriteIndented = true
     };
 
-    // project.json records the path of the project file that the folder belongs to.
-    private sealed record ProjectInfo(string ProjectFilePath);
+    // project.json records the path of the project folder that the data folder belongs to.
+    private sealed record ProjectInfo(string ProjectFolderPath);
 
     private readonly ILogger<ProjectDataFolderService> _logger;
     private readonly IAppEnvironment _appEnvironment;
@@ -78,7 +78,7 @@ internal sealed class ProjectDataFolderService : IProjectDataFolderService
                 .WithErrors(createResult);
         }
 
-        var projectInfo = new ProjectInfo(Path.GetFullPath(projectFilePath));
+        var projectInfo = new ProjectInfo(ProjectFileHelper.GetProjectFolderPath(projectFilePath));
         var projectInfoJson = JsonSerializer.Serialize(projectInfo, ProjectInfoJsonOptions);
 
         var writeResult = await _fileSystem.WriteAllTextAsync(projectInfoPath, projectInfoJson);
@@ -117,25 +117,32 @@ internal sealed class ProjectDataFolderService : IProjectDataFolderService
         return Result.Ok();
     }
 
-    // The name makes the folder easy to identify. The hash of the project file's path keeps apart two projects
-    // with the same name. Links aren't resolved, so a project opened through a link, a junction or another
-    // drive letter gets its own folder.
+    // A folder contains at most one project file, so the data folder belongs to the project folder, and renaming
+    // the project file keeps its data. The name makes the folder easy to identify. The hash of the project
+    // folder's path keeps apart two projects in folders with the same name. Links aren't resolved, so a project
+    // opened through a link, a junction or another drive letter gets its own folder.
     private static string GetFolderName(string projectFilePath)
     {
-        var fullPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(projectFilePath));
+        var projectFolderPath = ProjectFileHelper.GetProjectFolderPath(projectFilePath);
 
-        // On a case-insensitive file system, paths that differ only in case name the same file, so they must
-        // share a folder.
-        var key = fullPath;
+        // On a case-insensitive file system, paths that differ only in case name the same folder, so they must
+        // share a data folder.
+        var key = projectFolderPath;
         if (PathComparison.IsCaseInsensitiveFileSystem)
         {
-            key = fullPath.ToLowerInvariant();
+            key = projectFolderPath.ToLowerInvariant();
         }
 
         var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(key));
         var hash = Convert.ToHexStringLower(hashBytes)[..HashLength];
 
-        var name = Path.GetFileNameWithoutExtension(fullPath);
+        // A project at the root of a drive has no folder name, so its data folder is named by the hash alone.
+        var name = Path.GetFileName(projectFolderPath);
+        if (string.IsNullOrEmpty(name))
+        {
+            return hash;
+        }
+
         if (name.Length > NameLength)
         {
             // Don't cut between the halves of a surrogate pair. Some file systems reject the resulting name.

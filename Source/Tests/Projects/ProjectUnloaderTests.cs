@@ -10,15 +10,19 @@ namespace Celbridge.Tests.Projects;
 /// <summary>
 /// Covers ProjectUnloader's workspace teardown: the successful unload, the early-out when no project is
 /// loaded, and the teardown failure, which is reported without stopping the unload it is part of. Every
-/// notification describes the project being unloaded, so each path that unloads also clears them.
+/// notification describes the project being unloaded, so each path that unloads also clears them. Each path that
+/// unloads releases the project's lock last.
 /// </summary>
 [TestFixture]
 public class ProjectUnloaderTests
 {
+    private const string ProjectFile = "/projects/sample/sample.celbridge";
+
     private IProjectService _projectService = null!;
     private IApplicationShell _applicationShell = null!;
     private IServerService _serverService = null!;
     private INotificationCentre _notificationCentre = null!;
+    private FakeProjectLockService _projectLockService = null!;
     private ProjectUnloader _projectUnloader = null!;
 
     [SetUp]
@@ -28,9 +32,12 @@ public class ProjectUnloaderTests
         _applicationShell = Substitute.For<IApplicationShell>();
         _serverService = Substitute.For<IServerService>();
         _notificationCentre = Substitute.For<INotificationCentre>();
+        _projectLockService = new FakeProjectLockService();
+        _projectLockService.HeldProjectFiles.Add(ProjectFile);
 
         var project = Substitute.For<IProject>();
         project.ProjectName.Returns("TestProject");
+        project.ProjectFilePath.Returns(ProjectFile);
         _projectService.CurrentProject.Returns(project);
 
         _applicationShell.CloseWorkspaceAsync().Returns(Result.Ok());
@@ -40,7 +47,8 @@ public class ProjectUnloaderTests
             _projectService,
             _applicationShell,
             _serverService,
-            _notificationCentre);
+            _notificationCentre,
+            _projectLockService);
     }
 
     [Test]
@@ -53,6 +61,7 @@ public class ProjectUnloaderTests
         Assert.That(result.IsSuccess, Is.True);
         await _applicationShell.DidNotReceive().CloseWorkspaceAsync();
         _notificationCentre.DidNotReceive().Clear();
+        _projectLockService.Calls.Should().BeEmpty();
     }
 
     [Test]
@@ -65,6 +74,30 @@ public class ProjectUnloaderTests
         _notificationCentre.Received(1).Clear();
         _projectService.Received(1).ClearCurrentProject();
         await _serverService.Received(1).StopAsync();
+    }
+
+    [Test]
+    public async Task UnloadProject_ReleasesTheLockLast()
+    {
+        // Closing the workspace empties the project's temp and trash folders. Another instance must not take the
+        // lock until the unload has finished everything else.
+        _applicationShell.CloseWorkspaceAsync().Returns(_ =>
+        {
+            _projectLockService.Calls.Add("close workspace");
+            return Result.Ok();
+        });
+        _projectService.When(service => service.ClearCurrentProject())
+            .Do(_ => _projectLockService.Calls.Add("clear project"));
+        _serverService.StopAsync().Returns(_ =>
+        {
+            _projectLockService.Calls.Add("stop server");
+            return Task.CompletedTask;
+        });
+
+        await _projectUnloader.UnloadProjectAsync();
+
+        _projectLockService.Calls.Should().Equal("close workspace", "clear project", "stop server", $"release {ProjectFile}");
+        _projectLockService.HeldProjectFiles.Should().BeEmpty();
     }
 
     [Test]
@@ -81,5 +114,6 @@ public class ProjectUnloaderTests
         _notificationCentre.Received(1).Clear();
         _projectService.Received(1).ClearCurrentProject();
         await _serverService.Received(1).StopAsync();
+        _projectLockService.HeldProjectFiles.Should().BeEmpty();
     }
 }

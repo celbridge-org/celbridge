@@ -10,7 +10,8 @@ using Celbridge.Utilities;
 namespace Celbridge.Tests.Projects;
 
 /// <summary>
-/// Tests how the data folder's path is derived, the project.json it contains, and clearing the folder.
+/// Tests how the data folder's path is derived from the project folder, the project.json it contains, and
+/// clearing the folder.
 /// </summary>
 [TestFixture]
 public class ProjectDataFolderServiceTests
@@ -51,27 +52,20 @@ public class ProjectDataFolderServiceTests
     }
 
     [Test]
-    public void GetDataFolderPath_IsTheProjectNameAndAHashOfThePath()
+    public void GetDataFolderPath_IsTheFolderNameAndAHashOfTheFolderPath()
     {
         var projectFilePath = Path.Combine(_projectFolderPath, "Acme.celbridge");
 
         var dataFolderPath = _service.GetDataFolderPath(projectFilePath);
 
-        // Hash the full path, lowercased on a case-insensitive file system.
-        var key = projectFilePath;
-        if (PathComparison.IsCaseInsensitiveFileSystem)
-        {
-            key = projectFilePath.ToLowerInvariant();
-        }
-        var hash = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(key)))[..16];
-
-        dataFolderPath.Should().Be(Path.Combine(_appDataFolderPath, "Projects", $"Acme-{hash}"));
+        var hash = HashFolderPath(_projectFolderPath);
+        dataFolderPath.Should().Be(Path.Combine(_appDataFolderPath, "Projects", $"Project-{hash}"));
     }
 
     [Test]
-    public void GetDataFolderPath_LongName_IsCutTo16Characters()
+    public void GetDataFolderPath_LongFolderName_IsCutTo16Characters()
     {
-        var projectFilePath = Path.Combine(_projectFolderPath, "AVeryLongProjectNameIndeed.celbridge");
+        var projectFilePath = Path.Combine(_testFolderPath, "AVeryLongProjectFolderName", "Acme.celbridge");
 
         var folderName = Path.GetFileName(_service.GetDataFolderPath(projectFilePath));
 
@@ -80,19 +74,19 @@ public class ProjectDataFolderServiceTests
     }
 
     [Test]
-    public void GetDataFolderPath_TwoProjectFilesInOneFolder_GetAFolderEach()
+    public void GetDataFolderPath_RenamedProjectFile_KeepsItsDataFolder()
     {
-        var firstPath = _service.GetDataFolderPath(Path.Combine(_projectFolderPath, "First.celbridge"));
-        var secondPath = _service.GetDataFolderPath(Path.Combine(_projectFolderPath, "Second.celbridge"));
+        var originalPath = _service.GetDataFolderPath(Path.Combine(_projectFolderPath, "Acme.celbridge"));
+        var renamedPath = _service.GetDataFolderPath(Path.Combine(_projectFolderPath, "Renamed.celbridge"));
 
-        firstPath.Should().NotBe(secondPath);
+        renamedPath.Should().Be(originalPath);
     }
 
     [Test]
-    public void GetDataFolderPath_TwoProjectsWithOneName_GetAFolderEach()
+    public void GetDataFolderPath_TwoProjectFoldersWithOneName_GetAFolderEach()
     {
-        var firstPath = _service.GetDataFolderPath(Path.Combine(_testFolderPath, "One", "Acme.celbridge"));
-        var secondPath = _service.GetDataFolderPath(Path.Combine(_testFolderPath, "Two", "Acme.celbridge"));
+        var firstPath = _service.GetDataFolderPath(Path.Combine(_testFolderPath, "One", "Acme", "Acme.celbridge"));
+        var secondPath = _service.GetDataFolderPath(Path.Combine(_testFolderPath, "Two", "Acme", "Acme.celbridge"));
 
         firstPath.Should().NotBe(secondPath);
     }
@@ -100,8 +94,8 @@ public class ProjectDataFolderServiceTests
     [Test]
     public void GetDataFolderPath_SpellingsThatDifferInCase_ShareAFolderOnlyWhereTheFileSystemIgnoresCase()
     {
-        var lowerPath = _service.GetDataFolderPath(Path.Combine(_projectFolderPath, "acme.celbridge"));
-        var upperPath = _service.GetDataFolderPath(Path.Combine(_projectFolderPath, "ACME.celbridge"));
+        var lowerPath = _service.GetDataFolderPath(Path.Combine(_testFolderPath, "acme", "Acme.celbridge"));
+        var upperPath = _service.GetDataFolderPath(Path.Combine(_testFolderPath, "ACME", "Acme.celbridge"));
 
         // The name part keeps its original case, so compare only the hashes.
         var lowerHash = Path.GetFileName(lowerPath).Split('-')[^1];
@@ -111,7 +105,18 @@ public class ProjectDataFolderServiceTests
     }
 
     [Test]
-    public async Task EnsureDataFolderAsync_CreatesTheFolderWithAProjectJsonNamingTheProjectFile()
+    public void GetDataFolderPath_ProjectAtTheRootOfADrive_IsNamedByTheHashAlone()
+    {
+        var rootPath = Path.GetPathRoot(Path.GetFullPath(_testFolderPath))!;
+        var projectFilePath = Path.Combine(rootPath, "Acme.celbridge");
+
+        var folderName = Path.GetFileName(_service.GetDataFolderPath(projectFilePath));
+
+        folderName.Should().Be(HashFolderPath(rootPath));
+    }
+
+    [Test]
+    public async Task EnsureDataFolderAsync_CreatesTheFolderWithAProjectJsonNamingTheProjectFolder()
     {
         var projectFilePath = CreateProjectFile("Acme.celbridge");
 
@@ -123,7 +128,7 @@ public class ProjectDataFolderServiceTests
 
         var projectJson = await File.ReadAllTextAsync(Path.Combine(dataFolderPath, "project.json"));
         using var document = JsonDocument.Parse(projectJson);
-        document.RootElement.GetProperty("projectFilePath").GetString().Should().Be(projectFilePath);
+        document.RootElement.GetProperty("projectFolderPath").GetString().Should().Be(_projectFolderPath);
     }
 
     [Test]
@@ -174,6 +179,20 @@ public class ProjectDataFolderServiceTests
         var clearResult = await _service.ClearDataFolderAsync(projectFilePath);
 
         clearResult.IsSuccess.Should().BeTrue(clearResult.MessageChain);
+    }
+
+    // Hashes the folder's full path, lowercased on a case-insensitive file system.
+    private static string HashFolderPath(string folderPath)
+    {
+        var key = Path.TrimEndingDirectorySeparator(folderPath);
+        if (PathComparison.IsCaseInsensitiveFileSystem)
+        {
+            key = key.ToLowerInvariant();
+        }
+
+        var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(key));
+
+        return Convert.ToHexStringLower(hashBytes)[..16];
     }
 
     private string CreateProjectFile(string fileName)

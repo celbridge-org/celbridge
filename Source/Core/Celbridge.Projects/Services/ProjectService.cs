@@ -68,8 +68,7 @@ internal class ProjectService : IProjectService
 
         var newProjectFilePath = Path.Combine(project.ProjectFolderPath, newKey);
 
-        // Keep the data folder the workspace loaded with. The renamed project gets a new data folder the next
-        // time it's opened.
+        // The data folder belongs to the project folder, so a rename in place keeps it.
         CurrentProject = new Project(
             newProjectFilePath,
             Path.GetFileNameWithoutExtension(newKey),
@@ -132,18 +131,33 @@ internal class ProjectService : IProjectService
         return await _projectTemplateService.GetConflictingFileNamesAsync(config.ProjectFilePath, config.Template);
     }
 
+    public async Task<Result<IReadOnlyList<string>>> FindProjectFilesAsync(string folderPath)
+    {
+        return await ProjectFileHelper.FindProjectFilesAsync(folderPath, _fileSystem);
+    }
+
     public async Task<Result> CreateProjectAsync(NewProjectConfig config, bool replaceExistingFiles = false)
     {
         try
         {
             var projectFilePath = config.ProjectFilePath;
-            var existingInfo = await _fileSystem.GetInfoAsync(projectFilePath);
-            if (existingInfo.IsSuccess && existingInfo.Value.Kind == StorageItemKind.File)
+
+            // A folder contains at most one project file, and the data folder belongs to the folder.
+            var projectFolderPath = ProjectFileHelper.GetProjectFolderPath(projectFilePath);
+            var projectFilesResult = await FindProjectFilesAsync(projectFolderPath);
+            if (projectFilesResult.IsFailure)
             {
-                return Result.Fail($"Failed to create project file because the file already exists: '{projectFilePath}'");
+                return Result.Fail($"Failed to create project: '{projectFilePath}'")
+                    .WithErrors(projectFilesResult);
             }
 
-            // A project deleted from this path leaves its data folder behind. The new project must not inherit it.
+            var existingProjectFiles = projectFilesResult.Value;
+            if (existingProjectFiles.Count > 0)
+            {
+                return Result.Fail($"Failed to create project because the folder already contains a project file: '{existingProjectFiles[0]}'");
+            }
+
+            // A project deleted from this folder leaves its data folder behind. The new project must not inherit it.
             var clearResult = await _projectDataFolderService.ClearDataFolderAsync(projectFilePath);
             if (clearResult.IsFailure)
             {

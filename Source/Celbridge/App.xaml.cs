@@ -27,7 +27,7 @@ public partial class App : Application
     }
 
     // Log files from previous runs kept on disk. Each run writes one file, so this is a count of runs.
-    private const int RetainedLogFileCount = 50;
+    private const int RetainedLogFileCount = 100;
 
     protected Window? MainWindow { get; private set; }
     protected IHost? Host { get; private set; }
@@ -176,7 +176,20 @@ public partial class App : Application
                 }
             }
         }
+        else if (activatedEventArgs.Kind == Microsoft.Windows.AppLifecycle.ExtendedActivationKind.Launch)
+        {
+            // Windows activation passes the packaged head its arguments as a single string.
+            var launchArgs = activatedEventArgs.Data as ILaunchActivatedEventArgs;
+            var argumentText = launchArgs?.Arguments ?? string.Empty;
+            var arguments = Celbridge.Utilities.WindowsCommandLine.Split(argumentText);
+            OpenCommandLineProject(arguments, appActivationService, logger);
+        }
 #else
+        var arguments = Environment.GetCommandLineArgs()
+            .Skip(1)
+            .ToList();
+        OpenCommandLineProject(arguments, appActivationService, logger);
+
         // The macOS open-document handler is installed onto the app delegate class in Program.Main (before the
         // run loop, since macOS delivers the launch open event before this runs). Now that DI exists, wire the
         // routing callback and flush any file path that arrived during launch. Does nothing on the non-macOS
@@ -344,6 +357,23 @@ public partial class App : Application
         WebHost.ServiceConfiguration.ConfigureServices(services);
         Workshop.ServiceConfiguration.ConfigureServices(services);
         Workspace.ServiceConfiguration.ConfigureServices(services);
+    }
+
+    // Opens the first argument that has the project file extension. A relative path is taken relative to the
+    // working folder, and every other argument is ignored.
+    private static void OpenCommandLineProject(
+        IReadOnlyList<string> arguments,
+        IAppActivationService appActivationService,
+        ILogger logger)
+    {
+        var projectFile = ProjectFileHelper.FindProjectFile(arguments, Environment.CurrentDirectory);
+        if (projectFile is null)
+        {
+            return;
+        }
+
+        logger.LogDebug($"Launched with project file on the command line: {projectFile}");
+        appActivationService.OnFilesActivated(new List<string> { projectFile });
     }
 
     private void InitializeCoreServices()

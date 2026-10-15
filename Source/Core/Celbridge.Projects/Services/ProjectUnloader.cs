@@ -8,30 +8,34 @@ namespace Celbridge.Projects.Services;
 /// <summary>
 /// Handles the complete workflow of unloading a project, including tearing the workspace down.
 /// </summary>
-public class ProjectUnloader
+internal class ProjectUnloader
 {
     private readonly ILogger<ProjectUnloader> _logger;
     private readonly IProjectService _projectService;
     private readonly IApplicationShell _applicationShell;
     private readonly IServerService _serverService;
     private readonly INotificationCentre _notificationCentre;
+    private readonly IProjectLockService _projectLockService;
 
     public ProjectUnloader(
         ILogger<ProjectUnloader> logger,
         IProjectService projectService,
         IApplicationShell applicationShell,
         IServerService serverService,
-        INotificationCentre notificationCentre)
+        INotificationCentre notificationCentre,
+        IProjectLockService projectLockService)
     {
         _logger = logger;
         _projectService = projectService;
         _applicationShell = applicationShell;
         _serverService = serverService;
         _notificationCentre = notificationCentre;
+        _projectLockService = projectLockService;
     }
 
     /// <summary>
-    /// Unloads the current project, tearing the workspace down before the project it belongs to goes away.
+    /// Unloads the current project, tearing the workspace down before the project it belongs to goes away. Releases
+    /// the project's lock at the end.
     /// </summary>
     public async Task<Result> UnloadProjectAsync()
     {
@@ -60,6 +64,10 @@ public class ProjectUnloader
         // Stop the server. The assigned port is retained inside ServerService
         // so the next StartAsync call binds to the same port.
         await _serverService.StopAsync();
+
+        // Released last, once the workspace and the project are disposed. Closing the workspace empties the
+        // project's temp and trash folders, and another instance must not open the project until they are empty.
+        _projectLockService.ReleaseLock(currentProject.ProjectFilePath);
 
         if (closeResult.IsFailure)
         {

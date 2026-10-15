@@ -116,7 +116,7 @@ internal sealed class ProjectLoadReporter : IProjectLoadReporter
         {
             var report = BuildReport();
 
-            // The data folder depends only on the project file's path, so a load that fails before the project
+            // The data folder depends only on the project folder's path, so a load that fails before the project
             // exists still writes its report to the project's data folder.
             var dataFolderResult = await _projectDataFolderService.EnsureDataFolderAsync(_projectFilePath);
             if (dataFolderResult.IsFailure)
@@ -148,6 +148,18 @@ internal sealed class ProjectLoadReporter : IProjectLoadReporter
             _logger.LogWarning(ex, $"Failed to write project load report for: '{_projectFilePath}'");
             return null;
         }
+    }
+
+    public async Task WriteRefusedLoadReportAsync(string projectFilePath, MigrationResult migrationResult, bool userCancelledUpgrade)
+    {
+        // A separate reporter records the refused load, so this reporter keeps the state of the current project's
+        // load.
+        var refusedLoadReporter = new ProjectLoadReporter(_reportWriter, _logger, _localizerService, _projectDataFolderService);
+        refusedLoadReporter.BeginLoad(projectFilePath);
+        refusedLoadReporter.RecordMigrationResult(migrationResult, userConfirmedUpgrade: false, userCancelledUpgrade);
+        refusedLoadReporter.RecordLoadOutcome(loadSucceeded: false, loadResult: null);
+
+        await refusedLoadReporter.FlushAsync();
     }
 
     private ReportDocument BuildReport()

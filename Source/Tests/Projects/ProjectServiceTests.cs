@@ -33,6 +33,10 @@ public class ProjectServiceTests
         _settingsService = Substitute.For<ISettingsService>();
         _fileSystem = Substitute.For<ILocalFileSystem>();
 
+        // Nothing exists until a test says so.
+        _fileSystem.GetInfoAsync(Arg.Any<string>())
+            .Returns(callInfo => Result<StorageItemInfo>.Fail($"No item at '{callInfo.Arg<string>()}'"));
+
         StubProjectExists(NewestProject);
         StubProjectExists(OldestProject);
         StubProjectMissing(DeletedProject);
@@ -90,6 +94,22 @@ public class ProjectServiceTests
         var result = await _projectService.CreateProjectAsync(new NewProjectConfig(projectFilePath, template));
 
         result.IsFailure.Should().BeTrue();
+        await _projectTemplateService.DidNotReceiveWithAnyArgs().CreateFromTemplateAsync(default!, default!, default);
+    }
+
+    [Test]
+    public async Task CreateProject_FolderWithAnotherProjectFile_CreatesNothing()
+    {
+        // A folder contains at most one project file, whatever its name.
+        var projectFilePath = MakeProjectFilePath("Created");
+        var projectFolderPath = Path.GetDirectoryName(projectFilePath)!;
+        StubFolderContents(projectFolderPath, Path.Combine(projectFolderPath, "Other.CELBRIDGE"));
+
+        var template = CreateEmptyTemplate();
+        var result = await _projectService.CreateProjectAsync(new NewProjectConfig(projectFilePath, template));
+
+        result.IsFailure.Should().BeTrue();
+        _projectDataFolderService.ClearedPaths.Should().BeEmpty();
         await _projectTemplateService.DidNotReceiveWithAnyArgs().CreateFromTemplateAsync(default!, default!, default);
     }
 
@@ -161,10 +181,9 @@ public class ProjectServiceTests
     }
 
     [Test]
-    public void RenamingTheProjectFile_KeepsTheDataFolderTheWorkspaceLoadedWith()
+    public void RenamingTheProjectFile_KeepsTheDataFolder()
     {
-        // Open services resolved their paths against the data folder at load, so the renamed project keeps
-        // that folder until it's opened again.
+        // The data folder belongs to the project folder, which a rename in place leaves alone.
         var project = LoadProjectNamed(NewestProject);
         project.ProjectDataFolderPath.Should().Be(MakeDataFolderPath(NewestProject));
 
@@ -324,6 +343,17 @@ public class ProjectServiceTests
     {
         var itemInfo = new StorageItemInfo(StorageItemKind.File, 0, DateTime.UnixEpoch, default);
         _fileSystem.GetInfoAsync(projectFilePath).Returns(Result<StorageItemInfo>.Ok(itemInfo));
+    }
+
+    private void StubFolderContents(string folderPath, params string[] filePaths)
+    {
+        var folderInfo = new StorageItemInfo(StorageItemKind.Folder, 0, DateTime.UnixEpoch, default);
+        _fileSystem.GetInfoAsync(folderPath).Returns(Result<StorageItemInfo>.Ok(folderInfo));
+
+        IReadOnlyList<FileSystemEntry> entries = filePaths
+            .Select(filePath => new FileSystemEntry(filePath, StorageItemKind.File, 0, DateTime.UnixEpoch, default))
+            .ToList();
+        _fileSystem.EnumerateAsync(folderPath, Arg.Any<string>(), false).Returns(entries.OkResult());
     }
 
     private void StubProjectMissing(string projectFilePath)
