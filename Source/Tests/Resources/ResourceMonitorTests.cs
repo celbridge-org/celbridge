@@ -168,6 +168,20 @@ public class ResourceMonitorTests
     }
 
     [Test]
+    public void DeletedAndRenamed_InvalidateThePathCacheForTheRemovedPath()
+    {
+        // A folder that is deleted or renamed away may be replaced by a link, which the resolver must check.
+        var monitor = InitializeAndGetProjectMonitor();
+
+        monitor.RaiseDeleted(PathFor("deleted"));
+        monitor.RaiseRenamed(PathFor("old"), PathFor("new"));
+
+        _projectHandler.Received(1).InvalidatePathCache(PathFor("deleted"));
+        _projectHandler.Received(1).InvalidatePathCache(PathFor("old"));
+        _projectHandler.DidNotReceive().InvalidatePathCache(PathFor("new"));
+    }
+
+    [Test]
     public void Changed_PolicyDeniesRead_DropsEvent()
     {
         var monitor = InitializeAndGetProjectMonitor();

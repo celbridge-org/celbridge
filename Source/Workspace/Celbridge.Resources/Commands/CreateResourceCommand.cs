@@ -11,7 +11,6 @@ public class CreateResourceCommand : CommandBase, ICreateResourceCommand
     public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
 
     public ResourceType ResourceType { get; set; }
-    public string SourcePath { get; set; } = string.Empty;
     public ResourceKey DestResource { get; set; }
     public bool OpenAfterCreating { get; set; } = false;
 
@@ -53,7 +52,7 @@ public class CreateResourceCommand : CommandBase, ICreateResourceCommand
             return reservationFailure;
         }
 
-        var createResult = await _createResourceHelper.CreateResourceAsync(ResourceType, SourcePath, DestResource);
+        var createResult = await _createResourceHelper.CreateResourceAsync(ResourceType, DestResource);
 
         if (createResult.IsFailure)
         {
@@ -86,62 +85,5 @@ public class CreateResourceCommand : CommandBase, ICreateResourceCommand
         }
 
         return Result.Ok();
-    }
-
-    public static async void NewFile(string sourcePath, ResourceKey destResource)
-    {
-        var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
-        if (!workspaceWrapper.IsWorkspaceLoaded)
-        {
-            throw new InvalidOperationException("Failed to create resource because workspace is not loaded");
-        }
-
-        // If the destination resource is a existing folder, resolve the destination resource to a file in
-        // that folder with the same name as the source file.
-        var transferService = workspaceWrapper.WorkspaceService.ResourceService.Transfers;
-        var resolvedDestResource = transferService.ResolveSourcePathDestinationResource(sourcePath, destResource);
-
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        await commandService.ExecuteAsync<ICreateResourceCommand>(command =>
-        {
-            command.ResourceType = ResourceType.File;
-            command.SourcePath = sourcePath;
-            command.DestResource = resolvedDestResource;
-            command.OpenAfterCreating = true;
-        });
-    }
-
-    public static void NewFile(ResourceKey destResource)
-    {
-        NewFile(new ResourceKey(), destResource);
-    }
-
-    public static void NewFolder(string sourcePath, ResourceKey destResource)
-    {
-        var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
-        if (!workspaceWrapper.IsWorkspaceLoaded)
-        {
-            throw new InvalidOperationException("Failed to create resource because workspace is not loaded");
-        }
-
-        // If the destination resource is a existing folder, resolve the destination resource to a folder in
-        // that folder with the same name as the source folder.
-        var transferService = workspaceWrapper.WorkspaceService.ResourceService.Transfers;
-        var resolvedDestResource = transferService.ResolveSourcePathDestinationResource(sourcePath, destResource);
-
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<ICreateResourceCommand>(command =>
-        {
-            command.ResourceType = ResourceType.Folder;
-            command.SourcePath = sourcePath;
-            command.DestResource = resolvedDestResource;
-        });
-    }
-
-    public static void NewFolder(ResourceKey destResource)
-    {
-        NewFolder(new ResourceKey(), destResource);
     }
 }

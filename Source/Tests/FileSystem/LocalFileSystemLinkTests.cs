@@ -268,4 +268,61 @@ public class LocalFileSystemLinkTests
         result.IsSuccess.Should().BeTrue();
         result.Value.Kind.Should().Be(StorageItemKind.NotFound);
     }
+
+    [Test]
+    public async Task DeleteFolderAsync_FolderThatContainsLinks_DeletesTheLinksAndKeepsTheirTargets()
+    {
+        var targetFolder = Path.Combine(_root, "target");
+        Directory.CreateDirectory(targetFolder);
+        var targetFile = Path.Combine(targetFolder, "secret.txt");
+        File.WriteAllText(targetFile, "secret");
+
+        var folderPath = Path.Combine(_root, "folder");
+        Directory.CreateDirectory(folderPath);
+        File.WriteAllText(Path.Combine(folderPath, "plain.txt"), "plain");
+        File.CreateSymbolicLink(Path.Combine(folderPath, "linked.txt"), targetFile);
+        Directory.CreateSymbolicLink(Path.Combine(folderPath, "linked"), targetFolder);
+        if (OperatingSystem.IsWindows())
+        {
+            CreateJunction(Path.Combine(folderPath, "junction"), targetFolder);
+        }
+
+        var deleteResult = await _fileSystem.DeleteFolderAsync(folderPath, recursive: true);
+
+        deleteResult.IsSuccess.Should().BeTrue(deleteResult.MessageChain);
+        Directory.Exists(folderPath).Should().BeFalse();
+        File.ReadAllText(targetFile).Should().Be("secret");
+    }
+
+    [Test]
+    public async Task DeleteFolderAsync_LinkedFolder_DeletesOnlyTheLink()
+    {
+        var targetFolder = Path.Combine(_root, "target");
+        Directory.CreateDirectory(targetFolder);
+        var targetFile = Path.Combine(targetFolder, "secret.txt");
+        File.WriteAllText(targetFile, "secret");
+        var linkPath = Path.Combine(_root, "linked");
+        Directory.CreateSymbolicLink(linkPath, targetFolder);
+
+        var deleteResult = await _fileSystem.DeleteFolderAsync(linkPath, recursive: true);
+
+        deleteResult.IsSuccess.Should().BeTrue(deleteResult.MessageChain);
+        Directory.Exists(linkPath).Should().BeFalse();
+        File.ReadAllText(targetFile).Should().Be("secret");
+    }
+
+    // .NET has no API that makes a junction, so the test runs mklink, which needs no Developer Mode.
+    private static void CreateJunction(string junctionPath, string targetPath)
+    {
+        var startInfo = new System.Diagnostics.ProcessStartInfo("cmd.exe", $"/c mklink /J \"{junctionPath}\" \"{targetPath}\"")
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true
+        };
+        using var process = System.Diagnostics.Process.Start(startInfo)!;
+        process.WaitForExit();
+
+        new DirectoryInfo(junctionPath).LinkTarget.Should().NotBeNull("mklink made the junction");
+    }
 }

@@ -59,9 +59,12 @@ public class FileServer : IFileServer, IDisposable
         application.MapGet("/project/{**path}", (HttpContext context, string path) =>
         {
             context.Response.Headers.CacheControl = "no-store";
-            var fileInfo = IsServable(ResourceKey.Empty, path)
-                ? _projectFileProvider?.GetFileInfo(path)
-                : null;
+            IFileInfo? fileInfo = null;
+            if (IsServable(ResourceKey.Empty, path))
+            {
+                fileInfo = _projectFileProvider?.GetFileInfo(path);
+            }
+
             return ServeFileAsync(context, fileInfo, path, allowCrossOrigin: false);
         });
 
@@ -80,7 +83,7 @@ public class FileServer : IFileServer, IDisposable
 
     // A package folder inside a resource root is checked by key, like any project file. A bundled package's
     // folder belongs to the application, and the package's file provider serves the folder directly.
-    private IFileInfo? ResolvePackageFile(string packageName, string path)
+    internal IFileInfo? ResolvePackageFile(string packageName, string path)
     {
         if (!_packageFileProviders.TryGetValue(packageName, out var packageFileProvider))
         {
@@ -215,6 +218,10 @@ public class FileServer : IFileServer, IDisposable
         _projectFileProvider?.Dispose();
         _projectFileProvider = null;
         _port = 0;
+
+        // A package folder registered for the closed workspace would be judged against the next workspace's
+        // roots. Editors register their package folder again when they load.
+        UnregisterAllPackageFolders();
     }
 
     public void RegisterAssetsFolder(string folderPath)
@@ -257,6 +264,14 @@ public class FileServer : IFileServer, IDisposable
         if (_packageFileProviders.TryRemove(packageName, out var provider))
         {
             provider.Dispose();
+        }
+    }
+
+    private void UnregisterAllPackageFolders()
+    {
+        foreach (var packageName in _packageFileProviders.Keys)
+        {
+            UnregisterPackageFolder(packageName);
         }
     }
 
@@ -370,11 +385,7 @@ public class FileServer : IFileServer, IDisposable
                 _assetsFileProvider?.Dispose();
                 _assetsFileProvider = null;
 
-                foreach (var packageFileProvider in _packageFileProviders.Values)
-                {
-                    packageFileProvider.Dispose();
-                }
-                _packageFileProviders.Clear();
+                UnregisterAllPackageFolders();
             }
         }
     }

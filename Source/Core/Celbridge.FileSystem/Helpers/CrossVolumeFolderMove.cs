@@ -95,7 +95,7 @@ internal static class CrossVolumeFolderMove
         }
 
         // The destination copy is complete, so a failed delete only leaves the old source behind.
-        var deleteResult = RetryPolicy.Run(logger, "Delete", asidePath, () => DeleteFolderTreeIfExists(asidePath));
+        var deleteResult = RetryPolicy.Run(logger, "Delete", asidePath, () => FolderTreeDeleter.DeleteIfExists(asidePath));
         if (deleteResult.IsFailure)
         {
             logger.LogWarning(deleteResult, $"Moved folder to another volume but failed to delete the source, which is left at: '{asidePath}'");
@@ -107,7 +107,7 @@ internal static class CrossVolumeFolderMove
     // Deletes the destination copy after a failed move. Only the source remains.
     private static void RemoveCopy(string dest, ILogger logger)
     {
-        var removeResult = RetryPolicy.Run(logger, "Delete", dest, () => DeleteFolderTreeIfExists(dest));
+        var removeResult = RetryPolicy.Run(logger, "Delete", dest, () => FolderTreeDeleter.DeleteIfExists(dest));
         if (removeResult.IsFailure)
         {
             logger.LogWarning(removeResult, $"Failed to remove the copy of a folder moved to another volume: '{dest}'");
@@ -176,51 +176,6 @@ internal static class CrossVolumeFolderMove
         {
             var destFolder = new DirectoryInfo(destPath);
             destFolder.Attributes |= keptAttributes;
-        }
-    }
-
-    // A rename moves read-only entries too, so clear the read-only attribute before deleting each entry.
-    private static void DeleteFolderTreeIfExists(string path)
-    {
-        var folder = new DirectoryInfo(path);
-        if (folder.Exists)
-        {
-            DeleteFolderTree(folder);
-        }
-    }
-
-    private static void DeleteFolderTree(DirectoryInfo folder)
-    {
-        // Clear the folder's read-only attribute before deleting its children. On macOS and Linux, deleting an
-        // entry needs a writable parent folder.
-        ClearReadOnlyAttribute(folder);
-
-        foreach (var entry in folder.EnumerateFileSystemInfos("*", SearchOption.TopDirectoryOnly))
-        {
-            // Delete a link without following it.
-            bool isLink = LinkHelper.IsLink(entry);
-            if (entry is DirectoryInfo childFolder
-                && !isLink)
-            {
-                DeleteFolderTree(childFolder);
-                continue;
-            }
-
-            if (!isLink)
-            {
-                ClearReadOnlyAttribute(entry);
-            }
-            entry.Delete();
-        }
-
-        folder.Delete();
-    }
-
-    private static void ClearReadOnlyAttribute(FileSystemInfo entry)
-    {
-        if (entry.Attributes.HasFlag(System.IO.FileAttributes.ReadOnly))
-        {
-            entry.Attributes &= ~System.IO.FileAttributes.ReadOnly;
         }
     }
 }

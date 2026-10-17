@@ -6,10 +6,11 @@ namespace Celbridge.Resources.Helpers;
 /// Resolves between resource keys and absolute filesystem paths for a single
 /// root, checking that paths stay within the backing folder. Containment is
 /// re-checked on every call. A path that is a link or passes through one is
-/// refused. Each folder on the path is checked once for the life of the
-/// resolver, and the item itself on every call. The resolver misses a link
-/// that replaces a folder after the folder has been verified. It is a
-/// containment filter, not a hardened boundary against symlink races.
+/// refused. Each folder on the path is checked once and cached, and the item
+/// itself on every call. The cache is cleared when the watcher reports that a
+/// verified folder was deleted or renamed away. A link that replaces a folder
+/// before the watcher reports it is missed. It is a containment filter, not a
+/// hardened boundary against symlink races.
 /// </summary>
 [AllowDirectFileSystemAccess]
 public class RootPathResolver
@@ -17,6 +18,9 @@ public class RootPathResolver
     // Safety valve for a session that touches an unbounded number of folders. An entry costs one
     // verification to rebuild, so clearing wholesale is enough.
     private const int MaxVerifiedFolders = 100_000;
+
+    // FileSystemInfo.Attributes reports every flag for an item that does not exist.
+    private const System.IO.FileAttributes MissingItemAttributes = (System.IO.FileAttributes)(-1);
 
     private readonly string _rootName;
     private readonly string _backingLocation;
@@ -173,16 +177,59 @@ public class RootPathResolver
         Interlocked.Exchange(ref _verifiedFolderCount, 0);
     }
 
+    /// <summary>
+    /// Clears the cache when the path names a verified folder, because a link may take the place of a folder
+    /// that was deleted or renamed away. Call it for the old path of every delete and rename the watcher reports.
+    /// Every folder above a verified folder is verified too, so a change to any of them clears the cache.
+    /// </summary>
+    public void InvalidateCache(string absolutePath)
+    {
+        // Clearing everything costs one walk per folder on its next lookup. Removing only the folder's own
+        // entries would mean scanning the cache on every event.
+        string normalizedPath;
+        try
+        {
+            normalizedPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(absolutePath));
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            InvalidateCache();
+            return;
+        }
+
+        if (_verifiedFolders.ContainsKey(normalizedPath))
+        {
+            InvalidateCache();
+        }
+    }
+
+    /// <summary>
+    /// Returns the number of verified folders in the cache.
+    /// </summary>
+    internal int VerifiedFolderCount => _verifiedFolders.Count;
+
     private Result CheckForLinks(string resolvedPath, string normalizedBackingLocation)
     {
-        var folderPath = GetFolderPath(resolvedPath);
+        // One attribute read says whether the item exists, whether it is a folder and whether it is a reparse
+        // point. A missing item reports every flag, so existence is tested first.
+        var item = new FileInfo(resolvedPath);
+        var attributes = item.Attributes;
+        bool exists = attributes != MissingItemAttributes;
+        bool isFolder = exists
+            && attributes.HasFlag(System.IO.FileAttributes.Directory);
+
+        var folderPath = resolvedPath;
+        if (!isFolder)
+        {
+            folderPath = Path.GetDirectoryName(resolvedPath) ?? resolvedPath;
+        }
 
         if (_verifiedFolders.ContainsKey(folderPath))
         {
             // A verified folder says nothing about the file in it, so the file is checked every time.
-            bool isFolder = resolvedPath.Equals(folderPath, PathComparison.Comparison);
-            if (!isFolder
-                && LinkHelper.IsLink(resolvedPath))
+            if (exists
+                && !isFolder
+                && LinkHelper.IsLink(item))
             {
                 return RefuseLink(resolvedPath);
             }
@@ -203,18 +250,27 @@ public class RootPathResolver
             new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar },
             StringSplitOptions.RemoveEmptyEntries);
 
-        var currentPath = normalizedBackingLocation.TrimEnd(Path.DirectorySeparatorChar);
+        var currentPath = backingTrimmed;
 
         foreach (var segment in segments)
         {
             currentPath = Path.Combine(currentPath, segment);
 
-            if (!File.Exists(currentPath) && !Directory.Exists(currentPath))
+            var segmentInfo = new FileInfo(currentPath);
+            if (segmentInfo.Attributes == MissingItemAttributes)
             {
-                break;
+                // A missing folder is not cached, so a link created there later is still caught. Only the
+                // path's final item can be missing from a verified folder.
+                bool isFinalItem = currentPath.Equals(resolvedPath, PathComparison.Comparison);
+                if (isFinalItem)
+                {
+                    AddVerifiedFolder(folderPath);
+                }
+
+                return Result.Ok();
             }
 
-            if (LinkHelper.IsLink(new FileInfo(currentPath)))
+            if (LinkHelper.IsLink(segmentInfo))
             {
                 return RefuseLink(currentPath);
             }
@@ -230,27 +286,40 @@ public class RootPathResolver
             $"Resource path contains a symbolic link or junction at '{linkPath}'. Celbridge never follows links.");
     }
 
-    // The count drifts when threads verify the same folder at once; the valve then trips early, which
-    // costs one re-verification per folder.
+    // Caches the folder and every folder above it, which the same walk verified. The outermost folder is added
+    // first, so a cached folder's ancestors are cached before it. The count drifts when threads verify the same
+    // folder at once. The valve then trips early, which costs one re-verification per folder.
     private void AddVerifiedFolder(string folderPath)
     {
-        _verifiedFolders[folderPath] = 0;
-
-        if (Interlocked.Increment(ref _verifiedFolderCount) >= MaxVerifiedFolders)
+        var uncachedFolders = new List<string>();
+        string? currentPath = folderPath;
+        while (currentPath is not null
+            && !_verifiedFolders.ContainsKey(currentPath))
         {
-            InvalidateCache();
-        }
-    }
+            uncachedFolders.Add(currentPath);
 
-    private static string GetFolderPath(string resolvedPath)
-    {
-        if (Directory.Exists(resolvedPath))
+            bool isBackingFolder = currentPath.Equals(_normalizedBackingTrimmed, PathComparison.Comparison);
+            if (isBackingFolder
+                || !currentPath.StartsWith(_normalizedBackingWithSeparator, PathComparison.Comparison))
+            {
+                break;
+            }
+
+            currentPath = Path.GetDirectoryName(currentPath);
+        }
+
+        for (int i = uncachedFolders.Count - 1; i >= 0; i--)
         {
-            return resolvedPath;
-        }
+            if (!_verifiedFolders.TryAdd(uncachedFolders[i], 0))
+            {
+                continue;
+            }
 
-        var folder = Path.GetDirectoryName(resolvedPath);
-        return folder ?? resolvedPath;
+            if (Interlocked.Increment(ref _verifiedFolderCount) >= MaxVerifiedFolders)
+            {
+                InvalidateCache();
+            }
+        }
     }
 
     private static string NormalizeBackingLocation(string backingLocation)

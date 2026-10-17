@@ -21,7 +21,7 @@ public interface IFileServer
     void Enable(IRootHandlerRegistry rootHandlers, IResourcePolicy policy, int port);
 
     /// <summary>
-    /// Disables file serving and releases the file provider.
+    /// Disables file serving, releases the file provider and unregisters every package folder.
     /// </summary>
     void Disable();
 

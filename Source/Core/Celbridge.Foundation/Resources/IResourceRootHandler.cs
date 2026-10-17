@@ -58,4 +58,10 @@ public interface IResourceRootHandler
     /// unobserved.
     /// </summary>
     void InvalidatePathCache();
+
+    /// <summary>
+    /// Clears this handler's path-validator cache when the absolute path names a verified folder. The watcher
+    /// calls it for the old path of every delete and rename, since a link may take the folder's place.
+    /// </summary>
+    void InvalidatePathCache(string absolutePath);
 }

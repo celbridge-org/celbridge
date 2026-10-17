@@ -59,6 +59,7 @@ public class FileServerTests
     [TestCase("docs/linked.txt")]
     [TestCase("linked/secret.txt")]
     [TestCase(".git/config")]
+    [TestCase(".GIT/config")]
     [TestCase("../Outside/secret.txt")]
     public void CheckServedFile_IsRefused(string path)
     {
@@ -77,5 +78,20 @@ public class FileServerTests
 
         FileServer.CheckServedFile(_rootHandlers, _policy, packageFolder, "plain.txt").IsSuccess.Should().BeTrue();
         FileServer.CheckServedFile(_rootHandlers, _policy, packageFolder, "linked.txt").IsFailure.Should().BeTrue();
+    }
+
+    [Test]
+    public void Disable_UnregistersEveryPackageFolder()
+    {
+        var packageFolder = Path.Combine(_testFolder, "Package");
+        Directory.CreateDirectory(packageFolder);
+        File.WriteAllText(Path.Combine(packageFolder, "index.html"), "page");
+        using var fileServer = new FileServer(Substitute.For<ILogger<FileServer>>());
+        fileServer.RegisterPackageFolder("acme", packageFolder);
+        fileServer.ResolvePackageFile("acme", "index.html")!.Exists.Should().BeTrue();
+
+        fileServer.Disable();
+
+        fileServer.ResolvePackageFile("acme", "index.html").Should().BeNull();
     }
 }

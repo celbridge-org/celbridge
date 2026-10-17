@@ -12,26 +12,22 @@ public class CreateResourceHelper
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IFileTemplateService _fileTemplateService;
     private readonly ICommandService _commandService;
-    private readonly ILocalFileSystem _fileSystem;
 
     public CreateResourceHelper(
         IWorkspaceWrapper workspaceWrapper,
         IFileTemplateService fileTemplateService,
-        ICommandService commandService,
-        ILocalFileSystem fileSystem)
+        ICommandService commandService)
     {
         _workspaceWrapper = workspaceWrapper;
         _fileTemplateService = fileTemplateService;
         _commandService = commandService;
-        _fileSystem = fileSystem;
     }
 
     /// <summary>
-    /// Create a resource (file or folder) in the project.
+    /// Creates an empty file or folder resource in the project.
     /// </summary>
     public async Task<Result> CreateResourceAsync(
         ResourceType resourceType,
-        string sourcePath,
         ResourceKey destResource)
     {
         if (!_workspaceWrapper.IsWorkspaceLoaded)
@@ -40,7 +36,6 @@ public class CreateResourceHelper
         }
 
         var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
-        var resourceRegistry = resourceService.Registry;
         var resourceOpService = resourceService.Operations;
 
         var validationResult = ValidateDestResource(destResource);
@@ -51,9 +46,15 @@ public class CreateResourceHelper
 
         var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
-        var createResult = resourceType == ResourceType.File
-            ? await CreateFileAsync(sourcePath, destResource, resourceOpService, resourceFileSystem)
-            : await CreateFolderAsync(sourcePath, destResource, resourceOpService, resourceFileSystem, _fileSystem);
+        Result createResult;
+        if (resourceType == ResourceType.File)
+        {
+            createResult = await CreateFileAsync(destResource, resourceOpService, resourceFileSystem);
+        }
+        else
+        {
+            createResult = await CreateFolderAsync(destResource, resourceOpService, resourceFileSystem);
+        }
 
         if (createResult.IsFailure)
         {
@@ -81,7 +82,6 @@ public class CreateResourceHelper
     }
 
     private async Task<Result> CreateFileAsync(
-        string sourcePath,
         ResourceKey destResource,
         IResourceOperationService opService,
         IResourceFileSystem resourceFileSystem)
@@ -93,44 +93,29 @@ public class CreateResourceHelper
             return Result.Fail($"A resource already exists at '{destResource}'.");
         }
 
-        if (string.IsNullOrEmpty(sourcePath))
+        // The template service still consumes a path to discriminate by file extension. The gateway write
+        // takes the resource key.
+        var destPathResult = _workspaceWrapper.WorkspaceService.ResourceService.Registry.ResolveResourcePath(destResource);
+        if (destPathResult.IsFailure)
         {
-            // Create a new empty file. The template service still consumes a
-            // path to discriminate by file extension. The gateway write
-            // takes the resource key.
-            var destPathResult = _workspaceWrapper.WorkspaceService.ResourceService.Registry.ResolveResourcePath(destResource);
-            if (destPathResult.IsFailure)
-            {
-                return Result.Fail($"Failed to resolve path for resource: '{destResource}'")
-                    .WithErrors(destPathResult);
-            }
-            var content = _fileTemplateService.GetNewFileContent(destPathResult.Value);
-            var createResult = await opService.CreateFileAsync(destResource, content);
-            if (createResult.IsFailure)
-            {
-                return Result.Fail($"Failed to create resource: {destResource}")
-                    .WithErrors(createResult);
-            }
-            return Result.Ok();
+            return Result.Fail($"Failed to resolve path for resource: '{destResource}'")
+                .WithErrors(destPathResult);
+        }
+        var content = _fileTemplateService.GetNewFileContent(destPathResult.Value);
+        var createResult = await opService.CreateFileAsync(destResource, content);
+        if (createResult.IsFailure)
+        {
+            return Result.Fail($"Failed to create resource: {destResource}")
+                .WithErrors(createResult);
         }
 
-        // Copy from source path
-        var sourceFileInfo = await _fileSystem.GetInfoAsync(sourcePath);
-        if (sourceFileInfo.IsFailure
-            || sourceFileInfo.Value.Kind != StorageItemKind.File)
-        {
-            return Result.Fail($"Failed to create resource. Source file '{sourcePath}' does not exist.");
-        }
-
-        return await opService.ImportExternalFileAsync(sourcePath, destResource);
+        return Result.Ok();
     }
 
     private static async Task<Result> CreateFolderAsync(
-        string sourcePath,
         ResourceKey destResource,
         IResourceOperationService opService,
-        IResourceFileSystem resourceFileSystem,
-        ILocalFileSystem fileSystem)
+        IResourceFileSystem resourceFileSystem)
     {
         var infoResult = await resourceFileSystem.GetInfoAsync(destResource);
         if (infoResult.IsSuccess
@@ -139,30 +124,14 @@ public class CreateResourceHelper
             return Result.Fail($"A resource already exists at '{destResource}'.");
         }
 
-        if (string.IsNullOrEmpty(sourcePath))
+        var createResult = await opService.CreateFolderAsync(destResource);
+        if (createResult.IsFailure)
         {
-            // Create a new empty folder
-            var createResult = await opService.CreateFolderAsync(destResource);
-            if (createResult.IsFailure)
-            {
-                return Result.Fail($"Failed to create folder: {destResource}")
-                    .WithErrors(createResult);
-            }
-            return Result.Ok();
+            return Result.Fail($"Failed to create folder: {destResource}")
+                .WithErrors(createResult);
         }
 
-        // Copy from source path
-        var sourceFolderInfo = await fileSystem.GetInfoAsync(sourcePath);
-        if (sourceFolderInfo.IsFailure
-            || sourceFolderInfo.Value.Kind != StorageItemKind.Folder)
-        {
-            return Result.Fail($"Failed to create resource. Source folder '{sourcePath}' does not exist.");
-        }
-
-        var importResult = await opService.ImportExternalFolderAsync(sourcePath, destResource);
-        return importResult.IsSuccess
-            ? Result.Ok()
-            : Result.Fail(importResult);
+        return Result.Ok();
     }
 
     private void ExpandParentFolder(ResourceKey destResource)

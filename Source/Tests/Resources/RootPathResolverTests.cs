@@ -365,6 +365,59 @@ public class RootPathResolverTests
     }
 
     [Test]
+    public void ValidateAndResolveRejectsALinkCreatedWhereAMissingFolderWasResolved()
+    {
+        File.WriteAllText(Path.Combine(_outsideFolder!, "secret.txt"), "secret");
+        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder!);
+        resolver.ValidateAndResolve(ResourceKey.Create("missing/secret.txt")).IsSuccess.Should().BeTrue();
+
+        Directory.CreateSymbolicLink(Path.Combine(_projectFolder!, "missing"), _outsideFolder!);
+        var resolveResult = resolver.ValidateAndResolve(ResourceKey.Create("missing/secret.txt"));
+
+        resolveResult.IsFailure.Should().BeTrue();
+        resolveResult.FirstErrorMessage.Should().Contain("symbolic link or junction");
+    }
+
+    [Test]
+    public void ValidateAndResolveRejectsALinkThatReplacesAVerifiedFolderOnceTheFolderIsInvalidated()
+    {
+        var subFolder = Path.Combine(_projectFolder!, "docs", "sub");
+        Directory.CreateDirectory(subFolder);
+        File.WriteAllText(Path.Combine(subFolder, "page.txt"), "inside");
+        var outsideSubFolder = Path.Combine(_outsideFolder!, "sub");
+        Directory.CreateDirectory(outsideSubFolder);
+        File.WriteAllText(Path.Combine(outsideSubFolder, "page.txt"), "outside");
+        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder!);
+        resolver.ValidateAndResolve(ResourceKey.Create("docs/sub/page.txt")).IsSuccess.Should().BeTrue();
+
+        // Replace docs, an ancestor of the cached folder, with a link to a folder of the same shape.
+        var docsFolder = Path.Combine(_projectFolder!, "docs");
+        Directory.Move(docsFolder, Path.Combine(_projectFolder!, "docs_moved"));
+        Directory.CreateSymbolicLink(docsFolder, _outsideFolder!);
+        resolver.InvalidateCache(docsFolder);
+
+        var resolveResult = resolver.ValidateAndResolve(ResourceKey.Create("docs/sub/page.txt"));
+
+        resolveResult.IsFailure.Should().BeTrue();
+        resolveResult.FirstErrorMessage.Should().Contain("symbolic link or junction");
+    }
+
+    [Test]
+    public void InvalidateCacheForAFileKeepsTheVerifiedFolders()
+    {
+        var docsFolder = Path.Combine(_projectFolder!, "docs");
+        Directory.CreateDirectory(docsFolder);
+        var plainPath = Path.Combine(docsFolder, "plain.txt");
+        File.WriteAllText(plainPath, "plain");
+        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder!);
+        resolver.ValidateAndResolve(ResourceKey.Create("docs/plain.txt")).IsSuccess.Should().BeTrue();
+
+        resolver.InvalidateCache(Path.Combine(docsFolder, "gone.txt"));
+
+        resolver.VerifiedFolderCount.Should().BeGreaterThan(0);
+    }
+
+    [Test]
     public void ValidateAndResolveResolvesAPlainFileInAVerifiedFolder()
     {
         CreateLinkToOutsideFile("docs/link.txt");

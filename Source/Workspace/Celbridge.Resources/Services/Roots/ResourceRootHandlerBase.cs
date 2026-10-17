@@ -42,4 +42,9 @@ public abstract class ResourceRootHandlerBase : IResourceRootHandler
     {
         _pathResolver.InvalidateCache();
     }
+
+    public void InvalidatePathCache(string absolutePath)
+    {
+        _pathResolver.InvalidateCache(absolutePath);
+    }
 }

@@ -303,9 +303,21 @@ public sealed class LocalFileSystem : ILocalFileSystem
             _logger,
             operationLabel: "Delete",
             path: path,
-            operation: () => RunOnWorkerThreadAsync(() => Directory.Delete(path, recursive))).ConfigureAwait(false);
+            operation: () => RunOnWorkerThreadAsync(() => DeleteFolder(path, recursive))).ConfigureAwait(false);
 
         return runResult.IsSuccess ? Result.Ok() : Result.Fail(runResult);
+    }
+
+    // A recursive delete removes each link without following it.
+    private static void DeleteFolder(string path, bool recursive)
+    {
+        if (recursive)
+        {
+            FolderTreeDeleter.Delete(path);
+            return;
+        }
+
+        Directory.Delete(path, recursive: false);
     }
 
     public async Task<Result> CreateFolderAsync(string path)
