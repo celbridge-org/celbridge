@@ -20,6 +20,17 @@ public class ResourcePathMatcherTests
     }
 
     [Test]
+    public void IgnoreCase_MatchesAnyLetterCase()
+    {
+        var caseSensitive = ResourcePathMatcher.Compile("build");
+        var ignoringCase = ResourcePathMatcher.Compile("build", ignoreCase: true);
+
+        caseSensitive.IsMatch("dir/BUILD", isFolder: true).Should().BeFalse();
+        ignoringCase.IsMatch("dir/BUILD", isFolder: true).Should().BeTrue();
+        ignoringCase.IsMatch("Build/foo.txt", isFolder: false).Should().BeTrue();
+    }
+
+    [Test]
     public void SingleStar_MatchesOneSegment()
     {
         var matcher = ResourcePathMatcher.Compile("*.log");

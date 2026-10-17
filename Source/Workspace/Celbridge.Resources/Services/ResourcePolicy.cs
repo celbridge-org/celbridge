@@ -115,9 +115,11 @@ public sealed class ResourcePolicy : IResourcePolicy
     // A system rule reserves a name rather than a kind of entry, so a folders-only
     // pattern would be written and then ignored at evaluation. The rule set is
     // hardcoded, so this rejects a mistake in this file rather than any user input.
+    // A reserved name matches in any letter case. The Windows and macOS file systems
+    // ignore case, so .GIT names the same folder as .git there.
     internal static ResourcePathMatcher CompileReservedMatcher(string pattern)
     {
-        var matcher = ResourcePathMatcher.Compile(pattern);
+        var matcher = ResourcePathMatcher.Compile(pattern, ignoreCase: true);
         if (matcher.Target == PathMatchTarget.FoldersOnly)
         {
             throw new ArgumentException(

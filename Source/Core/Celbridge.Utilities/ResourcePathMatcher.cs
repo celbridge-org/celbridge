@@ -56,9 +56,10 @@ public sealed class ResourcePathMatcher
 
     /// <summary>
     /// Compiles a pattern into a reusable matcher. Use sparingly at hot paths;
-    /// the regex compile is cached for the life of the instance.
+    /// the regex compile is cached for the life of the instance. With ignoreCase
+    /// set, the pattern matches a path in any letter case.
     /// </summary>
-    public static ResourcePathMatcher Compile(string pattern)
+    public static ResourcePathMatcher Compile(string pattern, bool ignoreCase = false)
     {
         ArgumentException.ThrowIfNullOrEmpty(pattern);
 
@@ -72,7 +73,7 @@ public sealed class ResourcePathMatcher
         }
 
         bool matchesAtAnyDepth = !workingPattern.Contains('/');
-        var regex = BuildRegex(workingPattern);
+        var regex = BuildRegex(workingPattern, ignoreCase);
 
         return new ResourcePathMatcher(pattern, regex, target, matchesAtAnyDepth);
     }
@@ -120,7 +121,7 @@ public sealed class ResourcePathMatcher
         return _regex.IsMatch(resourcePath);
     }
 
-    private static Regex BuildRegex(string pattern)
+    private static Regex BuildRegex(string pattern, bool ignoreCase)
     {
         var builder = new StringBuilder();
         builder.Append('^');
@@ -177,6 +178,11 @@ public sealed class ResourcePathMatcher
         builder.Append('$');
 
         var options = RegexOptions.Compiled | RegexOptions.CultureInvariant;
+        if (ignoreCase)
+        {
+            options |= RegexOptions.IgnoreCase;
+        }
+
         return new Regex(builder.ToString(), options);
     }
 }

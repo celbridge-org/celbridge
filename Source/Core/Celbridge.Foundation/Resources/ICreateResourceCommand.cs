@@ -13,12 +13,6 @@ public interface ICreateResourceCommand : IExecutableCommand
     ResourceType ResourceType { get; set; }
 
     /// <summary>
-    /// Path to copy the resource from.
-    /// If empty, then an empty resource is created.
-    /// </summary>
-    string SourcePath { get; set; }
-
-    /// <summary>
     /// Resource key for the new resource
     /// </summary>
     ResourceKey DestResource { get; set; }

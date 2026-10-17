@@ -713,7 +713,7 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             var childName = Path.GetFileName(entry.FullPath);
             var childKey = folder.Combine(childName);
 
-            // Enumeration drops the reserved folders and linked folders. The project's
+            // Enumeration drops the reserved folders and links. The project's
             // hide patterns are a view filter the Explorer applies, so a hidden entry
             // is still listed here.
             if (EvaluatePolicy(childKey, ResourceAction.Read, isFolder: entry.IsFolder).IsFailure)
@@ -721,10 +721,9 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
                 continue;
             }
 
-            // The resolver refuses every path through a linked folder. A listing that
-            // offered one would hand the caller a folder it cannot open.
-            if (entry.IsFolder
-                && entry.Attributes.HasFlag(FileSystemAttributes.ReparsePoint))
+            // The resolver refuses a link and every path through one. A listing that
+            // offered one would hand the caller an item it cannot open.
+            if (entry.IsLink)
             {
                 continue;
             }
@@ -830,7 +829,12 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             return Result.Fail(enumerateResult);
         }
 
-        foreach (var entry in enumerateResult.Value)
+        // A copy would replace a link with what it points at, so links are left out.
+        var entries = enumerateResult.Value
+            .Where(entry => !entry.IsLink)
+            .ToList();
+
+        foreach (var entry in entries)
         {
             if (entry.IsFolder)
             {
@@ -845,7 +849,7 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             }
         }
 
-        foreach (var entry in enumerateResult.Value)
+        foreach (var entry in entries)
         {
             if (!entry.IsFolder)
             {

@@ -15,9 +15,10 @@ public static class DownloadsFolderPath
     /// </summary>
     public static ResourceKey DefaultFolder { get; } = new ResourceKey(ProjectConstants.DownloadsFolder);
 
-    // Matches the reserved .git folder by name at any depth. Keep this in sync with the resource policy's rule.
+    // Matches the reserved .git folder by name at any depth, in any letter case. Keep this in sync with the
+    // resource policy's rule.
     private static readonly ResourcePathMatcher ReservedFolderMatcher =
-        ResourcePathMatcher.Compile(ProjectConstants.GitFolder);
+        ResourcePathMatcher.Compile(ProjectConstants.GitFolder, ignoreCase: true);
 
     /// <summary>
     /// Parses a folder path, ignoring whitespace and slashes at either end. Fails for an empty path, one

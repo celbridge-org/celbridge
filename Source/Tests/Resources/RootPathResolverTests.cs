@@ -6,6 +6,7 @@ namespace Celbridge.Tests.Resources;
 public class RootPathResolverTests
 {
     private string? _projectFolder;
+    private string? _outsideFolder;
 
     [SetUp]
     public void Setup()
@@ -16,6 +17,13 @@ public class RootPathResolverTests
             Directory.Delete(_projectFolder, true);
         }
         Directory.CreateDirectory(_projectFolder);
+
+        _outsideFolder = Path.Combine(Path.GetTempPath(), $"Celbridge/{nameof(RootPathResolverTests)}_links");
+        if (Directory.Exists(_outsideFolder))
+        {
+            Directory.Delete(_outsideFolder, true);
+        }
+        Directory.CreateDirectory(_outsideFolder);
     }
 
     [TearDown]
@@ -24,6 +32,10 @@ public class RootPathResolverTests
         if (Directory.Exists(_projectFolder))
         {
             Directory.Delete(_projectFolder!, true);
+        }
+        if (Directory.Exists(_outsideFolder))
+        {
+            Directory.Delete(_outsideFolder!, true);
         }
     }
 
@@ -283,5 +295,163 @@ public class RootPathResolverTests
                 Directory.Delete(outsideFolder, true);
             }
         }
+    }
+
+    [Test]
+    public void ValidateAndResolveRejectsALinkedFileOnAFirstLookup()
+    {
+        var linkKey = CreateLinkToOutsideFile("docs/link.txt");
+        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder!);
+
+        var resolveResult = resolver.ValidateAndResolve(linkKey);
+
+        resolveResult.IsFailure.Should().BeTrue();
+        resolveResult.FirstErrorMessage.Should().Contain("symbolic link or junction");
+        resolveResult.FirstErrorMessage.Should().Contain("never follows links");
+    }
+
+    [Test]
+    public void ValidateAndResolveRejectsALinkedFileAfterItsFolderHasBeenResolved()
+    {
+        var linkKey = CreateLinkToOutsideFile("docs/link.txt");
+        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder!);
+        resolver.ValidateAndResolve(ResourceKey.Create("docs")).IsSuccess.Should().BeTrue();
+
+        var resolveResult = resolver.ValidateAndResolve(linkKey);
+
+        resolveResult.IsFailure.Should().BeTrue();
+        resolveResult.FirstErrorMessage.Should().Contain("symbolic link or junction");
+    }
+
+    [Test]
+    public void ValidateAndResolveRejectsALinkedFileWhoseTargetIsInsideTheProject()
+    {
+        var docsFolder = Path.Combine(_projectFolder!, "docs");
+        Directory.CreateDirectory(docsFolder);
+        var targetPath = Path.Combine(docsFolder, "target.txt");
+        File.WriteAllText(targetPath, "target");
+        File.CreateSymbolicLink(Path.Combine(docsFolder, "link.txt"), targetPath);
+        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder!);
+        resolver.ValidateAndResolve(ResourceKey.Create("docs/target.txt")).IsSuccess.Should().BeTrue();
+
+        var resolveResult = resolver.ValidateAndResolve(ResourceKey.Create("docs/link.txt"));
+
+        resolveResult.IsFailure.Should().BeTrue();
+    }
+
+    [Test]
+    public void ValidateAndResolveRejectsALinkedFolder()
+    {
+        Directory.CreateSymbolicLink(Path.Combine(_projectFolder!, "linked"), _outsideFolder!);
+        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder!);
+
+        var resolveResult = resolver.ValidateAndResolve(ResourceKey.Create("linked"));
+
+        resolveResult.IsFailure.Should().BeTrue();
+        resolveResult.FirstErrorMessage.Should().Contain("symbolic link or junction");
+    }
+
+    [Test]
+    public void ValidateAndResolveRejectsABrokenLinkAfterItsFolderHasBeenResolved()
+    {
+        var docsFolder = Path.Combine(_projectFolder!, "docs");
+        Directory.CreateDirectory(docsFolder);
+        File.CreateSymbolicLink(Path.Combine(docsFolder, "broken.txt"), Path.Combine(_outsideFolder!, "gone.txt"));
+        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder!);
+
+        resolver.ValidateAndResolve(ResourceKey.Create("docs/broken.txt")).IsFailure.Should().BeTrue();
+        resolver.ValidateAndResolve(ResourceKey.Create("docs")).IsSuccess.Should().BeTrue();
+        resolver.ValidateAndResolve(ResourceKey.Create("docs/broken.txt")).IsFailure.Should().BeTrue();
+    }
+
+    [Test]
+    public void ValidateAndResolveRejectsALinkCreatedWhereAMissingFolderWasResolved()
+    {
+        File.WriteAllText(Path.Combine(_outsideFolder!, "secret.txt"), "secret");
+        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder!);
+        resolver.ValidateAndResolve(ResourceKey.Create("missing/secret.txt")).IsSuccess.Should().BeTrue();
+
+        Directory.CreateSymbolicLink(Path.Combine(_projectFolder!, "missing"), _outsideFolder!);
+        var resolveResult = resolver.ValidateAndResolve(ResourceKey.Create("missing/secret.txt"));
+
+        resolveResult.IsFailure.Should().BeTrue();
+        resolveResult.FirstErrorMessage.Should().Contain("symbolic link or junction");
+    }
+
+    [Test]
+    public void ValidateAndResolveRejectsALinkThatReplacesAVerifiedFolderOnceTheFolderIsInvalidated()
+    {
+        var subFolder = Path.Combine(_projectFolder!, "docs", "sub");
+        Directory.CreateDirectory(subFolder);
+        File.WriteAllText(Path.Combine(subFolder, "page.txt"), "inside");
+        var outsideSubFolder = Path.Combine(_outsideFolder!, "sub");
+        Directory.CreateDirectory(outsideSubFolder);
+        File.WriteAllText(Path.Combine(outsideSubFolder, "page.txt"), "outside");
+        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder!);
+        resolver.ValidateAndResolve(ResourceKey.Create("docs/sub/page.txt")).IsSuccess.Should().BeTrue();
+
+        // Replace docs, an ancestor of the cached folder, with a link to a folder of the same shape.
+        var docsFolder = Path.Combine(_projectFolder!, "docs");
+        Directory.Move(docsFolder, Path.Combine(_projectFolder!, "docs_moved"));
+        Directory.CreateSymbolicLink(docsFolder, _outsideFolder!);
+        resolver.InvalidateCache(docsFolder);
+
+        var resolveResult = resolver.ValidateAndResolve(ResourceKey.Create("docs/sub/page.txt"));
+
+        resolveResult.IsFailure.Should().BeTrue();
+        resolveResult.FirstErrorMessage.Should().Contain("symbolic link or junction");
+    }
+
+    [Test]
+    public void InvalidateCacheForAFileKeepsTheVerifiedFolders()
+    {
+        var docsFolder = Path.Combine(_projectFolder!, "docs");
+        Directory.CreateDirectory(docsFolder);
+        var plainPath = Path.Combine(docsFolder, "plain.txt");
+        File.WriteAllText(plainPath, "plain");
+        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder!);
+        resolver.ValidateAndResolve(ResourceKey.Create("docs/plain.txt")).IsSuccess.Should().BeTrue();
+
+        resolver.InvalidateCache(Path.Combine(docsFolder, "gone.txt"));
+
+        resolver.VerifiedFolderCount.Should().BeGreaterThan(0);
+    }
+
+    [Test]
+    public void ValidateAndResolveResolvesAPlainFileInAVerifiedFolder()
+    {
+        CreateLinkToOutsideFile("docs/link.txt");
+        var plainPath = Path.Combine(_projectFolder!, "docs", "plain.txt");
+        File.WriteAllText(plainPath, "plain");
+        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder!);
+        resolver.ValidateAndResolve(ResourceKey.Create("docs")).IsSuccess.Should().BeTrue();
+
+        var resolveResult = resolver.ValidateAndResolve(ResourceKey.Create("docs/plain.txt"));
+
+        resolveResult.IsSuccess.Should().BeTrue();
+        resolveResult.Value.Should().Be(Path.GetFullPath(plainPath));
+    }
+
+    [Test]
+    public void IsPathSafeRejectsALinkedFileAfterItsFolderHasBeenResolved()
+    {
+        CreateLinkToOutsideFile("docs/link.txt");
+        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder!);
+        resolver.IsPathSafe(Path.Combine(_projectFolder!, "docs")).Should().BeTrue();
+
+        resolver.IsPathSafe(Path.Combine(_projectFolder!, "docs", "link.txt")).Should().BeFalse();
+    }
+
+    // Creates a link at the key's path in the project, pointing at a file outside the project.
+    private ResourceKey CreateLinkToOutsideFile(string keyPath)
+    {
+        var targetPath = Path.Combine(_outsideFolder!, "secret.txt");
+        File.WriteAllText(targetPath, "secret");
+
+        var linkPath = Path.Combine(_projectFolder!, keyPath);
+        Directory.CreateDirectory(Path.GetDirectoryName(linkPath)!);
+        File.CreateSymbolicLink(linkPath, targetPath);
+
+        return ResourceKey.Create(keyPath);
     }
 }

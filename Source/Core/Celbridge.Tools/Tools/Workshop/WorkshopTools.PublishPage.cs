@@ -237,8 +237,8 @@ public partial class WorkshopTools
 
                 foreach (var fileEntry in fileEntries)
                 {
-                    // Skip symlinks and other reparse points rather than following them.
-                    if (fileEntry.Attributes.HasFlag(FileSystemAttributes.ReparsePoint))
+                    // Skip links.
+                    if (fileEntry.IsLink)
                     {
                         continue;
                     }

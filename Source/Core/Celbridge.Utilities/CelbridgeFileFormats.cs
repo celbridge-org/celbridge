@@ -21,7 +21,7 @@ public static class CelbridgeFileFormats
     ];
 
     private static readonly IReadOnlyList<ResourcePathMatcher> Matchers =
-        Patterns.Select(ResourcePathMatcher.Compile).ToList();
+        Patterns.Select(pattern => ResourcePathMatcher.Compile(pattern)).ToList();
 
     /// <summary>
     /// True when the file name is one of Celbridge's own formats.

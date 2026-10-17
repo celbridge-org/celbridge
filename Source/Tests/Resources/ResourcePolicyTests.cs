@@ -57,6 +57,16 @@ public class ResourcePolicyTests
     }
 
     [Test]
+    public void Evaluate_DeniesGitFolder_InAnyCase()
+    {
+        var policy = BuildPolicy();
+
+        policy.Evaluate(new ResourceKey(".GIT"), ResourceAction.Read, isFolder: true).IsFailure.Should().BeTrue();
+        policy.Evaluate(new ResourceKey(".Git/config"), ResourceAction.Read).IsFailure.Should().BeTrue();
+        policy.Evaluate(new ResourceKey("docs/.GIT/config"), ResourceAction.Write).IsFailure.Should().BeTrue();
+    }
+
+    [Test]
     public void Evaluate_IgnoresHideAndSearchExclude()
     {
         // The two configured lists are ergonomic, not access control: nothing a project

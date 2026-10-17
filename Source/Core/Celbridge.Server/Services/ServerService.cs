@@ -3,6 +3,7 @@ using Celbridge.Host;
 using Celbridge.Platform;
 using Celbridge.Messaging;
 using Celbridge.Projects;
+using Celbridge.Resources;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
@@ -61,7 +62,7 @@ public class ServerService : IServerService, IDisposable
         _logger = logger;
     }
 
-    public async Task StartAsync()
+    public async Task StartAsync(IRootHandlerRegistry rootHandlers, IResourcePolicy policy)
     {
         // The loopback file server hosts all WebView editor content (the /project/, /assets/, and
         // /package/ routes) on every head: SetVirtualHostNameToFolderMapping is a no-op on the macOS
@@ -134,7 +135,7 @@ public class ServerService : IServerService, IDisposable
                 }
             }
 
-            _fileServer.Enable(currentProject.ProjectFolderPath, Port);
+            _fileServer.Enable(rootHandlers, policy, Port);
 
             // Serve the app-bundled web assets (celbridge-client JS, bootstrap-icons, cascadia-mono)
             // at /assets/.

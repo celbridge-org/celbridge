@@ -190,6 +190,10 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
     private void HandleDeleted(IResourceRootHandler handler, string fullPath)
     {
+        // A link may take the place of a deleted folder, so the resolver checks the path again. This runs for
+        // ignored paths too, since an ignored folder can still be an ancestor of a verified one.
+        handler.InvalidatePathCache(fullPath);
+
         if (ShouldIgnorePath(handler, fullPath))
         {
             return;
@@ -202,6 +206,9 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
     private void HandleRenamed(IResourceRootHandler handler, string oldFullPath, string newFullPath)
     {
+        // A link may take the place of a folder renamed away, so the resolver checks the old path again.
+        handler.InvalidatePathCache(oldFullPath);
+
         // Only check the new path for ignore rules. The old path may no longer exist on disk
         // (the rename has already completed), so File.GetAttributes would throw and cause the
         // event to be incorrectly ignored. This is critical for editors and coding agents that

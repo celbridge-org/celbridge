@@ -225,6 +225,9 @@
   <data name="ProjectFile_CannotChangeExtension" xml:space="preserve">
     <value>The project file must keep its {0} extension.</value>
   </data>
+  <data name="Resource_LinkNotFollowed" xml:space="preserve">
+    <value>Celbridge doesn't follow symbolic links or junctions.</value>
+  </data>
   <data name="Notification_SaveDiscarded" xml:space="preserve">
     <value>Unsaved changes to '{0}' were discarded</value>
   </data>

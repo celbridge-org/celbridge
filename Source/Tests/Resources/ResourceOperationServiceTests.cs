@@ -2,6 +2,7 @@ using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Projects.Services;
 using Celbridge.Resources;
+using Celbridge.Resources.Helpers;
 using Celbridge.Resources.Services;
 using Celbridge.Tests.FileSystem;
 using Celbridge.Workspace;
@@ -360,6 +361,83 @@ public class ResourceOperationServiceTests
     }
 
     [Test]
+    public async Task EnumerateFolderAsync_LeavesOutLinkedFilesAndFolders()
+    {
+        CreateFolderThatContainsLinks();
+
+        var enumerateResult = await _resourceFileSystem.EnumerateFolderAsync(new ResourceKey("folder"));
+
+        enumerateResult.IsSuccess.Should().BeTrue(enumerateResult.MessageChain);
+        enumerateResult.Value.Select(item => item.Resource.ResourceName).Should().Equal("plain.txt");
+    }
+
+    [Test]
+    public async Task CollectSourceFilesAsync_FolderThatContainsLinks_LeavesThemOutOfTheArchive()
+    {
+        CreateFolderThatContainsLinks();
+
+        var sourceFiles = await ArchiveHelper.CollectSourceFilesAsync(_resourceFileSystem, new ResourceKey("folder"), isFolder: true);
+
+        sourceFiles.Select(sourceFile => sourceFile.EntryName).Should().Equal("plain.txt");
+    }
+
+    [Test]
+    public async Task CopyAsync_FolderThatContainsLinks_LeavesThemOutOfTheCopy()
+    {
+        CreateFolderThatContainsLinks();
+
+        var copyResult = await _operationService.CopyAsync(new ResourceKey("folder"), new ResourceKey("copy"));
+
+        copyResult.IsSuccess.Should().BeTrue(copyResult.MessageChain);
+        Directory.EnumerateFileSystemEntries(Path.Combine(_tempFolder, "copy"))
+            .Select(Path.GetFileName)
+            .Should().Equal("plain.txt");
+    }
+
+    [Test]
+    public async Task ImportExternalFolderAsync_LeavesOutLinksAndNamesEachOne()
+    {
+        var sourcePath = CreateOutsideFolderThatContainsLinks();
+
+        var importResult = await _operationService.ImportExternalFolderAsync(sourcePath, new ResourceKey("imported"));
+
+        importResult.IsSuccess.Should().BeTrue(importResult.MessageChain);
+        Directory.EnumerateFileSystemEntries(Path.Combine(_tempFolder, "imported"))
+            .Select(Path.GetFileName)
+            .Should().Equal("plain.txt");
+
+        var leftOutLinks = importResult.Value.LeftOutLinks;
+        leftOutLinks.Select(link => link.Resource.Path).Should().BeEquivalentTo("imported/linked", "imported/linked.txt");
+        leftOutLinks.Should().OnlyContain(link => link.Reason is LinkNotFollowedError);
+    }
+
+    [Test]
+    public async Task ImportExternalFileAsync_ALink_IsRefused()
+    {
+        var sourcePath = CreateOutsideFolderThatContainsLinks();
+
+        var importResult = await _operationService.ImportExternalFileAsync(
+            Path.Combine(sourcePath, "linked.txt"), new ResourceKey("imported.txt"));
+
+        importResult.IsFailure.Should().BeTrue();
+        importResult.HasException<LinkNotFollowedError>().Should().BeTrue();
+        File.Exists(Path.Combine(_tempFolder, "imported.txt")).Should().BeFalse();
+    }
+
+    [Test]
+    public async Task ImportExternalFolderAsync_ALinkedFolder_IsRefused()
+    {
+        var sourcePath = CreateOutsideFolderThatContainsLinks();
+
+        var importResult = await _operationService.ImportExternalFolderAsync(
+            Path.Combine(sourcePath, "linked"), new ResourceKey("imported"));
+
+        importResult.IsFailure.Should().BeTrue();
+        importResult.HasException<LinkNotFollowedError>().Should().BeTrue();
+        Directory.Exists(Path.Combine(_tempFolder, "imported")).Should().BeFalse();
+    }
+
+    [Test]
     public async Task CreateAndCopy_OutsideTheProjectRoot_AreNotRecorded()
     {
         var createResult = await _operationService.CreateFileAsync(new ResourceKey("temp:created.txt"), new byte[] { 0x01 });
@@ -479,5 +557,39 @@ public class ResourceOperationServiceTests
         projectService.CurrentProject.Returns(project);
 
         return new ResourcePolicy(projectService);
+    }
+
+    // Creates a folder outside the project containing a plain file, a link to a file and a link to a folder.
+    // Returns its path.
+    private string CreateOutsideFolderThatContainsLinks()
+    {
+        var targetFolder = Path.Combine(_testFolder, "Targets");
+        Directory.CreateDirectory(targetFolder);
+        var secretPath = Path.Combine(targetFolder, "secret.txt");
+        File.WriteAllText(secretPath, "secret");
+
+        var sourcePath = Path.Combine(_testFolder, "Source");
+        Directory.CreateDirectory(sourcePath);
+        File.WriteAllText(Path.Combine(sourcePath, "plain.txt"), "plain");
+        File.CreateSymbolicLink(Path.Combine(sourcePath, "linked.txt"), secretPath);
+        Directory.CreateSymbolicLink(Path.Combine(sourcePath, "linked"), targetFolder);
+
+        return sourcePath;
+    }
+
+    // Creates project:folder containing a plain file, a link to a file outside the project and a link to a
+    // folder outside the project.
+    private void CreateFolderThatContainsLinks()
+    {
+        var outsideFolder = Path.Combine(_testFolder, "Outside");
+        Directory.CreateDirectory(outsideFolder);
+        var secretPath = Path.Combine(outsideFolder, "secret.txt");
+        File.WriteAllText(secretPath, "secret");
+
+        var folderPath = Path.Combine(_tempFolder, "folder");
+        Directory.CreateDirectory(folderPath);
+        File.WriteAllText(Path.Combine(folderPath, "plain.txt"), "plain");
+        File.CreateSymbolicLink(Path.Combine(folderPath, "linked.txt"), secretPath);
+        Directory.CreateSymbolicLink(Path.Combine(folderPath, "linked"), outsideFolder);
     }
 }

@@ -79,16 +79,19 @@ public interface IResourceOperationService
     /// <summary>
     /// Imports a file from outside the project into a registry-addressable
     /// destination. The source path is taken as-is; the destination receives
-    /// containment validation through the gateway.
+    /// containment validation through the gateway. A source that is a link is
+    /// refused with a LinkNotFollowedError.
     /// </summary>
     Task<Result> ImportExternalFileAsync(string sourcePath, ResourceKey dest);
 
     /// <summary>
     /// Imports a folder from outside the project into a registry-addressable
     /// destination. The source is enumerated recursively; each file lands at
-    /// its corresponding destination key through the gateway.
+    /// its corresponding destination key through the gateway. A source that is
+    /// a link is refused with a LinkNotFollowedError. Links inside the folder
+    /// are left out, and the result says where each would have landed.
     /// </summary>
-    Task<Result> ImportExternalFolderAsync(string sourcePath, ResourceKey dest);
+    Task<Result<ImportResult>> ImportExternalFolderAsync(string sourcePath, ResourceKey dest);
 
     /// <summary>
     /// Copies or moves the resource depending on the transfer mode. Dispatches

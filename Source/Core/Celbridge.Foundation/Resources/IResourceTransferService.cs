@@ -28,14 +28,6 @@ public interface IResourceTransferService
     ResourceKey ResolveDestinationResource(ResourceKey sourceResource, ResourceKey destResource);
 
     /// <summary>
-    /// Returns a resolved destination resource key for a resource transfer
-    /// from an external source path. When destResource is an existing folder
-    /// the source filename is appended; otherwise destResource is returned
-    /// unchanged.
-    /// </summary>
-    ResourceKey ResolveSourcePathDestinationResource(string sourcePath, ResourceKey destResource);
-
-    /// <summary>
     /// Returns the folder resource associated with the context menu item for
     /// a resource. Folder → itself; file → its parent folder; null → the
     /// project folder.

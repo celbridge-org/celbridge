@@ -246,7 +246,7 @@ public class ProjectTreeBuilderTests
     }
 
     [Test]
-    public async Task BuildTree_KeepsALinkedFile()
+    public async Task BuildTree_LeavesOutALinkedFile()
     {
         var targetPath = Path.Combine(_projectFolderPath, "target.txt");
         File.WriteAllText(targetPath, "x");
@@ -255,7 +255,19 @@ public class ProjectTreeBuilderTests
         var buildResult = await _builder.BuildTreeAsync();
 
         buildResult.IsSuccess.Should().BeTrue();
-        buildResult.Value.Children.Select(child => child.Name).Should().Equal("linked.txt", "target.txt");
+        buildResult.Value.Children.Select(child => child.Name).Should().Equal("target.txt");
+    }
+
+    [Test]
+    public async Task BuildTree_LeavesOutABrokenLink()
+    {
+        File.CreateSymbolicLink(Path.Combine(_projectFolderPath, "broken.txt"), Path.Combine(_projectFolderPath, "gone.txt"));
+        File.WriteAllText(Path.Combine(_projectFolderPath, "plain.txt"), "x");
+
+        var buildResult = await _builder.BuildTreeAsync();
+
+        buildResult.IsSuccess.Should().BeTrue();
+        buildResult.Value.Children.Select(child => child.Name).Should().Equal("plain.txt");
     }
 
     [Test]

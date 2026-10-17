@@ -193,33 +193,6 @@ public class ResourceTransferService : IResourceTransferService
         return output;
     }
 
-    public ResourceKey ResolveSourcePathDestinationResource(string sourcePath, ResourceKey destResource)
-    {
-        string output = destResource;
-
-        var getResult = ResourceRegistry.GetResource(destResource);
-        if (getResult.IsSuccess)
-        {
-            var resource = getResult.Value;
-            if (resource is IFolderResource)
-            {
-                var filename = Path.GetFileName(sourcePath);
-                if (destResource.IsEmpty)
-                {
-                    // Destination is the project folder.
-                    output = filename;
-                }
-                else
-                {
-                    // Destination is a folder, so append the source filename to it.
-                    output = destResource.Combine(filename);
-                }
-            }
-        }
-
-        return output;
-    }
-
     public ResourceKey GetContextMenuItemFolder(IResource? resource)
     {
         IFolderResource? destFolder = null;
