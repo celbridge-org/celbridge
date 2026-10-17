@@ -63,7 +63,9 @@ public class WorkspaceLoader
 
         // Start a fresh server instance for this workspace. The same port is reused for the lifetime of
         // the application so URLs resolved by the file server remain stable across project switches.
-        await _serverService.StartAsync();
+        await _serverService.StartAsync(
+            workspaceService.ResourceService.RootHandlers,
+            workspaceService.ResourceService.Policy);
         if (_serverService.Status == ServerStatus.Error)
         {
             return Result.Fail("Failed to start the server for the workspace");

@@ -1,3 +1,5 @@
+using Celbridge.Resources;
+
 namespace Celbridge.Server;
 
 /// <summary>
@@ -12,9 +14,11 @@ public interface IFileServer
     bool IsReady { get; }
 
     /// <summary>
-    /// Enables file serving for the given project folder and port.
+    /// Enables file serving for the loaded workspace's project on the given port. Each request for a
+    /// project file is checked by resource key, through the policy check and the root resolvers. The
+    /// project folder is the folder the empty key resolves to.
     /// </summary>
-    void Enable(string projectFolderPath, int port);
+    void Enable(IRootHandlerRegistry rootHandlers, IResourcePolicy policy, int port);
 
     /// <summary>
     /// Disables file serving and releases the file provider.

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Celbridge.Resources;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.StaticFiles;
@@ -8,8 +9,9 @@ namespace Celbridge.Server.Services;
 
 /// <summary>
 /// Serves project files, shared web assets and package folders over HTTP on localhost via the server's
-/// Kestrel instance. Project files are served at /project/{path}, and the file provider is swapped when
-/// projects are loaded and unloaded.
+/// Kestrel instance. Project files are served at /project/{path}. A request for a project file is checked
+/// by resource key before the file is served. So is a request for a file in a package folder inside the
+/// project.
 /// </summary>
 public class FileServer : IFileServer, IDisposable
 {
@@ -26,6 +28,8 @@ public class FileServer : IFileServer, IDisposable
     // files even if it discovers the loopback port. Keyed case-insensitively; the value is unused.
     private readonly ConcurrentDictionary<string, byte> _crossOriginReaders = new(StringComparer.OrdinalIgnoreCase);
 
+    private IRootHandlerRegistry? _rootHandlers;
+    private IResourcePolicy? _policy;
     private PhysicalFileProvider? _projectFileProvider;
     private int _port;
     private bool _disposed;
@@ -55,32 +59,100 @@ public class FileServer : IFileServer, IDisposable
         application.MapGet("/project/{**path}", (HttpContext context, string path) =>
         {
             context.Response.Headers.CacheControl = "no-store";
-            return ServeFromProvider(context, _projectFileProvider, path, allowCrossOrigin: false);
+            var fileInfo = IsServable(ResourceKey.Empty, path)
+                ? _projectFileProvider?.GetFileInfo(path)
+                : null;
+            return ServeFileAsync(context, fileInfo, path, allowCrossOrigin: false);
         });
 
         // /assets/ and /package/ serve bundled shared assets and package folders. The synthetic-origin
         // editor (a faked origin for a domain-locked library) pulls its lib and the shared client from
         // these routes cross-origin, so they opt in to cross-origin reads.
         application.MapGet("/assets/{**path}", (HttpContext context, string path) =>
-            ServeFromProvider(context, _assetsFileProvider, path, allowCrossOrigin: true));
+            ServeFileAsync(context, _assetsFileProvider?.GetFileInfo(path), path, allowCrossOrigin: true));
 
         application.MapGet("/package/{name}/{**path}", (HttpContext context, string name, string path) =>
         {
-            _packageFileProviders.TryGetValue(name, out var packageFileProvider);
-            return ServeFromProvider(context, packageFileProvider, path, allowCrossOrigin: true);
+            var fileInfo = ResolvePackageFile(name, path);
+            return ServeFileAsync(context, fileInfo, path, allowCrossOrigin: true);
         });
     }
 
-    private async Task ServeFromProvider(HttpContext context, PhysicalFileProvider? fileProvider, string path, bool allowCrossOrigin)
+    // A package folder inside a resource root is checked by key, like any project file. A bundled package's
+    // folder belongs to the application, and the package's file provider serves the folder directly.
+    private IFileInfo? ResolvePackageFile(string packageName, string path)
     {
-        if (fileProvider is null)
+        if (!_packageFileProviders.TryGetValue(packageName, out var packageFileProvider))
         {
-            context.Response.StatusCode = StatusCodes.Status404NotFound;
-            return;
+            return null;
         }
 
-        var fileInfo = fileProvider.GetFileInfo(path);
-        if (!fileInfo.Exists
+        var rootHandlers = _rootHandlers;
+        if (rootHandlers is not null)
+        {
+            var folderKeyResult = rootHandlers.GetResourceKey(packageFileProvider.Root);
+            if (folderKeyResult.IsSuccess
+                && !IsServable(folderKeyResult.Value, path))
+            {
+                return null;
+            }
+        }
+
+        return packageFileProvider.GetFileInfo(path);
+    }
+
+    private bool IsServable(ResourceKey folder, string path)
+    {
+        var rootHandlers = _rootHandlers;
+        var policy = _policy;
+        if (rootHandlers is null
+            || policy is null)
+        {
+            return false;
+        }
+
+        var checkResult = CheckServedFile(rootHandlers, policy, folder, path);
+        return checkResult.IsSuccess;
+    }
+
+    /// <summary>
+    /// Checks that a URL path under a folder key may be served. The path becomes a resource key. The policy
+    /// check and the root's resolver refuse a reserved folder such as .git, a link and a path through a link.
+    /// </summary>
+    internal static Result CheckServedFile(
+        IRootHandlerRegistry rootHandlers,
+        IResourcePolicy policy,
+        ResourceKey folder,
+        string path)
+    {
+        var keyString = string.IsNullOrEmpty(folder.Path)
+            ? $"{folder.Root}:{path}"
+            : $"{folder.FullKey}/{path}";
+
+        if (!ResourceKey.TryCreate(keyString, out var resource))
+        {
+            return Result.Fail($"The path does not name a resource: '{path}'");
+        }
+
+        var policyResult = policy.Evaluate(resource, ResourceAction.Read);
+        if (policyResult.IsFailure)
+        {
+            return policyResult;
+        }
+
+        var resolveResult = rootHandlers.ResolveResourcePath(resource);
+        if (resolveResult.IsFailure)
+        {
+            return Result.Fail(resolveResult);
+        }
+
+        return Result.Ok();
+    }
+
+    private async Task ServeFileAsync(HttpContext context, IFileInfo? fileInfo, string path, bool allowCrossOrigin)
+    {
+        if (fileInfo is null
+            || !fileInfo.Exists
             || fileInfo.IsDirectory)
         {
             context.Response.StatusCode = StatusCodes.Status404NotFound;
@@ -119,25 +191,27 @@ public class FileServer : IFileServer, IDisposable
         await context.Response.SendFileAsync(fileInfo);
     }
 
-    /// <summary>
-    /// Enables file serving for the given project folder and port.
-    /// </summary>
-    public void Enable(string projectFolderPath, int port)
+    public void Enable(IRootHandlerRegistry rootHandlers, IResourcePolicy policy, int port)
     {
+        var resolveResult = rootHandlers.ResolveResourcePath(ResourceKey.Empty);
+        if (resolveResult.IsFailure)
+        {
+            throw new InvalidOperationException($"Failed to resolve the project folder: {resolveResult.MessageChain}");
+        }
+        var projectFolderPath = resolveResult.Value;
+
         _projectFileProvider?.Dispose();
-        // PhysicalFileProvider rejects path traversal but follows symlinks, so a symlink inside a served
-        // root that points outside it would be served. The served roots are user-owned content, so this
-        // stays within the loopback threat model.
         _projectFileProvider = new PhysicalFileProvider(projectFolderPath);
+        _rootHandlers = rootHandlers;
+        _policy = policy;
         _port = port;
         _logger.LogInformation("Project file serving enabled for {FolderPath}", projectFolderPath);
     }
 
-    /// <summary>
-    /// Disables file serving and releases the file provider.
-    /// </summary>
     public void Disable()
     {
+        _rootHandlers = null;
+        _policy = null;
         _projectFileProvider?.Dispose();
         _projectFileProvider = null;
         _port = 0;
@@ -288,6 +362,8 @@ public class FileServer : IFileServer, IDisposable
             _disposed = true;
             if (disposing)
             {
+                _rootHandlers = null;
+                _policy = null;
                 _projectFileProvider?.Dispose();
                 _projectFileProvider = null;
 

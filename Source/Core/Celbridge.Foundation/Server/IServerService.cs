@@ -1,3 +1,5 @@
+using Celbridge.Resources;
+
 namespace Celbridge.Server;
 
 /// <summary>
@@ -32,11 +34,11 @@ public interface IServerService
     int Port { get; }
 
     /// <summary>
-    /// Builds and starts a fresh HTTP server instance for the loaded workspace.
-    /// Reuses the port assigned on the first call within this application session.
-    /// Sets Status to Ready on completion.
+    /// Builds and starts a fresh HTTP server instance for the loaded workspace. Project files are checked
+    /// through the workspace's root resolvers and policy before they are served. Reuses the port assigned
+    /// on the first call within this application session. Sets Status to Ready on completion.
     /// </summary>
-    Task StartAsync();
+    Task StartAsync(IRootHandlerRegistry rootHandlers, IResourcePolicy policy);
 
     /// <summary>
     /// Stops and disposes the HTTP server instance. The assigned port is retained
