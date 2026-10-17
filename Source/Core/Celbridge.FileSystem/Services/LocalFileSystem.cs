@@ -117,31 +117,30 @@ public sealed class LocalFileSystem : ILocalFileSystem
                 // Every property here answers for the link itself: a link's Length is the length of the
                 // path it holds, and a link left behind by a deleted target still reports as a file. So a
                 // link is answered by describing what it points at.
-                var linkTargetPath = ResolveLinkTargetPath(fileInfo, out var isBrokenLink);
-                if (isBrokenLink)
+                if (LinkHelper.IsLink(fileInfo))
                 {
-                    var brokenLinkResult = new StorageItemInfo(
-                        Kind: StorageItemKind.BrokenLink,
-                        Size: 0,
-                        ModifiedUtc: fileInfo.LastWriteTimeUtc,
-                        Attributes: MapToPortable(fileInfo.Attributes));
-                    return brokenLinkResult;
-                }
+                    var linkTargetPath = ResolveLinkTargetPath(fileInfo);
+                    if (linkTargetPath is null)
+                    {
+                        var brokenLinkResult = new StorageItemInfo(
+                            Kind: StorageItemKind.BrokenLink,
+                            Size: 0,
+                            ModifiedUtc: fileInfo.LastWriteTimeUtc,
+                            Attributes: MapToPortable(fileInfo.Attributes),
+                            IsLink: true);
+                        return brokenLinkResult;
+                    }
 
-                if (linkTargetPath is not null)
-                {
                     var targetInfoResult = await GetInfoAsync(linkTargetPath);
                     if (targetInfoResult.IsFailure)
                     {
                         return targetInfoResult;
                     }
-                    var targetInfo = targetInfoResult.Value;
 
-                    // The target says what the caller can open. The flag says a link is how they reached
-                    // it, which the target's own attributes do not carry.
-                    var linkedInfo = targetInfo with
+                    // The target says what the caller can open. The flag says a link is how they reached it.
+                    var linkedInfo = targetInfoResult.Value with
                     {
-                        Attributes = targetInfo.Attributes | FileSystemAttributes.ReparsePoint
+                        IsLink = true
                     };
                     return linkedInfo;
                 }
@@ -163,7 +162,8 @@ public sealed class LocalFileSystem : ILocalFileSystem
                     Kind: StorageItemKind.Folder,
                     Size: 0,
                     ModifiedUtc: directoryInfo.LastWriteTimeUtc,
-                    Attributes: folderAttributes);
+                    Attributes: folderAttributes,
+                    IsLink: LinkHelper.IsLink(directoryInfo));
                 return folderResult;
             }
 
@@ -187,7 +187,6 @@ public sealed class LocalFileSystem : ILocalFileSystem
 
         try
         {
-            var searchOption = recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
             var entries = new List<FileSystemEntry>();
 
             // Enumerating through DirectoryInfo yields FileInfo / DirectoryInfo
@@ -209,18 +208,20 @@ public sealed class LocalFileSystem : ILocalFileSystem
                 return Result<IReadOnlyList<FileSystemEntry>>.Fail($"Folder does not exist: '{path}'");
             }
 
+            var folderInfos = new List<DirectoryInfo>();
+            var fileInfos = new List<FileInfo>();
+            CollectEntries(directoryInfo, pattern, recursive, folderInfos, fileInfos);
+
             // FileSystemInfo.Attributes is also populated from the directory walk,
             // so the portable read-only flag costs no extra stat per item.
-            var folderInfos = directoryInfo.EnumerateDirectories(pattern, searchOption).OrderBy(folder => folder.FullName, StringComparer.Ordinal);
-            foreach (var folderInfo in folderInfos)
+            foreach (var folderInfo in folderInfos.OrderBy(folder => folder.FullName, StringComparer.Ordinal))
             {
                 var folderEntry = await DescribeEntryAsync(
                     folderInfo, StorageItemKind.Folder, size: 0);
                 entries.Add(folderEntry);
             }
 
-            var fileInfos = directoryInfo.EnumerateFiles(pattern, searchOption).OrderBy(file => file.FullName, StringComparer.Ordinal);
-            foreach (var fileInfo in fileInfos)
+            foreach (var fileInfo in fileInfos.OrderBy(file => file.FullName, StringComparer.Ordinal))
             {
                 var fileEntry = await DescribeEntryAsync(
                     fileInfo, StorageItemKind.File, fileInfo.Length);
@@ -391,6 +392,35 @@ public sealed class LocalFileSystem : ILocalFileSystem
         return true;
     }
 
+    // Collects the folders and files that match the pattern in this folder. A recursive walk then descends into
+    // every subfolder except a link.
+    private static void CollectEntries(
+        DirectoryInfo folder, string pattern, bool recursive, List<DirectoryInfo> folderInfos, List<FileInfo> fileInfos)
+    {
+        var matchedFolders = folder.EnumerateDirectories(pattern, SearchOption.TopDirectoryOnly).ToList();
+        folderInfos.AddRange(matchedFolders);
+        fileInfos.AddRange(folder.EnumerateFiles(pattern, SearchOption.TopDirectoryOnly));
+
+        if (!recursive)
+        {
+            return;
+        }
+
+        var subfolders = pattern == "*"
+            ? matchedFolders
+            : folder.EnumerateDirectories("*", SearchOption.TopDirectoryOnly);
+
+        foreach (var subfolder in subfolders)
+        {
+            if (LinkHelper.IsLink(subfolder))
+            {
+                continue;
+            }
+
+            CollectEntries(subfolder, pattern, recursive, folderInfos, fileInfos);
+        }
+    }
+
     // Reads short-circuit FileNotFoundException and DirectoryNotFoundException
     // so a genuinely missing file fails immediately rather than burning the
     // retry budget on a hopeless case.
@@ -401,15 +431,16 @@ public sealed class LocalFileSystem : ILocalFileSystem
     }
 
     // The walk answers for the link itself: its length is the path it holds, and its target may be gone.
-    // The reparse flag comes free from the walk, so only a link pays for the probe that describes what it
-    // points at, and a tree without links costs exactly what it did before.
+    // The walk reads the reparse-point attribute for free. Only a link pays for the probe that describes what
+    // it points at.
     private async Task<FileSystemEntry> DescribeEntryAsync(
         FileSystemInfo entryInfo, StorageItemKind kind, long size)
     {
         var attributes = MapToPortable(entryInfo.Attributes);
         var modifiedUtc = entryInfo.LastWriteTimeUtc;
 
-        if (attributes.HasFlag(FileSystemAttributes.ReparsePoint))
+        bool isLink = LinkHelper.IsLink(entryInfo);
+        if (isLink)
         {
             var targetInfoResult = await GetInfoAsync(entryInfo.FullName);
             if (targetInfoResult.IsSuccess)
@@ -427,29 +458,22 @@ public sealed class LocalFileSystem : ILocalFileSystem
             Kind: kind,
             Size: size,
             ModifiedUtc: modifiedUtc,
-            Attributes: attributes);
+            Attributes: attributes,
+            IsLink: isLink);
 
         return entry;
     }
 
-    // The final target of a link, or null when the path is not a link. A resolve that throws is a link
-    // that cannot be followed, which is a broken link by any useful definition. The final target is never
-    // itself a link, so describing it terminates.
-    private static string? ResolveLinkTargetPath(FileInfo fileInfo, out bool isBrokenLink)
+    // Returns the final target of a link, or null when the link is broken. A resolve that throws counts as a
+    // broken link. The final target is never itself a link, so describing it terminates.
+    private static string? ResolveLinkTargetPath(FileInfo linkInfo)
     {
-        isBrokenLink = false;
-
         try
         {
-            var linkTarget = fileInfo.ResolveLinkTarget(returnFinalTarget: true);
-            if (linkTarget is null)
+            var linkTarget = linkInfo.ResolveLinkTarget(returnFinalTarget: true);
+            if (linkTarget is null
+                || !linkTarget.Exists)
             {
-                return null;
-            }
-
-            if (!linkTarget.Exists)
-            {
-                isBrokenLink = true;
                 return null;
             }
 
@@ -457,7 +481,6 @@ public sealed class LocalFileSystem : ILocalFileSystem
         }
         catch (IOException)
         {
-            isBrokenLink = true;
             return null;
         }
     }
@@ -469,11 +492,6 @@ public sealed class LocalFileSystem : ILocalFileSystem
         if ((native & System.IO.FileAttributes.ReadOnly) != 0)
         {
             portable |= FileSystemAttributes.ReadOnly;
-        }
-
-        if ((native & System.IO.FileAttributes.ReparsePoint) != 0)
-        {
-            portable |= FileSystemAttributes.ReparsePoint;
         }
 
         return portable;

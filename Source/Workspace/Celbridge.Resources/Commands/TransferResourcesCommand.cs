@@ -63,7 +63,7 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
         {
             foreach (var item in TransferItems)
             {
-                var result = await TransferSingleItemAsync(item, resourceRegistry, transferService, resourceOpService);
+                var result = await TransferSingleItemAsync(item, resourceRegistry, transferService, resourceOpService, failedResources);
                 if (result.IsFailure)
                 {
                     // An item dragged in from outside the project has no source resource, so the
@@ -72,7 +72,10 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
                         ? item.DestResource
                         : item.SourceResource;
 
-                    failedResources.Add(new FailedResource(failedResource, result.MessageChain));
+                    failedResources.Add(new FailedResource(failedResource, result.MessageChain)
+                    {
+                        Reason = result.FirstException
+                    });
                 }
             }
         }
@@ -96,12 +99,13 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
         ResourceTransferItem item,
         IResourceRegistry resourceRegistry,
         IResourceTransferService transferService,
-        IResourceOperationService resourceOpService)
+        IResourceOperationService resourceOpService,
+        List<FailedResource> failedResources)
     {
         if (item.SourceResource.IsEmpty)
         {
             // Resource is outside the project folder - add it
-            return await AddExternalResourceAsync(item, resourceRegistry, resourceOpService);
+            return await AddExternalResourceAsync(item, resourceRegistry, resourceOpService, failedResources);
         }
         else
         {
@@ -110,10 +114,12 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
         }
     }
 
+    // A folder import leaves out the links inside it. Each one is added to the failures.
     private async Task<Result> AddExternalResourceAsync(
         ResourceTransferItem item,
         IResourceRegistry resourceRegistry,
-        IResourceOperationService resourceOpService)
+        IResourceOperationService resourceOpService,
+        List<FailedResource> failedResources)
     {
         if (item.ResourceType == ResourceType.File)
         {
@@ -135,7 +141,15 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
                 return Result.Fail($"Source folder does not exist: {item.SourcePath}");
             }
 
-            return await resourceOpService.ImportExternalFolderAsync(item.SourcePath, item.DestResource);
+            var importResult = await resourceOpService.ImportExternalFolderAsync(item.SourcePath, item.DestResource);
+            if (importResult.IsFailure)
+            {
+                return Result.Fail(importResult);
+            }
+
+            failedResources.AddRange(importResult.Value.LeftOutLinks);
+
+            return Result.Ok();
         }
 
         return Result.Fail($"Invalid resource type: {item.ResourceType}");

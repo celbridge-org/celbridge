@@ -99,6 +99,13 @@ public record CopyResult(
     SidecarOutcome Sidecar);
 
 /// <summary>
+/// Result of importing a folder from outside the project. LeftOutLinks lists each link the import left out,
+/// keyed by where it would have landed. Each one carries a LinkNotFollowedError.
+/// </summary>
+public record ImportResult(
+    IReadOnlyList<FailedResource> LeftOutLinks);
+
+/// <summary>
 /// Result of an integrity-aware delete: the outcome of the paired-sidecar cascade.
 /// </summary>
 public record DeleteResult(

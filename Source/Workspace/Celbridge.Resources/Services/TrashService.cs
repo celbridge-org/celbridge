@@ -67,7 +67,7 @@ public sealed class TrashService : ITrashService
             return Result<TrashEntry>.Fail($"Resource does not exist: '{resource}'");
         }
 
-        if (info.Attributes.HasFlag(FileSystemAttributes.ReparsePoint))
+        if (info.IsLink)
         {
             return RefuseLink(originalPath);
         }
@@ -199,7 +199,7 @@ public sealed class TrashService : ITrashService
             }
             foreach (var descendant in descendantsResult.Value)
             {
-                if (descendant.Attributes.HasFlag(FileSystemAttributes.ReparsePoint))
+                if (descendant.IsLink)
                 {
                     return RefuseLink(descendant.FullPath);
                 }

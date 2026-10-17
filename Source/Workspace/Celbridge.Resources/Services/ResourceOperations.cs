@@ -299,6 +299,10 @@ internal class ImportExternalOperation : FileOperation
     private readonly IResourceFileSystem _resourceFileSystem;
     private readonly ILocalFileSystem _fileSystem;
     private readonly ILogger _logger;
+    private readonly List<FailedResource> _leftOutLinks = new();
+
+    // Lists each link the folder import left out, keyed by where it would have landed.
+    public IReadOnlyList<FailedResource> LeftOutLinks => _leftOutLinks;
 
     public ImportExternalOperation(
         string sourcePath,
@@ -323,6 +327,12 @@ internal class ImportExternalOperation : FileOperation
         if (_isFolder)
         {
             var sourceFolderInfo = await _fileSystem.GetInfoAsync(_sourcePath);
+            if (sourceFolderInfo.IsSuccess
+                && sourceFolderInfo.Value.IsLink)
+            {
+                return RefuseLink(_sourcePath);
+            }
+
             if (sourceFolderInfo.IsFailure
                 || sourceFolderInfo.Value.Kind != StorageItemKind.Folder)
             {
@@ -340,6 +350,12 @@ internal class ImportExternalOperation : FileOperation
         }
 
         var sourceFileInfo = await _fileSystem.GetInfoAsync(_sourcePath);
+        if (sourceFileInfo.IsSuccess
+            && sourceFileInfo.Value.IsLink)
+        {
+            return RefuseLink(_sourcePath);
+        }
+
         if (sourceFileInfo.IsFailure
             || sourceFileInfo.Value.Kind != StorageItemKind.File)
         {
@@ -392,7 +408,25 @@ internal class ImportExternalOperation : FileOperation
             return Result.Fail(enumerateResult);
         }
 
+        // An import would copy what a link points at, so links are left out and the caller reports them.
+        var entries = new List<FileSystemEntry>();
         foreach (var entry in enumerateResult.Value)
+        {
+            if (entry.IsLink)
+            {
+                var linkName = Path.GetFileName(entry.FullPath);
+                var linkError = new LinkNotFollowedError(entry.FullPath);
+                _leftOutLinks.Add(new FailedResource(destinationFolder.Combine(linkName), linkError.Message)
+                {
+                    Reason = linkError
+                });
+                continue;
+            }
+
+            entries.Add(entry);
+        }
+
+        foreach (var entry in entries)
         {
             if (entry.IsFolder)
             {
@@ -412,7 +446,7 @@ internal class ImportExternalOperation : FileOperation
             }
         }
 
-        foreach (var entry in enumerateResult.Value)
+        foreach (var entry in entries)
         {
             if (!entry.IsFolder)
             {
@@ -428,5 +462,12 @@ internal class ImportExternalOperation : FileOperation
         }
 
         return Result.Ok();
+    }
+
+    private static Result RefuseLink(string linkPath)
+    {
+        var error = new LinkNotFollowedError(linkPath);
+
+        return Result.Fail(error.Message).WithException(error);
     }
 }

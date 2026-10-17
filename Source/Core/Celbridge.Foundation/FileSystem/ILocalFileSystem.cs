@@ -17,12 +17,6 @@ public enum FileSystemAttributes
     /// backends, derived from write-access permission.
     /// </summary>
     ReadOnly = 1 << 0,
-
-    /// <summary>
-    /// The item is a reparse point: a symbolic link or junction rather than a
-    /// regular file or folder.
-    /// </summary>
-    ReparsePoint = 1 << 1,
 }
 
 /// <summary>
@@ -77,27 +71,30 @@ public enum StorageItemKind
 
 /// <summary>
 /// Metadata returned by GetInfoAsync: the item's kind, size in bytes (0 for
-/// folders and missing items), last-modified time, and portable attribute flags.
+/// folders and missing items), last-modified time, portable attribute flags, and
+/// whether the item is a link (a symbolic link or a junction).
 /// </summary>
 public record StorageItemInfo(
     StorageItemKind Kind,
     long Size,
     DateTime ModifiedUtc,
-    FileSystemAttributes Attributes);
+    FileSystemAttributes Attributes,
+    bool IsLink = false);
 
 /// <summary>
 /// An entry returned by EnumerateAsync, with its absolute path, the size,
 /// modified-time, and portable attribute flags from the directory walk. Kind
 /// carries the same meaning as it does for GetInfoAsync, so a link reports what
-/// it points at and a link whose target has gone reports BrokenLink. Size is 0 for
-/// folders.
+/// it points at and a link whose target has gone reports BrokenLink. IsLink
+/// records that the entry is a link. Size is 0 for folders.
 /// </summary>
 public record FileSystemEntry(
     string FullPath,
     StorageItemKind Kind,
     long Size,
     DateTime ModifiedUtc,
-    FileSystemAttributes Attributes)
+    FileSystemAttributes Attributes,
+    bool IsLink = false)
 {
     /// <summary>
     /// Whether the entry is a folder. Anything else is a file, or a link whose target has gone.
@@ -147,17 +144,17 @@ public interface ILocalFileSystem
 
     /// <summary>
     /// Probes a path and returns its kind, size, modified-time, and attribute
-    /// flags in a single stat. Symbolic links are followed, so a link reports the
-    /// kind and size of its target, or BrokenLink when that target has gone. Either
-    /// way the ReparsePoint attribute records that the path is a link.
+    /// flags in a single stat. Links are followed, so a link reports the kind and
+    /// size of its target, or BrokenLink when that target has gone. Either way
+    /// IsLink records that the path is a link.
     /// </summary>
     Task<Result<StorageItemInfo>> GetInfoAsync(string path);
 
     /// <summary>
     /// Enumerates the files and folders matching the pattern under the given folder,
-    /// either the immediate level or the full subtree. Results are deterministic
-    /// across platforms: folders first, then files, each group ordered by ordinal
-    /// full path.
+    /// either the immediate level or the full subtree. A walk of the subtree lists a
+    /// linked folder but never descends into it. Results are deterministic across
+    /// platforms: folders first, then files, each group ordered by ordinal full path.
     /// </summary>
     Task<Result<IReadOnlyList<FileSystemEntry>>> EnumerateAsync(string path, string pattern, bool recursive);
 

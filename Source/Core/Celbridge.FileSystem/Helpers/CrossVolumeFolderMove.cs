@@ -127,7 +127,7 @@ internal static class CrossVolumeFolderMove
     // Returns the path of the first link in the tree, or null if there is none. Doesn't descend into links.
     private static string? FindLink(DirectoryInfo folder)
     {
-        if (folder.Attributes.HasFlag(System.IO.FileAttributes.ReparsePoint))
+        if (LinkHelper.IsLink(folder))
         {
             return folder.FullName;
         }
@@ -142,7 +142,7 @@ internal static class CrossVolumeFolderMove
                     return childLinkPath;
                 }
             }
-            else if (entry.Attributes.HasFlag(System.IO.FileAttributes.ReparsePoint))
+            else if (LinkHelper.IsLink(entry))
             {
                 return entry.FullName;
             }
@@ -198,7 +198,7 @@ internal static class CrossVolumeFolderMove
         foreach (var entry in folder.EnumerateFileSystemInfos("*", SearchOption.TopDirectoryOnly))
         {
             // Delete a link without following it.
-            bool isLink = entry.Attributes.HasFlag(System.IO.FileAttributes.ReparsePoint);
+            bool isLink = LinkHelper.IsLink(entry);
             if (entry is DirectoryInfo childFolder
                 && !isLink)
             {

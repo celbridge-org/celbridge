@@ -159,7 +159,10 @@ public class CreateResourceHelper
             return Result.Fail($"Failed to create resource. Source folder '{sourcePath}' does not exist.");
         }
 
-        return await opService.ImportExternalFolderAsync(sourcePath, destResource);
+        var importResult = await opService.ImportExternalFolderAsync(sourcePath, destResource);
+        return importResult.IsSuccess
+            ? Result.Ok()
+            : Result.Fail(importResult);
     }
 
     private void ExpandParentFolder(ResourceKey destResource)

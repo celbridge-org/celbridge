@@ -37,6 +37,11 @@ public static class ResourceOperationFailureFormatter
             return localizerService.GetString(stringKey, ProjectConstants.ProjectFileExtension);
         }
 
+        if (failedResource.Reason is LinkNotFollowedError)
+        {
+            return localizerService.GetString("Resource_LinkNotFollowed");
+        }
+
         return failedResource.Message;
     }
 }

@@ -1,7 +1,8 @@
 namespace Celbridge.Tests.FileSystem;
 
 /// <summary>
-/// Tests for GetInfoAsync over symbolic links — telling a usable file from a link whose target has gone.
+/// Tests for how LinkHelper and LocalFileSystem treat links. They tell a link from a plain item and a usable
+/// file from a broken link, and never walk into a linked folder.
 /// </summary>
 [TestFixture]
 public class LocalFileSystemLinkTests
@@ -95,7 +96,7 @@ public class LocalFileSystemLinkTests
     }
 
     [Test]
-    public async Task GetInfoAsync_LinkToAFile_ReportsReparsePoint()
+    public async Task GetInfoAsync_LinkToAFile_IsALink()
     {
         // Kind and size describe the target so a caller can use it, and the flag is the only thing left
         // saying a link is how they got there.
@@ -104,19 +105,37 @@ public class LocalFileSystemLinkTests
 
         var result = await _fileSystem.GetInfoAsync(linkPath);
 
-        result.Value.Attributes.HasFlag(FileSystemAttributes.ReparsePoint).Should().BeTrue();
+        result.Value.IsLink.Should().BeTrue();
     }
 
     [Test]
-    public async Task GetInfoAsync_PlainFile_ReportsNoReparsePoint()
+    public async Task GetInfoAsync_LinkToAFolder_IsALink()
     {
-        var result = await _fileSystem.GetInfoAsync(WriteFile("plain.txt"));
+        var folderPath = Path.Combine(_root, "folder");
+        Directory.CreateDirectory(folderPath);
+        var linkPath = Path.Combine(_root, "link");
+        Directory.CreateSymbolicLink(linkPath, folderPath);
 
-        result.Value.Attributes.HasFlag(FileSystemAttributes.ReparsePoint).Should().BeFalse();
+        var result = await _fileSystem.GetInfoAsync(linkPath);
+
+        result.Value.IsLink.Should().BeTrue();
     }
 
     [Test]
-    public async Task GetInfoAsync_BrokenLink_ReportsReparsePoint()
+    public async Task GetInfoAsync_PlainFileAndFolder_AreNotLinks()
+    {
+        var folderPath = Path.Combine(_root, "folder");
+        Directory.CreateDirectory(folderPath);
+
+        var fileResult = await _fileSystem.GetInfoAsync(WriteFile("plain.txt"));
+        var folderResult = await _fileSystem.GetInfoAsync(folderPath);
+
+        fileResult.Value.IsLink.Should().BeFalse();
+        folderResult.Value.IsLink.Should().BeFalse();
+    }
+
+    [Test]
+    public async Task GetInfoAsync_BrokenLink_IsALink()
     {
         var targetPath = WriteFile("target.txt");
         var linkPath = Path.Combine(_root, "link");
@@ -126,7 +145,7 @@ public class LocalFileSystemLinkTests
         var result = await _fileSystem.GetInfoAsync(linkPath);
 
         result.Value.Kind.Should().Be(StorageItemKind.BrokenLink);
-        result.Value.Attributes.HasFlag(FileSystemAttributes.ReparsePoint).Should().BeTrue();
+        result.Value.IsLink.Should().BeTrue();
     }
 
     [Test]
@@ -142,7 +161,7 @@ public class LocalFileSystemLinkTests
         var linkEntry = result.Value.Single(entry => entry.FullPath.EndsWith("link", StringComparison.Ordinal));
         linkEntry.Kind.Should().Be(StorageItemKind.File);
         linkEntry.Size.Should().Be(7);
-        linkEntry.Attributes.HasFlag(FileSystemAttributes.ReparsePoint).Should().BeTrue();
+        linkEntry.IsLink.Should().BeTrue();
     }
 
     [Test]
@@ -157,6 +176,7 @@ public class LocalFileSystemLinkTests
         var linkEntry = result.Value.Single(entry => entry.FullPath.EndsWith("link", StringComparison.Ordinal));
         linkEntry.Kind.Should().Be(StorageItemKind.BrokenLink);
         linkEntry.IsFolder.Should().BeFalse();
+        linkEntry.IsLink.Should().BeTrue();
     }
 
     [Test]
@@ -170,7 +190,60 @@ public class LocalFileSystemLinkTests
 
         var linkEntry = result.Value.Single(entry => entry.FullPath.EndsWith("link", StringComparison.Ordinal));
         linkEntry.IsFolder.Should().BeTrue();
-        linkEntry.Attributes.HasFlag(FileSystemAttributes.ReparsePoint).Should().BeTrue();
+        linkEntry.IsLink.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task EnumerateAsync_Recursive_ListsALinkedFolderWithoutDescendingIntoIt()
+    {
+        var outsidePath = Path.Combine(_root, "outside");
+        Directory.CreateDirectory(outsidePath);
+        File.WriteAllText(Path.Combine(outsidePath, "secret.txt"), "secret");
+        var walkedPath = Path.Combine(_root, "walked");
+        Directory.CreateDirectory(Path.Combine(walkedPath, "nested"));
+        File.WriteAllText(Path.Combine(walkedPath, "nested", "plain.txt"), "plain");
+        Directory.CreateSymbolicLink(Path.Combine(walkedPath, "nested", "link"), outsidePath);
+
+        var result = await _fileSystem.EnumerateAsync(walkedPath, "*", recursive: true);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Select(entry => Path.GetRelativePath(walkedPath, entry.FullPath).Replace('\\', '/'))
+            .Should().Equal("nested", "nested/link", "nested/plain.txt");
+        result.Value.Single(entry => entry.FullPath.EndsWith("link", StringComparison.Ordinal)).IsLink.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task EnumerateAsync_Recursive_StopsAtALinkThatLoopsBack()
+    {
+        Directory.CreateDirectory(Path.Combine(_root, "nested"));
+        WriteFile("plain.txt");
+        Directory.CreateSymbolicLink(Path.Combine(_root, "nested", "loop"), _root);
+
+        var result = await _fileSystem.EnumerateAsync(_root, "*", recursive: true);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().HaveCount(3);
+    }
+
+    [Test]
+    public async Task EnumerateAsync_RecursiveWithAPattern_MatchesAtEveryDepth()
+    {
+        Directory.CreateDirectory(Path.Combine(_root, "a", "b"));
+        WriteFile("top.js");
+        File.WriteAllText(Path.Combine(_root, "a", "b", "deep.js"), "x");
+        File.WriteAllText(Path.Combine(_root, "a", "skip.txt"), "x");
+
+        var result = await _fileSystem.EnumerateAsync(_root, "*.js", recursive: true);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Select(entry => Path.GetRelativePath(_root, entry.FullPath).Replace('\\', '/'))
+            .Should().Equal("a/b/deep.js", "top.js");
+    }
+
+    [Test]
+    public void IsLink_MissingPath_IsNotALink()
+    {
+        LinkHelper.IsLink(Path.Combine(_root, "absent.txt")).Should().BeFalse();
     }
 
     [Test]

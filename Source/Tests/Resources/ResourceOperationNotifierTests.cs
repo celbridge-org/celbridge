@@ -109,6 +109,26 @@ public class ResourceOperationNotifierTests
     }
 
     [Test]
+    public async Task ALinkLeftOut_IsDescribedInTheUsersLanguage()
+    {
+        var linkError = new LinkNotFollowedError("/outside/linked.txt");
+        var failedResources = new List<FailedResource>
+        {
+            new FailedResource(new ResourceKey("imported/linked.txt"), linkError.Message)
+            {
+                Reason = linkError
+            }
+        };
+
+        await _notifier.NotifyFailuresAsync(ResourceOperationType.Copy, failedResources);
+
+        var expected = new TestLocalizerService().GetString("Resource_LinkNotFollowed");
+        expected.Should().NotBe("Resource_LinkNotFollowed", "the string is defined");
+        _sentMessages.Should().HaveCount(1);
+        _sentMessages[0].FailedResources[0].Message.Should().Be(expected);
+    }
+
+    [Test]
     public async Task SeveralFailures_AreWrittenAsAReportTheNotificationPointsAt()
     {
         var failedResources = new List<FailedResource>

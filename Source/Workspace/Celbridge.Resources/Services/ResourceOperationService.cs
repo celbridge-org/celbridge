@@ -320,19 +320,21 @@ public class ResourceOperationService : IResourceOperationService
         return result;
     }
 
-    public async Task<Result> ImportExternalFolderAsync(string sourcePath, ResourceKey dest)
+    public async Task<Result<ImportResult>> ImportExternalFolderAsync(string sourcePath, ResourceKey dest)
     {
         sourcePath = Path.GetFullPath(sourcePath);
 
         var operation = new ImportExternalOperation(sourcePath, dest, isFolder: true, ResourceFileSystem, _fileSystem, _logger);
         var result = await operation.ExecuteAsync();
-
-        if (result.IsSuccess)
+        if (result.IsFailure)
         {
-            AddOperation(operation);
+            return Result<ImportResult>.Fail(result);
         }
 
-        return result;
+        AddOperation(operation);
+
+        var importResult = new ImportResult(operation.LeftOutLinks);
+        return importResult;
     }
 
     public async Task<Result> TransferAsync(ResourceKey source, ResourceKey dest, DataTransferMode mode)

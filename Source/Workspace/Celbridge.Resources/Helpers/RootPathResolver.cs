@@ -1,15 +1,14 @@
 using System.Collections.Concurrent;
-using FileAttributes = System.IO.FileAttributes;
 
 namespace Celbridge.Resources.Helpers;
 
 /// <summary>
 /// Resolves between resource keys and absolute filesystem paths for a single
 /// root, checking that paths stay within the backing folder. Containment is
-/// re-checked on every call. Reparse points (symlinks, junctions) are rejected
-/// best-effort via File.GetAttributes, once per folder for the life of the
-/// resolver, so a junction is caught when it arrives with a project but not
-/// when it replaces a folder that has already been verified. This is a
+/// re-checked on every call. A path that is a link or passes through one is
+/// refused. Each folder on the path is checked once for the life of the
+/// resolver, and the item itself on every call. The resolver misses a link
+/// that replaces a folder after the folder has been verified. It is a
 /// containment filter, not a hardened boundary against symlink races.
 /// </summary>
 [AllowDirectFileSystemAccess]
@@ -70,11 +69,10 @@ public class RootPathResolver
                 $"Resource key '{resource}' resolves to a path outside the '{_rootName}' root.");
         }
 
-        // Containment above is re-checked every call; only the reparse-point walk below is cached.
-        var reparseResult = CheckForReparsePoints(resolvedPath, _normalizedBackingWithSeparator);
-        if (reparseResult.IsFailure)
+        var linkResult = CheckForLinks(resolvedPath, _normalizedBackingWithSeparator);
+        if (linkResult.IsFailure)
         {
-            return Result<string>.Fail(reparseResult.FirstErrorMessage);
+            return Result<string>.Fail(linkResult.FirstErrorMessage);
         }
 
         return resolvedPath;
@@ -135,8 +133,9 @@ public class RootPathResolver
     /// <summary>
     /// Predicate for recursive gateway enumerations. Returns true when the
     /// absolute path is contained within this resolver's backing location and
-    /// traverses no reparse point along its segments. Reuses the verified-folder
-    /// cache so the hot path costs at most one stat per unseen folder.
+    /// neither is a link nor passes through one. Reuses the verified-folder
+    /// cache so the hot path costs at most one stat per unseen folder, plus one
+    /// for the item itself.
     /// </summary>
     public bool IsPathSafe(string absolutePath)
     {
@@ -154,8 +153,8 @@ public class RootPathResolver
                 return false;
             }
 
-            var reparseResult = CheckForReparsePoints(normalizedPath, _normalizedBackingWithSeparator);
-            return reparseResult.IsSuccess;
+            var linkResult = CheckForLinks(normalizedPath, _normalizedBackingWithSeparator);
+            return linkResult.IsSuccess;
         }
         catch
         {
@@ -164,7 +163,7 @@ public class RootPathResolver
     }
 
     /// <summary>
-    /// Clears the cache of verified directory paths so those folders are checked for reparse points
+    /// Clears the cache of verified directory paths so those folders are checked for links
     /// again. Warranted when the watcher has lost events, leaving changes to the folder structure
     /// unobserved.
     /// </summary>
@@ -174,12 +173,20 @@ public class RootPathResolver
         Interlocked.Exchange(ref _verifiedFolderCount, 0);
     }
 
-    private Result CheckForReparsePoints(string resolvedPath, string normalizedBackingLocation)
+    private Result CheckForLinks(string resolvedPath, string normalizedBackingLocation)
     {
         var folderPath = GetFolderPath(resolvedPath);
 
         if (_verifiedFolders.ContainsKey(folderPath))
         {
+            // A verified folder says nothing about the file in it, so the file is checked every time.
+            bool isFolder = resolvedPath.Equals(folderPath, PathComparison.Comparison);
+            if (!isFolder
+                && LinkHelper.IsLink(resolvedPath))
+            {
+                return RefuseLink(resolvedPath);
+            }
+
             return Result.Ok();
         }
 
@@ -207,16 +214,20 @@ public class RootPathResolver
                 break;
             }
 
-            var attributes = File.GetAttributes(currentPath);
-            if (attributes.HasFlag(FileAttributes.ReparsePoint))
+            if (LinkHelper.IsLink(new FileInfo(currentPath)))
             {
-                return Result.Fail(
-                    $"Resource path contains a symbolic link or junction at '{currentPath}'.");
+                return RefuseLink(currentPath);
             }
         }
 
         AddVerifiedFolder(folderPath);
         return Result.Ok();
+    }
+
+    private static Result RefuseLink(string linkPath)
+    {
+        return Result.Fail(
+            $"Resource path contains a symbolic link or junction at '{linkPath}'. Celbridge never follows links.");
     }
 
     // The count drifts when threads verify the same folder at once; the valve then trips early, which
