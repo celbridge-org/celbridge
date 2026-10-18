@@ -16,4 +16,9 @@
     <PackageVersion Include="System.Security.Cryptography.ProtectedData" Version="10.0.9" />
     <PackageVersion Include="Tomlyn" Version="2.9.0" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- StreamJsonRpc 2.25.29 depends on MessagePack 2.5.302. Celbridge uses only StreamJsonRpc's JSON formatters,
+         so this MessagePack advisory does not apply. Remove it once StreamJsonRpc depends on MessagePack 2.5.303. -->
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-qhrr-8q5h-9q3h" />
+  </ItemGroup>
 </Project>

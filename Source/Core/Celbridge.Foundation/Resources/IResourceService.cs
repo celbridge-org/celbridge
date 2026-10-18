@@ -51,8 +51,8 @@ public interface IResourceService
     ITrashService Trash { get; }
 
     /// <summary>
-    /// Returns the on-demand scanner over project text and sidecar files,
-    /// used by the rename cascade, tag queries, and the project-health check.
+    /// Returns the on-demand scanner that answers tag queries over the
+    /// project's sidecar files.
     /// </summary>
     IResourceScanner Scanner { get; }
 

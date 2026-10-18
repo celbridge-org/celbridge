@@ -149,8 +149,6 @@ internal class CopyOperation : FileOperation
     private readonly ResourceKey _dest;
     private readonly IResourceFileSystem _resourceFileSystem;
 
-    public CopyResult? LastCopyResult { get; private set; }
-
     public CopyOperation(
         ResourceKey source,
         ResourceKey dest,
@@ -172,7 +170,6 @@ internal class CopyOperation : FileOperation
             return Result.Fail(copyResult);
         }
 
-        LastCopyResult = copyResult.Value;
         return Result.Ok();
     }
 
@@ -186,17 +183,15 @@ internal class CopyOperation : FileOperation
 }
 
 /// <summary>
-/// Undoable move of a file or folder through the gateway. The gateway
-/// handles references, the paired sidecar, and the source-removal broadcast;
-/// the inverse re-walks references in the opposite direction.
+/// Undoable move of a file or folder through the gateway. The gateway moves
+/// the paired sidecar and announces the source removal. Undo moves the
+/// resource back the same way.
 /// </summary>
 internal class MoveOperation : FileOperation
 {
     private readonly ResourceKey _source;
     private readonly ResourceKey _dest;
     private readonly IResourceFileSystem _resourceFileSystem;
-
-    public MoveResult? LastMoveResult { get; private set; }
 
     public MoveOperation(
         ResourceKey source,
@@ -219,7 +214,6 @@ internal class MoveOperation : FileOperation
             return Result.Fail(moveResult);
         }
 
-        LastMoveResult = moveResult.Value;
         return Result.Ok();
     }
 
@@ -286,10 +280,11 @@ internal class DeleteOperation : FileOperation
 }
 
 /// <summary>
-/// Undoable import of a file or folder from outside the project. External
-/// imports carry no inbound references or sidecars, so the cascade does not
-/// apply. Source bytes are read directly (the source is outside the registry);
-/// the destination flows through the gateway for containment validation.
+/// Undoable import of a file or folder from outside the project. An external
+/// import has no paired sidecar in the project, so the sidecar cascade does
+/// not apply. The source bytes are read directly, since the source is outside
+/// the registry. The destination goes through the gateway for containment
+/// validation.
 /// </summary>
 internal class ImportExternalOperation : FileOperation
 {

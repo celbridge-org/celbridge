@@ -135,6 +135,14 @@ public class NotificationComposerTests
     }
 
     [Test]
+    public void AFailureMessageNamingNoResources_AddsNoNotification()
+    {
+        SendOperationFailure(ResourceOperationType.Delete, Array.Empty<FailedResource>(), ResourceKey.Empty);
+
+        _centre.Notifications.Should().BeEmpty();
+    }
+
+    [Test]
     public void DiscardedEditsOnClose_NameTheFileAsAnError()
     {
         var message = new WorkspaceItemSaveDiscardedMessage(new ResourceKey("project:notes.txt"));

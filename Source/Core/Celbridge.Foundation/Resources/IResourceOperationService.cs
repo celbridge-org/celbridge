@@ -56,16 +56,16 @@ public interface IResourceOperationService
     Task<Result> CreateFolderAsync(ResourceKey resource);
 
     /// <summary>
-    /// Copies a file or folder from one resource location to another. The
-    /// returned CopyResult carries the paired-sidecar cascade outcome.
+    /// Copies a file or folder from one resource location to another, with its
+    /// paired sidecar.
     /// </summary>
-    Task<Result<CopyResult>> CopyAsync(ResourceKey source, ResourceKey dest);
+    Task<Result> CopyAsync(ResourceKey source, ResourceKey dest);
 
     /// <summary>
-    /// Moves a file or folder from one resource location to another. The
-    /// returned MoveResult carries the paired-sidecar cascade outcome.
+    /// Moves a file or folder from one resource location to another, with its
+    /// paired sidecar.
     /// </summary>
-    Task<Result<MoveResult>> MoveAsync(ResourceKey source, ResourceKey dest);
+    Task<Result> MoveAsync(ResourceKey source, ResourceKey dest);
 
     /// <summary>
     /// Deletes the resource. An undoable delete moves the resource and its paired

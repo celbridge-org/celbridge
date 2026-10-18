@@ -248,7 +248,16 @@ class CelProxy:
                 arguments[camel_name] = value
 
             for key, value in kwargs.items():
-                arguments[snake_to_camel(key)] = value
+                camel_name = snake_to_camel(key)
+                if camel_name not in parameter_names:
+                    raise CelError(
+                        f"cel.{alias}{signature} has no parameter '{key}'"
+                    )
+                if camel_name in arguments:
+                    raise CelError(
+                        f"cel.{alias}{signature} got more than one value for '{key}'"
+                    )
+                arguments[camel_name] = value
 
             # Auto-serialize list/dict arguments when the tool parameter
             # expects a string (e.g., edits_json, resources, files).

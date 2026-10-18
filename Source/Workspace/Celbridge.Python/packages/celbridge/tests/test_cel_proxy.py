@@ -525,6 +525,66 @@ def test_too_many_positional_args_shows_signature():
         assert "2 positional arguments" in message
 
 
+def _make_delete_proxy():
+    tools = [
+        {
+            "name": "explorer_delete",
+            "alias": "explorer.delete",
+            "description": "Deletes",
+            "parameters": [
+                {"name": "resource", "type": "string", "hasDefaultValue": False},
+                {"name": "showDialog", "type": "boolean", "hasDefaultValue": True},
+            ],
+        }
+    ]
+    mock_client = _make_mock_client(tools)
+    return CelProxy(mock_client), mock_client
+
+
+def test_unknown_keyword_arg_is_refused_before_the_call():
+    """Test that a keyword the tool does not declare raises and sends nothing."""
+    cel, mock_client = _make_delete_proxy()
+    mock_client.call.reset_mock()
+
+    try:
+        cel.explorer.delete("a.txt", reference_policy="fail_if_referenced")
+        assert False, "Expected CelError"
+    except CelError as exception:
+        message = str(exception)
+        assert "cel.explorer.delete(" in message
+        assert "'reference_policy'" in message
+
+    mock_client.call.assert_not_called()
+
+
+def test_keyword_arg_repeating_a_positional_arg_is_refused():
+    """Test that one parameter passed by position and by keyword raises."""
+    cel, mock_client = _make_delete_proxy()
+    mock_client.call.reset_mock()
+
+    try:
+        cel.explorer.delete("a.txt", resource="b.txt")
+        assert False, "Expected CelError"
+    except CelError as exception:
+        assert "more than one value for 'resource'" in str(exception)
+
+    mock_client.call.assert_not_called()
+
+
+def test_declared_keyword_args_are_sent_in_camel_case():
+    """Test that a declared snake_case keyword reaches the tool as its camelCase parameter."""
+    cel, mock_client = _make_delete_proxy()
+    mock_client.call.reset_mock()
+
+    cel.explorer.delete("a.txt", show_dialog=True)
+
+    mock_client.call.assert_called_once_with(
+        "tools/call",
+        name="explorer_delete",
+        arguments={"resource": "a.txt", "showDialog": True},
+    )
+
+
 def test_tool_failure_shows_clean_message():
     """Test that a failed tool call shows alias and signature in the error."""
     tools = [

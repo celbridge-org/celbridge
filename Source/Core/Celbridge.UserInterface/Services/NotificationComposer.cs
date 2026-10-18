@@ -59,6 +59,11 @@ public sealed class NotificationComposer
 
     private void OnResourceOperationFailed(object recipient, ResourceOperationFailedMessage message)
     {
+        if (message.FailedResources.Count == 0)
+        {
+            return;
+        }
+
         var content = ComposeOperationNotification(message);
         _notificationCentre.AddEvent(content);
     }
