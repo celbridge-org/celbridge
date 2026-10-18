@@ -1095,6 +1095,36 @@ Open with default application instead?</value>
   <data name="ProjectSettings_ReservedDownloadsFolder" xml:space="preserve">
     <value>Celbridge reserves this folder, so downloads are saved to '{0}'.</value>
   </data>
+  <data name="ProjectSettings_PackageFoldersTitle" xml:space="preserve">
+    <value>Package folders</value>
+  </data>
+  <data name="ProjectSettings_PackageFoldersSubtitle" xml:space="preserve">
+    <value>Enter each folder as a path from the project root.</value>
+  </data>
+  <data name="ProjectSettings_DefaultPackageFolderTooltip" xml:space="preserve">
+    <value>Always a package folder</value>
+  </data>
+  <data name="ProjectSettings_AddPackageFolder" xml:space="preserve">
+    <value>Add Folder</value>
+  </data>
+  <data name="ProjectSettings_PackageFolderBrowseTooltip" xml:space="preserve">
+    <value>Choose a Folder</value>
+  </data>
+  <data name="ProjectSettings_PackageFolderPickerTitle" xml:space="preserve">
+    <value>Choose a Package Folder</value>
+  </data>
+  <data name="ProjectSettings_RemovePackageFolderTooltip" xml:space="preserve">
+    <value>Remove Folder</value>
+  </data>
+  <data name="ProjectSettings_InvalidPackageFolder" xml:space="preserve">
+    <value>This is not a valid folder path.</value>
+  </data>
+  <data name="ProjectSettings_ProjectRootPackageFolder" xml:space="preserve">
+    <value>The project folder cannot be a package folder.</value>
+  </data>
+  <data name="ProjectSettings_RepeatedPackageFolder" xml:space="preserve">
+    <value>This folder is already a package folder.</value>
+  </data>
   <data name="ProjectSettings_PackagesDescription" xml:space="preserve">
     <value>Enable or disable packages and configure their contributions.</value>
   </data>

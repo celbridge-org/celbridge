@@ -83,8 +83,8 @@ public sealed record DocumentShortcut
 }
 
 /// <summary>
-/// Models the [celbridge] table from the .celbridge project config: every host-level declaration
-/// as flat keys, plus the [celbridge.resources] sub-table modeled separately on ProjectConfig.
+/// Models the flat keys of the [celbridge] table from the .celbridge project config. The table's
+/// sub-tables are modeled separately on ProjectConfig.
 /// </summary>
 public sealed record class CelbridgeSection
 {
@@ -104,12 +104,6 @@ public sealed record class CelbridgeSection
     /// A human-readable description of what the project is for. Null when the project sets no description.
     /// </summary>
     public string? Description { get; init; }
-
-    /// <summary>
-    /// Package names the project has turned off. A discovered package not listed here contributes its
-    /// default-active contributions. A listed package contributes nothing.
-    /// </summary>
-    public IReadOnlyList<string> DisabledPackages { get; init; } = Array.Empty<string>();
 
     /// <summary>
     /// Optional map of file extension to editor id: the project's association of a contested
@@ -147,12 +141,31 @@ public sealed record class ResourcesSection
 }
 
 /// <summary>
+/// Models the [celbridge.packages] sub-table from the .celbridge project config.
+/// </summary>
+public sealed record class PackagesSection
+{
+    /// <summary>
+    /// Package folders that the project lists in addition to the packages folder, each a folder path from
+    /// the project root. Each direct subfolder of a package folder is a package when it has a package
+    /// manifest.
+    /// </summary>
+    public IReadOnlyList<string> Folders { get; init; } = Array.Empty<string>();
+
+    /// <summary>
+    /// Names of the packages that the project has turned off. A discovered package not listed here
+    /// contributes its default-active contributions. A listed package contributes nothing.
+    /// </summary>
+    public IReadOnlyList<string> Disabled { get; init; } = Array.Empty<string>();
+}
+
+/// <summary>
 /// Root Celbridge project config, parsed from the .celbridge file's v2 schema.
 /// </summary>
 public sealed record class ProjectConfig
 {
     /// <summary>
-    /// The [celbridge] table: versions, package activation, and editor defaults.
+    /// The flat keys of the [celbridge] table: versions, the description and editor defaults.
     /// </summary>
     public CelbridgeSection Celbridge { get; init; } = new();
 
@@ -160,6 +173,11 @@ public sealed record class ProjectConfig
     /// File policy from the [celbridge.resources] sub-table.
     /// </summary>
     public ResourcesSection Resources { get; init; } = new();
+
+    /// <summary>
+    /// Package folders and package activation from the [celbridge.packages] sub-table.
+    /// </summary>
+    public PackagesSection Packages { get; init; } = new();
 
     /// <summary>
     /// Project feature-flag overrides from the [celbridge].features inline table.

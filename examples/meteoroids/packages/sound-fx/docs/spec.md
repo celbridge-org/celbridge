@@ -33,7 +33,7 @@ reopened and tweaked at any time, and copying or renaming the file keeps them.
 
 ## Package
 
-- A Celbridge package named `sound-fx` (title **Sound FX**) in `tools/sound-fx/`. It contributes one document editor, id `sound-document`, display name **Sound FX Editor**.
+- A Celbridge package named `sound-fx` (title **Sound FX**) in `packages/sound-fx/`. It contributes one document editor, id `sound-document`, display name **Sound FX Editor**.
 - One `[[file-types]]` entry for `.wav`. It's an established type in the host's file type catalog, which supplies its icon, so the package declares no icon.
 - It becomes the default editor for `.wav` with no extra configuration, because the host picks the first contribution that supports an extension ahead of the built-in editors. The built-in viewer stays available in the Open With picker.
 - **New File templates**, one per preset (see *Templates*).
@@ -44,7 +44,7 @@ reopened and tweaked at any time, and copying or renaming the file keeps them.
 ### Layout
 
 ```
-tools/sound-fx/
+packages/sound-fx/
   package.toml
   sound.editor.toml
   index.html

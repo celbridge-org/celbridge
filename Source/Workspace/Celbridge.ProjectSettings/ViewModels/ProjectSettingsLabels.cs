@@ -48,6 +48,16 @@ internal static class ProjectSettingsLabels
     public static string DownloadsFolderPickerTitle => Localizer.GetString("ProjectSettings_DownloadsFolderPickerTitle");
     public static string InvalidDownloadsFolder => Localizer.GetString("ProjectSettings_InvalidDownloadsFolder", DownloadsFolderPath.DefaultFolder.Path);
     public static string ReservedDownloadsFolder => Localizer.GetString("ProjectSettings_ReservedDownloadsFolder", DownloadsFolderPath.DefaultFolder.Path);
+    public static string PackageFoldersTitle => Localizer.GetString("ProjectSettings_PackageFoldersTitle");
+    public static string PackageFoldersSubtitle => Localizer.GetString("ProjectSettings_PackageFoldersSubtitle");
+    public static string DefaultPackageFolderTooltip => Localizer.GetString("ProjectSettings_DefaultPackageFolderTooltip");
+    public static string AddPackageFolder => Localizer.GetString("ProjectSettings_AddPackageFolder");
+    public static string PackageFolderBrowseTooltip => Localizer.GetString("ProjectSettings_PackageFolderBrowseTooltip");
+    public static string PackageFolderPickerTitle => Localizer.GetString("ProjectSettings_PackageFolderPickerTitle");
+    public static string RemovePackageFolderTooltip => Localizer.GetString("ProjectSettings_RemovePackageFolderTooltip");
+    public static string InvalidPackageFolder => Localizer.GetString("ProjectSettings_InvalidPackageFolder");
+    public static string ProjectRootPackageFolder => Localizer.GetString("ProjectSettings_ProjectRootPackageFolder");
+    public static string RepeatedPackageFolder => Localizer.GetString("ProjectSettings_RepeatedPackageFolder");
     public static string ShortcutsEmpty => Localizer.GetString("ProjectSettings_ShortcutsEmpty");
     public static string AddShortcut => Localizer.GetString("ProjectSettings_AddShortcut");
     public static string ShortcutUntitled => Localizer.GetString("ProjectSettings_ShortcutUntitled");

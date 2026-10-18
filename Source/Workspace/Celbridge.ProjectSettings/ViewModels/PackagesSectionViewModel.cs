@@ -59,7 +59,7 @@ public class PackagesSectionViewModel : ProjectSettingsSectionViewModel
         IReadOnlyList<Package> allPackages,
         IReadOnlyDictionary<string, IReadOnlyList<ContributionIssue>> issuesByEditorId)
     {
-        var disabledPackages = new HashSet<string>(config.Celbridge.DisabledPackages, StringComparer.Ordinal);
+        var disabledPackages = new HashSet<string>(config.Packages.Disabled, StringComparer.Ordinal);
 
         var overridesByRef = new Dictionary<(string Package, string Contribution), ContributionOverride>();
         foreach (var contributionOverride in config.ContributionOverrides)

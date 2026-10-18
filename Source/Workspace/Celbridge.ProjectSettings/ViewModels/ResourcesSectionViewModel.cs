@@ -1,3 +1,6 @@
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using Celbridge.Dialog;
 using Celbridge.ProjectSettings.Helpers;
 using Celbridge.Utilities;
@@ -8,7 +11,7 @@ namespace Celbridge.ProjectSettings.ViewModels;
 /// <summary>
 /// Drives the Resources section: fills its fields from the project config and commits every edit back to
 /// the draft. A pattern list is edited as one block of text, a pattern per line, so a list can be pasted
-/// from one project into another.
+/// from one project into another. The package folders are edited as rows, one folder per row.
 /// </summary>
 public partial class ResourcesSectionViewModel : ProjectSettingsSectionViewModel
 {
@@ -17,6 +20,11 @@ public partial class ResourcesSectionViewModel : ProjectSettingsSectionViewModel
     // Set while the section rebuilds itself from the config, so filling the fields does not write what it
     // has just read straight back into the draft.
     private bool _suppressCommit;
+
+    /// <summary>
+    /// The package folders the project lists in addition to the packages folder.
+    /// </summary>
+    public ObservableCollection<PackageFolderViewModel> PackageFolders { get; } = new();
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasInvalidHidePattern))]
@@ -72,12 +80,24 @@ public partial class ResourcesSectionViewModel : ProjectSettingsSectionViewModel
         ? ProjectSettingsLabels.ReservedDownloadsFolder
         : ProjectSettingsLabels.InvalidDownloadsFolder;
 
+    public string PackageFoldersTitle => ProjectSettingsLabels.PackageFoldersTitle;
+    public string PackageFoldersSubtitle => ProjectSettingsLabels.PackageFoldersSubtitle;
+    public string DefaultPackageFolderTooltip => ProjectSettingsLabels.DefaultPackageFolderTooltip;
+    public string AddPackageFolderText => ProjectSettingsLabels.AddPackageFolder;
+
+    /// <summary>
+    /// The package folder every project has, shown first and fixed.
+    /// </summary>
+    public string DefaultPackageFolder => PackageFolderPath.DefaultFolder.Path;
+
     public ResourcesSectionViewModel(
         ProjectSettingsContext context,
         IDialogService dialogService)
         : base(context)
     {
         _dialogService = dialogService;
+
+        PackageFolders.CollectionChanged += PackageFolders_CollectionChanged;
     }
 
     public override void Load()
@@ -85,10 +105,73 @@ public partial class ResourcesSectionViewModel : ProjectSettingsSectionViewModel
         var config = GetConfig();
 
         _suppressCommit = true;
-        HidePatternsText = FormatPatterns(config?.Resources.Hide);
-        SearchExcludePatternsText = FormatPatterns(config?.Resources.SearchExclude);
-        DownloadsFolderText = config?.Resources.DownloadsFolder ?? string.Empty;
-        _suppressCommit = false;
+        try
+        {
+            HidePatternsText = FormatPatterns(config?.Resources.Hide);
+            SearchExcludePatternsText = FormatPatterns(config?.Resources.SearchExclude);
+            DownloadsFolderText = config?.Resources.DownloadsFolder ?? string.Empty;
+
+            // Clearing raises a reset, which reports no old items, so the outgoing rows are detached here.
+            foreach (var packageFolder in PackageFolders)
+            {
+                packageFolder.PropertyChanged -= PackageFolder_PropertyChanged;
+            }
+
+            PackageFolders.Clear();
+
+            var listedFolders = config?.Packages.Folders ?? [];
+            foreach (var listedFolder in listedFolders)
+            {
+                PackageFolders.Add(new PackageFolderViewModel
+                {
+                    Path = listedFolder
+                });
+            }
+        }
+        finally
+        {
+            _suppressCommit = false;
+        }
+    }
+
+    /// <summary>
+    /// Appends a blank package folder row for the user to fill in.
+    /// </summary>
+    public void AddPackageFolder()
+    {
+        PackageFolders.Add(new PackageFolderViewModel());
+    }
+
+    /// <summary>
+    /// Removes a package folder row. The folder and its packages stay on disk.
+    /// </summary>
+    public void RemovePackageFolder(PackageFolderViewModel packageFolder)
+    {
+        PackageFolders.Remove(packageFolder);
+    }
+
+    /// <summary>
+    /// Replaces a package folder row's path with a folder chosen from the project's folders.
+    /// </summary>
+    public async Task PickPackageFolderAsync(PackageFolderViewModel packageFolder)
+    {
+        var pickResult = await _dialogService.ShowFolderPickerDialogAsync(ProjectSettingsLabels.PackageFolderPickerTitle);
+
+        // The dialog reports a dismissal as a failure, so the row keeps the path it had.
+        if (pickResult.IsFailure)
+        {
+            return;
+        }
+
+        // The project folder is written as a slash, so the row says why it cannot be used.
+        var folder = pickResult.Value;
+        if (folder.IsEmpty)
+        {
+            packageFolder.Path = "/";
+            return;
+        }
+
+        packageFolder.Path = folder.Path;
     }
 
     /// <summary>
@@ -127,6 +210,78 @@ public partial class ResourcesSectionViewModel : ProjectSettingsSectionViewModel
     partial void OnDownloadsFolderTextChanged(string value)
     {
         Commit();
+    }
+
+    // Adding and removing rows both go through the collection, so each one lands here.
+    private void PackageFolders_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.OldItems is not null)
+        {
+            foreach (PackageFolderViewModel packageFolder in e.OldItems)
+            {
+                packageFolder.PropertyChanged -= PackageFolder_PropertyChanged;
+            }
+        }
+
+        if (e.NewItems is not null)
+        {
+            foreach (PackageFolderViewModel packageFolder in e.NewItems)
+            {
+                packageFolder.PropertyChanged += PackageFolder_PropertyChanged;
+            }
+        }
+
+        UpdatePackageFolderProblems();
+        Commit();
+    }
+
+    private void PackageFolder_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(PackageFolderViewModel.Path))
+        {
+            return;
+        }
+
+        UpdatePackageFolderProblems();
+        Commit();
+    }
+
+    // Sets each row's problem: the reason that loading the project would drop the row's folder. A blank row
+    // is still being filled in, so it has no problem to report.
+    private void UpdatePackageFolderProblems()
+    {
+        var usableFolders = new List<string>();
+        foreach (var packageFolder in PackageFolders)
+        {
+            var path = packageFolder.Path;
+
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                packageFolder.Problem = PackageFolderProblem.None;
+                continue;
+            }
+
+            if (PackageFolderPath.IsProjectRoot(path))
+            {
+                packageFolder.Problem = PackageFolderProblem.ProjectRoot;
+                continue;
+            }
+
+            if (!PackageFolderPath.TryParse(path, out var folder))
+            {
+                packageFolder.Problem = PackageFolderProblem.InvalidPath;
+                continue;
+            }
+
+            if (PackageFolderPath.IsListed(usableFolders, folder.Path))
+            {
+                packageFolder.Problem = PackageFolderProblem.AlreadyListed;
+                continue;
+            }
+
+            usableFolders.Add(folder.Path);
+            packageFolder.Problem = PackageFolderProblem.None;
+        }
     }
 
     private static string FormatPatterns(IReadOnlyList<string>? patterns)
@@ -171,12 +326,16 @@ public partial class ResourcesSectionViewModel : ProjectSettingsSectionViewModel
 
         var hide = ParsePatterns(HidePatternsText);
         var searchExclude = ParsePatterns(SearchExcludePatternsText);
+        var packageFolders = PackageFolders
+            .Select(packageFolder => packageFolder.Path)
+            .ToList();
 
         EditConfig(draft =>
         {
             draft.SetHidePatterns(hide);
             draft.SetSearchExcludePatterns(searchExclude);
             draft.SetDownloadsFolder(DownloadsFolderText);
+            draft.SetPackageFolders(packageFolders);
         });
     }
 }

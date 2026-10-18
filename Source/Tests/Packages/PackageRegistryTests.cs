@@ -689,19 +689,66 @@ public class PackageServiceTests
     }
 
     [Test]
-    public async Task RegisterPackages_NestedManifest_DiscoveredOutsidePackagesFolder()
+    public async Task RegisterPackages_PackageInListedFolder_LoadsAfterThePackagesFolder()
     {
-        // Discovery is not tied to packages/: a manifest anywhere under the project
-        // root is found, honouring the gateway's visibility rules.
-        var toolsDir = Path.Combine(_tempProjectFolder, "tools", "my-editor");
-        Directory.CreateDirectory(toolsDir);
-        WritePackageFiles(toolsDir, "nested-tool", "Nested Tool", ".nst");
+        CreatePackageAt(Path.Combine("vendor", "listed"), "listed-tool", "Listed", ".lst");
+        CreateProjectPackage("in-packages", "in-packages", "In Packages", ".inp");
+        SetPackageFolders("vendor");
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        var contributions = _service.GetAllEditors();
-        contributions.Should().HaveCount(1);
-        contributions[0].Package.Name.Should().Be("nested-tool");
+        PackageNames().Should().Equal("in-packages", "listed-tool");
+        _service.GetPackageFolders().Should().Equal(new ResourceKey("packages"), new ResourceKey("vendor"));
+    }
+
+    [Test]
+    public async Task RegisterPackages_ManifestOutsideThePackageFolders_IsNotLoaded()
+    {
+        // Discovery lists the package folders and nothing else. A manifest at the project root, one in a
+        // folder that is not a package folder, and one nested inside a package are ordinary files.
+        CreateProjectPackage("outer", "outer-tool", "Outer", ".out");
+        CreatePackageAt(Path.Combine("packages", "outer", "inner"), "inner-tool", "Inner", ".inn");
+        CreatePackageAt(Path.Combine("tools", "unlisted"), "unlisted-tool", "Unlisted", ".unl");
+        WritePackageFiles(_tempProjectFolder, "root-tool", "Root", ".rot");
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        PackageNames().Should().Equal("outer-tool");
+        _service.GetLoadFailures().Should().BeEmpty();
+    }
+
+    [TestCase("packages/outer")]
+    [TestCase("packages/outer/vendor")]
+    public async Task RegisterPackages_ListedFolderWithinAPackage_IsRefusedAndReported(string listedFolder)
+    {
+        // Loading packages from inside a package would nest one package inside another.
+        CreateProjectPackage("outer", "outer-tool", "Outer", ".out");
+        CreatePackageAt(Path.Combine("packages", "outer", "vendor", "inner"), "inner-tool", "Inner", ".inn");
+        SetPackageFolders(listedFolder);
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        PackageNames().Should().Equal("outer-tool");
+        _service.GetPackageFolders().Should().Equal(new ResourceKey("packages"));
+        _loadReporter.Received(1).RecordConfigEntryErrors(Arg.Is<IReadOnlyList<ProjectConfigEntryError>>(errors =>
+            errors.Count == 1
+            && errors[0].EntryName == "celbridge.packages"
+            && errors[0].Message.Contains($"'{listedFolder}' is inside the package at 'packages/outer'")));
+    }
+
+    [Test]
+    public async Task RegisterPackages_MissingListedFolder_ContributesNothing()
+    {
+        CreateProjectPackage("legit", "legit", "Legit", ".legit");
+        SetPackageFolders("missing");
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        PackageNames().Should().Equal("legit");
+        _service.GetLoadFailures().Should().BeEmpty();
+        _service.GetPackageFolders().Should().Equal(new ResourceKey("packages"), new ResourceKey("missing"));
+        _loadReporter.Received(1).RecordConfigEntryErrors(Arg.Is<IReadOnlyList<ProjectConfigEntryError>>(errors =>
+            errors.Count == 0));
     }
 
     [Test]
@@ -835,6 +882,16 @@ public class PackageServiceTests
         Directory.CreateDirectory(packageDir);
         WritePackageFiles(packageDir, packageName, packageTitle, fileExt);
         return packageDir;
+    }
+
+    /// <summary>
+    /// Creates a package in a folder given as a path from the project root.
+    /// </summary>
+    private void CreatePackageAt(string relativeFolder, string packageName, string packageTitle, string fileExt)
+    {
+        var packageDir = Path.Combine(_tempProjectFolder, relativeFolder);
+        Directory.CreateDirectory(packageDir);
+        WritePackageFiles(packageDir, packageName, packageTitle, fileExt);
     }
 
     /// <summary>
@@ -1063,10 +1120,38 @@ public class PackageServiceTests
             ContributionOverrides = overrides
         };
 
+        UseProjectConfig(config);
+    }
+
+    /// <summary>
+    /// Points the project service at a config that lists the given package folders.
+    /// </summary>
+    private void SetPackageFolders(params string[] folders)
+    {
+        var config = new ProjectConfig
+        {
+            Packages = new PackagesSection
+            {
+                Folders = folders
+            }
+        };
+
+        UseProjectConfig(config);
+    }
+
+    private void UseProjectConfig(ProjectConfig config)
+    {
         var project = Substitute.For<IProject>();
         project.Config.Returns(config);
         project.ConfigIsHealthy.Returns(true);
         _projectService.CurrentProject.Returns(project);
+    }
+
+    private List<string> PackageNames()
+    {
+        return _service.GetAllPackages()
+            .Select(package => package.Info.Name)
+            .ToList();
     }
 
     private static ContributionOverride CreateOverride(

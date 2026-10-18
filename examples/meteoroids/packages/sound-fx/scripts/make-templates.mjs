@@ -1,7 +1,7 @@
 // Regenerates templates/: one complete Sound FX .wav per preset, which New File offers by name. A maintainer
 // tool, not needed to use the editor. Run it with Node 22 or later, from any folder:
 //
-//     node tools/sound-fx/scripts/make-templates.mjs
+//     node packages/sound-fx/scripts/make-templates.mjs
 //
 // It uses the vendored jsfxr and the editor's own modules, so a template is exactly what the editor would
 // make. Math.random is swapped for a seeded generator while each sound is rolled and rendered, so the

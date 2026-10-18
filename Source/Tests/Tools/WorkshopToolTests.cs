@@ -59,6 +59,7 @@ public class WorkshopToolTests
 
         _packageService = Substitute.For<IPackageService>();
         _packageService.GetAllPackages().Returns([]);
+        _packageService.GetPackageFolders().Returns([new ResourceKey("packages"), new ResourceKey("lib")]);
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
@@ -105,6 +106,20 @@ public class WorkshopToolTests
 
         result.IsError.Should().BeTrue();
         TextOf(result).Should().Be(expectedError);
+        _services.DidNotReceive().GetRequiredService<IPackageApiClient>();
+    }
+
+    [TestCase("elsewhere")]
+    [TestCase("lib/nested")]
+    [TestCase("temp:package-staging")]
+    public async Task InstallPackage_DestinationThatIsNotAPackageFolder_IsRefusedBeforeReachingTheWorkshop(string destination)
+    {
+        var tools = new WorkshopTools(_services);
+        var result = await tools.InstallPackage("acme-widget", destination: destination, confirmWithUser: false);
+
+        result.IsError.Should().BeTrue();
+        TextOf(result).Should().Contain("is not a package folder");
+        TextOf(result).Should().Contain("'project:packages', 'project:lib'");
         _services.DidNotReceive().GetRequiredService<IPackageApiClient>();
     }
 

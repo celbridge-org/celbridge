@@ -29,14 +29,14 @@ public static class ProjectConfigReconciler
         // something to keep disabled. An always-active built-in cannot be disabled, so drop it with a
         // warning rather than persisting an entry that has no effect.
         var disabledPackages = new List<string>();
-        foreach (var packageName in parsedConfig.Celbridge.DisabledPackages
+        foreach (var packageName in parsedConfig.Packages.Disabled
                      .Distinct(StringComparer.Ordinal)
                      .OrderBy(name => name, StringComparer.Ordinal))
         {
             if (BuiltInEditors.IsAlwaysActivePackage(packageName))
             {
                 warnings.Add(
-                    $"'{packageName}' was dropped from disabled-packages: built-in packages are always active and cannot be disabled.");
+                    $"'{packageName}' was dropped from the disabled packages: built-in packages are always active and cannot be disabled.");
                 continue;
             }
 
@@ -180,7 +180,7 @@ public static class ProjectConfigReconciler
 
         var normalizedConfig = parsedConfig with
         {
-            Celbridge = parsedConfig.Celbridge with { DisabledPackages = disabledPackages },
+            Packages = parsedConfig.Packages with { Disabled = disabledPackages },
             ContributionOverrides = normalizedOverrides,
             EntryErrors = Array.Empty<ProjectConfigEntryError>(),
         };

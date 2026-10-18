@@ -44,7 +44,7 @@ A `[[file-types]]` entry may also set `icon` (an icon name), `icon-color` (a hex
 
 ## Activation and configuration
 
-A discovered package is active by default — bundling it, or dropping it into the project's `packages/` folder, is enough for its editors to open matching files. There is no activation list to opt in to. A project only touches the `.celbridge` file to *deviate* from an editor's defaults: a `[[contribution]]` entry sets the editor's config keys, or flips its activation when the manifest marks the contribution `recommended` (add `disabled = true`) or `optional` (add `enabled = true`):
+A discovered package is active by default. The editors of a bundled package, or of a package in one of the project's package folders, open matching files. There is no activation list to opt in to. A project only touches the `.celbridge` file to *deviate* from an editor's defaults: a `[[contribution]]` entry sets the editor's config keys, or flips its activation when the manifest marks the contribution `recommended` (add `disabled = true`) or `optional` (add `enabled = true`):
 
 ```toml
 [[contribution]]
@@ -53,7 +53,7 @@ contribution = "my-editor"
 grid-size    = 16              # a config key declared by the editor's [[config]] descriptors
 ```
 
-To turn a whole package off, list it in `[celbridge].disabled-packages`. A contribution is referenced as `package.contribution`; a project cannot declare several copies of one contribution, nor override an editor's display name, icon, or description.
+To turn a whole package off, list it in `disabled` in the `[celbridge.packages]` table. A contribution is referenced as `package.contribution`. A project cannot declare several copies of one contribution, or override an editor's display name, icon, or description.
 
 Which editor opens a file resolves in order: the per-file sidecar override, the `[celbridge].editor-associations` map (longest matching extension suffix), the first supporting contribution in discovery order, then the built-in editors in their pinned order. The sidecar override records only a deviation from that default: choosing the default in the Open With picker clears it. Celbridge's own file types (the `.celbridge` project file, `package.toml`, `*.editor.toml`) are reserved: they resolve to their own editor ahead of any contribution claiming the same extension, and neither an association nor a sidecar can point them elsewhere. See `project_structure` for the full `.celbridge` schema.
 

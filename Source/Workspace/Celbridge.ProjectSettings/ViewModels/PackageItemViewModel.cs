@@ -12,7 +12,7 @@ namespace Celbridge.ProjectSettings.ViewModels;
 public sealed record PackageItemInfo
 {
     /// <summary>
-    /// Name identifying the package, written to the disabled-packages list.
+    /// Name identifying the package, written to the list of disabled packages.
     /// </summary>
     public string Name { get; init; } = string.Empty;
 
@@ -42,7 +42,7 @@ public sealed record PackageItemInfo
 
 /// <summary>
 /// One discovered package on the Packages section, with an enable/disable toggle and the contributions it
-/// ships nested beneath it. Disabling a package writes it to [celbridge].disabled-packages so it
+/// ships nested beneath it. Disabling a package writes it to [celbridge.packages].disabled so it
 /// contributes nothing on reload.
 /// </summary>
 public partial class PackageItemViewModel : ObservableObject

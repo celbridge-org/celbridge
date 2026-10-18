@@ -1,6 +1,6 @@
 # app_list_packages
 
-Reports the project's packages as the project loaded. For each project package it returns the name, the package version its manifest declares, and the folder it lives in. It also lists the packages that failed to load, with the reason. With packages installable anywhere under the project (not just `packages/`), this is how an agent learns what is installed where before choosing an install destination or repairing a duplicate-name fault.
+Reports the project's packages, fixed when the project loaded. For each project package, the result gives the name, the package version from the manifest, and the package folder. It also lists the packages that failed to load, with the reason. A project can have more than one package folder. Use this tool to learn what is installed where before choosing an install destination or repairing a duplicate-name fault.
 
 Only project packages are reported. Bundled packages that ship inside the application are not part of the project's state and are omitted, as are copies under non-loading roots such as `temp:`, which never load. `app_get_state` carries the same packages as a summary, with the number of load failures.
 
@@ -9,7 +9,7 @@ Only project packages are reported. Bundled packages that ship inside the applic
 A JSON object with two arrays:
 
 - `packages` — each loaded project package: `name`, `packageVersion` (the manifest's `package-version`, or `1.0.0` when it sets none), and `folder` (the resource key of the package folder, e.g. `project:packages/my-widget`).
-- `failures` — each manifest in the project tree that failed to load: `name` (may be `null` when the manifest could not be parsed), `folder` (resource key), `reason` (`InvalidManifest`, `DuplicateName`, `ReservedNamePrefix` or `ReservedExtension`), and an optional `detail`.
+- `failures` — each manifest in the package folders that failed to load. Each entry has a `name`, a `folder` (resource key), a `reason` (`InvalidManifest`, `DuplicateName`, `ReservedNamePrefix` or `ReservedExtension`) and an optional `detail`. The `name` is `null` when the manifest could not be parsed.
 
 ## Gotchas
 

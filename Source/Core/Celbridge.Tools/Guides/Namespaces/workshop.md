@@ -17,7 +17,7 @@ The `workshop` namespace publishes packages and pages to the connected workshop,
 
 - `workshop_list_packages` — list the packages on the workshop.
 - `workshop_get_package_info` — inspect a package's workshop versions and aliases.
-- `workshop_install_package` — install a workshop version or alias into a destination folder.
+- `workshop_install_package` — install a workshop version or alias into a package folder.
 - `workshop_publish_package` — publish a package folder as a new workshop version.
 - `workshop_delete_package` — delete one workshop version permanently.
 - `workshop_unpublish_package` — remove a package and every workshop version.

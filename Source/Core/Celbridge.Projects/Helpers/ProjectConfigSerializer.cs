@@ -17,6 +17,7 @@ public static class ProjectConfigSerializer
 
         WriteCelbridgeTable(builder, config);
         WriteResourcesTable(builder, config.Resources);
+        WritePackagesTable(builder, config.Packages);
         WriteContributions(builder, config.ContributionOverrides);
         WriteDocumentShortcuts(builder, config.DocumentShortcuts);
 
@@ -44,10 +45,6 @@ public static class ProjectConfigSerializer
         {
             WriteKeyValue(builder, "editor-associations", RenderInlineTable(celbridge.EditorAssociations));
         }
-        if (celbridge.DisabledPackages.Count > 0)
-        {
-            WriteKeyValue(builder, "disabled-packages", RenderStringArray(celbridge.DisabledPackages));
-        }
         if (config.Features.Count > 0)
         {
             WriteKeyValue(builder, "features", RenderBoolInlineTable(config.Features));
@@ -65,6 +62,30 @@ public static class ProjectConfigSerializer
         if (!string.IsNullOrEmpty(resources.DownloadsFolder))
         {
             WriteKeyValue(builder, "downloads-folder", TomlStringEncoder.EncodeBasicString(resources.DownloadsFolder));
+        }
+    }
+
+    // Emits the table only when the project lists a package folder or a disabled package. A project at the
+    // package defaults has no [celbridge.packages] table.
+    private static void WritePackagesTable(StringBuilder builder, PackagesSection packages)
+    {
+        if (packages.Folders.Count == 0
+            && packages.Disabled.Count == 0)
+        {
+            return;
+        }
+
+        builder.Append('\n');
+        builder.Append("# 'folders' adds package folders to 'packages', and 'disabled' turns packages off by name.\n");
+        builder.Append("# Both take lists, e.g. folders = [\"vendor/packages\"].\n");
+        builder.Append("[celbridge.packages]\n");
+        if (packages.Folders.Count > 0)
+        {
+            WriteKeyValue(builder, "folders", RenderStringArray(packages.Folders));
+        }
+        if (packages.Disabled.Count > 0)
+        {
+            WriteKeyValue(builder, "disabled", RenderStringArray(packages.Disabled));
         }
     }
 

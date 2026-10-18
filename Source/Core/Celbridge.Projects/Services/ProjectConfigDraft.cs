@@ -21,6 +21,7 @@ public sealed class ProjectConfigDraft
     private readonly List<DocumentShortcut> _documentShortcuts;
     private readonly List<string> _hide;
     private readonly List<string> _searchExclude;
+    private readonly List<string> _packageFolders;
 
     private string _projectVersion;
     private string _description;
@@ -31,7 +32,8 @@ public sealed class ProjectConfigDraft
         _source = source;
 
         _overrides = source.ContributionOverrides.ToList();
-        _disabledPackages = source.Celbridge.DisabledPackages.ToList();
+        _disabledPackages = source.Packages.Disabled.ToList();
+        _packageFolders = source.Packages.Folders.ToList();
         _editorAssociations = new Dictionary<string, string>(source.Celbridge.EditorAssociations, StringComparer.Ordinal);
         _features = new Dictionary<string, bool>(source.Features, StringComparer.Ordinal);
         _documentShortcuts = source.DocumentShortcuts.ToList();
@@ -85,7 +87,17 @@ public sealed class ProjectConfigDraft
     }
 
     /// <summary>
-    /// Turns a package off (adding it to [celbridge].disabled-packages) or back on.
+    /// Replaces the package folders that the project lists in addition to the packages folder. The Resources
+    /// section edits the whole list, so every edit rewrites the list.
+    /// </summary>
+    public void SetPackageFolders(IReadOnlyList<string> folderPaths)
+    {
+        _packageFolders.Clear();
+        _packageFolders.AddRange(folderPaths);
+    }
+
+    /// <summary>
+    /// Turns a package off (adding it to [celbridge.packages].disabled) or back on.
     /// </summary>
     public void SetPackageDisabled(string packageName, bool disabled)
     {
@@ -237,7 +249,6 @@ public sealed class ProjectConfigDraft
         {
             Celbridge = _source.Celbridge with
             {
-                DisabledPackages = _disabledPackages.ToList(),
                 EditorAssociations = new Dictionary<string, string>(_editorAssociations, StringComparer.Ordinal),
                 ProjectVersion = PopulatedProjectVersion(_projectVersion),
                 Description = _description,
@@ -247,6 +258,13 @@ public sealed class ProjectConfigDraft
                 Hide = PopulatedPatterns(_hide),
                 SearchExclude = PopulatedPatterns(_searchExclude),
                 DownloadsFolder = PopulatedDownloadsFolder(_downloadsFolder),
+            },
+            Packages = new PackagesSection
+            {
+                // Write only the folders that the parser keeps. If the draft wrote others, the saved file would read
+                // back differently and Project Settings would reload every section.
+                Folders = PackageFolderPath.NormalizeListedFolders(_packageFolders),
+                Disabled = _disabledPackages.ToList(),
             },
             Features = new Dictionary<string, bool>(_features, StringComparer.Ordinal),
             ContributionOverrides = populatedOverrides,

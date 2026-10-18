@@ -13,7 +13,7 @@ public record class WorkshopInstallPackageResult(string PackageName, int Worksho
 
 public partial class WorkshopTools
 {
-    /// <summary>Install a workshop version or alias of a package into a destination folder (default packages/).</summary>
+    /// <summary>Install a workshop version or alias of a package into a package folder (default packages/).</summary>
     [McpServerTool(Name = "workshop_install_package", Destructive = true)]
     [ToolAlias("workshop.install_package")]
     [RelatedGuides("workshop_versions", "resource_keys", "silent_vs_interactive")]
@@ -46,14 +46,20 @@ public partial class WorkshopTools
             return ToolResponse.InvalidResourceKey(destination);
         }
 
-        // The package extracts into a subfolder named for the package under the
-        // chosen destination, so packages installed side by side never overlap.
-        var packageFolder = destinationFolder.Combine(packageName);
-
         var workspaceService = workspaceWrapper.WorkspaceService;
         var resourceService = workspaceService.ResourceService;
         var resourceRegistry = resourceService.Registry;
         var resourceFileSystem = resourceService.FileSystem;
+
+        var destinationCheck = ValidateDestination(workspaceService.PackageService, destinationFolder);
+        if (destinationCheck.IsFailure)
+        {
+            return ToolResponse.Error(destinationCheck);
+        }
+
+        // The package extracts into a subfolder named for the package under the
+        // chosen destination, so packages installed side by side never overlap.
+        var packageFolder = destinationFolder.Combine(packageName);
 
         var canCreateResult = resourceService.Operations.CanCreateResource(packageFolder, isFolder: true);
         if (canCreateResult.IsFailure)
@@ -62,21 +68,18 @@ public partial class WorkshopTools
                 $"Cannot install into '{destinationFolder}': {canCreateResult.FirstErrorMessage}");
         }
 
-        // A package installed under project: participates in discovery, so a
-        // second copy of the same name at a different path would fault both
-        // copies. Refuse before downloading and name the existing location.
-        if (packageFolder.Root == ResourceKey.DefaultRoot)
+        // An installed package participates in discovery, so a second copy of
+        // the same name at a different path would fault both copies. Refuse
+        // before downloading and name the existing location.
+        var duplicateCheck = await CheckForDuplicateProjectPackageAsync(
+            workspaceService.PackageService,
+            resourceRegistry,
+            resourceFileSystem,
+            packageName,
+            packageFolder);
+        if (duplicateCheck.IsFailure)
         {
-            var duplicateCheck = await CheckForDuplicateProjectPackageAsync(
-                workspaceService.PackageService,
-                resourceRegistry,
-                resourceFileSystem,
-                packageName,
-                packageFolder);
-            if (duplicateCheck.IsFailure)
-            {
-                return ToolResponse.Error(duplicateCheck);
-            }
+            return ToolResponse.Error(duplicateCheck);
         }
 
         var packageApiClient = GetRequiredService<IPackageApiClient>();
@@ -196,6 +199,27 @@ public partial class WorkshopTools
         var result = new WorkshopInstallPackageResult(packageName, resolvedWorkshopVersion, extractedEntries, packageFolder.ToString());
         var json = JsonSerializer.Serialize(result, JsonOptions);
         return ToolResponse.Success(json);
+    }
+
+    // Refuses a destination outside the package folders that the project loaded with. A folder added to the
+    // project file during the session is refused until the project reloads.
+    private static Result ValidateDestination(IPackageService packageService, ResourceKey destinationFolder)
+    {
+        var packageFolders = packageService.GetPackageFolders();
+
+        var isPackageFolder = destinationFolder.Root == ResourceKey.DefaultRoot
+            && packageFolders.Any(packageFolder => PackageFolderPath.IsSameFolder(packageFolder.Path, destinationFolder.Path));
+        if (isPackageFolder)
+        {
+            return Result.Ok();
+        }
+
+        var packageFolderList = string.Join(", ", packageFolders.Select(packageFolder => $"'{packageFolder}'"));
+
+        return Result.Fail(
+            $"Cannot install into '{destinationFolder}': it is not a package folder. " +
+            $"Install into one of the project's package folders: {packageFolderList}. " +
+            "A project lists more package folders in the 'folders' key of its [celbridge.packages] table, and a change to the list applies when the project reloads.");
     }
 
     // Checks against the packages as the project loaded. A same-name copy whose manifest has since been
