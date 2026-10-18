@@ -38,6 +38,14 @@ public interface IPackageService
     IReadOnlyList<Package> GetAllPackages();
 
     /// <summary>
+    /// Returns the package folders that discovery read when the project loaded. The packages folder comes
+    /// first, then each folder that the project file lists, leaving out any folder that discovery refused.
+    /// A folder is listed whether or not it exists. An existing folder is given the disk's letter case. Empty before
+    /// the first discovery.
+    /// </summary>
+    IReadOnlyList<ResourceKey> GetPackageFolders();
+
+    /// <summary>
     /// Returns the package load failures from both bundled and project sources, each recording its origin.
     /// Empty before the first discovery.
     /// </summary>
@@ -64,7 +72,7 @@ public interface IPackageService
 
     /// <summary>
     /// Returns the normalized project config from the most recent reconcile — the per-contribution
-    /// override entries plus the disabled-packages list — or null before the first discovery. This is
+    /// override entries plus the disabled packages — or null before the first discovery. This is
     /// the source Project Settings reads to show which discovered contributions the project has changed.
     /// </summary>
     ProjectConfig? GetNormalizedConfig();

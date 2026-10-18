@@ -172,13 +172,13 @@ public class ProjectConfigReconcilerTests
         var contributions = new List<EditorContribution> { Contribution("acme.notes", "note") };
         var config = EmptyConfig() with
         {
-            Celbridge = EmptyConfig().Celbridge with { DisabledPackages = new[] { "acme.notes" } },
+            Packages = EmptyConfig().Packages with { Disabled = new[] { "acme.notes" } },
         };
 
         var result = ProjectConfigReconciler.Reconcile(config, contributions);
 
         result.ActiveContributions.Should().BeEmpty();
-        result.Config.Celbridge.DisabledPackages.Should().Equal("acme.notes");
+        result.Config.Packages.Disabled.Should().Equal("acme.notes");
     }
 
     [Test]
@@ -187,12 +187,12 @@ public class ProjectConfigReconcilerTests
         var contributions = new List<EditorContribution> { Contribution("acme.notes", "note") };
         var config = EmptyConfig() with
         {
-            Celbridge = EmptyConfig().Celbridge with { DisabledPackages = new[] { "acme.gone" } },
+            Packages = EmptyConfig().Packages with { Disabled = new[] { "acme.gone" } },
         };
 
         var result = ProjectConfigReconciler.Reconcile(config, contributions);
 
-        result.Config.Celbridge.DisabledPackages.Should().BeEmpty();
+        result.Config.Packages.Disabled.Should().BeEmpty();
     }
 
     [Test]
@@ -337,8 +337,12 @@ public class ProjectConfigReconcilerTests
         {
             Celbridge = EmptyConfig().Celbridge with
             {
-                DisabledPackages = new[] { "acme.off" },
                 EditorAssociations = new Dictionary<string, string> { [".png"] = "pixel" },
+            },
+            Packages = new PackagesSection
+            {
+                Folders = new[] { "vendor/packages" },
+                Disabled = new[] { "acme.off" },
             },
             ContributionOverrides = new List<ContributionOverride>
             {
@@ -369,7 +373,9 @@ public class ProjectConfigReconcilerTests
         parseResult.IsSuccess.Should().BeTrue(parseResult.IsFailure ? parseResult.DiagnosticReport : string.Empty);
         var reparsed = parseResult.Value;
 
-        reparsed.Celbridge.DisabledPackages.Should().Equal("acme.off");
+        reparsed.EntryErrors.Should().BeEmpty();
+        reparsed.Packages.Folders.Should().Equal("vendor/packages");
+        reparsed.Packages.Disabled.Should().Equal("acme.off");
         reparsed.Celbridge.EditorAssociations[".png"].Should().Be("pixel");
         var console = OverrideOf(reparsed, "acme.tools", "console")!;
         console.Config["shell"].Should().Be("pwsh");

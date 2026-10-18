@@ -32,6 +32,7 @@ public class PackageService : IPackageService
 
         // Flushed here as well as at the end of the load, so a load that never reaches the end still
         // leaves the package outcome on disk. Every flush during a load writes the same file.
+        _loadReporter.RecordConfigEntryErrors(report.ConfigEntryErrors);
         _loadReporter.RecordPackageReport(report);
         await _loadReporter.FlushAsync();
 
@@ -42,6 +43,11 @@ public class PackageService : IPackageService
     public IReadOnlyList<Package> GetAllPackages()
     {
         return _registry.GetAllPackages();
+    }
+
+    public IReadOnlyList<ResourceKey> GetPackageFolders()
+    {
+        return _registry.GetPackageFolders();
     }
 
     public IReadOnlyList<ContributionIssue> GetContributionIssues()

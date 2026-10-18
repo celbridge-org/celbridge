@@ -1,14 +1,20 @@
 # Packages
 
-Packages extend Celbridge with editor contributions: packages contribute, projects instantiate. Each package lives in its own kebab-case subfolder (conventionally under `packages/`, e.g. `packages/my-widget`). Packages run inside a WebView2 control and communicate with the host via JSON-RPC. Web content (HTML, JavaScript, CSS) is typical but not required.
+Packages extend Celbridge with editor contributions: packages contribute, projects instantiate. Packages run inside a WebView2 control and communicate with the host via JSON-RPC. Web content (HTML, JavaScript, CSS) is typical but not required.
+
+## Package folders
+
+A package is a direct subfolder of a package folder, with a `package.toml` at its root, e.g. `packages/my-widget/package.toml`. Every project has the package folder `packages/`. The project file can list more in `folders` in its `[celbridge.packages]` table (see `project_structure`). Name each package's folder in kebab-case.
+
+Discovery runs when the project loads. It lists each package folder and reads the manifest in each subfolder. A `package.toml` anywhere else is an ordinary file. That includes a manifest at the project root, one in a folder that is not a package folder, and one nested inside a package. A listed folder is refused when it is the project root, a folder inside `.git`, a package, or a folder inside a package. The load report names each refused folder. A missing listed folder adds no packages. A change to the list applies when the project reloads.
 
 ## Creating a package
 
-There is no scaffolding tool — a package is a folder with a manifest. Write `packages/my-widget/package.toml` with the file tools using the manifest shape below, and the package is discovered on the next project load. A discovered package is active by default: its editors open matching files with no `.celbridge` entry required. A project touches the `.celbridge` file only to deviate — to disable a package via `[celbridge].disabled-packages`, or to configure a contribution with a `[[contribution]]` entry (see `project_structure`).
+There is no scaffolding tool — a package is a folder with a manifest. Write `packages/my-widget/package.toml` with the file tools using the manifest shape below, and the package is discovered on the next project load. A discovered package is active by default: its editors open matching files with no `.celbridge` entry required. A project touches the `.celbridge` file only to deviate from the defaults. A project disables a package by listing the package in `disabled` in the `[celbridge.packages]` table, and configures a contribution with a `[[contribution]]` entry (see `project_structure`).
 
 ## Manifest (`package.toml`)
 
-Every package folder must contain a `package.toml` at its root with at minimum a `[package]` section containing `name`:
+Every package needs a `package.toml` at the root of its folder, with at least a `[package]` section containing `name`:
 
 ```toml
 [package]
@@ -30,6 +36,6 @@ The `package-version` is three dot-separated numbers, such as `1.2.0`, with no `
 
 `app_list_packages` reports each project package's name, package version, and folder, plus any load failures such as a duplicate-name fault, and `app_get_state` carries the same packages as a summary. Both report the packages as the project loaded. A package added, removed or edited on disk during the session shows after the project reloads, so read the `package.toml` and `.celbridge` files to see what a project declares now.
 
-`explorer_archive` and `explorer_unarchive` zip and unzip against the project tree, useful for staging or vendoring a package folder by hand.
+`explorer_archive` and `explorer_unarchive` zip and unzip against the project tree, useful for staging or vendoring a package by hand.
 
 For the JS proxy conventions packages need at runtime, see `agent_instructions`.

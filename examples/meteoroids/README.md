@@ -34,9 +34,7 @@ game/
   lib/phaser.min.js   Phaser 4.2.1, vendored so the game runs offline
   sprites/            PNGs made with the Emoji Sprite Generator
   sounds/             WAVs made with the Sound FX Editor
-  package.toml        makes the folder a Celbridge package
-  pages.toml          publishes the folder as a static page on the workshop
-tools/
+packages/
   emoji-sprite/       Emoji Sprite Generator
   image-editor/       Image Editor
   sound-fx/           Sound FX Editor
@@ -63,7 +61,7 @@ A few details worth knowing:
 
 ## The asset tools
 
-The three tools in `tools/` are Celbridge packages, which load with the project. Each one is a plain HTML and JavaScript page, so they're also worked examples of building your own Celbridge tools.
+The three tools in `packages/` are Celbridge packages, which load with the project. Each one is a plain HTML and JavaScript page, so they're also worked examples of building your own Celbridge tools.
 
 ### Emoji Sprite Generator
 

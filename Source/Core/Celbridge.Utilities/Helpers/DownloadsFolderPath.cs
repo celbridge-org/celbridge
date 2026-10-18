@@ -15,20 +15,15 @@ public static class DownloadsFolderPath
     /// </summary>
     public static ResourceKey DefaultFolder { get; } = new ResourceKey(ProjectConstants.DownloadsFolder);
 
-    // Matches the reserved .git folder by name at any depth, in any letter case. Keep this in sync with the
-    // resource policy's rule.
-    private static readonly ResourcePathMatcher ReservedFolderMatcher =
-        ResourcePathMatcher.Compile(ProjectConstants.GitFolder, ignoreCase: true);
-
     /// <summary>
-    /// Parses a folder path, ignoring whitespace and slashes at either end. Fails for an empty path, one
+    /// Parses a folder path, ignoring whitespace and slashes at either end. Fails for the project root, a path
     /// that is not a valid resource path, one under a root other than the project's, and one inside a folder
     /// Celbridge reserves.
     /// </summary>
     public static bool TryParse(string path, out ResourceKey folder)
     {
-        if (!TryParseProjectPath(path, out folder)
-            || IsReservedFolder(folder))
+        if (!SettingFolderPath.TryParse(path, out folder)
+            || SettingFolderPath.IsReserved(folder))
         {
             folder = ResourceKey.Empty;
             return false;
@@ -43,8 +38,8 @@ public static class DownloadsFolderPath
     /// </summary>
     public static bool IsReserved(string path)
     {
-        return TryParseProjectPath(path, out var folder)
-            && IsReservedFolder(folder);
+        return SettingFolderPath.TryParse(path, out var folder)
+            && SettingFolderPath.IsReserved(folder);
     }
 
     /// <summary>
@@ -65,27 +60,6 @@ public static class DownloadsFolderPath
         }
 
         return LocateFolder(registry, fileSystem, DefaultFolder) ?? DefaultFolder;
-    }
-
-    private static bool TryParseProjectPath(string path, out ResourceKey folder)
-    {
-        folder = ResourceKey.Empty;
-
-        var trimmedPath = path.Trim().Trim('/');
-        if (!ResourceKey.TryCreate(trimmedPath, out var resource)
-            || resource.IsEmpty
-            || resource.Root != ResourceKey.DefaultRoot)
-        {
-            return false;
-        }
-
-        folder = resource;
-        return true;
-    }
-
-    private static bool IsReservedFolder(ResourceKey folder)
-    {
-        return ReservedFolderMatcher.IsMatch(folder.Path, isFolder: true);
     }
 
     // Where the folder is: as the project spells it when it exists, the path as given when nothing is

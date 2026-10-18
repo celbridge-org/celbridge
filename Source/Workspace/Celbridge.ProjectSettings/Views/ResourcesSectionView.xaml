@@ -2,6 +2,7 @@
   x:Class="Celbridge.ProjectSettings.Views.ResourcesSectionView"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:vm="using:Celbridge.ProjectSettings.ViewModels"
   xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
   xmlns:services="using:Celbridge.UserInterface.Services">
 
@@ -97,6 +98,75 @@
                    Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                    TextWrapping="Wrap"
                    Visibility="{x:Bind ViewModel.IsDownloadsFolderInvalid, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+      </StackPanel>
+
+      <StackPanel Spacing="8">
+        <StackPanel Spacing="2">
+          <TextBlock Text="{x:Bind ViewModel.PackageFoldersTitle, Mode=OneWay}"
+                     Style="{StaticResource SectionHeadingTextStyle}" />
+          <TextBlock Text="{x:Bind ViewModel.PackageFoldersSubtitle, Mode=OneWay}"
+                     Style="{StaticResource SupportingTextStyle}"
+                     TextWrapping="Wrap" />
+        </StackPanel>
+
+        <!-- The packages folder is always a package folder, so its row cannot be edited or removed. -->
+        <TextBox IsReadOnly="True"
+                 IsSpellCheckEnabled="False"
+                 AutomationProperties.Name="{x:Bind ViewModel.PackageFoldersTitle, Mode=OneWay}"
+                 ToolTipService.ToolTip="{x:Bind ViewModel.DefaultPackageFolderTooltip, Mode=OneWay}"
+                 Text="{x:Bind ViewModel.DefaultPackageFolder, Mode=OneWay}" />
+
+        <ItemsControl x:Name="PackageFolderList">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Spacing="8" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:PackageFolderViewModel">
+              <StackPanel Spacing="2">
+                <Grid ColumnSpacing="4">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                  </Grid.ColumnDefinitions>
+
+                  <TextBox Grid.Column="0"
+                           IsSpellCheckEnabled="False"
+                           AutomationProperties.Name="{x:Bind FolderLabel}"
+                           Text="{x:Bind Path, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                  <controls:IconButton Grid.Column="1"
+                                       VerticalAlignment="Center"
+                                       AutomationProperties.Name="{x:Bind BrowseTooltip}"
+                                       ToolTipService.ToolTip="{x:Bind BrowseTooltip}"
+                                       Click="BrowsePackageFolderButton_Click">
+                    <controls:Icon IconName="bs-three-dots" FontSize="{StaticResource IconSizeMedium}" />
+                  </controls:IconButton>
+
+                  <controls:IconButton Grid.Column="2"
+                                       VerticalAlignment="Center"
+                                       AutomationProperties.Name="{x:Bind RemoveTooltip}"
+                                       ToolTipService.ToolTip="{x:Bind RemoveTooltip}"
+                                       Click="RemovePackageFolderButton_Click">
+                    <controls:Icon Symbol="Delete" FontSize="{StaticResource IconSizeMedium}" />
+                  </controls:IconButton>
+                </Grid>
+
+                <TextBlock Text="{x:Bind ProblemText, Mode=OneWay}"
+                           Style="{StaticResource SupportingTextStyle}"
+                           Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                           TextWrapping="Wrap"
+                           Visibility="{x:Bind HasProblem, Mode=OneWay}" />
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <Button HorizontalAlignment="Left"
+                Content="{x:Bind ViewModel.AddPackageFolderText, Mode=OneWay}"
+                Click="AddPackageFolderButton_Click" />
       </StackPanel>
 
     </StackPanel>

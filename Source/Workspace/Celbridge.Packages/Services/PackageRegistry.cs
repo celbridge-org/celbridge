@@ -9,6 +9,12 @@ using Celbridge.Workspace;
 namespace Celbridge.Packages;
 
 /// <summary>
+/// A package folder, with the manifest of each package that discovery found in it. IsPackage is true when the
+/// folder itself contains a manifest.
+/// </summary>
+internal sealed record PackageFolderManifests(ResourceKey PackageFolder, bool IsPackage, IReadOnlyList<ResourceKey> Manifests);
+
+/// <summary>
 /// Discovers packages from bundled and project sources, reconciles the project config against the
 /// discovered contributions (materializing default-active editors and honouring disables), and
 /// resolves the resulting editors and the built-ins.
@@ -19,6 +25,9 @@ public class PackageRegistry
     // makes the discovery log unreadable. Above this count we elide to a count.
     private const int MaxInlineExtensionsInLog = 20;
 
+    // The project file table that lists the package folders, named in the load report.
+    private const string PackagesTableName = "celbridge.packages";
+
     private readonly ILogger<PackageRegistry> _logger;
     private readonly IReadOnlyList<IBundledPackageProvider> _bundledPackageProviders;
     private readonly IPackageLocalizationService _localizationService;
@@ -27,6 +36,8 @@ public class PackageRegistry
 
     private List<Package> _bundledPackages = [];
     private List<Package> _projectPackages = [];
+    // Each discovery assigns a new list, so a list returned to a caller never changes.
+    private IReadOnlyList<ResourceKey> _packageFolders = [];
 
     private List<ResolvedEditor> _resolvedEditors = [];
     private List<ResolvedEditor> _builtInEditors = [];
@@ -72,12 +83,14 @@ public class PackageRegistry
     {
         _bundledPackages.Clear();
         _projectPackages.Clear();
+        _packageFolders = [];
 
         // Manifests that claim their extensions from the catalog need it populated before they load.
         await _fileTypeCatalog.LoadAsync();
 
+        var configEntryErrors = new List<ProjectConfigEntryError>();
         var bundledFailures = DiscoverBundledPackages();
-        var projectFailures = await DiscoverProjectPackagesAsync(projectFolderPath);
+        var projectFailures = await DiscoverProjectPackagesAsync(projectFolderPath, configEntryErrors);
 
         var failures = new List<PackageLoadFailure>(bundledFailures.Count + projectFailures.Count);
         failures.AddRange(bundledFailures);
@@ -101,6 +114,7 @@ public class PackageRegistry
             BundledPackageCount = _bundledPackages.Count,
             ProjectPackageCount = _projectPackages.Count,
             Failures = failures.AsReadOnly(),
+            ConfigEntryErrors = configEntryErrors.AsReadOnly(),
             ResolvedEditorCount = _resolvedEditors.Count,
             ResolvedEditorFailures = resolvedEditorFailures.AsReadOnly(),
             ResolvedEditorWarnings = resolvedEditorWarnings.AsReadOnly()
@@ -122,6 +136,11 @@ public class PackageRegistry
         combined.AddRange(_bundledPackages);
         combined.AddRange(_projectPackages);
         return combined.AsReadOnly();
+    }
+
+    public IReadOnlyList<ResourceKey> GetPackageFolders()
+    {
+        return _packageFolders;
     }
 
     public IReadOnlyList<PackageLoadFailure> GetLoadFailures()
@@ -797,7 +816,9 @@ public class PackageRegistry
         return failures;
     }
 
-    private async Task<List<PackageLoadFailure>> DiscoverProjectPackagesAsync(string projectFolderPath)
+    private async Task<List<PackageLoadFailure>> DiscoverProjectPackagesAsync(
+        string projectFolderPath,
+        List<ProjectConfigEntryError> configEntryErrors)
     {
         var failures = new List<PackageLoadFailure>();
 
@@ -810,10 +831,7 @@ public class PackageRegistry
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         var projectReader = new ResourceFileSystemPackageReader(resourceFileSystem, resourceRegistry);
 
-        // Walk the project's visible resource set for package.toml manifests. A
-        // manifest is a package wherever it lives under the project root.
-        var manifestResources = new List<ResourceKey>();
-        await CollectProjectManifestsAsync(resourceFileSystem, ResourceKey.Empty, manifestResources);
+        var manifestResources = await CollectProjectManifestsAsync(resourceFileSystem, resourceRegistry, configEntryErrors);
 
         var candidates = new List<Package>();
 
@@ -932,40 +950,172 @@ public class PackageRegistry
         return failures;
     }
 
-    // Recursively collects every package.toml manifest in the project's visible
-    // resource set. Enumeration goes through the file-system gateway, which
-    // honours the project's ignore rules, so excluded content is never visited.
-    // A folder that directly holds a manifest is a package root: its manifest is
-    // recorded and the walk does not descend into it, so a package's own files
-    // (which may legitimately vendor another package's folder) are not scanned.
-    private async Task CollectProjectManifestsAsync(
+    // Collects the manifests of the packages in every package folder: the packages folder first, then the
+    // folders that the project file lists, in their order. Each package folder is listed, and nothing else is
+    // walked. Discovery refuses a listed folder that is a package, that is a package of another package folder,
+    // or that lies inside such a package. Loading that folder would nest one package inside another.
+    // GetPackageFolders returns the folders that discovery accepts.
+    private async Task<List<ResourceKey>> CollectProjectManifestsAsync(
         IResourceFileSystem resourceFileSystem,
-        ResourceKey folderResource,
-        List<ResourceKey> manifestResources)
+        IResourceRegistry resourceRegistry,
+        List<ProjectConfigEntryError> configEntryErrors)
     {
-        var enumerateResult = await resourceFileSystem.EnumerateFolderAsync(folderResource);
+        // Each folder is given the disk's letter case, so every key that discovery builds inside the folder passes
+        // the registry's case check.
+        var defaultFolder = MatchDiskCase(resourceRegistry, PackageFolderPath.DefaultFolder);
+        var candidateFolders = new List<ResourceKey>
+        {
+            defaultFolder
+        };
+
+        var listedFolders = _projectService.CurrentProject?.Config.Packages.Folders ?? [];
+        foreach (var listedFolder in PackageFolderPath.NormalizeListedFolders(listedFolders))
+        {
+            candidateFolders.Add(MatchDiskCase(resourceRegistry, new ResourceKey(listedFolder)));
+        }
+
+        // Every folder is listed before any is accepted, so each listed folder is checked against the
+        // packages of every other folder.
+        var packageManifests = new List<PackageFolderManifests>();
+        foreach (var candidateFolder in candidateFolders)
+        {
+            packageManifests.Add(await ListPackageFolderAsync(resourceFileSystem, candidateFolder));
+        }
+
+        var acceptedFolders = new List<ResourceKey>();
+        var manifestResources = new List<ResourceKey>();
+        foreach (var folderManifests in packageManifests)
+        {
+            var packageFolder = folderManifests.PackageFolder;
+
+            var containingPackage = FindContainingPackage(packageFolder, packageManifests);
+            if (containingPackage is ResourceKey package)
+            {
+                RefuseListedFolder(
+                    configEntryErrors,
+                    $"'folders' entry '{packageFolder.Path}' is inside the package at '{package.Path}', and packages cannot nest. The entry was dropped.");
+                continue;
+            }
+
+            // A manifest in the packages folder itself is an ordinary file.
+            if (folderManifests.IsPackage
+                && packageFolder != defaultFolder)
+            {
+                RefuseListedFolder(
+                    configEntryErrors,
+                    $"'folders' entry '{packageFolder.Path}' is a package, since it has a {PackageConstants.ManifestFileName}. List the folder that contains the package instead. The entry was dropped.");
+                continue;
+            }
+
+            acceptedFolders.Add(packageFolder);
+            manifestResources.AddRange(folderManifests.Manifests);
+        }
+
+        _packageFolders = acceptedFolders.AsReadOnly();
+
+        return manifestResources;
+    }
+
+    // Returns the folder with the case it has on disk. A missing folder is returned as given.
+    private static ResourceKey MatchDiskCase(IResourceRegistry resourceRegistry, ResourceKey folder)
+    {
+        var normalizeResult = resourceRegistry.NormalizeResourceKey(folder);
+        if (normalizeResult.IsFailure)
+        {
+            return folder;
+        }
+
+        return normalizeResult.Value;
+    }
+
+    private void RefuseListedFolder(List<ProjectConfigEntryError> configEntryErrors, string message)
+    {
+        _logger.LogWarning(message);
+        configEntryErrors.Add(new ProjectConfigEntryError(PackagesTableName, message));
+    }
+
+    // Lists a package folder and the manifest of each subfolder that has one. A manifest matches in any letter
+    // case. A missing package folder contributes nothing.
+    private static async Task<PackageFolderManifests> ListPackageFolderAsync(
+        IResourceFileSystem resourceFileSystem,
+        ResourceKey packageFolder)
+    {
+        var enumerateResult = await resourceFileSystem.EnumerateFolderAsync(packageFolder);
         if (enumerateResult.IsFailure)
         {
-            return;
+            return new PackageFolderManifests(packageFolder, IsPackage: false, Manifests: []);
         }
+
         var items = enumerateResult.Value;
 
-        var manifestItem = items.FirstOrDefault(item =>
-            !item.IsFolder
-            && string.Equals(item.Resource.ResourceName, PackageConstants.ManifestFileName, StringComparison.OrdinalIgnoreCase));
-        if (manifestItem is not null)
-        {
-            manifestResources.Add(manifestItem.Resource);
-            return;
-        }
-
+        var manifests = new List<ResourceKey>();
         foreach (var item in items)
         {
-            if (item.IsFolder)
+            if (!item.IsFolder)
             {
-                await CollectProjectManifestsAsync(resourceFileSystem, item.Resource, manifestResources);
+                continue;
+            }
+
+            var childResult = await resourceFileSystem.EnumerateFolderAsync(item.Resource);
+            if (childResult.IsFailure)
+            {
+                continue;
+            }
+
+            var manifest = FindManifest(childResult.Value);
+            if (manifest is not null)
+            {
+                manifests.Add(manifest.Resource);
             }
         }
+
+        var isPackage = FindManifest(items) is not null;
+
+        return new PackageFolderManifests(packageFolder, isPackage, manifests);
+    }
+
+    private static FolderItem? FindManifest(IReadOnlyList<FolderItem> items)
+    {
+        return items.FirstOrDefault(item =>
+            !item.IsFolder
+            && string.Equals(item.Resource.ResourceName, PackageConstants.ManifestFileName, StringComparison.OrdinalIgnoreCase));
+    }
+
+    // Finds a package from another package folder that equals the folder or contains it, and returns the
+    // package's folder.
+    private static ResourceKey? FindContainingPackage(
+        ResourceKey folder,
+        IReadOnlyList<PackageFolderManifests> packageManifests)
+    {
+        foreach (var otherFolderManifests in packageManifests)
+        {
+            if (otherFolderManifests.PackageFolder == folder)
+            {
+                continue;
+            }
+
+            foreach (var manifest in otherFolderManifests.Manifests)
+            {
+                var package = manifest.GetParent();
+                if (IsWithin(folder, package))
+                {
+                    return package;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    // Returns true if the folder is the parent folder or anything below it.
+    private static bool IsWithin(ResourceKey folder, ResourceKey parentFolder)
+    {
+        if (PackageFolderPath.IsSameFolder(folder.Path, parentFolder.Path))
+        {
+            return true;
+        }
+
+        return folder.Path.StartsWith(parentFolder.Path + "/", PathComparison.Comparison);
     }
 
     // Emits one Info-level line per accepted package. Runs after dedup so

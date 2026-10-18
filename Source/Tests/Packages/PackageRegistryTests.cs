@@ -1,14 +1,17 @@
 using Celbridge.FileSystem.Services;
 using Celbridge.Messaging;
+using Celbridge.Messaging.Services;
 using Celbridge.Packages;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Services;
 using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
+using Celbridge.Resources.Services.Roots;
 using Celbridge.Settings;
 using Celbridge.Tests.FileSystem;
 using Celbridge.Tests.Migration.TestHelpers;
+using Celbridge.Tests.Resources;
 using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Packages;
@@ -24,6 +27,7 @@ public class PackageServiceTests
     private IProjectLoadReporter _loadReporter = null!;
     private IconService _iconService = null!;
     private IResourceRegistry _resourceRegistry = null!;
+    private IResourceService _resourceService = null!;
     private IProjectService _projectService = null!;
 
     [SetUp]
@@ -78,8 +82,13 @@ public class PackageServiceTests
             return Result<ResourceKey>.Ok(new ResourceKey(relative));
         });
 
+        // The keys in these tests already have the disk's case. UseRealResourceRegistry covers a key that does not.
+        _resourceRegistry.NormalizeResourceKey(Arg.Any<ResourceKey>())
+            .Returns(callInfo => Result<ResourceKey>.Ok(callInfo.Arg<ResourceKey>()));
+
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Registry.Returns(_resourceRegistry);
+        _resourceService = resourceService;
 
         // Mirror the real SidecarService trailing-extension rule so package
         // discovery rejects any document-file-type extension that lands in
@@ -689,19 +698,121 @@ public class PackageServiceTests
     }
 
     [Test]
-    public async Task RegisterPackages_NestedManifest_DiscoveredOutsidePackagesFolder()
+    public async Task RegisterPackages_PackageInListedFolder_LoadsAfterThePackagesFolder()
     {
-        // Discovery is not tied to packages/: a manifest anywhere under the project
-        // root is found, honouring the gateway's visibility rules.
-        var toolsDir = Path.Combine(_tempProjectFolder, "tools", "my-editor");
-        Directory.CreateDirectory(toolsDir);
-        WritePackageFiles(toolsDir, "nested-tool", "Nested Tool", ".nst");
+        CreatePackageAt(Path.Combine("vendor", "listed"), "listed-tool", "Listed", ".lst");
+        CreateProjectPackage("in-packages", "in-packages", "In Packages", ".inp");
+        SetPackageFolders("vendor");
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        var contributions = _service.GetAllEditors();
-        contributions.Should().HaveCount(1);
-        contributions[0].Package.Name.Should().Be("nested-tool");
+        PackageNames().Should().Equal("in-packages", "listed-tool");
+        _service.GetPackageFolders().Should().Equal(new ResourceKey("packages"), new ResourceKey("vendor"));
+    }
+
+    [Test]
+    public async Task RegisterPackages_ManifestOutsideThePackageFolders_IsNotLoaded()
+    {
+        // Discovery lists the package folders and nothing else. A manifest at the project root, one in a
+        // folder that is not a package folder, and one nested inside a package are ordinary files.
+        CreateProjectPackage("outer", "outer-tool", "Outer", ".out");
+        CreatePackageAt(Path.Combine("packages", "outer", "inner"), "inner-tool", "Inner", ".inn");
+        CreatePackageAt(Path.Combine("tools", "unlisted"), "unlisted-tool", "Unlisted", ".unl");
+        WritePackageFiles(_tempProjectFolder, "root-tool", "Root", ".rot");
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        PackageNames().Should().Equal("outer-tool");
+        _service.GetLoadFailures().Should().BeEmpty();
+    }
+
+    [TestCase("packages/outer")]
+    [TestCase("packages/outer/vendor")]
+    public async Task RegisterPackages_ListedFolderWithinAPackage_IsRefusedAndReported(string listedFolder)
+    {
+        // Loading packages from inside a package would nest one package inside another.
+        CreateProjectPackage("outer", "outer-tool", "Outer", ".out");
+        CreatePackageAt(Path.Combine("packages", "outer", "vendor", "inner"), "inner-tool", "Inner", ".inn");
+        SetPackageFolders(listedFolder);
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        PackageNames().Should().Equal("outer-tool");
+        _service.GetPackageFolders().Should().Equal(new ResourceKey("packages"));
+        _loadReporter.Received(1).RecordConfigEntryErrors(Arg.Is<IReadOnlyList<ProjectConfigEntryError>>(errors =>
+            errors.Count == 1
+            && errors[0].EntryName == "celbridge.packages"
+            && errors[0].Message.Contains($"'{listedFolder}' is inside the package at 'packages/outer'")));
+    }
+
+    [Test]
+    public async Task RegisterPackages_MissingListedFolder_ContributesNothing()
+    {
+        CreateProjectPackage("legit", "legit", "Legit", ".legit");
+        SetPackageFolders("missing");
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        PackageNames().Should().Equal("legit");
+        _service.GetLoadFailures().Should().BeEmpty();
+        _service.GetPackageFolders().Should().Equal(new ResourceKey("packages"), new ResourceKey("missing"));
+        _loadReporter.Received(1).RecordConfigEntryErrors(Arg.Is<IReadOnlyList<ProjectConfigEntryError>>(errors =>
+            errors.Count == 0));
+    }
+
+    [Test]
+    public async Task RegisterPackages_ListedFolderThatIsAPackage_IsRefusedAndReported()
+    {
+        // The project lists a package's folder as a package folder.
+        CreatePackageAt(Path.Combine("vendor", "widget"), "widget", "Widget", ".wid");
+        SetPackageFolders("vendor/widget");
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        PackageNames().Should().BeEmpty();
+        _service.GetPackageFolders().Should().Equal(new ResourceKey("packages"));
+        _loadReporter.Received(1).RecordConfigEntryErrors(Arg.Is<IReadOnlyList<ProjectConfigEntryError>>(errors =>
+            errors.Count == 1
+            && errors[0].EntryName == "celbridge.packages"
+            && errors[0].Message.Contains("'vendor/widget' is a package")));
+    }
+
+    [Test]
+    public async Task RegisterPackages_ManifestNamedInAnotherCase_Loads()
+    {
+        var packageDir = CreateProjectPackage("upper", "upper-tool", "Upper", ".upr");
+        File.Move(Path.Combine(packageDir, "package.toml"), Path.Combine(packageDir, "Package.toml"));
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        PackageNames().Should().Equal("upper-tool");
+    }
+
+    [Test]
+    [Platform("Win", Reason = "On a case-sensitive file system, Packages and packages are different folders.")]
+    public async Task RegisterPackages_PackagesFolderInAnotherCase_Loads()
+    {
+        CreatePackageAt(Path.Combine("Packages", "upper"), "upper-tool", "Upper", ".upr");
+        UseRealResourceRegistry();
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        PackageNames().Should().Equal("upper-tool");
+        _service.GetPackageFolders().Should().Equal(new ResourceKey("Packages"));
+    }
+
+    [Test]
+    [Platform("Win", Reason = "On a case-sensitive file system, VENDOR and vendor are different folders.")]
+    public async Task RegisterPackages_ListedFolderInAnotherCase_Loads()
+    {
+        CreatePackageAt(Path.Combine("vendor", "listed"), "listed-tool", "Listed", ".lst");
+        SetPackageFolders("VENDOR");
+        UseRealResourceRegistry();
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        PackageNames().Should().Equal("listed-tool");
+        _service.GetPackageFolders().Should().Equal(new ResourceKey("packages"), new ResourceKey("vendor"));
     }
 
     [Test]
@@ -835,6 +946,16 @@ public class PackageServiceTests
         Directory.CreateDirectory(packageDir);
         WritePackageFiles(packageDir, packageName, packageTitle, fileExt);
         return packageDir;
+    }
+
+    /// <summary>
+    /// Creates a package in a folder given as a path from the project root.
+    /// </summary>
+    private void CreatePackageAt(string relativeFolder, string packageName, string packageTitle, string fileExt)
+    {
+        var packageDir = Path.Combine(_tempProjectFolder, relativeFolder);
+        Directory.CreateDirectory(packageDir);
+        WritePackageFiles(packageDir, packageName, packageTitle, fileExt);
     }
 
     /// <summary>
@@ -1063,10 +1184,56 @@ public class PackageServiceTests
             ContributionOverrides = overrides
         };
 
+        UseProjectConfig(config);
+    }
+
+    /// <summary>
+    /// Points the project service at a config that lists the given package folders.
+    /// </summary>
+    private void SetPackageFolders(params string[] folders)
+    {
+        var config = new ProjectConfig
+        {
+            Packages = new PackagesSection
+            {
+                Folders = folders
+            }
+        };
+
+        UseProjectConfig(config);
+    }
+
+    /// <summary>
+    /// Replaces the stubbed resource registry with a real one, which checks each key's case against the disk.
+    /// The real registry's tree stays empty, the same as when the project loads and discovers its packages.
+    /// </summary>
+    private void UseRealResourceRegistry()
+    {
+        var resourceRegistry = new ResourceRegistry(
+            Substitute.For<ILogger<ResourceRegistry>>(),
+            new MessengerService(),
+            ProjectTreeBuilderTestHelper.Build(_tempProjectFolder, _iconService),
+            ResourceClassifierTestHelper.BuildEmptyStub(),
+            new RootHandlerRegistry(),
+            TestFileSystem.CreateLocal());
+        resourceRegistry.InitializeProjectRoot(_tempProjectFolder);
+
+        _resourceService.Registry.Returns(resourceRegistry);
+    }
+
+    private void UseProjectConfig(ProjectConfig config)
+    {
         var project = Substitute.For<IProject>();
         project.Config.Returns(config);
         project.ConfigIsHealthy.Returns(true);
         _projectService.CurrentProject.Returns(project);
+    }
+
+    private List<string> PackageNames()
+    {
+        return _service.GetAllPackages()
+            .Select(package => package.Info.Name)
+            .ToList();
     }
 
     private static ContributionOverride CreateOverride(

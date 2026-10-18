@@ -1,3 +1,5 @@
+using Celbridge.Projects;
+
 namespace Celbridge.Packages;
 
 /// <summary>
@@ -117,6 +119,12 @@ public sealed record PackageDiscoveryReport
     public int BundledPackageCount { get; init; }
     public int ProjectPackageCount { get; init; }
     public IReadOnlyList<PackageLoadFailure> Failures { get; init; } = Array.Empty<PackageLoadFailure>();
+
+    /// <summary>
+    /// Entries of the project file's package settings that discovery refused, for example a listed
+    /// package folder inside a package.
+    /// </summary>
+    public IReadOnlyList<ProjectConfigEntryError> ConfigEntryErrors { get; init; } = Array.Empty<ProjectConfigEntryError>();
 
     /// <summary>
     /// Number of declared contributions that resolved successfully.

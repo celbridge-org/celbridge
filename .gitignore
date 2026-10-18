@@ -216,6 +216,8 @@ PublishScripts/
 !Source/Workspace/Celbridge.Python/packages/*
 Source/Workspace/Celbridge.Python/packages/*/build/
 Source/Workspace/Celbridge.Python/packages/*/src/*.egg-info/
+# The Celbridge packages in each example project's package folder
+!examples/*/packages/*
 # Uncomment if necessary however generally it will be regenerated when needed
 #!**/[Pp]ackages/repositories.config
 # NuGet v3's project.json files produces more ignorable files

@@ -63,6 +63,7 @@ public class DownloadsFolderPathTests
 
     [TestCase("", Description = "nothing")]
     [TestCase("/", Description = "the project root")]
+    [TestCase(".", Description = "the project root, written as a dot")]
     [TestCase("../outside", Description = "a path that leaves the project")]
     [TestCase("assets//downloads", Description = "an empty segment")]
     [TestCase("assets\\downloads", Description = "a backslash")]

@@ -1,6 +1,6 @@
 # workshop_publish_package
 
-Zips a package folder and publishes it to the connected workshop as a new workshop version. The package name is read from the manifest, so the source can live anywhere and need not sit under `packages/`. Workshop versions are immutable and numbered by the workshop in publish order, so publishing never overwrites an earlier one. The first publish of a new name registers the package on the workshop.
+Zips a package's folder and publishes it to the connected workshop as a new workshop version. The package name is read from the manifest, so the source can live anywhere and need not sit under `packages/`. Workshop versions are immutable and numbered by the workshop in publish order, so publishing never overwrites an earlier one. The first publish of a new name registers the package on the workshop.
 
 By default a confirmation dialog is shown before publishing. Pass `confirmWithUser: false` only when the user has explicitly asked for unattended operation.
 
@@ -57,6 +57,6 @@ The check needs the install record (`HISTORY.md`) to read which workshop version
 
 ## Gotchas
 
-- Symlinks and other reparse points inside the package folder are skipped, not followed.
+- Symlinks and other reparse points inside the package's folder are skipped, not followed.
 - Publishing always creates a new workshop version and never overwrites an earlier one. To remove one workshop version, use `workshop_delete_package`. To remove a whole package, use `workshop_unpublish_package`.
 - The publisher recorded on the workshop version is the **Author** set in Workshop settings, not a manifest field. Publishing fails with a clear message (and an alert, when interactive) if no Author is set.

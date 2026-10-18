@@ -3,8 +3,9 @@ using Celbridge.ProjectSettings.ViewModels;
 namespace Celbridge.ProjectSettings.Views;
 
 /// <summary>
-/// The Resources section of the Project Settings: the patterns the Explorer hides and the patterns search
-/// skips, each edited as a block of glob patterns, one per line, and the folder downloads are saved to.
+/// The Resources section of the Project Settings. It edits the patterns that the Explorer hides and the
+/// patterns that search skips, each as a block of glob patterns, one per line. It also edits the folder that
+/// downloads are saved to, and the package folders.
 /// </summary>
 public sealed partial class ResourcesSectionView : UserControl
 {
@@ -18,6 +19,7 @@ public sealed partial class ResourcesSectionView : UserControl
         set
         {
             _viewModel = value;
+            PackageFolderList.ItemsSource = value?.PackageFolders;
             Bindings?.Update();
         }
     }
@@ -30,5 +32,33 @@ public sealed partial class ResourcesSectionView : UserControl
     private void BrowseDownloadsFolderButton_Click(object sender, RoutedEventArgs e)
     {
         _ = ViewModel?.PickDownloadsFolderAsync();
+    }
+
+    private void AddPackageFolderButton_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel?.AddPackageFolder();
+    }
+
+    private void BrowsePackageFolderButton_Click(object sender, RoutedEventArgs e)
+    {
+        var browseButton = (FrameworkElement)sender;
+        if (browseButton.DataContext is not PackageFolderViewModel packageFolder
+            || ViewModel is null)
+        {
+            return;
+        }
+
+        _ = ViewModel.PickPackageFolderAsync(packageFolder);
+    }
+
+    private void RemovePackageFolderButton_Click(object sender, RoutedEventArgs e)
+    {
+        var removeButton = (FrameworkElement)sender;
+        if (removeButton.DataContext is not PackageFolderViewModel packageFolder)
+        {
+            return;
+        }
+
+        ViewModel?.RemovePackageFolder(packageFolder);
     }
 }

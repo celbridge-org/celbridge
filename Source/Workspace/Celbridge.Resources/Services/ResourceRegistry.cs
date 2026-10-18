@@ -290,7 +290,8 @@ public class ResourceRegistry : IResourceRegistry
     {
         try
         {
-            var resolveResult = ResolveResourcePath(resourceKey);
+            // This method corrects the key's case, so the method skips the case check.
+            var resolveResult = ResolveResourcePath(resourceKey, validateCase: false);
             if (resolveResult.IsFailure)
             {
                 return Result.Fail($"Failed to resolve path for resource key: '{resourceKey}'")

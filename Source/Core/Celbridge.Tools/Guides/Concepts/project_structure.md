@@ -12,7 +12,7 @@ my-project/
     hello.py
   Data/
     sales.xlsx
-  packages/                 (optional) user-authored packages
+  packages/                 (optional) the package folder, one package per subfolder
     counter-widget/
       package.toml
       index.html
@@ -29,19 +29,22 @@ my-project/
 
 ## The `.celbridge` project file
 
-The project file stores project-level configuration as TOML. Host-level declarations are flat keys on the single `[celbridge]` table; `[[contribution]]` entries record how the project deviates from each editor's discovered defaults. All changes apply on project reload.
+The project file stores project-level configuration as TOML. Host-level declarations are keys on the `[celbridge]` table and its `[celbridge.resources]` and `[celbridge.packages]` sub-tables. `[[contribution]]` entries record how the project deviates from each editor's discovered defaults. All changes apply on project reload.
 
 ```toml
 [celbridge]
 celbridge-version = "1.3.0"
 project-version   = "0.1.0"
-disabled-packages = ["acme.unused"]                            # opt a discovered package out
 editor-associations = { ".png" = "acme.pixel-editor.pixel" }   # pin an extension to one editor
 
 [celbridge.resources]                                          # ergonomics only; no key here gates access
 hide = [".gitignore"]                                          # not drawn in the Explorer tree
 search-exclude = ["node_modules", "bin", "obj"]                # skipped by search and tag queries
 downloads-folder = "assets/incoming"                           # where files downloaded from web pages land
+
+[celbridge.packages]
+folders = ["vendor/packages"]                                  # package folders in addition to packages/
+disabled = ["acme.unused"]                                     # opt a discovered package out
 
 [[contribution]]                                               # an override of an editor's defaults
 package      = "acme.pixel-editor"
@@ -55,7 +58,8 @@ area         = "bottom"                                        # optional; main,
 open-on-load = true                                            # optional; default false
 ```
 
-- **Activation is opt-out**: discovery scans bundled modules and the project tree, and every discovered package is active by default. Listing a package in `disabled-packages` turns it and all its contributions off. (The exception is a contribution its manifest marks `optional`, which stays inert until a `[[contribution]]` entry enables it.) The built-in editors (code editor, Markdown, HTML, File Viewer, spreadsheet, Report Viewer) are always active and cannot be disabled.
+- **Package folders**: a package is a direct subfolder of a package folder, with a `package.toml` at its root. `packages/` is always a package folder, and `folders` lists more, each as a folder path from the project root. Discovery lists each package folder and looks nowhere else. A manifest anywhere else is an ordinary file, including one nested inside a package. A listed folder is refused when it is the project root, a folder inside `.git`, a package, or a folder inside a package. The load report names each refused folder. A missing listed folder adds no packages. `workshop_install_package` installs only into a package folder.
+- **Activation is opt-out**: discovery reads the bundled modules and the package folders, and every discovered package is active by default. Listing a package in `disabled` turns the package and all its contributions off. (The exception is a contribution its manifest marks `optional`, which stays inert until a `[[contribution]]` entry enables it.) The built-in editors (code editor, Markdown, HTML, File Viewer, spreadsheet, Report Viewer) are always active and cannot be disabled.
 - **Contributions**: a `[[contribution]]` entry names an editor by `package` and `contribution` and records this project's overrides of its defaults. Any non-reserved key is configuration, type-checked against the editor's descriptors; a default-active editor running with default config needs no entry. `disabled = true` turns off a contribution its package marked *recommended*; `enabled = true` turns on one marked *optional*. There is exactly one editor per contribution — a project cannot declare several, nor override an editor's title, icon, or tooltip.
 - **Document shortcuts**: a `[[shortcut]]` entry opens `resource` as a document, in whichever editor that file's extension resolves to. It adds a button to the Utility Rail unless `rail-button = false` (the Show Utility button toggle in Project Settings), and `open-on-load = true` (Open when project loads) also opens the document every time the project loads, even if it was closed in the last session. Entry order is rail order, and the buttons sit with the utilities the project's packages contribute, ahead of the gap that pins the built-in Project Settings and Community buttons at the end of the rail. `area` (`main`, `bottom` or `side`, default `main`) picks where the document lands, and applies only while it is not already open, so a document restored from the last session keeps its place. An entry whose `resource` is not a resource key is skipped.
 - **Editor resolution**: per-file sidecar override, then `editor-associations` (longest matching extension suffix), then the first supporting contribution in discovery order, then the built-in editors in their pinned order. Editors are referenced as `package.contribution` (e.g. `acme.pixel-editor.pixel`).

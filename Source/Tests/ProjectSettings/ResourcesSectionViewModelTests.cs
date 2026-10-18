@@ -3,6 +3,7 @@ using Celbridge.Dialog;
 using Celbridge.ProjectSettings.ViewModels;
 using Celbridge.Projects;
 using Celbridge.Projects.Services;
+using Celbridge.Utilities;
 using Celbridge.Workspace;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
@@ -10,9 +11,9 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.Tests.ProjectSettings;
 
 /// <summary>
-/// Covers the Resources section: what the two pattern blocks and the downloads folder write back into the
-/// config draft, which lines are reported as written in a dialect the matcher does not read, and which
-/// downloads folders are reported as unusable.
+/// Covers the Resources section: what the two pattern blocks, the downloads folder and the package folders
+/// write back into the config draft, which lines are reported as written in a dialect the matcher does not
+/// read, and which downloads folders and package folders are reported as unusable.
 /// </summary>
 [TestFixture]
 public class ResourcesSectionViewModelTests
@@ -312,6 +313,70 @@ public class ResourcesSectionViewModelTests
         viewModel.DownloadsFolderText.Should().Be("assets/incoming");
     }
 
+    [Test]
+    public void Load_ListsThePackageFoldersAfterTheFixedOne()
+    {
+        var viewModel = CreateViewModel(packageFolders: new[] { "vendor/packages", "lib" });
+
+        viewModel.Load();
+
+        viewModel.DefaultPackageFolder.Should().Be("packages");
+        viewModel.PackageFolders.Select(packageFolder => packageFolder.Path).Should().Equal("vendor/packages", "lib");
+        viewModel.PackageFolders.Should().OnlyContain(packageFolder => !packageFolder.HasProblem);
+    }
+
+    [Test]
+    public void AddingAndRemovingPackageFolders_WritesTheListIntoTheDraft()
+    {
+        var viewModel = CreateViewModel(packageFolders: new[] { "lib" });
+        viewModel.Load();
+
+        viewModel.AddPackageFolder();
+        viewModel.PackageFolders[1].Path = "/vendor/packages/";
+
+        _context.Draft!.ToConfig().Packages.Folders.Should().Equal("lib", "vendor/packages");
+
+        viewModel.RemovePackageFolder(viewModel.PackageFolders[0]);
+
+        _context.Draft!.ToConfig().Packages.Folders.Should().Equal("vendor/packages");
+    }
+
+    [TestCase("/", PackageFolderProblem.ProjectRoot)]
+    [TestCase("../outside", PackageFolderProblem.InvalidPath)]
+    [TestCase(".git/hooks", PackageFolderProblem.Reserved)]
+    [TestCase("packages", PackageFolderProblem.AlreadyListed)]
+    [TestCase("lib/", PackageFolderProblem.AlreadyListed)]
+    public void AnUnusablePackageFolder_IsReportedAndNotWritten(string path, PackageFolderProblem expectedProblem)
+    {
+        var viewModel = CreateViewModel(packageFolders: new[] { "lib" });
+        viewModel.Load();
+
+        viewModel.AddPackageFolder();
+        var packageFolder = viewModel.PackageFolders[1];
+
+        packageFolder.HasProblem.Should().BeFalse("a blank row is unfinished, not wrong");
+
+        packageFolder.Path = path;
+
+        packageFolder.Problem.Should().Be(expectedProblem);
+        packageFolder.HasProblem.Should().BeTrue();
+        _context.Draft!.ToConfig().Packages.Folders.Should().Equal("lib");
+    }
+
+    [Test]
+    public async Task PickingAPackageFolder_FillsTheRow()
+    {
+        StubPickedFolder(Result<ResourceKey>.Ok(new ResourceKey("vendor/packages")));
+        var viewModel = CreateViewModel();
+        viewModel.Load();
+        viewModel.AddPackageFolder();
+
+        await viewModel.PickPackageFolderAsync(viewModel.PackageFolders[0]);
+
+        viewModel.PackageFolders[0].Path.Should().Be("vendor/packages");
+        _context.Draft!.ToConfig().Packages.Folders.Should().Equal("vendor/packages");
+    }
+
     private void StubPickedFolder(Result<ResourceKey> pickResult)
     {
         _dialogService.ShowFolderPickerDialogAsync(Arg.Any<string?>())
@@ -321,7 +386,8 @@ public class ResourcesSectionViewModelTests
     private ResourcesSectionViewModel CreateViewModel(
         string[]? hide = null,
         string[]? searchExclude = null,
-        string downloadsFolder = "")
+        string downloadsFolder = "",
+        string[]? packageFolders = null)
     {
         var config = new ProjectConfig
         {
@@ -330,6 +396,10 @@ public class ResourcesSectionViewModelTests
                 Hide = hide ?? Array.Empty<string>(),
                 SearchExclude = searchExclude ?? Array.Empty<string>(),
                 DownloadsFolder = downloadsFolder
+            },
+            Packages = new PackagesSection
+            {
+                Folders = packageFolders ?? Array.Empty<string>()
             }
         };
 

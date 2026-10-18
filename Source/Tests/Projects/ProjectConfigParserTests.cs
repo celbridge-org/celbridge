@@ -161,13 +161,16 @@ public class ProjectConfigParserTests
             celbridge-version = "1.0.0"
             project-version = "0.2.0"
             description = "A project for testing."
-            disabled-packages = ["acme-notes", "acme-charts"]
             editor-associations = { ".md" = "acme-notes.markdown", ".TXT" = "acme-notes.text" }
             features = { generative-ai = true, experimental = false }
 
             [celbridge.resources]
             hide = [".gitignore"]
             search-exclude = ["node_modules", "Python/.venv/**"]
+
+            [celbridge.packages]
+            folders = ["vendor/packages", "lib"]
+            disabled = ["acme-notes", "acme-charts"]
 
             [[contribution]]
             package = "acme-notes"
@@ -193,7 +196,6 @@ public class ProjectConfigParserTests
         config.Celbridge.CelbridgeVersion.Should().Be("1.0.0");
         config.Celbridge.ProjectVersion.Should().Be("0.2.0");
         config.Celbridge.Description.Should().Be("A project for testing.");
-        config.Celbridge.DisabledPackages.Should().Equal("acme-notes", "acme-charts");
 
         // Editor-defaults extensions are lowercased on parse.
         config.Celbridge.EditorAssociations.Should().HaveCount(2);
@@ -206,6 +208,9 @@ public class ProjectConfigParserTests
 
         config.Resources.Hide.Should().Equal(".gitignore");
         config.Resources.SearchExclude.Should().Equal("node_modules", "Python/.venv/**");
+
+        config.Packages.Folders.Should().Equal("vendor/packages", "lib");
+        config.Packages.Disabled.Should().Equal("acme-notes", "acme-charts");
 
         // Declaration order in the file is preserved.
         config.ContributionOverrides.Should().HaveCount(2);
@@ -328,6 +333,29 @@ public class ProjectConfigParserTests
 
             [celbridge.resources]
             hide = [".gitignore"]
+            description = "Appended after the header."
+            """;
+        var configFilePath = WriteConfigFile(content);
+
+        var result = ProjectConfigParser.ParseFromFile(configFilePath, _fileSystem);
+
+        result.IsSuccess.Should().BeTrue();
+        var config = result.Value;
+        config.Celbridge.Description.Should().BeNull();
+        config.Resources.Hide.Should().Equal(".gitignore");
+        config.EntryErrors.Should().ContainSingle();
+        config.EntryErrors[0].EntryName.Should().Be("celbridge.resources");
+        config.EntryErrors[0].Message.Should().Contain("Unknown key 'description'");
+    }
+
+    [Test]
+    public void ParseFromFile_LeftoverDisabledPackagesKey_IsReportedAsUnknown()
+    {
+        // The disabled list lives in the [celbridge.packages] table, so a disabled-packages key on
+        // [celbridge] is unknown.
+        var content = """
+            [celbridge]
+            celbridge-version = "1.0.0"
             disabled-packages = ["acme-notes"]
             """;
         var configFilePath = WriteConfigFile(content);
@@ -336,11 +364,89 @@ public class ProjectConfigParserTests
 
         result.IsSuccess.Should().BeTrue();
         var config = result.Value;
-        config.Celbridge.DisabledPackages.Should().BeEmpty();
-        config.Resources.Hide.Should().Equal(".gitignore");
+        config.Packages.Disabled.Should().BeEmpty();
         config.EntryErrors.Should().ContainSingle();
-        config.EntryErrors[0].EntryName.Should().Be("celbridge.resources");
+        config.EntryErrors[0].EntryName.Should().Be("celbridge");
         config.EntryErrors[0].Message.Should().Contain("Unknown key 'disabled-packages'");
+    }
+
+    [TestCase("")]
+    [TestCase("/")]
+    [TestCase(" . ")]
+    public void ParseFromFile_PackageFolderNamingProjectRoot_IsDroppedWithEntryError(string folder)
+    {
+        var content = $"""
+            [celbridge.packages]
+            folders = ["{folder}", "vendor"]
+            """;
+        var configFilePath = WriteConfigFile(content);
+
+        var result = ProjectConfigParser.ParseFromFile(configFilePath, _fileSystem);
+
+        result.IsSuccess.Should().BeTrue();
+        var config = result.Value;
+        config.Packages.Folders.Should().Equal("vendor");
+        config.EntryErrors.Should().ContainSingle();
+        config.EntryErrors[0].EntryName.Should().Be("celbridge.packages");
+        config.EntryErrors[0].Message.Should().Contain("names the project root");
+    }
+
+    [TestCase("../outside")]
+    [TestCase("temp:packages")]
+    [TestCase("vendor//packages")]
+    public void ParseFromFile_PackageFolderThatIsNotAProjectFolderPath_IsDroppedWithEntryError(string folder)
+    {
+        var content = $"""
+            [celbridge.packages]
+            folders = ["{folder}"]
+            """;
+        var configFilePath = WriteConfigFile(content);
+
+        var result = ProjectConfigParser.ParseFromFile(configFilePath, _fileSystem);
+
+        result.IsSuccess.Should().BeTrue();
+        var config = result.Value;
+        config.Packages.Folders.Should().BeEmpty();
+        config.EntryErrors.Should().ContainSingle();
+        config.EntryErrors[0].Message.Should().Contain("must be a folder path from the project root");
+    }
+
+    [TestCase(".git")]
+    [TestCase("vendor/.GIT/packages")]
+    public void ParseFromFile_PackageFolderInsideAGitFolder_IsDroppedWithEntryError(string folder)
+    {
+        var content = $"""
+            [celbridge.packages]
+            folders = ["{folder}"]
+            """;
+        var configFilePath = WriteConfigFile(content);
+
+        var result = ProjectConfigParser.ParseFromFile(configFilePath, _fileSystem);
+
+        result.IsSuccess.Should().BeTrue();
+        var config = result.Value;
+        config.Packages.Folders.Should().BeEmpty();
+        config.EntryErrors.Should().ContainSingle();
+        config.EntryErrors[0].Message.Should().Contain("is inside a .git folder");
+    }
+
+    [Test]
+    public void ParseFromFile_PackagesFolderAndRepeatedFolders_AreDroppedWithoutEntryErrors()
+    {
+        // Listing the packages folder or a folder already listed adds nothing, so the parser keeps one copy
+        // of each folder, trimmed of the slashes at either end.
+        var content = """
+            [celbridge.packages]
+            folders = ["packages", "/vendor/", "vendor", "lib"]
+            """;
+        var configFilePath = WriteConfigFile(content);
+
+        var result = ProjectConfigParser.ParseFromFile(configFilePath, _fileSystem);
+
+        result.IsSuccess.Should().BeTrue();
+        var config = result.Value;
+        config.Packages.Folders.Should().Equal("vendor", "lib");
+        config.EntryErrors.Should().BeEmpty();
     }
 
     [Test]

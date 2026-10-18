@@ -25,7 +25,7 @@ public record class WorkshopPublishPackageResult(
 
 public partial class WorkshopTools
 {
-    /// <summary>Publish a package folder to the workshop as a new workshop version, named from its manifest.</summary>
+    /// <summary>Publish a package to the workshop as a new workshop version, named from its manifest.</summary>
     [McpServerTool(Name = "workshop_publish_package", Destructive = true)]
     [ToolAlias("workshop.publish_package")]
     [RelatedGuides("resource_keys", "workshop_versions", "packages_overview", "silent_vs_interactive", "document_editor_contributions", "utility_documents")]
@@ -323,7 +323,7 @@ public partial class WorkshopTools
             || manifestInfoResult.Value.Kind != StorageItemKind.File)
         {
             return Result.Fail(
-                $"Package manifest not found. Expected '{PackageConstants.ManifestFileName}' in the package folder.");
+                $"Package manifest not found. Expected '{PackageConstants.ManifestFileName}' in the package's folder.");
         }
 
         return new PackageSource(folderResource, folderPath, manifestPath);

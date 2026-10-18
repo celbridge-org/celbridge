@@ -13,7 +13,7 @@ public record class WorkshopInstallPackageResult(string PackageName, int Worksho
 
 public partial class WorkshopTools
 {
-    /// <summary>Install a workshop version or alias of a package into a destination folder (default packages/).</summary>
+    /// <summary>Install a workshop version or alias of a package into a package folder (default packages/).</summary>
     [McpServerTool(Name = "workshop_install_package", Destructive = true)]
     [ToolAlias("workshop.install_package")]
     [RelatedGuides("workshop_versions", "resource_keys", "silent_vs_interactive")]
@@ -46,37 +46,41 @@ public partial class WorkshopTools
             return ToolResponse.InvalidResourceKey(destination);
         }
 
-        // The package extracts into a subfolder named for the package under the
-        // chosen destination, so packages installed side by side never overlap.
-        var packageFolder = destinationFolder.Combine(packageName);
-
         var workspaceService = workspaceWrapper.WorkspaceService;
         var resourceService = workspaceService.ResourceService;
         var resourceRegistry = resourceService.Registry;
         var resourceFileSystem = resourceService.FileSystem;
 
-        var canCreateResult = resourceService.Operations.CanCreateResource(packageFolder, isFolder: true);
+        var destinationCheck = ValidateDestination(workspaceService.PackageService, destinationFolder);
+        if (destinationCheck.IsFailure)
+        {
+            return ToolResponse.Error(destinationCheck);
+        }
+        destinationFolder = destinationCheck.Value;
+
+        // The package extracts into a subfolder named for the package under the
+        // chosen destination, so packages installed side by side never overlap.
+        var installFolder = destinationFolder.Combine(packageName);
+
+        var canCreateResult = resourceService.Operations.CanCreateResource(installFolder, isFolder: true);
         if (canCreateResult.IsFailure)
         {
             return ToolResponse.Error(
                 $"Cannot install into '{destinationFolder}': {canCreateResult.FirstErrorMessage}");
         }
 
-        // A package installed under project: participates in discovery, so a
-        // second copy of the same name at a different path would fault both
-        // copies. Refuse before downloading and name the existing location.
-        if (packageFolder.Root == ResourceKey.DefaultRoot)
+        // An installed package participates in discovery, so a second copy of
+        // the same name at a different path would fault both copies. Refuse
+        // before downloading and name the existing location.
+        var duplicateCheck = await CheckForDuplicateProjectPackageAsync(
+            workspaceService.PackageService,
+            resourceRegistry,
+            resourceFileSystem,
+            packageName,
+            installFolder);
+        if (duplicateCheck.IsFailure)
         {
-            var duplicateCheck = await CheckForDuplicateProjectPackageAsync(
-                workspaceService.PackageService,
-                resourceRegistry,
-                resourceFileSystem,
-                packageName,
-                packageFolder);
-            if (duplicateCheck.IsFailure)
-            {
-                return ToolResponse.Error(duplicateCheck);
-            }
+            return ToolResponse.Error(duplicateCheck);
         }
 
         var packageApiClient = GetRequiredService<IPackageApiClient>();
@@ -104,21 +108,21 @@ public partial class WorkshopTools
         // Treat an existing folder at the destination as a replace: its contents
         // are trashed and the package re-extracted. The installed workshop version
         // is read back from the existing HISTORY.md to inform the confirmation.
-        var existingFolderResult = await resourceFileSystem.GetInfoAsync(packageFolder);
+        var existingFolderResult = await resourceFileSystem.GetInfoAsync(installFolder);
         var isReplace = existingFolderResult.IsSuccess
             && existingFolderResult.Value.Kind == StorageItemKind.Folder;
 
         int? installedWorkshopVersion = null;
         if (isReplace)
         {
-            installedWorkshopVersion = await TryReadInstalledWorkshopVersionAsync(resourceFileSystem, packageFolder);
+            installedWorkshopVersion = await TryReadInstalledWorkshopVersionAsync(resourceFileSystem, installFolder);
         }
 
         if (confirmWithUser)
         {
             var confirmed = await ConfirmInstallPackageAsync(
                 packageName,
-                packageFolder,
+                installFolder,
                 resolvedWorkshopVersion,
                 isReplace,
                 installedWorkshopVersion);
@@ -137,7 +141,7 @@ public partial class WorkshopTools
 
         if (isReplace)
         {
-            var replaceResult = await ReplaceExistingFolderAsync(packageFolder);
+            var replaceResult = await ReplaceExistingFolderAsync(installFolder);
             if (replaceResult.IsFailure)
             {
                 return ToolResponse.Error(replaceResult);
@@ -159,7 +163,7 @@ public partial class WorkshopTools
             var unarchiveResultWrapper = await ExecuteCommandAsync<IUnarchiveResourceCommand, UnarchiveResult>(command =>
             {
                 command.ArchiveResource = stagedArchive;
-                command.DestinationResource = packageFolder;
+                command.DestinationResource = installFolder;
                 command.Overwrite = false;
             });
 
@@ -177,7 +181,7 @@ public partial class WorkshopTools
             await resourceFileSystem.DeleteAsync(stagedArchive);
         }
 
-        var historyFile = packageFolder.Combine(WorkshopConstants.HistoryFileName);
+        var historyFile = installFolder.Combine(WorkshopConstants.HistoryFileName);
         var formatHistoryResult = PackageHistoryHelper.Format(packageName, packageDetails.WorkshopVersions, resolvedWorkshopVersion);
         if (formatHistoryResult.IsFailure)
         {
@@ -193,9 +197,35 @@ public partial class WorkshopTools
             }
         }
 
-        var result = new WorkshopInstallPackageResult(packageName, resolvedWorkshopVersion, extractedEntries, packageFolder.ToString());
+        var result = new WorkshopInstallPackageResult(packageName, resolvedWorkshopVersion, extractedEntries, installFolder.ToString());
         var json = JsonSerializer.Serialize(result, JsonOptions);
         return ToolResponse.Success(json);
+    }
+
+    // Returns the package folder that the destination names, with the case it had when the project loaded.
+    // Refuses a destination outside the package folders that the project loaded with. A folder added to the
+    // project file during the session is refused until the project reloads.
+    private static Result<ResourceKey> ValidateDestination(IPackageService packageService, ResourceKey destinationFolder)
+    {
+        var packageFolders = packageService.GetPackageFolders();
+
+        if (destinationFolder.Root == ResourceKey.DefaultRoot)
+        {
+            foreach (var packageFolder in packageFolders)
+            {
+                if (PackageFolderPath.IsSameFolder(packageFolder.Path, destinationFolder.Path))
+                {
+                    return packageFolder;
+                }
+            }
+        }
+
+        var packageFolderList = string.Join(", ", packageFolders.Select(packageFolder => $"'{packageFolder}'"));
+
+        return Result.Fail(
+            $"Cannot install into '{destinationFolder}': it is not a package folder. " +
+            $"Install into one of the project's package folders: {packageFolderList}. " +
+            "A project lists more package folders in the 'folders' key of its [celbridge.packages] table, and a change to the list applies when the project reloads.");
     }
 
     // Checks against the packages as the project loaded. A same-name copy whose manifest has since been
@@ -206,12 +236,12 @@ public partial class WorkshopTools
         IResourceRegistry resourceRegistry,
         IResourceFileSystem resourceFileSystem,
         string packageName,
-        ResourceKey packageFolder)
+        ResourceKey installFolder)
     {
-        var resolveTargetResult = resourceRegistry.ResolveResourcePath(packageFolder, validateCase: false);
+        var resolveTargetResult = resourceRegistry.ResolveResourcePath(installFolder, validateCase: false);
         if (resolveTargetResult.IsFailure)
         {
-            return Result.Fail($"Cannot resolve install destination '{packageFolder}': {resolveTargetResult.FirstErrorMessage}");
+            return Result.Fail($"Cannot resolve install destination '{installFolder}': {resolveTargetResult.FirstErrorMessage}");
         }
         var targetPath = NormalizeFolderPath(resolveTargetResult.Value);
 
@@ -264,14 +294,14 @@ public partial class WorkshopTools
         return folderPath;
     }
 
-    // A manifest counts as present unless the file system reports it missing, so a package folder that cannot
-    // be checked keeps blocking the install.
+    // Returns false only when the file system reports the manifest as missing. A failed check returns true, so
+    // the package still blocks the install.
     private static async Task<bool> IsManifestPresentAsync(
         IResourceRegistry resourceRegistry,
         IResourceFileSystem resourceFileSystem,
-        string packageFolderPath)
+        string existingFolderPath)
     {
-        var folderKeyResult = resourceRegistry.GetResourceKey(packageFolderPath);
+        var folderKeyResult = resourceRegistry.GetResourceKey(existingFolderPath);
         if (folderKeyResult.IsFailure)
         {
             return true;
@@ -289,17 +319,17 @@ public partial class WorkshopTools
 
     private static async Task<int?> TryReadInstalledWorkshopVersionAsync(
         IResourceFileSystem resourceFileSystem,
-        ResourceKey packageFolder)
+        ResourceKey installFolder)
     {
-        var reference = await TryReadInstalledReferenceAsync(resourceFileSystem, packageFolder);
+        var reference = await TryReadInstalledReferenceAsync(resourceFileSystem, installFolder);
         return reference?.WorkshopVersion;
     }
 
     private static async Task<InstalledPackageReference?> TryReadInstalledReferenceAsync(
         IResourceFileSystem resourceFileSystem,
-        ResourceKey packageFolder)
+        ResourceKey installFolder)
     {
-        var historyFile = packageFolder.Combine(WorkshopConstants.HistoryFileName);
+        var historyFile = installFolder.Combine(WorkshopConstants.HistoryFileName);
         var infoResult = await resourceFileSystem.GetInfoAsync(historyFile);
         if (infoResult.IsFailure
             || infoResult.Value.Kind != StorageItemKind.File)
@@ -318,7 +348,7 @@ public partial class WorkshopTools
 
     private async Task<bool> ConfirmInstallPackageAsync(
         string packageName,
-        ResourceKey packageFolder,
+        ResourceKey installFolder,
         int incomingWorkshopVersion,
         bool isReplace,
         int? installedWorkshopVersion)
@@ -334,7 +364,7 @@ public partial class WorkshopTools
             {
                 message = localizerService.GetString(
                     "Workshop_ReplacePackageConfirm_Message",
-                    packageFolder.ToString(),
+                    installFolder.ToString(),
                     packageName,
                     installedWorkshopVersion.Value,
                     incomingWorkshopVersion);
@@ -343,7 +373,7 @@ public partial class WorkshopTools
             {
                 message = localizerService.GetString(
                     "Workshop_ReplacePackageConfirm_MessageUnknownVersion",
-                    packageFolder.ToString(),
+                    installFolder.ToString(),
                     packageName,
                     incomingWorkshopVersion);
             }
@@ -355,22 +385,22 @@ public partial class WorkshopTools
                 "Workshop_InstallPackageConfirm_Message",
                 packageName,
                 incomingWorkshopVersion,
-                packageFolder.ToString());
+                installFolder.ToString());
         }
 
         return await ConfirmActionAsync(title, message);
     }
 
-    private async Task<Result> ReplaceExistingFolderAsync(ResourceKey packageFolder)
+    private async Task<Result> ReplaceExistingFolderAsync(ResourceKey installFolder)
     {
         var deleteResultWrapper = await ExecuteCommandAsync<IDeleteResourceCommand, DeleteCommandResult>(command =>
         {
-            command.Resources = new List<ResourceKey> { packageFolder };
+            command.Resources = new List<ResourceKey> { installFolder };
         });
 
         if (deleteResultWrapper.IsFailure)
         {
-            return Result.Fail($"Failed to replace existing package folder '{packageFolder}'.")
+            return Result.Fail($"Failed to replace the installed package at '{installFolder}'.")
                 .WithErrors(deleteResultWrapper);
         }
 
@@ -378,8 +408,8 @@ public partial class WorkshopTools
         if (deleteResult.BatchOutcome != DeleteBatchOutcome.DeletedAll)
         {
             return Result.Fail(
-                $"Could not fully remove the existing package folder '{packageFolder}' before reinstalling. " +
-                "Close any open files under it and try again.");
+                $"Could not fully remove the installed package at '{installFolder}' before reinstalling. " +
+                "Close any open files in it and try again.");
         }
 
         return Result.Ok();

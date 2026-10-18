@@ -21,14 +21,17 @@ public static class ProjectConfigParser
     private const string CelbridgeVersionKey = "celbridge-version";
     private const string ProjectVersionKey = "project-version";
     private const string DescriptionKey = "description";
-    private const string DisabledPackagesKey = "disabled-packages";
     private const string EditorAssociationsKey = "editor-associations";
     private const string FeaturesKey = "features";
     private const string ResourcesKey = "resources";
+    private const string PackagesKey = "packages";
 
     private const string HideKey = "hide";
     private const string SearchExcludeKey = "search-exclude";
     private const string DownloadsFolderKey = "downloads-folder";
+
+    private const string PackageFoldersKey = "folders";
+    private const string DisabledPackagesKey = "disabled";
 
     private const string DocumentShortcutResourceKey = "resource";
     private const string DocumentShortcutIconKey = "icon";
@@ -46,10 +49,10 @@ public static class ProjectConfigParser
         CelbridgeVersionKey,
         ProjectVersionKey,
         DescriptionKey,
-        DisabledPackagesKey,
         EditorAssociationsKey,
         FeaturesKey,
         ResourcesKey,
+        PackagesKey,
     };
 
     private static readonly IReadOnlySet<string> KnownResourcesKeys = new HashSet<string>(StringComparer.Ordinal)
@@ -57,6 +60,12 @@ public static class ProjectConfigParser
         HideKey,
         SearchExcludeKey,
         DownloadsFolderKey,
+    };
+
+    private static readonly IReadOnlySet<string> KnownPackagesKeys = new HashSet<string>(StringComparer.Ordinal)
+    {
+        PackageFoldersKey,
+        DisabledPackagesKey,
     };
 
     private static readonly IReadOnlySet<string> KnownDocumentShortcutKeys = new HashSet<string>(StringComparer.Ordinal)
@@ -143,12 +152,15 @@ public static class ProjectConfigParser
 
         var celbridgeSection = new CelbridgeSection();
         var resourcesSection = new ResourcesSection();
+        var packagesSection = new PackagesSection();
         var featuresDict = new Dictionary<string, bool>();
 
         if (root.TryGetValue(CelbridgeSectionName, out var celbridgeObject) &&
             celbridgeObject is TomlTable celbridgeTable)
         {
-            celbridgeSection = ParseCelbridgeTable(celbridgeTable, entryErrors, out resourcesSection, out featuresDict);
+            celbridgeSection = ParseCelbridgeTable(celbridgeTable, entryErrors, out featuresDict);
+            resourcesSection = ParseResourcesTable(celbridgeTable, entryErrors);
+            packagesSection = ParsePackagesTable(celbridgeTable, entryErrors);
         }
 
         // Editor overrides of the discovered defaults are declared as [[contribution]] entries.
@@ -225,6 +237,7 @@ public static class ProjectConfigParser
         {
             Celbridge = celbridgeSection,
             Resources = resourcesSection,
+            Packages = packagesSection,
             Features = featuresDict,
             ContributionOverrides = contributions,
             DocumentShortcuts = documentShortcuts,
@@ -235,41 +248,14 @@ public static class ProjectConfigParser
     private static CelbridgeSection ParseCelbridgeTable(
         TomlTable celbridgeTable,
         List<ProjectConfigEntryError> entryErrors,
-        out ResourcesSection resourcesSection,
         out Dictionary<string, bool> featuresDict)
     {
-        resourcesSection = new ResourcesSection();
         featuresDict = new Dictionary<string, bool>();
 
         foreach (var key in ConfigSchemaHelper.FindUnknownKeys(celbridgeTable.Keys, KnownCelbridgeKeys))
         {
             entryErrors.Add(new ProjectConfigEntryError(
                 CelbridgeSectionName, $"Unknown key '{key}' on [{CelbridgeSectionName}]. The key was dropped."));
-        }
-
-        var disabledPackages = new List<string>();
-        if (celbridgeTable.TryGetValue(DisabledPackagesKey, out var disabledPackagesObject))
-        {
-            if (disabledPackagesObject is TomlArray disabledPackagesArray)
-            {
-                foreach (var entry in disabledPackagesArray)
-                {
-                    if (entry is string packageName && !string.IsNullOrWhiteSpace(packageName))
-                    {
-                        disabledPackages.Add(packageName);
-                    }
-                    else
-                    {
-                        entryErrors.Add(new ProjectConfigEntryError(
-                            CelbridgeSectionName, $"Dropped a non-string entry in '{DisabledPackagesKey}'."));
-                    }
-                }
-            }
-            else
-            {
-                entryErrors.Add(new ProjectConfigEntryError(
-                    CelbridgeSectionName, $"'{DisabledPackagesKey}' must be an array of package names."));
-            }
         }
 
         var editorAssociations = new Dictionary<string, string>();
@@ -327,42 +313,176 @@ public static class ProjectConfigParser
             }
         }
 
-        if (celbridgeTable.TryGetValue(ResourcesKey, out var resourcesObject))
-        {
-            if (resourcesObject is TomlTable resourcesTable)
-            {
-                // A flat key hand-appended after the [celbridge.resources] header lands in this
-                // table per TOML rules. Unknown keys are reported so the mistake fails loud
-                // rather than silently re-parenting.
-                foreach (var key in ConfigSchemaHelper.FindUnknownKeys(resourcesTable.Keys, KnownResourcesKeys))
-                {
-                    entryErrors.Add(new ProjectConfigEntryError(
-                        $"{CelbridgeSectionName}.{ResourcesKey}",
-                        $"Unknown key '{key}' on [{CelbridgeSectionName}.{ResourcesKey}]. Flat [{CelbridgeSectionName}] keys must precede the [{CelbridgeSectionName}.{ResourcesKey}] header."));
-                }
-
-                resourcesSection = resourcesSection with
-                {
-                    Hide = ReadStringList(resourcesTable, HideKey) ?? resourcesSection.Hide,
-                    SearchExclude = ReadStringList(resourcesTable, SearchExcludeKey) ?? resourcesSection.SearchExclude,
-                    DownloadsFolder = ReadDownloadsFolder(resourcesTable, entryErrors),
-                };
-            }
-            else
-            {
-                entryErrors.Add(new ProjectConfigEntryError(
-                    CelbridgeSectionName, $"'{ResourcesKey}' must be a [{CelbridgeSectionName}.{ResourcesKey}] table."));
-            }
-        }
-
         return new CelbridgeSection
         {
             CelbridgeVersion = ReadString(celbridgeTable, CelbridgeVersionKey),
             ProjectVersion = ReadProjectVersion(celbridgeTable, entryErrors),
             Description = ReadString(celbridgeTable, DescriptionKey),
-            DisabledPackages = disabledPackages,
             EditorAssociations = editorAssociations
         };
+    }
+
+    private static ResourcesSection ParseResourcesTable(TomlTable celbridgeTable, List<ProjectConfigEntryError> entryErrors)
+    {
+        var resourcesSection = new ResourcesSection();
+
+        var resourcesTable = ReadSubTable(celbridgeTable, ResourcesKey, KnownResourcesKeys, entryErrors);
+        if (resourcesTable is null)
+        {
+            return resourcesSection;
+        }
+
+        return resourcesSection with
+        {
+            Hide = ReadStringList(resourcesTable, HideKey) ?? resourcesSection.Hide,
+            SearchExclude = ReadStringList(resourcesTable, SearchExcludeKey) ?? resourcesSection.SearchExclude,
+            DownloadsFolder = ReadDownloadsFolder(resourcesTable, entryErrors),
+        };
+    }
+
+    private static PackagesSection ParsePackagesTable(TomlTable celbridgeTable, List<ProjectConfigEntryError> entryErrors)
+    {
+        var packagesTable = ReadSubTable(celbridgeTable, PackagesKey, KnownPackagesKeys, entryErrors);
+        if (packagesTable is null)
+        {
+            return new PackagesSection();
+        }
+
+        return new PackagesSection
+        {
+            Folders = ReadPackageFolders(packagesTable, entryErrors),
+            Disabled = ReadDisabledPackages(packagesTable, entryErrors),
+        };
+    }
+
+    // Returns the [celbridge.<key>] sub-table, or null when the file has none or the key is not a table.
+    private static TomlTable? ReadSubTable(
+        TomlTable celbridgeTable,
+        string key,
+        IReadOnlySet<string> knownKeys,
+        List<ProjectConfigEntryError> entryErrors)
+    {
+        if (!celbridgeTable.TryGetValue(key, out var subTableObject))
+        {
+            return null;
+        }
+
+        var tableName = $"{CelbridgeSectionName}.{key}";
+
+        if (subTableObject is not TomlTable subTable)
+        {
+            entryErrors.Add(new ProjectConfigEntryError(
+                CelbridgeSectionName, $"'{key}' must be a [{tableName}] table."));
+
+            return null;
+        }
+
+        // A flat key hand-appended after the sub-table's header lands in the sub-table per TOML rules.
+        // Unknown keys are reported, so the mistake shows in the load report.
+        foreach (var unknownKey in ConfigSchemaHelper.FindUnknownKeys(subTable.Keys, knownKeys))
+        {
+            entryErrors.Add(new ProjectConfigEntryError(
+                tableName,
+                $"Unknown key '{unknownKey}' on [{tableName}]. Flat [{CelbridgeSectionName}] keys must precede the [{tableName}] header."));
+        }
+
+        return subTable;
+    }
+
+    // Reports and drops an entry that names the project root, an invalid path or a folder inside a .git folder.
+    // Drops the packages folder and a repeated folder silently, since each is a package folder already.
+    private static IReadOnlyList<string> ReadPackageFolders(TomlTable packagesTable, List<ProjectConfigEntryError> entryErrors)
+    {
+        var folders = new List<string>();
+        if (!packagesTable.TryGetValue(PackageFoldersKey, out var foldersObject))
+        {
+            return folders;
+        }
+
+        var tableName = $"{CelbridgeSectionName}.{PackagesKey}";
+
+        if (foldersObject is not TomlArray foldersArray)
+        {
+            entryErrors.Add(new ProjectConfigEntryError(
+                tableName, $"'{PackageFoldersKey}' must be an array of folder paths."));
+
+            return folders;
+        }
+
+        foreach (var entry in foldersArray)
+        {
+            if (entry is not string folderPath)
+            {
+                entryErrors.Add(new ProjectConfigEntryError(
+                    tableName, $"Dropped a non-string entry in '{PackageFoldersKey}'."));
+                continue;
+            }
+
+            var problem = PackageFolderPath.FindProblem(folderPath, folders, out var folder);
+            switch (problem)
+            {
+                case PackageFolderProblem.None:
+                    folders.Add(folder.Path);
+                    break;
+
+                case PackageFolderProblem.ProjectRoot:
+                    entryErrors.Add(new ProjectConfigEntryError(
+                        tableName,
+                        $"'{PackageFoldersKey}' entry '{folderPath}' names the project root, which cannot be a package folder. The entry was dropped."));
+                    break;
+
+                case PackageFolderProblem.InvalidPath:
+                    entryErrors.Add(new ProjectConfigEntryError(
+                        tableName,
+                        $"'{PackageFoldersKey}' entry '{folderPath}' must be a folder path from the project root. The entry was dropped."));
+                    break;
+
+                case PackageFolderProblem.Reserved:
+                    entryErrors.Add(new ProjectConfigEntryError(
+                        tableName,
+                        $"'{PackageFoldersKey}' entry '{folderPath}' is inside a .git folder, which Celbridge reserves. The entry was dropped."));
+                    break;
+
+                case PackageFolderProblem.AlreadyListed:
+                    break;
+            }
+        }
+
+        return folders;
+    }
+
+    private static IReadOnlyList<string> ReadDisabledPackages(TomlTable packagesTable, List<ProjectConfigEntryError> entryErrors)
+    {
+        var disabledPackages = new List<string>();
+        if (!packagesTable.TryGetValue(DisabledPackagesKey, out var disabledPackagesObject))
+        {
+            return disabledPackages;
+        }
+
+        var tableName = $"{CelbridgeSectionName}.{PackagesKey}";
+
+        if (disabledPackagesObject is not TomlArray disabledPackagesArray)
+        {
+            entryErrors.Add(new ProjectConfigEntryError(
+                tableName, $"'{DisabledPackagesKey}' must be an array of package names."));
+
+            return disabledPackages;
+        }
+
+        foreach (var entry in disabledPackagesArray)
+        {
+            if (entry is string packageName && !string.IsNullOrWhiteSpace(packageName))
+            {
+                disabledPackages.Add(packageName);
+            }
+            else
+            {
+                entryErrors.Add(new ProjectConfigEntryError(
+                    tableName, $"Dropped a non-string entry in '{DisabledPackagesKey}'."));
+            }
+        }
+
+        return disabledPackages;
     }
 
     // A malformed version is reported and dropped, which leaves the project at the default version.

@@ -98,7 +98,7 @@ public class ProjectConfigDraftTests
     public void Draft_SetPackageDisabled_AddsToDisabledPackages()
     {
         var config = ApplyAndParse(BaseConfig, draft => draft.SetPackageDisabled("acme.pixel-editor", true));
-        config.Celbridge.DisabledPackages.Should().Contain("acme.pixel-editor");
+        config.Packages.Disabled.Should().Contain("acme.pixel-editor");
     }
 
     [Test]
@@ -108,7 +108,36 @@ public class ProjectConfigDraftTests
         var text = ProjectConfigSerializer.Serialize(disabled);
 
         var config = ApplyAndParse(text, draft => draft.SetPackageDisabled("acme.pixel-editor", false));
-        config.Celbridge.DisabledPackages.Should().NotContain("acme.pixel-editor");
+        config.Packages.Disabled.Should().NotContain("acme.pixel-editor");
+    }
+
+    [Test]
+    public void Draft_SetPackageFolders_WritesEachFolderItNames()
+    {
+        var config = ApplyAndParse(BaseConfig, draft => draft.SetPackageFolders(new[] { " /vendor/packages/ ", "lib" }));
+
+        config.Packages.Folders.Should().Equal("vendor/packages", "lib");
+    }
+
+    [Test]
+    public void Draft_SetPackageFolders_LeavesOutWhatALoadWouldDrop()
+    {
+        // A blank row is still being filled in. Loading the project drops each of the others: the project root,
+        // a path that is not a folder path, the packages folder and a repeat. The draft writes only the usable
+        // folder.
+        var folderPaths = new[]
+        {
+            "",
+            "/",
+            "../outside",
+            "packages",
+            "lib",
+            "lib/",
+        };
+
+        var config = ApplyAndParse(BaseConfig, draft => draft.SetPackageFolders(folderPaths));
+
+        config.Packages.Folders.Should().Equal("lib");
     }
 
     [Test]
@@ -348,6 +377,6 @@ public class ProjectConfigDraftTests
 
         OverrideOf(config, "acme.pixel-editor", "pixel")!.Config["grid-size"].Should().Be(16L);
         config.Celbridge.EditorAssociations[".png"].Should().Be("pixel-art");
-        config.Celbridge.DisabledPackages.Should().Contain("acme.unwanted");
+        config.Packages.Disabled.Should().Contain("acme.unwanted");
     }
 }
