@@ -1122,6 +1122,9 @@ Open with default application instead?</value>
   <data name="ProjectSettings_ProjectRootPackageFolder" xml:space="preserve">
     <value>The project folder cannot be a package folder.</value>
   </data>
+  <data name="ProjectSettings_ReservedPackageFolder" xml:space="preserve">
+    <value>Celbridge reserves this folder, so it cannot be a package folder.</value>
+  </data>
   <data name="ProjectSettings_RepeatedPackageFolder" xml:space="preserve">
     <value>This folder is already a package folder.</value>
   </data>

@@ -1,14 +1,17 @@
 using Celbridge.FileSystem.Services;
 using Celbridge.Messaging;
+using Celbridge.Messaging.Services;
 using Celbridge.Packages;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Services;
 using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
+using Celbridge.Resources.Services.Roots;
 using Celbridge.Settings;
 using Celbridge.Tests.FileSystem;
 using Celbridge.Tests.Migration.TestHelpers;
+using Celbridge.Tests.Resources;
 using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Packages;
@@ -24,6 +27,7 @@ public class PackageServiceTests
     private IProjectLoadReporter _loadReporter = null!;
     private IconService _iconService = null!;
     private IResourceRegistry _resourceRegistry = null!;
+    private IResourceService _resourceService = null!;
     private IProjectService _projectService = null!;
 
     [SetUp]
@@ -78,8 +82,13 @@ public class PackageServiceTests
             return Result<ResourceKey>.Ok(new ResourceKey(relative));
         });
 
+        // The keys in these tests already have the disk's case. UseRealResourceRegistry covers a key that does not.
+        _resourceRegistry.NormalizeResourceKey(Arg.Any<ResourceKey>())
+            .Returns(callInfo => Result<ResourceKey>.Ok(callInfo.Arg<ResourceKey>()));
+
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Registry.Returns(_resourceRegistry);
+        _resourceService = resourceService;
 
         // Mirror the real SidecarService trailing-extension rule so package
         // discovery rejects any document-file-type extension that lands in
@@ -752,6 +761,61 @@ public class PackageServiceTests
     }
 
     [Test]
+    public async Task RegisterPackages_ListedFolderThatIsAPackage_IsRefusedAndReported()
+    {
+        // The project lists a package's folder as a package folder.
+        CreatePackageAt(Path.Combine("vendor", "widget"), "widget", "Widget", ".wid");
+        SetPackageFolders("vendor/widget");
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        PackageNames().Should().BeEmpty();
+        _service.GetPackageFolders().Should().Equal(new ResourceKey("packages"));
+        _loadReporter.Received(1).RecordConfigEntryErrors(Arg.Is<IReadOnlyList<ProjectConfigEntryError>>(errors =>
+            errors.Count == 1
+            && errors[0].EntryName == "celbridge.packages"
+            && errors[0].Message.Contains("'vendor/widget' is a package")));
+    }
+
+    [Test]
+    public async Task RegisterPackages_ManifestNamedInAnotherCase_Loads()
+    {
+        var packageDir = CreateProjectPackage("upper", "upper-tool", "Upper", ".upr");
+        File.Move(Path.Combine(packageDir, "package.toml"), Path.Combine(packageDir, "Package.toml"));
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        PackageNames().Should().Equal("upper-tool");
+    }
+
+    [Test]
+    [Platform("Win", Reason = "On a case-sensitive file system, Packages and packages are different folders.")]
+    public async Task RegisterPackages_PackagesFolderInAnotherCase_Loads()
+    {
+        CreatePackageAt(Path.Combine("Packages", "upper"), "upper-tool", "Upper", ".upr");
+        UseRealResourceRegistry();
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        PackageNames().Should().Equal("upper-tool");
+        _service.GetPackageFolders().Should().Equal(new ResourceKey("Packages"));
+    }
+
+    [Test]
+    [Platform("Win", Reason = "On a case-sensitive file system, VENDOR and vendor are different folders.")]
+    public async Task RegisterPackages_ListedFolderInAnotherCase_Loads()
+    {
+        CreatePackageAt(Path.Combine("vendor", "listed"), "listed-tool", "Listed", ".lst");
+        SetPackageFolders("VENDOR");
+        UseRealResourceRegistry();
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        PackageNames().Should().Equal("listed-tool");
+        _service.GetPackageFolders().Should().Equal(new ResourceKey("packages"), new ResourceKey("vendor"));
+    }
+
+    [Test]
     public async Task RegisterPackages_RecordsDiscoveryInProjectLoadReport()
     {
         CreateProjectPackage("good", "good", "Good", ".good");
@@ -1137,6 +1201,24 @@ public class PackageServiceTests
         };
 
         UseProjectConfig(config);
+    }
+
+    /// <summary>
+    /// Replaces the stubbed resource registry with a real one, which checks each key's case against the disk.
+    /// The real registry's tree stays empty, the same as when the project loads and discovers its packages.
+    /// </summary>
+    private void UseRealResourceRegistry()
+    {
+        var resourceRegistry = new ResourceRegistry(
+            Substitute.For<ILogger<ResourceRegistry>>(),
+            new MessengerService(),
+            ProjectTreeBuilderTestHelper.Build(_tempProjectFolder, _iconService),
+            ResourceClassifierTestHelper.BuildEmptyStub(),
+            new RootHandlerRegistry(),
+            TestFileSystem.CreateLocal());
+        resourceRegistry.InitializeProjectRoot(_tempProjectFolder);
+
+        _resourceService.Registry.Returns(resourceRegistry);
     }
 
     private void UseProjectConfig(ProjectConfig config)

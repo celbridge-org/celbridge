@@ -35,7 +35,7 @@ Wraps the search term in `\b` boundaries. Ignored when `useRegex` is true — wr
 
 A folder resource key. Only files within this folder (and its descendants) are searched. Empty string searches the whole project.
 
-A scope under a non-default root (e.g. `temp:staging/my-pkg`, `logs:`) is searched too — the tool walks that root's tree directly. A staging-folder comparison relies on this: unzip a package archive under `temp:` with `explorer_unarchive`, then grep it against the local copy. `include`/`exclude` still apply. A whole-project search with an empty scope covers only the project root, so name another root explicitly to search it.
+A scope under a non-default root (e.g. `temp:staging/my-pkg`, `logs:`) is searched too — the tool walks that root's tree directly. `include`/`exclude` still apply. A whole-project search with an empty scope covers only the project root, so name another root explicitly to search it.
 
 ### include / exclude
 

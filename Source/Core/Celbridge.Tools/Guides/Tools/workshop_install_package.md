@@ -27,11 +27,11 @@ A JSON object:
 - `packageName` (string) — echoed package name.
 - `workshopVersion` (int) — the workshop version that was installed.
 - `entries` (int) — number of files extracted.
-- `destination` (string) — resource key of the package folder.
+- `destination` (string) — resource key of the installed package's folder, e.g. `project:packages/my-widget`.
 
 ## Reinstalling replaces
 
-Installing over an existing package folder completely replaces its contents, with no merge. The replaced files are moved to the resource trash first, so even a silent reinstall is recoverable with undo. The installed workshop version's history is written to `HISTORY.md` beside the manifest, newest first. The workshop tools read it back to tell which workshop version a folder was installed from, and it has no effect on the manifest's `package-version`.
+Installing over an installed package completely replaces the contents of its folder, with no merge. The replaced files are moved to the resource trash first, so even a silent reinstall is recoverable with undo. The installed workshop version's history is written to `HISTORY.md` beside the manifest, newest first. The workshop tools read `HISTORY.md` back to tell which workshop version a folder was installed from. The file has no effect on the manifest's `package-version`.
 
 ## Gotchas
 

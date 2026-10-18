@@ -34,8 +34,6 @@ game/
   lib/phaser.min.js   Phaser 4.2.1, vendored so the game runs offline
   sprites/            PNGs made with the Emoji Sprite Generator
   sounds/             WAVs made with the Sound FX Editor
-  package.toml        makes the folder a Celbridge package
-  pages.toml          publishes the folder as a static page on the workshop
 packages/
   emoji-sprite/       Emoji Sprite Generator
   image-editor/       Image Editor

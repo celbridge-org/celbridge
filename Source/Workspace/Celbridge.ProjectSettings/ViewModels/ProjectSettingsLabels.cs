@@ -57,6 +57,7 @@ internal static class ProjectSettingsLabels
     public static string RemovePackageFolderTooltip => Localizer.GetString("ProjectSettings_RemovePackageFolderTooltip");
     public static string InvalidPackageFolder => Localizer.GetString("ProjectSettings_InvalidPackageFolder");
     public static string ProjectRootPackageFolder => Localizer.GetString("ProjectSettings_ProjectRootPackageFolder");
+    public static string ReservedPackageFolder => Localizer.GetString("ProjectSettings_ReservedPackageFolder");
     public static string RepeatedPackageFolder => Localizer.GetString("ProjectSettings_RepeatedPackageFolder");
     public static string ShortcutsEmpty => Localizer.GetString("ProjectSettings_ShortcutsEmpty");
     public static string AddShortcut => Localizer.GetString("ProjectSettings_AddShortcut");

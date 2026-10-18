@@ -411,6 +411,25 @@ public class ProjectConfigParserTests
         config.EntryErrors[0].Message.Should().Contain("must be a folder path from the project root");
     }
 
+    [TestCase(".git")]
+    [TestCase("vendor/.GIT/packages")]
+    public void ParseFromFile_PackageFolderInsideAGitFolder_IsDroppedWithEntryError(string folder)
+    {
+        var content = $"""
+            [celbridge.packages]
+            folders = ["{folder}"]
+            """;
+        var configFilePath = WriteConfigFile(content);
+
+        var result = ProjectConfigParser.ParseFromFile(configFilePath, _fileSystem);
+
+        result.IsSuccess.Should().BeTrue();
+        var config = result.Value;
+        config.Packages.Folders.Should().BeEmpty();
+        config.EntryErrors.Should().ContainSingle();
+        config.EntryErrors[0].Message.Should().Contain("is inside a .git folder");
+    }
+
     [Test]
     public void ParseFromFile_PackagesFolderAndRepeatedFolders_AreDroppedWithoutEntryErrors()
     {

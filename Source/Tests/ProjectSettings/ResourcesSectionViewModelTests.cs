@@ -3,6 +3,7 @@ using Celbridge.Dialog;
 using Celbridge.ProjectSettings.ViewModels;
 using Celbridge.Projects;
 using Celbridge.Projects.Services;
+using Celbridge.Utilities;
 using Celbridge.Workspace;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
@@ -342,6 +343,7 @@ public class ResourcesSectionViewModelTests
 
     [TestCase("/", PackageFolderProblem.ProjectRoot)]
     [TestCase("../outside", PackageFolderProblem.InvalidPath)]
+    [TestCase(".git/hooks", PackageFolderProblem.Reserved)]
     [TestCase("packages", PackageFolderProblem.AlreadyListed)]
     [TestCase("lib/", PackageFolderProblem.AlreadyListed)]
     public void AnUnusablePackageFolder_IsReportedAndNotWritten(string path, PackageFolderProblem expectedProblem)

@@ -1,17 +1,7 @@
+using Celbridge.Utilities;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.ProjectSettings.ViewModels;
-
-/// <summary>
-/// The reasons that loading the project drops a listed package folder.
-/// </summary>
-public enum PackageFolderProblem
-{
-    None,
-    ProjectRoot,
-    InvalidPath,
-    AlreadyListed,
-}
 
 /// <summary>
 /// A row of the Resources section for one package folder that the project lists. The row shows the folder's
@@ -42,6 +32,8 @@ public partial class PackageFolderViewModel : ObservableObject
                     return ProjectSettingsLabels.ProjectRootPackageFolder;
                 case PackageFolderProblem.InvalidPath:
                     return ProjectSettingsLabels.InvalidPackageFolder;
+                case PackageFolderProblem.Reserved:
+                    return ProjectSettingsLabels.ReservedPackageFolder;
                 case PackageFolderProblem.AlreadyListed:
                     return ProjectSettingsLabels.RepeatedPackageFolder;
                 default:

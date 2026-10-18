@@ -3,7 +3,19 @@ using Celbridge.Packages;
 namespace Celbridge.Utilities;
 
 /// <summary>
-/// Parses and compares the paths of package folders. Every project has the packages folder. The project file
+/// The problem, if any, that makes loading the project drop a listed package folder.
+/// </summary>
+public enum PackageFolderProblem
+{
+    None,
+    ProjectRoot,
+    InvalidPath,
+    Reserved,
+    AlreadyListed,
+}
+
+/// <summary>
+/// Checks and compares the paths of package folders. Every project has the packages folder. The project file
 /// can list more, each as a path from the project root.
 /// </summary>
 public static class PackageFolderPath
@@ -14,39 +26,36 @@ public static class PackageFolderPath
     public static ResourceKey DefaultFolder { get; } = new ResourceKey(PackageConstants.DefaultPackagesFolder);
 
     /// <summary>
-    /// Parses a listed folder path, ignoring whitespace and slashes at either end. Fails for the project root,
-    /// for a path that is not a valid resource path, and for a path under another root.
+    /// Returns the problem that makes loading the project drop a listed folder path, or None when the folder can
+    /// be a package folder. The packages folder and a folder already in the list count as already listed. On None,
+    /// folder is the parsed folder.
     /// </summary>
-    public static bool TryParse(string path, out ResourceKey folder)
+    public static PackageFolderProblem FindProblem(string path, IReadOnlyList<string> listedFolders, out ResourceKey folder)
     {
         folder = ResourceKey.Empty;
 
-        if (IsProjectRoot(path))
+        if (SettingFolderPath.IsProjectRoot(path))
         {
-            return false;
+            return PackageFolderProblem.ProjectRoot;
         }
 
-        var trimmedPath = TrimPath(path);
-        if (!ResourceKey.TryCreate(trimmedPath, out var resource)
-            || resource.IsEmpty
-            || resource.Root != ResourceKey.DefaultRoot)
+        if (!SettingFolderPath.TryParse(path, out var parsedFolder))
         {
-            return false;
+            return PackageFolderProblem.InvalidPath;
         }
 
-        folder = resource;
-        return true;
-    }
+        if (SettingFolderPath.IsReserved(parsedFolder))
+        {
+            return PackageFolderProblem.Reserved;
+        }
 
-    /// <summary>
-    /// Returns true if the path names the project root once whitespace and slashes at either end are ignored.
-    /// </summary>
-    public static bool IsProjectRoot(string path)
-    {
-        var trimmedPath = TrimPath(path);
+        if (IsListed(listedFolders, parsedFolder.Path))
+        {
+            return PackageFolderProblem.AlreadyListed;
+        }
 
-        return trimmedPath.Length == 0
-            || trimmedPath == ".";
+        folder = parsedFolder;
+        return PackageFolderProblem.None;
     }
 
     /// <summary>
@@ -58,30 +67,24 @@ public static class PackageFolderPath
     }
 
     /// <summary>
-    /// Returns the folders from the list that can be package folders, in their parsed form. Drops the packages
-    /// folder, any folder listed earlier, and any path that fails to parse.
+    /// Returns the folders from the list that can be package folders, in their parsed form. Drops each path that
+    /// FindProblem reports a problem for.
     /// </summary>
     public static IReadOnlyList<string> NormalizeListedFolders(IEnumerable<string> listedFolders)
     {
         var folders = new List<string>();
         foreach (var listedFolder in listedFolders)
         {
-            if (!TryParse(listedFolder, out var folder)
-                || IsListed(folders, folder.Path))
+            if (FindProblem(listedFolder, folders, out var folder) == PackageFolderProblem.None)
             {
-                continue;
+                folders.Add(folder.Path);
             }
-
-            folders.Add(folder.Path);
         }
 
         return folders;
     }
 
-    /// <summary>
-    /// Returns true if the folder is the packages folder or already in the list.
-    /// </summary>
-    public static bool IsListed(IReadOnlyList<string> listedFolders, string folderPath)
+    private static bool IsListed(IReadOnlyList<string> listedFolders, string folderPath)
     {
         if (IsSameFolder(folderPath, DefaultFolder.Path))
         {
@@ -89,10 +92,5 @@ public static class PackageFolderPath
         }
 
         return listedFolders.Any(listedFolder => IsSameFolder(listedFolder, folderPath));
-    }
-
-    private static string TrimPath(string path)
-    {
-        return path.Trim().Trim('/');
     }
 }

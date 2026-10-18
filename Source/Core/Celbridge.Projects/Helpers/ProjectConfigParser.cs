@@ -389,8 +389,8 @@ public static class ProjectConfigParser
         return subTable;
     }
 
-    // An entry that names the project root or is not a folder path is reported and dropped. The packages
-    // folder and a repeated folder are dropped without a report, since listing them adds nothing.
+    // Reports and drops an entry that names the project root, an invalid path or a folder inside a .git folder.
+    // Drops the packages folder and a repeated folder silently, since each is a package folder already.
     private static IReadOnlyList<string> ReadPackageFolders(TomlTable packagesTable, List<ProjectConfigEntryError> entryErrors)
     {
         var folders = new List<string>();
@@ -418,28 +418,34 @@ public static class ProjectConfigParser
                 continue;
             }
 
-            if (PackageFolderPath.IsProjectRoot(folderPath))
+            var problem = PackageFolderPath.FindProblem(folderPath, folders, out var folder);
+            switch (problem)
             {
-                entryErrors.Add(new ProjectConfigEntryError(
-                    tableName,
-                    $"'{PackageFoldersKey}' entry '{folderPath}' names the project root, which cannot be a package folder. The entry was dropped."));
-                continue;
-            }
+                case PackageFolderProblem.None:
+                    folders.Add(folder.Path);
+                    break;
 
-            if (!PackageFolderPath.TryParse(folderPath, out var folder))
-            {
-                entryErrors.Add(new ProjectConfigEntryError(
-                    tableName,
-                    $"'{PackageFoldersKey}' entry '{folderPath}' must be a folder path from the project root. The entry was dropped."));
-                continue;
-            }
+                case PackageFolderProblem.ProjectRoot:
+                    entryErrors.Add(new ProjectConfigEntryError(
+                        tableName,
+                        $"'{PackageFoldersKey}' entry '{folderPath}' names the project root, which cannot be a package folder. The entry was dropped."));
+                    break;
 
-            if (PackageFolderPath.IsListed(folders, folder.Path))
-            {
-                continue;
-            }
+                case PackageFolderProblem.InvalidPath:
+                    entryErrors.Add(new ProjectConfigEntryError(
+                        tableName,
+                        $"'{PackageFoldersKey}' entry '{folderPath}' must be a folder path from the project root. The entry was dropped."));
+                    break;
 
-            folders.Add(folder.Path);
+                case PackageFolderProblem.Reserved:
+                    entryErrors.Add(new ProjectConfigEntryError(
+                        tableName,
+                        $"'{PackageFoldersKey}' entry '{folderPath}' is inside a .git folder, which Celbridge reserves. The entry was dropped."));
+                    break;
+
+                case PackageFolderProblem.AlreadyListed:
+                    break;
+            }
         }
 
         return folders;

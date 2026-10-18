@@ -253,34 +253,17 @@ public partial class ResourcesSectionViewModel : ProjectSettingsSectionViewModel
         var usableFolders = new List<string>();
         foreach (var packageFolder in PackageFolders)
         {
-            var path = packageFolder.Path;
-
-            if (string.IsNullOrWhiteSpace(path))
+            if (string.IsNullOrWhiteSpace(packageFolder.Path))
             {
                 packageFolder.Problem = PackageFolderProblem.None;
                 continue;
             }
 
-            if (PackageFolderPath.IsProjectRoot(path))
+            packageFolder.Problem = PackageFolderPath.FindProblem(packageFolder.Path, usableFolders, out var folder);
+            if (packageFolder.Problem == PackageFolderProblem.None)
             {
-                packageFolder.Problem = PackageFolderProblem.ProjectRoot;
-                continue;
+                usableFolders.Add(folder.Path);
             }
-
-            if (!PackageFolderPath.TryParse(path, out var folder))
-            {
-                packageFolder.Problem = PackageFolderProblem.InvalidPath;
-                continue;
-            }
-
-            if (PackageFolderPath.IsListed(usableFolders, folder.Path))
-            {
-                packageFolder.Problem = PackageFolderProblem.AlreadyListed;
-                continue;
-            }
-
-            usableFolders.Add(folder.Path);
-            packageFolder.Problem = PackageFolderProblem.None;
         }
     }
 

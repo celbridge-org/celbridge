@@ -54,8 +54,6 @@ public static class ProjectConfigSerializer
     private static void WriteResourcesTable(StringBuilder builder, ResourcesSection resources)
     {
         builder.Append('\n');
-        builder.Append("# 'hide' keeps resources out of the Explorer tree. 'search-exclude' also keeps them out of search.\n");
-        builder.Append("# Both take glob patterns, e.g. \"Python/.venv/**\".\n");
         builder.Append("[celbridge.resources]\n");
         WriteKeyValue(builder, "hide", RenderStringArray(resources.Hide));
         WriteKeyValue(builder, "search-exclude", RenderStringArray(resources.SearchExclude));
@@ -76,8 +74,6 @@ public static class ProjectConfigSerializer
         }
 
         builder.Append('\n');
-        builder.Append("# 'folders' adds package folders to 'packages', and 'disabled' turns packages off by name.\n");
-        builder.Append("# Both take lists, e.g. folders = [\"vendor/packages\"].\n");
         builder.Append("[celbridge.packages]\n");
         if (packages.Folders.Count > 0)
         {

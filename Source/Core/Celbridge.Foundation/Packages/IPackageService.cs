@@ -40,7 +40,8 @@ public interface IPackageService
     /// <summary>
     /// Returns the package folders that discovery read when the project loaded. The packages folder comes
     /// first, then each folder that the project file lists, leaving out any folder that discovery refused.
-    /// A folder is listed whether or not it exists. Empty before the first discovery.
+    /// A folder is listed whether or not it exists. An existing folder is given the disk's letter case. Empty before
+    /// the first discovery.
     /// </summary>
     IReadOnlyList<ResourceKey> GetPackageFolders();
 
