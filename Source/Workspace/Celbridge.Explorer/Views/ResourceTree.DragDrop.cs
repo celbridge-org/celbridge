@@ -279,8 +279,8 @@ public sealed partial class ResourceTree
         // A lone .cel file drop can only be an intentional creation in the
         // reserved namespace. Refuse it. Multi-item and folder drops pass
         // through so the "copy resources from another Celbridge project"
-        // workflow still works — any orphan .cel files that arrive surface
-        // through the project-check reporter.
+        // workflow still works — any orphan .cel files that arrive appear in
+        // the project load report.
         if (sourcePaths.Count == 1)
         {
             var droppedFileName = Path.GetFileName(sourcePaths[0]);

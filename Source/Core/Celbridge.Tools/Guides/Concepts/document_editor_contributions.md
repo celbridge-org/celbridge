@@ -333,7 +333,7 @@ await client.dialog.showNotification('warning', '9 of 40 tilesets could not be c
 
 The current report of an id sits at `{id}.report` and writing a new one moves the previous into `history/`, where it is kept for a week. So `id` is stable across runs — `acme-tiles-convert`, not `convert-2026-08-18`. That keeps re-running from opening a new tab each time, and lets the reader compare against the last few.
 
-It must be lowercase letters, digits, hyphens and dots. **Nothing stops you colliding with another package or with the host, so qualify it with your package name.** The host's own ids are `project-load`, `check-references`, `copy-resources`, `move-resources`, `delete-resources`; taking one of those replaces a report that the host's own notifications open.
+It must be lowercase letters, digits, hyphens and dots. **Nothing stops you colliding with another package or with the host, so qualify it with your package name.** The host's own ids are `project-load`, `copy-resources`, `move-resources`, `delete-resources`; taking one of those replaces a report that the host's own notifications open.
 
 Set `generatedAt` yourself (an ISO 8601 UTC stamp) if one operation writes its report more than once as it progresses — the same stamp means one report being revised rather than several superseding each other. Omit it and the host stamps the write.
 

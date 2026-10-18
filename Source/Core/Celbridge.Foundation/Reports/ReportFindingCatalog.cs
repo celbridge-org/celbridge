@@ -51,8 +51,8 @@ public static class ReportFindingCatalog
     }
 
     /// <summary>
-    /// The project's resources: the state of its sidecar files and the references between them, and
-    /// what an operation over them could not do.
+    /// The project's resources: the state of its sidecar files, and what an operation over them could
+    /// not do.
     /// </summary>
     public static class Resource
     {
@@ -62,19 +62,13 @@ public static class ReportFindingCatalog
         public static readonly ReportFindingDescriptor BrokenSidecar =
             new(new ReportCode("CEL_RESOURCE_002"), "Report_Finding_Resource_BrokenSidecar", ReportSeverity.Warning);
 
-        public static readonly ReportFindingDescriptor MissingReference =
-            new(new ReportCode("CEL_RESOURCE_003"), "Report_Finding_Resource_MissingReference", ReportSeverity.Warning);
-
         public static readonly ReportFindingDescriptor CopyFailed =
-            new(new ReportCode("CEL_RESOURCE_004"), "Report_Finding_Resource_CopyFailed", ReportSeverity.Error);
+            new(new ReportCode("CEL_RESOURCE_003"), "Report_Finding_Resource_CopyFailed", ReportSeverity.Error);
 
         public static readonly ReportFindingDescriptor MoveFailed =
-            new(new ReportCode("CEL_RESOURCE_005"), "Report_Finding_Resource_MoveFailed", ReportSeverity.Error);
+            new(new ReportCode("CEL_RESOURCE_004"), "Report_Finding_Resource_MoveFailed", ReportSeverity.Error);
 
         public static readonly ReportFindingDescriptor DeleteFailed =
-            new(new ReportCode("CEL_RESOURCE_006"), "Report_Finding_Resource_DeleteFailed", ReportSeverity.Error);
-
-        public static readonly ReportFindingDescriptor ReferenceNotUpdated =
-            new(new ReportCode("CEL_RESOURCE_007"), "Report_Finding_Resource_ReferenceNotUpdated", ReportSeverity.Warning);
+            new(new ReportCode("CEL_RESOURCE_005"), "Report_Finding_Resource_DeleteFailed", ReportSeverity.Error);
     }
 }

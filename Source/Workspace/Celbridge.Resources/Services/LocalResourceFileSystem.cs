@@ -11,7 +11,6 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ILocalFileSystem _fileSystem;
     private readonly SidecarCascade _sidecarCascade;
-    private readonly ReferenceRewriter _referenceRewriter;
 
     // The resource registry is workspace-scoped and transient: a constructor-
     // injected instance is a different object from the one held by ResourceService,
@@ -29,7 +28,6 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         _workspaceWrapper = workspaceWrapper;
         _fileSystem = fileSystem;
         _sidecarCascade = new SidecarCascade(logger, workspaceWrapper, fileSystem);
-        _referenceRewriter = new ReferenceRewriter(logger, workspaceWrapper, this, fileSystem);
     }
 
     public async Task<Result<byte[]>> ReadAllBytesAsync(ResourceKey resource)
@@ -140,9 +138,9 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
 
     public async Task<Result<MoveResult>> MoveAsync(ResourceKey source, ResourceKey dest, MoveOptions? options = null)
     {
-        // A resource keeps no identity from one root to another, so a move across roots is a delete from
-        // the source root and a create in the destination root. References to the source still name the
-        // resource that left, and only its removal is announced, so a caller has to ask for this.
+        // A resource keeps no identity from one root to another. A move across roots is a delete from the
+        // source root and a create in the destination root, and only the removal is announced. A caller
+        // has to ask for this move.
         var isCrossRoot = source.Root != dest.Root;
         if (isCrossRoot
             && options?.AllowCrossRoot != true)
@@ -229,19 +227,6 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             }
         }
 
-        var updatedReferencers = new List<ResourceKey>();
-        var skippedReferencers = new List<SkippedReferencer>();
-
-        if (!isCrossRoot &&
-            source.Root == ResourceKey.DefaultRoot)
-        {
-            var rewriteResult = await _referenceRewriter.RewriteForMoveAsync(source, dest, sourceIsFolder, updatedReferencers, skippedReferencers);
-            if (rewriteResult.IsFailure)
-            {
-                return Result.Fail(rewriteResult);
-            }
-        }
-
         // Capture descendant keys before the disk move so the post-move
         // eager-notify can drop their stale source-side index entries and
         // announce each descendant's move. After Move the source path is gone
@@ -321,7 +306,7 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             }
         }
 
-        var result = new MoveResult(updatedReferencers, skippedReferencers, sidecarOutcome);
+        var result = new MoveResult(sidecarOutcome);
         return result;
     }
 
@@ -553,9 +538,9 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
     }
 
     // Returns the resource keys of every descendant of a folder that exists on
-    // disk, both nested files and nested sub-folders. Used to capture descendant
-    // keys before a recursive delete or move so eager-notify can drop their stale
-    // entries from the reference index and announce each descendant's removal.
+    // disk, both nested files and nested sub-folders. A recursive delete or move
+    // lists them first, while they are still on disk, and announces each
+    // removal once the operation is done.
     private async Task<IReadOnlyList<ResourceKey>> EnumerateDescendantKeysAsync(IRootHandlerRegistry rootHandlerRegistry, ResourceKey folder, string folderPath)
     {
         var keys = new List<ResourceKey>();
@@ -564,9 +549,8 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         var enumerateResult = await _fileSystem.EnumerateAsync(folderPath, "*", recursive: true);
         if (enumerateResult.IsFailure)
         {
-            // Best effort. A failure here just means descendant keys won't be
-            // eager-notified; the watcher events still arrive eventually and
-            // clean up the index.
+            // Best effort. On failure the descendant keys are not announced
+            // here. The watcher announces them later.
             return keys;
         }
 

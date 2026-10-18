@@ -25,10 +25,6 @@ The typical pattern: an attempt to edit fails with a read-only error → call `f
 
 Use `file_get_info`'s `isReadOnly` field to check the state without attempting a write.
 
-## Cascade integration
-
-When `explorer_move` rewrites references inside files, a read-only referencer is reported in `skippedReferencers` with `reason: "ReadOnly"` and the move itself still completes. The agent can then unlock the referencer with `file_set_writeable(referencer, true)` and re-run the same move. The cascade rewriter is idempotent — re-running after the unlock completes the deferred rewrite without disturbing the files that were already updated.
-
 ## Notes
 
 - Implemented as the Windows DOS `ReadOnly` attribute. On non-Windows backends (when those land), the closest equivalent is "remove all write permission bits"; the abstraction is leakier than it looks for cross-platform code, but for Windows-flavored Celbridge usage this is the right mental model.

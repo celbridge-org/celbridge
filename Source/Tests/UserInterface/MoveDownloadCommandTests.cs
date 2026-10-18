@@ -22,10 +22,7 @@ public class MoveDownloadCommandTests
     {
         _resourceFileSystem = Substitute.For<IResourceFileSystem>();
         _resourceFileSystem.MoveAsync(Arg.Any<ResourceKey>(), Arg.Any<ResourceKey>(), Arg.Any<MoveOptions?>())
-            .Returns(Task.FromResult(Result<MoveResult>.Ok(new MoveResult(
-                Array.Empty<ResourceKey>(),
-                Array.Empty<SkippedReferencer>(),
-                SidecarOutcome.NotPresent))));
+            .Returns(Task.FromResult(Result<MoveResult>.Ok(new MoveResult(SidecarOutcome.NotPresent))));
 
         var resourceService = Substitute.For<IResourceService>();
         resourceService.FileSystem.Returns(_resourceFileSystem);

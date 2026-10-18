@@ -34,15 +34,15 @@ describe('parseReport', () => {
 describe('groupItems', () => {
     it('collapses occurrences of one finding into a single group', () => {
         const items = [
-            finding('CEL_RESOURCE_003', 'References a missing resource.', { resource: 'project:a.cel' }),
-            finding('CEL_RESOURCE_003', 'References a missing resource.', { resource: 'project:b.cel' }),
-            finding('CEL_RESOURCE_003', 'References a missing resource.', { resource: 'project:c.cel' })
+            finding('CEL_RESOURCE_002', 'Broken .cel file.', { resource: 'project:a.cel' }),
+            finding('CEL_RESOURCE_002', 'Broken .cel file.', { resource: 'project:b.cel' }),
+            finding('CEL_RESOURCE_002', 'Broken .cel file.', { resource: 'project:c.cel' })
         ];
 
         const groups = groupItems(items);
 
         expect(groups).toHaveLength(1);
-        expect(groups[0].code).toBe('CEL_RESOURCE_003');
+        expect(groups[0].code).toBe('CEL_RESOURCE_002');
         expect(groups[0].items).toHaveLength(3);
     });
 
@@ -87,13 +87,13 @@ describe('groupItems', () => {
     it('preserves the order the groups first appear in', () => {
         const items = [
             finding('CEL_RESOURCE_001', 'Orphan .cel file.'),
-            finding('CEL_RESOURCE_003', 'References a missing resource.'),
+            finding('CEL_RESOURCE_002', 'Broken .cel file.'),
             finding('CEL_RESOURCE_001', 'Orphan .cel file.')
         ];
 
         const groups = groupItems(items);
 
-        expect(groups.map(group => group.code)).toEqual(['CEL_RESOURCE_001', 'CEL_RESOURCE_003']);
+        expect(groups.map(group => group.code)).toEqual(['CEL_RESOURCE_001', 'CEL_RESOURCE_002']);
     });
 });
 

@@ -10,13 +10,11 @@ namespace Celbridge.Resources.Commands;
 // Per-resource outcome of CopySingleResourceAsync. ParentFolder is the
 // expandable parent of the destination (null when nothing should expand).
 // CopiedFolder is set when a folder was copied and the caller wants to track
-// it for end-of-batch expansion. MoveDetail carries the FS-layer's structured
-// result when the operation was a move; null for copy operations.
+// it for end-of-batch expansion.
 internal record CopyResourceOutcome(
     Result Result,
     ResourceKey? ParentFolder,
-    ResourceKey? CopiedFolder,
-    MoveResult? MoveDetail);
+    ResourceKey? CopiedFolder);
 
 public class CopyResourceCommand : CommandBase, ICopyResourceCommand
 {
@@ -28,8 +26,6 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
     public bool ExpandCopiedFolder { get; set; }
 
     public CopyCommandResult ResultValue { get; private set; } = new(
-        Array.Empty<ResourceKey>(),
-        Array.Empty<SkippedReferencer>(),
         Array.Empty<FailedResource>());
 
     private readonly ILogger<CopyResourceCommand> _logger;
@@ -84,8 +80,6 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
 
         List<FailedResource> failedResources = new();
         List<ResourceKey> copiedFolders = new();
-        List<ResourceKey> aggregatedUpdated = new();
-        List<SkippedReferencer> aggregatedSkipped = new();
         ResourceKey? lastParentFolder = null;
 
         // Single undo unit for the whole batch; partial success is acceptable.
@@ -113,19 +107,10 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
                 {
                     copiedFolders.Add(outcome.CopiedFolder.Value);
                 }
-
-                if (outcome.MoveDetail is not null)
-                {
-                    aggregatedUpdated.AddRange(outcome.MoveDetail.UpdatedReferencers);
-                    aggregatedSkipped.AddRange(outcome.MoveDetail.SkippedReferencers);
-                }
             }
         }
 
-        ResultValue = new CopyCommandResult(
-            aggregatedUpdated,
-            aggregatedSkipped,
-            failedResources);
+        ResultValue = new CopyCommandResult(failedResources);
 
         // Expand destination folder once at end (not per-item)
         if (lastParentFolder.HasValue && !lastParentFolder.Value.IsEmpty)
@@ -156,12 +141,10 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
             _logger.LogWarning($"CopyResourceCommand completed with failures: {failedList}");
         }
 
-        // A move that left references stale did not finish either, so it is reported alongside the
-        // resources that failed outright rather than only reaching a programmatic caller.
         var operationType = TransferMode == DataTransferMode.Copy
             ? ResourceOperationType.Copy
             : ResourceOperationType.Move;
-        await _operationNotifier.NotifyFailuresAsync(operationType, failedResources, aggregatedSkipped);
+        await _operationNotifier.NotifyFailuresAsync(operationType, failedResources);
 
         // Per-resource failures are a partial-batch outcome reported through
         // ResultValue.FailedResources (each with its reason), not a command
@@ -185,8 +168,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
             return new CopyResourceOutcome(
                 sidecarDenial,
                 ParentFolder: null,
-                CopiedFolder: null,
-                MoveDetail: null);
+                CopiedFolder: null);
         }
 
         // Resolve destination to handle folder drops
@@ -199,8 +181,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
                 Result.Fail($"Failed to probe source resource: '{sourceResource}'")
                     .WithErrors(infoResult),
                 ParentFolder: null,
-                CopiedFolder: null,
-                MoveDetail: null);
+                CopiedFolder: null);
         }
         var info = infoResult.Value;
         bool isFolder = info.Kind == StorageItemKind.Folder;
@@ -210,26 +191,17 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
             return new CopyResourceOutcome(
                 Result.Fail($"Resource does not exist: '{sourceResource}'"),
                 ParentFolder: null,
-                CopiedFolder: null,
-                MoveDetail: null);
+                CopiedFolder: null);
         }
 
         Result result;
-        MoveResult? moveDetail = null;
-
         if (TransferMode == DataTransferMode.Copy)
         {
-            var copyResult = await ResourceOperationService.CopyAsync(sourceResource, resolvedDestResource);
-            result = copyResult;
+            result = await ResourceOperationService.CopyAsync(sourceResource, resolvedDestResource);
         }
         else
         {
-            var moveResult = await ResourceOperationService.MoveAsync(sourceResource, resolvedDestResource);
-            result = moveResult;
-            if (moveResult.IsSuccess)
-            {
-                moveDetail = moveResult.Value;
-            }
+            result = await ResourceOperationService.MoveAsync(sourceResource, resolvedDestResource);
         }
 
         ResourceKey? parentFolder = null;
@@ -248,7 +220,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
             }
         }
 
-        return new CopyResourceOutcome(result, parentFolder, copiedFolder, moveDetail);
+        return new CopyResourceOutcome(result, parentFolder, copiedFolder);
     }
 
     /// <summary>

@@ -135,30 +135,6 @@ public class NotificationComposerTests
     }
 
     [Test]
-    public void AMoveThatOnlyLeftReferencesStale_IsAWarningNotAFailure()
-    {
-        // The move ran. What it could not finish was rewriting the references into what it moved.
-        var message = new ResourceOperationFailedMessage(
-            ResourceOperationType.Move,
-            Array.Empty<FailedResource>())
-        {
-            SkippedReferencers = new List<SkippedReferencer>
-            {
-                new SkippedReferencer(new ResourceKey("project:a.json"), ReferencerSkipReason.ReadOnly, "read-only"),
-                new SkippedReferencer(new ResourceKey("project:b.json"), ReferencerSkipReason.ReadOnly, "read-only")
-            },
-            ReportResource = new ResourceKey("logs:reports/move-resources.report")
-        };
-
-        _operationHandler!.Invoke(this, message);
-
-        var notification = _centre.Notifications.Should().ContainSingle().Subject;
-        notification.Content.Severity.Should().Be(ReportSeverity.Warning);
-        notification.Content.Message.Should().Be("2 references still point at the old location");
-        notification.Content.Action.Should().NotBeNull();
-    }
-
-    [Test]
     public void DiscardedEditsOnClose_NameTheFileAsAnError()
     {
         var message = new WorkspaceItemSaveDiscardedMessage(new ResourceKey("project:notes.txt"));

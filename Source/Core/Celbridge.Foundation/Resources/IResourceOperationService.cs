@@ -63,8 +63,7 @@ public interface IResourceOperationService
 
     /// <summary>
     /// Moves a file or folder from one resource location to another. The
-    /// returned MoveResult carries the reference-rewrite and paired-sidecar
-    /// cascade outcomes.
+    /// returned MoveResult carries the paired-sidecar cascade outcome.
     /// </summary>
     Task<Result<MoveResult>> MoveAsync(ResourceKey source, ResourceKey dest);
 

@@ -129,10 +129,10 @@ public sealed class ResourceClassifier : IResourceClassifier
             }
             else
             {
-                // No parent on disk. The .cel is an orphan — surface it through
-                // the orphan list so the project-check reporter can prompt the
-                // user to clean it up. The .cel extension is reserved for
-                // sidecars; document-type registrations cannot claim it.
+                // No parent on disk. The .cel is an orphan, and the orphan list
+                // carries it to the project load report. The .cel extension is
+                // reserved for sidecars. Document-type registrations cannot
+                // claim it.
                 sidecarFile.FileKind = FileKind.Orphan;
                 orphan.Add(sidecarKey);
             }

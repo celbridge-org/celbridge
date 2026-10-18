@@ -118,21 +118,6 @@ public sealed class NotificationComposer
     private NotificationContent ComposeOperationNotification(ResourceOperationFailedMessage message)
     {
         var failedResources = message.FailedResources;
-        if (failedResources.Count == 0)
-        {
-            // The operation ran. What it could not finish was rewriting the references into the resources it
-            // moved, which leaves them pointing at the old location.
-            var skippedCount = message.SkippedReferencers.Count;
-            var skippedKey = skippedCount == 1
-                ? "Notification_ReferencesNotUpdated_One"
-                : "Notification_ReferencesNotUpdated_Many";
-
-            return Compose(
-                ReportSeverity.Warning,
-                skippedKey,
-                ComposeReportAction(message.ReportResource),
-                skippedCount);
-        }
 
         var baseKey = message.OperationType switch
         {

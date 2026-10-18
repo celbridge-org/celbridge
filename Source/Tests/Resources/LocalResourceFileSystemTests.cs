@@ -17,7 +17,6 @@ public class LocalResourceFileSystemTests
     private string _tempFolder = null!;
     private IResourceRegistry _resourceRegistry = null!;
     private IRootHandlerRegistry _rootHandlerRegistry = null!;
-    private IResourceScanner _resourceScanner = null!;
     private IResourceOperationService _operationService = null!;
     private IMessengerService _messengerService = null!;
     private LocalResourceFileSystem _resourceFileSystem = null!;
@@ -38,10 +37,6 @@ public class LocalResourceFileSystemTests
         // with success results for the keys they exercise.
         _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>())
             .Returns(Result<string>.Fail("not stubbed"));
-
-        _resourceScanner = Substitute.For<IResourceScanner>();
-        var referenceIndex = ResourceReferenceIndexTestHelper.Empty();
-        _resourceScanner.BuildReferenceIndexAsync().Returns(Task.FromResult(referenceIndex));
 
         _rootHandlerRegistry = Substitute.For<IRootHandlerRegistry>();
         _rootHandlerRegistry.RootHandlers.Returns(new Dictionary<string, IResourceRootHandler>());
@@ -64,7 +59,6 @@ public class LocalResourceFileSystemTests
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
-        resourceService.Scanner.Returns(_resourceScanner);
         resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
@@ -359,7 +353,7 @@ public class LocalResourceFileSystemTests
     }
 
     [Test]
-    public async Task MoveAsync_MovesFile_WhenNoReferencersAndNoSidecar()
+    public async Task MoveAsync_MovesFile_WhenNoSidecar()
     {
         var sourceKey = new ResourceKey("a.txt");
         var destKey = new ResourceKey("b.txt");
@@ -380,7 +374,6 @@ public class LocalResourceFileSystemTests
         File.Exists(sourcePath).Should().BeFalse();
         File.Exists(destPath).Should().BeTrue();
         (await File.ReadAllTextAsync(destPath)).Should().Be("hello");
-        result.Value.UpdatedReferencers.Should().BeEmpty();
         result.Value.Sidecar.Should().Be(SidecarOutcome.NotPresent);
     }
 
@@ -402,7 +395,6 @@ public class LocalResourceFileSystemTests
         result.IsSuccess.Should().BeTrue(result.DiagnosticReport);
         File.Exists(sourcePath).Should().BeFalse();
         (await File.ReadAllTextAsync(destPath)).Should().Be("payload");
-        result.Value.UpdatedReferencers.Should().BeEmpty();
 
         // The source was never a project resource, so there is nothing to announce.
         _messengerService.DidNotReceive().Send(Arg.Any<ResourceKeyChangedMessage>());
@@ -431,26 +423,19 @@ public class LocalResourceFileSystemTests
     }
 
     [Test]
-    public async Task MoveAsync_OutOfTheProjectRoot_AnnouncesTheRemoval_AndRewritesNoReferences()
+    public async Task MoveAsync_OutOfTheProjectRoot_AnnouncesTheRemoval()
     {
         var sourceKey = new ResourceKey("source.txt");
         var destKey = new ResourceKey("temp:source.txt");
-        var referencerKey = new ResourceKey("doc.json");
 
         var sourcePath = Path.Combine(_tempFolder, "source.txt");
         var destPath = Path.Combine(_tempFolder, "Data", "temp", "source.txt");
-        var referencerPath = Path.Combine(_tempFolder, "doc.json");
         await File.WriteAllTextAsync(sourcePath, "data");
-        await File.WriteAllTextAsync(referencerPath, "See \"project:source.txt\" for details.");
 
         _resourceRegistry.ResolveResourcePath(sourceKey).Returns(Result<string>.Ok(sourcePath));
         _resourceRegistry.ResolveResourcePath(destKey).Returns(Result<string>.Ok(destPath));
-        _resourceRegistry.ResolveResourcePath(referencerKey).Returns(Result<string>.Ok(referencerPath));
         _resourceRegistry.ResolveResourcePath(new ResourceKey("source.txt.cel")).Returns(Result<string>.Ok(sourcePath + ".cel"));
         _resourceRegistry.ResolveResourcePath(new ResourceKey("temp:source.txt.cel")).Returns(Result<string>.Ok(destPath + ".cel"));
-
-        var referenceIndex = ResourceReferenceIndexTestHelper.WithReferencers(sourceKey, referencerKey);
-        _resourceScanner.BuildReferenceIndexAsync().Returns(Task.FromResult(referenceIndex));
 
         var result = await _resourceFileSystem.MoveAsync(sourceKey, destKey, new MoveOptions(AllowCrossRoot: true));
 
@@ -458,10 +443,7 @@ public class LocalResourceFileSystemTests
         File.Exists(sourcePath).Should().BeFalse();
         File.Exists(destPath).Should().BeTrue();
 
-        // A key in another root is not the same resource, so references keep naming the one that left.
-        result.Value.UpdatedReferencers.Should().BeEmpty();
-        (await File.ReadAllTextAsync(referencerPath)).Should().Be("See \"project:source.txt\" for details.");
-
+        // A key in another root is not the same resource, so only the removal is announced.
         _messengerService.Received(1).Send(Arg.Is<ResourceDeletedMessage>(message => message.Resource == sourceKey));
         _messengerService.DidNotReceive().Send(Arg.Any<ResourceKeyChangedMessage>());
     }
@@ -518,7 +500,7 @@ public class LocalResourceFileSystemTests
     }
 
     [Test]
-    public async Task MoveAsync_RewritesReferencers()
+    public async Task MoveAsync_LeavesAFileThatReferencesTheMovedResourceUnchanged()
     {
         var sourceKey = new ResourceKey("source.txt");
         var destKey = new ResourceKey("dest.txt");
@@ -527,142 +509,23 @@ public class LocalResourceFileSystemTests
         var sourcePath = Path.Combine(_tempFolder, "source.txt");
         var destPath = Path.Combine(_tempFolder, "dest.txt");
         var referencerPath = Path.Combine(_tempFolder, "doc.json");
+        var referencerContent = "{\"target\": \"project:source.txt\"}";
         await File.WriteAllTextAsync(sourcePath, "data");
-        await File.WriteAllTextAsync(referencerPath, "See \"project:source.txt\" for details.");
+        await File.WriteAllTextAsync(referencerPath, referencerContent);
 
         _resourceRegistry.ResolveResourcePath(sourceKey).Returns(Result<string>.Ok(sourcePath));
         _resourceRegistry.ResolveResourcePath(destKey).Returns(Result<string>.Ok(destPath));
         _resourceRegistry.ResolveResourcePath(referencerKey).Returns(Result<string>.Ok(referencerPath));
         _resourceRegistry.ResolveResourcePath(new ResourceKey("source.txt.cel")).Returns(Result<string>.Ok(sourcePath + ".cel"));
         _resourceRegistry.ResolveResourcePath(new ResourceKey("dest.txt.cel")).Returns(Result<string>.Ok(destPath + ".cel"));
-
-        var referenceIndex = ResourceReferenceIndexTestHelper.WithReferencers(sourceKey, referencerKey);
-
-        _resourceScanner.BuildReferenceIndexAsync().Returns(Task.FromResult(referenceIndex));
+        var referencerWriteTime = File.GetLastWriteTimeUtc(referencerPath);
 
         var result = await _resourceFileSystem.MoveAsync(sourceKey, destKey);
 
-        result.IsSuccess.Should().BeTrue();
-        result.Value.UpdatedReferencers.Should().Contain(referencerKey);
-        (await File.ReadAllTextAsync(referencerPath)).Should().Be("See \"project:dest.txt\" for details.");
-    }
-
-    [Test]
-    public async Task MoveAsync_DoesNotRewriteUnquotedOccurrencesAtFileBoundaries()
-    {
-        // The rewrite cascade visits files the scanner indexed. Within a
-        // visited file, IndexOf may also match incidental occurrences of the
-        // source literal that aren't quoted references. Boundary checks must
-        // reject those — including at position 0 and end-of-text, where an
-        // earlier implementation short-circuited the check and silently
-        // rewrote unquoted byte sequences.
-        var sourceKey = new ResourceKey("source.txt");
-        var destKey = new ResourceKey("dest.txt");
-        var referencerKey = new ResourceKey("doc.json");
-
-        var sourcePath = Path.Combine(_tempFolder, "source.txt");
-        var destPath = Path.Combine(_tempFolder, "dest.txt");
-        var referencerPath = Path.Combine(_tempFolder, "doc.json");
-        await File.WriteAllTextAsync(sourcePath, "data");
-
-        // The file contains the literal "project:source.txt" at three positions:
-        // 1. Start of file, no leading quote (incidental, must NOT rewrite).
-        // 2. Middle, properly quoted (real reference, MUST rewrite).
-        // 3. End of file, no trailing quote (incidental, must NOT rewrite).
-        var initialContent = "project:source.txt at start. See \"project:source.txt\" here. Trailing project:source.txt";
-        await File.WriteAllTextAsync(referencerPath, initialContent);
-
-        _resourceRegistry.ResolveResourcePath(sourceKey).Returns(Result<string>.Ok(sourcePath));
-        _resourceRegistry.ResolveResourcePath(destKey).Returns(Result<string>.Ok(destPath));
-        _resourceRegistry.ResolveResourcePath(referencerKey).Returns(Result<string>.Ok(referencerPath));
-        _resourceRegistry.ResolveResourcePath(new ResourceKey("source.txt.cel")).Returns(Result<string>.Ok(sourcePath + ".cel"));
-        _resourceRegistry.ResolveResourcePath(new ResourceKey("dest.txt.cel")).Returns(Result<string>.Ok(destPath + ".cel"));
-
-        var referenceIndex = ResourceReferenceIndexTestHelper.WithReferencers(sourceKey, referencerKey);
-
-        _resourceScanner.BuildReferenceIndexAsync().Returns(Task.FromResult(referenceIndex));
-
-        var result = await _resourceFileSystem.MoveAsync(sourceKey, destKey);
-
-        result.IsSuccess.Should().BeTrue();
-        result.Value.UpdatedReferencers.Should().Contain(referencerKey);
-
-        // Only the middle (quoted) occurrence is rewritten. The unquoted ones
-        // at the start and end of the file remain pointing at the old name.
-        var expected = "project:source.txt at start. See \"project:dest.txt\" here. Trailing project:source.txt";
-        (await File.ReadAllTextAsync(referencerPath)).Should().Be(expected);
-    }
-
-    [Test]
-    public async Task MoveAsync_RewritesQuotedReferencerWithSpaceInKey()
-    {
-        // A reference inside ASCII double quotes — the only delimiter that
-        // allows whitespace in the key under Option C — must be rewritten by
-        // the cascade with the same delimiter-aware boundary check used by
-        // detection.
-        var sourceKey = new ResourceKey("My Document.md");
-        var destKey = new ResourceKey("My Renamed Document.md");
-        var referencerKey = new ResourceKey("doc.json");
-
-        var sourcePath = Path.Combine(_tempFolder, "My Document.md");
-        var destPath = Path.Combine(_tempFolder, "My Renamed Document.md");
-        var referencerPath = Path.Combine(_tempFolder, "doc.json");
-        await File.WriteAllTextAsync(sourcePath, "data");
-        await File.WriteAllTextAsync(referencerPath,
-            "See \"project:My Document.md\" and also 'project:My Document.md' as well.");
-
-        _resourceRegistry.ResolveResourcePath(sourceKey).Returns(Result<string>.Ok(sourcePath));
-        _resourceRegistry.ResolveResourcePath(destKey).Returns(Result<string>.Ok(destPath));
-        _resourceRegistry.ResolveResourcePath(referencerKey).Returns(Result<string>.Ok(referencerPath));
-        _resourceRegistry.ResolveResourcePath(new ResourceKey("My Document.md.cel")).Returns(Result<string>.Ok(sourcePath + ".cel"));
-        _resourceRegistry.ResolveResourcePath(new ResourceKey("My Renamed Document.md.cel")).Returns(Result<string>.Ok(destPath + ".cel"));
-
-        var referenceIndex = ResourceReferenceIndexTestHelper.WithReferencers(sourceKey, referencerKey);
-
-        _resourceScanner.BuildReferenceIndexAsync().Returns(Task.FromResult(referenceIndex));
-
-        var result = await _resourceFileSystem.MoveAsync(sourceKey, destKey);
-
-        result.IsSuccess.Should().BeTrue();
-        result.Value.UpdatedReferencers.Should().Contain(referencerKey);
-        (await File.ReadAllTextAsync(referencerPath)).Should().Be(
-            "See \"project:My Renamed Document.md\" and also 'project:My Renamed Document.md' as well.");
-    }
-
-    [Test]
-    public async Task MoveAsync_RewritesJsonEscapedReferencer()
-    {
-        // The reference sits inside a JSON-escape sequence \"project:...\"
-        // (e.g. an MCP tool response stored as a JSON string). The scanner
-        // detects it via the two-char \" opener and the cascade rewrites it
-        // through the same parser path so the trailing \" is recognised.
-        var sourceKey = new ResourceKey("foo.md");
-        var destKey = new ResourceKey("bar.md");
-        var referencerKey = new ResourceKey("payload.json");
-
-        var sourcePath = Path.Combine(_tempFolder, "foo.md");
-        var destPath = Path.Combine(_tempFolder, "bar.md");
-        var referencerPath = Path.Combine(_tempFolder, "payload.json");
-        await File.WriteAllTextAsync(sourcePath, "data");
-        await File.WriteAllTextAsync(referencerPath,
-            "{\"description\": \"See \\\"project:foo.md\\\" for details\"}");
-
-        _resourceRegistry.ResolveResourcePath(sourceKey).Returns(Result<string>.Ok(sourcePath));
-        _resourceRegistry.ResolveResourcePath(destKey).Returns(Result<string>.Ok(destPath));
-        _resourceRegistry.ResolveResourcePath(referencerKey).Returns(Result<string>.Ok(referencerPath));
-        _resourceRegistry.ResolveResourcePath(new ResourceKey("foo.md.cel")).Returns(Result<string>.Ok(sourcePath + ".cel"));
-        _resourceRegistry.ResolveResourcePath(new ResourceKey("bar.md.cel")).Returns(Result<string>.Ok(destPath + ".cel"));
-
-        var referenceIndex = ResourceReferenceIndexTestHelper.WithReferencers(sourceKey, referencerKey);
-
-        _resourceScanner.BuildReferenceIndexAsync().Returns(Task.FromResult(referenceIndex));
-
-        var result = await _resourceFileSystem.MoveAsync(sourceKey, destKey);
-
-        result.IsSuccess.Should().BeTrue();
-        result.Value.UpdatedReferencers.Should().Contain(referencerKey);
-        (await File.ReadAllTextAsync(referencerPath)).Should().Be(
-            "{\"description\": \"See \\\"project:bar.md\\\" for details\"}");
+        result.IsSuccess.Should().BeTrue(result.DiagnosticReport);
+        File.Exists(destPath).Should().BeTrue();
+        (await File.ReadAllTextAsync(referencerPath)).Should().Be(referencerContent);
+        File.GetLastWriteTimeUtc(referencerPath).Should().Be(referencerWriteTime);
     }
 
     [Test]
@@ -827,54 +690,6 @@ public class LocalResourceFileSystemTests
         result.IsSuccess.Should().BeTrue();
         File.Exists(sourcePath).Should().BeFalse();
         File.Exists(destPath).Should().BeTrue();
-    }
-
-    [Test]
-    public async Task MoveAsync_SkipsReadOnlyReferencer_AndReportsItInResult()
-    {
-        var sourceKey = new ResourceKey("target.txt");
-        var destKey = new ResourceKey("target2.txt");
-        var referencerKey = new ResourceKey("doc.json");
-
-        var sourcePath = Path.Combine(_tempFolder, "target.txt");
-        var destPath = Path.Combine(_tempFolder, "target2.txt");
-        var referencerPath = Path.Combine(_tempFolder, "doc.json");
-        await File.WriteAllTextAsync(sourcePath, "data");
-        await File.WriteAllTextAsync(referencerPath, "See \"project:target.txt\" for details.");
-        new FileInfo(referencerPath).IsReadOnly = true;
-
-        try
-        {
-            _resourceRegistry.ResolveResourcePath(sourceKey).Returns(Result<string>.Ok(sourcePath));
-            _resourceRegistry.ResolveResourcePath(destKey).Returns(Result<string>.Ok(destPath));
-            _resourceRegistry.ResolveResourcePath(referencerKey).Returns(Result<string>.Ok(referencerPath));
-            _resourceRegistry.ResolveResourcePath(new ResourceKey("target.txt.cel")).Returns(Result<string>.Ok(sourcePath + ".cel"));
-            _resourceRegistry.ResolveResourcePath(new ResourceKey("target2.txt.cel")).Returns(Result<string>.Ok(destPath + ".cel"));
-            _resourceRegistry.ResolveResourcePath(new ResourceKey("doc.json")).Returns(Result<string>.Ok(referencerPath));
-
-            var referenceIndex = ResourceReferenceIndexTestHelper.WithReferencers(sourceKey, referencerKey);
-
-            _resourceScanner.BuildReferenceIndexAsync().Returns(Task.FromResult(referenceIndex));
-
-            var result = await _resourceFileSystem.MoveAsync(sourceKey, destKey);
-
-            result.IsSuccess.Should().BeTrue();
-            // Parent move completed even though the referencer was read-only.
-            File.Exists(destPath).Should().BeTrue();
-            // The referencer is reported in SkippedReferencers with the right reason.
-            result.Value.SkippedReferencers.Should().HaveCount(1);
-            result.Value.SkippedReferencers[0].Resource.Should().Be(referencerKey);
-            result.Value.SkippedReferencers[0].Reason.Should().Be(ReferencerSkipReason.ReadOnly);
-            result.Value.UpdatedReferencers.Should().BeEmpty();
-        }
-        finally
-        {
-            // Tear-down needs the file to be writable so the temp-folder delete works.
-            if (File.Exists(referencerPath))
-            {
-                new FileInfo(referencerPath).IsReadOnly = false;
-            }
-        }
     }
 
     [Test]
