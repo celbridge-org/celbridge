@@ -64,7 +64,7 @@ public class ResourceScannerTests
     {
         // Parentless .cel files are orphans; they don't participate in tag
         // queries because they are not legitimate resources from the user's
-        // point of view. The project-check reporter surfaces them separately.
+        // point of view. The project load report lists them separately.
         var orphanKey = new ResourceKey("leftover.cel");
         var orphanPath = @"C:\Project\leftover.cel";
 

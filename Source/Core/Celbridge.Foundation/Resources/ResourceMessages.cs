@@ -88,12 +88,6 @@ public record ResourceOperationFailedMessage(
     IReadOnlyList<FailedResource> FailedResources)
 {
     /// <summary>
-    /// References into the moved resources that the operation could not rewrite, leaving them stale.
-    /// Empty for every operation other than a move.
-    /// </summary>
-    public IReadOnlyList<SkippedReferencer> SkippedReferencers { get; init; } = Array.Empty<SkippedReferencer>();
-
-    /// <summary>
     /// The report holding the per-item detail, or the empty key when the operation wrote none.
     /// </summary>
     public ResourceKey ReportResource { get; init; } = ResourceKey.Empty;

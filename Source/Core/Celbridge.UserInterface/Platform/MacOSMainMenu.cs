@@ -29,7 +29,6 @@ internal static class MacOSMainMenu
     private const long TagNewFolder = 12;
     private const long TagShowLogs = 13;
     private const long TagFind = 14;
-    private const long TagCheckReferences = 15;
     private const long TagLayoutDefault = 16;
     private const long TagLayoutFocus = 17;
     private const long TagLayoutPresentation = 18;
@@ -93,9 +92,6 @@ internal static class MacOSMainMenu
                 MacMenuItem.Command(Text("MainMenu_ReloadProject"), TagReloadProject),
                 MacMenuItem.Command(Text("MainMenu_CloseProject"), TagCloseProject),
                 MacMenuItem.Separator(),
-                // Scans the project for project: references that no longer resolve and opens the
-                // findings as a report.
-                MacMenuItem.Command(Text("MainMenu_CheckReferences"), TagCheckReferences),
                 // Reveals the current run's log file in the file manager.
                 MacMenuItem.Command(Text("MainMenu_ShowLog"), TagShowLogs)
             }
@@ -285,7 +281,6 @@ internal static class MacOSMainMenu
             case TagCloseProject:
             case TagNewFile:
             case TagNewFolder:
-            case TagCheckReferences:
                 return WorkspaceCommandState();
 
             case TagFind:
@@ -506,13 +501,6 @@ internal static class MacOSMainMenu
 
             case TagShowLogs:
                 viewModel.ShowLogs();
-                break;
-
-            case TagCheckReferences:
-                ServiceLocator.AcquireService<ICommandService>().Execute<ICheckReferencesCommand>(command =>
-                {
-                    command.OpenReport = true;
-                });
                 break;
 
             case TagFind:

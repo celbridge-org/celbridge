@@ -363,13 +363,9 @@ public partial class WorkshopTools
 
     private async Task<Result> ReplaceExistingFolderAsync(ResourceKey packageFolder)
     {
-        // BreakReferences avoids a second confirmation prompt: the install
-        // already confirmed the replace, and the re-extracted package recreates
-        // the same resource keys, so references resolve again afterwards.
         var deleteResultWrapper = await ExecuteCommandAsync<IDeleteResourceCommand, DeleteCommandResult>(command =>
         {
             command.Resources = new List<ResourceKey> { packageFolder };
-            command.ReferencePolicy = DeleteReferencePolicy.BreakReferences;
         });
 
         if (deleteResultWrapper.IsFailure)

@@ -31,13 +31,13 @@ function report(overrides = {}) {
     };
 }
 
-function brokenReference(resource) {
+function brokenLink(resource) {
     return {
-        code: 'CEL_RESOURCE_003',
+        code: 'acme.links.BROKEN_LINK',
         severity: Severity.Warning,
-        message: 'References a missing resource.',
+        message: 'Links to a missing file.',
         resource,
-        target: 'project:missing.cel',
+        target: 'project:missing.md',
         actions: [
             {
                 kind: 'openResource',
@@ -80,7 +80,7 @@ describe('renderReport', () => {
                 title: 'Sidecar files',
                 kind: 'findings',
                 severity: Severity.Warning,
-                items: [brokenReference('project:a.cel')]
+                items: [brokenLink('project:a.md')]
             }
         ];
 
@@ -110,10 +110,10 @@ describe('renderReport', () => {
     it('renders a lone finding as a block rather than a one-row table', () => {
         const sections = [
             {
-                title: 'Missing references',
+                title: 'Broken links',
                 kind: 'findings',
                 severity: Severity.Warning,
-                items: [brokenReference('project:a.cel')]
+                items: [brokenLink('project:a.md')]
             }
         ];
 
@@ -126,13 +126,13 @@ describe('renderReport', () => {
     it('lines repeated occurrences up as a table under one heading', () => {
         const sections = [
             {
-                title: 'Missing references',
+                title: 'Broken links',
                 kind: 'findings',
                 severity: Severity.Warning,
                 items: [
-                    brokenReference('project:a.cel'),
-                    brokenReference('project:b.cel'),
-                    brokenReference('project:c.cel')
+                    brokenLink('project:a.md'),
+                    brokenLink('project:b.md'),
+                    brokenLink('project:c.md')
                 ]
             }
         ];
@@ -144,13 +144,13 @@ describe('renderReport', () => {
 
         // The message is stated once in the heading, not repeated down the rows.
         expect(groups[0].querySelector('.group-message').textContent)
-            .toBe('References a missing resource.');
+            .toBe('Links to a missing file.');
         expect(groups[0].querySelector('.group-count').textContent).toContain('3');
 
         const rows = groups[0].querySelectorAll('.finding-table tbody tr');
         expect(rows).toHaveLength(3);
         expect([...rows[0].querySelectorAll('td')].map(cell => cell.textContent))
-            .toEqual(['project:a.cel', 'project:missing.cel', '42']);
+            .toEqual(['project:a.md', 'project:missing.md', '42']);
     });
 
     it('gives a table only the columns its rows fill', () => {
@@ -177,10 +177,10 @@ describe('renderReport', () => {
         const onOpenResource = vi.fn();
         const sections = [
             {
-                title: 'Missing references',
+                title: 'Broken links',
                 kind: 'findings',
                 severity: Severity.Warning,
-                items: [brokenReference('project:a.cel'), brokenReference('project:b.cel')]
+                items: [brokenLink('project:a.md'), brokenLink('project:b.md')]
             }
         ];
 
@@ -189,36 +189,36 @@ describe('renderReport', () => {
         expect(document.querySelector('.item-action')).toBeNull();
 
         const link = document.querySelector('.resource-link');
-        expect(link.textContent).toBe('project:a.cel');
+        expect(link.textContent).toBe('project:a.md');
         link.click();
 
-        expect(onOpenResource).toHaveBeenCalledWith('project:a.cel', 42, 7);
+        expect(onOpenResource).toHaveBeenCalledWith('project:a.md', 42, 7);
     });
 
     it('opens a lone finding resource at its recorded position', () => {
         const onOpenResource = vi.fn();
         const sections = [
             {
-                title: 'Missing references',
+                title: 'Broken links',
                 kind: 'findings',
                 severity: Severity.Warning,
-                items: [brokenReference('project:a.cel')]
+                items: [brokenLink('project:a.md')]
             }
         ];
 
         renderReport(report({ sections }), onOpenResource);
         document.querySelector('.resource-link').click();
 
-        expect(onOpenResource).toHaveBeenCalledWith('project:a.cel', 42, 7);
+        expect(onOpenResource).toHaveBeenCalledWith('project:a.md', 42, 7);
     });
 
     it('replaces earlier content on a re-render', () => {
         const sections = [
             {
-                title: 'Missing references',
+                title: 'Broken links',
                 kind: 'findings',
                 severity: Severity.Warning,
-                items: [brokenReference('project:a.cel')]
+                items: [brokenLink('project:a.md')]
             }
         ];
 

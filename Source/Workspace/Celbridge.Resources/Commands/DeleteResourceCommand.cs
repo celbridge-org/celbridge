@@ -1,6 +1,4 @@
-using System.Text;
 using Celbridge.Commands;
-using Celbridge.Dialog;
 using Celbridge.Logging;
 using Celbridge.Resources.Helpers;
 using Celbridge.Workspace;
@@ -13,32 +11,25 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
 
     public List<ResourceKey> Resources { get; set; } = new();
 
-    public DeleteReferencePolicy ReferencePolicy { get; set; } = DeleteReferencePolicy.RequireConfirmation;
-
     public DeleteCommandResult ResultValue { get; private set; } = new(
         DeleteBatchOutcome.DeletedAll,
-        Array.Empty<DeleteResourceResult>(),
-        new Dictionary<ResourceKey, IReadOnlyList<ResourceKey>>());
+        Array.Empty<DeleteResourceResult>());
 
     private readonly ILogger<DeleteResourceCommand> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly IDialogService _dialogService;
     private readonly ResourceOperationNotifier _operationNotifier;
 
     private IResourceFileSystem ResourceFileSystem => _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
     private IResourceOperationService ResourceOperationService => _workspaceWrapper.WorkspaceService.ResourceService.Operations;
-    private IResourceScanner ResourceScanner => _workspaceWrapper.WorkspaceService.ResourceService.Scanner;
     private ISidecarService SidecarService => _workspaceWrapper.WorkspaceService.ResourceService.Sidecars;
 
     public DeleteResourceCommand(
         ILogger<DeleteResourceCommand> logger,
         IWorkspaceWrapper workspaceWrapper,
-        IDialogService dialogService,
         ResourceOperationNotifier operationNotifier)
     {
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;
-        _dialogService = dialogService;
         _operationNotifier = operationNotifier;
     }
 
@@ -53,124 +44,13 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
         {
             ResultValue = new DeleteCommandResult(
                 DeleteBatchOutcome.DeletedAll,
-                Array.Empty<DeleteResourceResult>(),
-                new Dictionary<ResourceKey, IReadOnlyList<ResourceKey>>());
+                Array.Empty<DeleteResourceResult>());
             return Result.Ok();
         }
 
-        // Phase A: aggregate referencers external to the batch. References
-        // from one doomed resource to another are filtered out so an internal
-        // dependency doesn't block the batch. Folder resources expand to every
-        // descendant key the reference graph knows about, so a folder delete
-        // surfaces incoming references to anything inside the folder, not just
-        // references to the folder key itself (which are usually none).
-        var batchSet = new HashSet<ResourceKey>(Resources);
-        var folderResources = new List<ResourceKey>();
-        foreach (var resource in Resources)
-        {
-            var folderInfoResult = await ResourceFileSystem.GetInfoAsync(resource);
-            if (folderInfoResult.IsSuccess
-                && folderInfoResult.Value.Kind == StorageItemKind.Folder)
-            {
-                folderResources.Add(resource);
-            }
-        }
-        bool IsInsideBatch(ResourceKey candidate)
-        {
-            if (batchSet.Contains(candidate))
-            {
-                return true;
-            }
-            foreach (var folder in folderResources)
-            {
-                if (candidate.IsDescendantOf(folder))
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        // One walk covers every key below; a per-key query re-reads the whole project each time.
-        var referenceIndex = await ResourceScanner.BuildReferenceIndexAsync();
-
-        var externalReferencers = new Dictionary<ResourceKey, IReadOnlyList<ResourceKey>>();
-        foreach (var resource in Resources)
-        {
-            var keysToCheck = new List<ResourceKey> { resource };
-            if (folderResources.Contains(resource))
-            {
-                // The reference scanner keys descendants by file, not by folder.
-                // Walk every referenced target and pull in those that live under
-                // this folder so we surface every incoming reference that the
-                // recursive delete will leave dangling.
-                foreach (var target in referenceIndex.ReferencedTargets)
-                {
-                    if (target.IsDescendantOf(resource))
-                    {
-                        keysToCheck.Add(target);
-                    }
-                }
-            }
-
-            // Emit one entry per specifically-referenced key (the folder key
-            // itself or any descendant). Agents that act on a recursive folder
-            // delete need to know which individual descendant file has external
-            // references — collapsing to a single entry under the folder key
-            // loses that granularity.
-            foreach (var key in keysToCheck)
-            {
-                // The index holds one entry per reference, so a file naming the key more than once
-                // appears more than once. What matters here is which files reference it.
-                var perKeyReferencers = referenceIndex.GetReferencers(key)
-                    .Select(referencer => referencer.Source)
-                    .Distinct()
-                    .Where(referencer => !IsInsideBatch(referencer))
-                    .ToList();
-                if (perKeyReferencers.Count > 0)
-                {
-                    externalReferencers[key] = perKeyReferencers;
-                }
-            }
-        }
-
-        // Phase B: policy gate. No filesystem effects in this phase.
-        if (externalReferencers.Count > 0)
-        {
-            switch (ReferencePolicy)
-            {
-                case DeleteReferencePolicy.FailIfReferenced:
-                    ResultValue = new DeleteCommandResult(
-                        DeleteBatchOutcome.BlockedByReferences,
-                        Array.Empty<DeleteResourceResult>(),
-                        externalReferencers);
-                    return Result.Ok();
-
-                case DeleteReferencePolicy.RequireConfirmation:
-                    var dialogResult = await _dialogService.ShowConfirmationDialogAsync(
-                        titleText: "Delete resources with existing references?",
-                        messageText: BuildConfirmationMessage(Resources, externalReferencers));
-
-                    if (dialogResult.IsFailure
-                        || !dialogResult.Value)
-                    {
-                        ResultValue = new DeleteCommandResult(
-                            DeleteBatchOutcome.CancelledByUser,
-                            Array.Empty<DeleteResourceResult>(),
-                            externalReferencers);
-                        return Result.Ok();
-                    }
-                    break;
-
-                case DeleteReferencePolicy.BreakReferences:
-                    break;
-            }
-        }
-
-        // Phase C: execute. Per-resource best-effort; mechanical failures do
-        // not poison the batch. The soft-delete-to-trash path on
-        // IResourceOperationService preserves undo and cascades the paired
-        // sidecar alongside the parent.
+        // Each resource is deleted on a best-effort basis. A mechanical failure
+        // leaves the rest of the batch to run. The soft delete to the trash
+        // keeps undo working and moves the paired sidecar with its parent.
         var resourceResults = new List<DeleteResourceResult>(Resources.Count);
         var failedResources = new List<FailedResource>();
 
@@ -249,38 +129,27 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
             }
         }
 
-        // Distinguish "every resource deleted cleanly" from "policy gate passed
-        // but at least one resource failed mechanically". A human (or agent)
-        // reading BatchOutcome should not have to inspect ResourceResults to learn
-        // whether the batch was actually clean.
+        // BatchOutcome says on its own whether every resource was deleted.
         var batchOutcome = failedResources.Count == 0
             ? DeleteBatchOutcome.DeletedAll
             : DeleteBatchOutcome.DeletedSome;
 
         ResultValue = new DeleteCommandResult(
             batchOutcome,
-            resourceResults,
-            externalReferencers);
+            resourceResults);
 
         // Notify the user about per-resource failures so they get a visible signal even if the
         // calling surface ignores ResultValue.
         await _operationNotifier.NotifyFailuresAsync(ResourceOperationType.Delete, failedResources);
 
-        // The command itself succeeded — the batch ran end-to-end (the policy
-        // gate cleared, every resource was attempted). Per-resource failures
-        // are surfaced through ResultValue.ResourceResults with typed outcomes
-        // (NotFound, Locked, PermissionDenied, IOFailure) rather than collapsed
-        // into a single Result.Fail string. Result.Fail at this layer is
-        // reserved for cases where the batch couldn't run at all (workspace
-        // not loaded, dialog dispatch failed, etc., handled earlier in this
-        // method).
+        // Return Ok even when resources failed. ResultValue.ResourceResults
+        // gives each resource's outcome. The command fails only when the
+        // workspace is not loaded.
         return Result.Ok();
     }
 
     // Maps the exception attached to a failed delete result onto a typed
-    // DeleteResourceOutcome reason. Mirrors the cascade's
-    // ClassifyReferencerWriteFailure pattern so the agent gets the same
-    // granularity for delete failures as for rename-cascade skips.
+    // DeleteResourceOutcome reason.
     //
     // The DOS read-only attribute is cleared by DeleteFileOperation before the
     // move into the trash folder, so any UnauthorizedAccessException reaching
@@ -310,34 +179,5 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
         }
 
         return (DeleteResourceOutcome.IOFailure, deleteResult.FirstErrorMessage);
-    }
-
-    private static string BuildConfirmationMessage(
-        IReadOnlyList<ResourceKey> resources,
-        IReadOnlyDictionary<ResourceKey, IReadOnlyList<ResourceKey>> externalReferencers)
-    {
-        var builder = new StringBuilder();
-        if (resources.Count == 1)
-        {
-            builder.AppendLine($"The resource '{resources[0]}' is referenced by other project files:");
-        }
-        else
-        {
-            builder.AppendLine($"{externalReferencers.Count} of the {resources.Count} resources you are deleting are referenced by other project files:");
-        }
-        builder.AppendLine();
-
-        foreach (var entry in externalReferencers)
-        {
-            builder.AppendLine($"  '{entry.Key}' is referenced by:");
-            foreach (var referencer in entry.Value)
-            {
-                builder.AppendLine($"    - {referencer}");
-            }
-        }
-
-        builder.AppendLine();
-        builder.Append("Deleting them will leave the existing references broken. Continue?");
-        return builder.ToString();
     }
 }

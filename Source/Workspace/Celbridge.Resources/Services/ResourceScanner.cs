@@ -7,69 +7,11 @@ using Tomlyn.Model;
 namespace Celbridge.Resources.Services;
 
 /// <summary>
-/// Reference index built by ResourceScanner.BuildReferenceIndexAsync.
-/// </summary>
-internal sealed class ResourceReferenceIndex : IResourceReferenceIndex
-{
-    private readonly IReadOnlyDictionary<ResourceKey, IReadOnlyList<ResourceReferenceSite>> _referencersByTarget;
-
-    public ResourceReferenceIndex(
-        IReadOnlyList<ResourceKey> referencedTargets,
-        IReadOnlyDictionary<ResourceKey, IReadOnlyList<ResourceReferenceSite>> referencersByTarget)
-    {
-        ReferencedTargets = referencedTargets;
-        _referencersByTarget = referencersByTarget;
-    }
-
-    public IReadOnlyList<ResourceKey> ReferencedTargets { get; }
-
-    public IReadOnlyList<ResourceReferenceSite> GetReferencers(ResourceKey target)
-    {
-        if (_referencersByTarget.TryGetValue(target, out var referencers))
-        {
-            return referencers;
-        }
-
-        return Array.Empty<ResourceReferenceSite>();
-    }
-}
-
-/// <summary>
-/// Stateless, on-demand scanner that searches the project's text files for
-/// resource references and tags.
+/// Stateless, on-demand scanner that searches the project's sidecar files for tags.
 /// </summary>
 public sealed class ResourceScanner : IResourceScanner
 {
     private const string TagsField = SidecarFieldNames.Tags;
-
-    // File extensions that participate in reference scanning. Add an entry here
-    // when a workflow needs cascade support for a new file type, and update the
-    // resource_keys guide's "Where the scanner looks" section to match.
-    private static readonly HashSet<string> ScannableExtensions
-        = new(StringComparer.OrdinalIgnoreCase)
-        {
-            // Sidecars.
-            ".cel",
-
-            // Scripts.
-            ".js",
-            ".py",
-            ".ipy",
-            ".ipynb",
-
-            // Tabular.
-            ".csv",
-            ".tsv",
-
-            // Structured data and configuration.
-            ".json",
-            ".jsonl",
-            ".ndjson",
-            ".yaml",
-            ".yml",
-            ".toml",
-            ".xml",
-        };
 
     private readonly ILogger<ResourceScanner> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -80,59 +22,6 @@ public sealed class ResourceScanner : IResourceScanner
     {
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;
-    }
-
-    public async Task<IResourceReferenceIndex> BuildReferenceIndexAsync()
-    {
-        var referencersByTarget = new ConcurrentDictionary<ResourceKey, ConcurrentBag<ResourceReferenceSite>>();
-
-        await EnumerateProjectTextFilesAsync(async (resourceKey, _) =>
-        {
-            var text = await ReadFileTextAsync(resourceKey);
-            if (text is null)
-            {
-                return;
-            }
-
-            // Offsets are converted to line and column here, while the text is in hand. Doing it later
-            // would mean re-reading the file purely to count newlines.
-            var lineIndex = new TextLineIndex(text);
-
-            foreach (var reference in ScanReferenceSites(text))
-            {
-                var position = lineIndex.Resolve(reference.StartIndex);
-                var site = new ResourceReferenceSite(resourceKey, position.Line, position.Column);
-
-                var referencers = referencersByTarget.GetOrAdd(reference.Key, _ => new ConcurrentBag<ResourceReferenceSite>());
-                referencers.Add(site);
-            }
-        });
-
-        var referencedTargets = referencersByTarget.Keys
-            .OrderBy(t => t.ToString(), StringComparer.Ordinal)
-            .ToList();
-
-        var sortedReferencers = new Dictionary<ResourceKey, IReadOnlyList<ResourceReferenceSite>>();
-        foreach (var target in referencedTargets)
-        {
-            sortedReferencers[target] = referencersByTarget[target]
-                .OrderBy(site => site.Source.ToString(), StringComparer.Ordinal)
-                .ThenBy(site => site.Line)
-                .ThenBy(site => site.Column)
-                .ToList();
-        }
-
-        return new ResourceReferenceIndex(referencedTargets, sortedReferencers);
-    }
-
-    public async Task<IReadOnlyList<ResourceKey>> FindReferencesInAsync(ResourceKey source)
-    {
-        var text = await ReadFileTextAsync(source);
-        if (text is null)
-        {
-            return Array.Empty<ResourceKey>();
-        }
-        return ScanReferences(text).ToList();
     }
 
     public async Task<IReadOnlyList<string>> ListAllTagsAsync()
@@ -230,68 +119,6 @@ public sealed class ResourceScanner : IResourceScanner
         return readResult.Value;
     }
 
-    // Returns the distinct set of "project:" keys named in `text`.
-    private static HashSet<ResourceKey> ScanReferences(string text)
-    {
-        var references = new HashSet<ResourceKey>();
-        foreach (var reference in ScanReferenceSites(text))
-        {
-            references.Add(reference.Key);
-        }
-        return references;
-    }
-
-    // Yields every "project:" reference literal in `text`, in the order they appear. The same key
-    // named twice yields twice, because each is a separate place in the file.
-    private static IEnumerable<ParsedReference> ScanReferenceSites(string text)
-    {
-        var marker = ResourceReferenceParser.ReferenceMarker;
-        int searchStart = 0;
-        while (true)
-        {
-            int markerIndex = text.IndexOf(marker, searchStart, StringComparison.Ordinal);
-            if (markerIndex < 0)
-            {
-                break;
-            }
-
-            var parsed = ResourceReferenceParser.TryParseReferenceAt(text, markerIndex);
-            if (parsed is not null)
-            {
-                yield return parsed;
-                searchStart = parsed.EndIndex;
-            }
-            else
-            {
-                searchStart = markerIndex + marker.Length;
-            }
-        }
-    }
-
-    // Walks all project: text files in parallel, invoking the visitor for
-    // each. Reads the registry's snapshot directly; mutation commands carry
-    // CommandFlags.UpdateResources so the snapshot reflects the latest disk
-    // state by the time a tool that consults the scanner runs. Files are
-    // filtered through ScannableExtensions — only the allowlisted
-    // data-bearing extensions participate.
-    private async Task EnumerateProjectTextFilesAsync(Func<ResourceKey, string, Task> visit)
-    {
-        var registry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var files = registry.GetAllFileResources(ResourceKey.DefaultRoot);
-
-        await Parallel.ForEachAsync(files, async (file, _) =>
-        {
-            var resourceKey = file.Resource;
-            var absolutePath = file.Path;
-            if (!IsScannableFile(absolutePath))
-            {
-                return;
-            }
-
-            await visit(resourceKey, absolutePath);
-        });
-    }
-
     // Walks all .cel files paired with an existing parent file. Reads the
     // registry's snapshot directly; mutation commands carry
     // CommandFlags.UpdateResources so the snapshot reflects the latest disk
@@ -327,11 +154,6 @@ public sealed class ResourceScanner : IResourceScanner
 
             await visit(resourceKey, parentKey.Value);
         });
-    }
-
-    private static bool IsScannableFile(string absolutePath)
-    {
-        return ScannableExtensions.Contains(Path.GetExtension(absolutePath));
     }
 
     private static bool IsSidecarPath(string absolutePath)

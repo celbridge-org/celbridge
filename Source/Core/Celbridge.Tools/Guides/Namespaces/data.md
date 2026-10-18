@@ -1,6 +1,6 @@
 # data
 
-The `data` namespace reads and writes per-resource data stored in `.cel` sidecar files. A sidecar lives alongside its parent file (`foo.png.cel` next to `foo.png`) and carries TOML fields. The host scans `.cel` files on demand for tag queries and project-health checks; there is no persistent index.
+The `data` namespace reads and writes per-resource data stored in `.cel` sidecar files. A sidecar lives alongside its parent file (`foo.png.cel` next to `foo.png`) and carries TOML fields. The host scans `.cel` files on demand for tag queries and sidecar health checks; there is no persistent index.
 
 ## Must-knows
 
@@ -30,10 +30,6 @@ The `data` namespace reads and writes per-resource data stored in `.cel` sidecar
 - `data_find_tag` — find every resource whose tag list contains the given value.
 - `data_list_tags` — enumerate the unique tag values across every healthy sidecar.
 
-**Project-wide consistency.**
-
-- `data_check_references` — find every dangling `"project:..."` reference in the workspace's allowlisted text files.
-
 ## When to use which surface
 
 - "What does this sidecar carry?" → `data_inspect resources:[r]`.
@@ -42,7 +38,6 @@ The `data` namespace reads and writes per-resource data stored in `.cel` sidecar
 - "What tags exist in this project?" → `data_list_tags`.
 - "Tag this resource so a future agent can find it" → `data_add_tags resource ["X"]`.
 - "Are any sidecars in an attention state (broken / orphan / invalid)?" → `data_inspect` (no arguments).
-- "Did my recent cascade leave any dangling references?" → `data_check_references`.
 
 ## Sidecar file format
 

@@ -61,11 +61,6 @@ public class ResourceOperationServiceTests
         // folder moves and deletes).
         _resourceRegistry.GetResourceKey(Arg.Any<string>()).Returns(call => MapToResourceKey(call.Arg<string>()));
 
-        var resourceScanner = Substitute.For<IResourceScanner>();
-        var referenceIndex = ResourceReferenceIndexTestHelper.Empty();
-        resourceScanner.BuildReferenceIndexAsync()
-            .Returns(Task.FromResult(referenceIndex));
-
         var rootHandlerRegistry = Substitute.For<IRootHandlerRegistry>();
         rootHandlerRegistry.RootHandlers.Returns(new Dictionary<string, IResourceRootHandler>());
         rootHandlerRegistry.GetResourceKey(Arg.Any<string>()).Returns(call => MapToResourceKey(call.Arg<string>()));
@@ -77,7 +72,6 @@ public class ResourceOperationServiceTests
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
-        resourceService.Scanner.Returns(resourceScanner);
         resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();

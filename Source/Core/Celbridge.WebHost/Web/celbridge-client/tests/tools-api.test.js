@@ -160,20 +160,20 @@ describe('buildCelProxy', () => {
 
     it('rejects a boolean-typed parameter receiving a string (positional-arg swap)', () => {
         const proxy = buildCelProxy(
-            [descriptor('explorer.delete', [
+            [descriptor('webview.reload', [
                 { name: 'resource', type: 'string' },
-                { name: 'showDialog', type: 'boolean' },
-                { name: 'referencePolicy', type: 'string' }
+                { name: 'clearCache', type: 'boolean' },
+                { name: 'frame', type: 'string' }
             ])],
             () => Promise.resolve('ok')
         );
 
-        expect(() => proxy.explorer.delete('foo.xlsx', 'break_references', false)).toThrow(CelToolError);
+        expect(() => proxy.webview.reload('page.html', 'main', false)).toThrow(CelToolError);
         try {
-            proxy.explorer.delete('foo.xlsx', 'break_references', false);
+            proxy.webview.reload('page.html', 'main', false);
         } catch (error) {
             expect(error.code).toBe(CelToolErrorCode.InvalidArgs);
-            expect(error.message).toContain("'showDialog'");
+            expect(error.message).toContain("'clearCache'");
             expect(error.message).toContain('expects boolean');
             expect(error.message).toContain('got string');
         }
@@ -203,20 +203,20 @@ describe('buildCelProxy', () => {
     it('accepts undefined and null in defaulted positional slots', () => {
         const calls = [];
         const proxy = buildCelProxy(
-            [descriptor('explorer.delete', [
+            [descriptor('webview.reload', [
                 { name: 'resource', type: 'string' },
-                { name: 'showDialog', type: 'boolean' },
-                { name: 'referencePolicy', type: 'string' }
+                { name: 'clearCache', type: 'boolean' },
+                { name: 'frame', type: 'string' }
             ])],
             (alias, args) => { calls.push({ alias, args }); return Promise.resolve('ok'); }
         );
 
         return Promise.all([
-            proxy.explorer.delete('foo.xlsx', undefined, 'break_references'),
-            proxy.explorer.delete('foo.xlsx', null, 'break_references')
+            proxy.webview.reload('page.html', undefined, 'main'),
+            proxy.webview.reload('page.html', null, 'main')
         ]).then(() => {
-            expect(calls[0].args).toEqual({ resource: 'foo.xlsx', showDialog: undefined, referencePolicy: 'break_references' });
-            expect(calls[1].args).toEqual({ resource: 'foo.xlsx', showDialog: null, referencePolicy: 'break_references' });
+            expect(calls[0].args).toEqual({ resource: 'page.html', clearCache: undefined, frame: 'main' });
+            expect(calls[1].args).toEqual({ resource: 'page.html', clearCache: null, frame: 'main' });
         });
     });
 

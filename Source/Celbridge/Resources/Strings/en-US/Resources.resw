@@ -298,12 +298,6 @@ This file could not be saved</value>
   <data name="Notification_OperationFailed_Unknown_Multiple" xml:space="preserve">
     <value>The operation failed on {0} resources</value>
   </data>
-  <data name="Notification_ReferencesNotUpdated_One" xml:space="preserve">
-    <value>One reference still points at the old location</value>
-  </data>
-  <data name="Notification_ReferencesNotUpdated_Many" xml:space="preserve">
-    <value>{0} references still point at the old location</value>
-  </data>
   <data name="ResourceTree_Rename" xml:space="preserve">
     <value>Rename</value>
   </data>
@@ -546,9 +540,6 @@ This file could not be saved</value>
   </data>
   <data name="MainMenu_ReloadProject" xml:space="preserve">
     <value>Reload Project</value>
-  </data>
-  <data name="MainMenu_CheckReferences" xml:space="preserve">
-    <value>Check References</value>
   </data>
   <data name="MainMenu_ShowLog" xml:space="preserve">
     <value>Show Log</value>
@@ -1968,9 +1959,6 @@ Open with default application instead?</value>
   <data name="Report_Finding_Resource_BrokenSidecar" xml:space="preserve">
     <value>Broken .cel file: could not be parsed.</value>
   </data>
-  <data name="Report_Finding_Resource_MissingReference" xml:space="preserve">
-    <value>References a missing resource.</value>
-  </data>
   <data name="Report_Finding_Resource_CopyFailed" xml:space="preserve">
     <value>Could not be copied.</value>
   </data>
@@ -1979,9 +1967,6 @@ Open with default application instead?</value>
   </data>
   <data name="Report_Finding_Resource_DeleteFailed" xml:space="preserve">
     <value>Could not be deleted.</value>
-  </data>
-  <data name="Report_Finding_Resource_ReferenceNotUpdated" xml:space="preserve">
-    <value>Reference to the moved resource was not updated.</value>
   </data>
   <data name="Report_Action_OpenResource" xml:space="preserve">
     <value>Open {0}</value>
@@ -1998,35 +1983,14 @@ Open with default application instead?</value>
   <data name="Report_ResourceOperation_Section_Resources" xml:space="preserve">
     <value>Resources</value>
   </data>
-  <data name="Report_ResourceOperation_Section_References" xml:space="preserve">
-    <value>References</value>
-  </data>
-  <data name="Report_ResourceOperation_Summary_Copy_One" xml:space="preserve">
-    <value>{0} resource could not be copied.</value>
-  </data>
   <data name="Report_ResourceOperation_Summary_Copy_Many" xml:space="preserve">
     <value>{0} resources could not be copied.</value>
-  </data>
-  <data name="Report_ResourceOperation_Summary_Move_One" xml:space="preserve">
-    <value>{0} resource could not be moved.</value>
   </data>
   <data name="Report_ResourceOperation_Summary_Move_Many" xml:space="preserve">
     <value>{0} resources could not be moved.</value>
   </data>
-  <data name="Report_ResourceOperation_Summary_Delete_One" xml:space="preserve">
-    <value>{0} resource could not be deleted.</value>
-  </data>
   <data name="Report_ResourceOperation_Summary_Delete_Many" xml:space="preserve">
     <value>{0} resources could not be deleted.</value>
-  </data>
-  <data name="Report_ResourceOperation_Summary_Completed" xml:space="preserve">
-    <value>The operation completed.</value>
-  </data>
-  <data name="Report_ResourceOperation_Summary_StaleReferences_One" xml:space="preserve">
-    <value>{0} reference was left pointing at the old location.</value>
-  </data>
-  <data name="Report_ResourceOperation_Summary_StaleReferences_Many" xml:space="preserve">
-    <value>{0} references were left pointing at the old location.</value>
   </data>
   <data name="Report_ProjectLoad_Title" xml:space="preserve">
     <value>Project Load</value>
@@ -2099,44 +2063,5 @@ Open with default application instead?</value>
   </data>
   <data name="Report_ProjectLoad_Summary_Issues_Many" xml:space="preserve">
     <value>The project loaded with {0} issues.</value>
-  </data>
-  <data name="Report_CheckReferences_Title" xml:space="preserve">
-    <value>Check References</value>
-  </data>
-  <data name="Report_CheckReferences_Section_Summary" xml:space="preserve">
-    <value>Summary</value>
-  </data>
-  <data name="Report_CheckReferences_Section_MissingReferences" xml:space="preserve">
-    <value>Missing references</value>
-  </data>
-  <data name="Report_CheckReferences_Fact_ReferencedResources" xml:space="preserve">
-    <value>Referenced resources</value>
-  </data>
-  <data name="Report_CheckReferences_Fact_MissingResources" xml:space="preserve">
-    <value>Missing resources</value>
-  </data>
-  <data name="Report_CheckReferences_Fact_BrokenReferences" xml:space="preserve">
-    <value>Broken references</value>
-  </data>
-  <data name="Report_CheckReferences_Summary_NothingToCheck" xml:space="preserve">
-    <value>No resource references were found to check.</value>
-  </data>
-  <data name="Report_CheckReferences_Summary_AllFound_One" xml:space="preserve">
-    <value>The referenced resource was found.</value>
-  </data>
-  <data name="Report_CheckReferences_Summary_AllFound_Many" xml:space="preserve">
-    <value>All {0} referenced resources were found.</value>
-  </data>
-  <data name="Report_CheckReferences_Summary_Broken_OneRef_OneResource" xml:space="preserve">
-    <value>{0} reference points at {1} missing resource.</value>
-  </data>
-  <data name="Report_CheckReferences_Summary_Broken_OneRef_ManyResources" xml:space="preserve">
-    <value>{0} reference points at {1} missing resources.</value>
-  </data>
-  <data name="Report_CheckReferences_Summary_Broken_ManyRefs_OneResource" xml:space="preserve">
-    <value>{0} references point at {1} missing resource.</value>
-  </data>
-  <data name="Report_CheckReferences_Summary_Broken_ManyRefs_ManyResources" xml:space="preserve">
-    <value>{0} references point at {1} missing resources.</value>
   </data>
 </root>

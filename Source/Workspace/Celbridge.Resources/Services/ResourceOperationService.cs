@@ -82,7 +82,7 @@ public class ResourceOperationService : IResourceOperationService
         return result;
     }
 
-    public async Task<Result<CopyResult>> CopyAsync(ResourceKey source, ResourceKey dest)
+    public async Task<Result> CopyAsync(ResourceKey source, ResourceKey dest)
     {
         var infoResult = await ResourceFileSystem.GetInfoAsync(source);
         if (infoResult.IsFailure
@@ -105,15 +105,15 @@ public class ResourceOperationService : IResourceOperationService
 
         AddOperation(operation);
 
-        return operation.LastCopyResult!;
+        return Result.Ok();
     }
 
-    public async Task<Result<MoveResult>> MoveAsync(ResourceKey source, ResourceKey dest)
+    public async Task<Result> MoveAsync(ResourceKey source, ResourceKey dest)
     {
         var projectFileGateResult = GateProjectFileMove(source, dest);
         if (projectFileGateResult.IsFailure)
         {
-            return Result<MoveResult>.Fail(projectFileGateResult);
+            return Result.Fail(projectFileGateResult);
         }
 
         var infoResult = await ResourceFileSystem.GetInfoAsync(source);
@@ -144,7 +144,7 @@ public class ResourceOperationService : IResourceOperationService
 
         AddOperation(operation);
 
-        return operation.LastMoveResult!;
+        return Result.Ok();
     }
 
     // Refused outright rather than confirmed, because neither destination has a reading where it is
