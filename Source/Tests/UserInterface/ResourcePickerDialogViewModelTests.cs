@@ -7,9 +7,8 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.Tests.UserInterface;
 
 /// <summary>
-/// The resource picker lists either the project's files or its folders, over a project tree built for each
-/// test. A project's downloads folder is chosen from the folder list, so these tests pin that it holds every
-/// folder and nothing else.
+/// The resource picker lists either the project's files or its folders, from a walk of the project. A project's
+/// downloads folder is chosen from the folder list, so these tests pin that it holds every folder and nothing else.
 /// </summary>
 [TestFixture]
 public class ResourcePickerDialogViewModelTests
@@ -17,34 +16,27 @@ public class ResourcePickerDialogViewModelTests
     private static readonly IconDefinition FileIcon = new("f", "#FFFFFF", "Segoe Fluent Icons", "16");
     private static readonly IconDefinition FolderIcon = new("d", "#FFCC40", "Segoe Fluent Icons", "16");
 
-    private IResourceRegistry _registry = null!;
-    private Dictionary<IResource, ResourceKey> _resourceKeys = null!;
+    private IResourceWalker _walker = null!;
     private ResourcePickerDialogViewModel _viewModel = null!;
 
     [SetUp]
     public void Setup()
     {
-        _resourceKeys = new Dictionary<IResource, ResourceKey>();
-
         // readme.md
         // assets/
         // docs/notes.md
         // docs/images/logo.png
-        var projectFolder = CreateFolder(string.Empty);
-        AddFile(projectFolder, "readme.md");
-        CreateFolder("assets", projectFolder);
-        var docsFolder = CreateFolder("docs", projectFolder);
-        AddFile(docsFolder, "notes.md");
-        var imagesFolder = CreateFolder("docs/images", docsFolder);
-        AddFile(imagesFolder, "logo.png");
-
-        _registry = Substitute.For<IResourceRegistry>();
-        _registry.ProjectFolder.Returns(projectFolder);
-        _registry.GetResourceKey(Arg.Any<IResource>())
-            .Returns(callInfo => _resourceKeys[callInfo.Arg<IResource>()]);
+        _walker = Substitute.For<IResourceWalker>();
+        UseWalkedItems(
+            Folder("assets"),
+            Folder("docs"),
+            Folder("docs/images"),
+            File("docs/images/logo.png"),
+            File("docs/notes.md"),
+            File("readme.md"));
 
         var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(_registry);
+        resourceService.Walker.Returns(_walker);
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
@@ -55,18 +47,31 @@ public class ResourcePickerDialogViewModelTests
 
         var iconService = Substitute.For<IIconService>();
         iconService.DefaultFolderIcon.Returns(FolderIcon);
+        iconService.GetFileIconForFileName(Arg.Any<string>()).Returns(Result<IconDefinition>.Ok(FileIcon));
 
+        // A formatted string comes back as its name and its first argument, so a test can read the count.
         var stringLocalizer = Substitute.For<IStringLocalizer>();
         stringLocalizer[Arg.Any<string>()].Returns(
             callInfo => new LocalizedString(callInfo.Arg<string>(), callInfo.Arg<string>()));
+        stringLocalizer[Arg.Any<string>(), Arg.Any<object[]>()].Returns(callInfo =>
+        {
+            var name = callInfo.Arg<string>();
+            var arguments = callInfo.Arg<object[]>();
+            return new LocalizedString(name, $"{name}:{arguments[0]}");
+        });
 
-        _viewModel = new ResourcePickerDialogViewModel(workspaceWrapper, iconService, stringLocalizer);
+        _viewModel = new ResourcePickerDialogViewModel(
+            Substitute.For<ILogger<ResourcePickerDialogViewModel>>(),
+            workspaceWrapper,
+            iconService,
+            stringLocalizer);
     }
 
     [Test]
-    public void TheFolderList_HoldsEveryFolderAtAnyDepth_AndNoFile()
+    public async Task TheFolderList_HoldsEveryFolderAtAnyDepth_AndNoFile()
     {
         _viewModel.InitializeForFolders();
+        await _viewModel.LoadItemsAsync();
 
         _viewModel.FilteredItems.Select(item => item.DisplayText)
             .Should().Equal("assets", "docs", "docs/images");
@@ -75,9 +80,19 @@ public class ResourcePickerDialogViewModelTests
     }
 
     [Test]
-    public void TheFolderList_IsNarrowedByTheSearch()
+    public async Task TheFolderList_WalksWithSearchExcludeSwitchedOff()
     {
         _viewModel.InitializeForFolders();
+        await _viewModel.LoadItemsAsync();
+
+        await _walker.Received(1).WalkAsync(ResourceKey.Empty, false, Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task TheFolderList_IsNarrowedByTheSearch()
+    {
+        _viewModel.InitializeForFolders();
+        await _viewModel.LoadItemsAsync();
 
         _viewModel.SearchText = "IMA";
 
@@ -86,9 +101,10 @@ public class ResourcePickerDialogViewModelTests
     }
 
     [Test]
-    public void TheFileList_HoldsTheFilesWithTheGivenExtensions()
+    public async Task TheFileList_HoldsTheFilesWithTheGivenExtensions()
     {
         _viewModel.Initialize(new[] { ".md" }, showPreview: false);
+        await _viewModel.LoadItemsAsync();
 
         _viewModel.FilteredItems.Select(item => item.DisplayText)
             .Should().Equal("docs/notes.md", "readme.md");
@@ -96,32 +112,110 @@ public class ResourcePickerDialogViewModelTests
         _viewModel.SearchPlaceholder.Should().Be("ResourcePickerDialog_SearchPlaceholder");
     }
 
-    private IFolderResource CreateFolder(string path, IFolderResource? parentFolder = null)
+    [Test]
+    public async Task TheFileList_WalksWithSearchExcludeSwitchedOn()
     {
-        var folder = Substitute.For<IFolderResource>();
-        folder.Name.Returns(Path.GetFileName(path));
-        folder.Children.Returns(new List<IResource>());
+        _viewModel.Initialize(Array.Empty<string>(), showPreview: false);
+        await _viewModel.LoadItemsAsync();
 
-        _resourceKeys[folder] = new ResourceKey(path);
-        parentFolder?.Children.Add(folder);
-
-        return folder;
+        await _walker.Received(1).WalkAsync(ResourceKey.Empty, true, Arg.Any<CancellationToken>());
     }
 
-    private void AddFile(IFolderResource parentFolder, string name)
+    [Test]
+    public async Task AReadOnlyFile_IsListedAsReadOnly()
     {
-        var parentFolderKey = _resourceKeys[parentFolder];
-        var path = name;
-        if (!parentFolderKey.IsEmpty)
-        {
-            path = $"{parentFolderKey.Path}/{name}";
-        }
+        var readOnlyFile = new WalkedItem(
+            new ResourceKey("locked.md"),
+            "/project/locked.md",
+            false,
+            1,
+            default,
+            FileSystemAttributes.ReadOnly);
+        UseWalkedItems(readOnlyFile, File("open.md"));
 
-        var file = Substitute.For<IFileResource>();
-        file.Name.Returns(name);
-        file.Icon.Returns(FileIcon);
+        _viewModel.Initialize(Array.Empty<string>(), showPreview: false);
+        await _viewModel.LoadItemsAsync();
 
-        _resourceKeys[file] = new ResourceKey(path);
-        parentFolder.Children.Add(file);
+        _viewModel.FilteredItems.Single(item => item.DisplayText == "locked.md")
+            .WritableState.Should().Be(WritableState.ReadOnlyAttribute);
+        _viewModel.FilteredItems.Single(item => item.DisplayText == "open.md")
+            .WritableState.Should().Be(WritableState.Writable);
+    }
+
+    [Test]
+    public async Task TheList_ShowsThatItIsLoading_UntilTheWalkFinishes()
+    {
+        var walkCompletion = new TaskCompletionSource<Result<IReadOnlyList<WalkedItem>>>();
+        _walker.WalkAsync(Arg.Any<ResourceKey>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(walkCompletion.Task);
+
+        _viewModel.Initialize(Array.Empty<string>(), showPreview: false);
+        var loadTask = _viewModel.LoadItemsAsync();
+
+        _viewModel.IsLoading.Should().BeTrue();
+        _viewModel.LoadingVisibility.Should().Be(Visibility.Visible);
+        _viewModel.FilteredItems.Should().BeEmpty();
+
+        IReadOnlyList<WalkedItem> walkedItems = new[] { File("readme.md") };
+        walkCompletion.SetResult(Result<IReadOnlyList<WalkedItem>>.Ok(walkedItems));
+        await loadTask;
+
+        _viewModel.IsLoading.Should().BeFalse();
+        _viewModel.LoadingVisibility.Should().Be(Visibility.Collapsed);
+        _viewModel.FilteredItems.Select(item => item.DisplayText).Should().Equal("readme.md");
+    }
+
+    [Test]
+    public async Task TheList_ShowsTheFirstMatches_AndCountsTheRest()
+    {
+        var files = Enumerable.Range(0, ResourcePickerDialogViewModel.MaxShownMatches + 50)
+            .Select(index => File($"file_{index:D3}.txt"))
+            .ToArray();
+        UseWalkedItems(files);
+
+        _viewModel.Initialize(Array.Empty<string>(), showPreview: false);
+        await _viewModel.LoadItemsAsync();
+
+        _viewModel.FilteredItems.Should().HaveCount(ResourcePickerDialogViewModel.MaxShownMatches);
+        _viewModel.MoreMatchesText.Should().Be("ResourcePickerDialog_MoreMatches_Many:50");
+        _viewModel.MoreMatchesVisibility.Should().Be(Visibility.Visible);
+
+        // An item beyond the shown list is still one of the matches.
+        _viewModel.FindMatchingItem(new ResourceKey("file_249.txt")).Should().NotBeNull();
+
+        _viewModel.SearchText = "file_24";
+
+        _viewModel.FilteredItems.Should().HaveCount(10);
+        _viewModel.MoreMatchesVisibility.Should().Be(Visibility.Collapsed);
+    }
+
+    [Test]
+    public async Task TheList_StopsLoadingAndStaysEmpty_WhenTheWalkThrows()
+    {
+        _walker.WalkAsync(Arg.Any<ResourceKey>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<Result<IReadOnlyList<WalkedItem>>>(new IOException("The disk went away")));
+
+        _viewModel.Initialize(Array.Empty<string>(), showPreview: false);
+        await _viewModel.LoadItemsAsync();
+
+        _viewModel.IsLoading.Should().BeFalse();
+        _viewModel.FilteredItems.Should().BeEmpty();
+    }
+
+    private void UseWalkedItems(params WalkedItem[] items)
+    {
+        IReadOnlyList<WalkedItem> walkedItems = items;
+        _walker.WalkAsync(Arg.Any<ResourceKey>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result<IReadOnlyList<WalkedItem>>.Ok(walkedItems)));
+    }
+
+    private static WalkedItem Folder(string key)
+    {
+        return new WalkedItem(new ResourceKey(key), "/project/" + key, true, 0, default, FileSystemAttributes.None);
+    }
+
+    private static WalkedItem File(string key)
+    {
+        return new WalkedItem(new ResourceKey(key), "/project/" + key, false, 1, default, FileSystemAttributes.None);
     }
 }

@@ -51,24 +51,17 @@ public static class ReportFindingCatalog
     }
 
     /// <summary>
-    /// The project's resources: the state of its sidecar files, and what an operation over them could
-    /// not do.
+    /// Copying, moving and deleting the project's resources.
     /// </summary>
     public static class Resource
     {
-        public static readonly ReportFindingDescriptor OrphanSidecar =
-            new(new ReportCode("CEL_RESOURCE_001"), "Report_Finding_Resource_OrphanSidecar", ReportSeverity.Warning);
-
-        public static readonly ReportFindingDescriptor BrokenSidecar =
-            new(new ReportCode("CEL_RESOURCE_002"), "Report_Finding_Resource_BrokenSidecar", ReportSeverity.Warning);
-
         public static readonly ReportFindingDescriptor CopyFailed =
-            new(new ReportCode("CEL_RESOURCE_003"), "Report_Finding_Resource_CopyFailed", ReportSeverity.Error);
+            new(new ReportCode("CEL_RESOURCE_001"), "Report_Finding_Resource_CopyFailed", ReportSeverity.Error);
 
         public static readonly ReportFindingDescriptor MoveFailed =
-            new(new ReportCode("CEL_RESOURCE_004"), "Report_Finding_Resource_MoveFailed", ReportSeverity.Error);
+            new(new ReportCode("CEL_RESOURCE_002"), "Report_Finding_Resource_MoveFailed", ReportSeverity.Error);
 
         public static readonly ReportFindingDescriptor DeleteFailed =
-            new(new ReportCode("CEL_RESOURCE_005"), "Report_Finding_Resource_DeleteFailed", ReportSeverity.Error);
+            new(new ReportCode("CEL_RESOURCE_003"), "Report_Finding_Resource_DeleteFailed", ReportSeverity.Error);
     }
 }

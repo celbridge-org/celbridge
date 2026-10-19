@@ -2,7 +2,6 @@ using Celbridge.Localization;
 using Celbridge.Logging;
 using Celbridge.Packages;
 using Celbridge.Reports;
-using Celbridge.Resources;
 using Celbridge.Utilities;
 
 namespace Celbridge.Projects.Services;
@@ -34,9 +33,6 @@ internal sealed class ProjectLoadReporter : IProjectLoadReporter
     private Result? _loadResult;
     private readonly List<ProjectConfigEntryError> _configEntryErrors = new();
     private PackageDiscoveryReport? _packageReport;
-    private SidecarReport? _sidecarReport;
-    private int? _fileResourceCount;
-    private int? _folderResourceCount;
 
     public ProjectLoadReportSummary? WrittenReport { get; private set; }
 
@@ -64,9 +60,6 @@ internal sealed class ProjectLoadReporter : IProjectLoadReporter
         _loadResult = null;
         _configEntryErrors.Clear();
         _packageReport = null;
-        _sidecarReport = null;
-        _fileResourceCount = null;
-        _folderResourceCount = null;
         WrittenReport = null;
     }
 
@@ -92,17 +85,6 @@ internal sealed class ProjectLoadReporter : IProjectLoadReporter
     public void RecordPackageReport(PackageDiscoveryReport report)
     {
         _packageReport = report;
-    }
-
-    public void RecordResourceCounts(int fileCount, int folderCount)
-    {
-        _fileResourceCount = fileCount;
-        _folderResourceCount = folderCount;
-    }
-
-    public void RecordSidecarReport(SidecarReport report)
-    {
-        _sidecarReport = report;
     }
 
     public async Task<ProjectLoadReportSummary?> FlushAsync()
@@ -187,12 +169,6 @@ internal sealed class ProjectLoadReporter : IProjectLoadReporter
             sections.Add(packagesSection);
         }
 
-        var sidecarSection = BuildSidecarSection();
-        if (sidecarSection is not null)
-        {
-            sections.Add(sidecarSection);
-        }
-
         var severity = ResolveWorstSeverity(sections);
         var summary = ComposeSummaryLine(severity, sections);
 
@@ -215,15 +191,6 @@ internal sealed class ProjectLoadReporter : IProjectLoadReporter
 
         var projectName = Path.GetFileNameWithoutExtension(_projectFilePath);
         items.Add(CreateFact("Report_ProjectLoad_Fact_Project", projectName));
-
-        if (_fileResourceCount is int fileCount
-            && _folderResourceCount is int folderCount)
-        {
-            var resourceCounts = _localizerService.GetString(
-                "Report_ProjectLoad_Fact_ResourcesValue", fileCount, folderCount);
-
-            items.Add(CreateFact("Report_ProjectLoad_Fact_Resources", resourceCounts));
-        }
 
         if (_packageReport is PackageDiscoveryReport packageReport)
         {
@@ -405,71 +372,6 @@ internal sealed class ProjectLoadReporter : IProjectLoadReporter
         var title = _localizerService.GetString("Report_ProjectLoad_Section_Packages");
 
         return new ReportSection(title, ReportSectionKind.Findings, ResolveWorstItemSeverity(items), items);
-    }
-
-    private ReportSection? BuildSidecarSection()
-    {
-        if (_sidecarReport is null)
-        {
-            return null;
-        }
-
-        var report = _sidecarReport;
-        var items = new List<ReportItem>();
-
-        var orphanFiles = report.Orphan
-            .OrderBy(resource => resource.ToString(), StringComparer.Ordinal)
-            .ToList();
-
-        foreach (var orphanFile in orphanFiles)
-        {
-            var item = ReportFinding.Create(_localizerService, ReportFindingCatalog.Resource.OrphanSidecar) with
-            {
-                Resource = orphanFile,
-                Actions = CreateOpenResourceActions(orphanFile)
-            };
-
-            items.Add(item);
-        }
-
-        var brokenFiles = report.Broken
-            .OrderBy(resource => resource.ToString(), StringComparer.Ordinal)
-            .ToList();
-
-        foreach (var brokenFile in brokenFiles)
-        {
-            var item = ReportFinding.Create(_localizerService, ReportFindingCatalog.Resource.BrokenSidecar) with
-            {
-                Resource = brokenFile,
-                Actions = CreateOpenResourceActions(brokenFile)
-            };
-
-            items.Add(item);
-        }
-
-        if (items.Count == 0)
-        {
-            return null;
-        }
-
-        var title = _localizerService.GetString("Report_ProjectLoad_Section_Sidecars");
-
-        return new ReportSection(title, ReportSectionKind.Findings, ResolveWorstItemSeverity(items), items);
-    }
-
-    private IReadOnlyList<ReportAction> CreateOpenResourceActions(ResourceKey resource)
-    {
-        var label = _localizerService.GetString("Report_Action_OpenResource", resource.ResourceName);
-
-        var action = new ReportAction(ReportActionKind.OpenResource, label)
-        {
-            Resource = resource
-        };
-
-        return new List<ReportAction>
-        {
-            action
-        };
     }
 
     private ReportItem CreateFact(string labelKey, string value)

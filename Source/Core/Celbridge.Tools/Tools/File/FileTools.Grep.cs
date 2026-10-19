@@ -70,13 +70,8 @@ public partial class FileTools
             return await GrepTargetedFiles(files, searchTerm, useRegex, matchCase, wholeWord, maxResults, contextLines, includeContent, summaryOnly, resourceFileSystem);
         }
 
-        // File enumeration has two sources, picked by root. The project root has
-        // a pre-built registry index (already ignore-filtered and sorted, rebuilt
-        // on resource changes rather than per search), which SearchService walks
-        // below and the live Search panel shares. Other roots (temp:, logs:) are
-        // not indexed, so an explicitly-named non-default-root scope is walked
-        // live through the gateway here and matched the same way the files= path
-        // is. Bare and project: scopes fall through to the indexed walk.
+        // A scope under another root (temp:, logs:) is listed here and matched the same way the files= path is.
+        // A bare or project: scope goes to SearchService.
         var rootHandlerRegistry = resourceService.RootHandlers;
         if (!string.IsNullOrEmpty(resource)
             && ResourceKey.TryCreate(resource, out var scopeKey)
@@ -85,7 +80,7 @@ public partial class FileTools
         {
             return await GrepNonDefaultRootScopeAsync(
                 scopeKey, searchTerm, useRegex, matchCase, wholeWord, include, exclude,
-                maxResults, contextLines, includeContent, summaryOnly, resourceFileSystem);
+                maxResults, contextLines, includeContent, summaryOnly, resourceService);
         }
 
         var searchService = workspaceWrapper.WorkspaceService.SearchService;
@@ -280,12 +275,11 @@ public partial class FileTools
         return await GrepFileListAsync(targets, searchTerm, useRegex, matchCase, wholeWord, maxResults, contextLines, includeContent, summaryOnly, resourceFileSystem);
     }
 
-    // Enumerates a non-default root (temp:, logs:) live through the gateway,
-    // since only the project root carries the registry index SearchService uses.
-    // The files found are matched the same way the files= path matches, with
-    // include/exclude applied to the file name.
+    // Lists a scope under another root (temp:, logs:): the one file the scope names, or the files inside the scope
+    // folder. The files are matched the same way the files= path matches, with include/exclude applied to the file
+    // name.
     private async Task<CallToolResult> GrepNonDefaultRootScopeAsync(
-        ResourceKey scopeFolder,
+        ResourceKey scopeKey,
         string searchTerm,
         bool useRegex,
         bool matchCase,
@@ -296,23 +290,43 @@ public partial class FileTools
         int contextLines,
         bool includeContent,
         bool summaryOnly,
-        IResourceFileSystem resourceFileSystem)
+        IResourceService resourceService)
     {
-        var entries = new List<FolderItem>();
-        await CollectRecursiveAsync(resourceFileSystem, scopeFolder, entries);
+        // If the scope is a file, grep that file. Otherwise grep every file in the scope folder. A failed walk finds no
+        // files.
+        var fileKeys = new List<ResourceKey>();
+        var scopeIsFile = false;
+        var scopeInfoResult = await resourceService.FileSystem.GetInfoAsync(scopeKey);
+        if (scopeInfoResult.IsSuccess)
+        {
+            var scopeInfo = scopeInfoResult.Value;
+            scopeIsFile = scopeInfo.Kind == StorageItemKind.File;
+        }
+
+        if (scopeIsFile)
+        {
+            fileKeys.Add(scopeKey);
+        }
+        else
+        {
+            var walkResult = await resourceService.Walker.WalkAsync(scopeKey);
+            if (walkResult.IsSuccess)
+            {
+                var walkedItems = walkResult.Value;
+                var walkedFiles = walkedItems
+                    .Where(item => !item.IsFolder)
+                    .Select(item => item.Resource);
+                fileKeys.AddRange(walkedFiles);
+            }
+        }
 
         var includeRegex = GlobHelper.BuildNameMatcher(include);
         var excludeRegex = GlobHelper.BuildNameMatcher(exclude);
 
         var targets = new List<(ResourceKey Key, string Display)>();
-        foreach (var entry in entries)
+        foreach (var fileKey in fileKeys)
         {
-            if (entry.IsFolder)
-            {
-                continue;
-            }
-
-            var fileName = entry.Resource.ResourceName;
+            var fileName = fileKey.ResourceName;
             if (includeRegex is not null
                 && !includeRegex.IsMatch(fileName))
             {
@@ -324,10 +338,10 @@ public partial class FileTools
                 continue;
             }
 
-            targets.Add((entry.Resource, entry.Resource.ToString()));
+            targets.Add((fileKey, fileKey.ToString()));
         }
 
-        return await GrepFileListAsync(targets, searchTerm, useRegex, matchCase, wholeWord, maxResults, contextLines, includeContent, summaryOnly, resourceFileSystem);
+        return await GrepFileListAsync(targets, searchTerm, useRegex, matchCase, wholeWord, maxResults, contextLines, includeContent, summaryOnly, resourceService.FileSystem);
     }
 
     // Greps an explicit list of files, accumulating matches up to maxResults.

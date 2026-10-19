@@ -5,14 +5,35 @@ using Celbridge.Resources.Services;
 namespace Celbridge.Tests.FileSystem;
 
 /// <summary>
-/// Builds a ResourcePolicy with empty [celbridge.resources] settings for tests that
-/// exercise policy-gated services without a live workspace.
+/// Builds a ResourcePolicy for tests that exercise policy-gated services without a live workspace. The default
+/// policy has empty [celbridge.resources] settings.
 /// </summary>
 internal static class TestResourcePolicy
 {
     public static ResourcePolicy CreateDefault()
     {
         return new ResourcePolicy(new NullProjectService());
+    }
+
+    /// <summary>
+    /// Builds a policy whose search-exclude list has the patterns. The policy stands up its own substitutes, so
+    /// build it into a local before configuring another substitute to return it.
+    /// </summary>
+    public static ResourcePolicy CreateWithSearchExclude(string projectFolderPath, string[] searchExcludePatterns)
+    {
+        var resources = new ResourcesSection
+        {
+            SearchExclude = searchExcludePatterns
+        };
+
+        var project = Substitute.For<IProject>();
+        project.Config.Returns(new ProjectConfig { Resources = resources });
+        project.ProjectFolderPath.Returns(projectFolderPath);
+
+        var projectService = Substitute.For<IProjectService>();
+        projectService.CurrentProject.Returns(project);
+
+        return new ResourcePolicy(projectService);
     }
 
     // A hand-written stub rather than an NSubstitute mock so CreateDefault

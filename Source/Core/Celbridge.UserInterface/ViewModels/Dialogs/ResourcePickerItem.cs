@@ -5,7 +5,6 @@ namespace Celbridge.UserInterface.ViewModels;
 /// </summary>
 public class ResourcePickerItem
 {
-    public IResource Resource { get; }
     public ResourceKey ResourceKey { get; }
     public IconDefinition IconDefinition { get; }
 
@@ -20,10 +19,9 @@ public class ResourcePickerItem
     public string DisplayTextLower { get; }
 
     /// <summary>
-    /// The writable state of the underlying resource, sourced from the
-    /// ProjectTreeBuilder-populated cache on IResource.
+    /// Whether the resource accepts edits, and the reason when it does not.
     /// </summary>
-    public WritableState WritableState => Resource.WritableState;
+    public WritableState WritableState { get; }
 
     /// <summary>
     /// Whether the resource refuses edits. Drives the dimming binding and the
@@ -54,14 +52,14 @@ public class ResourcePickerItem
         : ReadOnlyMessage;
 
     public ResourcePickerItem(
-        IResource resource,
         ResourceKey resourceKey,
         IconDefinition iconDefinition,
+        WritableState writableState,
         string? readOnlyMessage = null)
     {
-        Resource = resource;
         ResourceKey = resourceKey;
         IconDefinition = iconDefinition;
+        WritableState = writableState;
         // Display text uses the bare path for project-rooted resources (cleaner
         // for the picker UI) and falls back to the full "root:path" form for
         // non-default roots so the root is visible when it matters.

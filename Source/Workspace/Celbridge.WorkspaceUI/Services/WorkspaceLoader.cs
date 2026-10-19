@@ -209,13 +209,6 @@ public class WorkspaceLoader
     {
         try
         {
-            var registry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-
-            // The sidecar snapshot is a by-product of the registry build that has already run, so this is
-            // a read rather than a check.
-            _loadReporter.RecordSidecarReport(registry.GetSidecarReport());
-            RecordResourceCounts();
-
             var reportSummary = await _loadReporter.FlushAsync();
             if (reportSummary is null ||
                 reportSummary.Severity == ReportSeverity.Info)
@@ -232,39 +225,6 @@ public class WorkspaceLoader
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to write the project load report.");
-        }
-    }
-
-    private void RecordResourceCounts()
-    {
-        var workspaceService = _workspaceWrapper.WorkspaceService;
-        if (workspaceService is null)
-        {
-            return;
-        }
-
-        var projectFolder = workspaceService.ResourceService.Registry.ProjectFolder;
-
-        var fileCount = 0;
-        var folderCount = 0;
-        CountResources(projectFolder, ref fileCount, ref folderCount);
-
-        _loadReporter.RecordResourceCounts(fileCount, folderCount);
-    }
-
-    private static void CountResources(IFolderResource folder, ref int fileCount, ref int folderCount)
-    {
-        foreach (var child in folder.Children)
-        {
-            if (child is IFolderResource childFolder)
-            {
-                folderCount++;
-                CountResources(childFolder, ref fileCount, ref folderCount);
-            }
-            else
-            {
-                fileCount++;
-            }
         }
     }
 

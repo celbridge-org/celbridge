@@ -17,10 +17,9 @@ public class ResourcePickerItemTests
     [Test]
     public void Writable_ResourceProducesWritableStateNoTooltipNoHelpText()
     {
-        var resource = Substitute.For<IResource>();
-        resource.WritableState.Returns(WritableState.Writable);
+        var writableState = WritableState.Writable;
 
-        var item = new ResourcePickerItem(resource, new ResourceKey("docs/photo.png"), Icon);
+        var item = new ResourcePickerItem(new ResourceKey("docs/photo.png"), Icon, writableState);
 
         item.IsReadOnly.Should().BeFalse();
         item.IsWritable.Should().BeTrue();
@@ -31,13 +30,12 @@ public class ResourcePickerItemTests
     [Test]
     public void ReadOnlyAttribute_ResourceProducesDimmedOpacityAndTooltip()
     {
-        var resource = Substitute.For<IResource>();
-        resource.WritableState.Returns(WritableState.ReadOnlyAttribute);
+        var writableState = WritableState.ReadOnlyAttribute;
 
         var item = new ResourcePickerItem(
-            resource,
             new ResourceKey("notes.txt"),
             Icon,
+            writableState,
             readOnlyMessage: "File is read-only on disk.");
 
         item.IsReadOnly.Should().BeTrue();
@@ -49,13 +47,12 @@ public class ResourcePickerItemTests
     [Test]
     public void ReadOnlyRoot_ResourceProducesDimmedOpacityAndTooltip()
     {
-        var resource = Substitute.For<IResource>();
-        resource.WritableState.Returns(WritableState.ReadOnlyRoot);
+        var writableState = WritableState.ReadOnlyRoot;
 
         var item = new ResourcePickerItem(
-            resource,
             new ResourceKey("bundled:image.png"),
             Icon,
+            writableState,
             readOnlyMessage: "Bundled package — read-only by design.");
 
         item.IsReadOnly.Should().BeTrue();

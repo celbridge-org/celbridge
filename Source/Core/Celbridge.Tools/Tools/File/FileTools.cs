@@ -13,19 +13,6 @@ public partial class FileTools : AgentToolBase
 {
     public FileTools(IApplicationServiceProvider services) : base(services) { }
 
-    private static void CollectFolderResources(IFolderResource folder, IResourceRegistry registry, List<ResourceKey> folderKeys)
-    {
-        foreach (var child in folder.Children)
-        {
-            if (child is IFolderResource childFolder)
-            {
-                var childKey = registry.GetResourceKey(child);
-                folderKeys.Add(childKey);
-                CollectFolderResources(childFolder, registry, folderKeys);
-            }
-        }
-    }
-
     private static bool IsTextFile(ITextBinarySniffer textBinarySniffer, string filePath)
     {
         var extension = Path.GetExtension(filePath);

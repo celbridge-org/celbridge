@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using Celbridge.Logging;
 using Celbridge.Workspace;
 using Microsoft.UI.Xaml.Media.Imaging;
 
@@ -9,6 +10,12 @@ namespace Celbridge.UserInterface.ViewModels;
 /// </summary>
 public partial class ResourcePickerDialogViewModel : ObservableObject
 {
+    /// <summary>
+    /// The most matches the list shows. A count of the other matches shows below the list.
+    /// </summary>
+    public const int MaxShownMatches = 200;
+
+    private readonly ILogger<ResourcePickerDialogViewModel> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IIconService _iconService;
     private readonly IStringLocalizer _stringLocalizer;
@@ -16,8 +23,11 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
     private IResourceRegistry? _registry;
     private IResourceFileSystem? _resourceFileSystem;
     private List<string> _extensions = [];
+    private bool _listsFolders;
     private List<ResourcePickerItem> _allItems = [];
+    private List<ResourcePickerItem> _matchingItems = [];
     private bool _showPreview;
+    private Task? _loadTask;
 
     [ObservableProperty]
     private string _searchText = string.Empty;
@@ -43,11 +53,25 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
     [ObservableProperty]
     private Visibility _previewImageVisibility = Visibility.Collapsed;
 
+    [ObservableProperty]
+    private bool _isLoading;
+
+    [ObservableProperty]
+    private Visibility _loadingVisibility = Visibility.Collapsed;
+
+    [ObservableProperty]
+    private string _moreMatchesText = string.Empty;
+
+    [ObservableProperty]
+    private Visibility _moreMatchesVisibility = Visibility.Collapsed;
+
     public ResourcePickerDialogViewModel(
+        ILogger<ResourcePickerDialogViewModel> logger,
         IWorkspaceWrapper workspaceWrapper,
         IIconService iconService,
         IStringLocalizer stringLocalizer)
     {
+        _logger = logger;
         _workspaceWrapper = workspaceWrapper;
         _iconService = iconService;
         _stringLocalizer = stringLocalizer;
@@ -55,7 +79,8 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Lists the project's files, keeping only those with one of the extensions when any are given.
+    /// Sets the picker up to list the project's files, keeping only those with one of the extensions when any are
+    /// given. The list stays empty, and shows that it is loading, until LoadItemsAsync has walked the project.
     /// </summary>
     public void Initialize(IReadOnlyList<string> extensions, bool showPreview)
     {
@@ -67,6 +92,7 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
         _registry = workspaceService.ResourceService.Registry;
         _resourceFileSystem = workspaceService.ResourceService.FileSystem;
         _showPreview = showPreview;
+        _listsFolders = false;
         _extensions = extensions
             .Select(e => e.TrimStart('.').ToLowerInvariant())
             .ToList();
@@ -75,13 +101,12 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
         PreviewPanelVisibility = showPreview ? Visibility.Visible : Visibility.Collapsed;
         SearchPlaceholder = _stringLocalizer.GetString("ResourcePickerDialog_SearchPlaceholder");
 
-        var items = new List<ResourcePickerItem>();
-        CollectFileResources(_registry.ProjectFolder, _registry, items);
-        ShowItems(items);
+        ShowLoading();
     }
 
     /// <summary>
-    /// Lists every folder in the project, at any depth, but not the project folder itself.
+    /// Sets the picker up to list every folder in the project, at any depth, but not the project folder itself.
+    /// The list stays empty, and shows that it is loading, until LoadItemsAsync has walked the project.
     /// </summary>
     public void InitializeForFolders()
     {
@@ -91,14 +116,32 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
         _registry = workspaceService.ResourceService.Registry;
         _resourceFileSystem = workspaceService.ResourceService.FileSystem;
         _showPreview = false;
+        _listsFolders = true;
         _extensions = [];
 
         PreviewPanelVisibility = Visibility.Collapsed;
         SearchPlaceholder = _stringLocalizer.GetString("ResourcePickerDialog_FolderSearchPlaceholder");
 
-        var items = new List<ResourcePickerItem>();
-        CollectFolderResources(_registry.ProjectFolder, _registry, items);
-        ShowItems(items);
+        ShowLoading();
+    }
+
+    /// <summary>
+    /// Walks the project and lists what the picker offers. The file picker leaves out what search-exclude matches.
+    /// The folder picker lists every folder. Only the first call walks, and a later call waits for that walk.
+    /// </summary>
+    public async Task LoadItemsAsync()
+    {
+        _loadTask ??= WalkAndShowItemsAsync();
+        await _loadTask;
+    }
+
+    /// <summary>
+    /// Returns the item for the resource among every item that matches the search, including the matches beyond
+    /// the shown list. Returns null when no matching item has that key.
+    /// </summary>
+    public ResourcePickerItem? FindMatchingItem(ResourceKey resource)
+    {
+        return _matchingItems.FirstOrDefault(item => item.ResourceKey.Equals(resource));
     }
 
     private void OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -162,6 +205,100 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
         }
     }
 
+    private void ShowLoading()
+    {
+        IsLoading = true;
+        LoadingVisibility = Visibility.Visible;
+    }
+
+    private async Task WalkAndShowItemsAsync()
+    {
+        var items = await ListItemsAsync();
+
+        IsLoading = false;
+        LoadingVisibility = Visibility.Collapsed;
+
+        ShowItems(items);
+    }
+
+    // Returns an empty list when the walk fails, so the picker stops loading and stays usable.
+    private async Task<List<ResourcePickerItem>> ListItemsAsync()
+    {
+        try
+        {
+            var walker = _workspaceWrapper.WorkspaceService.ResourceService.Walker;
+
+            // The folder picker offers any folder, including one inside a folder that search-exclude matches.
+            var applySearchExclude = !_listsFolders;
+            var walkResult = await walker.WalkAsync(ResourceKey.Empty, applySearchExclude);
+            if (walkResult.IsFailure)
+            {
+                _logger.LogWarning(walkResult, "Failed to walk the project for the resource picker");
+                return [];
+            }
+            var walkedItems = walkResult.Value;
+
+            var items = new List<ResourcePickerItem>();
+            foreach (var walkedItem in walkedItems)
+            {
+                var item = CreateItem(walkedItem);
+                if (item is not null)
+                {
+                    items.Add(item);
+                }
+            }
+
+            return items;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to list the project for the resource picker");
+            return [];
+        }
+    }
+
+    private ResourcePickerItem? CreateItem(WalkedItem walkedItem)
+    {
+        if (walkedItem.IsFolder != _listsFolders)
+        {
+            return null;
+        }
+
+        if (_listsFolders)
+        {
+            return CreateItem(walkedItem, _iconService.DefaultFolderIcon);
+        }
+
+        var fileName = walkedItem.Resource.ResourceName;
+        var extension = Path.GetExtension(fileName).TrimStart('.').ToLowerInvariant();
+        if (_extensions.Count > 0
+            && !_extensions.Contains(extension))
+        {
+            return null;
+        }
+
+        var getIconResult = _iconService.GetFileIconForFileName(fileName);
+        var iconDefinition = getIconResult.IsSuccess
+            ? getIconResult.Value
+            : _iconService.DefaultFileIcon;
+
+        return CreateItem(walkedItem, iconDefinition);
+    }
+
+    private ResourcePickerItem CreateItem(WalkedItem walkedItem, IconDefinition iconDefinition)
+    {
+        // The picker lists project: alone, and that root accepts writes, so only the attribute makes an item read-only.
+        var writableState = WritableState.Writable;
+        if ((walkedItem.Attributes & FileSystemAttributes.ReadOnly) != 0)
+        {
+            writableState = WritableState.ReadOnlyAttribute;
+        }
+
+        var readOnlyMessage = ReadOnlyMessageHelper.GetReadOnlyMessage(writableState, _stringLocalizer);
+
+        return new ResourcePickerItem(walkedItem.Resource, iconDefinition, writableState, readOnlyMessage);
+    }
+
     private void ShowItems(List<ResourcePickerItem> items)
     {
         items.Sort((a, b) => string.Compare(a.DisplayText, b.DisplayText, StringComparison.OrdinalIgnoreCase));
@@ -170,60 +307,36 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
         UpdateFilteredItems();
     }
 
-    private void CollectFileResources(IFolderResource folder, IResourceRegistry registry, List<ResourcePickerItem> items)
-    {
-        foreach (var child in folder.Children)
-        {
-            if (child is IFolderResource subFolder)
-            {
-                CollectFileResources(subFolder, registry, items);
-            }
-            else if (child is IFileResource fileResource)
-            {
-                var ext = Path.GetExtension(child.Name).TrimStart('.').ToLowerInvariant();
-                if (_extensions.Count > 0 && !_extensions.Contains(ext))
-                {
-                    continue;
-                }
-
-                var resourceKey = registry.GetResourceKey(child);
-                var readOnlyMessage = ReadOnlyMessageHelper.GetReadOnlyMessage(child.WritableState, _stringLocalizer);
-                items.Add(new ResourcePickerItem(child, resourceKey, fileResource.Icon, readOnlyMessage));
-            }
-        }
-    }
-
-    private void CollectFolderResources(IFolderResource folder, IResourceRegistry registry, List<ResourcePickerItem> items)
-    {
-        foreach (var child in folder.Children)
-        {
-            if (child is not IFolderResource subFolder)
-            {
-                continue;
-            }
-
-            var resourceKey = registry.GetResourceKey(subFolder);
-            var readOnlyMessage = ReadOnlyMessageHelper.GetReadOnlyMessage(subFolder.WritableState, _stringLocalizer);
-            items.Add(new ResourcePickerItem(subFolder, resourceKey, _iconService.DefaultFolderIcon, readOnlyMessage));
-
-            CollectFolderResources(subFolder, registry, items);
-        }
-    }
-
     private void UpdateFilteredItems()
     {
         var search = SearchText.Trim();
 
-        if (string.IsNullOrEmpty(search))
+        var matchingItems = _allItems;
+        if (!string.IsNullOrEmpty(search))
         {
-            FilteredItems = [.. _allItems];
+            var searchLower = search.ToLowerInvariant();
+            matchingItems = _allItems
+                .Where(item => item.DisplayTextLower.Contains(searchLower))
+                .ToList();
+        }
+
+        _matchingItems = matchingItems;
+        FilteredItems = matchingItems
+            .Take(MaxShownMatches)
+            .ToList();
+
+        var otherMatchCount = matchingItems.Count - FilteredItems.Count;
+        if (otherMatchCount == 0)
+        {
+            MoreMatchesText = string.Empty;
+            MoreMatchesVisibility = Visibility.Collapsed;
             return;
         }
 
-        var searchLower = search.ToLowerInvariant();
-        FilteredItems = _allItems
-            .Where(item => item.DisplayTextLower.Contains(searchLower))
-            .ToList();
+        var moreMatchesKey = otherMatchCount == 1
+            ? "ResourcePickerDialog_MoreMatches_One"
+            : "ResourcePickerDialog_MoreMatches_Many";
+        MoreMatchesText = _stringLocalizer.GetString(moreMatchesKey, otherMatchCount);
+        MoreMatchesVisibility = Visibility.Visible;
     }
-
 }

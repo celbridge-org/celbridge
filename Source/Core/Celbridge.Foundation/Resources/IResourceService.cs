@@ -57,6 +57,11 @@ public interface IResourceService
     IResourceScanner Scanner { get; }
 
     /// <summary>
+    /// Returns the walker that lists a folder and every folder below it.
+    /// </summary>
+    IResourceWalker Walker { get; }
+
+    /// <summary>
     /// Returns the sidecar service: validation helpers plus read / mutate /
     /// write operations over .cel sidecar files via the file-system gateway.
     /// </summary>

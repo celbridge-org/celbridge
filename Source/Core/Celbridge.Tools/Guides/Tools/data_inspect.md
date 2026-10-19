@@ -17,6 +17,8 @@ Scope resolution mirrors `file_grep`:
 | empty | set | Every resource key matching the glob. |
 | set | set | Union of the two. |
 
+A whole-project or pattern inspection walks the project each time it is called. The walk leaves out what the project's `search-exclude` list matches. Name a resource in `resources` to inspect it anyway.
+
 ## Returns
 
 ```json
@@ -74,4 +76,3 @@ The per-record `tags` array is the on-disk reserved `_tags` value surfaced under
 
 - Use `data_get_fields` to fetch field *values* — `data_inspect`'s `fields` array reports approximate sizes, not content, and the size estimate skips the full TOML encoding pass. The inventory call stays cheap regardless of how large the underlying values are.
 - Healthy sidecars whose parent file has its sidecar at `parent.ext.cel` are addressed under the parent key, not the sidecar key. Passing the parent key (`notes.md`) returns the record; passing the sidecar key (`notes.md.cel`) inspects it directly and is mostly useful for orphan / invalid surfaces.
-- Each project load lists broken and orphan sidecars in the project load report. `data_inspect` is the way to query the same state on demand from an agent.

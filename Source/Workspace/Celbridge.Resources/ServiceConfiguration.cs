@@ -26,6 +26,7 @@ public static class ServiceConfiguration
         services.AddTransient<IResourcePolicy, ResourcePolicy>();
         services.AddTransient<ITrashService, TrashService>();
         services.AddTransient<IResourceScanner, ResourceScanner>();
+        services.AddTransient<IResourceWalker, ResourceWalker>();
         services.AddTransient<ISidecarService, SidecarService>();
         services.AddTransient<IResourceClassifier, ResourceClassifier>();
         services.AddTransient<IProjectTreeBuilder, ProjectTreeBuilder>();

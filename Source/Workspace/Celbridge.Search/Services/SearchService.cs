@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using System.Text.RegularExpressions;
+using Celbridge.Automation;
 using Celbridge.Logging;
 using Celbridge.Resources;
 using Celbridge.UserInterface.Services;
@@ -44,6 +46,7 @@ public class SearchService : ISearchService, IDisposable
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ITextBinarySniffer _textBinarySniffer;
     private readonly ISpotlightService _spotlightService;
+    private readonly IAutomationService _automationService;
     private readonly ISpotlightLandmark _searchSpotlightLandmark;
     private readonly ISpotlightLandmark _searchReplaceSpotlightLandmark;
     private readonly TextMatcher _textMatcher;
@@ -64,13 +67,15 @@ public class SearchService : ISearchService, IDisposable
 
     private IResourceFileSystem ResourceFileSystem => _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
     private IResourceRegistry ResourceRegistry => _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+    private IResourceWalker ResourceWalker => _workspaceWrapper.WorkspaceService.ResourceService.Walker;
     private IWorkspacePropertyBag PropertyBag => _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag!;
 
     public SearchService(
         ILogger<SearchService> logger,
         IWorkspaceWrapper workspaceWrapper,
         ITextBinarySniffer textBinarySniffer,
-        ISpotlightService spotlightService)
+        ISpotlightService spotlightService,
+        IAutomationService automationService)
     {
         // Only the workspace service is allowed to instantiate this service
         Guard.IsFalse(workspaceWrapper.IsWorkspaceLoaded);
@@ -79,6 +84,7 @@ public class SearchService : ISearchService, IDisposable
         _workspaceWrapper = workspaceWrapper;
         _textBinarySniffer = textBinarySniffer;
         _spotlightService = spotlightService;
+        _automationService = automationService;
         _workspaceToken = _workspaceCancellation.Token;
         _textMatcher = new TextMatcher();
         _formatter = new SearchResultFormatter();
@@ -99,24 +105,17 @@ public class SearchService : ISearchService, IDisposable
         }
     }
 
-    // Decides whether a file should be included in a search. Probes the file
-    // through the gateway so the size check honours the same containment
-    // validation as the read that follows. Internal for the test suite.
-    internal async Task<bool> ShouldSearchFileAsync(ResourceKey resource, string filePath, bool includeMetadataFiles = false)
+    // Decides whether a walked file should be included in a search, from its size and extension. Internal for
+    // the test suite.
+    internal bool ShouldSearchFile(WalkedItem file, bool includeMetadataFiles = false)
     {
-        var infoResult = await ResourceFileSystem.GetInfoAsync(resource);
-        if (infoResult.IsFailure
-            || infoResult.Value.Kind != StorageItemKind.File)
+        if (file.IsFolder
+            || file.Size > MaxSearchableFileSizeBytes)
         {
             return false;
         }
 
-        if (infoResult.Value.Size > MaxSearchableFileSizeBytes)
-        {
-            return false;
-        }
-
-        var extension = Path.GetExtension(filePath).ToLowerInvariant();
+        var extension = Path.GetExtension(file.Path).ToLowerInvariant();
         if (_textBinarySniffer.IsBinaryExtension(extension))
         {
             return false;
@@ -191,47 +190,60 @@ public class SearchService : ISearchService, IDisposable
         var excludeRegex = GlobHelper.BuildNameMatcher(exclude);
 
         var searchState = new SearchState();
+        var searchedFiles = 0;
+        var stopwatch = Stopwatch.StartNew();
 
         try
         {
-            // Get all file resources from the registry (already sorted by path)
-            var fileResources = ResourceRegistry.GetAllFileResources();
+            // The scope's listing and every file's read and match run on a worker thread, so a search started from
+            // the UI thread leaves the UI thread free.
+            var searched = await Task.Run(SearchScopeAsync, cancellationToken);
+            if (searched)
+            {
+                var elapsed = (long)stopwatch.Elapsed.TotalMilliseconds;
+                _automationService.LogEvent(new SearchCompletedEvent(searchedFiles, elapsed));
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            return new SearchResults(searchTerm, fileResults, searchState.TotalMatches, fileResults.Count, true, searchState.ReachedMaxResults);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error during search: {ex.Message}");
+        }
+
+        return new SearchResults(searchTerm, fileResults, searchState.TotalMatches, fileResults.Count, false, searchState.ReachedMaxResults);
+
+        // Returns false when the scope names nothing that can be searched.
+        async Task<bool> SearchScopeAsync()
+        {
+            var listResult = await ListScopeFilesAsync(scope, cancellationToken);
+            if (listResult.IsFailure)
+            {
+                _logger.LogWarning(listResult, $"Failed to list the search scope: '{scope}'");
+                return false;
+            }
+            var files = listResult.Value;
 
             if (includeRegex != null)
             {
-                fileResources = fileResources
-                    .Where(entry => includeRegex.IsMatch(Path.GetFileName(entry.Path)))
+                files = files
+                    .Where(file => includeRegex.IsMatch(file.Resource.ResourceName))
                     .ToList();
             }
 
             if (excludeRegex != null)
             {
-                fileResources = fileResources
-                    .Where(entry => !excludeRegex.IsMatch(Path.GetFileName(entry.Path)))
+                files = files
+                    .Where(file => !excludeRegex.IsMatch(file.Resource.ResourceName))
                     .ToList();
             }
 
-            if (!string.IsNullOrEmpty(scope))
-            {
-                // File resources are matched as "<root>:<path>", so a bare scope
-                // like "Data" is canonicalized to "project:Data" before comparison.
-                string canonicalScope;
-                if (ResourceKey.TryCreate(scope, out var scopeKey))
-                {
-                    canonicalScope = scopeKey.ToString();
-                }
-                else
-                {
-                    canonicalScope = scope;
-                }
-
-                fileResources = fileResources
-                    .Where(entry => entry.Resource.ToString().StartsWith(canonicalScope, StringComparison.OrdinalIgnoreCase))
-                    .ToList();
-            }
+            files.Sort((a, b) => string.Compare(a.Path, b.Path, StringComparison.OrdinalIgnoreCase));
 
             cancellationToken.ThrowIfCancellationRequested();
-            foreach (var (resource, filePath) in fileResources)
+            foreach (var file in files)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -246,9 +258,8 @@ public class SearchService : ISearchService, IDisposable
                     : int.MaxValue;
 
                 var fileResult = await SearchFileAsync(
-                    filePath,
+                    file,
                     projectFolder,
-                    resource,
                     searchTerm,
                     matchCase,
                     wholeWord,
@@ -256,6 +267,7 @@ public class SearchService : ISearchService, IDisposable
                     cancellationToken,
                     searchRegex,
                     includeMetadataFiles);
+                searchedFiles++;
 
                 if (fileResult != null && fileResult.Matches.Count > 0)
                 {
@@ -263,23 +275,79 @@ public class SearchService : ISearchService, IDisposable
                     searchState.TotalMatches += fileResult.Matches.Count;
                 }
             }
+
+            return true;
         }
-        catch (OperationCanceledException)
+    }
+
+    // Lists the files a search covers: the one file the scope names, or every file inside the scope folder. An empty
+    // scope names the project folder, and a bare scope, for example "Data", names "project:Data".
+    private async Task<Result<List<WalkedItem>>> ListScopeFilesAsync(string scope, CancellationToken cancellationToken)
+    {
+        var scopeKey = ResourceKey.Empty;
+        if (!string.IsNullOrEmpty(scope)
+            && !ResourceKey.TryCreate(scope, out scopeKey))
         {
-            return new SearchResults(searchTerm, fileResults, searchState.TotalMatches, fileResults.Count, true, searchState.ReachedMaxResults);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError($"Error during search: {ex.Message}");
+            return Result.Fail($"The search scope is not a resource key: '{scope}'");
         }
 
-        return new SearchResults(searchTerm, fileResults, searchState.TotalMatches, fileResults.Count, false, searchState.ReachedMaxResults);
+        var scopeFile = await GetScopeFileAsync(scopeKey);
+        if (scopeFile is not null)
+        {
+            var scopeFiles = new List<WalkedItem>
+            {
+                scopeFile
+            };
+            return scopeFiles;
+        }
+
+        var walkResult = await ResourceWalker.WalkAsync(scopeKey, cancellationToken: cancellationToken);
+        if (walkResult.IsFailure)
+        {
+            return Result.Fail($"Failed to walk the search scope: '{scopeKey}'")
+                .WithErrors(walkResult);
+        }
+        var walkedItems = walkResult.Value;
+
+        var files = walkedItems
+            .Where(item => !item.IsFolder)
+            .ToList();
+        return files;
+    }
+
+    // Returns the scope as a walked item when the scope names a file, or null when the scope names anything else.
+    private async Task<WalkedItem?> GetScopeFileAsync(ResourceKey scopeKey)
+    {
+        if (scopeKey.IsEmpty)
+        {
+            return null;
+        }
+
+        var infoResult = await ResourceFileSystem.GetInfoAsync(scopeKey);
+        if (infoResult.IsFailure)
+        {
+            return null;
+        }
+        var info = infoResult.Value;
+
+        if (info.Kind != StorageItemKind.File)
+        {
+            return null;
+        }
+
+        var resolveResult = ResourceRegistry.ResolveResourcePath(scopeKey);
+        if (resolveResult.IsFailure)
+        {
+            return null;
+        }
+        var filePath = resolveResult.Value;
+
+        return new WalkedItem(scopeKey, filePath, false, info.Size, info.ModifiedUtc, info.Attributes);
     }
 
     private async Task<SearchFileResult?> SearchFileAsync(
-        string filePath,
+        WalkedItem file,
         string rootDirectory,
-        ResourceKey resourceKey,
         string searchTerm,
         bool matchCase,
         bool wholeWord,
@@ -288,10 +356,13 @@ public class SearchService : ISearchService, IDisposable
         Regex? searchRegex = null,
         bool includeMetadataFiles = false)
     {
+        var filePath = file.Path;
+        var resourceKey = file.Resource;
+
         try
         {
             // Check if file should be searched (size, extension filters)
-            if (!await ShouldSearchFileAsync(resourceKey, filePath, includeMetadataFiles))
+            if (!ShouldSearchFile(file, includeMetadataFiles))
             {
                 return null;
             }

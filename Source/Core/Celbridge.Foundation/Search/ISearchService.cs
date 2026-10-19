@@ -12,7 +12,8 @@ public interface ISearchService
     /// When useRegex is true, searchTerm is interpreted as a .NET regular expression.
     /// When include is specified, only files whose names match one of the comma-separated glob patterns are searched (e.g. "*.cs,*.xaml").
     /// When exclude is specified, files whose names match any of the comma-separated glob patterns are skipped, even if they match include.
-    /// When scope is specified, only files whose resource key starts with the given prefix are searched.
+    /// When scope is specified, it names a folder or a file. A folder scope searches only the files inside that folder,
+    /// and a file scope searches that one file.
     /// When includeMetadataFiles is true, .cel sidecar contents are searched alongside other text files.
     /// </summary>
     Task<SearchResults> SearchAsync(

@@ -65,6 +65,10 @@ public class ListTagsCommandTests
             TestFileSystem.CreateLocal());
         resourceService.FileSystem.Returns(resourceFileSystem);
 
+        var walker = new ResourceWalker(Substitute.For<ILogger<ResourceWalker>>(), _workspaceWrapper);
+        resourceService.Walker.Returns(walker);
+        resourceService.Sidecars.Returns(new SidecarService(_workspaceWrapper));
+
         var scanner = new ResourceScanner(
             Substitute.For<ILogger<ResourceScanner>>(),
             _workspaceWrapper);
@@ -92,8 +96,6 @@ public class ListTagsCommandTests
     [Test]
     public async Task EmptyWorkspace_ReturnsEmptyList()
     {
-        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
-
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
 
         _command.ResultValue.Should().BeEmpty();
@@ -108,7 +110,6 @@ public class ListTagsCommandTests
             "_tags = [\"draft\", \"priority:high\"]\n");
         File.WriteAllText(Path.Combine(_projectFolderPath, "b.md.cel"),
             "_tags = [\"draft\", \"published\"]\n");
-        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
 
@@ -129,7 +130,6 @@ public class ListTagsCommandTests
         File.WriteAllText(Path.Combine(_projectFolderPath, "bad.md"), "B.\n");
         File.WriteAllText(Path.Combine(_projectFolderPath, "bad.md.cel"),
             "this is not = valid // toml");
-        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
 
@@ -142,7 +142,6 @@ public class ListTagsCommandTests
         // No parent file on disk. Scanner's sidecar enumeration skips orphans.
         File.WriteAllText(Path.Combine(_projectFolderPath, "orphan.png.cel"),
             "_tags = [\"never-surface\"]\n");
-        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
 
