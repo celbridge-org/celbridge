@@ -119,74 +119,36 @@ public sealed class ResourceScanner : IResourceScanner
         return readResult.Value;
     }
 
-    // Walks all .cel files paired with an existing parent file. Reads the
-    // registry's snapshot directly; mutation commands carry
-    // CommandFlags.UpdateResources so the snapshot reflects the latest disk
-    // state. Orphans (no parent file on disk) are skipped — tag queries are
-    // scoped to paired sidecars; orphans surface via data_inspect.
+    // Walks the project, and visits each sidecar with the file it describes. Tag queries cover paired sidecars
+    // only, so an orphan, whose file is gone, is left out.
     private async Task EnumerateProjectSidecarFilesAsync(Func<ResourceKey, ResourceKey, Task> visit)
     {
-        var registry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
-        var files = registry.GetAllFileResources(ResourceKey.DefaultRoot);
+        var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
+        var sidecarService = resourceService.Sidecars;
 
-        await Parallel.ForEachAsync(files, async (file, _) =>
+        var walkResult = await resourceService.Walker.WalkAsync(ResourceKey.Empty);
+        if (walkResult.IsFailure)
         {
-            var resourceKey = file.Resource;
-            var absolutePath = file.Path;
-            if (!IsSidecarPath(absolutePath))
+            _logger.LogWarning(walkResult, "Failed to walk the project for sidecars");
+            return;
+        }
+
+        var fileKeys = walkResult.Value
+            .Where(item => !item.IsFolder)
+            .Select(item => item.Resource);
+        var sidecarPairs = SidecarPairing.Pair(fileKeys, sidecarService);
+
+        await Parallel.ForEachAsync(sidecarPairs.FilesWithSidecars, async (file, _) =>
+        {
+            var sidecarKeyResult = sidecarService.GetSidecarKey(file);
+            if (sidecarKeyResult.IsFailure)
             {
                 return;
             }
+            var sidecarKey = sidecarKeyResult.Value;
 
-            var parentKey = StripSidecarSuffix(resourceKey);
-            if (parentKey is null)
-            {
-                return;
-            }
-
-            var infoResult = await resourceFileSystem.GetInfoAsync(parentKey.Value);
-            if (infoResult.IsFailure
-                || infoResult.Value.Kind == StorageItemKind.NotFound)
-            {
-                return;
-            }
-
-            await visit(resourceKey, parentKey.Value);
+            await visit(sidecarKey, file);
         });
-    }
-
-    private static bool IsSidecarPath(string absolutePath)
-    {
-        var fileName = Path.GetFileName(absolutePath);
-        if (!fileName.EndsWith(SidecarFile.Extension, StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-        // .cel.cel files are invalid sidecars by definition.
-        if (fileName.EndsWith(SidecarFile.Extension + SidecarFile.Extension, StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-        return true;
-    }
-
-    // Strips the trailing ".cel" from a sidecar key to recover its parent
-    // resource key. Returns null when the result would be empty.
-    private static ResourceKey? StripSidecarSuffix(ResourceKey sidecarKey)
-    {
-        var fullKey = sidecarKey.FullKey;
-        if (!fullKey.EndsWith(SidecarFile.Extension, StringComparison.OrdinalIgnoreCase))
-        {
-            return null;
-        }
-        var trimmed = fullKey.Substring(0, fullKey.Length - SidecarFile.Extension.Length);
-        if (string.IsNullOrEmpty(trimmed)
-            || trimmed.EndsWith(":", StringComparison.Ordinal))
-        {
-            return null;
-        }
-        return new ResourceKey(trimmed);
     }
 
     private static bool ListContainsString(object value, string candidate)

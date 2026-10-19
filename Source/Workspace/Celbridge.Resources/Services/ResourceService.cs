@@ -1,10 +1,8 @@
 using System.Diagnostics;
 using Celbridge.Automation;
-using Celbridge.Commands;
 using Celbridge.Logging;
 using Celbridge.Projects;
 using Celbridge.Resources.Services.Roots;
-using Celbridge.UserInterface;
 using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Services;
@@ -16,7 +14,6 @@ namespace Celbridge.Resources.Services;
 public class ResourceService : IResourceService, IDisposable
 {
     private readonly ILogger<ResourceService> _logger;
-    private readonly ICommandService _commandService;
     private readonly IMessengerService _messengerService;
     private readonly IProjectService _projectService;
     private readonly ILocalFileSystem _fileSystem;
@@ -35,12 +32,12 @@ public class ResourceService : IResourceService, IDisposable
     public IResourcePolicy Policy { get; }
     public ITrashService Trash { get; }
     public IResourceScanner Scanner { get; }
+    public IResourceWalker Walker { get; }
     public ISidecarService Sidecars { get; }
 
     public ResourceService(
         ILogger<ResourceService> logger,
         ILogger<ResourceRegistry> registryLogger,
-        ICommandService commandService,
         IMessengerService messengerService,
         IProjectService projectService,
         IWorkspaceWrapper workspaceWrapper,
@@ -53,6 +50,7 @@ public class ResourceService : IResourceService, IDisposable
         IResourcePolicy resourcePolicy,
         ITrashService trashService,
         IResourceScanner resourceScanner,
+        IResourceWalker resourceWalker,
         ISidecarService sidecarService,
         ILocalFileSystem fileSystem,
         IAutomationService automationService)
@@ -61,7 +59,6 @@ public class ResourceService : IResourceService, IDisposable
         Guard.IsFalse(workspaceWrapper.IsWorkspaceLoaded);
 
         _logger = logger;
-        _commandService = commandService;
         _messengerService = messengerService;
         _projectService = projectService;
         _fileSystem = fileSystem;
@@ -87,6 +84,7 @@ public class ResourceService : IResourceService, IDisposable
         Policy = resourcePolicy;
         Trash = trashService;
         Scanner = resourceScanner;
+        Walker = resourceWalker;
         Sidecars = sidecarService;
 
         var project = _projectService.CurrentProject!;
@@ -127,17 +125,7 @@ public class ResourceService : IResourceService, IDisposable
         // the monitor looks up its registry through IWorkspaceWrapper, which is only populated
         // once the WorkspaceService finishes constructing.
 
-        _messengerService.Register<MainWindowActivatedMessage>(this, OnMainWindowActivatedMessage);
         _messengerService.Register<RequestResourceRegistryUpdateMessage>(this, OnResourceUpdateRequestedMessage);
-    }
-
-    private void OnMainWindowActivatedMessage(object recipient, MainWindowActivatedMessage message)
-    {
-#if !DEBUG
-        // Refresh resources when the window gains focus to catch any external file system changes
-        // Disabled in debug to avoid triggering an update every time we switch between the app and the debugger.
-        _commandService.Execute<IUpdateResourcesCommand>();
-#endif
     }
 
     // Fire-and-forget sink for the request message: the registry build is async,

@@ -1,5 +1,4 @@
 using Celbridge.Reports;
-using Celbridge.Resources;
 
 namespace Celbridge.Projects;
 
@@ -48,16 +47,6 @@ public interface IProjectLoadReporter
     /// Records the package discovery outcome, including any load failures.
     /// </summary>
     void RecordPackageReport(PackageDiscoveryReport report);
-
-    /// <summary>
-    /// Records how many file and folder resources the loaded project holds.
-    /// </summary>
-    void RecordResourceCounts(int fileCount, int folderCount);
-
-    /// <summary>
-    /// Records the state of the project's .cel sidecar files.
-    /// </summary>
-    void RecordSidecarReport(SidecarReport report);
 
     /// <summary>
     /// Writes the current state to disk. Returns a summary of the report written, or null on

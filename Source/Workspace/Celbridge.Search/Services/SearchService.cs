@@ -67,6 +67,7 @@ public class SearchService : ISearchService, IDisposable
 
     private IResourceFileSystem ResourceFileSystem => _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
     private IResourceRegistry ResourceRegistry => _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+    private IResourceWalker ResourceWalker => _workspaceWrapper.WorkspaceService.ResourceService.Walker;
     private IWorkspacePropertyBag PropertyBag => _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag!;
 
     public SearchService(
@@ -104,24 +105,17 @@ public class SearchService : ISearchService, IDisposable
         }
     }
 
-    // Decides whether a file should be included in a search. Probes the file
-    // through the gateway so the size check honours the same containment
-    // validation as the read that follows. Internal for the test suite.
-    internal async Task<bool> ShouldSearchFileAsync(ResourceKey resource, string filePath, bool includeMetadataFiles = false)
+    // Decides whether a walked file should be included in a search, from its size and extension. Internal for
+    // the test suite.
+    internal bool ShouldSearchFile(WalkedItem file, bool includeMetadataFiles = false)
     {
-        var infoResult = await ResourceFileSystem.GetInfoAsync(resource);
-        if (infoResult.IsFailure
-            || infoResult.Value.Kind != StorageItemKind.File)
+        if (file.IsFolder
+            || file.Size > MaxSearchableFileSizeBytes)
         {
             return false;
         }
 
-        if (infoResult.Value.Size > MaxSearchableFileSizeBytes)
-        {
-            return false;
-        }
-
-        var extension = Path.GetExtension(filePath).ToLowerInvariant();
+        var extension = Path.GetExtension(file.Path).ToLowerInvariant();
         if (_textBinarySniffer.IsBinaryExtension(extension))
         {
             return false;
@@ -201,44 +195,43 @@ public class SearchService : ISearchService, IDisposable
 
         try
         {
-            // Get all file resources from the registry (already sorted by path)
-            var fileResources = ResourceRegistry.GetAllFileResources();
+            // A bare scope such as "Data" names the project folder "project:Data".
+            var scopeFolder = ResourceKey.Empty;
+            if (!string.IsNullOrEmpty(scope)
+                && !ResourceKey.TryCreate(scope, out scopeFolder))
+            {
+                return new SearchResults(searchTerm, fileResults, 0, 0, false, false);
+            }
+
+            var walkResult = await ResourceWalker.WalkAsync(scopeFolder, cancellationToken: cancellationToken);
+            if (walkResult.IsFailure)
+            {
+                _logger.LogWarning(walkResult, $"Failed to walk the search scope: '{scopeFolder}'");
+                return new SearchResults(searchTerm, fileResults, 0, 0, false, false);
+            }
+
+            var files = walkResult.Value
+                .Where(item => !item.IsFolder)
+                .ToList();
 
             if (includeRegex != null)
             {
-                fileResources = fileResources
-                    .Where(entry => includeRegex.IsMatch(Path.GetFileName(entry.Path)))
+                files = files
+                    .Where(file => includeRegex.IsMatch(file.Resource.ResourceName))
                     .ToList();
             }
 
             if (excludeRegex != null)
             {
-                fileResources = fileResources
-                    .Where(entry => !excludeRegex.IsMatch(Path.GetFileName(entry.Path)))
+                files = files
+                    .Where(file => !excludeRegex.IsMatch(file.Resource.ResourceName))
                     .ToList();
             }
 
-            if (!string.IsNullOrEmpty(scope))
-            {
-                // File resources are matched as "<root>:<path>", so a bare scope
-                // like "Data" is canonicalized to "project:Data" before comparison.
-                string canonicalScope;
-                if (ResourceKey.TryCreate(scope, out var scopeKey))
-                {
-                    canonicalScope = scopeKey.ToString();
-                }
-                else
-                {
-                    canonicalScope = scope;
-                }
-
-                fileResources = fileResources
-                    .Where(entry => entry.Resource.ToString().StartsWith(canonicalScope, StringComparison.OrdinalIgnoreCase))
-                    .ToList();
-            }
+            files.Sort((a, b) => string.Compare(a.Path, b.Path, StringComparison.OrdinalIgnoreCase));
 
             cancellationToken.ThrowIfCancellationRequested();
-            foreach (var (resource, filePath) in fileResources)
+            foreach (var file in files)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -253,9 +246,8 @@ public class SearchService : ISearchService, IDisposable
                     : int.MaxValue;
 
                 var fileResult = await SearchFileAsync(
-                    filePath,
+                    file,
                     projectFolder,
-                    resource,
                     searchTerm,
                     matchCase,
                     wholeWord,
@@ -288,9 +280,8 @@ public class SearchService : ISearchService, IDisposable
     }
 
     private async Task<SearchFileResult?> SearchFileAsync(
-        string filePath,
+        WalkedItem file,
         string rootDirectory,
-        ResourceKey resourceKey,
         string searchTerm,
         bool matchCase,
         bool wholeWord,
@@ -299,10 +290,13 @@ public class SearchService : ISearchService, IDisposable
         Regex? searchRegex = null,
         bool includeMetadataFiles = false)
     {
+        var filePath = file.Path;
+        var resourceKey = file.Resource;
+
         try
         {
             // Check if file should be searched (size, extension filters)
-            if (!await ShouldSearchFileAsync(resourceKey, filePath, includeMetadataFiles))
+            if (!ShouldSearchFile(file, includeMetadataFiles))
             {
                 return null;
             }

@@ -1,25 +1,6 @@
 namespace Celbridge.Resources;
 
 /// <summary>
-/// Snapshot of the .cel files in the project tree, partitioned by parse state
-/// and orphan-ness. Produced by the classifier on every UpdateResourceRegistry
-/// pass; consumed by project-load diagnostics and the data_inspect tool.
-/// Parse state (Healthy / Broken) and orphan-ness are orthogonal: an orphan
-/// .cel file with malformed content appears in both Broken and Orphan. Files
-/// ending in .cel.cel are surfaced as Broken and are never treated as sidecars.
-/// </summary>
-public record SidecarReport(
-    IReadOnlyList<ResourceKey> Healthy,
-    IReadOnlyList<ResourceKey> Broken,
-    IReadOnlyList<ResourceKey> Orphan);
-
-/// <summary>
-/// A file resource paired with its absolute filesystem path, as returned by
-/// IResourceRegistry.GetAllFileResources.
-/// </summary>
-public record FileResourceEntry(ResourceKey Resource, string Path);
-
-/// <summary>
 /// A data structure representing the resources in the project folder.
 /// </summary>
 public interface IResourceRegistry
@@ -90,23 +71,4 @@ public interface IResourceRegistry
     /// Updates the registry to mirror the current state of the files and folders in the project folder.
     /// </summary>
     Task<Result> UpdateResourceRegistryAsync();
-
-    /// <summary>
-    /// Returns all file resources for the project root with their resource keys and absolute paths.
-    /// The results are sorted by path for stable ordering.
-    /// </summary>
-    IReadOnlyList<FileResourceEntry> GetAllFileResources();
-
-    /// <summary>
-    /// Returns all file resources for the specified root with their resource keys and absolute paths.
-    /// Returns an empty list for roots without indexed tree state.
-    /// </summary>
-    IReadOnlyList<FileResourceEntry> GetAllFileResources(string root);
-
-    /// <summary>
-    /// Returns the SidecarReport from the last completed UpdateResourceRegistry
-    /// pass. Project-load diagnostics and the data_inspect tool consume this to
-    /// surface broken and orphan .cel files.
-    /// </summary>
-    SidecarReport GetSidecarReport();
 }

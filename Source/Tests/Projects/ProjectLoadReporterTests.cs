@@ -15,7 +15,7 @@ namespace Celbridge.Tests.Projects;
 
 /// <summary>
 /// Unit tests for ProjectLoadReporter — the stateful singleton that accumulates
-/// project-load events from ProjectLoader plus the registry's sidecar snapshot, and writes one
+/// project-load events from ProjectLoader and the workspace load, and writes one
 /// report document on FlushAsync. The tests pin the resource key, the section layout, and the
 /// state-reset semantics of BeginLoad.
 /// </summary>
@@ -185,7 +185,6 @@ public class ProjectLoadReporterTests
             MigrationResult.WithVersions(MigrationStatus.Complete, Result.Ok(), "1.2.0", "1.3.0"),
             userConfirmedUpgrade: false,
             userCancelledUpgrade: false);
-        _reporter.RecordResourceCounts(fileCount: 412, folderCount: 37);
         _reporter.RecordLoadOutcome(loadSucceeded: true, loadResult: Result.Ok());
 
         var report = await FlushAndReadAsync();
@@ -199,7 +198,6 @@ public class ProjectLoadReporterTests
         sectionTitles.Should().Equal("Summary");
 
         var facts = GetSectionFacts(report, "Summary");
-        facts["Resources"].Should().Be("412 files in 37 folders");
         facts["Celbridge version"].Should().Be("1.2.0");
         facts["Application version"].Should().Be("1.3.0");
         facts["Migration status"].Should().Be("Complete");
@@ -250,66 +248,6 @@ public class ProjectLoadReporterTests
 
         GetSectionCodes(report, "Load")
             .Should().Contain(ReportFindingCatalog.Project.UpgradeCancelled.Code);
-    }
-
-    [Test]
-    public async Task FlushAsync_AfterRecordSidecarReport_IncludesFindingsWithResourcesAndActions()
-    {
-        // Mirrors the runtime flow: ProjectLoader pushes load info first, then WorkspaceLoader pushes
-        // the registry's sidecar snapshot once the resources are populated.
-        _reporter.BeginLoad(_projectFilePath);
-        _reporter.RecordMigrationResult(
-            MigrationResult.WithVersions(MigrationStatus.Complete, Result.Ok(), "1.0.0", "1.0.0"),
-            userConfirmedUpgrade: false,
-            userCancelledUpgrade: false);
-        _reporter.RecordLoadOutcome(loadSucceeded: true, loadResult: Result.Ok());
-
-        var sidecarReport = new SidecarReport(
-            Healthy: Array.Empty<ResourceKey>(),
-            Broken: new[] { new ResourceKey("bad.png.cel") },
-            Orphan: new[] { new ResourceKey("foo.png.cel") });
-        _reporter.RecordSidecarReport(sidecarReport);
-
-        var report = await FlushAndReadAsync();
-
-        report.RootElement.GetProperty("severity").GetString().Should().Be("warning");
-        report.RootElement.GetProperty("summary").GetString().Should().Contain("2 issues");
-
-        var items = GetSectionItems(report, "Sidecar files");
-        items.Should().HaveCount(2);
-
-        GetSectionCodes(report, "Sidecar files").Should().Equal(
-            ReportFindingCatalog.Resource.OrphanSidecar.Code,
-            ReportFindingCatalog.Resource.BrokenSidecar.Code);
-
-        var orphan = items[0];
-        orphan.GetProperty("resource").GetString().Should().Be("project:foo.png.cel");
-
-        // The click-through is the point of the structured format: the finding names the
-        // resource to open, rather than printing a path for the user to go and find.
-        var action = orphan.GetProperty("actions")[0];
-        action.GetProperty("kind").GetString().Should().Be("openResource");
-        action.GetProperty("resource").GetString().Should().Be("project:foo.png.cel");
-
-        items[1].GetProperty("resource").GetString().Should().Be("project:bad.png.cel");
-    }
-
-    [Test]
-    public async Task FlushAsync_HealthySidecars_OmitsTheSidecarSection()
-    {
-        _reporter.BeginLoad(_projectFilePath);
-        _reporter.RecordLoadOutcome(loadSucceeded: true, loadResult: Result.Ok());
-
-        var sidecarReport = new SidecarReport(
-            Healthy: new[] { new ResourceKey("foo.png.cel") },
-            Broken: Array.Empty<ResourceKey>(),
-            Orphan: Array.Empty<ResourceKey>());
-        _reporter.RecordSidecarReport(sidecarReport);
-
-        var report = await FlushAndReadAsync();
-
-        GetSectionTitles(report).Should().NotContain("Sidecar files");
-        report.RootElement.GetProperty("severity").GetString().Should().Be("info");
     }
 
     [Test]
@@ -451,22 +389,17 @@ public class ProjectLoadReporterTests
     }
 
     [Test]
-    public async Task BeginLoad_ClearsPriorSidecarAndPackageState()
+    public async Task BeginLoad_ClearsPriorPackageState()
     {
         // A new project load invalidates the previous run's state. Each flush writes a
         // fresh report rather than carrying findings forward.
         _reporter.BeginLoad(_projectFilePath);
-        _reporter.RecordSidecarReport(new SidecarReport(
-            Healthy: Array.Empty<ResourceKey>(),
-            Broken: Array.Empty<ResourceKey>(),
-            Orphan: new[] { new ResourceKey("stale.png.cel") }));
         _reporter.RecordPackageReport(new PackageDiscoveryReport
         {
             BundledPackageCount = 5,
             ProjectPackageCount = 0,
             Failures = Array.Empty<PackageLoadFailure>()
         });
-        _reporter.RecordResourceCounts(fileCount: 9, folderCount: 2);
         _reporter.RecordLoadOutcome(loadSucceeded: true, loadResult: Result.Ok());
         await _reporter.FlushAsync();
 
@@ -482,7 +415,6 @@ public class ProjectLoadReporterTests
         GetSectionTitles(report).Should().Equal("Summary");
 
         var facts = GetSectionFacts(report, "Summary");
-        facts.Should().NotContainKey("Resources");
         facts.Should().NotContainKey("Packages loaded");
     }
 

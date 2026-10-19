@@ -1650,6 +1650,15 @@ Open with default application instead?</value>
   <data name="ResourcePickerDialog_FolderSearchPlaceholder" xml:space="preserve">
     <value>Enter folder name...</value>
   </data>
+  <data name="ResourcePickerDialog_Loading" xml:space="preserve">
+    <value>Loading...</value>
+  </data>
+  <data name="ResourcePickerDialog_MoreMatches_One" xml:space="preserve">
+    <value>1 more match is not shown.</value>
+  </data>
+  <data name="ResourcePickerDialog_MoreMatches_Many" xml:space="preserve">
+    <value>{0} more matches are not shown.</value>
+  </data>
   <data name="IconPicker_FieldLabel" xml:space="preserve">
     <value>Icon</value>
   </data>
@@ -1986,12 +1995,6 @@ Open with default application instead?</value>
   <data name="Report_Finding_Package_EditorDegraded" xml:space="preserve">
     <value>Editor degraded: {0}</value>
   </data>
-  <data name="Report_Finding_Resource_OrphanSidecar" xml:space="preserve">
-    <value>Orphan .cel file: no resource it describes.</value>
-  </data>
-  <data name="Report_Finding_Resource_BrokenSidecar" xml:space="preserve">
-    <value>Broken .cel file: could not be parsed.</value>
-  </data>
   <data name="Report_Finding_Resource_CopyFailed" xml:space="preserve">
     <value>Could not be copied.</value>
   </data>
@@ -2040,17 +2043,8 @@ Open with default application instead?</value>
   <data name="Report_ProjectLoad_Section_Packages" xml:space="preserve">
     <value>Packages</value>
   </data>
-  <data name="Report_ProjectLoad_Section_Sidecars" xml:space="preserve">
-    <value>Sidecar files</value>
-  </data>
   <data name="Report_ProjectLoad_Fact_Project" xml:space="preserve">
     <value>Project</value>
-  </data>
-  <data name="Report_ProjectLoad_Fact_Resources" xml:space="preserve">
-    <value>Resources</value>
-  </data>
-  <data name="Report_ProjectLoad_Fact_ResourcesValue" xml:space="preserve">
-    <value>{0} files in {1} folders</value>
   </data>
   <data name="Report_ProjectLoad_Fact_PackagesLoaded" xml:space="preserve">
     <value>Packages loaded</value>

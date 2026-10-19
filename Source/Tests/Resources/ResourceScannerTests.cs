@@ -1,39 +1,83 @@
+using Celbridge.Messaging.Services;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
+using Celbridge.Tests.FileSystem;
+using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Resources;
 
 /// <summary>
-/// Tests for ResourceScanner's project-wide sidecar enumeration: only paired
-/// sidecars participate in tag queries.
+/// Tests for ResourceScanner's project-wide sidecar walk over a temporary project folder: only paired sidecars
+/// participate in tag queries.
 /// </summary>
 [TestFixture]
 public class ResourceScannerTests
 {
-    private IResourceFileSystem _resourceFileSystem = null!;
-    private IResourceRegistry _resourceRegistry = null!;
+    private string _projectFolderPath = null!;
     private ResourceScanner _scanner = null!;
 
     [SetUp]
     public void Setup()
     {
-        _resourceFileSystem = Substitute.For<IResourceFileSystem>();
-        _resourceRegistry = Substitute.For<IResourceRegistry>();
+        _projectFolderPath = Path.Combine(
+            Path.GetTempPath(),
+            "Celbridge",
+            nameof(ResourceScannerTests),
+            Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(_projectFolderPath);
 
-        // Default: nothing exists on disk. Tests opt-in per resource.
-        _resourceFileSystem.GetInfoAsync(Arg.Any<ResourceKey>())
-            .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.NotFound, 0, default, FileSystemAttributes.None))));
+        var messengerService = new MessengerService();
+        var rootHandlerRegistry = new RootHandlerRegistry();
+        var resourceRegistry = new ResourceRegistry(
+            Substitute.For<ILogger<ResourceRegistry>>(),
+            messengerService,
+            ProjectTreeBuilderTestHelper.Build(_projectFolderPath, new IconService()),
+            ResourceClassifierTestHelper.BuildClassifier(),
+            rootHandlerRegistry,
+            TestFileSystem.CreateLocal());
+        resourceRegistry.InitializeProjectRoot(_projectFolderPath);
+
+        var resourceService = Substitute.For<IResourceService>();
+        resourceService.Registry.Returns(resourceRegistry);
+        resourceService.RootHandlers.Returns(rootHandlerRegistry);
+        resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
 
         var workspaceService = Substitute.For<IWorkspaceService>();
-        workspaceService.ResourceService.FileSystem.Returns(_resourceFileSystem);
-        workspaceService.ResourceService.Registry.Returns(_resourceRegistry);
+        workspaceService.ResourceService.Returns(resourceService);
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
+        workspaceWrapper.IsWorkspaceLoaded.Returns(true);
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
-        var logger = Celbridge.Tests.Migration.TestHelpers.MigrationTestHelper.CreateMockLogger<ResourceScanner>();
-        _scanner = new ResourceScanner(logger, workspaceWrapper);
+        var resourceFileSystem = new LocalResourceFileSystem(
+            Substitute.For<ILogger<LocalResourceFileSystem>>(),
+            messengerService,
+            workspaceWrapper,
+            TestFileSystem.CreateLocal());
+        resourceService.FileSystem.Returns(resourceFileSystem);
+
+        var walker = new ResourceWalker(Substitute.For<ILogger<ResourceWalker>>(), workspaceWrapper);
+        resourceService.Walker.Returns(walker);
+        resourceService.Sidecars.Returns(new SidecarService(workspaceWrapper));
+
+        _scanner = new ResourceScanner(Substitute.For<ILogger<ResourceScanner>>(), workspaceWrapper);
+    }
+
+    [TearDown]
+    public void TearDown()
+    {
+        if (Directory.Exists(_projectFolderPath))
+        {
+            try
+            {
+                Directory.Delete(_projectFolderPath, true);
+            }
+            catch
+            {
+                // Best effort
+            }
+        }
     }
 
     [Test]
@@ -41,22 +85,13 @@ public class ResourceScannerTests
     {
         // Baseline: a paired sidecar's tag surfaces as the parent's key, not
         // the sidecar's key — agents never see .cel keys in tag results.
-        var parentKey = new ResourceKey("photo.png");
-        var sidecarKey = new ResourceKey("photo.png.cel");
-        var sidecarPath = @"C:\Project\photo.png.cel";
-
-        _resourceRegistry.GetAllFileResources(ResourceKey.DefaultRoot)
-            .Returns(new List<FileResourceEntry> { new(sidecarKey, sidecarPath) });
-
-        _resourceFileSystem.GetInfoAsync(parentKey)
-            .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.File, 0, default, FileSystemAttributes.None))));
-        _resourceFileSystem.ReadAllTextAsync(sidecarKey)
-            .Returns(Task.FromResult(Result<string>.Ok("_tags = [\"boring\"]\n")));
+        WriteFile("images/photo.png", "png");
+        WriteFile("images/photo.png.cel", "_tags = [\"boring\"]\n");
 
         var results = await _scanner.FindByTagAsync("boring");
 
         results.Should().ContainSingle()
-            .Which.Should().Be(parentKey);
+            .Which.Should().Be(new ResourceKey("images/photo.png"));
     }
 
     [Test]
@@ -64,20 +99,18 @@ public class ResourceScannerTests
     {
         // Parentless .cel files are orphans; they don't participate in tag
         // queries because they are not legitimate resources from the user's
-        // point of view. The project load report lists them separately.
-        var orphanKey = new ResourceKey("leftover.cel");
-        var orphanPath = @"C:\Project\leftover.cel";
-
-        _resourceRegistry.GetAllFileResources(ResourceKey.DefaultRoot)
-            .Returns(new List<FileResourceEntry> { new(orphanKey, orphanPath) });
-
-        // The would-be parent (leftover) does not exist on disk (default
-        // NotFound from setup), so the scanner skips this file.
-        _resourceFileSystem.ReadAllTextAsync(orphanKey)
-            .Returns(Task.FromResult(Result<string>.Ok("_tags = [\"boring\"]\n")));
+        // point of view. data_inspect lists them separately.
+        WriteFile("leftover.cel", "_tags = [\"boring\"]\n");
 
         var results = await _scanner.FindByTagAsync("boring");
 
         results.Should().BeEmpty();
+    }
+
+    private void WriteFile(string relativePath, string content)
+    {
+        var filePath = Path.Combine(_projectFolderPath, relativePath.Replace('/', Path.DirectorySeparatorChar));
+        Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
+        File.WriteAllText(filePath, content);
     }
 }

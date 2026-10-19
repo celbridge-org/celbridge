@@ -91,5 +91,5 @@ A broken sidecar surfaces as `status: "Broken"` with a `parseError` string; muta
 
 ## Notes
 
-- Sidecars can also be read and written directly through the `file` namespace (`file_read docs/notes.md.cel`). Use the file tools for one-shot inspection or for repairing broken sidecars by hand; use the data tools for routine indexed field and tag access.
-- For genuinely free-form search across `.cel` contents, use `file_grep --glob "*.cel"` and parse hits caller-side.
+- Sidecars can also be read and written directly through the `file` namespace (`file_read docs/notes.md.cel`). Use the file tools for one-shot inspection or for repairing broken sidecars by hand; use the data tools for routine field and tag access.
+- For genuinely free-form search across `.cel` contents, use `file_grep` with `include: "*.cel"` and parse hits caller-side.

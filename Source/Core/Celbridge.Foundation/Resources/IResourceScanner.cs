@@ -1,9 +1,8 @@
 namespace Celbridge.Resources;
 
 /// <summary>
-/// On-demand scanner over the project's sidecar files. Each call
-/// walks the registry's known files in parallel; no in-memory index is
-/// maintained between calls.
+/// On-demand scanner over the project's sidecar files. Each call walks the project and reads its sidecars, and
+/// keeps nothing between calls.
 /// </summary>
 public interface IResourceScanner
 {

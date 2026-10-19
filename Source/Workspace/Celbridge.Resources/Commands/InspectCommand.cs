@@ -14,16 +14,14 @@ namespace Celbridge.Resources.Commands;
 /// </summary>
 public sealed class InspectCommand : CommandBase, IInspectCommand
 {
-    // Compact tag for an entry inside the registry's SidecarReport. Used by
-    // the per-resource classifier to look up a sidecar key's reported state
-    // (the registry partitions .cel files into Healthy / Broken / Orphan
-    // lists; this enum is the union of those three buckets).
-    private enum SidecarReportEntry
-    {
-        Healthy,
-        Broken,
-        Orphan,
-    }
+    // Records what a walk of the project found. Files lists every file the walk found, and FilesWithSidecars the
+    // files that have a sidecar. Sidecars lists every sidecar, and Orphans the sidecars with no file beside them.
+    // Classifying a resource listed by key looks the resource up when the walk did not find it.
+    private sealed record WalkedSidecars(
+        IReadOnlySet<ResourceKey> Files,
+        IReadOnlySet<ResourceKey> FilesWithSidecars,
+        IReadOnlySet<ResourceKey> Sidecars,
+        IReadOnlySet<ResourceKey> Orphans);
 
     public override CommandFlags CommandFlags => CommandFlags.SuppressCommandLog;
 
@@ -44,165 +42,155 @@ public sealed class InspectCommand : CommandBase, IInspectCommand
 
     public override async Task<Result> ExecuteAsync()
     {
+        // The walk, and the reads that classify each resource, run on a worker thread.
+        var inspectResult = await Task.Run(InspectAsync);
+        if (inspectResult.IsFailure)
+        {
+            return Result.Fail(inspectResult);
+        }
+
+        ResultValue = inspectResult.Value;
+        return Result.Ok();
+    }
+
+    private async Task<Result<InspectResult>> InspectAsync()
+    {
         var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
-        var registry = resourceService.Registry;
-        var sidecarService = resourceService.Sidecars;
-        var sidecarReport = registry.GetSidecarReport();
 
-        var sidecarStatusByKey = BuildSidecarStatusIndex(sidecarReport);
+        var resources = Resources ?? Array.Empty<ResourceKey>();
+        bool hasResources = resources.Count > 0;
+        bool hasPattern = !string.IsNullOrEmpty(Pattern);
 
-        var scope = BuildScope(registry, sidecarReport, sidecarStatusByKey);
+        var walkedSidecars = new WalkedSidecars(
+            new HashSet<ResourceKey>(),
+            new HashSet<ResourceKey>(),
+            new HashSet<ResourceKey>(),
+            new HashSet<ResourceKey>());
+        var scope = new HashSet<ResourceKey>();
+
+        // Only a scope of listed keys alone needs no walk.
+        if (!hasResources
+            || hasPattern)
+        {
+            var walkResult = await resourceService.Walker.WalkAsync(ResourceKey.Empty);
+            if (walkResult.IsFailure)
+            {
+                return Result.Fail("Failed to walk the project to inspect its sidecars.")
+                    .WithErrors(walkResult);
+            }
+
+            var fileKeys = walkResult.Value
+                .Where(item => !item.IsFolder)
+                .Select(item => item.Resource);
+            var sidecarPairs = SidecarPairing.Pair(fileKeys, resourceService.Sidecars);
+            walkedSidecars = BuildWalkedSidecars(sidecarPairs, resourceService.Sidecars);
+
+            var candidates = BuildWholeProjectScope(sidecarPairs);
+            if (hasPattern)
+            {
+                // Pattern mode filters over the same candidate set as whole-project,
+                // so a `**` glob matches the same universe (parents + attention-state
+                // sidecars) rather than doubling up parent and healthy-sidecar
+                // entries. Match against the bare Path: PathGlobToRegex builds an
+                // anchored regex that expects a path like "foo/bar.md", not the
+                // canonical "project:foo/bar.md" form ToString() emits.
+                var regexPattern = GlobHelper.PathGlobToRegex(Pattern);
+                var regex = new Regex(regexPattern, RegexOptions.IgnoreCase);
+                foreach (var candidate in candidates)
+                {
+                    if (regex.IsMatch(candidate.Path))
+                    {
+                        scope.Add(candidate);
+                    }
+                }
+            }
+            else
+            {
+                scope.UnionWith(candidates);
+            }
+        }
+
+        foreach (var resource in resources)
+        {
+            if (!resource.IsEmpty)
+            {
+                scope.Add(resource);
+            }
+        }
 
         var records = new List<InspectRecord>(scope.Count);
         foreach (var resource in scope)
         {
-            var record = await ClassifyResourceAsync(
-                resource,
-                sidecarService,
-                sidecarStatusByKey);
+            var record = await ClassifyResourceAsync(resource, walkedSidecars, resourceService);
             records.Add(record);
         }
 
         records.Sort((a, b) => string.CompareOrdinal(a.Resource.ToString(), b.Resource.ToString()));
 
         var summary = BuildSummary(records);
-        ResultValue = new InspectResult(records, summary);
-        return Result.Ok();
+        return new InspectResult(records, summary);
     }
 
-    private List<ResourceKey> BuildScope(
-        IResourceRegistry registry,
-        SidecarReport sidecarReport,
-        Dictionary<ResourceKey, SidecarReportEntry> sidecarStatusByKey)
+    private static WalkedSidecars BuildWalkedSidecars(SidecarPairs sidecarPairs, ISidecarService sidecarService)
     {
-        var resources = Resources ?? Array.Empty<ResourceKey>();
-        bool hasResources = resources.Count > 0;
-        bool hasPattern = !string.IsNullOrEmpty(Pattern);
+        var files = new HashSet<ResourceKey>(sidecarPairs.Files);
+        var orphans = new HashSet<ResourceKey>(sidecarPairs.Orphans);
 
-        if (!hasResources
-            && !hasPattern)
+        var sidecars = new HashSet<ResourceKey>(sidecarPairs.Orphans);
+        foreach (var file in sidecarPairs.FilesWithSidecars)
         {
-            return BuildWholeProjectScope(registry, sidecarReport);
-        }
-
-        var scopeSet = new HashSet<ResourceKey>();
-        if (hasResources)
-        {
-            foreach (var resource in resources)
+            var sidecarKeyResult = sidecarService.GetSidecarKey(file);
+            if (sidecarKeyResult.IsSuccess)
             {
-                if (!resource.IsEmpty)
-                {
-                    scopeSet.Add(resource);
-                }
+                var sidecarKey = sidecarKeyResult.Value;
+                sidecars.Add(sidecarKey);
             }
         }
 
-        if (hasPattern)
-        {
-            // Pattern mode filters over the same candidate set as whole-project,
-            // so a `**` glob matches the same universe (parents + attention-state
-            // sidecars) rather than doubling up parent and healthy-sidecar
-            // entries. Match against the bare Path: PathGlobToRegex builds an
-            // anchored regex that expects a path like "foo/bar.md", not the
-            // canonical "project:foo/bar.md" form ToString() emits.
-            var regexPattern = GlobHelper.PathGlobToRegex(Pattern);
-            var regex = new Regex(regexPattern, RegexOptions.IgnoreCase);
-            var candidates = BuildWholeProjectScope(registry, sidecarReport);
-            foreach (var candidate in candidates)
-            {
-                if (regex.IsMatch(candidate.Path))
-                {
-                    scopeSet.Add(candidate);
-                }
-            }
-        }
-
-        return scopeSet.ToList();
+        return new WalkedSidecars(files, sidecarPairs.FilesWithSidecars, sidecars, orphans);
     }
 
-    private List<ResourceKey> BuildWholeProjectScope(
-        IResourceRegistry registry,
-        SidecarReport sidecarReport)
+    // Whole-project: every file that could have a sidecar, plus every sidecar in
+    // an attention state (orphan or invalid). A paired sidecar is folded into its
+    // file's record, not surfaced as a separate entry.
+    private static List<ResourceKey> BuildWholeProjectScope(SidecarPairs sidecarPairs)
     {
-        // Whole-project: every parent file that could have a sidecar (i.e.
-        // non-.cel files), plus every sidecar key in an attention state
-        // (orphan, broken, or invalid). Healthy sidecars are folded into
-        // their parent records, not surfaced as separate entries.
-        var scopeSet = new HashSet<ResourceKey>();
+        var scope = new List<ResourceKey>(sidecarPairs.Files);
+        scope.AddRange(sidecarPairs.Orphans);
+        scope.AddRange(sidecarPairs.InvalidSidecars);
 
-        foreach (var entry in registry.GetAllFileResources())
-        {
-            var key = entry.Resource;
-            if (IsSidecarKey(key))
-            {
-                continue;
-            }
-            scopeSet.Add(key);
-        }
-
-        foreach (var orphan in sidecarReport.Orphan)
-        {
-            scopeSet.Add(orphan);
-        }
-        foreach (var broken in sidecarReport.Broken)
-        {
-            // .cel.cel files and parse-broken sidecars without a paired parent
-            // surface against their own key; parse-broken sidecars with an
-            // on-disk parent surface against the parent and are picked up by
-            // the parent loop above.
-            if (IsInvalidSidecarShape(broken))
-            {
-                scopeSet.Add(broken);
-                continue;
-            }
-            var parent = StripSidecarSuffix(broken);
-            if (parent is null)
-            {
-                scopeSet.Add(broken);
-                continue;
-            }
-            // The parent file is in the registry's file list when present;
-            // when absent the registry entry won't exist, so the broken
-            // sidecar surfaces against its own key for visibility.
-            if (!scopeSet.Contains(parent.Value))
-            {
-                scopeSet.Add(broken);
-            }
-        }
-
-        return scopeSet.ToList();
+        return scope;
     }
 
     private async Task<InspectRecord> ClassifyResourceAsync(
         ResourceKey resource,
-        ISidecarService sidecarService,
-        Dictionary<ResourceKey, SidecarReportEntry> sidecarStatusByKey)
+        WalkedSidecars walkedSidecars,
+        IResourceService resourceService)
     {
         if (IsSidecarKey(resource))
         {
-            return await ClassifySidecarKeyAsync(resource, sidecarService, sidecarStatusByKey);
+            return await ClassifySidecarKeyAsync(resource, walkedSidecars, resourceService);
         }
 
-        return await ClassifyParentKeyAsync(resource, sidecarService, sidecarStatusByKey);
+        return await ClassifyParentKeyAsync(resource, walkedSidecars, resourceService.Sidecars);
     }
 
     private async Task<InspectRecord> ClassifySidecarKeyAsync(
         ResourceKey sidecarKey,
-        ISidecarService sidecarService,
-        Dictionary<ResourceKey, SidecarReportEntry> sidecarStatusByKey)
+        WalkedSidecars walkedSidecars,
+        IResourceService resourceService)
     {
         if (IsInvalidSidecarShape(sidecarKey))
         {
             return new InspectRecord(sidecarKey, SidecarStatus.InvalidSidecar, null, null, null);
         }
 
-        if (sidecarStatusByKey.TryGetValue(sidecarKey, out var entry)
-            && entry == SidecarReportEntry.Orphan)
+        if (await IsOrphanAsync(sidecarKey, walkedSidecars, resourceService))
         {
             return new InspectRecord(sidecarKey, SidecarStatus.Orphan, null, null, null);
         }
 
-        var readResult = await sidecarService.ReadAsync(sidecarKey);
+        var readResult = await resourceService.Sidecars.ReadAsync(sidecarKey);
         if (readResult.IsFailure)
         {
             return new InspectRecord(sidecarKey, SidecarStatus.NoSidecar, null, null, null);
@@ -218,11 +206,45 @@ public sealed class InspectCommand : CommandBase, IInspectCommand
         };
     }
 
+    private static async Task<bool> IsOrphanAsync(
+        ResourceKey sidecarKey,
+        WalkedSidecars walkedSidecars,
+        IResourceService resourceService)
+    {
+        if (walkedSidecars.Sidecars.Contains(sidecarKey))
+        {
+            return walkedSidecars.Orphans.Contains(sidecarKey);
+        }
+
+        // The walk did not find this sidecar, so look for the sidecar and its file in the sidecar's folder. A
+        // sidecar that is not there is not an orphan, and its read reports that it does not exist.
+        var listResult = await resourceService.FileSystem.EnumerateFolderAsync(sidecarKey.GetParent());
+        if (listResult.IsFailure)
+        {
+            return false;
+        }
+
+        var fileKeys = listResult.Value
+            .Where(item => !item.IsFolder)
+            .Select(item => item.Resource);
+        var folderPairs = SidecarPairing.Pair(fileKeys, resourceService.Sidecars);
+
+        return folderPairs.Orphans.Contains(sidecarKey);
+    }
+
     private async Task<InspectRecord> ClassifyParentKeyAsync(
         ResourceKey parentKey,
-        ISidecarService sidecarService,
-        Dictionary<ResourceKey, SidecarReportEntry> sidecarStatusByKey)
+        WalkedSidecars walkedSidecars,
+        ISidecarService sidecarService)
     {
+        // The walk knows which of its files have a sidecar. Only a walked file with a sidecar, or a file listed by
+        // key, is read.
+        if (walkedSidecars.Files.Contains(parentKey)
+            && !walkedSidecars.FilesWithSidecars.Contains(parentKey))
+        {
+            return new InspectRecord(parentKey, SidecarStatus.NoSidecar, null, null, null);
+        }
+
         var readResult = await sidecarService.ReadAsync(parentKey);
         if (readResult.IsFailure)
         {
@@ -330,24 +352,6 @@ public sealed class InspectCommand : CommandBase, IInspectCommand
         return new InspectSummary(healthy, broken, orphan, invalid, noSidecar);
     }
 
-    private static Dictionary<ResourceKey, SidecarReportEntry> BuildSidecarStatusIndex(SidecarReport report)
-    {
-        var index = new Dictionary<ResourceKey, SidecarReportEntry>();
-        foreach (var key in report.Healthy)
-        {
-            index[key] = SidecarReportEntry.Healthy;
-        }
-        foreach (var key in report.Broken)
-        {
-            index[key] = SidecarReportEntry.Broken;
-        }
-        foreach (var key in report.Orphan)
-        {
-            index[key] = SidecarReportEntry.Orphan;
-        }
-        return index;
-    }
-
     private static bool IsSidecarKey(ResourceKey resource)
     {
         if (resource.IsEmpty)
@@ -362,21 +366,5 @@ public sealed class InspectCommand : CommandBase, IInspectCommand
         var path = resource.Path;
         var doubleExtension = SidecarFile.Extension + SidecarFile.Extension;
         return path.EndsWith(doubleExtension, StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static ResourceKey? StripSidecarSuffix(ResourceKey sidecarKey)
-    {
-        var fullKey = sidecarKey.FullKey;
-        if (!fullKey.EndsWith(SidecarFile.Extension, StringComparison.OrdinalIgnoreCase))
-        {
-            return null;
-        }
-        var trimmed = fullKey.Substring(0, fullKey.Length - SidecarFile.Extension.Length);
-        if (string.IsNullOrEmpty(trimmed)
-            || trimmed.EndsWith(":", StringComparison.Ordinal))
-        {
-            return null;
-        }
-        return new ResourceKey(trimmed);
     }
 }

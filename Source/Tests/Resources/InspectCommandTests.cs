@@ -10,9 +10,8 @@ using Celbridge.Workspace;
 namespace Celbridge.Tests.Resources;
 
 /// <summary>
-/// Tests for InspectCommand — the engine behind the data_inspect MCP tool.
-/// The command resolves a per-resource scope, classifies each entry against
-/// the workspace registry's sidecar report, and rolls per-status aggregate
+/// Tests for InspectCommand, the engine behind the data_inspect MCP tool. The command resolves a per-resource
+/// scope, walking the project when the scope needs it. It classifies each entry, and rolls per-status aggregate
 /// counts into the response.
 /// </summary>
 [TestFixture]
@@ -69,6 +68,9 @@ public class InspectCommandTests
         var sidecarService = new SidecarService(_workspaceWrapper);
         resourceService.Sidecars.Returns(sidecarService);
 
+        var walker = new ResourceWalker(Substitute.For<ILogger<ResourceWalker>>(), _workspaceWrapper);
+        resourceService.Walker.Returns(walker);
+
         _command = new InspectCommand(_workspaceWrapper);
     }
 
@@ -94,7 +96,6 @@ public class InspectCommandTests
         File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md"), "Notes.\n");
         File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md.cel"),
             "title = \"Notes\"\n_tags = [\"draft\"]\n");
-        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         _command.Resources = new[] { new ResourceKey("notes.md") };
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
@@ -115,7 +116,6 @@ public class InspectCommandTests
         File.WriteAllText(Path.Combine(_projectFolderPath, "b.md"), "B.\n");
         File.WriteAllText(Path.Combine(_projectFolderPath, "a.md.cel"), "title = \"A\"\n");
         // b has no sidecar — should surface as NoSidecar.
-        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         _command.Resources = new[]
         {
@@ -137,7 +137,6 @@ public class InspectCommandTests
         File.WriteAllText(Path.Combine(_projectFolderPath, "a.md"), "A.\n");
         File.WriteAllText(Path.Combine(_projectFolderPath, "b.md"), "B.\n");
         File.WriteAllText(Path.Combine(_projectFolderPath, "skip.txt"), "X.\n");
-        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         _command.Pattern = "*.md";
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
@@ -152,7 +151,6 @@ public class InspectCommandTests
     public async Task WholeProject_IncludesNoSidecarForResourcesWithoutSidecar()
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "photo.png"), "binary");
-        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
 
@@ -168,7 +166,6 @@ public class InspectCommandTests
         File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md"), "Notes.\n");
         File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md.cel"),
             "title = \"Notes\"\n_tags = [\"draft\"]\n");
-        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         _command.Resources = new[] { new ResourceKey("notes.md") };
         _command.SummaryOnly = true;
@@ -186,7 +183,6 @@ public class InspectCommandTests
         File.WriteAllText(Path.Combine(_projectFolderPath, "doc.md"), "Body.\n");
         File.WriteAllText(Path.Combine(_projectFolderPath, "doc.md.cel"),
             "this = is not valid = toml ###\n");
-        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         _command.Resources = new[] { new ResourceKey("doc.md") };
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
@@ -202,7 +198,6 @@ public class InspectCommandTests
         // Parent png is absent. Only the orphan sidecar exists.
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png.cel"),
             "_tags = [\"orphan\"]\n");
-        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
 
@@ -217,7 +212,6 @@ public class InspectCommandTests
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "weird.cel.cel"),
             "_tags = [\"x\"]\n");
-        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
 
@@ -238,7 +232,6 @@ public class InspectCommandTests
             "this = is not = valid ###");
         File.WriteAllText(Path.Combine(_projectFolderPath, "orphan.png.cel"),
             "_tags = []\n");
-        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
 
@@ -261,7 +254,6 @@ public class InspectCommandTests
         File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md"), "Notes.\n");
         File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md.cel"),
             "title = \"Notes\"\n_tags = [\"draft\", \"meeting\"]\n");
-        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         _command.Resources = new[] { new ResourceKey("notes.md") };
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
@@ -279,7 +271,6 @@ public class InspectCommandTests
         File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md"), "Notes.\n");
         File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md.cel"),
             "title = \"Notes\"\n_unknown = \"hand-edited\"\n");
-        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         _command.Resources = new[] { new ResourceKey("notes.md") };
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
@@ -301,7 +292,6 @@ public class InspectCommandTests
         File.WriteAllText(Path.Combine(_projectFolderPath, "scoped", "a.md"), "A.\n");
         File.WriteAllText(Path.Combine(_projectFolderPath, "scoped", "b.md"), "B.\n");
         File.WriteAllText(Path.Combine(_projectFolderPath, "outside.md"), "X.\n");
-        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         _command.Pattern = "scoped/**";
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
@@ -322,7 +312,6 @@ public class InspectCommandTests
         File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md"), "Notes.\n");
         File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md.cel"),
             "title = \"Notes\"\n");
-        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         _command.Pattern = "**";
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
@@ -340,7 +329,6 @@ public class InspectCommandTests
         // pattern surfaces them too.
         File.WriteAllText(Path.Combine(_projectFolderPath, "ghost.png.cel"),
             "_tags = [\"orphan\"]\n");
-        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         _command.Pattern = "**";
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();

@@ -16,6 +16,7 @@ public class SidecarClassificationTests
 {
     private string _projectFolderPath = null!;
     private ResourceRegistry _registry = null!;
+    private RecordingResourceClassifier _classifier = null!;
 
     [SetUp]
     public void Setup()
@@ -27,11 +28,12 @@ public class SidecarClassificationTests
             Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_projectFolderPath);
 
+        _classifier = new RecordingResourceClassifier();
         _registry = new ResourceRegistry(
             Substitute.For<ILogger<ResourceRegistry>>(),
             new MessengerService(),
             ProjectTreeBuilderTestHelper.Build(_projectFolderPath),
-            ResourceClassifierTestHelper.BuildClassifier(),
+            _classifier,
             new RootHandlerRegistry(),
             TestFileSystem.CreateLocal());
         _registry.InitializeProjectRoot(_projectFolderPath);
@@ -104,7 +106,7 @@ public class SidecarClassificationTests
 
         GetParentSidecar("foo.png")!.Status.Should().Be(CelParseStatus.Broken);
         File.ReadAllText(sidecarPath).Should().Be(originalContent);
-        _registry.GetSidecarReport().Broken.Should().Contain(new ResourceKey("foo.png.cel"));
+        _classifier.LatestReport!.Broken.Should().Contain(new ResourceKey("foo.png.cel"));
     }
 
     [Test]

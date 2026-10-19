@@ -19,89 +19,66 @@ public partial class FileTools
     {
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
         var resourceService = workspaceWrapper.WorkspaceService.ResourceService;
-        var resourceRegistry = resourceService.Registry;
         var rootHandlerRegistry = resourceService.RootHandlers;
-        var resourceFileSystem = workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
         var regexPattern = GlobHelper.PathGlobToRegex(pattern);
         var regex = new Regex(regexPattern, RegexOptions.IgnoreCase);
 
         var isFolderSearch = string.Equals(type, "folder", StringComparison.OrdinalIgnoreCase);
 
-        // When the pattern carries a non-default root prefix (logs:, temp:), walk
-        // that root's filesystem tree via the gateway. Patterns with no prefix
-        // or the project: prefix fall through to the existing in-memory tree path.
+        // A pattern that starts with another root's prefix (logs:, temp:) searches that root and matches the whole
+        // key. Any other pattern searches the project and matches the key's path.
+        var rootKey = ResourceKey.Empty;
+        var matchesWholeKey = false;
         var patternRoot = ExtractRootPrefix(pattern);
         if (patternRoot is not null
             && patternRoot != ResourceKey.DefaultRoot
             && rootHandlerRegistry.RootHandlers.ContainsKey(patternRoot))
         {
-            return await SearchNonDefaultRootAsync(
-                resourceFileSystem, patternRoot, regex, isFolderSearch, includeMetadata);
+            rootKey = new ResourceKey(patternRoot + ":");
+            matchesWholeKey = true;
         }
 
-        if (isFolderSearch)
+        var walkResult = await resourceService.Walker.WalkAsync(rootKey);
+        if (walkResult.IsFailure)
         {
-            var folderKeys = new List<ResourceKey>();
-            CollectFolderResources(resourceRegistry.ProjectFolder, resourceRegistry, folderKeys);
+            return ToolResponse.Error(walkResult);
+        }
 
-            // Match against the bare Path: PathGlobToRegex anchors its regex
-            // to a path like "foo/bar", not the canonical "project:foo/bar"
-            // form ToString() emits — without this, path-anchored globs
-            // ("src/**", "folder/*") return zero results on the default root.
-            var matchingFolders = folderKeys
-                .Where(key => regex.IsMatch(key.Path))
-                .ToList();
-
-            if (includeMetadata)
+        var matches = new List<WalkedItem>();
+        foreach (var item in walkResult.Value)
+        {
+            if (item.IsFolder != isFolderSearch)
             {
-                var results = new List<SearchResultWithMetadata>();
-                foreach (var folderKey in matchingFolders)
-                {
-                    var infoResult = await resourceFileSystem.GetInfoAsync(folderKey);
-                    if (infoResult.IsFailure
-                        || infoResult.Value.Kind != StorageItemKind.Folder)
-                    {
-                        continue;
-                    }
-                    results.Add(new SearchResultWithMetadata(
-                        folderKey.ToString(),
-                        0,
-                        infoResult.Value.ModifiedUtc.ToString("o")));
-                }
-                return ToolResponse.Success(SerializeJson(results));
+                continue;
             }
 
-            var folderStrings = matchingFolders.Select(key => key.ToString()).ToList();
-            return ToolResponse.Success(SerializeJson(folderStrings));
+            var matchText = item.Resource.Path;
+            if (matchesWholeKey)
+            {
+                matchText = item.Resource.ToString();
+            }
+
+            if (regex.IsMatch(matchText))
+            {
+                matches.Add(item);
+            }
         }
 
-        var allResources = resourceRegistry.GetAllFileResources();
-
-        var matches = allResources
-            .Where(r => regex.IsMatch(r.Resource.Path))
-            .ToList();
+        matches.Sort((a, b) => string.Compare(a.Resource.ToString(), b.Resource.ToString(), StringComparison.OrdinalIgnoreCase));
 
         if (includeMetadata)
         {
-            var results = new List<SearchResultWithMetadata>();
-            foreach (var match in matches)
-            {
-                var infoResult = await resourceFileSystem.GetInfoAsync(match.Resource);
-                if (infoResult.IsFailure
-                    || infoResult.Value.Kind != StorageItemKind.File)
-                {
-                    continue;
-                }
-                results.Add(new SearchResultWithMetadata(
-                    match.Resource.ToString(),
-                    infoResult.Value.Size,
-                    infoResult.Value.ModifiedUtc.ToString("o")));
-            }
+            var results = matches
+                .Select(item => new SearchResultWithMetadata(
+                    item.Resource.ToString(),
+                    item.IsFolder ? 0 : item.Size,
+                    item.ModifiedUtc.ToString("o")))
+                .ToList();
             return ToolResponse.Success(SerializeJson(results));
         }
 
-        var resourceStrings = matches.Select(r => r.Resource.ToString()).ToList();
+        var resourceStrings = matches.Select(item => item.Resource.ToString()).ToList();
         return ToolResponse.Success(SerializeJson(resourceStrings));
     }
 
@@ -115,57 +92,5 @@ public partial class FileTools
             return null;
         }
         return pattern.Substring(0, colonIndex);
-    }
-
-    private async Task<CallToolResult> SearchNonDefaultRootAsync(
-        IResourceFileSystem resourceFileSystem,
-        string rootName,
-        Regex regex,
-        bool isFolderSearch,
-        bool includeMetadata)
-    {
-        var rootKey = new ResourceKey(rootName + ":");
-        var allEntries = new List<FolderItem>();
-        await CollectRecursiveAsync(resourceFileSystem, rootKey, allEntries);
-
-        var matches = allEntries
-            .Where(entry => entry.IsFolder == isFolderSearch)
-            .Where(entry => regex.IsMatch(entry.Resource.ToString()))
-            .ToList();
-
-        if (includeMetadata)
-        {
-            var results = matches
-                .Select(entry => new SearchResultWithMetadata(
-                    entry.Resource.ToString(),
-                    entry.IsFolder ? 0 : entry.Size,
-                    entry.ModifiedUtc.ToString("o")))
-                .ToList();
-            return ToolResponse.Success(SerializeJson(results));
-        }
-
-        var resourceStrings = matches.Select(entry => entry.Resource.ToString()).ToList();
-        return ToolResponse.Success(SerializeJson(resourceStrings));
-    }
-
-    private static async Task CollectRecursiveAsync(
-        IResourceFileSystem resourceFileSystem,
-        ResourceKey folder,
-        List<FolderItem> entries)
-    {
-        var enumerateResult = await resourceFileSystem.EnumerateFolderAsync(folder);
-        if (enumerateResult.IsFailure)
-        {
-            return;
-        }
-
-        foreach (var entry in enumerateResult.Value)
-        {
-            entries.Add(entry);
-            if (entry.IsFolder)
-            {
-                await CollectRecursiveAsync(resourceFileSystem, entry.Resource, entries);
-            }
-        }
     }
 }

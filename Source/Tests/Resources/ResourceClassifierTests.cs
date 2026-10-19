@@ -51,14 +51,14 @@ public class ResourceClassifierTests
         File.WriteAllText(Path.Combine(_projectFolderPath, "feature.note.cel"),
             "[note]\ntitle = \"Hello\"\n");
 
-        var classifier = ResourceClassifierTestHelper.BuildClassifier();
+        var classifier = new RecordingResourceClassifier();
         var registry = BuildRegistry(classifier);
         (await registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         var file = registry.GetResource(new ResourceKey("feature.note.cel")).Value as IFileResource;
         file!.FileKind.Should().Be(FileKind.Orphan);
 
-        var report = registry.GetSidecarReport();
+        var report = classifier.LatestReport!;
         report.Orphan.Should().Contain(new ResourceKey("feature.note.cel"));
     }
 
@@ -73,7 +73,7 @@ public class ResourceClassifierTests
         File.WriteAllText(Path.Combine(sub, "note.md"), "body");
         File.WriteAllText(Path.Combine(sub, "note.md.cel"), "_tags = [\"meeting\"]\n");
 
-        var classifier = ResourceClassifierTestHelper.BuildClassifier();
+        var classifier = new RecordingResourceClassifier();
         var registry = BuildRegistry(classifier);
         (await registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
@@ -82,18 +82,18 @@ public class ResourceClassifierTests
         noteResource.Sidecar!.Key.Should().Be(new ResourceKey("subfolder/note.md.cel"));
         noteResource.Sidecar.Status.Should().Be(CelParseStatus.Healthy);
 
-        registry.GetSidecarReport()
+        classifier.LatestReport!
             .Healthy.Should().Contain(new ResourceKey("subfolder/note.md.cel"));
     }
 
     [Test]
     public async Task EmptyTree_ProducesEmptyReport()
     {
-        var classifier = ResourceClassifierTestHelper.BuildClassifier();
+        var classifier = new RecordingResourceClassifier();
         var registry = BuildRegistry(classifier);
         (await registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
-        var report = registry.GetSidecarReport();
+        var report = classifier.LatestReport!;
         report.Healthy.Should().BeEmpty();
         report.Broken.Should().BeEmpty();
         report.Orphan.Should().BeEmpty();
@@ -104,7 +104,7 @@ public class ResourceClassifierTests
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md"), "# Notes\n");
 
-        var classifier = ResourceClassifierTestHelper.BuildClassifier();
+        var classifier = new RecordingResourceClassifier();
         var registry = BuildRegistry(classifier);
         (await registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
@@ -118,7 +118,7 @@ public class ResourceClassifierTests
         File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md"), "# Notes\n");
         File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md.cel"), "_tags = []\n");
 
-        var classifier = ResourceClassifierTestHelper.BuildClassifier();
+        var classifier = new RecordingResourceClassifier();
         var registry = BuildRegistry(classifier);
         (await registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
@@ -134,7 +134,7 @@ public class ResourceClassifierTests
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "lonely.cel"), "_tags = []\n");
 
-        var classifier = ResourceClassifierTestHelper.BuildClassifier();
+        var classifier = new RecordingResourceClassifier();
         var registry = BuildRegistry(classifier);
         (await registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
@@ -147,7 +147,7 @@ public class ResourceClassifierTests
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "stray.cel.cel"), "broken\n");
 
-        var classifier = ResourceClassifierTestHelper.BuildClassifier();
+        var classifier = new RecordingResourceClassifier();
         var registry = BuildRegistry(classifier);
         (await registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
@@ -155,7 +155,7 @@ public class ResourceClassifierTests
         file!.FileKind.Should().Be(FileKind.InvalidSidecar);
     }
 
-    private ResourceRegistry BuildRegistry(ResourceClassifier classifier)
+    private ResourceRegistry BuildRegistry(IResourceClassifier classifier)
     {
         var registry = new ResourceRegistry(
             Substitute.For<ILogger<ResourceRegistry>>(),

@@ -10,6 +10,7 @@ public class SidecarTrackingTests
 {
     private string _projectFolderPath = null!;
     private ResourceRegistry _registry = null!;
+    private RecordingResourceClassifier _classifier = null!;
 
     [SetUp]
     public void Setup()
@@ -21,11 +22,12 @@ public class SidecarTrackingTests
             Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_projectFolderPath);
 
+        _classifier = new RecordingResourceClassifier();
         _registry = new ResourceRegistry(
             Substitute.For<ILogger<ResourceRegistry>>(),
             new MessengerService(),
             ProjectTreeBuilderTestHelper.Build(_projectFolderPath),
-            ResourceClassifierTestHelper.BuildClassifier(),
+            _classifier,
             new RootHandlerRegistry(),
             TestFileSystem.CreateLocal());
         _registry.InitializeProjectRoot(_projectFolderPath);
@@ -85,7 +87,7 @@ public class SidecarTrackingTests
 
         (await _registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
-        var report = _registry.GetSidecarReport();
+        var report = _classifier.LatestReport!;
         report.Orphan.Should().Contain(new ResourceKey("foo.png.cel"));
     }
 
@@ -100,7 +102,7 @@ public class SidecarTrackingTests
 
         (await _registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
-        var report = _registry.GetSidecarReport();
+        var report = _classifier.LatestReport!;
         report.Broken.Should().Contain(new ResourceKey("foo.png.cel.cel"));
 
         // foo.png.cel is still healthy and paired with foo.png; the .cel.cel
@@ -119,7 +121,7 @@ public class SidecarTrackingTests
 
         (await _registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
-        var report = _registry.GetSidecarReport();
+        var report = _classifier.LatestReport!;
         report.Broken.Should().Contain(new ResourceKey("foo.png.cel"));
 
         var parent = _registry.GetResource(new ResourceKey("foo.png")).Value as IFileResource;
@@ -152,7 +154,7 @@ public class SidecarTrackingTests
 
         (await _registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
-        var report = _registry.GetSidecarReport();
+        var report = _classifier.LatestReport!;
         report.Broken.Should().Contain(new ResourceKey("lonely.cel"));
         report.Orphan.Should().Contain(new ResourceKey("lonely.cel"));
     }

@@ -10,6 +10,7 @@ public sealed partial class ResourcePickerDialog : ContentDialog, IResourcePicke
     private readonly ILogger<ResourcePickerDialog> _logger;
     private readonly IMessengerService _messengerService;
     private bool _confirmed;
+    private ResourcePickerItem? _answeredItem;
     private string? _customTitle;
 
     public ResourcePickerDialogViewModel ViewModel { get; }
@@ -17,6 +18,7 @@ public sealed partial class ResourcePickerDialog : ContentDialog, IResourcePicke
     public string TitleString => _customTitle ?? _stringLocalizer.GetString("ResourcePickerDialog_Title");
     public string OkString => _stringLocalizer.GetString("DialogButton_Ok");
     public string CancelString => _stringLocalizer.GetString("DialogButton_Cancel");
+    public string LoadingString => _stringLocalizer.GetString("ResourcePickerDialog_Loading");
 
     public ResourcePickerDialog()
     {
@@ -42,6 +44,9 @@ public sealed partial class ResourcePickerDialog : ContentDialog, IResourcePicke
     private void Dialog_Opened(ContentDialog sender, ContentDialogOpenedEventArgs args)
     {
         SearchTextBox.Focus(FocusState.Programmatic);
+
+        // The dialog opens at once and shows that it is loading. The walk fills the list when it finishes.
+        _ = ViewModel.LoadItemsAsync();
     }
 
     private void SearchTextBox_KeyDown(object sender, KeyRoutedEventArgs e)
@@ -98,6 +103,7 @@ public sealed partial class ResourcePickerDialog : ContentDialog, IResourcePicke
     public async Task<Result<ResourceKey>> ShowDialogAsync()
     {
         _confirmed = false;
+        _answeredItem = null;
         _messengerService.Register<DialogAnswerMessage>(this, OnDialogAnswer);
         try
         {
@@ -105,7 +111,8 @@ public sealed partial class ResourcePickerDialog : ContentDialog, IResourcePicke
 
             if (contentDialogResult == ContentDialogResult.Primary || _confirmed)
             {
-                if (ViewModel.SelectedItem is { } selected)
+                var selected = _answeredItem ?? ViewModel.SelectedItem;
+                if (selected is not null)
                 {
                     return Result<ResourceKey>.Ok(selected.ResourceKey);
                 }
@@ -119,7 +126,7 @@ public sealed partial class ResourcePickerDialog : ContentDialog, IResourcePicke
         }
     }
 
-    private void OnDialogAnswer(object recipient, DialogAnswerMessage message)
+    private async void OnDialogAnswer(object recipient, DialogAnswerMessage message)
     {
         if (message.Kind != DialogKind.ResourcePicker)
         {
@@ -134,7 +141,11 @@ public sealed partial class ResourcePickerDialog : ContentDialog, IResourcePicke
             return;
         }
 
-        var match = ViewModel.FilteredItems.FirstOrDefault(item => item.ResourceKey.Equals(targetKey));
+        // The answer can arrive before the walk has listed the items. The answer can also name an item beyond the
+        // shown list.
+        await ViewModel.LoadItemsAsync();
+
+        var match = ViewModel.FindMatchingItem(targetKey);
         if (match is null)
         {
             _logger.LogWarning(
@@ -143,7 +154,7 @@ public sealed partial class ResourcePickerDialog : ContentDialog, IResourcePicke
             return;
         }
 
-        ViewModel.SelectedItem = match;
+        _answeredItem = match;
         _confirmed = true;
         _logger.LogInformation($"Resource picker answered automatically with '{targetKey}'.");
         Hide();

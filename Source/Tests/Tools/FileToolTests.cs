@@ -20,6 +20,7 @@ public class FileToolTests
     private IApplicationServiceProvider _services = null!;
     private ICommandService _commandService = null!;
     private IResourceRegistry _resourceRegistry = null!;
+    private IResourceService _resourceService = null!;
     private string _tempFolder = null!;
 
     [SetUp]
@@ -38,6 +39,7 @@ public class FileToolTests
 
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Registry.Returns(_resourceRegistry);
+        _resourceService = resourceService;
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
@@ -58,6 +60,9 @@ public class FileToolTests
         // SidecarService is a pure-string predicate over the resource key; the
         // real implementation is fine in tests.
         resourceService.Sidecars.Returns(new SidecarService(workspaceWrapper));
+
+        var walker = new ResourceWalker(Substitute.For<ILogger<ResourceWalker>>(), workspaceWrapper);
+        resourceService.Walker.Returns(walker);
 
         _services.GetRequiredService<IWorkspaceWrapper>().Returns(workspaceWrapper);
     }
@@ -834,6 +839,62 @@ public class FileToolTests
         root.GetProperty("totalFiles").GetInt32().Should().Be(0);
     }
 
+    [Test]
+    public async Task Search_MatchesTheWalkedFiles_AndLeavesOutFolders()
+    {
+        UseWalkedItems(
+            WalkedFolder("docs"),
+            WalkedFile("docs/notes.md"),
+            WalkedFile("readme.md"),
+            WalkedFile("src/app.py"));
+
+        var tools = new FileTools(_services);
+        var result = await tools.Search("*.md");
+
+        ParseStringList(result).Should().Equal("project:docs/notes.md", "project:readme.md");
+    }
+
+    [Test]
+    public async Task Search_TypeFolder_FindsTheWalkedFolders()
+    {
+        UseWalkedItems(
+            WalkedFolder("docs"),
+            WalkedFolder("docs/images"),
+            WalkedFile("docs.md"));
+
+        var tools = new FileTools(_services);
+        var result = await tools.Search("doc*", type: "folder");
+
+        ParseStringList(result).Should().Equal("project:docs");
+    }
+
+    [Test]
+    public async Task Search_IncludeMetadata_ReportsTheWalkedSizeAndModifiedTime()
+    {
+        UseWalkedItems(WalkedFile("notes.md", size: 42));
+
+        var tools = new FileTools(_services);
+        var result = await tools.Search("notes.md", includeMetadata: true);
+
+        var entry = ParseResult(result)[0];
+        entry.GetProperty("resource").GetString().Should().Be("project:notes.md");
+        entry.GetProperty("size").GetInt64().Should().Be(42);
+        entry.GetProperty("modified").GetString().Should().StartWith("2026-10-19T12:00:00");
+    }
+
+    [Test]
+    public async Task Search_PatternWithAnotherRoot_WalksThatRoot()
+    {
+        RegisterNonDefaultRoot("logs");
+        UseWalkedItems(WalkedFile("logs:app.log"));
+
+        var tools = new FileTools(_services);
+        var result = await tools.Search("logs:*.log");
+
+        ParseStringList(result).Should().Equal("logs:app.log");
+        await _resourceService.Walker.Received(1).WalkAsync(new ResourceKey("logs:"), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+    }
+
     private string KeyToTempPath(ResourceKey key)
     {
         return Path.Combine(_tempFolder, key.Path.Replace('/', Path.DirectorySeparatorChar));
@@ -859,7 +920,36 @@ public class FileToolTests
             [root] = Substitute.For<IResourceRootHandler>()
         };
         rootHandlerRegistry.RootHandlers.Returns(handlers);
+        rootHandlerRegistry.ResolveResourcePath(Arg.Any<ResourceKey>())
+            .Returns(callInfo => Result<string>.Ok(KeyToTempPath(callInfo.Arg<ResourceKey>())));
         resourceService.RootHandlers.Returns(rootHandlerRegistry);
+    }
+
+    private void UseWalkedItems(params WalkedItem[] items)
+    {
+        IReadOnlyList<WalkedItem> walkedItems = items;
+        var walker = Substitute.For<IResourceWalker>();
+        walker.WalkAsync(Arg.Any<ResourceKey>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result<IReadOnlyList<WalkedItem>>.Ok(walkedItems)));
+        _resourceService.Walker.Returns(walker);
+    }
+
+    private static WalkedItem WalkedFile(string key, long size = 1)
+    {
+        var modified = new DateTime(2026, 10, 19, 12, 0, 0, DateTimeKind.Utc);
+        return new WalkedItem(new ResourceKey(key), "/" + key, false, size, modified, FileSystemAttributes.None);
+    }
+
+    private static WalkedItem WalkedFolder(string key)
+    {
+        var modified = new DateTime(2026, 10, 19, 12, 0, 0, DateTimeKind.Utc);
+        return new WalkedItem(new ResourceKey(key), "/" + key, true, 0, modified, FileSystemAttributes.None);
+    }
+
+    private static List<string> ParseStringList(CallToolResult result)
+    {
+        var root = ParseResult(result);
+        return root.EnumerateArray().Select(element => element.GetString()!).ToList();
     }
 
     private static JsonElement ParseResult(CallToolResult result)

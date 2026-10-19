@@ -70,13 +70,8 @@ public partial class FileTools
             return await GrepTargetedFiles(files, searchTerm, useRegex, matchCase, wholeWord, maxResults, contextLines, includeContent, summaryOnly, resourceFileSystem);
         }
 
-        // File enumeration has two sources, picked by root. The project root has
-        // a pre-built registry index (already ignore-filtered and sorted, rebuilt
-        // on resource changes rather than per search), which SearchService walks
-        // below and the live Search panel shares. Other roots (temp:, logs:) are
-        // not indexed, so an explicitly-named non-default-root scope is walked
-        // live through the gateway here and matched the same way the files= path
-        // is. Bare and project: scopes fall through to the indexed walk.
+        // A scope under another root (temp:, logs:) is walked here and matched the same way the files= path is.
+        // A bare or project: scope goes to SearchService, which the Search panel also uses.
         var rootHandlerRegistry = resourceService.RootHandlers;
         if (!string.IsNullOrEmpty(resource)
             && ResourceKey.TryCreate(resource, out var scopeKey)
@@ -85,7 +80,7 @@ public partial class FileTools
         {
             return await GrepNonDefaultRootScopeAsync(
                 scopeKey, searchTerm, useRegex, matchCase, wholeWord, include, exclude,
-                maxResults, contextLines, includeContent, summaryOnly, resourceFileSystem);
+                maxResults, contextLines, includeContent, summaryOnly, resourceService);
         }
 
         var searchService = workspaceWrapper.WorkspaceService.SearchService;
@@ -280,10 +275,8 @@ public partial class FileTools
         return await GrepFileListAsync(targets, searchTerm, useRegex, matchCase, wholeWord, maxResults, contextLines, includeContent, summaryOnly, resourceFileSystem);
     }
 
-    // Enumerates a non-default root (temp:, logs:) live through the gateway,
-    // since only the project root carries the registry index SearchService uses.
-    // The files found are matched the same way the files= path matches, with
-    // include/exclude applied to the file name.
+    // Walks a scope under another root (temp:, logs:). The files found are matched the same way the files= path
+    // matches, with include/exclude applied to the file name.
     private async Task<CallToolResult> GrepNonDefaultRootScopeAsync(
         ResourceKey scopeFolder,
         string searchTerm,
@@ -296,16 +289,21 @@ public partial class FileTools
         int contextLines,
         bool includeContent,
         bool summaryOnly,
-        IResourceFileSystem resourceFileSystem)
+        IResourceService resourceService)
     {
-        var entries = new List<FolderItem>();
-        await CollectRecursiveAsync(resourceFileSystem, scopeFolder, entries);
+        // A scope that cannot be walked, such as a folder that does not exist, has no files to match.
+        IReadOnlyList<WalkedItem> walkedItems = Array.Empty<WalkedItem>();
+        var walkResult = await resourceService.Walker.WalkAsync(scopeFolder);
+        if (walkResult.IsSuccess)
+        {
+            walkedItems = walkResult.Value;
+        }
 
         var includeRegex = GlobHelper.BuildNameMatcher(include);
         var excludeRegex = GlobHelper.BuildNameMatcher(exclude);
 
         var targets = new List<(ResourceKey Key, string Display)>();
-        foreach (var entry in entries)
+        foreach (var entry in walkedItems)
         {
             if (entry.IsFolder)
             {
@@ -327,7 +325,7 @@ public partial class FileTools
             targets.Add((entry.Resource, entry.Resource.ToString()));
         }
 
-        return await GrepFileListAsync(targets, searchTerm, useRegex, matchCase, wholeWord, maxResults, contextLines, includeContent, summaryOnly, resourceFileSystem);
+        return await GrepFileListAsync(targets, searchTerm, useRegex, matchCase, wholeWord, maxResults, contextLines, includeContent, summaryOnly, resourceService.FileSystem);
     }
 
     // Greps an explicit list of files, accumulating matches up to maxResults.

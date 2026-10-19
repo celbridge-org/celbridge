@@ -1,5 +1,4 @@
 using Celbridge.Messaging;
-using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.Resources.Helpers;
 using Celbridge.Resources.Services;
@@ -64,18 +63,6 @@ internal static class ProjectTreeBuilderTestHelper
             return TestResourcePolicy.CreateDefault();
         }
 
-        var resources = new ResourcesSection
-        {
-            SearchExclude = searchExcludePatterns
-        };
-
-        var project = Substitute.For<IProject>();
-        project.Config.Returns(new ProjectConfig { Resources = resources });
-        project.ProjectFolderPath.Returns(projectFolderPath);
-
-        var projectService = Substitute.For<IProjectService>();
-        projectService.CurrentProject.Returns(project);
-
-        return new ResourcePolicy(projectService);
+        return TestResourcePolicy.CreateWithSearchExclude(projectFolderPath, searchExcludePatterns);
     }
 }

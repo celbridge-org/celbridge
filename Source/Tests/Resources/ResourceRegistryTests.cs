@@ -363,30 +363,6 @@ public class ResourceRegistryTests
     }
 
     [Test]
-    public async Task GetAllFileResourcesScopesToProjectRoot()
-    {
-        Guard.IsNotNull(_resourceFolderPath);
-
-        var messengerService = new MessengerService();
-        var iconService = new IconService();
-        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, ProjectTreeBuilderTestHelper.Build(_resourceFolderPath!, iconService), ResourceClassifierTestHelper.BuildEmptyStub(), new RootHandlerRegistry(), TestFileSystem.CreateLocal());
-        resourceRegistry.InitializeProjectRoot(_resourceFolderPath);
-        await resourceRegistry.UpdateResourceRegistryAsync();
-
-        // Default form enumerates the project tree.
-        var defaultResults = resourceRegistry.GetAllFileResources();
-        defaultResults.Should().NotBeEmpty();
-
-        // Explicit project root produces the same result.
-        var explicitProject = resourceRegistry.GetAllFileResources(ResourceKey.DefaultRoot);
-        explicitProject.Count.Should().Be(defaultResults.Count);
-
-        // Other roots return empty because the registry indexes only the project
-        // tree. Temp and logs are reachable through their root handlers, not here.
-        resourceRegistry.GetAllFileResources("temp").Should().BeEmpty();
-    }
-
-    [Test]
     public void RegisterRootHandlerReplacesExistingHandler()
     {
         Guard.IsNotNull(_resourceFolderPath);

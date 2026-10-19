@@ -4,4 +4,4 @@ Enumerates every resource in the project whose `.cel` sidecar `tags` list contai
 
 The response is a bare JSON array of resource keys (e.g. `["docs/notes.md", "drafts/article.md"]`), not an object. An empty list when no sidecar carries the tag.
 
-For non-tag searches across `.cel` contents, use `file_grep --glob "*.cel"` and parse hits caller-side.
+For non-tag searches across `.cel` contents, use `file_grep` with `include: "*.cel"` and parse hits caller-side.

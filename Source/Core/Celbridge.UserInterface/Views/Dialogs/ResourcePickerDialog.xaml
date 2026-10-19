@@ -21,6 +21,7 @@
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="400"/>
+      <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
 
     <!-- Preview thumbnail positioned at top-right, overlapping title area -->
@@ -143,6 +144,28 @@
         </DataTemplate>
       </ListView.ItemTemplate>
     </ListView>
+
+    <!-- Shown over the empty list while the project is walked -->
+    <StackPanel Grid.Row="1"
+                Orientation="Horizontal"
+                Spacing="8"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Visibility="{x:Bind ViewModel.LoadingVisibility, Mode=OneWay}">
+      <ProgressRing IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay}"
+                    Width="16"
+                    Height="16"/>
+      <TextBlock Text="{x:Bind LoadingString}"
+                 Style="{StaticResource SupportingTextStyle}"
+                 VerticalAlignment="Center"/>
+    </StackPanel>
+
+    <!-- How many matches the list leaves out -->
+    <TextBlock Grid.Row="2"
+               Text="{x:Bind ViewModel.MoreMatchesText, Mode=OneWay}"
+               Style="{StaticResource SupportingTextStyle}"
+               Margin="0,4,0,0"
+               Visibility="{x:Bind ViewModel.MoreMatchesVisibility, Mode=OneWay}"/>
   </Grid>
 
 </ContentDialog>

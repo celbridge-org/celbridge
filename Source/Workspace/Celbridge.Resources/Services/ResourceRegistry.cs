@@ -13,15 +13,6 @@ public class ResourceRegistry : IResourceRegistry
     private readonly RootHandlerRegistry _rootHandlerRegistry;
     private readonly ILocalFileSystem _fileSystem;
 
-    // Sidecar tracking state, refreshed on each UpdateResourceRegistry pass.
-    // The report is rebuilt atomically per pass so readers always see a coherent
-    // snapshot.
-    private readonly object _sidecarLock = new();
-    private SidecarReport _sidecarReport = new(
-        Healthy: Array.Empty<ResourceKey>(),
-        Broken: Array.Empty<ResourceKey>(),
-        Orphan: Array.Empty<ResourceKey>());
-
     private string _projectFolderPath = string.Empty;
 
     public string ProjectFolderPath => _projectFolderPath;
@@ -195,19 +186,13 @@ public class ResourceRegistry : IResourceRegistry
             var newRoot = (FolderResource)buildResult.Value;
 
             // Sidecar pairing runs on the new tree before publication. The
-            // classifier sets each parent FileResource.Sidecar in place and
-            // returns the report, which is swapped under the lock alongside
-            // the tree reference. The root handler registry is handed in so
-            // per-sidecar path resolution goes through the same reparse-point
-            // gateway as every other resource operation.
-            var sidecarReport = _resourceClassifier.ClassifyResources(newRoot, _rootHandlerRegistry);
+            // classifier sets each parent FileResource.Sidecar in place. The
+            // root handler registry is handed in so per-sidecar path resolution
+            // goes through the same reparse-point gateway as every other
+            // resource operation.
+            _resourceClassifier.ClassifyResources(newRoot, _rootHandlerRegistry);
 
             Volatile.Write(ref _projectFolder, newRoot);
-
-            lock (_sidecarLock)
-            {
-                _sidecarReport = sidecarReport;
-            }
 
             try
             {
@@ -227,62 +212,6 @@ public class ResourceRegistry : IResourceRegistry
         {
             return Result.Fail($"An exception occurred when updating the resource registry.")
                 .WithException(ex);
-        }
-    }
-
-    public IReadOnlyList<FileResourceEntry> GetAllFileResources()
-    {
-        return GetAllFileResources(ResourceKey.DefaultRoot);
-    }
-
-    public IReadOnlyList<FileResourceEntry> GetAllFileResources(string root)
-    {
-        // Only the project root has an indexed tree in the registry.
-        // Other roots (e.g. temp:, logs:) are addressable but not enumerated here.
-        if (root != ResourceKey.DefaultRoot)
-        {
-            return Array.Empty<FileResourceEntry>();
-        }
-
-        var fileResources = new List<FileResourceEntry>();
-        CollectFileResources(_projectFolder, fileResources);
-
-        // Sort by path for stable ordering
-        fileResources.Sort((a, b) => string.Compare(a.Path, b.Path, StringComparison.OrdinalIgnoreCase));
-
-        return fileResources;
-    }
-
-    /// <summary>
-    /// Recursively collects all file resources from the resource registry.
-    /// </summary>
-    private void CollectFileResources(
-        IFolderResource folder,
-        List<FileResourceEntry> fileResources)
-    {
-        foreach (var child in folder.Children)
-        {
-            if (child is IFileResource fileResource)
-            {
-                var resourceKey = GetResourceKey(fileResource);
-                var resolveResult = ResolveResourcePath(resourceKey);
-                if (resolveResult.IsSuccess)
-                {
-                    fileResources.Add(new FileResourceEntry(resourceKey, resolveResult.Value));
-                }
-            }
-            else if (child is IFolderResource childFolder)
-            {
-                CollectFileResources(childFolder, fileResources);
-            }
-        }
-    }
-
-    public SidecarReport GetSidecarReport()
-    {
-        lock (_sidecarLock)
-        {
-            return _sidecarReport;
         }
     }
 
