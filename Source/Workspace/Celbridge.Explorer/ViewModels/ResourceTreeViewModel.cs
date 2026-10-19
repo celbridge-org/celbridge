@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using Celbridge.Automation;
 using Celbridge.DataTransfer;
 using Celbridge.Explorer.Helpers;
 using Celbridge.Explorer.Models;
@@ -18,6 +20,7 @@ public partial class ResourceTreeViewModel : ObservableObject
 {
     private readonly ILogger<ResourceTreeViewModel> _logger;
     private readonly IMessengerService _messengerService;
+    private readonly IAutomationService _automationService;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IPlatformInfo _platformInfo;
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -72,10 +75,12 @@ public partial class ResourceTreeViewModel : ObservableObject
     public ResourceTreeViewModel(
         ILogger<ResourceTreeViewModel> logger,
         IMessengerService messengerService,
+        IAutomationService automationService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
         _messengerService = messengerService;
+        _automationService = automationService;
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
         _workspaceWrapper = workspaceWrapper;
@@ -162,8 +167,17 @@ public partial class ResourceTreeViewModel : ObservableObject
     /// </summary>
     public void RebuildResourceTree(List<ResourceKey>? selectedResources = null)
     {
-        var items = BuildResourceViewItems();
+        var stopwatch = Stopwatch.StartNew();
 
+        var items = BuildResourceViewItems();
+        ShowResourceViewItems(items, selectedResources);
+
+        var elapsed = (long)stopwatch.Elapsed.TotalMilliseconds;
+        _automationService.LogEvent(new ExplorerTreeBuiltEvent(items.Count, elapsed));
+    }
+
+    private void ShowResourceViewItems(List<ResourceViewItem> items, List<ResourceKey>? selectedResources)
+    {
         // Most registry updates leave the tree looking exactly as it did, and swapping the collection
         // anyway destroys and regenerates every row for nothing. A caller that asked for a specific
         // selection still goes through, since the selection applies whether or not the rows moved.

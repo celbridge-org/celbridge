@@ -1,3 +1,4 @@
+using Celbridge.Automation;
 using Celbridge.FileSystem.Services;
 using Celbridge.Messaging;
 using Celbridge.Resources;
@@ -49,7 +50,8 @@ public class SearchServiceFilterTests
             Substitute.For<ILogger<SearchService>>(),
             workspaceWrapper,
             TestFileTypeCatalog.CreateSniffer(new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>())),
-            Substitute.For<Celbridge.UserInterface.Services.ISpotlightService>());
+            Substitute.For<Celbridge.UserInterface.Services.ISpotlightService>(),
+            Substitute.For<IAutomationService>());
     }
 
     [TearDown]

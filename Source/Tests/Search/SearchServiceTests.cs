@@ -1,3 +1,4 @@
+using Celbridge.Automation;
 using Celbridge.FileSystem.Services;
 using Celbridge.Messaging;
 using Celbridge.Resources;
@@ -17,6 +18,7 @@ public class SearchServiceTests
     private IResourceRegistry _resourceRegistry = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
     private SearchService _searchService = null!;
+    private IAutomationService _automationService = null!;
 
     [SetUp]
     public void SetUp()
@@ -51,11 +53,14 @@ public class SearchServiceTests
             TestFileSystem.CreateLocal());
         resourceService.FileSystem.Returns(resourceFileSystem);
 
+        _automationService = Substitute.For<IAutomationService>();
+
         _searchService = new SearchService(
             Substitute.For<ILogger<SearchService>>(),
             _workspaceWrapper,
             TestFileTypeCatalog.CreateSniffer(new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>())),
-            Substitute.For<Celbridge.UserInterface.Services.ISpotlightService>());
+            Substitute.For<Celbridge.UserInterface.Services.ISpotlightService>(),
+            _automationService);
 
         // After construction, the workspace is "loaded" so SearchAsync proceeds past its early return.
         _workspaceWrapper.IsWorkspaceLoaded.Returns(true);
@@ -154,6 +159,40 @@ public class SearchServiceTests
 
         result.FileResults.Should().HaveCount(1);
         result.FileResults[0].Resource.ToString().Should().EndWith("photo.png.cel");
+    }
+
+    [Test]
+    public async Task SearchAsync_Finished_ReportsTheFilesItSearched()
+    {
+        await WriteFileAsync("notes.txt", "hello world");
+        await WriteFileAsync("other.txt", "goodbye");
+
+        await _searchService.SearchAsync(
+            "hello",
+            matchCase: false,
+            wholeWord: false,
+            maxResults: null,
+            CancellationToken.None);
+
+        _automationService.Received(1).LogEvent(Arg.Is<SearchCompletedEvent>(completed => completed.Files == 2));
+    }
+
+    [Test]
+    public async Task SearchAsync_Cancelled_ReportsNoCompletion()
+    {
+        await WriteFileAsync("notes.txt", "hello world");
+
+        using var cancellationTokenSource = new CancellationTokenSource();
+        cancellationTokenSource.Cancel();
+
+        await _searchService.SearchAsync(
+            "hello",
+            matchCase: false,
+            wholeWord: false,
+            maxResults: null,
+            cancellationTokenSource.Token);
+
+        _automationService.DidNotReceive().LogEvent(Arg.Any<SearchCompletedEvent>());
     }
 
     private async Task WriteFileAsync(string relativePath, string content)

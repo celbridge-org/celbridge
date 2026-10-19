@@ -22,6 +22,24 @@ public record ServerStartedEvent(int Port) : AutomationEvent;
 public record WorkspaceLoadedEvent(string ProjectFile, long ElapsedMs) : AutomationEvent;
 
 /// <summary>
+/// The resource registry has rescanned the project, and the views that show it have updated. ElapsedMs is how long
+/// the rescan took, in milliseconds.
+/// </summary>
+public record ResourceRegistryUpdatedEvent(long ElapsedMs) : AutomationEvent;
+
+/// <summary>
+/// The Explorer has rebuilt the rows it shows. Rows is how many rows it shows, and ElapsedMs is how long the
+/// rebuild took, in milliseconds.
+/// </summary>
+public record ExplorerTreeBuiltEvent(int Rows, long ElapsedMs) : AutomationEvent;
+
+/// <summary>
+/// A search of the project's files has finished without being cancelled. Files is how many files the search
+/// checked, and ElapsedMs is how long the search took, in milliseconds.
+/// </summary>
+public record SearchCompletedEvent(int Files, long ElapsedMs) : AutomationEvent;
+
+/// <summary>
 /// A project load failed, so the project did not open. It is reported after any alert the failure raised has
 /// been answered. ProjectFile is the path of the project file.
 /// </summary>

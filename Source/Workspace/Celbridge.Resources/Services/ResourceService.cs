@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using Celbridge.Automation;
 using Celbridge.Commands;
 using Celbridge.Logging;
 using Celbridge.Projects;
@@ -18,6 +20,7 @@ public class ResourceService : IResourceService, IDisposable
     private readonly IMessengerService _messengerService;
     private readonly IProjectService _projectService;
     private readonly ILocalFileSystem _fileSystem;
+    private readonly IAutomationService _automationService;
 
     // Resolved once at construction, so the unload clears exactly the folders the load created.
     private readonly string _tempFolderPath;
@@ -51,7 +54,8 @@ public class ResourceService : IResourceService, IDisposable
         ITrashService trashService,
         IResourceScanner resourceScanner,
         ISidecarService sidecarService,
-        ILocalFileSystem fileSystem)
+        ILocalFileSystem fileSystem,
+        IAutomationService automationService)
     {
         // Only the workspace service is allowed to instantiate this service
         Guard.IsFalse(workspaceWrapper.IsWorkspaceLoaded);
@@ -61,6 +65,7 @@ public class ResourceService : IResourceService, IDisposable
         _messengerService = messengerService;
         _projectService = projectService;
         _fileSystem = fileSystem;
+        _automationService = automationService;
 
         // RootHandlerRegistry and ResourceRegistry are constructed together so
         // they share the same root-handler instance
@@ -153,6 +158,8 @@ public class ResourceService : IResourceService, IDisposable
 
     public async Task<Result> UpdateResourcesAsync()
     {
+        var stopwatch = Stopwatch.StartNew();
+
         var updateStartingMessage = new ResourceRegistryUpdateStartingMessage();
         _messengerService.Send(updateStartingMessage);
 
@@ -164,6 +171,9 @@ public class ResourceService : IResourceService, IDisposable
         }
 
         _logger.LogTrace("Updated resources successfully.");
+
+        var elapsed = (long)stopwatch.Elapsed.TotalMilliseconds;
+        _automationService.LogEvent(new ResourceRegistryUpdatedEvent(elapsed));
 
         return Result.Ok();
     }

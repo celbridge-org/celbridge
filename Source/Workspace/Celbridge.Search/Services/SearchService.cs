@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using System.Text.RegularExpressions;
+using Celbridge.Automation;
 using Celbridge.Logging;
 using Celbridge.Resources;
 using Celbridge.UserInterface.Services;
@@ -44,6 +46,7 @@ public class SearchService : ISearchService, IDisposable
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ITextBinarySniffer _textBinarySniffer;
     private readonly ISpotlightService _spotlightService;
+    private readonly IAutomationService _automationService;
     private readonly ISpotlightLandmark _searchSpotlightLandmark;
     private readonly ISpotlightLandmark _searchReplaceSpotlightLandmark;
     private readonly TextMatcher _textMatcher;
@@ -70,7 +73,8 @@ public class SearchService : ISearchService, IDisposable
         ILogger<SearchService> logger,
         IWorkspaceWrapper workspaceWrapper,
         ITextBinarySniffer textBinarySniffer,
-        ISpotlightService spotlightService)
+        ISpotlightService spotlightService,
+        IAutomationService automationService)
     {
         // Only the workspace service is allowed to instantiate this service
         Guard.IsFalse(workspaceWrapper.IsWorkspaceLoaded);
@@ -79,6 +83,7 @@ public class SearchService : ISearchService, IDisposable
         _workspaceWrapper = workspaceWrapper;
         _textBinarySniffer = textBinarySniffer;
         _spotlightService = spotlightService;
+        _automationService = automationService;
         _workspaceToken = _workspaceCancellation.Token;
         _textMatcher = new TextMatcher();
         _formatter = new SearchResultFormatter();
@@ -191,6 +196,8 @@ public class SearchService : ISearchService, IDisposable
         var excludeRegex = GlobHelper.BuildNameMatcher(exclude);
 
         var searchState = new SearchState();
+        var searchedFiles = 0;
+        var stopwatch = Stopwatch.StartNew();
 
         try
         {
@@ -256,6 +263,7 @@ public class SearchService : ISearchService, IDisposable
                     cancellationToken,
                     searchRegex,
                     includeMetadataFiles);
+                searchedFiles++;
 
                 if (fileResult != null && fileResult.Matches.Count > 0)
                 {
@@ -263,6 +271,9 @@ public class SearchService : ISearchService, IDisposable
                     searchState.TotalMatches += fileResult.Matches.Count;
                 }
             }
+
+            var elapsed = (long)stopwatch.Elapsed.TotalMilliseconds;
+            _automationService.LogEvent(new SearchCompletedEvent(searchedFiles, elapsed));
         }
         catch (OperationCanceledException)
         {
