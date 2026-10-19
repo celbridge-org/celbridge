@@ -133,7 +133,9 @@ public sealed class ResourceScanner : IResourceScanner
             return;
         }
 
-        var fileKeys = walkResult.Value
+        var walkedItems = walkResult.Value;
+
+        var fileKeys = walkedItems
             .Where(item => !item.IsFolder)
             .Select(item => item.Resource);
         var sidecarPairs = SidecarPairing.Pair(fileKeys, sidecarService);

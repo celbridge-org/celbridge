@@ -21,32 +21,37 @@ public partial class FileTools
         var resourceService = workspaceWrapper.WorkspaceService.ResourceService;
         var rootHandlerRegistry = resourceService.RootHandlers;
 
-        var regexPattern = GlobHelper.PathGlobToRegex(pattern);
-        var regex = new Regex(regexPattern, RegexOptions.IgnoreCase);
-
         var isFolderSearch = string.Equals(type, "folder", StringComparison.OrdinalIgnoreCase);
 
         // A pattern that starts with another root's prefix (logs:, temp:) searches that root and matches the whole
-        // key. Any other pattern searches the project and matches the key's path.
+        // key. Any other pattern searches the project and matches the key's path, after dropping any project: prefix.
         var rootKey = ResourceKey.Empty;
         var matchesWholeKey = false;
+        var glob = pattern;
         var patternRoot = ExtractRootPrefix(pattern);
-        if (patternRoot is not null
-            && patternRoot != ResourceKey.DefaultRoot
+        if (patternRoot == ResourceKey.DefaultRoot)
+        {
+            glob = pattern.Substring(patternRoot.Length + 1);
+        }
+        else if (patternRoot is not null
             && rootHandlerRegistry.RootHandlers.ContainsKey(patternRoot))
         {
             rootKey = new ResourceKey(patternRoot + ":");
             matchesWholeKey = true;
         }
 
+        var regexPattern = GlobHelper.PathGlobToRegex(glob);
+        var regex = new Regex(regexPattern, RegexOptions.IgnoreCase);
+
         var walkResult = await resourceService.Walker.WalkAsync(rootKey);
         if (walkResult.IsFailure)
         {
             return ToolResponse.Error(walkResult);
         }
+        var walkedItems = walkResult.Value;
 
         var matches = new List<WalkedItem>();
-        foreach (var item in walkResult.Value)
+        foreach (var item in walkedItems)
         {
             if (item.IsFolder != isFolderSearch)
             {

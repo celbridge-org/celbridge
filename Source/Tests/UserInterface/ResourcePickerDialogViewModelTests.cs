@@ -60,7 +60,11 @@ public class ResourcePickerDialogViewModelTests
             return new LocalizedString(name, $"{name}:{arguments[0]}");
         });
 
-        _viewModel = new ResourcePickerDialogViewModel(workspaceWrapper, iconService, stringLocalizer);
+        _viewModel = new ResourcePickerDialogViewModel(
+            Substitute.For<ILogger<ResourcePickerDialogViewModel>>(),
+            workspaceWrapper,
+            iconService,
+            stringLocalizer);
     }
 
     [Test]
@@ -183,6 +187,19 @@ public class ResourcePickerDialogViewModelTests
 
         _viewModel.FilteredItems.Should().HaveCount(10);
         _viewModel.MoreMatchesVisibility.Should().Be(Visibility.Collapsed);
+    }
+
+    [Test]
+    public async Task TheList_StopsLoadingAndStaysEmpty_WhenTheWalkThrows()
+    {
+        _walker.WalkAsync(Arg.Any<ResourceKey>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<Result<IReadOnlyList<WalkedItem>>>(new IOException("The disk went away")));
+
+        _viewModel.Initialize(Array.Empty<string>(), showPreview: false);
+        await _viewModel.LoadItemsAsync();
+
+        _viewModel.IsLoading.Should().BeFalse();
+        _viewModel.FilteredItems.Should().BeEmpty();
     }
 
     private void UseWalkedItems(params WalkedItem[] items)

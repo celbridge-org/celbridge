@@ -225,6 +225,23 @@ public class SearchServiceTests
         result.FileResults.Select(fileResult => fileResult.Resource).Should().Equal(new ResourceKey("src/app.py"));
     }
 
+    [Test]
+    public async Task SearchAsync_ScopedToAFile_SearchesThatFile()
+    {
+        await WriteFileAsync("src/app.py", "hello world");
+        await WriteFileAsync("src/other.py", "hello world");
+
+        var result = await _searchService.SearchAsync(
+            "hello",
+            matchCase: false,
+            wholeWord: false,
+            maxResults: null,
+            CancellationToken.None,
+            scope: "src/app.py");
+
+        result.FileResults.Select(fileResult => fileResult.Resource).Should().Equal(new ResourceKey("src/app.py"));
+    }
+
     private async Task WriteFileAsync(string relativePath, string content)
     {
         var fullPath = Path.Combine(_tempFolder, relativePath.Replace('/', Path.DirectorySeparatorChar));

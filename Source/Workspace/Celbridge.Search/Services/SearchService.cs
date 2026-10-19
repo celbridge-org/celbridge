@@ -195,24 +195,36 @@ public class SearchService : ISearchService, IDisposable
 
         try
         {
-            // A bare scope such as "Data" names the project folder "project:Data".
-            var scopeFolder = ResourceKey.Empty;
-            if (!string.IsNullOrEmpty(scope)
-                && !ResourceKey.TryCreate(scope, out scopeFolder))
+            // The scope's listing and every file's read and match run on a worker thread, so a search started from
+            // the UI thread leaves the UI thread free.
+            var searched = await Task.Run(SearchScopeAsync, cancellationToken);
+            if (searched)
             {
-                return new SearchResults(searchTerm, fileResults, 0, 0, false, false);
+                var elapsed = (long)stopwatch.Elapsed.TotalMilliseconds;
+                _automationService.LogEvent(new SearchCompletedEvent(searchedFiles, elapsed));
             }
+        }
+        catch (OperationCanceledException)
+        {
+            return new SearchResults(searchTerm, fileResults, searchState.TotalMatches, fileResults.Count, true, searchState.ReachedMaxResults);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error during search: {ex.Message}");
+        }
 
-            var walkResult = await ResourceWalker.WalkAsync(scopeFolder, cancellationToken: cancellationToken);
-            if (walkResult.IsFailure)
+        return new SearchResults(searchTerm, fileResults, searchState.TotalMatches, fileResults.Count, false, searchState.ReachedMaxResults);
+
+        // Returns false when the scope names nothing that can be searched.
+        async Task<bool> SearchScopeAsync()
+        {
+            var listResult = await ListScopeFilesAsync(scope, cancellationToken);
+            if (listResult.IsFailure)
             {
-                _logger.LogWarning(walkResult, $"Failed to walk the search scope: '{scopeFolder}'");
-                return new SearchResults(searchTerm, fileResults, 0, 0, false, false);
+                _logger.LogWarning(listResult, $"Failed to list the search scope: '{scope}'");
+                return false;
             }
-
-            var files = walkResult.Value
-                .Where(item => !item.IsFolder)
-                .ToList();
+            var files = listResult.Value;
 
             if (includeRegex != null)
             {
@@ -264,19 +276,73 @@ public class SearchService : ISearchService, IDisposable
                 }
             }
 
-            var elapsed = (long)stopwatch.Elapsed.TotalMilliseconds;
-            _automationService.LogEvent(new SearchCompletedEvent(searchedFiles, elapsed));
+            return true;
         }
-        catch (OperationCanceledException)
+    }
+
+    // Lists the files a search covers: the one file the scope names, or every file inside the scope folder. An empty
+    // scope names the project folder, and a bare scope, for example "Data", names "project:Data".
+    private async Task<Result<List<WalkedItem>>> ListScopeFilesAsync(string scope, CancellationToken cancellationToken)
+    {
+        var scopeKey = ResourceKey.Empty;
+        if (!string.IsNullOrEmpty(scope)
+            && !ResourceKey.TryCreate(scope, out scopeKey))
         {
-            return new SearchResults(searchTerm, fileResults, searchState.TotalMatches, fileResults.Count, true, searchState.ReachedMaxResults);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError($"Error during search: {ex.Message}");
+            return Result.Fail($"The search scope is not a resource key: '{scope}'");
         }
 
-        return new SearchResults(searchTerm, fileResults, searchState.TotalMatches, fileResults.Count, false, searchState.ReachedMaxResults);
+        var scopeFile = await GetScopeFileAsync(scopeKey);
+        if (scopeFile is not null)
+        {
+            var scopeFiles = new List<WalkedItem>
+            {
+                scopeFile
+            };
+            return scopeFiles;
+        }
+
+        var walkResult = await ResourceWalker.WalkAsync(scopeKey, cancellationToken: cancellationToken);
+        if (walkResult.IsFailure)
+        {
+            return Result.Fail($"Failed to walk the search scope: '{scopeKey}'")
+                .WithErrors(walkResult);
+        }
+        var walkedItems = walkResult.Value;
+
+        var files = walkedItems
+            .Where(item => !item.IsFolder)
+            .ToList();
+        return files;
+    }
+
+    // Returns the scope as a walked item when the scope names a file, or null when the scope names anything else.
+    private async Task<WalkedItem?> GetScopeFileAsync(ResourceKey scopeKey)
+    {
+        if (scopeKey.IsEmpty)
+        {
+            return null;
+        }
+
+        var infoResult = await ResourceFileSystem.GetInfoAsync(scopeKey);
+        if (infoResult.IsFailure)
+        {
+            return null;
+        }
+        var info = infoResult.Value;
+
+        if (info.Kind != StorageItemKind.File)
+        {
+            return null;
+        }
+
+        var resolveResult = ResourceRegistry.ResolveResourcePath(scopeKey);
+        if (resolveResult.IsFailure)
+        {
+            return null;
+        }
+        var filePath = resolveResult.Value;
+
+        return new WalkedItem(scopeKey, filePath, false, info.Size, info.ModifiedUtc, info.Attributes);
     }
 
     private async Task<SearchFileResult?> SearchFileAsync(

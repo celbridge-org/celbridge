@@ -70,8 +70,8 @@ public partial class FileTools
             return await GrepTargetedFiles(files, searchTerm, useRegex, matchCase, wholeWord, maxResults, contextLines, includeContent, summaryOnly, resourceFileSystem);
         }
 
-        // A scope under another root (temp:, logs:) is walked here and matched the same way the files= path is.
-        // A bare or project: scope goes to SearchService, which the Search panel also uses.
+        // A scope under another root (temp:, logs:) is listed here and matched the same way the files= path is.
+        // A bare or project: scope goes to SearchService.
         var rootHandlerRegistry = resourceService.RootHandlers;
         if (!string.IsNullOrEmpty(resource)
             && ResourceKey.TryCreate(resource, out var scopeKey)
@@ -275,10 +275,11 @@ public partial class FileTools
         return await GrepFileListAsync(targets, searchTerm, useRegex, matchCase, wholeWord, maxResults, contextLines, includeContent, summaryOnly, resourceFileSystem);
     }
 
-    // Walks a scope under another root (temp:, logs:). The files found are matched the same way the files= path
-    // matches, with include/exclude applied to the file name.
+    // Lists a scope under another root (temp:, logs:): the one file the scope names, or the files inside the scope
+    // folder. The files are matched the same way the files= path matches, with include/exclude applied to the file
+    // name.
     private async Task<CallToolResult> GrepNonDefaultRootScopeAsync(
-        ResourceKey scopeFolder,
+        ResourceKey scopeKey,
         string searchTerm,
         bool useRegex,
         bool matchCase,
@@ -291,26 +292,41 @@ public partial class FileTools
         bool summaryOnly,
         IResourceService resourceService)
     {
-        // A scope that cannot be walked, such as a folder that does not exist, has no files to match.
-        IReadOnlyList<WalkedItem> walkedItems = Array.Empty<WalkedItem>();
-        var walkResult = await resourceService.Walker.WalkAsync(scopeFolder);
-        if (walkResult.IsSuccess)
+        // If the scope is a file, grep that file. Otherwise grep every file in the scope folder. A failed walk finds no
+        // files.
+        var fileKeys = new List<ResourceKey>();
+        var scopeIsFile = false;
+        var scopeInfoResult = await resourceService.FileSystem.GetInfoAsync(scopeKey);
+        if (scopeInfoResult.IsSuccess)
         {
-            walkedItems = walkResult.Value;
+            var scopeInfo = scopeInfoResult.Value;
+            scopeIsFile = scopeInfo.Kind == StorageItemKind.File;
+        }
+
+        if (scopeIsFile)
+        {
+            fileKeys.Add(scopeKey);
+        }
+        else
+        {
+            var walkResult = await resourceService.Walker.WalkAsync(scopeKey);
+            if (walkResult.IsSuccess)
+            {
+                var walkedItems = walkResult.Value;
+                var walkedFiles = walkedItems
+                    .Where(item => !item.IsFolder)
+                    .Select(item => item.Resource);
+                fileKeys.AddRange(walkedFiles);
+            }
         }
 
         var includeRegex = GlobHelper.BuildNameMatcher(include);
         var excludeRegex = GlobHelper.BuildNameMatcher(exclude);
 
         var targets = new List<(ResourceKey Key, string Display)>();
-        foreach (var entry in walkedItems)
+        foreach (var fileKey in fileKeys)
         {
-            if (entry.IsFolder)
-            {
-                continue;
-            }
-
-            var fileName = entry.Resource.ResourceName;
+            var fileName = fileKey.ResourceName;
             if (includeRegex is not null
                 && !includeRegex.IsMatch(fileName))
             {
@@ -322,7 +338,7 @@ public partial class FileTools
                 continue;
             }
 
-            targets.Add((entry.Resource, entry.Resource.ToString()));
+            targets.Add((fileKey, fileKey.ToString()));
         }
 
         return await GrepFileListAsync(targets, searchTerm, useRegex, matchCase, wholeWord, maxResults, contextLines, includeContent, summaryOnly, resourceService.FileSystem);

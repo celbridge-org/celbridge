@@ -33,7 +33,7 @@ Wraps the search term in `\b` boundaries. Ignored when `useRegex` is true — wr
 
 ### resource
 
-A folder resource key. Only files within this folder (and its descendants) are searched. Empty string searches the whole project.
+A folder resource key. Only files within this folder (and its descendants) are searched. A file's resource key searches that one file. Empty string searches the whole project.
 
 A scope under a non-default root (e.g. `temp:staging/my-pkg`, `logs:`) is searched too — the tool walks that root's tree directly. `include`/`exclude` still apply. A whole-project search with an empty scope covers only the project root, so name another root explicitly to search it.
 

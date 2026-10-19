@@ -20,6 +20,7 @@ public class InspectCommandTests
     private string _projectFolderPath = null!;
     private ResourceRegistry _resourceRegistry = null!;
     private RootHandlerRegistry _rootHandlerRegistry = null!;
+    private IResourceService _resourceService = null!;
     private IMessengerService _messengerService = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
     private InspectCommand _command = null!;
@@ -47,6 +48,7 @@ public class InspectCommandTests
         _resourceRegistry.InitializeProjectRoot(_projectFolderPath);
 
         var resourceService = Substitute.For<IResourceService>();
+        _resourceService = resourceService;
         resourceService.Registry.Returns(_resourceRegistry);
         resourceService.RootHandlers.Returns(_rootHandlerRegistry);
 
@@ -337,5 +339,46 @@ public class InspectCommandTests
             .FirstOrDefault(r => r.Resource.Equals(new ResourceKey("ghost.png.cel")));
         orphan.Should().NotBeNull();
         orphan!.Status.Should().Be(SidecarStatus.Orphan);
+    }
+
+    [Test]
+    public async Task ListedOrphanSidecar_ReportsOrphan()
+    {
+        File.WriteAllText(Path.Combine(_projectFolderPath, "ghost.png.cel"), "_tags = [\"orphan\"]\n");
+
+        _command.Resources = new[] { new ResourceKey("ghost.png.cel") };
+        (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
+
+        _command.ResultValue.Records.Single().Status.Should().Be(SidecarStatus.Orphan);
+    }
+
+    [Test]
+    public async Task ListedPairedSidecar_ReportsHealthy()
+    {
+        File.WriteAllText(Path.Combine(_projectFolderPath, "photo.png"), "binary");
+        File.WriteAllText(Path.Combine(_projectFolderPath, "photo.png.cel"), "_tags = [\"sunset\"]\n");
+
+        _command.Resources = new[] { new ResourceKey("photo.png.cel") };
+        (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
+
+        _command.ResultValue.Records.Single().Status.Should().Be(SidecarStatus.Healthy);
+    }
+
+    [Test]
+    public async Task ListedOrphanSidecar_InAFolderTheWalkLeavesOut_ReportsOrphan()
+    {
+        // The pattern makes the command walk the project, and the walk leaves out what search-exclude matches.
+        Directory.CreateDirectory(Path.Combine(_projectFolderPath, "build"));
+        File.WriteAllText(Path.Combine(_projectFolderPath, "build", "ghost.png.cel"), "_tags = [\"orphan\"]\n");
+        File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md"), "Notes.\n");
+        var policy = TestResourcePolicy.CreateWithSearchExclude(_projectFolderPath, new[] { "build/" });
+        _resourceService.Policy.Returns(policy);
+
+        _command.Pattern = "*.md";
+        _command.Resources = new[] { new ResourceKey("build/ghost.png.cel") };
+        (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
+
+        var ghost = _command.ResultValue.Records.Single(record => record.Resource.Equals(new ResourceKey("build/ghost.png.cel")));
+        ghost.Status.Should().Be(SidecarStatus.Orphan);
     }
 }

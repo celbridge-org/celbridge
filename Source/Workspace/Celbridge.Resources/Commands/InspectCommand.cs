@@ -79,7 +79,9 @@ public sealed class InspectCommand : CommandBase, IInspectCommand
                     .WithErrors(walkResult);
             }
 
-            var fileKeys = walkResult.Value
+            var walkedItems = walkResult.Value;
+
+            var fileKeys = walkedItems
                 .Where(item => !item.IsFolder)
                 .Select(item => item.Resource);
             var sidecarPairs = SidecarPairing.Pair(fileKeys, resourceService.Sidecars);
@@ -216,20 +218,48 @@ public sealed class InspectCommand : CommandBase, IInspectCommand
             return walkedSidecars.Orphans.Contains(sidecarKey);
         }
 
-        // The walk did not find this sidecar, so look for the sidecar and its file in the sidecar's folder. A
-        // sidecar that is not there is not an orphan, and its read reports that it does not exist.
-        var listResult = await resourceService.FileSystem.EnumerateFolderAsync(sidecarKey.GetParent());
-        if (listResult.IsFailure)
+        // The walk did not find this sidecar, so ask the disk. A sidecar is an orphan when the sidecar is on disk and
+        // the file named for it is missing. The read of a missing sidecar reports NoSidecar.
+        var sidecarInfoResult = await resourceService.FileSystem.GetInfoAsync(sidecarKey);
+        if (sidecarInfoResult.IsFailure)
+        {
+            return false;
+        }
+        var sidecarInfo = sidecarInfoResult.Value;
+
+        if (sidecarInfo.Kind != StorageItemKind.File)
         {
             return false;
         }
 
-        var fileKeys = listResult.Value
-            .Where(item => !item.IsFolder)
-            .Select(item => item.Resource);
-        var folderPairs = SidecarPairing.Pair(fileKeys, resourceService.Sidecars);
+        // A sidecar pairs with a file only when the sidecar service builds the sidecar's own key for that file.
+        var sidecarFullKey = sidecarKey.FullKey;
+        var fileKeyText = sidecarFullKey.Substring(0, sidecarFullKey.Length - SidecarFile.Extension.Length);
+        if (!ResourceKey.TryCreate(fileKeyText, out var fileKey))
+        {
+            return true;
+        }
 
-        return folderPairs.Orphans.Contains(sidecarKey);
+        var pairedKeyResult = resourceService.Sidecars.GetSidecarKey(fileKey);
+        if (pairedKeyResult.IsFailure)
+        {
+            return true;
+        }
+        var pairedKey = pairedKeyResult.Value;
+
+        if (pairedKey != sidecarKey)
+        {
+            return true;
+        }
+
+        var fileInfoResult = await resourceService.FileSystem.GetInfoAsync(fileKey);
+        if (fileInfoResult.IsFailure)
+        {
+            return true;
+        }
+        var fileInfo = fileInfoResult.Value;
+
+        return fileInfo.Kind != StorageItemKind.File;
     }
 
     private async Task<InspectRecord> ClassifyParentKeyAsync(

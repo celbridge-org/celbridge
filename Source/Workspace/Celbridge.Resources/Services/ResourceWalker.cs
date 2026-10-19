@@ -30,13 +30,13 @@ public sealed class ResourceWalker : IResourceWalker
         _workspaceWrapper = workspaceWrapper;
     }
 
-    public Task<Result<IReadOnlyList<WalkedItem>>> WalkAsync(
+    public async Task<Result<IReadOnlyList<WalkedItem>>> WalkAsync(
         ResourceKey folder,
         bool applySearchExclude = true,
         CancellationToken cancellationToken = default)
     {
         // The gateway lists a folder synchronously, so the whole walk runs on a worker thread.
-        return Task.Run(() => WalkFolderAsync(folder, applySearchExclude, cancellationToken), cancellationToken);
+        return await Task.Run(() => WalkFolderAsync(folder, applySearchExclude, cancellationToken), cancellationToken);
     }
 
     private async Task<Result<IReadOnlyList<WalkedItem>>> WalkFolderAsync(
@@ -118,7 +118,9 @@ public sealed class ResourceWalker : IResourceWalker
                 continue;
             }
 
-            await AddFolderContentsAsync(walk, listResult.Value, itemPath);
+            var childItems = listResult.Value;
+
+            await AddFolderContentsAsync(walk, childItems, itemPath);
         }
     }
 }

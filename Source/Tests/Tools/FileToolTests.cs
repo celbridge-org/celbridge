@@ -820,6 +820,27 @@ public class FileToolTests
     }
 
     [Test]
+    public async Task Grep_NonDefaultRootFileScope_SearchesThatFile()
+    {
+        var stagingDir = Path.Combine(_tempFolder, "staging", "sample-package", "src");
+        Directory.CreateDirectory(stagingDir);
+        await File.WriteAllTextAsync(Path.Combine(stagingDir, "app.js"), "const alpha = 'beta';\n");
+        await File.WriteAllTextAsync(Path.Combine(stagingDir, "other.js"), "const alpha = 'gamma';\n");
+
+        StubResolveAllKeysToTempFolder();
+        RegisterNonDefaultRoot("temp");
+
+        var tools = new FileTools(_services);
+        var result = await tools.Grep(searchTerm: "alpha", resource: "temp:staging/sample-package/src/app.js");
+
+        result.IsError.Should().NotBe(true);
+        var root = ParseResult(result);
+        root.GetProperty("totalFiles").GetInt32().Should().Be(1);
+        root.GetProperty("files")[0].GetProperty("resource").GetString()
+            .Should().Be("temp:staging/sample-package/src/app.js");
+    }
+
+    [Test]
     public async Task Grep_NonDefaultRootScope_HonoursIncludeFilter()
     {
         var stagingDir = Path.Combine(_tempFolder, "staging", "sample-package", "src");
@@ -880,6 +901,20 @@ public class FileToolTests
         entry.GetProperty("resource").GetString().Should().Be("project:notes.md");
         entry.GetProperty("size").GetInt64().Should().Be(42);
         entry.GetProperty("modified").GetString().Should().StartWith("2026-10-19T12:00:00");
+    }
+
+    [Test]
+    public async Task Search_PatternWithTheProjectPrefix_MatchesTheProjectsPaths()
+    {
+        UseWalkedItems(
+            WalkedFile("docs/notes.md"),
+            WalkedFile("readme.md"),
+            WalkedFile("src/app.py"));
+
+        var tools = new FileTools(_services);
+        var result = await tools.Search("project:*.md");
+
+        ParseStringList(result).Should().Equal("project:docs/notes.md", "project:readme.md");
     }
 
     [Test]

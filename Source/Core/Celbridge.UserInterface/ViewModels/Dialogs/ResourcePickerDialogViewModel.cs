@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using Celbridge.Logging;
 using Celbridge.Workspace;
 using Microsoft.UI.Xaml.Media.Imaging;
 
@@ -14,6 +15,7 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
     /// </summary>
     public const int MaxShownMatches = 200;
 
+    private readonly ILogger<ResourcePickerDialogViewModel> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IIconService _iconService;
     private readonly IStringLocalizer _stringLocalizer;
@@ -64,10 +66,12 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
     private Visibility _moreMatchesVisibility = Visibility.Collapsed;
 
     public ResourcePickerDialogViewModel(
+        ILogger<ResourcePickerDialogViewModel> logger,
         IWorkspaceWrapper workspaceWrapper,
         IIconService iconService,
         IStringLocalizer stringLocalizer)
     {
+        _logger = logger;
         _workspaceWrapper = workspaceWrapper;
         _iconService = iconService;
         _stringLocalizer = stringLocalizer;
@@ -209,16 +213,33 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
 
     private async Task WalkAndShowItemsAsync()
     {
-        var walker = _workspaceWrapper.WorkspaceService.ResourceService.Walker;
+        var items = await ListItemsAsync();
 
-        // The folder picker offers any folder, including one inside a folder that search-exclude matches.
-        var applySearchExclude = !_listsFolders;
-        var walkResult = await walker.WalkAsync(ResourceKey.Empty, applySearchExclude);
+        IsLoading = false;
+        LoadingVisibility = Visibility.Collapsed;
 
-        var items = new List<ResourcePickerItem>();
-        if (walkResult.IsSuccess)
+        ShowItems(items);
+    }
+
+    // Returns an empty list when the walk fails, so the picker stops loading and stays usable.
+    private async Task<List<ResourcePickerItem>> ListItemsAsync()
+    {
+        try
         {
-            foreach (var walkedItem in walkResult.Value)
+            var walker = _workspaceWrapper.WorkspaceService.ResourceService.Walker;
+
+            // The folder picker offers any folder, including one inside a folder that search-exclude matches.
+            var applySearchExclude = !_listsFolders;
+            var walkResult = await walker.WalkAsync(ResourceKey.Empty, applySearchExclude);
+            if (walkResult.IsFailure)
+            {
+                _logger.LogWarning(walkResult, "Failed to walk the project for the resource picker");
+                return [];
+            }
+            var walkedItems = walkResult.Value;
+
+            var items = new List<ResourcePickerItem>();
+            foreach (var walkedItem in walkedItems)
             {
                 var item = CreateItem(walkedItem);
                 if (item is not null)
@@ -226,12 +247,14 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
                     items.Add(item);
                 }
             }
+
+            return items;
         }
-
-        IsLoading = false;
-        LoadingVisibility = Visibility.Collapsed;
-
-        ShowItems(items);
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to list the project for the resource picker");
+            return [];
+        }
     }
 
     private ResourcePickerItem? CreateItem(WalkedItem walkedItem)
