@@ -13,7 +13,7 @@ public static class CommunityUrls
     /// <summary>
     /// The Celbridge documentation site.
     /// </summary>
-    public const string Learn = "https://learn.celbridge.org/";
+    public const string Learn = "https://celbridge.org/learn/";
 
     /// <summary>
     /// The community discussion forum.
