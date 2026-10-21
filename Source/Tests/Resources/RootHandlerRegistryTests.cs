@@ -5,8 +5,8 @@ namespace Celbridge.Tests.Resources;
 
 /// <summary>
 /// Direct tests for the cross-root dispatch logic: longest-prefix-wins match,
-/// IsResolvable across roots, resolving and normalizing via the matched handler,
-/// and InvalidatePathCache propagation.
+/// IsResolvable across roots, resolving via the matched handler, and
+/// InvalidatePathCache propagation.
 /// </summary>
 [TestFixture]
 public class RootHandlerRegistryTests

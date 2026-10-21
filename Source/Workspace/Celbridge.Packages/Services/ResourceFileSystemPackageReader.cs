@@ -3,9 +3,9 @@ using Celbridge.Resources;
 namespace Celbridge.Packages;
 
 /// <summary>
-/// Reader used for project packages. Reverse-resolves the absolute path to a
-/// ResourceKey via IResourceRegistry and routes every read through IResourceFileSystem
-/// so the gateway contract holds for project-tree bytes.
+/// Reader used for project packages. Maps the absolute path to a ResourceKey
+/// via IRootHandlerRegistry, and routes every read through IResourceFileSystem,
+/// the gateway for the project's files.
 ///
 /// IPackageReader is sync to match its sync callers (PackageManifestLoader,
 /// PackageLocalizationService) but IResourceFileSystem is genuinely async. Each call
@@ -19,19 +19,19 @@ namespace Celbridge.Packages;
 public sealed class ResourceFileSystemPackageReader : IPackageReader
 {
     private readonly IResourceFileSystem _resourceFileSystem;
-    private readonly IResourceRegistry _resourceRegistry;
+    private readonly IRootHandlerRegistry _rootHandlerRegistry;
 
     public ResourceFileSystemPackageReader(
         IResourceFileSystem resourceFileSystem,
-        IResourceRegistry resourceRegistry)
+        IRootHandlerRegistry rootHandlerRegistry)
     {
         _resourceFileSystem = resourceFileSystem;
-        _resourceRegistry = resourceRegistry;
+        _rootHandlerRegistry = rootHandlerRegistry;
     }
 
     public bool Exists(string absolutePath)
     {
-        var keyResult = _resourceRegistry.GetResourceKey(absolutePath);
+        var keyResult = _rootHandlerRegistry.GetResourceKey(absolutePath);
         if (keyResult.IsFailure)
         {
             return false;
@@ -50,7 +50,7 @@ public sealed class ResourceFileSystemPackageReader : IPackageReader
 
     public Result<string> ReadAllText(string absolutePath)
     {
-        var keyResult = _resourceRegistry.GetResourceKey(absolutePath);
+        var keyResult = _rootHandlerRegistry.GetResourceKey(absolutePath);
         if (keyResult.IsFailure)
         {
             return Result<string>.Fail($"Could not resolve resource key for path: '{absolutePath}'")
@@ -64,7 +64,7 @@ public sealed class ResourceFileSystemPackageReader : IPackageReader
 
     public Result<byte[]> ReadAllBytes(string absolutePath)
     {
-        var keyResult = _resourceRegistry.GetResourceKey(absolutePath);
+        var keyResult = _rootHandlerRegistry.GetResourceKey(absolutePath);
         if (keyResult.IsFailure)
         {
             return Result<byte[]>.Fail($"Could not resolve resource key for path: '{absolutePath}'")

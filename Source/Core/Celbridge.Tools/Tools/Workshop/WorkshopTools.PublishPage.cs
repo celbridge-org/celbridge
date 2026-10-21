@@ -48,10 +48,10 @@ public partial class WorkshopTools
         }
 
         var resourceService = workspaceWrapper.WorkspaceService.ResourceService;
-        var resourceRegistry = resourceService.Registry;
+        var rootHandlerRegistry = resourceService.RootHandlers;
         var fileSystem = GetRequiredService<ILocalFileSystem>();
 
-        var resolveResult = resourceRegistry.ResolveResourcePath(resourceKey);
+        var resolveResult = rootHandlerRegistry.ResolveResourcePath(resourceKey);
         if (resolveResult.IsFailure)
         {
             return ToolResponse.Error(resolveResult.FirstErrorMessage);

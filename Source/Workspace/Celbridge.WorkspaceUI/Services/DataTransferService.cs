@@ -82,6 +82,7 @@ public class DataTransferService : IDataTransferService, IDisposable
         }
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
         var resourceTransferService = _workspaceWrapper.WorkspaceService.ResourceService.Transfers;
 
         var getResult = resourceRegistry.GetResource(destFolderResource);
@@ -96,7 +97,7 @@ public class DataTransferService : IDataTransferService, IDisposable
             return Result<IResourceTransfer>.Fail($"Resource '{destFolderResource}' is not a folder resource");
         }
 
-        var resolveResult = resourceRegistry.ResolveResourcePath(resource);
+        var resolveResult = rootHandlerRegistry.ResolveResourcePath(destFolderResource);
         if (resolveResult.IsFailure)
         {
             return Result<IResourceTransfer>.Fail($"Failed to resolve path for resource: '{destFolderResource}'")

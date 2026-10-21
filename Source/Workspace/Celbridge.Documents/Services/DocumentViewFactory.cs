@@ -37,8 +37,8 @@ public class DocumentViewFactory
         ResourceKey fileResource,
         EditorId requestedEditorId)
     {
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var resolveResult = resourceRegistry.ResolveResourcePath(fileResource);
+        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
+        var resolveResult = rootHandlerRegistry.ResolveResourcePath(fileResource);
         if (resolveResult.IsFailure)
         {
             return Result<IDocumentView>.Fail($"Failed to resolve path for resource: '{fileResource}'")

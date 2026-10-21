@@ -6,6 +6,8 @@ using Celbridge.Localization;
 using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Resources;
+using Celbridge.Resources.Services;
+using Celbridge.Resources.Services.Roots;
 using Celbridge.Tests.FileSystem;
 using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
@@ -34,6 +36,7 @@ public class DownloadServiceTests
     private ICommandService _commandService = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
     private IResourceRegistry _resourceRegistry = null!;
+    private RootHandlerRegistry _rootHandlers = null!;
     private IResourceFileSystem _resourceFileSystem = null!;
     private ILocalizerService _localizerService = null!;
     private IProject _project = null!;
@@ -77,11 +80,12 @@ public class DownloadServiceTests
             .Do(callInfo => _workspaceUnloadedHandler =
                 callInfo.Arg<MessageHandler<object, WorkspaceUnloadedMessage>>());
 
+        // The resolver reads the real disk, which lacks the in-memory file system's items, so each key resolves to
+        // its path.
+        _rootHandlers = TestRootHandlers.Create(ProjectFolderPath);
+        _rootHandlers.RegisterRootHandler(new TempRootHandler(TempFolderPath));
+
         _resourceRegistry = Substitute.For<IResourceRegistry>();
-        _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>(), Arg.Any<bool>())
-            .Returns(callInfo => ResolveExactPath(callInfo.Arg<ResourceKey>()));
-        _resourceRegistry.GetResourceKey(Arg.Any<string>())
-            .Returns(callInfo => ResolveResource(callInfo.Arg<string>()));
         _resourceRegistry.GetResource(Arg.Any<ResourceKey>())
             .Returns(callInfo => GetResource(callInfo.Arg<ResourceKey>()));
 
@@ -96,6 +100,7 @@ public class DownloadServiceTests
 
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Registry.Returns(_resourceRegistry);
+        resourceService.RootHandlers.Returns(_rootHandlers);
         resourceService.FileSystem.Returns(_resourceFileSystem);
 
         var workspaceService = Substitute.For<IWorkspaceService>();
@@ -132,6 +137,15 @@ public class DownloadServiceTests
             _workspaceWrapper,
             projectService,
             _localFileSystem);
+    }
+
+    [TearDown]
+    public void TearDown()
+    {
+        if (Directory.Exists(ProjectFolderPath))
+        {
+            Directory.Delete(ProjectFolderPath, recursive: true);
+        }
     }
 
     [Test]
@@ -222,8 +236,11 @@ public class DownloadServiceTests
     }
 
     [Test]
+    [Platform(Exclude = "Linux", Reason = "On a case-sensitive file system, Incoming and incoming are different folders.")]
     public async Task AFolderNamedInAnotherCase_IsRefused_AndTheRowGivesItsStoredName()
     {
+        // The resolver reads the stored names from the real disk, so the folder is made there too.
+        Directory.CreateDirectory(Path.Combine(ProjectFolderPath, "Incoming"));
         _localFileSystem.SeedFolder(Path.Combine(ProjectFolderPath, "Incoming"));
         NameDownloadsFolder("incoming");
 
@@ -710,37 +727,9 @@ public class DownloadServiceTests
         return Result<DeleteResult>.Ok(new DeleteResult(SidecarOutcome.NotPresent));
     }
 
-    private static Result<string> ResolvePath(ResourceKey resource)
+    private Result<string> ResolvePath(ResourceKey resource)
     {
-        var rootPath = resource.Root == ProjectConstants.TempFolder
-            ? TempFolderPath
-            : ProjectFolderPath;
-
-        var relativePath = resource.Path.Replace('/', Path.DirectorySeparatorChar);
-
-        return Path.GetFullPath(Path.Combine(rootPath, relativePath));
-    }
-
-    // The temp root lives under the project folder, so it is matched first.
-    private static Result<ResourceKey> ResolveResource(string path)
-    {
-        var fullPath = Path.GetFullPath(path);
-
-        if (fullPath.StartsWith(TempFolderPath, StringComparison.Ordinal))
-        {
-            var relativePath = Path.GetRelativePath(TempFolderPath, fullPath);
-
-            return new ResourceKey($"{ProjectConstants.TempFolder}:{ToKeyPath(relativePath)}");
-        }
-
-        if (fullPath.StartsWith(ProjectFolderPath, StringComparison.Ordinal))
-        {
-            var relativePath = Path.GetRelativePath(ProjectFolderPath, fullPath);
-
-            return new ResourceKey(ToKeyPath(relativePath));
-        }
-
-        return Result<ResourceKey>.Fail($"'{path}' is outside the project");
+        return _rootHandlers.ResolveResourcePath(resource);
     }
 
     private Result<IResource> GetResource(ResourceKey resource)
@@ -757,28 +746,5 @@ public class DownloadServiceTests
         }
 
         return Result<IResource>.Ok(Substitute.For<IFileResource>());
-    }
-
-    // Mirrors the project root's resolver, which refuses a key that does not match an item's name on disk.
-    private Result<string> ResolveExactPath(ResourceKey resource)
-    {
-        var path = ResolvePath(resource).Value;
-
-        var pathOnDisk = _localFileSystem.Folders
-            .Concat(_localFileSystem.Files.Keys)
-            .FirstOrDefault(candidate => string.Equals(candidate, path, StringComparison.OrdinalIgnoreCase));
-        if (pathOnDisk is not null
-            && !string.Equals(pathOnDisk, path, StringComparison.Ordinal))
-        {
-            var error = new StoredNameMismatchError(resource, ResolveResource(pathOnDisk).Value);
-            return Result<string>.Fail().WithException(error);
-        }
-
-        return path;
-    }
-
-    private static string ToKeyPath(string relativePath)
-    {
-        return relativePath.Replace(Path.DirectorySeparatorChar, '/');
     }
 }

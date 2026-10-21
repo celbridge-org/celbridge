@@ -26,8 +26,8 @@ public sealed class TrashService : ITrashService
         _fileSystem = fileSystem;
     }
 
-    private IResourceRegistry ResourceRegistry =>
-        _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+    private IRootHandlerRegistry RootHandlers =>
+        _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
 
     private ISidecarService SidecarService =>
         _workspaceWrapper.WorkspaceService.ResourceService.Sidecars;
@@ -44,7 +44,7 @@ public sealed class TrashService : ITrashService
             return Result<TrashEntry>.Fail($"Only resources under the project root go to the trash: '{resource}'");
         }
 
-        var resolveResult = ResourceRegistry.ResolveResourcePath(resource);
+        var resolveResult = RootHandlers.ResolveResourcePath(resource);
         if (resolveResult.IsFailure)
         {
             return Result<TrashEntry>.Fail($"Failed to resolve path for resource: '{resource}'")
@@ -73,7 +73,7 @@ public sealed class TrashService : ITrashService
         }
 
         var trashId = Guid.NewGuid().ToString();
-        var relativePath = Path.GetRelativePath(ResourceRegistry.ProjectFolderPath, originalPath);
+        var relativePath = Path.GetRelativePath(_projectService.CurrentProject!.ProjectFolderPath, originalPath);
         var trashBasePath = Path.Combine(TrashFolderPath, trashId);
         var trashPath = Path.Combine(trashBasePath, relativePath);
 
@@ -120,7 +120,7 @@ public sealed class TrashService : ITrashService
         var sidecarKeyResult = SidecarService.GetSidecarKey(resource);
         if (sidecarKeyResult.IsSuccess)
         {
-            var sidecarPathResult = ResourceRegistry.ResolveResourcePath(sidecarKeyResult.Value);
+            var sidecarPathResult = RootHandlers.ResolveResourcePath(sidecarKeyResult.Value);
             if (sidecarPathResult.IsSuccess)
             {
                 var sidecarInfoResult = await _fileSystem.GetInfoAsync(sidecarPathResult.Value);
@@ -204,7 +204,7 @@ public sealed class TrashService : ITrashService
                     return RefuseLink(descendant.FullPath);
                 }
 
-                var keyResult = ResourceRegistry.GetResourceKey(descendant.FullPath);
+                var keyResult = RootHandlers.GetResourceKey(descendant.FullPath);
                 if (keyResult.IsFailure)
                 {
                     continue;

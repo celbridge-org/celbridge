@@ -4,6 +4,7 @@ using Celbridge.ProjectSettings.ViewModels;
 using Celbridge.Projects;
 using Celbridge.Projects.Services;
 using Celbridge.Resources;
+using Celbridge.Tests.FileSystem;
 using Celbridge.Workspace;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
@@ -16,6 +17,9 @@ namespace Celbridge.Tests.ProjectSettings;
 [TestFixture]
 public class PackagesSectionViewModelTests
 {
+    private static readonly string ProjectFolderPath =
+        Path.Combine(Path.GetTempPath(), "Celbridge", nameof(PackagesSectionViewModelTests));
+
     private IServiceProvider? _previousServiceProvider;
     private IPackageService _packageService = null!;
     private ProjectSettingsContext _context = null!;
@@ -36,12 +40,8 @@ public class PackagesSectionViewModelTests
         _packageService = Substitute.For<IPackageService>();
         _packageService.GetContributionIssues().Returns([]);
 
-        var resourceRegistry = Substitute.For<IResourceRegistry>();
-        resourceRegistry.GetResourceKey(Arg.Any<string>())
-            .Returns(Result<ResourceKey>.Ok(new ResourceKey("packages/acme-widget/package.toml")));
-
         var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(resourceRegistry);
+        resourceService.RootHandlers.Returns(TestRootHandlers.Create(ProjectFolderPath));
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.PackageService.Returns(_packageService);
@@ -126,7 +126,7 @@ public class PackagesSectionViewModelTests
             {
                 Name = name,
                 Origin = origin,
-                PackageFolder = Path.Combine(Path.GetTempPath(), name),
+                PackageFolder = Path.Combine(ProjectFolderPath, "packages", name),
                 PackageVersion = packageVersion
             }
         };

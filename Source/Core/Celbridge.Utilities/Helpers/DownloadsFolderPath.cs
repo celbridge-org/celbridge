@@ -48,11 +48,11 @@ public static class DownloadsFolderPath
     /// a file is at the path. Fails when the path does not match an existing folder's stored name, with a
     /// StoredNameMismatchError that gives the stored name.
     /// </summary>
-    public static Result<ResourceKey> Resolve(IResourceRegistry registry, ILocalFileSystem fileSystem, string path)
+    public static Result<ResourceKey> Resolve(IRootHandlerRegistry rootHandlerRegistry, ILocalFileSystem fileSystem, string path)
     {
         if (TryParse(path, out var folder))
         {
-            var locateResult = LocateFolder(registry, fileSystem, folder);
+            var locateResult = LocateFolder(rootHandlerRegistry, fileSystem, folder);
             if (locateResult.IsFailure)
             {
                 return Result<ResourceKey>.Fail().WithErrors(locateResult);
@@ -64,7 +64,7 @@ public static class DownloadsFolderPath
             }
         }
 
-        var locateDefaultResult = LocateFolder(registry, fileSystem, DefaultFolder);
+        var locateDefaultResult = LocateFolder(rootHandlerRegistry, fileSystem, DefaultFolder);
         if (locateDefaultResult.IsFailure)
         {
             return Result<ResourceKey>.Fail().WithErrors(locateDefaultResult);
@@ -75,9 +75,9 @@ public static class DownloadsFolderPath
 
     // Returns true when downloads can be saved to the folder: a folder is there, or nothing is there yet for the
     // first download to create. Returns false when a file is at the path, because no folder can be made there.
-    private static Result<bool> LocateFolder(IResourceRegistry registry, ILocalFileSystem fileSystem, ResourceKey folder)
+    private static Result<bool> LocateFolder(IRootHandlerRegistry rootHandlerRegistry, ILocalFileSystem fileSystem, ResourceKey folder)
     {
-        var resolveResult = registry.ResolveResourcePath(folder);
+        var resolveResult = rootHandlerRegistry.ResolveResourcePath(folder);
         if (resolveResult.IsFailure)
         {
             return Result<bool>.Fail($"Failed to resolve the downloads folder '{folder}'")

@@ -22,7 +22,6 @@ public class FileToolsReadImageTests
     ];
 
     private IApplicationServiceProvider _services = null!;
-    private IResourceRegistry _resourceRegistry = null!;
     private string _tempFolder = null!;
 
     [SetUp]
@@ -37,11 +36,8 @@ public class FileToolsReadImageTests
             Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_tempFolder);
 
-        _resourceRegistry = Substitute.For<IResourceRegistry>();
-        _resourceRegistry.ProjectFolderPath.Returns(_tempFolder);
-
         var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(_resourceRegistry);
+        resourceService.RootHandlers.Returns(TestRootHandlers.Create(_tempFolder));
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
@@ -73,8 +69,6 @@ public class FileToolsReadImageTests
     public async Task ReadImage_MissingFile_Fails()
     {
         var resourceKey = ResourceKey.Create("captures/missing.png");
-        var resourcePath = Path.Combine(_tempFolder, "captures", "missing.png");
-        StubResolve(resourceKey, resourcePath);
 
         var tools = new FileTools(_services);
         var result = await tools.ReadImage(resourceKey.ToString());
@@ -86,10 +80,9 @@ public class FileToolsReadImageTests
     [Test]
     public async Task ReadImage_UnsupportedExtension_Fails()
     {
-        var resourceKey = ResourceKey.Create("docs/notes.txt");
+        var resourceKey = ResourceKey.Create("notes.txt");
         var resourcePath = Path.Combine(_tempFolder, "notes.txt");
         File.WriteAllText(resourcePath, "not an image");
-        StubResolve(resourceKey, resourcePath);
 
         var tools = new FileTools(_services);
         var result = await tools.ReadImage(resourceKey.ToString());
@@ -104,12 +97,11 @@ public class FileToolsReadImageTests
     [Test]
     public async Task ReadImage_OversizeFile_Fails()
     {
-        var resourceKey = ResourceKey.Create("captures/big.jpg");
+        var resourceKey = ResourceKey.Create("big.jpg");
         var resourcePath = Path.Combine(_tempFolder, "big.jpg");
         // 6 MB exceeds the 5 MB inline cap.
         const int sixMegabytes = 6 * 1024 * 1024;
         File.WriteAllBytes(resourcePath, new byte[sixMegabytes]);
-        StubResolve(resourceKey, resourcePath);
 
         var tools = new FileTools(_services);
         var result = await tools.ReadImage(resourceKey.ToString());
@@ -133,10 +125,9 @@ public class FileToolsReadImageTests
     [Test]
     public async Task ReadImage_HappyPath_ReturnsImageAndMetadata()
     {
-        var resourceKey = ResourceKey.Create("captures/sample.jpg");
+        var resourceKey = ResourceKey.Create("sample.jpg");
         var resourcePath = Path.Combine(_tempFolder, "sample.jpg");
         File.WriteAllBytes(resourcePath, MinimalJpegBytes);
-        StubResolve(resourceKey, resourcePath);
 
         var tools = new FileTools(_services);
         var result = await tools.ReadImage(resourceKey.ToString());
@@ -148,16 +139,9 @@ public class FileToolsReadImageTests
 
         var metadataJson = result.Content.OfType<TextContentBlock>().Single().Text;
         var metadata = JsonDocument.Parse(metadataJson).RootElement;
-        metadata.GetProperty("resource").GetString().Should().Be("project:captures/sample.jpg");
+        metadata.GetProperty("resource").GetString().Should().Be("project:sample.jpg");
         metadata.GetProperty("mimeType").GetString().Should().Be("image/jpeg");
         metadata.GetProperty("sizeBytes").GetInt32().Should().Be(MinimalJpegBytes.Length);
-    }
-
-    private void StubResolve(ResourceKey resourceKey, string resourcePath)
-    {
-        _resourceRegistry
-            .ResolveResourcePath(resourceKey)
-            .Returns(Result<string>.Ok(resourcePath));
     }
 
     private static string GetText(CallToolResult result)

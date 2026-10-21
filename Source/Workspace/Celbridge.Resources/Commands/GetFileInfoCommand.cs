@@ -37,9 +37,10 @@ public class GetFileInfoCommand : CommandBase, IGetFileInfoCommand
     {
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ResourceService.Registry;
+        var rootHandlerRegistry = workspaceService.ResourceService.RootHandlers;
         var resourceFileSystem = workspaceService.ResourceService.FileSystem;
 
-        var resolveResult = resourceRegistry.ResolveResourcePath(Resource);
+        var resolveResult = rootHandlerRegistry.ResolveResourcePath(Resource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail($"Failed to resolve path for resource: '{Resource}'")

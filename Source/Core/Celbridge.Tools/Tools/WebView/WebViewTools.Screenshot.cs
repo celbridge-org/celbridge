@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Celbridge.Projects;
 using Celbridge.Settings;
 using Celbridge.WebHost;
 using ModelContextProtocol.Protocol;
@@ -47,7 +48,6 @@ public partial class WebViewTools
             resourceKey, saveTo, returnImage, format, quality, maxEdge, selector, settleMs, frame);
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
         // Resolve the save destination first when one was requested. Doing
         // this before the capture avoids wasting a screenshot when the
@@ -55,8 +55,8 @@ public partial class WebViewTools
         ResourceKey? fileResource = null;
         if (willSave)
         {
-            var projectFolderPath = resourceRegistry.ProjectFolderPath;
-            if (string.IsNullOrEmpty(projectFolderPath))
+            var projectService = GetRequiredService<IProjectService>();
+            if (projectService.CurrentProject is null)
             {
                 return ToolResponse.Error("No project is currently loaded. webview_screenshot requires an open project to resolve its save destination.");
             }

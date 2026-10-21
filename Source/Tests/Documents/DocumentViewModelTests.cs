@@ -18,7 +18,6 @@ public class DocumentViewModelTests
 {
     private IMessengerService _messengerService = null!;
     private IResourceFileSystem _resourceFileSystem = null!;
-    private IResourceRegistry _resourceRegistry = null!;
     private TestDocumentViewModel _vm = null!;
     private string _tempFolder = null!;
     private string _tempFilePath = null!;
@@ -35,15 +34,12 @@ public class DocumentViewModelTests
         _tempFilePath = Path.Combine(_tempFolder, "test.md");
         File.WriteAllText(_tempFilePath, string.Empty);
 
-        // Wire a real LocalResourceFileSystem over a substituted workspace hierarchy
-        // whose registry maps the test's resource key to the temp file path. Save
-        // and reload paths are exercised directly against the temp folder.
-        _resourceRegistry = Substitute.For<IResourceRegistry>();
-        _resourceRegistry.ProjectFolderPath.Returns(_tempFolder);
-        _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>()).Returns(Result<string>.Ok(_tempFilePath));
-
+        // Wire a real LocalResourceFileSystem over a substituted workspace hierarchy.
+        // The temp folder is the project folder, so the test's resource key resolves
+        // to the temp file. Save and reload paths are exercised directly against the
+        // temp folder.
         var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(_resourceRegistry);
+        resourceService.RootHandlers.Returns(TestRootHandlers.Create(_tempFolder));
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
@@ -106,13 +102,11 @@ public class DocumentViewModelTests
     [Test]
     public async Task LoadDocument_ReturnsFailure_WhenFileIsMissing()
     {
-        // Point the registry at a path that doesn't exist on disk so the
-        // gateway-routed read fails. Setting FilePath alone is not enough
-        // because the read goes through ResolveResourcePath(FileResource).
+        // Point the key at a missing file so the gateway-routed read fails. The
+        // read resolves FileResource, so setting FilePath alone is not enough.
         var missingPath = Path.Combine(_tempFolder, "nonexistent.md");
-        _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>())
-            .Returns(Result<string>.Ok(missingPath));
 
+        _vm.FileResource = new ResourceKey("nonexistent.md");
         _vm.FilePath = missingPath;
 
         var result = await _vm.LoadDocument();
@@ -147,25 +141,10 @@ public class DocumentViewModelTests
     [Test]
     public async Task SaveDocumentContent_ReturnsFailure_WhenWriterFails()
     {
-        var failingRegistry = Substitute.For<IResourceRegistry>();
-        failingRegistry.ResolveResourcePath(Arg.Any<ResourceKey>())
-            .Returns(Result<string>.Fail("simulated resolve failure"));
-
-        var failingResourceService = Substitute.For<IResourceService>();
-        failingResourceService.Registry.Returns(failingRegistry);
-
-        var failingWorkspaceService = Substitute.For<IWorkspaceService>();
-        failingWorkspaceService.ResourceService.Returns(failingResourceService);
-        failingResourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
-
-        var failingWrapper = Substitute.For<IWorkspaceWrapper>();
-        failingWrapper.WorkspaceService.Returns(failingWorkspaceService);
-
-        var failingFileSystem = new LocalResourceFileSystem(Substitute.For<ILogger<LocalResourceFileSystem>>(), _messengerService, failingWrapper, TestFileSystem.CreateLocal());
-
-        var failingVm = new TestDocumentViewModel(failingFileSystem)
+        // The root is unregistered, so resolving the key fails.
+        var failingVm = new TestDocumentViewModel(_resourceFileSystem)
         {
-            FileResource = new ResourceKey("test.md"),
+            FileResource = new ResourceKey("unregistered:test.md"),
             FilePath = _tempFilePath
         };
 
@@ -300,7 +279,7 @@ public class DocumentViewModelTests
         // past this check and rely on the watcher's subsequent event.
         var externalContent = "external content that overrode our save";
         var savingVm = new ExternalWriteDocumentViewModel(_resourceFileSystem, _tempFilePath, externalContent);
-        savingVm.FileResource = new ResourceKey("interleave.md");
+        savingVm.FileResource = new ResourceKey("test.md");
         savingVm.FilePath = _tempFilePath;
 
         var reloadRequested = false;

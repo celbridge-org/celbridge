@@ -3,6 +3,7 @@ using Celbridge.DataTransfer;
 using Celbridge.Dialog;
 using Celbridge.Explorer.Menu;
 using Celbridge.Explorer.Menu.Options;
+using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
@@ -20,6 +21,7 @@ public class ExportArchiveMenuOptionTests
     private IStringLocalizer _stringLocalizer = null!;
     private ICommandService _commandService = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
+    private IProjectService _projectService = null!;
     private IFilePickerService _filePickerService = null!;
     private IExportArchiveCommand _exportCommand = null!;
 
@@ -29,7 +31,6 @@ public class ExportArchiveMenuOptionTests
         _projectFolder = Substitute.For<IFolderResource>();
 
         var resourceRegistry = Substitute.For<IResourceRegistry>();
-        resourceRegistry.ProjectFolderPath.Returns(Path.Combine(Path.GetTempPath(), "Acme"));
         resourceRegistry.GetResourceKey(_projectFolder).Returns(ResourceKey.Empty);
 
         var resourceService = Substitute.For<IResourceService>();
@@ -40,6 +41,12 @@ public class ExportArchiveMenuOptionTests
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
+
+        var project = Substitute.For<IProject>();
+        project.ProjectFolderPath.Returns(Path.Combine(Path.GetTempPath(), "Acme"));
+
+        _projectService = Substitute.For<IProjectService>();
+        _projectService.CurrentProject.Returns(project);
 
         _stringLocalizer = Substitute.For<IStringLocalizer>();
         _stringLocalizer[Arg.Any<string>()].Returns(callInfo =>
@@ -115,6 +122,7 @@ public class ExportArchiveMenuOptionTests
             _stringLocalizer,
             _commandService,
             _workspaceWrapper,
+            _projectService,
             _filePickerService,
             Substitute.For<ILogger<ExportArchiveMenuOption>>());
     }

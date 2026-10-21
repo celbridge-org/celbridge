@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text.RegularExpressions;
 using Celbridge.Automation;
 using Celbridge.Logging;
+using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
@@ -44,6 +45,7 @@ public class SearchService : ISearchService, IDisposable
 
     private readonly ILogger<SearchService> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IProjectService _projectService;
     private readonly ITextBinarySniffer _textBinarySniffer;
     private readonly ISpotlightService _spotlightService;
     private readonly IAutomationService _automationService;
@@ -66,13 +68,14 @@ public class SearchService : ISearchService, IDisposable
     private bool _disposed;
 
     private IResourceFileSystem ResourceFileSystem => _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
-    private IResourceRegistry ResourceRegistry => _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+    private IRootHandlerRegistry RootHandlers => _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
     private IResourceWalker ResourceWalker => _workspaceWrapper.WorkspaceService.ResourceService.Walker;
     private IWorkspacePropertyBag PropertyBag => _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag!;
 
     public SearchService(
         ILogger<SearchService> logger,
         IWorkspaceWrapper workspaceWrapper,
+        IProjectService projectService,
         ITextBinarySniffer textBinarySniffer,
         ISpotlightService spotlightService,
         IAutomationService automationService)
@@ -82,6 +85,7 @@ public class SearchService : ISearchService, IDisposable
 
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;
+        _projectService = projectService;
         _textBinarySniffer = textBinarySniffer;
         _spotlightService = spotlightService;
         _automationService = automationService;
@@ -164,7 +168,7 @@ public class SearchService : ISearchService, IDisposable
             cancellationToken, _workspaceToken);
         cancellationToken = searchCancellation.Token;
 
-        var projectFolder = ResourceRegistry.ProjectFolderPath;
+        var projectFolder = _projectService.CurrentProject?.ProjectFolderPath;
 
         if (string.IsNullOrEmpty(projectFolder))
         {
@@ -335,7 +339,7 @@ public class SearchService : ISearchService, IDisposable
             return null;
         }
 
-        var resolveResult = ResourceRegistry.ResolveResourcePath(scopeKey);
+        var resolveResult = RootHandlers.ResolveResourcePath(scopeKey);
         if (resolveResult.IsFailure)
         {
             return null;
@@ -469,7 +473,7 @@ public class SearchService : ISearchService, IDisposable
             return new ReplaceResult(false, 0);
         }
 
-        var resolveReplaceResult = ResourceRegistry.ResolveResourcePath(resource);
+        var resolveReplaceResult = RootHandlers.ResolveResourcePath(resource);
         if (resolveReplaceResult.IsFailure)
         {
             return new ReplaceResult(false, 0);
@@ -543,7 +547,7 @@ public class SearchService : ISearchService, IDisposable
             return new ReplaceMatchResult(false);
         }
 
-        var resolveMatchResult = ResourceRegistry.ResolveResourcePath(resource);
+        var resolveMatchResult = RootHandlers.ResolveResourcePath(resource);
         if (resolveMatchResult.IsFailure)
         {
             return new ReplaceMatchResult(false);

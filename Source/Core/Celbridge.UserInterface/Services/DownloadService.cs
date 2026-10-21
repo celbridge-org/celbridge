@@ -92,15 +92,15 @@ public sealed class DownloadService : IDownloadService
             return Result<string>.Fail("No workspace is loaded");
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var folderResult = ResolveDownloadsFolder(resourceRegistry);
+        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
+        var folderResult = ResolveDownloadsFolder(rootHandlerRegistry);
         if (folderResult.IsFailure)
         {
             return Result<string>.Fail().WithErrors(folderResult);
         }
         var downloadsFolder = folderResult.Value;
 
-        var resolveResult = resourceRegistry.ResolveResourcePath(downloadsFolder);
+        var resolveResult = rootHandlerRegistry.ResolveResourcePath(downloadsFolder);
         if (resolveResult.IsFailure)
         {
             return Result<string>.Fail($"Failed to resolve the downloads folder '{downloadsFolder}'")
@@ -135,13 +135,13 @@ public sealed class DownloadService : IDownloadService
         }
 
         var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
-        var resourceRegistry = resourceService.Registry;
+        var rootHandlerRegistry = resourceService.RootHandlers;
         var resourceFileSystem = resourceService.FileSystem;
 
         await _beginGate.WaitAsync();
         try
         {
-            var reserveResult = await ReserveDestinationAsync(resourceRegistry, fileName);
+            var reserveResult = await ReserveDestinationAsync(rootHandlerRegistry, fileName);
             if (reserveResult.IsFailure)
             {
                 RecordFailure(fileName, sourceUrl, DescribeUnavailableDestination(reserveResult));
@@ -180,7 +180,7 @@ public sealed class DownloadService : IDownloadService
             var stagingName = $"{Path.GetFileNameWithoutExtension(Path.GetRandomFileName())}{Path.GetExtension(fileName)}";
             var stagingResource = new ResourceKey($"{ProjectConstants.TempFolder}:{ProjectConstants.DownloadsFolder}/{stagingName}");
 
-            var resolveStagingResult = resourceRegistry.ResolveResourcePath(stagingResource);
+            var resolveStagingResult = rootHandlerRegistry.ResolveResourcePath(stagingResource);
             if (resolveStagingResult.IsFailure)
             {
                 RecordFailure(fileName, sourceUrl, GetString("Downloads_DestinationUnavailable"));
@@ -412,18 +412,18 @@ public sealed class DownloadService : IDownloadService
 
     // Downloads land in the folder the project names, or downloads/ when it names none, so the project
     // root stays uncluttered when a session downloads several files.
-    private Result<ResourceKey> ResolveDownloadsFolder(IResourceRegistry resourceRegistry)
+    private Result<ResourceKey> ResolveDownloadsFolder(IRootHandlerRegistry rootHandlerRegistry)
     {
         var configuredFolder = _projectService.CurrentProject?.Config.Resources.DownloadsFolder ?? string.Empty;
 
-        return DownloadsFolderPath.Resolve(resourceRegistry, _localFileSystem, configuredFolder);
+        return DownloadsFolderPath.Resolve(rootHandlerRegistry, _localFileSystem, configuredFolder);
     }
 
     // Appends " (N)" before the extension until the destination is free: absent from disk, and not
     // already promised to another download.
-    private async Task<Result<ResourceKey>> ReserveDestinationAsync(IResourceRegistry resourceRegistry, string fileName)
+    private async Task<Result<ResourceKey>> ReserveDestinationAsync(IRootHandlerRegistry rootHandlerRegistry, string fileName)
     {
-        var folderResult = ResolveDownloadsFolder(resourceRegistry);
+        var folderResult = ResolveDownloadsFolder(rootHandlerRegistry);
         if (folderResult.IsFailure)
         {
             return Result<ResourceKey>.Fail().WithErrors(folderResult);
@@ -435,7 +435,7 @@ public sealed class DownloadService : IDownloadService
             return Result<ResourceKey>.Fail($"'{fileName}' is not a valid download file name");
         }
 
-        var resolveResult = resourceRegistry.ResolveResourcePath(requestedResource);
+        var resolveResult = rootHandlerRegistry.ResolveResourcePath(requestedResource);
         if (resolveResult.IsFailure)
         {
             return Result<ResourceKey>.Fail($"Failed to resolve the download destination '{requestedResource}'")
@@ -455,7 +455,7 @@ public sealed class DownloadService : IDownloadService
             {
                 var candidatePath = Path.Combine(folderPath, candidateName);
 
-                var getKeyResult = resourceRegistry.GetResourceKey(candidatePath);
+                var getKeyResult = rootHandlerRegistry.GetResourceKey(candidatePath);
                 if (getKeyResult.IsFailure)
                 {
                     return Result<ResourceKey>.Fail($"Failed to resolve the download destination '{candidatePath}'")

@@ -1,17 +1,14 @@
 using Celbridge.FileSystem.Services;
 using Celbridge.Messaging;
-using Celbridge.Messaging.Services;
 using Celbridge.Packages;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Services;
 using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
-using Celbridge.Resources.Services.Roots;
 using Celbridge.Settings;
 using Celbridge.Tests.FileSystem;
 using Celbridge.Tests.Migration.TestHelpers;
-using Celbridge.Tests.Resources;
 using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Packages;
@@ -26,7 +23,6 @@ public class PackageServiceTests
     private IMessengerService _messengerService = null!;
     private IProjectLoadReporter _loadReporter = null!;
     private IconService _iconService = null!;
-    private IResourceRegistry _resourceRegistry = null!;
     private IResourceService _resourceService = null!;
     private IProjectService _projectService = null!;
 
@@ -63,27 +59,8 @@ public class PackageServiceTests
                     ProjectConfigReconciler.Reconcile(config, callInfo.Arg<IReadOnlyList<EditorContribution>>()));
             });
 
-        _resourceRegistry = Substitute.For<IResourceRegistry>();
-        _resourceRegistry.ProjectFolderPath.Returns(_tempProjectFolder);
-        _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>(), Arg.Any<bool>()).Returns(callInfo =>
-        {
-            var key = callInfo.Arg<ResourceKey>();
-            return Result<string>.Ok(Path.Combine(_tempProjectFolder, key.Path.Replace('/', Path.DirectorySeparatorChar)));
-        });
-        _resourceRegistry.GetResourceKey(Arg.Any<string>()).Returns(callInfo =>
-        {
-            var path = callInfo.Arg<string>();
-            if (!path.StartsWith(_tempProjectFolder, StringComparison.OrdinalIgnoreCase))
-            {
-                return Result<ResourceKey>.Fail($"Path '{path}' is not under the project root");
-            }
-            var relative = Path.GetRelativePath(_tempProjectFolder, path)
-                .Replace(Path.DirectorySeparatorChar, '/');
-            return Result<ResourceKey>.Ok(new ResourceKey(relative));
-        });
-
         var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(_resourceRegistry);
+        resourceService.RootHandlers.Returns(TestRootHandlers.Create(_tempProjectFolder));
         _resourceService = resourceService;
 
         // Mirror the real SidecarService trailing-extension rule so package
@@ -789,7 +766,6 @@ public class PackageServiceTests
     public async Task RegisterPackages_PackagesFolderInAnotherCase_IsReported()
     {
         CreatePackageAt(Path.Combine("Packages", "upper"), "upper-tool", "Upper", ".upr");
-        UseRealResourceRegistry();
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
@@ -807,7 +783,6 @@ public class PackageServiceTests
     {
         CreatePackageAt(Path.Combine("vendor", "listed"), "listed-tool", "Listed", ".lst");
         SetPackageFolders("VENDOR");
-        UseRealResourceRegistry();
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
@@ -879,12 +854,7 @@ public class PackageServiceTests
 
             // Repoint the workspace-bound gateway at the second folder so the
             // second discovery probes secondFolder/packages instead of the original.
-            _resourceRegistry.ProjectFolderPath.Returns(secondFolder);
-            _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>(), Arg.Any<bool>()).Returns(callInfo =>
-            {
-                var key = callInfo.Arg<ResourceKey>();
-                return Result<string>.Ok(Path.Combine(secondFolder, key.Path.Replace('/', Path.DirectorySeparatorChar)));
-            });
+            _resourceService.RootHandlers.Returns(TestRootHandlers.Create(secondFolder));
 
             await _service.RegisterPackagesAsync(secondFolder);
             _service.GetAllEditors().Should().BeEmpty();
@@ -1205,23 +1175,6 @@ public class PackageServiceTests
         };
 
         UseProjectConfig(config);
-    }
-
-    /// <summary>
-    /// Replaces the stubbed resource registry with a real one, which checks each key's case against the disk.
-    /// The real registry's tree stays empty, the same as when the project loads and discovers its packages.
-    /// </summary>
-    private void UseRealResourceRegistry()
-    {
-        var resourceRegistry = new ResourceRegistry(
-            Substitute.For<ILogger<ResourceRegistry>>(),
-            new MessengerService(),
-            ProjectTreeBuilderTestHelper.Build(_tempProjectFolder, _iconService),
-            ResourceClassifierTestHelper.BuildEmptyStub(),
-            new RootHandlerRegistry());
-        resourceRegistry.InitializeProjectRoot(_tempProjectFolder);
-
-        _resourceService.Registry.Returns(resourceRegistry);
     }
 
     private void UseProjectConfig(ProjectConfig config)

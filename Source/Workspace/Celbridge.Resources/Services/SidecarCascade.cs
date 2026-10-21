@@ -36,9 +36,9 @@ internal sealed class SidecarCascade
             return SidecarOutcome.NotPresent;
         }
 
-        var registry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
 
-        var resolveSourceResult = registry.ResolveResourcePath(sourceSidecar.Value);
+        var resolveSourceResult = rootHandlerRegistry.ResolveResourcePath(sourceSidecar.Value);
         if (resolveSourceResult.IsFailure)
         {
             return SidecarOutcome.NotPresent;
@@ -60,7 +60,7 @@ internal sealed class SidecarCascade
         }
         else
         {
-            var resolveDestResult = registry.ResolveResourcePath(destSidecar.Value);
+            var resolveDestResult = rootHandlerRegistry.ResolveResourcePath(destSidecar.Value);
             if (resolveDestResult.IsFailure)
             {
                 _logger.LogWarning($"Failed to resolve sidecar destination '{destSidecar}' for move from '{source}'. Sidecar bytes remain at the source path.");
@@ -95,7 +95,6 @@ internal sealed class SidecarCascade
             return SidecarOutcome.Failed;
         }
 
-        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
         ChangeRecorder.RecordRemoved(rootHandlerRegistry, sourceSidecar.Value, sourceSidecarPath);
         ChangeRecorder.RecordCreated(rootHandlerRegistry, destSidecar.Value, destSidecarPath);
 
@@ -112,9 +111,9 @@ internal sealed class SidecarCascade
             return SidecarOutcome.NotPresent;
         }
 
-        var registry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
 
-        var resolveSourceResult = registry.ResolveResourcePath(sourceSidecar.Value);
+        var resolveSourceResult = rootHandlerRegistry.ResolveResourcePath(sourceSidecar.Value);
         if (resolveSourceResult.IsFailure)
         {
             return SidecarOutcome.NotPresent;
@@ -127,7 +126,7 @@ internal sealed class SidecarCascade
             return SidecarOutcome.NotPresent;
         }
 
-        var resolveDestResult = registry.ResolveResourcePath(destSidecar.Value);
+        var resolveDestResult = rootHandlerRegistry.ResolveResourcePath(destSidecar.Value);
         if (resolveDestResult.IsFailure)
         {
             _logger.LogWarning($"Failed to resolve sidecar destination '{destSidecar}' for copy from '{source}'.");
@@ -161,7 +160,6 @@ internal sealed class SidecarCascade
             return SidecarOutcome.Failed;
         }
 
-        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
         ChangeRecorder.RecordCreated(rootHandlerRegistry, destSidecar.Value, destSidecarPath);
 
         return SidecarOutcome.Cascaded;
@@ -175,9 +173,9 @@ internal sealed class SidecarCascade
             return SidecarOutcome.NotPresent;
         }
 
-        var registry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
 
-        var resolveResult = registry.ResolveResourcePath(sourceSidecar.Value);
+        var resolveResult = rootHandlerRegistry.ResolveResourcePath(sourceSidecar.Value);
         if (resolveResult.IsFailure)
         {
             return SidecarOutcome.NotPresent;
@@ -197,7 +195,6 @@ internal sealed class SidecarCascade
             return SidecarOutcome.Failed;
         }
 
-        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
         ChangeRecorder.RecordRemoved(rootHandlerRegistry, sourceSidecar.Value, sidecarPath);
 
         return SidecarOutcome.Cascaded;

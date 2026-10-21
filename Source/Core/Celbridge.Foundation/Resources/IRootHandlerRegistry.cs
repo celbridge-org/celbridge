@@ -1,10 +1,8 @@
 namespace Celbridge.Resources;
 
 /// <summary>
-/// Cross-root dispatch over a registered set of resource root handlers. Owns
-/// the project, temp, and logs roots once they have been registered; resolves
-/// resource keys to absolute paths and vice versa via longest-prefix-wins
-/// matching across the backing locations.
+/// Dispatches across the registered resource root handlers. Every mapping between
+/// resource keys and absolute paths goes through this registry.
 /// </summary>
 public interface IRootHandlerRegistry
 {

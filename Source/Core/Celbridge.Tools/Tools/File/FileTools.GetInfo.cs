@@ -39,9 +39,9 @@ public partial class FileTools
             return ToolResponse.InvalidResourceKey(resource);
         }
 
-        // Route through the command queue so the snapshot observes state after all
-        // previously enqueued commands have run. The command resolves the registry
-        // path and captures disk metadata on the command thread.
+        // Route through the command queue so the snapshot sees the state after every
+        // command queued ahead of it has run. The command resolves the key's path
+        // and captures disk metadata on the command thread.
         var getInfoResult = await ExecuteCommandAsync<IGetFileInfoCommand, FileInfoSnapshot>(
             command => command.Resource = resourceKey);
         if (getInfoResult.IsFailure)

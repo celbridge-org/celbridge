@@ -26,34 +26,29 @@ public class WorkshopToolTests
         _tempFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(WorkshopToolTests));
         Directory.CreateDirectory(_tempFolder);
 
-        // Resource keys map onto the temp folder, and the resource file system reads the real disk through the
-        // same mapping.
-        var resourceRegistry = Substitute.For<IResourceRegistry>();
-        resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>(), Arg.Any<bool>()).Returns(callInfo =>
-        {
-            var resource = callInfo.Arg<ResourceKey>();
-            return Result<string>.Ok(ResolvePath(resource));
-        });
-        resourceRegistry.GetResourceKey(Arg.Any<string>()).Returns(callInfo =>
-        {
-            var path = callInfo.Arg<string>();
-            var relativePath = Path.GetRelativePath(_tempFolder, path).Replace(Path.DirectorySeparatorChar, '/');
-            return Result<ResourceKey>.Ok(new ResourceKey(relativePath));
-        });
+        // The temp folder is the project folder. The substitute resource file system resolves each key through the
+        // project root's real handler, and reads the real disk.
+        var rootHandlers = TestRootHandlers.Create(_tempFolder);
 
         var localFileSystem = TestFileSystem.CreateLocal();
         var resourceFileSystem = Substitute.For<IResourceFileSystem>();
         resourceFileSystem.GetInfoAsync(Arg.Any<ResourceKey>()).Returns(callInfo =>
         {
             var resource = callInfo.Arg<ResourceKey>();
-            return localFileSystem.GetInfoAsync(ResolvePath(resource));
+            var resolveResult = rootHandlers.ResolveResourcePath(resource);
+            if (resolveResult.IsFailure)
+            {
+                return Task.FromResult(Result<StorageItemInfo>.Fail(resolveResult.FirstErrorMessage));
+            }
+
+            return localFileSystem.GetInfoAsync(resolveResult.Value);
         });
 
         var resourceOperations = Substitute.For<IResourceOperationService>();
         resourceOperations.CanCreateResource(Arg.Any<ResourceKey>(), Arg.Any<bool>()).Returns(Celbridge.Core.Result.Ok());
 
         var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(resourceRegistry);
+        resourceService.RootHandlers.Returns(rootHandlers);
         resourceService.FileSystem.Returns(resourceFileSystem);
         resourceService.Operations.Returns(resourceOperations);
 
@@ -156,11 +151,6 @@ public class WorkshopToolTests
 
         // The install passed the duplicate check and stopped at the workshop lookup instead.
         TextOf(result).Should().Be("Package 'acme-widget' was not found on the workshop.");
-    }
-
-    private string ResolvePath(ResourceKey resource)
-    {
-        return Path.Combine(_tempFolder, resource.Path.Replace('/', Path.DirectorySeparatorChar));
     }
 
     // Writes a manifest for a package in packages/ under the temp folder and returns the package folder.

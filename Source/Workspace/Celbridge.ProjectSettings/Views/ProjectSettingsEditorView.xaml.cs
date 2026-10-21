@@ -155,7 +155,7 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
         await Task.CompletedTask;
 
         // Existence is already checked by the documents service before the view is created, and nothing
-        // here resolves the resource through the registry.
+        // here resolves the resource to a path.
         FileResource = fileResource;
         ViewModel.FileResource = fileResource;
 

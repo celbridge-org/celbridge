@@ -1,6 +1,5 @@
 using Celbridge.Logging;
 using Celbridge.Resources.Helpers;
-using Celbridge.Resources.Services.Roots;
 
 namespace Celbridge.Resources.Services;
 
@@ -11,19 +10,6 @@ public class ResourceRegistry : IResourceRegistry
     private readonly IProjectTreeBuilder _projectTreeBuilder;
     private readonly IResourceClassifier _resourceClassifier;
     private readonly RootHandlerRegistry _rootHandlerRegistry;
-
-    private string _projectFolderPath = string.Empty;
-
-    public string ProjectFolderPath => _projectFolderPath;
-
-    public void InitializeProjectRoot(string projectFolderPath)
-    {
-        Guard.IsNotNullOrEmpty(projectFolderPath);
-
-        _projectFolderPath = projectFolderPath;
-        _rootHandlerRegistry.RegisterRootHandler(
-            new ProjectRootHandler(projectFolderPath));
-    }
 
     private FolderResource _projectFolder = new FolderResource(string.Empty, null);
 
@@ -51,22 +37,6 @@ public class ResourceRegistry : IResourceRegistry
     public List<ResourceKey> GetResourceKeys(IEnumerable<IResource> resources)
     {
         return resources.Select(GetResourceKey).ToList();
-    }
-
-    public Result<ResourceKey> GetResourceKey(string resourcePath)
-    {
-        return _rootHandlerRegistry.GetResourceKey(resourcePath);
-    }
-
-    public Result<string> ResolveResourcePath(IResource resource)
-    {
-        var resourceKey = GetResourceKey(resource);
-        return ResolveResourcePath(resourceKey);
-    }
-
-    public Result<string> ResolveResourcePath(ResourceKey resource, bool validateCase = true)
-    {
-        return _rootHandlerRegistry.ResolveResourcePath(resource);
     }
 
     public Result<IResource> GetResource(ResourceKey resource)

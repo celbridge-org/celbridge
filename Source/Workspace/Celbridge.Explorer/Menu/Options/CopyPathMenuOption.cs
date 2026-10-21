@@ -44,8 +44,9 @@ public class CopyPathMenuOption : IMenuOption<ExplorerMenuContext>
     {
         var target = context.ClickedResource ?? context.ProjectFolder;
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var resolveResult = resourceRegistry.ResolveResourcePath(target);
+        var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
+        var targetKey = resourceService.Registry.GetResourceKey(target);
+        var resolveResult = resourceService.RootHandlers.ResolveResourcePath(targetKey);
         if (resolveResult.IsFailure)
         {
             return;

@@ -6,6 +6,7 @@ using Celbridge.Explorer.Helpers;
 using Celbridge.Explorer.Models;
 using Celbridge.Logging;
 using Celbridge.Platform;
+using Celbridge.Projects;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -24,6 +25,7 @@ public partial class ResourceTreeViewModel : ObservableObject
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IPlatformInfo _platformInfo;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IProjectService _projectService;
     private readonly IResourceRegistry _resourceRegistry;
     private readonly IFolderStateService _folderStateService;
     private readonly IDataTransferService _dataTransferService;
@@ -76,7 +78,8 @@ public partial class ResourceTreeViewModel : ObservableObject
         ILogger<ResourceTreeViewModel> logger,
         IMessengerService messengerService,
         IAutomationService automationService,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        IProjectService projectService)
     {
         _logger = logger;
         _messengerService = messengerService;
@@ -84,6 +87,7 @@ public partial class ResourceTreeViewModel : ObservableObject
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
         _workspaceWrapper = workspaceWrapper;
+        _projectService = projectService;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
         _folderStateService = workspaceWrapper.WorkspaceService.ExplorerService.FolderStateService;
         _dataTransferService = workspaceWrapper.WorkspaceService.DataTransferService;
@@ -258,7 +262,7 @@ public partial class ResourceTreeViewModel : ObservableObject
 
         // Add the project folder as the first item (always expanded, never collapsible)
         var hasChildren = projectFolder.Children.Count > 0;
-        var projectName = Path.GetFileName(_resourceRegistry.ProjectFolderPath);
+        var projectName = Path.GetFileName(_projectService.CurrentProject!.ProjectFolderPath);
         string fileManagerName = _stringLocalizer.GetString(_platformInfo.FileManagerNameStringKey);
         var projectFolderTooltip = _stringLocalizer.GetString("ResourceTree_DoubleClickToOpen", fileManagerName);
         var projectFolderItem = new ResourceViewItem(

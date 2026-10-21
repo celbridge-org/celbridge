@@ -1,14 +1,13 @@
 using Celbridge.Automation;
 using Celbridge.FileSystem.Services;
 using Celbridge.Messaging.Services;
+using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
 using Celbridge.Search.Services;
 using Celbridge.Tests.FileSystem;
 using Celbridge.Tests.Packages;
 using Celbridge.Tests.Migration.TestHelpers;
-using Celbridge.Tests.Resources;
-using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Search;
@@ -31,18 +30,9 @@ public class SearchServiceTests
         Directory.CreateDirectory(_tempFolder);
 
         var messengerService = new MessengerService();
-        var rootHandlerRegistry = new RootHandlerRegistry();
-        var resourceRegistry = new ResourceRegistry(
-            Substitute.For<ILogger<ResourceRegistry>>(),
-            messengerService,
-            ProjectTreeBuilderTestHelper.Build(_tempFolder, new IconService()),
-            ResourceClassifierTestHelper.BuildClassifier(),
-            rootHandlerRegistry);
-        resourceRegistry.InitializeProjectRoot(_tempFolder);
 
         var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(resourceRegistry);
-        resourceService.RootHandlers.Returns(rootHandlerRegistry);
+        resourceService.RootHandlers.Returns(TestRootHandlers.Create(_tempFolder));
         resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
 
         var workspaceService = Substitute.For<IWorkspaceService>();
@@ -67,9 +57,15 @@ public class SearchServiceTests
 
         _automationService = Substitute.For<IAutomationService>();
 
+        var project = Substitute.For<IProject>();
+        project.ProjectFolderPath.Returns(_tempFolder);
+        var projectService = Substitute.For<IProjectService>();
+        projectService.CurrentProject.Returns(project);
+
         _searchService = new SearchService(
             Substitute.For<ILogger<SearchService>>(),
             _workspaceWrapper,
+            projectService,
             TestFileTypeCatalog.CreateSniffer(new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>())),
             Substitute.For<Celbridge.UserInterface.Services.ISpotlightService>(),
             _automationService);

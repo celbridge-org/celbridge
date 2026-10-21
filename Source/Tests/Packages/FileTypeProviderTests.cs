@@ -62,33 +62,8 @@ public class PackageServiceDocumentTypeTests
         var logger = Substitute.For<ILogger<PackageRegistry>>();
         var messengerService = Substitute.For<IMessengerService>();
 
-        var resourceRegistry = Substitute.For<IResourceRegistry>();
-        resourceRegistry.ProjectFolderPath.Returns(_tempProjectFolder);
-        resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>()).Returns(callInfo =>
-        {
-            var key = callInfo.Arg<ResourceKey>();
-            return Result<string>.Ok(Path.Combine(_tempProjectFolder, key.Path.Replace('/', Path.DirectorySeparatorChar)));
-        });
-        // Discovery resolves the package folders through the two-argument overload too.
-        resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>(), Arg.Any<bool>()).Returns(callInfo =>
-        {
-            var key = callInfo.Arg<ResourceKey>();
-            return Result<string>.Ok(Path.Combine(_tempProjectFolder, key.Path.Replace('/', Path.DirectorySeparatorChar)));
-        });
-        resourceRegistry.GetResourceKey(Arg.Any<string>()).Returns(callInfo =>
-        {
-            var path = callInfo.Arg<string>();
-            if (!path.StartsWith(_tempProjectFolder, StringComparison.OrdinalIgnoreCase))
-            {
-                return Result<ResourceKey>.Fail($"Path '{path}' is not under the project root");
-            }
-            var relative = Path.GetRelativePath(_tempProjectFolder, path)
-                .Replace(Path.DirectorySeparatorChar, '/');
-            return Result<ResourceKey>.Ok(new ResourceKey(relative));
-        });
-
         var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(resourceRegistry);
+        resourceService.RootHandlers.Returns(TestRootHandlers.Create(_tempProjectFolder));
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);

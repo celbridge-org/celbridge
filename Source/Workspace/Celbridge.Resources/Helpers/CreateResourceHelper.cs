@@ -95,7 +95,7 @@ public class CreateResourceHelper
 
         // The template service still consumes a path to discriminate by file extension. The gateway write
         // takes the resource key.
-        var destPathResult = _workspaceWrapper.WorkspaceService.ResourceService.Registry.ResolveResourcePath(destResource);
+        var destPathResult = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers.ResolveResourcePath(destResource);
         if (destPathResult.IsFailure)
         {
             return Result.Fail($"Failed to resolve path for resource: '{destResource}'")

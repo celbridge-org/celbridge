@@ -1,7 +1,6 @@
 using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
-using Celbridge.Resources.Services.Roots;
 using Celbridge.Tests.FileSystem;
 
 namespace Celbridge.Tests.Utilities;
@@ -15,7 +14,7 @@ namespace Celbridge.Tests.Utilities;
 [TestFixture]
 public class DownloadsFolderPathTests
 {
-    private IResourceRegistry _registry = null!;
+    private IRootHandlerRegistry _rootHandlers = null!;
     private ILocalFileSystem _fileSystem = null!;
     private string _projectFolderPath = null!;
 
@@ -26,13 +25,7 @@ public class DownloadsFolderPathTests
         _fileSystem = TestFileSystem.CreateLocal();
         Directory.CreateDirectory(_projectFolderPath);
 
-        // The project root's real resolver, so a key that does not match a name on disk is refused as in the app.
-        var rootHandlers = new RootHandlerRegistry();
-        rootHandlers.RegisterRootHandler(new ProjectRootHandler(_projectFolderPath));
-
-        _registry = Substitute.For<IResourceRegistry>();
-        _registry.ResolveResourcePath(Arg.Any<ResourceKey>(), Arg.Any<bool>())
-            .Returns(callInfo => rootHandlers.ResolveResourcePath(callInfo.Arg<ResourceKey>()));
+        _rootHandlers = TestRootHandlers.Create(_projectFolderPath);
     }
 
     [TearDown]
@@ -123,7 +116,7 @@ public class DownloadsFolderPathTests
     {
         Directory.CreateDirectory(ResolvePathOnDisk("assets/incoming"));
 
-        var folderResult = DownloadsFolderPath.Resolve(_registry, _fileSystem, "assets/incoming");
+        var folderResult = DownloadsFolderPath.Resolve(_rootHandlers, _fileSystem, "assets/incoming");
 
         folderResult.IsSuccess.Should().BeTrue();
         folderResult.Value.Should().Be(new ResourceKey("assets/incoming"));
@@ -132,7 +125,7 @@ public class DownloadsFolderPathTests
     [Test]
     public void AFolderTheProjectHasNotMade_IsWhereDownloadsGo()
     {
-        var folderResult = DownloadsFolderPath.Resolve(_registry, _fileSystem, "assets/incoming");
+        var folderResult = DownloadsFolderPath.Resolve(_rootHandlers, _fileSystem, "assets/incoming");
 
         folderResult.IsSuccess.Should().BeTrue();
         folderResult.Value.Should().Be(new ResourceKey("assets/incoming"));
@@ -144,7 +137,7 @@ public class DownloadsFolderPathTests
     {
         Directory.CreateDirectory(ResolvePathOnDisk("Incoming"));
 
-        var folderResult = DownloadsFolderPath.Resolve(_registry, _fileSystem, "incoming");
+        var folderResult = DownloadsFolderPath.Resolve(_rootHandlers, _fileSystem, "incoming");
 
         folderResult.IsFailure.Should().BeTrue();
         var mismatch = folderResult.FirstException.Should().BeOfType<StoredNameMismatchError>().Subject;
@@ -157,7 +150,7 @@ public class DownloadsFolderPathTests
     {
         File.WriteAllText(ResolvePathOnDisk("incoming"), "a file, not a folder");
 
-        var folderResult = DownloadsFolderPath.Resolve(_registry, _fileSystem, "incoming");
+        var folderResult = DownloadsFolderPath.Resolve(_rootHandlers, _fileSystem, "incoming");
 
         folderResult.IsSuccess.Should().BeTrue();
         folderResult.Value.Should().Be(DownloadsFolderPath.DefaultFolder);
@@ -171,7 +164,7 @@ public class DownloadsFolderPathTests
     {
         File.WriteAllText(ResolvePathOnDisk("notes.txt"), "a file, not a folder");
 
-        var folderResult = DownloadsFolderPath.Resolve(_registry, _fileSystem, path);
+        var folderResult = DownloadsFolderPath.Resolve(_rootHandlers, _fileSystem, path);
 
         folderResult.IsSuccess.Should().BeTrue();
         folderResult.Value.Should().Be(DownloadsFolderPath.DefaultFolder);
@@ -184,7 +177,7 @@ public class DownloadsFolderPathTests
     {
         Directory.CreateDirectory(ResolvePathOnDisk("Downloads"));
 
-        var folderResult = DownloadsFolderPath.Resolve(_registry, _fileSystem, string.Empty);
+        var folderResult = DownloadsFolderPath.Resolve(_rootHandlers, _fileSystem, string.Empty);
 
         folderResult.IsFailure.Should().BeTrue();
         folderResult.HasException<StoredNameMismatchError>().Should().BeTrue();

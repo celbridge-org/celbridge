@@ -162,8 +162,8 @@ public class ResourceClassifierTests
             new Celbridge.Messaging.Services.MessengerService(),
             ProjectTreeBuilderTestHelper.Build(_projectFolderPath, new Celbridge.UserInterface.Services.IconService()),
             classifier,
-            new RootHandlerRegistry());
-        registry.InitializeProjectRoot(_projectFolderPath);
+            TestRootHandlers.Create(_projectFolderPath));
+
         return registry;
     }
 }

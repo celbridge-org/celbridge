@@ -13,11 +13,9 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
     private readonly ILocalFileSystem _fileSystem;
     private readonly SidecarCascade _sidecarCascade;
 
-    // The resource registry is workspace-scoped and transient: a constructor-
-    // injected instance is a different object from the one held by ResourceService,
-    // and only the ResourceService instance has ProjectFolderPath set. The
-    // file-system layer resolves the live registry through the workspace wrapper
-    // at call time.
+    // The root handler registry belongs to the ResourceService, which is created
+    // after this service. The gateway reaches it through the workspace wrapper at
+    // call time.
     public LocalResourceFileSystem(
         ILogger<LocalResourceFileSystem> logger,
         IMessengerService messengerService,
@@ -159,9 +157,9 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
                 "CopyAsync followed by DeleteAsync.");
         }
 
-        var registry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
 
-        var resolveSourceResult = registry.ResolveResourcePath(source);
+        var resolveSourceResult = rootHandlerRegistry.ResolveResourcePath(source);
         if (resolveSourceResult.IsFailure)
         {
             return Result.Fail($"Failed to resolve path for source resource: '{source}'")
@@ -178,7 +176,7 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         }
         else
         {
-            var resolveDestResult = registry.ResolveResourcePath(dest);
+            var resolveDestResult = rootHandlerRegistry.ResolveResourcePath(dest);
             if (resolveDestResult.IsFailure)
             {
                 return Result.Fail($"Failed to resolve path for destination resource: '{dest}'")
@@ -216,7 +214,6 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             return Result.Fail(destPolicy);
         }
 
-        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
         if (!IsRootWritable(rootHandlerRegistry, source))
         {
             return Result.Fail($"Root '{source.Root}' is read-only.");
@@ -357,9 +354,9 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
 
     public async Task<Result<CopyResult>> CopyAsync(ResourceKey source, ResourceKey dest)
     {
-        var registry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
 
-        var resolveSourceResult = registry.ResolveResourcePath(source);
+        var resolveSourceResult = rootHandlerRegistry.ResolveResourcePath(source);
         if (resolveSourceResult.IsFailure)
         {
             return Result.Fail($"Failed to resolve path for source resource: '{source}'")
@@ -367,7 +364,7 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         }
         var sourcePath = resolveSourceResult.Value;
 
-        var resolveDestResult = registry.ResolveResourcePath(dest);
+        var resolveDestResult = rootHandlerRegistry.ResolveResourcePath(dest);
         if (resolveDestResult.IsFailure)
         {
             return Result.Fail($"Failed to resolve path for destination resource: '{dest}'")
@@ -402,7 +399,6 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             return Result.Fail(destPolicy);
         }
 
-        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
         if (!IsRootWritable(rootHandlerRegistry, dest))
         {
             return Result.Fail($"Root '{dest.Root}' is read-only.");
@@ -458,9 +454,9 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
 
     public async Task<Result<DeleteResult>> DeleteAsync(ResourceKey source)
     {
-        var registry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
 
-        var resolveResult = registry.ResolveResourcePath(source);
+        var resolveResult = rootHandlerRegistry.ResolveResourcePath(source);
         if (resolveResult.IsFailure)
         {
             return Result.Fail($"Failed to resolve path for resource: '{source}'")
@@ -491,7 +487,6 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             return Result.Fail(policyResult);
         }
 
-        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
         if (!IsRootWritable(rootHandlerRegistry, source))
         {
             return Result.Fail($"Root '{source.Root}' is read-only.");
@@ -786,8 +781,8 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
 
     private Result<string> ResolvePath(ResourceKey resource)
     {
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        return resourceRegistry.ResolveResourcePath(resource);
+        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
+        return rootHandlerRegistry.ResolveResourcePath(resource);
     }
 
     // Resolves the workspace-scoped policy engine through the wrapper and
@@ -808,15 +803,11 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         return EvaluatePolicy(resource, ResourceAction.Write, isFolder);
     }
 
-    // In production the caller always invokes IsRootWritable after ResolvePath
-    // has succeeded, so a registered handler is guaranteed to be present. Unit
-    // tests that stub ResolveResourcePath directly can reach this without a
-    // handler in RootHandlers; treat that case as writable so those tests don't
-    // need to populate the handler dictionary just to exercise writes.
+    // Every caller resolves the key through the root handler registry first, so the key's root has a handler.
     private static bool IsRootWritable(IRootHandlerRegistry rootHandlerRegistry, ResourceKey key)
     {
-        return !rootHandlerRegistry.RootHandlers.TryGetValue(key.Root, out var handler)
-            || handler.Capabilities.IsWritable;
+        return rootHandlerRegistry.RootHandlers.TryGetValue(key.Root, out var handler)
+            && handler.Capabilities.IsWritable;
     }
 
     // Recursive folder copy used by CopyAsync. Stays here because the gateway
@@ -907,9 +898,9 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
     // Watchers see a single Changed event per save.
     private async Task<Result> WriteBytesAsync(ResourceKey resource, byte[] bytes)
     {
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
 
-        var resolveResult = resourceRegistry.ResolveResourcePath(resource);
+        var resolveResult = rootHandlerRegistry.ResolveResourcePath(resource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail($"Failed to resolve path for resource: '{resource}'")
@@ -948,7 +939,6 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
                 .WithErrors(writeResult);
         }
 
-        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
         ChangeRecorder.RecordCreated(rootHandlerRegistry, resource, resourcePath);
 
         return Result.Ok();

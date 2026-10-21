@@ -1,5 +1,6 @@
 using Celbridge.Documents.Helpers;
 using Celbridge.Resources;
+using Celbridge.Tests.FileSystem;
 using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Documents;
@@ -15,7 +16,6 @@ public class DocumentViewFactoryTests
 {
     private DocumentEditorRegistry _registry = null!;
     private ISidecarService _sidecarService = null!;
-    private IResourceRegistry _resourceRegistry = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
     private ITextBinarySniffer _textBinarySniffer = null!;
     private FileTypeHelper _fileTypeHelper = null!;
@@ -33,12 +33,11 @@ public class DocumentViewFactoryTests
             .Returns(Task.FromResult(Result<SidecarReadResult>.Ok(
                 new SidecarReadResult(SidecarReadOutcome.NoSidecar, null, null))));
 
-        _resourceRegistry = Substitute.For<IResourceRegistry>();
-        _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>())
-            .Returns(Result<string>.Ok("c:/test/fake/path"));
+        // The project folder is missing from disk, so every project key resolves to a path below it.
+        var projectFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(DocumentViewFactoryTests));
 
         var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(_resourceRegistry);
+        resourceService.RootHandlers.Returns(TestRootHandlers.Create(projectFolder));
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         resourceService.Sidecars.Returns(_sidecarService);
@@ -67,10 +66,8 @@ public class DocumentViewFactoryTests
     [Test]
     public async Task CreateAsync_FailsWhenResourcePathCannotBeResolved()
     {
-        _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>())
-            .Returns(Result<string>.Fail("missing"));
-
-        var result = await CreateFactory().CreateAsync(new ResourceKey("missing.md"), EditorId.Empty);
+        // The root is unregistered, so resolving the key fails.
+        var result = await CreateFactory().CreateAsync(new ResourceKey("unregistered:missing.md"), EditorId.Empty);
 
         result.IsFailure.Should().BeTrue();
     }

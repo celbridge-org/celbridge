@@ -2,7 +2,6 @@ using Celbridge.Messaging.Services;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
 using Celbridge.Tests.FileSystem;
-using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Resources;
@@ -28,18 +27,9 @@ public class ResourceScannerTests
         Directory.CreateDirectory(_projectFolderPath);
 
         var messengerService = new MessengerService();
-        var rootHandlerRegistry = new RootHandlerRegistry();
-        var resourceRegistry = new ResourceRegistry(
-            Substitute.For<ILogger<ResourceRegistry>>(),
-            messengerService,
-            ProjectTreeBuilderTestHelper.Build(_projectFolderPath, new IconService()),
-            ResourceClassifierTestHelper.BuildClassifier(),
-            rootHandlerRegistry);
-        resourceRegistry.InitializeProjectRoot(_projectFolderPath);
 
         var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(resourceRegistry);
-        resourceService.RootHandlers.Returns(rootHandlerRegistry);
+        resourceService.RootHandlers.Returns(TestRootHandlers.Create(_projectFolderPath));
         resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
 
         var workspaceService = Substitute.For<IWorkspaceService>();

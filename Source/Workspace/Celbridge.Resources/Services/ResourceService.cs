@@ -87,7 +87,6 @@ public class ResourceService : IResourceService, IDisposable
         Sidecars = sidecarService;
 
         var project = _projectService.CurrentProject!;
-        Registry.InitializeProjectRoot(project.ProjectFolderPath);
 
         // The backing folders are created here because downstream services start
         // reading and watching them as soon as the workspace loads.
@@ -116,6 +115,7 @@ public class ResourceService : IResourceService, IDisposable
         TryDeleteFolder(trashFolder);
         SyncRunner.Run(() => _fileSystem.CreateFolderAsync(trashFolder));
 
+        rootHandlerRegistry.RegisterRootHandler(new ProjectRootHandler(project.ProjectFolderPath));
         rootHandlerRegistry.RegisterRootHandler(new TempRootHandler(tempFolder));
         rootHandlerRegistry.RegisterRootHandler(new LogsRootHandler(logsFolder));
         rootHandlerRegistry.RegisterRootHandler(new UtilsRootHandler(utilsFolder));

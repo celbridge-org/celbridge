@@ -4,6 +4,7 @@ using Celbridge.Projects.Services;
 using Celbridge.Resources;
 using Celbridge.Resources.Helpers;
 using Celbridge.Resources.Services;
+using Celbridge.Resources.Services.Roots;
 using Celbridge.Tests.FileSystem;
 using Celbridge.Workspace;
 
@@ -20,7 +21,7 @@ public class ResourceOperationServiceTests
     private string _testFolder = null!;
     private string _tempFolder = null!;
     private string _dataFolder = null!;
-    private IResourceRegistry _resourceRegistry = null!;
+    private string _tempRootFolder = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
     private IResourceService _resourceService = null!;
     private LocalResourceFileSystem _resourceFileSystem = null!;
@@ -40,34 +41,15 @@ public class ResourceOperationServiceTests
         // _tempFolder is the project folder. In the application, the data folder is outside it.
         _tempFolder = Path.Combine(_testFolder, "Project");
         _dataFolder = Path.Combine(_testFolder, "Data");
+        _tempRootFolder = Path.Combine(_dataFolder, ProjectConstants.TempFolder);
         Directory.CreateDirectory(_tempFolder);
+        Directory.CreateDirectory(_tempRootFolder);
 
-        _resourceRegistry = Substitute.For<IResourceRegistry>();
-        _resourceRegistry.ProjectFolderPath.Returns(_tempFolder);
-
-        // Map every key under the default root to a path under the temp folder.
-        _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>(), Arg.Any<bool>()).Returns(call =>
-        {
-            var key = call.Arg<ResourceKey>();
-            if (key.IsEmpty)
-            {
-                return Result<string>.Ok(_tempFolder);
-            }
-            var relativePath = key.Path.Replace('/', Path.DirectorySeparatorChar);
-            return Result<string>.Ok(Path.Combine(_tempFolder, relativePath));
-        });
-
-        // Inverse mapping (used by LocalResourceFileSystem's descendant-key enumeration on
-        // folder moves and deletes).
-        _resourceRegistry.GetResourceKey(Arg.Any<string>()).Returns(call => MapToResourceKey(call.Arg<string>()));
-
-        var rootHandlerRegistry = Substitute.For<IRootHandlerRegistry>();
-        rootHandlerRegistry.RootHandlers.Returns(new Dictionary<string, IResourceRootHandler>());
-        rootHandlerRegistry.GetResourceKey(Arg.Any<string>()).Returns(call => MapToResourceKey(call.Arg<string>()));
+        var rootHandlerRegistry = TestRootHandlers.Create(_tempFolder);
+        rootHandlerRegistry.RegisterRootHandler(new TempRootHandler(_tempRootFolder));
 
         var resourceService = Substitute.For<IResourceService>();
         _resourceService = resourceService;
-        resourceService.Registry.Returns(_resourceRegistry);
         resourceService.RootHandlers.Returns(rootHandlerRegistry);
 
         var workspaceService = Substitute.For<IWorkspaceService>();
@@ -156,13 +138,6 @@ public class ResourceOperationServiceTests
 
         result.IsFailure.Should().BeTrue();
         result.FirstErrorMessage.Should().Contain("must keep its .celbridge extension");
-    }
-
-    private Result<ResourceKey> MapToResourceKey(string fullPath)
-    {
-        var relativePart = Path.GetRelativePath(_tempFolder, fullPath)
-            .Replace(Path.DirectorySeparatorChar, '/');
-        return Result<ResourceKey>.Ok(new ResourceKey(relativePart));
     }
 
     // A real Project rather than a substitute, so the guard runs the actual IsProjectFile comparison
@@ -302,8 +277,7 @@ public class ResourceOperationServiceTests
     [Test]
     public async Task DeleteAsync_OutsideTheProjectRoot_DeletesWithoutUndo()
     {
-        // This fixture resolves every key under _tempFolder, whatever its root.
-        var path = Path.Combine(_tempFolder, "scratch.txt");
+        var path = Path.Combine(_tempRootFolder, "scratch.txt");
         await File.WriteAllTextAsync(path, "scratch");
 
         var deleteResult = await _operationService.DeleteAsync(new ResourceKey("temp:scratch.txt"));
@@ -441,8 +415,8 @@ public class ResourceOperationServiceTests
         var copyResult = await _operationService.CopyAsync(new ResourceKey("source.txt"), new ResourceKey("temp:copied.txt"));
         copyResult.IsSuccess.Should().BeTrue(copyResult.MessageChain);
 
-        File.Exists(Path.Combine(_tempFolder, "created.txt")).Should().BeTrue();
-        File.Exists(Path.Combine(_tempFolder, "copied.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(_tempRootFolder, "created.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(_tempRootFolder, "copied.txt")).Should().BeTrue();
         _operationService.CanUndo.Should().BeFalse();
     }
 

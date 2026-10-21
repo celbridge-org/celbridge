@@ -23,7 +23,6 @@ public class ExportArchiveCommandTests
     private string _testFolderPath = null!;
     private string _projectFolderPath = null!;
     private string _exportFolderPath = null!;
-    private IResourceRegistry _resourceRegistry = null!;
     private IResourceService _resourceService = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
 
@@ -40,24 +39,8 @@ public class ExportArchiveCommandTests
         Directory.CreateDirectory(_projectFolderPath);
         Directory.CreateDirectory(_exportFolderPath);
 
-        var projectFolderPath = _projectFolderPath;
-        _resourceRegistry = Substitute.For<IResourceRegistry>();
-        _resourceRegistry.ProjectFolderPath.Returns(projectFolderPath);
-        _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>(), Arg.Any<bool>()).Returns(callInfo =>
-        {
-            var resourceKey = callInfo.Arg<ResourceKey>();
-            var relativePath = resourceKey.Path.Replace('/', Path.DirectorySeparatorChar);
-            var absolutePath = string.IsNullOrEmpty(relativePath)
-                ? projectFolderPath
-                : Path.Combine(projectFolderPath, relativePath);
-
-            return Result<string>.Ok(absolutePath);
-        });
-        _resourceRegistry.GetResourceKey(Arg.Any<string>())
-            .Returns(Result<ResourceKey>.Fail("Path is not under the project folder"));
-
         _resourceService = Substitute.For<IResourceService>();
-        _resourceService.Registry.Returns(_resourceRegistry);
+        _resourceService.RootHandlers.Returns(TestRootHandlers.Create(_projectFolderPath));
         _resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
 
         var workspaceService = Substitute.For<IWorkspaceService>();
@@ -114,8 +97,6 @@ public class ExportArchiveCommandTests
         WriteProjectFile("readme.md");
 
         var archiveFilePath = CreateEmptyFile(_projectFolderPath, "Acme.zip");
-        _resourceRegistry.GetResourceKey(archiveFilePath)
-            .Returns(Result<ResourceKey>.Ok(new ResourceKey("Acme.zip")));
 
         var result = await ExportProjectFolderAsync(archiveFilePath);
 

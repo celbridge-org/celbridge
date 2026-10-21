@@ -40,23 +40,13 @@ public class DeleteResourceCommandTests
             Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_projectFolderPath);
 
-        var projectFolderPath = _projectFolderPath;
-        var resourceRegistry = Substitute.For<IResourceRegistry>();
-        resourceRegistry.ProjectFolderPath.Returns(projectFolderPath);
-        resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>(), Arg.Any<bool>()).Returns(callInfo =>
-        {
-            var resourceKey = callInfo.Arg<ResourceKey>();
-            var relativePath = resourceKey.Path.Replace('/', Path.DirectorySeparatorChar);
-            return Result<string>.Ok(Path.Combine(projectFolderPath, relativePath));
-        });
-
         _operationService = Substitute.For<IResourceOperationService>();
         _operationService.BeginBatch().Returns(Substitute.For<IBatchScope>());
         _operationService.DeleteAsync(Arg.Do<ResourceKey>(resource => _deletedResources.Add(resource)))
             .Returns(Task.FromResult(Result<bool>.Ok(true)));
 
         var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(resourceRegistry);
+        resourceService.RootHandlers.Returns(TestRootHandlers.Create(_projectFolderPath));
         resourceService.Operations.Returns(_operationService);
         resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
 

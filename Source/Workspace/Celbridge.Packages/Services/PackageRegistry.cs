@@ -535,15 +535,15 @@ public class PackageRegistry
     // Selects the file-read primitive that matches a package's discovery origin.
     // Project packages are read through the gateway. Bundled packages stay on
     // direct File.* IO. The project reader is constructed on demand because the
-    // workspace-scoped IResourceFileSystem and IResourceRegistry must be looked up at
-    // call time rather than cached.
+    // workspace-scoped IResourceFileSystem and IRootHandlerRegistry must be looked
+    // up at call time.
     private IPackageReader GetReaderForPackage(PackageInfo package)
     {
         if (package.Origin == PackageOrigin.Project)
         {
             var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
-            var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-            return new ResourceFileSystemPackageReader(resourceFileSystem, resourceRegistry);
+            var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
+            return new ResourceFileSystemPackageReader(resourceFileSystem, rootHandlerRegistry);
         }
 
         return _bundledReader;
@@ -828,16 +828,16 @@ public class PackageRegistry
         }
 
         var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var projectReader = new ResourceFileSystemPackageReader(resourceFileSystem, resourceRegistry);
+        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
+        var projectReader = new ResourceFileSystemPackageReader(resourceFileSystem, rootHandlerRegistry);
 
-        var manifestResources = await CollectProjectManifestsAsync(resourceFileSystem, resourceRegistry, configEntryErrors);
+        var manifestResources = await CollectProjectManifestsAsync(resourceFileSystem, rootHandlerRegistry, configEntryErrors);
 
         var candidates = new List<Package>();
 
         foreach (var manifestResource in manifestResources)
         {
-            var resolveResult = resourceRegistry.ResolveResourcePath(manifestResource);
+            var resolveResult = rootHandlerRegistry.ResolveResourcePath(manifestResource);
             if (resolveResult.IsFailure)
             {
                 continue;
@@ -957,7 +957,7 @@ public class PackageRegistry
     // GetPackageFolders returns the folders that discovery accepts.
     private async Task<List<ResourceKey>> CollectProjectManifestsAsync(
         IResourceFileSystem resourceFileSystem,
-        IResourceRegistry resourceRegistry,
+        IRootHandlerRegistry rootHandlerRegistry,
         List<ProjectConfigEntryError> configEntryErrors)
     {
         var defaultFolder = PackageFolderPath.DefaultFolder;
@@ -978,7 +978,7 @@ public class PackageRegistry
         var packageManifests = new List<PackageFolderManifests>();
         foreach (var candidateFolder in candidateFolders)
         {
-            var resolveResult = resourceRegistry.ResolveResourcePath(candidateFolder);
+            var resolveResult = rootHandlerRegistry.ResolveResourcePath(candidateFolder);
             if (resolveResult.FirstException is StoredNameMismatchError mismatch)
             {
                 RefuseFolderNameMismatch(configEntryErrors, candidateFolder, defaultFolder, mismatch.StoredResource);

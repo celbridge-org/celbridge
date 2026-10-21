@@ -2,6 +2,7 @@ using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
+using Celbridge.Resources.Services.Roots;
 using Celbridge.Tests.FileSystem;
 using Celbridge.Workspace;
 
@@ -24,26 +25,25 @@ public class DocumentLayoutStoreTests
     private IWorkspaceWrapper _workspaceWrapper = null!;
     private DocumentLayoutStore _store = null!;
     private string _tempFolder = null!;
-    private string _accessibleFilePath = null!;
 
     [SetUp]
     public void Setup()
     {
         _tempFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(DocumentLayoutStoreTests));
         Directory.CreateDirectory(_tempFolder);
-        _accessibleFilePath = Path.Combine(_tempFolder, "accessible.md");
-        File.WriteAllText(_accessibleFilePath, string.Empty);
+
+        // Create the files for the documents that the tests restore and open on load.
+        var notesFolder = Path.Combine(_tempFolder, "notes");
+        Directory.CreateDirectory(notesFolder);
+        File.WriteAllText(Path.Combine(notesFolder, "readme.md"), string.Empty);
+        File.WriteAllText(Path.Combine(notesFolder, "todo.md"), string.Empty);
 
         _propertyBag = Substitute.For<IWorkspacePropertyBag>();
         _resourceRegistry = Substitute.For<IResourceRegistry>();
-        _resourceRegistry.ProjectFolderPath.Returns(_tempFolder);
         _documentsPanel = Substitute.For<IDocumentsPanel>();
 
-        // Default registry behaviour: every key resolves to the accessible temp
-        // file and exists in the registry. Individual tests override these
-        // when they want to exercise the negative branches.
-        _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>())
-            .Returns(Result<string>.Ok(_accessibleFilePath));
+        // Default registry behaviour: every key exists in the registry. Individual
+        // tests override this when they want to exercise the negative branches.
         _resourceRegistry.GetResource(Arg.Any<ResourceKey>())
             .Returns(Result<IResource>.Ok(Substitute.For<IResource>()));
 
@@ -53,8 +53,12 @@ public class DocumentLayoutStoreTests
         // No document is open until a test says one is.
         _documentsPanel.GetOpenDocuments().Returns(new List<OpenDocumentInfo>());
 
+        var rootHandlers = TestRootHandlers.Create(_tempFolder);
+        rootHandlers.RegisterRootHandler(new UtilsRootHandler(Path.Combine(_tempFolder, "utils")));
+
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Registry.Returns(_resourceRegistry);
+        resourceService.RootHandlers.Returns(rootHandlers);
 
         var workspaceService = Substitute.For<IWorkspaceService>();
 
@@ -74,8 +78,7 @@ public class DocumentLayoutStoreTests
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
-        // Wire a real LocalResourceFileSystem so GetInfoAsync probes the actual disk
-        // paths the registry resolves to.
+        // Wire a real LocalResourceFileSystem so GetInfoAsync probes the files on disk.
         var resourceFileSystem = new LocalResourceFileSystem(
             Substitute.For<ILogger<LocalResourceFileSystem>>(),
             Substitute.For<IMessengerService>(),
@@ -198,14 +201,11 @@ public class DocumentLayoutStoreTests
     [Test]
     public async Task RestorePanelStateAsync_InaccessibleFile_IsSkipped()
     {
-        // ResolveResourcePath returns a path that does not exist on disk, so
+        // The registry lists the resource, but its file is missing from disk, so
         // ResourceFileSystem.GetInfoAsync reports NotFound and the restore skips.
-        var missingPath = Path.Combine(_tempFolder, "does_not_exist.md");
-        _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>())
-            .Returns(Result<string>.Ok(missingPath));
         var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
         {
-            new("notes/readme.md", 0, "main_left", 0),
+            new("does_not_exist.md", 0, "main_left", 0),
         };
         _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("OpenDocumentAddresses")
             .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));

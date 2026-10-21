@@ -4,7 +4,6 @@ using Celbridge.Resources;
 using Celbridge.Resources.Commands;
 using Celbridge.Resources.Services;
 using Celbridge.Tests.FileSystem;
-using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Resources;
@@ -18,8 +17,6 @@ namespace Celbridge.Tests.Resources;
 public class ListTagsCommandTests
 {
     private string _projectFolderPath = null!;
-    private ResourceRegistry _resourceRegistry = null!;
-    private RootHandlerRegistry _rootHandlerRegistry = null!;
     private IMessengerService _messengerService = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
     private ListTagsCommand _command = null!;
@@ -35,19 +32,9 @@ public class ListTagsCommandTests
         Directory.CreateDirectory(_projectFolderPath);
 
         _messengerService = new MessengerService();
-        var iconService = new IconService();
-        _rootHandlerRegistry = new RootHandlerRegistry();
-        _resourceRegistry = new ResourceRegistry(
-            Substitute.For<ILogger<ResourceRegistry>>(),
-            _messengerService,
-            ProjectTreeBuilderTestHelper.Build(_projectFolderPath, iconService),
-            ResourceClassifierTestHelper.BuildClassifier(),
-            _rootHandlerRegistry);
-        _resourceRegistry.InitializeProjectRoot(_projectFolderPath);
 
         var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(_resourceRegistry);
-        resourceService.RootHandlers.Returns(_rootHandlerRegistry);
+        resourceService.RootHandlers.Returns(TestRootHandlers.Create(_projectFolderPath));
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);

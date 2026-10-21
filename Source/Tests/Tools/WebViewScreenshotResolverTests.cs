@@ -12,7 +12,6 @@ public class WebViewScreenshotResolverTests
 {
     private string _projectFolder = null!;
     private IResourceFileSystem _resourceFileSystem = null!;
-    private IResourceRegistry _resourceRegistry = null!;
 
     [SetUp]
     public void SetUp()
@@ -20,16 +19,8 @@ public class WebViewScreenshotResolverTests
         _projectFolder = Path.Combine(Path.GetTempPath(), $"Celbridge/{nameof(WebViewScreenshotResolverTests)}/{Guid.NewGuid():N}");
         Directory.CreateDirectory(_projectFolder);
 
-        _resourceRegistry = Substitute.For<IResourceRegistry>();
-        _resourceRegistry.ProjectFolderPath.Returns(_projectFolder);
-        _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>()).Returns(callInfo =>
-        {
-            var key = callInfo.Arg<ResourceKey>();
-            return Result<string>.Ok(Path.Combine(_projectFolder, key.Path.Replace('/', Path.DirectorySeparatorChar)));
-        });
-
         var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(_resourceRegistry);
+        resourceService.RootHandlers.Returns(TestRootHandlers.Create(_projectFolder));
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
