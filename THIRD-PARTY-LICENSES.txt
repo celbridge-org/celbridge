@@ -520,6 +520,11 @@ System.Diagnostics.EventLog 9.0.14
     Source: https://dot.net/
     © Microsoft Corporation. All rights reserved.
 
+System.IO.Hashing 10.0.12
+    License: MIT
+    Source: https://dot.net/
+    © Microsoft Corporation. All rights reserved.
+
 System.IO.Packaging 8.0.1
     License: MIT
     Source: https://dot.net/
