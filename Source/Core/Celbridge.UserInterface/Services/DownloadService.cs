@@ -430,21 +430,23 @@ public sealed class DownloadService : IDownloadService
         }
         var downloadsFolder = folderResult.Value;
 
-        if (!ResourceKey.TryCreate($"{downloadsFolder.Path}/{fileName}", out var requestedResource))
+        if (!ResourceKey.TryCreate($"{downloadsFolder.Path}/{fileName}", out _))
         {
             return Result<ResourceKey>.Fail($"'{fileName}' is not a valid download file name");
         }
 
-        var resolveResult = rootHandlerRegistry.ResolveResourcePath(requestedResource);
+        // Only the folder is resolved. The loop below checks the name against the files on disk. A name that
+        // differs from an existing file's name only in letter case then takes the next free name.
+        var resolveResult = rootHandlerRegistry.ResolveResourcePath(downloadsFolder);
         if (resolveResult.IsFailure)
         {
-            return Result<ResourceKey>.Fail($"Failed to resolve the download destination '{requestedResource}'")
+            return Result<ResourceKey>.Fail($"Failed to resolve the downloads folder '{downloadsFolder}'")
                 .WithErrors(resolveResult);
         }
 
         try
         {
-            var requestedPath = Path.GetFullPath(resolveResult.Value);
+            var requestedPath = Path.GetFullPath(Path.Combine(resolveResult.Value, fileName));
             var folderPath = Path.GetDirectoryName(requestedPath)!;
             var nameWithoutExtension = Path.GetFileNameWithoutExtension(requestedPath);
             var extension = Path.GetExtension(requestedPath);
@@ -486,11 +488,8 @@ public sealed class DownloadService : IDownloadService
         }
     }
 
-    // Only Celbridge's own reserved folders can deny a destination: nothing a project configures denies a
-    // read or a write, and a downloads folder inside a reserved one is refused before it is ever used. If a
-    // destination still reaches one, the row names the folder that matched.
-    // The message gives the downloads folder's name as it is stored on disk. The user can then correct the
-    // project's setting or rename the folder.
+    // Names the stored folder when the downloads setting differs from the folder's stored name, so the user can
+    // correct the setting or rename the folder. Other failures get the general message.
     private string DescribeUnavailableDestination(Result reserveResult)
     {
         if (reserveResult.FirstException is StoredNameMismatchError { StoredResource: ResourceKey storedFolder } mismatch)
@@ -501,6 +500,9 @@ public sealed class DownloadService : IDownloadService
         return GetString("Downloads_DestinationUnavailable");
     }
 
+    // Only Celbridge's own reserved folders can deny a destination. Nothing a project configures denies a read
+    // or a write, and a downloads folder inside a reserved folder is refused before it is used. If a destination
+    // still reaches a reserved folder, the row names the folder that matched.
     private string DescribeBlockedDestination(Result probeResult, string fileName)
     {
         if (probeResult.FirstException is not PolicyDenialError denial)

@@ -1,14 +1,13 @@
 namespace Celbridge.Resources.Helpers;
 
 /// <summary>
-/// Compares the names of resource keys by letter case. A volume that compares names exactly treats names that
-/// differ in case as different names.
+/// Compares the names of resource keys by letter case, with the platform's path comparison.
 /// </summary>
 internal static class LetterCaseHelper
 {
     /// <summary>
-    /// Returns true if the two keys are in the same folder and their names differ only in letter case, on a volume
-    /// that ignores case.
+    /// Returns true if two keys in one folder have names that differ only in letter case. Returns false on Linux,
+    /// where such names are different items.
     /// </summary>
     public static bool DiffersOnlyInNameCase(ResourceKey key, ResourceKey otherKey)
     {

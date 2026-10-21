@@ -1,8 +1,8 @@
 namespace Celbridge.Resources;
 
 /// <summary>
-/// Dispatches across the registered resource root handlers. Every mapping between
-/// resource keys and absolute paths goes through this registry.
+/// Maps resource keys to absolute paths and back by dispatching to the registered
+/// resource root handlers.
 /// </summary>
 public interface IRootHandlerRegistry
 {
@@ -31,8 +31,8 @@ public interface IRootHandlerRegistry
 
     /// <summary>
     /// Resolves a resource key to its absolute filesystem path via the
-    /// registered handler. Under the root's listing policy, fails a key that does
-    /// not match the name stored on disk for an existing item. The failure carries
+    /// registered handler. When the root keeps listings, fails a key that does not
+    /// match the name stored on disk for an existing item. The failure carries
     /// a StoredNameMismatchError that gives the stored name.
     /// </summary>
     Result<string> ResolveResourcePath(ResourceKey resource);

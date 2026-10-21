@@ -262,7 +262,7 @@ public partial class ResourceTreeViewModel : ObservableObject
 
         // Add the project folder as the first item (always expanded, never collapsible)
         var hasChildren = projectFolder.Children.Count > 0;
-        var projectName = Path.GetFileName(_projectService.CurrentProject!.ProjectFolderPath);
+        var projectName = Path.GetFileName(_projectService.CurrentProject?.ProjectFolderPath ?? string.Empty);
         string fileManagerName = _stringLocalizer.GetString(_platformInfo.FileManagerNameStringKey);
         var projectFolderTooltip = _stringLocalizer.GetString("ResourceTree_DoubleClickToOpen", fileManagerName);
         var projectFolderItem = new ResourceViewItem(

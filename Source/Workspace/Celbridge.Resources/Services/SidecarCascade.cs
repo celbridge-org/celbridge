@@ -54,8 +54,8 @@ internal sealed class SidecarCascade
         string destSidecarPath;
         if (LetterCaseHelper.DiffersOnlyInNameCase(sourceSidecar.Value, destSidecar.Value))
         {
-            // The sidecar is still stored under its old name, so resolving the destination would refuse its letter
-            // case. The destination's path is the source sidecar's path with the new name.
+            // The sidecar is still stored under the old name, so resolving the destination would refuse the new
+            // letter case. The destination's path is the source sidecar's path with the new name.
             destSidecarPath = Path.Combine(Path.GetDirectoryName(sourceSidecarPath)!, destSidecar.Value.ResourceName);
         }
         else

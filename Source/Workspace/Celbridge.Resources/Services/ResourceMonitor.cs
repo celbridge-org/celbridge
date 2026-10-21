@@ -193,9 +193,8 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
     private void HandleDeleted(IResourceRootHandler handler, string fullPath)
     {
-        // The resolver drops its cached folders at or below the path. A cached folder skips the link check, so a
-        // link created there later would otherwise go unnoticed. Ignored paths are recorded too. An ignored
-        // folder can still be an ancestor of a cached folder, and the ignored folder's name is in a listing.
+        // Ignored paths are recorded too. An ignored folder can still be an ancestor of a cached folder, and the
+        // ignored folder's name is in a listing.
         handler.RecordItemRemoved(fullPath);
 
         if (ShouldIgnorePath(handler, fullPath))
@@ -210,9 +209,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
     private void HandleRenamed(IResourceRootHandler handler, string oldFullPath, string newFullPath)
     {
-        // The resolver drops its cached folders at or below the old path. A cached folder skips the link check,
-        // so a link created there later would otherwise go unnoticed. The folders below the new path are listed
-        // when they are next used.
+        // The folders below the new path are listed when they are next used.
         handler.RecordItemRemoved(oldFullPath);
         handler.RecordItemCreated(newFullPath);
 
@@ -244,7 +241,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
     // The monitor lost events, so which resources were missed is exactly what is unknown: the tree is
     // rescanned unconditionally, and the path cache is dropped because one of the missing events may
-    // have been a folder being replaced by a reparse point, or a name the listings lack.
+    // have been a folder being replaced by a reparse point, or a name missing from the listings.
     private void OnMonitoringDesynchronized(IResourceRootHandler handler)
     {
         _logger.LogWarning(

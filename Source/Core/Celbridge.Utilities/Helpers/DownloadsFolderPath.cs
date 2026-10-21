@@ -43,9 +43,9 @@ public static class DownloadsFolderPath
     }
 
     /// <summary>
-    /// The folder downloads are saved to in the project. A path with nothing at it is returned unchanged, for the
-    /// first download to create. The default folder is used when the path is empty, invalid or reserved, or when
-    /// a file is at the path. Fails when the path does not match an existing folder's stored name, with a
+    /// Returns the project's downloads folder. A configured folder that does not exist yet is returned unchanged.
+    /// The first download creates the folder. The default folder is used when the path is empty, invalid or
+    /// reserved, or when a file is at the path. Fails when the path does not match an existing folder's stored name, with a
     /// StoredNameMismatchError that gives the stored name.
     /// </summary>
     public static Result<ResourceKey> Resolve(IRootHandlerRegistry rootHandlerRegistry, ILocalFileSystem fileSystem, string path)
@@ -73,8 +73,8 @@ public static class DownloadsFolderPath
         return DefaultFolder;
     }
 
-    // Returns true when downloads can be saved to the folder: a folder is there, or nothing is there yet for the
-    // first download to create. Returns false when a file is at the path, because no folder can be made there.
+    // Returns true when a folder or nothing is at the path. Returns false when a file is at the path. No folder can
+    // be made there.
     private static Result<bool> LocateFolder(IRootHandlerRegistry rootHandlerRegistry, ILocalFileSystem fileSystem, ResourceKey folder)
     {
         var resolveResult = rootHandlerRegistry.ResolveResourcePath(folder);

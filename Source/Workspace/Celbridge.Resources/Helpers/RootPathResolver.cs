@@ -3,8 +3,8 @@ namespace Celbridge.Resources.Helpers;
 /// <summary>
 /// Resolves between resource keys and absolute filesystem paths for one root.
 /// Refuses a key that resolves outside the backing folder or passes through a
-/// link. Under a listing policy, also refuses a key that differs from the name
-/// stored on disk for an existing item. Caches the folders it has checked, with
+/// link. When the root keeps listings, also refuses a key that differs from the
+/// name stored on disk for an existing item. Caches the folders it has checked, with
 /// the hashes of their names. A link that replaces a cached folder goes unseen
 /// until the folder's removal is recorded. The resolver is therefore a
 /// containment filter, not a hardened boundary against symlink races.
@@ -39,8 +39,9 @@ public class RootPathResolver
         _rootName = rootName;
         _backingLocation = backingLocation;
         _normalizedBackingWithSeparator = NormalizeBackingLocation(backingLocation);
-        _normalizedBackingTrimmed = _normalizedBackingWithSeparator
-            .TrimEnd(Path.DirectorySeparatorChar);
+
+        // A volume root, like D:\, keeps its separator.
+        _normalizedBackingTrimmed = Path.TrimEndingDirectorySeparator(_normalizedBackingWithSeparator);
         _folderCache = new FolderCache(_normalizedBackingTrimmed, listingPolicy, timeProvider);
     }
 
@@ -72,6 +73,18 @@ public class RootPathResolver
         {
             return Result<string>.Fail(
                 $"Resource key '{resource}' resolves to a path outside the '{_rootName}' root.");
+        }
+
+        // Windows drops a trailing dot or space from a name. On every platform, a "." segment names the folder that
+        // contains it. Such a key would name an item by a second form of its path.
+        var resolvedRelativePath = isBackingRoot
+            ? string.Empty
+            : resolvedPath.Substring(_normalizedBackingWithSeparator.Length);
+        var keyRelativePath = pathPortion.Replace('/', Path.DirectorySeparatorChar);
+        if (!string.Equals(resolvedRelativePath, keyRelativePath, StringComparison.Ordinal))
+        {
+            return Result<string>.Fail(
+                $"Resource key '{resource}' resolves to a different path, '{resolvedPath}'.");
         }
 
         var checkResult = CheckPath(resolvedPath, checkStoredName: true);
@@ -193,9 +206,8 @@ public class RootPathResolver
 
     /// <summary>
     /// Records that the item at the absolute path is gone. The item's name leaves the listing of the folder that
-    /// contained the item. Every cached folder at or below the path is dropped too. A cached folder skips the
-    /// link check, so a link created at one of those paths later would otherwise go unnoticed. The item may have
-    /// been a file or a folder.
+    /// contained the item. Every cached folder at or below the path is dropped too. The item may have been a file
+    /// or a folder.
     /// </summary>
     public void RecordItemRemoved(string absolutePath)
     {

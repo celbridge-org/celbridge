@@ -803,7 +803,7 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         return EvaluatePolicy(resource, ResourceAction.Write, isFolder);
     }
 
-    // Every caller resolves the key through the root handler registry first, so the key's root has a handler.
+    // Returns false for a root with no handler.
     private static bool IsRootWritable(IRootHandlerRegistry rootHandlerRegistry, ResourceKey key)
     {
         return rootHandlerRegistry.RootHandlers.TryGetValue(key.Root, out var handler)

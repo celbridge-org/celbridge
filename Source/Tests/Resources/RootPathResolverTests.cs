@@ -717,6 +717,49 @@ public class RootPathResolverTests
         resolveResult.FirstErrorMessage.Should().Contain("symbolic link or junction");
     }
 
+    [Test]
+    public void ValidateAndResolveRefusesAKeyThatEndsInADotSegment()
+    {
+        WriteProjectFile("docs/notes.txt");
+        var resolver = CreateResolver();
+
+        // The file system reads docs/. as docs, so the key would name the folder by a second form of its path.
+        var resolveResult = resolver.ValidateAndResolve(ResourceKey.Create("docs/."));
+
+        resolveResult.IsFailure.Should().BeTrue();
+    }
+
+    [Test]
+    [Platform(Include = "Win", Reason = "Windows drops a trailing dot or space from a name.")]
+    public void ValidateAndResolveRefusesANameThatWindowsTrims([Values("notes.txt.", "notes.txt ")] string keyPath)
+    {
+        WriteProjectFile("notes.txt");
+        var resolver = CreateResolver();
+
+        var resolveResult = resolver.ValidateAndResolve(ResourceKey.Create(keyPath));
+
+        resolveResult.IsFailure.Should().BeTrue();
+    }
+
+    [Test]
+    [Platform(Exclude = "Linux", Reason = "Linux roots keep no listings.")]
+    public void ValidateAndResolveListsTheRootOfAVolumeAgainOnceANameIsRemoved()
+    {
+        // The user profile is in a folder at the root of its volume: /Users on macOS, C:\Users on Windows.
+        var profilePath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var volumeRoot = Path.GetPathRoot(profilePath)!;
+        var topFolderName = Path.GetRelativePath(volumeRoot, profilePath).Split(Path.DirectorySeparatorChar)[0];
+        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, volumeRoot, ListingPolicy.UntilChanged, TimeProvider.System);
+        var resourceKey = ResourceKey.Create(topFolderName);
+
+        resolver.ValidateAndResolve(resourceKey).IsSuccess.Should().BeTrue();
+        resolver.RecordItemRemoved(Path.Combine(volumeRoot, topFolderName));
+        resolver.ValidateAndResolve(resourceKey).IsSuccess.Should().BeTrue();
+
+        // The recorded removal took the name out of the root's listing, so the root was listed again.
+        resolver.ListingCount.Should().Be(2);
+    }
+
     private RootPathResolver CreateResolver(
         string rootName = ResourceKey.DefaultRoot,
         ListingPolicy listingPolicy = ListingPolicy.UntilChanged,

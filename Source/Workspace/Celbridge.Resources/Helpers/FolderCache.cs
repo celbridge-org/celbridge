@@ -43,8 +43,8 @@ internal sealed class CachedFolder
 
 /// <summary>
 /// The folders a root's path resolver has checked, each with the hashes of the names stored in it. Each cached folder
-/// exists, and the resolver has checked the folder and every folder above for links. Under a listing policy, the
-/// folder's path uses the names stored on disk. The cache stays current through the creates and removals recorded with
+/// exists, and the resolver has checked the folder and every folder above for links. When the root keeps listings,
+/// the folder's path uses the names stored on disk. The cache stays current through the creates and removals recorded with
 /// it, and the listing policy decides how long a folder stays cached.
 /// </summary>
 [AllowDirectFileSystemAccess]
@@ -336,8 +336,8 @@ internal sealed class FolderCache
     }
 
     // Hashes the name's UTF-16 code units to 64 bits. When two names share a hash, the check cannot tell them
-    // apart, and a key that differs from the stored name passes. With a million names cached, this happens to
-    // about one lookup in 10^13.
+    // apart, and a key that differs from the stored name passes. With a million names cached, about one lookup in
+    // 10^13 finds a shared hash.
     private static ulong HashName(ReadOnlySpan<char> name)
     {
         return XxHash3.HashToUInt64(MemoryMarshal.AsBytes(name));
@@ -352,8 +352,8 @@ internal sealed class FolderCache
         }
     }
 
-    // Drops every cached folder below a folder just removed from the cache. A folder's parent is cached before
-    // the folder. A scan is needed only when the removed folder has cached children.
+    // Drops every cached folder below a folder just removed from the cache. Each folder counts its cached children.
+    // The scan runs only for a folder with a count above zero.
     private void DropRemovedFolder(CachedFolder folder)
     {
         ForgetFolder(folder);

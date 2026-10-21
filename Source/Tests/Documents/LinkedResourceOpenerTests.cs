@@ -10,8 +10,8 @@ namespace Celbridge.Tests.Documents;
 /// <summary>
 /// A link in a document's preview, whether markdown or HTML, opens what it leads to in Celbridge.
 /// These tests pin how that is decided. A file with an editor opens in that editor. Anything else is selected
-/// in the Explorer, so the unsupported-format dialog never appears. The caller reports a resource the project
-/// does not have, and a link that differs from a resource's stored name.
+/// in the Explorer, so the unsupported-format dialog never appears. OpenAsync fails for a missing resource and
+/// for a link that differs from the stored name, and the caller reports both.
 /// </summary>
 [TestFixture]
 public class LinkedResourceOpenerTests

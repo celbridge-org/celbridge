@@ -13,7 +13,7 @@ public interface IResourceService
 
     /// <summary>
     /// Returns the registry of resource root handlers for the current project.
-    /// It maps resource keys to absolute paths and back, in every root.
+    /// The registry maps resource keys to absolute paths and back, in every root.
     /// </summary>
     IRootHandlerRegistry RootHandlers { get; }
 

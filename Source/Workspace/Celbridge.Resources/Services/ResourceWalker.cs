@@ -46,9 +46,8 @@ public sealed class ResourceWalker : IResourceWalker
     {
         var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
 
-        // Each key the walk returns starts with the folder's key. A folder key that differs from the folder's
-        // stored name therefore fails the walk here. The listings give names as stored on disk. An item's path is
-        // then the folder's path joined with the item's name.
+        // Every key the walk returns starts with the folder's key, so a folder key that differs from the folder's
+        // stored name fails here. Each item's path joins the folder's path with the stored name from the listing.
         var resolveResult = resourceService.RootHandlers.ResolveResourcePath(folder);
         if (resolveResult.IsFailure)
         {

@@ -24,9 +24,8 @@ public enum ListingPolicy
 }
 
 /// <summary>
-/// Capability flags describing how a resource root behaves at runtime. Consulted by
-/// the file system layer for write gating, by the resource monitor for watcher setup,
-/// and by the root's path resolver for its listings.
+/// Capability flags for a resource root. They say whether the root is writable and
+/// watched, and how long the root's path resolver keeps folder listings.
 /// </summary>
 public record ResourceRootCapabilities(
     bool IsWritable,
@@ -59,8 +58,8 @@ public interface IResourceRootHandler
     /// Resolves a resource key to its absolute filesystem path under this root.
     /// Validates path containment and checks for symlinks/junctions.
     /// Fails if the path escapes the backing location or traverses a reparse point.
-    /// Under a listing policy, also fails a key that differs from the name stored
-    /// on disk for an existing item. The names can differ in letter case or Unicode
+    /// When the root keeps listings, also fails a key that differs from the name
+    /// stored on disk for an existing item. The names can differ in letter case or Unicode
     /// normalization. The failure carries a StoredNameMismatchError that gives the
     /// stored name.
     /// </summary>
@@ -89,17 +88,14 @@ public interface IResourceRootHandler
 
     /// <summary>
     /// Records that an item now exists at the absolute path, so the item's name joins the listing of its folder.
-    /// The gateway calls this method when the gateway creates an item. The watcher calls this method for every
-    /// create and for the new path of every rename.
+    /// Call it for every create, and for the new path of every move or rename.
     /// </summary>
     void RecordItemCreated(string absolutePath);
 
     /// <summary>
     /// Records that the item at the absolute path is gone, so the item's name leaves the listing of its folder.
-    /// Every cached folder at or below the path is dropped too. A cached folder skips the link check, so a link
-    /// created at one of those paths later would otherwise go unnoticed. The gateway calls this method when the
-    /// gateway deletes or moves an item. The watcher calls this method for every delete and for the old path of
-    /// every rename.
+    /// Every cached folder at or below the path is dropped too. Call it for every delete, and for the old path of
+    /// every move or rename.
     /// </summary>
     void RecordItemRemoved(string absolutePath);
 }

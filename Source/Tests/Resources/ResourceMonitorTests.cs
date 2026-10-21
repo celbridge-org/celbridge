@@ -187,7 +187,7 @@ public class ResourceMonitorTests
     [Test]
     public void ChangesToIgnoredPaths_AreRecordedWithTheResolver()
     {
-        // The listings hold every name in a folder, including the names the tree walk skips.
+        // The listings contain every name in a folder, including the names the tree walk skips.
         var monitor = InitializeAndGetProjectMonitor();
         // No StubKey call, so every path fails to key and every event is ignored.
 

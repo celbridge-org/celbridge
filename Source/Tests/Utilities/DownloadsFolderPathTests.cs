@@ -7,9 +7,9 @@ namespace Celbridge.Tests.Utilities;
 
 /// <summary>
 /// A project names the folder its downloads are saved to by a path from the project root. These tests pin
-/// which paths name a folder at all, and that a folder Celbridge reserves is not one. A named folder is used
-/// whether or not the project has made the folder yet. A path the project cannot use sends downloads to the
-/// default folder, and the download goes ahead. A path that does not match the folder's name on disk is refused.
+/// which paths name a folder at all, and that a reserved folder is not one. A named folder is used whether or
+/// not the project has made the folder yet. A path that the project cannot use sends downloads to the default
+/// folder, and the download goes ahead. A path that does not match the folder's name on disk is refused.
 /// </summary>
 [TestFixture]
 public class DownloadsFolderPathTests

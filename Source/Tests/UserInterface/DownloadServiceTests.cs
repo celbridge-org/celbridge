@@ -80,8 +80,8 @@ public class DownloadServiceTests
             .Do(callInfo => _workspaceUnloadedHandler =
                 callInfo.Arg<MessageHandler<object, WorkspaceUnloadedMessage>>());
 
-        // The resolver reads the real disk, which lacks the in-memory file system's items, so each key resolves to
-        // its path.
+        // The real disk lacks the in-memory items. A missing item passes the stored name check, so every key
+        // resolves.
         _rootHandlers = TestRootHandlers.Create(ProjectFolderPath);
         _rootHandlers.RegisterRootHandler(new TempRootHandler(TempFolderPath));
 
@@ -209,6 +209,24 @@ public class DownloadServiceTests
         var settled = _downloadService.Downloads.Should().ContainSingle().Subject;
         settled.FileName.Should().Be("report (1).pdf");
         settled.Resource.Should().Be(new ResourceKey("downloads/report (1).pdf"));
+    }
+
+    [Test]
+    [Platform(Exclude = "Linux", Reason = "On a case-sensitive file system, Report.pdf and report.pdf are different files.")]
+    public async Task ANameOnDiskInAnotherCase_IsUniquified()
+    {
+        // The resolver reads the stored names from the real disk, so the test writes the file there too. The
+        // in-memory file system compares names exactly. The test therefore gives the in-memory file system the file
+        // under both names, matching a volume that ignores case.
+        var existingPath = Path.Combine(ProjectFolderPath, "downloads", "report.pdf");
+        Directory.CreateDirectory(Path.GetDirectoryName(existingPath)!);
+        File.WriteAllText(existingPath, "existing");
+        _localFileSystem.SeedFile(existingPath, "existing");
+        _localFileSystem.SeedFile(Path.Combine(ProjectFolderPath, "downloads", "Report.pdf"), "existing");
+
+        var ticket = await BeginAsync("Report.pdf");
+
+        ticket.Destination.Should().Be(new ResourceKey("downloads/Report (1).pdf"));
     }
 
     [Test]
