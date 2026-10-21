@@ -936,8 +936,7 @@ public class FileToolTests
     }
 
     // This harness treats every root as the same on-disk temp tree, so map any
-    // resource key to a path under the temp folder for both resolve overloads
-    // (the gateway enumerates with validateCase:false).
+    // resource key to a path under the temp folder for both resolve overloads.
     private void StubResolveAllKeysToTempFolder()
     {
         _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>())

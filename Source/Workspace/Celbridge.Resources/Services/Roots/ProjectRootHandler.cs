@@ -8,7 +8,8 @@ public class ProjectRootHandler : ResourceRootHandlerBase
 {
     private static readonly ResourceRootCapabilities ProjectCapabilities = new(
         IsWritable: true,
-        IsWatched: true);
+        IsWatched: true,
+        ListingPolicy: GetLocalListingPolicy(ListingPolicy.UntilChanged));
 
     public override string RootName => ResourceKey.DefaultRoot;
     public override ResourceRootCapabilities Capabilities => ProjectCapabilities;

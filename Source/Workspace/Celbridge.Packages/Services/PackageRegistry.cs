@@ -960,9 +960,7 @@ public class PackageRegistry
         IResourceRegistry resourceRegistry,
         List<ProjectConfigEntryError> configEntryErrors)
     {
-        // Each folder is given the disk's letter case, so every key that discovery builds inside the folder passes
-        // the registry's case check.
-        var defaultFolder = MatchDiskCase(resourceRegistry, PackageFolderPath.DefaultFolder);
+        var defaultFolder = PackageFolderPath.DefaultFolder;
         var candidateFolders = new List<ResourceKey>
         {
             defaultFolder
@@ -971,14 +969,22 @@ public class PackageRegistry
         var listedFolders = _projectService.CurrentProject?.Config.Packages.Folders ?? [];
         foreach (var listedFolder in PackageFolderPath.NormalizeListedFolders(listedFolders))
         {
-            candidateFolders.Add(MatchDiskCase(resourceRegistry, new ResourceKey(listedFolder)));
+            candidateFolders.Add(new ResourceKey(listedFolder));
         }
 
         // Every folder is listed before any is accepted, so each listed folder is checked against the
-        // packages of every other folder.
+        // packages of every other folder. A folder key that does not match the folder's stored name is refused,
+        // since every key built inside the folder would be refused too.
         var packageManifests = new List<PackageFolderManifests>();
         foreach (var candidateFolder in candidateFolders)
         {
+            var resolveResult = resourceRegistry.ResolveResourcePath(candidateFolder);
+            if (resolveResult.FirstException is StoredNameMismatchError mismatch)
+            {
+                RefuseFolderNameMismatch(configEntryErrors, candidateFolder, defaultFolder, mismatch.StoredResource);
+                continue;
+            }
+
             packageManifests.Add(await ListPackageFolderAsync(resourceFileSystem, candidateFolder));
         }
 
@@ -1016,16 +1022,27 @@ public class PackageRegistry
         return manifestResources;
     }
 
-    // Returns the folder with the case it has on disk. A missing folder is returned as given.
-    private static ResourceKey MatchDiskCase(IResourceRegistry resourceRegistry, ResourceKey folder)
+    private void RefuseFolderNameMismatch(
+        List<ProjectConfigEntryError> configEntryErrors,
+        ResourceKey packageFolder,
+        ResourceKey defaultFolder,
+        ResourceKey? storedFolder)
     {
-        var normalizeResult = resourceRegistry.NormalizeResourceKey(folder);
-        if (normalizeResult.IsFailure)
+        var storedName = storedFolder is ResourceKey stored
+            ? $", '{stored.Path}'"
+            : string.Empty;
+
+        if (packageFolder == defaultFolder)
         {
-            return folder;
+            RefuseListedFolder(
+                configEntryErrors,
+                $"The '{defaultFolder.Path}' folder does not match its name on disk{storedName}, so its packages were not loaded. Rename the folder to '{defaultFolder.Path}' to load them.");
+            return;
         }
 
-        return normalizeResult.Value;
+        RefuseListedFolder(
+            configEntryErrors,
+            $"'folders' entry '{packageFolder.Path}' does not match the folder's name on disk{storedName}. Change the entry to match the name. The entry was dropped.");
     }
 
     private void RefuseListedFolder(List<ProjectConfigEntryError> configEntryErrors, string message)

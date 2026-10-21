@@ -92,7 +92,6 @@ public class CustomDocumentViewModelTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().Be(new ResourceKey("docs/missing.md"));
-        _registry.DidNotReceive().NormalizeResourceKey(Arg.Any<ResourceKey>());
     }
 
     [TestCase("other.md#install")]

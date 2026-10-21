@@ -46,19 +46,9 @@ public sealed class ResourceWalker : IResourceWalker
     {
         var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
 
-        // Each key the walk returns starts with the folder's key. A project key in the wrong letter case would
-        // fail the case check on every read, so the walk starts from the key in the case stored on disk.
-        if (folder.Root == ResourceKey.DefaultRoot
-            && !folder.IsEmpty)
-        {
-            var normalizeResult = resourceService.Registry.NormalizeResourceKey(folder);
-            if (normalizeResult.IsSuccess)
-            {
-                folder = normalizeResult.Value;
-            }
-        }
-
-        // The listings give names as stored on disk, so each item's path is its folder's path and its name.
+        // Each key the walk returns starts with the folder's key. A folder key that differs from the folder's
+        // stored name therefore fails the walk here. The listings give names as stored on disk. An item's path is
+        // then the folder's path joined with the item's name.
         var resolveResult = resourceService.RootHandlers.ResolveResourcePath(folder);
         if (resolveResult.IsFailure)
         {

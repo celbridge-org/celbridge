@@ -120,7 +120,8 @@ public class FileServer : IFileServer, IDisposable
 
     /// <summary>
     /// Checks that a URL path under a folder key may be served. The path becomes a resource key. The policy
-    /// check and the root's resolver refuse a reserved folder such as .git, a link and a path through a link.
+    /// check refuses a reserved folder, like .git. The root's resolver refuses a link and a path through a link.
+    /// The resolver also refuses a path that does not match the names stored on disk.
     /// </summary>
     internal static Result CheckServedFile(
         IRootHandlerRegistry rootHandlers,

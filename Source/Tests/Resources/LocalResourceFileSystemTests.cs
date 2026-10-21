@@ -2,6 +2,7 @@ using Celbridge.Messaging;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
 using Celbridge.Tests.FileSystem;
+using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Resources;
@@ -19,6 +20,7 @@ public class LocalResourceFileSystemTests
     private IRootHandlerRegistry _rootHandlerRegistry = null!;
     private IResourceOperationService _operationService = null!;
     private IMessengerService _messengerService = null!;
+    private IResourceService _resourceService = null!;
     private LocalResourceFileSystem _resourceFileSystem = null!;
 
     [SetUp]
@@ -52,20 +54,20 @@ public class LocalResourceFileSystemTests
         _operationService.GetWritableStateAsync(Arg.Any<ResourceKey>())
             .Returns(Task.FromResult(WritableState.Writable));
 
-        var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(_resourceRegistry);
-        resourceService.RootHandlers.Returns(_rootHandlerRegistry);
-        resourceService.Operations.Returns(_operationService);
+        _resourceService = Substitute.For<IResourceService>();
+        _resourceService.Registry.Returns(_resourceRegistry);
+        _resourceService.RootHandlers.Returns(_rootHandlerRegistry);
+        _resourceService.Operations.Returns(_operationService);
 
         var workspaceService = Substitute.For<IWorkspaceService>();
-        workspaceService.ResourceService.Returns(resourceService);
-        resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
+        workspaceService.ResourceService.Returns(_resourceService);
+        _resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
         var sidecarService = new SidecarService(workspaceWrapper);
-        resourceService.Sidecars.Returns(sidecarService);
+        _resourceService.Sidecars.Returns(sidecarService);
 
         _messengerService = Substitute.For<IMessengerService>();
 
@@ -446,6 +448,100 @@ public class LocalResourceFileSystemTests
         // A key in another root is not the same resource, so only the removal is announced.
         _messengerService.Received(1).Send(Arg.Is<ResourceDeletedMessage>(message => message.Resource == sourceKey));
         _messengerService.DidNotReceive().Send(Arg.Any<ResourceKeyChangedMessage>());
+    }
+
+    [Test]
+    public async Task MoveAsync_RenamesAFileByLetterCaseAlone()
+    {
+        UseRealRegistry();
+        await File.WriteAllTextAsync(Path.Combine(_tempFolder, "notes.txt"), "hello");
+
+        var result = await _resourceFileSystem.MoveAsync(new ResourceKey("notes.txt"), new ResourceKey("Notes.txt"));
+
+        result.IsSuccess.Should().BeTrue(result.DiagnosticReport);
+        ListNames(_tempFolder).Should().Equal("Notes.txt");
+        (await File.ReadAllTextAsync(Path.Combine(_tempFolder, "Notes.txt"))).Should().Be("hello");
+    }
+
+    [Test]
+    public async Task MoveAsync_RenamesAFolderByLetterCaseAlone()
+    {
+        UseRealRegistry();
+        var folderPath = Path.Combine(_tempFolder, "docs");
+        Directory.CreateDirectory(folderPath);
+        await File.WriteAllTextAsync(Path.Combine(folderPath, "page.txt"), "page");
+
+        var result = await _resourceFileSystem.MoveAsync(new ResourceKey("docs"), new ResourceKey("Docs"));
+
+        result.IsSuccess.Should().BeTrue(result.DiagnosticReport);
+        ListNames(_tempFolder).Should().Equal("Docs");
+        ListNames(Path.Combine(_tempFolder, "Docs")).Should().Equal("page.txt");
+    }
+
+    [Test]
+    public async Task MoveAsync_RenamesTheSidecarWhenItsFileIsRenamedByLetterCaseAlone()
+    {
+        UseRealRegistry();
+        await File.WriteAllTextAsync(Path.Combine(_tempFolder, "notes.md"), "notes");
+        await File.WriteAllTextAsync(Path.Combine(_tempFolder, "notes.md.cel"), "+++\n+++\n");
+
+        var result = await _resourceFileSystem.MoveAsync(new ResourceKey("notes.md"), new ResourceKey("Notes.md"));
+
+        result.IsSuccess.Should().BeTrue(result.DiagnosticReport);
+        result.Value.Sidecar.Should().Be(SidecarOutcome.Cascaded);
+        ListNames(_tempFolder).Should().Equal("Notes.md", "Notes.md.cel");
+    }
+
+    [Test]
+    [Platform(Exclude = "Linux", Reason = "On a case-sensitive volume, docs and Docs are different folders.")]
+    public async Task MoveAsync_RefusesARenameIntoAFolderNamedInTheWrongCase()
+    {
+        UseRealRegistry();
+        var folderPath = Path.Combine(_tempFolder, "docs");
+        Directory.CreateDirectory(folderPath);
+        await File.WriteAllTextAsync(Path.Combine(folderPath, "notes.txt"), "notes");
+
+        var result = await _resourceFileSystem.MoveAsync(new ResourceKey("docs/notes.txt"), new ResourceKey("Docs/Notes.txt"));
+
+        result.IsFailure.Should().BeTrue();
+        result.DiagnosticReport.Should().Contain("project:docs/notes.txt");
+        ListNames(folderPath).Should().Equal("notes.txt");
+    }
+
+    [Test]
+    [Platform(Exclude = "Linux", Reason = "On a case-sensitive volume, notes.txt and Notes.txt are different files.")]
+    public async Task MoveAsync_RenameByLetterCaseAlone_ResolvesOnlyTheNewName()
+    {
+        UseRealRegistry();
+        await File.WriteAllTextAsync(Path.Combine(_tempFolder, "notes.txt"), "hello");
+        (await _resourceFileSystem.GetInfoAsync(new ResourceKey("notes.txt"))).IsSuccess.Should().BeTrue();
+
+        var result = await _resourceFileSystem.MoveAsync(new ResourceKey("notes.txt"), new ResourceKey("Notes.txt"));
+
+        result.IsSuccess.Should().BeTrue(result.DiagnosticReport);
+        var oldResult = await _resourceFileSystem.GetInfoAsync(new ResourceKey("notes.txt"));
+        var newResult = await _resourceFileSystem.GetInfoAsync(new ResourceKey("Notes.txt"));
+        oldResult.HasException<StoredNameMismatchError>().Should().BeTrue();
+        newResult.IsSuccess.Should().BeTrue(newResult.DiagnosticReport);
+    }
+
+    [Test]
+    [Platform(Exclude = "Linux", Reason = "On a case-sensitive volume, notes.txt and Notes.txt are different files.")]
+    public async Task DeleteAsync_RecordsTheRemoval_SoTheOldNameIsRefused()
+    {
+        UseRealRegistry();
+        await File.WriteAllTextAsync(Path.Combine(_tempFolder, "notes.txt"), "hello");
+        (await _resourceFileSystem.GetInfoAsync(new ResourceKey("notes.txt"))).IsSuccess.Should().BeTrue();
+
+        var result = await _resourceFileSystem.DeleteAsync(new ResourceKey("notes.txt"));
+
+        // Another process makes the file again in another case, and the watcher has not reported it.
+        await File.WriteAllTextAsync(Path.Combine(_tempFolder, "Notes.txt"), "again");
+        var oldResult = await _resourceFileSystem.GetInfoAsync(new ResourceKey("notes.txt"));
+
+        result.IsSuccess.Should().BeTrue(result.DiagnosticReport);
+        oldResult.HasException<StoredNameMismatchError>().Should().BeTrue();
+        oldResult.MessageChain.Should().Contain("Canonical form is 'project:Notes.txt'");
     }
 
     [Test]
@@ -833,5 +929,31 @@ public class LocalResourceFileSystemTests
 
         result.IsFailure.Should().BeTrue();
         stopwatch.ElapsedMilliseconds.Should().BeLessThan(50);
+    }
+
+    // Resolves keys through a real registry over the temporary folder, so the gateway meets the real stored
+    // name and link checks.
+    private void UseRealRegistry()
+    {
+        var rootHandlerRegistry = new RootHandlerRegistry();
+        var resourceRegistry = new ResourceRegistry(
+            Substitute.For<ILogger<ResourceRegistry>>(),
+            _messengerService,
+            ProjectTreeBuilderTestHelper.Build(_tempFolder, new IconService()),
+            ResourceClassifierTestHelper.BuildClassifier(),
+            rootHandlerRegistry);
+        resourceRegistry.InitializeProjectRoot(_tempFolder);
+
+        _resourceService.Registry.Returns(resourceRegistry);
+        _resourceService.RootHandlers.Returns(rootHandlerRegistry);
+    }
+
+    // Returns the stored names of a folder's items, in ordinal order.
+    private static List<string> ListNames(string folderPath)
+    {
+        return Directory.EnumerateFileSystemEntries(folderPath)
+            .Select(path => Path.GetFileName(path))
+            .Order(StringComparer.Ordinal)
+            .ToList();
     }
 }

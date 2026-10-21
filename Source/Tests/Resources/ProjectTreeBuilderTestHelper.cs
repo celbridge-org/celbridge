@@ -1,7 +1,7 @@
 using Celbridge.Messaging;
 using Celbridge.Resources;
-using Celbridge.Resources.Helpers;
 using Celbridge.Resources.Services;
+using Celbridge.Resources.Services.Roots;
 using Celbridge.Tests.FileSystem;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Services;
@@ -23,12 +23,12 @@ internal static class ProjectTreeBuilderTestHelper
         IIconService? iconService = null,
         string[]? searchExcludePatterns = null)
     {
-        var pathResolver = new RootPathResolver(ResourceKey.DefaultRoot, projectFolderPath);
+        var projectRootHandler = new ProjectRootHandler(projectFolderPath);
 
         var resourceRegistry = Substitute.For<IResourceRegistry>();
         resourceRegistry.ProjectFolderPath.Returns(projectFolderPath);
         resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>(), Arg.Any<bool>()).Returns(callInfo =>
-            pathResolver.ValidateAndResolve(callInfo.Arg<ResourceKey>()));
+            projectRootHandler.Resolve(callInfo.Arg<ResourceKey>()));
 
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Registry.Returns(resourceRegistry);

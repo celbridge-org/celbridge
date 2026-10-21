@@ -1,3 +1,4 @@
+using Celbridge.Resources;
 using Celbridge.Resources.Helpers;
 
 namespace Celbridge.Tests.Resources;
@@ -5,6 +6,17 @@ namespace Celbridge.Tests.Resources;
 [TestFixture]
 public class RootPathResolverTests
 {
+    private const string CaseSensitiveVolumeReason = "On a case-sensitive volume, names that differ in case name different items.";
+
+    private sealed class FakeTimeProvider : TimeProvider
+    {
+        private DateTimeOffset _now = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+
+        public override DateTimeOffset GetUtcNow() => _now;
+
+        public void Advance(TimeSpan interval) => _now += interval;
+    }
+
     private string? _projectFolder;
     private string? _outsideFolder;
 
@@ -44,7 +56,7 @@ public class RootPathResolverTests
     {
         Guard.IsNotNull(_projectFolder);
 
-        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder);
+        var resolver = CreateResolver();
         var resourceKey = ResourceKey.Create("folder/file.txt");
 
         var resolveResult = resolver.ValidateAndResolve(resourceKey);
@@ -59,7 +71,7 @@ public class RootPathResolverTests
     {
         Guard.IsNotNull(_projectFolder);
 
-        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder);
+        var resolver = CreateResolver();
 
         var resolveResult = resolver.ValidateAndResolve(ResourceKey.Empty);
 
@@ -69,22 +81,52 @@ public class RootPathResolverTests
     }
 
     [Test]
-    public void ValidateAndResolveCachesVerifiedFolders()
+    public void ValidateAndResolveListsACachedFolderOnce()
     {
-        Guard.IsNotNull(_projectFolder);
+        WriteProjectFile("cached/a.txt");
+        WriteProjectFile("cached/b.txt");
+        var resolver = CreateResolver();
 
-        // Create the folder on disk so the first call does a full check
-        var subFolder = Path.Combine(_projectFolder, "cached");
-        Directory.CreateDirectory(subFolder);
-        File.WriteAllText(Path.Combine(subFolder, "a.txt"), "test");
+        // The first lookup lists the backing folder and the cached folder.
+        resolver.ValidateAndResolve(ResourceKey.Create("cached/a.txt")).IsSuccess.Should().BeTrue();
+        var listingCount = resolver.ListingCount;
+        var resolveResult = resolver.ValidateAndResolve(ResourceKey.Create("cached/b.txt"));
 
-        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder);
+        resolveResult.IsSuccess.Should().BeTrue(resolveResult.FirstErrorMessage);
+        listingCount.Should().Be(2);
+        resolver.ListingCount.Should().Be(listingCount);
+    }
 
-        // First call — verifies the folder
-        resolver.ValidateAndResolve(ResourceKey.Create("cached/a.txt"));
+    [Test]
+    public void ValidateAndResolveFindsAFileCreatedOutsideAfterTheListing()
+    {
+        WriteProjectFile("docs/a.txt");
+        var resolver = CreateResolver();
+        resolver.ValidateAndResolve(ResourceKey.Create("docs/a.txt")).IsSuccess.Should().BeTrue();
+        var listingCount = resolver.ListingCount;
 
-        // Second call — should hit the cache (no way to assert directly, but it should not throw)
-        resolver.ValidateAndResolve(ResourceKey.Create("cached/b.txt"));
+        // Created without telling the resolver, so its name is missing from the listing.
+        WriteProjectFile("docs/b.txt");
+        var resolveResult = resolver.ValidateAndResolve(ResourceKey.Create("docs/b.txt"));
+
+        resolveResult.IsSuccess.Should().BeTrue(resolveResult.FirstErrorMessage);
+        resolver.ListingCount.Should().Be(listingCount + 1);
+    }
+
+    [Test]
+    public void ValidateAndResolveFindsARecordedFileWithoutListingAgain()
+    {
+        WriteProjectFile("docs/a.txt");
+        var resolver = CreateResolver();
+        resolver.ValidateAndResolve(ResourceKey.Create("docs/a.txt")).IsSuccess.Should().BeTrue();
+        var listingCount = resolver.ListingCount;
+
+        WriteProjectFile("docs/new/b.txt");
+        resolver.RecordItemCreated(Path.Combine(_projectFolder!, "docs", "new", "b.txt"));
+        var resolveResult = resolver.ValidateAndResolve(ResourceKey.Create("docs/new"));
+
+        resolveResult.IsSuccess.Should().BeTrue(resolveResult.FirstErrorMessage);
+        resolver.ListingCount.Should().Be(listingCount);
     }
 
     [Test]
@@ -96,13 +138,14 @@ public class RootPathResolverTests
         Directory.CreateDirectory(subFolder);
         File.WriteAllText(Path.Combine(subFolder, "a.txt"), "test");
 
-        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder);
+        var resolver = CreateResolver();
 
         // Cache the folder
         resolver.ValidateAndResolve(ResourceKey.Create("ephemeral/a.txt"));
 
         // Invalidate
         resolver.InvalidateCache();
+        resolver.CachedFolderCount.Should().Be(0);
 
         // Next call should re-verify (still succeeds since folder is clean)
         var resolveResult = resolver.ValidateAndResolve(ResourceKey.Create("ephemeral/a.txt"));
@@ -133,7 +176,7 @@ public class RootPathResolverTests
 
         try
         {
-            var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder);
+            var resolver = CreateResolver();
 
             var resolveResult = resolver.ValidateAndResolve(ResourceKey.Create("link_folder/file.txt"));
             resolveResult.IsFailure.Should().BeTrue();
@@ -157,7 +200,7 @@ public class RootPathResolverTests
     {
         Guard.IsNotNull(_projectFolder);
 
-        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder);
+        var resolver = CreateResolver();
 
         // Non-existent paths should be accepted (for create operations)
         var resolveResult = resolver.ValidateAndResolve(ResourceKey.Create("new_folder/new_file.txt"));
@@ -170,7 +213,7 @@ public class RootPathResolverTests
     {
         Guard.IsNotNull(_projectFolder);
 
-        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder);
+        var resolver = CreateResolver();
 
         var keyResult = resolver.GetResourceKey(_projectFolder);
 
@@ -184,7 +227,7 @@ public class RootPathResolverTests
     {
         Guard.IsNotNull(_projectFolder);
 
-        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder);
+        var resolver = CreateResolver();
         var fullPath = Path.Combine(_projectFolder, "folder", "file.txt");
 
         var keyResult = resolver.GetResourceKey(fullPath);
@@ -198,7 +241,7 @@ public class RootPathResolverTests
     {
         Guard.IsNotNull(_projectFolder);
 
-        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder);
+        var resolver = CreateResolver();
         var outsidePath = Path.Combine(Path.GetTempPath(), $"Celbridge/{nameof(RootPathResolverTests)}_unrelated", "stray.txt");
 
         var keyResult = resolver.GetResourceKey(outsidePath);
@@ -212,7 +255,7 @@ public class RootPathResolverTests
     {
         Guard.IsNotNull(_projectFolder);
 
-        var resolver = new RootPathResolver("temp", _projectFolder);
+        var resolver = CreateResolver("temp", ListingPolicy.None);
         var fullPath = Path.Combine(_projectFolder, "sub", "scratch.txt");
 
         var keyResult = resolver.GetResourceKey(fullPath);
@@ -227,7 +270,7 @@ public class RootPathResolverTests
     {
         Guard.IsNotNull(_projectFolder);
 
-        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder);
+        var resolver = CreateResolver();
 
         // A path whose backing-location portion differs only in case from how the
         // root was registered. On a case-insensitive volume (Windows, default APFS)
@@ -278,7 +321,7 @@ public class RootPathResolverTests
 
         try
         {
-            var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder);
+            var resolver = CreateResolver();
 
             var resolveResult = resolver.ValidateAndResolve(ResourceKey.Create("parent/link/file.txt"));
             resolveResult.IsFailure.Should().BeTrue();
@@ -301,7 +344,7 @@ public class RootPathResolverTests
     public void ValidateAndResolveRejectsALinkedFileOnAFirstLookup()
     {
         var linkKey = CreateLinkToOutsideFile("docs/link.txt");
-        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder!);
+        var resolver = CreateResolver();
 
         var resolveResult = resolver.ValidateAndResolve(linkKey);
 
@@ -314,7 +357,7 @@ public class RootPathResolverTests
     public void ValidateAndResolveRejectsALinkedFileAfterItsFolderHasBeenResolved()
     {
         var linkKey = CreateLinkToOutsideFile("docs/link.txt");
-        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder!);
+        var resolver = CreateResolver();
         resolver.ValidateAndResolve(ResourceKey.Create("docs")).IsSuccess.Should().BeTrue();
 
         var resolveResult = resolver.ValidateAndResolve(linkKey);
@@ -331,7 +374,7 @@ public class RootPathResolverTests
         var targetPath = Path.Combine(docsFolder, "target.txt");
         File.WriteAllText(targetPath, "target");
         File.CreateSymbolicLink(Path.Combine(docsFolder, "link.txt"), targetPath);
-        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder!);
+        var resolver = CreateResolver();
         resolver.ValidateAndResolve(ResourceKey.Create("docs/target.txt")).IsSuccess.Should().BeTrue();
 
         var resolveResult = resolver.ValidateAndResolve(ResourceKey.Create("docs/link.txt"));
@@ -343,7 +386,7 @@ public class RootPathResolverTests
     public void ValidateAndResolveRejectsALinkedFolder()
     {
         Directory.CreateSymbolicLink(Path.Combine(_projectFolder!, "linked"), _outsideFolder!);
-        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder!);
+        var resolver = CreateResolver();
 
         var resolveResult = resolver.ValidateAndResolve(ResourceKey.Create("linked"));
 
@@ -357,7 +400,7 @@ public class RootPathResolverTests
         var docsFolder = Path.Combine(_projectFolder!, "docs");
         Directory.CreateDirectory(docsFolder);
         File.CreateSymbolicLink(Path.Combine(docsFolder, "broken.txt"), Path.Combine(_outsideFolder!, "gone.txt"));
-        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder!);
+        var resolver = CreateResolver();
 
         resolver.ValidateAndResolve(ResourceKey.Create("docs/broken.txt")).IsFailure.Should().BeTrue();
         resolver.ValidateAndResolve(ResourceKey.Create("docs")).IsSuccess.Should().BeTrue();
@@ -368,7 +411,7 @@ public class RootPathResolverTests
     public void ValidateAndResolveRejectsALinkCreatedWhereAMissingFolderWasResolved()
     {
         File.WriteAllText(Path.Combine(_outsideFolder!, "secret.txt"), "secret");
-        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder!);
+        var resolver = CreateResolver();
         resolver.ValidateAndResolve(ResourceKey.Create("missing/secret.txt")).IsSuccess.Should().BeTrue();
 
         Directory.CreateSymbolicLink(Path.Combine(_projectFolder!, "missing"), _outsideFolder!);
@@ -379,7 +422,7 @@ public class RootPathResolverTests
     }
 
     [Test]
-    public void ValidateAndResolveRejectsALinkThatReplacesAVerifiedFolderOnceTheFolderIsInvalidated()
+    public void ValidateAndResolveRejectsALinkThatReplacesACachedFolderOnceTheRemovalIsRecorded()
     {
         var subFolder = Path.Combine(_projectFolder!, "docs", "sub");
         Directory.CreateDirectory(subFolder);
@@ -387,14 +430,15 @@ public class RootPathResolverTests
         var outsideSubFolder = Path.Combine(_outsideFolder!, "sub");
         Directory.CreateDirectory(outsideSubFolder);
         File.WriteAllText(Path.Combine(outsideSubFolder, "page.txt"), "outside");
-        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder!);
+        var resolver = CreateResolver();
         resolver.ValidateAndResolve(ResourceKey.Create("docs/sub/page.txt")).IsSuccess.Should().BeTrue();
 
         // Replace docs, an ancestor of the cached folder, with a link to a folder of the same shape.
         var docsFolder = Path.Combine(_projectFolder!, "docs");
         Directory.Move(docsFolder, Path.Combine(_projectFolder!, "docs_moved"));
         Directory.CreateSymbolicLink(docsFolder, _outsideFolder!);
-        resolver.InvalidateCache(docsFolder);
+        resolver.RecordItemRemoved(docsFolder);
+        resolver.RecordItemCreated(docsFolder);
 
         var resolveResult = resolver.ValidateAndResolve(ResourceKey.Create("docs/sub/page.txt"));
 
@@ -403,18 +447,35 @@ public class RootPathResolverTests
     }
 
     [Test]
-    public void InvalidateCacheForAFileKeepsTheVerifiedFolders()
+    public void RecordItemRemovedForAFolderDropsEveryCachedFolderBelowIt()
+    {
+        WriteProjectFile("docs/sub/deeper/page.txt");
+        WriteProjectFile("other/page.txt");
+        var resolver = CreateResolver();
+        resolver.ValidateAndResolve(ResourceKey.Create("docs/sub/deeper/page.txt")).IsSuccess.Should().BeTrue();
+        resolver.ValidateAndResolve(ResourceKey.Create("other/page.txt")).IsSuccess.Should().BeTrue();
+
+        // The cache has the backing folder, docs, sub, deeper and other.
+        resolver.CachedFolderCount.Should().Be(5);
+
+        resolver.RecordItemRemoved(Path.Combine(_projectFolder!, "docs"));
+
+        resolver.CachedFolderCount.Should().Be(2);
+    }
+
+    [Test]
+    public void RecordItemRemovedForAFileKeepsTheCachedFolders()
     {
         var docsFolder = Path.Combine(_projectFolder!, "docs");
         Directory.CreateDirectory(docsFolder);
         var plainPath = Path.Combine(docsFolder, "plain.txt");
         File.WriteAllText(plainPath, "plain");
-        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder!);
+        var resolver = CreateResolver();
         resolver.ValidateAndResolve(ResourceKey.Create("docs/plain.txt")).IsSuccess.Should().BeTrue();
 
-        resolver.InvalidateCache(Path.Combine(docsFolder, "gone.txt"));
+        resolver.RecordItemRemoved(Path.Combine(docsFolder, "gone.txt"));
 
-        resolver.VerifiedFolderCount.Should().BeGreaterThan(0);
+        resolver.CachedFolderCount.Should().Be(2);
     }
 
     [Test]
@@ -423,7 +484,7 @@ public class RootPathResolverTests
         CreateLinkToOutsideFile("docs/link.txt");
         var plainPath = Path.Combine(_projectFolder!, "docs", "plain.txt");
         File.WriteAllText(plainPath, "plain");
-        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder!);
+        var resolver = CreateResolver();
         resolver.ValidateAndResolve(ResourceKey.Create("docs")).IsSuccess.Should().BeTrue();
 
         var resolveResult = resolver.ValidateAndResolve(ResourceKey.Create("docs/plain.txt"));
@@ -436,10 +497,232 @@ public class RootPathResolverTests
     public void IsPathSafeRejectsALinkedFileAfterItsFolderHasBeenResolved()
     {
         CreateLinkToOutsideFile("docs/link.txt");
-        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder!);
+        var resolver = CreateResolver();
         resolver.IsPathSafe(Path.Combine(_projectFolder!, "docs")).Should().BeTrue();
 
         resolver.IsPathSafe(Path.Combine(_projectFolder!, "docs", "link.txt")).Should().BeFalse();
+    }
+
+    [Test]
+    [Platform(Exclude = "Linux", Reason = CaseSensitiveVolumeReason)]
+    public void ValidateAndResolveRefusesAKeyInTheWrongCaseAndNamesItsCanonicalForm()
+    {
+        WriteProjectFile("docs/notes.txt");
+        var resolver = CreateResolver();
+
+        var resolveResult = resolver.ValidateAndResolve(ResourceKey.Create("DOCS/Notes.txt"));
+
+        resolveResult.IsFailure.Should().BeTrue();
+        resolveResult.HasException<StoredNameMismatchError>().Should().BeTrue();
+        resolveResult.FirstErrorMessage.Should().Contain("does not match the name stored on disk");
+        resolveResult.FirstErrorMessage.Should().Contain("Canonical form is 'project:docs/notes.txt'");
+    }
+
+    [Test]
+    [Platform(Exclude = "Linux", Reason = CaseSensitiveVolumeReason)]
+    public void ValidateAndResolveRefusesANewKeyUnderAFolderInTheWrongCase()
+    {
+        WriteProjectFile("docs/notes.txt");
+        var resolver = CreateResolver();
+
+        var resolveResult = resolver.ValidateAndResolve(ResourceKey.Create("Docs/new.txt"));
+
+        resolveResult.IsFailure.Should().BeTrue();
+        resolveResult.FirstErrorMessage.Should().Contain("Canonical form is 'project:docs/new.txt'");
+    }
+
+    [Test]
+    [Platform(Exclude = "Linux", Reason = CaseSensitiveVolumeReason)]
+    public void ValidateAndResolveRefusesAFileInTheWrongCaseOnceItsFolderIsCached()
+    {
+        WriteProjectFile("docs/notes.txt");
+        var resolver = CreateResolver();
+        resolver.ValidateAndResolve(ResourceKey.Create("docs/notes.txt")).IsSuccess.Should().BeTrue();
+
+        var resolveResult = resolver.ValidateAndResolve(ResourceKey.Create("docs/NOTES.TXT"));
+
+        resolveResult.IsFailure.Should().BeTrue();
+        resolveResult.FirstErrorMessage.Should().Contain("Canonical form is 'project:docs/notes.txt'");
+    }
+
+    [Test]
+    [Platform(Exclude = "Linux", Reason = CaseSensitiveVolumeReason)]
+    public void ValidateAndResolveRefusesAFolderInTheWrongCaseOnceTheRealFolderIsCached()
+    {
+        WriteProjectFile("docs/notes.txt");
+        var resolver = CreateResolver();
+        resolver.ValidateAndResolve(ResourceKey.Create("docs/notes.txt")).IsSuccess.Should().BeTrue();
+
+        var folderResult = resolver.ValidateAndResolve(ResourceKey.Create("Docs"));
+        var fileResult = resolver.ValidateAndResolve(ResourceKey.Create("Docs/notes.txt"));
+
+        folderResult.IsFailure.Should().BeTrue();
+        folderResult.FirstErrorMessage.Should().Contain("Canonical form is 'project:docs'");
+        fileResult.IsFailure.Should().BeTrue();
+        fileResult.FirstErrorMessage.Should().Contain("Canonical form is 'project:docs/notes.txt'");
+    }
+
+    [Test]
+    public void ValidateAndResolveAcceptsANewKeyInAVerifiedFolder()
+    {
+        WriteProjectFile("docs/notes.txt");
+        var resolver = CreateResolver();
+        resolver.ValidateAndResolve(ResourceKey.Create("docs/notes.txt")).IsSuccess.Should().BeTrue();
+
+        var resolveResult = resolver.ValidateAndResolve(ResourceKey.Create("docs/New Notes.txt"));
+
+        resolveResult.IsSuccess.Should().BeTrue(resolveResult.FirstErrorMessage);
+        resolveResult.Value.Should().Be(Path.GetFullPath(Path.Combine(_projectFolder!, "docs", "New Notes.txt")));
+    }
+
+    [Test]
+    [Platform(Exclude = "Linux", Reason = CaseSensitiveVolumeReason)]
+    public void ValidateAndResolveTrustsACachedFolderUntilTheRenameIsRecorded()
+    {
+        WriteProjectFile("docs/notes.txt");
+        var resolver = CreateResolver();
+        resolver.ValidateAndResolve(ResourceKey.Create("docs/notes.txt")).IsSuccess.Should().BeTrue();
+
+        // Rename the folder without telling the resolver. The cached folder is not checked again.
+        var oldFolderPath = Path.Combine(_projectFolder!, "docs");
+        var newFolderPath = Path.Combine(_projectFolder!, "Docs");
+        Directory.Move(oldFolderPath, newFolderPath);
+        var cachedResult = resolver.ValidateAndResolve(ResourceKey.Create("docs/notes.txt"));
+
+        resolver.RecordItemRemoved(oldFolderPath);
+        resolver.RecordItemCreated(newFolderPath);
+        var checkedResult = resolver.ValidateAndResolve(ResourceKey.Create("docs/notes.txt"));
+        var renamedResult = resolver.ValidateAndResolve(ResourceKey.Create("Docs/notes.txt"));
+
+        cachedResult.IsSuccess.Should().BeTrue();
+        checkedResult.IsFailure.Should().BeTrue();
+        checkedResult.FirstErrorMessage.Should().Contain("Canonical form is 'project:Docs/notes.txt'");
+        renamedResult.IsSuccess.Should().BeTrue(renamedResult.FirstErrorMessage);
+    }
+
+    [Test]
+    [Platform(Exclude = "Linux", Reason = CaseSensitiveVolumeReason)]
+    public void ValidateAndResolveAcceptsAStaleNameUntilTheRemovalIsRecorded()
+    {
+        WriteProjectFile("docs/notes.txt");
+        var resolver = CreateResolver();
+        resolver.ValidateAndResolve(ResourceKey.Create("docs/notes.txt")).IsSuccess.Should().BeTrue();
+
+        // Rename the file by case alone without telling the resolver. The listing still has the old name.
+        var oldFilePath = Path.Combine(_projectFolder!, "docs", "notes.txt");
+        var newFilePath = Path.Combine(_projectFolder!, "docs", "Notes.txt");
+        File.Move(oldFilePath, newFilePath);
+        var staleResult = resolver.ValidateAndResolve(ResourceKey.Create("docs/notes.txt"));
+
+        resolver.RecordItemRemoved(oldFilePath);
+        resolver.RecordItemCreated(newFilePath);
+        var checkedResult = resolver.ValidateAndResolve(ResourceKey.Create("docs/notes.txt"));
+
+        staleResult.IsSuccess.Should().BeTrue();
+        checkedResult.IsFailure.Should().BeTrue();
+        checkedResult.FirstErrorMessage.Should().Contain("Canonical form is 'project:docs/Notes.txt'");
+    }
+
+    [Test]
+    [Platform("MacOsX", Reason = "Only APFS finds a name stored in another Unicode normalization.")]
+    public void ValidateAndResolveRefusesAKeyInAnotherUnicodeNormalization()
+    {
+        // The file's name is stored decomposed, and the key composes it.
+        WriteProjectFile("Cafe\u0301.txt");
+        var resolver = CreateResolver();
+
+        var resolveResult = resolver.ValidateAndResolve(ResourceKey.Create("Caf\u00e9.txt"));
+
+        resolveResult.IsFailure.Should().BeTrue();
+        resolveResult.FirstErrorMessage.Should().Contain("Canonical form is 'project:Cafe\u0301.txt'");
+    }
+
+    [Test]
+    public void ValidateAndResolveAcceptsAKeyInTheStoredUnicodeNormalization()
+    {
+        WriteProjectFile("Cafe\u0301.txt");
+        var resolver = CreateResolver();
+
+        var resolveResult = resolver.ValidateAndResolve(ResourceKey.Create("Cafe\u0301.txt"));
+
+        resolveResult.IsSuccess.Should().BeTrue(resolveResult.FirstErrorMessage);
+    }
+
+    [Test]
+    [Platform("MacOsX", Reason = "Only APFS finds a name stored in another Unicode normalization.")]
+    public void ValidateAndResolveNamesTheStoredNormalizationWhenTheCaseIsWrong()
+    {
+        WriteProjectFile("Cafe\u0301.txt");
+        var resolver = CreateResolver();
+
+        var resolveResult = resolver.ValidateAndResolve(ResourceKey.Create("CAF\u00c9.txt"));
+
+        resolveResult.IsFailure.Should().BeTrue();
+        resolveResult.FirstErrorMessage.Should().Contain("Canonical form is 'project:Cafe\u0301.txt'");
+    }
+
+    [Test]
+    public void ValidateAndResolveAcceptsAnyFormOfANameAndListsNothingUnderTheNonePolicy()
+    {
+        WriteProjectFile("docs/notes.txt");
+        var resolver = CreateResolver("temp", ListingPolicy.None);
+
+        var resolveResult = resolver.ValidateAndResolve(ResourceKey.Create("temp:DOCS/Notes.txt"));
+
+        resolveResult.IsSuccess.Should().BeTrue(resolveResult.FirstErrorMessage);
+        resolver.ListingCount.Should().Be(0);
+    }
+
+    [Test]
+    public void ValidateAndResolveListsAgainOnceAnExpiringListingHasExpired()
+    {
+        WriteProjectFile("docs/notes.txt");
+        var timeProvider = new FakeTimeProvider();
+        var resolver = CreateResolver("logs", ListingPolicy.Expiring, timeProvider);
+        resolver.ValidateAndResolve(ResourceKey.Create("logs:docs/notes.txt")).IsSuccess.Should().BeTrue();
+        var listingCount = resolver.ListingCount;
+
+        timeProvider.Advance(TimeSpan.FromSeconds(30));
+        resolver.ValidateAndResolve(ResourceKey.Create("logs:docs/notes.txt")).IsSuccess.Should().BeTrue();
+        var listingCountWithinLifetime = resolver.ListingCount;
+
+        timeProvider.Advance(TimeSpan.FromMinutes(1));
+        resolver.ValidateAndResolve(ResourceKey.Create("logs:docs/notes.txt")).IsSuccess.Should().BeTrue();
+
+        listingCount.Should().Be(2);
+        listingCountWithinLifetime.Should().Be(listingCount);
+        resolver.ListingCount.Should().Be(listingCount * 2);
+    }
+
+    [Test]
+    [Platform(Exclude = "Linux", Reason = CaseSensitiveVolumeReason)]
+    public void ValidateAndResolveRejectsALinkThatReplacesAFolderResolvedInTheWrongCase()
+    {
+        WriteProjectFile("docs/sub/page.txt");
+        var outsideSubFolder = Path.Combine(_outsideFolder!, "sub");
+        Directory.CreateDirectory(outsideSubFolder);
+        File.WriteAllText(Path.Combine(outsideSubFolder, "page.txt"), "outside");
+        var resolver = CreateResolver("temp", ListingPolicy.None);
+        resolver.ValidateAndResolve(ResourceKey.Create("temp:DOCS/sub/page.txt")).IsSuccess.Should().BeTrue();
+
+        // The watcher reports the folder under its stored name.
+        var docsFolder = Path.Combine(_projectFolder!, "docs");
+        Directory.Move(docsFolder, Path.Combine(_projectFolder!, "docs_moved"));
+        Directory.CreateSymbolicLink(docsFolder, _outsideFolder!);
+        resolver.RecordItemRemoved(docsFolder);
+
+        var resolveResult = resolver.ValidateAndResolve(ResourceKey.Create("temp:DOCS/sub/page.txt"));
+
+        resolveResult.IsFailure.Should().BeTrue();
+        resolveResult.FirstErrorMessage.Should().Contain("symbolic link or junction");
+    }
+
+    private RootPathResolver CreateResolver(
+        string rootName = ResourceKey.DefaultRoot,
+        ListingPolicy listingPolicy = ListingPolicy.UntilChanged,
+        TimeProvider? timeProvider = null)
+    {
+        return new RootPathResolver(rootName, _projectFolder!, listingPolicy, timeProvider ?? TimeProvider.System);
     }
 
     // Creates a link at the key's path in the project, pointing at a file outside the project.
@@ -453,5 +736,13 @@ public class RootPathResolverTests
         File.CreateSymbolicLink(linkPath, targetPath);
 
         return ResourceKey.Create(keyPath);
+    }
+
+    // Writes a file at the key's path in the project, creating its folders.
+    private void WriteProjectFile(string keyPath)
+    {
+        var filePath = Path.Combine(_projectFolder!, keyPath);
+        Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
+        File.WriteAllText(filePath, "content");
     }
 }

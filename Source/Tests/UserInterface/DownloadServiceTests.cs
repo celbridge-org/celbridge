@@ -79,13 +79,11 @@ public class DownloadServiceTests
 
         _resourceRegistry = Substitute.For<IResourceRegistry>();
         _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>(), Arg.Any<bool>())
-            .Returns(callInfo => ResolvePath(callInfo.Arg<ResourceKey>()));
+            .Returns(callInfo => ResolveExactPath(callInfo.Arg<ResourceKey>()));
         _resourceRegistry.GetResourceKey(Arg.Any<string>())
             .Returns(callInfo => ResolveResource(callInfo.Arg<string>()));
         _resourceRegistry.GetResource(Arg.Any<ResourceKey>())
             .Returns(callInfo => GetResource(callInfo.Arg<ResourceKey>()));
-        _resourceRegistry.NormalizeResourceKey(Arg.Any<ResourceKey>())
-            .Returns(callInfo => NormalizeResource(callInfo.Arg<ResourceKey>()));
 
         _resourceFileSystem = Substitute.For<IResourceFileSystem>();
         _resourceFileSystem.CreateFolderAsync(Arg.Any<ResourceKey>())
@@ -224,14 +222,29 @@ public class DownloadServiceTests
     }
 
     [Test]
-    public async Task AFolderNamedInAnotherCase_IsUsedAsTheProjectSpellsIt()
+    public async Task AFolderNamedInAnotherCase_IsRefused_AndTheRowGivesItsStoredName()
     {
         _localFileSystem.SeedFolder(Path.Combine(ProjectFolderPath, "Incoming"));
         NameDownloadsFolder("incoming");
 
-        var ticket = await BeginAsync("report.pdf");
+        var beginResult = await _downloadService.BeginAsync(
+            "report.pdf",
+            "https://example.com/report.pdf",
+            Substitute.For<IDownloadTransfer>());
 
-        ticket.Destination.Should().Be(new ResourceKey("Incoming/report.pdf"));
+        beginResult.IsFailure.Should().BeTrue();
+
+        var download = _downloadService.Downloads.Should().ContainSingle().Subject;
+        download.Status.Should().Be(DownloadStatus.Failed);
+        download.FailureReason.Should().Be("Downloads_FolderNameMismatch");
+        _localizerService.Received().GetString(
+            "Downloads_FolderNameMismatch",
+            Arg.Is<object[]>(arguments =>
+                arguments.Length == 2
+                && Equals(arguments[0], "incoming")
+                && Equals(arguments[1], "Incoming")));
+
+        await _resourceFileSystem.DidNotReceive().CreateFolderAsync(Arg.Any<ResourceKey>());
     }
 
     /// <summary>
@@ -746,20 +759,22 @@ public class DownloadServiceTests
         return Result<IResource>.Ok(Substitute.For<IFileResource>());
     }
 
-    // Mirrors the registry, which finds the resource on disk whatever the case of the key it is given.
-    private Result<ResourceKey> NormalizeResource(ResourceKey resource)
+    // Mirrors the project root's resolver, which refuses a key that does not match an item's name on disk.
+    private Result<string> ResolveExactPath(ResourceKey resource)
     {
         var path = ResolvePath(resource).Value;
 
         var pathOnDisk = _localFileSystem.Folders
             .Concat(_localFileSystem.Files.Keys)
             .FirstOrDefault(candidate => string.Equals(candidate, path, StringComparison.OrdinalIgnoreCase));
-        if (pathOnDisk is null)
+        if (pathOnDisk is not null
+            && !string.Equals(pathOnDisk, path, StringComparison.Ordinal))
         {
-            return Result<ResourceKey>.Fail($"'{resource}' does not exist");
+            var error = new StoredNameMismatchError(resource, ResolveResource(pathOnDisk).Value);
+            return Result<string>.Fail().WithException(error);
         }
 
-        return ResolveResource(pathOnDisk);
+        return path;
     }
 
     private static string ToKeyPath(string relativePath)

@@ -74,8 +74,7 @@ public class ResourceService : IResourceService, IDisposable
             messengerService,
             projectTreeBuilder,
             resourceClassifier,
-            rootHandlerRegistry,
-            fileSystem);
+            rootHandlerRegistry);
 
         Monitor = resourceMonitor;
         Transfers = resourceTransferService;

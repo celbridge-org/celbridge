@@ -49,17 +49,11 @@ public interface IResourceRegistry
     /// Validates path containment and checks for symlinks/junctions.
     /// The path will be generated even if the resource does not exist yet in the project.
     /// Fails if the path escapes the project folder or traverses a reparse point.
-    /// When validateCase is true (the default) a project-root key whose on-disk
-    /// case differs from the supplied case is rejected; pass false on the listing
-    /// path, where child keys are re-derived from disk-canonical names anyway.
+    /// Resolves through IRootHandlerRegistry.ResolveResourcePath, which fails a key
+    /// that differs from the name stored on disk for an existing item.
+    /// validateCase has no effect.
     /// </summary>
     Result<string> ResolveResourcePath(ResourceKey resource, bool validateCase = true);
-
-    /// <summary>
-    /// Normalizes the resource key so that it matches the exact casing as it exists on disk.
-    /// Fails if no resource matching the resource key is found in the project (case-insensitive comparison).
-    /// </summary>
-    Result<ResourceKey> NormalizeResourceKey(ResourceKey resourceKey);
 
     /// <summary>
     /// Returns the resource with the specified resource key.

@@ -93,7 +93,12 @@ public sealed class DownloadService : IDownloadService
         }
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var downloadsFolder = ResolveDownloadsFolder(resourceRegistry);
+        var folderResult = ResolveDownloadsFolder(resourceRegistry);
+        if (folderResult.IsFailure)
+        {
+            return Result<string>.Fail().WithErrors(folderResult);
+        }
+        var downloadsFolder = folderResult.Value;
 
         var resolveResult = resourceRegistry.ResolveResourcePath(downloadsFolder);
         if (resolveResult.IsFailure)
@@ -139,7 +144,7 @@ public sealed class DownloadService : IDownloadService
             var reserveResult = await ReserveDestinationAsync(resourceRegistry, fileName);
             if (reserveResult.IsFailure)
             {
-                RecordFailure(fileName, sourceUrl, GetString("Downloads_DestinationUnavailable"));
+                RecordFailure(fileName, sourceUrl, DescribeUnavailableDestination(reserveResult));
 
                 return Result<DownloadTicket>.Fail($"Failed to reserve a download destination for '{fileName}'")
                     .WithErrors(reserveResult);
@@ -407,7 +412,7 @@ public sealed class DownloadService : IDownloadService
 
     // Downloads land in the folder the project names, or downloads/ when it names none, so the project
     // root stays uncluttered when a session downloads several files.
-    private ResourceKey ResolveDownloadsFolder(IResourceRegistry resourceRegistry)
+    private Result<ResourceKey> ResolveDownloadsFolder(IResourceRegistry resourceRegistry)
     {
         var configuredFolder = _projectService.CurrentProject?.Config.Resources.DownloadsFolder ?? string.Empty;
 
@@ -418,7 +423,12 @@ public sealed class DownloadService : IDownloadService
     // already promised to another download.
     private async Task<Result<ResourceKey>> ReserveDestinationAsync(IResourceRegistry resourceRegistry, string fileName)
     {
-        var downloadsFolder = ResolveDownloadsFolder(resourceRegistry);
+        var folderResult = ResolveDownloadsFolder(resourceRegistry);
+        if (folderResult.IsFailure)
+        {
+            return Result<ResourceKey>.Fail().WithErrors(folderResult);
+        }
+        var downloadsFolder = folderResult.Value;
 
         if (!ResourceKey.TryCreate($"{downloadsFolder.Path}/{fileName}", out var requestedResource))
         {
@@ -479,6 +489,18 @@ public sealed class DownloadService : IDownloadService
     // Only Celbridge's own reserved folders can deny a destination: nothing a project configures denies a
     // read or a write, and a downloads folder inside a reserved one is refused before it is ever used. If a
     // destination still reaches one, the row names the folder that matched.
+    // The message gives the downloads folder's name as it is stored on disk. The user can then correct the
+    // project's setting or rename the folder.
+    private string DescribeUnavailableDestination(Result reserveResult)
+    {
+        if (reserveResult.FirstException is StoredNameMismatchError { StoredResource: ResourceKey storedFolder } mismatch)
+        {
+            return GetString("Downloads_FolderNameMismatch", mismatch.Resource.Path, storedFolder.Path);
+        }
+
+        return GetString("Downloads_DestinationUnavailable");
+    }
+
     private string DescribeBlockedDestination(Result probeResult, string fileName)
     {
         if (probeResult.FirstException is not PolicyDenialError denial)

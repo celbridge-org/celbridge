@@ -158,6 +158,9 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
     private void HandleCreated(IResourceRootHandler handler, string fullPath)
     {
+        // The resolver's listings have every name in a folder, so ignored paths are recorded too.
+        handler.RecordItemCreated(fullPath);
+
         if (ShouldIgnorePath(handler, fullPath))
         {
             return;
@@ -190,9 +193,10 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
     private void HandleDeleted(IResourceRootHandler handler, string fullPath)
     {
-        // A link may take the place of a deleted folder, so the resolver checks the path again. This runs for
-        // ignored paths too, since an ignored folder can still be an ancestor of a verified one.
-        handler.InvalidatePathCache(fullPath);
+        // The resolver drops its cached folders at or below the path. A cached folder skips the link check, so a
+        // link created there later would otherwise go unnoticed. Ignored paths are recorded too. An ignored
+        // folder can still be an ancestor of a cached folder, and the ignored folder's name is in a listing.
+        handler.RecordItemRemoved(fullPath);
 
         if (ShouldIgnorePath(handler, fullPath))
         {
@@ -206,8 +210,11 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
     private void HandleRenamed(IResourceRootHandler handler, string oldFullPath, string newFullPath)
     {
-        // A link may take the place of a folder renamed away, so the resolver checks the old path again.
-        handler.InvalidatePathCache(oldFullPath);
+        // The resolver drops its cached folders at or below the old path. A cached folder skips the link check,
+        // so a link created there later would otherwise go unnoticed. The folders below the new path are listed
+        // when they are next used.
+        handler.RecordItemRemoved(oldFullPath);
+        handler.RecordItemCreated(newFullPath);
 
         // Only check the new path for ignore rules. The old path may no longer exist on disk
         // (the rename has already completed), so File.GetAttributes would throw and cause the
@@ -237,7 +244,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
     // The monitor lost events, so which resources were missed is exactly what is unknown: the tree is
     // rescanned unconditionally, and the path cache is dropped because one of the missing events may
-    // have been a folder being replaced by a reparse point.
+    // have been a folder being replaced by a reparse point, or a name the listings lack.
     private void OnMonitoringDesynchronized(IResourceRootHandler handler)
     {
         _logger.LogWarning(

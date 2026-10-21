@@ -1,26 +1,25 @@
-using System.Collections.Concurrent;
-
 namespace Celbridge.Resources.Helpers;
 
 /// <summary>
-/// Resolves between resource keys and absolute filesystem paths for a single
-/// root, checking that paths stay within the backing folder. Containment is
-/// re-checked on every call. A path that is a link or passes through one is
-/// refused. Each folder on the path is checked once and cached, and the item
-/// itself on every call. The cache is cleared when the watcher reports that a
-/// verified folder was deleted or renamed away. A link that replaces a folder
-/// before the watcher reports it is missed. It is a containment filter, not a
-/// hardened boundary against symlink races.
+/// Resolves between resource keys and absolute filesystem paths for one root.
+/// Refuses a key that resolves outside the backing folder or passes through a
+/// link. Under a listing policy, also refuses a key that differs from the name
+/// stored on disk for an existing item. Caches the folders it has checked, with
+/// the hashes of their names. A link that replaces a cached folder goes unseen
+/// until the folder's removal is recorded. The resolver is therefore a
+/// containment filter, not a hardened boundary against symlink races.
 /// </summary>
 [AllowDirectFileSystemAccess]
 public class RootPathResolver
 {
-    // Safety valve for a session that touches an unbounded number of folders. An entry costs one
-    // verification to rebuild, so clearing wholesale is enough.
-    private const int MaxVerifiedFolders = 100_000;
-
     // FileSystemInfo.Attributes reports every flag for an item that does not exist.
     private const System.IO.FileAttributes MissingItemAttributes = (System.IO.FileAttributes)(-1);
+
+    private static readonly char[] PathSeparators =
+    {
+        Path.DirectorySeparatorChar,
+        Path.AltDirectorySeparatorChar,
+    };
 
     private readonly string _rootName;
     private readonly string _backingLocation;
@@ -28,19 +27,21 @@ public class RootPathResolver
     // hot paths don't repeat Path.GetFullPath + TrimEnd on every call.
     private readonly string _normalizedBackingWithSeparator;
     private readonly string _normalizedBackingTrimmed;
-    // Resolution runs on the scanner's parallel workers as well as the tree walk. The count is tracked
-    // separately because ConcurrentDictionary.Count locks every bucket.
-    private readonly ConcurrentDictionary<string, byte> _verifiedFolders;
-    private int _verifiedFolderCount;
+    private readonly FolderCache _folderCache;
 
-    public RootPathResolver(string rootName, string backingLocation)
+    public RootPathResolver(string rootName, string backingLocation, ListingPolicy listingPolicy)
+        : this(rootName, backingLocation, listingPolicy, TimeProvider.System)
+    {
+    }
+
+    internal RootPathResolver(string rootName, string backingLocation, ListingPolicy listingPolicy, TimeProvider timeProvider)
     {
         _rootName = rootName;
         _backingLocation = backingLocation;
         _normalizedBackingWithSeparator = NormalizeBackingLocation(backingLocation);
         _normalizedBackingTrimmed = _normalizedBackingWithSeparator
             .TrimEnd(Path.DirectorySeparatorChar);
-        _verifiedFolders = new ConcurrentDictionary<string, byte>(PathComparison.Comparer);
+        _folderCache = new FolderCache(_normalizedBackingTrimmed, listingPolicy, timeProvider);
     }
 
     /// <summary>
@@ -73,10 +74,10 @@ public class RootPathResolver
                 $"Resource key '{resource}' resolves to a path outside the '{_rootName}' root.");
         }
 
-        var linkResult = CheckForLinks(resolvedPath, _normalizedBackingWithSeparator);
-        if (linkResult.IsFailure)
+        var checkResult = CheckPath(resolvedPath, checkStoredName: true);
+        if (checkResult.IsFailure)
         {
-            return Result<string>.Fail(linkResult.FirstErrorMessage);
+            return Result<string>.Fail().WithErrors(checkResult);
         }
 
         return resolvedPath;
@@ -137,7 +138,8 @@ public class RootPathResolver
     /// <summary>
     /// Predicate for recursive gateway enumerations. Returns true when the
     /// absolute path is contained within this resolver's backing location and
-    /// neither is a link nor passes through one. Reuses the verified-folder
+    /// neither is a link nor passes through one. A listing supplies the path with
+    /// the stored names, so the stored name check is skipped. Reuses the folder
     /// cache so the hot path costs at most one stat per unseen folder, plus one
     /// for the item itself.
     /// </summary>
@@ -157,8 +159,8 @@ public class RootPathResolver
                 return false;
             }
 
-            var linkResult = CheckForLinks(normalizedPath, _normalizedBackingWithSeparator);
-            return linkResult.IsSuccess;
+            var checkResult = CheckPath(normalizedPath, checkStoredName: false);
+            return checkResult.IsSuccess;
         }
         catch
         {
@@ -167,117 +169,208 @@ public class RootPathResolver
     }
 
     /// <summary>
-    /// Clears the cache of verified directory paths so those folders are checked for links
-    /// again. Warranted when the watcher has lost events, leaving changes to the folder structure
-    /// unobserved.
+    /// Clears the cache of checked folders and their listings, so those folders are checked and listed
+    /// again. Warranted when the watcher has lost events, leaving changes unobserved.
     /// </summary>
     public void InvalidateCache()
     {
-        _verifiedFolders.Clear();
-        Interlocked.Exchange(ref _verifiedFolderCount, 0);
+        _folderCache.Clear();
     }
 
     /// <summary>
-    /// Clears the cache when the path names a verified folder, because a link may take the place of a folder
-    /// that was deleted or renamed away. Call it for the old path of every delete and rename the watcher reports.
-    /// Every folder above a verified folder is verified too, so a change to any of them clears the cache.
+    /// Records that an item now exists at the absolute path. The item's name joins the listing of the folder
+    /// that contains the item. A new folder above the item joins the listing of the folder above the new one.
     /// </summary>
-    public void InvalidateCache(string absolutePath)
+    public void RecordItemCreated(string absolutePath)
     {
-        // Clearing everything costs one walk per folder on its next lookup. Removing only the folder's own
-        // entries would mean scanning the cache on every event.
-        string normalizedPath;
-        try
+        var itemPath = GetFullPathOrNull(absolutePath);
+        if (itemPath is not null
+            && IsUnderBacking(itemPath))
         {
-            normalizedPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(absolutePath));
+            _folderCache.RecordItemCreated(itemPath);
         }
-        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+    }
+
+    /// <summary>
+    /// Records that the item at the absolute path is gone. The item's name leaves the listing of the folder that
+    /// contained the item. Every cached folder at or below the path is dropped too. A cached folder skips the
+    /// link check, so a link created at one of those paths later would otherwise go unnoticed. The item may have
+    /// been a file or a folder.
+    /// </summary>
+    public void RecordItemRemoved(string absolutePath)
+    {
+        var itemPath = GetFullPathOrNull(absolutePath);
+        if (itemPath is null)
         {
-            InvalidateCache();
+            // A path that fails to parse could name any cached folder.
+            _folderCache.Clear();
             return;
         }
 
-        if (_verifiedFolders.ContainsKey(normalizedPath))
+        if (IsUnderBacking(itemPath))
         {
-            InvalidateCache();
+            _folderCache.RecordItemRemoved(itemPath);
         }
     }
 
     /// <summary>
-    /// Returns the number of verified folders in the cache.
+    /// Returns the number of folders in the cache.
     /// </summary>
-    internal int VerifiedFolderCount => _verifiedFolders.Count;
+    internal int CachedFolderCount => _folderCache.Count;
 
-    private Result CheckForLinks(string resolvedPath, string normalizedBackingLocation)
+    /// <summary>
+    /// Returns the number of folder listings the resolver has read.
+    /// </summary>
+    internal int ListingCount => _folderCache.ListingCount;
+
+    // Checks the path below the backing folder. No part may be a link. When stored names are checked, each
+    // existing part must be in the listing of the folder above the part. A missing part ends the check, since
+    // everything below a missing part is missing too.
+    private Result CheckPath(string resolvedPath, bool checkStoredName)
     {
+        if (resolvedPath.Equals(_normalizedBackingTrimmed, PathComparison.Comparison))
+        {
+            return Result.Ok();
+        }
+
         // One attribute read says whether the item exists, whether it is a folder and whether it is a reparse
-        // point. A missing item reports every flag, so existence is tested first.
+        // point. The FileInfo keeps the attributes, so the checks below read them again for free.
         var item = new FileInfo(resolvedPath);
         var attributes = item.Attributes;
-        bool exists = attributes != MissingItemAttributes;
-        bool isFolder = exists
+        bool isFolder = attributes != MissingItemAttributes
             && attributes.HasFlag(System.IO.FileAttributes.Directory);
 
-        var folderPath = resolvedPath;
-        if (!isFolder)
+        // A cached folder was checked when it was cached.
+        if (isFolder
+            && _folderCache.TryGet(resolvedPath) is not null)
         {
-            folderPath = Path.GetDirectoryName(resolvedPath) ?? resolvedPath;
+            return Result.Ok();
         }
 
-        if (_verifiedFolders.ContainsKey(folderPath))
+        // A cached folder says nothing about the item in it, so the item is checked every time.
+        var parentPath = Path.GetDirectoryName(resolvedPath) ?? _normalizedBackingTrimmed;
+        var parentFolder = _folderCache.TryGet(parentPath);
+        if (parentFolder is not null)
         {
-            // A verified folder says nothing about the file in it, so the file is checked every time.
-            if (exists
-                && !isFolder
-                && LinkHelper.IsLink(item))
+            return CheckPart(parentFolder, item, resolvedPath, checkStoredName, out _);
+        }
+
+        var relativePart = resolvedPath.Substring(_normalizedBackingWithSeparator.Length);
+        var segments = relativePart.Split(PathSeparators, StringSplitOptions.RemoveEmptyEntries);
+
+        var folder = _folderCache.TryGet(_normalizedBackingTrimmed)
+            ?? _folderCache.Add(_normalizedBackingTrimmed, parent: null);
+        var currentPath = _normalizedBackingTrimmed;
+
+        for (int index = 0; index < segments.Length; index++)
+        {
+            currentPath = Path.Combine(currentPath, segments[index]);
+
+            bool isFinalPart = index == segments.Length - 1;
+            if (isFinalPart)
             {
-                return RefuseLink(resolvedPath);
+                return CheckPart(folder, item, resolvedPath, checkStoredName, out _);
             }
 
-            return Result.Ok();
-        }
-
-        // When resolvedPath is the backing location itself, there's nothing to check
-        var backingTrimmed = normalizedBackingLocation.TrimEnd(Path.DirectorySeparatorChar);
-        if (resolvedPath.Equals(backingTrimmed, PathComparison.Comparison))
-        {
-            AddVerifiedFolder(folderPath);
-            return Result.Ok();
-        }
-
-        var relativePart = resolvedPath.Substring(normalizedBackingLocation.Length);
-        var segments = relativePart.Split(
-            new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar },
-            StringSplitOptions.RemoveEmptyEntries);
-
-        var currentPath = backingTrimmed;
-
-        foreach (var segment in segments)
-        {
-            currentPath = Path.Combine(currentPath, segment);
-
-            var segmentInfo = new FileInfo(currentPath);
-            if (segmentInfo.Attributes == MissingItemAttributes)
+            var cachedFolder = _folderCache.TryGet(currentPath);
+            if (cachedFolder is not null)
             {
-                // A missing folder is not cached, so a link created there later is still caught. Only the
-                // path's final item can be missing from a verified folder.
-                bool isFinalItem = currentPath.Equals(resolvedPath, PathComparison.Comparison);
-                if (isFinalItem)
-                {
-                    AddVerifiedFolder(folderPath);
-                }
+                folder = cachedFolder;
+                continue;
+            }
 
+            var partResult = CheckPart(folder, new FileInfo(currentPath), resolvedPath, checkStoredName, out var partFolder);
+            if (partResult.IsFailure)
+            {
+                return partResult;
+            }
+
+            if (partFolder is null)
+            {
+                // A missing part, or a file, has nothing below it.
                 return Result.Ok();
             }
 
-            if (LinkHelper.IsLink(segmentInfo))
+            folder = partFolder;
+        }
+
+        return Result.Ok();
+    }
+
+    // Checks one part of a path in the folder above the part. An existing part must not be a link. When stored
+    // names are checked, the part's name must be in the folder's listing. A part that is a folder is cached,
+    // and returned.
+    private Result CheckPart(
+        CachedFolder folder,
+        FileInfo part,
+        string resolvedPath,
+        bool checkStoredName,
+        out CachedFolder? partFolder)
+    {
+        partFolder = null;
+
+        var attributes = part.Attributes;
+        if (attributes == MissingItemAttributes)
+        {
+            // A missing part is not cached, so a link created there later is still caught.
+            return Result.Ok();
+        }
+
+        if (LinkHelper.IsLink(part))
+        {
+            return RefuseLink(part.FullName);
+        }
+
+        if (checkStoredName
+            && _folderCache.HasListings)
+        {
+            var lookup = _folderCache.FindName(folder, part.Name);
+            if (lookup == NameLookup.Unlisted)
             {
-                return RefuseLink(currentPath);
+                return Result.Fail(
+                    $"Resource path '{resolvedPath}' could not be checked, because the folder '{folder.FolderPath}' could not be listed.");
+            }
+
+            if (lookup == NameLookup.Missing)
+            {
+                return RefuseStoredNameMismatch(resolvedPath);
             }
         }
 
-        AddVerifiedFolder(folderPath);
+        if (attributes.HasFlag(System.IO.FileAttributes.Directory))
+        {
+            partFolder = _folderCache.TryGet(part.FullName)
+                ?? _folderCache.Add(part.FullName, folder);
+        }
+
         return Result.Ok();
+    }
+
+    // Refuses a key that does not match the name stored on disk for an existing item, and gives the stored
+    // name. A Windows short name matches no stored name, so the refusal for a short name gives only the key.
+    private Result RefuseStoredNameMismatch(string resolvedPath)
+    {
+        var keyResult = GetResourceKey(resolvedPath);
+        if (keyResult.IsFailure)
+        {
+            return Result.Fail($"Resource path '{resolvedPath}' does not match the names stored on disk.");
+        }
+        var resource = keyResult.Value;
+
+        ResourceKey? storedResource = null;
+        var relativePath = resolvedPath.Substring(_normalizedBackingWithSeparator.Length);
+        var storedPath = StoredNameFinder.FindStoredPath(_normalizedBackingTrimmed, relativePath);
+        if (storedPath is not null)
+        {
+            var storedKeyResult = GetResourceKey(storedPath);
+            if (storedKeyResult.IsSuccess)
+            {
+                storedResource = storedKeyResult.Value;
+            }
+        }
+
+        var error = new StoredNameMismatchError(resource, storedResource);
+        return Result.Fail().WithException(error);
     }
 
     private static Result RefuseLink(string linkPath)
@@ -286,39 +379,22 @@ public class RootPathResolver
             $"Resource path contains a symbolic link or junction at '{linkPath}'. Celbridge never follows links.");
     }
 
-    // Caches the folder and every folder above it, which the same walk verified. The outermost folder is added
-    // first, so a cached folder's ancestors are cached before it. The count drifts when threads verify the same
-    // folder at once. The valve then trips early, which costs one re-verification per folder.
-    private void AddVerifiedFolder(string folderPath)
+    private bool IsUnderBacking(string fullPath)
     {
-        var uncachedFolders = new List<string>();
-        string? currentPath = folderPath;
-        while (currentPath is not null
-            && !_verifiedFolders.ContainsKey(currentPath))
+        return fullPath.Equals(_normalizedBackingTrimmed, PathComparison.Comparison)
+            || fullPath.StartsWith(_normalizedBackingWithSeparator, PathComparison.Comparison);
+    }
+
+    // Returns the full path with any trailing separator removed, or null for a path that fails to parse.
+    private static string? GetFullPathOrNull(string path)
+    {
+        try
         {
-            uncachedFolders.Add(currentPath);
-
-            bool isBackingFolder = currentPath.Equals(_normalizedBackingTrimmed, PathComparison.Comparison);
-            if (isBackingFolder
-                || !currentPath.StartsWith(_normalizedBackingWithSeparator, PathComparison.Comparison))
-            {
-                break;
-            }
-
-            currentPath = Path.GetDirectoryName(currentPath);
+            return Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
         }
-
-        for (int i = uncachedFolders.Count - 1; i >= 0; i--)
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
         {
-            if (!_verifiedFolders.TryAdd(uncachedFolders[i], 0))
-            {
-                continue;
-            }
-
-            if (Interlocked.Increment(ref _verifiedFolderCount) >= MaxVerifiedFolders)
-            {
-                InvalidateCache();
-            }
+            return null;
         }
     }
 

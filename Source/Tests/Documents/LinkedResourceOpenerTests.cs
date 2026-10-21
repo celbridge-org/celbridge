@@ -2,15 +2,16 @@ using Celbridge.Commands;
 using Celbridge.Documents;
 using Celbridge.Documents.Helpers;
 using Celbridge.Explorer;
+using Celbridge.Resources;
 using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Documents;
 
 /// <summary>
 /// A link in a document's preview, whether markdown or HTML, opens what it leads to in Celbridge.
-/// These tests pin how that is decided: a file with an editor opens in it, anything else is selected in the
-/// Explorer rather than raising the unsupported-format dialog, and a resource the project does not have is
-/// left for the caller to report.
+/// These tests pin how that is decided. A file with an editor opens in that editor. Anything else is selected
+/// in the Explorer, so the unsupported-format dialog never appears. The caller reports a resource the project
+/// does not have, and a link that differs from a resource's stored name.
 /// </summary>
 [TestFixture]
 public class LinkedResourceOpenerTests
@@ -38,62 +39,71 @@ public class LinkedResourceOpenerTests
     }
 
     [Test]
-    public void AFileWithAnEditor_OpensInIt()
+    public async Task AFileWithAnEditor_OpensInIt()
     {
         var resource = new ResourceKey("docs/notes.md");
-        StubResourceOnDisk(resource, resource, isDocumentSupported: true);
+        StubResourceOnDisk(resource, StorageItemKind.File, isDocumentSupported: true);
 
-        var isOpened = LinkedResourceOpener.Open(_commandService, _workspaceService, resource);
+        var openResult = await LinkedResourceOpener.OpenAsync(_commandService, _workspaceService, resource);
 
-        isOpened.Should().BeTrue();
+        openResult.IsSuccess.Should().BeTrue();
         _openCommand.FileResource.Should().Be(resource);
         _commandService.DidNotReceive().Execute(Arg.Any<Action<ISelectResourceCommand>>(), Arg.Any<string>(), Arg.Any<int>());
     }
 
-    [TestCase("docs/archive.zip")]
-    [TestCase("docs")]
-    public void AnythingElse_IsSelectedInTheExplorer(string resourcePath)
+    [TestCase("docs/archive.zip", StorageItemKind.File)]
+    [TestCase("docs", StorageItemKind.Folder)]
+    public async Task AnythingElse_IsSelectedInTheExplorer(string resourcePath, StorageItemKind kind)
     {
         var resource = new ResourceKey(resourcePath);
-        StubResourceOnDisk(resource, resource, isDocumentSupported: false);
+        StubResourceOnDisk(resource, kind, isDocumentSupported: false);
 
-        var isOpened = LinkedResourceOpener.Open(_commandService, _workspaceService, resource);
+        var openResult = await LinkedResourceOpener.OpenAsync(_commandService, _workspaceService, resource);
 
-        isOpened.Should().BeTrue();
+        openResult.IsSuccess.Should().BeTrue();
         _selectCommand.Resource.Should().Be(resource);
         _commandService.DidNotReceive().Execute(Arg.Any<Action<IOpenDocumentCommand>>(), Arg.Any<string>(), Arg.Any<int>());
     }
 
     [Test]
-    public void ALinkThatDiffersInCase_OpensTheResourceUnderItsNameOnDisk()
+    public async Task ALinkThatDiffersInCase_IsRefusedWithTheStoredName()
     {
         var linkedResource = new ResourceKey("docs/Notes.md");
         var resourceOnDisk = new ResourceKey("docs/notes.md");
-        StubResourceOnDisk(linkedResource, resourceOnDisk, isDocumentSupported: true);
+        var mismatch = new StoredNameMismatchError(linkedResource, resourceOnDisk);
+        _workspaceService.ResourceService.FileSystem.GetInfoAsync(linkedResource)
+            .Returns(Task.FromResult(Result<StorageItemInfo>.Fail().WithException(mismatch)));
 
-        LinkedResourceOpener.Open(_commandService, _workspaceService, linkedResource);
+        var openResult = await LinkedResourceOpener.OpenAsync(_commandService, _workspaceService, linkedResource);
 
-        _openCommand.FileResource.Should().Be(resourceOnDisk);
+        openResult.IsFailure.Should().BeTrue();
+        openResult.FirstException.Should().BeSameAs(mismatch);
+        AssertNothingOpened();
     }
 
     [Test]
-    public void AResourceTheProjectDoesNotHave_IsNotOpened()
+    public async Task AResourceTheProjectDoesNotHave_IsNotOpened()
     {
         var resource = new ResourceKey("docs/missing.md");
-        _workspaceService.ResourceService.Registry.NormalizeResourceKey(resource)
-            .Returns(Result<ResourceKey>.Fail("Not in the project"));
+        StubResourceOnDisk(resource, StorageItemKind.NotFound, isDocumentSupported: true);
 
-        var isOpened = LinkedResourceOpener.Open(_commandService, _workspaceService, resource);
+        var openResult = await LinkedResourceOpener.OpenAsync(_commandService, _workspaceService, resource);
 
-        isOpened.Should().BeFalse();
-        _commandService.DidNotReceive().Execute(Arg.Any<Action<IOpenDocumentCommand>>(), Arg.Any<string>(), Arg.Any<int>());
-        _commandService.DidNotReceive().Execute(Arg.Any<Action<ISelectResourceCommand>>(), Arg.Any<string>(), Arg.Any<int>());
+        openResult.IsFailure.Should().BeTrue();
+        AssertNothingOpened();
     }
 
-    private void StubResourceOnDisk(ResourceKey linkedResource, ResourceKey resourceOnDisk, bool isDocumentSupported)
+    private void StubResourceOnDisk(ResourceKey resource, StorageItemKind kind, bool isDocumentSupported)
     {
-        _workspaceService.ResourceService.Registry.NormalizeResourceKey(linkedResource)
-            .Returns(Result<ResourceKey>.Ok(resourceOnDisk));
-        _workspaceService.DocumentsService.IsDocumentSupported(resourceOnDisk).Returns(isDocumentSupported);
+        var info = new StorageItemInfo(kind, 0, DateTime.UtcNow, FileSystemAttributes.None);
+        _workspaceService.ResourceService.FileSystem.GetInfoAsync(resource)
+            .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(info)));
+        _workspaceService.DocumentsService.IsDocumentSupported(resource).Returns(isDocumentSupported);
+    }
+
+    private void AssertNothingOpened()
+    {
+        _commandService.DidNotReceive().Execute(Arg.Any<Action<IOpenDocumentCommand>>(), Arg.Any<string>(), Arg.Any<int>());
+        _commandService.DidNotReceive().Execute(Arg.Any<Action<ISelectResourceCommand>>(), Arg.Any<string>(), Arg.Any<int>());
     }
 }

@@ -1,5 +1,6 @@
 using System.Text;
 using Celbridge.Logging;
+using Celbridge.Resources.Helpers;
 using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Services;
@@ -133,7 +134,14 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             return Result.Fail(ensureParentResult);
         }
 
-        return await _fileSystem.OpenWriteAsync(resourcePath, WriteMode.Truncate);
+        var openResult = await _fileSystem.OpenWriteAsync(resourcePath, WriteMode.Truncate);
+        if (openResult.IsSuccess)
+        {
+            var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
+            ChangeRecorder.RecordCreated(rootHandlerRegistry, resource, resourcePath);
+        }
+
+        return openResult;
     }
 
     public async Task<Result<MoveResult>> MoveAsync(ResourceKey source, ResourceKey dest, MoveOptions? options = null)
@@ -161,13 +169,23 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         }
         var sourcePath = resolveSourceResult.Value;
 
-        var resolveDestResult = registry.ResolveResourcePath(dest);
-        if (resolveDestResult.IsFailure)
+        string destPath;
+        if (LetterCaseHelper.DiffersOnlyInNameCase(source, dest))
         {
-            return Result.Fail($"Failed to resolve path for destination resource: '{dest}'")
-                .WithErrors(resolveDestResult);
+            // The item is still stored under the source's name, so resolving the destination would refuse its
+            // letter case. The destination's path is the source's path with the new name.
+            destPath = Path.Combine(Path.GetDirectoryName(sourcePath)!, dest.ResourceName);
         }
-        var destPath = resolveDestResult.Value;
+        else
+        {
+            var resolveDestResult = registry.ResolveResourcePath(dest);
+            if (resolveDestResult.IsFailure)
+            {
+                return Result.Fail($"Failed to resolve path for destination resource: '{dest}'")
+                    .WithErrors(resolveDestResult);
+            }
+            destPath = resolveDestResult.Value;
+        }
 
         var sourceInfoResult = await _fileSystem.GetInfoAsync(sourcePath);
         if (sourceInfoResult.IsFailure)
@@ -209,11 +227,8 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             return Result.Fail($"Root '{dest.Root}' is read-only.");
         }
 
-        // Case-insensitive comparison assumes a Windows (case-insensitive) volume,
-        // the project's primary target. A case-only rename (foo to Foo) resolves to
-        // the same path here, so the destination-exists check below is skipped to
-        // let the rename through. On a case-sensitive volume this would be Ordinal.
-        bool isSameLocation = string.Equals(sourcePath, destPath, StringComparison.OrdinalIgnoreCase);
+        // A rename that changes only letter case keeps the item in place, so the destination exists already.
+        bool isSameLocation = string.Equals(sourcePath, destPath, PathComparison.Comparison);
         if (!isSameLocation)
         {
             var destInfoResult = await _fileSystem.GetInfoAsync(destPath);
@@ -275,6 +290,11 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             return Result.Fail($"Failed to move resource: '{source}' to '{dest}'")
                 .WithErrors(moveResult);
         }
+
+        // A rename that changes only letter case keeps the item in place. The old name leaves the listing before
+        // the new name joins it.
+        ChangeRecorder.RecordRemoved(rootHandlerRegistry, source, sourcePath);
+        ChangeRecorder.RecordCreated(rootHandlerRegistry, dest, destPath);
 
         var sidecarOutcome = await _sidecarCascade.TryMoveAsync(source, dest);
 
@@ -428,6 +448,8 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             }
         }
 
+        ChangeRecorder.RecordCreated(rootHandlerRegistry, dest, destPath);
+
         var sidecarOutcome = await _sidecarCascade.TryCopyAsync(source, dest);
 
         var result = new CopyResult(sidecarOutcome);
@@ -517,6 +539,8 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             return Result.Fail($"Failed to delete resource: '{source}'")
                 .WithErrors(deleteResult);
         }
+
+        ChangeRecorder.RecordRemoved(rootHandlerRegistry, source, sourcePath);
 
         if (source.Root == ResourceKey.DefaultRoot)
         {
@@ -623,6 +647,8 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
                 .WithErrors(createResult);
         }
 
+        ChangeRecorder.RecordCreated(rootHandlerRegistry, folder, folderPath);
+
         return Result.Ok();
     }
 
@@ -659,10 +685,7 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             }
         }
 
-        // Listing skips the disk case-consistency probe: child keys below come
-        // from the disk-canonical names returned by the enumeration, so they are
-        // canonical regardless of the folder key's case.
-        var resolveResult = ResolvePath(folder, validateCase: false);
+        var resolveResult = ResolvePath(folder);
         if (resolveResult.IsFailure)
         {
             return Result.Fail($"Failed to resolve path for resource: '{folder}'")
@@ -761,10 +784,10 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         return await _fileSystem.SetAttributesAsync(resolveResult.Value, mask, set);
     }
 
-    private Result<string> ResolvePath(ResourceKey resource, bool validateCase = true)
+    private Result<string> ResolvePath(ResourceKey resource)
     {
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        return resourceRegistry.ResolveResourcePath(resource, validateCase);
+        return resourceRegistry.ResolveResourcePath(resource);
     }
 
     // Resolves the workspace-scoped policy engine through the wrapper and
@@ -924,6 +947,9 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             return Result.Fail($"Failed to write file: '{resource}'")
                 .WithErrors(writeResult);
         }
+
+        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
+        ChangeRecorder.RecordCreated(rootHandlerRegistry, resource, resourcePath);
 
         return Result.Ok();
     }

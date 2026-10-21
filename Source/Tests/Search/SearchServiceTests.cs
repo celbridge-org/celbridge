@@ -37,8 +37,7 @@ public class SearchServiceTests
             messengerService,
             ProjectTreeBuilderTestHelper.Build(_tempFolder, new IconService()),
             ResourceClassifierTestHelper.BuildClassifier(),
-            rootHandlerRegistry,
-            TestFileSystem.CreateLocal());
+            rootHandlerRegistry);
         resourceRegistry.InitializeProjectRoot(_tempFolder);
 
         var resourceService = Substitute.For<IResourceService>();

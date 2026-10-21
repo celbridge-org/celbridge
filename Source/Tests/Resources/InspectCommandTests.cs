@@ -43,8 +43,7 @@ public class InspectCommandTests
             _messengerService,
             ProjectTreeBuilderTestHelper.Build(_projectFolderPath, iconService),
             ResourceClassifierTestHelper.BuildClassifier(),
-            _rootHandlerRegistry,
-            TestFileSystem.CreateLocal());
+            _rootHandlerRegistry);
         _resourceRegistry.InitializeProjectRoot(_projectFolderPath);
 
         var resourceService = Substitute.For<IResourceService>();

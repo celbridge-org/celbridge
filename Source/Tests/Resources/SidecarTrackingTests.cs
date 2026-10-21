@@ -28,8 +28,7 @@ public class SidecarTrackingTests
             new MessengerService(),
             ProjectTreeBuilderTestHelper.Build(_projectFolderPath),
             _classifier,
-            new RootHandlerRegistry(),
-            TestFileSystem.CreateLocal());
+            new RootHandlerRegistry());
         _registry.InitializeProjectRoot(_projectFolderPath);
     }
 

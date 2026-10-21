@@ -1068,13 +1068,27 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         }
         else
         {
-            var workspaceWrapper = _serviceProvider.GetRequiredService<IWorkspaceWrapper>();
-
-            if (!LinkedResourceOpener.Open(_commandService, workspaceWrapper.WorkspaceService, resourceKey))
-            {
-                _ = ShowLinkErrorAsync(resourceKey.Path);
-            }
+            _ = OpenLinkedResourceAsync(resourceKey);
         }
+    }
+
+    private async Task OpenLinkedResourceAsync(ResourceKey resourceKey)
+    {
+        var workspaceWrapper = _serviceProvider.GetRequiredService<IWorkspaceWrapper>();
+
+        var openResult = await LinkedResourceOpener.OpenAsync(_commandService, workspaceWrapper.WorkspaceService, resourceKey);
+        if (openResult.IsSuccess)
+        {
+            return;
+        }
+
+        if (openResult.FirstException is StoredNameMismatchError { StoredResource: ResourceKey storedResource })
+        {
+            await ShowLinkNameMismatchAsync(resourceKey.Path, storedResource.Path);
+            return;
+        }
+
+        await ShowLinkErrorAsync(resourceKey.Path);
     }
 
     private static void OpenSystemBrowser(ICommandService commandService, string? uri)
@@ -1094,6 +1108,13 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     {
         var errorTitle = _stringLocalizer.GetString("Extension_LinkError_Title");
         var errorMessage = _stringLocalizer.GetString("Extension_LinkError_Message", linkPath);
+        await _dialogService.ShowAlertDialogAsync(errorTitle, errorMessage);
+    }
+
+    private async Task ShowLinkNameMismatchAsync(string linkPath, string storedPath)
+    {
+        var errorTitle = _stringLocalizer.GetString("Extension_LinkError_Title");
+        var errorMessage = _stringLocalizer.GetString("Extension_LinkNameMismatch_Message", linkPath, storedPath);
         await _dialogService.ShowAlertDialogAsync(errorTitle, errorMessage);
     }
 

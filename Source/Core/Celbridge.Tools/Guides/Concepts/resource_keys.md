@@ -41,7 +41,7 @@ This is the form a reference takes in file content, so a key copied from a tool 
 - No absolute paths or drive letters. The key is always relative to its root's backing folder.
 - Root prefixes are lowercase and match `[a-z][a-z0-9_]+`. Single-character roots and uppercase roots are rejected.
 - An undeclared root (e.g. `unknown:foo`) is an error, not a missing-file failure.
-- Resource keys are case-sensitive on every platform — including Windows, where the filesystem itself is case-insensitive. A key whose case doesn't match the on-disk canonical case is rejected at the resolve boundary, with the canonical form named in the error message. Take resource keys from tool responses (file listings, search results, tool outputs) rather than typing them by memory to keep the case correct.
+- A resource key names an existing file or folder only by the name stored on disk, in every root and on every platform. Windows and macOS file systems ignore case. Celbridge still rejects a key in the wrong letter case there, and on macOS a key in another Unicode normalization too. The error message names the canonical form. A key for something that does not exist yet passes when its existing folders match their stored names exactly. Copy resource keys from tool responses, like file listings and search results, to keep each name exact.
 
 When in doubt about which keys exist, call `file_get_tree("")` to list the top level of the project tree, or pass a folder key to list its contents.
 

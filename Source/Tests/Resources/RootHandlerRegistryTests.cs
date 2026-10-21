@@ -5,8 +5,8 @@ namespace Celbridge.Tests.Resources;
 
 /// <summary>
 /// Direct tests for the cross-root dispatch logic: longest-prefix-wins match,
-/// IsResolvable across roots, raw resolve via the matched handler, and
-/// InvalidatePathCache propagation.
+/// IsResolvable across roots, resolving and normalizing via the matched handler,
+/// and InvalidatePathCache propagation.
 /// </summary>
 [TestFixture]
 public class RootHandlerRegistryTests
@@ -174,5 +174,24 @@ public class RootHandlerRegistryTests
         result.IsFailure.Should().BeTrue();
         result.FirstErrorMessage.Should().Contain("'temp'");
         result.FirstErrorMessage.Should().Contain("not registered");
+    }
+
+    [Test]
+    [Platform(Exclude = "Linux", Reason = "On a case-sensitive volume, names that differ in case name different items.")]
+    public void ResolveResourcePath_RefusesAKeyInTheWrongCaseInEveryRoot()
+    {
+        var notesPath = Path.Combine(_projectFolderPath, "docs", "notes.txt");
+        Directory.CreateDirectory(Path.GetDirectoryName(notesPath)!);
+        File.WriteAllText(notesPath, "notes");
+        _rootRegistry.RegisterRootHandler(new ProjectRootHandler(_projectFolderPath));
+        _rootRegistry.RegisterRootHandler(new TempRootHandler(_projectFolderPath));
+
+        var projectResult = _rootRegistry.ResolveResourcePath(ResourceKey.Create("Docs/notes.txt"));
+        var tempResult = _rootRegistry.ResolveResourcePath(ResourceKey.Create("temp:Docs/notes.txt"));
+
+        projectResult.IsFailure.Should().BeTrue();
+        projectResult.FirstErrorMessage.Should().Contain("Canonical form is 'project:docs/notes.txt'");
+        tempResult.IsFailure.Should().BeTrue();
+        tempResult.FirstErrorMessage.Should().Contain("Canonical form is 'temp:docs/notes.txt'");
     }
 }

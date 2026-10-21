@@ -82,10 +82,6 @@ public class PackageServiceTests
             return Result<ResourceKey>.Ok(new ResourceKey(relative));
         });
 
-        // The keys in these tests already have the disk's case. UseRealResourceRegistry covers a key that does not.
-        _resourceRegistry.NormalizeResourceKey(Arg.Any<ResourceKey>())
-            .Returns(callInfo => Result<ResourceKey>.Ok(callInfo.Arg<ResourceKey>()));
-
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Registry.Returns(_resourceRegistry);
         _resourceService = resourceService;
@@ -789,21 +785,25 @@ public class PackageServiceTests
     }
 
     [Test]
-    [Platform("Win", Reason = "On a case-sensitive file system, Packages and packages are different folders.")]
-    public async Task RegisterPackages_PackagesFolderInAnotherCase_Loads()
+    [Platform(Exclude = "Linux", Reason = "On a case-sensitive file system, Packages and packages are different folders.")]
+    public async Task RegisterPackages_PackagesFolderInAnotherCase_IsReported()
     {
         CreatePackageAt(Path.Combine("Packages", "upper"), "upper-tool", "Upper", ".upr");
         UseRealResourceRegistry();
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        PackageNames().Should().Equal("upper-tool");
-        _service.GetPackageFolders().Should().Equal(new ResourceKey("Packages"));
+        PackageNames().Should().BeEmpty();
+        _service.GetPackageFolders().Should().BeEmpty();
+        _loadReporter.Received(1).RecordConfigEntryErrors(Arg.Is<IReadOnlyList<ProjectConfigEntryError>>(errors =>
+            errors.Count == 1
+            && errors[0].EntryName == "celbridge.packages"
+            && errors[0].Message.Contains("'packages' folder does not match its name on disk, 'Packages'")));
     }
 
     [Test]
-    [Platform("Win", Reason = "On a case-sensitive file system, VENDOR and vendor are different folders.")]
-    public async Task RegisterPackages_ListedFolderInAnotherCase_Loads()
+    [Platform(Exclude = "Linux", Reason = "On a case-sensitive file system, VENDOR and vendor are different folders.")]
+    public async Task RegisterPackages_ListedFolderInAnotherCase_IsDropped()
     {
         CreatePackageAt(Path.Combine("vendor", "listed"), "listed-tool", "Listed", ".lst");
         SetPackageFolders("VENDOR");
@@ -811,8 +811,12 @@ public class PackageServiceTests
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
-        PackageNames().Should().Equal("listed-tool");
-        _service.GetPackageFolders().Should().Equal(new ResourceKey("packages"), new ResourceKey("vendor"));
+        PackageNames().Should().BeEmpty();
+        _service.GetPackageFolders().Should().Equal(new ResourceKey("packages"));
+        _loadReporter.Received(1).RecordConfigEntryErrors(Arg.Is<IReadOnlyList<ProjectConfigEntryError>>(errors =>
+            errors.Count == 1
+            && errors[0].EntryName == "celbridge.packages"
+            && errors[0].Message.Contains("'folders' entry 'VENDOR' does not match the folder's name on disk, 'vendor'")));
     }
 
     [Test]
@@ -1214,8 +1218,7 @@ public class PackageServiceTests
             new MessengerService(),
             ProjectTreeBuilderTestHelper.Build(_tempProjectFolder, _iconService),
             ResourceClassifierTestHelper.BuildEmptyStub(),
-            new RootHandlerRegistry(),
-            TestFileSystem.CreateLocal());
+            new RootHandlerRegistry());
         resourceRegistry.InitializeProjectRoot(_tempProjectFolder);
 
         _resourceService.Registry.Returns(resourceRegistry);

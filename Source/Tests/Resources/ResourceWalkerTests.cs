@@ -37,8 +37,7 @@ public class ResourceWalkerTests
             messengerService,
             ProjectTreeBuilderTestHelper.Build(_projectFolderPath, new IconService()),
             ResourceClassifierTestHelper.BuildClassifier(),
-            _rootHandlerRegistry,
-            TestFileSystem.CreateLocal());
+            _rootHandlerRegistry);
         resourceRegistry.InitializeProjectRoot(_projectFolderPath);
 
         _resourceService = Substitute.For<IResourceService>();
@@ -117,7 +116,7 @@ public class ResourceWalkerTests
     }
 
     [Test]
-    public async Task Walk_FromAFolderInTheWrongCase_ReturnsKeysInTheCaseOnDisk()
+    public async Task Walk_FromAFolderInTheWrongCase_FailsAndGivesTheStoredName()
     {
         WriteFile("Src/App.py");
         if (!Directory.Exists(Path.Combine(_projectFolderPath, "src")))
@@ -125,9 +124,11 @@ public class ResourceWalkerTests
             Assert.Ignore("The volume compares names by case, so a key in the wrong case names nothing.");
         }
 
-        var items = await WalkAsync(new ResourceKey("src"));
+        var walkResult = await _walker.WalkAsync(new ResourceKey("src"));
 
-        items.Select(item => item.Resource.Path).Should().Equal("Src/App.py");
+        walkResult.IsFailure.Should().BeTrue();
+        walkResult.HasException<StoredNameMismatchError>().Should().BeTrue();
+        walkResult.MessageChain.Should().Contain("Canonical form is 'project:Src'");
     }
 
     [Test]

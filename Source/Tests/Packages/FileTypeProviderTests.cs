@@ -69,8 +69,7 @@ public class PackageServiceDocumentTypeTests
             var key = callInfo.Arg<ResourceKey>();
             return Result<string>.Ok(Path.Combine(_tempProjectFolder, key.Path.Replace('/', Path.DirectorySeparatorChar)));
         });
-        // Discovery lists the package folders through the gateway, which resolves with
-        // validateCase:false. Stub the two-argument overload too.
+        // Discovery resolves the package folders through the two-argument overload too.
         resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>(), Arg.Any<bool>()).Returns(callInfo =>
         {
             var key = callInfo.Arg<ResourceKey>();
@@ -87,9 +86,6 @@ public class PackageServiceDocumentTypeTests
                 .Replace(Path.DirectorySeparatorChar, '/');
             return Result<ResourceKey>.Ok(new ResourceKey(relative));
         });
-        // The keys in these tests already have the disk's case.
-        resourceRegistry.NormalizeResourceKey(Arg.Any<ResourceKey>())
-            .Returns(callInfo => Result<ResourceKey>.Ok(callInfo.Arg<ResourceKey>()));
 
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Registry.Returns(resourceRegistry);

@@ -7,7 +7,8 @@ namespace Celbridge.Tests.Server;
 
 /// <summary>
 /// Tests for the check the file server makes before it serves a project file. A URL path is judged as a
-/// resource key, so a reserved folder, a link and a path through a link are refused.
+/// resource key, so a reserved folder, a link, a path through a link and a path in the wrong letter case are
+/// refused.
 /// </summary>
 [TestFixture]
 public class FileServerTests
@@ -69,6 +70,17 @@ public class FileServerTests
         var result = FileServer.CheckServedFile(_rootHandlers, _policy, ResourceKey.Empty, path);
 
         result.IsFailure.Should().BeTrue();
+    }
+
+    [TestCase("DOCS/plain.txt")]
+    [TestCase("docs/Plain.txt")]
+    [Platform(Exclude = "Linux", Reason = "On a case-sensitive volume, names that differ in case name different items.")]
+    public void CheckServedFile_PathInTheWrongCase_IsRefused(string path)
+    {
+        var result = FileServer.CheckServedFile(_rootHandlers, _policy, ResourceKey.Empty, path);
+
+        result.IsFailure.Should().BeTrue();
+        result.MessageChain.Should().Contain("does not match the name stored on disk");
     }
 
     [Test]

@@ -33,9 +33,9 @@ public interface IRootHandlerRegistry
 
     /// <summary>
     /// Resolves a resource key to its absolute filesystem path via the
-    /// registered handler. Does not enforce case-canonical matching against
-    /// the project tree; callers that want that should go through
-    /// IResourceRegistry.ResolveResourcePath instead.
+    /// registered handler. Under the root's listing policy, fails a key that does
+    /// not match the name stored on disk for an existing item. The failure carries
+    /// a StoredNameMismatchError that gives the stored name.
     /// </summary>
     Result<string> ResolveResourcePath(ResourceKey resource);
 

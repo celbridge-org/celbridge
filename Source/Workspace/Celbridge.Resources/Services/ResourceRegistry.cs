@@ -11,7 +11,6 @@ public class ResourceRegistry : IResourceRegistry
     private readonly IProjectTreeBuilder _projectTreeBuilder;
     private readonly IResourceClassifier _resourceClassifier;
     private readonly RootHandlerRegistry _rootHandlerRegistry;
-    private readonly ILocalFileSystem _fileSystem;
 
     private string _projectFolderPath = string.Empty;
 
@@ -35,15 +34,13 @@ public class ResourceRegistry : IResourceRegistry
         IMessengerService messengerService,
         IProjectTreeBuilder projectTreeBuilder,
         IResourceClassifier resourceClassifier,
-        RootHandlerRegistry rootHandlerRegistry,
-        ILocalFileSystem fileSystem)
+        RootHandlerRegistry rootHandlerRegistry)
     {
         _logger = logger;
         _messengerService = messengerService;
         _projectTreeBuilder = projectTreeBuilder;
         _resourceClassifier = resourceClassifier;
         _rootHandlerRegistry = rootHandlerRegistry;
-        _fileSystem = fileSystem;
     }
 
     public ResourceKey GetResourceKey(IResource resource)
@@ -69,90 +66,7 @@ public class ResourceRegistry : IResourceRegistry
 
     public Result<string> ResolveResourcePath(ResourceKey resource, bool validateCase = true)
     {
-        var resolveResult = _rootHandlerRegistry.ResolveResourcePath(resource);
-        if (resolveResult.IsFailure)
-        {
-            return resolveResult;
-        }
-        var absolutePath = resolveResult.Value;
-
-        // Strict case enforcement for the project root: if the resolved path
-        // exists on disk, the supplied key must match disk-canonical case.
-        // Without this guard a Windows user can resolve a wrong-case key
-        // (Windows IO is case-insensitive) but the in-memory tree and cascade
-        // scanner (both Ordinal-case-sensitive) would treat it as a separate
-        // resource, leaving the project in an inconsistent state. The case
-        // check requires the project tree, so it stays on the registry rather
-        // than moving down into the root handler registry. The listing path
-        // skips it (validateCase false): enumeration re-derives every child key
-        // from the disk-canonical name, so the result is canonical regardless of
-        // the folder key's case, and the on-disk casing probe is wasted work for
-        // every folder on a full tree rebuild.
-        if (resource.Root == ResourceKey.DefaultRoot
-            && validateCase)
-        {
-            var caseCheck = EnsureProjectKeyCaseMatchesDisk(resource, absolutePath);
-            if (caseCheck.IsFailure)
-            {
-                return Result<string>.Fail(caseCheck.FirstErrorMessage);
-            }
-        }
-
-        return absolutePath;
-    }
-
-    // Cheap path: if the registry tree already has a node for this exact key,
-    // the case is canonical by construction (the tree was built from disk-
-    // preserved names). Only when the tree lookup misses do we go to disk to
-    // disambiguate "case is wrong" from "resource is new and being created".
-    private Result EnsureProjectKeyCaseMatchesDisk(ResourceKey resource, string absolutePath)
-    {
-        if (resource.IsEmpty)
-        {
-            return Result.Ok();
-        }
-
-        var treeLookup = GetResource(resource);
-        if (treeLookup.IsSuccess)
-        {
-            return Result.Ok();
-        }
-
-        // Tree miss. Either the resource is new (not on disk yet — pass
-        // through for create flows) or the case is wrong. Check disk to find
-        // out which.
-        var infoResult = SyncRunner.Run(() => _fileSystem.GetInfoAsync(absolutePath));
-        if (infoResult.IsFailure
-            || infoResult.Value.Kind == StorageItemKind.NotFound)
-        {
-            return Result.Ok();
-        }
-
-        var realPathResult = GetRealPath(absolutePath);
-        if (realPathResult.IsFailure)
-        {
-            // Couldn't determine disk-canonical case for some reason; don't
-            // block the operation on the diagnostic.
-            return Result.Ok();
-        }
-
-        if (string.Equals(realPathResult.Value, absolutePath, StringComparison.Ordinal))
-        {
-            // Disk case already matches the supplied case — the tree miss is
-            // a registry-rebuild lag, not a case mismatch.
-            return Result.Ok();
-        }
-
-        var canonicalKeyResult = GetResourceKey(realPathResult.Value);
-        if (canonicalKeyResult.IsFailure)
-        {
-            return Result.Fail(
-                    $"Resource key '{resource}' does not match the on-disk case.")
-                .WithErrors(canonicalKeyResult);
-        }
-
-        return Result.Fail(
-            $"Resource key '{resource}' does not match the on-disk case. Canonical form is '{canonicalKeyResult.Value}'.");
+        return _rootHandlerRegistry.ResolveResourcePath(resource);
     }
 
     public Result<IResource> GetResource(ResourceKey resource)
@@ -214,181 +128,4 @@ public class ResourceRegistry : IResourceRegistry
                 .WithException(ex);
         }
     }
-
-    public Result<ResourceKey> NormalizeResourceKey(ResourceKey resourceKey)
-    {
-        try
-        {
-            // This method corrects the key's case, so the method skips the case check.
-            var resolveResult = ResolveResourcePath(resourceKey, validateCase: false);
-            if (resolveResult.IsFailure)
-            {
-                return Result.Fail($"Failed to resolve path for resource key: '{resourceKey}'")
-                    .WithErrors(resolveResult);
-            }
-            var resourcePath = resolveResult.Value;
-
-            var infoResult = SyncRunner.Run(() => _fileSystem.GetInfoAsync(resourcePath));
-            if (infoResult.IsFailure
-                || infoResult.Value.Kind == StorageItemKind.NotFound)
-            {
-                return Result.Fail($"Resource does not exist: '{resourceKey}'");
-            }
-
-            var realPathResult = GetRealPath(resourcePath);
-            if (realPathResult.IsFailure)
-            {
-                return Result.Fail($"Failed to get actual path casing for: '{resourcePath}'")
-                    .WithErrors(realPathResult);
-            }
-            var realPath = realPathResult.Value;
-
-            var normalizedResult = GetResourceKey(realPath);
-            if (normalizedResult.IsFailure)
-            {
-                return Result.Fail($"Failed to normalize resource key: '{resourceKey}'")
-                    .WithErrors(normalizedResult);
-            }
-            var normalizedKey = normalizedResult.Value;
-
-            return normalizedKey;
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"An exception occurred when normalizing resource key '{resourceKey}'.")
-                .WithException(ex);
-        }
-    }
-
-    /// <summary>
-    /// Returns the disk-canonical (case-preserved) form of an existing path.
-    /// Resolves from the in-memory registry tree when the path is a project
-    /// resource the tree already tracks, and falls back to walking the file
-    /// system otherwise. Fails if the path cannot be resolved.
-    /// </summary>
-    private Result<string> GetRealPath(string path)
-    {
-        if (string.IsNullOrEmpty(path))
-        {
-            return Result<string>.Fail("Path is null or empty");
-        }
-
-        // Fast path: the registry tree is built from disk and stores names in
-        // their canonical case, so a node found here (matched case-insensitively)
-        // yields the canonical path without touching disk. This keeps the common
-        // case - reconciling a miscased key for a tracked resource - an in-memory
-        // lookup that stays consistent with the rest of the registry.
-        var cachedPath = TryGetRealPathFromTree(path);
-        if (cachedPath is not null)
-        {
-            return cachedPath;
-        }
-
-        // Fallback: the path is outside the project, or the resource is not yet
-        // in the tree (a new file, or a pending registry rebuild). Recover the
-        // case by walking the file system segment by segment.
-        return GetRealPathFromDisk(path);
-    }
-
-    // Resolves the canonical path from the cached project tree, or null when the
-    // tree cannot answer (non-project path, root itself, or no matching node).
-    private string? TryGetRealPathFromTree(string path)
-    {
-        var keyResult = GetResourceKey(path);
-        if (keyResult.IsFailure
-            || keyResult.Value.Root != ResourceKey.DefaultRoot
-            || keyResult.Value.IsEmpty)
-        {
-            return null;
-        }
-
-        var nodeResult = ResourceTreeNavigator.FindResource(_projectFolder, keyResult.Value, ignoreCase: true);
-        if (nodeResult.IsFailure)
-        {
-            return null;
-        }
-
-        var canonicalKey = ResourceTreeNavigator.BuildKey(nodeResult.Value);
-        var canonicalRelative = canonicalKey.Path.Replace('/', Path.DirectorySeparatorChar);
-        return Path.Combine(ProjectFolderPath, canonicalRelative);
-    }
-
-    private Result<string> GetRealPathFromDisk(string path)
-    {
-        try
-        {
-            // Get the full path first
-            var fullPath = Path.GetFullPath(path);
-
-            // Start with the root (e.g., "C:\")
-            var root = Path.GetPathRoot(fullPath);
-            if (root == null)
-            {
-                return Result<string>.Fail($"Could not determine path root for: '{fullPath}'");
-            }
-
-            // If the path is just the root, return it as-is
-            if (fullPath.Equals(root, StringComparison.OrdinalIgnoreCase))
-            {
-                return fullPath;
-            }
-
-            // Get the relative path after the root
-            var relativePath = fullPath.Substring(root.Length);
-            var segments = relativePath.Split(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar },
-                                            StringSplitOptions.RemoveEmptyEntries);
-
-            // Build up the corrected path segment by segment
-            var currentPath = root;
-            foreach (var segment in segments)
-            {
-                // Try to find the actual entry with correct casing. Probe files
-                // matching the literal segment name, then fall back to folders
-                // when no file matches. Combines into the equivalent of
-                // Directory.GetFileSystemEntries(currentPath, segment).
-                string? matchedEntry = null;
-
-                var matchedFilesResult = SyncRunner.Run(() => _fileSystem.EnumerateAsync(currentPath, segment, recursive: false));
-                var matchedFile = matchedFilesResult.IsSuccess
-                    ? matchedFilesResult.Value.FirstOrDefault(entry => !entry.IsFolder)
-                    : null;
-                if (matchedFile is not null)
-                {
-                    matchedEntry = matchedFile.FullPath;
-                }
-                else
-                {
-                    var allEntriesResult = SyncRunner.Run(() => _fileSystem.EnumerateAsync(currentPath, "*", recursive: false));
-                    if (allEntriesResult.IsSuccess)
-                    {
-                        foreach (var entry in allEntriesResult.Value)
-                        {
-                            if (entry.IsFolder
-                                && Path.GetFileName(entry.FullPath).Equals(segment, StringComparison.OrdinalIgnoreCase))
-                            {
-                                matchedEntry = entry.FullPath;
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                if (matchedEntry is null)
-                {
-                    // This shouldn't happen since we verified the path exists, but handle it gracefully
-                    return Result<string>.Fail($"Path segment not found: '{segment}' in '{currentPath}'");
-                }
-
-                currentPath = matchedEntry;
-            }
-
-            return currentPath;
-        }
-        catch (Exception ex)
-        {
-            return Result<string>.Fail($"An exception occurred when getting actual path casing")
-                .WithException(ex);
-        }
-    }
-
 }

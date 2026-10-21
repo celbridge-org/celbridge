@@ -14,7 +14,8 @@ public class UtilsRootHandler : ResourceRootHandlerBase
 
     private static readonly ResourceRootCapabilities UtilsCapabilities = new(
         IsWritable: true,
-        IsWatched: true);
+        IsWatched: true,
+        ListingPolicy: GetLocalListingPolicy(ListingPolicy.UntilChanged));
 
     public override string RootName => Name;
     public override ResourceRootCapabilities Capabilities => UtilsCapabilities;

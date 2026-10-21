@@ -505,6 +505,9 @@ This file could not be saved</value>
   <data name="Downloads_DestinationUnavailable" xml:space="preserve">
     <value>The downloads folder could not be prepared.</value>
   </data>
+  <data name="Downloads_FolderNameMismatch" xml:space="preserve">
+    <value>The downloads folder '{0}' is named '{1}' in the project. Change the folder in Project Settings to match.</value>
+  </data>
   <data name="Downloads_ImportFailed" xml:space="preserve">
     <value>The downloaded file could not be added to the project.</value>
   </data>
@@ -1939,7 +1942,10 @@ Open with default application instead?</value>
     <value>Broken Link</value>
   </data>
   <data name="Extension_LinkError_Message" xml:space="preserve">
-    <value>{0} is not in the project.</value>
+    <value>'{0}' is not in the project.</value>
+  </data>
+  <data name="Extension_LinkNameMismatch_Message" xml:space="preserve">
+    <value>'{0}' is named '{1}' in the project. A link must match the name exactly.</value>
   </data>
   <data name="Extension_SelectFile_Title" xml:space="preserve">
     <value>Select File</value>
