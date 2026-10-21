@@ -1,5 +1,6 @@
 ﻿using Celbridge.Console.Helpers;
 using Celbridge.Logging;
+using Celbridge.Projects;
 using Celbridge.Utilities;
 using Celbridge.WebHost;
 using Celbridge.Workspace;
@@ -179,8 +180,6 @@ internal sealed class ConsoleSession : IDisposable
 
     public async Task StartAsync(int fallbackCols, int fallbackRows, int rpcPort)
     {
-        var registry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-
         var fileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
         var readResult = await fileSystem.ReadAllTextAsync(Resource);
         if (readResult.IsFailure)
@@ -232,7 +231,7 @@ internal sealed class ConsoleSession : IDisposable
         environment[ConsoleEnvironmentVariables.RpcPort] = rpcPort.ToString();
         environment[ConsoleEnvironmentVariables.SessionToken] = SessionId.ToString();
 
-        var projectFolderPath = registry.ProjectFolderPath;
+        var projectFolderPath = _serviceProvider.GetRequiredService<IProjectService>().CurrentProject!.ProjectFolderPath;
 
         var sessionContext = new ConsoleSessionContext(
             Resource,

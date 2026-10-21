@@ -11,33 +11,39 @@ namespace Celbridge.Documents.Helpers;
 public static class LinkedResourceOpener
 {
     /// <summary>
-    /// Opens the resource under its name on disk, since a link can differ from it in case. Returns false when
-    /// the project has no such resource, leaving the caller to report the broken link.
+    /// Opens the resource the link names. Fails when the project has no such resource, or when the link differs
+    /// from the resource's stored name. The caller then reports the broken link. The failure for a name that
+    /// differs carries a StoredNameMismatchError.
     /// </summary>
-    public static bool Open(ICommandService commandService, IWorkspaceService workspaceService, ResourceKey resource)
+    public static async Task<Result> OpenAsync(ICommandService commandService, IWorkspaceService workspaceService, ResourceKey resource)
     {
-        var normalizeResult = workspaceService.ResourceService.Registry.NormalizeResourceKey(resource);
-        if (normalizeResult.IsFailure)
+        var infoResult = await workspaceService.ResourceService.FileSystem.GetInfoAsync(resource);
+        if (infoResult.IsFailure)
         {
-            return false;
+            return Result.Fail($"Failed to find the linked resource: '{resource}'")
+                .WithErrors(infoResult);
         }
-        var linkedResource = normalizeResult.Value;
 
-        if (workspaceService.DocumentsService.IsDocumentSupported(linkedResource))
+        if (infoResult.Value.Kind == StorageItemKind.NotFound)
+        {
+            return Result.Fail($"The linked resource is not in the project: '{resource}'");
+        }
+
+        if (workspaceService.DocumentsService.IsDocumentSupported(resource))
         {
             commandService.Execute<IOpenDocumentCommand>(command =>
             {
-                command.FileResource = linkedResource;
+                command.FileResource = resource;
             });
 
-            return true;
+            return Result.Ok();
         }
 
         commandService.Execute<ISelectResourceCommand>(command =>
         {
-            command.Resource = linkedResource;
+            command.Resource = resource;
         });
 
-        return true;
+        return Result.Ok();
     }
 }

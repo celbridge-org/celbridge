@@ -13,8 +13,7 @@ public interface IResourceService
 
     /// <summary>
     /// Returns the registry of resource root handlers for the current project.
-    /// Use this rather than IResourceRegistry when only cross-root path/key
-    /// dispatch is required.
+    /// The registry maps resource keys to absolute paths and back, in every root.
     /// </summary>
     IRootHandlerRegistry RootHandlers { get; }
 

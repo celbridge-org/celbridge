@@ -20,7 +20,8 @@ public interface IResourceWalker
     /// Returns every file and folder below the folder, each folder before its contents. The walk runs off the
     /// calling thread, and leaves out links and .git. In a project: folder the walk also leaves out each item that
     /// search-exclude matches, and everything inside it, unless applySearchExclude is false. Fails when the folder
-    /// cannot be listed. A cancelled walk throws OperationCanceledException.
+    /// cannot be listed, as for a key that differs from the folder's stored name. A cancelled walk throws
+    /// OperationCanceledException.
     /// </summary>
     Task<Result<IReadOnlyList<WalkedItem>>> WalkAsync(
         ResourceKey folder,

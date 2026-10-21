@@ -20,7 +20,7 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
     private readonly IIconService _iconService;
     private readonly IStringLocalizer _stringLocalizer;
 
-    private IResourceRegistry? _registry;
+    private IRootHandlerRegistry? _rootHandlerRegistry;
     private IResourceFileSystem? _resourceFileSystem;
     private List<string> _extensions = [];
     private bool _listsFolders;
@@ -89,7 +89,7 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
         Guard.IsTrue(_workspaceWrapper.IsWorkspaceLoaded);
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
-        _registry = workspaceService.ResourceService.Registry;
+        _rootHandlerRegistry = workspaceService.ResourceService.RootHandlers;
         _resourceFileSystem = workspaceService.ResourceService.FileSystem;
         _showPreview = showPreview;
         _listsFolders = false;
@@ -113,7 +113,7 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
         Guard.IsTrue(_workspaceWrapper.IsWorkspaceLoaded);
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
-        _registry = workspaceService.ResourceService.Registry;
+        _rootHandlerRegistry = workspaceService.ResourceService.RootHandlers;
         _resourceFileSystem = workspaceService.ResourceService.FileSystem;
         _showPreview = false;
         _listsFolders = true;
@@ -159,7 +159,7 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
 
     private async void UpdatePreview()
     {
-        if (!_showPreview || SelectedItem is null || _registry is null || _resourceFileSystem is null)
+        if (!_showPreview || SelectedItem is null || _rootHandlerRegistry is null || _resourceFileSystem is null)
         {
             PreviewImageVisibility = Visibility.Collapsed;
             PreviewImage = null;
@@ -167,7 +167,7 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
         }
 
         var selectedItem = SelectedItem;
-        var resolveResult = _registry.ResolveResourcePath(selectedItem.ResourceKey);
+        var resolveResult = _rootHandlerRegistry.ResolveResourcePath(selectedItem.ResourceKey);
         if (resolveResult.IsFailure)
         {
             PreviewImageVisibility = Visibility.Collapsed;

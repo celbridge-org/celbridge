@@ -37,8 +37,8 @@ public class FileTypeClassifier
 
         if (!_fileTypeHelper.IsRecognizedExtension(fileName))
         {
-            var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-            var resolveResult = resourceRegistry.ResolveResourcePath(fileResource);
+            var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
+            var resolveResult = rootHandlerRegistry.ResolveResourcePath(fileResource);
             if (resolveResult.IsFailure)
             {
                 return DocumentViewType.UnsupportedFormat;

@@ -40,7 +40,7 @@ public partial class AppTools
 
         var workspaceService = workspaceWrapper.WorkspaceService;
         var packageService = workspaceService.PackageService;
-        var resourceRegistry = workspaceService.ResourceService.Registry;
+        var rootHandlerRegistry = workspaceService.ResourceService.RootHandlers;
 
         // Bundled packages ship inside the app and are not part of the project's state.
         var projectPackages = packageService.GetAllPackages()
@@ -51,7 +51,7 @@ public partial class AppTools
         foreach (var package in projectPackages)
         {
             var packageVersion = package.Info.PackageVersion.ToString();
-            var folder = DescribeFolder(resourceRegistry, package.Info.PackageFolder);
+            var folder = DescribeFolder(rootHandlerRegistry, package.Info.PackageFolder);
             packages.Add(new ProjectPackageEntry(package.Info.Name, packageVersion, folder));
         }
 
@@ -62,7 +62,7 @@ public partial class AppTools
         var failures = new List<ProjectPackageFailure>();
         foreach (var failure in projectFailures)
         {
-            var folder = DescribeFolder(resourceRegistry, failure.Folder);
+            var folder = DescribeFolder(rootHandlerRegistry, failure.Folder);
             failures.Add(new ProjectPackageFailure(failure.PackageName, folder, failure.Reason.ToString(), failure.Detail));
         }
 
@@ -73,9 +73,9 @@ public partial class AppTools
 
     // A folder in the project tree resolves to a resource key. The folder path stands in if one ever does not,
     // so the entry is still listed and the list keeps agreeing with the app_get_state summary.
-    private static string DescribeFolder(IResourceRegistry resourceRegistry, string folderPath)
+    private static string DescribeFolder(IRootHandlerRegistry rootHandlerRegistry, string folderPath)
     {
-        var keyResult = resourceRegistry.GetResourceKey(folderPath);
+        var keyResult = rootHandlerRegistry.GetResourceKey(folderPath);
         if (keyResult.IsFailure)
         {
             return folderPath;

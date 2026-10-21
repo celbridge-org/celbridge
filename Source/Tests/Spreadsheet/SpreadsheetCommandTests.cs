@@ -12,17 +12,16 @@ namespace Celbridge.Tests.Spreadsheet;
 
 /// <summary>
 /// Tests for the ISpreadsheet*Command implementations against fixture .xlsx
-/// workbooks generated in SetUp via ClosedXML. The workspace wrapper is a
-/// stub that resolves a single ResourceKey to the fixture path so the
-/// commands exercise their full code path including path resolution.
+/// workbooks generated in SetUp via ClosedXML. Resource keys resolve through
+/// the real project root handler, so the commands exercise their full code
+/// path including path resolution.
 /// </summary>
 [TestFixture]
 public class SpreadsheetCommandTests
 {
-    private const string WorkbookResourceName = "data/test.xlsx";
+    private const string WorkbookResourceName = "test.xlsx";
 
     private IWorkspaceWrapper _workspaceWrapper = null!;
-    private IResourceRegistry _resourceRegistry = null!;
     private ResourceKey _workbookResource;
     private string _tempFolder = null!;
     private string _workbookPath = null!;
@@ -36,17 +35,8 @@ public class SpreadsheetCommandTests
         _workbookPath = Path.Combine(_tempFolder, "test.xlsx");
         _workbookResource = new ResourceKey(WorkbookResourceName);
 
-        _resourceRegistry = Substitute.For<IResourceRegistry>();
-        _resourceRegistry.ProjectFolderPath.Returns(_tempFolder);
-        _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>()).Returns(callInfo =>
-        {
-            var key = callInfo.Arg<ResourceKey>();
-            return Result<string>.Ok(Path.Combine(_tempFolder, key.Path.Replace('/', Path.DirectorySeparatorChar)));
-        });
-        _resourceRegistry.ResolveResourcePath(_workbookResource).Returns(Result<string>.Ok(_workbookPath));
-
         var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(_resourceRegistry);
+        resourceService.RootHandlers.Returns(TestRootHandlers.Create(_tempFolder));
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
@@ -783,10 +773,9 @@ public class SpreadsheetCommandTests
     [Test]
     public async Task AddSheets_NonXlsxResource_ReturnsFailure()
     {
-        var nonXlsxResource = new ResourceKey("notes/readme.md");
+        var nonXlsxResource = new ResourceKey("readme.md");
         var nonXlsxPath = Path.Combine(_tempFolder, "readme.md");
         await File.WriteAllTextAsync(nonXlsxPath, "hello");
-        _resourceRegistry.ResolveResourcePath(nonXlsxResource).Returns(Result<string>.Ok(nonXlsxPath));
 
         var command = new AddSheetsCommand(_workspaceWrapper)
         {

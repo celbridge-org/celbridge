@@ -52,9 +52,8 @@ public class ResourceCommandTests
 
         var messengerService = new MessengerService();
         var iconService = new IconService();
-        _rootHandlerRegistry = new RootHandlerRegistry();
-        _resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, ProjectTreeBuilderTestHelper.Build(_projectFolderPath, iconService), ResourceClassifierTestHelper.BuildEmptyStub(), _rootHandlerRegistry, TestFileSystem.CreateLocal());
-        _resourceRegistry.InitializeProjectRoot(_projectFolderPath);
+        _rootHandlerRegistry = TestRootHandlers.Create(_projectFolderPath);
+        _resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, ProjectTreeBuilderTestHelper.Build(_projectFolderPath, iconService), ResourceClassifierTestHelper.BuildEmptyStub(), _rootHandlerRegistry);
         await _resourceRegistry.UpdateResourceRegistryAsync();
 
         var resourceService = Substitute.For<IResourceService>();

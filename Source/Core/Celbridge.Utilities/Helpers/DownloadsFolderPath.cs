@@ -43,63 +43,54 @@ public static class DownloadsFolderPath
     }
 
     /// <summary>
-    /// The folder downloads are saved to in the project. A folder that exists is returned as the project
-    /// spells it, which can differ in case; a path with nothing at it is returned unchanged, for the first
-    /// download to create. The default folder is used when the path is empty, invalid, reserved, or held
-    /// by a file.
+    /// Returns the project's downloads folder. A configured folder that does not exist yet is returned unchanged.
+    /// The first download creates the folder. The default folder is used when the path is empty, invalid or
+    /// reserved, or when a file is at the path. Fails when the path does not match an existing folder's stored name, with a
+    /// StoredNameMismatchError that gives the stored name.
     /// </summary>
-    public static ResourceKey Resolve(IResourceRegistry registry, ILocalFileSystem fileSystem, string path)
+    public static Result<ResourceKey> Resolve(IRootHandlerRegistry rootHandlerRegistry, ILocalFileSystem fileSystem, string path)
     {
         if (TryParse(path, out var folder))
         {
-            var namedFolder = LocateFolder(registry, fileSystem, folder);
-            if (namedFolder is not null)
+            var locateResult = LocateFolder(rootHandlerRegistry, fileSystem, folder);
+            if (locateResult.IsFailure)
             {
-                return namedFolder.Value;
+                return Result<ResourceKey>.Fail().WithErrors(locateResult);
+            }
+
+            if (locateResult.Value)
+            {
+                return folder;
             }
         }
 
-        return LocateFolder(registry, fileSystem, DefaultFolder) ?? DefaultFolder;
+        var locateDefaultResult = LocateFolder(rootHandlerRegistry, fileSystem, DefaultFolder);
+        if (locateDefaultResult.IsFailure)
+        {
+            return Result<ResourceKey>.Fail().WithErrors(locateDefaultResult);
+        }
+
+        return DefaultFolder;
     }
 
-    // Where the folder is: as the project spells it when it exists, the path as given when nothing is
-    // there, and null when a file holds the path, because no folder can be made there.
-    private static ResourceKey? LocateFolder(IResourceRegistry registry, ILocalFileSystem fileSystem, ResourceKey folder)
+    // Returns true when a folder or nothing is at the path. Returns false when a file is at the path. No folder can
+    // be made there.
+    private static Result<bool> LocateFolder(IRootHandlerRegistry rootHandlerRegistry, ILocalFileSystem fileSystem, ResourceKey folder)
     {
-        var normalizeResult = registry.NormalizeResourceKey(folder);
-        if (normalizeResult.IsFailure)
-        {
-            return folder;
-        }
-        var resourceOnDisk = normalizeResult.Value;
-
-        var getResourceResult = registry.GetResource(resourceOnDisk);
-        if (getResourceResult.IsSuccess)
-        {
-            if (getResourceResult.Value is IFolderResource)
-            {
-                return resourceOnDisk;
-            }
-
-            return null;
-        }
-
-        // On disk but not yet in the registry, such as the folder WebView2 creates for the download that is
-        // asking where to go. The disk says whether it is a folder. The key already has the disk's case, so the
-        // path needs no second case check.
-        var resolveResult = registry.ResolveResourcePath(resourceOnDisk, validateCase: false);
+        var resolveResult = rootHandlerRegistry.ResolveResourcePath(folder);
         if (resolveResult.IsFailure)
         {
-            return null;
+            return Result<bool>.Fail($"Failed to resolve the downloads folder '{folder}'")
+                .WithErrors(resolveResult);
         }
 
         var infoResult = SyncRunner.Run(() => fileSystem.GetInfoAsync(resolveResult.Value));
         if (infoResult.IsSuccess
-            && infoResult.Value.Kind == StorageItemKind.Folder)
+            && infoResult.Value.Kind == StorageItemKind.File)
         {
-            return resourceOnDisk;
+            return false;
         }
 
-        return null;
+        return true;
     }
 }

@@ -92,10 +92,15 @@ public sealed class DownloadService : IDownloadService
             return Result<string>.Fail("No workspace is loaded");
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var downloadsFolder = ResolveDownloadsFolder(resourceRegistry);
+        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
+        var folderResult = ResolveDownloadsFolder(rootHandlerRegistry);
+        if (folderResult.IsFailure)
+        {
+            return Result<string>.Fail().WithErrors(folderResult);
+        }
+        var downloadsFolder = folderResult.Value;
 
-        var resolveResult = resourceRegistry.ResolveResourcePath(downloadsFolder);
+        var resolveResult = rootHandlerRegistry.ResolveResourcePath(downloadsFolder);
         if (resolveResult.IsFailure)
         {
             return Result<string>.Fail($"Failed to resolve the downloads folder '{downloadsFolder}'")
@@ -130,16 +135,16 @@ public sealed class DownloadService : IDownloadService
         }
 
         var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
-        var resourceRegistry = resourceService.Registry;
+        var rootHandlerRegistry = resourceService.RootHandlers;
         var resourceFileSystem = resourceService.FileSystem;
 
         await _beginGate.WaitAsync();
         try
         {
-            var reserveResult = await ReserveDestinationAsync(resourceRegistry, fileName);
+            var reserveResult = await ReserveDestinationAsync(rootHandlerRegistry, fileName);
             if (reserveResult.IsFailure)
             {
-                RecordFailure(fileName, sourceUrl, GetString("Downloads_DestinationUnavailable"));
+                RecordFailure(fileName, sourceUrl, DescribeUnavailableDestination(reserveResult));
 
                 return Result<DownloadTicket>.Fail($"Failed to reserve a download destination for '{fileName}'")
                     .WithErrors(reserveResult);
@@ -175,7 +180,7 @@ public sealed class DownloadService : IDownloadService
             var stagingName = $"{Path.GetFileNameWithoutExtension(Path.GetRandomFileName())}{Path.GetExtension(fileName)}";
             var stagingResource = new ResourceKey($"{ProjectConstants.TempFolder}:{ProjectConstants.DownloadsFolder}/{stagingName}");
 
-            var resolveStagingResult = resourceRegistry.ResolveResourcePath(stagingResource);
+            var resolveStagingResult = rootHandlerRegistry.ResolveResourcePath(stagingResource);
             if (resolveStagingResult.IsFailure)
             {
                 RecordFailure(fileName, sourceUrl, GetString("Downloads_DestinationUnavailable"));
@@ -407,34 +412,41 @@ public sealed class DownloadService : IDownloadService
 
     // Downloads land in the folder the project names, or downloads/ when it names none, so the project
     // root stays uncluttered when a session downloads several files.
-    private ResourceKey ResolveDownloadsFolder(IResourceRegistry resourceRegistry)
+    private Result<ResourceKey> ResolveDownloadsFolder(IRootHandlerRegistry rootHandlerRegistry)
     {
         var configuredFolder = _projectService.CurrentProject?.Config.Resources.DownloadsFolder ?? string.Empty;
 
-        return DownloadsFolderPath.Resolve(resourceRegistry, _localFileSystem, configuredFolder);
+        return DownloadsFolderPath.Resolve(rootHandlerRegistry, _localFileSystem, configuredFolder);
     }
 
     // Appends " (N)" before the extension until the destination is free: absent from disk, and not
     // already promised to another download.
-    private async Task<Result<ResourceKey>> ReserveDestinationAsync(IResourceRegistry resourceRegistry, string fileName)
+    private async Task<Result<ResourceKey>> ReserveDestinationAsync(IRootHandlerRegistry rootHandlerRegistry, string fileName)
     {
-        var downloadsFolder = ResolveDownloadsFolder(resourceRegistry);
+        var folderResult = ResolveDownloadsFolder(rootHandlerRegistry);
+        if (folderResult.IsFailure)
+        {
+            return Result<ResourceKey>.Fail().WithErrors(folderResult);
+        }
+        var downloadsFolder = folderResult.Value;
 
-        if (!ResourceKey.TryCreate($"{downloadsFolder.Path}/{fileName}", out var requestedResource))
+        if (!ResourceKey.TryCreate($"{downloadsFolder.Path}/{fileName}", out _))
         {
             return Result<ResourceKey>.Fail($"'{fileName}' is not a valid download file name");
         }
 
-        var resolveResult = resourceRegistry.ResolveResourcePath(requestedResource);
+        // Only the folder is resolved. The loop below checks the name against the files on disk. A name that
+        // differs from an existing file's name only in letter case then takes the next free name.
+        var resolveResult = rootHandlerRegistry.ResolveResourcePath(downloadsFolder);
         if (resolveResult.IsFailure)
         {
-            return Result<ResourceKey>.Fail($"Failed to resolve the download destination '{requestedResource}'")
+            return Result<ResourceKey>.Fail($"Failed to resolve the downloads folder '{downloadsFolder}'")
                 .WithErrors(resolveResult);
         }
 
         try
         {
-            var requestedPath = Path.GetFullPath(resolveResult.Value);
+            var requestedPath = Path.GetFullPath(Path.Combine(resolveResult.Value, fileName));
             var folderPath = Path.GetDirectoryName(requestedPath)!;
             var nameWithoutExtension = Path.GetFileNameWithoutExtension(requestedPath);
             var extension = Path.GetExtension(requestedPath);
@@ -445,7 +457,7 @@ public sealed class DownloadService : IDownloadService
             {
                 var candidatePath = Path.Combine(folderPath, candidateName);
 
-                var getKeyResult = resourceRegistry.GetResourceKey(candidatePath);
+                var getKeyResult = rootHandlerRegistry.GetResourceKey(candidatePath);
                 if (getKeyResult.IsFailure)
                 {
                     return Result<ResourceKey>.Fail($"Failed to resolve the download destination '{candidatePath}'")
@@ -476,9 +488,21 @@ public sealed class DownloadService : IDownloadService
         }
     }
 
-    // Only Celbridge's own reserved folders can deny a destination: nothing a project configures denies a
-    // read or a write, and a downloads folder inside a reserved one is refused before it is ever used. If a
-    // destination still reaches one, the row names the folder that matched.
+    // Names the stored folder when the downloads setting differs from the folder's stored name, so the user can
+    // correct the setting or rename the folder. Other failures get the general message.
+    private string DescribeUnavailableDestination(Result reserveResult)
+    {
+        if (reserveResult.FirstException is StoredNameMismatchError { StoredResource: ResourceKey storedFolder } mismatch)
+        {
+            return GetString("Downloads_FolderNameMismatch", mismatch.Resource.Path, storedFolder.Path);
+        }
+
+        return GetString("Downloads_DestinationUnavailable");
+    }
+
+    // Only Celbridge's own reserved folders can deny a destination. Nothing a project configures denies a read
+    // or a write, and a downloads folder inside a reserved folder is refused before it is used. If a destination
+    // still reaches a reserved folder, the row names the folder that matched.
     private string DescribeBlockedDestination(Result probeResult, string fileName)
     {
         if (probeResult.FirstException is not PolicyDenialError denial)

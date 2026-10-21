@@ -33,27 +33,13 @@ public class ArchiveResourceCommandTests
             Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_projectFolderPath);
 
-        var projectFolderPath = _projectFolderPath;
-        var resourceRegistry = Substitute.For<IResourceRegistry>();
-        resourceRegistry.ProjectFolderPath.Returns(projectFolderPath);
-        resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>(), Arg.Any<bool>()).Returns(callInfo =>
-        {
-            var resourceKey = callInfo.Arg<ResourceKey>();
-            var relativePath = resourceKey.Path.Replace('/', Path.DirectorySeparatorChar);
-            var absolutePath = string.IsNullOrEmpty(relativePath)
-                ? projectFolderPath
-                : Path.Combine(projectFolderPath, relativePath);
-
-            return Result<string>.Ok(absolutePath);
-        });
-
         // The command hands the finished archive to CreateFileAsync, so a test reads it from these bytes.
         var operationService = Substitute.For<IResourceOperationService>();
         operationService.CreateFileAsync(Arg.Any<ResourceKey>(), Arg.Do<byte[]>(content => _createdFileContent = content))
             .Returns(Task.FromResult(Result.Ok()));
 
         var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(resourceRegistry);
+        resourceService.RootHandlers.Returns(TestRootHandlers.Create(_projectFolderPath));
         resourceService.Operations.Returns(operationService);
         resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
 

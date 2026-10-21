@@ -601,8 +601,8 @@ public class DocumentsService : IDocumentsService, IDisposable
             return;
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var resolveResult = resourceRegistry.ResolveResourcePath(newResource);
+        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
+        var resolveResult = rootHandlerRegistry.ResolveResourcePath(newResource);
         if (resolveResult.IsFailure)
         {
             _logger.LogError(resolveResult, $"Failed to resolve path for renamed resource: '{newResource}'");

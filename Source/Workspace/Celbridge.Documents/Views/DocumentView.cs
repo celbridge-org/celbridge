@@ -8,6 +8,7 @@ namespace Celbridge.Documents.Views;
 public abstract partial class DocumentView : UserControl, IDocumentView
 {
     private IResourceRegistry? _resourceRegistry;
+    private IRootHandlerRegistry? _rootHandlers;
     private IResourceFileSystem? _resourceFileSystem;
 
     /// <summary>
@@ -24,6 +25,23 @@ public abstract partial class DocumentView : UserControl, IDocumentView
                 _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
             }
             return _resourceRegistry;
+        }
+    }
+
+    /// <summary>
+    /// Provides access to the root handler registry for resolving resource keys.
+    /// Lazily initialized from the workspace wrapper.
+    /// </summary>
+    protected IRootHandlerRegistry RootHandlers
+    {
+        get
+        {
+            if (_rootHandlers is null)
+            {
+                var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
+                _rootHandlers = workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
+            }
+            return _rootHandlers;
         }
     }
 
@@ -85,7 +103,7 @@ public abstract partial class DocumentView : UserControl, IDocumentView
             return Result.Fail($"File resource does not exist in resource registry: {fileResource}");
         }
 
-        var resolveResult = ResourceRegistry.ResolveResourcePath(fileResource);
+        var resolveResult = RootHandlers.ResolveResourcePath(fileResource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail($"Failed to resolve path for resource: '{fileResource}'")

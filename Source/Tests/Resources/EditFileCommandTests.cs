@@ -16,7 +16,6 @@ namespace Celbridge.Tests.Resources;
 public class EditFileCommandTests
 {
     private string _tempFolder = null!;
-    private IResourceRegistry _resourceRegistry = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
 
     [SetUp]
@@ -25,11 +24,8 @@ public class EditFileCommandTests
         _tempFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(EditFileCommandTests), Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_tempFolder);
 
-        _resourceRegistry = Substitute.For<IResourceRegistry>();
-        _resourceRegistry.ProjectFolderPath.Returns(_tempFolder);
-
         var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(_resourceRegistry);
+        resourceService.RootHandlers.Returns(TestRootHandlers.Create(_tempFolder));
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
@@ -61,10 +57,9 @@ public class EditFileCommandTests
     [Test]
     public async Task Edit_ReplacesUniqueMatch_WhenSingleOccurrence()
     {
-        var resource = new ResourceKey("notes/text.md");
+        var resource = new ResourceKey("text.md");
         var path = Path.Combine(_tempFolder, "text.md");
         await File.WriteAllTextAsync(path, "alpha\nbeta\ngamma\n");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var command = CreateCommand();
         command.FileResource = resource;
@@ -86,10 +81,9 @@ public class EditFileCommandTests
     [Test]
     public async Task Edit_FailsWithDisambiguationHint_WhenMultipleMatchesAndReplaceAllFalse()
     {
-        var resource = new ResourceKey("notes/text.md");
+        var resource = new ResourceKey("text.md");
         var path = Path.Combine(_tempFolder, "text.md");
         await File.WriteAllTextAsync(path, "x\nx\nx\n");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var command = CreateCommand();
         command.FileResource = resource;
@@ -108,10 +102,9 @@ public class EditFileCommandTests
     [Test]
     public async Task Edit_ReplacesAllOccurrences_WhenReplaceAllTrue()
     {
-        var resource = new ResourceKey("notes/text.md");
+        var resource = new ResourceKey("text.md");
         var path = Path.Combine(_tempFolder, "text.md");
         await File.WriteAllTextAsync(path, "x\nx\nx\n");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var command = CreateCommand();
         command.FileResource = resource;
@@ -135,10 +128,9 @@ public class EditFileCommandTests
     [Test]
     public async Task Edit_FailsWithQuoteHint_WhenOldStringNotFound()
     {
-        var resource = new ResourceKey("notes/text.md");
+        var resource = new ResourceKey("text.md");
         var path = Path.Combine(_tempFolder, "text.md");
         await File.WriteAllTextAsync(path, "alpha\nbeta\n");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var command = CreateCommand();
         command.FileResource = resource;
@@ -155,10 +147,9 @@ public class EditFileCommandTests
     [Test]
     public async Task Edit_PreservesCRLF_WhenFileHasCRLF()
     {
-        var resource = new ResourceKey("notes/crlf.txt");
+        var resource = new ResourceKey("crlf.txt");
         var path = Path.Combine(_tempFolder, "crlf.txt");
         await File.WriteAllTextAsync(path, "alpha\r\nbeta\r\ngamma\r\n");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var command = CreateCommand();
         command.FileResource = resource;
@@ -176,10 +167,9 @@ public class EditFileCommandTests
     [Test]
     public async Task Edit_NormalisesCRLFInOldString_WhenAgentPassesCRLF()
     {
-        var resource = new ResourceKey("notes/lf.txt");
+        var resource = new ResourceKey("lf.txt");
         var path = Path.Combine(_tempFolder, "lf.txt");
         await File.WriteAllTextAsync(path, "alpha\nbeta\ngamma\n");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var command = CreateCommand();
         command.FileResource = resource;
@@ -196,10 +186,9 @@ public class EditFileCommandTests
     [Test]
     public async Task Edit_NormalisesLFInNewString_WhenFileIsCRLF()
     {
-        var resource = new ResourceKey("notes/crlf.txt");
+        var resource = new ResourceKey("crlf.txt");
         var path = Path.Combine(_tempFolder, "crlf.txt");
         await File.WriteAllTextAsync(path, "alpha\r\nbeta\r\ngamma\r\n");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var command = CreateCommand();
         command.FileResource = resource;
@@ -234,10 +223,9 @@ public class EditFileCommandTests
     {
         // 8 matches > VerboseRangeThreshold (5). Expect the first 3 plus the
         // last 1 to come back, with Truncated=true and MatchCount=8 unchanged.
-        var resource = new ResourceKey("notes/many.md");
+        var resource = new ResourceKey("many.md");
         var path = Path.Combine(_tempFolder, "many.md");
         await File.WriteAllTextAsync(path, "x\nx\nx\nx\nx\nx\nx\nx\n");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var command = CreateCommand();
         command.FileResource = resource;
@@ -261,10 +249,9 @@ public class EditFileCommandTests
     public async Task Edit_KeepsFullRangeList_WhenMatchCountAtOrBelowThreshold()
     {
         // 5 matches == threshold. Expect full list, Truncated=false.
-        var resource = new ResourceKey("notes/five.md");
+        var resource = new ResourceKey("five.md");
         var path = Path.Combine(_tempFolder, "five.md");
         await File.WriteAllTextAsync(path, "x\nx\nx\nx\nx\n");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var command = CreateCommand();
         command.FileResource = resource;
@@ -284,8 +271,6 @@ public class EditFileCommandTests
     public async Task Edit_FailsForMissingFile()
     {
         var resource = new ResourceKey("missing.md");
-        var missingPath = Path.Combine(_tempFolder, "missing.md");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(missingPath));
 
         var command = CreateCommand();
         command.FileResource = resource;
@@ -303,10 +288,9 @@ public class EditFileCommandTests
         // Canonical append workflow: anchor against a suffix of the existing
         // file and concatenate the appended text in newString. No coordinates
         // needed.
-        var resource = new ResourceKey("notes/append.md");
+        var resource = new ResourceKey("append.md");
         var path = Path.Combine(_tempFolder, "append.md");
         await File.WriteAllTextAsync(path, "first line\nlast line\n");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var command = CreateCommand();
         command.FileResource = resource;
@@ -325,10 +309,9 @@ public class EditFileCommandTests
     {
         // Regression: a trailing newline in newString terminates the last
         // content line; it must not bump toLine by one.
-        var resource = new ResourceKey("notes/range.md");
+        var resource = new ResourceKey("range.md");
         var path = Path.Combine(_tempFolder, "range.md");
         await File.WriteAllTextAsync(path, "alpha\nbeta\ngamma\ndelta\nepsilon\n");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var command = CreateCommand();
         command.FileResource = resource;
@@ -349,10 +332,9 @@ public class EditFileCommandTests
         // Append two lines to a 5-line file by anchoring on the last line.
         // The reported toLine must point at the last appended content line,
         // not past EOF.
-        var resource = new ResourceKey("notes/append.md");
+        var resource = new ResourceKey("append.md");
         var path = Path.Combine(_tempFolder, "append.md");
         await File.WriteAllTextAsync(path, "one\ntwo\nthree\nfour\nfive\n");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var command = CreateCommand();
         command.FileResource = resource;
@@ -376,10 +358,9 @@ public class EditFileCommandTests
         // on line 1 collapse into a single entry with MatchCount=2; line 2
         // keeps its own entry with MatchCount=1. Top-level MatchCount stays
         // at the raw total of 3.
-        var resource = new ResourceKey("notes/dups.md");
+        var resource = new ResourceKey("dups.md");
         var path = Path.Combine(_tempFolder, "dups.md");
         await File.WriteAllTextAsync(path, "foo bar foo\nfoo baz\n");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var command = CreateCommand();
         command.FileResource = resource;
@@ -404,10 +385,9 @@ public class EditFileCommandTests
     {
         // Canonical multi-line deletion: include the trailing line terminator
         // so the empty line is removed too.
-        var resource = new ResourceKey("notes/delete.md");
+        var resource = new ResourceKey("delete.md");
         var path = Path.Combine(_tempFolder, "delete.md");
         await File.WriteAllTextAsync(path, "alpha\nbeta\ngamma\ndelta\n");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var command = CreateCommand();
         command.FileResource = resource;

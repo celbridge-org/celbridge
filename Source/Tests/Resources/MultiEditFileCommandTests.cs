@@ -16,7 +16,6 @@ namespace Celbridge.Tests.Resources;
 public class MultiEditFileCommandTests
 {
     private string _tempFolder = null!;
-    private IResourceRegistry _resourceRegistry = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
 
     [SetUp]
@@ -25,11 +24,8 @@ public class MultiEditFileCommandTests
         _tempFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(MultiEditFileCommandTests), Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_tempFolder);
 
-        _resourceRegistry = Substitute.For<IResourceRegistry>();
-        _resourceRegistry.ProjectFolderPath.Returns(_tempFolder);
-
         var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(_resourceRegistry);
+        resourceService.RootHandlers.Returns(TestRootHandlers.Create(_tempFolder));
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
@@ -61,10 +57,9 @@ public class MultiEditFileCommandTests
     [Test]
     public async Task MultiEdit_AppliesAllEditsSequentially_WhenAllSucceed()
     {
-        var resource = new ResourceKey("notes/text.md");
+        var resource = new ResourceKey("text.md");
         var path = Path.Combine(_tempFolder, "text.md");
         await File.WriteAllTextAsync(path, "alpha\nbeta\ngamma\n");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var command = CreateCommand();
         command.FileResource = resource;
@@ -93,11 +88,10 @@ public class MultiEditFileCommandTests
     [Test]
     public async Task MultiEdit_FailsAtomically_WhenAnyEditCannotMatch()
     {
-        var resource = new ResourceKey("notes/text.md");
+        var resource = new ResourceKey("text.md");
         var path = Path.Combine(_tempFolder, "text.md");
         var original = "alpha\nbeta\ngamma\n";
         await File.WriteAllTextAsync(path, original);
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var command = CreateCommand();
         command.FileResource = resource;
@@ -118,10 +112,9 @@ public class MultiEditFileCommandTests
     [Test]
     public async Task MultiEdit_LaterEditCanAnchorAgainstEarlierEditsOutput()
     {
-        var resource = new ResourceKey("notes/text.md");
+        var resource = new ResourceKey("text.md");
         var path = Path.Combine(_tempFolder, "text.md");
         await File.WriteAllTextAsync(path, "foo()\nresult = foo()\n");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var command = CreateCommand();
         command.FileResource = resource;
@@ -141,10 +134,9 @@ public class MultiEditFileCommandTests
     [Test]
     public async Task MultiEdit_ReportsFailingEditIndex_OnPartialFail()
     {
-        var resource = new ResourceKey("notes/text.md");
+        var resource = new ResourceKey("text.md");
         var path = Path.Combine(_tempFolder, "text.md");
         await File.WriteAllTextAsync(path, "x\nx\n");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var command = CreateCommand();
         command.FileResource = resource;
@@ -163,10 +155,9 @@ public class MultiEditFileCommandTests
     [Test]
     public async Task MultiEdit_PreservesCRLF()
     {
-        var resource = new ResourceKey("notes/crlf.txt");
+        var resource = new ResourceKey("crlf.txt");
         var path = Path.Combine(_tempFolder, "crlf.txt");
         await File.WriteAllTextAsync(path, "alpha\r\nbeta\r\ngamma\r\n");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var command = CreateCommand();
         command.FileResource = resource;
@@ -187,10 +178,9 @@ public class MultiEditFileCommandTests
     [Test]
     public async Task MultiEdit_NormalisesCRLFInEdits()
     {
-        var resource = new ResourceKey("notes/crlf.txt");
+        var resource = new ResourceKey("crlf.txt");
         var path = Path.Combine(_tempFolder, "crlf.txt");
         await File.WriteAllTextAsync(path, "alpha\r\nbeta\r\ngamma\r\n");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var command = CreateCommand();
         command.FileResource = resource;
@@ -209,11 +199,10 @@ public class MultiEditFileCommandTests
     [Test]
     public async Task MultiEdit_EmptyEditsArray_SucceedsAsNoOp()
     {
-        var resource = new ResourceKey("notes/text.md");
+        var resource = new ResourceKey("text.md");
         var path = Path.Combine(_tempFolder, "text.md");
         var original = "alpha\nbeta\n";
         await File.WriteAllTextAsync(path, original);
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var command = CreateCommand();
         command.FileResource = resource;
@@ -235,10 +224,9 @@ public class MultiEditFileCommandTests
         // Edit 0 replaces 'x' (3 occurrences) with replaceAll. Edit 1 is a
         // single surgical edit. The flat affectedLines list should carry an
         // editIndex on every range so the agent can distinguish them.
-        var resource = new ResourceKey("notes/mixed.md");
+        var resource = new ResourceKey("mixed.md");
         var path = Path.Combine(_tempFolder, "mixed.md");
         await File.WriteAllTextAsync(path, "x\nx\nMARKER\nx\n");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var command = CreateCommand();
         command.FileResource = resource;
@@ -273,10 +261,9 @@ public class MultiEditFileCommandTests
         // into one entry with MatchCount=3; line 2 keeps its own entry.
         // Edit 1's range stays separate even if it happened to share a line
         // with edit 0 — different edits never merge.
-        var resource = new ResourceKey("notes/merge.md");
+        var resource = new ResourceKey("merge.md");
         var path = Path.Combine(_tempFolder, "merge.md");
         await File.WriteAllTextAsync(path, "foo bar foo foo\nfoo baz\nmarker\n");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var command = CreateCommand();
         command.FileResource = resource;
@@ -312,10 +299,9 @@ public class MultiEditFileCommandTests
         // Edit 0 has 8 matches (> 5 threshold) — should be capped to 4 ranges
         // (first 3 + last 1) with Truncated=true. Edit 1 has 1 match — full
         // list, Truncated=false. Verifies the cap is per-edit, not batch-wide.
-        var resource = new ResourceKey("notes/many.md");
+        var resource = new ResourceKey("many.md");
         var path = Path.Combine(_tempFolder, "many.md");
         await File.WriteAllTextAsync(path, "x\nx\nx\nx\nx\nx\nx\nx\nMARKER\n");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var command = CreateCommand();
         command.FileResource = resource;

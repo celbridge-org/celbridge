@@ -106,7 +106,7 @@ public class ResourceTreeNavigatorTests
     }
 
     [Test]
-    public void FindResource_DefaultComparison_IsCaseSensitive()
+    public void FindResource_IsCaseSensitive()
     {
         var root = new FolderResource(string.Empty, null);
         var sub = new FolderResource("Docs", root);
@@ -115,23 +115,6 @@ public class ResourceTreeNavigatorTests
         sub.AddChild(leaf);
 
         ResourceTreeNavigator.FindResource(root, ResourceKey.Create("docs/readme.md")).IsFailure.Should().BeTrue();
-    }
-
-    [Test]
-    public void FindResource_OrdinalIgnoreCase_MatchesMiscasedKey()
-    {
-        var root = new FolderResource(string.Empty, null);
-        var sub = new FolderResource("Docs", root);
-        root.AddChild(sub);
-        var leaf = new FileResource("Readme.md", sub, FakeIcon);
-        sub.AddChild(leaf);
-
-        var result = ResourceTreeNavigator.FindResource(root, ResourceKey.Create("docs/readme.md"), ignoreCase: true);
-
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Should().BeSameAs(leaf);
-        // BuildKey on the matched node recovers the canonical (disk-preserved) case.
-        ResourceTreeNavigator.BuildKey(result.Value).Path.Should().Be("Docs/Readme.md");
     }
 
     [Test]

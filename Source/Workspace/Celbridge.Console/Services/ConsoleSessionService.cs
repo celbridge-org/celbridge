@@ -385,10 +385,9 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
             }
         }
 
-        // Resolving is in-memory once the resolver has verified a folder and the key is in the registry
-        // tree, which holds for an open console. A cold resolve can still reach disk though, so it runs
-        // outside the lock that inbound transport callbacks also take.
-        var registry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        // Each resolution reads the item's attributes from disk, so the resolutions run outside the lock that
+        // inbound transport callbacks also take.
+        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
 
         var candidates = new List<ConsoleRunCandidate>();
         foreach (var session in runningSessions)
@@ -396,7 +395,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
             // Best effort: a path that will not resolve still gets a menu entry, just one that cannot be
             // qualified by its folder if another console shares its file name.
             var filePath = session.Resource.ResourceName;
-            var resolveResult = registry.ResolveResourcePath(session.Resource);
+            var resolveResult = rootHandlerRegistry.ResolveResourcePath(session.Resource);
             if (resolveResult.IsSuccess)
             {
                 filePath = resolveResult.Value;

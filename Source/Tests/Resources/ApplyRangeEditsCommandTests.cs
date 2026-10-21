@@ -17,7 +17,6 @@ namespace Celbridge.Tests.Resources;
 public class ApplyRangeEditsCommandTests
 {
     private string _tempFolder = null!;
-    private IResourceRegistry _resourceRegistry = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
 
     [SetUp]
@@ -26,11 +25,8 @@ public class ApplyRangeEditsCommandTests
         _tempFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(ApplyRangeEditsCommandTests), Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_tempFolder);
 
-        _resourceRegistry = Substitute.For<IResourceRegistry>();
-        _resourceRegistry.ProjectFolderPath.Returns(_tempFolder);
-
         var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(_resourceRegistry);
+        resourceService.RootHandlers.Returns(TestRootHandlers.Create(_tempFolder));
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
@@ -64,10 +60,9 @@ public class ApplyRangeEditsCommandTests
     [Test]
     public async Task ExecuteAsync_WritesEditsToDisk_WhenFileExists()
     {
-        var resource = new ResourceKey("notes/file.md");
+        var resource = new ResourceKey("file.md");
         var path = Path.Combine(_tempFolder, "file.md");
         await File.WriteAllLinesAsync(path, new[] { "Line one", "Line two", "Line three" });
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var edit = new RangeEdit(2, 1, 2, -1, "Replaced");
         var command = CreateCommand();
@@ -97,15 +92,13 @@ public class ApplyRangeEditsCommandTests
     [Test]
     public async Task ExecuteAsync_WritesMultiFileBatch_WhenEditsTouchDifferentFiles()
     {
-        var resourceOne = new ResourceKey("notes/one.md");
+        var resourceOne = new ResourceKey("one.md");
         var pathOne = Path.Combine(_tempFolder, "one.md");
         await File.WriteAllLinesAsync(pathOne, new[] { "first", "second" });
-        _resourceRegistry.ResolveResourcePath(resourceOne).Returns(Result<string>.Ok(pathOne));
 
-        var resourceTwo = new ResourceKey("notes/two.md");
+        var resourceTwo = new ResourceKey("two.md");
         var pathTwo = Path.Combine(_tempFolder, "two.md");
         await File.WriteAllLinesAsync(pathTwo, new[] { "alpha", "beta" });
-        _resourceRegistry.ResolveResourcePath(resourceTwo).Returns(Result<string>.Ok(pathTwo));
 
         var command = CreateCommand();
         command.Edits = new List<FileRangeEdit>
@@ -124,10 +117,9 @@ public class ApplyRangeEditsCommandTests
     [Test]
     public async Task ExecuteAsync_PreservesCrlf_WhenNewTextUsesLfSeparators()
     {
-        var resource = new ResourceKey("notes/crlf.md");
+        var resource = new ResourceKey("crlf.md");
         var path = Path.Combine(_tempFolder, "crlf.md");
         await File.WriteAllTextAsync(path, "Line one\r\nLine two\r\nLine three\r\n");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         // The agent supplies NewText with \n separators. The command must
         // normalise so the file's CRLF style is preserved and no \r\r\n
@@ -151,8 +143,6 @@ public class ApplyRangeEditsCommandTests
     public async Task ExecuteAsync_FailsWhenFileMissing()
     {
         var resource = new ResourceKey("missing.md");
-        var missingPath = Path.Combine(_tempFolder, "missing.md");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(missingPath));
 
         var command = CreateCommand();
         command.Edits = new List<FileRangeEdit>

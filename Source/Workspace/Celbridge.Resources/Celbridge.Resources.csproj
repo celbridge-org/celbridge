@@ -24,6 +24,7 @@
 
   <ItemGroup>
     <PackageReference Include="ClosedXML" />
+    <PackageReference Include="System.IO.Hashing" />
     <PackageReference Include="Tomlyn" />
   </ItemGroup>
 

@@ -1,10 +1,8 @@
 namespace Celbridge.Resources;
 
 /// <summary>
-/// Cross-root dispatch over a registered set of resource root handlers. Owns
-/// the project, temp, and logs roots once they have been registered; resolves
-/// resource keys to absolute paths and vice versa via longest-prefix-wins
-/// matching across the backing locations.
+/// Maps resource keys to absolute paths and back by dispatching to the registered
+/// resource root handlers.
 /// </summary>
 public interface IRootHandlerRegistry
 {
@@ -33,9 +31,9 @@ public interface IRootHandlerRegistry
 
     /// <summary>
     /// Resolves a resource key to its absolute filesystem path via the
-    /// registered handler. Does not enforce case-canonical matching against
-    /// the project tree; callers that want that should go through
-    /// IResourceRegistry.ResolveResourcePath instead.
+    /// registered handler. When the root keeps listings, fails a key that does not
+    /// match the name stored on disk for an existing item. The failure carries
+    /// a StoredNameMismatchError that gives the stored name.
     /// </summary>
     Result<string> ResolveResourcePath(ResourceKey resource);
 

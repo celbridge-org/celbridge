@@ -34,6 +34,9 @@ public class ExplorerService : IExplorerService, IDisposable
     private IResourceRegistry ResourceRegistry =>
         _resourceRegistry ??= _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
+    private IRootHandlerRegistry RootHandlers =>
+        _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
+
     public IFolderStateService FolderStateService { get; }
 
     public ResourceKey SelectedResource { get; private set; }
@@ -164,7 +167,7 @@ public class ExplorerService : IExplorerService, IDisposable
 
     public async Task<Result> OpenFileManager(ResourceKey resource)
     {
-        var resolveResult = ResourceRegistry.ResolveResourcePath(resource);
+        var resolveResult = RootHandlers.ResolveResourcePath(resource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail($"Failed to resolve path for resource: '{resource}'")
@@ -182,7 +185,7 @@ public class ExplorerService : IExplorerService, IDisposable
 
     public async Task<Result> OpenApplication(ResourceKey resource)
     {
-        var resolveResult = ResourceRegistry.ResolveResourcePath(resource);
+        var resolveResult = RootHandlers.ResolveResourcePath(resource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail($"Failed to resolve path for resource: '{resource}'")

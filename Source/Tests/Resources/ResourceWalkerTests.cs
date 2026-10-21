@@ -3,7 +3,6 @@ using Celbridge.Messaging.Services;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
 using Celbridge.Tests.FileSystem;
-using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Resources;
@@ -15,7 +14,6 @@ namespace Celbridge.Tests.Resources;
 public class ResourceWalkerTests
 {
     private string _projectFolderPath = null!;
-    private RootHandlerRegistry _rootHandlerRegistry = null!;
     private IResourceService _resourceService = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
     private ResourceWalker _walker = null!;
@@ -31,19 +29,9 @@ public class ResourceWalkerTests
         Directory.CreateDirectory(_projectFolderPath);
 
         var messengerService = new MessengerService();
-        _rootHandlerRegistry = new RootHandlerRegistry();
-        var resourceRegistry = new ResourceRegistry(
-            Substitute.For<ILogger<ResourceRegistry>>(),
-            messengerService,
-            ProjectTreeBuilderTestHelper.Build(_projectFolderPath, new IconService()),
-            ResourceClassifierTestHelper.BuildClassifier(),
-            _rootHandlerRegistry,
-            TestFileSystem.CreateLocal());
-        resourceRegistry.InitializeProjectRoot(_projectFolderPath);
 
         _resourceService = Substitute.For<IResourceService>();
-        _resourceService.Registry.Returns(resourceRegistry);
-        _resourceService.RootHandlers.Returns(_rootHandlerRegistry);
+        _resourceService.RootHandlers.Returns(TestRootHandlers.Create(_projectFolderPath));
         _resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
 
         var workspaceService = Substitute.For<IWorkspaceService>();
@@ -117,7 +105,7 @@ public class ResourceWalkerTests
     }
 
     [Test]
-    public async Task Walk_FromAFolderInTheWrongCase_ReturnsKeysInTheCaseOnDisk()
+    public async Task Walk_FromAFolderInTheWrongCase_FailsAndGivesTheStoredName()
     {
         WriteFile("Src/App.py");
         if (!Directory.Exists(Path.Combine(_projectFolderPath, "src")))
@@ -125,9 +113,11 @@ public class ResourceWalkerTests
             Assert.Ignore("The volume compares names by case, so a key in the wrong case names nothing.");
         }
 
-        var items = await WalkAsync(new ResourceKey("src"));
+        var walkResult = await _walker.WalkAsync(new ResourceKey("src"));
 
-        items.Select(item => item.Resource.Path).Should().Equal("Src/App.py");
+        walkResult.IsFailure.Should().BeTrue();
+        walkResult.HasException<StoredNameMismatchError>().Should().BeTrue();
+        walkResult.MessageChain.Should().Contain("Canonical form is 'project:Src'");
     }
 
     [Test]

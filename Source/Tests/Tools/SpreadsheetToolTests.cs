@@ -22,7 +22,6 @@ public class SpreadsheetToolTests
 {
     private IApplicationServiceProvider _services = null!;
     private ISpreadsheetReader _reader = null!;
-    private IResourceRegistry _resourceRegistry = null!;
     private ICommandService _commandService = null!;
     private string _tempFolder = null!;
 
@@ -31,21 +30,13 @@ public class SpreadsheetToolTests
     {
         _services = Substitute.For<IApplicationServiceProvider>();
         _reader = Substitute.For<ISpreadsheetReader>();
-        _resourceRegistry = Substitute.For<IResourceRegistry>();
         _commandService = Substitute.For<ICommandService>();
 
         _tempFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(SpreadsheetToolTests), Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_tempFolder);
 
-        _resourceRegistry.ProjectFolderPath.Returns(_tempFolder);
-        _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>()).Returns(callInfo =>
-        {
-            var key = callInfo.Arg<ResourceKey>();
-            return Result<string>.Ok(Path.Combine(_tempFolder, key.Path.Replace('/', Path.DirectorySeparatorChar)));
-        });
-
         var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(_resourceRegistry);
+        resourceService.RootHandlers.Returns(TestRootHandlers.Create(_tempFolder));
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);

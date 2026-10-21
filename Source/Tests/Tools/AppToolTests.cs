@@ -7,6 +7,7 @@ using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.Server;
 using Celbridge.Settings;
+using Celbridge.Tests.FileSystem;
 using Celbridge.Tools;
 using Celbridge.UserInterface;
 using Celbridge.Workspace;
@@ -370,16 +371,8 @@ public class AppToolTests
             },
         ]);
 
-        var resourceRegistry = Substitute.For<IResourceRegistry>();
-        resourceRegistry.GetResourceKey(Arg.Any<string>()).Returns(callInfo =>
-        {
-            var path = callInfo.Arg<string>();
-            var relativePath = Path.GetRelativePath(projectFolder, path).Replace(Path.DirectorySeparatorChar, '/');
-            return Result<ResourceKey>.Ok(new ResourceKey(relativePath));
-        });
-
         var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(resourceRegistry);
+        resourceService.RootHandlers.Returns(TestRootHandlers.Create(projectFolder));
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.PackageService.Returns(packageService);

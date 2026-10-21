@@ -48,7 +48,7 @@ public partial class WorkshopTools
 
         var workspaceService = workspaceWrapper.WorkspaceService;
         var resourceService = workspaceService.ResourceService;
-        var resourceRegistry = resourceService.Registry;
+        var rootHandlerRegistry = resourceService.RootHandlers;
         var resourceFileSystem = resourceService.FileSystem;
 
         var destinationCheck = ValidateDestination(workspaceService.PackageService, destinationFolder);
@@ -74,7 +74,7 @@ public partial class WorkshopTools
         // before downloading and name the existing location.
         var duplicateCheck = await CheckForDuplicateProjectPackageAsync(
             workspaceService.PackageService,
-            resourceRegistry,
+            rootHandlerRegistry,
             resourceFileSystem,
             packageName,
             installFolder);
@@ -233,12 +233,12 @@ public partial class WorkshopTools
     // the session is not seen, and shows up as a DuplicateName load failure on the next load.
     private static async Task<Result> CheckForDuplicateProjectPackageAsync(
         IPackageService packageService,
-        IResourceRegistry resourceRegistry,
+        IRootHandlerRegistry rootHandlerRegistry,
         IResourceFileSystem resourceFileSystem,
         string packageName,
         ResourceKey installFolder)
     {
-        var resolveTargetResult = resourceRegistry.ResolveResourcePath(installFolder, validateCase: false);
+        var resolveTargetResult = rootHandlerRegistry.ResolveResourcePath(installFolder);
         if (resolveTargetResult.IsFailure)
         {
             return Result.Fail($"Cannot resolve install destination '{installFolder}': {resolveTargetResult.FirstErrorMessage}");
@@ -263,13 +263,13 @@ public partial class WorkshopTools
                 continue;
             }
 
-            var isManifestPresent = await IsManifestPresentAsync(resourceRegistry, resourceFileSystem, package.Info.PackageFolder);
+            var isManifestPresent = await IsManifestPresentAsync(rootHandlerRegistry, resourceFileSystem, package.Info.PackageFolder);
             if (!isManifestPresent)
             {
                 continue;
             }
 
-            var existingLocation = DescribeFolder(resourceRegistry, package.Info.PackageFolder);
+            var existingLocation = DescribeFolder(rootHandlerRegistry, package.Info.PackageFolder);
             return Result.Fail(
                 $"Package '{packageName}' is already installed in the project at '{existingLocation}'. " +
                 "Move, rename, or remove it before installing to a different location, or reinstall over the existing folder to replace it.");
@@ -283,9 +283,9 @@ public partial class WorkshopTools
         return Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
     }
 
-    private static string DescribeFolder(IResourceRegistry resourceRegistry, string folderPath)
+    private static string DescribeFolder(IRootHandlerRegistry rootHandlerRegistry, string folderPath)
     {
-        var keyResult = resourceRegistry.GetResourceKey(folderPath);
+        var keyResult = rootHandlerRegistry.GetResourceKey(folderPath);
         if (keyResult.IsSuccess)
         {
             return keyResult.Value.ToString();
@@ -297,11 +297,11 @@ public partial class WorkshopTools
     // Returns false only when the file system reports the manifest as missing. A failed check returns true, so
     // the package still blocks the install.
     private static async Task<bool> IsManifestPresentAsync(
-        IResourceRegistry resourceRegistry,
+        IRootHandlerRegistry rootHandlerRegistry,
         IResourceFileSystem resourceFileSystem,
         string existingFolderPath)
     {
-        var folderKeyResult = resourceRegistry.GetResourceKey(existingFolderPath);
+        var folderKeyResult = rootHandlerRegistry.GetResourceKey(existingFolderPath);
         if (folderKeyResult.IsFailure)
         {
             return true;

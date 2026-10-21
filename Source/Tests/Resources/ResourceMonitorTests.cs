@@ -53,7 +53,7 @@ public class ResourceMonitorTests
         _projectHandler = Substitute.For<IResourceRootHandler>();
         _projectHandler.RootName.Returns(ResourceKey.DefaultRoot);
         _projectHandler.BackingLocation.Returns(ProjectBackingLocation);
-        _projectHandler.Capabilities.Returns(new ResourceRootCapabilities(IsWritable: true, IsWatched: true));
+        _projectHandler.Capabilities.Returns(new ResourceRootCapabilities(IsWritable: true, IsWatched: true, ListingPolicy.UntilChanged));
         // Default: any path fails to key; specific tests stub the paths they exercise.
         _projectHandler.GetResourceKey(Arg.Any<string>())
             .Returns(Result<ResourceKey>.Fail("not stubbed"));
@@ -110,7 +110,7 @@ public class ResourceMonitorTests
         var tempHandler = Substitute.For<IResourceRootHandler>();
         tempHandler.RootName.Returns("temp");
         tempHandler.BackingLocation.Returns("C:/temp");
-        tempHandler.Capabilities.Returns(new ResourceRootCapabilities(IsWritable: true, IsWatched: false));
+        tempHandler.Capabilities.Returns(new ResourceRootCapabilities(IsWritable: true, IsWatched: false, ListingPolicy.UntilChanged));
         _rootHandlers["temp"] = tempHandler;
 
         _resourceMonitor.Initialize();
@@ -168,17 +168,36 @@ public class ResourceMonitorTests
     }
 
     [Test]
-    public void DeletedAndRenamed_InvalidateThePathCacheForTheRemovedPath()
+    public void CreatedDeletedAndRenamed_AreRecordedWithTheResolver()
     {
-        // A folder that is deleted or renamed away may be replaced by a link, which the resolver must check.
+        // A link may replace a folder that is deleted or renamed away, so the resolver checks the path again.
+        // Each change also alters a folder's listing.
         var monitor = InitializeAndGetProjectMonitor();
 
+        monitor.RaiseCreated(PathFor("created"));
         monitor.RaiseDeleted(PathFor("deleted"));
         monitor.RaiseRenamed(PathFor("old"), PathFor("new"));
 
-        _projectHandler.Received(1).InvalidatePathCache(PathFor("deleted"));
-        _projectHandler.Received(1).InvalidatePathCache(PathFor("old"));
-        _projectHandler.DidNotReceive().InvalidatePathCache(PathFor("new"));
+        _projectHandler.Received(1).RecordItemCreated(PathFor("created"));
+        _projectHandler.Received(1).RecordItemRemoved(PathFor("deleted"));
+        _projectHandler.Received(1).RecordItemRemoved(PathFor("old"));
+        _projectHandler.Received(1).RecordItemCreated(PathFor("new"));
+    }
+
+    [Test]
+    public void ChangesToIgnoredPaths_AreRecordedWithTheResolver()
+    {
+        // The listings contain every name in a folder, including the names the tree walk skips.
+        var monitor = InitializeAndGetProjectMonitor();
+        // No StubKey call, so every path fails to key and every event is ignored.
+
+        monitor.RaiseCreated(PathFor("node_modules/created"));
+        monitor.RaiseDeleted(PathFor("node_modules/deleted"));
+
+        _projectHandler.Received(1).RecordItemCreated(PathFor("node_modules/created"));
+        _projectHandler.Received(1).RecordItemRemoved(PathFor("node_modules/deleted"));
+        _messengerService.DidNotReceive().Send(Arg.Any<ResourceCreatedMessage>());
+        _messengerService.DidNotReceive().Send(Arg.Any<ResourceDeletedMessage>());
     }
 
     [Test]

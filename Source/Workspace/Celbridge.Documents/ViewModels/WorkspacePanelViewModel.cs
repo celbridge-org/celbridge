@@ -203,8 +203,8 @@ public partial class WorkspacePanelViewModel : ObservableObject
 
     public Result<string> ResolveResourcePath(ResourceKey fileResource)
     {
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        return resourceRegistry.ResolveResourcePath(fileResource);
+        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
+        return rootHandlerRegistry.ResolveResourcePath(fileResource);
     }
 
     public void RevealInExplorerForTab(ResourceKey fileResource)

@@ -15,7 +15,6 @@ namespace Celbridge.Tests.Resources;
 public class WriteBinaryFileCommandTests
 {
     private string _tempFolder = null!;
-    private IResourceRegistry _resourceRegistry = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
 
     [SetUp]
@@ -24,11 +23,8 @@ public class WriteBinaryFileCommandTests
         _tempFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(WriteBinaryFileCommandTests), Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_tempFolder);
 
-        _resourceRegistry = Substitute.For<IResourceRegistry>();
-        _resourceRegistry.ProjectFolderPath.Returns(_tempFolder);
-
         var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(_resourceRegistry);
+        resourceService.RootHandlers.Returns(TestRootHandlers.Create(_tempFolder));
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
@@ -58,9 +54,8 @@ public class WriteBinaryFileCommandTests
     [Test]
     public async Task ExecuteAsync_WritesDecodedBytesToDisk()
     {
-        var resource = new ResourceKey("blobs/data.bin");
+        var resource = new ResourceKey("data.bin");
         var path = Path.Combine(_tempFolder, "data.bin");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var bytes = new byte[] { 0x01, 0x02, 0x03, 0xFF };
         var command = CreateCommand();

@@ -6,6 +6,8 @@ using Celbridge.Localization;
 using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Resources;
+using Celbridge.Resources.Services;
+using Celbridge.Resources.Services.Roots;
 using Celbridge.Tests.FileSystem;
 using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
@@ -34,6 +36,7 @@ public class DownloadServiceTests
     private ICommandService _commandService = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
     private IResourceRegistry _resourceRegistry = null!;
+    private RootHandlerRegistry _rootHandlers = null!;
     private IResourceFileSystem _resourceFileSystem = null!;
     private ILocalizerService _localizerService = null!;
     private IProject _project = null!;
@@ -77,15 +80,14 @@ public class DownloadServiceTests
             .Do(callInfo => _workspaceUnloadedHandler =
                 callInfo.Arg<MessageHandler<object, WorkspaceUnloadedMessage>>());
 
+        // The real disk lacks the in-memory items. A missing item passes the stored name check, so every key
+        // resolves.
+        _rootHandlers = TestRootHandlers.Create(ProjectFolderPath);
+        _rootHandlers.RegisterRootHandler(new TempRootHandler(TempFolderPath));
+
         _resourceRegistry = Substitute.For<IResourceRegistry>();
-        _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>(), Arg.Any<bool>())
-            .Returns(callInfo => ResolvePath(callInfo.Arg<ResourceKey>()));
-        _resourceRegistry.GetResourceKey(Arg.Any<string>())
-            .Returns(callInfo => ResolveResource(callInfo.Arg<string>()));
         _resourceRegistry.GetResource(Arg.Any<ResourceKey>())
             .Returns(callInfo => GetResource(callInfo.Arg<ResourceKey>()));
-        _resourceRegistry.NormalizeResourceKey(Arg.Any<ResourceKey>())
-            .Returns(callInfo => NormalizeResource(callInfo.Arg<ResourceKey>()));
 
         _resourceFileSystem = Substitute.For<IResourceFileSystem>();
         _resourceFileSystem.CreateFolderAsync(Arg.Any<ResourceKey>())
@@ -98,6 +100,7 @@ public class DownloadServiceTests
 
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Registry.Returns(_resourceRegistry);
+        resourceService.RootHandlers.Returns(_rootHandlers);
         resourceService.FileSystem.Returns(_resourceFileSystem);
 
         var workspaceService = Substitute.For<IWorkspaceService>();
@@ -134,6 +137,15 @@ public class DownloadServiceTests
             _workspaceWrapper,
             projectService,
             _localFileSystem);
+    }
+
+    [TearDown]
+    public void TearDown()
+    {
+        if (Directory.Exists(ProjectFolderPath))
+        {
+            Directory.Delete(ProjectFolderPath, recursive: true);
+        }
     }
 
     [Test]
@@ -200,6 +212,24 @@ public class DownloadServiceTests
     }
 
     [Test]
+    [Platform(Exclude = "Linux", Reason = "On a case-sensitive file system, Report.pdf and report.pdf are different files.")]
+    public async Task ANameOnDiskInAnotherCase_IsUniquified()
+    {
+        // The resolver reads the stored names from the real disk, so the test writes the file there too. The
+        // in-memory file system compares names exactly. The test therefore gives the in-memory file system the file
+        // under both names, matching a volume that ignores case.
+        var existingPath = Path.Combine(ProjectFolderPath, "downloads", "report.pdf");
+        Directory.CreateDirectory(Path.GetDirectoryName(existingPath)!);
+        File.WriteAllText(existingPath, "existing");
+        _localFileSystem.SeedFile(existingPath, "existing");
+        _localFileSystem.SeedFile(Path.Combine(ProjectFolderPath, "downloads", "Report.pdf"), "existing");
+
+        var ticket = await BeginAsync("Report.pdf");
+
+        ticket.Destination.Should().Be(new ResourceKey("downloads/Report (1).pdf"));
+    }
+
+    [Test]
     public async Task AFolderTheProjectNames_IsWhereDownloadsLand()
     {
         _localFileSystem.SeedFolder(Path.Combine(ProjectFolderPath, "assets", "incoming"));
@@ -224,14 +254,32 @@ public class DownloadServiceTests
     }
 
     [Test]
-    public async Task AFolderNamedInAnotherCase_IsUsedAsTheProjectSpellsIt()
+    [Platform(Exclude = "Linux", Reason = "On a case-sensitive file system, Incoming and incoming are different folders.")]
+    public async Task AFolderNamedInAnotherCase_IsRefused_AndTheRowGivesItsStoredName()
     {
+        // The resolver reads the stored names from the real disk, so the folder is made there too.
+        Directory.CreateDirectory(Path.Combine(ProjectFolderPath, "Incoming"));
         _localFileSystem.SeedFolder(Path.Combine(ProjectFolderPath, "Incoming"));
         NameDownloadsFolder("incoming");
 
-        var ticket = await BeginAsync("report.pdf");
+        var beginResult = await _downloadService.BeginAsync(
+            "report.pdf",
+            "https://example.com/report.pdf",
+            Substitute.For<IDownloadTransfer>());
 
-        ticket.Destination.Should().Be(new ResourceKey("Incoming/report.pdf"));
+        beginResult.IsFailure.Should().BeTrue();
+
+        var download = _downloadService.Downloads.Should().ContainSingle().Subject;
+        download.Status.Should().Be(DownloadStatus.Failed);
+        download.FailureReason.Should().Be("Downloads_FolderNameMismatch");
+        _localizerService.Received().GetString(
+            "Downloads_FolderNameMismatch",
+            Arg.Is<object[]>(arguments =>
+                arguments.Length == 2
+                && Equals(arguments[0], "incoming")
+                && Equals(arguments[1], "Incoming")));
+
+        await _resourceFileSystem.DidNotReceive().CreateFolderAsync(Arg.Any<ResourceKey>());
     }
 
     /// <summary>
@@ -697,37 +745,9 @@ public class DownloadServiceTests
         return Result<DeleteResult>.Ok(new DeleteResult(SidecarOutcome.NotPresent));
     }
 
-    private static Result<string> ResolvePath(ResourceKey resource)
+    private Result<string> ResolvePath(ResourceKey resource)
     {
-        var rootPath = resource.Root == ProjectConstants.TempFolder
-            ? TempFolderPath
-            : ProjectFolderPath;
-
-        var relativePath = resource.Path.Replace('/', Path.DirectorySeparatorChar);
-
-        return Path.GetFullPath(Path.Combine(rootPath, relativePath));
-    }
-
-    // The temp root lives under the project folder, so it is matched first.
-    private static Result<ResourceKey> ResolveResource(string path)
-    {
-        var fullPath = Path.GetFullPath(path);
-
-        if (fullPath.StartsWith(TempFolderPath, StringComparison.Ordinal))
-        {
-            var relativePath = Path.GetRelativePath(TempFolderPath, fullPath);
-
-            return new ResourceKey($"{ProjectConstants.TempFolder}:{ToKeyPath(relativePath)}");
-        }
-
-        if (fullPath.StartsWith(ProjectFolderPath, StringComparison.Ordinal))
-        {
-            var relativePath = Path.GetRelativePath(ProjectFolderPath, fullPath);
-
-            return new ResourceKey(ToKeyPath(relativePath));
-        }
-
-        return Result<ResourceKey>.Fail($"'{path}' is outside the project");
+        return _rootHandlers.ResolveResourcePath(resource);
     }
 
     private Result<IResource> GetResource(ResourceKey resource)
@@ -744,26 +764,5 @@ public class DownloadServiceTests
         }
 
         return Result<IResource>.Ok(Substitute.For<IFileResource>());
-    }
-
-    // Mirrors the registry, which finds the resource on disk whatever the case of the key it is given.
-    private Result<ResourceKey> NormalizeResource(ResourceKey resource)
-    {
-        var path = ResolvePath(resource).Value;
-
-        var pathOnDisk = _localFileSystem.Folders
-            .Concat(_localFileSystem.Files.Keys)
-            .FirstOrDefault(candidate => string.Equals(candidate, path, StringComparison.OrdinalIgnoreCase));
-        if (pathOnDisk is null)
-        {
-            return Result<ResourceKey>.Fail($"'{resource}' does not exist");
-        }
-
-        return ResolveResource(pathOnDisk);
-    }
-
-    private static string ToKeyPath(string relativePath)
-    {
-        return relativePath.Replace(Path.DirectorySeparatorChar, '/');
     }
 }

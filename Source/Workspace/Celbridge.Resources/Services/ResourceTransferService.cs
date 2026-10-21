@@ -17,6 +17,9 @@ public class ResourceTransferService : IResourceTransferService
     private IResourceRegistry ResourceRegistry =>
         _resourceRegistry ??= _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
+    private IRootHandlerRegistry RootHandlers =>
+        _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
+
     public ResourceTransferService(
         ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper,
@@ -52,7 +55,7 @@ public class ResourceTransferService : IResourceTransferService
         {
             List<ResourceTransferItem> transferItems = new();
 
-            var resolveResult = ResourceRegistry.ResolveResourcePath(destFolderResource);
+            var resolveResult = RootHandlers.ResolveResourcePath(destFolderResource);
             if (resolveResult.IsFailure)
             {
                 return Result<List<ResourceTransferItem>>.Fail($"Failed to resolve path for resource: '{destFolderResource}'")
@@ -98,7 +101,7 @@ public class ResourceTransferService : IResourceTransferService
                     continue;
                 }
 
-                var getKeyResult = ResourceRegistry.GetResourceKey(sourcePath);
+                var getKeyResult = RootHandlers.GetResourceKey(sourcePath);
                 if (getKeyResult.IsSuccess)
                 {
                     // This resource is inside the project folder so we should use the CopyResource command
@@ -108,7 +111,7 @@ public class ResourceTransferService : IResourceTransferService
                     var sourceResource = getKeyResult.Value;
 
                     // Sanity check that the generated sourceResource matches the original source path
-                    var checkSourcePathResult = ResourceRegistry.ResolveResourcePath(sourceResource);
+                    var checkSourcePathResult = RootHandlers.ResolveResourcePath(sourceResource);
                     Guard.IsTrue(checkSourcePathResult.IsSuccess && sourcePath == checkSourcePathResult.Value);
 
                     var destResource = ResolveDestinationResource(sourceResource, destFolderResource);

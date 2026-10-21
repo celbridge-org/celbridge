@@ -1,6 +1,7 @@
 using Celbridge.Messaging;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
+using Celbridge.Resources.Services.Roots;
 using Celbridge.Tests.FileSystem;
 using Celbridge.Workspace;
 
@@ -15,8 +16,7 @@ namespace Celbridge.Tests.Resources;
 public class LocalResourceFileSystemTests
 {
     private string _tempFolder = null!;
-    private IResourceRegistry _resourceRegistry = null!;
-    private IRootHandlerRegistry _rootHandlerRegistry = null!;
+    private string _tempRootFolder = null!;
     private IResourceOperationService _operationService = null!;
     private IMessengerService _messengerService = null!;
     private LocalResourceFileSystem _resourceFileSystem = null!;
@@ -30,20 +30,10 @@ public class LocalResourceFileSystemTests
             nameof(LocalResourceFileSystemTests),
             Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_tempFolder);
+        _tempRootFolder = Path.Combine(_tempFolder, "Data", "temp");
 
-        _resourceRegistry = Substitute.For<IResourceRegistry>();
-        _resourceRegistry.ProjectFolderPath.Returns(_tempFolder);
-        // Default to failure for any unstubbed resolve; specific tests override
-        // with success results for the keys they exercise.
-        _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>())
-            .Returns(Result<string>.Fail("not stubbed"));
-
-        _rootHandlerRegistry = Substitute.For<IRootHandlerRegistry>();
-        _rootHandlerRegistry.RootHandlers.Returns(new Dictionary<string, IResourceRootHandler>());
-        // Default to failure for any unstubbed resolve; folder operations stub
-        // the descendant paths they exercise.
-        _rootHandlerRegistry.GetResourceKey(Arg.Any<string>())
-            .Returns(Result<ResourceKey>.Fail("not stubbed"));
+        var rootHandlerRegistry = TestRootHandlers.Create(_tempFolder);
+        rootHandlerRegistry.RegisterRootHandler(new TempRootHandler(_tempRootFolder));
 
         // Default the writable cache to Writable so existing tests behave as
         // they did before the read-only-strip gate was added. The two tests
@@ -53,8 +43,7 @@ public class LocalResourceFileSystemTests
             .Returns(Task.FromResult(WritableState.Writable));
 
         var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(_resourceRegistry);
-        resourceService.RootHandlers.Returns(_rootHandlerRegistry);
+        resourceService.RootHandlers.Returns(rootHandlerRegistry);
         resourceService.Operations.Returns(_operationService);
 
         var workspaceService = Substitute.For<IWorkspaceService>();
@@ -90,7 +79,6 @@ public class LocalResourceFileSystemTests
     {
         var resource = new ResourceKey("new.bin");
         var path = Path.Combine(_tempFolder, "new.bin");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var bytes = new byte[] { 0x01, 0x02, 0x03 };
 
@@ -106,7 +94,6 @@ public class LocalResourceFileSystemTests
     {
         var resource = new ResourceKey("new.txt");
         var path = Path.Combine(_tempFolder, "new.txt");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var result = await _resourceFileSystem.WriteAllTextAsync(resource, "hello world");
 
@@ -120,7 +107,6 @@ public class LocalResourceFileSystemTests
         var resource = new ResourceKey("existing.txt");
         var path = Path.Combine(_tempFolder, "existing.txt");
         await File.WriteAllTextAsync(path, "old");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var result = await _resourceFileSystem.WriteAllTextAsync(resource, "new");
 
@@ -133,7 +119,6 @@ public class LocalResourceFileSystemTests
     {
         var resource = new ResourceKey("nested/deeper/file.txt");
         var path = Path.Combine(_tempFolder, "nested", "deeper", "file.txt");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var result = await _resourceFileSystem.WriteAllTextAsync(resource, "deep content");
 
@@ -145,9 +130,8 @@ public class LocalResourceFileSystemTests
     [Test]
     public async Task WriteAllTextAsync_ReturnsFailure_WhenResolveFails()
     {
-        var resource = new ResourceKey("bad.txt");
-        _resourceRegistry.ResolveResourcePath(resource)
-            .Returns(Result<string>.Fail("simulated resolve failure"));
+        // The root is unregistered, so resolving the key fails.
+        var resource = new ResourceKey("unregistered:bad.txt");
 
         var result = await _resourceFileSystem.WriteAllTextAsync(resource, "anything");
 
@@ -161,7 +145,6 @@ public class LocalResourceFileSystemTests
         // should appear next to the destination.
         var resource = new ResourceKey("clean.bin");
         var path = Path.Combine(_tempFolder, "clean.bin");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         await _resourceFileSystem.WriteAllBytesAsync(resource, new byte[] { 0x42 });
 
@@ -176,7 +159,6 @@ public class LocalResourceFileSystemTests
         var path = Path.Combine(_tempFolder, "read.bin");
         var expected = new byte[] { 0x10, 0x20, 0x30 };
         await File.WriteAllBytesAsync(path, expected);
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var result = await _resourceFileSystem.ReadAllBytesAsync(resource);
 
@@ -190,7 +172,6 @@ public class LocalResourceFileSystemTests
         var resource = new ResourceKey("read.txt");
         var path = Path.Combine(_tempFolder, "read.txt");
         await File.WriteAllTextAsync(path, "the content");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var result = await _resourceFileSystem.ReadAllTextAsync(resource);
 
@@ -202,8 +183,6 @@ public class LocalResourceFileSystemTests
     public async Task ReadAllBytesAsync_ReturnsFailure_WhenFileMissing()
     {
         var resource = new ResourceKey("missing.bin");
-        var path = Path.Combine(_tempFolder, "missing.bin");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var result = await _resourceFileSystem.ReadAllBytesAsync(resource);
 
@@ -217,7 +196,6 @@ public class LocalResourceFileSystemTests
         var path = Path.Combine(_tempFolder, "openread.bin");
         var expected = new byte[] { 0xAA, 0xBB, 0xCC, 0xDD };
         await File.WriteAllBytesAsync(path, expected);
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var openResult = await _resourceFileSystem.OpenReadAsync(resource);
 
@@ -233,7 +211,6 @@ public class LocalResourceFileSystemTests
     {
         var resource = new ResourceKey("openwrite.bin");
         var path = Path.Combine(_tempFolder, "openwrite.bin");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var openResult = await _resourceFileSystem.OpenWriteAsync(resource);
 
@@ -253,7 +230,6 @@ public class LocalResourceFileSystemTests
     {
         var resource = new ResourceKey("nested/folder/openwrite.bin");
         var path = Path.Combine(_tempFolder, "nested", "folder", "openwrite.bin");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var openResult = await _resourceFileSystem.OpenWriteAsync(resource);
 
@@ -274,7 +250,6 @@ public class LocalResourceFileSystemTests
         var bytes = new byte[] { 0x01, 0x02, 0x03, 0x04, 0x05 };
         await File.WriteAllBytesAsync(path, bytes);
         var expectedModifiedUtc = File.GetLastWriteTimeUtc(path);
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var result = await _resourceFileSystem.GetInfoAsync(resource);
 
@@ -291,7 +266,6 @@ public class LocalResourceFileSystemTests
         var resource = new ResourceKey("nested");
         var folderPath = Path.Combine(_tempFolder, "nested");
         Directory.CreateDirectory(folderPath);
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(folderPath));
 
         var result = await _resourceFileSystem.GetInfoAsync(resource);
 
@@ -306,8 +280,6 @@ public class LocalResourceFileSystemTests
     public async Task GetInfoAsync_ReturnsNotFound_WhenResourceMissing()
     {
         var resource = new ResourceKey("missing.txt");
-        var path = Path.Combine(_tempFolder, "missing.txt");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var result = await _resourceFileSystem.GetInfoAsync(resource);
 
@@ -321,17 +293,12 @@ public class LocalResourceFileSystemTests
     [Test]
     public async Task GetInfoAsync_ResolvesViaRegistry_ForNonDefaultRoot()
     {
-        // Non-default-root callers route through IResourceRegistry the same way
-        // default-root callers do: the gateway hands the key off, the
-        // registry resolves it to an absolute path, and the on-disk probe is
-        // identical. This test pins the contract end-to-end against a temp:
-        // key so a future regression in the resolution wiring surfaces here.
+        // A temp: key resolves through its own root handler, and is probed on disk the
+        // same way as a project key.
         var resource = new ResourceKey("temp:scratch.txt");
-        var stagingFolder = Path.Combine(_tempFolder, "Data", "scratch");
-        Directory.CreateDirectory(stagingFolder);
-        var path = Path.Combine(stagingFolder, "scratch.txt");
+        Directory.CreateDirectory(_tempRootFolder);
+        var path = Path.Combine(_tempRootFolder, "scratch.txt");
         await File.WriteAllTextAsync(path, "scratch");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var result = await _resourceFileSystem.GetInfoAsync(resource);
 
@@ -343,9 +310,8 @@ public class LocalResourceFileSystemTests
     [Test]
     public async Task GetInfoAsync_ReturnsFailure_WhenResolveFails()
     {
-        var resource = new ResourceKey("bad.txt");
-        _resourceRegistry.ResolveResourcePath(resource)
-            .Returns(Result<string>.Fail("simulated resolve failure"));
+        // The root is unregistered, so resolving the key fails.
+        var resource = new ResourceKey("unregistered:bad.txt");
 
         var result = await _resourceFileSystem.GetInfoAsync(resource);
 
@@ -361,13 +327,6 @@ public class LocalResourceFileSystemTests
         var destPath = Path.Combine(_tempFolder, "b.txt");
         await File.WriteAllTextAsync(sourcePath, "hello");
 
-        _resourceRegistry.ResolveResourcePath(sourceKey).Returns(Result<string>.Ok(sourcePath));
-        _resourceRegistry.ResolveResourcePath(destKey).Returns(Result<string>.Ok(destPath));
-        var sidecarSource = new ResourceKey("a.txt.cel");
-        var sidecarDest = new ResourceKey("b.txt.cel");
-        _resourceRegistry.ResolveResourcePath(sidecarSource).Returns(Result<string>.Ok(sourcePath + ".cel"));
-        _resourceRegistry.ResolveResourcePath(sidecarDest).Returns(Result<string>.Ok(destPath + ".cel"));
-
         var result = await _resourceFileSystem.MoveAsync(sourceKey, destKey);
 
         result.IsSuccess.Should().BeTrue();
@@ -382,13 +341,10 @@ public class LocalResourceFileSystemTests
     {
         var sourceKey = new ResourceKey("temp:downloads/staged.bin");
         var destKey = new ResourceKey("downloads/report.bin");
-        var sourcePath = Path.Combine(_tempFolder, "Data", "temp", "downloads", "staged.bin");
+        var sourcePath = Path.Combine(_tempRootFolder, "downloads", "staged.bin");
         var destPath = Path.Combine(_tempFolder, "downloads", "report.bin");
         Directory.CreateDirectory(Path.GetDirectoryName(sourcePath)!);
         await File.WriteAllTextAsync(sourcePath, "payload");
-
-        _resourceRegistry.ResolveResourcePath(sourceKey).Returns(Result<string>.Ok(sourcePath));
-        _resourceRegistry.ResolveResourcePath(destKey).Returns(Result<string>.Ok(destPath));
 
         var result = await _resourceFileSystem.MoveAsync(sourceKey, destKey, new MoveOptions(AllowCrossRoot: true));
 
@@ -406,13 +362,10 @@ public class LocalResourceFileSystemTests
     {
         var sourceKey = new ResourceKey("temp:downloads/staged.bin");
         var destKey = new ResourceKey("downloads/report.bin");
-        var sourcePath = Path.Combine(_tempFolder, "Data", "temp", "downloads", "staged.bin");
+        var sourcePath = Path.Combine(_tempRootFolder, "downloads", "staged.bin");
         var destPath = Path.Combine(_tempFolder, "downloads", "report.bin");
         Directory.CreateDirectory(Path.GetDirectoryName(sourcePath)!);
         await File.WriteAllTextAsync(sourcePath, "payload");
-
-        _resourceRegistry.ResolveResourcePath(sourceKey).Returns(Result<string>.Ok(sourcePath));
-        _resourceRegistry.ResolveResourcePath(destKey).Returns(Result<string>.Ok(destPath));
 
         // A move across roots carries none of the resource's identity, so a caller has to ask for one.
         var result = await _resourceFileSystem.MoveAsync(sourceKey, destKey);
@@ -429,13 +382,8 @@ public class LocalResourceFileSystemTests
         var destKey = new ResourceKey("temp:source.txt");
 
         var sourcePath = Path.Combine(_tempFolder, "source.txt");
-        var destPath = Path.Combine(_tempFolder, "Data", "temp", "source.txt");
+        var destPath = Path.Combine(_tempRootFolder, "source.txt");
         await File.WriteAllTextAsync(sourcePath, "data");
-
-        _resourceRegistry.ResolveResourcePath(sourceKey).Returns(Result<string>.Ok(sourcePath));
-        _resourceRegistry.ResolveResourcePath(destKey).Returns(Result<string>.Ok(destPath));
-        _resourceRegistry.ResolveResourcePath(new ResourceKey("source.txt.cel")).Returns(Result<string>.Ok(sourcePath + ".cel"));
-        _resourceRegistry.ResolveResourcePath(new ResourceKey("temp:source.txt.cel")).Returns(Result<string>.Ok(destPath + ".cel"));
 
         var result = await _resourceFileSystem.MoveAsync(sourceKey, destKey, new MoveOptions(AllowCrossRoot: true));
 
@@ -449,12 +397,98 @@ public class LocalResourceFileSystemTests
     }
 
     [Test]
+    public async Task MoveAsync_RenamesAFileByLetterCaseAlone()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_tempFolder, "notes.txt"), "hello");
+
+        var result = await _resourceFileSystem.MoveAsync(new ResourceKey("notes.txt"), new ResourceKey("Notes.txt"));
+
+        result.IsSuccess.Should().BeTrue(result.DiagnosticReport);
+        ListNames(_tempFolder).Should().Equal("Notes.txt");
+        (await File.ReadAllTextAsync(Path.Combine(_tempFolder, "Notes.txt"))).Should().Be("hello");
+    }
+
+    [Test]
+    public async Task MoveAsync_RenamesAFolderByLetterCaseAlone()
+    {
+        var folderPath = Path.Combine(_tempFolder, "docs");
+        Directory.CreateDirectory(folderPath);
+        await File.WriteAllTextAsync(Path.Combine(folderPath, "page.txt"), "page");
+
+        var result = await _resourceFileSystem.MoveAsync(new ResourceKey("docs"), new ResourceKey("Docs"));
+
+        result.IsSuccess.Should().BeTrue(result.DiagnosticReport);
+        ListNames(_tempFolder).Should().Equal("Docs");
+        ListNames(Path.Combine(_tempFolder, "Docs")).Should().Equal("page.txt");
+    }
+
+    [Test]
+    public async Task MoveAsync_RenamesTheSidecarWhenItsFileIsRenamedByLetterCaseAlone()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_tempFolder, "notes.md"), "notes");
+        await File.WriteAllTextAsync(Path.Combine(_tempFolder, "notes.md.cel"), "+++\n+++\n");
+
+        var result = await _resourceFileSystem.MoveAsync(new ResourceKey("notes.md"), new ResourceKey("Notes.md"));
+
+        result.IsSuccess.Should().BeTrue(result.DiagnosticReport);
+        result.Value.Sidecar.Should().Be(SidecarOutcome.Cascaded);
+        ListNames(_tempFolder).Should().Equal("Notes.md", "Notes.md.cel");
+    }
+
+    [Test]
+    [Platform(Exclude = "Linux", Reason = "On a case-sensitive volume, docs and Docs are different folders.")]
+    public async Task MoveAsync_RefusesARenameIntoAFolderNamedInTheWrongCase()
+    {
+        var folderPath = Path.Combine(_tempFolder, "docs");
+        Directory.CreateDirectory(folderPath);
+        await File.WriteAllTextAsync(Path.Combine(folderPath, "notes.txt"), "notes");
+
+        var result = await _resourceFileSystem.MoveAsync(new ResourceKey("docs/notes.txt"), new ResourceKey("Docs/Notes.txt"));
+
+        result.IsFailure.Should().BeTrue();
+        result.DiagnosticReport.Should().Contain("project:docs/notes.txt");
+        ListNames(folderPath).Should().Equal("notes.txt");
+    }
+
+    [Test]
+    [Platform(Exclude = "Linux", Reason = "On a case-sensitive volume, notes.txt and Notes.txt are different files.")]
+    public async Task MoveAsync_RenameByLetterCaseAlone_ResolvesOnlyTheNewName()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_tempFolder, "notes.txt"), "hello");
+        (await _resourceFileSystem.GetInfoAsync(new ResourceKey("notes.txt"))).IsSuccess.Should().BeTrue();
+
+        var result = await _resourceFileSystem.MoveAsync(new ResourceKey("notes.txt"), new ResourceKey("Notes.txt"));
+
+        result.IsSuccess.Should().BeTrue(result.DiagnosticReport);
+        var oldResult = await _resourceFileSystem.GetInfoAsync(new ResourceKey("notes.txt"));
+        var newResult = await _resourceFileSystem.GetInfoAsync(new ResourceKey("Notes.txt"));
+        oldResult.HasException<StoredNameMismatchError>().Should().BeTrue();
+        newResult.IsSuccess.Should().BeTrue(newResult.DiagnosticReport);
+    }
+
+    [Test]
+    [Platform(Exclude = "Linux", Reason = "On a case-sensitive volume, notes.txt and Notes.txt are different files.")]
+    public async Task DeleteAsync_RecordsTheRemoval_SoTheOldNameIsRefused()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_tempFolder, "notes.txt"), "hello");
+        (await _resourceFileSystem.GetInfoAsync(new ResourceKey("notes.txt"))).IsSuccess.Should().BeTrue();
+
+        var result = await _resourceFileSystem.DeleteAsync(new ResourceKey("notes.txt"));
+
+        // Another process makes the file again in another case, and the watcher has not reported it.
+        await File.WriteAllTextAsync(Path.Combine(_tempFolder, "Notes.txt"), "again");
+        var oldResult = await _resourceFileSystem.GetInfoAsync(new ResourceKey("notes.txt"));
+
+        result.IsSuccess.Should().BeTrue(result.DiagnosticReport);
+        oldResult.HasException<StoredNameMismatchError>().Should().BeTrue();
+        oldResult.MessageChain.Should().Contain("Canonical form is 'project:Notes.txt'");
+    }
+
+    [Test]
     public async Task MoveAsync_CascadesSidecarWithFile()
     {
         var sourceKey = new ResourceKey("a.txt");
         var destKey = new ResourceKey("b.txt");
-        var sidecarSource = new ResourceKey("a.txt.cel");
-        var sidecarDest = new ResourceKey("b.txt.cel");
 
         var sourcePath = Path.Combine(_tempFolder, "a.txt");
         var destPath = Path.Combine(_tempFolder, "b.txt");
@@ -462,11 +496,6 @@ public class LocalResourceFileSystemTests
         var destSidecarPath = destPath + ".cel";
         await File.WriteAllTextAsync(sourcePath, "hello");
         await File.WriteAllTextAsync(sourceSidecarPath, "+++\n+++\n");
-
-        _resourceRegistry.ResolveResourcePath(sourceKey).Returns(Result<string>.Ok(sourcePath));
-        _resourceRegistry.ResolveResourcePath(destKey).Returns(Result<string>.Ok(destPath));
-        _resourceRegistry.ResolveResourcePath(sidecarSource).Returns(Result<string>.Ok(sourceSidecarPath));
-        _resourceRegistry.ResolveResourcePath(sidecarDest).Returns(Result<string>.Ok(destSidecarPath));
 
         var result = await _resourceFileSystem.MoveAsync(sourceKey, destKey);
 
@@ -488,9 +517,6 @@ public class LocalResourceFileSystemTests
         await File.WriteAllTextAsync(sourcePath, "src");
         await File.WriteAllTextAsync(destPath, "dst");
 
-        _resourceRegistry.ResolveResourcePath(sourceKey).Returns(Result<string>.Ok(sourcePath));
-        _resourceRegistry.ResolveResourcePath(destKey).Returns(Result<string>.Ok(destPath));
-
         var result = await _resourceFileSystem.MoveAsync(sourceKey, destKey);
 
         result.IsFailure.Should().BeTrue();
@@ -504,7 +530,6 @@ public class LocalResourceFileSystemTests
     {
         var sourceKey = new ResourceKey("source.txt");
         var destKey = new ResourceKey("dest.txt");
-        var referencerKey = new ResourceKey("doc.json");
 
         var sourcePath = Path.Combine(_tempFolder, "source.txt");
         var destPath = Path.Combine(_tempFolder, "dest.txt");
@@ -513,11 +538,6 @@ public class LocalResourceFileSystemTests
         await File.WriteAllTextAsync(sourcePath, "data");
         await File.WriteAllTextAsync(referencerPath, referencerContent);
 
-        _resourceRegistry.ResolveResourcePath(sourceKey).Returns(Result<string>.Ok(sourcePath));
-        _resourceRegistry.ResolveResourcePath(destKey).Returns(Result<string>.Ok(destPath));
-        _resourceRegistry.ResolveResourcePath(referencerKey).Returns(Result<string>.Ok(referencerPath));
-        _resourceRegistry.ResolveResourcePath(new ResourceKey("source.txt.cel")).Returns(Result<string>.Ok(sourcePath + ".cel"));
-        _resourceRegistry.ResolveResourcePath(new ResourceKey("dest.txt.cel")).Returns(Result<string>.Ok(destPath + ".cel"));
         var referencerWriteTime = File.GetLastWriteTimeUtc(referencerPath);
 
         var result = await _resourceFileSystem.MoveAsync(sourceKey, destKey);
@@ -541,11 +561,6 @@ public class LocalResourceFileSystemTests
         await File.WriteAllTextAsync(sourcePath, "hello");
         await File.WriteAllTextAsync(sourceSidecarPath, "+++\n+++\n");
 
-        _resourceRegistry.ResolveResourcePath(sourceKey).Returns(Result<string>.Ok(sourcePath));
-        _resourceRegistry.ResolveResourcePath(destKey).Returns(Result<string>.Ok(destPath));
-        _resourceRegistry.ResolveResourcePath(new ResourceKey("a.txt.cel")).Returns(Result<string>.Ok(sourceSidecarPath));
-        _resourceRegistry.ResolveResourcePath(new ResourceKey("b.txt.cel")).Returns(Result<string>.Ok(destSidecarPath));
-
         var result = await _resourceFileSystem.CopyAsync(sourceKey, destKey);
 
         result.IsSuccess.Should().BeTrue();
@@ -565,9 +580,6 @@ public class LocalResourceFileSystemTests
         await File.WriteAllTextAsync(sourcePath, "hello");
         await File.WriteAllTextAsync(sourceSidecarPath, "+++\n+++\n");
 
-        _resourceRegistry.ResolveResourcePath(sourceKey).Returns(Result<string>.Ok(sourcePath));
-        _resourceRegistry.ResolveResourcePath(new ResourceKey("a.txt.cel")).Returns(Result<string>.Ok(sourceSidecarPath));
-
         var result = await _resourceFileSystem.DeleteAsync(sourceKey);
 
         result.IsSuccess.Should().BeTrue();
@@ -580,9 +592,6 @@ public class LocalResourceFileSystemTests
     public async Task DeleteAsync_FailsWhenSourceMissing()
     {
         var sourceKey = new ResourceKey("missing.txt");
-        var sourcePath = Path.Combine(_tempFolder, "missing.txt");
-
-        _resourceRegistry.ResolveResourcePath(sourceKey).Returns(Result<string>.Ok(sourcePath));
 
         var result = await _resourceFileSystem.DeleteAsync(sourceKey);
 
@@ -607,11 +616,6 @@ public class LocalResourceFileSystemTests
         var emptyFolderPath = Path.Combine(folderPath, "empty");
         Directory.CreateDirectory(emptyFolderPath);
 
-        _resourceRegistry.ResolveResourcePath(folderKey).Returns(Result<string>.Ok(folderPath));
-        _rootHandlerRegistry.GetResourceKey(deepFilePath).Returns(Result<ResourceKey>.Ok(new ResourceKey("folder/nested/deep.txt")));
-        _rootHandlerRegistry.GetResourceKey(nestedFolderPath).Returns(Result<ResourceKey>.Ok(new ResourceKey("folder/nested")));
-        _rootHandlerRegistry.GetResourceKey(emptyFolderPath).Returns(Result<ResourceKey>.Ok(new ResourceKey("folder/empty")));
-
         var deletedKeys = new List<ResourceKey>();
         _messengerService.Send(Arg.Do<ResourceDeletedMessage>(message => deletedKeys.Add(message.Resource)));
 
@@ -634,7 +638,6 @@ public class LocalResourceFileSystemTests
         var resource = new ResourceKey("locked.txt");
         var path = Path.Combine(_tempFolder, "locked.txt");
         await File.WriteAllTextAsync(path, "after release");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         // Briefly hold the file with FileShare.None so the first read attempt
         // hits a sharing violation, then release it before the retry budget
@@ -661,9 +664,6 @@ public class LocalResourceFileSystemTests
         await File.WriteAllTextAsync(sourcePath, "content");
         new FileInfo(sourcePath).IsReadOnly = true;
 
-        _resourceRegistry.ResolveResourcePath(sourceKey).Returns(Result<string>.Ok(sourcePath));
-        _resourceRegistry.ResolveResourcePath(new ResourceKey("readonly.txt.cel")).Returns(Result<string>.Ok(sourcePath + ".cel"));
-
         var result = await _resourceFileSystem.DeleteAsync(sourceKey);
 
         result.IsSuccess.Should().BeTrue();
@@ -680,11 +680,6 @@ public class LocalResourceFileSystemTests
         await File.WriteAllTextAsync(sourcePath, "content");
         new FileInfo(sourcePath).IsReadOnly = true;
 
-        _resourceRegistry.ResolveResourcePath(sourceKey).Returns(Result<string>.Ok(sourcePath));
-        _resourceRegistry.ResolveResourcePath(destKey).Returns(Result<string>.Ok(destPath));
-        _resourceRegistry.ResolveResourcePath(new ResourceKey("readonly.txt.cel")).Returns(Result<string>.Ok(sourcePath + ".cel"));
-        _resourceRegistry.ResolveResourcePath(new ResourceKey("renamed.txt.cel")).Returns(Result<string>.Ok(destPath + ".cel"));
-
         var result = await _resourceFileSystem.MoveAsync(sourceKey, destKey);
 
         result.IsSuccess.Should().BeTrue();
@@ -697,7 +692,6 @@ public class LocalResourceFileSystemTests
     {
         var folder = new ResourceKey("new-folder");
         var folderPath = Path.Combine(_tempFolder, "new-folder");
-        _resourceRegistry.ResolveResourcePath(folder).Returns(Result<string>.Ok(folderPath));
 
         var result = await _resourceFileSystem.CreateFolderAsync(folder);
 
@@ -711,7 +705,6 @@ public class LocalResourceFileSystemTests
         var folder = new ResourceKey("existing");
         var folderPath = Path.Combine(_tempFolder, "existing");
         Directory.CreateDirectory(folderPath);
-        _resourceRegistry.ResolveResourcePath(folder).Returns(Result<string>.Ok(folderPath));
 
         var result = await _resourceFileSystem.CreateFolderAsync(folder);
 
@@ -724,7 +717,6 @@ public class LocalResourceFileSystemTests
     {
         var folder = new ResourceKey("outer/middle/inner");
         var folderPath = Path.Combine(_tempFolder, "outer", "middle", "inner");
-        _resourceRegistry.ResolveResourcePath(folder).Returns(Result<string>.Ok(folderPath));
 
         var result = await _resourceFileSystem.CreateFolderAsync(folder);
 
@@ -740,7 +732,6 @@ public class LocalResourceFileSystemTests
         var folder = new ResourceKey("collision");
         var folderPath = Path.Combine(_tempFolder, "collision");
         await File.WriteAllTextAsync(folderPath, "I am a file");
-        _resourceRegistry.ResolveResourcePath(folder).Returns(Result<string>.Ok(folderPath));
 
         var result = await _resourceFileSystem.CreateFolderAsync(folder);
 
@@ -751,9 +742,8 @@ public class LocalResourceFileSystemTests
     [Test]
     public async Task CreateFolderAsync_ReturnsFailure_WhenResolveFails()
     {
-        var folder = new ResourceKey("bad");
-        _resourceRegistry.ResolveResourcePath(folder)
-            .Returns(Result<string>.Fail("simulated resolve failure"));
+        // The root is unregistered, so resolving the key fails.
+        var folder = new ResourceKey("unregistered:bad");
 
         var result = await _resourceFileSystem.CreateFolderAsync(folder);
 
@@ -770,7 +760,6 @@ public class LocalResourceFileSystemTests
         await File.WriteAllBytesAsync(path, new byte[] { 0x00 });
         new FileInfo(path).IsReadOnly = true;
 
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
         _operationService.GetWritableStateAsync(resource)
             .Returns(Task.FromResult(WritableState.Writable));
 
@@ -797,7 +786,6 @@ public class LocalResourceFileSystemTests
 
         try
         {
-            _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
             _operationService.GetWritableStateAsync(resource)
                 .Returns(Task.FromResult(WritableState.ReadOnlyAttribute));
 
@@ -824,8 +812,6 @@ public class LocalResourceFileSystemTests
         // spent on it. The test verifies fast failure by measuring elapsed time
         // — well under the total retry-budget upper bound (50+100+150 = 300ms).
         var resource = new ResourceKey("missing.bin");
-        var path = Path.Combine(_tempFolder, "missing.bin");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         var result = await _resourceFileSystem.ReadAllBytesAsync(resource);
@@ -833,5 +819,14 @@ public class LocalResourceFileSystemTests
 
         result.IsFailure.Should().BeTrue();
         stopwatch.ElapsedMilliseconds.Should().BeLessThan(50);
+    }
+
+    // Returns the stored names of a folder's items, in ordinal order.
+    private static List<string> ListNames(string folderPath)
+    {
+        return Directory.EnumerateFileSystemEntries(folderPath)
+            .Select(path => Path.GetFileName(path))
+            .Order(StringComparer.Ordinal)
+            .ToList();
     }
 }

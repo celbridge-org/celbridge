@@ -17,10 +17,24 @@ public abstract class ResourceRootHandlerBase : IResourceRootHandler
     protected ResourceRootHandlerBase(string backingLocation)
     {
         _backingLocation = backingLocation;
-        _pathResolver = new RootPathResolver(RootName, backingLocation);
+        _pathResolver = new RootPathResolver(RootName, backingLocation, Capabilities.ListingPolicy);
     }
 
     public abstract string RootName { get; }
+
+    /// <summary>
+    /// Returns the listing policy for a root backed by a local folder. Linux folders compare names exactly, so
+    /// they need no listings. Windows and macOS volumes ignore case, so a root there uses the policy given.
+    /// </summary>
+    protected static ListingPolicy GetLocalListingPolicy(ListingPolicy policy)
+    {
+        if (!PathComparison.IsCaseInsensitiveFileSystem)
+        {
+            return ListingPolicy.None;
+        }
+
+        return policy;
+    }
 
     public string BackingLocation => _backingLocation;
 
@@ -43,8 +57,13 @@ public abstract class ResourceRootHandlerBase : IResourceRootHandler
         _pathResolver.InvalidateCache();
     }
 
-    public void InvalidatePathCache(string absolutePath)
+    public void RecordItemCreated(string absolutePath)
     {
-        _pathResolver.InvalidateCache(absolutePath);
+        _pathResolver.RecordItemCreated(absolutePath);
+    }
+
+    public void RecordItemRemoved(string absolutePath)
+    {
+        _pathResolver.RecordItemRemoved(absolutePath);
     }
 }

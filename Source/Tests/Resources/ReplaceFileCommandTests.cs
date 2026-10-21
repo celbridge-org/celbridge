@@ -16,7 +16,6 @@ namespace Celbridge.Tests.Resources;
 public class ReplaceFileCommandTests
 {
     private string _tempFolder = null!;
-    private IResourceRegistry _resourceRegistry = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
 
     [SetUp]
@@ -25,11 +24,8 @@ public class ReplaceFileCommandTests
         _tempFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(ReplaceFileCommandTests), Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_tempFolder);
 
-        _resourceRegistry = Substitute.For<IResourceRegistry>();
-        _resourceRegistry.ProjectFolderPath.Returns(_tempFolder);
-
         var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(_resourceRegistry);
+        resourceService.RootHandlers.Returns(TestRootHandlers.Create(_tempFolder));
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
@@ -61,10 +57,9 @@ public class ReplaceFileCommandTests
     [Test]
     public async Task ExecuteAsync_ReplacesPlainTextOnDisk()
     {
-        var resource = new ResourceKey("notes/text.md");
+        var resource = new ResourceKey("text.md");
         var path = Path.Combine(_tempFolder, "text.md");
         await File.WriteAllTextAsync(path, "the quick brown fox\nthe quick brown dog\n");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var command = CreateCommand();
         command.FileResource = resource;
@@ -87,10 +82,9 @@ public class ReplaceFileCommandTests
     [Test]
     public async Task ExecuteAsync_ReturnsEmptyRanges_WhenNoMatches()
     {
-        var resource = new ResourceKey("notes/text.md");
+        var resource = new ResourceKey("text.md");
         var path = Path.Combine(_tempFolder, "text.md");
         await File.WriteAllTextAsync(path, "the quick brown fox\n");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var command = CreateCommand();
         command.FileResource = resource;
@@ -121,8 +115,6 @@ public class ReplaceFileCommandTests
     public async Task ExecuteAsync_FailsWhenFileMissing()
     {
         var resource = new ResourceKey("missing.md");
-        var missingPath = Path.Combine(_tempFolder, "missing.md");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(missingPath));
 
         var command = CreateCommand();
         command.FileResource = resource;
@@ -136,11 +128,10 @@ public class ReplaceFileCommandTests
     [Test]
     public async Task ExecuteAsync_ReturnsEmptyRanges_WhenRegexHasNoMatches()
     {
-        var resource = new ResourceKey("notes/regex.md");
+        var resource = new ResourceKey("regex.md");
         var path = Path.Combine(_tempFolder, "regex.md");
         var original = "alpha\nbeta\ngamma\n";
         await File.WriteAllTextAsync(path, original);
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var command = CreateCommand();
         command.FileResource = resource;
@@ -162,10 +153,9 @@ public class ReplaceFileCommandTests
     [Test]
     public async Task ExecuteAsync_TracksRangesForRegexBackReferences()
     {
-        var resource = new ResourceKey("notes/regex.md");
+        var resource = new ResourceKey("regex.md");
         var path = Path.Combine(_tempFolder, "regex.md");
         await File.WriteAllTextAsync(path, "alpha_old\nbeta_old\ngamma_old\n");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var command = CreateCommand();
         command.FileResource = resource;
@@ -187,10 +177,9 @@ public class ReplaceFileCommandTests
     [Test]
     public async Task ExecuteAsync_CapsRanges_WhenReplacementCountExceedsThreshold()
     {
-        var resource = new ResourceKey("notes/many.md");
+        var resource = new ResourceKey("many.md");
         var path = Path.Combine(_tempFolder, "many.md");
         await File.WriteAllTextAsync(path, "x\nx\nx\nx\nx\nx\nx\nx\n");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var command = CreateCommand();
         command.FileResource = resource;
@@ -213,10 +202,9 @@ public class ReplaceFileCommandTests
         // The classic substring footgun: replacing 'foo' inside 'food'.
         // matchWord constrains the match to word boundaries, so 'food' and
         // 'myfoo' are left alone while standalone 'foo' is replaced.
-        var resource = new ResourceKey("notes/word.md");
+        var resource = new ResourceKey("word.md");
         var path = Path.Combine(_tempFolder, "word.md");
         await File.WriteAllTextAsync(path, "foo bar\nfood truck\nmyfoo\nfoo end\n");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var command = CreateCommand();
         command.FileResource = resource;
@@ -238,10 +226,9 @@ public class ReplaceFileCommandTests
     {
         // matchWord wraps the literal in \b...\b. The literal must be regex-
         // escaped so metacharacters like '.' or '(' don't get reinterpreted.
-        var resource = new ResourceKey("notes/dotted.md");
+        var resource = new ResourceKey("dotted.md");
         var path = Path.Combine(_tempFolder, "dotted.md");
         await File.WriteAllTextAsync(path, "a.b\nax.b\na_b\n");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var command = CreateCommand();
         command.FileResource = resource;
@@ -267,10 +254,9 @@ public class ReplaceFileCommandTests
         // When useRegex is true, matchWord is ignored — regex callers add
         // their own \b anchors. With useRegex and no \b, 'foo' inside 'food'
         // matches as a substring just like without matchWord.
-        var resource = new ResourceKey("notes/regex.md");
+        var resource = new ResourceKey("regex.md");
         var path = Path.Combine(_tempFolder, "regex.md");
         await File.WriteAllTextAsync(path, "foo\nfood\n");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var command = CreateCommand();
         command.FileResource = resource;
@@ -294,10 +280,9 @@ public class ReplaceFileCommandTests
         // Three matches of "the" on line 1, one on line 2. Same-line hits on
         // line 1 collapse into a single entry with MatchCount=3; line 2 keeps
         // its own entry. Top-level ReplacementCount stays at the raw total 4.
-        var resource = new ResourceKey("notes/the.md");
+        var resource = new ResourceKey("the.md");
         var path = Path.Combine(_tempFolder, "the.md");
         await File.WriteAllTextAsync(path, "the dog the cat the fox\nthe end\n");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var command = CreateCommand();
         command.FileResource = resource;
@@ -319,10 +304,9 @@ public class ReplaceFileCommandTests
     [Test]
     public async Task ExecuteAsync_TracksRangesWithinLineRangeScope()
     {
-        var resource = new ResourceKey("notes/scoped.md");
+        var resource = new ResourceKey("scoped.md");
         var path = Path.Combine(_tempFolder, "scoped.md");
         await File.WriteAllTextAsync(path, "x\nx\nx\nx\nx\n");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var command = CreateCommand();
         command.FileResource = resource;

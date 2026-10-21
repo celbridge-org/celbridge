@@ -547,6 +547,7 @@ public class DocumentLayoutStore
     private bool IsResolvableResource(ResourceKey fileResource)
     {
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
 
         if (fileResource.Root == ResourceKey.DefaultRoot)
         {
@@ -558,7 +559,7 @@ public class DocumentLayoutStore
             }
         }
 
-        var resolveResult = resourceRegistry.ResolveResourcePath(fileResource);
+        var resolveResult = rootHandlerRegistry.ResolveResourcePath(fileResource);
         if (resolveResult.IsFailure)
         {
             _logger.LogWarning(resolveResult, $"Failed to resolve path for resource: '{fileResource}'");

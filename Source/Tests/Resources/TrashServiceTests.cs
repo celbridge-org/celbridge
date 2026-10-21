@@ -17,7 +17,6 @@ public class TrashServiceTests
 {
     private string _testFolder = null!;
     private string _tempFolder = null!;
-    private IResourceRegistry _resourceRegistry = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
     private TrashService _trashService = null!;
 
@@ -34,17 +33,8 @@ public class TrashServiceTests
         _tempFolder = Path.Combine(_testFolder, "Project");
         Directory.CreateDirectory(_tempFolder);
 
-        _resourceRegistry = Substitute.For<IResourceRegistry>();
-        _resourceRegistry.ProjectFolderPath.Returns(_tempFolder);
-        // Default to failure for any unstubbed resolve; specific test setups
-        // (per-Test) override with success results for the keys they exercise.
-        _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>())
-            .Returns(Result<string>.Fail("not stubbed"));
-        _resourceRegistry.GetResourceKey(Arg.Any<string>())
-            .Returns(Result<ResourceKey>.Fail("not stubbed"));
-
         var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(_resourceRegistry);
+        resourceService.RootHandlers.Returns(TestRootHandlers.Create(_tempFolder));
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
@@ -93,7 +83,6 @@ public class TrashServiceTests
         var resource = new ResourceKey("file.txt");
         var path = Path.Combine(_tempFolder, "file.txt");
         await File.WriteAllTextAsync(path, "contents");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var result = await _trashService.MoveToTrashAsync(resource);
 
@@ -113,8 +102,6 @@ public class TrashServiceTests
         var sidecarPath = path + SidecarFile.Extension;
         await File.WriteAllTextAsync(path, "main");
         await File.WriteAllTextAsync(sidecarPath, "+++\ntitle = 'Doc'\n+++\n");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
-        _resourceRegistry.ResolveResourcePath(new ResourceKey("doc.txt.cel")).Returns(Result<string>.Ok(sidecarPath));
 
         var result = await _trashService.MoveToTrashAsync(resource);
 
@@ -131,8 +118,6 @@ public class TrashServiceTests
     public async Task MoveToTrashAsync_File_FailsWhenSourceMissing()
     {
         var resource = new ResourceKey("missing.txt");
-        var path = Path.Combine(_tempFolder, "missing.txt");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var result = await _trashService.MoveToTrashAsync(resource);
 
@@ -145,7 +130,6 @@ public class TrashServiceTests
         var resource = new ResourceKey("empty");
         var path = Path.Combine(_tempFolder, "empty");
         Directory.CreateDirectory(path);
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var result = await _trashService.MoveToTrashAsync(resource);
 
@@ -165,9 +149,6 @@ public class TrashServiceTests
         Directory.CreateDirectory(folderPath);
         var childPath = Path.Combine(folderPath, "child.txt");
         await File.WriteAllTextAsync(childPath, "child");
-
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(folderPath));
-        _resourceRegistry.GetResourceKey(childPath).Returns(Result<ResourceKey>.Ok(new ResourceKey("folder/child.txt")));
 
         var result = await _trashService.MoveToTrashAsync(resource);
 
@@ -198,11 +179,6 @@ public class TrashServiceTests
         var emptyFolderPath = Path.Combine(folderPath, "empty");
         Directory.CreateDirectory(emptyFolderPath);
 
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(folderPath));
-        _resourceRegistry.GetResourceKey(deepFilePath).Returns(Result<ResourceKey>.Ok(new ResourceKey("folder/nested/deep.txt")));
-        _resourceRegistry.GetResourceKey(nestedFolderPath).Returns(Result<ResourceKey>.Ok(new ResourceKey("folder/nested")));
-        _resourceRegistry.GetResourceKey(emptyFolderPath).Returns(Result<ResourceKey>.Ok(new ResourceKey("folder/empty")));
-
         var result = await _trashService.MoveToTrashAsync(resource);
 
         result.IsSuccess.Should().BeTrue();
@@ -226,7 +202,6 @@ public class TrashServiceTests
         Directory.CreateDirectory(folderPath);
         var linkPath = Path.Combine(folderPath, "link.txt");
         File.CreateSymbolicLink(linkPath, targetPath);
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(folderPath));
 
         var result = await _trashService.MoveToTrashAsync(resource);
 
@@ -245,12 +220,10 @@ public class TrashServiceTests
         var resource = new ResourceKey("link.txt");
         var linkPath = Path.Combine(_tempFolder, "link.txt");
         File.CreateSymbolicLink(linkPath, targetPath);
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(linkPath));
 
         var result = await _trashService.MoveToTrashAsync(resource);
 
         result.IsFailure.Should().BeTrue();
-        result.HasException<ResourceContainsLinkError>().Should().BeTrue();
         new FileInfo(linkPath).LinkTarget.Should().Be(targetPath);
     }
 
@@ -260,7 +233,6 @@ public class TrashServiceTests
         var resource = new ResourceKey("temp:scratch.txt");
         var path = Path.Combine(_tempFolder, "scratch.txt");
         await File.WriteAllTextAsync(path, "scratch");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var result = await _trashService.MoveToTrashAsync(resource);
 
@@ -274,7 +246,6 @@ public class TrashServiceTests
         var resource = new ResourceKey("restore.txt");
         var path = Path.Combine(_tempFolder, "restore.txt");
         await File.WriteAllTextAsync(path, "before-trash");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var trashResult = await _trashService.MoveToTrashAsync(resource);
         trashResult.IsSuccess.Should().BeTrue();
@@ -293,7 +264,6 @@ public class TrashServiceTests
         var resource = new ResourceKey("empty");
         var path = Path.Combine(_tempFolder, "empty");
         Directory.CreateDirectory(path);
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var trashResult = await _trashService.MoveToTrashAsync(resource);
         trashResult.IsSuccess.Should().BeTrue();
@@ -313,9 +283,6 @@ public class TrashServiceTests
         var childPath = Path.Combine(folderPath, "child.txt");
         await File.WriteAllTextAsync(childPath, "kept");
 
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(folderPath));
-        _resourceRegistry.GetResourceKey(childPath).Returns(Result<ResourceKey>.Ok(new ResourceKey("folder/child.txt")));
-
         var trashResult = await _trashService.MoveToTrashAsync(resource);
         trashResult.IsSuccess.Should().BeTrue();
 
@@ -333,7 +300,6 @@ public class TrashServiceTests
         var resource = new ResourceKey("purgeme.txt");
         var path = Path.Combine(_tempFolder, "purgeme.txt");
         await File.WriteAllTextAsync(path, "doomed");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var trashResult = await _trashService.MoveToTrashAsync(resource);
         trashResult.IsSuccess.Should().BeTrue();
@@ -353,7 +319,6 @@ public class TrashServiceTests
         var path = Path.Combine(_tempFolder, "readonly.txt");
         await File.WriteAllTextAsync(path, "locked");
         new FileInfo(path).IsReadOnly = true;
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         try
         {

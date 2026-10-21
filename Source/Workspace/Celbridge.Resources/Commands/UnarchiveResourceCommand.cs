@@ -57,7 +57,7 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
         }
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
-        var resourceRegistry = workspaceService.ResourceService.Registry;
+        var rootHandlerRegistry = workspaceService.ResourceService.RootHandlers;
         var resourceOpService = workspaceService.ResourceService.Operations;
         var resourceFileSystem = workspaceService.ResourceService.FileSystem;
 
@@ -74,7 +74,7 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
         // Path resolution is still needed for entry-name validation and the
         // zip-slip canonicalization check below; the operation-service writes
         // themselves take ResourceKey arguments.
-        var resolveDestinationResult = resourceRegistry.ResolveResourcePath(DestinationResource);
+        var resolveDestinationResult = rootHandlerRegistry.ResolveResourcePath(DestinationResource);
         if (resolveDestinationResult.IsFailure)
         {
             return Result.Fail($"Failed to resolve path for resource: '{DestinationResource}'")

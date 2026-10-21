@@ -120,8 +120,8 @@ public sealed partial class CustomUtilityView : UserControl, IWorkspaceItem
         PanelHeaderControl.Title = displayName;
         _controller.SetAccessibleName(displayName);
 
-        var registry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var resolveResult = registry.ResolveResourcePath(resource);
+        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
+        var resolveResult = rootHandlerRegistry.ResolveResourcePath(resource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail($"Failed to resolve path for utility resource: '{resource}'")

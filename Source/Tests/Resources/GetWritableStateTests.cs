@@ -71,7 +71,7 @@ public class GetWritableStateTests
     public async Task ReturnsReadOnlyRoot_ForFileOnNonWritableRoot()
     {
         var bundledHandler = Substitute.For<IResourceRootHandler>();
-        bundledHandler.Capabilities.Returns(new ResourceRootCapabilities(IsWritable: false, IsWatched: false));
+        bundledHandler.Capabilities.Returns(new ResourceRootCapabilities(IsWritable: false, IsWatched: false, ListingPolicy.None));
         _rootHandlerRegistry.RootHandlers.Returns(new Dictionary<string, IResourceRootHandler>
         {
             ["bundled"] = bundledHandler,
@@ -124,7 +124,7 @@ public class GetWritableStateTests
         // ReadOnlyRoot. The structural source names the more durable cause
         // (bundled root never becomes writable; the attribute can be cleared).
         var bundledHandler = Substitute.For<IResourceRootHandler>();
-        bundledHandler.Capabilities.Returns(new ResourceRootCapabilities(IsWritable: false, IsWatched: false));
+        bundledHandler.Capabilities.Returns(new ResourceRootCapabilities(IsWritable: false, IsWatched: false, ListingPolicy.None));
         _rootHandlerRegistry.RootHandlers.Returns(new Dictionary<string, IResourceRootHandler>
         {
             ["bundled"] = bundledHandler,

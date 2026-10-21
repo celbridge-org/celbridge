@@ -15,7 +15,6 @@ namespace Celbridge.Tests.Resources;
 public class WriteFileCommandTests
 {
     private string _tempFolder = null!;
-    private IResourceRegistry _resourceRegistry = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
 
     [SetUp]
@@ -24,11 +23,8 @@ public class WriteFileCommandTests
         _tempFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(WriteFileCommandTests), Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_tempFolder);
 
-        _resourceRegistry = Substitute.For<IResourceRegistry>();
-        _resourceRegistry.ProjectFolderPath.Returns(_tempFolder);
-
         var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(_resourceRegistry);
+        resourceService.RootHandlers.Returns(TestRootHandlers.Create(_tempFolder));
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
@@ -58,9 +54,8 @@ public class WriteFileCommandTests
     [Test]
     public async Task ExecuteAsync_CreatesNewFile_WhenFileDoesNotExist()
     {
-        var resource = new ResourceKey("notes/new.md");
+        var resource = new ResourceKey("new.md");
         var path = Path.Combine(_tempFolder, "new.md");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var command = CreateCommand();
         command.FileResource = resource;
@@ -79,10 +74,9 @@ public class WriteFileCommandTests
     [Test]
     public async Task ExecuteAsync_OverwritesExistingFile()
     {
-        var resource = new ResourceKey("notes/existing.md");
+        var resource = new ResourceKey("existing.md");
         var path = Path.Combine(_tempFolder, "existing.md");
         await File.WriteAllTextAsync(path, "old content");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var command = CreateCommand();
         command.FileResource = resource;
@@ -102,10 +96,9 @@ public class WriteFileCommandTests
         // detect the existing convention and re-encode to CRLF, so a Windows
         // user editing the file does not see a "Mixed line endings" diff after
         // a programmatic write.
-        var resource = new ResourceKey("notes/crlf.txt");
+        var resource = new ResourceKey("crlf.txt");
         var path = Path.Combine(_tempFolder, "crlf.txt");
         await File.WriteAllBytesAsync(path, "alpha\r\nbeta\r\ngamma\r\n"u8.ToArray());
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var command = CreateCommand();
         command.FileResource = resource;
@@ -122,9 +115,8 @@ public class WriteFileCommandTests
     [Test]
     public async Task ExecuteAsync_FailsWhenResolveResourcePathFails()
     {
-        var resource = new ResourceKey("invalid/path.md");
-        _resourceRegistry.ResolveResourcePath(resource)
-            .Returns(Result<string>.Fail("invalid resource"));
+        // The root is unregistered, so resolving the key fails.
+        var resource = new ResourceKey("unregistered:path.md");
 
         var command = CreateCommand();
         command.FileResource = resource;

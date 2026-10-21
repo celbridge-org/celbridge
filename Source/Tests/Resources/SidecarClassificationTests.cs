@@ -34,9 +34,7 @@ public class SidecarClassificationTests
             new MessengerService(),
             ProjectTreeBuilderTestHelper.Build(_projectFolderPath),
             _classifier,
-            new RootHandlerRegistry(),
-            TestFileSystem.CreateLocal());
-        _registry.InitializeProjectRoot(_projectFolderPath);
+            TestRootHandlers.Create(_projectFolderPath));
     }
 
     [TearDown]

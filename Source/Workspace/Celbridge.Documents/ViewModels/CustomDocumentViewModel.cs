@@ -18,7 +18,7 @@ public partial class CustomDocumentViewModel : DocumentViewModel
     ];
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly IResourceRegistry _resourceRegistry;
+    private readonly IRootHandlerRegistry _rootHandlerRegistry;
     private readonly ILocalFileSystem _fileSystem;
     private readonly IReadOnlyList<IDocumentContentProvider> _contentProviders;
 
@@ -34,7 +34,7 @@ public partial class CustomDocumentViewModel : DocumentViewModel
         IEnumerable<IDocumentContentProvider> contentProviders)
     {
         _workspaceWrapper = workspaceWrapper;
-        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        _rootHandlerRegistry = workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
         _fileSystem = fileSystem;
         _contentProviders = contentProviders.ToList().AsReadOnly();
 
@@ -331,7 +331,7 @@ public partial class CustomDocumentViewModel : DocumentViewModel
 
         var templatePath = Path.Combine(Contribution.Package.PackageFolder, defaultTemplate.TemplateFile);
 
-        var keyResult = _resourceRegistry.GetResourceKey(templatePath);
+        var keyResult = _rootHandlerRegistry.GetResourceKey(templatePath);
         if (keyResult.IsSuccess)
         {
             var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;

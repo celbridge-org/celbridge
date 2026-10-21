@@ -3,6 +3,7 @@ using Celbridge.Commands;
 using Celbridge.Messaging;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
+using Celbridge.Resources.Services.Roots;
 using Celbridge.Server;
 using Celbridge.Tests.FileSystem;
 using Celbridge.Tools;
@@ -19,7 +20,7 @@ public class FileToolTests
 {
     private IApplicationServiceProvider _services = null!;
     private ICommandService _commandService = null!;
-    private IResourceRegistry _resourceRegistry = null!;
+    private RootHandlerRegistry _rootHandlers = null!;
     private IResourceService _resourceService = null!;
     private string _tempFolder = null!;
 
@@ -34,11 +35,10 @@ public class FileToolTests
         _tempFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(FileToolTests), Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_tempFolder);
 
-        _resourceRegistry = Substitute.For<IResourceRegistry>();
-        _resourceRegistry.ProjectFolderPath.Returns(_tempFolder);
+        _rootHandlers = TestRootHandlers.Create(_tempFolder);
 
         var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(_resourceRegistry);
+        resourceService.RootHandlers.Returns(_rootHandlers);
         _resourceService = resourceService;
 
         var workspaceService = Substitute.For<IWorkspaceService>();
@@ -111,10 +111,9 @@ public class FileToolTests
     [Test]
     public async Task Replace_DispatchesCommand_AndReturnsCountAndAffectedLines()
     {
-        var resource = new ResourceKey("notes/find.md");
+        var resource = new ResourceKey("find.md");
         var path = Path.Combine(_tempFolder, "find.md");
         await File.WriteAllLinesAsync(path, new[] { "first new", "second new" });
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         IReplaceFileCommand? capturedCommand = null;
         var affectedRanges = new List<FileEditAffectedRange>
@@ -139,7 +138,7 @@ public class FileToolTests
             });
 
         var tools = new FileTools(_services);
-        var root = ParseResult(await tools.Replace("notes/find.md", "old", "new"));
+        var root = ParseResult(await tools.Replace("find.md", "old", "new"));
 
         capturedCommand.Should().NotBeNull();
         capturedCommand!.FileResource.Should().Be(resource);
@@ -157,10 +156,9 @@ public class FileToolTests
     [Test]
     public async Task Replace_SurfacesTruncatedFlag_AndKeepsContextLinesOnSamples_WhenCommandReportsTruncation()
     {
-        var resource = new ResourceKey("notes/many.md");
+        var resource = new ResourceKey("many.md");
         var path = Path.Combine(_tempFolder, "many.md");
         await File.WriteAllLinesAsync(path, new[] { "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y" });
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var sampledRanges = new List<FileEditAffectedRange>
         {
@@ -174,7 +172,7 @@ public class FileToolTests
             .Returns(Task.FromResult(Celbridge.Core.Result<ReplaceFileResult>.Ok(new ReplaceFileResult(8, sampledRanges, true))));
 
         var tools = new FileTools(_services);
-        var root = ParseResult(await tools.Replace("notes/many.md", "x", "Y"));
+        var root = ParseResult(await tools.Replace("many.md", "x", "Y"));
 
         root.GetProperty("replacementCount").GetInt32().Should().Be(8);
         root.GetProperty("truncated").GetBoolean().Should().BeTrue();
@@ -191,10 +189,9 @@ public class FileToolTests
     [Test]
     public async Task Replace_SurfacesMatchCount_OnMergedAffectedLineEntries()
     {
-        var resource = new ResourceKey("notes/merged.md");
+        var resource = new ResourceKey("merged.md");
         var path = Path.Combine(_tempFolder, "merged.md");
         await File.WriteAllLinesAsync(path, new[] { "THE THE THE" });
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var affectedRanges = new List<FileEditAffectedRange>
         {
@@ -208,7 +205,7 @@ public class FileToolTests
             .Returns(Task.FromResult(Celbridge.Core.Result<ReplaceFileResult>.Ok(new ReplaceFileResult(3, affectedRanges, false))));
 
         var tools = new FileTools(_services);
-        var root = ParseResult(await tools.Replace("notes/merged.md", "the", "THE"));
+        var root = ParseResult(await tools.Replace("merged.md", "the", "THE"));
 
         root.GetProperty("replacementCount").GetInt32().Should().Be(3);
         var affected = root.GetProperty("affectedLines");
@@ -219,10 +216,9 @@ public class FileToolTests
     [Test]
     public async Task Edit_ReturnsAffectedLineRanges_WhenSuccessful()
     {
-        var resource = new ResourceKey("notes/edit.md");
+        var resource = new ResourceKey("edit.md");
         var path = Path.Combine(_tempFolder, "edit.md");
         await File.WriteAllLinesAsync(path, new[] { "alpha", "BETA", "gamma" });
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         IEditFileCommand? capturedCommand = null;
         var affectedRanges = new List<FileEditAffectedRange>
@@ -246,7 +242,7 @@ public class FileToolTests
             });
 
         var tools = new FileTools(_services);
-        var root = ParseResult(await tools.Edit("notes/edit.md", "beta", "BETA"));
+        var root = ParseResult(await tools.Edit("edit.md", "beta", "BETA"));
 
         capturedCommand.Should().NotBeNull();
         capturedCommand!.FileResource.Should().Be(resource);
@@ -273,10 +269,9 @@ public class FileToolTests
     [Test]
     public async Task Edit_SurfacesTruncatedFlag_AndKeepsContextLinesOnSamples_WhenCommandReportsTruncation()
     {
-        var resource = new ResourceKey("notes/many.md");
+        var resource = new ResourceKey("many.md");
         var path = Path.Combine(_tempFolder, "many.md");
         await File.WriteAllLinesAsync(path, new[] { "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y" });
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var sampledRanges = new List<FileEditAffectedRange>
         {
@@ -290,7 +285,7 @@ public class FileToolTests
             .Returns(Task.FromResult(Celbridge.Core.Result<EditFileResult>.Ok(new EditFileResult(8, sampledRanges, true))));
 
         var tools = new FileTools(_services);
-        var root = ParseResult(await tools.Edit("notes/many.md", "x", "Y", replaceAll: true));
+        var root = ParseResult(await tools.Edit("many.md", "x", "Y", replaceAll: true));
 
         root.GetProperty("matchCount").GetInt32().Should().Be(8);
         root.GetProperty("truncated").GetBoolean().Should().BeTrue();
@@ -311,10 +306,9 @@ public class FileToolTests
         // collapsed into one entry with MatchCount=3. The envelope must
         // surface that count on the affectedLines entry so the agent can
         // distinguish "one line, three hits" from "one line, one hit".
-        var resource = new ResourceKey("notes/merged.md");
+        var resource = new ResourceKey("merged.md");
         var path = Path.Combine(_tempFolder, "merged.md");
         await File.WriteAllLinesAsync(path, new[] { "FOO bar FOO baz FOO" });
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var affectedRanges = new List<FileEditAffectedRange>
         {
@@ -328,7 +322,7 @@ public class FileToolTests
             .Returns(Task.FromResult(Celbridge.Core.Result<EditFileResult>.Ok(new EditFileResult(3, affectedRanges, false))));
 
         var tools = new FileTools(_services);
-        var root = ParseResult(await tools.Edit("notes/merged.md", "foo", "FOO", replaceAll: true));
+        var root = ParseResult(await tools.Edit("merged.md", "foo", "FOO", replaceAll: true));
 
         root.GetProperty("matchCount").GetInt32().Should().Be(3);
         var affected = root.GetProperty("affectedLines");
@@ -360,10 +354,9 @@ public class FileToolTests
     [Test]
     public async Task MultiEdit_IncludesContextLines_ForNonTruncatedEdits()
     {
-        var resource = new ResourceKey("notes/multi.md");
+        var resource = new ResourceKey("multi.md");
         var path = Path.Combine(_tempFolder, "multi.md");
         await File.WriteAllLinesAsync(path, new[] { "A", "two", "B", "C", "five" });
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         IMultiEditFileCommand? capturedCommand = null;
         var affectedRanges = new List<MultiEditFileAffectedRange>
@@ -396,7 +389,7 @@ public class FileToolTests
         var editsJson = "[{\"oldString\":\"a\",\"newString\":\"A\"},{\"oldString\":\"b\",\"newString\":\"B\\nC\"}]";
 
         var tools = new FileTools(_services);
-        var root = ParseResult(await tools.MultiEdit("notes/multi.md", editsJson));
+        var root = ParseResult(await tools.MultiEdit("multi.md", editsJson));
 
         capturedCommand.Should().NotBeNull();
         capturedCommand!.FileResource.Should().Be(resource);
@@ -422,10 +415,9 @@ public class FileToolTests
     [Test]
     public async Task MultiEdit_SurfacesMatchCount_OnMergedAffectedLineEntries()
     {
-        var resource = new ResourceKey("notes/merged.md");
+        var resource = new ResourceKey("merged.md");
         var path = Path.Combine(_tempFolder, "merged.md");
         await File.WriteAllLinesAsync(path, new[] { "FOO bar FOO" });
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var affectedRanges = new List<MultiEditFileAffectedRange>
         {
@@ -455,7 +447,7 @@ public class FileToolTests
         var editsJson = "[{\"oldString\":\"foo\",\"newString\":\"FOO\",\"replaceAll\":true}]";
 
         var tools = new FileTools(_services);
-        var root = ParseResult(await tools.MultiEdit("notes/merged.md", editsJson));
+        var root = ParseResult(await tools.MultiEdit("merged.md", editsJson));
 
         var affected = root.GetProperty("affectedLines");
         affected.GetArrayLength().Should().Be(1);
@@ -466,10 +458,9 @@ public class FileToolTests
     [Test]
     public async Task MultiEdit_KeepsContextLinesOnSamples_ForTruncatedEdits()
     {
-        var resource = new ResourceKey("notes/multi.md");
+        var resource = new ResourceKey("multi.md");
         var path = Path.Combine(_tempFolder, "multi.md");
         await File.WriteAllLinesAsync(path, new[] { "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y" });
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var affectedRanges = new List<MultiEditFileAffectedRange>
         {
@@ -489,7 +480,7 @@ public class FileToolTests
         var editsJson = "[{\"oldString\":\"x\",\"newString\":\"Y\",\"replaceAll\":true}]";
 
         var tools = new FileTools(_services);
-        var root = ParseResult(await tools.MultiEdit("notes/multi.md", editsJson));
+        var root = ParseResult(await tools.MultiEdit("multi.md", editsJson));
 
         root.GetProperty("appliedCount").GetInt32().Should().Be(1);
         var edits = root.GetProperty("edits");
@@ -625,9 +616,7 @@ public class FileToolTests
         // Regression for vr-4: when a resource under a non-project root is missing, the
         // error must echo the canonical "root:path" form so the agent can see which root
         // failed. A bare path is reserved for the project root and is ambiguous otherwise.
-        var resourceKey = ResourceKey.Create("temp:missing/file.txt");
-        var resourcePath = Path.Combine(_tempFolder, "missing", "file.txt");
-        _resourceRegistry.ResolveResourcePath(resourceKey).Returns(Result<string>.Ok(resourcePath));
+        RegisterTempRoot();
 
         var tools = new FileTools(_services);
         var result = await tools.Read("temp:missing/file.txt");
@@ -644,10 +633,6 @@ public class FileToolTests
         // Counterpart to the temp: test: project-root keys are reported in their canonical
         // "project:" form to match the cascade scanner's tracked-reference literal and to
         // stay symmetric with non-default roots.
-        var resourceKey = ResourceKey.Create("Scripts/missing.py");
-        var resourcePath = Path.Combine(_tempFolder, "Scripts", "missing.py");
-        _resourceRegistry.ResolveResourcePath(resourceKey).Returns(Result<string>.Ok(resourcePath));
-
         var tools = new FileTools(_services);
         var result = await tools.Read("project:Scripts/missing.py");
 
@@ -805,8 +790,7 @@ public class FileToolTests
         Directory.CreateDirectory(stagingDir);
         await File.WriteAllTextAsync(Path.Combine(stagingDir, "app.js"), "const alpha = 'beta';\n");
 
-        StubResolveAllKeysToTempFolder();
-        RegisterNonDefaultRoot("temp");
+        RegisterTempRoot();
 
         var tools = new FileTools(_services);
         var result = await tools.Grep(searchTerm: "alpha|beta", useRegex: true, resource: "temp:staging/sample-package");
@@ -827,8 +811,7 @@ public class FileToolTests
         await File.WriteAllTextAsync(Path.Combine(stagingDir, "app.js"), "const alpha = 'beta';\n");
         await File.WriteAllTextAsync(Path.Combine(stagingDir, "other.js"), "const alpha = 'gamma';\n");
 
-        StubResolveAllKeysToTempFolder();
-        RegisterNonDefaultRoot("temp");
+        RegisterTempRoot();
 
         var tools = new FileTools(_services);
         var result = await tools.Grep(searchTerm: "alpha", resource: "temp:staging/sample-package/src/app.js");
@@ -847,8 +830,7 @@ public class FileToolTests
         Directory.CreateDirectory(stagingDir);
         await File.WriteAllTextAsync(Path.Combine(stagingDir, "app.js"), "const alpha = 'beta';\n");
 
-        StubResolveAllKeysToTempFolder();
-        RegisterNonDefaultRoot("temp");
+        RegisterTempRoot();
 
         var tools = new FileTools(_services);
         // The only matching file is a .js, so an include of *.css must exclude it.
@@ -920,7 +902,7 @@ public class FileToolTests
     [Test]
     public async Task Search_PatternWithAnotherRoot_WalksThatRoot()
     {
-        RegisterNonDefaultRoot("logs");
+        _rootHandlers.RegisterRootHandler(new LogsRootHandler(_tempFolder));
         UseWalkedItems(WalkedFile("logs:app.log"));
 
         var tools = new FileTools(_services);
@@ -930,34 +912,11 @@ public class FileToolTests
         await _resourceService.Walker.Received(1).WalkAsync(new ResourceKey("logs:"), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 
-    private string KeyToTempPath(ResourceKey key)
+    // Backs the temp: root with the test folder, so a temp: key resolves to the same file as the project key with
+    // the same path.
+    private void RegisterTempRoot()
     {
-        return Path.Combine(_tempFolder, key.Path.Replace('/', Path.DirectorySeparatorChar));
-    }
-
-    // This harness treats every root as the same on-disk temp tree, so map any
-    // resource key to a path under the temp folder for both resolve overloads
-    // (the gateway enumerates with validateCase:false).
-    private void StubResolveAllKeysToTempFolder()
-    {
-        _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>())
-            .Returns(callInfo => Result<string>.Ok(KeyToTempPath(callInfo.Arg<ResourceKey>())));
-        _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>(), Arg.Any<bool>())
-            .Returns(callInfo => Result<string>.Ok(KeyToTempPath(callInfo.Arg<ResourceKey>())));
-    }
-
-    private void RegisterNonDefaultRoot(string root)
-    {
-        var resourceService = _services.GetRequiredService<IWorkspaceWrapper>().WorkspaceService.ResourceService;
-        var rootHandlerRegistry = Substitute.For<IRootHandlerRegistry>();
-        var handlers = new Dictionary<string, IResourceRootHandler>
-        {
-            [root] = Substitute.For<IResourceRootHandler>()
-        };
-        rootHandlerRegistry.RootHandlers.Returns(handlers);
-        rootHandlerRegistry.ResolveResourcePath(Arg.Any<ResourceKey>())
-            .Returns(callInfo => Result<string>.Ok(KeyToTempPath(callInfo.Arg<ResourceKey>())));
-        resourceService.RootHandlers.Returns(rootHandlerRegistry);
+        _rootHandlers.RegisterRootHandler(new TempRootHandler(_tempFolder));
     }
 
     private void UseWalkedItems(params WalkedItem[] items)

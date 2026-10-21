@@ -185,13 +185,13 @@ public class PackagesSectionViewModel : ProjectSettingsSectionViewModel
     // application folder and has no resource key, so it is never openable.
     private ResourceKey? ResolveManifestResource(string manifestPath)
     {
-        var resourceRegistry = WorkspaceService?.ResourceService.Registry;
-        if (resourceRegistry is null)
+        var rootHandlerRegistry = WorkspaceService?.ResourceService.RootHandlers;
+        if (rootHandlerRegistry is null)
         {
             return null;
         }
 
-        var getKeyResult = resourceRegistry.GetResourceKey(manifestPath);
+        var getKeyResult = rootHandlerRegistry.GetResourceKey(manifestPath);
         if (getKeyResult.IsFailure)
         {
             _logger.LogWarning(getKeyResult, $"Failed to resolve manifest resource: {manifestPath}");

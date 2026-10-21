@@ -102,7 +102,7 @@ public class ExportArchiveCommand : CommandBase, IExportArchiveCommand
 
         // A destination inside the project would be archived into itself. The save dialog can create an empty
         // file at the chosen path before the export runs, and an earlier export may already be there.
-        var destinationKeyResult = resourceService.Registry.GetResourceKey(ArchiveFilePath);
+        var destinationKeyResult = resourceService.RootHandlers.GetResourceKey(ArchiveFilePath);
         if (destinationKeyResult.IsSuccess)
         {
             var destinationKey = destinationKeyResult.Value;

@@ -31,6 +31,7 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
         }
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
         var files = new List<ClipboardFile>();
 
         foreach (var sourceResource in SourceResources)
@@ -43,24 +44,19 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
             }
             var resource = getResult.Value;
 
-            if (resource is IFileResource fileResource)
+            var resolveResult = rootHandlerRegistry.ResolveResourcePath(sourceResource);
+            if (resolveResult.IsFailure)
             {
-                var resolveResult = resourceRegistry.ResolveResourcePath(fileResource);
-                if (resolveResult.IsFailure)
-                {
-                    _logger.LogWarning($"Skipping resource '{sourceResource}' during clipboard copy: {resolveResult.DiagnosticReport}");
-                    continue;
-                }
+                _logger.LogWarning($"Skipping resource '{sourceResource}' during clipboard copy: {resolveResult.DiagnosticReport}");
+                continue;
+            }
+
+            if (resource is IFileResource)
+            {
                 files.Add(new ClipboardFile(resolveResult.Value, IsFolder: false));
             }
-            else if (resource is IFolderResource folderResource)
+            else if (resource is IFolderResource)
             {
-                var resolveResult = resourceRegistry.ResolveResourcePath(folderResource);
-                if (resolveResult.IsFailure)
-                {
-                    _logger.LogWarning($"Skipping resource '{sourceResource}' during clipboard copy: {resolveResult.DiagnosticReport}");
-                    continue;
-                }
                 files.Add(new ClipboardFile(resolveResult.Value, IsFolder: true));
             }
         }

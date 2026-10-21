@@ -72,7 +72,7 @@ public class WorkspaceLoader
         }
 
         // Set the current directory to the workspace project folder.
-        var projectFolderPath = _workspaceWrapper.WorkspaceService.ResourceService.Registry.ProjectFolderPath;
+        var projectFolderPath = _projectService.CurrentProject!.ProjectFolderPath;
         projectFolderPath = Path.GetFullPath(projectFolderPath);
         SetProcessWorkingFolder(projectFolderPath);
 
