@@ -94,25 +94,7 @@ public record ResourceOperationFailedMessage(
 }
 
 /// <summary>
-/// Broadcast when a resource has appeared at the given key. Fired by the
-/// filesystem watcher and by structural operations that have already applied
-/// the change on disk.
-/// </summary>
-public record ResourceCreatedMessage(ResourceKey Resource);
-
-/// <summary>
-/// Broadcast when an existing resource's bytes have changed.
-/// </summary>
-public record ResourceChangedMessage(ResourceKey Resource);
-
-/// <summary>
-/// Broadcast when a resource has been removed from the given key. Fired by the
-/// filesystem watcher and by structural operations that have already applied
+/// Broadcast when a resource has been removed from the given key, by a structural operation that has already applied
 /// the change on disk.
 /// </summary>
 public record ResourceDeletedMessage(ResourceKey Resource);
-
-/// <summary>
-/// Broadcast when a resource has moved from one key to another.
-/// </summary>
-public record ResourceRenamedMessage(ResourceKey OldResource, ResourceKey NewResource);

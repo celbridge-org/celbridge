@@ -11,6 +11,10 @@ public abstract partial class DocumentViewModel : ObservableObject
     private IMessengerService? _messengerService;
     private ILogger<DocumentViewModel>? _logger;
 
+    // Follows the changes to the file once monitoring is enabled. A new key gets a new subscription.
+    private bool _isFileChangeMonitoringEnabled;
+    private IResourceKeySubscription? _fileSubscription;
+
     [ObservableProperty]
     private ResourceKey _fileResource = string.Empty;
 
@@ -79,13 +83,14 @@ public abstract partial class DocumentViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Enables file-change monitoring for this document.
-    /// Registers for ResourceChangedMessage and DocumentSaveCompletedMessage.
-    /// Call this in the ViewModel constructor for editors that need external file change detection.
+    /// Enables file-change monitoring for this document. Subscribes to the changes to the file's key, and registers
+    /// for DocumentSaveCompletedMessage. Call this in the ViewModel constructor for editors that need external file
+    /// change detection.
     /// </summary>
     protected void EnableFileChangeMonitoring()
     {
-        Guard.IsNull(_messengerService, "File change monitoring is already enabled");
+        Guard.IsTrue(!_isFileChangeMonitoringEnabled, "File change monitoring is already enabled");
+        _isFileChangeMonitoringEnabled = true;
 
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
 
@@ -98,17 +103,59 @@ public abstract partial class DocumentViewModel : ObservableObject
             // Logger may not be available in test environments
         }
 
-        _messengerService.Register<ResourceChangedMessage>(this, OnResourceChanged);
         _messengerService.Register<DocumentSaveCompletedMessage>(this, OnDocumentSaveCompleted);
+
+        SubscribeToFileChanges();
     }
 
-    private async void OnResourceChanged(object recipient, ResourceChangedMessage message)
+    partial void OnFileResourceChanged(ResourceKey value)
     {
-        if (message.Resource != FileResource)
+        if (_isFileChangeMonitoringEnabled)
         {
-            return;
+            SubscribeToFileChanges();
+        }
+    }
+
+    // Subscribes for the current key before disposing the old subscription, so no change between the two is missed.
+    private void SubscribeToFileChanges()
+    {
+        var previousSubscription = _fileSubscription;
+        _fileSubscription = null;
+
+        if (!FileResource.IsEmpty)
+        {
+            var handlers = new ResourceChangeHandlers(OnFileChanges, OnFileResync);
+            var subscribeResult = GetResourceMonitor().SubscribeToResources(new[] { FileResource }, handlers);
+            if (subscribeResult.IsSuccess)
+            {
+                _fileSubscription = subscribeResult.Value;
+            }
+            else
+            {
+                _logger?.LogWarning(subscribeResult, $"Failed to follow the changes to '{FileResource}'");
+            }
         }
 
+        previousSubscription?.Dispose();
+    }
+
+    // The document tab handles a change that finds the file absent.
+    private void OnFileChanges(ResourceChangeBatch batch)
+    {
+        if (batch.Changes.Any(change => change.State == ResourceItemState.File))
+        {
+            OnFileChanged();
+        }
+    }
+
+    // The lost events may have included a change to the file, so the file gets the same check as for a change.
+    private void OnFileResync(ResourceResync resync)
+    {
+        OnFileChanged();
+    }
+
+    private async void OnFileChanged()
+    {
         if (_isSaving)
         {
             _hasChangeDuringSave = true;
@@ -290,6 +337,15 @@ public abstract partial class DocumentViewModel : ObservableObject
     }
 
     /// <summary>
+    /// Acquires the resource monitor that the file's subscription goes through.
+    /// </summary>
+    protected virtual IResourceMonitor GetResourceMonitor()
+    {
+        var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
+        return workspaceWrapper.WorkspaceService.ResourceService.Monitor;
+    }
+
+    /// <summary>
     /// Acquires the resource file-system layer. Overridable so tests can
     /// substitute a layer wired to a temp folder without going through the
     /// workspace service hierarchy.
@@ -306,6 +362,10 @@ public abstract partial class DocumentViewModel : ObservableObject
     /// </summary>
     public virtual void Cleanup()
     {
+        _isFileChangeMonitoringEnabled = false;
+        _fileSubscription?.Dispose();
+        _fileSubscription = null;
+
         _messengerService?.UnregisterAll(this);
     }
 

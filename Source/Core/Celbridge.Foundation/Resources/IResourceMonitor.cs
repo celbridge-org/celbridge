@@ -1,9 +1,37 @@
 namespace Celbridge.Resources;
 
 /// <summary>
-/// A key that a change touched, and whether an item exists at the key when the change is delivered.
+/// What a change found at its key when the change was delivered.
 /// </summary>
-public record ResourceChange(ResourceKey Resource, bool Exists);
+public enum ResourceItemState
+{
+    /// <summary>
+    /// A file is at the key.
+    /// </summary>
+    File,
+
+    /// <summary>
+    /// A folder is at the key.
+    /// </summary>
+    Folder,
+
+    /// <summary>
+    /// Nothing the key can name is at the key. A link counts as absent, and so does a key that differs from the name
+    /// stored on disk.
+    /// </summary>
+    Absent,
+}
+
+/// <summary>
+/// A key that a change touched, and what is at the key when the change is delivered.
+/// </summary>
+public record ResourceChange(ResourceKey Resource, ResourceItemState State)
+{
+    /// <summary>
+    /// Returns true if a file or a folder is at the key.
+    /// </summary>
+    public bool Exists => State != ResourceItemState.Absent;
+}
 
 /// <summary>
 /// The changes delivered to a subscription at one time, all in the named root. A batch lists at least one change.
@@ -52,8 +80,7 @@ public interface IResourceKeySubscription : IDisposable
 }
 
 /// <summary>
-/// Watches each root that sets Capabilities.IsWatched, and reports the changes in it to subscriptions. Also schedules
-/// updates of the resource registry.
+/// Watches each root that sets Capabilities.IsWatched, and reports the changes in it to subscriptions.
 /// </summary>
 public interface IResourceMonitor
 {
@@ -78,7 +105,7 @@ public interface IResourceMonitor
     /// <summary>
     /// Subscribes to the changes to the keys. A change reaches the subscription when it touches one of the keys, or a
     /// folder above one. On a volume that ignores letter case, a touch in any letter case counts. Each batch lists the
-    /// subscribed keys that it reaches, in their subscribed spelling, and whether an item exists at each. To change the
+    /// subscribed keys that it reaches, in their subscribed spelling, and what is at each. To change the
     /// keys, subscribe again before disposing the old subscription. Fails for a root key or a key in a root that is not
     /// registered.
     /// </summary>
@@ -90,9 +117,4 @@ public interface IResourceMonitor
     /// Shuts down the resource monitor and stops watching for file system changes.
     /// </summary>
     void Shutdown();
-
-    /// <summary>
-    /// Schedules a resource update with debouncing to coalesce rapid calls.
-    /// </summary>
-    void ScheduleResourceUpdate();
 }

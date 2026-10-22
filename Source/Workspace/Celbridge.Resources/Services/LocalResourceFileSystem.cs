@@ -240,9 +240,8 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         }
 
         // Capture descendant keys before the disk move so the post-move
-        // eager-notify can drop their stale source-side index entries and
-        // announce each descendant's move. After Move the source path is gone
-        // and the enumeration is no longer possible.
+        // eager-notify can announce each descendant's move. After Move the
+        // source path is gone, and the enumeration would fail.
         IReadOnlyList<ResourceKey> sourceDescendantKeys;
         if (sourceIsFolder)
         {
@@ -495,8 +494,7 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         var sidecarOutcome = await _sidecarCascade.TryDeleteAsync(source);
 
         // Capture descendant keys before the disk delete so the post-delete
-        // eager-notify can drop their stale index entries and announce each
-        // descendant's removal too.
+        // eager-notify can announce each descendant's removal too.
         IReadOnlyList<ResourceKey> descendantKeys;
         if (sourceIsFolder)
         {
@@ -912,24 +910,6 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         if (ensureParentResult.IsFailure)
         {
             return ensureParentResult;
-        }
-
-        // Only strip the on-disk read-only attribute when the writable cache
-        // confirms the resource is writable. If the cache reports any non-
-        // writable state, leave the attribute in place and let the underlying
-        // write fail. This stops a stale attribute (cleared by an external
-        // tool but not yet seen by the watcher) from blocking a legitimate
-        // save, while also stopping auto-save from clobbering a read-only
-        // mark the user just applied.
-        var operationService = _workspaceWrapper.WorkspaceService.ResourceService.Operations;
-        var writableState = await operationService.GetWritableStateAsync(resource);
-        if (writableState == WritableState.Writable)
-        {
-            var clearReadOnlyResult = await _fileSystem.SetAttributesAsync(resourcePath, FileSystemAttributes.ReadOnly, set: false);
-            if (clearReadOnlyResult.IsFailure)
-            {
-                _logger.LogDebug(clearReadOnlyResult.FirstException, $"Could not clear read-only attribute before writing '{resource}'");
-            }
         }
 
         var writeResult = await _fileSystem.WriteAllBytesAsync(resourcePath, bytes);

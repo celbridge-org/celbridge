@@ -37,7 +37,7 @@ internal sealed class MatcherSubscription : IMatcherSubscription
 
     /// <summary>
     /// Returns true if a change at the resource path matches. When the item at the path may be a folder, the change
-    /// also matches if the matcher can match a path inside the folder. An item that is gone may have been a folder.
+    /// also matches if the matcher can match a path inside the folder. An absent item may have been a folder.
     /// </summary>
     public bool Matches(string resourcePath, bool mayBeFolder)
     {

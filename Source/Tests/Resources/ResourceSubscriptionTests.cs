@@ -1,4 +1,4 @@
-using Celbridge.Messaging;
+using Celbridge.Automation;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
 using Celbridge.Resources.Services.Roots;
@@ -44,6 +44,7 @@ public class ResourceSubscriptionTests
 
     private string _projectFolder = null!;
     private FakeTimeProvider _timeProvider = null!;
+    private IAutomationService _automationService = null!;
     private ILocalFileSystem _fileSystem = null!;
     private Dictionary<string, IResourceRootHandler> _rootHandlers = null!;
     private IResourceService _resourceService = null!;
@@ -61,6 +62,7 @@ public class ResourceSubscriptionTests
         Directory.CreateDirectory(_projectFolder);
 
         _timeProvider = new FakeTimeProvider();
+        _automationService = Substitute.For<IAutomationService>();
 
         // Forward to the real file system, so a test can check which paths the disk check read.
         var localFileSystem = TestFileSystem.CreateLocal();
@@ -91,20 +93,18 @@ public class ResourceSubscriptionTests
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(_resourceService);
 
-        // The registry's rescans stay dormant while the workspace reads as not loaded.
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
-        workspaceWrapper.IsWorkspaceLoaded.Returns(false);
 
         var monitorFactory = new FakeFileSystemMonitorFactory();
 
         _resourceMonitor = new ResourceMonitor(
             Substitute.For<ILogger<ResourceMonitor>>(),
             dispatcher,
-            Substitute.For<IMessengerService>(),
             workspaceWrapper,
             monitorFactory,
             _fileSystem,
+            _automationService,
             _timeProvider);
 
         _resourceMonitor.Initialize().IsSuccess.Should().BeTrue();
@@ -139,8 +139,22 @@ public class ResourceSubscriptionTests
         batches.Should().ContainSingle();
         batches[0].RootName.Should().Be(ResourceKey.DefaultRoot);
         batches[0].Changes.Should().Equal(
-            new ResourceChange(ResourceKey.Create("notes.txt"), Exists: true),
-            new ResourceChange(ResourceKey.Create("other.txt"), Exists: false));
+            new ResourceChange(ResourceKey.Create("notes.txt"), ResourceItemState.File),
+            new ResourceChange(ResourceKey.Create("other.txt"), ResourceItemState.Absent));
+    }
+
+    [Test]
+    public void EachDeliveredBatchIsReported()
+    {
+        Subscribe("**");
+        WriteProjectFile("notes.txt");
+
+        _watcher.RaiseChanged(PathFor("notes.txt"));
+        _watcher.RaiseChanged(PathFor("other.txt"));
+        AdvanceOneInterval();
+
+        _automationService.Received(1).LogEvent(Arg.Is<ResourceChangesDeliveredEvent>(
+            delivered => delivered.RootName == ResourceKey.DefaultRoot && delivered.Keys == 2));
     }
 
     [Test]
@@ -156,8 +170,8 @@ public class ResourceSubscriptionTests
 
         batches.Should().ContainSingle();
         batches[0].Changes.Should().Equal(
-            new ResourceChange(ResourceKey.Create("notes.txt"), Exists: true),
-            new ResourceChange(ResourceKey.Create("notes.txt.tmp"), Exists: false));
+            new ResourceChange(ResourceKey.Create("notes.txt"), ResourceItemState.File),
+            new ResourceChange(ResourceKey.Create("notes.txt.tmp"), ResourceItemState.Absent));
     }
 
     [Test]
@@ -183,7 +197,7 @@ public class ResourceSubscriptionTests
         AdvanceOneInterval();
 
         batches.Should().HaveCount(2);
-        batches[1].Changes.Should().Equal(new ResourceChange(ResourceKey.Create("second.txt"), Exists: false));
+        batches[1].Changes.Should().Equal(new ResourceChange(ResourceKey.Create("second.txt"), ResourceItemState.Absent));
     }
 
     [Test]
@@ -198,7 +212,7 @@ public class ResourceSubscriptionTests
         AdvanceOneInterval();
 
         batches.Should().ContainSingle();
-        batches[0].Changes.Should().Equal(new ResourceChange(ResourceKey.Create("docs/guide.md"), Exists: false));
+        batches[0].Changes.Should().Equal(new ResourceChange(ResourceKey.Create("docs/guide.md"), ResourceItemState.Absent));
         _fileSystem.Received(1).GetInfoAsync(PathFor("docs/guide.md"));
         _fileSystem.Received(1).GetInfoAsync(Arg.Any<string>());
     }
@@ -213,7 +227,7 @@ public class ResourceSubscriptionTests
         AdvanceOneInterval();
 
         batches.Should().ContainSingle();
-        batches[0].Changes.Should().Equal(new ResourceChange(ResourceKey.Create("readme.md"), Exists: false));
+        batches[0].Changes.Should().Equal(new ResourceChange(ResourceKey.Create("readme.md"), ResourceItemState.Absent));
     }
 
     [Test]
@@ -229,8 +243,8 @@ public class ResourceSubscriptionTests
         _watcher.RaiseChanged(PathFor("b.json"));
         AdvanceOneInterval();
 
-        markdownBatches.Single().Changes.Should().Equal(new ResourceChange(ResourceKey.Create("a.md"), Exists: true));
-        jsonBatches.Single().Changes.Should().Equal(new ResourceChange(ResourceKey.Create("b.json"), Exists: true));
+        markdownBatches.Single().Changes.Should().Equal(new ResourceChange(ResourceKey.Create("a.md"), ResourceItemState.File));
+        jsonBatches.Single().Changes.Should().Equal(new ResourceChange(ResourceKey.Create("b.json"), ResourceItemState.File));
     }
 
     [Test]
@@ -254,12 +268,12 @@ public class ResourceSubscriptionTests
         _watcher.RaiseChanged(PathFor("build/output.txt"));
         AdvanceOneInterval();
 
-        var expected = new ResourceChange(ResourceKey.Create("build/output.txt"), Exists: false);
+        var expected = new ResourceChange(ResourceKey.Create("build/output.txt"), ResourceItemState.Absent);
         batches.Single().Changes.Should().Equal(expected);
     }
 
     [Test]
-    public void ALinkIsReportedAsGone()
+    public void ALinkIsReportedAsAbsent()
     {
         var batches = Subscribe("**");
         var outsideFile = Path.Combine(Path.GetTempPath(), $"Celbridge/{nameof(ResourceSubscriptionTests)}_target.txt");
@@ -276,13 +290,13 @@ public class ResourceSubscriptionTests
         _watcher.RaiseCreated(PathFor("link.txt"));
         AdvanceOneInterval();
 
-        batches.Single().Changes.Should().Equal(new ResourceChange(ResourceKey.Create("link.txt"), Exists: false));
+        batches.Single().Changes.Should().Equal(new ResourceChange(ResourceKey.Create("link.txt"), ResourceItemState.Absent));
         File.Delete(outsideFile);
     }
 
     [Test]
     [Platform(Exclude = "Linux", Reason = CaseSensitiveVolumeReason)]
-    public void TheOldNameOfACaseOnlyRenameIsReportedAsGone()
+    public void TheOldNameOfACaseOnlyRenameIsReportedAsAbsent()
     {
         var batches = Subscribe("**");
         WriteProjectFile("notes.txt");
@@ -297,8 +311,8 @@ public class ResourceSubscriptionTests
         AdvanceOneInterval();
 
         batches.Single().Changes.Should().Equal(
-            new ResourceChange(ResourceKey.Create("notes.txt"), Exists: false),
-            new ResourceChange(ResourceKey.Create("Notes.txt"), Exists: true));
+            new ResourceChange(ResourceKey.Create("notes.txt"), ResourceItemState.Absent),
+            new ResourceChange(ResourceKey.Create("Notes.txt"), ResourceItemState.File));
     }
 
     [Test]
@@ -312,7 +326,19 @@ public class ResourceSubscriptionTests
         _watcher.RaiseRenamed(PathFor("docs"), PathFor("archive"));
         AdvanceOneInterval();
 
-        batches.Single().Changes.Should().Equal(new ResourceChange(ResourceKey.Create("docs"), Exists: false));
+        batches.Single().Changes.Should().Equal(new ResourceChange(ResourceKey.Create("docs"), ResourceItemState.Absent));
+    }
+
+    [Test]
+    public void AnExistingFolderArrivesAsAFolder()
+    {
+        var batches = Subscribe("docs/guide.md");
+        Directory.CreateDirectory(PathFor("docs"));
+
+        _watcher.RaiseCreated(PathFor("docs"));
+        AdvanceOneInterval();
+
+        batches.Single().Changes.Should().Equal(new ResourceChange(ResourceKey.Create("docs"), ResourceItemState.Folder));
     }
 
     [Test]
@@ -328,14 +354,14 @@ public class ResourceSubscriptionTests
     }
 
     [Test]
-    public void AFolderOnlyPatternMatchesAGoneKeyAsAFolder()
+    public void AFolderOnlyPatternMatchesAnAbsentKeyAsAFolder()
     {
         var batches = Subscribe("build/");
 
         _watcher.RaiseDeleted(PathFor("build"));
         AdvanceOneInterval();
 
-        batches.Single().Changes.Should().Equal(new ResourceChange(ResourceKey.Create("build"), Exists: false));
+        batches.Single().Changes.Should().Equal(new ResourceChange(ResourceKey.Create("build"), ResourceItemState.Absent));
     }
 
     [Test]
@@ -363,7 +389,7 @@ public class ResourceSubscriptionTests
 
         received.Deliveries.Should().HaveCount(2);
         var batch = received.Deliveries[0].Should().BeOfType<ResourceChangeBatch>().Subject;
-        batch.Changes.Should().Equal(new ResourceChange(ResourceKey.Create("notes.txt"), Exists: false));
+        batch.Changes.Should().Equal(new ResourceChange(ResourceKey.Create("notes.txt"), ResourceItemState.Absent));
         received.Deliveries[1].Should().Be(new ResourceResync(ResourceKey.DefaultRoot));
     }
 
@@ -383,7 +409,7 @@ public class ResourceSubscriptionTests
         AdvanceOneInterval();
 
         oldBatches.Should().BeEmpty();
-        newBatches.Single().Changes.Should().Equal(new ResourceChange(ResourceKey.Create("new.txt"), Exists: false));
+        newBatches.Single().Changes.Should().Equal(new ResourceChange(ResourceKey.Create("new.txt"), ResourceItemState.Absent));
     }
 
     [Test]
@@ -401,7 +427,7 @@ public class ResourceSubscriptionTests
         _watcher.RaiseChanged(PathFor("notes.txt"));
         AdvanceOneInterval();
 
-        var expected = new ResourceChange(ResourceKey.Create("scripts/tool.py"), Exists: true);
+        var expected = new ResourceChange(ResourceKey.Create("scripts/tool.py"), ResourceItemState.File);
         batches.Single().Changes.Should().Equal(expected);
     }
 
@@ -439,7 +465,7 @@ public class ResourceSubscriptionTests
         _watcher.RaiseChanged(PathFor("docs/sibling.md"));
         AdvanceOneInterval();
 
-        batches.Single().Changes.Should().Equal(new ResourceChange(ResourceKey.Create("docs/guide.md"), Exists: true));
+        batches.Single().Changes.Should().Equal(new ResourceChange(ResourceKey.Create("docs/guide.md"), ResourceItemState.File));
     }
 
     [Test]
@@ -453,7 +479,7 @@ public class ResourceSubscriptionTests
         _watcher.RaiseRenamed(PathFor("docs"), PathFor("archive"));
         AdvanceOneInterval();
 
-        var expected = new ResourceChange(ResourceKey.Create("docs/sub/guide.md"), Exists: false);
+        var expected = new ResourceChange(ResourceKey.Create("docs/sub/guide.md"), ResourceItemState.Absent);
         batches.Single().Changes.Should().Equal(expected);
     }
 
@@ -483,13 +509,13 @@ public class ResourceSubscriptionTests
         AdvanceOneInterval();
 
         batches.Should().HaveCount(2);
-        batches[0].Changes.Should().Equal(new ResourceChange(ResourceKey.Create("notes.txt"), Exists: true));
-        batches[1].Changes.Should().Equal(new ResourceChange(ResourceKey.Create("notes.txt"), Exists: false));
+        batches[0].Changes.Should().Equal(new ResourceChange(ResourceKey.Create("notes.txt"), ResourceItemState.File));
+        batches[1].Changes.Should().Equal(new ResourceChange(ResourceKey.Create("notes.txt"), ResourceItemState.Absent));
     }
 
     [Test]
     [Platform(Exclude = "Linux", Reason = CaseSensitiveVolumeReason)]
-    public void AKeyInAnotherCaseThanTheStoredNameIsReportedAsGone()
+    public void AKeyInAnotherCaseThanTheStoredNameIsReportedAsAbsent()
     {
         var batches = SubscribeToKeys("notes.txt");
         WriteProjectFile("notes.txt");
@@ -499,7 +525,7 @@ public class ResourceSubscriptionTests
         _watcher.RaiseCreated(PathFor("Notes.txt"));
         AdvanceOneInterval();
 
-        batches.Single().Changes.Should().Equal(new ResourceChange(ResourceKey.Create("notes.txt"), Exists: false));
+        batches.Single().Changes.Should().Equal(new ResourceChange(ResourceKey.Create("notes.txt"), ResourceItemState.Absent));
     }
 
     [Test]
@@ -512,7 +538,7 @@ public class ResourceSubscriptionTests
         _watcher.RaiseDeleted(PathFor("docs/guide.md"));
         AdvanceOneInterval();
 
-        batches.Single().Changes.Should().Equal(new ResourceChange(ResourceKey.Create("docs/guide.md"), Exists: false));
+        batches.Single().Changes.Should().Equal(new ResourceChange(ResourceKey.Create("docs/guide.md"), ResourceItemState.Absent));
         patternBatches.Single().Changes.Should().HaveCount(2);
         _fileSystem.Received(1).GetInfoAsync(PathFor("docs/guide.md"));
     }
@@ -550,7 +576,7 @@ public class ResourceSubscriptionTests
         AdvanceOneInterval();
 
         oldBatches.Should().BeEmpty();
-        newBatches.Single().Changes.Should().Equal(new ResourceChange(newKey, Exists: false));
+        newBatches.Single().Changes.Should().Equal(new ResourceChange(newKey, ResourceItemState.Absent));
     }
 
     [Test]

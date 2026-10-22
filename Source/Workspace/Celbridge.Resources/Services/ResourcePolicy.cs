@@ -52,7 +52,10 @@ public sealed class ResourcePolicy : IResourcePolicy
         _systemDeny = BuildSystemDenyRules();
         _hide = ResourcePatternSet.Compile(resourcesSection.Hide);
         _searchExclude = ResourcePatternSet.Compile(resourcesSection.SearchExclude);
+        SearchScope = new SearchScopeMatcher(_searchExclude);
     }
+
+    public IPathMatcher SearchScope { get; }
 
     public Result Evaluate(ResourceKey resource, ResourceAction action, bool isFolder = false)
     {

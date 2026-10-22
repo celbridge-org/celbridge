@@ -17,7 +17,6 @@ public class LocalResourceFileSystemTests
 {
     private string _tempFolder = null!;
     private string _tempRootFolder = null!;
-    private IResourceOperationService _operationService = null!;
     private IMessengerService _messengerService = null!;
     private LocalResourceFileSystem _resourceFileSystem = null!;
 
@@ -35,16 +34,8 @@ public class LocalResourceFileSystemTests
         var rootHandlerRegistry = TestRootHandlers.Create(_tempFolder);
         rootHandlerRegistry.RegisterRootHandler(new TempRootHandler(_tempRootFolder));
 
-        // Default the writable cache to Writable so existing tests behave as
-        // they did before the read-only-strip gate was added. The two tests
-        // that exercise the gate override this stub explicitly.
-        _operationService = Substitute.For<IResourceOperationService>();
-        _operationService.GetWritableStateAsync(Arg.Any<ResourceKey>())
-            .Returns(Task.FromResult(WritableState.Writable));
-
         var resourceService = Substitute.For<IResourceService>();
         resourceService.RootHandlers.Returns(rootHandlerRegistry);
-        resourceService.Operations.Returns(_operationService);
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
@@ -751,33 +742,10 @@ public class LocalResourceFileSystemTests
     }
 
     [Test]
-    public async Task WriteAllBytesAsync_StripsReadOnlyAttribute_WhenStateIsWritable()
+    public async Task WriteAllBytesAsync_PreservesReadOnlyAttribute_AndFails()
     {
-        // The cache reports Writable, so an on-disk read-only attribute is
-        // treated as stale. The write strips it and succeeds.
-        var resource = new ResourceKey("writable.bin");
-        var path = Path.Combine(_tempFolder, "writable.bin");
-        await File.WriteAllBytesAsync(path, new byte[] { 0x00 });
-        new FileInfo(path).IsReadOnly = true;
-
-        _operationService.GetWritableStateAsync(resource)
-            .Returns(Task.FromResult(WritableState.Writable));
-
-        var bytes = new byte[] { 0xAA, 0xBB };
-        var result = await _resourceFileSystem.WriteAllBytesAsync(resource, bytes);
-
-        result.IsSuccess.Should().BeTrue();
-        new FileInfo(path).IsReadOnly.Should().BeFalse();
-        (await File.ReadAllBytesAsync(path)).Should().Equal(bytes);
-    }
-
-    [Test]
-    public async Task WriteAllBytesAsync_PreservesReadOnlyAttribute_AndFails_WhenStateIsReadOnlyAttribute()
-    {
-        // The cache reports ReadOnlyAttribute, so the gate refuses to strip
-        // the on-disk attribute. The underlying write throws
-        // UnauthorizedAccessException, which the gateway surfaces as a
-        // failure, and the read-only attribute is preserved.
+        // A write leaves the read-only attribute in place. The underlying write throws UnauthorizedAccessException.
+        // The gateway surfaces the exception as a failure.
         var resource = new ResourceKey("readonly.bin");
         var path = Path.Combine(_tempFolder, "readonly.bin");
         var originalBytes = new byte[] { 0x01, 0x02 };
@@ -786,9 +754,6 @@ public class LocalResourceFileSystemTests
 
         try
         {
-            _operationService.GetWritableStateAsync(resource)
-                .Returns(Task.FromResult(WritableState.ReadOnlyAttribute));
-
             var result = await _resourceFileSystem.WriteAllBytesAsync(resource, new byte[] { 0xAA, 0xBB });
 
             result.IsFailure.Should().BeTrue();

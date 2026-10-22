@@ -67,6 +67,11 @@ public interface IResourceService
     ISidecarService Sidecars { get; }
 
     /// <summary>
+    /// Starts watching the roots, and scheduling a resource update after a change in the project.
+    /// </summary>
+    Result StartMonitoring();
+
+    /// <summary>
     /// Schedules a resource update.
     /// The update occurs after a short quiet period to coalesce rapid calls from multiple sources.
     /// </summary>

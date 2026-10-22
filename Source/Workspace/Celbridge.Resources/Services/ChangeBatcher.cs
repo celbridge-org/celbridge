@@ -1,3 +1,4 @@
+using Celbridge.Automation;
 using Celbridge.Logging;
 
 namespace Celbridge.Resources.Services;
@@ -5,20 +6,12 @@ namespace Celbridge.Resources.Services;
 /// <summary>
 /// Collects the keys touched in one root, and delivers them in batches to the subscriptions that may want them. A
 /// batch closes a fixed interval after its first key. At delivery, each key that a subscription wants is checked on
-/// disk, so each change says whether an item exists at its key. Batches for one root are delivered one at a time, in
-/// order.
+/// disk, so each change says what is at its key. Batches for one root are delivered one at a time, in order.
 /// </summary>
 internal sealed class ChangeBatcher : IDisposable
 {
     // Long enough to collect the events of one file operation, a save or a checkout, into one batch.
     internal static readonly TimeSpan BatchInterval = TimeSpan.FromMilliseconds(100);
-
-    private enum ItemState
-    {
-        File,
-        Folder,
-        Gone,
-    }
 
     private sealed record ReachedKeys(ResourceKeySubscription Subscription, IReadOnlyList<ResourceKey> Resources);
 
@@ -27,6 +20,7 @@ internal sealed class ChangeBatcher : IDisposable
     private readonly ILocalFileSystem _fileSystem;
     private readonly IDispatcher _dispatcher;
     private readonly TimeProvider _timeProvider;
+    private readonly IAutomationService _automationService;
     private readonly ILogger _logger;
 
     // Guards every field below.
@@ -47,6 +41,7 @@ internal sealed class ChangeBatcher : IDisposable
         ILocalFileSystem fileSystem,
         IDispatcher dispatcher,
         TimeProvider timeProvider,
+        IAutomationService automationService,
         ILogger logger)
     {
         _handler = handler;
@@ -54,6 +49,7 @@ internal sealed class ChangeBatcher : IDisposable
         _fileSystem = fileSystem;
         _dispatcher = dispatcher;
         _timeProvider = timeProvider;
+        _automationService = automationService;
         _logger = logger;
     }
 
@@ -224,6 +220,8 @@ internal sealed class ChangeBatcher : IDisposable
             return;
         }
 
+        var startTimestamp = _timeProvider.GetTimestamp();
+
         // Keys are matched before the disk is checked, so only the keys that a subscription wants are checked. Until
         // the check, any key may name a folder.
         var wantedKeys = new List<ResourceKey>();
@@ -250,7 +248,7 @@ internal sealed class ChangeBatcher : IDisposable
             }
         }
 
-        var itemStates = new Dictionary<ResourceKey, ItemState>();
+        var itemStates = new Dictionary<ResourceKey, ResourceItemState>();
         var keysToCheck = wantedKeys.Concat(reachedKeys.SelectMany(reached => reached.Resources));
         foreach (var key in keysToCheck)
         {
@@ -266,10 +264,10 @@ internal sealed class ChangeBatcher : IDisposable
             foreach (var key in wantedKeys)
             {
                 var state = itemStates[key];
-                bool mayBeFolder = state != ItemState.File;
+                bool mayBeFolder = state != ResourceItemState.File;
                 if (subscription.Matches(key.Path, mayBeFolder))
                 {
-                    changes.Add(new ResourceChange(key, Exists: state != ItemState.Gone));
+                    changes.Add(new ResourceChange(key, state));
                 }
             }
 
@@ -283,11 +281,14 @@ internal sealed class ChangeBatcher : IDisposable
         foreach (var reached in reachedKeys)
         {
             var changes = reached.Resources
-                .Select(key => new ResourceChange(key, Exists: itemStates[key] != ItemState.Gone))
+                .Select(key => new ResourceChange(key, itemStates[key]))
                 .ToList();
             var batch = new ResourceChangeBatch(_handler.RootName, changes);
             EnqueueDelivery(() => reached.Subscription.DeliverChanges(batch));
         }
+
+        var elapsed = (long)_timeProvider.GetElapsedTime(startTimestamp).TotalMilliseconds;
+        _automationService.LogEvent(new ResourceChangesDeliveredEvent(_handler.RootName, keys.Count, elapsed));
     }
 
     private void DeliverResync(RootSubscriptions subscriptions)
@@ -322,27 +323,27 @@ internal sealed class ChangeBatcher : IDisposable
 
     // An item exists only when its key resolves. The resolver refuses a link, and a key that differs from the name
     // stored on disk.
-    private async Task<ItemState> CheckItemAsync(ResourceKey resource)
+    private async Task<ResourceItemState> CheckItemAsync(ResourceKey resource)
     {
         var resolveResult = _handler.Resolve(resource);
         if (resolveResult.IsFailure)
         {
-            return ItemState.Gone;
+            return ResourceItemState.Absent;
         }
         var path = resolveResult.Value;
 
         var infoResult = await _fileSystem.GetInfoAsync(path);
         if (infoResult.IsFailure)
         {
-            return ItemState.Gone;
+            return ResourceItemState.Absent;
         }
         var info = infoResult.Value;
 
         return info.Kind switch
         {
-            StorageItemKind.File => ItemState.File,
-            StorageItemKind.Folder => ItemState.Folder,
-            _ => ItemState.Gone,
+            StorageItemKind.File => ResourceItemState.File,
+            StorageItemKind.Folder => ResourceItemState.Folder,
+            _ => ResourceItemState.Absent,
         };
     }
 

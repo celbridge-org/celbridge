@@ -41,9 +41,6 @@ public class ResourceOperationService : IResourceOperationService
         _fileSystem = fileSystem;
     }
 
-    private IResourceRegistry ResourceRegistry =>
-        _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-
     private IResourceFileSystem ResourceFileSystem =>
         _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
@@ -246,15 +243,8 @@ public class ResourceOperationService : IResourceOperationService
 
     public async Task<WritableState> GetWritableStateAsync(ResourceKey resource)
     {
-        // Tree-cached fast path: ProjectTreeBuilder populates IResource.WritableState
-        // during the project walk, so any key in the registry answers without a syscall.
-        var getResult = ResourceRegistry.GetResource(resource);
-        if (getResult.IsSuccess)
-        {
-            return getResult.Value.WritableState;
-        }
-
-        // Live fallback for external keys not in the registry.
+        // Reads the attributes from the disk. The registry's tree records the state at the last rescan, which may be
+        // stale.
         var infoResult = await ResourceFileSystem.GetInfoAsync(resource);
         var attributes = infoResult.IsSuccess
             ? infoResult.Value.Attributes

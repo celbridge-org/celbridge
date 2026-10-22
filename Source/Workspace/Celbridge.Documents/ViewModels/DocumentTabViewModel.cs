@@ -30,7 +30,7 @@ public partial class DocumentTabViewModel : ObservableObject
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
     private readonly ILogger<DocumentTabViewModel> _logger;
-    private readonly IResourceRegistry _resourceRegistry;
+    private readonly IResourceMonitor _resourceMonitor;
     private readonly IStringLocalizer _stringLocalizer;
 
     [ObservableProperty]
@@ -168,6 +168,8 @@ public partial class DocumentTabViewModel : ObservableObject
         OnPropertyChanged(nameof(FileName));
 
         RefreshSaveState();
+
+        FollowFile(newValue);
     }
 
     private IDocumentView? _documentView;
@@ -186,7 +188,11 @@ public partial class DocumentTabViewModel : ObservableObject
     }
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private ResourceKeyChangedMessage? _pendingResourceKeyChangedMessage;
+
+    // The subscription to the changes to the file, and the key it follows. After a move the tab follows the new key
+    // before the tab's FileResource takes it.
+    private IResourceKeySubscription? _fileSubscription;
+    private ResourceKey _followedResource;
 
     public DocumentTabViewModel(
         IMessengerService messengerService,
@@ -200,14 +206,13 @@ public partial class DocumentTabViewModel : ObservableObject
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;
         _stringLocalizer = stringLocalizer;
-        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        _resourceMonitor = workspaceWrapper.WorkspaceService.ResourceService.Monitor;
 
         // Reordering a TabViewItem adds it in the new position before removing it from the old, so Unloaded
         // fires after Loaded. The message handlers are therefore registered here rather than on Loaded, and
         // unregistered in CloseDocument() when the tab actually closes. When the view unloads with the
         // workspace, WeakReferenceMessenger cleans the handlers up as this view model is collected.
 
-        _messengerService.Register<ResourceRegistryUpdatedMessage>(this, OnResourceRegistryUpdatedMessage);
         _messengerService.Register<ResourceKeyChangedMessage>(this, OnResourceKeyChangedMessage);
         _messengerService.Register<WorkspaceItemSaveRetriesChangedMessage>(this, OnSaveRetriesChanged);
     }
@@ -253,40 +258,59 @@ public partial class DocumentTabViewModel : ObservableObject
         return factories.Count >= 2;
     }
 
-    private async void OnResourceRegistryUpdatedMessage(object recipient, ResourceRegistryUpdatedMessage message)
+    // Subscribes for the key before disposing the old subscription, so no change between the two is missed.
+    private void FollowFile(ResourceKey resource)
     {
-        if (_pendingResourceKeyChangedMessage is not null)
+        if (_fileSubscription is not null
+            && _followedResource == resource)
         {
-            // This open document's resource has been renamed just prior to this registry update.
-            // Tell the document service to update the file resource for the document.
-            // The writable-state refresh below is skipped on this path: the re-bind for the new
-            // key applies the writable state through the open flow.
-
-            var oldResource = _pendingResourceKeyChangedMessage.SourceResource;
-            var newResource = _pendingResourceKeyChangedMessage.DestResource;
-            _pendingResourceKeyChangedMessage = null;
-
-            var documentMessage = new DocumentResourceChangedMessage(oldResource, newResource);
-            _messengerService.Send(documentMessage);
             return;
         }
 
-        // Check if the open document is in the updated resource registry
-        var getResult = _resourceRegistry.GetResource(FileResource);
-        if (getResult.IsFailure)
-        {
-            // The file may have been temporarily deleted as part of a "write temp, delete original,
-            // rename temp" save pattern used by some editors and coding agents. Check if the file
-            // still exists on disk before closing. The resource registry may not have caught up
-            // with the rename yet.
-            var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
-            var infoResult = await resourceFileSystem.GetInfoAsync(FileResource);
-            if (infoResult.IsSuccess
-                && infoResult.Value.Kind == StorageItemKind.File)
-            {
-                return;
-            }
+        var previousSubscription = _fileSubscription;
+        _fileSubscription = null;
+        _followedResource = resource;
 
+        if (!resource.IsEmpty)
+        {
+            var handlers = new ResourceChangeHandlers(OnFileChanges, OnFileResync);
+            var subscribeResult = _resourceMonitor.SubscribeToResources(new[] { resource }, handlers);
+            if (subscribeResult.IsSuccess)
+            {
+                _fileSubscription = subscribeResult.Value;
+            }
+            else
+            {
+                _logger.LogWarning(subscribeResult, $"Failed to follow the changes to '{resource}'");
+            }
+        }
+
+        previousSubscription?.Dispose();
+    }
+
+    private void OnFileChanges(ResourceChangeBatch batch)
+    {
+        CheckFile();
+    }
+
+    // The lost events may have included a delete or an attribute change, so the file gets the same check as for a
+    // change.
+    private void OnFileResync(ResourceResync resync)
+    {
+        CheckFile();
+    }
+
+    // Checks the disk before closing the tab. Some editors and coding agents save by writing a temporary file, deleting
+    // the original and renaming the temporary file. The file may then be back by the time the change arrives.
+    private async void CheckFile()
+    {
+        var resource = _followedResource;
+
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+        var infoResult = await resourceFileSystem.GetInfoAsync(resource);
+        if (infoResult.IsFailure
+            || infoResult.Value.Kind != StorageItemKind.File)
+        {
             // The resource no longer exists, so force-close the document. Routed through a command
             // instead of calling CloseDocument() directly to help avoid race conditions.
             _commandService.Execute<ICloseDocumentCommand>(command =>
@@ -298,12 +322,11 @@ public partial class DocumentTabViewModel : ObservableObject
         }
 
         // Re-apply the writable state to the open document so external attribute
-        // changes (or any other source-of-truth refresh) propagate into the editor's
-        // read-only signal without reopening the document.
+        // changes propagate into the editor's read-only signal without reopening the document.
         if (DocumentView is not null)
         {
             var operationService = _workspaceWrapper.WorkspaceService.ResourceService.Operations;
-            var refreshedState = await operationService.GetWritableStateAsync(FileResource);
+            var refreshedState = await operationService.GetWritableStateAsync(resource);
             if (refreshedState != DocumentView.WritableState)
             {
                 DocumentView.SetWritableState(refreshedState);
@@ -311,16 +334,19 @@ public partial class DocumentTabViewModel : ObservableObject
         }
     }
 
+    // The tab follows the new key at once. The watcher reports the old key absent moments after the move. The document
+    // may still be loading under the new key then, and that report must leave the tab open.
     private void OnResourceKeyChangedMessage(object recipient, ResourceKeyChangedMessage message)
     {
-        if (message.SourceResource == FileResource)
+        if (message.SourceResource != FileResource)
         {
-            // We should never receive multiple ResourceKeyChangedMessages for the same resource before the next registry update.
-            Guard.IsNull(_pendingResourceKeyChangedMessage);
-
-            // Delay handling the message until the next ResourceRegistryUpdatedMessage is received.
-            _pendingResourceKeyChangedMessage = message;
+            return;
         }
+
+        FollowFile(message.DestResource);
+
+        var documentMessage = new DocumentResourceChangedMessage(message.SourceResource, message.DestResource);
+        _messengerService.Send(documentMessage);
     }
 
     /// <summary>
@@ -439,5 +465,8 @@ public partial class DocumentTabViewModel : ObservableObject
     private void UnregisterMessageHandlers()
     {
         _messengerService.UnregisterAll(this);
+
+        _fileSubscription?.Dispose();
+        _fileSubscription = null;
     }
 }

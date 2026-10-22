@@ -18,6 +18,7 @@ public class ResourceService : IResourceService, IDisposable
     private readonly IProjectService _projectService;
     private readonly ILocalFileSystem _fileSystem;
     private readonly IAutomationService _automationService;
+    private readonly ResourceUpdateScheduler _updateScheduler;
 
     // Resolved once at construction, so the unload clears exactly the folders the load created.
     private readonly string _tempFolderPath;
@@ -53,7 +54,8 @@ public class ResourceService : IResourceService, IDisposable
         IResourceWalker resourceWalker,
         ISidecarService sidecarService,
         ILocalFileSystem fileSystem,
-        IAutomationService automationService)
+        IAutomationService automationService,
+        ResourceUpdateScheduler updateScheduler)
     {
         // Only the workspace service is allowed to instantiate this service
         Guard.IsFalse(workspaceWrapper.IsWorkspaceLoaded);
@@ -63,6 +65,7 @@ public class ResourceService : IResourceService, IDisposable
         _projectService = projectService;
         _fileSystem = fileSystem;
         _automationService = automationService;
+        _updateScheduler = updateScheduler;
 
         // RootHandlerRegistry and ResourceRegistry are constructed together so
         // they share the same root-handler instance
@@ -138,9 +141,20 @@ public class ResourceService : IResourceService, IDisposable
         }
     }
 
+    public Result StartMonitoring()
+    {
+        var initResult = Monitor.Initialize();
+        if (initResult.IsFailure)
+        {
+            return initResult;
+        }
+
+        return _updateScheduler.Start(Monitor, Policy.SearchScope);
+    }
+
     public void ScheduleResourceUpdate()
     {
-        Monitor.ScheduleResourceUpdate();
+        _updateScheduler.ScheduleUpdate();
     }
 
     public async Task<Result> UpdateResourcesAsync()
@@ -183,6 +197,7 @@ public class ResourceService : IResourceService, IDisposable
                 _messengerService.UnregisterAll(this);
 
                 // Shutdown the resource monitor immediately
+                _updateScheduler.Dispose();
                 Monitor.Shutdown();
 
                 // Delete the temp and trash folders on project close, so a closed project's data

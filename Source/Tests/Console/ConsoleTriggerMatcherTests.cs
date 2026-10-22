@@ -1,4 +1,5 @@
 using Celbridge.Console.Helpers;
+using Celbridge.Resources;
 using Celbridge.Utilities;
 
 namespace Celbridge.Tests.Console;
@@ -13,15 +14,22 @@ public class ConsoleTriggerMatcherTests
         return new ConsoleTrigger(matcher, command);
     }
 
-    [Test]
-    public void Resolve_MatchingResource_SubstitutesTheResourcePath()
+    private static ResourceChangeBatch Batch(params ResourceChange[] changes)
     {
-        var triggers = new List<ConsoleTrigger>
-        {
-            Trigger("src/**/*.py", "%run \"{resource}\""),
-        };
+        return new ResourceChangeBatch(ResourceKey.DefaultRoot, changes);
+    }
 
-        var invocations = ConsoleTriggerMatcher.Resolve(triggers, new ResourceKey("src/tools/build.py"));
+    private static ResourceChange FileAt(string path)
+    {
+        return new ResourceChange(new ResourceKey(path), ResourceItemState.File);
+    }
+
+    [Test]
+    public void Resolve_MatchingFile_SubstitutesTheResourcePath()
+    {
+        var trigger = Trigger("src/**/*.py", "%run \"{resource}\"");
+
+        var invocations = ConsoleTriggerMatcher.Resolve(trigger, Batch(FileAt("src/tools/build.py")));
 
         invocations.Should().Equal("%run \"src/tools/build.py\"");
     }
@@ -30,54 +38,58 @@ public class ConsoleTriggerMatcherTests
     public void Resolve_CommandWithoutThePlaceholder_RunsVerbatim()
     {
         // The data-cleaning shape: the changed file is the input, and the command names its own script.
-        var triggers = new List<ConsoleTrigger>
-        {
-            Trigger("data/**/*.xlsx", "%run clean_data.py"),
-        };
+        var trigger = Trigger("data/**/*.xlsx", "%run clean_data.py");
 
-        var invocations = ConsoleTriggerMatcher.Resolve(triggers, new ResourceKey("data/raw/messy.xlsx"));
+        var invocations = ConsoleTriggerMatcher.Resolve(trigger, Batch(FileAt("data/raw/messy.xlsx")));
 
         invocations.Should().Equal("%run clean_data.py");
     }
 
     [Test]
-    public void Resolve_NonMatchingResource_ResolvesNothing()
+    public void Resolve_NonMatchingFile_ResolvesNothing()
     {
-        var triggers = new List<ConsoleTrigger>
-        {
-            Trigger("data/**/*.xlsx", "%run clean_data.py"),
-        };
+        var trigger = Trigger("data/**/*.xlsx", "%run clean_data.py");
 
-        var invocations = ConsoleTriggerMatcher.Resolve(triggers, new ResourceKey("docs/notes.md"));
+        var invocations = ConsoleTriggerMatcher.Resolve(trigger, Batch(FileAt("docs/notes.md")));
 
         invocations.Should().BeEmpty();
     }
 
     [Test]
-    public void Resolve_SeveralMatchingTriggers_ResolvesEachOne()
+    public void Resolve_SeveralMatchingFiles_ResolvesEachOne()
     {
-        var triggers = new List<ConsoleTrigger>
-        {
-            Trigger("*.py", "%run \"{resource}\""),
-            Trigger("src/**", "!make"),
-            Trigger("*.csv", "%run load.py"),
-        };
+        var trigger = Trigger("*.py", "%run \"{resource}\"");
 
-        var invocations = ConsoleTriggerMatcher.Resolve(triggers, new ResourceKey("src/build.py"));
+        var invocations = ConsoleTriggerMatcher.Resolve(
+            trigger,
+            Batch(FileAt("src/build.py"), FileAt("docs/notes.md"), FileAt("tools/lint.py")));
 
-        invocations.Should().Equal("%run \"src/build.py\"", "!make");
+        invocations.Should().Equal("%run \"src/build.py\"", "%run \"tools/lint.py\"");
     }
 
     [Test]
-    public void Resolve_ResourceOutsideTheProjectRoot_ResolvesNothing()
+    public void Resolve_AFolderOrAnAbsentKey_ResolvesNothing()
+    {
+        // Both reach the trigger's subscription because the pattern can match a path inside them.
+        var trigger = Trigger("src/**", "!make");
+
+        var invocations = ConsoleTriggerMatcher.Resolve(
+            trigger,
+            Batch(
+                new ResourceChange(new ResourceKey("src/build"), ResourceItemState.Folder),
+                new ResourceChange(new ResourceKey("src/old.py"), ResourceItemState.Absent)));
+
+        invocations.Should().BeEmpty();
+    }
+
+    [Test]
+    public void Resolve_BatchOutsideTheProjectRoot_ResolvesNothing()
     {
         // Triggers watch the project tree, so the temp and logs roots cannot fire one.
-        var triggers = new List<ConsoleTrigger>
-        {
-            Trigger("*.log", "%run report.py"),
-        };
+        var trigger = Trigger("*.log", "%run report.py");
+        var change = new ResourceChange(new ResourceKey("logs:session.log"), ResourceItemState.File);
 
-        var invocations = ConsoleTriggerMatcher.Resolve(triggers, new ResourceKey("logs:session.log"));
+        var invocations = ConsoleTriggerMatcher.Resolve(trigger, new ResourceChangeBatch("logs", new[] { change }));
 
         invocations.Should().BeEmpty();
     }

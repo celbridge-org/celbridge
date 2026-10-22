@@ -103,15 +103,15 @@ public class WorkspaceLoader
             // The monitor cannot be initialized in ResourceService's constructor because
             // it reaches into the workspace via IWorkspaceWrapper, which is only set up
             // once construction completes.
-            var initMonitorResult = resourceService.Monitor.Initialize();
-            if (initMonitorResult.IsFailure)
+            var startMonitoringResult = resourceService.StartMonitoring();
+            if (startMonitoringResult.IsFailure)
             {
-                _logger.LogWarning(initMonitorResult, "Failed to initialize resource monitor");
+                _logger.LogWarning(startMonitoringResult, "Failed to start monitoring resources");
             }
 
-            // Write the Community document before the first resource scan. The temp: root that holds it is
-            // wiped on every load, and an open document checks the disk whenever the registry updates, so a
-            // Community tab left open last session has to find its file already back in place.
+            // Write the Community document before the documents are restored. Every load wipes the temp: root that
+            // contains the document. A Community tab left open last session has to find the file already back in
+            // place.
             await _communityService.SeedDocumentAsync();
 
             // Register packages before the first resource scan so the sidecar

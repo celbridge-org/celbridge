@@ -34,8 +34,8 @@ public class GetWritableStateTests
         _resourceFileSystem.GetInfoAsync(Arg.Any<ResourceKey>())
             .Returns(Result<StorageItemInfo>.Ok(writableFileInfo));
 
-        // These tests exercise the live-computation fallback for keys outside
-        // the registry, so GetResource returns Fail for every key.
+        // The state comes from the disk alone. GetResource fails for every key by default, and a test that needs a
+        // registry entry stubs one.
         _resourceRegistry = Substitute.For<IResourceRegistry>();
         _resourceRegistry.GetResource(Arg.Any<ResourceKey>())
             .Returns(Result<IResource>.Fail("not in registry"));
@@ -97,24 +97,24 @@ public class GetWritableStateTests
     }
 
     [Test]
-    public async Task ReturnsCachedState_WhenResourceIsInRegistry()
+    public async Task ReadsTheDisk_WhenTheRegistryHoldsAnOlderState()
     {
-        // ProjectTreeBuilder populates IResource.WritableState during the
-        // project walk; the query short-circuits on a registry hit and never
-        // touches the root handlers or the file system.
+        // The registry's tree records the state at the last rescan. An attribute changed since then reads stale in the
+        // tree.
         var cachedResource = new FolderResource("assets", null);
-        cachedResource.WritableState = WritableState.ReadOnlyAttribute;
-
+        cachedResource.WritableState = WritableState.Writable;
         _resourceRegistry.GetResource(Arg.Any<ResourceKey>())
             .Returns(Result<IResource>.Ok(cachedResource));
+
+        var readOnlyFileInfo = new StorageItemInfo(StorageItemKind.File, 0, DateTime.UtcNow, FileSystemAttributes.ReadOnly);
+        _resourceFileSystem.GetInfoAsync(Arg.Any<ResourceKey>())
+            .Returns(Result<StorageItemInfo>.Ok(readOnlyFileInfo));
 
         var operationService = CreateOperationService();
 
         var state = await operationService.GetWritableStateAsync(new ResourceKey("assets"));
 
         state.Should().Be(WritableState.ReadOnlyAttribute);
-        // The cached path bypasses the gateway entirely.
-        await _resourceFileSystem.DidNotReceive().GetInfoAsync(Arg.Any<ResourceKey>());
     }
 
     [Test]

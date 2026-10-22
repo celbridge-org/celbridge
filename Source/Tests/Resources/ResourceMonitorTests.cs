@@ -1,4 +1,4 @@
-using Celbridge.Messaging;
+using Celbridge.Automation;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
 using Celbridge.Tests.FileSystem;
@@ -8,16 +8,15 @@ using Microsoft.Extensions.Time.Testing;
 namespace Celbridge.Tests.Resources;
 
 /// <summary>
-/// Tests for ResourceMonitor's domain half — path-to-ResourceKey mapping, policy
-/// filtering, and messenger dispatch — driven through synthetic IFileSystemMonitor
-/// events, with no disk and no real watcher.
+/// Tests for ResourceMonitor's watchers, and for how the monitor tells the resolver of each change to a name. Synthetic
+/// IFileSystemMonitor events drive the tests, without the disk or a real watcher. ResourceSubscriptionTests covers the
+/// subscriptions.
 /// </summary>
 [TestFixture]
 public class ResourceMonitorTests
 {
     private const string ProjectBackingLocation = "C:/proj";
 
-    private IMessengerService _messengerService = null!;
     private IDispatcher _dispatcher = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
     private IResourcePolicy _policy = null!;
@@ -26,24 +25,11 @@ public class ResourceMonitorTests
     private FakeFileSystemMonitorFactory _monitorFactory = null!;
     private FakeTimeProvider _timeProvider = null!;
     private ResourceMonitor _resourceMonitor = null!;
-    private MessageHandler<object, ResourceRegistryUpdateStartingMessage>? _updateStartingHandler;
 
     [SetUp]
     public void Setup()
     {
-        _messengerService = Substitute.For<IMessengerService>();
-
-        // The substitute records registrations rather than dispatching, so capture the monitor's
-        // update-starting handler for RaiseRegistryUpdateStarting to invoke.
-        _updateStartingHandler = null;
-        _messengerService
-            .When(messenger => messenger.Register(
-                Arg.Any<object>(),
-                Arg.Any<MessageHandler<object, ResourceRegistryUpdateStartingMessage>>()))
-            .Do(callInfo => _updateStartingHandler =
-                callInfo.Arg<MessageHandler<object, ResourceRegistryUpdateStartingMessage>>());
-
-        // Run enqueued actions synchronously so message sends happen inline.
+        // Run enqueued actions synchronously so deliveries happen inline.
         _dispatcher = Substitute.For<IDispatcher>();
         _dispatcher.TryEnqueue(Arg.Any<Action>())
             .Returns(callInfo =>
@@ -81,9 +67,6 @@ public class ResourceMonitorTests
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
-        // Keep the project-tree registry debounce dormant; tests assert on
-        // messages, which are dispatched before the debounce is scheduled.
-        _workspaceWrapper.IsWorkspaceLoaded.Returns(false);
 
         _monitorFactory = new FakeFileSystemMonitorFactory();
 
@@ -92,10 +75,10 @@ public class ResourceMonitorTests
         _resourceMonitor = new ResourceMonitor(
             Substitute.For<ILogger<ResourceMonitor>>(),
             _dispatcher,
-            _messengerService,
             _workspaceWrapper,
             _monitorFactory,
             TestFileSystem.CreateLocal(),
+            Substitute.For<IAutomationService>(),
             _timeProvider);
     }
 
@@ -123,54 +106,6 @@ public class ResourceMonitorTests
 
         _monitorFactory.Created.Should().ContainSingle();
         _monitorFactory.Created[0].BackingFolderPath.Should().Be(ProjectBackingLocation);
-    }
-
-    [Test]
-    public void Created_SendsCreatedAndChangedMessages()
-    {
-        var monitor = InitializeAndGetProjectMonitor();
-        var key = StubKey("foo.txt");
-
-        monitor.RaiseCreated(PathFor("foo.txt"));
-
-        _messengerService.Received(1).Send(Arg.Is<ResourceCreatedMessage>(m => m.Resource == key));
-        _messengerService.Received(1).Send(Arg.Is<ResourceChangedMessage>(m => m.Resource == key));
-    }
-
-    [Test]
-    public void Changed_SendsChangedMessage()
-    {
-        var monitor = InitializeAndGetProjectMonitor();
-        var key = StubKey("foo.txt");
-
-        monitor.RaiseChanged(PathFor("foo.txt"));
-
-        _messengerService.Received(1).Send(Arg.Is<ResourceChangedMessage>(m => m.Resource == key));
-    }
-
-    [Test]
-    public void Deleted_SendsDeletedMessage()
-    {
-        var monitor = InitializeAndGetProjectMonitor();
-        var key = StubKey("foo.txt");
-
-        monitor.RaiseDeleted(PathFor("foo.txt"));
-
-        _messengerService.Received(1).Send(Arg.Is<ResourceDeletedMessage>(m => m.Resource == key));
-    }
-
-    [Test]
-    public void Renamed_SendsRenamedAndChangedMessages()
-    {
-        var monitor = InitializeAndGetProjectMonitor();
-        var oldKey = StubKey("old.txt");
-        var newKey = StubKey("new.txt");
-
-        monitor.RaiseRenamed(PathFor("old.txt"), PathFor("new.txt"));
-
-        _messengerService.Received(1).Send(Arg.Is<ResourceRenamedMessage>(
-            m => m.OldResource == oldKey && m.NewResource == newKey));
-        _messengerService.Received(1).Send(Arg.Is<ResourceChangedMessage>(m => m.Resource == newKey));
     }
 
     [Test]
@@ -213,69 +148,11 @@ public class ResourceMonitorTests
 
         _projectHandler.Received(1).RecordNameChanged(PathFor("node_modules/created"));
         _projectHandler.Received(1).RecordNameChanged(PathFor("node_modules/deleted"));
-        _messengerService.DidNotReceive().Send(Arg.Any<ResourceCreatedMessage>());
-        _messengerService.DidNotReceive().Send(Arg.Any<ResourceDeletedMessage>());
-    }
-
-    [Test]
-    public void Changed_PolicyDeniesRead_DropsEvent()
-    {
-        var monitor = InitializeAndGetProjectMonitor();
-        var key = StubKey("secret.txt");
-        _policy.Evaluate(key, ResourceAction.Read, Arg.Any<bool>())
-            .Returns(Result.Fail("denied"));
-
-        monitor.RaiseChanged(PathFor("secret.txt"));
-
-        _messengerService.DidNotReceive().Send(Arg.Any<ResourceChangedMessage>());
-    }
-
-    [Test]
-    public void Changed_PathIsSearchExcluded_DropsEvent()
-    {
-        // The tree walk skips the path, so a rebuild would produce the same tree.
-        var monitor = InitializeAndGetProjectMonitor();
-        var key = StubKey("node_modules/pkg/index.js");
-        _policy.IsSearchExcluded(key, Arg.Any<bool>()).Returns(true);
-
-        monitor.RaiseChanged(PathFor("node_modules/pkg/index.js"));
-
-        _messengerService.DidNotReceive().Send(Arg.Any<ResourceChangedMessage>());
-    }
-
-    [Test]
-    public void Changed_PathCannotBeKeyed_DropsEvent()
-    {
-        var monitor = InitializeAndGetProjectMonitor();
-        // No StubKey call, so GetResourceKey returns the default failure.
-
-        monitor.RaiseChanged(PathFor("unmapped.txt"));
-
-        _messengerService.DidNotReceive().Send(Arg.Any<ResourceChangedMessage>());
-    }
-
-    [Test]
-    public async Task MonitoringDesynchronized_RescansTheProjectTree()
-    {
-        var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
-        resourceService.UpdateResourcesAsync().Returns(Result.Ok());
-        _workspaceWrapper.IsWorkspaceLoaded.Returns(true);
-
-        var monitor = InitializeAndGetProjectMonitor();
-
-        // No path keys in this fixture, so a rescan can only have come from the desynchronization.
-        monitor.RaiseDesynchronized();
-        AdvancePastTheUpdateDebounce();
-
-        await resourceService.Received(1).UpdateResourcesAsync();
     }
 
     [Test]
     public void MonitoringDesynchronized_InvalidatesThePathCache()
     {
-        _workspaceWrapper.WorkspaceService.ResourceService.UpdateResourcesAsync().Returns(Result.Ok());
-        _workspaceWrapper.IsWorkspaceLoaded.Returns(true);
-
         var monitor = InitializeAndGetProjectMonitor();
 
         // A folder verified before the lost events may since have been replaced by a reparse point, and
@@ -286,42 +163,6 @@ public class ResourceMonitorTests
     }
 
     [Test]
-    public async Task ScheduledUpdate_IsDroppedWhenAnUpdateAlreadyReadTheFileSystem()
-    {
-        var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
-        resourceService.UpdateResourcesAsync().Returns(Result.Ok());
-        _workspaceWrapper.IsWorkspaceLoaded.Returns(true);
-
-        InitializeAndGetProjectMonitor();
-
-        // The shape of a mutating command: the watcher reports the change, then the command's own registry
-        // update reads the file system before the debounce elapses.
-        _resourceMonitor.ScheduleResourceUpdate();
-        RaiseRegistryUpdateStarting();
-        AdvancePastTheUpdateDebounce();
-
-        await resourceService.DidNotReceive().UpdateResourcesAsync();
-    }
-
-    [Test]
-    public async Task ScheduledUpdate_RunsWhenTheEventFollowsTheLastRead()
-    {
-        var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
-        resourceService.UpdateResourcesAsync().Returns(Result.Ok());
-        _workspaceWrapper.IsWorkspaceLoaded.Returns(true);
-
-        InitializeAndGetProjectMonitor();
-
-        // A change that lands after the read began may sit in a folder the walk has already passed, so it
-        // has to be rescanned.
-        RaiseRegistryUpdateStarting();
-        _resourceMonitor.ScheduleResourceUpdate();
-        AdvancePastTheUpdateDebounce();
-
-        await resourceService.Received(1).UpdateResourcesAsync();
-    }
-
-    [Test]
     public void Shutdown_DisposesMonitors()
     {
         var monitor = InitializeAndGetProjectMonitor();
@@ -329,17 +170,6 @@ public class ResourceMonitorTests
         _resourceMonitor.Shutdown();
 
         monitor.Disposed.Should().BeTrue();
-    }
-
-    private void AdvancePastTheUpdateDebounce()
-    {
-        _timeProvider.Advance(TimeSpan.FromMilliseconds(250));
-    }
-
-    private void RaiseRegistryUpdateStarting()
-    {
-        _updateStartingHandler.Should().NotBeNull();
-        _updateStartingHandler!.Invoke(_resourceMonitor, new ResourceRegistryUpdateStartingMessage());
     }
 
     private FakeFileSystemMonitor InitializeAndGetProjectMonitor()
@@ -353,12 +183,5 @@ public class ResourceMonitorTests
     private static string PathFor(string fileName)
     {
         return ProjectBackingLocation + "/" + fileName;
-    }
-
-    private ResourceKey StubKey(string fileName)
-    {
-        var key = new ResourceKey(fileName);
-        _projectHandler.GetResourceKey(PathFor(fileName)).Returns(Result<ResourceKey>.Ok(key));
-        return key;
     }
 }

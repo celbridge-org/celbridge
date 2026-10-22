@@ -7,26 +7,8 @@ namespace Celbridge.Documents.Views;
 
 public abstract partial class DocumentView : UserControl, IDocumentView
 {
-    private IResourceRegistry? _resourceRegistry;
     private IRootHandlerRegistry? _rootHandlers;
     private IResourceFileSystem? _resourceFileSystem;
-
-    /// <summary>
-    /// Provides access to the resource registry for file resource validation.
-    /// Lazily initialized from the workspace wrapper.
-    /// </summary>
-    protected IResourceRegistry ResourceRegistry
-    {
-        get
-        {
-            if (_resourceRegistry is null)
-            {
-                var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
-                _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
-            }
-            return _resourceRegistry;
-        }
-    }
 
     /// <summary>
     /// Provides access to the root handler registry for resolving resource keys.
@@ -89,20 +71,11 @@ public abstract partial class DocumentView : UserControl, IDocumentView
     }
 
     /// <summary>
-    /// Validates that the resource exists in the registry and on disk, then sets the ViewModel properties.
-    /// Subclasses that override this must call base first.
+    /// Validates that the resource exists on disk, then sets the ViewModel properties. The registry is not consulted,
+    /// since it learns of a move only at the next rescan. Subclasses that override this must call base first.
     /// </summary>
     public virtual async Task<Result> SetFileResource(ResourceKey fileResource)
     {
-        // The registry only contains project: resources. Virtual-root keys (utils:, temp:, logs:) are
-        // addressable but never in the registry, so the ResolveResourcePath and GetInfoAsync checks below
-        // validate their existence on all roots instead.
-        if (fileResource.Root == ResourceKey.DefaultRoot
-            && ResourceRegistry.GetResource(fileResource).IsFailure)
-        {
-            return Result.Fail($"File resource does not exist in resource registry: {fileResource}");
-        }
-
         var resolveResult = RootHandlers.ResolveResourcePath(fileResource);
         if (resolveResult.IsFailure)
         {

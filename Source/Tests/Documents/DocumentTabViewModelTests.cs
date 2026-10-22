@@ -3,6 +3,7 @@ using Celbridge.Documents.ViewModels;
 using Celbridge.Messaging;
 using Celbridge.Messaging.Services;
 using Celbridge.Resources;
+using Celbridge.Tests.Helpers;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -20,7 +21,7 @@ public class DocumentTabViewModelTests
     private ICommandService _commandService = null!;
     private ILogger<DocumentTabViewModel> _logger = null!;
     private IResourceFileSystem _resourceFileSystem = null!;
-    private IResourceRegistry _resourceRegistry = null!;
+    private FakeResourceMonitor _resourceMonitor = null!;
     private IResourceOperationService _resourceOperations = null!;
     private IResourceService _resourceService = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
@@ -39,18 +40,13 @@ public class DocumentTabViewModelTests
         var existingFileInfo = new StorageItemInfo(StorageItemKind.File, 0, DateTime.UtcNow, FileSystemAttributes.None);
         _resourceFileSystem.GetInfoAsync(Arg.Any<ResourceKey>()).Returns(Result<StorageItemInfo>.Ok(existingFileInfo));
 
-        _resourceRegistry = Substitute.For<IResourceRegistry>();
-        // Default to "not in registry" so stale OnResourceRegistryUpdatedMessage
-        // handlers from prior tests (kept alive by the WeakReferenceMessenger)
-        // don't null-deref when a new test broadcasts a registry-updated message.
-        _resourceRegistry.GetResource(Arg.Any<ResourceKey>())
-            .Returns(Result<IResource>.Fail("not found"));
+        _resourceMonitor = new FakeResourceMonitor();
 
         _resourceOperations = Substitute.For<IResourceOperationService>();
         _resourceOperations.GetWritableStateAsync(Arg.Any<ResourceKey>()).Returns(WritableState.Writable);
 
         _resourceService = Substitute.For<IResourceService>();
-        _resourceService.Registry.Returns(_resourceRegistry);
+        _resourceService.Monitor.Returns(_resourceMonitor);
         _resourceService.FileSystem.Returns(_resourceFileSystem);
         _resourceService.Operations.Returns(_resourceOperations);
 
@@ -187,60 +183,141 @@ public class DocumentTabViewModelTests
     }
 
     [Test]
-    public void ResourceRegistryUpdated_RequeriesAndAppliesNewWritableState_WhenStateHasChanged()
+    public void AChange_AppliesANewWritableState()
     {
         var documentView = Substitute.For<IDocumentView>();
         documentView.WritableState.Returns(WritableState.Writable);
 
         var fileResource = new ResourceKey("file.md");
-        var resource = Substitute.For<IResource>();
-        _resourceRegistry.GetResource(fileResource).Returns(Result<IResource>.Ok(resource));
         _resourceOperations.GetWritableStateAsync(fileResource).Returns(WritableState.ReadOnlyAttribute);
 
-        var viewModel = CreateViewModel(fileResource, documentView);
+        CreateViewModel(fileResource, documentView);
 
-        _messengerService.Send(new ResourceRegistryUpdatedMessage());
+        _resourceMonitor.DeliverChange(fileResource, ResourceItemState.File);
 
         documentView.Received(1).SetWritableState(WritableState.ReadOnlyAttribute);
     }
 
     [Test]
-    public void ResourceRegistryUpdated_RequeriesAndAppliesNewWritableState_OnUnsetDirection()
+    public void AChange_AppliesANewWritableState_OnUnsetDirection()
     {
-        // Mirrors the user-visible "clear read-only externally" path: the cached
-        // state transitions from ReadOnlyAttribute back to Writable and the editor
-        // must lose its read-only signal.
+        // Mirrors the user-visible "clear read-only externally" path: the state transitions from ReadOnlyAttribute
+        // back to Writable and the editor must lose its read-only signal.
         var documentView = Substitute.For<IDocumentView>();
         documentView.WritableState.Returns(WritableState.ReadOnlyAttribute);
 
         var fileResource = new ResourceKey("file.md");
-        var resource = Substitute.For<IResource>();
-        _resourceRegistry.GetResource(fileResource).Returns(Result<IResource>.Ok(resource));
         _resourceOperations.GetWritableStateAsync(fileResource).Returns(WritableState.Writable);
 
-        var viewModel = CreateViewModel(fileResource, documentView);
+        CreateViewModel(fileResource, documentView);
 
-        _messengerService.Send(new ResourceRegistryUpdatedMessage());
+        _resourceMonitor.DeliverChange(fileResource, ResourceItemState.File);
 
         documentView.Received(1).SetWritableState(WritableState.Writable);
     }
 
     [Test]
-    public void ResourceRegistryUpdated_SkipsSetWritableState_WhenStateIsUnchanged()
+    public void AChange_SkipsSetWritableState_WhenStateIsUnchanged()
     {
         var documentView = Substitute.For<IDocumentView>();
         documentView.WritableState.Returns(WritableState.Writable);
 
         var fileResource = new ResourceKey("file.md");
-        var resource = Substitute.For<IResource>();
-        _resourceRegistry.GetResource(fileResource).Returns(Result<IResource>.Ok(resource));
         _resourceOperations.GetWritableStateAsync(fileResource).Returns(WritableState.Writable);
 
-        var viewModel = CreateViewModel(fileResource, documentView);
+        CreateViewModel(fileResource, documentView);
 
-        _messengerService.Send(new ResourceRegistryUpdatedMessage());
+        _resourceMonitor.DeliverChange(fileResource, ResourceItemState.File);
 
         documentView.DidNotReceive().SetWritableState(Arg.Any<WritableState>());
+    }
+
+    [Test]
+    public void AResync_AppliesANewWritableState()
+    {
+        // The lost events may have included an attribute change.
+        var documentView = Substitute.For<IDocumentView>();
+        documentView.WritableState.Returns(WritableState.Writable);
+
+        var fileResource = new ResourceKey("file.md");
+        _resourceOperations.GetWritableStateAsync(fileResource).Returns(WritableState.ReadOnlyAttribute);
+
+        CreateViewModel(fileResource, documentView);
+
+        _resourceMonitor.DeliverResync(ResourceKey.DefaultRoot);
+
+        documentView.Received(1).SetWritableState(WritableState.ReadOnlyAttribute);
+    }
+
+    [Test]
+    public void AChange_ClosesTheTab_WhenTheFileIsAbsentFromDisk()
+    {
+        var fileResource = new ResourceKey("deleted.md");
+        CreateViewModel(fileResource, Substitute.For<IDocumentView>());
+        StubFileIsGone();
+
+        _resourceMonitor.DeliverChange(fileResource, ResourceItemState.Absent);
+
+        _commandService.ReceivedWithAnyArgs(1).Execute<ICloseDocumentCommand>();
+    }
+
+    [Test]
+    public void AnAbsentChange_LeavesTheTabOpen_WhenTheFileIsBackOnDisk()
+    {
+        // A save can write a temporary file, delete the original and rename the temporary file. The file is then back
+        // in place by the time the tab checks the disk.
+        var fileResource = new ResourceKey("saved.md");
+        CreateViewModel(fileResource, Substitute.For<IDocumentView>());
+
+        _resourceMonitor.DeliverChange(fileResource, ResourceItemState.Absent);
+
+        _commandService.DidNotReceiveWithAnyArgs().Execute<ICloseDocumentCommand>();
+    }
+
+    [Test]
+    public void AKeyChange_IsAppliedAtOnce()
+    {
+        var oldResource = new ResourceKey("old.md");
+        var newResource = new ResourceKey("new.md");
+        CreateViewModel(oldResource, Substitute.For<IDocumentView>());
+
+        var documentChanges = new List<DocumentResourceChangedMessage>();
+        var probe = new object();
+        _messengerService.Register<DocumentResourceChangedMessage>(
+            probe,
+            (object _, DocumentResourceChangedMessage message) => documentChanges.Add(message));
+
+        _messengerService.Send(new ResourceKeyChangedMessage(oldResource, newResource));
+
+        _messengerService.UnregisterAll(probe);
+
+        documentChanges.Should().Equal(new DocumentResourceChangedMessage(oldResource, newResource));
+    }
+
+    [Test]
+    public void AKeyChange_FollowsTheNewKeyBeforeTheTabTakesIt()
+    {
+        // The watcher reports the old key absent moments after the move, while the document may still be loading
+        // under its new key.
+        var oldResource = new ResourceKey("old.md");
+        var newResource = new ResourceKey("new.md");
+        CreateViewModel(oldResource, Substitute.For<IDocumentView>());
+
+        _messengerService.Send(new ResourceKeyChangedMessage(oldResource, newResource));
+
+        _resourceMonitor.KeySubscriptions.Single().Resources.Should().Equal(newResource);
+    }
+
+    [Test]
+    public async Task CloseDocument_DisposesTheSubscription()
+    {
+        var documentView = Substitute.For<IDocumentView>();
+        documentView.CanClose().Returns(Task.FromResult(true));
+        var viewModel = CreateViewModel(new ResourceKey("file.md"), documentView);
+
+        await viewModel.CloseDocument(forceClose: false);
+
+        _resourceMonitor.KeySubscriptions.Should().BeEmpty();
     }
 
     [Test]
