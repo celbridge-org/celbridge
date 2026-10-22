@@ -10,7 +10,7 @@ namespace Celbridge.Resources.Services;
 /// </summary>
 internal sealed class ChangeBatcher : IDisposable
 {
-    // The events of one operation spanned at most 10 ms in recordings of the watcher on macOS.
+    // Long enough to collect the events of one file operation, a save or a checkout, into one batch.
     internal static readonly TimeSpan BatchInterval = TimeSpan.FromMilliseconds(100);
 
     private enum ItemState
@@ -58,8 +58,7 @@ internal sealed class ChangeBatcher : IDisposable
     }
 
     /// <summary>
-    /// Adds a touched key to the pending batch. A key touched while no subscription may want a change in the root is
-    /// dropped.
+    /// Adds a touched key to the pending batch, each key once. Drops the key when no subscription follows the root.
     /// </summary>
     public void AddTouchedKey(ResourceKey resource)
     {

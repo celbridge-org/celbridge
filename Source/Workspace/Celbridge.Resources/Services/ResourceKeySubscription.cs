@@ -93,7 +93,7 @@ internal sealed class ResourceKeySubscription : IResourceKeySubscription
         _handlers.OnResync(resync);
     }
 
-    // Looks up the path, then the path of each folder above it.
+    // Looks up the key's path, then the path of each folder above it. A key's path always separates names with '/'.
     private static bool IsReached(string resourcePath, IReadOnlySet<string> touchedPaths)
     {
         var currentPath = resourcePath;
