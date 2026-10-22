@@ -248,48 +248,41 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         ChangeBatcher batcher,
         FileSystemMonitorEvent monitorEvent)
     {
-        // The resolver learns of each change to a name before anything is batched, ignored paths included. A changed
-        // event leaves the listings alone, since only a change to a name alters a listing.
-        if (monitorEvent.Kind != FileSystemMonitorEventKind.Changed)
-        {
-            handler.RecordNameChanged(monitorEvent.Path);
-            if (monitorEvent.OldPath is not null)
-            {
-                handler.RecordNameChanged(monitorEvent.OldPath);
-            }
-        }
+        // Each change to a name reaches the resolver, ignored paths included. A changed event leaves the listings alone,
+        // since only a change to a name alters a listing.
+        bool isNameChange = monitorEvent.Kind != FileSystemMonitorEventKind.Changed;
 
-        AddTouchedPath(handler, batcher, monitorEvent.Path);
+        batcher.AddTouchedPath(monitorEvent.Path, GetBatchedKey(handler, monitorEvent.Path), isNameChange);
         if (monitorEvent.OldPath is not null)
         {
-            AddTouchedPath(handler, batcher, monitorEvent.OldPath);
+            batcher.AddTouchedPath(monitorEvent.OldPath, GetBatchedKey(handler, monitorEvent.OldPath), isNameChange);
         }
     }
 
-    // Adds the key of a touched path to the root's batch. A path that cannot be keyed, the root folder itself and a
-    // path in the reserved .git folder are dropped.
-    private void AddTouchedPath(IResourceRootHandler handler, ChangeBatcher batcher, string fullPath)
+    // Returns the key that a touched path adds to the root's batch. The empty key is returned for the root folder
+    // itself, for a path in the reserved .git folder, and for a path outside every valid key.
+    private ResourceKey GetBatchedKey(IResourceRootHandler handler, string fullPath)
     {
         var keyResult = handler.GetResourceKey(fullPath);
         if (keyResult.IsFailure)
         {
-            return;
+            return ResourceKey.Empty;
         }
         var resource = keyResult.Value;
 
         if (resource.IsEmpty)
         {
-            return;
+            return ResourceKey.Empty;
         }
 
         var policy = _workspaceWrapper.WorkspaceService.ResourceService.Policy;
         var policyResult = policy.Evaluate(resource, ResourceAction.Read);
         if (policyResult.IsFailure)
         {
-            return;
+            return ResourceKey.Empty;
         }
 
-        batcher.AddTouchedKey(resource);
+        return resource;
     }
 
     // The monitor lost events, so which resources were missed is unknown. The path cache is dropped, since one of the
@@ -299,6 +292,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
     {
         _logger.LogWarning(
             "Resource monitoring for root '{RootName}' lost events; resyncing its subscribers", handler.RootName);
+        _automationService.LogEvent(new ResourceEventsLostEvent(handler.RootName));
 
         handler.InvalidatePathCache();
 

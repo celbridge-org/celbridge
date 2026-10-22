@@ -192,6 +192,58 @@ public class FolderCacheTests
     }
 
     [Test]
+    public void RecordNameChangedMakesTheListingStale()
+    {
+        WriteFile("a.txt");
+        var cache = CreateCache();
+        var backing = cache.Add(_backingFolderPath, parent: null);
+        cache.FindName(backing, "a.txt").Should().Be(NameLookup.Found);
+
+        cache.RecordNameChanged(PathFor("b.txt"));
+
+        cache.FindName(backing, "a.txt").Should().Be(NameLookup.Found);
+        cache.ListingCount.Should().Be(2);
+    }
+
+    [Test]
+    public void FindNameAcceptsAStaleListingStartedAfterTheTimestamp()
+    {
+        WriteFile("a.txt");
+        var cache = CreateCache();
+        var backing = cache.Add(_backingFolderPath, parent: null);
+        var timestamp = cache.GetListingTimestamp();
+        cache.FindName(backing, "a.txt", timestamp).Should().Be(NameLookup.Found);
+
+        cache.RecordNameChanged(PathFor("b.txt"));
+
+        // The listing answers both ways for a lookup given the timestamp.
+        cache.FindName(backing, "a.txt", timestamp).Should().Be(NameLookup.Found);
+        cache.FindName(backing, "missing.txt", timestamp).Should().Be(NameLookup.Missing);
+        cache.ListingCount.Should().Be(1);
+
+        // A lookup without the timestamp lists the stale folder again.
+        cache.FindName(backing, "a.txt").Should().Be(NameLookup.Found);
+        cache.ListingCount.Should().Be(2);
+    }
+
+    [Test]
+    public void FindNameListsAgainForATimestampReadAfterTheListing()
+    {
+        WriteFile("a.txt");
+        var cache = CreateCache();
+        var backing = cache.Add(_backingFolderPath, parent: null);
+        cache.FindName(backing, "a.txt").Should().Be(NameLookup.Found);
+
+        WriteFile("b.txt");
+        cache.RecordNameChanged(PathFor("b.txt"));
+        var timestamp = cache.GetListingTimestamp();
+
+        cache.FindName(backing, "b.txt", timestamp).Should().Be(NameLookup.Found);
+        cache.FindName(backing, "a.txt", timestamp).Should().Be(NameLookup.Found);
+        cache.ListingCount.Should().Be(2);
+    }
+
+    [Test]
     public void TheNonePolicyKeepsNoListings()
     {
         var cache = CreateCache(ListingPolicy.None);

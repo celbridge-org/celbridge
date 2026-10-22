@@ -54,9 +54,26 @@ internal sealed class ChangeBatcher : IDisposable
     }
 
     /// <summary>
-    /// Adds a touched key to the pending batch, each key once. Drops the key when no subscription follows the root.
+    /// Records a touched path with the root's resolver when the touch changed a name, then adds the path's key to the
+    /// pending batch. An empty key, for a path the batches leave out, is only recorded with the resolver.
     /// </summary>
-    public void AddTouchedKey(ResourceKey resource)
+    public void AddTouchedPath(string fullPath, ResourceKey resource, bool isNameChange)
+    {
+        // A delivery accepts any listing started after its batch was taken. That listing reflects every name change in
+        // the batch only because each change reaches the resolver before its key joins a batch.
+        if (isNameChange)
+        {
+            _handler.RecordNameChanged(fullPath);
+        }
+
+        if (!resource.IsEmpty)
+        {
+            AddTouchedKey(resource);
+        }
+    }
+
+    // Adds a touched key to the pending batch, each key once. Drops the key when no subscription follows the root.
+    private void AddTouchedKey(ResourceKey resource)
     {
         if (!_subscriptions.HasSubscriptionsFor(_handler.RootName))
         {
@@ -163,7 +180,10 @@ internal sealed class ChangeBatcher : IDisposable
         {
             var subscriptions = _subscriptions.GetSubscriptionsFor(_handler.RootName);
 
-            await DeliverChangesAsync(keys, subscriptions);
+            // Created after the batch was taken, when every change in the batch has been recorded with the resolver.
+            var itemChecker = new BatchItemChecker(_handler, _fileSystem);
+
+            await DeliverChangesAsync(keys, subscriptions, itemChecker);
 
             if (isResync)
             {
@@ -212,7 +232,10 @@ internal sealed class ChangeBatcher : IDisposable
         _timer = CreateTimer(dueTime);
     }
 
-    private async Task DeliverChangesAsync(List<ResourceKey> keys, RootSubscriptions subscriptions)
+    private async Task DeliverChangesAsync(
+        List<ResourceKey> keys,
+        RootSubscriptions subscriptions,
+        BatchItemChecker itemChecker)
     {
         if (keys.Count == 0
             || subscriptions.IsEmpty)
@@ -254,7 +277,7 @@ internal sealed class ChangeBatcher : IDisposable
         {
             if (!itemStates.ContainsKey(key))
             {
-                itemStates[key] = await CheckItemAsync(key);
+                itemStates[key] = await itemChecker.CheckAsync(key);
             }
         }
 
@@ -319,32 +342,6 @@ internal sealed class ChangeBatcher : IDisposable
                 _logger.LogError(ex, "A subscriber to the changes in root '{RootName}' failed", _handler.RootName);
             }
         });
-    }
-
-    // An item exists only when its key resolves. The resolver refuses a link, and a key that differs from the name
-    // stored on disk.
-    private async Task<ResourceItemState> CheckItemAsync(ResourceKey resource)
-    {
-        var resolveResult = _handler.Resolve(resource);
-        if (resolveResult.IsFailure)
-        {
-            return ResourceItemState.Absent;
-        }
-        var path = resolveResult.Value;
-
-        var infoResult = await _fileSystem.GetInfoAsync(path);
-        if (infoResult.IsFailure)
-        {
-            return ResourceItemState.Absent;
-        }
-        var info = infoResult.Value;
-
-        return info.Kind switch
-        {
-            StorageItemKind.File => ResourceItemState.File,
-            StorageItemKind.Folder => ResourceItemState.Folder,
-            _ => ResourceItemState.Absent,
-        };
     }
 
     public void Dispose()

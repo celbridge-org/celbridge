@@ -158,6 +158,46 @@ public class ResourceSubscriptionTests
     }
 
     [Test]
+    public void ABatchListsEachFolderOnceWhileChangesKeepArriving()
+    {
+        // During a burst the watcher reports more changes while a batch is checked on disk. Each change makes the
+        // folder's listing stale, so checking every key against a current listing would list the folder once per key.
+        var batches = Subscribe("**");
+        var files = Enumerable.Range(0, 20).Select(index => $"burst/file{index}.txt").ToList();
+        foreach (var file in files)
+        {
+            WriteProjectFile(file);
+        }
+
+        var localFileSystem = TestFileSystem.CreateLocal();
+        var lateFileCount = 0;
+        _fileSystem.GetInfoAsync(Arg.Any<string>())
+            .Returns(callInfo =>
+            {
+                var lateFile = $"burst/late{lateFileCount++}.txt";
+                WriteProjectFile(lateFile);
+                _watcher.RaiseCreated(PathFor(lateFile));
+                return localFileSystem.GetInfoAsync(callInfo.Arg<string>());
+            });
+
+        foreach (var file in files)
+        {
+            _watcher.RaiseCreated(PathFor(file));
+        }
+        var handler = (ProjectRootHandler)_rootHandlers[ResourceKey.DefaultRoot];
+        var listingsBefore = handler.ListingCount;
+
+        AdvanceOneInterval();
+
+        var changes = batches.Single().Changes;
+        changes.Should().HaveCount(files.Count);
+        changes.Should().OnlyContain(change => change.State == ResourceItemState.File);
+
+        // The project folder and the burst folder, each listed once.
+        (handler.ListingCount - listingsBefore).Should().BeLessThanOrEqualTo(2);
+    }
+
+    [Test]
     public void AKeyTouchedSeveralTimesAppearsOnceInABatch()
     {
         var batches = Subscribe("**");

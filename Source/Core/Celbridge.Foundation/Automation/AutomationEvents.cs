@@ -34,6 +34,11 @@ public record ResourceRegistryUpdatedEvent(long ElapsedMs) : AutomationEvent;
 public record ResourceChangesDeliveredEvent(string RootName, int Keys, long ElapsedMs) : AutomationEvent;
 
 /// <summary>
+/// The watcher of a root lost events, so the root's subscriptions are sent a resync.
+/// </summary>
+public record ResourceEventsLostEvent(string RootName) : AutomationEvent;
+
+/// <summary>
 /// The Explorer has rebuilt the rows it shows. Rows is how many rows it shows, and ElapsedMs is how long the
 /// rebuild took, in milliseconds.
 /// </summary>

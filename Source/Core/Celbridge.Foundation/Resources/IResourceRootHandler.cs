@@ -101,7 +101,7 @@ public interface IResourceRootHandler
 
     /// <summary>
     /// Records that the name of an item at the absolute path may have changed, without saying how. The listing of
-    /// the item's folder is dropped, so the folder is listed again on its next use. Every cached folder at or below
+    /// the item's folder is marked stale, so the folder is listed again on its next use. Every cached folder at or below
     /// the path is dropped too. Call it for each create, delete or rename that the watcher reports.
     /// </summary>
     void RecordNameChanged(string absolutePath);

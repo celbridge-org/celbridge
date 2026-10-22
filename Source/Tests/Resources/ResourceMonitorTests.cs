@@ -24,6 +24,7 @@ public class ResourceMonitorTests
     private Dictionary<string, IResourceRootHandler> _rootHandlers = null!;
     private FakeFileSystemMonitorFactory _monitorFactory = null!;
     private FakeTimeProvider _timeProvider = null!;
+    private IAutomationService _automationService = null!;
     private ResourceMonitor _resourceMonitor = null!;
 
     [SetUp]
@@ -71,6 +72,7 @@ public class ResourceMonitorTests
         _monitorFactory = new FakeFileSystemMonitorFactory();
 
         _timeProvider = new FakeTimeProvider();
+        _automationService = Substitute.For<IAutomationService>();
 
         _resourceMonitor = new ResourceMonitor(
             Substitute.For<ILogger<ResourceMonitor>>(),
@@ -78,7 +80,7 @@ public class ResourceMonitorTests
             _workspaceWrapper,
             _monitorFactory,
             TestFileSystem.CreateLocal(),
-            Substitute.For<IAutomationService>(),
+            _automationService,
             _timeProvider);
     }
 
@@ -160,6 +162,17 @@ public class ResourceMonitorTests
         monitor.RaiseDesynchronized();
 
         _projectHandler.Received(1).InvalidatePathCache();
+    }
+
+    [Test]
+    public void MonitoringDesynchronized_IsReported()
+    {
+        var monitor = InitializeAndGetProjectMonitor();
+
+        monitor.RaiseDesynchronized();
+
+        _automationService.Received(1).LogEvent(Arg.Is<ResourceEventsLostEvent>(
+            lost => lost.RootName == ResourceKey.DefaultRoot));
     }
 
     [Test]
