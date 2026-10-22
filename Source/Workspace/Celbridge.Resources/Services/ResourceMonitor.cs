@@ -1,7 +1,5 @@
-using System.Diagnostics;
 using Celbridge.Logging;
 using Celbridge.Workspace;
-using Timer = System.Timers.Timer;
 
 namespace Celbridge.Resources.Services;
 
@@ -11,7 +9,7 @@ namespace Celbridge.Resources.Services;
 /// </summary>
 public class ResourceMonitor : IResourceMonitor, IDisposable
 {
-    private const int UpdateDebounceMs = 250;
+    private static readonly TimeSpan UpdateDebounceInterval = TimeSpan.FromMilliseconds(250);
 
     private sealed class WatchedRoot
     {
@@ -42,9 +40,13 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
     // One batcher for each watched root, by root name. Guarded by the lock on the dictionary.
     private readonly Dictionary<string, ChangeBatcher> _batchers = new(StringComparer.Ordinal);
 
-    private Timer? _updateDebounceTimer;
-    private long _updateRequestedTimestamp;
-    private long _updateStartedTimestamp;
+    private ITimer? _updateDebounceTimer;
+
+    // Each update request and each start of a registry update takes the next number, so comparing the two numbers
+    // tells which came last.
+    private long _updateSequence;
+    private long _updateRequestedSequence;
+    private long _updateStartedSequence;
     private bool _isDisposed;
 
     public ResourceMonitor(
@@ -391,7 +393,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
     {
         lock (_updateLock)
         {
-            _updateStartedTimestamp = Stopwatch.GetTimestamp();
+            _updateStartedSequence = ++_updateSequence;
         }
     }
 
@@ -431,26 +433,24 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
         lock (_updateLock)
         {
-            _updateRequestedTimestamp = Stopwatch.GetTimestamp();
+            _updateRequestedSequence = ++_updateSequence;
 
             if (_updateDebounceTimer != null)
             {
-                // Timer already running - reset it
-                _updateDebounceTimer.Stop();
-                _updateDebounceTimer.Start();
+                _updateDebounceTimer.Change(UpdateDebounceInterval, Timeout.InfiniteTimeSpan);
             }
             else
             {
-                // Start new debounce timer
-                _updateDebounceTimer = new Timer(UpdateDebounceMs);
-                _updateDebounceTimer.AutoReset = false;
-                _updateDebounceTimer.Elapsed += OnDebounceTimerElapsed;
-                _updateDebounceTimer.Start();
+                _updateDebounceTimer = _timeProvider.CreateTimer(
+                    callback: _ => OnDebounceTimerElapsed(),
+                    state: null,
+                    dueTime: UpdateDebounceInterval,
+                    period: Timeout.InfiniteTimeSpan);
             }
         }
     }
 
-    private void OnDebounceTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
+    private void OnDebounceTimerElapsed()
     {
         bool alreadyCovered;
         lock (_updateLock)
@@ -461,7 +461,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
             // A read that began after the last request enumerated a file system that already contained
             // whatever those requests described. Mutating commands rebuild the registry themselves, so
             // without this every command is trailed by a redundant watcher-driven rescan.
-            alreadyCovered = _updateStartedTimestamp > _updateRequestedTimestamp;
+            alreadyCovered = _updateStartedSequence > _updateRequestedSequence;
         }
 
         if (alreadyCovered)

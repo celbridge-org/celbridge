@@ -5,6 +5,7 @@ using Celbridge.Resources.Services.Roots;
 using Celbridge.Tests.FileSystem;
 using Celbridge.Tests.Helpers;
 using Celbridge.Workspace;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Celbridge.Tests.Resources;
 
@@ -42,7 +43,7 @@ public class ResourceSubscriptionTests
     }
 
     private string _projectFolder = null!;
-    private ManualTimeProvider _timeProvider = null!;
+    private FakeTimeProvider _timeProvider = null!;
     private ILocalFileSystem _fileSystem = null!;
     private Dictionary<string, IResourceRootHandler> _rootHandlers = null!;
     private IResourceService _resourceService = null!;
@@ -59,7 +60,7 @@ public class ResourceSubscriptionTests
         }
         Directory.CreateDirectory(_projectFolder);
 
-        _timeProvider = new ManualTimeProvider();
+        _timeProvider = new FakeTimeProvider();
 
         // Forward to the real file system, so a test can check which paths the disk check read.
         var localFileSystem = TestFileSystem.CreateLocal();

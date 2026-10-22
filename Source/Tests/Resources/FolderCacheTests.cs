@@ -1,5 +1,6 @@
 using Celbridge.Resources;
 using Celbridge.Resources.Helpers;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Celbridge.Tests.Resources;
 
@@ -11,15 +12,6 @@ namespace Celbridge.Tests.Resources;
 [TestFixture]
 public class FolderCacheTests
 {
-    private sealed class FakeTimeProvider : TimeProvider
-    {
-        private DateTimeOffset _now = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
-
-        public override DateTimeOffset GetUtcNow() => _now;
-
-        public void Advance(TimeSpan interval) => _now += interval;
-    }
-
     private string _backingFolderPath = null!;
 
     [SetUp]

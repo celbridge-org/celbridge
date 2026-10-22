@@ -1,4 +1,5 @@
 using Celbridge.Console.Services;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Celbridge.Tests.Console;
 
@@ -8,43 +9,15 @@ public class ConsoleTriggerSchedulerTests
     private static readonly Guid SessionA = Guid.NewGuid();
     private static readonly Guid SessionB = Guid.NewGuid();
 
-    // Hands out a wait the test completes by hand, standing in for the clock. The completion sources run
-    // their continuations inline, so completing one drives the rest of the scheduler synchronously and the
-    // assertions never race it.
-    private sealed class DebounceClock
+    private static readonly TimeSpan DebounceInterval = TimeSpan.FromMilliseconds(300);
+
+    private static (ConsoleTriggerScheduler Scheduler, FakeTimeProvider Clock, List<string> Fired) Build()
     {
-        private readonly List<TaskCompletionSource> _waits = new();
-
-        public Task DelayAsync(int debounceMilliseconds)
-        {
-            var wait = new TaskCompletionSource();
-            _waits.Add(wait);
-
-            return wait.Task;
-        }
-
-        /// Completes one outstanding wait, as the clock reaching that request's debounce period would.
-        public void Elapse(int waitIndex)
-        {
-            _waits[waitIndex].TrySetResult();
-        }
-
-        public void ElapseAll()
-        {
-            foreach (var wait in _waits.ToList())
-            {
-                wait.TrySetResult();
-            }
-        }
-    }
-
-    private static (ConsoleTriggerScheduler Scheduler, DebounceClock Clock, List<string> Fired) Build()
-    {
-        var clock = new DebounceClock();
+        var clock = new FakeTimeProvider();
         var fired = new List<string>();
         var scheduler = new ConsoleTriggerScheduler(
             (sessionId, invocation) => fired.Add(invocation),
-            clock.DelayAsync);
+            clock);
 
         return (scheduler, clock, fired);
     }
@@ -58,7 +31,7 @@ public class ConsoleTriggerSchedulerTests
         scheduler.Schedule(SessionA, "%run clean_data.py");
         scheduler.Schedule(SessionA, "%run clean_data.py");
 
-        clock.ElapseAll();
+        clock.Advance(DebounceInterval);
 
         fired.Should().Equal("%run clean_data.py");
     }
@@ -71,13 +44,14 @@ public class ConsoleTriggerSchedulerTests
         var (scheduler, clock, fired) = Build();
 
         scheduler.Schedule(SessionA, "!make");
+        clock.Advance(TimeSpan.FromMilliseconds(200));
         scheduler.Schedule(SessionA, "!make");
 
-        // The first request's wait is now the superseded one, so its clock reaching the period runs nothing.
-        clock.Elapse(0);
+        // The first request's wait would have ended here, but the repeat restarted it.
+        clock.Advance(TimeSpan.FromMilliseconds(200));
         fired.Should().BeEmpty();
 
-        clock.Elapse(1);
+        clock.Advance(TimeSpan.FromMilliseconds(100));
         fired.Should().Equal("!make");
     }
 
@@ -91,7 +65,7 @@ public class ConsoleTriggerSchedulerTests
         scheduler.Schedule(SessionA, "%run \"a.py\"");
         scheduler.Schedule(SessionA, "%run \"b.py\"");
 
-        clock.ElapseAll();
+        clock.Advance(DebounceInterval);
 
         fired.Should().BeEquivalentTo("%run \"a.py\"", "%run \"b.py\"");
     }
@@ -104,7 +78,7 @@ public class ConsoleTriggerSchedulerTests
         scheduler.Schedule(SessionA, "!make");
         scheduler.Schedule(SessionB, "!make");
 
-        clock.ElapseAll();
+        clock.Advance(DebounceInterval);
 
         fired.Should().Equal("!make", "!make");
     }
@@ -117,11 +91,13 @@ public class ConsoleTriggerSchedulerTests
         var (scheduler, clock, fired) = Build();
 
         scheduler.Schedule(SessionA, "!make");
-        clock.Elapse(0);
+        clock.Advance(DebounceInterval);
 
         scheduler.Schedule(SessionA, "!make");
-        clock.Elapse(1);
+        clock.Advance(DebounceInterval - TimeSpan.FromMilliseconds(1));
+        fired.Should().Equal("!make");
 
+        clock.Advance(TimeSpan.FromMilliseconds(1));
         fired.Should().Equal("!make", "!make");
     }
 }

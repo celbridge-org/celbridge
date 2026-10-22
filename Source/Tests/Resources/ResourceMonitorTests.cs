@@ -3,6 +3,7 @@ using Celbridge.Resources;
 using Celbridge.Resources.Services;
 using Celbridge.Tests.FileSystem;
 using Celbridge.Workspace;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Celbridge.Tests.Resources;
 
@@ -23,6 +24,7 @@ public class ResourceMonitorTests
     private IResourceRootHandler _projectHandler = null!;
     private Dictionary<string, IResourceRootHandler> _rootHandlers = null!;
     private FakeFileSystemMonitorFactory _monitorFactory = null!;
+    private FakeTimeProvider _timeProvider = null!;
     private ResourceMonitor _resourceMonitor = null!;
     private MessageHandler<object, ResourceRegistryUpdateStartingMessage>? _updateStartingHandler;
 
@@ -85,13 +87,16 @@ public class ResourceMonitorTests
 
         _monitorFactory = new FakeFileSystemMonitorFactory();
 
+        _timeProvider = new FakeTimeProvider();
+
         _resourceMonitor = new ResourceMonitor(
             Substitute.For<ILogger<ResourceMonitor>>(),
             _dispatcher,
             _messengerService,
             _workspaceWrapper,
             _monitorFactory,
-            TestFileSystem.CreateLocal());
+            TestFileSystem.CreateLocal(),
+            _timeProvider);
     }
 
     [Test]
@@ -260,7 +265,7 @@ public class ResourceMonitorTests
 
         // No path keys in this fixture, so a rescan can only have come from the desynchronization.
         monitor.RaiseDesynchronized();
-        await Task.Delay(500);
+        AdvancePastTheUpdateDebounce();
 
         await resourceService.Received(1).UpdateResourcesAsync();
     }
@@ -268,7 +273,6 @@ public class ResourceMonitorTests
     [Test]
     public void MonitoringDesynchronized_InvalidatesThePathCache()
     {
-        // Desynchronization also schedules a rescan, which fires on the debounce after this test returns.
         _workspaceWrapper.WorkspaceService.ResourceService.UpdateResourcesAsync().Returns(Result.Ok());
         _workspaceWrapper.IsWorkspaceLoaded.Returns(true);
 
@@ -294,7 +298,7 @@ public class ResourceMonitorTests
         // update reads the file system before the debounce elapses.
         _resourceMonitor.ScheduleResourceUpdate();
         RaiseRegistryUpdateStarting();
-        await Task.Delay(500);
+        AdvancePastTheUpdateDebounce();
 
         await resourceService.DidNotReceive().UpdateResourcesAsync();
     }
@@ -312,7 +316,7 @@ public class ResourceMonitorTests
         // has to be rescanned.
         RaiseRegistryUpdateStarting();
         _resourceMonitor.ScheduleResourceUpdate();
-        await Task.Delay(500);
+        AdvancePastTheUpdateDebounce();
 
         await resourceService.Received(1).UpdateResourcesAsync();
     }
@@ -325,6 +329,11 @@ public class ResourceMonitorTests
         _resourceMonitor.Shutdown();
 
         monitor.Disposed.Should().BeTrue();
+    }
+
+    private void AdvancePastTheUpdateDebounce()
+    {
+        _timeProvider.Advance(TimeSpan.FromMilliseconds(250));
     }
 
     private void RaiseRegistryUpdateStarting()

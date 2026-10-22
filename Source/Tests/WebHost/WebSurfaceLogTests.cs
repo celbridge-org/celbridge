@@ -1,5 +1,6 @@
 using Celbridge.Tests.Helpers;
 using Celbridge.WebHost;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Celbridge.Tests.WebHost;
 
@@ -10,15 +11,6 @@ namespace Celbridge.Tests.WebHost;
 [TestFixture]
 public class WebSurfaceLogTests
 {
-    private sealed class FakeTimeProvider : TimeProvider
-    {
-        private DateTimeOffset _now = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
-
-        public override DateTimeOffset GetUtcNow() => _now;
-
-        public void Advance(TimeSpan interval) => _now += interval;
-    }
-
     private RecordingLogger<WebSurfaceLog> _logger = null!;
     private FakeTimeProvider _timeProvider = null!;
     private WebSurfaceLog _webSurfaceLog = null!;
