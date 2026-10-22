@@ -3,19 +3,22 @@ using Celbridge.Resources.Services.Roots;
 namespace Celbridge.Resources.Services;
 
 /// <summary>
-/// Checks what is at each key of one batch of changes in a root: a file, a folder or nothing. Create the checker after
-/// the batch's changes have been recorded with the root's resolver. Each folder is then listed at most once for the
-/// batch.
+/// Checks what is at each key of one batch of changes in a root: a file, a folder or nothing. Each folder is listed at
+/// most once for the batch.
 /// </summary>
 internal sealed class BatchItemChecker
 {
     private readonly Func<ResourceKey, Result<string>> _resolve;
     private readonly ILocalFileSystem _fileSystem;
 
+    /// <summary>
+    /// Creates a checker for a batch. Create it only after every change in the batch has been recorded with the root's
+    /// resolver. A checker created earlier could accept a folder listing that misses one of those changes.
+    /// </summary>
     public BatchItemChecker(IResourceRootHandler handler, ILocalFileSystem fileSystem)
     {
-        // A root handler that does not derive from ResourceRootHandlerBase resolves each key separately. A folder may then
-        // be listed more than once for the batch.
+        // A root handler that does not derive from ResourceRootHandlerBase resolves each key separately. A folder may
+        // then be listed more than once for the batch.
         _resolve = handler is ResourceRootHandlerBase root
             ? root.CreateBatchResolver()
             : handler.Resolve;
