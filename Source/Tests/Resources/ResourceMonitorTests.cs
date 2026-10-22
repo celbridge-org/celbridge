@@ -90,7 +90,8 @@ public class ResourceMonitorTests
             _dispatcher,
             _messengerService,
             _workspaceWrapper,
-            _monitorFactory);
+            _monitorFactory,
+            TestFileSystem.CreateLocal());
     }
 
     [Test]
@@ -171,17 +172,28 @@ public class ResourceMonitorTests
     public void CreatedDeletedAndRenamed_AreRecordedWithTheResolver()
     {
         // A link may replace a folder that is deleted or renamed away, so the resolver checks the path again.
-        // Each change also alters a folder's listing.
+        // Each change may also alter a folder's listing.
         var monitor = InitializeAndGetProjectMonitor();
 
         monitor.RaiseCreated(PathFor("created"));
         monitor.RaiseDeleted(PathFor("deleted"));
         monitor.RaiseRenamed(PathFor("old"), PathFor("new"));
 
-        _projectHandler.Received(1).RecordItemCreated(PathFor("created"));
-        _projectHandler.Received(1).RecordItemRemoved(PathFor("deleted"));
-        _projectHandler.Received(1).RecordItemRemoved(PathFor("old"));
-        _projectHandler.Received(1).RecordItemCreated(PathFor("new"));
+        _projectHandler.Received(1).RecordNameChanged(PathFor("created"));
+        _projectHandler.Received(1).RecordNameChanged(PathFor("deleted"));
+        _projectHandler.Received(1).RecordNameChanged(PathFor("old"));
+        _projectHandler.Received(1).RecordNameChanged(PathFor("new"));
+    }
+
+    [Test]
+    public void Changed_IsNotRecordedWithTheResolver()
+    {
+        // Only a change to a name alters a listing.
+        var monitor = InitializeAndGetProjectMonitor();
+
+        monitor.RaiseChanged(PathFor("changed"));
+
+        _projectHandler.DidNotReceive().RecordNameChanged(Arg.Any<string>());
     }
 
     [Test]
@@ -194,8 +206,8 @@ public class ResourceMonitorTests
         monitor.RaiseCreated(PathFor("node_modules/created"));
         monitor.RaiseDeleted(PathFor("node_modules/deleted"));
 
-        _projectHandler.Received(1).RecordItemCreated(PathFor("node_modules/created"));
-        _projectHandler.Received(1).RecordItemRemoved(PathFor("node_modules/deleted"));
+        _projectHandler.Received(1).RecordNameChanged(PathFor("node_modules/created"));
+        _projectHandler.Received(1).RecordNameChanged(PathFor("node_modules/deleted"));
         _messengerService.DidNotReceive().Send(Arg.Any<ResourceCreatedMessage>());
         _messengerService.DidNotReceive().Send(Arg.Any<ResourceDeletedMessage>());
     }

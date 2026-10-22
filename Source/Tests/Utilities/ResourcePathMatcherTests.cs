@@ -107,4 +107,69 @@ public class ResourcePathMatcherTests
         matcher.IsMatch("foo/bar", isFolder: false).Should().BeTrue();
         matcher.IsMatch("very/deep/nested/path", isFolder: false).Should().BeTrue();
     }
+
+    [Test]
+    public void Anchored_BareNameMatchesOneTopLevelItem()
+    {
+        var matcher = ResourcePathMatcher.Compile("readme.md", anchored: true);
+
+        matcher.MatchesAtAnyDepth.Should().BeFalse();
+        matcher.IsMatch("readme.md", isFolder: false).Should().BeTrue();
+        matcher.IsMatch("docs/readme.md", isFolder: false).Should().BeFalse();
+        matcher.IsMatch("readme.md/child.txt", isFolder: false).Should().BeFalse();
+    }
+
+    [Test]
+    public void Anchored_DoubleStarMatchesAnyNumberOfFolders()
+    {
+        var matcher = ResourcePathMatcher.Compile("**/*.cs", anchored: true);
+
+        matcher.IsMatch("Program.cs", isFolder: false).Should().BeTrue();
+        matcher.IsMatch("src/Program.cs", isFolder: false).Should().BeTrue();
+        matcher.IsMatch("src/app/Program.cs", isFolder: false).Should().BeTrue();
+        matcher.IsMatch("src/Program.csx", isFolder: false).Should().BeFalse();
+    }
+
+    [Test]
+    public void Anchored_SingleStarStaysInOneFolder()
+    {
+        var matcher = ResourcePathMatcher.Compile("docs/*", anchored: true);
+
+        matcher.IsMatch("docs/a.md", isFolder: false).Should().BeTrue();
+        matcher.IsMatch("docs/sub/a.md", isFolder: false).Should().BeFalse();
+    }
+
+    [Test]
+    public void CanMatchInside_FollowsTheFoldersThePatternNames()
+    {
+        var matcher = ResourcePathMatcher.Compile("src/app/*.cs", anchored: true);
+
+        matcher.CanMatchInside(string.Empty).Should().BeTrue();
+        matcher.CanMatchInside("src").Should().BeTrue();
+        matcher.CanMatchInside("src/app").Should().BeTrue();
+        matcher.CanMatchInside("src/app/sub").Should().BeFalse();
+        matcher.CanMatchInside("src/other").Should().BeFalse();
+        matcher.CanMatchInside("docs").Should().BeFalse();
+    }
+
+    [Test]
+    public void CanMatchInside_DoubleStarMatchesBelowEveryFolderUnderIt()
+    {
+        var anywhere = ResourcePathMatcher.Compile("**/*.cs", anchored: true);
+        var underSource = ResourcePathMatcher.Compile("src/**", anchored: true);
+
+        anywhere.CanMatchInside("docs/deep/folder").Should().BeTrue();
+        underSource.CanMatchInside("src").Should().BeTrue();
+        underSource.CanMatchInside("src/a/b").Should().BeTrue();
+        underSource.CanMatchInside("docs").Should().BeFalse();
+    }
+
+    [Test]
+    public void CanMatchInside_IsFalseForThePathThePatternNames()
+    {
+        var matcher = ResourcePathMatcher.Compile("docs/readme.md", anchored: true);
+
+        matcher.CanMatchInside("docs").Should().BeTrue();
+        matcher.CanMatchInside("docs/readme.md").Should().BeFalse();
+    }
 }

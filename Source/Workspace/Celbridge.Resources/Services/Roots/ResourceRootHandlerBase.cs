@@ -66,4 +66,9 @@ public abstract class ResourceRootHandlerBase : IResourceRootHandler
     {
         _pathResolver.RecordItemRemoved(absolutePath);
     }
+
+    public void RecordNameChanged(string absolutePath)
+    {
+        _pathResolver.RecordNameChanged(absolutePath);
+    }
 }

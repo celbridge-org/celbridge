@@ -267,6 +267,35 @@ internal sealed class FolderCache
     }
 
     /// <summary>
+    /// Records that the name of an item at the full path, which is under the backing folder, may have changed. The
+    /// watcher reports this for a create, delete or rename, and on macOS the kind it reports can be wrong. The listing
+    /// of the folder that contains the item is dropped, so the folder is listed again on its next use. The folder is
+    /// found in any letter case. On macOS the watcher reports a removed item in the letter case of the call that
+    /// removed it. Every cached folder at or below the path is dropped too.
+    /// </summary>
+    public void RecordNameChanged(string itemPath)
+    {
+        if (itemPath.Equals(_backingFolderPath, PathComparison.Comparison))
+        {
+            Clear();
+            return;
+        }
+
+        DropFolder(itemPath);
+
+        var folderPath = Path.GetDirectoryName(itemPath);
+        if (folderPath is null)
+        {
+            return;
+        }
+
+        if (_cachedFolders.TryGetValue(folderPath, out var folder))
+        {
+            DropListing(folder);
+        }
+    }
+
+    /// <summary>
     /// Drops every cached folder and listing.
     /// </summary>
     public void Clear()
@@ -319,6 +348,18 @@ internal sealed class FolderCache
                 Interlocked.Increment(ref _listedNameCount);
             }
         }
+    }
+
+    private void DropListing(CachedFolder folder)
+    {
+        int nameCount;
+        lock (folder)
+        {
+            nameCount = folder.NameHashes?.Count ?? 0;
+            folder.NameHashes = null;
+        }
+
+        Interlocked.Add(ref _listedNameCount, -nameCount);
     }
 
     private void RemoveName(CachedFolder folder, string name)

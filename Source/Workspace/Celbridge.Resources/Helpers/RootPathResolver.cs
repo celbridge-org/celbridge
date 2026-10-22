@@ -226,6 +226,25 @@ public class RootPathResolver
     }
 
     /// <summary>
+    /// Records that the name of an item at the absolute path may have changed, without saying how. The listing of
+    /// the item's folder is dropped, with every cached folder at or below the path.
+    /// </summary>
+    public void RecordNameChanged(string absolutePath)
+    {
+        var itemPath = GetFullPathOrNull(absolutePath);
+        if (itemPath is null)
+        {
+            _folderCache.Clear();
+            return;
+        }
+
+        if (IsUnderBacking(itemPath))
+        {
+            _folderCache.RecordNameChanged(itemPath);
+        }
+    }
+
+    /// <summary>
     /// Returns the number of folders in the cache.
     /// </summary>
     internal int CachedFolderCount => _folderCache.Count;
