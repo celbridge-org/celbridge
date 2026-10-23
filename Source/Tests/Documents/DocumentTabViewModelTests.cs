@@ -56,6 +56,7 @@ public class DocumentTabViewModelTests
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(_workspaceService);
+        _workspaceWrapper.HasWorkspaceService.Returns(true);
 
         // The composed value carries the arguments, so a test can tell which values reached the template.
         _stringLocalizer = Substitute.For<IStringLocalizer>();
@@ -262,6 +263,20 @@ public class DocumentTabViewModelTests
     }
 
     [Test]
+    public void AChange_LeavesTheTabOpen_OnceTheWorkspaceIsGone()
+    {
+        var fileResource = new ResourceKey("deleted.md");
+        CreateViewModel(fileResource, Substitute.For<IDocumentView>());
+        StubFileIsGone();
+        _workspaceWrapper.HasWorkspaceService.Returns(false);
+        _workspaceWrapper.WorkspaceService.Returns(_ => throw new InvalidOperationException("No workspace is loaded"));
+
+        _resourceMonitor.DeliverChange(fileResource, ResourceItemState.Absent);
+
+        _commandService.DidNotReceiveWithAnyArgs().Execute<ICloseDocumentCommand>();
+    }
+
+    [Test]
     public void AnAbsentChange_LeavesTheTabOpen_WhenTheFileIsBackOnDisk()
     {
         // A save can write a temporary file, delete the original and rename the temporary file. The file is then back
@@ -306,6 +321,39 @@ public class DocumentTabViewModelTests
         _messengerService.Send(new ResourceKeyChangedMessage(oldResource, newResource));
 
         _resourceMonitor.KeySubscriptions.Single().Resources.Should().Equal(newResource);
+    }
+
+    [Test]
+    public void AKeyChangeOfAFolderAboveTheFile_IsMappedByPrefix()
+    {
+        // The gateway sends one message for a moved folder, which names the folder alone.
+        var oldResource = new ResourceKey("docs/guides/intro.md");
+        var newResource = new ResourceKey("archive/guides/intro.md");
+        CreateViewModel(oldResource, Substitute.For<IDocumentView>());
+
+        var documentChanges = new List<DocumentResourceChangedMessage>();
+        var probe = new object();
+        _messengerService.Register<DocumentResourceChangedMessage>(
+            probe,
+            (object _, DocumentResourceChangedMessage message) => documentChanges.Add(message));
+
+        _messengerService.Send(new ResourceKeyChangedMessage(new ResourceKey("docs"), new ResourceKey("archive")));
+
+        _messengerService.UnregisterAll(probe);
+
+        documentChanges.Should().Equal(new DocumentResourceChangedMessage(oldResource, newResource));
+        _resourceMonitor.KeySubscriptions.Single().Resources.Should().Equal(newResource);
+    }
+
+    [Test]
+    public void AKeyChangeOfASiblingWithTheSamePrefix_LeavesTheTabAlone()
+    {
+        var resource = new ResourceKey("docs-old/intro.md");
+        CreateViewModel(resource, Substitute.For<IDocumentView>());
+
+        _messengerService.Send(new ResourceKeyChangedMessage(new ResourceKey("docs"), new ResourceKey("archive")));
+
+        _resourceMonitor.KeySubscriptions.Single().Resources.Should().Equal(resource);
     }
 
     [Test]

@@ -434,6 +434,106 @@ public class ResourceSubscriptionTests
     }
 
     [Test]
+    public void AReportIsDeliveredWithoutWaitingForTheBatchInterval()
+    {
+        var batches = Subscribe("**");
+        WriteProjectFile("notes.txt");
+
+        _resourceMonitor.ReportOperationChanges(
+            new[] { ResourceKey.Create("notes.txt"), ResourceKey.Create("old.txt") });
+        _timeProvider.Advance(TimeSpan.Zero);
+
+        batches.Single().Changes.Should().Equal(
+            new ResourceChange(ResourceKey.Create("notes.txt"), ResourceItemState.File),
+            new ResourceChange(ResourceKey.Create("old.txt"), ResourceItemState.Absent));
+    }
+
+    [Test]
+    public void APendingBatchGoesOutWithAReport()
+    {
+        var batches = Subscribe("**");
+
+        _watcher.RaiseChanged(PathFor("outside.txt"));
+        _resourceMonitor.ReportOperationChanges(new[] { ResourceKey.Create("own.txt") });
+        _timeProvider.Advance(TimeSpan.Zero);
+
+        batches.Single().Changes.Select(change => change.Resource).Should().Equal(
+            ResourceKey.Create("outside.txt"),
+            ResourceKey.Create("own.txt"));
+    }
+
+    [Test]
+    public void AReportDuringADeliveryGoesOutStraightAfterIt()
+    {
+        var batches = new List<ResourceChangeBatch>();
+        var handlers = new ResourceChangeHandlers(
+            batch =>
+            {
+                batches.Add(batch);
+                if (batches.Count == 1)
+                {
+                    _resourceMonitor.ReportOperationChanges(new[] { ResourceKey.Create("second.txt") });
+                }
+            },
+            _ => { });
+        Subscribe("**", handlers);
+
+        _watcher.RaiseChanged(PathFor("first.txt"));
+        AdvanceOneInterval();
+        _timeProvider.Advance(TimeSpan.Zero);
+
+        batches.Should().HaveCount(2);
+        batches[1].Changes.Should().Equal(new ResourceChange(ResourceKey.Create("second.txt"), ResourceItemState.Absent));
+    }
+
+    [Test]
+    public void AChangeAfterAReportWaitsForTheBatchInterval()
+    {
+        var batches = Subscribe("**");
+        _resourceMonitor.ReportOperationChanges(new[] { ResourceKey.Create("own.txt") });
+        _timeProvider.Advance(TimeSpan.Zero);
+        batches.Should().ContainSingle();
+
+        _watcher.RaiseChanged(PathFor("outside.txt"));
+        _timeProvider.Advance(ChangeBatcher.BatchInterval - TimeSpan.FromMilliseconds(1));
+        batches.Should().ContainSingle();
+
+        _timeProvider.Advance(TimeSpan.FromMilliseconds(1));
+
+        batches.Should().HaveCount(2);
+        batches[1].Changes.Should().Equal(new ResourceChange(ResourceKey.Create("outside.txt"), ResourceItemState.Absent));
+    }
+
+    [Test]
+    public void AReportedKeyInsideGitIsDropped()
+    {
+        var batches = Subscribe("**");
+
+        _resourceMonitor.ReportOperationChanges(
+            new[] { ResourceKey.Create(".git/index"), ResourceKey.Create("notes.txt") });
+        _timeProvider.Advance(TimeSpan.Zero);
+
+        batches.Single().Changes.Select(change => change.Resource).Should().Equal(ResourceKey.Create("notes.txt"));
+    }
+
+    [Test]
+    public void AReportedKeyInARootThatIsNotWatchedIsDropped()
+    {
+        // The logs: root opts out of watching, so the monitor drops a report in logs:.
+        _rootHandlers[LogsRootHandler.Name] = new LogsRootHandler(Path.Combine(_projectFolder, "logs"));
+        var received = new Received();
+        var subscribeResult = _resourceMonitor.SubscribeToResources(
+            new[] { ResourceKey.Create("logs:app.log") },
+            received.Handlers);
+        subscribeResult.IsSuccess.Should().BeTrue(subscribeResult.FirstErrorMessage);
+
+        _resourceMonitor.ReportOperationChanges(new[] { ResourceKey.Create("logs:app.log") });
+        _timeProvider.Advance(TimeSpan.Zero);
+
+        received.Deliveries.Should().BeEmpty();
+    }
+
+    [Test]
     public void SubscribingAgainBeforeDisposingMissesNoChange()
     {
         var oldBatches = new List<ResourceChangeBatch>();

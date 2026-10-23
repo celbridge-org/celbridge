@@ -9,8 +9,8 @@ namespace Celbridge.Tests.Resources;
 
 /// <summary>
 /// Tests for LocalResourceFileSystem — direct writes through the gateway,
-/// parent-folder creation, ResolveResourcePath integration, reads, and
-/// stream-open happy paths.
+/// parent-folder creation, ResolveResourcePath integration, reads,
+/// stream-open happy paths, and the changes each operation reports.
 /// </summary>
 [TestFixture]
 public class LocalResourceFileSystemTests
@@ -18,6 +18,8 @@ public class LocalResourceFileSystemTests
     private string _tempFolder = null!;
     private string _tempRootFolder = null!;
     private IMessengerService _messengerService = null!;
+    private IResourceMonitor _resourceMonitor = null!;
+    private List<IReadOnlyList<ResourceKey>> _reports = null!;
     private LocalResourceFileSystem _resourceFileSystem = null!;
 
     [SetUp]
@@ -46,6 +48,13 @@ public class LocalResourceFileSystemTests
 
         var sidecarService = new SidecarService(workspaceWrapper);
         resourceService.Sidecars.Returns(sidecarService);
+
+        // Records the keys of each report, in the order the reports arrive.
+        _reports = new List<IReadOnlyList<ResourceKey>>();
+        _resourceMonitor = Substitute.For<IResourceMonitor>();
+        _resourceMonitor.ReportOperationChanges(
+            Arg.Do<IReadOnlyList<ResourceKey>>(resources => _reports.Add(resources)));
+        resourceService.Monitor.Returns(_resourceMonitor);
 
         _messengerService = Substitute.For<IMessengerService>();
 
@@ -119,6 +128,17 @@ public class LocalResourceFileSystemTests
     }
 
     [Test]
+    public async Task WriteAllTextAsync_ReportsTheFile()
+    {
+        var resource = new ResourceKey("notes.txt");
+
+        var result = await _resourceFileSystem.WriteAllTextAsync(resource, "hello");
+
+        result.IsSuccess.Should().BeTrue();
+        _reports.Should().ContainSingle().Which.Should().Equal(resource);
+    }
+
+    [Test]
     public async Task WriteAllTextAsync_ReturnsFailure_WhenResolveFails()
     {
         // The root is unregistered, so resolving the key fails.
@@ -127,6 +147,7 @@ public class LocalResourceFileSystemTests
         var result = await _resourceFileSystem.WriteAllTextAsync(resource, "anything");
 
         result.IsFailure.Should().BeTrue();
+        _reports.Should().BeEmpty();
     }
 
     [Test]
@@ -214,6 +235,7 @@ public class LocalResourceFileSystemTests
 
         File.Exists(path).Should().BeTrue();
         (await File.ReadAllBytesAsync(path)).Should().Equal(content);
+        _reports.Should().ContainSingle().Which.Should().Equal(resource);
     }
 
     [Test]
@@ -343,9 +365,8 @@ public class LocalResourceFileSystemTests
         File.Exists(sourcePath).Should().BeFalse();
         (await File.ReadAllTextAsync(destPath)).Should().Be("payload");
 
-        // The source was never a project resource, so there is nothing to announce.
+        // A key in another root names another resource, so no key change is announced.
         _messengerService.DidNotReceive().Send(Arg.Any<ResourceKeyChangedMessage>());
-        _messengerService.DidNotReceive().Send(Arg.Any<ResourceDeletedMessage>());
     }
 
     [Test]
@@ -367,7 +388,7 @@ public class LocalResourceFileSystemTests
     }
 
     [Test]
-    public async Task MoveAsync_OutOfTheProjectRoot_AnnouncesTheRemoval()
+    public async Task MoveAsync_OutOfTheProjectRoot_ReportsTheKeyInEachRoot()
     {
         var sourceKey = new ResourceKey("source.txt");
         var destKey = new ResourceKey("temp:source.txt");
@@ -382,8 +403,7 @@ public class LocalResourceFileSystemTests
         File.Exists(sourcePath).Should().BeFalse();
         File.Exists(destPath).Should().BeTrue();
 
-        // A key in another root is not the same resource, so only the removal is announced.
-        _messengerService.Received(1).Send(Arg.Is<ResourceDeletedMessage>(message => message.Resource == sourceKey));
+        _reports.Should().ContainSingle().Which.Should().Equal(sourceKey, destKey);
         _messengerService.DidNotReceive().Send(Arg.Any<ResourceKeyChangedMessage>());
     }
 
@@ -496,6 +516,63 @@ public class LocalResourceFileSystemTests
         File.Exists(sourceSidecarPath).Should().BeFalse();
         File.Exists(destPath).Should().BeTrue();
         File.Exists(destSidecarPath).Should().BeTrue();
+
+        // The sidecar's move joins its file's report.
+        _reports.Should().ContainSingle().Which.Should().Equal(
+            sourceKey,
+            destKey,
+            new ResourceKey("a.txt.cel"),
+            new ResourceKey("b.txt.cel"));
+    }
+
+    [Test]
+    public async Task MoveAsync_Folder_SendsOneKeyChangedMessage_AndReportsTheFolderAlone()
+    {
+        var sourceKey = new ResourceKey("folder");
+        var destKey = new ResourceKey("renamed");
+        var folderPath = Path.Combine(_tempFolder, "folder");
+        Directory.CreateDirectory(Path.Combine(folderPath, "nested"));
+        await File.WriteAllTextAsync(Path.Combine(folderPath, "nested", "deep.txt"), "deep");
+
+        var result = await _resourceFileSystem.MoveAsync(sourceKey, destKey);
+
+        result.IsSuccess.Should().BeTrue(result.DiagnosticReport);
+        File.Exists(Path.Combine(_tempFolder, "renamed", "nested", "deep.txt")).Should().BeTrue();
+
+        // A receiver maps the keys inside the folder itself.
+        _messengerService.Received(1).Send(Arg.Any<ResourceKeyChangedMessage>());
+        _messengerService.Received(1).Send(new ResourceKeyChangedMessage(sourceKey, destKey));
+        _reports.Should().ContainSingle().Which.Should().Equal(sourceKey, destKey);
+    }
+
+    [Test]
+    public async Task MoveAsync_ReportsAfterTheKeyChangedMessage()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_tempFolder, "a.txt"), "hello");
+
+        var result = await _resourceFileSystem.MoveAsync(new ResourceKey("a.txt"), new ResourceKey("b.txt"));
+
+        // A tab that received the report first would find its old key absent, and close.
+        result.IsSuccess.Should().BeTrue(result.DiagnosticReport);
+        Received.InOrder(() =>
+        {
+            _messengerService.Send(Arg.Any<ResourceKeyChangedMessage>());
+            _resourceMonitor.ReportOperationChanges(Arg.Any<IReadOnlyList<ResourceKey>>());
+        });
+    }
+
+    [Test]
+    public async Task MoveAsync_WithinTheTempRoot_SendsAKeyChangedMessage()
+    {
+        var sourceKey = new ResourceKey("temp:a.txt");
+        var destKey = new ResourceKey("temp:b.txt");
+        Directory.CreateDirectory(_tempRootFolder);
+        await File.WriteAllTextAsync(Path.Combine(_tempRootFolder, "a.txt"), "hello");
+
+        var result = await _resourceFileSystem.MoveAsync(sourceKey, destKey);
+
+        result.IsSuccess.Should().BeTrue(result.DiagnosticReport);
+        _messengerService.Received(1).Send(new ResourceKeyChangedMessage(sourceKey, destKey));
     }
 
     [Test]
@@ -560,6 +637,7 @@ public class LocalResourceFileSystemTests
         File.Exists(destPath).Should().BeTrue();
         File.Exists(sourceSidecarPath).Should().BeTrue();
         File.Exists(destSidecarPath).Should().BeTrue();
+        _reports.Should().ContainSingle().Which.Should().Equal(destKey, new ResourceKey("b.txt.cel"));
     }
 
     [Test]
@@ -577,6 +655,9 @@ public class LocalResourceFileSystemTests
         result.Value.Sidecar.Should().Be(SidecarOutcome.Cascaded);
         File.Exists(sourcePath).Should().BeFalse();
         File.Exists(sourceSidecarPath).Should().BeFalse();
+
+        // The sidecar is deleted first.
+        _reports.Should().ContainSingle().Which.Should().Equal(new ResourceKey("a.txt.cel"), sourceKey);
     }
 
     [Test]
@@ -590,37 +671,19 @@ public class LocalResourceFileSystemTests
     }
 
     [Test]
-    public async Task DeleteAsync_Folder_FansOutDeleteMessages_ForNestedSubFolders()
+    public async Task DeleteAsync_Folder_ReportsTheFolderAlone()
     {
-        // Folders are first-class resources, so deleting a folder must announce
-        // the removal of nested sub-folders too - including empty ones the file
-        // walk cannot surface - not just the files beneath them.
         var folderKey = new ResourceKey("folder");
         var folderPath = Path.Combine(_tempFolder, "folder");
-        Directory.CreateDirectory(folderPath);
-
-        var nestedFolderPath = Path.Combine(folderPath, "nested");
-        Directory.CreateDirectory(nestedFolderPath);
-        var deepFilePath = Path.Combine(nestedFolderPath, "deep.txt");
-        await File.WriteAllTextAsync(deepFilePath, "deep");
-
-        var emptyFolderPath = Path.Combine(folderPath, "empty");
-        Directory.CreateDirectory(emptyFolderPath);
-
-        var deletedKeys = new List<ResourceKey>();
-        _messengerService.Send(Arg.Do<ResourceDeletedMessage>(message => deletedKeys.Add(message.Resource)));
+        Directory.CreateDirectory(Path.Combine(folderPath, "nested"));
+        await File.WriteAllTextAsync(Path.Combine(folderPath, "nested", "deep.txt"), "deep");
 
         var result = await _resourceFileSystem.DeleteAsync(folderKey);
 
+        // A subscriber learns of the items inside the folder from the folder's change.
         result.IsSuccess.Should().BeTrue();
         Directory.Exists(folderPath).Should().BeFalse();
-        deletedKeys.Select(key => key.Path).Should().BeEquivalentTo(new[]
-        {
-            "folder",
-            "folder/nested/deep.txt",
-            "folder/nested",
-            "folder/empty",
-        });
+        _reports.Should().ContainSingle().Which.Should().Equal(folderKey);
     }
 
     [Test]
@@ -688,6 +751,7 @@ public class LocalResourceFileSystemTests
 
         result.IsSuccess.Should().BeTrue();
         Directory.Exists(folderPath).Should().BeTrue();
+        _reports.Should().ContainSingle().Which.Should().Equal(folder);
     }
 
     [Test]
@@ -739,6 +803,28 @@ public class LocalResourceFileSystemTests
         var result = await _resourceFileSystem.CreateFolderAsync(folder);
 
         result.IsFailure.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task SetAttributesAsync_ReportsTheChange()
+    {
+        var resource = new ResourceKey("locked.txt");
+        var path = Path.Combine(_tempFolder, "locked.txt");
+        await File.WriteAllTextAsync(path, "content");
+
+        try
+        {
+            var result = await _resourceFileSystem.SetAttributesAsync(resource, FileSystemAttributes.ReadOnly, set: true);
+
+            result.IsSuccess.Should().BeTrue(result.DiagnosticReport);
+            new FileInfo(path).IsReadOnly.Should().BeTrue();
+            _reports.Should().ContainSingle().Which.Should().Equal(resource);
+        }
+        finally
+        {
+            // Tear-down needs the file to be writable so the temp-folder delete works.
+            new FileInfo(path).IsReadOnly = false;
+        }
     }
 
     [Test]

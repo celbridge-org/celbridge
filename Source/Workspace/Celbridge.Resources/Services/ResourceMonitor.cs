@@ -5,7 +5,8 @@ using Celbridge.Workspace;
 namespace Celbridge.Resources.Services;
 
 /// <summary>
-/// Watches the roots that opt in, and delivers the keys that each change touches to the subscriptions of the root.
+/// Watches the roots that opt in, and delivers the keys that each change touches to the subscriptions of the root. The
+/// keys reported by Celbridge's own operations are delivered at once.
 /// </summary>
 public class ResourceMonitor : IResourceMonitor, IDisposable
 {
@@ -167,6 +168,36 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         return subscription.OkResult<IResourceKeySubscription>();
     }
 
+    public void ReportOperationChanges(IReadOnlyList<ResourceKey> resources)
+    {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        foreach (var rootResources in resources.GroupBy(resource => resource.Root))
+        {
+            ChangeBatcher? batcher;
+            lock (_batchers)
+            {
+                _batchers.TryGetValue(rootResources.Key, out batcher);
+            }
+
+            if (batcher is null)
+            {
+                continue;
+            }
+
+            var batchedResources = rootResources
+                .Where(IsBatched)
+                .ToList();
+            if (batchedResources.Count > 0)
+            {
+                batcher.AddReportedKeys(batchedResources);
+            }
+        }
+    }
+
     // Accepts keys that each name an item below a registered root.
     private Result ValidateSubscribedResources(IReadOnlyList<ResourceKey> resources)
     {
@@ -270,19 +301,23 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         }
         var resource = keyResult.Value;
 
+        return IsBatched(resource)
+            ? resource
+            : ResourceKey.Empty;
+    }
+
+    // Returns false for the root key itself, and for a key in the reserved .git folder.
+    private bool IsBatched(ResourceKey resource)
+    {
         if (resource.IsEmpty)
         {
-            return ResourceKey.Empty;
+            return false;
         }
 
         var policy = _workspaceWrapper.WorkspaceService.ResourceService.Policy;
         var policyResult = policy.Evaluate(resource, ResourceAction.Read);
-        if (policyResult.IsFailure)
-        {
-            return ResourceKey.Empty;
-        }
 
-        return resource;
+        return policyResult.IsSuccess;
     }
 
     // The monitor lost events, so which resources were missed is unknown. The path cache is dropped, since one of the

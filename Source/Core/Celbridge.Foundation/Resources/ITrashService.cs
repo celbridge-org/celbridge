@@ -3,9 +3,6 @@ namespace Celbridge.Resources;
 /// <summary>
 /// Bookkeeping for one soft-delete. Captures every path the trash service moved
 /// so a later RestoreFromTrashAsync or PurgeAsync can act on the exact same set.
-/// DescendantKeys are the resource keys of every descendant under the deleted
-/// folder, both nested files and nested sub-folders, captured before the move
-/// so consumers can broadcast removal messages.
 /// </summary>
 public record TrashEntry(
     ResourceKey OriginalResource,
@@ -15,8 +12,7 @@ public record TrashEntry(
     string OriginalPath,
     string TrashPath,
     string? SidecarOriginalPath,
-    string? SidecarTrashPath,
-    IReadOnlyList<ResourceKey> DescendantKeys);
+    string? SidecarTrashPath);
 
 /// <summary>
 /// Attached to the failed Result when the trash refuses a link, or a folder that

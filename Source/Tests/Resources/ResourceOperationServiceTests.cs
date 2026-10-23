@@ -75,7 +75,6 @@ public class ResourceOperationServiceTests
 
         _trashService = new TrashService(
             Substitute.For<ILogger<TrashService>>(),
-            Substitute.For<IMessengerService>(),
             _workspaceWrapper,
             _projectService,
             TestFileSystem.CreateLocal());

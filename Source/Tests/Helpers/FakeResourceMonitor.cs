@@ -87,6 +87,17 @@ public sealed class FakeResourceMonitor : IResourceMonitor
         return Result<IResourceKeySubscription>.Ok(subscription);
     }
 
+    /// <summary>
+    /// Returns the keys of each report, in the order the reports arrived. A test delivers the changes that a report
+    /// would cause with DeliverChange.
+    /// </summary>
+    public List<IReadOnlyList<ResourceKey>> Reports { get; } = new();
+
+    public void ReportOperationChanges(IReadOnlyList<ResourceKey> resources)
+    {
+        Reports.Add(resources);
+    }
+
     public void Shutdown()
     {
         _matcherSubscriptions.Clear();

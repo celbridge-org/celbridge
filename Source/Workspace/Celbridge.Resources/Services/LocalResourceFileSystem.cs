@@ -135,8 +135,9 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         var openResult = await _fileSystem.OpenWriteAsync(resourcePath, WriteMode.Truncate);
         if (openResult.IsSuccess)
         {
-            var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
-            ChangeRecorder.RecordCreated(rootHandlerRegistry, resource, resourcePath);
+            // The writes through the stream come after the report, and the watcher reports them.
+            using var changes = CreateChangeRecorder();
+            changes.RecordCreated(resource, resourcePath);
         }
 
         return openResult;
@@ -144,9 +145,9 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
 
     public async Task<Result<MoveResult>> MoveAsync(ResourceKey source, ResourceKey dest, MoveOptions? options = null)
     {
-        // A resource keeps no identity from one root to another. A move across roots is a delete from the
-        // source root and a create in the destination root, and only the removal is announced. A caller
-        // has to ask for this move.
+        // Keys only make sense within a root. Moving a resource to another root deletes the resource from one root
+        // and creates it in the other, so no key changed message is sent. The caller has to allow such a move by
+        // setting MoveOptions.AllowCrossRoot.
         var isCrossRoot = source.Root != dest.Root;
         if (isCrossRoot
             && options?.AllowCrossRoot != true)
@@ -239,19 +240,6 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             }
         }
 
-        // Capture descendant keys before the disk move so the post-move
-        // eager-notify can announce each descendant's move. After Move the
-        // source path is gone, and the enumeration would fail.
-        IReadOnlyList<ResourceKey> sourceDescendantKeys;
-        if (sourceIsFolder)
-        {
-            sourceDescendantKeys = await EnumerateDescendantKeysAsync(rootHandlerRegistry, source, sourcePath);
-        }
-        else
-        {
-            sourceDescendantKeys = Array.Empty<ResourceKey>();
-        }
-
         var destParent = Path.GetDirectoryName(destPath);
         if (!string.IsNullOrEmpty(destParent))
         {
@@ -289,66 +277,22 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
 
         // A rename that changes only letter case keeps the item in place. The old name leaves the listing before
         // the new name joins it.
-        ChangeRecorder.RecordRemoved(rootHandlerRegistry, source, sourcePath);
-        ChangeRecorder.RecordCreated(rootHandlerRegistry, dest, destPath);
+        using var changes = CreateChangeRecorder();
+        changes.RecordRemoved(source, sourcePath);
+        changes.RecordCreated(dest, destPath);
 
-        var sidecarOutcome = await _sidecarCascade.TryMoveAsync(source, dest);
+        var sidecarOutcome = await _sidecarCascade.TryMoveAsync(source, dest, changes);
 
-        if (source.Root == ResourceKey.DefaultRoot)
+        // One message for the move, sent before the report. A receiver maps the keys inside a moved folder
+        // itself.
+        if (!isCrossRoot)
         {
-            // Announce the source removal, and within the root the new key identity, synchronously so
-            // subscribers update before control returns. The watcher's own events still arrive later via
-            // UI-thread dispatch, so subscribers must treat these messages as idempotent.
-            var sourceRemovedMessage = new ResourceDeletedMessage(source);
-            _messengerService.Send(sourceRemovedMessage);
-
-            if (!isCrossRoot)
-            {
-                var keyChangedMessage = new ResourceKeyChangedMessage(source, dest);
-                _messengerService.Send(keyChangedMessage);
-            }
-
-            foreach (var descendantSource in sourceDescendantKeys)
-            {
-                var descendantRemovedMessage = new ResourceDeletedMessage(descendantSource);
-                _messengerService.Send(descendantRemovedMessage);
-
-                if (!isCrossRoot &&
-                    TryMapDescendantKey(source, dest, descendantSource, out var descendantDestination))
-                {
-                    var descendantKeyChangedMessage = new ResourceKeyChangedMessage(descendantSource, descendantDestination);
-                    _messengerService.Send(descendantKeyChangedMessage);
-                }
-            }
+            var keyChangedMessage = new ResourceKeyChangedMessage(source, dest);
+            _messengerService.Send(keyChangedMessage);
         }
 
         var result = new MoveResult(sidecarOutcome);
         return result;
-    }
-
-    // Maps a descendant of the source folder to the equivalent key under the
-    // destination folder.
-    private static bool TryMapDescendantKey(
-        ResourceKey sourceFolder,
-        ResourceKey destFolder,
-        ResourceKey descendantSource,
-        out ResourceKey descendantDestination)
-    {
-        var sourcePath = sourceFolder.Path;
-        var descendantPath = descendantSource.Path;
-        if (!descendantPath.StartsWith(sourcePath + "/", StringComparison.Ordinal))
-        {
-            descendantDestination = ResourceKey.Empty;
-            return false;
-        }
-
-        var relativeSuffix = descendantPath.Substring(sourcePath.Length);
-        var destPath = destFolder.Path + relativeSuffix;
-        var rootName = destFolder.Root;
-        var fullKey = rootName == ResourceKey.DefaultRoot
-            ? destPath
-            : $"{rootName}:{destPath}";
-        return ResourceKey.TryCreate(fullKey, out descendantDestination);
     }
 
     public async Task<Result<CopyResult>> CopyAsync(ResourceKey source, ResourceKey dest)
@@ -443,9 +387,10 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             }
         }
 
-        ChangeRecorder.RecordCreated(rootHandlerRegistry, dest, destPath);
+        using var changes = CreateChangeRecorder();
+        changes.RecordCreated(dest, destPath);
 
-        var sidecarOutcome = await _sidecarCascade.TryCopyAsync(source, dest);
+        var sidecarOutcome = await _sidecarCascade.TryCopyAsync(source, dest, changes);
 
         var result = new CopyResult(sidecarOutcome);
         return result;
@@ -491,19 +436,8 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             return Result.Fail($"Root '{source.Root}' is read-only.");
         }
 
-        var sidecarOutcome = await _sidecarCascade.TryDeleteAsync(source);
-
-        // Capture descendant keys before the disk delete so the post-delete
-        // eager-notify can announce each descendant's removal too.
-        IReadOnlyList<ResourceKey> descendantKeys;
-        if (sourceIsFolder)
-        {
-            descendantKeys = await EnumerateDescendantKeysAsync(rootHandlerRegistry, source, sourcePath);
-        }
-        else
-        {
-            descendantKeys = Array.Empty<ResourceKey>();
-        }
+        using var changes = CreateChangeRecorder();
+        var sidecarOutcome = await _sidecarCascade.TryDeleteAsync(source, changes);
 
         Result deleteResult;
         if (sourceIsFile)
@@ -533,59 +467,10 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
                 .WithErrors(deleteResult);
         }
 
-        ChangeRecorder.RecordRemoved(rootHandlerRegistry, source, sourcePath);
-
-        if (source.Root == ResourceKey.DefaultRoot)
-        {
-            // Announce the removal synchronously so subscribers update before
-            // control returns. The watcher's own delete event still arrives
-            // later via UI-thread dispatch; subscribers must treat these
-            // messages as idempotent.
-            var sourceRemovedMessage = new ResourceDeletedMessage(source);
-            _messengerService.Send(sourceRemovedMessage);
-            foreach (var key in descendantKeys)
-            {
-                var descendantRemovedMessage = new ResourceDeletedMessage(key);
-                _messengerService.Send(descendantRemovedMessage);
-            }
-        }
+        changes.RecordRemoved(source, sourcePath);
 
         var result = new DeleteResult(sidecarOutcome);
         return result;
-    }
-
-    // Returns the resource keys of every descendant of a folder that exists on
-    // disk, both nested files and nested sub-folders. A recursive delete or move
-    // lists them first, while they are still on disk, and announces each
-    // removal once the operation is done.
-    private async Task<IReadOnlyList<ResourceKey>> EnumerateDescendantKeysAsync(IRootHandlerRegistry rootHandlerRegistry, ResourceKey folder, string folderPath)
-    {
-        var keys = new List<ResourceKey>();
-        var validator = ResolvePathValidator(rootHandlerRegistry, folder);
-
-        var enumerateResult = await _fileSystem.EnumerateAsync(folderPath, "*", recursive: true);
-        if (enumerateResult.IsFailure)
-        {
-            // Best effort. On failure the descendant keys are not announced
-            // here. The watcher announces them later.
-            return keys;
-        }
-
-        foreach (var entry in enumerateResult.Value)
-        {
-            if (validator is not null
-                && !validator(entry.FullPath))
-            {
-                continue;
-            }
-            var keyResult = rootHandlerRegistry.GetResourceKey(entry.FullPath);
-            if (keyResult.IsSuccess)
-            {
-                keys.Add(keyResult.Value);
-            }
-        }
-
-        return keys;
     }
 
     // Looks up the registered root handler for the key and returns its path
@@ -640,7 +525,8 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
                 .WithErrors(createResult);
         }
 
-        ChangeRecorder.RecordCreated(rootHandlerRegistry, folder, folderPath);
+        using var changes = CreateChangeRecorder();
+        changes.RecordCreated(folder, folderPath);
 
         return Result.Ok();
     }
@@ -774,13 +660,26 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
                 .WithErrors(resolveResult);
         }
 
-        return await _fileSystem.SetAttributesAsync(resolveResult.Value, mask, set);
+        var setResult = await _fileSystem.SetAttributesAsync(resolveResult.Value, mask, set);
+        if (setResult.IsSuccess)
+        {
+            using var changes = CreateChangeRecorder();
+            changes.RecordChanged(resource);
+        }
+
+        return setResult;
     }
 
     private Result<string> ResolvePath(ResourceKey resource)
     {
         var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
         return rootHandlerRegistry.ResolveResourcePath(resource);
+    }
+
+    private ChangeRecorder CreateChangeRecorder()
+    {
+        var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
+        return new ChangeRecorder(resourceService);
     }
 
     // Resolves the workspace-scoped policy engine through the wrapper and
@@ -919,7 +818,8 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
                 .WithErrors(writeResult);
         }
 
-        ChangeRecorder.RecordCreated(rootHandlerRegistry, resource, resourcePath);
+        using var changes = CreateChangeRecorder();
+        changes.RecordCreated(resource, resourcePath);
 
         return Result.Ok();
     }

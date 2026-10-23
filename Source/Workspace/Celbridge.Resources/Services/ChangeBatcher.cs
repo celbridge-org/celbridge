@@ -5,8 +5,9 @@ namespace Celbridge.Resources.Services;
 
 /// <summary>
 /// Collects the keys touched in one root, and delivers them in batches to the subscriptions that may want them. A
-/// batch closes a fixed interval after its first key. At delivery, each key that a subscription wants is checked on
-/// disk, so each change says what is at its key. Batches for one root are delivered one at a time, in order.
+/// batch closes a fixed interval after the batch's first key, or at once when one of Celbridge's own operations reports
+/// changes. At delivery, each key that a subscription wants is checked on disk, so each change says what is at the key.
+/// Batches for one root are delivered one at a time, in order.
 /// </summary>
 internal sealed class ChangeBatcher : IDisposable
 {
@@ -30,6 +31,10 @@ internal sealed class ChangeBatcher : IDisposable
     private List<ResourceKey> _pendingKeys = new();
     private HashSet<ResourceKey> _pendingKeySet = new();
     private long _firstPendingTimestamp;
+
+    // True when the pending keys include a report, which goes out without waiting for the batch interval.
+    private bool _isReportPending;
+
     private bool _isResyncPending;
     private bool _isDelivering;
     private ITimer? _timer;
@@ -87,22 +92,42 @@ internal sealed class ChangeBatcher : IDisposable
                 return;
             }
 
-            if (!_pendingKeySet.Add(resource))
-            {
-                return;
-            }
-
-            if (_pendingKeys.Count == 0)
-            {
-                _firstPendingTimestamp = _timeProvider.GetTimestamp();
-            }
-            _pendingKeys.Add(resource);
+            AddPendingKey(resource);
 
             if (_timer is null
                 && !_isDelivering)
             {
-                _timer = CreateTimer(BatchInterval);
+                ArmTimer(BatchInterval);
             }
+        }
+    }
+
+    /// <summary>
+    /// Adds the keys touched by one of Celbridge's own operations to the pending batch, and delivers the batch
+    /// without waiting for the batch interval. The operation has already recorded its changes with the root's
+    /// resolver. Drops the keys when no subscription follows the root.
+    /// </summary>
+    public void AddReportedKeys(IEnumerable<ResourceKey> resources)
+    {
+        if (!_subscriptions.HasSubscriptionsFor(_handler.RootName))
+        {
+            return;
+        }
+
+        lock (_lock)
+        {
+            if (_isDisposed)
+            {
+                return;
+            }
+
+            foreach (var resource in resources)
+            {
+                AddPendingKey(resource);
+            }
+
+            _isReportPending = true;
+            DeliverAtOnce();
         }
     }
 
@@ -120,30 +145,49 @@ internal sealed class ChangeBatcher : IDisposable
             }
 
             _isResyncPending = true;
-
-            if (_isDelivering)
-            {
-                return;
-            }
-
-            if (_timer is null)
-            {
-                _timer = CreateTimer(TimeSpan.Zero);
-            }
-            else
-            {
-                _timer.Change(TimeSpan.Zero, Timeout.InfiniteTimeSpan);
-            }
+            DeliverAtOnce();
         }
     }
 
-    private ITimer CreateTimer(TimeSpan dueTime)
+    // Adds the key to the pending batch, unless the batch contains the key already. Call it under the lock.
+    private void AddPendingKey(ResourceKey resource)
     {
-        return _timeProvider.CreateTimer(
+        if (!_pendingKeySet.Add(resource))
+        {
+            return;
+        }
+
+        if (_pendingKeys.Count == 0)
+        {
+            _firstPendingTimestamp = _timeProvider.GetTimestamp();
+        }
+        _pendingKeys.Add(resource);
+    }
+
+    // Starts the delivery of the pending work now. A delivery that is in progress starts the next one as it ends. Call
+    // it under the lock.
+    private void DeliverAtOnce()
+    {
+        if (_isDelivering)
+        {
+            return;
+        }
+
+        ArmTimer(TimeSpan.Zero);
+    }
+
+    // Arms the timer to deliver the pending work after the due time. The timer is assigned before it is armed, since a
+    // timer may fire on this thread before Change returns. The delivery then releases the timer. Call it under the
+    // lock.
+    private void ArmTimer(TimeSpan dueTime)
+    {
+        _timer ??= _timeProvider.CreateTimer(
             callback: _ => OnTimerElapsed(),
             state: null,
-            dueTime: dueTime,
+            dueTime: Timeout.InfiniteTimeSpan,
             period: Timeout.InfiniteTimeSpan);
+
+        _timer.Change(dueTime, Timeout.InfiniteTimeSpan);
     }
 
     // The delivery logs its own failures, so the task is not awaited.
@@ -173,6 +217,7 @@ internal sealed class ChangeBatcher : IDisposable
             _pendingKeySet = new();
             isResync = _isResyncPending;
             _isResyncPending = false;
+            _isReportPending = false;
             _isDelivering = true;
         }
 
@@ -211,9 +256,10 @@ internal sealed class ChangeBatcher : IDisposable
     // Starts the timer for the work that arrived during a delivery. Call it under the lock.
     private void ArmTimerForPendingWork()
     {
-        if (_isResyncPending)
+        if (_isResyncPending
+            || _isReportPending)
         {
-            _timer = CreateTimer(TimeSpan.Zero);
+            ArmTimer(TimeSpan.Zero);
             return;
         }
 
@@ -229,7 +275,7 @@ internal sealed class ChangeBatcher : IDisposable
             dueTime = TimeSpan.Zero;
         }
 
-        _timer = CreateTimer(dueTime);
+        ArmTimer(dueTime);
     }
 
     private async Task DeliverChangesAsync(

@@ -169,7 +169,7 @@ public partial class DocumentTabViewModel : ObservableObject
 
         RefreshSaveState();
 
-        FollowFile(newValue);
+        SubscribeToFileChanges(newValue);
     }
 
     private IDocumentView? _documentView;
@@ -189,10 +189,10 @@ public partial class DocumentTabViewModel : ObservableObject
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    // The subscription to the changes to the file, and the key it follows. After a move the tab follows the new key
+    // The subscription to the file's changes, and the subscribed key. After a move, the tab subscribes to the new key
     // before the tab's FileResource takes it.
     private IResourceKeySubscription? _fileSubscription;
-    private ResourceKey _followedResource;
+    private ResourceKey _subscribedResource;
 
     public DocumentTabViewModel(
         IMessengerService messengerService,
@@ -259,93 +259,117 @@ public partial class DocumentTabViewModel : ObservableObject
     }
 
     // Subscribes for the key before disposing the old subscription, so no change between the two is missed.
-    private void FollowFile(ResourceKey resource)
+    private void SubscribeToFileChanges(ResourceKey resource)
     {
         if (_fileSubscription is not null
-            && _followedResource == resource)
+            && _subscribedResource == resource)
         {
             return;
         }
 
         var previousSubscription = _fileSubscription;
         _fileSubscription = null;
-        _followedResource = resource;
+        _subscribedResource = resource;
 
         if (!resource.IsEmpty)
         {
             var handlers = new ResourceChangeHandlers(OnFileChanges, OnFileResync);
-            var subscribeResult = _resourceMonitor.SubscribeToResources(new[] { resource }, handlers);
+            var subscribeResult = _resourceMonitor.SubscribeToResources([resource], handlers);
             if (subscribeResult.IsSuccess)
             {
                 _fileSubscription = subscribeResult.Value;
             }
             else
             {
-                _logger.LogWarning(subscribeResult, $"Failed to follow the changes to '{resource}'");
+                _logger.LogWarning(subscribeResult, $"Failed to subscribe to the changes to '{resource}'");
             }
         }
 
         previousSubscription?.Dispose();
     }
 
+    // The check logs its own failures, so the task is not awaited.
     private void OnFileChanges(ResourceChangeBatch batch)
     {
-        CheckFile();
+        _ = CheckFileAsync();
     }
 
     // The lost events may have included a delete or an attribute change, so the file gets the same check as for a
     // change.
     private void OnFileResync(ResourceResync resync)
     {
-        CheckFile();
+        _ = CheckFileAsync();
     }
 
     // Checks the disk before closing the tab. Some editors and coding agents save by writing a temporary file, deleting
     // the original and renaming the temporary file. The file may then be back by the time the change arrives.
-    private async void CheckFile()
+    private async Task CheckFileAsync()
     {
-        var resource = _followedResource;
+        var resource = _subscribedResource;
 
-        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
-        var infoResult = await resourceFileSystem.GetInfoAsync(resource);
-        if (infoResult.IsFailure
-            || infoResult.Value.Kind != StorageItemKind.File)
+        try
         {
-            // The resource no longer exists, so force-close the document. Routed through a command
-            // instead of calling CloseDocument() directly to help avoid race conditions.
-            _commandService.Execute<ICloseDocumentCommand>(command =>
+            // The workspace can unload while the disk is read. The check then stops once the workspace service is gone.
+            if (!_workspaceWrapper.HasWorkspaceService)
             {
-                command.FileResource = FileResource;
-                command.ForceClose = true;
-            });
-            return;
-        }
-
-        // Re-apply the writable state to the open document so external attribute
-        // changes propagate into the editor's read-only signal without reopening the document.
-        if (DocumentView is not null)
-        {
-            var operationService = _workspaceWrapper.WorkspaceService.ResourceService.Operations;
-            var refreshedState = await operationService.GetWritableStateAsync(resource);
-            if (refreshedState != DocumentView.WritableState)
-            {
-                DocumentView.SetWritableState(refreshedState);
+                return;
             }
+
+            var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+            var infoResult = await resourceFileSystem.GetInfoAsync(resource);
+            if (!_workspaceWrapper.HasWorkspaceService)
+            {
+                return;
+            }
+
+            if (infoResult.IsFailure
+                || infoResult.Value.Kind != StorageItemKind.File)
+            {
+                // The file is gone, so force-close the document. The close goes through the command queue, so it
+                // runs after any command already in progress.
+                _commandService.Execute<ICloseDocumentCommand>(command =>
+                {
+                    command.FileResource = FileResource;
+                    command.ForceClose = true;
+                });
+                return;
+            }
+
+            // Re-apply the writable state to the open document so external attribute
+            // changes propagate into the editor's read-only signal without reopening the document.
+            if (DocumentView is not null)
+            {
+                var operationService = _workspaceWrapper.WorkspaceService.ResourceService.Operations;
+                var refreshedState = await operationService.GetWritableStateAsync(resource);
+                if (DocumentView is not null
+                    && refreshedState != DocumentView.WritableState)
+                {
+                    DocumentView.SetWritableState(refreshedState);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Failed to check the file '{resource}'");
         }
     }
 
-    // The tab follows the new key at once. The watcher reports the old key absent moments after the move. The document
-    // may still be loading under the new key then, and that report must leave the tab open.
+    // The tab subscribes to the new key at once, also when a folder above the file moved. The old key is reported
+    // absent moments after the move. The document may still be loading under the new key then, and that report must
+    // leave the tab open.
     private void OnResourceKeyChangedMessage(object recipient, ResourceKeyChangedMessage message)
     {
-        if (message.SourceResource != FileResource)
+        var oldResource = FileResource;
+        var sourceResource = message.SourceResource;
+        var destResource = message.DestResource;
+        if (!ResourceKeyHelper.TryMapKey(oldResource, sourceResource, destResource, out var newResource))
         {
             return;
         }
 
-        FollowFile(message.DestResource);
+        SubscribeToFileChanges(newResource);
 
-        var documentMessage = new DocumentResourceChangedMessage(message.SourceResource, message.DestResource);
+        var documentMessage = new DocumentResourceChangedMessage(oldResource, newResource);
         _messengerService.Send(documentMessage);
     }
 

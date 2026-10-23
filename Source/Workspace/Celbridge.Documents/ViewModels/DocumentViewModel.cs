@@ -125,7 +125,7 @@ public abstract partial class DocumentViewModel : ObservableObject
         if (!FileResource.IsEmpty)
         {
             var handlers = new ResourceChangeHandlers(OnFileChanges, OnFileResync);
-            var subscribeResult = GetResourceMonitor().SubscribeToResources(new[] { FileResource }, handlers);
+            var subscribeResult = GetResourceMonitor().SubscribeToResources([FileResource], handlers);
             if (subscribeResult.IsSuccess)
             {
                 _fileSubscription = subscribeResult.Value;

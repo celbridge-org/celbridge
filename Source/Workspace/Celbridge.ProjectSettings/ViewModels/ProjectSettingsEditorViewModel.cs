@@ -172,7 +172,7 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
         if (!_fileResource.IsEmpty)
         {
             var handlers = new ResourceChangeHandlers(OnProjectFileChanges, OnProjectFileResync);
-            var subscribeResult = _resourceMonitor.SubscribeToResources(new[] { _fileResource }, handlers);
+            var subscribeResult = _resourceMonitor.SubscribeToResources([_fileResource], handlers);
             if (subscribeResult.IsSuccess)
             {
                 _fileSubscription = subscribeResult.Value;
