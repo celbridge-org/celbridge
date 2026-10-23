@@ -21,6 +21,15 @@ public sealed class ResourceTreeModel
 {
     private sealed record ResourceLocation(IReadOnlyList<ResourceKey> FoldersAbove, bool IsHidden);
 
+    // A folder's children, as the file system returned them when the model listed the folder.
+    private sealed record FolderListing(IReadOnlyList<FolderChild> Children)
+    {
+        public FolderChild? Find(ResourceKey resource)
+        {
+            return Children.FirstOrDefault(folderChild => folderChild.Resource == resource);
+        }
+    }
+
     // Collects the rows in display order. A resource keeps its previous row when the row's appearance is unchanged.
     private sealed class RowBuilder
     {
@@ -67,7 +76,7 @@ public sealed class ResourceTreeModel
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IAutomationService _automationService;
 
-    private readonly Dictionary<ResourceKey, IReadOnlyList<FolderChild>> _listings = new();
+    private readonly Dictionary<ResourceKey, FolderListing> _listings = new();
     private Dictionary<ResourceKey, ResourceViewItem> _rowsByResource = new();
     private IReadOnlyList<ResourceViewItem> _rows = [];
 
@@ -232,21 +241,21 @@ public sealed class ResourceTreeModel
 
         for (var segmentIndex = 0; segmentIndex < segments.Length; segmentIndex++)
         {
-            var itemKey = folder.Combine(segments[segmentIndex]);
+            var childKey = folder.Combine(segments[segmentIndex]);
 
-            var listing = await GetListingContainingAsync(folder, itemKey);
+            var listing = await GetListingContainingAsync(folder, childKey);
             if (listing is null)
             {
                 return Result.Fail($"Failed to list folder: '{folder}'");
             }
 
-            var item = listing.FirstOrDefault(folderChild => folderChild.Resource == itemKey);
-            if (item is null)
+            var folderChild = listing.Find(childKey);
+            if (folderChild is null)
             {
                 return Result.Fail($"Resource not found: '{resource}'");
             }
 
-            if (ResourceTreeFilter.IsHidden(item.Resource, item.IsFolder, policy))
+            if (ResourceTreeFilter.IsHidden(folderChild.Resource, folderChild.IsFolder, policy))
             {
                 isHidden = true;
             }
@@ -257,13 +266,13 @@ public sealed class ResourceTreeModel
                 break;
             }
 
-            if (!item.IsFolder)
+            if (!folderChild.IsFolder)
             {
                 return Result.Fail($"Resource not found: '{resource}'");
             }
 
-            folders.Add(itemKey);
-            folder = itemKey;
+            folders.Add(childKey);
+            folder = childKey;
         }
 
         return new ResourceLocation(folders, isHidden);
@@ -295,8 +304,8 @@ public sealed class ResourceTreeModel
                 continue;
             }
 
-            var visibleSubfolders = listing
-                .Where(item => item.IsFolder && IsVisible(item))
+            var visibleSubfolders = listing.Children
+                .Where(folderChild => folderChild.IsFolder && IsVisible(folderChild))
                 .ToList();
             var listsSubfolders = visibleSubfolders.Count <= LookAheadSubfolderLimit;
 
@@ -330,7 +339,7 @@ public sealed class ResourceTreeModel
         _automationService.LogEvent(new ExplorerTreeBuiltEvent(_rows.Count, elapsed));
     }
 
-    private async Task<IReadOnlyList<FolderChild>?> GetListingAsync(ResourceKey folder)
+    private async Task<FolderListing?> GetListingAsync(ResourceKey folder)
     {
         if (_listings.TryGetValue(folder, out var heldListing))
         {
@@ -348,7 +357,7 @@ public sealed class ResourceTreeModel
             return null;
         }
 
-        var listing = enumerateResult.Value;
+        var listing = new FolderListing(enumerateResult.Value);
         _listings[folder] = listing;
 
         return listing;
@@ -356,11 +365,11 @@ public sealed class ResourceTreeModel
 
     // Lists the folder again when its held listing lacks the resource. A command that changes the disk can name the
     // resource before the change reaches the model, so a held listing can predate the resource.
-    private async Task<IReadOnlyList<FolderChild>?> GetListingContainingAsync(ResourceKey folder, ResourceKey resource)
+    private async Task<FolderListing?> GetListingContainingAsync(ResourceKey folder, ResourceKey resource)
     {
         var listing = await GetListingAsync(folder);
         if (listing is not null
-            && listing.Any(folderChild => folderChild.Resource == resource))
+            && listing.Find(resource) is not null)
         {
             return listing;
         }
@@ -388,8 +397,14 @@ public sealed class ResourceTreeModel
             }
 
             var parentFolder = expandedFolder.GetParent();
-            if (_listings.TryGetValue(parentFolder, out var parentListing)
-                && !parentListing.Any(item => item.IsFolder && item.Resource == expandedFolder))
+            if (!_listings.TryGetValue(parentFolder, out var parentListing))
+            {
+                continue;
+            }
+
+            var folderChild = parentListing.Find(expandedFolder);
+            if (folderChild is null
+                || !folderChild.IsFolder)
             {
                 missingFolders.Add(expandedFolder);
             }
@@ -510,14 +525,14 @@ public sealed class ResourceTreeModel
             && path.StartsWith(containerPath, StringComparison.OrdinalIgnoreCase);
     }
 
-    private bool IsVisible(FolderChild item)
+    private bool IsVisible(FolderChild folderChild)
     {
         if (ShowHiddenFiles)
         {
             return true;
         }
 
-        return !ResourceTreeFilter.IsHidden(item.Resource, item.IsFolder, ResourceService.Policy);
+        return !ResourceTreeFilter.IsHidden(folderChild.Resource, folderChild.IsFolder, ResourceService.Policy);
     }
 
     // Returns true if the folder has a visible child. An unlisted folder counts as having one, so its row shows an
@@ -529,7 +544,7 @@ public sealed class ResourceTreeModel
             return true;
         }
 
-        return listing.Any(IsVisible);
+        return listing.Children.Any(IsVisible);
     }
 
     private void BuildRows()
@@ -571,25 +586,25 @@ public sealed class ResourceTreeModel
         var rootHandlers = ResourceService.RootHandlers;
         var showHiddenFiles = ShowHiddenFiles;
 
-        foreach (var item in listing)
+        foreach (var folderChild in listing.Children)
         {
-            var isHidden = ResourceTreeFilter.IsHidden(item.Resource, item.IsFolder, policy);
+            var isHidden = ResourceTreeFilter.IsHidden(folderChild.Resource, folderChild.IsFolder, policy);
             if (isHidden
                 && !showHiddenFiles)
             {
                 continue;
             }
 
-            var writableState = WritableStatePriority.Compute(item.Resource, item.Attributes, rootHandlers);
+            var writableState = WritableStatePriority.Compute(folderChild.Resource, folderChild.Attributes, rootHandlers);
             var readOnlyMessage = ReadOnlyMessageHelper.GetReadOnlyMessage(writableState, _stringLocalizer) ?? string.Empty;
 
-            if (item.IsFolder)
+            if (folderChild.IsFolder)
             {
-                var isExpanded = FolderStateService.IsExpanded(item.Resource);
-                var hasChildren = HasVisibleChildren(item.Resource);
+                var isExpanded = FolderStateService.IsExpanded(folderChild.Resource);
+                var hasChildren = HasVisibleChildren(folderChild.Resource);
 
                 var appearance = new ResourceViewItemAppearance(
-                    Name: item.Resource.ResourceName,
+                    Name: folderChild.Resource.ResourceName,
                     IndentLevel: indentLevel,
                     IsFolder: true,
                     HasChildren: hasChildren,
@@ -599,18 +614,18 @@ public sealed class ResourceTreeModel
                     WritableState: writableState,
                     ReadOnlyMessage: readOnlyMessage,
                     ProjectFolderTooltip: string.Empty);
-                builder.Add(item.Resource, appearance, null);
+                builder.Add(folderChild.Resource, appearance, null);
 
                 if (isExpanded
                     && hasChildren)
                 {
-                    AddChildRows(builder, item.Resource, indentLevel + 1);
+                    AddChildRows(builder, folderChild.Resource, indentLevel + 1);
                 }
             }
             else
             {
                 var appearance = new ResourceViewItemAppearance(
-                    Name: item.Resource.ResourceName,
+                    Name: folderChild.Resource.ResourceName,
                     IndentLevel: indentLevel,
                     IsFolder: false,
                     HasChildren: false,
@@ -620,7 +635,7 @@ public sealed class ResourceTreeModel
                     WritableState: writableState,
                     ReadOnlyMessage: readOnlyMessage,
                     ProjectFolderTooltip: string.Empty);
-                builder.Add(item.Resource, appearance, GetFileIcon);
+                builder.Add(folderChild.Resource, appearance, GetFileIcon);
             }
         }
     }
