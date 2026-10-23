@@ -43,7 +43,7 @@ internal sealed class ListedFoldersMatcher : IPathMatcher
     }
 
     /// <summary>
-    /// Returns true if the folder path is the path, or a path inside it, ignoring letter case.
+    /// Returns true if folderPath equals path or lies inside path, ignoring letter case.
     /// </summary>
     public static bool IsAtOrInside(string folderPath, string path)
     {
