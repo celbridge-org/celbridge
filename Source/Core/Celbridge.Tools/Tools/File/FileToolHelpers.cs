@@ -15,7 +15,7 @@ public static class FileToolHelpers
     /// <param name="folder">The folder resource to build from.</param>
     /// <param name="remainingDepth">How many more levels to expand. Zero produces a leaf node marked truncated if the folder has children.</param>
     /// <param name="globRegex">Optional compiled glob regex to filter files by name. Folders are kept if they have any matching descendants.</param>
-    /// <param name="typeFilter">Optional type filter: "file" to include only file nodes, "folder" to include only folder nodes. Empty or unrecognised values include both.</param>
+    /// <param name="typeFilter">Optional type filter: "file" to include only file nodes (plus the folders that contain them), "folder" to include only folder nodes. Empty or unrecognised values include both.</param>
     public static TreeFolderNode? BuildTree(IFolderResource folder, int remainingDepth, Regex? globRegex, string typeFilter)
     {
         var children = new List<object>();
@@ -31,7 +31,10 @@ public static class FileToolHelpers
                 if (child is IFolderResource childFolder)
                 {
                     var childNode = BuildTree(childFolder, remainingDepth - 1, globRegex, typeFilter);
-                    if (childNode is not null && showFolders)
+                    // The "file" filter still keeps folders that contain matching
+                    // files (or unexplored children) so nested matches stay reachable.
+                    if (childNode is not null &&
+                        (showFolders || childNode.Children.Count > 0 || childNode.Truncated == true))
                     {
                         children.Add(childNode);
                     }
