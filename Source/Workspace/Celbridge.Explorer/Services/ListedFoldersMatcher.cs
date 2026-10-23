@@ -42,26 +42,6 @@ internal sealed class ListedFoldersMatcher : IPathMatcher
             || _pathsAboveListed.Contains(folderPath);
     }
 
-    /// <summary>
-    /// Returns true if folderPath equals path or lies inside path, ignoring letter case.
-    /// </summary>
-    public static bool IsAtOrInside(string folderPath, string path)
-    {
-        if (string.Equals(folderPath, path, StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
-        if (path.Length == 0)
-        {
-            return true;
-        }
-
-        return folderPath.Length > path.Length
-            && folderPath[path.Length] == '/'
-            && folderPath.StartsWith(path, StringComparison.OrdinalIgnoreCase);
-    }
-
     private static string GetParentPath(string path)
     {
         var slashIndex = path.LastIndexOf('/');

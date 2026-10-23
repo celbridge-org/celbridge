@@ -458,7 +458,7 @@ public sealed class ResourceTreeModel
                 var listedPath = listedFolder.Path;
 
                 if (string.Equals(listedPath, parentPath, StringComparison.OrdinalIgnoreCase)
-                    || ListedFoldersMatcher.IsAtOrInside(listedPath, changedPath))
+                    || ContainsPath(changedPath, listedPath))
                 {
                     staleFolders.Add(listedFolder);
                 }
@@ -466,6 +466,24 @@ public sealed class ResourceTreeModel
         }
 
         return staleFolders.ToList();
+    }
+
+    // Returns true if path equals containerPath or lies inside containerPath, ignoring letter case.
+    private static bool ContainsPath(string containerPath, string path)
+    {
+        if (string.Equals(containerPath, path, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (containerPath.Length == 0)
+        {
+            return true;
+        }
+
+        return path.Length > containerPath.Length
+            && path[containerPath.Length] == '/'
+            && path.StartsWith(containerPath, StringComparison.OrdinalIgnoreCase);
     }
 
     private bool IsVisible(FolderChild item)
