@@ -14,13 +14,6 @@ namespace Celbridge.Console.Services;
 /// </summary>
 internal sealed class ConsoleSession : IDisposable
 {
-    // Carriage return, the submit key at a shell or REPL prompt.
-    private const string SubmitKey = "\r";
-
-    // How long after the invocation text the submit key is written. Long enough that a terminal app
-    // grouping a burst of stdin does not take the two for one paste.
-    private const int SubmitKeyDelayMs = 100;
-
     // How long the marker scan waits without any output before revealing what the runtime is printing.
     // Measured from the last output rather than from injection, because the expensive part of a launch
     // happens after the command is typed: a first run resolves an interpreter and installs packages, which
@@ -37,6 +30,15 @@ internal sealed class ConsoleSession : IDisposable
     private readonly IReadOnlyList<IConsoleSessionProvider> _sessionProviders;
     private readonly SharedConsoleStartupWrite _startupWrite;
     private readonly IReadOnlyList<ConsoleSessionType> _sessionTypes;
+
+    // Requests a trigger's run in this session. The session service debounces the requests.
+    private readonly Action<Guid, string> _scheduleTrigger;
+
+    // Submits the programmatic injections to the terminal one at a time, in order.
+    private readonly ConsoleSubmitQueue _submitQueue;
+
+    // One subscription for each trigger of the current launch, with the matcher the trigger compiled.
+    private IReadOnlyList<IMatcherSubscription> _triggerSubscriptions = Array.Empty<IMatcherSubscription>();
 
     // The size a view reports for this session, which the launch waits on before it creates the pty.
     private readonly PendingViewSize _pendingViewSize = new();
@@ -73,15 +75,18 @@ internal sealed class ConsoleSession : IDisposable
         IWorkspaceWrapper workspaceWrapper,
         ResourceKey resource,
         IReadOnlyList<IConsoleSessionProvider> sessionProviders,
-        SharedConsoleStartupWrite startupWrite)
+        SharedConsoleStartupWrite startupWrite,
+        Action<Guid, string> scheduleTrigger)
     {
         _serviceProvider = serviceProvider;
         _workspaceWrapper = workspaceWrapper;
         Resource = resource;
         _sessionProviders = sessionProviders;
         _startupWrite = startupWrite;
+        _scheduleTrigger = scheduleTrigger;
         _sessionTypes = sessionProviders.Select(provider => provider.SessionType).ToList();
         _logger = serviceProvider.GetRequiredService<ILogger<ConsoleSession>>();
+        _submitQueue = new ConsoleSubmitQueue(text => _terminal?.Write(text), _logger);
         _webViewPlatform = ServiceLocator.AcquireService<IWebViewPlatform>();
     }
 
@@ -130,11 +135,6 @@ internal sealed class ConsoleSession : IDisposable
     /// runners target a prompt that is no longer there.
     /// </summary>
     public bool HasStaleRunners => HasConnected && ConnectionId is null;
-
-    /// <summary>
-    /// Raised when the run state changes, so the owning service can broadcast it.
-    /// </summary>
-    public event EventHandler<ConsoleSessionRunState>? StateChanged;
 
     /// <summary>
     /// The single-flight start, awaited by attach so a view never observes a half-started session.
@@ -221,6 +221,7 @@ internal sealed class ConsoleSession : IDisposable
             provider.SessionType.BuiltInRunners,
             config.DisabledBuiltInRunners);
         Triggers = ResolveTriggers(config);
+        SubscribeToTriggers();
         ConnectionId = null;
         HasConnected = false;
         ClientTemporaryEnvironmentFolder = null;
@@ -420,7 +421,7 @@ internal sealed class ConsoleSession : IDisposable
         }
 
         LaunchedConfigToml = tomlText;
-        SetState(ConsoleSessionRunState.Running);
+        State = ConsoleSessionRunState.Running;
 
         // Start the silence timer with the shell, so the console still shows if the shell prints nothing before
         // its marker.
@@ -576,6 +577,8 @@ internal sealed class ConsoleSession : IDisposable
         // Until start-up ends, a programmatic injection is held back. Start-up ends once the shell's ready marker has
         // arrived and the start-up script has been typed. A Run issued as the console opens then arrives as type-ahead
         // for the starting REPL.
+        // Opening the gate queues the buffered injections under the gate's lock, and a new injection is queued under
+        // the same lock. A new injection therefore always lands after the buffered injections.
         lock (_gateLock)
         {
             if (_startupGateClosed)
@@ -583,33 +586,8 @@ internal sealed class ConsoleSession : IDisposable
                 _bufferedInjections.Add(text);
                 return;
             }
-        }
 
-        _ = SubmitAsync(text);
-    }
-
-    // The submit key goes in a write of its own, a beat after the text. A terminal app that groups a
-    // burst of stdin into a single paste reads a carriage return inside that burst as a literal newline
-    // rather than a submit, leaving the invocation unsent at its prompt. Typing by hand does not hit this
-    // because each keystroke arrives as its own write. A shell or REPL is unaffected either way.
-    private async Task SubmitAsync(string text)
-    {
-        try
-        {
-            _terminal?.Write(text);
-
-            await Task.Delay(SubmitKeyDelayMs);
-
-            if (_disposed)
-            {
-                return;
-            }
-
-            _terminal?.Write(SubmitKey);
-        }
-        catch (Exception exception)
-        {
-            _logger.LogError(exception, "Failed to submit an invocation to the console session");
+            _submitQueue.Enqueue(text);
         }
     }
 
@@ -640,7 +618,6 @@ internal sealed class ConsoleSession : IDisposable
     // are submitted in order.
     private void OpenStartupGateWhenDone()
     {
-        List<string> bufferedInjections;
         lock (_gateLock)
         {
             if (!_startupGateClosed ||
@@ -651,13 +628,11 @@ internal sealed class ConsoleSession : IDisposable
             }
 
             _startupGateClosed = false;
-            bufferedInjections = new List<string>(_bufferedInjections);
+            foreach (var injection in _bufferedInjections)
+            {
+                _submitQueue.Enqueue(injection);
+            }
             _bufferedInjections.Clear();
-        }
-
-        if (bufferedInjections.Count > 0)
-        {
-            _ = SubmitBufferedAsync(bufferedInjections);
         }
     }
 
@@ -686,15 +661,6 @@ internal sealed class ConsoleSession : IDisposable
     {
         _markerTimeout?.Dispose();
         _markerTimeout = null;
-    }
-
-    // Awaited in turn so buffered invocations submit in order rather than racing each other.
-    private async Task SubmitBufferedAsync(IReadOnlyList<string> submissions)
-    {
-        foreach (var submission in submissions)
-        {
-            await SubmitAsync(submission);
-        }
     }
 
     // The runtime has gone quiet without emitting its ready marker, so it is either far slower than a
@@ -887,7 +853,7 @@ internal sealed class ConsoleSession : IDisposable
         OnMarkerSettled();
         FlushHeldDiagnosticText();
 
-        SetState(ConsoleSessionRunState.Ended);
+        State = ConsoleSessionRunState.Ended;
 
         IConsoleView? attachedView;
         lock (_streamLock)
@@ -900,17 +866,11 @@ internal sealed class ConsoleSession : IDisposable
     private void Fail(string? message)
     {
         Error = message;
-        SetState(ConsoleSessionRunState.Failed);
+        State = ConsoleSessionRunState.Failed;
 
         // A session starts when its document opens, which may be long before anyone looks at the tab, so
         // the log is the only place the failure surfaces until then.
         _logger.LogWarning("Console session '{Resource}' failed to start: {Error}", Resource, message);
-    }
-
-    private void SetState(ConsoleSessionRunState state)
-    {
-        State = state;
-        StateChanged?.Invoke(this, state);
     }
 
     private IConsoleSessionProvider? ResolveProvider(string typeId)
@@ -926,8 +886,7 @@ internal sealed class ConsoleSession : IDisposable
         return null;
     }
 
-    // Patterns are compiled once per launch rather than per resource change, since every change is tested
-    // against every trigger of every open console.
+    // Patterns are compiled once per launch, and each trigger subscribes with the matcher it compiled.
     private IReadOnlyList<ConsoleTrigger> ResolveTriggers(ConsoleDocumentConfig config)
     {
         var triggers = new List<ConsoleTrigger>();
@@ -948,6 +907,49 @@ internal sealed class ConsoleSession : IDisposable
         return triggers;
     }
 
+    // Subscribes for each trigger before disposing the previous launch's subscriptions, so no change between the
+    // two is missed.
+    private void SubscribeToTriggers()
+    {
+        var previousSubscriptions = _triggerSubscriptions;
+
+        var monitor = _workspaceWrapper.WorkspaceService.ResourceService.Monitor;
+        var subscriptions = new List<IMatcherSubscription>();
+        foreach (var trigger in Triggers)
+        {
+            // A resync names no files, so a trigger ignores it.
+            var handlers = new ResourceChangeHandlers(
+                batch => OnTriggerChanges(trigger, batch),
+                resync => { });
+
+            var subscribeResult = monitor.SubscribeToMatcher(ResourceKey.DefaultRoot, trigger.Matcher, handlers);
+            if (subscribeResult.IsFailure)
+            {
+                _logger.LogWarning("Console trigger cannot follow the project: {Reason}", subscribeResult.FirstErrorMessage);
+                continue;
+            }
+
+            subscriptions.Add(subscribeResult.Value);
+        }
+        _triggerSubscriptions = subscriptions;
+
+        foreach (var subscription in previousSubscriptions)
+        {
+            subscription.Dispose();
+        }
+    }
+
+    // An editor saves on a timer while the user types. Every match is requested here, and the session service
+    // collapses the requests into one run.
+    private void OnTriggerChanges(ConsoleTrigger trigger, ResourceChangeBatch batch)
+    {
+        var invocations = ConsoleTriggerMatcher.Resolve(trigger, batch);
+        foreach (var invocation in invocations)
+        {
+            _scheduleTrigger(SessionId, invocation);
+        }
+    }
+
     public void Dispose()
     {
         if (_disposed)
@@ -956,6 +958,14 @@ internal sealed class ConsoleSession : IDisposable
         }
 
         _disposed = true;
+
+        _submitQueue.Stop();
+
+        foreach (var subscription in _triggerSubscriptions)
+        {
+            subscription.Dispose();
+        }
+        _triggerSubscriptions = Array.Empty<IMatcherSubscription>();
 
         _markerTimeout?.Dispose();
         _markerTimeout = null;

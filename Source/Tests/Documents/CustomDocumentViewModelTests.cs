@@ -3,6 +3,7 @@ using Celbridge.Messaging;
 using Celbridge.Messaging.Services;
 using Celbridge.Resources;
 using Celbridge.Tests.FileSystem;
+using Celbridge.Tests.Helpers;
 using Celbridge.Workspace;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -31,6 +32,7 @@ public class CustomDocumentViewModelTests
 
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Registry.Returns(_registry);
+        resourceService.Monitor.Returns(new FakeResourceMonitor());
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
@@ -38,10 +40,11 @@ public class CustomDocumentViewModelTests
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
-        // The view model acquires the messenger through the global ServiceLocator, so the locator is restored
-        // afterwards exactly as this fixture found it.
+        // The view model acquires the messenger and the workspace through the global ServiceLocator, so the locator
+        // is restored afterwards exactly as this fixture found it.
         var services = new ServiceCollection();
         services.AddSingleton(_messengerService);
+        services.AddSingleton(workspaceWrapper);
         _previousServiceProvider = ServiceLocator.ServiceProvider;
         ServiceLocator.Initialize(services.BuildServiceProvider());
 

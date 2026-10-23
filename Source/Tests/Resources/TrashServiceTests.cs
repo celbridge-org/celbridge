@@ -1,4 +1,3 @@
-using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Projects.Services;
 using Celbridge.Resources;
@@ -18,6 +17,7 @@ public class TrashServiceTests
     private string _testFolder = null!;
     private string _tempFolder = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
+    private List<IReadOnlyList<ResourceKey>> _reports = null!;
     private TrashService _trashService = null!;
 
     [SetUp]
@@ -35,6 +35,13 @@ public class TrashServiceTests
 
         var resourceService = Substitute.For<IResourceService>();
         resourceService.RootHandlers.Returns(TestRootHandlers.Create(_tempFolder));
+
+        // Records the keys of each report, in the order the reports arrive.
+        _reports = new List<IReadOnlyList<ResourceKey>>();
+        var resourceMonitor = Substitute.For<IResourceMonitor>();
+        resourceMonitor.ReportOperationChanges(
+            Arg.Do<IReadOnlyList<ResourceKey>>(resources => _reports.Add(resources)));
+        resourceService.Monitor.Returns(resourceMonitor);
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
@@ -61,7 +68,6 @@ public class TrashServiceTests
 
         _trashService = new TrashService(
             Substitute.For<ILogger<TrashService>>(),
-            Substitute.For<IMessengerService>(),
             _workspaceWrapper,
             projectService,
             TestFileSystem.CreateLocal());
@@ -112,6 +118,7 @@ public class TrashServiceTests
         entry.SidecarOriginalPath.Should().Be(sidecarPath);
         entry.SidecarTrashPath.Should().NotBeNull();
         File.Exists(entry.SidecarTrashPath!).Should().BeTrue();
+        _reports.Should().ContainSingle().Which.Should().Equal(resource, new ResourceKey("doc.txt.cel"));
     }
 
     [Test]
@@ -142,7 +149,7 @@ public class TrashServiceTests
     }
 
     [Test]
-    public async Task MoveToTrashAsync_NonEmptyFolder_MovesSubtree_AndCapturesDescendantKeys()
+    public async Task MoveToTrashAsync_NonEmptyFolder_MovesSubtree_AndReportsTheFolderAlone()
     {
         var resource = new ResourceKey("folder");
         var folderPath = Path.Combine(_tempFolder, "folder");
@@ -158,37 +165,7 @@ public class TrashServiceTests
         entry.WasFolder.Should().BeTrue();
         entry.WasEmptyFolder.Should().BeFalse();
         Directory.Exists(entry.TrashPath).Should().BeTrue();
-        entry.DescendantKeys.Should().ContainSingle().Which.Path.Should().Be("folder/child.txt");
-    }
-
-    [Test]
-    public async Task MoveToTrashAsync_NonEmptyFolder_CapturesNestedSubFolderKeys()
-    {
-        // Folders are first-class resources, so the descendant capture must cover
-        // nested sub-folders too - including empty ones, which carry no files for
-        // the file walk to surface.
-        var resource = new ResourceKey("folder");
-        var folderPath = Path.Combine(_tempFolder, "folder");
-        Directory.CreateDirectory(folderPath);
-
-        var nestedFolderPath = Path.Combine(folderPath, "nested");
-        Directory.CreateDirectory(nestedFolderPath);
-        var deepFilePath = Path.Combine(nestedFolderPath, "deep.txt");
-        await File.WriteAllTextAsync(deepFilePath, "deep");
-
-        var emptyFolderPath = Path.Combine(folderPath, "empty");
-        Directory.CreateDirectory(emptyFolderPath);
-
-        var result = await _trashService.MoveToTrashAsync(resource);
-
-        result.IsSuccess.Should().BeTrue();
-        var entry = result.Value;
-        entry.DescendantKeys.Select(key => key.Path).Should().BeEquivalentTo(new[]
-        {
-            "folder/nested/deep.txt",
-            "folder/nested",
-            "folder/empty",
-        });
+        _reports.Should().ContainSingle().Which.Should().Equal(resource);
     }
 
     [Test]
@@ -256,6 +233,24 @@ public class TrashServiceTests
         restoreResult.IsSuccess.Should().BeTrue();
         File.Exists(path).Should().BeTrue();
         (await File.ReadAllTextAsync(path)).Should().Be("before-trash");
+    }
+
+    [Test]
+    public async Task RestoreFromTrashAsync_File_ReportsTheFileAndItsSidecar()
+    {
+        var resource = new ResourceKey("doc.txt");
+        var path = Path.Combine(_tempFolder, "doc.txt");
+        await File.WriteAllTextAsync(path, "main");
+        await File.WriteAllTextAsync(path + SidecarFile.Extension, "+++\ntitle = 'Doc'\n+++\n");
+
+        var trashResult = await _trashService.MoveToTrashAsync(resource);
+        trashResult.IsSuccess.Should().BeTrue();
+        _reports.Clear();
+
+        var restoreResult = await _trashService.RestoreFromTrashAsync(trashResult.Value);
+
+        restoreResult.IsSuccess.Should().BeTrue();
+        _reports.Should().ContainSingle().Which.Should().Equal(resource, new ResourceKey("doc.txt.cel"));
     }
 
     [Test]

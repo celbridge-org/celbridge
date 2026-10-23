@@ -4,6 +4,7 @@ using Celbridge.Messaging.Services;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
 using Celbridge.Tests.FileSystem;
+using Celbridge.Tests.Helpers;
 using Celbridge.Workspace;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -18,6 +19,7 @@ public class DocumentViewModelTests
 {
     private IMessengerService _messengerService = null!;
     private IResourceFileSystem _resourceFileSystem = null!;
+    private FakeResourceMonitor _resourceMonitor = null!;
     private TestDocumentViewModel _vm = null!;
     private string _tempFolder = null!;
     private string _tempFilePath = null!;
@@ -50,6 +52,9 @@ public class DocumentViewModelTests
 
         _resourceFileSystem = new LocalResourceFileSystem(Substitute.For<ILogger<LocalResourceFileSystem>>(), _messengerService, workspaceWrapper, TestFileSystem.CreateLocal());
         resourceService.FileSystem.Returns(_resourceFileSystem);
+
+        _resourceMonitor = new FakeResourceMonitor();
+        resourceService.Monitor.Returns(_resourceMonitor);
 
         var services = new ServiceCollection();
         services.AddSingleton(_messengerService);
@@ -202,40 +207,85 @@ public class DocumentViewModelTests
     }
 
     [Test]
-    public void ResourceChanged_TriggersReload_WhenFileChangedExternally()
+    public void FileChange_TriggersReload_WhenFileChangedExternally()
     {
         // With no prior load/save the hash is null, so any change is treated as external
         var reloadRequested = false;
         _vm.ReloadRequested += (_, _) => reloadRequested = true;
 
-        var message = new ResourceChangedMessage(_vm.FileResource);
-        _messengerService.Send(message);
+        _resourceMonitor.DeliverChange(_vm.FileResource, ResourceItemState.File);
 
         reloadRequested.Should().BeTrue();
     }
 
     [Test]
-    public void OnResourceChanged_ResetsSaveTimer_WhenExternalChangeArrives()
+    public void FileChange_ResetsSaveTimer_WhenExternalChangeArrives()
     {
         _vm.HasUnsavedChanges = true;
         _vm.SaveTimer = 0.5;
 
-        var message = new ResourceChangedMessage(_vm.FileResource);
-        _messengerService.Send(message);
+        _resourceMonitor.DeliverChange(_vm.FileResource, ResourceItemState.File);
 
         _vm.SaveTimer.Should().Be(0);
     }
 
     [Test]
-    public void OnResourceChanged_ResetsHasUnsavedChanges_WhenExternalChangeArrives()
+    public void FileChange_ResetsHasUnsavedChanges_WhenExternalChangeArrives()
     {
         _vm.HasUnsavedChanges = true;
         _vm.SaveTimer = 0.5;
 
-        var message = new ResourceChangedMessage(_vm.FileResource);
-        _messengerService.Send(message);
+        _resourceMonitor.DeliverChange(_vm.FileResource, ResourceItemState.File);
 
         _vm.HasUnsavedChanges.Should().BeFalse();
+    }
+
+    [Test]
+    public void FileChange_DoesNotRaiseReload_WhenTheFileIsAbsent()
+    {
+        // The document tab closes the document when the file is absent.
+        var reloadRequested = false;
+        _vm.ReloadRequested += (_, _) => reloadRequested = true;
+
+        _resourceMonitor.DeliverChange(_vm.FileResource, ResourceItemState.Absent);
+
+        reloadRequested.Should().BeFalse();
+    }
+
+    [Test]
+    public async Task Resync_RaisesReload_OnlyWhenTheFileChanged()
+    {
+        await File.WriteAllTextAsync(_tempFilePath, "content as loaded");
+        var loadResult = await _vm.LoadDocument();
+        loadResult.IsSuccess.Should().BeTrue();
+
+        var reloadCount = 0;
+        _vm.ReloadRequested += (_, _) => reloadCount++;
+
+        _resourceMonitor.DeliverResync(ResourceKey.DefaultRoot);
+        reloadCount.Should().Be(0);
+
+        await File.WriteAllTextAsync(_tempFilePath, "content an external writer put there");
+        _resourceMonitor.DeliverResync(ResourceKey.DefaultRoot);
+        reloadCount.Should().Be(1);
+    }
+
+    [Test]
+    public void ANewKey_IsFollowedInPlaceOfTheOldOne()
+    {
+        var newResource = new ResourceKey("renamed.md");
+
+        _vm.FileResource = newResource;
+
+        _resourceMonitor.KeySubscriptions.Single().Resources.Should().Equal(newResource);
+    }
+
+    [Test]
+    public void Cleanup_DisposesTheSubscription()
+    {
+        _vm.Cleanup();
+
+        _resourceMonitor.KeySubscriptions.Should().BeEmpty();
     }
 
     [Test]
@@ -294,7 +344,7 @@ public class DocumentViewModelTests
     }
 
     [Test]
-    public async Task OnResourceChanged_DoesNotRaiseReload_AfterOwnSaveCompletes()
+    public async Task FileChange_DoesNotRaiseReload_AfterOwnSaveCompletes()
     {
         // After we save, the cache holds the size + mtime of our own write.
         // A watcher event for that same write (the self-event the gateway's
@@ -307,14 +357,13 @@ public class DocumentViewModelTests
         var reloadRequested = false;
         _vm.ReloadRequested += (_, _) => reloadRequested = true;
 
-        var message = new ResourceChangedMessage(_vm.FileResource);
-        _messengerService.Send(message);
+        _resourceMonitor.DeliverChange(_vm.FileResource, ResourceItemState.File);
 
         reloadRequested.Should().BeFalse();
     }
 
     [Test]
-    public async Task OnResourceChanged_RaisesReload_WhenFileChangesWhileItIsLoaded()
+    public async Task FileChange_RaisesReload_WhenFileChangesWhileItIsLoaded()
     {
         // An external writer changes the file just after the load reads it. The tracking info describes the file
         // as it was before the read, so the watcher's event for that write still reads as a change.
@@ -337,7 +386,7 @@ public class DocumentViewModelTests
         var reloadRequested = false;
         loadingVm.ReloadRequested += (_, _) => reloadRequested = true;
 
-        _messengerService.Send(new ResourceChangedMessage(loadingVm.FileResource));
+        _resourceMonitor.DeliverChange(loadingVm.FileResource, ResourceItemState.File);
 
         reloadRequested.Should().BeTrue();
 
@@ -352,7 +401,7 @@ public class DocumentViewModelTests
     }
 
     [Test]
-    public async Task OnResourceChanged_DoesNotRaiseReload_WhenTheSavesOwnChangeArrivesBeforeTheSaveRecordsIt()
+    public async Task FileChange_DoesNotRaiseReload_WhenTheSavesOwnChangeArrivesBeforeTheSaveRecordsIt()
     {
         // The watcher reports the save's own write before the save has recorded the file's new size and time.
         await File.WriteAllTextAsync(_tempFilePath, "content before the save");
@@ -385,13 +434,13 @@ public class DocumentViewModelTests
         async Task<Result> WriteThenReportAsync(ResourceKey resource, byte[] bytes)
         {
             var writeResult = await _resourceFileSystem.WriteAllBytesAsync(resource, bytes);
-            _messengerService.Send(new ResourceChangedMessage(resource));
+            _resourceMonitor.DeliverChange(resource, ResourceItemState.File);
             return writeResult;
         }
     }
 
     [Test]
-    public async Task OnResourceChanged_RaisesReload_WhenAnExternalChangeArrivesDuringASaveThatThrows()
+    public async Task FileChange_RaisesReload_WhenAnExternalChangeArrivesDuringASaveThatThrows()
     {
         // An external writer changes the file while the save writes it, and the save's write then throws.
         await File.WriteAllTextAsync(_tempFilePath, "content before the save");
@@ -424,7 +473,7 @@ public class DocumentViewModelTests
         async Task<Result> WriteExternallyThenThrowAsync(ResourceKey resource)
         {
             await File.WriteAllTextAsync(_tempFilePath, "content an external writer put there, longer than before");
-            _messengerService.Send(new ResourceChangedMessage(resource));
+            _resourceMonitor.DeliverChange(resource, ResourceItemState.File);
             throw new IOException("The write failed");
         }
     }

@@ -133,33 +133,20 @@ public sealed class FileSystemMonitor : IFileSystemMonitor
         Raise(new FileSystemMonitorEvent(FileSystemMonitorEventKind.Renamed, e.FullPath, e.OldFullPath));
     }
 
+    // Every error counts as lost events. On Windows an overflow arrives as an InternalBufferOverflowException. On
+    // macOS lost events arrive as a plain IOException.
     private void OnWatcherError(object sender, ErrorEventArgs e)
     {
         var exception = e.GetException();
 
-        // An overflow means the OS discarded events before we saw them, so nothing downstream can be
-        // brought up to date incrementally. The watcher itself keeps running.
-        if (exception is InternalBufferOverflowException)
-        {
-            _logger.LogWarning(
-                "File system watcher buffer overflowed for '{BackingFolder}'; some change events were lost",
-                _backingFolderPath);
+        _logger.LogWarning(
+            exception,
+            "File system watcher error for '{BackingFolder}'; some change events may have been lost",
+            _backingFolderPath);
 
-            if (!_isDisposed)
-            {
-                MonitoringDesynchronized?.Invoke(this, EventArgs.Empty);
-            }
-
-            return;
-        }
-
-        if (exception is not null)
+        if (!_isDisposed)
         {
-            _logger.LogError(exception, "File system watcher error");
-        }
-        else
-        {
-            _logger.LogError("File system watcher error (no exception attached)");
+            MonitoringDesynchronized?.Invoke(this, EventArgs.Empty);
         }
     }
 

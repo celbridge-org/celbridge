@@ -70,7 +70,8 @@ public record ResourceRegistryUpdatedMessage;
 public record RefreshResourceTreeMessage;
 
 /// <summary>
-/// A message sent when a resource has been moved or renamed.
+/// A message sent once when a resource has been moved or renamed within a root. For a moved folder, the message names
+/// the folder alone.
 /// </summary>
 public record ResourceKeyChangedMessage(ResourceKey SourceResource, ResourceKey DestResource);
 
@@ -92,27 +93,3 @@ public record ResourceOperationFailedMessage(
     /// </summary>
     public ResourceKey ReportResource { get; init; } = ResourceKey.Empty;
 }
-
-/// <summary>
-/// Broadcast when a resource has appeared at the given key. Fired by the
-/// filesystem watcher and by structural operations that have already applied
-/// the change on disk.
-/// </summary>
-public record ResourceCreatedMessage(ResourceKey Resource);
-
-/// <summary>
-/// Broadcast when an existing resource's bytes have changed.
-/// </summary>
-public record ResourceChangedMessage(ResourceKey Resource);
-
-/// <summary>
-/// Broadcast when a resource has been removed from the given key. Fired by the
-/// filesystem watcher and by structural operations that have already applied
-/// the change on disk.
-/// </summary>
-public record ResourceDeletedMessage(ResourceKey Resource);
-
-/// <summary>
-/// Broadcast when a resource has moved from one key to another.
-/// </summary>
-public record ResourceRenamedMessage(ResourceKey OldResource, ResourceKey NewResource);

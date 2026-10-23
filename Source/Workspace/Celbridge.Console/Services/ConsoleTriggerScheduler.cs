@@ -9,10 +9,10 @@ public sealed class ConsoleTriggerScheduler
     // Long enough to absorb the burst a single save produces (the watcher reports one write as several
     // events), short enough that a trigger still feels immediate. Not configurable per trigger: the value
     // that would need tuning is a property of whatever wrote the file, which the user has no way to know.
-    private const int DebounceMilliseconds = 300;
+    private static readonly TimeSpan DebounceInterval = TimeSpan.FromMilliseconds(300);
 
     private readonly Action<Guid, string> _fire;
-    private readonly Func<int, Task> _delayAsync;
+    private readonly TimeProvider _timeProvider;
 
     private readonly object _pendingLock = new();
 
@@ -21,13 +21,13 @@ public sealed class ConsoleTriggerScheduler
     private readonly Dictionary<(Guid SessionId, string Invocation), int> _pendingRequests = new();
 
     /// <summary>
-    /// The fire callback must not throw: it runs on a background task with nothing to observe it. The delay
-    /// hook exists so tests can drive the wait without a real clock.
+    /// The fire callback runs on a background task, where an exception goes unobserved. The callback must catch
+    /// its own exceptions.
     /// </summary>
-    public ConsoleTriggerScheduler(Action<Guid, string> fire, Func<int, Task>? delayAsync = null)
+    public ConsoleTriggerScheduler(Action<Guid, string> fire, TimeProvider? timeProvider = null)
     {
         _fire = fire;
-        _delayAsync = delayAsync ?? (debounceMilliseconds => Task.Delay(debounceMilliseconds));
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     /// <summary>
@@ -52,7 +52,7 @@ public sealed class ConsoleTriggerScheduler
 
     private async Task RunAfterQuietAsync((Guid SessionId, string Invocation) key, int requestNumber)
     {
-        await _delayAsync(DebounceMilliseconds);
+        await Task.Delay(DebounceInterval, _timeProvider);
 
         lock (_pendingLock)
         {

@@ -127,8 +127,9 @@ public class FileSystemMonitorTests
             await File.WriteAllTextAsync(Path.Combine(_tempFolder, $"file{i}.txt"), "x");
         }
 
-        Volatile.Write(ref disposed, true);
+        // The flag is set after Dispose returns, so the test counts only the events raised once the monitor is disposed.
         monitor.Dispose();
+        Volatile.Write(ref disposed, true);
 
         // Wait beyond the 75ms Changed-debounce window; the disposed-state guards
         // must drop any watcher callback still in flight.

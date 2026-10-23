@@ -1,49 +1,39 @@
 namespace Celbridge.Console.Services;
 
 /// <summary>
-/// How long a startup injector waits for a shell's output to settle before it writes.
-/// </summary>
-public sealed record StartupInjectorTiming(int QuietPeriodMs, int CapMs, int PollIntervalMs)
-{
-    /// <summary>
-    /// The intervals used against a real shell. Tests pass shorter ones so a case that can only be
-    /// proven by waiting the cap out does not wait a second and a half to do it.
-    /// </summary>
-    public static StartupInjectorTiming Default { get; } = new(
-        // A Unix shell's line editor can flush pending type-ahead as it initializes, so wait for the
-        // startup output to go quiet before writing. The Windows console input buffer holds type-ahead
-        // regardless.
-        QuietPeriodMs: 150,
-        // A shell that prints nothing at all would otherwise never look settled.
-        CapMs: 1500,
-        PollIntervalMs: 25);
-}
-
-/// <summary>
 /// Writes a console's startup lines into a freshly-started shell pty, once the shell's output has settled.
 /// </summary>
 public sealed class StartupInjector : IDisposable
 {
+    // A Unix shell's line editor can flush pending type-ahead while the shell starts, so the injector waits for the
+    // startup output to go quiet before writing. The Windows console input buffer keeps type-ahead either way.
+    private static readonly TimeSpan QuietPeriod = TimeSpan.FromMilliseconds(150);
+
+    // The longest wait, for a shell that prints no startup output.
+    private static readonly TimeSpan Cap = TimeSpan.FromMilliseconds(1500);
+
+    private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(25);
+
     private readonly ITerminal _terminal;
     private readonly IReadOnlyList<string> _commandLines;
     private readonly Action? _onInjected;
-    private readonly StartupInjectorTiming _timing;
+    private readonly TimeProvider _timeProvider;
     private readonly CancellationTokenSource _cancellation = new();
     private readonly object _stateLock = new();
 
-    private long _lastOutputTick = -1;
+    private long _lastOutputTimestamp = -1;
     private bool _disposed;
 
     private StartupInjector(
         ITerminal terminal,
         IReadOnlyList<string> commandLines,
         Action? onInjected,
-        StartupInjectorTiming timing)
+        TimeProvider timeProvider)
     {
         _terminal = terminal;
         _commandLines = commandLines;
         _onInjected = onInjected;
-        _timing = timing;
+        _timeProvider = timeProvider;
     }
 
     /// <summary>
@@ -55,9 +45,9 @@ public sealed class StartupInjector : IDisposable
         ITerminal terminal,
         IReadOnlyList<string> commandLines,
         Action? onInjected = null,
-        StartupInjectorTiming? timing = null)
+        TimeProvider? timeProvider = null)
     {
-        var injector = new StartupInjector(terminal, commandLines, onInjected, timing ?? StartupInjectorTiming.Default);
+        var injector = new StartupInjector(terminal, commandLines, onInjected, timeProvider ?? TimeProvider.System);
         terminal.OutputReceived += injector.OnOutputReceived;
         _ = injector.RunAsync();
 
@@ -68,38 +58,37 @@ public sealed class StartupInjector : IDisposable
     {
         lock (_stateLock)
         {
-            _lastOutputTick = Environment.TickCount64;
+            _lastOutputTimestamp = _timeProvider.GetTimestamp();
         }
     }
 
     private async Task RunAsync()
     {
-        var startTick = Environment.TickCount64;
+        var startTimestamp = _timeProvider.GetTimestamp();
         var cancellationToken = _cancellation.Token;
 
         try
         {
             while (!cancellationToken.IsCancellationRequested)
             {
-                var nowTick = Environment.TickCount64;
-                if (nowTick - startTick >= _timing.CapMs)
+                if (_timeProvider.GetElapsedTime(startTimestamp) >= Cap)
                 {
                     break;
                 }
 
-                long lastOutputTick;
+                long lastOutputTimestamp;
                 lock (_stateLock)
                 {
-                    lastOutputTick = _lastOutputTick;
+                    lastOutputTimestamp = _lastOutputTimestamp;
                 }
 
-                if (lastOutputTick >= 0 &&
-                    nowTick - lastOutputTick >= _timing.QuietPeriodMs)
+                if (lastOutputTimestamp >= 0 &&
+                    _timeProvider.GetElapsedTime(lastOutputTimestamp) >= QuietPeriod)
                 {
                     break;
                 }
 
-                await Task.Delay(_timing.PollIntervalMs, cancellationToken);
+                await Task.Delay(PollInterval, _timeProvider, cancellationToken);
             }
         }
         catch (OperationCanceledException)

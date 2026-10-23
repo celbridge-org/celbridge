@@ -7,8 +7,9 @@ namespace Celbridge.Resources.Services;
 /// <summary>
 /// Cascades the paired sidecar of a structural operation: when the parent
 /// file moves, copies, or deletes, the sidecar follows. The parent operation
-/// has already succeeded by the time the cascade runs, so failure surfaces
-/// as a SidecarOutcome on the parent's result rather than aborting.
+/// has already succeeded by the time the cascade runs, so a failure surfaces
+/// as a SidecarOutcome on the parent's result. The cascade records its
+/// changes with the parent operation's recorder.
 /// </summary>
 internal sealed class SidecarCascade
 {
@@ -26,7 +27,7 @@ internal sealed class SidecarCascade
         _fileSystem = fileSystem;
     }
 
-    public async Task<SidecarOutcome> TryMoveAsync(ResourceKey source, ResourceKey dest)
+    public async Task<SidecarOutcome> TryMoveAsync(ResourceKey source, ResourceKey dest, ChangeRecorder changes)
     {
         var sourceSidecar = AppendSidecarSuffix(source);
         var destSidecar = AppendSidecarSuffix(dest);
@@ -95,13 +96,13 @@ internal sealed class SidecarCascade
             return SidecarOutcome.Failed;
         }
 
-        ChangeRecorder.RecordRemoved(rootHandlerRegistry, sourceSidecar.Value, sourceSidecarPath);
-        ChangeRecorder.RecordCreated(rootHandlerRegistry, destSidecar.Value, destSidecarPath);
+        changes.RecordRemoved(sourceSidecar.Value, sourceSidecarPath);
+        changes.RecordCreated(destSidecar.Value, destSidecarPath);
 
         return SidecarOutcome.Cascaded;
     }
 
-    public async Task<SidecarOutcome> TryCopyAsync(ResourceKey source, ResourceKey dest)
+    public async Task<SidecarOutcome> TryCopyAsync(ResourceKey source, ResourceKey dest, ChangeRecorder changes)
     {
         var sourceSidecar = AppendSidecarSuffix(source);
         var destSidecar = AppendSidecarSuffix(dest);
@@ -160,12 +161,12 @@ internal sealed class SidecarCascade
             return SidecarOutcome.Failed;
         }
 
-        ChangeRecorder.RecordCreated(rootHandlerRegistry, destSidecar.Value, destSidecarPath);
+        changes.RecordCreated(destSidecar.Value, destSidecarPath);
 
         return SidecarOutcome.Cascaded;
     }
 
-    public async Task<SidecarOutcome> TryDeleteAsync(ResourceKey source)
+    public async Task<SidecarOutcome> TryDeleteAsync(ResourceKey source, ChangeRecorder changes)
     {
         var sourceSidecar = AppendSidecarSuffix(source);
         if (sourceSidecar is null)
@@ -195,7 +196,7 @@ internal sealed class SidecarCascade
             return SidecarOutcome.Failed;
         }
 
-        ChangeRecorder.RecordRemoved(rootHandlerRegistry, sourceSidecar.Value, sidecarPath);
+        changes.RecordRemoved(sourceSidecar.Value, sidecarPath);
 
         return SidecarOutcome.Cascaded;
     }

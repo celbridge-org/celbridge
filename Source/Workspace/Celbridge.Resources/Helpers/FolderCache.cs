@@ -6,39 +6,24 @@ using System.Runtime.InteropServices;
 namespace Celbridge.Resources.Helpers;
 
 /// <summary>
-/// The outcome of looking a name up in a folder's listing.
+/// Counts the names in a folder cache's listings, so the cache can clear itself past a limit. The count drifts when
+/// threads change listings at once. The limit tolerates the drift.
 /// </summary>
-internal enum NameLookup
+internal sealed class ListedNameCounter
 {
-    Found,
-    Missing,
-    Unlisted,
-}
+    private int _count;
 
-/// <summary>
-/// A folder the resolver has checked. Only FolderCache reads or changes its state. CachedFolder is a class, not a
-/// record, because the cache compares entries by reference, locks on them and changes their state.
-/// </summary>
-internal sealed class CachedFolder
-{
-    public CachedFolder(string folderPath, CachedFolder? parent, DateTimeOffset cachedAt)
+    public int Count => Volatile.Read(ref _count);
+
+    public void Add(int change)
     {
-        FolderPath = folderPath;
-        Parent = parent;
-        CachedAt = cachedAt;
+        Interlocked.Add(ref _count, change);
     }
 
-    public string FolderPath { get; }
-
-    public CachedFolder? Parent { get; }
-
-    public DateTimeOffset CachedAt { get; }
-
-    // Changed through Interlocked.
-    public int ChildFolderCount;
-
-    // Read and written under the lock on the folder.
-    public HashSet<ulong>? NameHashes;
+    public void Reset()
+    {
+        Interlocked.Exchange(ref _count, 0);
+    }
 }
 
 /// <summary>
@@ -80,8 +65,13 @@ internal sealed class FolderCache
     // counts are tracked separately because ConcurrentDictionary.Count locks every bucket.
     private readonly ConcurrentDictionary<string, CachedFolder> _cachedFolders;
     private int _cachedFolderCount;
-    private int _listedNameCount;
     private int _listingCount;
+
+    private readonly ListedNameCounter _listedNames = new();
+    private readonly ListingClock _listingClock = new();
+
+    // Made once, since a lookup passes it to the folder on every call.
+    private readonly Func<string, int, FolderListing?> _listFolder;
 
     public FolderCache(
         string backingFolderPath,
@@ -96,6 +86,7 @@ internal sealed class FolderCache
         _maxCachedFolders = maxCachedFolders;
         _maxListedNames = maxListedNames;
         _cachedFolders = new ConcurrentDictionary<string, CachedFolder>(PathComparison.Comparer);
+        _listFolder = ListFolder;
     }
 
     /// <summary>
@@ -112,6 +103,14 @@ internal sealed class FolderCache
     /// Returns the number of folder listings the cache has read.
     /// </summary>
     public int ListingCount => Volatile.Read(ref _listingCount);
+
+    /// <summary>
+    /// Returns the current timestamp of the cache's listings. A listing that starts from now on takes a later one.
+    /// </summary>
+    public ListingTimestamp GetListingTimestamp()
+    {
+        return _listingClock.Now();
+    }
 
     /// <summary>
     /// Returns the cached folder at the path when the path matches the folder's stored path exactly. An expired
@@ -146,16 +145,13 @@ internal sealed class FolderCache
     /// </summary>
     public CachedFolder Add(string folderPath, CachedFolder? parent)
     {
-        var folder = new CachedFolder(folderPath, parent, _timeProvider.GetUtcNow());
+        var folder = new CachedFolder(folderPath, parent, _timeProvider.GetUtcNow(), _listedNames);
         if (!_cachedFolders.TryAdd(folderPath, folder))
         {
             return TryGet(folderPath) ?? folder;
         }
 
-        if (parent is not null)
-        {
-            Interlocked.Increment(ref parent.ChildFolderCount);
-        }
+        parent?.AddCachedChild();
 
         // The count drifts when threads cache and drop folders at once. The valve then trips early, which
         // costs one check per folder.
@@ -168,34 +164,31 @@ internal sealed class FolderCache
     }
 
     /// <summary>
-    /// Looks the name up in the folder's listing. A name missing from the listing may belong to an item created
-    /// outside Celbridge after the listing. The folder is then listed again before the name counts as missing.
-    /// Lookups that arrive together wait on the lock and share one listing.
+    /// Looks the name up in the folder's listing. A name missing from a current listing may belong to an item created
+    /// outside Celbridge after the listing. The folder is then listed again before the name counts as missing. A stale
+    /// listing is listed again too.
     /// </summary>
     public NameLookup FindName(CachedFolder folder, string name)
     {
+        return FindName(folder, name, acceptListingsAfter: null);
+    }
+
+    /// <summary>
+    /// Looks the name up in the folder's listing. A listing started after the timestamp answers both ways, even when
+    /// stale. Any other listing follows the rules of the lookup without a timestamp.
+    /// </summary>
+    public NameLookup FindName(CachedFolder folder, string name, ListingTimestamp? acceptListingsAfter)
+    {
         var nameHash = HashName(name);
+        var lookup = folder.FindName(nameHash, acceptListingsAfter, _listFolder);
 
-        lock (folder)
+        // The lookup has already used its listing. Every folder is listed again on its next use.
+        if (_listedNames.Count > _maxListedNames)
         {
-            if (folder.NameHashes is not null
-                && folder.NameHashes.Contains(nameHash))
-            {
-                return NameLookup.Found;
-            }
-
-            if (!TryListFolder(folder))
-            {
-                return NameLookup.Unlisted;
-            }
-
-            if (folder.NameHashes!.Contains(nameHash))
-            {
-                return NameLookup.Found;
-            }
-
-            return NameLookup.Missing;
+            Clear();
         }
+
+        return lookup;
     }
 
     /// <summary>
@@ -224,7 +217,9 @@ internal sealed class FolderCache
             var folder = TryGet(folderPath);
             if (folder is not null)
             {
-                AddName(folder, Path.GetFileName(currentPath));
+                var name = Path.GetFileName(currentPath);
+                var nameHash = HashName(name);
+                folder.AddName(nameHash);
                 return;
             }
 
@@ -262,7 +257,39 @@ internal sealed class FolderCache
         var folder = TryGet(folderPath);
         if (folder is not null)
         {
-            RemoveName(folder, Path.GetFileName(itemPath));
+            var name = Path.GetFileName(itemPath);
+            var nameHash = HashName(name);
+            folder.RemoveName(nameHash);
+        }
+    }
+
+    /// <summary>
+    /// Records that the name of an item at the full path, which is under the backing folder, may have changed. The
+    /// watcher reports this for a create, delete or rename, and on macOS the kind it reports can be wrong. The listing
+    /// of the folder that contains the item is marked stale, so the folder is listed again on its next use. The folder
+    /// is found in any letter case. On macOS the watcher reports a removed item in the letter case of the call that
+    /// removed it. Every cached folder at or below the path is dropped too. The watcher's thread calls this, so it
+    /// never waits for a listing in progress.
+    /// </summary>
+    public void RecordNameChanged(string itemPath)
+    {
+        if (itemPath.Equals(_backingFolderPath, PathComparison.Comparison))
+        {
+            Clear();
+            return;
+        }
+
+        DropFolder(itemPath);
+
+        var folderPath = Path.GetDirectoryName(itemPath);
+        if (folderPath is null)
+        {
+            return;
+        }
+
+        if (_cachedFolders.TryGetValue(folderPath, out var folder))
+        {
+            folder.MarkStale();
         }
     }
 
@@ -273,66 +300,32 @@ internal sealed class FolderCache
     {
         _cachedFolders.Clear();
         Interlocked.Exchange(ref _cachedFolderCount, 0);
-        Interlocked.Exchange(ref _listedNameCount, 0);
+        _listedNames.Reset();
     }
 
-    // Reads the folder's names into the folder's listing. The caller has locked the folder.
-    private bool TryListFolder(CachedFolder folder)
+    // Reads the names stored in the folder. The cached folder calls this while holding the folder's lock. The change
+    // count passed in was read before the listing started.
+    private FolderListing? ListFolder(string folderPath, int changeCountAtStart)
     {
+        var startedAt = _listingClock.Advance();
+
         HashSet<ulong> nameHashes;
         try
         {
             var listing = new FileSystemEnumerable<ulong>(
-                folder.FolderPath,
+                folderPath,
                 (ref System.IO.Enumeration.FileSystemEntry entry) => HashName(entry.FileName),
                 ListingOptions);
             nameHashes = new HashSet<ulong>(listing);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            return false;
+            return null;
         }
 
         Interlocked.Increment(ref _listingCount);
 
-        var previousNameCount = folder.NameHashes?.Count ?? 0;
-        folder.NameHashes = nameHashes;
-
-        // The lookup in progress still uses this listing. The folder is listed again on the next lookup.
-        if (Interlocked.Add(ref _listedNameCount, nameHashes.Count - previousNameCount) > _maxListedNames)
-        {
-            Clear();
-        }
-
-        return true;
-    }
-
-    private void AddName(CachedFolder folder, string name)
-    {
-        var nameHash = HashName(name);
-
-        lock (folder)
-        {
-            if (folder.NameHashes is not null
-                && folder.NameHashes.Add(nameHash))
-            {
-                Interlocked.Increment(ref _listedNameCount);
-            }
-        }
-    }
-
-    private void RemoveName(CachedFolder folder, string name)
-    {
-        var nameHash = HashName(name);
-
-        lock (folder)
-        {
-            if (folder.NameHashes is not null
-                && folder.NameHashes.Remove(nameHash))
-            {
-                Interlocked.Decrement(ref _listedNameCount);
-            }
-        }
+        return new FolderListing(nameHashes, startedAt, changeCountAtStart);
     }
 
     // Hashes the name's UTF-16 code units to 64 bits. When two names share a hash, the check cannot tell them
@@ -358,12 +351,9 @@ internal sealed class FolderCache
     {
         ForgetFolder(folder);
 
-        if (folder.Parent is not null)
-        {
-            Interlocked.Decrement(ref folder.Parent.ChildFolderCount);
-        }
+        folder.Parent?.RemoveCachedChild();
 
-        if (Volatile.Read(ref folder.ChildFolderCount) <= 0)
+        if (!folder.HasCachedChildren)
         {
             return;
         }
@@ -382,13 +372,6 @@ internal sealed class FolderCache
     private void ForgetFolder(CachedFolder folder)
     {
         Interlocked.Decrement(ref _cachedFolderCount);
-
-        int nameCount;
-        lock (folder)
-        {
-            nameCount = folder.NameHashes?.Count ?? 0;
-        }
-
-        Interlocked.Add(ref _listedNameCount, -nameCount);
+        folder.Forget();
     }
 }

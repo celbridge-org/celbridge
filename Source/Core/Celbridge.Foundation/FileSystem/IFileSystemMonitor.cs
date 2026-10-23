@@ -53,9 +53,9 @@ public interface IFileSystemMonitor : IDisposable
     event EventHandler<FileSystemMonitorEvent>? FileSystemChanged;
 
     /// <summary>
-    /// Raised when the monitor has lost changes, so its events no longer account
-    /// for everything that happened in the backing folder. Any listener state
-    /// derived from those events is stale by an unknown amount.
+    /// Raised when the monitor may have lost changes. Its events may then miss some
+    /// of what happened in the backing folder, and any listener state derived from
+    /// them may be stale. Every error that the underlying watcher reports raises it.
     /// </summary>
     event EventHandler? MonitoringDesynchronized;
 

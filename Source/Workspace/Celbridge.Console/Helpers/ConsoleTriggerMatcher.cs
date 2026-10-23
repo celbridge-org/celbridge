@@ -11,34 +11,32 @@ public sealed record ConsoleTrigger(
     string CommandTemplate);
 
 /// <summary>
-/// Resolves the commands a resource change fires in a console session.
+/// Resolves the commands a batch of changes fires for a trigger.
 /// </summary>
 public static class ConsoleTriggerMatcher
 {
     /// <summary>
-    /// Returns the resolved commands for every trigger a changed resource matches. Triggers watch the
-    /// project tree only, so a resource under any other root matches nothing.
+    /// Returns one command for each file in the batch that matches the trigger's pattern. Folders and absent keys fire
+    /// nothing. Triggers watch only the project, so a batch from another root fires nothing.
     /// </summary>
-    public static IReadOnlyList<string> Resolve(
-        IReadOnlyList<ConsoleTrigger> triggers,
-        ResourceKey resource)
+    public static IReadOnlyList<string> Resolve(ConsoleTrigger trigger, ResourceChangeBatch batch)
     {
         var invocations = new List<string>();
 
-        if (resource.IsEmpty ||
-            resource.Root != ResourceKey.DefaultRoot)
+        if (batch.RootName != ResourceKey.DefaultRoot)
         {
             return invocations;
         }
 
-        foreach (var trigger in triggers)
+        foreach (var change in batch.Changes)
         {
-            if (!trigger.Matcher.IsMatch(resource.Path, isFolder: false))
+            if (change.State != ResourceItemState.File
+                || !trigger.Matcher.IsMatch(change.Resource.Path, isFolder: false))
             {
                 continue;
             }
 
-            var invocation = ConsoleInvocationTemplate.Substitute(trigger.CommandTemplate, resource.Path);
+            var invocation = ConsoleInvocationTemplate.Substitute(trigger.CommandTemplate, change.Resource.Path);
             invocations.Add(invocation);
         }
 

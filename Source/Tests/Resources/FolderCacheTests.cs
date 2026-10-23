@@ -1,5 +1,6 @@
 using Celbridge.Resources;
 using Celbridge.Resources.Helpers;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Celbridge.Tests.Resources;
 
@@ -11,15 +12,6 @@ namespace Celbridge.Tests.Resources;
 [TestFixture]
 public class FolderCacheTests
 {
-    private sealed class FakeTimeProvider : TimeProvider
-    {
-        private DateTimeOffset _now = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
-
-        public override DateTimeOffset GetUtcNow() => _now;
-
-        public void Advance(TimeSpan interval) => _now += interval;
-    }
-
     private string _backingFolderPath = null!;
 
     [SetUp]
@@ -197,6 +189,58 @@ public class FolderCacheTests
         cache.FindName(backing, "a.txt").Should().Be(NameLookup.Found);
 
         cache.Count.Should().Be(0);
+    }
+
+    [Test]
+    public void RecordNameChangedMakesTheListingStale()
+    {
+        WriteFile("a.txt");
+        var cache = CreateCache();
+        var backing = cache.Add(_backingFolderPath, parent: null);
+        cache.FindName(backing, "a.txt").Should().Be(NameLookup.Found);
+
+        cache.RecordNameChanged(PathFor("b.txt"));
+
+        cache.FindName(backing, "a.txt").Should().Be(NameLookup.Found);
+        cache.ListingCount.Should().Be(2);
+    }
+
+    [Test]
+    public void FindNameAcceptsAStaleListingStartedAfterTheTimestamp()
+    {
+        WriteFile("a.txt");
+        var cache = CreateCache();
+        var backing = cache.Add(_backingFolderPath, parent: null);
+        var timestamp = cache.GetListingTimestamp();
+        cache.FindName(backing, "a.txt", timestamp).Should().Be(NameLookup.Found);
+
+        cache.RecordNameChanged(PathFor("b.txt"));
+
+        // The listing answers both ways for a lookup given the timestamp.
+        cache.FindName(backing, "a.txt", timestamp).Should().Be(NameLookup.Found);
+        cache.FindName(backing, "missing.txt", timestamp).Should().Be(NameLookup.Missing);
+        cache.ListingCount.Should().Be(1);
+
+        // A lookup without the timestamp lists the stale folder again.
+        cache.FindName(backing, "a.txt").Should().Be(NameLookup.Found);
+        cache.ListingCount.Should().Be(2);
+    }
+
+    [Test]
+    public void FindNameListsAgainForATimestampReadAfterTheListing()
+    {
+        WriteFile("a.txt");
+        var cache = CreateCache();
+        var backing = cache.Add(_backingFolderPath, parent: null);
+        cache.FindName(backing, "a.txt").Should().Be(NameLookup.Found);
+
+        WriteFile("b.txt");
+        cache.RecordNameChanged(PathFor("b.txt"));
+        var timestamp = cache.GetListingTimestamp();
+
+        cache.FindName(backing, "b.txt", timestamp).Should().Be(NameLookup.Found);
+        cache.FindName(backing, "a.txt", timestamp).Should().Be(NameLookup.Found);
+        cache.ListingCount.Should().Be(2);
     }
 
     [Test]

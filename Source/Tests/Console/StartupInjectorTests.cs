@@ -1,15 +1,15 @@
 using Celbridge.Console;
 using Celbridge.Console.Services;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Celbridge.Tests.Console;
 
 [TestFixture]
 public class StartupInjectorTests
 {
-    // The production intervals hold the same 10:1 cap-to-quiet ratio, so the algorithm is exercised as
-    // shipped. Only the scale changes, which is what stops a case that can only be proven by waiting the
-    // cap out from costing a second and a half.
-    private static readonly StartupInjectorTiming FastTiming = new(QuietPeriodMs: 20, CapMs: 200, PollIntervalMs: 5);
+    // The injector polls the shell's output at this interval. The shell counts as settled once its output has
+    // been quiet for 150 ms, or once 1.5 s have passed with no output at all.
+    private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(25);
 
     private sealed class FakeTerminal : ITerminal
     {
@@ -63,85 +63,73 @@ public class StartupInjectorTests
         }
     }
 
-    private static async Task<bool> WaitForAsync(Func<bool> condition, int timeoutMs)
-    {
-        var deadline = Environment.TickCount64 + timeoutMs;
-        while (Environment.TickCount64 < deadline)
-        {
-            if (condition())
-            {
-                return true;
-            }
-
-            await Task.Delay(20);
-        }
-
-        return condition();
-    }
-
     [Test]
-    public async Task Injects_AfterOutputSettles()
+    public void Injects_AfterOutputSettles()
     {
         var terminal = new FakeTerminal();
-        using var injector = StartupInjector.Begin(terminal, new[] { "celbridge-py --python 3.13" }, timing: FastTiming);
+        var clock = new FakeTimeProvider();
+        var lines = new[] { "celbridge-py --python 3.13" };
+        using var injector = StartupInjector.Begin(terminal, lines, timeProvider: clock);
 
         terminal.RaiseOutput("prompt> ");
+        AdvanceInPolls(clock, TimeSpan.FromMilliseconds(125));
+        terminal.Writes.Should().BeEmpty();
 
-        var injected = await WaitForAsync(() => terminal.Writes.Count == 1, 2000);
-
-        injected.Should().BeTrue();
-        terminal.Writes[0].Should().Be("celbridge-py --python 3.13\r");
+        AdvanceInPolls(clock, PollInterval);
+        terminal.Writes.Should().Equal("celbridge-py --python 3.13\r");
     }
 
     [Test]
-    public async Task Injects_AtCapWhenNoOutputArrives()
+    public void Injects_AtCapWhenNoOutputArrives()
     {
         var terminal = new FakeTerminal();
-        using var injector = StartupInjector.Begin(terminal, new[] { "cmd" }, timing: FastTiming);
+        var clock = new FakeTimeProvider();
+        using var injector = StartupInjector.Begin(terminal, new[] { "cmd" }, timeProvider: clock);
 
-        var injected = await WaitForAsync(() => terminal.Writes.Count == 1, 3000);
+        AdvanceInPolls(clock, TimeSpan.FromMilliseconds(1475));
+        terminal.Writes.Should().BeEmpty();
 
-        injected.Should().BeTrue();
+        AdvanceInPolls(clock, PollInterval);
+        terminal.Writes.Should().Equal("cmd\r");
     }
 
     [Test]
-    public async Task Injects_ExactlyOnce()
+    public void Injects_ExactlyOnce()
     {
         var terminal = new FakeTerminal();
-        using var injector = StartupInjector.Begin(terminal, new[] { "cmd" }, timing: FastTiming);
+        var clock = new FakeTimeProvider();
+        using var injector = StartupInjector.Begin(terminal, new[] { "cmd" }, timeProvider: clock);
 
         terminal.RaiseOutput("a");
+        AdvanceInPolls(clock, TimeSpan.FromSeconds(3));
 
-        await WaitForAsync(() => terminal.Writes.Count >= 1, 2000);
-        await Task.Delay(200);
-
-        terminal.Writes.Count.Should().Be(1);
+        terminal.Writes.Should().Equal("cmd\r");
     }
 
     [Test]
-    public async Task Dispose_BeforeSettle_PreventsInjection()
+    public void Dispose_BeforeSettle_PreventsInjection()
     {
         var terminal = new FakeTerminal();
-        var injector = StartupInjector.Begin(terminal, new[] { "cmd" }, timing: FastTiming);
-        injector.Dispose();
+        var clock = new FakeTimeProvider();
+        var injector = StartupInjector.Begin(terminal, new[] { "cmd" }, timeProvider: clock);
 
-        await Task.Delay(600);
+        injector.Dispose();
+        AdvanceInPolls(clock, TimeSpan.FromSeconds(3));
 
         terminal.Writes.Should().BeEmpty();
     }
 
     [Test]
-    public async Task Injects_EveryLineInOrder()
+    public void Injects_EveryLineInOrder()
     {
         var terminal = new FakeTerminal();
+        var clock = new FakeTimeProvider();
         var lines = new[] { "celbridge-py", "import numpy as np", "%load_ext autoreload" };
-        using var injector = StartupInjector.Begin(terminal, lines, timing: FastTiming);
+        using var injector = StartupInjector.Begin(terminal, lines, timeProvider: clock);
 
         terminal.RaiseOutput("prompt> ");
+        AdvanceInPolls(clock, TimeSpan.FromMilliseconds(150));
 
-        var injected = await WaitForAsync(() => terminal.Writes.Count == 3, 2000);
-
-        injected.Should().BeTrue();
         terminal.Writes.Should().Equal(
             "celbridge-py\r",
             "import numpy as np\r",
@@ -149,30 +137,41 @@ public class StartupInjectorTests
     }
 
     [Test]
-    public async Task Callback_FiresAfterInjection()
+    public void Callback_FiresAfterInjection()
     {
         var terminal = new FakeTerminal();
+        var clock = new FakeTimeProvider();
         var callbackFired = false;
-        using var injector = StartupInjector.Begin(terminal, new[] { "cmd" }, () => callbackFired = true, FastTiming);
+        using var injector = StartupInjector.Begin(terminal, new[] { "cmd" }, () => callbackFired = true, clock);
 
         terminal.RaiseOutput("prompt> ");
+        AdvanceInPolls(clock, TimeSpan.FromMilliseconds(150));
 
-        var injected = await WaitForAsync(() => callbackFired, 2000);
-
-        injected.Should().BeTrue();
+        callbackFired.Should().BeTrue();
         terminal.Writes.Count.Should().Be(1);
     }
 
     [Test]
-    public async Task Callback_SkippedWhenDisposedBeforeInjection()
+    public void Callback_SkippedWhenDisposedBeforeInjection()
     {
         var terminal = new FakeTerminal();
+        var clock = new FakeTimeProvider();
         var callbackFired = false;
-        var injector = StartupInjector.Begin(terminal, new[] { "cmd" }, () => callbackFired = true, FastTiming);
-        injector.Dispose();
+        var injector = StartupInjector.Begin(terminal, new[] { "cmd" }, () => callbackFired = true, clock);
 
-        await Task.Delay(600);
+        injector.Dispose();
+        AdvanceInPolls(clock, TimeSpan.FromSeconds(3));
 
         callbackFired.Should().BeFalse();
+    }
+
+    // Advances the clock one poll interval at a time. Each step fires the pending poll, and that poll starts the
+    // next one.
+    private static void AdvanceInPolls(FakeTimeProvider clock, TimeSpan duration)
+    {
+        for (var elapsed = TimeSpan.Zero; elapsed < duration; elapsed += PollInterval)
+        {
+            clock.Advance(PollInterval);
+        }
     }
 }

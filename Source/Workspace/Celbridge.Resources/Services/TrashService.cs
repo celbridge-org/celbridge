@@ -1,5 +1,6 @@
 using Celbridge.Logging;
 using Celbridge.Projects;
+using Celbridge.Resources.Helpers;
 using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Services;
@@ -7,20 +8,17 @@ namespace Celbridge.Resources.Services;
 public sealed class TrashService : ITrashService
 {
     private readonly ILogger<TrashService> _logger;
-    private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IProjectService _projectService;
     private readonly ILocalFileSystem _fileSystem;
 
     public TrashService(
         ILogger<TrashService> logger,
-        IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
         IProjectService projectService,
         ILocalFileSystem fileSystem)
     {
         _logger = logger;
-        _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
         _projectService = projectService;
         _fileSystem = fileSystem;
@@ -77,35 +75,14 @@ public sealed class TrashService : ITrashService
         var trashBasePath = Path.Combine(TrashFolderPath, trashId);
         var trashPath = Path.Combine(trashBasePath, relativePath);
 
-        Result<TrashEntry> moveResult;
+        using var changes = CreateChangeRecorder();
+
         if (isFile)
         {
-            moveResult = await MoveFileToTrashAsync(resource, originalPath, trashPath, trashBasePath, trashId);
-        }
-        else
-        {
-            moveResult = await MoveFolderToTrashAsync(resource, originalPath, trashPath, trashBasePath, trashId);
+            return await MoveFileToTrashAsync(resource, originalPath, trashPath, trashBasePath, trashId, changes);
         }
 
-        if (moveResult.IsSuccess)
-        {
-            // Announce the soft-delete synchronously so subscribers update before
-            // control returns. The watcher's own delete event still arrives later
-            // via UI-thread dispatch; subscribers must treat these messages as
-            // idempotent.
-            var entry = moveResult.Value;
-
-            var entryMessage = new ResourceDeletedMessage(entry.OriginalResource);
-            _messengerService.Send(entryMessage);
-
-            foreach (var descendant in entry.DescendantKeys)
-            {
-                var descendantMessage = new ResourceDeletedMessage(descendant);
-                _messengerService.Send(descendantMessage);
-            }
-        }
-
-        return moveResult;
+        return await MoveFolderToTrashAsync(resource, originalPath, trashPath, trashBasePath, trashId, changes);
     }
 
     private async Task<Result<TrashEntry>> MoveFileToTrashAsync(
@@ -113,7 +90,8 @@ public sealed class TrashService : ITrashService
         string originalPath,
         string trashPath,
         string trashBasePath,
-        string trashId)
+        string trashId,
+        ChangeRecorder changes)
     {
         string? sidecarOriginalPath = null;
         string? sidecarTrashPath = null;
@@ -141,6 +119,7 @@ public sealed class TrashService : ITrashService
             return Result<TrashEntry>.Fail($"Failed to move resource to trash: '{resource}'")
                 .WithErrors(primaryMoveResult);
         }
+        changes.RecordRemoved(resource, originalPath);
 
         if (sidecarOriginalPath is not null
             && sidecarTrashPath is not null)
@@ -153,6 +132,7 @@ public sealed class TrashService : ITrashService
                 return Result<TrashEntry>.Fail($"Failed to move sidecar to trash: '{resource}'")
                     .WithErrors(sidecarMoveResult);
             }
+            changes.RecordRemoved(sidecarKeyResult.Value, sidecarOriginalPath);
         }
 
         var entry = new TrashEntry(
@@ -163,8 +143,7 @@ public sealed class TrashService : ITrashService
             OriginalPath: originalPath,
             TrashPath: trashPath,
             SidecarOriginalPath: sidecarOriginalPath,
-            SidecarTrashPath: sidecarTrashPath,
-            DescendantKeys: Array.Empty<ResourceKey>());
+            SidecarTrashPath: sidecarTrashPath);
 
         return entry;
     }
@@ -174,7 +153,8 @@ public sealed class TrashService : ITrashService
         string originalPath,
         string trashPath,
         string trashBasePath,
-        string trashId)
+        string trashId,
+        ChangeRecorder changes)
     {
         var topLevelResult = await _fileSystem.EnumerateAsync(originalPath, "*", recursive: false);
         if (topLevelResult.IsFailure)
@@ -184,13 +164,9 @@ public sealed class TrashService : ITrashService
         }
         bool wasEmpty = topLevelResult.Value.Count == 0;
 
-        var descendantKeys = new List<ResourceKey>();
-
+        // The trash refuses a folder that contains a link.
         if (!wasEmpty)
         {
-            // Gather descendant keys for messaging. Both nested files and nested
-            // sub-folders are first-class resources, so every entry contributes
-            // its key to the fan-out.
             var descendantsResult = await _fileSystem.EnumerateAsync(originalPath, "*", recursive: true);
             if (descendantsResult.IsFailure)
             {
@@ -203,13 +179,6 @@ public sealed class TrashService : ITrashService
                 {
                     return RefuseLink(descendant.FullPath);
                 }
-
-                var keyResult = RootHandlers.GetResourceKey(descendant.FullPath);
-                if (keyResult.IsFailure)
-                {
-                    continue;
-                }
-                descendantKeys.Add(keyResult.Value);
             }
         }
 
@@ -235,6 +204,7 @@ public sealed class TrashService : ITrashService
                     .WithErrors(folderMoveResult);
             }
         }
+        changes.RecordRemoved(resource, originalPath);
 
         var entry = new TrashEntry(
             OriginalResource: resource,
@@ -244,14 +214,15 @@ public sealed class TrashService : ITrashService
             OriginalPath: originalPath,
             TrashPath: wasEmpty ? string.Empty : trashPath,
             SidecarOriginalPath: null,
-            SidecarTrashPath: null,
-            DescendantKeys: descendantKeys);
+            SidecarTrashPath: null);
 
         return entry;
     }
 
     public async Task<Result> RestoreFromTrashAsync(TrashEntry entry)
     {
+        using var changes = CreateChangeRecorder();
+
         if (entry.WasFolder)
         {
             if (entry.WasEmptyFolder)
@@ -262,6 +233,7 @@ public sealed class TrashService : ITrashService
                     return Result.Fail($"Failed to restore empty folder: '{entry.OriginalResource}'")
                         .WithErrors(createResult);
                 }
+                changes.RecordCreated(entry.OriginalResource, entry.OriginalPath);
             }
             else
             {
@@ -278,6 +250,7 @@ public sealed class TrashService : ITrashService
                     return Result.Fail($"Failed to restore folder from trash: '{entry.OriginalResource}'")
                         .WithErrors(moveResult);
                 }
+                changes.RecordCreated(entry.OriginalResource, entry.OriginalPath);
 
                 await CleanupEmptyParentDirectoriesAsync(entry.TrashPath);
             }
@@ -297,6 +270,7 @@ public sealed class TrashService : ITrashService
                 return Result.Fail($"Failed to restore file from trash: '{entry.OriginalResource}'")
                     .WithErrors(moveResult);
             }
+            changes.RecordCreated(entry.OriginalResource, entry.OriginalPath);
 
             if (entry.SidecarOriginalPath is not null
                 && entry.SidecarTrashPath is not null)
@@ -310,6 +284,12 @@ public sealed class TrashService : ITrashService
                     {
                         return Result.Fail($"Failed to restore sidecar from trash: '{entry.OriginalResource}'")
                             .WithErrors(sidecarRestoreResult);
+                    }
+
+                    var sidecarKeyResult = SidecarService.GetSidecarKey(entry.OriginalResource);
+                    if (sidecarKeyResult.IsSuccess)
+                    {
+                        changes.RecordCreated(sidecarKeyResult.Value, entry.SidecarOriginalPath);
                     }
                 }
             }
@@ -364,6 +344,12 @@ public sealed class TrashService : ITrashService
         }
 
         return Result.Ok();
+    }
+
+    private ChangeRecorder CreateChangeRecorder()
+    {
+        var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
+        return new ChangeRecorder(resourceService);
     }
 
     // If the trash is on another volume, moving an item there copies it, and a copy replaces a link with its

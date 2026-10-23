@@ -28,6 +28,17 @@ public record WorkspaceLoadedEvent(string ProjectFile, long ElapsedMs) : Automat
 public record ResourceRegistryUpdatedEvent(long ElapsedMs) : AutomationEvent;
 
 /// <summary>
+/// The resource monitor has delivered a batch of changes in a root to the root's subscriptions. Keys is how many
+/// touched keys the batch held, and ElapsedMs is how long matching them and checking the disk took, in milliseconds.
+/// </summary>
+public record ResourceChangesDeliveredEvent(string RootName, int Keys, long ElapsedMs) : AutomationEvent;
+
+/// <summary>
+/// The watcher of a root lost events, so the root's subscriptions are sent a resync.
+/// </summary>
+public record ResourceEventsLostEvent(string RootName) : AutomationEvent;
+
+/// <summary>
 /// The Explorer has rebuilt the rows it shows. Rows is how many rows it shows, and ElapsedMs is how long the
 /// rebuild took, in milliseconds.
 /// </summary>

@@ -2,7 +2,6 @@ using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.FileSystem;
 using Celbridge.Logging;
-using Celbridge.Messaging;
 using Celbridge.Resources;
 using Celbridge.Documents;
 using Celbridge.Packages;
@@ -37,8 +36,8 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
     private readonly ProjectSettingsContext _context;
 
     private readonly IProjectService _projectService;
-    private readonly IMessengerService _messengerService;
     private readonly ILocalFileSystem _fileSystem;
+    private readonly IResourceMonitor _resourceMonitor;
 
     private bool _loaded;
 
@@ -99,17 +98,28 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
 
     public IRelayCommand OpenInCodeEditorCommand { get; }
 
+    private ResourceKey _fileResource;
+    private IResourceKeySubscription? _fileSubscription;
+
     /// <summary>
-    /// The project file this editor presents, set by the view when the document opens.
+    /// The project file this editor presents, set by the view when the document opens. The editor follows the
+    /// changes to the file.
     /// </summary>
-    public ResourceKey FileResource { get; set; }
+    public ResourceKey FileResource
+    {
+        get => _fileResource;
+        set
+        {
+            _fileResource = value;
+            FollowProjectFile();
+        }
+    }
 
     public ProjectSettingsEditorViewModel(
         ILogger<ProjectSettingsEditorViewModel> logger,
         IProjectService projectService,
         ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper,
-        IMessengerService messengerService,
         ILocalFileSystem fileSystem,
         IStringLocalizer stringLocalizer,
         ISettingsService settingsService,
@@ -122,8 +132,8 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
         _logger = logger;
         _projectService = projectService;
         _commandService = commandService;
-        _messengerService = messengerService;
         _fileSystem = fileSystem;
+        _resourceMonitor = workspaceWrapper.WorkspaceService.ResourceService.Monitor;
         _stringLocalizer = stringLocalizer;
         _settings = settingsService;
 
@@ -142,7 +152,6 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
         DocumentShortcutsSection = new DocumentShortcutsSectionViewModel(_context, iconService, dialogService);
         FeatureFlagsSection = new FeatureFlagsSectionViewModel(_context, _stringLocalizer);
 
-        _messengerService.Register<ResourceChangedMessage>(this, OnResourceChanged);
     }
 
     /// <summary>
@@ -150,22 +159,60 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
     /// </summary>
     public void Unregister()
     {
-        _messengerService.Unregister<ResourceChangedMessage>(this);
+        _fileSubscription?.Dispose();
+        _fileSubscription = null;
+    }
+
+    // Subscribes for the key before disposing the old subscription, so no change between the two is missed.
+    private void FollowProjectFile()
+    {
+        var previousSubscription = _fileSubscription;
+        _fileSubscription = null;
+
+        if (!_fileResource.IsEmpty)
+        {
+            var handlers = new ResourceChangeHandlers(OnProjectFileChanges, OnProjectFileResync);
+            var subscribeResult = _resourceMonitor.SubscribeToResources([_fileResource], handlers);
+            if (subscribeResult.IsSuccess)
+            {
+                _fileSubscription = subscribeResult.Value;
+            }
+            else
+            {
+                _logger.LogWarning(subscribeResult, $"Failed to follow the changes to '{_fileResource}'");
+            }
+        }
+
+        previousSubscription?.Dispose();
+    }
+
+    private void OnProjectFileChanges(ResourceChangeBatch batch)
+    {
+        if (batch.Changes.Any(change => change.State == ResourceItemState.File))
+        {
+            ReloadFromProjectFile();
+        }
+    }
+
+    // The lost events may have included a write to the project file, so the file gets the same check as for a
+    // change.
+    private void OnProjectFileResync(ResourceResync resync)
+    {
+        ReloadFromProjectFile();
     }
 
     // An external write to the project file (a git checkout, or the Code Editor in a previous tab) wins,
     // the same way it does for every other document. A write this editor made is filtered by comparing
     // the file to what was last saved.
-    private void OnResourceChanged(object recipient, ResourceChangedMessage message)
+    private void ReloadFromProjectFile()
     {
         var project = _projectService.CurrentProject;
-        if (project is null
-            || !project.IsProjectFile(message.Resource))
+        if (project is null)
         {
             return;
         }
 
-        // The resource monitor raises this on the UI thread, so the read crosses to the thread pool
+        // The resource monitor calls this on the UI thread, so the read crosses to the thread pool
         // rather than blocking it.
         var readResult = SyncRunner.Run(() => _fileSystem.ReadAllTextAsync(project.ProjectFilePath));
         if (readResult.IsFailure)

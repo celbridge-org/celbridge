@@ -35,6 +35,9 @@ public partial class SearchPanelViewModel : ObservableObject
 
     // Unified debounce timer for all search triggers (typing, file changes, etc.)
     private Timer? _searchDebounceTimer;
+
+    // Follows the changes to the files a search reads. The monitor drops the subscription when the workspace unloads.
+    private readonly IMatcherSubscription? _searchScopeSubscription;
     private const int SearchDebounceDelayMs = 300;
 
     // Flags for pending search behavior
@@ -171,49 +174,28 @@ public partial class SearchPanelViewModel : ObservableObject
         // Listen for workspace loaded to load search/replace history from workspace settings
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
 
-        // Listen for resource lifecycle events to refresh search results.
-        // Catches every source of modification: the filesystem watcher (user
-        // edits, external editors) and explicit operations (commands, agents).
-        _messengerService.Register<ResourceChangedMessage>(this, OnResourceChanged);
-        _messengerService.Register<ResourceCreatedMessage>(this, OnResourceCreated);
-        _messengerService.Register<ResourceDeletedMessage>(this, OnResourceDeleted);
-        _messengerService.Register<ResourceRenamedMessage>(this, OnResourceRenamed);
-    }
-
-    private void OnResourceChanged(object recipient, ResourceChangedMessage message)
-    {
-        ScheduleSearchForResourceChange(message.Resource);
-    }
-
-    private void OnResourceCreated(object recipient, ResourceCreatedMessage message)
-    {
-        ScheduleSearchForResourceChange(message.Resource);
-    }
-
-    private void OnResourceDeleted(object recipient, ResourceDeletedMessage message)
-    {
-        ScheduleSearchForResourceChange(message.Resource);
-    }
-
-    private void OnResourceRenamed(object recipient, ResourceRenamedMessage message)
-    {
-        ScheduleSearchForResourceChange(message.OldResource, message.NewResource);
-    }
-
-    // Refreshes results only when a change touches the searched scope. Search scans the project root only, so
-    // changes under volatile roots (logs:, temp:) never affect results. Reacting to them would rebuild the
-    // results for nothing, and because our own search cancellation logs first-chance exceptions to the logs
-    // root, a logs-triggered refresh would feed straight back into itself.
-    private void ScheduleSearchForResourceChange(params ResourceKey[] resources)
-    {
-        foreach (var resource in resources)
+        // Search again after a change to a file a search reads, whether Celbridge or another program made it.
+        var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
+        var handlers = new ResourceChangeHandlers(OnSearchScopeChanges, OnSearchScopeResync);
+        var subscribeResult = resourceService.Monitor.SubscribeToMatcher(
+            ResourceKey.DefaultRoot,
+            resourceService.Policy.SearchScope,
+            handlers);
+        if (subscribeResult.IsSuccess)
         {
-            if (resource.Root == ResourceKey.DefaultRoot)
-            {
-                ScheduleSearch(preserveExpandedState: true, raiseRefreshEvents: true);
-                return;
-            }
+            _searchScopeSubscription = subscribeResult.Value;
         }
+    }
+
+    private void OnSearchScopeChanges(ResourceChangeBatch batch)
+    {
+        ScheduleSearch(preserveExpandedState: true, raiseRefreshEvents: true);
+    }
+
+    // The lost events may have changed any file a search reads.
+    private void OnSearchScopeResync(ResourceResync resync)
+    {
+        ScheduleSearch(preserveExpandedState: true, raiseRefreshEvents: true);
     }
 
     /// <summary>

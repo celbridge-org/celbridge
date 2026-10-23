@@ -51,6 +51,15 @@ public class RootPathResolver
     /// </summary>
     public Result<string> ValidateAndResolve(ResourceKey resource)
     {
+        return ValidateAndResolve(resource, acceptListingsAfter: null);
+    }
+
+    /// <summary>
+    /// Validates a resource key and resolves it to an absolute path, accepting any folder listing started after the
+    /// mark, even a stale one.
+    /// </summary>
+    internal Result<string> ValidateAndResolve(ResourceKey resource, ListingTimestamp? acceptListingsAfter)
+    {
         // Belt-and-suspenders format check. Should never fail since construction already
         // validated, but catches any bypass.
         string resourceKeyString = resource;
@@ -87,7 +96,7 @@ public class RootPathResolver
                 $"Resource key '{resource}' resolves to a different path, '{resolvedPath}'.");
         }
 
-        var checkResult = CheckPath(resolvedPath, checkStoredName: true);
+        var checkResult = CheckPath(resolvedPath, checkStoredName: true, acceptListingsAfter);
         if (checkResult.IsFailure)
         {
             return Result<string>.Fail().WithErrors(checkResult);
@@ -172,7 +181,7 @@ public class RootPathResolver
                 return false;
             }
 
-            var checkResult = CheckPath(normalizedPath, checkStoredName: false);
+            var checkResult = CheckPath(normalizedPath, checkStoredName: false, acceptListingsAfter: null);
             return checkResult.IsSuccess;
         }
         catch
@@ -226,6 +235,34 @@ public class RootPathResolver
     }
 
     /// <summary>
+    /// Records that the name of an item at the absolute path may have changed, without saying how. The listing of
+    /// the item's folder is marked stale, and every cached folder at or below the path is dropped.
+    /// </summary>
+    public void RecordNameChanged(string absolutePath)
+    {
+        var itemPath = GetFullPathOrNull(absolutePath);
+        if (itemPath is null)
+        {
+            _folderCache.Clear();
+            return;
+        }
+
+        if (IsUnderBacking(itemPath))
+        {
+            _folderCache.RecordNameChanged(itemPath);
+        }
+    }
+
+    /// <summary>
+    /// Returns the current timestamp of the resolver's folder listings. A listing that starts from now on takes a
+    /// later one.
+    /// </summary>
+    internal ListingTimestamp GetListingTimestamp()
+    {
+        return _folderCache.GetListingTimestamp();
+    }
+
+    /// <summary>
     /// Returns the number of folders in the cache.
     /// </summary>
     internal int CachedFolderCount => _folderCache.Count;
@@ -238,7 +275,7 @@ public class RootPathResolver
     // Checks the path below the backing folder. No part may be a link. When stored names are checked, each
     // existing part must be in the listing of the folder above the part. A missing part ends the check, since
     // everything below a missing part is missing too.
-    private Result CheckPath(string resolvedPath, bool checkStoredName)
+    private Result CheckPath(string resolvedPath, bool checkStoredName, ListingTimestamp? acceptListingsAfter)
     {
         if (resolvedPath.Equals(_normalizedBackingTrimmed, PathComparison.Comparison))
         {
@@ -264,7 +301,7 @@ public class RootPathResolver
         var parentFolder = _folderCache.TryGet(parentPath);
         if (parentFolder is not null)
         {
-            return CheckPart(parentFolder, item, resolvedPath, checkStoredName, out _);
+            return CheckPart(parentFolder, item, resolvedPath, checkStoredName, acceptListingsAfter, out _);
         }
 
         var relativePart = resolvedPath.Substring(_normalizedBackingWithSeparator.Length);
@@ -281,7 +318,7 @@ public class RootPathResolver
             bool isFinalPart = index == segments.Length - 1;
             if (isFinalPart)
             {
-                return CheckPart(folder, item, resolvedPath, checkStoredName, out _);
+                return CheckPart(folder, item, resolvedPath, checkStoredName, acceptListingsAfter, out _);
             }
 
             var cachedFolder = _folderCache.TryGet(currentPath);
@@ -291,7 +328,13 @@ public class RootPathResolver
                 continue;
             }
 
-            var partResult = CheckPart(folder, new FileInfo(currentPath), resolvedPath, checkStoredName, out var partFolder);
+            var partResult = CheckPart(
+                folder,
+                new FileInfo(currentPath),
+                resolvedPath,
+                checkStoredName,
+                acceptListingsAfter,
+                out var partFolder);
             if (partResult.IsFailure)
             {
                 return partResult;
@@ -317,6 +360,7 @@ public class RootPathResolver
         FileInfo part,
         string resolvedPath,
         bool checkStoredName,
+        ListingTimestamp? acceptListingsAfter,
         out CachedFolder? partFolder)
     {
         partFolder = null;
@@ -336,7 +380,7 @@ public class RootPathResolver
         if (checkStoredName
             && _folderCache.HasListings)
         {
-            var lookup = _folderCache.FindName(folder, part.Name);
+            var lookup = _folderCache.FindName(folder, part.Name, acceptListingsAfter);
             if (lookup == NameLookup.Unlisted)
             {
                 return Result.Fail(

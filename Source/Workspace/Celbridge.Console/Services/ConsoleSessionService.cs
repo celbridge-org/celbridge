@@ -75,8 +75,6 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         _messengerService.Register<DocumentOpenedMessage>(this, OnDocumentOpened);
         _messengerService.Register<DocumentClosedMessage>(this, OnDocumentClosed);
         _messengerService.Register<DocumentResourceChangedMessage>(this, OnDocumentResourceChanged);
-        _messengerService.Register<ResourceChangedMessage>(this, OnResourceChanged);
-        _messengerService.Register<ResourceCreatedMessage>(this, OnResourceCreated);
     }
 
     public async Task EnsureStartedAsync(ResourceKey resource)
@@ -103,8 +101,13 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
 
             if (!_sessions.TryGetValue(resource, out var session))
             {
-                session = new ConsoleSession(_serviceProvider, _workspaceWrapper, resource, _sessionProviders, _startupWrite);
-                session.StateChanged += OnSessionStateChanged;
+                session = new ConsoleSession(
+                    _serviceProvider,
+                    _workspaceWrapper,
+                    resource,
+                    _sessionProviders,
+                    _startupWrite,
+                    _triggerScheduler.Schedule);
                 _sessions[resource] = session;
             }
 
@@ -294,7 +297,6 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
 
     public bool TryBindConnection(Guid sessionToken, int connectionId, string? temporaryEnvironmentFolder)
     {
-        Guid boundSessionId;
         lock (_sessionsLock)
         {
             ConsoleSession? match = null;
@@ -319,11 +321,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
                 match.ClientTemporaryEnvironmentFolder = temporaryEnvironmentFolder;
             }
             _connectionToSession[connectionId] = sessionToken;
-            boundSessionId = match.SessionId;
         }
-
-        var connectedMessage = new ConsoleSessionConnectedMessage(boundSessionId);
-        _messengerService.Send(connectedMessage);
 
         return true;
     }
@@ -496,30 +494,8 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         return target;
     }
 
-    private void OnSessionStateChanged(object? sender, ConsoleSessionRunState state)
-    {
-        if (sender is not ConsoleSession session)
-        {
-            return;
-        }
-
-        var stateChangedMessage = new ConsoleSessionStateChangedMessage(session.SessionId, state);
-        _messengerService.Send(stateChangedMessage);
-    }
-
-    // A released session is terminally gone, so its state change is broadcast for per-session bookkeeping
-    // before its handler is detached.
     private void ReleaseSession(ConsoleSession session)
     {
-        if (session.State != ConsoleSessionRunState.Ended &&
-            session.State != ConsoleSessionRunState.Failed)
-        {
-            var endedMessage = new ConsoleSessionStateChangedMessage(session.SessionId, ConsoleSessionRunState.Ended);
-            _messengerService.Send(endedMessage);
-        }
-
-        session.StateChanged -= OnSessionStateChanged;
-
         lock (_sessionsLock)
         {
             if (session.ConnectionId is int connectionId)
@@ -586,47 +562,6 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
         }
     }
 
-    private void OnResourceChanged(object recipient, ResourceChangedMessage message)
-    {
-        ScheduleTriggers(message.Resource);
-    }
-
-    private void OnResourceCreated(object recipient, ResourceCreatedMessage message)
-    {
-        ScheduleTriggers(message.Resource);
-    }
-
-    // The watcher reports one write as several events (an atomic save arrives as both Created and Changed),
-    // and an editor saves on a timer while the user types. The scheduler's window is what turns all of that
-    // into a single run, so every match is scheduled here and the collapsing happens there.
-    private void ScheduleTriggers(ResourceKey resource)
-    {
-        List<ConsoleSession> sessions;
-        lock (_sessionsLock)
-        {
-            if (_disposed)
-            {
-                return;
-            }
-
-            sessions = _sessions.Values.ToList();
-        }
-
-        foreach (var session in sessions)
-        {
-            if (session.Triggers.Count == 0)
-            {
-                continue;
-            }
-
-            var invocations = ConsoleTriggerMatcher.Resolve(session.Triggers, resource);
-            foreach (var invocation in invocations)
-            {
-                _triggerScheduler.Schedule(session.SessionId, invocation);
-            }
-        }
-    }
-
     // Submits straight to the session rather than through a command. A trigger firing is the tail of a
     // decision the host has already made, not a capability worth exposing to automation, and the command
     // queue stalls behind any command that awaits a modal dialog, which would hold the run back and then
@@ -679,7 +614,6 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
 
         foreach (var session in sessions)
         {
-            session.StateChanged -= OnSessionStateChanged;
             session.Dispose();
             RemoveClientTemporaryEnvironment(session);
         }

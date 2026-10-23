@@ -1,18 +1,15 @@
-using System.Diagnostics;
+using Celbridge.Automation;
 using Celbridge.Logging;
 using Celbridge.Workspace;
-using Timer = System.Timers.Timer;
 
 namespace Celbridge.Resources.Services;
 
 /// <summary>
-/// Translates raw file system watch events on watched roots into resource-level
-/// change notifications and registry updates.
+/// Watches the roots that opt in, and delivers the keys touched by each change to the subscriptions of the root. The
+/// keys reported by Celbridge's own operations are delivered at once.
 /// </summary>
 public class ResourceMonitor : IResourceMonitor, IDisposable
 {
-    private const int UpdateDebounceMs = 250;
-
     private sealed class WatchedRoot
     {
         public IResourceRootHandler Handler { get; }
@@ -26,31 +23,56 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
     }
 
     private readonly ILogger<ResourceMonitor> _logger;
-    private readonly IMessengerService _messengerService;
     private readonly IDispatcher _dispatcher;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IFileSystemMonitorFactory _fileSystemMonitorFactory;
-
-    private readonly object _updateLock = new();
+    private readonly ILocalFileSystem _fileSystem;
+    private readonly TimeProvider _timeProvider;
+    private readonly IAutomationService _automationService;
 
     private readonly List<WatchedRoot> _watchedRoots = new();
-    private Timer? _updateDebounceTimer;
-    private long _updateRequestedTimestamp;
-    private long _updateStartedTimestamp;
+
+    private readonly ResourceSubscriptions _subscriptions = new();
+
+    // One batcher for each watched root, by root name. Guarded by the lock on the dictionary.
+    private readonly Dictionary<string, ChangeBatcher> _batchers = new(StringComparer.Ordinal);
+
     private bool _isDisposed;
 
     public ResourceMonitor(
         ILogger<ResourceMonitor> logger,
         IDispatcher dispatcher,
-        IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
-        IFileSystemMonitorFactory fileSystemMonitorFactory)
+        IFileSystemMonitorFactory fileSystemMonitorFactory,
+        ILocalFileSystem fileSystem,
+        IAutomationService automationService)
+        : this(
+            logger,
+            dispatcher,
+            workspaceWrapper,
+            fileSystemMonitorFactory,
+            fileSystem,
+            automationService,
+            TimeProvider.System)
+    {
+    }
+
+    internal ResourceMonitor(
+        ILogger<ResourceMonitor> logger,
+        IDispatcher dispatcher,
+        IWorkspaceWrapper workspaceWrapper,
+        IFileSystemMonitorFactory fileSystemMonitorFactory,
+        ILocalFileSystem fileSystem,
+        IAutomationService automationService,
+        TimeProvider timeProvider)
     {
         _logger = logger;
         _dispatcher = dispatcher;
-        _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
         _fileSystemMonitorFactory = fileSystemMonitorFactory;
+        _fileSystem = fileSystem;
+        _timeProvider = timeProvider;
+        _automationService = automationService;
     }
 
     public Result Initialize()
@@ -62,8 +84,6 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
         try
         {
-            _messengerService.Register<ResourceRegistryUpdateStartingMessage>(this, OnResourceRegistryUpdateStarting);
-
             // Spin up one file system monitor per registered root that opted in via Capabilities.IsWatched.
             // WorkspaceLoader calls Initialize after the workspace finishes constructing, so the wrapper
             // returns the configured registry instance here.
@@ -75,9 +95,11 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
                     continue;
                 }
 
+                var batcher = GetOrCreateBatcher(handler);
                 var monitor = _fileSystemMonitorFactory.Create(handler.BackingLocation);
-                monitor.FileSystemChanged += (sender, monitorEvent) => OnFileSystemChanged(handler, monitorEvent);
-                monitor.MonitoringDesynchronized += (sender, args) => OnMonitoringDesynchronized(handler);
+                monitor.FileSystemChanged +=
+                    (sender, monitorEvent) => OnFileSystemChanged(handler, batcher, monitorEvent);
+                monitor.MonitoringDesynchronized += (sender, args) => OnMonitoringDesynchronized(handler, batcher);
 
                 var startResult = monitor.Start();
                 if (startResult.IsFailure)
@@ -103,6 +125,99 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         }
     }
 
+    public Result<IMatcherSubscription> SubscribeToMatcher(
+        string rootName,
+        IPathMatcher matcher,
+        ResourceChangeHandlers handlers)
+    {
+        if (_isDisposed)
+        {
+            return Result.Fail("Cannot subscribe to a disposed ResourceMonitor");
+        }
+
+        var rootHandlers = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers.RootHandlers;
+        if (!rootHandlers.ContainsKey(rootName))
+        {
+            return Result.Fail($"No resource root is registered with the name '{rootName}'");
+        }
+
+        var subscription = new MatcherSubscription(rootName, matcher, handlers, _subscriptions.Remove);
+        _subscriptions.Add(subscription);
+
+        return subscription.OkResult<IMatcherSubscription>();
+    }
+
+    public Result<IResourceKeySubscription> SubscribeToResources(
+        IReadOnlyList<ResourceKey> resources,
+        ResourceChangeHandlers handlers)
+    {
+        if (_isDisposed)
+        {
+            return Result.Fail("Cannot subscribe to a disposed ResourceMonitor");
+        }
+
+        var validateResult = ValidateSubscribedResources(resources);
+        if (validateResult.IsFailure)
+        {
+            return Result.Fail(validateResult);
+        }
+
+        var subscription = new ResourceKeySubscription(resources, handlers, _subscriptions.Remove);
+        _subscriptions.Add(subscription);
+
+        return subscription.OkResult<IResourceKeySubscription>();
+    }
+
+    public void ReportOperationChanges(IReadOnlyList<ResourceKey> resources)
+    {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        foreach (var rootResources in resources.GroupBy(resource => resource.Root))
+        {
+            ChangeBatcher? batcher;
+            lock (_batchers)
+            {
+                _batchers.TryGetValue(rootResources.Key, out batcher);
+            }
+
+            if (batcher is null)
+            {
+                continue;
+            }
+
+            var batchedResources = rootResources
+                .Where(IsBatched)
+                .ToList();
+            if (batchedResources.Count > 0)
+            {
+                batcher.AddReportedKeys(batchedResources);
+            }
+        }
+    }
+
+    // Accepts keys that each name an item below a registered root.
+    private Result ValidateSubscribedResources(IReadOnlyList<ResourceKey> resources)
+    {
+        var rootHandlers = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers.RootHandlers;
+        foreach (var resource in resources)
+        {
+            if (resource.IsEmpty)
+            {
+                return Result.Fail($"A subscribed key must name an item below its root: '{resource}'");
+            }
+
+            if (!rootHandlers.ContainsKey(resource.Root))
+            {
+                return Result.Fail($"No resource root is registered with the name '{resource.Root}'");
+            }
+        }
+
+        return Result.Ok();
+    }
+
     public void Shutdown()
     {
         if (_isDisposed)
@@ -112,19 +227,22 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
         try
         {
-            _messengerService.UnregisterAll(this);
-
-            lock (_updateLock)
-            {
-                _updateDebounceTimer?.Dispose();
-                _updateDebounceTimer = null;
-            }
-
             foreach (var watchedRoot in _watchedRoots)
             {
                 watchedRoot.Monitor.Dispose();
             }
             _watchedRoots.Clear();
+
+            lock (_batchers)
+            {
+                foreach (var batcher in _batchers.Values)
+                {
+                    batcher.Dispose();
+                }
+                _batchers.Clear();
+            }
+
+            _subscriptions.Clear();
 
             _logger.LogDebug("Resource monitoring stopped");
         }
@@ -134,353 +252,96 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         }
     }
 
-    private void OnFileSystemChanged(IResourceRootHandler handler, FileSystemMonitorEvent monitorEvent)
+    private ChangeBatcher GetOrCreateBatcher(IResourceRootHandler handler)
     {
-        switch (monitorEvent.Kind)
+        ChangeBatcher? batcher;
+        lock (_batchers)
         {
-            case FileSystemMonitorEventKind.Created:
-                HandleCreated(handler, monitorEvent.Path);
-                break;
-
-            case FileSystemMonitorEventKind.Changed:
-                HandleChanged(handler, monitorEvent.Path);
-                break;
-
-            case FileSystemMonitorEventKind.Deleted:
-                HandleDeleted(handler, monitorEvent.Path);
-                break;
-
-            case FileSystemMonitorEventKind.Renamed:
-                HandleRenamed(handler, monitorEvent.OldPath!, monitorEvent.Path);
-                break;
-        }
-    }
-
-    private void HandleCreated(IResourceRootHandler handler, string fullPath)
-    {
-        // The resolver's listings have every name in a folder, so ignored paths are recorded too.
-        handler.RecordItemCreated(fullPath);
-
-        if (ShouldIgnorePath(handler, fullPath))
-        {
-            return;
-        }
-
-        // Send granular notification for listeners (e.g., document editors)
-        OnResourceCreated(handler, fullPath);
-
-        // Also notify as changed because some save patterns (atomic temp-write
-        // followed by replace of an existing destination, used by the in-app
-        // file writer and many external editors) surface as a Created event on
-        // the destination rather than a Changed or Renamed event. Listeners
-        // that watch for content changes need to react in that case too.
-        OnResourceChanged(handler, fullPath);
-
-        ScheduleResourceUpdate(handler);
-    }
-
-    private void HandleChanged(IResourceRootHandler handler, string fullPath)
-    {
-        if (ShouldIgnorePath(handler, fullPath))
-        {
-            return;
-        }
-
-        OnResourceChanged(handler, fullPath);
-
-        ScheduleResourceUpdate(handler);
-    }
-
-    private void HandleDeleted(IResourceRootHandler handler, string fullPath)
-    {
-        // Ignored paths are recorded too. An ignored folder can still be an ancestor of a cached folder, and the
-        // ignored folder's name is in a listing.
-        handler.RecordItemRemoved(fullPath);
-
-        if (ShouldIgnorePath(handler, fullPath))
-        {
-            return;
-        }
-
-        OnResourceDeleted(handler, fullPath);
-
-        ScheduleResourceUpdate(handler);
-    }
-
-    private void HandleRenamed(IResourceRootHandler handler, string oldFullPath, string newFullPath)
-    {
-        // The folders below the new path are listed when they are next used.
-        handler.RecordItemRemoved(oldFullPath);
-        handler.RecordItemCreated(newFullPath);
-
-        // Only check the new path for ignore rules. The old path may no longer exist on disk
-        // (the rename has already completed), so File.GetAttributes would throw and cause the
-        // event to be incorrectly ignored. This is critical for editors and coding agents that
-        // use a "write temp, delete original, rename temp" save pattern.
-        if (ShouldIgnorePath(handler, newFullPath))
-        {
-            return;
-        }
-
-        OnResourceRenamed(handler, oldFullPath, newFullPath);
-
-        // Also notify as changed since content may have been updated
-        // (handles applications that use rename as part of save, e.g., Excel)
-        OnResourceChanged(handler, newFullPath);
-
-        ScheduleResourceUpdate(handler);
-    }
-
-    private void OnResourceRegistryUpdateStarting(object recipient, ResourceRegistryUpdateStartingMessage message)
-    {
-        lock (_updateLock)
-        {
-            _updateStartedTimestamp = Stopwatch.GetTimestamp();
-        }
-    }
-
-    // The monitor lost events, so which resources were missed is exactly what is unknown: the tree is
-    // rescanned unconditionally, and the path cache is dropped because one of the missing events may
-    // have been a folder being replaced by a reparse point, or a name missing from the listings.
-    private void OnMonitoringDesynchronized(IResourceRootHandler handler)
-    {
-        _logger.LogWarning(
-            "Resource monitoring for root '{RootName}' lost events; rescanning", handler.RootName);
-
-        handler.InvalidatePathCache();
-
-        ScheduleResourceUpdate(handler);
-    }
-
-    // Schedules an update prompted by an event on a root. The project tree sync
-    // (Registry.UpdateResourceRegistry) is project-scoped, so an event on any other root (temp:, logs:)
-    // does not touch the tree and schedules nothing.
-    private void ScheduleResourceUpdate(IResourceRootHandler handler)
-    {
-        if (handler.RootName == ResourceKey.DefaultRoot)
-        {
-            ScheduleResourceUpdate();
-        }
-    }
-
-    public void ScheduleResourceUpdate()
-    {
-        if (!_workspaceWrapper.IsWorkspaceLoaded)
-        {
-            return;
-        }
-
-        lock (_updateLock)
-        {
-            _updateRequestedTimestamp = Stopwatch.GetTimestamp();
-
-            if (_updateDebounceTimer != null)
+            if (!_batchers.TryGetValue(handler.RootName, out batcher))
             {
-                // Timer already running - reset it
-                _updateDebounceTimer.Stop();
-                _updateDebounceTimer.Start();
-            }
-            else
-            {
-                // Start new debounce timer
-                _updateDebounceTimer = new Timer(UpdateDebounceMs);
-                _updateDebounceTimer.AutoReset = false;
-                _updateDebounceTimer.Elapsed += OnDebounceTimerElapsed;
-                _updateDebounceTimer.Start();
+                batcher = new ChangeBatcher(
+                    handler,
+                    _subscriptions,
+                    _fileSystem,
+                    _dispatcher,
+                    _timeProvider,
+                    _automationService,
+                    _logger);
+                _batchers[handler.RootName] = batcher;
             }
         }
+
+        return batcher;
     }
 
-    private void OnDebounceTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
+    private void OnFileSystemChanged(
+        IResourceRootHandler handler,
+        ChangeBatcher batcher,
+        FileSystemMonitorEvent monitorEvent)
     {
-        bool alreadyCovered;
-        lock (_updateLock)
-        {
-            _updateDebounceTimer?.Dispose();
-            _updateDebounceTimer = null;
+        // Each change to a name reaches the resolver, ignored paths included. A changed event leaves the listings
+        // alone, since only a change to a name alters a listing.
+        bool isNameChange = monitorEvent.Kind != FileSystemMonitorEventKind.Changed;
 
-            // A read that began after the last request enumerated a file system that already contained
-            // whatever those requests described. Mutating commands rebuild the registry themselves, so
-            // without this every command is trailed by a redundant watcher-driven rescan.
-            alreadyCovered = _updateStartedTimestamp > _updateRequestedTimestamp;
+        batcher.AddTouchedPath(monitorEvent.Path, GetBatchedKey(handler, monitorEvent.Path), isNameChange);
+        if (monitorEvent.OldPath is not null)
+        {
+            batcher.AddTouchedPath(monitorEvent.OldPath, GetBatchedKey(handler, monitorEvent.OldPath), isNameChange);
         }
-
-        if (alreadyCovered)
-        {
-            return;
-        }
-
-        if (!_workspaceWrapper.IsWorkspaceLoaded)
-        {
-            return;
-        }
-
-        // Marshal to UI thread since UpdateResources may trigger UI updates via message. The workspace
-        // can unload before this runs, hence the guard and the catch: an exception escaping an async
-        // dispatcher continuation terminates the process.
-        _dispatcher.TryEnqueue(async () =>
-        {
-            try
-            {
-                if (!_workspaceWrapper.IsWorkspaceLoaded)
-                {
-                    return;
-                }
-
-                var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
-
-                var result = await resourceService.UpdateResourcesAsync();
-                if (result.IsFailure)
-                {
-                    _logger.LogWarning(result, "Failed to refresh resources");
-                }
-            }
-            catch (Exception exception)
-            {
-                _logger.LogError(exception, "An exception occurred while refreshing resources");
-            }
-        });
     }
 
-    private void OnResourceCreated(IResourceRootHandler handler, string fullPath)
-    {
-        var resourceKey = BuildResourceKey(handler, fullPath);
-        if (resourceKey.IsEmpty &&
-            handler.RootName == ResourceKey.DefaultRoot)
-        {
-            // Project root with no path means the event was outside the backing folder.
-            // For non-project roots, a root-only key is unusual but legal; only flag the project case.
-            return;
-        }
-
-        _logger.LogDebug($"Resource created: {resourceKey}");
-
-        _dispatcher.TryEnqueue(() =>
-        {
-            var message = new ResourceCreatedMessage(resourceKey);
-            _messengerService.Send(message);
-        });
-    }
-
-    private void OnResourceChanged(IResourceRootHandler handler, string fullPath)
-    {
-        var resourceKey = BuildResourceKey(handler, fullPath);
-        if (resourceKey.IsEmpty &&
-            handler.RootName == ResourceKey.DefaultRoot)
-        {
-            return;
-        }
-
-        _logger.LogDebug($"Resource changed: {resourceKey}");
-
-        _dispatcher.TryEnqueue(() =>
-        {
-            var message = new ResourceChangedMessage(resourceKey);
-            _messengerService.Send(message);
-        });
-    }
-
-    private void OnResourceDeleted(IResourceRootHandler handler, string fullPath)
-    {
-        var resourceKey = BuildResourceKey(handler, fullPath);
-        if (resourceKey.IsEmpty &&
-            handler.RootName == ResourceKey.DefaultRoot)
-        {
-            return;
-        }
-
-        _logger.LogDebug($"Resource deleted: {resourceKey}");
-
-        _dispatcher.TryEnqueue(() =>
-        {
-            var message = new ResourceDeletedMessage(resourceKey);
-            _messengerService.Send(message);
-        });
-    }
-
-    private void OnResourceRenamed(IResourceRootHandler handler, string oldFullPath, string newFullPath)
-    {
-        var oldResourceKey = BuildResourceKey(handler, oldFullPath);
-        var newResourceKey = BuildResourceKey(handler, newFullPath);
-
-        if ((oldResourceKey.IsEmpty || newResourceKey.IsEmpty)
-            && handler.RootName == ResourceKey.DefaultRoot)
-        {
-            return;
-        }
-
-        _logger.LogDebug($"Resource renamed: {oldResourceKey} -> {newResourceKey}");
-
-        _dispatcher.TryEnqueue(() =>
-        {
-            var message = new ResourceRenamedMessage(oldResourceKey, newResourceKey);
-            _messengerService.Send(message);
-        });
-    }
-
-    // Drops a watcher event when its path cannot be keyed, when a project-root key
-    // names a reserved path, or when it names a path the tree walk skips. Events from
-    // non-project roots are already confined to their backing folder and need no check.
-    private bool ShouldIgnorePath(IResourceRootHandler handler, string fullPath)
+    // Returns the key that a touched path adds to the root's batch. The empty key is returned for the root folder
+    // itself, for a path in the reserved .git folder, and for a path outside every valid key.
+    private ResourceKey GetBatchedKey(IResourceRootHandler handler, string fullPath)
     {
         var keyResult = handler.GetResourceKey(fullPath);
         if (keyResult.IsFailure)
         {
-            return true;
+            return ResourceKey.Empty;
         }
+        var resource = keyResult.Value;
 
-        if (handler.RootName != ResourceKey.DefaultRoot)
+        return IsBatched(resource)
+            ? resource
+            : ResourceKey.Empty;
+    }
+
+    // Returns false for the root key itself, and for a key in the reserved .git folder.
+    private bool IsBatched(ResourceKey resource)
+    {
+        if (resource.IsEmpty)
         {
             return false;
         }
 
-        var resource = keyResult.Value;
         var policy = _workspaceWrapper.WorkspaceService.ResourceService.Policy;
+        var policyResult = policy.Evaluate(resource, ResourceAction.Read);
 
-        var policyResult = policy.Evaluate(resource, ResourceAction.Read, isFolder: false);
-        if (policyResult.IsFailure)
-        {
-            return true;
-        }
-
-        // Search scope bounds the tree walk until the resource index lands, so a write inside
-        // an excluded folder can only schedule a rebuild that produces the same tree. This
-        // check retires with that bound.
-        return policy.IsSearchExcluded(resource, isFolder: false);
+        return policyResult.IsSuccess;
     }
 
-    private ResourceKey BuildResourceKey(IResourceRootHandler handler, string fullPath)
+    // The monitor lost events, so which resources were missed is unknown. The path cache is dropped, since one of the
+    // missing events may have replaced a folder with a reparse point. Another may have added a name the listings lack.
+    // Each subscriber of the root receives a resync in place of the lost events.
+    private void OnMonitoringDesynchronized(IResourceRootHandler handler, ChangeBatcher batcher)
     {
-        var result = handler.GetResourceKey(fullPath);
-        if (result.IsFailure)
-        {
-            _logger.LogWarning($"Could not build resource key for path: {fullPath} ({result.FirstErrorMessage})");
-            return ResourceKey.Empty;
-        }
-        return result.Value;
+        _logger.LogWarning(
+            "Resource monitoring for root '{RootName}' lost events; resyncing its subscribers", handler.RootName);
+        _automationService.LogEvent(new ResourceEventsLostEvent(handler.RootName));
+
+        handler.InvalidatePathCache();
+
+        batcher.RequestResync();
     }
 
     public void Dispose()
     {
-        Dispose(true);
-        GC.SuppressFinalize(this);
-    }
-
-    protected virtual void Dispose(bool disposing)
-    {
-        if (!_isDisposed)
+        if (_isDisposed)
         {
-            if (disposing)
-            {
-                Shutdown();
-            }
-
-            _isDisposed = true;
+            return;
         }
-    }
 
-    ~ResourceMonitor()
-    {
-        Dispose(false);
+        Shutdown();
+        _isDisposed = true;
     }
 }

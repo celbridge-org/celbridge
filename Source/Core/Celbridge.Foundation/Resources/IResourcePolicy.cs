@@ -130,4 +130,10 @@ public interface IResourcePolicy
     /// Whether the project's 'search-exclude' patterns match the resource.
     /// </summary>
     bool IsSearchExcluded(ResourceKey resource, bool isFolder);
+
+    /// <summary>
+    /// Returns a matcher for the project paths that the 'search-exclude' patterns leave in. When the patterns match a
+    /// folder, everything inside the folder is left out too.
+    /// </summary>
+    IPathMatcher SearchScope { get; }
 }

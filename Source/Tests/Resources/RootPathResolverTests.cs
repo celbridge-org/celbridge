@@ -1,5 +1,6 @@
 using Celbridge.Resources;
 using Celbridge.Resources.Helpers;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Celbridge.Tests.Resources;
 
@@ -7,15 +8,6 @@ namespace Celbridge.Tests.Resources;
 public class RootPathResolverTests
 {
     private const string CaseSensitiveVolumeReason = "On a case-sensitive volume, names that differ in case name different items.";
-
-    private sealed class FakeTimeProvider : TimeProvider
-    {
-        private DateTimeOffset _now = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
-
-        public override DateTimeOffset GetUtcNow() => _now;
-
-        public void Advance(TimeSpan interval) => _now += interval;
-    }
 
     private string? _projectFolder;
     private string? _outsideFolder;
@@ -621,6 +613,85 @@ public class RootPathResolverTests
         staleResult.IsSuccess.Should().BeTrue();
         checkedResult.IsFailure.Should().BeTrue();
         checkedResult.FirstErrorMessage.Should().Contain("Canonical form is 'project:docs/Notes.txt'");
+    }
+
+    [Test]
+    [Platform(Exclude = "Linux", Reason = CaseSensitiveVolumeReason)]
+    public void RecordNameChangedForBothNamesOfACaseOnlyRenameRefusesTheOldName()
+    {
+        WriteProjectFile("docs/notes.txt");
+        var resolver = CreateResolver();
+        resolver.ValidateAndResolve(ResourceKey.Create("docs/notes.txt")).IsSuccess.Should().BeTrue();
+
+        // On macOS the watcher reports a create for both names of a rename that changes only letter case.
+        var oldFilePath = Path.Combine(_projectFolder!, "docs", "notes.txt");
+        var newFilePath = Path.Combine(_projectFolder!, "docs", "Notes.txt");
+        File.Move(oldFilePath, newFilePath);
+        resolver.RecordNameChanged(oldFilePath);
+        resolver.RecordNameChanged(newFilePath);
+
+        var oldResult = resolver.ValidateAndResolve(ResourceKey.Create("docs/notes.txt"));
+        var newResult = resolver.ValidateAndResolve(ResourceKey.Create("docs/Notes.txt"));
+
+        oldResult.IsFailure.Should().BeTrue();
+        oldResult.FirstErrorMessage.Should().Contain("Canonical form is 'project:docs/Notes.txt'");
+        newResult.IsSuccess.Should().BeTrue(newResult.FirstErrorMessage);
+    }
+
+    [Test]
+    [Platform(Exclude = "Linux", Reason = CaseSensitiveVolumeReason)]
+    public void RecordNameChangedDropsTheListingOfAFolderNamedInAnotherCase()
+    {
+        WriteProjectFile("docs/notes.txt");
+        WriteProjectFile("docs/other.txt");
+        var resolver = CreateResolver();
+        resolver.ValidateAndResolve(ResourceKey.Create("docs/notes.txt")).IsSuccess.Should().BeTrue();
+        var listingCount = resolver.ListingCount;
+
+        // On macOS the watcher reports a removed item in the letter case of the call that removed it.
+        File.Delete(Path.Combine(_projectFolder!, "docs", "notes.txt"));
+        resolver.RecordNameChanged(Path.Combine(_projectFolder!, "DOCS", "NOTES.TXT"));
+        resolver.ValidateAndResolve(ResourceKey.Create("docs/other.txt")).IsSuccess.Should().BeTrue();
+
+        resolver.ListingCount.Should().Be(listingCount + 1);
+    }
+
+    [Test]
+    public void RecordNameChangedLeavesTheListingsOfOtherFolders()
+    {
+        WriteProjectFile("docs/notes.txt");
+        WriteProjectFile("other/page.txt");
+        var resolver = CreateResolver();
+        resolver.ValidateAndResolve(ResourceKey.Create("docs/notes.txt")).IsSuccess.Should().BeTrue();
+        resolver.ValidateAndResolve(ResourceKey.Create("other/page.txt")).IsSuccess.Should().BeTrue();
+        var listingCount = resolver.ListingCount;
+
+        resolver.RecordNameChanged(Path.Combine(_projectFolder!, "docs", "notes.txt"));
+        resolver.ValidateAndResolve(ResourceKey.Create("other/page.txt")).IsSuccess.Should().BeTrue();
+
+        resolver.ListingCount.Should().Be(listingCount);
+    }
+
+    [Test]
+    public void RecordNameChangedRejectsALinkThatReplacesACachedFolder()
+    {
+        WriteProjectFile("docs/sub/page.txt");
+        var outsideSubFolder = Path.Combine(_outsideFolder!, "sub");
+        Directory.CreateDirectory(outsideSubFolder);
+        File.WriteAllText(Path.Combine(outsideSubFolder, "page.txt"), "outside");
+        var resolver = CreateResolver();
+        resolver.ValidateAndResolve(ResourceKey.Create("docs/sub/page.txt")).IsSuccess.Should().BeTrue();
+
+        // Replace docs, an ancestor of the cached folder, with a link to a folder of the same shape.
+        var docsFolder = Path.Combine(_projectFolder!, "docs");
+        Directory.Move(docsFolder, Path.Combine(_projectFolder!, "docs_moved"));
+        Directory.CreateSymbolicLink(docsFolder, _outsideFolder!);
+        resolver.RecordNameChanged(docsFolder);
+
+        var resolveResult = resolver.ValidateAndResolve(ResourceKey.Create("docs/sub/page.txt"));
+
+        resolveResult.IsFailure.Should().BeTrue();
+        resolveResult.FirstErrorMessage.Should().Contain("symbolic link or junction");
     }
 
     [Test]
