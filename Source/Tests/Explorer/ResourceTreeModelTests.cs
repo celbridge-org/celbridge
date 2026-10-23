@@ -142,6 +142,20 @@ public class ResourceTreeModelTests
     }
 
     [Test]
+    public async Task SetExpanded_KeepsAFolderMadeBeforeItsChangeArrives()
+    {
+        var model = CreateModel();
+        await model.RefreshAsync();
+
+        CreateFolder("fresh");
+        WriteFile("fresh/x.txt");
+        await model.SetExpandedAsync(ResourceKey.Create("fresh"), true);
+
+        _folderStateService.IsExpanded(ResourceKey.Create("fresh")).Should().BeTrue();
+        RowPaths(model).Should().Equal("", "fresh", "fresh/x.txt");
+    }
+
+    [Test]
     public async Task ChangeInAListedFolder_RelistsIt_AndKeepsTheUnchangedRows()
     {
         WriteFile("c.txt");
@@ -282,6 +296,20 @@ public class ResourceTreeModelTests
 
         revealResult.IsFailure.Should().BeTrue();
         _folderStateService.ExpandedFolders.Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task Reveal_FindsAResourceMadeBeforeItsChangeArrives()
+    {
+        CreateFolder("a");
+        var model = CreateModel();
+        await model.RefreshAsync();
+
+        WriteFile("a/new.txt");
+        var revealResult = await model.RevealAsync(ResourceKey.Create("a/new.txt"));
+
+        revealResult.IsSuccess.Should().BeTrue();
+        RowPaths(model).Should().Equal("", "a", "a/new.txt");
     }
 
     [Test]

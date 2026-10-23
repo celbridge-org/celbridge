@@ -19,7 +19,7 @@ namespace Celbridge.Explorer.Services;
 /// </summary>
 public sealed class ResourceTreeModel
 {
-    private sealed record PathToResource(IReadOnlyList<ResourceKey> Folders, bool IsHidden);
+    private sealed record ResourceLocation(IReadOnlyList<ResourceKey> FoldersAbove, bool IsHidden);
 
     // Collects the rows in display order. A resource keeps its previous row when the row's appearance is unchanged.
     private sealed class RowBuilder
@@ -131,6 +131,13 @@ public sealed class ResourceTreeModel
     /// </summary>
     public async Task SetExpandedAsync(ResourceKey folder, bool isExpanded)
     {
+        // The update collapses an expanded folder that its parent's listing lacks, so the parent's listing must be
+        // current.
+        if (isExpanded && !folder.IsEmpty)
+        {
+            await GetListingContainingAsync(folder.GetParent(), folder);
+        }
+
         FolderStateService.SetExpanded(folder, isExpanded);
 
         await UpdateAsync([]);
@@ -167,29 +174,29 @@ public sealed class ResourceTreeModel
     /// </summary>
     public async Task<Result> RevealAsync(ResourceKey resource)
     {
-        var findResult = await FindPathToAsync(resource);
+        var locateResult = await LocateResourceAsync(resource);
 
-        if (findResult.IsSuccess)
+        if (locateResult.IsSuccess)
         {
-            var path = findResult.Value;
+            var location = locateResult.Value;
 
-            foreach (var folder in path.Folders)
+            foreach (var folder in location.FoldersAbove)
             {
                 FolderStateService.SetExpanded(folder, true);
             }
 
-            if (path.IsHidden)
+            if (location.IsHidden)
             {
                 WorkspaceSettings.ShowHiddenFiles = true;
             }
         }
 
-        // FindPathToAsync may list folders the tree does not show. Updating drops those listings.
+        // LocateResourceAsync may list folders the tree does not show. Updating drops those listings.
         await UpdateAsync([]);
 
-        if (findResult.IsFailure)
+        if (locateResult.IsFailure)
         {
-            return Result.Fail(findResult);
+            return Result.Fail(locateResult);
         }
 
         return Result.Ok();
@@ -209,7 +216,7 @@ public sealed class ResourceTreeModel
 
     // Finds the folders above the resource by listing each one from the project folder down. Also reports whether
     // the tree hides the resource or any of those folders.
-    private async Task<Result<PathToResource>> FindPathToAsync(ResourceKey resource)
+    private async Task<Result<ResourceLocation>> LocateResourceAsync(ResourceKey resource)
     {
         if (resource.Root != ResourceKey.DefaultRoot)
         {
@@ -225,13 +232,14 @@ public sealed class ResourceTreeModel
 
         for (var segmentIndex = 0; segmentIndex < segments.Length; segmentIndex++)
         {
-            var listing = await GetListingAsync(folder);
+            var itemKey = folder.Combine(segments[segmentIndex]);
+
+            var listing = await GetListingContainingAsync(folder, itemKey);
             if (listing is null)
             {
                 return Result.Fail($"Failed to list folder: '{folder}'");
             }
 
-            var itemKey = folder.Combine(segments[segmentIndex]);
             var item = listing.FirstOrDefault(folderChild => folderChild.Resource == itemKey);
             if (item is null)
             {
@@ -258,7 +266,7 @@ public sealed class ResourceTreeModel
             folder = itemKey;
         }
 
-        return new PathToResource(folders, isHidden);
+        return new ResourceLocation(folders, isHidden);
     }
 
     // Re-lists the stale folders, then keeps a listing of exactly the folders the tree needs. Those are the project
@@ -344,6 +352,22 @@ public sealed class ResourceTreeModel
         _listings[folder] = listing;
 
         return listing;
+    }
+
+    // Lists the folder again when its held listing lacks the resource. A command that changes the disk can name the
+    // resource before the change reaches the model, so a held listing can predate the resource.
+    private async Task<IReadOnlyList<FolderChild>?> GetListingContainingAsync(ResourceKey folder, ResourceKey resource)
+    {
+        var listing = await GetListingAsync(folder);
+        if (listing is not null
+            && listing.Any(folderChild => folderChild.Resource == resource))
+        {
+            return listing;
+        }
+
+        _listings.Remove(folder);
+
+        return await GetListingAsync(folder);
     }
 
     // An expanded folder leaves the saved set when the parent folder's listing lacks the folder. It also leaves when
