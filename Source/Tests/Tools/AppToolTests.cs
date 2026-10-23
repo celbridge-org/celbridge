@@ -204,8 +204,6 @@ public class AppToolTests
         webViewDevToolsEval.GetBoolean().Should().BeTrue();
         flagsElement.TryGetProperty(FeatureFlagConstants.WebViewLoadDiagnostics, out var webViewLoadDiagnostics).Should().BeTrue();
         webViewLoadDiagnostics.GetBoolean().Should().BeFalse();
-        flagsElement.TryGetProperty(FeatureFlagConstants.OpenCel, out var openCel).Should().BeTrue();
-        openCel.GetBoolean().Should().BeFalse();
         flagsElement.TryGetProperty(FeatureFlagConstants.NoteEditor, out var noteEditor).Should().BeTrue();
         noteEditor.GetBoolean().Should().BeFalse();
     }

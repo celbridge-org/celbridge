@@ -8,14 +8,8 @@ namespace Celbridge.Resources;
 public interface IResourceNameValidator : IValidator
 {
     /// <summary>
-    /// Parent folder resource that will contain the proposed resource.
-    /// Used to check for conflicts with existing resource names.
-    /// </summary>
-    IFolderResource? ParentFolder { get; set; }
-
-    /// <summary>
     /// Any name listed in ValidNames is always accepted as valid, even if it has the same name
-    /// as an existing resource in the ParentFolder.
+    /// as an existing resource in the parent folder.
     /// </summary>
     List<string> ValidNames { get; }
 
@@ -24,4 +18,10 @@ public interface IResourceNameValidator : IValidator
     /// hint when the entered name is checked against the resource policy.
     /// </summary>
     bool ValidateAsFolder { get; set; }
+
+    /// <summary>
+    /// Lists the folder that will contain the proposed resource. The proposed name is then checked against the
+    /// names of the items in the folder. Fails when the folder cannot be listed.
+    /// </summary>
+    Task<Result> SetParentFolderAsync(ResourceKey parentFolder);
 }

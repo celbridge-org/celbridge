@@ -1,6 +1,5 @@
 using Celbridge.DataTransfer;
 using Celbridge.Explorer.Menu;
-using Celbridge.Workspace;
 using Windows.Foundation;
 
 namespace Celbridge.Explorer.Views;
@@ -15,10 +14,10 @@ public sealed partial class ResourceTree
         var position = e.GetPosition(ResourceListView);
         var clickedItem = FindItemAtPosition(position);
 
-        IResource? clickedResource;
+        ResourceItem clickedResource;
         if (clickedItem != null)
         {
-            clickedResource = clickedItem.Resource;
+            clickedResource = clickedItem.Item;
 
             if (clickedItem.IsProjectFolder)
             {
@@ -37,7 +36,7 @@ public sealed partial class ResourceTree
         else
         {
             // Right-clicking empty space - target the project folder
-            clickedResource = ViewModel.ProjectFolder;
+            clickedResource = new ResourceItem(ResourceKey.Empty, IsFolder: true);
             ResourceListView.SelectedItems.Clear();
         }
 
@@ -45,7 +44,7 @@ public sealed partial class ResourceTree
         await ShowContextMenuAsync(position, clickedResource);
     }
 
-    private async Task ShowContextMenuAsync(Point position, IResource? clickedResource)
+    private async Task ShowContextMenuAsync(Point position, ResourceItem clickedResource)
     {
         // Build menu context
         var context = await BuildMenuContext(clickedResource);
@@ -66,11 +65,10 @@ public sealed partial class ResourceTree
         ResourceContextMenu.ShowAt(ResourceListView, position);
     }
 
-    private async Task<ExplorerMenuContext> BuildMenuContext(IResource? clickedResource)
+    private async Task<ExplorerMenuContext> BuildMenuContext(ResourceItem clickedResource)
     {
         var selectedResources = ViewModel.GetSelectedResources();
-        var projectFolder = ViewModel.ProjectFolder;
-        var isProjectFolderTargeted = clickedResource == projectFolder;
+        var isProjectFolderTargeted = clickedResource.Resource.IsEmpty;
 
         // Check clipboard state
         var contentDescription = _dataTransferService.GetClipboardContentDescription();
@@ -80,13 +78,12 @@ public sealed partial class ResourceTree
         // GetState calls read a settled answer rather than re-querying. This is
         // the single source of truth the executor also uses, so the menu state
         // cannot drift from enforcement.
-        var canModifySelection = await EvaluateSelectionModifiable(selectedResources, projectFolder);
+        var canModifySelection = await EvaluateSelectionModifiable(selectedResources);
         var canAddToTargetFolder = EvaluateTargetFolderAddable(clickedResource);
 
         var context = new ExplorerMenuContext(
             ClickedResource: clickedResource,
             SelectedResources: selectedResources,
-            ProjectFolder: projectFolder,
             IsProjectFolderTargeted: isProjectFolderTargeted,
             HasClipboardData: hasClipboardData,
             ClipboardContentType: contentDescription.ContentType,
@@ -103,19 +100,16 @@ public sealed partial class ResourceTree
     // Returns whether every selected resource can be deleted, renamed, moved, or
     // cut. The pre-checked confirmation dialog surfaces the specific reason when
     // the user attempts a blocked destructive action.
-    private async Task<bool> EvaluateSelectionModifiable(
-        IReadOnlyList<IResource> selectedResources,
-        IFolderResource projectFolder)
+    private async Task<bool> EvaluateSelectionModifiable(IReadOnlyList<ResourceItem> selectedResources)
     {
-        foreach (var resource in selectedResources)
+        foreach (var resourceItem in selectedResources)
         {
-            if (resource == projectFolder)
+            if (resourceItem.Resource.IsEmpty)
             {
                 continue;
             }
 
-            var resourceKey = _resourceRegistry.GetResourceKey(resource);
-            var canModifyResult = await _operationService.CanModifyResourceAsync(resourceKey);
+            var canModifyResult = await _operationService.CanModifyResourceAsync(resourceItem.Resource);
             if (canModifyResult.IsFailure)
             {
                 return false;
@@ -126,27 +120,23 @@ public sealed partial class ResourceTree
     }
 
     // Returns whether new resources can be added into the folder the menu would target.
-    private bool EvaluateTargetFolderAddable(IResource? clickedResource)
+    private bool EvaluateTargetFolderAddable(ResourceItem clickedResource)
     {
-        var targetFolder = ResolveDropTargetFolder(clickedResource);
-        var targetFolderKey = _resourceRegistry.GetResourceKey(targetFolder);
+        var targetFolderKey = ExplorerMenuContext.GetTargetFolder(clickedResource);
 
         return _operationService.CanAddToFolder(targetFolderKey).IsSuccess;
     }
 
     private async Task<bool> CheckClipboardHasResources(
         ClipboardContentDescription contentDescription,
-        IResource? clickedResource)
+        ResourceItem clickedResource)
     {
         if (contentDescription.ContentType != ClipboardContentType.Resource)
         {
             return false;
         }
 
-        var destFolder = ResolveDropTargetFolder(clickedResource);
-        var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
-        var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var destFolderKey = resourceRegistry.GetResourceKey(destFolder);
+        var destFolderKey = ExplorerMenuContext.GetTargetFolder(clickedResource);
 
         var getResult = await _dataTransferService.GetClipboardResourceTransfer(destFolderKey);
         if (getResult.IsSuccess)

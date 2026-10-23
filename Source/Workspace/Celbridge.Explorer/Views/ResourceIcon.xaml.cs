@@ -1,3 +1,5 @@
+using Celbridge.UserInterface;
+
 namespace Celbridge.Explorer.Views;
 
 /// <summary>
@@ -6,29 +8,41 @@ namespace Celbridge.Explorer.Views;
 public sealed partial class ResourceIcon : UserControl
 {
     /// <summary>
-    /// The resource to display an icon for.
+    /// Returns true if the resource is a folder. A folder shows the folder icon.
     /// </summary>
-    public static readonly DependencyProperty ResourceProperty = DependencyProperty.Register(
-        nameof(Resource),
-        typeof(object),
+    public static readonly DependencyProperty IsFolderProperty = DependencyProperty.Register(
+        nameof(IsFolder),
+        typeof(bool),
         typeof(ResourceIcon),
-        new PropertyMetadata(null, OnResourceChanged));
+        new PropertyMetadata(false, OnIconChanged));
+
+    /// <summary>
+    /// The icon shown for a file.
+    /// </summary>
+    public static readonly DependencyProperty FileIconProperty = DependencyProperty.Register(
+        nameof(FileIcon),
+        typeof(IconDefinition),
+        typeof(ResourceIcon),
+        new PropertyMetadata(null, OnIconChanged));
 
     public ResourceIcon()
     {
         this.InitializeComponent();
     }
 
-    /// <summary>
-    /// Gets or sets the resource. Can be IFolderResource or IFileResource.
-    /// </summary>
-    public object? Resource
+    public bool IsFolder
     {
-        get => GetValue(ResourceProperty);
-        set => SetValue(ResourceProperty, value);
+        get => (bool)GetValue(IsFolderProperty);
+        set => SetValue(IsFolderProperty, value);
     }
 
-    private static void OnResourceChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    public IconDefinition? FileIcon
+    {
+        get => (IconDefinition?)GetValue(FileIconProperty);
+        set => SetValue(FileIconProperty, value);
+    }
+
+    private static void OnIconChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is ResourceIcon resourceIcon)
         {
@@ -38,22 +52,19 @@ public sealed partial class ResourceIcon : UserControl
 
     private void UpdateIconVisibility()
     {
-        if (Resource is IFolderResource)
+        if (IsFolder)
         {
-            // Show folder icon, hide file icon
             FolderIcon.Visibility = Visibility.Visible;
             FileIconControl.Visibility = Visibility.Collapsed;
         }
-        else if (Resource is IFileResource fileResource)
+        else if (FileIcon is not null)
         {
-            // Show file icon with the correct icon definition, hide folder icon
             FolderIcon.Visibility = Visibility.Collapsed;
             FileIconControl.Visibility = Visibility.Visible;
-            FileIconControl.IconDefinition = fileResource.Icon;
+            FileIconControl.IconDefinition = FileIcon;
         }
         else
         {
-            // Unknown resource type - hide both
             FolderIcon.Visibility = Visibility.Collapsed;
             FileIconControl.Visibility = Visibility.Collapsed;
         }

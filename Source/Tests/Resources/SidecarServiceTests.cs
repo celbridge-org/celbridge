@@ -107,10 +107,8 @@ public class SidecarServiceTests
     [Test]
     public async Task ReadAsync_ReadsFileItself_WhenResourceIsCelKey()
     {
-        // Internal callers that already hold a .cel key (e.g. the open-cel
-        // feature flag's open path) read the file's own content directly
-        // rather than appending .cel again (which would produce a bogus
-        // .cel.cel key).
+        // A caller that already has a .cel key reads the file's own content.
+        // Appending .cel again would produce a bogus .cel.cel key.
         var celResource = new ResourceKey("design.widget.cel");
 
         _resourceFileSystem.GetInfoAsync(celResource)

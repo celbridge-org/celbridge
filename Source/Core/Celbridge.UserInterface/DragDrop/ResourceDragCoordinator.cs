@@ -25,7 +25,7 @@ public sealed class ResourceDragCoordinator : IResourceDragCoordinator
     private UIElement? _trackingRoot;
     private DragGhost? _ghost;
 
-    private IReadOnlyList<IResource>? _pressedResources;
+    private IReadOnlyList<ResourceItem>? _pressedResources;
     private Point _pressPosition;
     private bool _isDragging;
     private UIElement? _keyEventRoot;
@@ -73,7 +73,7 @@ public sealed class ResourceDragCoordinator : IResourceDragCoordinator
         _dropTargets.Remove(dropTarget);
     }
 
-    public void OnResourcePressed(IReadOnlyList<IResource> resources, PointerRoutedEventArgs e)
+    public void OnResourcePressed(IReadOnlyList<ResourceItem> resources, PointerRoutedEventArgs e)
     {
         if (_trackingRoot is null ||
             resources.Count == 0)
@@ -266,11 +266,11 @@ public sealed class ResourceDragCoordinator : IResourceDragCoordinator
         return windowContent is null ? default : e.GetCurrentPoint(windowContent).Position;
     }
 
-    private string BuildLabel(IReadOnlyList<IResource> resources)
+    private string BuildLabel(IReadOnlyList<ResourceItem> resources)
     {
         if (resources.Count == 1)
         {
-            return resources[0].Name;
+            return resources[0].Resource.ResourceName;
         }
 
         return _stringLocalizer.GetString("ResourceTree_DragItemCount", resources.Count);

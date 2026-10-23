@@ -113,7 +113,7 @@ public sealed partial class DocumentSectionView : UserControl
     /// Event raised when resource files are dropped into this section from the ResourceTree, with the
     /// insertion slot in the tab order the drop point maps to.
     /// </summary>
-    public event Action<DocumentSectionView, List<IResource>, int>? FilesDropped;
+    public event Action<DocumentSectionView, List<ResourceItem>, int>? FilesDropped;
 
     public DocumentSectionView()
     {
@@ -1605,16 +1605,16 @@ public sealed partial class DocumentSectionView : UserControl
         return e.DataView?.Properties?.ContainsKey("DraggedResources") == true;
     }
 
-    private static List<IResource>? TakeResourceDragPayload(DragEventArgs e)
+    private static List<ResourceItem>? TakeResourceDragPayload(DragEventArgs e)
     {
         if (e.Data?.Properties?.TryGetValue("DraggedResources", out var draggedObj) == true)
         {
-            return draggedObj as List<IResource>;
+            return draggedObj as List<ResourceItem>;
         }
 
         if (e.DataView?.Properties?.TryGetValue("DraggedResources", out var draggedViewObj) == true)
         {
-            return draggedViewObj as List<IResource>;
+            return draggedViewObj as List<ResourceItem>;
         }
 
         return null;

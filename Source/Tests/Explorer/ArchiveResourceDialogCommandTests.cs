@@ -14,7 +14,7 @@ namespace Celbridge.Tests.Explorer;
 [TestFixture]
 public class ArchiveResourceDialogCommandTests
 {
-    private IResourceRegistry _resourceRegistry = null!;
+    private IResourceFileSystem _resourceFileSystem = null!;
     private IResourceNameValidator _validator = null!;
     private IServiceProvider _serviceProvider = null!;
     private IStringLocalizer _stringLocalizer = null!;
@@ -28,10 +28,10 @@ public class ArchiveResourceDialogCommandTests
     [SetUp]
     public void Setup()
     {
-        _resourceRegistry = Substitute.For<IResourceRegistry>();
+        _resourceFileSystem = Substitute.For<IResourceFileSystem>();
 
         var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(_resourceRegistry);
+        resourceService.FileSystem.Returns(_resourceFileSystem);
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
@@ -41,6 +41,7 @@ public class ArchiveResourceDialogCommandTests
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
         _validator = Substitute.For<IResourceNameValidator>();
+        _validator.SetParentFolderAsync(Arg.Any<ResourceKey>()).Returns(Result.Ok());
         _serviceProvider = Substitute.For<IServiceProvider>();
         _serviceProvider.GetService(typeof(IResourceNameValidator)).Returns(_validator);
 
@@ -81,13 +82,9 @@ public class ArchiveResourceDialogCommandTests
     [Test]
     public async Task ExecuteAsync_ForSubfolder_ProposesArchiveBesideFolder()
     {
-        var parentFolder = Substitute.For<IFolderResource>();
-        var folder = Substitute.For<IFolderResource>();
-        folder.Name.Returns("Data");
-        folder.ParentFolder.Returns(parentFolder);
-
         var folderKey = new ResourceKey("Docs/Data");
-        _resourceRegistry.GetResource(folderKey).Returns(Result<IResource>.Ok(folder));
+        var resourceItem = new ResourceItem(folderKey, IsFolder: true);
+        _resourceFileSystem.GetResourceItemAsync(folderKey).Returns(Result<ResourceItem>.Ok(resourceItem));
 
         var command = CreateCommand();
         command.FolderResource = folderKey;
@@ -96,7 +93,7 @@ public class ArchiveResourceDialogCommandTests
 
         result.IsSuccess.Should().BeTrue();
         _proposedArchiveName.Should().Be("Data.zip");
-        _validator.ParentFolder.Should().BeSameAs(parentFolder);
+        await _validator.Received(1).SetParentFolderAsync(new ResourceKey("Docs"));
         _archiveCommand.SourceResource.Should().Be(folderKey);
         _archiveCommand.ArchiveResource.Should().Be(new ResourceKey("Docs/Data.zip"));
     }

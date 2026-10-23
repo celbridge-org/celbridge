@@ -1,4 +1,4 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+using Celbridge.UserInterface;
 
 namespace Celbridge.Explorer.Models;
 
@@ -19,47 +19,97 @@ public readonly record struct ResourceViewItemAppearance(
     string ProjectFolderTooltip);
 
 /// <summary>
-/// Represents a single resource item in the resource view.
+/// Represents a single resource item in the resource view. A row never changes. When a resource's
+/// appearance changes, the resource gets a new row.
 /// </summary>
-public partial class ResourceViewItem : ObservableObject
+public sealed class ResourceViewItem
 {
-    /// <summary>
-    /// The resource (file or folder) this item represents.
-    /// </summary>
-    public IResource Resource { get; private set; }
-
-    /// <summary>
-    /// Re-points the item at the equivalent node in a rebuilt resource tree. The registry replaces every
-    /// IResource on each update, and resource identity is by reference, so an item that outlives a
-    /// rebuild has to follow it. Raises no notification: the caller only rebinds an item that renders
-    /// identically to the one it replaces.
-    /// </summary>
-    public void RebindResource(IResource resource)
+    public ResourceViewItem(
+        ResourceKey resource,
+        ResourceViewItemAppearance appearance,
+        IconDefinition? fileIcon)
     {
         Resource = resource;
+        Appearance = appearance;
+        FileIcon = fileIcon;
     }
+
+    /// <summary>
+    /// The key of the file or folder this item represents.
+    /// </summary>
+    public ResourceKey Resource { get; }
+
+    /// <summary>
+    /// The values this row renders from.
+    /// </summary>
+    public ResourceViewItemAppearance Appearance { get; }
+
+    /// <summary>
+    /// The icon drawn for a file. Null for a folder, which draws the folder icon.
+    /// </summary>
+    public IconDefinition? FileIcon { get; }
+
+    /// <summary>
+    /// The resource and whether it is a folder, for menus and drags.
+    /// </summary>
+    public ResourceItem Item => new(Resource, IsFolder);
+
+    /// <summary>
+    /// The name of the resource for display.
+    /// For the project folder, this returns the project folder name.
+    /// </summary>
+    public string Name => Appearance.Name;
 
     /// <summary>
     /// The depth level in the tree hierarchy (0 = root level).
     /// </summary>
-    public int IndentLevel { get; }
+    public int IndentLevel => Appearance.IndentLevel;
+
+    /// <summary>
+    /// Whether this item is a folder resource.
+    /// </summary>
+    public bool IsFolder => Appearance.IsFolder;
+
+    /// <summary>
+    /// Whether this item has children that can be expanded.
+    /// </summary>
+    public bool HasChildren => Appearance.HasChildren;
 
     /// <summary>
     /// Whether this folder item is currently expanded.
     /// Only applicable for folder resources.
     /// </summary>
-    [ObservableProperty]
-    private bool _isExpanded;
+    public bool IsExpanded => Appearance.IsExpanded;
 
     /// <summary>
-    /// Whether this item has children that can be expanded.
+    /// Whether this item is the project folder.
+    /// The project folder has special handling.
     /// </summary>
-    public bool HasChildren { get; }
+    public bool IsProjectFolder => Appearance.IsProjectFolder;
 
     /// <summary>
-    /// Whether this item is a folder resource.
+    /// Returns true if the tree hides the resource by default. The row is then on screen only
+    /// because Show Hidden Files is on.
     /// </summary>
-    public bool IsFolder => Resource is IFolderResource;
+    public bool IsHidden => Appearance.IsHidden;
+
+    /// <summary>
+    /// The writable state of the resource, read from its folder's listing.
+    /// </summary>
+    public WritableState WritableState => Appearance.WritableState;
+
+    /// <summary>
+    /// Localised explanation of why the resource is read-only. Empty when
+    /// writable. Drives AutomationProperties.HelpText so screen readers carry
+    /// the same signal as the visual dimming.
+    /// </summary>
+    public string ReadOnlyMessage => Appearance.ReadOnlyMessage;
+
+    /// <summary>
+    /// Localised affordance hint shown when hovering the project folder, naming
+    /// the platform's file manager. Empty for non-project-folder items.
+    /// </summary>
+    public string ProjectFolderTooltip => Appearance.ProjectFolderTooltip;
 
     /// <summary>
     /// The margin used for visual indentation based on tree depth.
@@ -70,18 +120,6 @@ public partial class ResourceViewItem : ObservableObject
         : new Thickness(IndentLevel * 20, 0, 0, 0);
 
     /// <summary>
-    /// The name of the resource for display.
-    /// For the project folder, this returns the project folder name.
-    /// </summary>
-    public string Name { get; }
-
-    /// <summary>
-    /// Whether this item is the project folder.
-    /// The project folder has special handling.
-    /// </summary>
-    public bool IsProjectFolder { get; }
-
-    /// <summary>
     /// Visibility for the expand/collapse chevron.
     /// Hidden for the project folder and files.
     /// </summary>
@@ -89,42 +127,17 @@ public partial class ResourceViewItem : ObservableObject
         IsProjectFolder ? Visibility.Collapsed : (HasChildren ? Visibility.Visible : Visibility.Collapsed);
 
     /// <summary>
-    /// The writable state of the underlying resource, sourced from the
-    /// ProjectTreeBuilder-populated cache on IResource.
-    /// </summary>
-    public WritableState WritableState => Resource.WritableState;
-
-    /// <summary>
-    /// Whether the resource refuses edits. Drives the dimming binding and the
+    /// Returns true if the resource refuses edits. Drives the dimming binding and the
     /// visibility of the read-only tooltip.
     /// </summary>
     public bool IsReadOnly => WritableState != WritableState.Writable;
 
     /// <summary>
-    /// Whether the project's hide patterns match the resource, so the row is only
-    /// on screen because Show Hidden Files is on.
-    /// </summary>
-    public bool IsHidden { get; }
-
-    /// <summary>
-    /// Whether the row is drawn set apart from the rest of the tree. Read-only and
+    /// Returns true if the row is drawn set apart from the rest of the tree. Read-only and
     /// hidden resources both dim, which is the same signal for both: the row is
     /// there but is not one you are working on.
     /// </summary>
     public bool IsDimmed => IsReadOnly || IsHidden;
-
-    /// <summary>
-    /// Localised explanation of why the resource is read-only. Empty when
-    /// writable. Drives AutomationProperties.HelpText so screen readers carry
-    /// the same signal as the visual dimming.
-    /// </summary>
-    public string ReadOnlyMessage { get; }
-
-    /// <summary>
-    /// Localised affordance hint shown when hovering the project folder, naming
-    /// the platform's file manager. Empty for non-project-folder items.
-    /// </summary>
-    public string ProjectFolderTooltip { get; }
 
     /// <summary>
     /// The tooltip shown when the user hovers the item. The project folder
@@ -145,46 +158,6 @@ public partial class ResourceViewItem : ObservableObject
                 ? null
                 : ReadOnlyMessage;
         }
-    }
-
-    /// <summary>
-    /// The values this row renders from, gathered for comparison against a rebuilt row.
-    /// </summary>
-    public ResourceViewItemAppearance Appearance => new(
-        Name,
-        IndentLevel,
-        IsFolder,
-        HasChildren,
-        IsExpanded,
-        IsProjectFolder,
-        IsHidden,
-        WritableState,
-        ReadOnlyMessage,
-        ProjectFolderTooltip);
-
-    /// <summary>
-    /// Creates a new ResourceViewItem for the given resource.
-    /// </summary>
-    public ResourceViewItem(
-        IResource resource,
-        int indentLevel,
-        bool isExpanded,
-        bool hasChildren,
-        bool isProjectFolder = false,
-        bool isHidden = false,
-        string? displayName = null,
-        string? readOnlyMessage = null,
-        string? projectFolderTooltip = null)
-    {
-        Resource = resource;
-        IndentLevel = indentLevel;
-        _isExpanded = isExpanded;
-        HasChildren = hasChildren;
-        IsProjectFolder = isProjectFolder;
-        IsHidden = isHidden;
-        Name = displayName ?? resource.Name;
-        ReadOnlyMessage = readOnlyMessage ?? string.Empty;
-        ProjectFolderTooltip = projectFolderTooltip ?? string.Empty;
     }
 
     /// <summary>

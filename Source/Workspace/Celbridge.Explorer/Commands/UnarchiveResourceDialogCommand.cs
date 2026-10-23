@@ -47,17 +47,16 @@ public class UnarchiveResourceDialogCommand : CommandBase, IUnarchiveResourceDia
             return Result.Fail("Failed to show extract archive dialog because workspace is not loaded");
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
-        var getResult = resourceRegistry.GetResource(ArchiveResource);
+        var getResult = await resourceFileSystem.GetResourceItemAsync(ArchiveResource);
         if (getResult.IsFailure)
         {
             return Result.Fail($"Failed to resolve archive resource: '{ArchiveResource}'")
                 .WithErrors(getResult);
         }
-        var resource = getResult.Value;
 
-        var archiveName = resource.Name;
+        var archiveName = ArchiveResource.ResourceName;
         var defaultFolderName = ArchiveResource.ResourceNameNoExtension;
 
         // Select the full default folder name
@@ -67,7 +66,11 @@ public class UnarchiveResourceDialogCommand : CommandBase, IUnarchiveResourceDia
         var messageString = _stringLocalizer.GetString("ResourceTree_EnterExtractFolderName");
 
         var validator = _serviceProvider.GetRequiredService<IResourceNameValidator>();
-        validator.ParentFolder = resource.ParentFolder;
+        var setParentResult = await validator.SetParentFolderAsync(ArchiveResource.GetParent());
+        if (setParentResult.IsFailure)
+        {
+            return Result.Fail(setParentResult);
+        }
 
         var showResult = await _dialogService.ShowInputTextDialogAsync(
             titleString,

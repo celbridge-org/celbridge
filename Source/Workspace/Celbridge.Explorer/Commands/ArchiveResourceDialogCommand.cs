@@ -47,17 +47,16 @@ public class ArchiveResourceDialogCommand : CommandBase, IArchiveResourceDialogC
             return Result.Fail("Failed to show create archive dialog because workspace is not loaded");
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
-        var getResult = resourceRegistry.GetResource(FolderResource);
+        var getResult = await resourceFileSystem.GetResourceItemAsync(FolderResource);
         if (getResult.IsFailure)
         {
             return Result.Fail($"Failed to resolve folder resource: '{FolderResource}'")
                 .WithErrors(getResult);
         }
-        var resource = getResult.Value;
 
-        var folderName = resource.Name;
+        var folderName = FolderResource.ResourceName;
         var defaultArchiveName = $"{folderName}.zip";
 
         // Select just the folder name part, before ".zip"
@@ -67,7 +66,11 @@ public class ArchiveResourceDialogCommand : CommandBase, IArchiveResourceDialogC
         var messageString = _stringLocalizer.GetString("ResourceTree_EnterArchiveName");
 
         var validator = _serviceProvider.GetRequiredService<IResourceNameValidator>();
-        validator.ParentFolder = resource.ParentFolder;
+        var setParentResult = await validator.SetParentFolderAsync(FolderResource.GetParent());
+        if (setParentResult.IsFailure)
+        {
+            return Result.Fail(setParentResult);
+        }
 
         var showResult = await _dialogService.ShowInputTextDialogAsync(
             titleString,

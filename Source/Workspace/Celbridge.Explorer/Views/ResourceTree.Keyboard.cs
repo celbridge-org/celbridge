@@ -151,14 +151,14 @@ public sealed partial class ResourceTree : IEditTarget
         });
     }
 
-    private bool HandleDelete(List<IResource> selectedResources)
+    private bool HandleDelete(List<ResourceItem> selectedResources)
     {
         if (selectedResources.Count == 0)
         {
             return false;
         }
 
-        var resourceKeys = _resourceRegistry.GetResourceKeys(selectedResources);
+        var resourceKeys = GetResourceKeys(selectedResources);
         _commandService.Execute<IDeleteResourceDialogCommand>(command =>
         {
             command.Resources = resourceKeys;
@@ -173,7 +173,7 @@ public sealed partial class ResourceTree : IEditTarget
             return false;
         }
 
-        var resourceKey = _resourceRegistry.GetResourceKey(selectedItem.Resource);
+        var resourceKey = selectedItem.Resource;
         _commandService.Execute<IRenameResourceDialogCommand>(command =>
         {
             command.Resource = resourceKey;
@@ -188,8 +188,7 @@ public sealed partial class ResourceTree : IEditTarget
             return false;
         }
 
-        ViewModel.ExpandItem(selectedItem);
-        RestoreFocusToSelectedItem();
+        _ = ExpandAndRestoreFocusAsync(selectedItem);
         return true;
     }
 
@@ -202,8 +201,7 @@ public sealed partial class ResourceTree : IEditTarget
 
         if (selectedItem.IsFolder && selectedItem.IsExpanded)
         {
-            ViewModel.CollapseItem(selectedItem);
-            RestoreFocusToSelectedItem();
+            _ = CollapseAndRestoreFocusAsync(selectedItem);
             return true;
         }
 
@@ -225,6 +223,18 @@ public sealed partial class ResourceTree : IEditTarget
 
         OpenResource(selectedItem);
         return true;
+    }
+
+    private async Task ExpandAndRestoreFocusAsync(ResourceViewItem item)
+    {
+        await ViewModel.ExpandItemAsync(item);
+        RestoreFocusToSelectedItem();
+    }
+
+    private async Task CollapseAndRestoreFocusAsync(ResourceViewItem item)
+    {
+        await ViewModel.CollapseItemAsync(item);
+        RestoreFocusToSelectedItem();
     }
 
     // Expand/collapse rebuilds the tree, replacing every ListView container and discarding keyboard focus,
@@ -275,7 +285,7 @@ public sealed partial class ResourceTree : IEditTarget
             return false;
         }
 
-        var resourceKey = _resourceRegistry.GetResourceKey(selectedItem.Resource);
+        var resourceKey = selectedItem.Resource;
         _commandService.Execute<IDuplicateResourceDialogCommand>(command =>
         {
             command.Resource = resourceKey;
@@ -283,14 +293,14 @@ public sealed partial class ResourceTree : IEditTarget
         return true;
     }
 
-    private bool HandleCopy(List<IResource> selectedResources)
+    private bool HandleCopy(List<ResourceItem> selectedResources)
     {
         if (selectedResources.Count == 0)
         {
             return false;
         }
 
-        var resourceKeys = _resourceRegistry.GetResourceKeys(selectedResources);
+        var resourceKeys = GetResourceKeys(selectedResources);
         _commandService.Execute<ICopyResourceToClipboardCommand>(command =>
         {
             command.SourceResources = resourceKeys;
@@ -299,14 +309,14 @@ public sealed partial class ResourceTree : IEditTarget
         return true;
     }
 
-    private bool HandleCut(List<IResource> selectedResources)
+    private bool HandleCut(List<ResourceItem> selectedResources)
     {
         if (selectedResources.Count == 0)
         {
             return false;
         }
 
-        var resourceKeys = _resourceRegistry.GetResourceKeys(selectedResources);
+        var resourceKeys = GetResourceKeys(selectedResources);
         _commandService.Execute<ICopyResourceToClipboardCommand>(command =>
         {
             command.SourceResources = resourceKeys;
@@ -317,11 +327,18 @@ public sealed partial class ResourceTree : IEditTarget
 
     private bool HandlePaste(ResourceViewItem? selectedItem)
     {
-        var destFolderResource = _resourceTransferService.GetContextMenuItemFolder(selectedItem?.Resource);
+        var destFolderResource = ResolveDropTargetFolder(selectedItem);
         _commandService.Execute<IPasteResourceFromClipboardCommand>(command =>
         {
             command.DestFolderResource = destFolderResource;
         });
         return true;
+    }
+
+    private static List<ResourceKey> GetResourceKeys(List<ResourceItem> resources)
+    {
+        return resources
+            .Select(resourceItem => resourceItem.Resource)
+            .ToList();
     }
 }

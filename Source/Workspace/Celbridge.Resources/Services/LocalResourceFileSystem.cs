@@ -549,7 +549,30 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         return await _fileSystem.GetInfoAsync(resourcePath);
     }
 
-    public async Task<Result<IReadOnlyList<FolderItem>>> EnumerateFolderAsync(ResourceKey folder)
+    public async Task<Result<ResourceItem>> GetResourceItemAsync(ResourceKey resource)
+    {
+        var infoResult = await GetInfoAsync(resource);
+        if (infoResult.IsFailure)
+        {
+            return Result.Fail($"Failed to read resource: '{resource}'")
+                .WithErrors(infoResult);
+        }
+
+        var itemKind = infoResult.Value.Kind;
+        if (itemKind == StorageItemKind.File)
+        {
+            return new ResourceItem(resource, IsFolder: false);
+        }
+
+        if (itemKind == StorageItemKind.Folder)
+        {
+            return new ResourceItem(resource, IsFolder: true);
+        }
+
+        return Result.Fail($"Resource not found: '{resource}'");
+    }
+
+    public async Task<Result<IReadOnlyList<FolderChild>>> EnumerateFolderAsync(ResourceKey folder)
     {
         // A reserved folder resolves to "no such resource" semantics with a
         // Result.Fail so callers don't mistake a denied listing for an empty
@@ -588,7 +611,7 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
                 .WithErrors(enumerateResult);
         }
 
-        var entries = new List<FolderItem>();
+        var entries = new List<FolderChild>();
 
         // EnumerateAsync already returns a deterministic folders-first, ordinal
         // order with size and modified-time populated from the directory walk,
@@ -613,7 +636,7 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
                 continue;
             }
 
-            entries.Add(new FolderItem(
+            entries.Add(new FolderChild(
                 Resource: childKey,
                 IsFolder: entry.IsFolder,
                 Size: entry.Size,
@@ -621,7 +644,7 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
                 Attributes: entry.Attributes));
         }
 
-        IReadOnlyList<FolderItem> result = entries;
+        IReadOnlyList<FolderChild> result = entries;
         return result.OkResult();
     }
 

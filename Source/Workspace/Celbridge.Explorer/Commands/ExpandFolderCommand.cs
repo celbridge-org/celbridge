@@ -6,7 +6,7 @@ namespace Celbridge.Explorer.Commands;
 public class ExpandFolderCommand : CommandBase, IExpandFolderCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    public override CommandFlags CommandFlags => CommandFlags.RefreshResourceTree | CommandFlags.SaveWorkspaceState;
+    public override CommandFlags CommandFlags => CommandFlags.SaveWorkspaceState;
 
     public ResourceKey FolderResource { get; set; }
     public bool Expanded { get; set; } = true;
@@ -19,29 +19,23 @@ public class ExpandFolderCommand : CommandBase, IExpandFolderCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        Guard.IsNotNull(resourceRegistry);
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
-        var getResult = resourceRegistry.GetResource(FolderResource);
+        var getResult = await resourceFileSystem.GetResourceItemAsync(FolderResource);
         if (getResult.IsFailure)
         {
             return Result.Fail($"Folder resource not found: '{FolderResource}'")
                 .WithErrors(getResult);
         }
 
-        if (getResult.Value is not IFolderResource)
+        var resourceItem = getResult.Value;
+        if (!resourceItem.IsFolder)
         {
             return Result.Fail($"Resource is not a folder. {FolderResource}");
         }
 
-        var folderStateService = _workspaceWrapper.WorkspaceService.ExplorerService.FolderStateService;
-
-        if (folderStateService.IsExpanded(FolderResource) != Expanded)
-        {
-            folderStateService.SetExpanded(FolderResource, Expanded);
-        }
-
-        await Task.CompletedTask;
+        var explorerPanel = _workspaceWrapper.WorkspaceService.UtilityPanel.ExplorerPanel;
+        await explorerPanel.SetFolderExpandedAsync(FolderResource, Expanded);
 
         return Result.Ok();
     }

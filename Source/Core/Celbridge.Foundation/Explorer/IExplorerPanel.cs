@@ -19,4 +19,19 @@ public interface IExplorerPanel
     /// Select resources in the explorer panel.
     /// </summary>
     Task<Result> SelectResources(List<ResourceKey> resources);
+
+    /// <summary>
+    /// Lists each folder the resource tree shows, and updates the tree's rows.
+    /// </summary>
+    Task RefreshTreeAsync();
+
+    /// <summary>
+    /// Expands or collapses a folder in the resource tree.
+    /// </summary>
+    Task SetFolderExpandedAsync(ResourceKey folder, bool isExpanded);
+
+    /// <summary>
+    /// Collapses every folder in the resource tree.
+    /// </summary>
+    Task CollapseAllFoldersAsync();
 }

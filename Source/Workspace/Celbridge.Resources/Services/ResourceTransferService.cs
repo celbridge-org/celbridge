@@ -196,26 +196,6 @@ public class ResourceTransferService : IResourceTransferService
         return output;
     }
 
-    public ResourceKey GetContextMenuItemFolder(IResource? resource)
-    {
-        IFolderResource? destFolder = null;
-        switch (resource)
-        {
-            case IFolderResource folder:
-                destFolder = folder;
-                break;
-            case IFileResource file:
-                destFolder = file.ParentFolder;
-                break;
-        }
-        if (destFolder is null)
-        {
-            destFolder = ResourceRegistry.ProjectFolder;
-        }
-
-        return ResourceRegistry.GetResourceKey(destFolder);
-    }
-
     private static bool PathContainsSubPath(string path, string subPath)
     {
         string pathA = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);

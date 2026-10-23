@@ -62,48 +62,48 @@ public sealed class ResourceWalker : IResourceWalker
             return Result.Fail($"Failed to list the folder to walk: '{folder}'")
                 .WithErrors(listResult);
         }
-        var folderItems = listResult.Value;
+        var folderChildren = listResult.Value;
 
         var walk = new Walk(resourceService.FileSystem, resourceService.Policy, applySearchExclude, cancellationToken);
-        await AddFolderContentsAsync(walk, folderItems, folderPath);
+        await AddFolderContentsAsync(walk, folderChildren, folderPath);
 
         IReadOnlyList<WalkedItem> items = walk.Items;
         return items.OkResult();
     }
 
-    private async Task AddFolderContentsAsync(Walk walk, IReadOnlyList<FolderItem> folderItems, string folderPath)
+    private async Task AddFolderContentsAsync(Walk walk, IReadOnlyList<FolderChild> folderChildren, string folderPath)
     {
-        foreach (var folderItem in folderItems)
+        foreach (var folderChild in folderChildren)
         {
             walk.CancellationToken.ThrowIfCancellationRequested();
 
             if (walk.ApplySearchExclude
-                && walk.Policy.IsSearchExcluded(folderItem.Resource, folderItem.IsFolder))
+                && walk.Policy.IsSearchExcluded(folderChild.Resource, folderChild.IsFolder))
             {
                 continue;
             }
 
-            var itemPath = Path.Combine(folderPath, folderItem.Resource.ResourceName);
+            var itemPath = Path.Combine(folderPath, folderChild.Resource.ResourceName);
             var walkedItem = new WalkedItem(
-                folderItem.Resource,
+                folderChild.Resource,
                 itemPath,
-                folderItem.IsFolder,
-                folderItem.Size,
-                folderItem.ModifiedUtc,
-                folderItem.Attributes);
+                folderChild.IsFolder,
+                folderChild.Size,
+                folderChild.ModifiedUtc,
+                folderChild.Attributes);
             walk.Items.Add(walkedItem);
 
-            if (!folderItem.IsFolder)
+            if (!folderChild.IsFolder)
             {
                 continue;
             }
 
             // A folder can go between its parent's listing and its own. The walk goes on without it.
-            var listResult = await walk.FileSystem.EnumerateFolderAsync(folderItem.Resource);
+            var listResult = await walk.FileSystem.EnumerateFolderAsync(folderChild.Resource);
             if (listResult.IsFailure)
             {
                 _logger.LogDebug(
-                    $"Walk skipped a folder it could not list: '{folderItem.Resource}' ({listResult.FirstErrorMessage})");
+                    $"Walk skipped a folder it could not list: '{folderChild.Resource}' ({listResult.FirstErrorMessage})");
                 continue;
             }
 

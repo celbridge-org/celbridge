@@ -58,7 +58,7 @@ public partial class SearchFileResultViewModel : ObservableObject, ISelectableSe
 
         // Get the file icon from the explorer service
         var explorerService = workspaceWrapper.WorkspaceService.ExplorerService;
-        FileIcon = explorerService.GetIconForResource(result.Resource);
+        FileIcon = explorerService.GetIconForFile(result.Resource);
 
         // Create all match ViewModels and add to collection
         // Using constructor initialization avoids per-item CollectionChanged events

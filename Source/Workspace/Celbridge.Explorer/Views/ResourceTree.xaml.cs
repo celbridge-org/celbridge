@@ -20,7 +20,6 @@ namespace Celbridge.Explorer.Views;
 public sealed partial class ResourceTree : UserControl
 {
     private readonly ICommandService _commandService;
-    private readonly IResourceRegistry _resourceRegistry;
     private readonly IResourceTransferService _resourceTransferService;
     private readonly IResourceOperationService _operationService;
     private readonly ISidecarService _sidecarService;
@@ -46,7 +45,6 @@ public sealed partial class ResourceTree : UserControl
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
 
         var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
-        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
         _resourceTransferService = workspaceWrapper.WorkspaceService.ResourceService.Transfers;
         _operationService = workspaceWrapper.WorkspaceService.ResourceService.Operations;
         _sidecarService = workspaceWrapper.WorkspaceService.ResourceService.Sidecars;
@@ -66,11 +64,12 @@ public sealed partial class ResourceTree : UserControl
 
     private void ResourceTree_Loaded(object sender, RoutedEventArgs e)
     {
-        ViewModel.OnLoaded();
         ViewModel.SelectionRequested += OnSelectionRequested;
         ViewModel.PreBuildResourceTree += OnPreBuildResourceTree;
         ViewModel.PostBuildResourceTree += OnPostBuildResourceTree;
         RegisterAsDropTarget();
+
+        _ = ViewModel.OnLoadedAsync();
     }
 
     private void ResourceTree_Unloaded(object sender, RoutedEventArgs e)
@@ -180,37 +179,6 @@ public sealed partial class ResourceTree : UserControl
         ResourceListView.Focus(FocusState.Pointer);
     }
 
-    public async Task<Result> SelectResource(ResourceKey resource, bool scrollIntoView = true)
-    {
-        if (resource.IsEmpty)
-        {
-            ViewModel.SelectedItem = null;
-            return Result.Ok();
-        }
-
-        // Check if the requested resource exists
-        if (!ViewModel.ResourceExists(resource))
-        {
-            return Result.Fail($"Resource does not exist in registry: {resource}");
-        }
-
-        // Expand parent folders to make the resource visible
-        ViewModel.ExpandPathToResource(resource);
-
-        // Find and select the item
-        if (!ViewModel.SetSelectedResource(resource))
-        {
-            return Result.Fail($"No matching tree item found for resource: '{resource}'");
-        }
-
-        if (scrollIntoView && ViewModel.SelectedItem != null)
-        {
-            ResourceListView.ScrollIntoView(ViewModel.SelectedItem);
-        }
-
-        return await Task.FromResult(Result.Ok());
-    }
-
     public async Task<Result> SelectResources(List<ResourceKey> resources)
     {
         if (resources.Count == 0)
@@ -218,13 +186,9 @@ public sealed partial class ResourceTree : UserControl
             return Result.Ok();
         }
 
-        // First, expand all parent folders to make all resources visible.
-        // Each call to ExpandPathToResource rebuilds TreeItems with new instances,
-        // so we must do all expansions before selecting items.
-        foreach (var resource in resources)
-        {
-            ViewModel.ExpandPathToResource(resource);
-        }
+        // Expand the folders above every resource before selecting any, since revealing a resource can
+        // replace the rows.
+        var revealResult = await ViewModel.RevealResourcesAsync(resources);
 
         // Clear current selection and add matching items
         ResourceListView.SelectedItems.Clear();
@@ -241,7 +205,17 @@ public sealed partial class ResourceTree : UserControl
             ResourceListView.ScrollIntoView(items[0]);
         }
 
-        return await Task.FromResult(Result.Ok());
+        return revealResult;
+    }
+
+    public async Task RefreshTreeAsync()
+    {
+        await ViewModel.RefreshAsync();
+    }
+
+    public async Task SetFolderExpandedAsync(ResourceKey folder, bool isExpanded)
+    {
+        await ViewModel.SetFolderExpandedAsync(folder, isExpanded);
     }
 
     private double GetScrollOffset()
@@ -320,33 +294,31 @@ public sealed partial class ResourceTree : UserControl
             return;
         }
 
-        ViewModel.ToggleExpand(item);
+        _ = ViewModel.ToggleExpandAsync(item);
     }
 
     private void OpenResource(ResourceViewItem item)
     {
-        if (item.Resource is IFolderResource)
+        if (item.IsFolder)
         {
             // Double-clicking the project folder opens it in the system file manager
             if (item.IsProjectFolder)
             {
-                var resourceKey = _resourceRegistry.GetResourceKey(item.Resource);
                 _commandService.Execute<IOpenFileManagerCommand>(command =>
                 {
-                    command.Resource = resourceKey;
+                    command.Resource = item.Resource;
                 });
             }
             else
             {
-                ViewModel.ToggleExpand(item);
+                _ = ViewModel.ToggleExpandAsync(item);
             }
         }
-        else if (item.Resource is IFileResource fileResource)
+        else
         {
-            var resourceKey = _resourceRegistry.GetResourceKey(fileResource);
             _commandService.Execute<IOpenDocumentCommand>(command =>
             {
-                command.FileResource = resourceKey;
+                command.FileResource = item.Resource;
             });
         }
     }
@@ -417,17 +389,18 @@ public sealed partial class ResourceTree : UserControl
         FocusIntent.RestoreFocus(ResourceListView);
     }
 
-    private IFolderResource ResolveDropTargetFolder(IResource? resource)
+    // Finds the folder for a drop or a new resource. A folder row targets the folder, and a file row targets the
+    // file's parent folder. Empty space below the rows targets the project folder.
+    private static ResourceKey ResolveDropTargetFolder(ResourceViewItem? item)
     {
-        if (resource is IFileResource fileResource && fileResource.ParentFolder != null)
+        if (item is null)
         {
-            return fileResource.ParentFolder;
+            return ResourceKey.Empty;
         }
-        else if (resource is IFolderResource folderResource)
-        {
-            return folderResource;
-        }
-        return ViewModel.ProjectFolder;
+
+        return item.IsFolder
+            ? item.Resource
+            : item.Resource.GetParent();
     }
 
     private ResourceViewItem? FindItemAtPosition(Point position)
@@ -453,8 +426,7 @@ public sealed partial class ResourceTree : UserControl
     /// </summary>
     public void NewFileToSelectedFolder()
     {
-        var destFolder = ViewModel.GetSelectedResourceFolder() ?? ViewModel.ProjectFolder;
-        var destFolderResource = _resourceRegistry.GetResourceKey(destFolder);
+        var destFolderResource = ViewModel.GetSelectedResourceFolder();
 
         _commandService.Execute<ICreateResourceDialogCommand>(command =>
         {
@@ -468,8 +440,7 @@ public sealed partial class ResourceTree : UserControl
     /// </summary>
     public void NewFolderToSelectedFolder()
     {
-        var destFolder = ViewModel.GetSelectedResourceFolder() ?? ViewModel.ProjectFolder;
-        var destFolderResource = _resourceRegistry.GetResourceKey(destFolder);
+        var destFolderResource = ViewModel.GetSelectedResourceFolder();
 
         _commandService.Execute<ICreateResourceDialogCommand>(command =>
         {
@@ -479,20 +450,20 @@ public sealed partial class ResourceTree : UserControl
     }
 
     /// <summary>
-    /// Whether the tree is drawing the resources the project's hide patterns match.
+    /// Returns true if the tree is drawing the resources it hides by default.
     /// </summary>
     public bool ShowHiddenFiles => ViewModel.ShowHiddenFiles;
 
     /// <summary>
     /// Shows or stops showing the hidden resources.
     /// </summary>
-    public void ToggleShowHiddenFiles()
+    public async Task ToggleShowHiddenFilesAsync()
     {
-        ViewModel.ToggleShowHiddenFiles();
+        await ViewModel.ToggleShowHiddenFilesAsync();
     }
 
-    public void CollapseAllFolders()
+    public async Task CollapseAllFoldersAsync()
     {
-        ViewModel.CollapseAllFolders();
+        await ViewModel.CollapseAllFoldersAsync();
     }
 }

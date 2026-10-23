@@ -13,7 +13,6 @@ public class RenameMenuOption : IMenuOption<ExplorerMenuContext>
 {
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
-    private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IShortcutHintService _shortcutHintService;
 
     public int Priority => 5;
@@ -22,12 +21,10 @@ public class RenameMenuOption : IMenuOption<ExplorerMenuContext>
     public RenameMenuOption(
         IStringLocalizer stringLocalizer,
         ICommandService commandService,
-        IWorkspaceWrapper workspaceWrapper,
         IShortcutHintService shortcutHintService)
     {
         _stringLocalizer = stringLocalizer;
         _commandService = commandService;
-        _workspaceWrapper = workspaceWrapper;
         _shortcutHintService = shortcutHintService;
     }
 
@@ -41,34 +38,31 @@ public class RenameMenuOption : IMenuOption<ExplorerMenuContext>
 
     public MenuItemState GetState(ExplorerMenuContext context)
     {
-        bool isVisible = context.ClickedResource != null;
-
         // Cannot rename the project folder (whether clicked directly or in selection)
-        bool canRename = context.ClickedResource != null
-            && !context.IsProjectFolderTargeted
+        bool canRename = !context.IsProjectFolderTargeted
             && !context.SelectionContainsProjectFolder;
         if (!canRename)
         {
-            return new MenuItemState(IsVisible: isVisible, IsEnabled: false);
+            return new MenuItemState(IsVisible: true, IsEnabled: false);
         }
 
         if (!context.CanModifySelection)
         {
-            return new MenuItemState(IsVisible: isVisible, IsEnabled: false);
+            return new MenuItemState(IsVisible: true, IsEnabled: false);
         }
 
-        return new MenuItemState(IsVisible: isVisible, IsEnabled: true);
+        return new MenuItemState(IsVisible: true, IsEnabled: true);
     }
 
     public void Execute(ExplorerMenuContext context)
     {
-        if (context.ClickedResource == null || context.SelectionContainsProjectFolder)
+        if (context.IsProjectFolderTargeted
+            || context.SelectionContainsProjectFolder)
         {
             return;
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var resourceKey = resourceRegistry.GetResourceKey(context.ClickedResource);
+        var resourceKey = context.ClickedResource.Resource;
 
         _commandService.Execute<IRenameResourceDialogCommand>(command =>
         {

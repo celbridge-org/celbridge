@@ -48,34 +48,34 @@ public sealed class ProjectTreeBuilder : IProjectTreeBuilder
             return Result.Fail($"Failed to enumerate folder: '{folderKey}'")
                 .WithErrors(enumerateResult);
         }
-        var folderItems = enumerateResult.Value;
+        var folderChildren = enumerateResult.Value;
 
         // Children rebuild from scratch on every call so stale TreeViewNode.Content
         // references do not survive a rapid undo/redo cycle.
         folderResource.Children.Clear();
 
-        foreach (var folderItem in folderItems)
+        foreach (var folderChild in folderChildren)
         {
             // Search scope bounds the walk until the resource index lands, because every
             // mutating command re-walks whatever the tree holds. Once the index applies
             // deltas instead, search-exclude goes back to binding the scanners alone.
-            if (policy.IsSearchExcluded(folderItem.Resource, folderItem.IsFolder))
+            if (policy.IsSearchExcluded(folderChild.Resource, folderChild.IsFolder))
             {
                 continue;
             }
 
-            var childName = folderItem.Resource.ResourceName;
+            var childName = folderChild.Resource.ResourceName;
             var writableState = WritableStatePriority.Compute(
-                folderItem.Resource,
-                folderItem.Attributes,
+                folderChild.Resource,
+                folderChild.Attributes,
                 rootHandlerRegistry);
 
-            if (folderItem.IsFolder)
+            if (folderChild.IsFolder)
             {
                 var childFolder = new FolderResource(childName, folderResource);
                 childFolder.WritableState = writableState;
 
-                var childResult = await SynchronizeFolderAsync(childFolder, folderItem.Resource);
+                var childResult = await SynchronizeFolderAsync(childFolder, folderChild.Resource);
                 if (childResult.IsFailure)
                 {
                     return childResult;

@@ -5,7 +5,6 @@ using Celbridge.Explorer.Menu;
 using Celbridge.Explorer.Menu.Options;
 using Celbridge.Projects;
 using Celbridge.Resources;
-using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Tests.Explorer;
@@ -17,10 +16,10 @@ namespace Celbridge.Tests.Explorer;
 [TestFixture]
 public class ExportArchiveMenuOptionTests
 {
-    private IFolderResource _projectFolder = null!;
+    private static readonly ResourceItem ProjectFolder = new(ResourceKey.Empty, IsFolder: true);
+
     private IStringLocalizer _stringLocalizer = null!;
     private ICommandService _commandService = null!;
-    private IWorkspaceWrapper _workspaceWrapper = null!;
     private IProjectService _projectService = null!;
     private IFilePickerService _filePickerService = null!;
     private IExportArchiveCommand _exportCommand = null!;
@@ -28,20 +27,6 @@ public class ExportArchiveMenuOptionTests
     [SetUp]
     public void Setup()
     {
-        _projectFolder = Substitute.For<IFolderResource>();
-
-        var resourceRegistry = Substitute.For<IResourceRegistry>();
-        resourceRegistry.GetResourceKey(_projectFolder).Returns(ResourceKey.Empty);
-
-        var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(resourceRegistry);
-
-        var workspaceService = Substitute.For<IWorkspaceService>();
-        workspaceService.ResourceService.Returns(resourceService);
-
-        _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
-        _workspaceWrapper.WorkspaceService.Returns(workspaceService);
-
         var project = Substitute.For<IProject>();
         project.ProjectFolderPath.Returns(Path.Combine(Path.GetTempPath(), "Acme"));
 
@@ -80,7 +65,7 @@ public class ExportArchiveMenuOptionTests
     [Test]
     public void GetState_HiddenForSelectedFolder()
     {
-        var folder = Substitute.For<IFolderResource>();
+        var folder = new ResourceItem(new ResourceKey("Docs"), IsFolder: true);
 
         var state = CreateOption().GetState(SelectedResourceContext(folder));
 
@@ -121,7 +106,6 @@ public class ExportArchiveMenuOptionTests
         return new ExportArchiveMenuOption(
             _stringLocalizer,
             _commandService,
-            _workspaceWrapper,
             _projectService,
             _filePickerService,
             Substitute.For<ILogger<ExportArchiveMenuOption>>());
@@ -130,18 +114,17 @@ public class ExportArchiveMenuOptionTests
     private ExplorerMenuContext ProjectFolderContext()
     {
         return new ExplorerMenuContext(
-            ClickedResource: _projectFolder,
-            SelectedResources: Array.Empty<IResource>(),
-            ProjectFolder: _projectFolder,
+            ClickedResource: ProjectFolder,
+            SelectedResources: Array.Empty<ResourceItem>(),
             IsProjectFolderTargeted: true,
             HasClipboardData: false,
             ClipboardContentType: ClipboardContentType.None,
             ClipboardOperation: ClipboardContentOperation.None);
     }
 
-    private ExplorerMenuContext SelectedResourceContext(IResource selectedResource)
+    private static ExplorerMenuContext SelectedResourceContext(ResourceItem selectedResource)
     {
-        var selectedResources = new List<IResource>
+        var selectedResources = new List<ResourceItem>
         {
             selectedResource
         };
@@ -149,7 +132,6 @@ public class ExportArchiveMenuOptionTests
         return new ExplorerMenuContext(
             ClickedResource: selectedResource,
             SelectedResources: selectedResources,
-            ProjectFolder: _projectFolder,
             IsProjectFolderTargeted: false,
             HasClipboardData: false,
             ClipboardContentType: ClipboardContentType.None,

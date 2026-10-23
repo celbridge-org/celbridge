@@ -19,6 +19,7 @@ public static class ServiceConfiguration
 
         services.AddTransient<IExplorerService, ExplorerService>();
         services.AddTransient<IFolderStateService, FolderStateService>();
+        services.AddTransient<ResourceTreeModel>();
 
         //
         // Register views
@@ -71,6 +72,5 @@ public static class ServiceConfiguration
         services.AddSingleton<IMenuOption<ExplorerMenuContext>, OpenFileExplorerMenuOption>();
         services.AddSingleton<IMenuOption<ExplorerMenuContext>, OpenApplicationMenuOption>();
         services.AddSingleton<IMenuOption<ExplorerMenuContext>, OpenWithMenuOption>();
-        services.AddSingleton<IMenuOption<ExplorerMenuContext>, OpenCelMenuOption>();
     }
 }

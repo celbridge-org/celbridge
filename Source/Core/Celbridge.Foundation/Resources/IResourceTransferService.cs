@@ -26,11 +26,4 @@ public interface IResourceTransferService
     /// unchanged.
     /// </summary>
     ResourceKey ResolveDestinationResource(ResourceKey sourceResource, ResourceKey destResource);
-
-    /// <summary>
-    /// Returns the folder resource associated with the context menu item for
-    /// a resource. Folder → itself; file → its parent folder; null → the
-    /// project folder.
-    /// </summary>
-    ResourceKey GetContextMenuItemFolder(IResource? resource);
 }

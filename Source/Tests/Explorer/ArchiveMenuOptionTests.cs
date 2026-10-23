@@ -3,7 +3,6 @@ using Celbridge.DataTransfer;
 using Celbridge.Explorer.Menu;
 using Celbridge.Explorer.Menu.Options;
 using Celbridge.Resources;
-using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Tests.Explorer;
@@ -15,27 +14,20 @@ namespace Celbridge.Tests.Explorer;
 [TestFixture]
 public class ArchiveMenuOptionTests
 {
-    private IFolderResource _projectFolder = null!;
-
-    [SetUp]
-    public void Setup()
-    {
-        _projectFolder = Substitute.For<IFolderResource>();
-    }
+    private static readonly ResourceItem ProjectFolder = new(ResourceKey.Empty, IsFolder: true);
 
     private static ArchiveMenuOption CreateOption()
     {
         return new ArchiveMenuOption(
             Substitute.For<IStringLocalizer>(),
-            Substitute.For<ICommandService>(),
-            Substitute.For<IWorkspaceWrapper>());
+            Substitute.For<ICommandService>());
     }
 
-    private ExplorerMenuContext ContextFor(IResource clickedResource)
+    private static ExplorerMenuContext ContextFor(ResourceItem clickedResource)
     {
-        var isProjectFolderTargeted = clickedResource == _projectFolder;
+        var isProjectFolderTargeted = clickedResource.Resource.IsEmpty;
 
-        IReadOnlyList<IResource> selectedResources = Array.Empty<IResource>();
+        IReadOnlyList<ResourceItem> selectedResources = Array.Empty<ResourceItem>();
         if (!isProjectFolderTargeted)
         {
             selectedResources = new[]
@@ -47,7 +39,6 @@ public class ArchiveMenuOptionTests
         return new ExplorerMenuContext(
             ClickedResource: clickedResource,
             SelectedResources: selectedResources,
-            ProjectFolder: _projectFolder,
             IsProjectFolderTargeted: isProjectFolderTargeted,
             HasClipboardData: false,
             ClipboardContentType: ClipboardContentType.None,
@@ -57,7 +48,7 @@ public class ArchiveMenuOptionTests
     [Test]
     public void GetState_HiddenWhenProjectFolderTargeted()
     {
-        var state = CreateOption().GetState(ContextFor(_projectFolder));
+        var state = CreateOption().GetState(ContextFor(ProjectFolder));
 
         state.IsVisible.Should().BeFalse();
         state.IsEnabled.Should().BeFalse();
@@ -66,7 +57,7 @@ public class ArchiveMenuOptionTests
     [Test]
     public void GetState_VisibleForSelectedFolder()
     {
-        var folder = Substitute.For<IFolderResource>();
+        var folder = new ResourceItem(new ResourceKey("Docs"), IsFolder: true);
 
         var state = CreateOption().GetState(ContextFor(folder));
 
@@ -77,7 +68,7 @@ public class ArchiveMenuOptionTests
     [Test]
     public void GetState_HiddenForSelectedFile()
     {
-        var file = Substitute.For<IFileResource>();
+        var file = new ResourceItem(new ResourceKey("notes.md"), IsFolder: false);
 
         var state = CreateOption().GetState(ContextFor(file));
 

@@ -29,10 +29,6 @@ internal static class FeatureFlagCatalog
             new(FeatureFlagConstants.WebViewDevToolsEval, "ProjectSettings_FeatureFlag_WebViewDevToolsEval_Title", "ProjectSettings_FeatureFlag_WebViewDevToolsEval_Description"),
             new(FeatureFlagConstants.WebViewLoadDiagnostics, "ProjectSettings_FeatureFlag_WebViewLoadDiagnostics_Title", "ProjectSettings_FeatureFlag_WebViewLoadDiagnostics_Description"),
         }),
-        new("ProjectSettings_FeatureFlagGroup_Resources_Title", new List<FeatureFlagDescriptor>
-        {
-            new(FeatureFlagConstants.OpenCel, "ProjectSettings_FeatureFlag_OpenCel_Title", "ProjectSettings_FeatureFlag_OpenCel_Description"),
-        }),
         new("ProjectSettings_FeatureFlagGroup_Documents_Title", new List<FeatureFlagDescriptor>
         {
             new(FeatureFlagConstants.NoteEditor, "ProjectSettings_FeatureFlag_NoteEditor_Title", "ProjectSettings_FeatureFlag_NoteEditor_Description"),

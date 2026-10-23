@@ -37,5 +37,5 @@ public interface IResourceDragCoordinator
     /// Begins tracking a pointer press on draggable resources. The drag itself starts only once the
     /// pointer travels past the drag threshold, so plain clicks are unaffected.
     /// </summary>
-    void OnResourcePressed(IReadOnlyList<IResource> resources, PointerRoutedEventArgs e);
+    void OnResourcePressed(IReadOnlyList<ResourceItem> resources, PointerRoutedEventArgs e);
 }

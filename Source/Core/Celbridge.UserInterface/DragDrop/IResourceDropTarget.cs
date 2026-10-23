@@ -16,7 +16,7 @@ public interface IResourceDropTarget
     /// this target that accepts the drop. Returns null when the point is not over a droppable part, in
     /// which case the target shows no feedback.
     /// </summary>
-    string? UpdateDragOver(Point windowPoint, IReadOnlyList<IResource> resources);
+    string? UpdateDragOver(Point windowPoint, IReadOnlyList<ResourceItem> resources);
 
     /// <summary>
     /// Clears any drag feedback this target is currently showing.
@@ -27,5 +27,5 @@ public interface IResourceDropTarget
     /// Attempts to drop the resources at the given window point, returning true when this target handled
     /// the drop.
     /// </summary>
-    bool TryDrop(Point windowPoint, IReadOnlyList<IResource> resources);
+    bool TryDrop(Point windowPoint, IReadOnlyList<ResourceItem> resources);
 }

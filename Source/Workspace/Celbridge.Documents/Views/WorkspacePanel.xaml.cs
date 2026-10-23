@@ -262,7 +262,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         ViewModel.SetAreaVisible(area, false);
     }
 
-    private void OnSectionFilesDropped(DocumentSectionView targetSectionView, List<IResource> resources, int insertionSlot)
+    private void OnSectionFilesDropped(DocumentSectionView targetSectionView, List<ResourceItem> resources, int insertionSlot)
     {
         // The built-in drag-and-drop path: the section maps the drop point to an insertion slot. The
         // pointer-driven path arrives through TryDrop instead, which carries the divider's insertion slot.
@@ -271,7 +271,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
 
     // The insertion slot is where the drop landed in the target section's tab order. Each branch below makes
     // the dropped document the active one, which is what carries the keyboard to it.
-    private async Task HandleDroppedFiles(DocumentSectionView targetSectionView, List<IResource> resources, int insertionSlot)
+    private async Task HandleDroppedFiles(DocumentSectionView targetSectionView, List<ResourceItem> resources, int insertionSlot)
     {
         if (_isShuttingDown)
         {
@@ -281,14 +281,14 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         var targetSection = targetSectionView.Section;
         int droppedFileOffset = 0;
 
-        foreach (var resource in resources)
+        foreach (var resourceItem in resources)
         {
-            if (resource is not IFileResource fileResource)
+            if (resourceItem.IsFolder)
             {
                 continue;
             }
 
-            var fileResourceKey = ViewModel.GetResourceKey(fileResource);
+            var fileResourceKey = resourceItem.Resource;
 
             // Several files dropped at one slot insert consecutively from it.
             int slot = insertionSlot + droppedFileOffset;

@@ -1091,7 +1091,7 @@ public class PackageRegistry
         return new PackageFolderManifests(packageFolder, isPackage, manifests);
     }
 
-    private static FolderItem? FindManifest(IReadOnlyList<FolderItem> items)
+    private static FolderChild? FindManifest(IReadOnlyList<FolderChild> items)
     {
         return items.FirstOrDefault(item =>
             !item.IsFolder

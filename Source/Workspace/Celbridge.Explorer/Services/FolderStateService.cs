@@ -40,13 +40,6 @@ public class FolderStateService : IFolderStateService
         return ExpandedFolders.Contains(folderResource);
     }
 
-    public void Cleanup()
-    {
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        ExpandedFolders.Remove(string.Empty);
-        ExpandedFolders.RemoveAll(expandedFolder => resourceRegistry.GetResource(expandedFolder).IsFailure);
-    }
-
     public async Task LoadAsync()
     {
         var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;

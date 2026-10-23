@@ -65,11 +65,6 @@ public record ResourceRegistryUpdateStartingMessage;
 public record ResourceRegistryUpdatedMessage;
 
 /// <summary>
-/// A message sent to request a resource tree view refresh without updating the resource registry.
-/// </summary>
-public record RefreshResourceTreeMessage;
-
-/// <summary>
 /// A message sent once when a resource has been moved or renamed within a root. For a moved folder, the message names
 /// the folder alone.
 /// </summary>

@@ -21,11 +21,6 @@ public interface IFolderStateService
     bool IsExpanded(ResourceKey folderResource);
 
     /// <summary>
-    /// Removes expanded folder entries that no longer exist in the resource registry.
-    /// </summary>
-    void Cleanup();
-
-    /// <summary>
     /// Loads the folder state from workspace settings.
     /// </summary>
     Task LoadAsync();

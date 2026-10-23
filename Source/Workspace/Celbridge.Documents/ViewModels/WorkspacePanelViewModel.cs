@@ -195,12 +195,6 @@ public partial class WorkspacePanelViewModel : ObservableObject
         return await _documentsService.LoadDocumentEditorState(fileResource);
     }
 
-    public ResourceKey GetResourceKey(IFileResource fileResource)
-    {
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        return resourceRegistry.GetResourceKey(fileResource);
-    }
-
     public Result<string> ResolveResourcePath(ResourceKey fileResource)
     {
         var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;

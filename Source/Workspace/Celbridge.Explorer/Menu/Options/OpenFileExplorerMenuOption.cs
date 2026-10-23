@@ -1,7 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.ContextMenu;
 using Celbridge.Platform;
-using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Explorer.Menu.Options;
@@ -13,7 +12,6 @@ public class OpenFileExplorerMenuOption : IMenuOption<ExplorerMenuContext>
 {
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
-    private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IPlatformInfo _platformInfo;
 
     public int Priority => 1;
@@ -22,12 +20,10 @@ public class OpenFileExplorerMenuOption : IMenuOption<ExplorerMenuContext>
     public OpenFileExplorerMenuOption(
         IStringLocalizer stringLocalizer,
         ICommandService commandService,
-        IWorkspaceWrapper workspaceWrapper,
         IPlatformInfo platformInfo)
     {
         _stringLocalizer = stringLocalizer;
         _commandService = commandService;
-        _workspaceWrapper = workspaceWrapper;
         _platformInfo = platformInfo;
     }
 
@@ -47,10 +43,7 @@ public class OpenFileExplorerMenuOption : IMenuOption<ExplorerMenuContext>
 
     public void Execute(ExplorerMenuContext context)
     {
-        var target = context.ClickedResource ?? context.ProjectFolder;
-
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var resourceKey = resourceRegistry.GetResourceKey(target);
+        var resourceKey = context.ClickedResource.Resource;
 
         _commandService.Execute<IOpenFileManagerCommand>(command =>
         {

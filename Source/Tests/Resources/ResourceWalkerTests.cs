@@ -183,8 +183,8 @@ public class ResourceWalkerTests
         blockingFileSystem.EnumerateFolderAsync(Arg.Any<ResourceKey>()).Returns(_ =>
         {
             listingReleased.Wait(TimeSpan.FromSeconds(10));
-            IReadOnlyList<FolderItem> noItems = Array.Empty<FolderItem>();
-            return Task.FromResult(Result<IReadOnlyList<FolderItem>>.Ok(noItems));
+            IReadOnlyList<FolderChild> noItems = Array.Empty<FolderChild>();
+            return Task.FromResult(Result<IReadOnlyList<FolderChild>>.Ok(noItems));
         });
         _resourceService.FileSystem.Returns(blockingFileSystem);
 

@@ -18,7 +18,7 @@ public sealed partial class ResourceTree
     // after an internal drop. External drags are identified by the StorageItems format and checked first,
     // so a stale value here never affects them. The DataPackage property is also populated so a
     // cross-control consumer (DocumentSectionView) can recognise the drag on Windows, where it round-trips.
-    private List<IResource>? _internalDragResources;
+    private List<ResourceItem>? _internalDragResources;
 
     // Forces the post-rebuild focus restore after a built-in-drag move, in case the OS drag loop dropped
     // tree focus before the pre-rebuild focus snapshot ran (which would otherwise miss it). The pointer-driven
@@ -28,12 +28,12 @@ public sealed partial class ResourceTree
     private void ListView_DragItemsStarting(object sender, DragItemsStartingEventArgs e)
     {
         // Store the dragged items for later use, excluding the project folder
-        var draggedResources = new List<IResource>();
+        var draggedResources = new List<ResourceItem>();
         foreach (var item in e.Items)
         {
             if (item is ResourceViewItem treeItem && !treeItem.IsProjectFolder)
             {
-                draggedResources.Add(treeItem.Resource);
+                draggedResources.Add(treeItem.Item);
             }
         }
 
@@ -51,7 +51,7 @@ public sealed partial class ResourceTree
         // Set text for drag visual - show count of items being dragged
         var count = draggedResources.Count;
         var text = count == 1
-            ? draggedResources[0].Name
+            ? draggedResources[0].Resource.ResourceName
             : _stringLocalizer.GetString("ResourceTree_DragItemCount", count);
 
         e.Data.Properties.Add(StandardDataFormats.Text, text);
@@ -97,8 +97,7 @@ public sealed partial class ResourceTree
             // folder-level policy check covers read-only roots, hidden folders, and
             // fully-locked folders. The per-item visibility gate enforces the rest
             // when the transfer runs.
-            var destFolder = ResolveDropTargetFolder(targetItem?.Resource);
-            var destFolderKey = _resourceRegistry.GetResourceKey(destFolder);
+            var destFolderKey = ResolveDropTargetFolder(targetItem);
             var canDrop = _operationService.CanAddToFolder(destFolderKey).IsSuccess;
             return (canDrop, IsInternalDrag: false);
         }
@@ -106,14 +105,13 @@ public sealed partial class ResourceTree
         // Check for internal drag (from our ListView), tracked via the field.
         if (_internalDragResources is not null)
         {
-            // Internal drag - check if target is valid (folder or file)
-            var targetIsValid = targetItem?.Resource is IFolderResource or IFileResource;
-            if (!targetIsValid)
+            // Internal drag - the target must be a row
+            if (targetItem is null)
             {
                 return (CanDrop: false, IsInternalDrag: true);
             }
 
-            var destFolder = ResolveDropTargetFolder(targetItem!.Resource);
+            var destFolder = ResolveDropTargetFolder(targetItem);
             var canDrop = CanDropInto(destFolder, _internalDragResources);
             return (canDrop, IsInternalDrag: true);
         }
@@ -125,9 +123,8 @@ public sealed partial class ResourceTree
     // the folder must accept additions, and every dragged item's destination key
     // must itself be a permitted resource. Mirrors the gate the move/copy executor
     // enforces so the no-drop cursor never disagrees with the outcome.
-    private bool CanDropInto(IFolderResource destFolder, List<IResource>? draggedResources)
+    private bool CanDropInto(ResourceKey destFolderKey, List<ResourceItem>? draggedResources)
     {
-        var destFolderKey = _resourceRegistry.GetResourceKey(destFolder);
         if (_operationService.CanAddToFolder(destFolderKey).IsFailure)
         {
             return false;
@@ -138,9 +135,9 @@ public sealed partial class ResourceTree
             return true;
         }
 
-        foreach (var resource in draggedResources)
+        foreach (var resourceItem in draggedResources)
         {
-            var sourceKey = _resourceRegistry.GetResourceKey(resource);
+            var sourceKey = resourceItem.Resource;
 
             // A no-op move back into the resource's current folder is always fine.
             if (sourceKey.GetParent() == destFolderKey)
@@ -148,9 +145,8 @@ public sealed partial class ResourceTree
                 continue;
             }
 
-            var destKey = destFolderKey.Combine(resource.Name);
-            bool isFolder = resource is IFolderResource;
-            if (_operationService.CanCreateResource(destKey, isFolder).IsFailure)
+            var destKey = destFolderKey.Combine(sourceKey.ResourceName);
+            if (_operationService.CanCreateResource(destKey, resourceItem.IsFolder).IsFailure)
             {
                 return false;
             }
@@ -204,7 +200,7 @@ public sealed partial class ResourceTree
         // Find the drop target
         var position = e.GetPosition(ResourceListView);
         var dropTargetItem = FindItemAtPosition(position);
-        var destFolder = ResolveDropTargetFolder(dropTargetItem?.Resource);
+        var destFolder = ResolveDropTargetFolder(dropTargetItem);
 
         // Handle external drop (from file explorer) first, identified by the StorageItems format.
         if (e.DataView?.Contains(StandardDataFormats.StorageItems) == true)
@@ -222,30 +218,16 @@ public sealed partial class ResourceTree
         }
     }
 
-    private void MoveResourcesToFolder(List<IResource> resources, IFolderResource destFolder)
+    private void MoveResourcesToFolder(List<ResourceItem> resources, ResourceKey destFolder)
     {
-        var destResource = _resourceRegistry.GetResourceKey(destFolder);
-        var sourceResources = new List<ResourceKey>();
-
-        foreach (var resource in resources)
-        {
-            var sourceResource = _resourceRegistry.GetResourceKey(resource);
-            var resolvedDestResource = _resourceTransferService.ResolveDestinationResource(sourceResource, destResource);
-
-            if (sourceResource == resolvedDestResource)
-            {
-                continue; // Skip - already at destination
-            }
-
-            sourceResources.Add(sourceResource);
-        }
+        var sourceResources = GetResourcesToTransfer(resources, destFolder);
 
         if (sourceResources.Count > 0)
         {
             _commandService.Execute<ICopyResourceCommand>(command =>
             {
                 command.SourceResources = sourceResources;
-                command.DestResource = destResource;
+                command.DestResource = destFolder;
                 command.TransferMode = DataTransferMode.Move;
             });
 
@@ -255,7 +237,27 @@ public sealed partial class ResourceTree
         }
     }
 
-    private async Task ProcessExternalDrop(DataPackageView dataView, IFolderResource destFolder)
+    // Leaves out each resource already in the destination folder, and a folder dropped onto itself.
+    private static List<ResourceKey> GetResourcesToTransfer(List<ResourceItem> resources, ResourceKey destFolder)
+    {
+        var sourceResources = new List<ResourceKey>();
+
+        foreach (var resourceItem in resources)
+        {
+            var sourceResource = resourceItem.Resource;
+            if (sourceResource == destFolder
+                || sourceResource.GetParent() == destFolder)
+            {
+                continue;
+            }
+
+            sourceResources.Add(sourceResource);
+        }
+
+        return sourceResources;
+    }
+
+    private async Task ProcessExternalDrop(DataPackageView dataView, ResourceKey destFolderResource)
     {
         var sourcePaths = new List<string>();
         var items = await dataView.GetStorageItemsAsync();
@@ -290,7 +292,6 @@ public sealed partial class ResourceTree
             }
         }
 
-        var destFolderResource = _resourceRegistry.GetResourceKey(destFolder);
         var createResult = await _resourceTransferService.CreateResourceTransferAsync(
             sourcePaths,
             destFolderResource,
