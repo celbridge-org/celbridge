@@ -114,8 +114,8 @@ public interface IResourceMonitor
         ResourceChangeHandlers handlers);
 
     /// <summary>
-    /// Reports the keys touched by one of Celbridge's own operations, once the operation is complete. Each
-    /// subscription that a key reaches receives the key at once. A key in a root that is not watched is dropped.
+    /// Reports the keys touched by one of Celbridge's own operations, once the operation is complete. The monitor
+    /// delivers each key to its subscriptions at once. A key in a root that opts out of watching is dropped.
     /// </summary>
     void ReportOperationChanges(IReadOnlyList<ResourceKey> resources);
 

@@ -54,13 +54,14 @@ public class ChangeRecorderTests
         changes.Dispose();
         changes.Dispose();
 
+        ResourceKey[] expectedResources =
+        [
+            new ResourceKey("old.txt"),
+            new ResourceKey("new.txt"),
+            new ResourceKey("locked.txt"),
+        ];
         _resourceMonitor.Received(1).ReportOperationChanges(Arg.Is<IReadOnlyList<ResourceKey>>(resources =>
-            resources.SequenceEqual(new[]
-            {
-                new ResourceKey("old.txt"),
-                new ResourceKey("new.txt"),
-                new ResourceKey("locked.txt"),
-            })));
+            resources.SequenceEqual(expectedResources)));
     }
 
     [Test]

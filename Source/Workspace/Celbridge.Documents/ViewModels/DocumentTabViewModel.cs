@@ -354,9 +354,9 @@ public partial class DocumentTabViewModel : ObservableObject
         }
     }
 
-    // The tab subscribes to the new key at once, also when a folder above the file moved. The old key is reported
-    // absent moments after the move. The document may still be loading under the new key then, and that report must
-    // leave the tab open.
+    // The tab subscribes to the new key at once, even when the file moved with a folder above it. The old key is
+    // reported absent moments after the move. The document may still be loading under the new key then, and that
+    // report must leave the tab open.
     private void OnResourceKeyChangedMessage(object recipient, ResourceKeyChangedMessage message)
     {
         var oldResource = FileResource;

@@ -10,7 +10,7 @@ namespace Celbridge.Tests.Resources;
 /// <summary>
 /// Tests for LocalResourceFileSystem — direct writes through the gateway,
 /// parent-folder creation, ResolveResourcePath integration, reads,
-/// stream-open happy paths, and the changes each operation reports.
+/// stream-open happy paths, and the changes reported by each operation.
 /// </summary>
 [TestFixture]
 public class LocalResourceFileSystemTests
@@ -365,7 +365,7 @@ public class LocalResourceFileSystemTests
         File.Exists(sourcePath).Should().BeFalse();
         (await File.ReadAllTextAsync(destPath)).Should().Be("payload");
 
-        // A key in another root names another resource, so no key change is announced.
+        // A move across roots counts as a delete and a create.
         _messengerService.DidNotReceive().Send(Arg.Any<ResourceKeyChangedMessage>());
     }
 
@@ -517,7 +517,7 @@ public class LocalResourceFileSystemTests
         File.Exists(destPath).Should().BeTrue();
         File.Exists(destSidecarPath).Should().BeTrue();
 
-        // The sidecar's move joins its file's report.
+        // The file and its sidecar go out in one report.
         _reports.Should().ContainSingle().Which.Should().Equal(
             sourceKey,
             destKey,
@@ -539,7 +539,7 @@ public class LocalResourceFileSystemTests
         result.IsSuccess.Should().BeTrue(result.DiagnosticReport);
         File.Exists(Path.Combine(_tempFolder, "renamed", "nested", "deep.txt")).Should().BeTrue();
 
-        // A receiver maps the keys inside the folder itself.
+        // Each receiver maps the keys inside the folder.
         _messengerService.Received(1).Send(Arg.Any<ResourceKeyChangedMessage>());
         _messengerService.Received(1).Send(new ResourceKeyChangedMessage(sourceKey, destKey));
         _reports.Should().ContainSingle().Which.Should().Equal(sourceKey, destKey);
@@ -656,7 +656,7 @@ public class LocalResourceFileSystemTests
         File.Exists(sourcePath).Should().BeFalse();
         File.Exists(sourceSidecarPath).Should().BeFalse();
 
-        // The sidecar is deleted first.
+        // The sidecar is deleted before its file.
         _reports.Should().ContainSingle().Which.Should().Equal(new ResourceKey("a.txt.cel"), sourceKey);
     }
 
@@ -822,7 +822,7 @@ public class LocalResourceFileSystemTests
         }
         finally
         {
-            // Tear-down needs the file to be writable so the temp-folder delete works.
+            // Make the file writable again, so the tear-down can delete the temp folder.
             new FileInfo(path).IsReadOnly = false;
         }
     }

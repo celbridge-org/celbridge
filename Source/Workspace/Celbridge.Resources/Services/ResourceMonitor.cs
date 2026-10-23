@@ -5,7 +5,7 @@ using Celbridge.Workspace;
 namespace Celbridge.Resources.Services;
 
 /// <summary>
-/// Watches the roots that opt in, and delivers the keys that each change touches to the subscriptions of the root. The
+/// Watches the roots that opt in, and delivers the keys touched by each change to the subscriptions of the root. The
 /// keys reported by Celbridge's own operations are delivered at once.
 /// </summary>
 public class ResourceMonitor : IResourceMonitor, IDisposable
@@ -279,8 +279,8 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         ChangeBatcher batcher,
         FileSystemMonitorEvent monitorEvent)
     {
-        // Each change to a name reaches the resolver, ignored paths included. A changed event leaves the listings alone,
-        // since only a change to a name alters a listing.
+        // Each change to a name reaches the resolver, ignored paths included. A changed event leaves the listings
+        // alone, since only a change to a name alters a listing.
         bool isNameChange = monitorEvent.Kind != FileSystemMonitorEventKind.Changed;
 
         batcher.AddTouchedPath(monitorEvent.Path, GetBatchedKey(handler, monitorEvent.Path), isNameChange);

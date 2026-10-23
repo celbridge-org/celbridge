@@ -88,8 +88,8 @@ public sealed class FakeResourceMonitor : IResourceMonitor
     }
 
     /// <summary>
-    /// Returns the keys of each report, in the order the reports arrived. A test delivers the changes that a report
-    /// would cause with DeliverChange.
+    /// Returns the keys of each report, in the order the reports arrived. A test calls DeliverChange to deliver the
+    /// changes from a report.
     /// </summary>
     public List<IReadOnlyList<ResourceKey>> Reports { get; } = new();
 

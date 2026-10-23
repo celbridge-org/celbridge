@@ -6,7 +6,7 @@ namespace Celbridge.Resources.Services;
 /// <summary>
 /// Collects the keys touched in one root, and delivers them in batches to the subscriptions that may want them. A
 /// batch closes a fixed interval after the batch's first key, or at once when one of Celbridge's own operations reports
-/// changes. At delivery, each key that a subscription wants is checked on disk, so each change says what is at the key.
+/// changes. At delivery, each key wanted by a subscription is checked on disk, so each change says what is at the key.
 /// Batches for one root are delivered one at a time, in order.
 /// </summary>
 internal sealed class ChangeBatcher : IDisposable

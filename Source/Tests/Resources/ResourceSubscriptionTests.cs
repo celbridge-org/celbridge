@@ -48,6 +48,9 @@ public class ResourceSubscriptionTests
     private ILocalFileSystem _fileSystem = null!;
     private Dictionary<string, IResourceRootHandler> _rootHandlers = null!;
     private IResourceService _resourceService = null!;
+    private IDispatcher _dispatcher = null!;
+    private IWorkspaceWrapper _workspaceWrapper = null!;
+    private FakeFileSystemMonitorFactory _monitorFactory = null!;
     private ResourceMonitor _resourceMonitor = null!;
     private FakeFileSystemMonitor _watcher = null!;
 
@@ -71,8 +74,8 @@ public class ResourceSubscriptionTests
             .Returns(callInfo => localFileSystem.GetInfoAsync(callInfo.Arg<string>()));
 
         // Run enqueued actions inline, so each batch reaches its subscriber while the time is advanced.
-        var dispatcher = Substitute.For<IDispatcher>();
-        dispatcher.TryEnqueue(Arg.Any<Action>())
+        _dispatcher = Substitute.For<IDispatcher>();
+        _dispatcher.TryEnqueue(Arg.Any<Action>())
             .Returns(callInfo =>
             {
                 callInfo.Arg<Action>().Invoke();
@@ -93,22 +96,29 @@ public class ResourceSubscriptionTests
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(_resourceService);
 
-        var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
-        workspaceWrapper.WorkspaceService.Returns(workspaceService);
+        _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
+        _workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
-        var monitorFactory = new FakeFileSystemMonitorFactory();
+        _monitorFactory = new FakeFileSystemMonitorFactory();
 
-        _resourceMonitor = new ResourceMonitor(
+        _resourceMonitor = StartMonitor();
+        _watcher = _monitorFactory.Created.Single();
+    }
+
+    // Creates a monitor, and starts it watching each registered root that opts in.
+    private ResourceMonitor StartMonitor()
+    {
+        var monitor = new ResourceMonitor(
             Substitute.For<ILogger<ResourceMonitor>>(),
-            dispatcher,
-            workspaceWrapper,
-            monitorFactory,
+            _dispatcher,
+            _workspaceWrapper,
+            _monitorFactory,
             _fileSystem,
             _automationService,
             _timeProvider);
 
-        _resourceMonitor.Initialize().IsSuccess.Should().BeTrue();
-        _watcher = monitorFactory.Created.Single();
+        monitor.Initialize().IsSuccess.Should().BeTrue();
+        return monitor;
     }
 
     [TearDown]
@@ -439,8 +449,7 @@ public class ResourceSubscriptionTests
         var batches = Subscribe("**");
         WriteProjectFile("notes.txt");
 
-        _resourceMonitor.ReportOperationChanges(
-            new[] { ResourceKey.Create("notes.txt"), ResourceKey.Create("old.txt") });
+        _resourceMonitor.ReportOperationChanges([ResourceKey.Create("notes.txt"), ResourceKey.Create("old.txt")]);
         _timeProvider.Advance(TimeSpan.Zero);
 
         batches.Single().Changes.Should().Equal(
@@ -454,7 +463,7 @@ public class ResourceSubscriptionTests
         var batches = Subscribe("**");
 
         _watcher.RaiseChanged(PathFor("outside.txt"));
-        _resourceMonitor.ReportOperationChanges(new[] { ResourceKey.Create("own.txt") });
+        _resourceMonitor.ReportOperationChanges([ResourceKey.Create("own.txt")]);
         _timeProvider.Advance(TimeSpan.Zero);
 
         batches.Single().Changes.Select(change => change.Resource).Should().Equal(
@@ -472,7 +481,7 @@ public class ResourceSubscriptionTests
                 batches.Add(batch);
                 if (batches.Count == 1)
                 {
-                    _resourceMonitor.ReportOperationChanges(new[] { ResourceKey.Create("second.txt") });
+                    _resourceMonitor.ReportOperationChanges([ResourceKey.Create("second.txt")]);
                 }
             },
             _ => { });
@@ -490,7 +499,7 @@ public class ResourceSubscriptionTests
     public void AChangeAfterAReportWaitsForTheBatchInterval()
     {
         var batches = Subscribe("**");
-        _resourceMonitor.ReportOperationChanges(new[] { ResourceKey.Create("own.txt") });
+        _resourceMonitor.ReportOperationChanges([ResourceKey.Create("own.txt")]);
         _timeProvider.Advance(TimeSpan.Zero);
         batches.Should().ContainSingle();
 
@@ -509,8 +518,7 @@ public class ResourceSubscriptionTests
     {
         var batches = Subscribe("**");
 
-        _resourceMonitor.ReportOperationChanges(
-            new[] { ResourceKey.Create(".git/index"), ResourceKey.Create("notes.txt") });
+        _resourceMonitor.ReportOperationChanges([ResourceKey.Create(".git/index"), ResourceKey.Create("notes.txt")]);
         _timeProvider.Advance(TimeSpan.Zero);
 
         batches.Single().Changes.Select(change => change.Resource).Should().Equal(ResourceKey.Create("notes.txt"));
@@ -519,15 +527,15 @@ public class ResourceSubscriptionTests
     [Test]
     public void AReportedKeyInARootThatIsNotWatchedIsDropped()
     {
-        // The logs: root opts out of watching, so the monitor drops a report in logs:.
+        // The logs: root opts out of watching. Register the root before the monitor starts, so the monitor's
+        // Initialize skips the root.
         _rootHandlers[LogsRootHandler.Name] = new LogsRootHandler(Path.Combine(_projectFolder, "logs"));
+        using var monitor = StartMonitor();
         var received = new Received();
-        var subscribeResult = _resourceMonitor.SubscribeToResources(
-            new[] { ResourceKey.Create("logs:app.log") },
-            received.Handlers);
+        var subscribeResult = monitor.SubscribeToResources([ResourceKey.Create("logs:app.log")], received.Handlers);
         subscribeResult.IsSuccess.Should().BeTrue(subscribeResult.FirstErrorMessage);
 
-        _resourceMonitor.ReportOperationChanges(new[] { ResourceKey.Create("logs:app.log") });
+        monitor.ReportOperationChanges([ResourceKey.Create("logs:app.log")]);
         _timeProvider.Advance(TimeSpan.Zero);
 
         received.Deliveries.Should().BeEmpty();

@@ -283,8 +283,7 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
 
         var sidecarOutcome = await _sidecarCascade.TryMoveAsync(source, dest, changes);
 
-        // One message for the move, sent before the report. A receiver maps the keys inside a moved folder
-        // itself.
+        // Send one message for the move, before the report. Each receiver maps the keys inside a moved folder.
         if (!isCrossRoot)
         {
             var keyChangedMessage = new ResourceKeyChangedMessage(source, dest);
