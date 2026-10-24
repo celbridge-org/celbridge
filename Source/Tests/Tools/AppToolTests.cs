@@ -204,8 +204,6 @@ public class AppToolTests
         webViewDevToolsEval.GetBoolean().Should().BeTrue();
         flagsElement.TryGetProperty(FeatureFlagConstants.WebViewLoadDiagnostics, out var webViewLoadDiagnostics).Should().BeTrue();
         webViewLoadDiagnostics.GetBoolean().Should().BeFalse();
-        flagsElement.TryGetProperty(FeatureFlagConstants.OpenCel, out var openCel).Should().BeTrue();
-        openCel.GetBoolean().Should().BeFalse();
         flagsElement.TryGetProperty(FeatureFlagConstants.NoteEditor, out var noteEditor).Should().BeTrue();
         noteEditor.GetBoolean().Should().BeFalse();
     }
@@ -291,50 +289,6 @@ public class AppToolTests
 
         root.GetProperty("packages").GetArrayLength().Should().Be(0);
         root.GetProperty("packageLoadFailureCount").GetInt32().Should().Be(0);
-    }
-
-    [Test]
-    public async Task RefreshFiles_RescansThroughTheCommandQueue()
-    {
-        IUpdateResourcesCommand? capturedCommand = null;
-        var commandService = Substitute.For<ICommandService>();
-        commandService
-            .ExecuteAsync<IUpdateResourcesCommand>(
-                Arg.Any<Action<IUpdateResourcesCommand>?>(),
-                Arg.Any<string>(),
-                Arg.Any<int>())
-            .Returns(callInfo =>
-            {
-                capturedCommand = Substitute.For<IUpdateResourcesCommand>();
-                callInfo.Arg<Action<IUpdateResourcesCommand>?>()?.Invoke(capturedCommand);
-                return Task.FromResult(Celbridge.Core.Result.Ok());
-            });
-        _services.GetRequiredService<ICommandService>().Returns(commandService);
-
-        var tools = new AppTools(_services);
-        var result = await tools.RefreshFiles();
-
-        result.IsError.Should().NotBe(true);
-        capturedCommand.Should().NotBeNull();
-        capturedCommand!.Immediate.Should().BeTrue();
-    }
-
-    [Test]
-    public async Task RefreshFiles_ReportsAFailedRescan()
-    {
-        var commandService = Substitute.For<ICommandService>();
-        commandService
-            .ExecuteAsync<IUpdateResourcesCommand>(
-                Arg.Any<Action<IUpdateResourcesCommand>?>(),
-                Arg.Any<string>(),
-                Arg.Any<int>())
-            .Returns(Task.FromResult<Celbridge.Core.Result>(Celbridge.Core.Result.Fail("Failed to update resources")));
-        _services.GetRequiredService<ICommandService>().Returns(commandService);
-
-        var tools = new AppTools(_services);
-        var result = await tools.RefreshFiles();
-
-        result.IsError.Should().BeTrue();
     }
 
     // A loaded workspace whose registry holds two project packages out of name order, a bundled package, a load

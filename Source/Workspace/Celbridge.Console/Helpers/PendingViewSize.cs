@@ -18,7 +18,7 @@ public sealed class PendingViewSize
     // which costs the screen the output painted on it.
     private const int SettleMs = 250;
 
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
 
     private readonly TaskCompletionSource _reported =
         new(TaskCreationOptions.RunContinuationsAsynchronously);

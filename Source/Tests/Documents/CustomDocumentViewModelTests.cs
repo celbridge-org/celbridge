@@ -19,7 +19,6 @@ namespace Celbridge.Tests.Documents;
 public class CustomDocumentViewModelTests
 {
     private IMessengerService _messengerService = null!;
-    private IResourceRegistry _registry = null!;
     private IServiceProvider? _previousServiceProvider;
     private CustomDocumentViewModel _viewModel = null!;
 
@@ -28,10 +27,7 @@ public class CustomDocumentViewModelTests
     {
         _messengerService = new MessengerService();
 
-        _registry = Substitute.For<IResourceRegistry>();
-
         var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(_registry);
         resourceService.Monitor.Returns(new FakeResourceMonitor());
 
         var workspaceService = Substitute.For<IWorkspaceService>();

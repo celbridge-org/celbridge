@@ -13,7 +13,7 @@ internal sealed class DialogAnswerScheduler
 {
     private readonly ILogger _logger;
     private readonly IMessengerService _messengerService;
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private bool _set;
     private DialogKind _dialogKind;
     private string _payload = string.Empty;

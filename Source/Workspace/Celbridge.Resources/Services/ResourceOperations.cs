@@ -283,7 +283,7 @@ internal class DeleteOperation : FileOperation
 /// Undoable import of a file or folder from outside the project. An external
 /// import has no paired sidecar in the project, so the sidecar cascade does
 /// not apply. The source bytes are read directly, since the source is outside
-/// the registry. The destination goes through the gateway for containment
+/// every root. The destination goes through the gateway for containment
 /// validation.
 /// </summary>
 internal class ImportExternalOperation : FileOperation

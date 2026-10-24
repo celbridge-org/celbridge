@@ -48,6 +48,7 @@ public class PackagesSectionViewModelTests
         workspaceService.ResourceService.Returns(resourceService);
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
+        workspaceWrapper.HasWorkspaceService.Returns(true);
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
         _context = new ProjectSettingsContext(

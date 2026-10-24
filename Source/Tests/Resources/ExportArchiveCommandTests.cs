@@ -112,16 +112,16 @@ public class ExportArchiveCommandTests
     {
         var readmeResource = new ResourceKey("readme.md");
         var folderInfo = new StorageItemInfo(StorageItemKind.Folder, 0, DateTime.UtcNow, FileSystemAttributes.None);
-        var folderItems = new List<FolderItem>
+        var folderChildren = new List<FolderChild>
         {
-            new FolderItem(readmeResource, IsFolder: false, Size: 5, ModifiedUtc: DateTime.UtcNow, Attributes: FileSystemAttributes.None)
+            new FolderChild(readmeResource, IsFolder: false, Size: 5, ModifiedUtc: DateTime.UtcNow, Attributes: FileSystemAttributes.None)
         };
 
         var resourceFileSystem = Substitute.For<IResourceFileSystem>();
         resourceFileSystem.GetInfoAsync(ResourceKey.Empty)
             .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(folderInfo)));
         resourceFileSystem.EnumerateFolderAsync(ResourceKey.Empty)
-            .Returns(Task.FromResult(Result<IReadOnlyList<FolderItem>>.Ok(folderItems)));
+            .Returns(Task.FromResult(Result<IReadOnlyList<FolderChild>>.Ok(folderChildren)));
         resourceFileSystem.OpenReadAsync(readmeResource)
             .Returns(Task.FromResult(Result<Stream>.Fail("The file is locked")));
         _resourceService.FileSystem.Returns(resourceFileSystem);

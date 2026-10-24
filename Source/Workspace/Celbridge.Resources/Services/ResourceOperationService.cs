@@ -10,7 +10,7 @@ namespace Celbridge.Resources.Services;
 /// Wraps the IResourceFileSystem gateway and the ITrashService soft-delete layer
 /// with a session-local undo/redo stack and batched grouping. Public methods
 /// accept ResourceKey; external imports keep a string source path because the
-/// source is outside the registry by definition. All disk I/O routes through
+/// source is outside every root by definition. All disk I/O routes through
 /// the gateway or the trash service; this class owns no direct System.IO
 /// calls and no message broadcasts.
 /// </summary>
@@ -243,8 +243,6 @@ public class ResourceOperationService : IResourceOperationService
 
     public async Task<WritableState> GetWritableStateAsync(ResourceKey resource)
     {
-        // Reads the attributes from the disk. The registry's tree records the state at the last rescan, which may be
-        // stale.
         var infoResult = await ResourceFileSystem.GetInfoAsync(resource);
         var attributes = infoResult.IsSuccess
             ? infoResult.Value.Attributes

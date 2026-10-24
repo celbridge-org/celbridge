@@ -16,8 +16,8 @@ public sealed class FakeFileSystem : ILocalFileSystem
     private readonly ConcurrentDictionary<string, FileEntry> _files = new(StringComparer.Ordinal);
     private readonly HashSet<string> _folders = new(StringComparer.Ordinal);
     private readonly List<string> _calls = new();
-    private readonly object _foldersLock = new();
-    private readonly object _callsLock = new();
+    private readonly Lock _foldersLock = new();
+    private readonly Lock _callsLock = new();
 
     public IReadOnlyDictionary<string, FileEntry> Files => _files;
     public IReadOnlyCollection<string> Folders
@@ -226,6 +226,30 @@ public sealed class FakeFileSystem : ILocalFileSystem
 
         IReadOnlyList<FileSystemEntry> list = entries;
         return Task.FromResult(Result<IReadOnlyList<FileSystemEntry>>.Ok(list));
+    }
+
+    public async Task<Result<bool>> HasEntryAsync(string path, Func<FileSystemEntry, bool> predicate)
+    {
+        Record($"HasEntryAsync('{path}')");
+
+        // Matches LocalFileSystem, which fails for a folder that does not exist.
+        bool folderExists;
+        lock (_foldersLock)
+        {
+            folderExists = _folders.Contains(path.TrimEnd('/', '\\'));
+        }
+        if (!folderExists)
+        {
+            return Result<bool>.Fail($"Folder does not exist: '{path}'");
+        }
+
+        var enumerateResult = await EnumerateAsync(path, "*", recursive: false);
+        if (enumerateResult.IsFailure)
+        {
+            return Result.Fail(enumerateResult);
+        }
+
+        return enumerateResult.Value.Any(predicate);
     }
 
     public Task<Result> MoveFileAsync(string source, string dest, bool overwrite = false)

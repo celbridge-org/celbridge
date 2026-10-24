@@ -63,9 +63,14 @@ public record DeleteResult(
     SidecarOutcome Sidecar);
 
 /// <summary>
+/// A resource named by its key, and whether the resource is a folder. Returned by GetResourceItemAsync.
+/// </summary>
+public record ResourceItem(ResourceKey Resource, bool IsFolder);
+
+/// <summary>
 /// One immediate child of a folder, returned by EnumerateFolderAsync.
 /// </summary>
-public record FolderItem(
+public record FolderChild(
     ResourceKey Resource,
     bool IsFolder,
     long Size,

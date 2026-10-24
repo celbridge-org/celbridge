@@ -36,7 +36,7 @@ public sealed partial class WorkspacePanel : IResourceDropTarget
         _resourceDragCoordinator?.UnregisterDropTarget(this);
     }
 
-    public string? UpdateDragOver(Point windowPoint, IReadOnlyList<IResource> resources)
+    public string? UpdateDragOver(Point windowPoint, IReadOnlyList<ResourceItem> resources)
     {
         var location = SectionContainer.GetResourceDropLocation(windowPoint);
         if (location is null)
@@ -55,7 +55,7 @@ public sealed partial class WorkspacePanel : IResourceDropTarget
         SectionContainer.HideResourceDropPreview();
     }
 
-    public bool TryDrop(Point windowPoint, IReadOnlyList<IResource> resources)
+    public bool TryDrop(Point windowPoint, IReadOnlyList<ResourceItem> resources)
     {
         var location = SectionContainer.GetResourceDropLocation(windowPoint);
         SectionContainer.HideResourceDropPreview();

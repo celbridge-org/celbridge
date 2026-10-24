@@ -12,7 +12,7 @@ internal sealed class WebSurfaceLog : IWebSurfaceLog
     // the log needs a ceiling. The table holds each view weakly, so a closed view's count is freed with the view.
     // Counts follow the view rather than its resource, so a rename keeps them.
     private readonly ConditionalWeakTable<IWebView, SurfaceRate> _rates = new();
-    private readonly object _ratesLock = new();
+    private readonly Lock _ratesLock = new();
 
     private static readonly TimeSpan RateWindow = TimeSpan.FromSeconds(10);
     private const int MaxEntriesPerWindow = 50;

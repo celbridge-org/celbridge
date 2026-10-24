@@ -19,7 +19,6 @@ public class DocumentLayoutStoreTests
     private static readonly IReadOnlyList<DocumentShortcut> NoDocumentShortcuts = Array.Empty<DocumentShortcut>();
 
     private IWorkspacePropertyBag _propertyBag = null!;
-    private IResourceRegistry _resourceRegistry = null!;
     private IDocumentsPanel _documentsPanel = null!;
     private IUtilityService _utilityService = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
@@ -39,13 +38,7 @@ public class DocumentLayoutStoreTests
         File.WriteAllText(Path.Combine(notesFolder, "todo.md"), string.Empty);
 
         _propertyBag = Substitute.For<IWorkspacePropertyBag>();
-        _resourceRegistry = Substitute.For<IResourceRegistry>();
         _documentsPanel = Substitute.For<IDocumentsPanel>();
-
-        // Default registry behaviour: every key exists in the registry. Individual
-        // tests override this when they want to exercise the negative branches.
-        _resourceRegistry.GetResource(Arg.Any<ResourceKey>())
-            .Returns(Result<IResource>.Ok(Substitute.For<IResource>()));
 
         _documentsPanel.OpenDocument(Arg.Any<ResourceKey>(), Arg.Any<OpenDocumentOptions?>())
             .Returns(Task.FromResult(Result<OpenDocumentOutcome>.Ok(OpenDocumentOutcome.Opened)));
@@ -57,7 +50,6 @@ public class DocumentLayoutStoreTests
         rootHandlers.RegisterRootHandler(new UtilsRootHandler(Path.Combine(_tempFolder, "utils")));
 
         var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(_resourceRegistry);
         resourceService.RootHandlers.Returns(rootHandlers);
 
         var workspaceService = Substitute.For<IWorkspaceService>();
@@ -158,25 +150,6 @@ public class DocumentLayoutStoreTests
     }
 
     [Test]
-    public async Task RestorePanelStateAsync_MissingResource_IsSkipped()
-    {
-        // The resource key is well-formed but no longer exists in the registry
-        // (e.g., the file was deleted between sessions). Skip without failing.
-        _resourceRegistry.GetResource(new ResourceKey("notes/readme.md"))
-            .Returns(Result<IResource>.Fail("missing"));
-        var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
-        {
-            new("notes/readme.md", 0, "main_left", 0),
-        };
-        _propertyBag.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("OpenDocumentAddresses")
-            .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
-
-        await _store.RestorePanelStateAsync(NoDocumentShortcuts);
-
-        await _documentsPanel.DidNotReceive().OpenDocument(Arg.Any<ResourceKey>(), Arg.Any<OpenDocumentOptions?>());
-    }
-
-    [Test]
     public async Task RestorePanelStateAsync_UtilityResource_DocksViaDocumentsService()
     {
         // A utils: resource is a utility, a permanent Utility Panel item instantiated eagerly at load. A
@@ -201,7 +174,7 @@ public class DocumentLayoutStoreTests
     [Test]
     public async Task RestorePanelStateAsync_InaccessibleFile_IsSkipped()
     {
-        // The registry lists the resource, but its file is missing from disk, so
+        // The file is missing from disk, for example deleted between sessions, so
         // ResourceFileSystem.GetInfoAsync reports NotFound and the restore skips.
         var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
         {

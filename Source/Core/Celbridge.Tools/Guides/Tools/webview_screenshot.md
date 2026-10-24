@@ -19,4 +19,4 @@ When `returnImage` is `true`: an inline image content block plus a JSON text blo
 
 ## Save destination resolution
 
-Save resolution runs before capture, so a malformed `saveTo` fails before any work happens. The save itself routes through the binary write command, so capability gating, registry refresh, and path containment all apply.
+Save resolution runs before capture, so a malformed `saveTo` fails before any work happens. The save itself routes through the binary write command, so capability gating and path containment both apply.

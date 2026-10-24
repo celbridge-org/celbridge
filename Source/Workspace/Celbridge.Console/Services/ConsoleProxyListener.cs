@@ -16,7 +16,7 @@ internal sealed class ConsoleProxyListener : IDisposable
     private readonly IConsoleSessionService _sessionService;
     private readonly ILogger<ConsoleProxyListener> _logger;
 
-    private readonly object _listenerLock = new();
+    private readonly Lock _listenerLock = new();
     private CancellationTokenSource? _listenerCancellation;
     private int _port;
     private bool _started;

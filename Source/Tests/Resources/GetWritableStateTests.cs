@@ -18,7 +18,6 @@ namespace Celbridge.Tests.Resources;
 public class GetWritableStateTests
 {
     private IResourceFileSystem _resourceFileSystem = null!;
-    private IResourceRegistry _resourceRegistry = null!;
     private IRootHandlerRegistry _rootHandlerRegistry = null!;
     private IResourceService _resourceService = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
@@ -34,17 +33,10 @@ public class GetWritableStateTests
         _resourceFileSystem.GetInfoAsync(Arg.Any<ResourceKey>())
             .Returns(Result<StorageItemInfo>.Ok(writableFileInfo));
 
-        // The state comes from the disk alone. GetResource fails for every key by default, and a test that needs a
-        // registry entry stubs one.
-        _resourceRegistry = Substitute.For<IResourceRegistry>();
-        _resourceRegistry.GetResource(Arg.Any<ResourceKey>())
-            .Returns(Result<IResource>.Fail("not in registry"));
-
         _rootHandlerRegistry = Substitute.For<IRootHandlerRegistry>();
         _rootHandlerRegistry.RootHandlers.Returns(new Dictionary<string, IResourceRootHandler>());
 
         _resourceService = Substitute.For<IResourceService>();
-        _resourceService.Registry.Returns(_resourceRegistry);
         _resourceService.FileSystem.Returns(_resourceFileSystem);
         _resourceService.RootHandlers.Returns(_rootHandlerRegistry);
         _resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
@@ -92,27 +84,6 @@ public class GetWritableStateTests
         var operationService = CreateOperationService();
 
         var state = await operationService.GetWritableStateAsync(new ResourceKey("notes/todo.md"));
-
-        state.Should().Be(WritableState.ReadOnlyAttribute);
-    }
-
-    [Test]
-    public async Task ReadsTheDisk_WhenTheRegistryHoldsAnOlderState()
-    {
-        // The registry's tree records the state at the last rescan. An attribute changed since then reads stale in the
-        // tree.
-        var cachedResource = new FolderResource("assets", null);
-        cachedResource.WritableState = WritableState.Writable;
-        _resourceRegistry.GetResource(Arg.Any<ResourceKey>())
-            .Returns(Result<IResource>.Ok(cachedResource));
-
-        var readOnlyFileInfo = new StorageItemInfo(StorageItemKind.File, 0, DateTime.UtcNow, FileSystemAttributes.ReadOnly);
-        _resourceFileSystem.GetInfoAsync(Arg.Any<ResourceKey>())
-            .Returns(Result<StorageItemInfo>.Ok(readOnlyFileInfo));
-
-        var operationService = CreateOperationService();
-
-        var state = await operationService.GetWritableStateAsync(new ResourceKey("assets"));
 
         state.Should().Be(WritableState.ReadOnlyAttribute);
     }

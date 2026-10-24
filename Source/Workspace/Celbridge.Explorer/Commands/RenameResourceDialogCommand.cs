@@ -45,15 +45,15 @@ public class RenameResourceDialogCommand : CommandBase, IRenameResourceDialogCom
             return Result.Fail($"Failed to show add resource dialog because workspace is not loaded");
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
-        var getResult = resourceRegistry.GetResource(Resource);
+        var getResult = await resourceFileSystem.GetResourceItemAsync(Resource);
         if (getResult.IsFailure)
         {
-            return Result.Fail($"Failed to resolve resource: '{Resource}'")
-                .WithErrors(getResult);
+            return Result.Fail(getResult);
         }
-        var resource = getResult.Value;
+        var resourceItem = getResult.Value;
+        var resourceName = Resource.ResourceName;
 
         // Pre-check the policy before opening the rename dialog: a locked or
         // path-frozen resource cannot be renamed, so explain why rather than
@@ -65,13 +65,11 @@ public class RenameResourceDialogCommand : CommandBase, IRenameResourceDialogCom
         if (canModifyResult.IsFailure)
         {
             var cannotRenameTitle = _stringLocalizer.GetString("ResourceTree_CannotRename");
-            var reasonText = PolicyDenialFormatter.FormatReason(canModifyResult, resource.Name, _stringLocalizer);
+            var reasonText = PolicyDenialFormatter.FormatReason(canModifyResult, resourceName, _stringLocalizer);
             await _dialogService.ShowAlertDialogAsync(cannotRenameTitle, reasonText);
 
             return Result.Ok();
         }
-
-        var resourceName = resource.Name;
 
         var selectedRange = ResourceNameHelper.GetNameSelectionRange(resourceName);
 
@@ -80,8 +78,12 @@ public class RenameResourceDialogCommand : CommandBase, IRenameResourceDialogCom
         var defaultText = resourceName;
 
         var validator = _serviceProvider.GetRequiredService<IResourceNameValidator>();
-        validator.ParentFolder = resource.ParentFolder;
-        validator.ValidateAsFolder = resource is IFolderResource;
+        var setParentResult = await validator.SetParentFolderAsync(Resource.GetParent());
+        if (setParentResult.IsFailure)
+        {
+            return Result.Fail(setParentResult);
+        }
+        validator.ValidateAsFolder = resourceItem.IsFolder;
         validator.ValidNames.Add(resourceName); // The original name is always valid when renaming
 
         var enterNewNameString = _stringLocalizer.GetString("ResourceTree_EnterNewName");
@@ -100,7 +102,7 @@ public class RenameResourceDialogCommand : CommandBase, IRenameResourceDialogCom
             var sourceParentResource = Resource.GetParent();
             var destResource = sourceParentResource.Combine(inputText);
 
-            bool isFolderResource = resource is IFolderResource;
+            bool isFolderResource = resourceItem.IsFolder;
 
             // Maintain the expanded state of folders after rename
             var folderStateService = _workspaceWrapper.WorkspaceService.ExplorerService.FolderStateService;

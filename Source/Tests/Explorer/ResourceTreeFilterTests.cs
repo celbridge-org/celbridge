@@ -4,151 +4,59 @@ using Celbridge.Resources;
 namespace Celbridge.Tests.Explorer;
 
 /// <summary>
-/// Covers what the Explorer tree draws: the sidecar kinds it never draws, the hide patterns the
-/// Show Hidden Files toggle reverses, and the expander a folder only offers when a child survives both.
+/// Covers what the Explorer tree hides unless the tree is showing hidden files: .cel files, and the resources
+/// the hide and search-exclude patterns match.
 /// </summary>
 [TestFixture]
 public class ResourceTreeFilterTests
 {
-    private IResourceRegistry _registry = null!;
     private IResourcePolicy _policy = null!;
 
     [SetUp]
     public void Setup()
     {
-        _registry = Substitute.For<IResourceRegistry>();
         _policy = Substitute.For<IResourcePolicy>();
     }
 
     [Test]
-    public void SidecarKinds_AreNeverDrawn()
+    public void CelFile_IsHidden()
     {
-        foreach (var kind in new[] { FileKind.Sidecar, FileKind.Orphan, FileKind.InvalidSidecar })
-        {
-            var file = CreateFile("notes.md.cel", kind);
+        var sidecar = new ResourceKey("notes.md.cel");
 
-            ResourceTreeFilter.IsDrawableKind(file).Should().BeFalse($"{kind} is project metadata");
-
-            // Showing hidden files does not bring metadata back, because it was never hidden by a pattern.
-            ResourceTreeFilter.IsDrawn(file, _registry, _policy, showHiddenFiles: true).Should().BeFalse();
-        }
+        ResourceTreeFilter.IsHidden(sidecar, isFolder: false, _policy).Should().BeTrue();
     }
 
     [Test]
-    public void ContentFileAndFolder_AreDrawableKinds()
+    public void FolderNamedLikeACelFile_IsNotHidden()
     {
-        ResourceTreeFilter.IsDrawableKind(CreateFile("main.py", FileKind.PlainData)).Should().BeTrue();
-        ResourceTreeFilter.IsDrawableKind(CreateFolder("src")).Should().BeTrue();
+        var folder = new ResourceKey("archive.cel");
+
+        ResourceTreeFilter.IsHidden(folder, isFolder: true, _policy).Should().BeFalse();
     }
 
     [Test]
-    public void HiddenResource_IsDrawnOnlyWhileShowingHiddenFiles()
+    public void HidePatternMatch_IsHidden()
     {
-        var file = CreateFile(".gitignore", FileKind.PlainData);
-        StubHidden(file, isHidden: true);
+        var file = new ResourceKey(".gitignore");
+        _policy.IsHidden(file, false).Returns(true);
 
-        ResourceTreeFilter.IsDrawn(file, _registry, _policy, showHiddenFiles: false).Should().BeFalse();
-        ResourceTreeFilter.IsDrawn(file, _registry, _policy, showHiddenFiles: true).Should().BeTrue();
+        ResourceTreeFilter.IsHidden(file, isFolder: false, _policy).Should().BeTrue();
     }
 
     [Test]
-    public void VisibleResource_IsDrawnEitherWay()
+    public void SearchExcludeMatch_IsHidden()
     {
-        var file = CreateFile("main.py", FileKind.PlainData);
-        StubHidden(file, isHidden: false);
+        var folder = new ResourceKey("node_modules");
+        _policy.IsSearchExcluded(folder, true).Returns(true);
 
-        ResourceTreeFilter.IsDrawn(file, _registry, _policy, showHiddenFiles: false).Should().BeTrue();
-        ResourceTreeFilter.IsDrawn(file, _registry, _policy, showHiddenFiles: true).Should().BeTrue();
+        ResourceTreeFilter.IsHidden(folder, isFolder: true, _policy).Should().BeTrue();
     }
 
     [Test]
-    public void IsDrawn_AsksThePolicyForTheResourceKind()
+    public void UnmatchedResource_IsNotHidden()
     {
-        // A folders-only hide pattern needs the kind to answer correctly, so the folder flag has to
-        // reach the policy rather than being assumed.
-        var folder = CreateFolder("dist");
-        StubHidden(folder, isHidden: true);
+        var file = new ResourceKey("main.py");
 
-        ResourceTreeFilter.IsDrawn(folder, _registry, _policy, showHiddenFiles: false).Should().BeFalse();
-
-        _policy.Received().IsHidden(Arg.Any<ResourceKey>(), true);
-    }
-
-    [Test]
-    public void FolderOfOnlyHiddenChildren_OffersNoExpander()
-    {
-        // Without this the chevron opens onto nothing, because the rows it promises are filtered out.
-        var hiddenChild = CreateFile("build.log", FileKind.PlainData);
-        StubHidden(hiddenChild, isHidden: true);
-
-        var folder = CreateFolder("logs", hiddenChild);
-
-        ResourceTreeFilter.HasDrawableChildren(folder, _registry, _policy, showHiddenFiles: false)
-            .Should().BeFalse();
-
-        ResourceTreeFilter.HasDrawableChildren(folder, _registry, _policy, showHiddenFiles: true)
-            .Should().BeTrue("the rows exist again once hidden files are shown");
-    }
-
-    [Test]
-    public void FolderOfOnlySidecars_OffersNoExpander()
-    {
-        var sidecar = CreateFile("notes.md.cel", FileKind.Sidecar);
-        var folder = CreateFolder("data", sidecar);
-
-        ResourceTreeFilter.HasDrawableChildren(folder, _registry, _policy, showHiddenFiles: false)
-            .Should().BeFalse();
-        ResourceTreeFilter.HasDrawableChildren(folder, _registry, _policy, showHiddenFiles: true)
-            .Should().BeFalse();
-    }
-
-    [Test]
-    public void FolderWithOneVisibleChild_OffersAnExpander()
-    {
-        var hiddenChild = CreateFile("build.log", FileKind.PlainData);
-        StubHidden(hiddenChild, isHidden: true);
-
-        var visibleChild = CreateFile("main.py", FileKind.PlainData);
-        StubHidden(visibleChild, isHidden: false);
-
-        var folder = CreateFolder("src", hiddenChild, visibleChild);
-
-        ResourceTreeFilter.HasDrawableChildren(folder, _registry, _policy, showHiddenFiles: false)
-            .Should().BeTrue();
-    }
-
-    [Test]
-    public void EmptyFolder_OffersNoExpander()
-    {
-        var folder = CreateFolder("empty");
-
-        ResourceTreeFilter.HasDrawableChildren(folder, _registry, _policy, showHiddenFiles: false)
-            .Should().BeFalse();
-    }
-
-    private IFileResource CreateFile(string name, FileKind kind)
-    {
-        var file = Substitute.For<IFileResource>();
-        file.Name.Returns(name);
-        file.FileKind.Returns(kind);
-
-        return file;
-    }
-
-    private IFolderResource CreateFolder(string name, params IResource[] children)
-    {
-        var folder = Substitute.For<IFolderResource>();
-        folder.Name.Returns(name);
-        folder.Children.Returns(children.ToList());
-
-        return folder;
-    }
-
-    private void StubHidden(IResource resource, bool isHidden)
-    {
-        var key = new ResourceKey(resource.Name);
-
-        _registry.GetResourceKey(resource).Returns(key);
-        _policy.IsHidden(key, Arg.Any<bool>()).Returns(isHidden);
+        ResourceTreeFilter.IsHidden(file, isFolder: false, _policy).Should().BeFalse();
     }
 }

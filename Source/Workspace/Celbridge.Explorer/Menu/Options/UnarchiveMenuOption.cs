@@ -1,7 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.ContextMenu;
 using Celbridge.UserInterface;
-using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Explorer.Menu.Options;
@@ -13,19 +12,16 @@ public class UnarchiveMenuOption : IMenuOption<ExplorerMenuContext>
 {
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
-    private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public int Priority => 7;
     public string GroupId => nameof(ExplorerMenuGroup.EditActions);
 
     public UnarchiveMenuOption(
         IStringLocalizer stringLocalizer,
-        ICommandService commandService,
-        IWorkspaceWrapper workspaceWrapper)
+        ICommandService commandService)
     {
         _stringLocalizer = stringLocalizer;
         _commandService = commandService;
-        _workspaceWrapper = workspaceWrapper;
     }
 
     public MenuItemDisplayInfo GetDisplayInfo(ExplorerMenuContext context)
@@ -37,9 +33,10 @@ public class UnarchiveMenuOption : IMenuOption<ExplorerMenuContext>
 
     public MenuItemState GetState(ExplorerMenuContext context)
     {
-        var isZipFile = context.HasSingleSelection &&
-                        context.SingleSelectedResource is IFileResource &&
-                        context.SingleSelectedResource.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase);
+        var selectedResource = context.SingleSelectedResource;
+        var isZipFile = selectedResource is not null
+            && !selectedResource.IsFolder
+            && selectedResource.Resource.ResourceName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase);
 
         return new MenuItemState(
             IsVisible: isZipFile,
@@ -48,13 +45,14 @@ public class UnarchiveMenuOption : IMenuOption<ExplorerMenuContext>
 
     public void Execute(ExplorerMenuContext context)
     {
-        if (context.SingleSelectedResource is not IFileResource)
+        var selectedResource = context.SingleSelectedResource;
+        if (selectedResource is null
+            || selectedResource.IsFolder)
         {
             return;
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var resourceKey = resourceRegistry.GetResourceKey(context.SingleSelectedResource);
+        var resourceKey = selectedResource.Resource;
 
         _commandService.Execute<IUnarchiveResourceDialogCommand>(command =>
         {

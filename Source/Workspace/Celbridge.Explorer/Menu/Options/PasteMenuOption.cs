@@ -14,7 +14,6 @@ public class PasteMenuOption : IMenuOption<ExplorerMenuContext>
 {
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
-    private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IShortcutHintService _shortcutHintService;
 
     public int Priority => 3;
@@ -23,12 +22,10 @@ public class PasteMenuOption : IMenuOption<ExplorerMenuContext>
     public PasteMenuOption(
         IStringLocalizer stringLocalizer,
         ICommandService commandService,
-        IWorkspaceWrapper workspaceWrapper,
         IShortcutHintService shortcutHintService)
     {
         _stringLocalizer = stringLocalizer;
         _commandService = commandService;
-        _workspaceWrapper = workspaceWrapper;
         _shortcutHintService = shortcutHintService;
     }
 
@@ -57,9 +54,7 @@ public class PasteMenuOption : IMenuOption<ExplorerMenuContext>
             return;
         }
 
-        var destFolder = context.GetTargetFolder();
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var destFolderKey = resourceRegistry.GetResourceKey(destFolder);
+        var destFolderKey = context.GetTargetFolder();
 
         _commandService.Execute<IPasteResourceFromClipboardCommand>(command =>
         {

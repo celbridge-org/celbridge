@@ -51,7 +51,7 @@ public class PackageRegistry
     private IReadOnlyList<PackageLoadFailure> _lastFailures = Array.Empty<PackageLoadFailure>();
     private IReadOnlyList<ContributionIssue> _lastContributionIssues = Array.Empty<ContributionIssue>();
 
-    // Bundled packages live outside any IResourceRegistry root so their reads
+    // Bundled packages live outside every resource root so their reads
     // stay on direct File.* IO via the gateway. One reader is reused across
     // the discovery and template-fetch paths to keep the bundled branch cheap.
     private readonly IPackageReader _bundledReader;
@@ -238,7 +238,7 @@ public class PackageRegistry
     // Reads the default template bytes for the given file extension, picking the
     // first available contribution that handles the extension and declares a default template.
     // The reader is chosen by package origin: bundled packages stay on direct File.*
-    // because their bytes live outside any registry root, project packages route
+    // because their bytes live outside every resource root, project packages route
     // through IResourceFileSystem by reverse-resolving the template path.
     public byte[]? GetDefaultTemplateContent(string fileExtension)
     {
@@ -1091,7 +1091,7 @@ public class PackageRegistry
         return new PackageFolderManifests(packageFolder, isPackage, manifests);
     }
 
-    private static FolderItem? FindManifest(IReadOnlyList<FolderItem> items)
+    private static FolderChild? FindManifest(IReadOnlyList<FolderChild> items)
     {
         return items.FirstOrDefault(item =>
             !item.IsFolder

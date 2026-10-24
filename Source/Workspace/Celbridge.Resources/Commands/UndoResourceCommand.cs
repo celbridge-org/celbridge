@@ -5,8 +5,6 @@ namespace Celbridge.Resources.Commands;
 
 public class UndoResourceCommand : CommandBase, IUndoResourceCommand
 {
-    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
-
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public UndoResourceCommand(IWorkspaceWrapper workspaceWrapper)

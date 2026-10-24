@@ -39,7 +39,7 @@ public enum WritableState
 /// and redo, batched grouping, and soft-delete trash on top of the IResourceFileSystem
 /// gateway. Only changes under the project root can be undone. Every method names
 /// its target with a ResourceKey. Imports take their external source as a string
-/// path, because it lies outside the registry.
+/// path, because it lies outside every root.
 /// </summary>
 public interface IResourceOperationService
 {
@@ -76,16 +76,16 @@ public interface IResourceOperationService
     Task<Result<bool>> DeleteAsync(ResourceKey resource);
 
     /// <summary>
-    /// Imports a file from outside the project into a registry-addressable
-    /// destination. The source path is taken as-is; the destination receives
+    /// Imports a file from outside the project into a destination under a
+    /// resource root. The source path is taken as-is. The destination receives
     /// containment validation through the gateway. A source that is a link is
     /// refused with a LinkNotFollowedError.
     /// </summary>
     Task<Result> ImportExternalFileAsync(string sourcePath, ResourceKey dest);
 
     /// <summary>
-    /// Imports a folder from outside the project into a registry-addressable
-    /// destination. The source is enumerated recursively; each file lands at
+    /// Imports a folder from outside the project into a destination under a
+    /// resource root. The source is enumerated recursively. Each file lands at
     /// its corresponding destination key through the gateway. A source that is
     /// a link is refused with a LinkNotFollowedError. Links inside the folder
     /// are left out, and the result says where each would have landed.

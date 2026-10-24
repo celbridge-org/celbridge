@@ -4,7 +4,6 @@ using Celbridge.Dialog;
 using Celbridge.Logging;
 using Celbridge.Projects;
 using Celbridge.UserInterface;
-using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Explorer.Menu.Options;
@@ -18,7 +17,6 @@ public class ExportArchiveMenuOption : IMenuOption<ExplorerMenuContext>
 
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
-    private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IProjectService _projectService;
     private readonly IFilePickerService _filePickerService;
     private readonly ILogger<ExportArchiveMenuOption> _logger;
@@ -29,14 +27,12 @@ public class ExportArchiveMenuOption : IMenuOption<ExplorerMenuContext>
     public ExportArchiveMenuOption(
         IStringLocalizer stringLocalizer,
         ICommandService commandService,
-        IWorkspaceWrapper workspaceWrapper,
         IProjectService projectService,
         IFilePickerService filePickerService,
         ILogger<ExportArchiveMenuOption> logger)
     {
         _stringLocalizer = stringLocalizer;
         _commandService = commandService;
-        _workspaceWrapper = workspaceWrapper;
         _projectService = projectService;
         _filePickerService = filePickerService;
         _logger = logger;
@@ -77,8 +73,6 @@ public class ExportArchiveMenuOption : IMenuOption<ExplorerMenuContext>
             return;
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-
         // The project folder resource has an empty name, so the archive is named after the folder on disk.
         var projectFolderName = Path.GetFileName(_projectService.CurrentProject!.ProjectFolderPath);
         var suggestedFileName = $"{projectFolderName}{ZipFileExtension}";
@@ -95,11 +89,9 @@ public class ExportArchiveMenuOption : IMenuOption<ExplorerMenuContext>
         }
         var archiveFilePath = pickResult.Value;
 
-        var projectFolderKey = resourceRegistry.GetResourceKey(context.ProjectFolder);
-
         _commandService.Execute<IExportArchiveCommand>(command =>
         {
-            command.SourceResource = projectFolderKey;
+            command.SourceResource = ResourceKey.Empty;
             command.ArchiveFilePath = archiveFilePath;
         });
     }

@@ -1,7 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.ContextMenu;
 using Celbridge.UserInterface;
-using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Explorer.Menu.Options;
@@ -13,19 +12,16 @@ public class NewFolderMenuOption : IMenuOption<ExplorerMenuContext>
 {
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
-    private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public int Priority => 2;
     public string GroupId => nameof(ExplorerMenuGroup.AddItems);
 
     public NewFolderMenuOption(
         IStringLocalizer stringLocalizer,
-        ICommandService commandService,
-        IWorkspaceWrapper workspaceWrapper)
+        ICommandService commandService)
     {
         _stringLocalizer = stringLocalizer;
         _commandService = commandService;
-        _workspaceWrapper = workspaceWrapper;
     }
 
     public MenuItemDisplayInfo GetDisplayInfo(ExplorerMenuContext context)
@@ -44,9 +40,7 @@ public class NewFolderMenuOption : IMenuOption<ExplorerMenuContext>
 
     public void Execute(ExplorerMenuContext context)
     {
-        var destFolder = context.GetTargetFolder();
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var destFolderKey = resourceRegistry.GetResourceKey(destFolder);
+        var destFolderKey = context.GetTargetFolder();
 
         _commandService.Execute<ICreateResourceDialogCommand>(command =>
         {

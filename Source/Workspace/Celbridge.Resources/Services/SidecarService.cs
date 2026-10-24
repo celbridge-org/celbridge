@@ -279,18 +279,14 @@ public sealed class SidecarService : ISidecarService
     // The pre-mutation compose is captured up front so the post-mutation compose
     // can be compared against it; when they match the write is skipped, so a
     // no-op mutate (AddTagsAsync with already-present tags, SetFieldsAsync to
-    // the current values) does not trigger a watcher event or downstream
-    // resource refresh. A missing storage file is either created
+    // the current values) does not trigger a watcher event. A missing storage file is either created
     // (createIfMissing=true) or quietly skipped (createIfMissing=false); a
     // Broken sidecar fails rather than being overwritten with fresh content. A
     // mutation that leaves no fields deletes the now-blank sidecar instead of
     // writing an empty file.
     //
-    // The returned outcome lets callers distinguish a freshly-created sidecar
-    // (registry needs to learn about the new file) from an in-place update
-    // (registry already tracks the file; classification unchanged), from a
-    // deletion (the emptied file was removed; registry must drop it), and from
-    // a no-op (nothing happened on disk).
+    // The returned outcome says whether the mutation created the sidecar,
+    // updated it in place, deleted the emptied file or changed nothing on disk.
     private async Task<Result<SidecarWriteOutcome>> MutateFieldsAsync(
         ResourceKey resource,
         Action<Dictionary<string, object>> mutate,
@@ -390,10 +386,8 @@ public sealed class SidecarService : ISidecarService
     // resource. For a regular file this is the sibling .cel key produced by
     // GetSidecarKey. A .cel key passed directly returns unchanged — the data
     // tools reject such keys at the agent layer, but internal callers may still
-    // operate on a sidecar's own key. Non-project roots are refused outright:
-    // sidecar metadata is a project-scoped system and the tracking pass only
-    // scans the project tree, so cross-root sidecars would be silently
-    // invisible to validation.
+    // operate on a sidecar's own key. Other roots are refused outright, since
+    // sidecar metadata belongs to the project root alone.
     private Result<ResourceKey> ResolveSidecarKey(ResourceKey resource)
     {
         if (resource.IsEmpty)

@@ -27,12 +27,6 @@ public static class FeatureFlagConstants
     public const string WebViewLoadDiagnostics = "webview-load-diagnostics";
 
     /// <summary>
-    /// Shows the Open metadata file item on the Explorer context menu, which opens a file's .cel sidecar in
-    /// the code editor for editing by hand.
-    /// </summary>
-    public const string OpenCel = "open-cel";
-
-    /// <summary>
     /// Registers the bundled Notes editor for .note files, with its New File template. Off by default.
     /// </summary>
     public const string NoteEditor = "note-editor";

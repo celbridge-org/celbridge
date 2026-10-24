@@ -3,7 +3,6 @@ using System.Runtime.CompilerServices;
 using Celbridge.Dialog;
 using Celbridge.Logging;
 using Celbridge.Messaging;
-using Celbridge.Resources;
 using Celbridge.Settings;
 using Celbridge.Workspace;
 using Microsoft.UI.Dispatching;
@@ -27,7 +26,7 @@ public class CommandService : ICommandService
     private readonly List<QueuedCommand> _commandQueue = new();
 
     // The single monitor guarding _commandQueue. Every read and write of the queue takes it.
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
 
     private readonly Stopwatch _stopwatch = new();
     private double _lastWorkspaceUpdateTime = 0;
@@ -293,26 +292,6 @@ public class CommandService : ICommandService
                         if (executeResult.IsFailure)
                         {
                             _logger.LogError(executeResult, "Execute command failed");
-                        }
-
-                        // Update the resource registry synchronously before notifying callers.
-                        // This ensures ExecuteAsync callers see an up-to-date registry.
-                        if (command.CommandFlags.HasFlag(CommandFlags.UpdateResources))
-                        {
-                            var message = new RequestResourceRegistryUpdateMessage();
-                            _messengerService.Send(message);
-                        }
-
-                        // Refresh the resource tree view if the command requires it.
-                        // This is a lightweight alternative to UpdateResources for commands
-                        // that only modify tree view state without changing resources on disk.
-                        // Skip if UpdateResources is also set, as the registry update already
-                        // triggers a tree rebuild.
-                        if (command.CommandFlags.HasFlag(CommandFlags.RefreshResourceTree) &&
-                            !command.CommandFlags.HasFlag(CommandFlags.UpdateResources))
-                        {
-                            var refreshMessage = new RefreshResourceTreeMessage();
-                            _messengerService.Send(refreshMessage);
                         }
 
                         // Call the OnExecute callback if it is set.

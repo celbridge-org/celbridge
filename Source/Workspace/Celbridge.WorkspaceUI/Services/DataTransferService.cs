@@ -81,21 +81,8 @@ public class DataTransferService : IDataTransferService, IDisposable
             return Result<IResourceTransfer>.Fail("Workspace is not loaded");
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
         var resourceTransferService = _workspaceWrapper.WorkspaceService.ResourceService.Transfers;
-
-        var getResult = resourceRegistry.GetResource(destFolderResource);
-        if (getResult.IsFailure)
-        {
-            return Result<IResourceTransfer>.Fail($"Destination folder resource '{destFolderResource}' does not exist");
-        }
-
-        var resource = getResult.Value;
-        if (resource is not IFolderResource)
-        {
-            return Result<IResourceTransfer>.Fail($"Resource '{destFolderResource}' is not a folder resource");
-        }
 
         var resolveResult = rootHandlerRegistry.ResolveResourcePath(destFolderResource);
         if (resolveResult.IsFailure)

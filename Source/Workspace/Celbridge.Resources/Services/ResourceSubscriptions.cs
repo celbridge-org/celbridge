@@ -17,7 +17,7 @@ internal sealed record RootSubscriptions(
 internal sealed class ResourceSubscriptions
 {
     // Guards the writes. Each array is replaced as a whole, so a reader takes it without the lock.
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
 
     private MatcherSubscription[] _matcherSubscriptions = Array.Empty<MatcherSubscription>();
     private ResourceKeySubscription[] _keySubscriptions = Array.Empty<ResourceKeySubscription>();

@@ -8,7 +8,7 @@ using Celbridge.Workspace;
 namespace Celbridge.Tests.Resources;
 
 /// <summary>
-/// Tests for ResourceWalker over a temporary project folder, through a real registry and gateway.
+/// Tests for ResourceWalker over a temporary project folder, through real root handlers and a real gateway.
 /// </summary>
 [TestFixture]
 public class ResourceWalkerTests
@@ -183,8 +183,8 @@ public class ResourceWalkerTests
         blockingFileSystem.EnumerateFolderAsync(Arg.Any<ResourceKey>()).Returns(_ =>
         {
             listingReleased.Wait(TimeSpan.FromSeconds(10));
-            IReadOnlyList<FolderItem> noItems = Array.Empty<FolderItem>();
-            return Task.FromResult(Result<IReadOnlyList<FolderItem>>.Ok(noItems));
+            IReadOnlyList<FolderChild> noItems = Array.Empty<FolderChild>();
+            return Task.FromResult(Result<IReadOnlyList<FolderChild>>.Ok(noItems));
         });
         _resourceService.FileSystem.Returns(blockingFileSystem);
 

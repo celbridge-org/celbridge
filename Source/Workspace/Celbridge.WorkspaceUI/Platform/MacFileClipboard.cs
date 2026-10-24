@@ -18,7 +18,7 @@ public sealed class MacFileClipboard : IFileClipboard
     // The uniform type identifier NSPasteboard uses for plain text (NSPasteboardTypeString).
     private const string StringType = "public.utf8-plain-text";
 
-    private readonly object _writeLock = new();
+    private readonly Lock _writeLock = new();
     private nint _lastWriteChangeCount = -1;
     private DataTransferMode _lastWriteMode;
 

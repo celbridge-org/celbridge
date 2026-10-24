@@ -22,9 +22,14 @@ public partial class DocumentShortcutViewModel : ObservableObject
     ];
 
     private readonly IIconService _iconService;
-    private readonly Func<ResourceKey, bool> _resourceExists;
+    private readonly Func<ResourceKey, Task<bool>> _checkResourceExistsAsync;
 
     private IReadOnlyList<string>? _areaOptions;
+
+    // The answer of the most recently started check, and how many checks have started. A check that finishes
+    // after a later one started is dropped.
+    private bool _resourceExists;
+    private int _resourceCheckCount;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(DisplayName))]
@@ -102,13 +107,12 @@ public partial class DocumentShortcutViewModel : ObservableObject
     {
         get
         {
-            var fileResource = TryGetFileResource();
-            if (fileResource is null)
+            if (TryGetFileResource() is null)
             {
                 return false;
             }
 
-            return !_resourceExists(fileResource.Value);
+            return !_resourceExists;
         }
     }
 
@@ -153,13 +157,12 @@ public partial class DocumentShortcutViewModel : ObservableObject
     {
         get
         {
-            var fileResource = TryGetFileResource();
-            if (fileResource is null)
+            if (TryGetFileResource() is null)
             {
                 return false;
             }
 
-            return _resourceExists(fileResource.Value);
+            return _resourceExists;
         }
     }
 
@@ -198,10 +201,36 @@ public partial class DocumentShortcutViewModel : ObservableObject
     public string InvalidResourceText => ProjectSettingsLabels.ShortcutInvalidResource;
     public string MissingResourceText => ProjectSettingsLabels.ShortcutMissingResource;
 
-    public DocumentShortcutViewModel(IIconService iconService, Func<ResourceKey, bool> resourceExists)
+    public DocumentShortcutViewModel(IIconService iconService, Func<ResourceKey, Task<bool>> checkResourceExistsAsync)
     {
         _iconService = iconService;
+        _checkResourceExistsAsync = checkResourceExistsAsync;
+    }
+
+    partial void OnResourceChanged(string value)
+    {
+        _ = CheckResourceExistsAsync();
+    }
+
+    // Checks whether the named resource exists, then updates IsResourceMissing and CanOpen. A check that finishes
+    // after the resource changed again is dropped.
+    private async Task CheckResourceExistsAsync()
+    {
+        _resourceCheckCount++;
+        var resourceCheck = _resourceCheckCount;
+
+        var fileResource = TryGetFileResource();
+        var resourceExists = fileResource is not null
+            && await _checkResourceExistsAsync(fileResource.Value);
+
+        if (resourceCheck != _resourceCheckCount)
+        {
+            return;
+        }
+
         _resourceExists = resourceExists;
+        OnPropertyChanged(nameof(IsResourceMissing));
+        OnPropertyChanged(nameof(CanOpen));
     }
 
     /// <summary>

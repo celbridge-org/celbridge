@@ -783,9 +783,7 @@ public class FileToolTests
     [Test]
     public async Task Grep_NonDefaultRootScope_WalksGatewayAndFindsMatches()
     {
-        // Regression: a temp:-scoped project-walk returned a silent empty result
-        // because the search index covers only the project tree. The scope now
-        // descends the named root through the gateway and finds the matches.
+        // A temp:-scoped grep walks the named root through the gateway and finds the matches.
         var stagingDir = Path.Combine(_tempFolder, "staging", "sample-package", "src");
         Directory.CreateDirectory(stagingDir);
         await File.WriteAllTextAsync(Path.Combine(stagingDir, "app.js"), "const alpha = 'beta';\n");

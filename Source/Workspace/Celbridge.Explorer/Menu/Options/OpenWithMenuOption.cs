@@ -44,24 +44,22 @@ public class OpenWithMenuOption : IMenuOption<ExplorerMenuContext>
 
     public MenuItemState GetState(ExplorerMenuContext context)
     {
-        if (context.ClickedResource is not IFileResource clickedFile)
+        if (context.ClickedResource.IsFolder)
         {
             return new MenuItemState(IsVisible: false, IsEnabled: false);
         }
 
-        var candidates = GetCandidateFactories(clickedFile);
+        var candidates = GetCandidateFactories(context.ClickedResource.Resource);
 
         bool hasMultipleEditors = candidates.Count >= 2;
         return new MenuItemState(IsVisible: hasMultipleEditors, IsEnabled: hasMultipleEditors);
     }
 
-    private IReadOnlyList<IDocumentEditorFactory> GetCandidateFactories(IFileResource clickedFile)
+    private IReadOnlyList<IDocumentEditorFactory> GetCandidateFactories(ResourceKey clickedFile)
     {
         var registry = _workspaceWrapper.WorkspaceService.DocumentsService.DocumentEditorRegistry;
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var resourceKey = resourceRegistry.GetResourceKey(clickedFile);
 
-        return registry.GetUserPickableFactoriesForResource(resourceKey);
+        return registry.GetUserPickableFactoriesForResource(clickedFile);
     }
 
     public async void Execute(ExplorerMenuContext context)
@@ -78,13 +76,12 @@ public class OpenWithMenuOption : IMenuOption<ExplorerMenuContext>
 
     private async Task ExecuteAsync(ExplorerMenuContext context)
     {
-        if (context.ClickedResource is not IFileResource clickedFile)
+        if (context.ClickedResource.IsFolder)
         {
             return;
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var resourceKey = resourceRegistry.GetResourceKey(clickedFile);
+        var resourceKey = context.ClickedResource.Resource;
 
         var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
 

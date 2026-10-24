@@ -4,12 +4,11 @@ using Celbridge.DataTransfer;
 namespace Celbridge.Explorer.Menu;
 
 /// <summary>
-/// Context for Explorer resource tree context menu operations.
+/// Context for Explorer resource tree context menu operations. The project folder's key is empty.
 /// </summary>
 public record ExplorerMenuContext(
-    IResource? ClickedResource,
-    IReadOnlyList<IResource> SelectedResources,
-    IFolderResource ProjectFolder,
+    ResourceItem ClickedResource,
+    IReadOnlyList<ResourceItem> SelectedResources,
     bool IsProjectFolderTargeted,
     bool HasClipboardData,
     ClipboardContentType ClipboardContentType,
@@ -47,30 +46,29 @@ public record ExplorerMenuContext(
     /// <summary>
     /// Gets the single selected resource, or null if zero or multiple items are selected.
     /// </summary>
-    public IResource? SingleSelectedResource => HasSingleSelection ? SelectedResources[0] : null;
+    public ResourceItem? SingleSelectedResource => HasSingleSelection ? SelectedResources[0] : null;
 
     /// <summary>
     /// True if any selected resource is the project folder.
     /// </summary>
-    public bool SelectionContainsProjectFolder => SelectedResources.Any(r => r == ProjectFolder);
+    public bool SelectionContainsProjectFolder => SelectedResources.Any(resourceItem => resourceItem.Resource.IsEmpty);
 
     /// <summary>
-    /// Resolves the target folder for operations based on the clicked resource or selection.
-    /// Returns the clicked/selected folder, the parent folder of a clicked/selected file, or the project folder.
+    /// Resolves the target folder for operations: the clicked folder, or the parent folder of a clicked file.
     /// </summary>
-    public IFolderResource GetTargetFolder()
+    public ResourceKey GetTargetFolder()
     {
-        var target = ClickedResource ?? (HasSingleSelection ? SingleSelectedResource : null);
+        return GetTargetFolder(ClickedResource);
+    }
 
-        if (target is IFolderResource folderResource)
-        {
-            return folderResource;
-        }
-        else if (target is IFileResource fileResource && fileResource.ParentFolder != null)
-        {
-            return fileResource.ParentFolder;
-        }
-
-        return ProjectFolder;
+    /// <summary>
+    /// Returns the folder for a new resource when the given resource is the target. A folder is its own
+    /// target folder. A file's target folder is the file's parent folder.
+    /// </summary>
+    public static ResourceKey GetTargetFolder(ResourceItem resourceItem)
+    {
+        return resourceItem.IsFolder
+            ? resourceItem.Resource
+            : resourceItem.Resource.GetParent();
     }
 }

@@ -74,7 +74,7 @@ public sealed partial class DocumentSectionContainer
     /// Event raised when resource files are dropped into a section from the ResourceTree, with the
     /// insertion slot in the tab order the drop point maps to.
     /// </summary>
-    public event Action<DocumentSectionView, List<IResource>, int>? FilesDropped;
+    public event Action<DocumentSectionView, List<ResourceItem>, int>? FilesDropped;
 
     /// <summary>
     /// The geometry of the areas the sections are laid out in: area visibility, splits and their splitters,
@@ -606,7 +606,7 @@ public sealed partial class DocumentSectionContainer
         }
     }
 
-    private void OnSectionFilesDropped(DocumentSectionView targetSection, List<IResource> resources, int insertionSlot)
+    private void OnSectionFilesDropped(DocumentSectionView targetSection, List<ResourceItem> resources, int insertionSlot)
     {
         FilesDropped?.Invoke(targetSection, resources, insertionSlot);
     }

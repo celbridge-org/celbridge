@@ -30,10 +30,6 @@ public class ExplorerService : IExplorerService, IDisposable
         "collapse-folders-button",
     };
 
-    private IResourceRegistry? _resourceRegistry;
-    private IResourceRegistry ResourceRegistry =>
-        _resourceRegistry ??= _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-
     private IRootHandlerRegistry RootHandlers =>
         _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
 
@@ -132,6 +128,10 @@ public class ExplorerService : IExplorerService, IDisposable
         var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;
         Guard.IsNotNull(propertyBag);
 
+        // Lists the project folder and the expanded folders the workspace saved.
+        var explorerPanel = _workspaceWrapper.WorkspaceService.UtilityPanel.ExplorerPanel;
+        await explorerPanel.RefreshTreeAsync();
+
         var json = await propertyBag.GetPropertyAsync<string>(PreviousSelectedResourcesKey);
         if (string.IsNullOrEmpty(json))
         {
@@ -152,7 +152,6 @@ public class ExplorerService : IExplorerService, IDisposable
                 .ToList();
 
             // Select all previously selected resources
-            var explorerPanel = _workspaceWrapper.WorkspaceService.UtilityPanel.ExplorerPanel;
             var selectResult = await explorerPanel.SelectResources(resources);
             if (selectResult.IsFailure)
             {
@@ -201,31 +200,15 @@ public class ExplorerService : IExplorerService, IDisposable
         return Result.Ok();
     }
 
-    public IconDefinition GetIconForResource(ResourceKey resource)
+    public IconDefinition GetIconForFile(ResourceKey file)
     {
-        // If the resource is a folder, use the folder icon
-        var getResourceResult = ResourceRegistry.GetResource(resource);
-        if (getResourceResult.IsSuccess)
-        {
-            var r = getResourceResult.Value;
-            if (r is IFolderResource)
-            {
-                var icon = _iconService.DefaultFolderIcon with
-                {
-                    FontColor = IconService.DefaultFolderColor
-                };
-                return icon;
-            }
-        }
-
-        // If the resource is a file, match on the whole name so a file with no extension is recognised.
-        var getIconResult = _iconService.GetFileIconForFileName(resource.ResourceName);
+        // Match on the whole name so a file with no extension is recognised.
+        var getIconResult = _iconService.GetFileIconForFileName(file.ResourceName);
         if (getIconResult.IsSuccess)
         {
             return getIconResult.Value;
         }
 
-        // Return the default file icon if we couldn't find a better match
         return _iconService.DefaultFileIcon;
     }
 

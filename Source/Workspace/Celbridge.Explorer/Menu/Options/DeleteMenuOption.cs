@@ -13,7 +13,6 @@ public class DeleteMenuOption : IMenuOption<ExplorerMenuContext>
 {
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
-    private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IShortcutHintService _shortcutHintService;
 
     public int Priority => 4;
@@ -22,12 +21,10 @@ public class DeleteMenuOption : IMenuOption<ExplorerMenuContext>
     public DeleteMenuOption(
         IStringLocalizer stringLocalizer,
         ICommandService commandService,
-        IWorkspaceWrapper workspaceWrapper,
         IShortcutHintService shortcutHintService)
     {
         _stringLocalizer = stringLocalizer;
         _commandService = commandService;
-        _workspaceWrapper = workspaceWrapper;
         _shortcutHintService = shortcutHintService;
     }
 
@@ -62,9 +59,8 @@ public class DeleteMenuOption : IMenuOption<ExplorerMenuContext>
             return;
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         var resourceKeys = context.SelectedResources
-            .Select(r => resourceRegistry.GetResourceKey(r))
+            .Select(resourceItem => resourceItem.Resource)
             .ToList();
 
         _commandService.Execute<IDeleteResourceDialogCommand>(command =>

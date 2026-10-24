@@ -107,10 +107,8 @@ public class SidecarServiceTests
     [Test]
     public async Task ReadAsync_ReadsFileItself_WhenResourceIsCelKey()
     {
-        // Internal callers that already hold a .cel key (e.g. the open-cel
-        // feature flag's open path) read the file's own content directly
-        // rather than appending .cel again (which would produce a bogus
-        // .cel.cel key).
+        // A caller that already has a .cel key reads the file's own content.
+        // Appending .cel again would produce a bogus .cel.cel key.
         var celResource = new ResourceKey("design.widget.cel");
 
         _resourceFileSystem.GetInfoAsync(celResource)
@@ -149,10 +147,7 @@ public class SidecarServiceTests
         var setResult = await _sidecarService.SetFieldsAsync(regularFile, fields);
 
         setResult.IsSuccess.Should().BeTrue();
-        // The sidecar did not exist on disk, so this write materialises a new
-        // file. The Created outcome is what gates the registry-update flag on
-        // the calling command (existing-file updates must report Updated so
-        // the rescan is skipped).
+        // The sidecar did not exist on disk, so this write creates a new file.
         setResult.Value.Should().Be(SidecarWriteOutcome.Created);
         await _resourceFileSystem.Received(1).WriteAllTextAsync(
             siblingSidecar,
@@ -162,9 +157,7 @@ public class SidecarServiceTests
     [Test]
     public async Task SetFieldsAsync_ReportsUpdated_WhenSidecarAlreadyExists()
     {
-        // Mutating an existing sidecar reports Updated, not Created. The
-        // command layer uses this distinction to suppress the synchronous
-        // registry rebuild that's only needed when a new .cel file appears.
+        // Mutating an existing sidecar reports Updated, not Created.
         var celResource = new ResourceKey("design.widget.cel");
 
         _resourceFileSystem.GetInfoAsync(celResource)
@@ -187,9 +180,8 @@ public class SidecarServiceTests
     [Test]
     public async Task SetFieldsAsync_ReportsNoChange_WhenValuesMatchExisting()
     {
-        // The canonical-compare short-circuits a redundant write. The outcome
-        // must be NoChange so the command layer can skip both the watcher
-        // fan-out and the registry rebuild for set-to-current-value calls.
+        // The canonical-compare short-circuits a redundant write, so a
+        // set-to-current-value call reports NoChange and fires no watcher event.
         var regularFile = new ResourceKey("photo.png");
         var siblingSidecar = new ResourceKey("photo.png.cel");
 
@@ -485,8 +477,7 @@ public class SidecarServiceTests
     public async Task RemoveFieldsAsync_DeletesSidecar_WhenLastFieldRemoved()
     {
         // Removing the final field empties the sidecar. Rather than leave a
-        // blank .cel file, the service deletes it and reports Deleted so the
-        // calling command forces the registry to drop the removed file.
+        // blank .cel file, the service deletes it and reports Deleted.
         var regularFile = new ResourceKey("photo.png");
         var siblingSidecar = new ResourceKey("photo.png.cel");
 
@@ -531,9 +522,8 @@ public class SidecarServiceTests
     [Test]
     public void GetSidecarKey_FailsForNonProjectRoot()
     {
-        // Sidecars are a project-scoped metadata system; the tracking pass only
-        // scans the project tree, so cross-root sidecars would be silently
-        // invisible to validation. The API refuses non-project roots up front.
+        // Sidecars belong to the project root alone, so the API refuses other
+        // roots up front.
         var result = _sidecarService.GetSidecarKey(new ResourceKey("logs:foo.txt"));
 
         result.IsFailure.Should().BeTrue();

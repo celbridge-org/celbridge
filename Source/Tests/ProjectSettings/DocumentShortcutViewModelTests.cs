@@ -13,7 +13,7 @@ public class DocumentShortcutViewModelTests
         bool resourceExists = true,
         WorkspaceArea area = WorkspaceArea.Main)
     {
-        return new DocumentShortcutViewModel(new IconService(), fileResource => resourceExists)
+        return new DocumentShortcutViewModel(new IconService(), fileResource => Task.FromResult(resourceExists))
         {
             Resource = resource,
             Icon = icon,

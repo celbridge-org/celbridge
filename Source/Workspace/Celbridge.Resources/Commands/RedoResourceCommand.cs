@@ -5,8 +5,6 @@ namespace Celbridge.Resources.Commands;
 
 public class RedoResourceCommand : CommandBase, IRedoResourceCommand
 {
-    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
-
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public RedoResourceCommand(IWorkspaceWrapper workspaceWrapper)

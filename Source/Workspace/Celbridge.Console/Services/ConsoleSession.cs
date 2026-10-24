@@ -45,13 +45,13 @@ internal sealed class ConsoleSession : IDisposable
 
     // Input and programmatic injections wait until start-up is done. Start-up is done when the ready marker has
     // arrived or timed out, and the console's script has been typed. _gateLock guards both flags.
-    private readonly object _gateLock = new();
+    private readonly Lock _gateLock = new();
     private readonly List<string> _bufferedInjections = new();
     private volatile bool _startupGateClosed;
     private bool _awaitingMarker;
     private bool _awaitingScript;
 
-    private readonly object _streamLock = new();
+    private readonly Lock _streamLock = new();
     private readonly DiagnosticSequenceScanner _diagnosticScanner = new();
     private StartupMarkerScanner? _markerScanner;
     private bool _markerPersistsOnScreen;

@@ -14,7 +14,7 @@ public sealed class ConsoleTriggerScheduler
     private readonly Action<Guid, string> _fire;
     private readonly TimeProvider _timeProvider;
 
-    private readonly object _pendingLock = new();
+    private readonly Lock _pendingLock = new();
 
     // The most recent request seen for each command. A wait that wakes to find a higher number has been
     // superseded, which is what makes a fresh request restart the wait rather than run alongside it.

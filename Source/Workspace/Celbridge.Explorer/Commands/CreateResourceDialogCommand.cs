@@ -47,7 +47,7 @@ public class CreateResourceDialogCommand : CommandBase, ICreateResourceDialogCom
         if (DestFolderResource.IsEmpty
             && _workspaceWrapper.IsWorkspaceLoaded)
         {
-            DestFolderResource = ResolveDefaultDestinationFolder();
+            DestFolderResource = await ResolveDefaultDestinationFolderAsync();
         }
 
         if (ResourceType == ResourceType.File)
@@ -60,35 +60,35 @@ public class CreateResourceDialogCommand : CommandBase, ICreateResourceDialogCom
         }
     }
 
-    private ResourceKey ResolveDefaultDestinationFolder()
+    private async Task<ResourceKey> ResolveDefaultDestinationFolderAsync()
     {
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         var explorerService = _workspaceWrapper.WorkspaceService.ExplorerService;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
         var selectedResource = explorerService.SelectedResource;
-        if (!selectedResource.IsEmpty)
+        if (selectedResource.IsEmpty)
         {
-            var getResult = resourceRegistry.GetResource(selectedResource);
-            if (getResult.IsSuccess)
-            {
-                var resource = getResult.Value;
-                if (resource is IFolderResource)
-                {
-                    return selectedResource;
-                }
-                if (resource is IFileResource fileResource)
-                {
-                    // ParentFolder is nullable; fall back to the project folder default below when absent.
-                    var parentFolder = fileResource.ParentFolder;
-                    if (parentFolder is not null)
-                    {
-                        return resourceRegistry.GetResourceKey(parentFolder);
-                    }
-                }
-            }
+            return ResourceKey.Empty;
         }
 
-        return resourceRegistry.GetResourceKey(resourceRegistry.ProjectFolder);
+        var infoResult = await resourceFileSystem.GetInfoAsync(selectedResource);
+        if (infoResult.IsFailure)
+        {
+            return ResourceKey.Empty;
+        }
+
+        var itemKind = infoResult.Value.Kind;
+        if (itemKind == StorageItemKind.Folder)
+        {
+            return selectedResource;
+        }
+
+        if (itemKind == StorageItemKind.File)
+        {
+            return selectedResource.GetParent();
+        }
+
+        return ResourceKey.Empty;
     }
 
     private async Task<Result> ShowNewFileDialogAsync()
@@ -98,32 +98,16 @@ public class CreateResourceDialogCommand : CommandBase, ICreateResourceDialogCom
             return Result.Fail($"Failed to show new file dialog because workspace is not loaded");
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-
-        var getResult = resourceRegistry.GetResource(DestFolderResource);
-        if (getResult.IsFailure)
+        var validator = _serviceProvider.GetRequiredService<IResourceNameValidator>();
+        var setParentResult = await validator.SetParentFolderAsync(DestFolderResource);
+        if (setParentResult.IsFailure)
         {
             return Result.Fail($"Failed to resolve destination folder: '{DestFolderResource}'")
-                .WithErrors(getResult);
+                .WithErrors(setParentResult);
         }
-
-        var parentFolder = getResult.Value as IFolderResource;
-        if (parentFolder is null)
-        {
-            return Result.Fail($"Parent folder resource key '{DestFolderResource}' does not reference a folder resource.");
-        }
-
-        var getDefaultResult = await FindDefaultFileNameAsync(parentFolder);
-        if (getDefaultResult.IsFailure)
-        {
-            return Result.Fail()
-                .WithErrors(getDefaultResult);
-        }
-        var defaultFileName = getDefaultResult.Value;
-
-        var validator = _serviceProvider.GetRequiredService<IResourceNameValidator>();
-        validator.ParentFolder = parentFolder;
         validator.ValidateAsFolder = false;
+
+        var defaultFileName = await FindDefaultFileNameAsync(DestFolderResource);
 
         var selectionRange = ResourceNameHelper.GetNameSelectionRange(defaultFileName);
 
@@ -156,32 +140,16 @@ public class CreateResourceDialogCommand : CommandBase, ICreateResourceDialogCom
             return Result.Fail($"Failed to show new folder dialog because workspace is not loaded");
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-
-        var getResult = resourceRegistry.GetResource(DestFolderResource);
-        if (getResult.IsFailure)
+        var validator = _serviceProvider.GetRequiredService<IResourceNameValidator>();
+        var setParentResult = await validator.SetParentFolderAsync(DestFolderResource);
+        if (setParentResult.IsFailure)
         {
             return Result.Fail($"Failed to resolve destination folder: '{DestFolderResource}'")
-                .WithErrors(getResult);
+                .WithErrors(setParentResult);
         }
-
-        var parentFolder = getResult.Value as IFolderResource;
-        if (parentFolder is null)
-        {
-            return Result.Fail($"Parent folder resource key '{DestFolderResource}' does not reference a folder resource.");
-        }
-
-        var getDefaultResult = await FindDefaultFolderNameAsync(parentFolder);
-        if (getDefaultResult.IsFailure)
-        {
-            return Result.Fail()
-                .WithErrors(getDefaultResult);
-        }
-        var defaultText = getDefaultResult.Value;
-
-        var validator = _serviceProvider.GetRequiredService<IResourceNameValidator>();
-        validator.ParentFolder = parentFolder;
         validator.ValidateAsFolder = true;
+
+        var defaultText = await FindDefaultFolderNameAsync(DestFolderResource);
 
         var titleString = _stringLocalizer.GetString(NewFolderTitleKey);
         var nameString = _stringLocalizer.GetString(FolderNameKey);
@@ -218,16 +186,9 @@ public class CreateResourceDialogCommand : CommandBase, ICreateResourceDialogCom
     /// <summary>
     /// Find a default folder name that doesn't clash with an existing folder on disk.
     /// </summary>
-    private async Task<Result<string>> FindDefaultFolderNameAsync(IFolderResource? parentFolder)
+    private async Task<string> FindDefaultFolderNameAsync(ResourceKey parentFolderKey)
     {
-        if (parentFolder is null)
-        {
-            return Result<string>.Fail("Parent folder is null");
-        }
-
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
-        var parentFolderKey = resourceRegistry.GetResourceKey(parentFolder);
 
         string defaultFolderName = string.Empty;
         int folderNumber = 1;
@@ -246,27 +207,19 @@ public class CreateResourceDialogCommand : CommandBase, ICreateResourceDialogCom
             folderNumber++;
         }
 
-        return Result<string>.Ok(defaultFolderName);
+        return defaultFolderName;
     }
 
     /// <summary>
     /// Find a default file name that doesn't clash with an existing file on disk.
     /// Uses the previously saved file extension from settings.
     /// </summary>
-    private async Task<Result<string>> FindDefaultFileNameAsync(IFolderResource? parentFolder)
+    private async Task<string> FindDefaultFileNameAsync(ResourceKey parentFolderKey)
     {
-        if (parentFolder is null)
-        {
-            return Result<string>.Fail("Parent folder is null");
-        }
-
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
         // Get the previously saved extension
         var extension = _workspaceWrapper.WorkspaceService.BindableWorkspaceSettings.PreviousNewFileExtension;
-
-        var parentFolderKey = resourceRegistry.GetResourceKey(parentFolder);
 
         string defaultFileName = string.Empty;
         int fileNumber = 1;
@@ -288,7 +241,7 @@ public class CreateResourceDialogCommand : CommandBase, ICreateResourceDialogCom
             fileNumber++;
         }
 
-        return Result<string>.Ok(defaultFileName);
+        return defaultFileName;
     }
 
     public static void NewFileDialog(ResourceKey parentFolderResource)

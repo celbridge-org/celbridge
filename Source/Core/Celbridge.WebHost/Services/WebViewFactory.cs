@@ -15,7 +15,7 @@ internal class WebViewFactory : IWebViewFactory, IDisposable
 
     // Views that have been created but not handed out. A view never comes back once its owner has it.
     private readonly Queue<WebViewBase> _prewarmQueue = new();
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private bool _isShuttingDown = false;
 
     private Task? _prewarmTask = null;

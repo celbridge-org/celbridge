@@ -14,7 +14,6 @@ public class CutMenuOption : IMenuOption<ExplorerMenuContext>
 {
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
-    private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IShortcutHintService _shortcutHintService;
 
     public int Priority => 1;
@@ -23,12 +22,10 @@ public class CutMenuOption : IMenuOption<ExplorerMenuContext>
     public CutMenuOption(
         IStringLocalizer stringLocalizer,
         ICommandService commandService,
-        IWorkspaceWrapper workspaceWrapper,
         IShortcutHintService shortcutHintService)
     {
         _stringLocalizer = stringLocalizer;
         _commandService = commandService;
-        _workspaceWrapper = workspaceWrapper;
         _shortcutHintService = shortcutHintService;
     }
 
@@ -65,11 +62,10 @@ public class CutMenuOption : IMenuOption<ExplorerMenuContext>
             return;
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         var commandService = _commandService;
 
         var resourceKeys = context.SelectedResources
-            .Select(r => resourceRegistry.GetResourceKey(r))
+            .Select(resourceItem => resourceItem.Resource)
             .ToList();
 
         commandService.Execute<ICopyResourceToClipboardCommand>(command =>

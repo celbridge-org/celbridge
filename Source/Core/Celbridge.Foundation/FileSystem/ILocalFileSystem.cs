@@ -159,6 +159,12 @@ public interface ILocalFileSystem
     Task<Result<IReadOnlyList<FileSystemEntry>>> EnumerateAsync(string path, string pattern, bool recursive);
 
     /// <summary>
+    /// Returns true when the predicate accepts an entry directly inside the folder. The folder is read in the
+    /// platform's own order, and reading stops at the first entry the predicate accepts.
+    /// </summary>
+    Task<Result<bool>> HasEntryAsync(string path, Func<FileSystemEntry, bool> predicate);
+
+    /// <summary>
     /// Moves a file from source to destination. The destination's parent folder
     /// must exist. An existing file at the destination is replaced when overwrite
     /// is true, and makes the move fail otherwise.

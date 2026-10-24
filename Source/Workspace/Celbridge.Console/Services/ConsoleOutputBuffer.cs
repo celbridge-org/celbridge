@@ -11,7 +11,7 @@ public sealed class ConsoleOutputBuffer
     // Comfortably above xterm's default 1000-line scrollback at wide terminal widths.
     private const int MaxChars = 256_000;
 
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private readonly StringBuilder _buffer = new();
 
     public void Append(string text)

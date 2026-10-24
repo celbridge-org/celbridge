@@ -22,12 +22,6 @@ public record ServerStartedEvent(int Port) : AutomationEvent;
 public record WorkspaceLoadedEvent(string ProjectFile, long ElapsedMs) : AutomationEvent;
 
 /// <summary>
-/// The resource registry has rescanned the project, and the views that show it have updated. ElapsedMs is how long
-/// the rescan took, in milliseconds.
-/// </summary>
-public record ResourceRegistryUpdatedEvent(long ElapsedMs) : AutomationEvent;
-
-/// <summary>
 /// The resource monitor has delivered a batch of changes in a root to the root's subscriptions. Keys is how many
 /// touched keys the batch held, and ElapsedMs is how long matching them and checking the disk took, in milliseconds.
 /// </summary>
@@ -39,8 +33,8 @@ public record ResourceChangesDeliveredEvent(string RootName, int Keys, long Elap
 public record ResourceEventsLostEvent(string RootName) : AutomationEvent;
 
 /// <summary>
-/// The Explorer has rebuilt the rows it shows. Rows is how many rows it shows, and ElapsedMs is how long the
-/// rebuild took, in milliseconds.
+/// The Explorer has listed and checked the folders on screen, and rebuilt the rows. Rows is how many rows the
+/// Explorer shows, and ElapsedMs is how long the listings, the checks and the rebuild took, in milliseconds.
 /// </summary>
 public record ExplorerTreeBuiltEvent(int Rows, long ElapsedMs) : AutomationEvent;
 

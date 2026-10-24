@@ -13,4 +13,4 @@ Every `file_*`, `document_*`, `explorer_*`, `spreadsheet_*`, `webview_*`, `query
 
 ## Why this matters
 
-If the user has stepped away, an interactive tool blocks until they return. The default is conservative — destructive registry operations are the kind of action that should pause for human approval. Pass `false` only when the user has explicitly asked for unattended operation.
+If the user has stepped away, an interactive tool blocks until they return. The default is conservative — destructive file operations are the kind of action that should pause for human approval. Pass `false` only when the user has explicitly asked for unattended operation.

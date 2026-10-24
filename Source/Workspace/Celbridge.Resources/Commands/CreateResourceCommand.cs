@@ -8,8 +8,6 @@ namespace Celbridge.Resources.Commands;
 
 public class CreateResourceCommand : CommandBase, ICreateResourceCommand
 {
-    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
-
     public ResourceType ResourceType { get; set; }
     public ResourceKey DestResource { get; set; }
     public bool OpenAfterCreating { get; set; } = false;

@@ -45,15 +45,15 @@ public class DuplicateResourceDialogCommand : CommandBase, IDuplicateResourceDia
             return Result.Fail($"Failed to show duplicate resource dialog because workspace is not loaded");
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
-        var getResult = resourceRegistry.GetResource(Resource);
+        var getResult = await resourceFileSystem.GetResourceItemAsync(Resource);
         if (getResult.IsFailure)
         {
-            return Result.Fail($"Failed to resolve resource: '{Resource}'")
-                .WithErrors(getResult);
+            return Result.Fail(getResult);
         }
-        var resource = getResult.Value;
+        var resourceItem = getResult.Value;
+        var resourceName = Resource.ResourceName;
 
         // Pre-populate the dialog with the auto-generated name the silent
         // duplicate path would have chosen (e.g. "foo - Copy.md"). Matches
@@ -62,19 +62,23 @@ public class DuplicateResourceDialogCommand : CommandBase, IDuplicateResourceDia
         // If the helper somehow can't produce a unique name (very rare; would
         // mean 1000+ existing copies of this name) we fall back to the
         // original name and let the validator reject it on dialog submit.
-        var defaultKeyResult = ResourceNameHelper.GenerateUniqueDuplicateKey(Resource, resourceRegistry);
+        var defaultKeyResult = await ResourceNameHelper.GenerateUniqueDuplicateKeyAsync(Resource, resourceFileSystem);
         var defaultText = defaultKeyResult.IsSuccess
             ? defaultKeyResult.Value.ResourceName
-            : resource.Name;
+            : resourceName;
 
         var selectedRange = ResourceNameHelper.GetNameSelectionRange(defaultText);
 
-        var duplicateResourceString = _stringLocalizer.GetString("ResourceTree_DuplicateResource", resource.Name);
+        var duplicateResourceString = _stringLocalizer.GetString("ResourceTree_DuplicateResource", resourceName);
         var enterNameString = _stringLocalizer.GetString("ResourceTree_DuplicateResourceEnterName");
 
         var validator = _serviceProvider.GetRequiredService<IResourceNameValidator>();
-        validator.ParentFolder = resource.ParentFolder;
-        validator.ValidateAsFolder = resource is IFolderResource;
+        var setParentResult = await validator.SetParentFolderAsync(Resource.GetParent());
+        if (setParentResult.IsFailure)
+        {
+            return Result.Fail(setParentResult);
+        }
+        validator.ValidateAsFolder = resourceItem.IsFolder;
 
         var showResult = await _dialogService.ShowInputTextDialogAsync(
             duplicateResourceString,
@@ -91,7 +95,7 @@ public class DuplicateResourceDialogCommand : CommandBase, IDuplicateResourceDia
             // Preserve folder-expansion state across the copy so a duplicated
             // expanded folder lands expanded in the tree.
             bool isExpandedFolder = false;
-            if (resource is IFolderResource)
+            if (resourceItem.IsFolder)
             {
                 var folderStateService = _workspaceWrapper.WorkspaceService.ExplorerService.FolderStateService;
                 isExpandedFolder = folderStateService.IsExpanded(Resource);

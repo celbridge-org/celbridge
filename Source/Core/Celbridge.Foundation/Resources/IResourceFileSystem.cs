@@ -82,12 +82,25 @@ public interface IResourceFileSystem
     Task<Result<StorageItemInfo>> GetInfoAsync(ResourceKey resource);
 
     /// <summary>
+    /// Returns the file or folder at the resource. Fails when the resource is absent. Also fails when reading
+    /// the resource fails.
+    /// </summary>
+    Task<Result<ResourceItem>> GetResourceItemAsync(ResourceKey resource);
+
+    /// <summary>
     /// Returns the immediate children of a folder resource. Single-level only;
     /// recursive callers walk per-level. Fails when the resource is not a folder.
     /// A link, file or folder, is left out, since no key that is a link or passes
     /// through one resolves.
     /// </summary>
-    Task<Result<IReadOnlyList<FolderItem>>> EnumerateFolderAsync(ResourceKey folder);
+    Task<Result<IReadOnlyList<FolderChild>>> EnumerateFolderAsync(ResourceKey folder);
+
+    /// <summary>
+    /// Returns true when the predicate accepts a child of a folder resource. The children are read in the
+    /// platform's own order, and reading stops at the first child the predicate accepts. A link or a reserved
+    /// folder is never offered. Fails when the resource is not a folder.
+    /// </summary>
+    Task<Result<bool>> HasChildAsync(ResourceKey folder, Func<FolderChild, bool> predicate);
 
     /// <summary>
     /// Returns a deterministic content fingerprint for the resource as an

@@ -35,15 +35,15 @@ public partial class ExplorerTools
         {
             return ToolResponse.Error("Workspace is not loaded.");
         }
-        var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var resourceFileSystem = workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
-        var getResult = resourceRegistry.GetResource(resourceKey);
+        var getResult = await resourceFileSystem.GetResourceItemAsync(resourceKey);
         if (getResult.IsFailure)
         {
             return ToolResponse.Error($"Cannot duplicate resource '{resourceKey}': resource does not exist.");
         }
 
-        var destKeyResult = ResourceNameHelper.GenerateUniqueDuplicateKey(resourceKey, resourceRegistry);
+        var destKeyResult = await ResourceNameHelper.GenerateUniqueDuplicateKeyAsync(resourceKey, resourceFileSystem);
         if (destKeyResult.IsFailure)
         {
             return ToolResponse.Error(destKeyResult);

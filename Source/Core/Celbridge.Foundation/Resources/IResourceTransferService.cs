@@ -21,16 +21,8 @@ public interface IResourceTransferService
 
     /// <summary>
     /// Returns a resolved destination resource key for a resource transfer.
-    /// If destResource specifies an existing folder in the project then the
-    /// source resource name is appended; otherwise destResource is returned
-    /// unchanged.
+    /// If destResource is a folder on disk then the source resource name is
+    /// appended. Otherwise destResource is returned unchanged.
     /// </summary>
-    ResourceKey ResolveDestinationResource(ResourceKey sourceResource, ResourceKey destResource);
-
-    /// <summary>
-    /// Returns the folder resource associated with the context menu item for
-    /// a resource. Folder → itself; file → its parent folder; null → the
-    /// project folder.
-    /// </summary>
-    ResourceKey GetContextMenuItemFolder(IResource? resource);
+    Task<ResourceKey> ResolveDestinationResourceAsync(ResourceKey sourceResource, ResourceKey destResource);
 }

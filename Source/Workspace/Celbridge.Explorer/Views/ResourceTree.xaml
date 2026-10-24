@@ -24,6 +24,7 @@
             MinHeight="32"
             Background="{ThemeResource SubtleFillColorTransparentBrush}"
             ToolTipService.ToolTip="{x:Bind TooltipText}"
+            AutomationProperties.AutomationId="{x:Bind RowAutomationId}"
             AutomationProperties.HelpText="{x:Bind ReadOnlyMessage}">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="32"/>
@@ -34,17 +35,19 @@
         <!-- Expand/Collapse chevron button (hidden for project folder) -->
         <Button Grid.Column="0"
                 Click="ExpanderButton_Click"
+                AutomationProperties.AutomationId="{x:Bind ExpanderAutomationId}"
                 AutomationProperties.Name="{x:Bind IsExpanded, Converter={StaticResource ExpanderNameConverter}}"
                 Visibility="{x:Bind ChevronVisibility}"
                 Style="{StaticResource TreeExpanderButtonStyle}">
           <controls:Icon
-                    Symbol="{x:Bind IsExpanded, Mode=OneWay, Converter={StaticResource ExpanderGlyphConverter}}"
+                    Symbol="{x:Bind IsExpanded, Converter={StaticResource ExpanderGlyphConverter}}"
                     FontSize="12"/>
         </Button>
 
         <!-- Resource icon. Dims with the name when the resource is read-only or hidden. -->
         <local:ResourceIcon Grid.Column="1"
-                            Resource="{x:Bind Resource}"
+                            IsFolder="{x:Bind IsFolder}"
+                            FileIcon="{x:Bind FileIcon}"
                             Opacity="{x:Bind IsDimmed, Converter={StaticResource InverseBoolToDimmedOpacityConverter}}"
                             Margin="0,0,8,0"
                             VerticalAlignment="Center"

@@ -71,8 +71,8 @@ public abstract partial class DocumentView : UserControl, IDocumentView
     }
 
     /// <summary>
-    /// Validates that the resource exists on disk, then sets the ViewModel properties. The registry is not consulted,
-    /// since it learns of a move only at the next rescan. Subclasses that override this must call base first.
+    /// Validates that the resource exists on disk, then sets the ViewModel properties. Subclasses that override this
+    /// must call base first.
     /// </summary>
     public virtual async Task<Result> SetFileResource(ResourceKey fileResource)
     {

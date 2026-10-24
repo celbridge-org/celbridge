@@ -46,13 +46,28 @@ public sealed partial class ExplorerPanel : UserControl, IExplorerPanel
         ResourceTree.NewFolderToSelectedFolder();
     }
 
+    public async Task RefreshTreeAsync()
+    {
+        await ResourceTree.RefreshTreeAsync();
+    }
+
+    public async Task SetFolderExpandedAsync(ResourceKey folder, bool isExpanded)
+    {
+        await ResourceTree.SetFolderExpandedAsync(folder, isExpanded);
+    }
+
+    public async Task CollapseAllFoldersAsync()
+    {
+        await ResourceTree.CollapseAllFoldersAsync();
+    }
+
     private void ExplorerToolbar_CollapseFoldersClicked(object sender, EventArgs e)
     {
-        ResourceTree.CollapseAllFolders();
+        _ = ResourceTree.CollapseAllFoldersAsync();
     }
 
     private void ExplorerToolbar_ShowHiddenFilesClicked(object sender, EventArgs e)
     {
-        ResourceTree.ToggleShowHiddenFiles();
+        _ = ResourceTree.ToggleShowHiddenFilesAsync();
     }
 }

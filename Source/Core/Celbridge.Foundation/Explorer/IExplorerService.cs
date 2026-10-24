@@ -49,7 +49,7 @@ public interface IExplorerService
     Task<Result> OpenApplication(ResourceKey resource);
 
     /// <summary>
-    /// Get an icon definition for the specified resource.
+    /// Returns the icon for a file, chosen by the file's name.
     /// </summary>
-    IconDefinition GetIconForResource(ResourceKey resource);
+    IconDefinition GetIconForFile(ResourceKey file);
 }

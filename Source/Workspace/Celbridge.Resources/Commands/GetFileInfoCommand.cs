@@ -36,7 +36,6 @@ public class GetFileInfoCommand : CommandBase, IGetFileInfoCommand
     public override async Task<Result> ExecuteAsync()
     {
         var workspaceService = _workspaceWrapper.WorkspaceService;
-        var resourceRegistry = workspaceService.ResourceService.Registry;
         var rootHandlerRegistry = workspaceService.ResourceService.RootHandlers;
         var resourceFileSystem = workspaceService.ResourceService.FileSystem;
 
@@ -69,18 +68,23 @@ public class GetFileInfoCommand : CommandBase, IGetFileInfoCommand
                 lineCount = await CountLinesAsync(resourceFileSystem, Resource);
             }
 
-            // Surface the paired sidecar's key and current parse state when
-            // the registry has recorded one for this file. Sidecars belong to
-            // file resources only; folders don't have their own sidecars in v1.
+            // Reports the sidecar's key and parse state when the file has a .cel sidecar on disk. Only a project
+            // file that is not itself a .cel file can have one.
             ResourceKey? sidecarKey = null;
             CelParseStatus? sidecarStatus = null;
-            var resourceResult = resourceRegistry.GetResource(Resource);
-            if (resourceResult.IsSuccess
-                && resourceResult.Value is IFileResource fileResource
-                && fileResource.Sidecar is not null)
+            var sidecarService = workspaceService.ResourceService.Sidecars;
+            var sidecarKeyResult = sidecarService.GetSidecarKey(Resource);
+            if (sidecarKeyResult.IsSuccess)
             {
-                sidecarKey = fileResource.Sidecar.Key;
-                sidecarStatus = fileResource.Sidecar.Status;
+                var readResult = await sidecarService.ReadAsync(Resource);
+                if (readResult.IsSuccess
+                    && readResult.Value.Outcome != SidecarReadOutcome.NoSidecar)
+                {
+                    sidecarKey = sidecarKeyResult.Value;
+                    sidecarStatus = readResult.Value.Outcome == SidecarReadOutcome.Healthy
+                        ? CelParseStatus.Healthy
+                        : CelParseStatus.Broken;
+                }
             }
 
             ResultValue = new FileInfoSnapshot(

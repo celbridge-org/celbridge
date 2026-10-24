@@ -51,6 +51,7 @@ public class FileEditorsSectionViewModelTests
         workspaceService.DocumentsService.Returns(_documentsService);
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
+        _workspaceWrapper.HasWorkspaceService.Returns(true);
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
         _projectService = Substitute.For<IProjectService>();
@@ -146,7 +147,7 @@ public class FileEditorsSectionViewModelTests
     [Test]
     public void Load_WithoutAWorkspace_ReportsNotLoadedRatherThanEmpty()
     {
-        _workspaceWrapper.WorkspaceService.Returns((IWorkspaceService?)null);
+        _workspaceWrapper.HasWorkspaceService.Returns(false);
 
         var viewModel = CreateViewModel();
         viewModel.Load();

@@ -13,7 +13,7 @@ public class StartupInjectorTests
 
     private sealed class FakeTerminal : ITerminal
     {
-        private readonly object _lock = new();
+        private readonly Lock _lock = new();
         private readonly List<string> _writes = new();
 
         public event EventHandler<string>? OutputReceived;

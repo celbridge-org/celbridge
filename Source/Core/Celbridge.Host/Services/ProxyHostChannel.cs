@@ -17,7 +17,7 @@ public sealed class ProxyHostChannel : IHostChannel, IDisposable
     // session. Oldest messages are the most stale, so those are dropped first.
     private const int MaxPendingOutboundMessages = 1000;
 
-    private readonly object _gate = new();
+    private readonly Lock _gate = new();
     private readonly List<string> _pendingOutbound = new();
     private readonly Action _onDisposed;
     private readonly ILogger<ProxyHostChannel> _logger;

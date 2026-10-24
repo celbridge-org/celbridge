@@ -27,10 +27,8 @@ public partial class FileTools
             return ToolResponse.InvalidResourceKey(resource);
         }
 
-        // Route through the command queue so the snapshot observes state after all
-        // previously enqueued commands have run. The command reads directly from the
-        // resource registry on the command thread, which is the synchronization point
-        // for registry mutations (folder adds, renames, etc).
+        // Route through the command queue so the snapshot follows every command
+        // ahead of it in the queue.
         var listContentsResult = await ExecuteCommandAsync<IListFolderContentsCommand, FolderContentsSnapshot>(
             command => command.Resource = resourceKey);
         if (listContentsResult.IsFailure)

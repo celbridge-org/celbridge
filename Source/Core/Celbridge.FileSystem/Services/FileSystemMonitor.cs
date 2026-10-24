@@ -29,7 +29,7 @@ public sealed class FileSystemMonitor : IFileSystemMonitor
     {
         // Guards the timer and the two fields below against a Changed event arriving while the debounce
         // callback for the same path is running.
-        public readonly object Lock = new();
+        public readonly Lock Lock = new();
 
         public ThreadingTimer? Timer;
 

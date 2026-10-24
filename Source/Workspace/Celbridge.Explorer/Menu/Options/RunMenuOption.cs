@@ -104,7 +104,7 @@ public class RunMenuOption : IMenuOption<ExplorerMenuContext>, ISubMenuOption<Ex
     {
         resourceKey = ResourceKey.Empty;
 
-        if (context.ClickedResource is not IFileResource clickedFile)
+        if (context.ClickedResource.IsFolder)
         {
             return false;
         }
@@ -114,8 +114,7 @@ public class RunMenuOption : IMenuOption<ExplorerMenuContext>, ISubMenuOption<Ex
             return false;
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        resourceKey = resourceRegistry.GetResourceKey(clickedFile);
+        resourceKey = context.ClickedResource.Resource;
         return true;
     }
 }

@@ -65,7 +65,7 @@ public class DeleteResourceDialogCommand : CommandBase, IDeleteResourceDialogCom
             return Result.Ok();
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
         var operations = _workspaceWrapper.WorkspaceService.ResourceService.Operations;
         var deleteString = _stringLocalizer.GetString("ResourceTree_Delete");
 
@@ -101,21 +101,17 @@ public class DeleteResourceDialogCommand : CommandBase, IDeleteResourceDialogCom
         if (Resources.Count == 1)
         {
             // Single item - show specific name
-            var getResult = resourceRegistry.GetResource(Resources[0]);
+            var getResult = await resourceFileSystem.GetResourceItemAsync(Resources[0]);
             if (getResult.IsFailure)
             {
-                return Result.Fail($"Failed to resolve resource: '{Resources[0]}'")
-                    .WithErrors(getResult);
+                return Result.Fail(getResult);
             }
-            var resource = getResult.Value;
-            var resourceName = resource.Name;
+            var resourceItem = getResult.Value;
+            var resourceName = resourceItem.Resource.ResourceName;
 
-            string confirmDeleteStringKey = resource switch
-            {
-                IFileResource => "ResourceTree_ConfirmDeleteFile",
-                IFolderResource => "ResourceTree_ConfirmDeleteFolder",
-                _ => throw new ArgumentException()
-            };
+            var confirmDeleteStringKey = resourceItem.IsFolder
+                ? "ResourceTree_ConfirmDeleteFolder"
+                : "ResourceTree_ConfirmDeleteFile";
 
             confirmDeleteString = _stringLocalizer.GetString(confirmDeleteStringKey, resourceName);
         }

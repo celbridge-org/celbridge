@@ -38,7 +38,7 @@ public enum ResourceOperationType
     Archive,
 
     /// <summary>
-    /// Extract the contents of a .zip archive into the project tree.
+    /// Extract the contents of a .zip archive into a project folder.
     /// </summary>
     Extract,
 
@@ -47,27 +47,6 @@ public enum ResourceOperationType
     /// </summary>
     Export,
 }
-
-/// <summary>
-/// A message sent to request a synchronous resource registry update after command execution.
-/// </summary>
-public record RequestResourceRegistryUpdateMessage;
-
-/// <summary>
-/// A message sent immediately before a resource registry update reads the file system. Sent before the
-/// read rather than after, so a listener can tell which changes that read is guaranteed to have observed.
-/// </summary>
-public record ResourceRegistryUpdateStartingMessage;
-
-/// <summary>
-/// A message sent when the resource registry has been updated.
-/// </summary>
-public record ResourceRegistryUpdatedMessage;
-
-/// <summary>
-/// A message sent to request a resource tree view refresh without updating the resource registry.
-/// </summary>
-public record RefreshResourceTreeMessage;
 
 /// <summary>
 /// A message sent once when a resource has been moved or renamed within a root. For a moved folder, the message names

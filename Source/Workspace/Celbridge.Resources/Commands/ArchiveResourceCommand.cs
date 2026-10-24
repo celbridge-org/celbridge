@@ -8,8 +8,6 @@ namespace Celbridge.Resources.Commands;
 
 public class ArchiveResourceCommand : CommandBase, IArchiveResourceCommand
 {
-    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
-
     public ResourceKey SourceResource { get; set; }
     public ResourceKey ArchiveResource { get; set; }
     public string Include { get; set; } = string.Empty;
@@ -60,7 +58,6 @@ public class ArchiveResourceCommand : CommandBase, IArchiveResourceCommand
         }
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
-        var resourceRegistry = workspaceService.ResourceService.Registry;
         var resourceOpService = workspaceService.ResourceService.Operations;
         var resourceFileSystem = workspaceService.ResourceService.FileSystem;
 

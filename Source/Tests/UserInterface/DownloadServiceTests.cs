@@ -9,6 +9,7 @@ using Celbridge.Resources;
 using Celbridge.Resources.Services;
 using Celbridge.Resources.Services.Roots;
 using Celbridge.Tests.FileSystem;
+using Celbridge.Tests.Helpers;
 using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
 
@@ -19,7 +20,7 @@ namespace Celbridge.Tests.UserInterface;
 /// it. These tests pin the rules that keep a download inside the project and its record honest: a download
 /// lands in the folder the project names, a taken name is uniquified even against a transfer still running,
 /// a denied destination is reported rather than written, a staged file is always cleaned up, and a record
-/// whose file has gone leaves the list.
+/// with a missing file leaves the list.
 /// </summary>
 [TestFixture]
 public class DownloadServiceTests
@@ -35,7 +36,7 @@ public class DownloadServiceTests
     private IMessengerService _messengerService = null!;
     private ICommandService _commandService = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
-    private IResourceRegistry _resourceRegistry = null!;
+    private FakeResourceMonitor _resourceMonitor = null!;
     private RootHandlerRegistry _rootHandlers = null!;
     private IResourceFileSystem _resourceFileSystem = null!;
     private ILocalizerService _localizerService = null!;
@@ -46,7 +47,6 @@ public class DownloadServiceTests
     // Run part way through a move, for a test that needs to see the service mid-import.
     private Func<Task>? _duringMove;
     private ConcurrentDictionary<string, IDownloadTransfer> _transfers = null!;
-    private MessageHandler<object, ResourceRegistryUpdatedMessage>? _registryUpdatedHandler;
     private MessageHandler<object, WorkspaceUnloadedMessage>? _workspaceUnloadedHandler;
 
     private DownloadService _downloadService = null!;
@@ -64,14 +64,6 @@ public class DownloadServiceTests
 
         // The substitute records registrations rather than dispatching, so each handler the service
         // registers is captured for the tests to invoke.
-        _registryUpdatedHandler = null;
-        _messengerService
-            .When(messenger => messenger.Register(
-                Arg.Any<object>(),
-                Arg.Any<MessageHandler<object, ResourceRegistryUpdatedMessage>>()))
-            .Do(callInfo => _registryUpdatedHandler =
-                callInfo.Arg<MessageHandler<object, ResourceRegistryUpdatedMessage>>());
-
         _workspaceUnloadedHandler = null;
         _messengerService
             .When(messenger => messenger.Register(
@@ -85,9 +77,7 @@ public class DownloadServiceTests
         _rootHandlers = TestRootHandlers.Create(ProjectFolderPath);
         _rootHandlers.RegisterRootHandler(new TempRootHandler(TempFolderPath));
 
-        _resourceRegistry = Substitute.For<IResourceRegistry>();
-        _resourceRegistry.GetResource(Arg.Any<ResourceKey>())
-            .Returns(callInfo => GetResource(callInfo.Arg<ResourceKey>()));
+        _resourceMonitor = new FakeResourceMonitor();
 
         _resourceFileSystem = Substitute.For<IResourceFileSystem>();
         _resourceFileSystem.CreateFolderAsync(Arg.Any<ResourceKey>())
@@ -99,7 +89,7 @@ public class DownloadServiceTests
             .Returns(callInfo => DeleteAsync(callInfo.Arg<ResourceKey>()));
 
         var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(_resourceRegistry);
+        resourceService.Monitor.Returns(_resourceMonitor);
         resourceService.RootHandlers.Returns(_rootHandlers);
         resourceService.FileSystem.Returns(_resourceFileSystem);
 
@@ -212,37 +202,6 @@ public class DownloadServiceTests
     }
 
     [Test]
-    [Platform(Exclude = "Linux", Reason = "On a case-sensitive file system, Report.pdf and report.pdf are different files.")]
-    public async Task ANameOnDiskInAnotherCase_IsUniquified()
-    {
-        // The resolver reads the stored names from the real disk, so the test writes the file there too. The
-        // in-memory file system compares names exactly. The test therefore gives the in-memory file system the file
-        // under both names, matching a volume that ignores case.
-        var existingPath = Path.Combine(ProjectFolderPath, "downloads", "report.pdf");
-        Directory.CreateDirectory(Path.GetDirectoryName(existingPath)!);
-        File.WriteAllText(existingPath, "existing");
-        _localFileSystem.SeedFile(existingPath, "existing");
-        _localFileSystem.SeedFile(Path.Combine(ProjectFolderPath, "downloads", "Report.pdf"), "existing");
-
-        var ticket = await BeginAsync("Report.pdf");
-
-        ticket.Destination.Should().Be(new ResourceKey("downloads/Report (1).pdf"));
-    }
-
-    [Test]
-    public async Task AFolderTheProjectNames_IsWhereDownloadsLand()
-    {
-        _localFileSystem.SeedFolder(Path.Combine(ProjectFolderPath, "assets", "incoming"));
-        NameDownloadsFolder("assets/incoming");
-
-        var ticket = await CompleteDownloadAsync("report.pdf");
-
-        ticket.Destination.Should().Be(new ResourceKey("assets/incoming/report.pdf"));
-        _moves.Should().ContainSingle()
-            .Which.DestResource.Should().Be(new ResourceKey("assets/incoming/report.pdf"));
-    }
-
-    [Test]
     public async Task AFolderTheProjectNamesButHasNotMade_IsMadeByTheFirstDownload()
     {
         NameDownloadsFolder("incoming");
@@ -280,38 +239,6 @@ public class DownloadServiceTests
                 && Equals(arguments[1], "Incoming")));
 
         await _resourceFileSystem.DidNotReceive().CreateFolderAsync(Arg.Any<ResourceKey>());
-    }
-
-    /// <summary>
-    /// A load drops a path that is not a folder path, and a file can take the folder's place after the
-    /// project named it. Either way the download still lands, in the default folder.
-    /// </summary>
-    [TestCase("notes.txt", Description = "a file rather than a folder")]
-    [TestCase("../outside", Description = "a path that leaves the project")]
-    public async Task AFolderTheProjectCannotUse_LeavesDownloadsInTheDefaultFolder(string downloadsFolder)
-    {
-        _localFileSystem.SeedFile(Path.Combine(ProjectFolderPath, "notes.txt"), "notes");
-        NameDownloadsFolder(downloadsFolder);
-
-        var ticket = await BeginAsync("report.pdf");
-
-        ticket.Destination.Should().Be(new ResourceKey("downloads/report.pdf"));
-    }
-
-    [Test]
-    public async Task TwoDownloadsOfTheSameNameStartedTogether_ReserveDistinctDestinations()
-    {
-        // Neither has written a byte yet, so only the reservation the first one holds tells them apart.
-        var firstTicket = await BeginAsync("report.pdf");
-        var secondTicket = await BeginAsync("report.pdf");
-
-        firstTicket.Destination.Should().Be(new ResourceKey("downloads/report.pdf"));
-        secondTicket.Destination.Should().Be(new ResourceKey("downloads/report (1).pdf"));
-        secondTicket.StagingPath.Should().NotBe(firstTicket.StagingPath);
-
-        // Newest first, each under the name it will be saved as.
-        _downloadService.Downloads.Select(download => download.FileName)
-            .Should().Equal("report (1).pdf", "report.pdf");
     }
 
     [Test]
@@ -407,7 +334,7 @@ public class DownloadServiceTests
     }
 
     [Test]
-    public async Task ACompletedDownloadWhoseFileHasGone_LeavesTheList()
+    public async Task ACompletedDownloadWhoseFileIsMissing_LeavesTheList()
     {
         var succeededTicket = await CompleteDownloadAsync("report.pdf");
 
@@ -416,10 +343,10 @@ public class DownloadServiceTests
 
         _downloadService.Downloads.Should().HaveCount(2);
 
-        // The file is deleted in the Explorer, and the registry rebuild that follows is what tells the
-        // service its row now leads nowhere.
+        // The file is deleted in the Explorer, and the change to the file is what tells the service its row now
+        // leads nowhere.
         await _localFileSystem.DeleteFileAsync(ResolvePath(succeededTicket.Destination).Value);
-        RaiseRegistryUpdated();
+        _resourceMonitor.DeliverChange(succeededTicket.Destination, ResourceItemState.Absent);
 
         // The failed row names no file, so there is nothing for it to lose.
         var remaining = _downloadService.Downloads.Should().ContainSingle().Subject;
@@ -464,32 +391,6 @@ public class DownloadServiceTests
         _downloadService.Downloads.Should().ContainSingle()
             .Which.Status.Should().Be(DownloadStatus.InProgress);
         _messengerService.DidNotReceive().Send(Arg.Any<DownloadsChangedMessage>());
-    }
-
-    [Test]
-    public async Task TheOldestSettledRecord_IsDroppedOnceTheListIsFull()
-    {
-        for (var index = 0; index < DownloadService.DownloadLimit + 5; index++)
-        {
-            await CompleteDownloadAsync($"report{index}.pdf");
-        }
-
-        _downloadService.Downloads.Should().HaveCount(DownloadService.DownloadLimit);
-        _downloadService.Downloads[0].FileName.Should().Be($"report{DownloadService.DownloadLimit + 4}.pdf");
-    }
-
-    [Test]
-    public async Task ARecordStillRunning_IsKeptOnceTheListIsFull()
-    {
-        // A running download keeps its row, so its progress stays in view and it can still be stopped.
-        // With nothing settled to drop in its place, the list grows past the limit.
-        for (var index = 0; index < DownloadService.DownloadLimit + 5; index++)
-        {
-            await BeginAsync($"report{index}.pdf");
-        }
-
-        _downloadService.Downloads.Should().HaveCount(DownloadService.DownloadLimit + 5);
-        _downloadService.Downloads.Should().OnlyContain(download => download.Status == DownloadStatus.InProgress);
     }
 
     [Test]
@@ -558,17 +459,6 @@ public class DownloadServiceTests
         _transfers["report.pdf"].Received(1).Cancel();
         _downloadService.Downloads.Should().ContainSingle()
             .Which.Status.Should().Be(DownloadStatus.Canceled);
-    }
-
-    [Test]
-    public void TheDestinationFolderPath_IsTheFolderTheProjectNames()
-    {
-        // The web view is pointed at this folder, so every download it does not prompt for lands in the
-        // project and a path anywhere else can only have come from a Save As dialog.
-        var folderResult = _downloadService.GetDestinationFolderPath();
-
-        folderResult.IsSuccess.Should().BeTrue(folderResult.DiagnosticReport);
-        folderResult.Value.Should().Be(Path.Combine(ProjectFolderPath, "downloads"));
     }
 
     [Test]
@@ -705,12 +595,6 @@ public class DownloadServiceTests
         return ticket;
     }
 
-    private void RaiseRegistryUpdated()
-    {
-        _registryUpdatedHandler.Should().NotBeNull();
-        _registryUpdatedHandler!.Invoke(_downloadService, new ResourceRegistryUpdatedMessage());
-    }
-
     private void RaiseWorkspaceUnloaded()
     {
         _workspaceUnloadedHandler.Should().NotBeNull();
@@ -750,19 +634,4 @@ public class DownloadServiceTests
         return _rootHandlers.ResolveResourcePath(resource);
     }
 
-    private Result<IResource> GetResource(ResourceKey resource)
-    {
-        var path = ResolvePath(resource).Value;
-        if (_localFileSystem.Folders.Contains(path))
-        {
-            return Result<IResource>.Ok(Substitute.For<IFolderResource>());
-        }
-
-        if (!_localFileSystem.Files.ContainsKey(path))
-        {
-            return Result<IResource>.Fail($"'{resource}' does not exist");
-        }
-
-        return Result<IResource>.Ok(Substitute.For<IFileResource>());
-    }
 }

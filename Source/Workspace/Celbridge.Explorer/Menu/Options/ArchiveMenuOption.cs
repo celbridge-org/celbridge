@@ -1,7 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.ContextMenu;
 using Celbridge.UserInterface;
-using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Explorer.Menu.Options;
@@ -13,19 +12,16 @@ public class ArchiveMenuOption : IMenuOption<ExplorerMenuContext>
 {
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
-    private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public int Priority => 6;
     public string GroupId => nameof(ExplorerMenuGroup.EditActions);
 
     public ArchiveMenuOption(
         IStringLocalizer stringLocalizer,
-        ICommandService commandService,
-        IWorkspaceWrapper workspaceWrapper)
+        ICommandService commandService)
     {
         _stringLocalizer = stringLocalizer;
         _commandService = commandService;
-        _workspaceWrapper = workspaceWrapper;
     }
 
     public MenuItemDisplayInfo GetDisplayInfo(ExplorerMenuContext context)
@@ -37,9 +33,10 @@ public class ArchiveMenuOption : IMenuOption<ExplorerMenuContext>
 
     public MenuItemState GetState(ExplorerMenuContext context)
     {
-        var isSingleFolder = context.HasSingleSelection &&
-                             context.SingleSelectedResource is IFolderResource &&
-                             !context.SelectionContainsProjectFolder;
+        var selectedResource = context.SingleSelectedResource;
+        var isSingleFolder = selectedResource is not null
+            && selectedResource.IsFolder
+            && !context.SelectionContainsProjectFolder;
 
         return new MenuItemState(
             IsVisible: isSingleFolder,
@@ -48,13 +45,14 @@ public class ArchiveMenuOption : IMenuOption<ExplorerMenuContext>
 
     public void Execute(ExplorerMenuContext context)
     {
-        if (context.SingleSelectedResource is not IFolderResource)
+        var selectedResource = context.SingleSelectedResource;
+        if (selectedResource is null
+            || !selectedResource.IsFolder)
         {
             return;
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var resourceKey = resourceRegistry.GetResourceKey(context.SingleSelectedResource);
+        var resourceKey = selectedResource.Resource;
 
         _commandService.Execute<IArchiveResourceDialogCommand>(command =>
         {

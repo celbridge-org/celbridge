@@ -25,7 +25,7 @@ internal sealed class WebViewHealthTracker
     // Distinguishes a process id that has never been read from one read as absent.
     private const long UnknownProcessId = -1;
 
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
 
     private int _wakeFailures;
     private int _processFailures;

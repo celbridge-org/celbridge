@@ -19,7 +19,7 @@ public sealed class ConsoleSubmitQueue
     private readonly ILogger _logger;
     private readonly TimeProvider _timeProvider;
 
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
 
     // The last submission queued. Each submission waits for the one before it.
     private Task _lastSubmission = Task.CompletedTask;

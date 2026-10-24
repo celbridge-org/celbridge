@@ -30,6 +30,13 @@ public sealed class ProjectSettingsContext
 
     public IWorkspaceWrapper WorkspaceWrapper { get; }
 
+    /// <summary>
+    /// The workspace service of the loaded project, or null while no workspace service is present.
+    /// </summary>
+    public IWorkspaceService? WorkspaceService => WorkspaceWrapper.HasWorkspaceService
+        ? WorkspaceWrapper.WorkspaceService
+        : null;
+
     public IProjectService ProjectService { get; }
 
     public ICommandService CommandService { get; }
@@ -57,7 +64,7 @@ public sealed class ProjectSettingsContext
 
         var draftConfig = draft.ToConfig();
 
-        var packageService = WorkspaceWrapper.WorkspaceService?.PackageService;
+        var packageService = WorkspaceService?.PackageService;
         if (packageService is null
             || packageService.GetNormalizedConfig() is null)
         {
@@ -77,7 +84,7 @@ public sealed class ProjectSettingsContext
     /// </summary>
     public ProjectConfig? GetLoadedConfig()
     {
-        var packageService = WorkspaceWrapper.WorkspaceService?.PackageService;
+        var packageService = WorkspaceService?.PackageService;
         return packageService?.GetNormalizedConfig() ?? ProjectService.CurrentProject?.Config;
     }
 }
@@ -118,7 +125,7 @@ public abstract class ProjectSettingsSectionViewModel : ObservableObject
     /// </summary>
     public virtual string EmptyText => string.Empty;
 
-    protected IWorkspaceService? WorkspaceService => _context.WorkspaceWrapper.WorkspaceService;
+    protected IWorkspaceService? WorkspaceService => _context.WorkspaceService;
 
     protected IProjectService ProjectService => _context.ProjectService;
 

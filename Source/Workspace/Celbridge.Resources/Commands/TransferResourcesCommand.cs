@@ -8,8 +8,6 @@ namespace Celbridge.Resources.Commands;
 
 public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
 {
-    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
-
     public ResourceKey DestFolderResource { get; set; }
     public DataTransferMode TransferMode { get; set; }
     public List<ResourceTransferItem> TransferItems { get; set; } = new();
@@ -44,12 +42,22 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
         }
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
-        var resourceRegistry = workspaceService.ResourceService.Registry;
+        var resourceFileSystem = workspaceService.ResourceService.FileSystem;
         var resourceOpService = workspaceService.ResourceService.Operations;
         var transferService = workspaceService.ResourceService.Transfers;
 
         // Filter out any items where the destination resource already exists
-        TransferItems.RemoveAll(item => resourceRegistry.GetResource(item.DestResource).IsSuccess);
+        var existingItems = new List<ResourceTransferItem>();
+        foreach (var item in TransferItems)
+        {
+            var infoResult = await resourceFileSystem.GetInfoAsync(item.DestResource);
+            if (infoResult.IsSuccess
+                && infoResult.Value.Kind != StorageItemKind.NotFound)
+            {
+                existingItems.Add(item);
+            }
+        }
+        TransferItems.RemoveAll(existingItems.Contains);
 
         if (TransferItems.Count == 0)
         {
@@ -63,7 +71,7 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
         {
             foreach (var item in TransferItems)
             {
-                var result = await TransferSingleItemAsync(item, resourceRegistry, transferService, resourceOpService, failedResources);
+                var result = await TransferSingleItemAsync(item, transferService, resourceOpService, failedResources);
                 if (result.IsFailure)
                 {
                     // An item dragged in from outside the project has no source resource, so the
@@ -97,7 +105,6 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
 
     private async Task<Result> TransferSingleItemAsync(
         ResourceTransferItem item,
-        IResourceRegistry resourceRegistry,
         IResourceTransferService transferService,
         IResourceOperationService resourceOpService,
         List<FailedResource> failedResources)
@@ -105,19 +112,18 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
         if (item.SourceResource.IsEmpty)
         {
             // Resource is outside the project folder - add it
-            return await AddExternalResourceAsync(item, resourceRegistry, resourceOpService, failedResources);
+            return await AddExternalResourceAsync(item, resourceOpService, failedResources);
         }
         else
         {
             // Resource is inside the project folder - copy/move it
-            return await CopyInternalResourceAsync(item, resourceRegistry, transferService, resourceOpService);
+            return await CopyInternalResourceAsync(item, transferService, resourceOpService);
         }
     }
 
     // A folder import leaves out the links inside it. Each one is added to the failures.
     private async Task<Result> AddExternalResourceAsync(
         ResourceTransferItem item,
-        IResourceRegistry resourceRegistry,
         IResourceOperationService resourceOpService,
         List<FailedResource> failedResources)
     {
@@ -157,7 +163,6 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
 
     private async Task<Result> CopyInternalResourceAsync(
         ResourceTransferItem item,
-        IResourceRegistry resourceRegistry,
         IResourceTransferService transferService,
         IResourceOperationService resourceOpService)
     {
@@ -170,7 +175,7 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
             return sidecarDenial;
         }
 
-        var resolvedDestResource = transferService.ResolveDestinationResource(item.SourceResource, item.DestResource);
+        var resolvedDestResource = await transferService.ResolveDestinationResourceAsync(item.SourceResource, item.DestResource);
 
         var result = await resourceOpService.TransferAsync(item.SourceResource, resolvedDestResource, TransferMode);
 

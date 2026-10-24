@@ -31,7 +31,7 @@ public sealed class ConsoleSessionService : IConsoleSessionService, IDisposable
     private readonly IPythonInstaller _pythonInstaller;
     private readonly ILogger<ConsoleSessionService> _logger;
 
-    private readonly object _sessionsLock = new();
+    private readonly Lock _sessionsLock = new();
     private readonly Dictionary<ResourceKey, ConsoleSession> _sessions = new();
 
     // Maps a bound transport connection to the session that launched it. Only sessions whose client has

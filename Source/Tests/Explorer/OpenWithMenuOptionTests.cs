@@ -21,7 +21,6 @@ public class OpenWithMenuOptionTests
     private IWorkspaceWrapper _workspaceWrapper = null!;
     private IDocumentEditorRegistry _editorRegistry = null!;
     private IDocumentsService _documentsService = null!;
-    private IResourceRegistry _resourceRegistry = null!;
     private Logging.ILogger<OpenWithMenuOption> _logger = null!;
 
     [SetUp]
@@ -40,16 +39,8 @@ public class OpenWithMenuOptionTests
         _documentsService = Substitute.For<IDocumentsService>();
         _documentsService.DocumentEditorRegistry.Returns(_editorRegistry);
 
-        _resourceRegistry = Substitute.For<IResourceRegistry>();
-        _resourceRegistry.GetResourceKey(Arg.Any<IResource>())
-            .Returns(callInfo => new ResourceKey(((IResource)callInfo[0]).Name));
-
-        var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(_resourceRegistry);
-
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.DocumentsService.Returns(_documentsService);
-        workspaceService.ResourceService.Returns(resourceService);
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
@@ -65,24 +56,25 @@ public class OpenWithMenuOptionTests
             _logger);
     }
 
-    private static ExplorerMenuContext ContextFor(IResource? clickedResource)
+    private static ExplorerMenuContext ContextFor(ResourceItem clickedResource)
     {
-        var projectFolder = Substitute.For<IFolderResource>();
+        var selectedResources = new[]
+        {
+            clickedResource
+        };
+
         return new ExplorerMenuContext(
             ClickedResource: clickedResource,
-            SelectedResources: clickedResource is null ? Array.Empty<IResource>() : new[] { clickedResource },
-            ProjectFolder: projectFolder,
+            SelectedResources: selectedResources,
             IsProjectFolderTargeted: false,
             HasClipboardData: false,
             ClipboardContentType: ClipboardContentType.None,
             ClipboardOperation: ClipboardContentOperation.None);
     }
 
-    private static IFileResource CreateFileResource(string name)
+    private static ResourceItem CreateFileResource(string name)
     {
-        var file = Substitute.For<IFileResource>();
-        file.Name.Returns(name);
-        return file;
+        return new ResourceItem(new ResourceKey(name), IsFolder: false);
     }
 
     private static IDocumentEditorFactory CreateFactory(string editorId)
@@ -96,7 +88,7 @@ public class OpenWithMenuOptionTests
     public void GetState_HiddenWhenNoFileClicked()
     {
         var option = CreateOption();
-        var folder = Substitute.For<IFolderResource>();
+        var folder = new ResourceItem(new ResourceKey("Docs"), IsFolder: true);
 
         var state = option.GetState(ContextFor(folder));
 

@@ -1,4 +1,3 @@
-using Celbridge.Commands;
 using Celbridge.Logging;
 
 namespace Celbridge.WorkspaceUI.Services;
@@ -30,7 +29,6 @@ internal enum SaveState
 public class WorkspaceItemSaver
 {
     private readonly ILogger<WorkspaceItemSaver> _logger;
-    private readonly ICommandService _commandService;
     private readonly IMessengerService _messengerService;
     private readonly SaveRetryTracker _retries;
 
@@ -39,12 +37,10 @@ public class WorkspaceItemSaver
 
     public WorkspaceItemSaver(
         ILogger<WorkspaceItemSaver> logger,
-        ICommandService commandService,
         IMessengerService messengerService,
         SaveRetryTracker retries)
     {
         _logger = logger;
-        _commandService = commandService;
         _messengerService = messengerService;
         _retries = retries;
     }
@@ -101,7 +97,6 @@ public class WorkspaceItemSaver
 
         int savedCount = 0;
         int pendingSaveCount = 0;
-        bool updateResourcesRequired = false;
 
         foreach (var item in items)
         {
@@ -147,14 +142,6 @@ public class WorkspaceItemSaver
                 continue;
             }
 
-            // A failed save against a cache that still reads Writable suggests an external attribute flip
-            // slipped past the watcher. The rebuild below covers the project tree, so only a resource in it
-            // has anything to gain from one.
-            if (item.FileResource.Root == ResourceKey.DefaultRoot)
-            {
-                updateResourcesRequired = true;
-            }
-
             // Logged only when the reason changes, so a file that goes on failing does not fill the log.
             if (reasonChanged)
             {
@@ -168,13 +155,6 @@ public class WorkspaceItemSaver
         _messengerService.Send(pendingSaveMessage);
 
         var newlyReportedResources = UpdateReportedResources(items);
-
-        if (updateResourcesRequired)
-        {
-            // Debounced inside the resource service so a burst of failures from many open files collapses
-            // into one project-tree rebuild.
-            _commandService.Execute<IUpdateResourcesCommand>();
-        }
 
         if (savedCount > 0)
         {

@@ -62,7 +62,7 @@ public class GetFileTreeCommand : CommandBase, IGetFileTreeCommand
     private static async Task<FileTreeSnapshotNode?> BuildSnapshotAsync(
         IResourceFileSystem resourceFileSystem,
         string folderName,
-        IReadOnlyList<FolderItem> entries,
+        IReadOnlyList<FolderChild> entries,
         int remainingDepth,
         Regex? globRegex,
         string typeFilter)

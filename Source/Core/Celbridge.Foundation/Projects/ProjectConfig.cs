@@ -128,8 +128,8 @@ public sealed record class ResourcesSection
 
     /// <summary>
     /// Patterns matching resources that search, reference scanning and tag
-    /// queries skip. The project tree leaves them out as well, so the Explorer
-    /// does not draw them.
+    /// queries skip. The Explorer leaves them out as well unless Show Hidden
+    /// Files is on.
     /// </summary>
     public IReadOnlyList<string> SearchExclude { get; init; } = Array.Empty<string>();
 

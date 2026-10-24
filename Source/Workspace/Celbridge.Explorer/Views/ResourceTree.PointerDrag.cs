@@ -87,26 +87,26 @@ public sealed partial class ResourceTree : IResourceDropTarget
 
     // The dragged set is the current selection when the pressed item is part of it, otherwise just the
     // pressed item. The project folder is never dragged.
-    private List<IResource> GatherDragResources(ResourceViewItem pressedItem)
+    private List<ResourceItem> GatherDragResources(ResourceViewItem pressedItem)
     {
         var selectedItems = ResourceListView.SelectedItems.OfType<ResourceViewItem>().ToList();
         var draggedItems = selectedItems.Contains(pressedItem)
             ? selectedItems
             : new List<ResourceViewItem> { pressedItem };
 
-        var resources = new List<IResource>();
+        var resources = new List<ResourceItem>();
         foreach (var item in draggedItems)
         {
             if (!item.IsProjectFolder)
             {
-                resources.Add(item.Resource);
+                resources.Add(item.Item);
             }
         }
 
         return resources;
     }
 
-    public string? UpdateDragOver(Point windowPoint, IReadOnlyList<IResource> resources)
+    public string? UpdateDragOver(Point windowPoint, IReadOnlyList<ResourceItem> resources)
     {
         if (!TryResolveTreeDrop(windowPoint, out var destFolder, out var targetItem))
         {
@@ -144,7 +144,7 @@ public sealed partial class ResourceTree : IResourceDropTarget
         }
     }
 
-    public bool TryDrop(Point windowPoint, IReadOnlyList<IResource> resources)
+    public bool TryDrop(Point windowPoint, IReadOnlyList<ResourceItem> resources)
     {
         ClearDragFeedback();
 
@@ -169,9 +169,9 @@ public sealed partial class ResourceTree : IResourceDropTarget
     // the tree. When inside, destFolder is the folder the drop would land in - the folder or file's
     // parent under the pointer, or the project root for empty space below the items - and targetItem is
     // the specific item under the pointer, or null for that empty space.
-    private bool TryResolveTreeDrop(Point windowPoint, out IFolderResource destFolder, out ResourceViewItem? targetItem)
+    private bool TryResolveTreeDrop(Point windowPoint, out ResourceKey destFolder, out ResourceViewItem? targetItem)
     {
-        destFolder = ViewModel.ProjectFolder;
+        destFolder = ResourceKey.Empty;
         targetItem = null;
 
         if (XamlRoot?.Content is not UIElement windowContent)
@@ -189,7 +189,7 @@ public sealed partial class ResourceTree : IResourceDropTarget
         }
 
         targetItem = FindItemAtPosition(listPoint);
-        destFolder = ResolveDropTargetFolder(targetItem?.Resource);
+        destFolder = ResolveDropTargetFolder(targetItem);
 
         return true;
     }
@@ -214,30 +214,16 @@ public sealed partial class ResourceTree : IResourceDropTarget
         _dropHighlightElement = contentGrid;
     }
 
-    private void TransferResourcesToFolder(List<IResource> resources, IFolderResource destFolder, DataTransferMode transferMode)
+    private void TransferResourcesToFolder(List<ResourceItem> resources, ResourceKey destFolder, DataTransferMode transferMode)
     {
-        var destResource = _resourceRegistry.GetResourceKey(destFolder);
-        var sourceResources = new List<ResourceKey>();
-
-        foreach (var resource in resources)
-        {
-            var sourceResource = _resourceRegistry.GetResourceKey(resource);
-            var resolvedDestResource = _resourceTransferService.ResolveDestinationResource(sourceResource, destResource);
-
-            if (sourceResource == resolvedDestResource)
-            {
-                continue; // Skip - already at destination
-            }
-
-            sourceResources.Add(sourceResource);
-        }
+        var sourceResources = GetResourcesToTransfer(resources, destFolder);
 
         if (sourceResources.Count > 0)
         {
             _commandService.Execute<ICopyResourceCommand>(command =>
             {
                 command.SourceResources = sourceResources;
-                command.DestResource = destResource;
+                command.DestResource = destFolder;
                 command.TransferMode = transferMode;
             });
         }

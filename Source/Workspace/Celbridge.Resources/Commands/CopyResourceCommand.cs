@@ -18,8 +18,6 @@ internal record CopyResourceOutcome(
 
 public class CopyResourceCommand : CommandBase, ICopyResourceCommand
 {
-    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
-
     public List<ResourceKey> SourceResources { get; set; } = new();
     public ResourceKey DestResource { get; set; }
     public DataTransferMode TransferMode { get; set; }
@@ -172,7 +170,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         }
 
         // Resolve destination to handle folder drops
-        var resolvedDestResource = ResourceTransferService.ResolveDestinationResource(sourceResource, DestResource);
+        var resolvedDestResource = await ResourceTransferService.ResolveDestinationResourceAsync(sourceResource, DestResource);
 
         var infoResult = await ResourceFileSystem.GetInfoAsync(sourceResource);
         if (infoResult.IsFailure)

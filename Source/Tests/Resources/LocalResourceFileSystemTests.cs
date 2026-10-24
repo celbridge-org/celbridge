@@ -332,6 +332,27 @@ public class LocalResourceFileSystemTests
     }
 
     [Test]
+    public async Task GetResourceItemAsync_ReturnsFileAndFolder()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_tempFolder, "notes.txt"), "x");
+        Directory.CreateDirectory(Path.Combine(_tempFolder, "nested"));
+
+        var fileResult = await _resourceFileSystem.GetResourceItemAsync(new ResourceKey("notes.txt"));
+        var folderResult = await _resourceFileSystem.GetResourceItemAsync(new ResourceKey("nested"));
+
+        fileResult.Value.Should().Be(new ResourceItem(new ResourceKey("notes.txt"), IsFolder: false));
+        folderResult.Value.Should().Be(new ResourceItem(new ResourceKey("nested"), IsFolder: true));
+    }
+
+    [Test]
+    public async Task GetResourceItemAsync_Fails_WhenResourceMissing()
+    {
+        var result = await _resourceFileSystem.GetResourceItemAsync(new ResourceKey("missing.txt"));
+
+        result.IsFailure.Should().BeTrue();
+    }
+
+    [Test]
     public async Task MoveAsync_MovesFile_WhenNoSidecar()
     {
         var sourceKey = new ResourceKey("a.txt");
