@@ -10,18 +10,12 @@ namespace Celbridge.UserInterface.Services;
 
 public sealed class DownloadService : IDownloadService
 {
-    /// <summary>
-    /// The most downloads the list holds at once. Past it the oldest settled one is dropped to make room,
-    /// and a download still running keeps its row.
-    /// </summary>
-    public const int DownloadLimit = 50;
-
     // How often a running download's progress is published. The platform reports every few kilobytes,
     // which is far more often than a list of rows can usefully redraw.
     private static readonly TimeSpan ProgressPublishInterval = TimeSpan.FromMilliseconds(250);
 
     // What a download still running needs: where the platform is writing it, where it is going, and the
-    // transfer to stop it with. Held apart from the entries, so a row that leaves the list cannot orphan
+    // transfer to stop it with. Held apart from the rows, so a row that leaves the list cannot orphan
     // its transfer, and holding the transfer is what keeps the platform's handle alive.
     private record InFlightDownload(ResourceKey StagingResource, ResourceKey Destination, IDownloadTransfer Transfer);
 
@@ -30,33 +24,14 @@ public sealed class DownloadService : IDownloadService
     private readonly ILocalizerService _localizerService;
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly IProjectService _projectService;
-    private readonly ILocalFileSystem _localFileSystem;
 
+    private readonly DownloadList _rows = new();
+    private readonly DownloadDestinations _destinations;
+    private readonly DownloadedFileTracker _fileTracker;
+
+    // Guards the transfers in flight and the progress clock.
     private readonly object _lock = new();
-
-    // Newest first, which is the order they are listed in.
-    private readonly List<DownloadEntry> _entries = new();
     private readonly Dictionary<long, InFlightDownload> _inFlightDownloads = new();
-
-    // The destinations promised to a download, held until its file lands there or the move fails. Kept
-    // separately from the transfers, which are dropped the moment a transfer stops: that leaves a window
-    // during the move where a second download of the same name would find the path free.
-    private readonly HashSet<ResourceKey> _reservedDestinations = new();
-
-    // Reserving a destination and recording it has to be indivisible, or two downloads of the same name
-    // started together both find the same path free.
-    private readonly SemaphoreSlim _beginGate = new(1, 1);
-
-    // Follows the files of the succeeded rows, so a row leaves the list once its file has gone. Guarded by its own
-    // lock, since the rows change on several threads and the subscription is replaced outside the rows' lock.
-    private readonly object _fileSubscriptionLock = new();
-    private IResourceKeySubscription? _fileSubscription;
-    private HashSet<ResourceKey> _followedFiles = new();
-
-    private IReadOnlyList<DownloadEntry> _downloads = Array.Empty<DownloadEntry>();
-
-    private long _nextDownloadId = 1;
     private long _nextProgressPublishTick;
 
     public DownloadService(
@@ -73,54 +48,18 @@ public sealed class DownloadService : IDownloadService
         _localizerService = localizerService;
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
-        _projectService = projectService;
-        _localFileSystem = localFileSystem;
+
+        _destinations = new DownloadDestinations(workspaceWrapper, projectService, localFileSystem, localizerService);
+        _fileTracker = new DownloadedFileTracker(logger, workspaceWrapper, OnFilesMissing);
 
         _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloaded);
     }
 
-    public IReadOnlyList<DownloadEntry> Downloads
-    {
-        get
-        {
-            lock (_lock)
-            {
-                return _downloads;
-            }
-        }
-    }
+    public IReadOnlyList<DownloadEntry> Downloads => _rows.Downloads;
 
     public Result<string> GetDestinationFolderPath()
     {
-        if (!_workspaceWrapper.HasWorkspaceService)
-        {
-            return Result<string>.Fail("No workspace is loaded");
-        }
-
-        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
-        var folderResult = ResolveDownloadsFolder(rootHandlerRegistry);
-        if (folderResult.IsFailure)
-        {
-            return Result<string>.Fail().WithErrors(folderResult);
-        }
-        var downloadsFolder = folderResult.Value;
-
-        var resolveResult = rootHandlerRegistry.ResolveResourcePath(downloadsFolder);
-        if (resolveResult.IsFailure)
-        {
-            return Result<string>.Fail($"Failed to resolve the downloads folder '{downloadsFolder}'")
-                .WithErrors(resolveResult);
-        }
-
-        try
-        {
-            return Path.GetFullPath(resolveResult.Value);
-        }
-        catch (Exception ex)
-        {
-            return Result<string>.Fail($"Failed to resolve the downloads folder '{downloadsFolder}'")
-                .WithException(ex);
-        }
+        return _destinations.GetFolderPath();
     }
 
     public async Task<Result<DownloadTicket>> BeginAsync(
@@ -143,19 +82,20 @@ public sealed class DownloadService : IDownloadService
         var rootHandlerRegistry = resourceService.RootHandlers;
         var resourceFileSystem = resourceService.FileSystem;
 
-        await _beginGate.WaitAsync();
+        var reserveResult = await _destinations.ReserveAsync(fileName);
+        if (reserveResult.IsFailure)
+        {
+            RecordFailure(fileName, sourceUrl, _destinations.DescribeUnavailable(reserveResult));
+
+            return Result<DownloadTicket>.Fail($"Failed to reserve a download destination for '{fileName}'")
+                .WithErrors(reserveResult);
+        }
+        var destination = reserveResult.Value;
+
+        // The destination stays reserved only for a download that started.
+        var isStarted = false;
         try
         {
-            var reserveResult = await ReserveDestinationAsync(rootHandlerRegistry, fileName);
-            if (reserveResult.IsFailure)
-            {
-                RecordFailure(fileName, sourceUrl, DescribeUnavailableDestination(reserveResult));
-
-                return Result<DownloadTicket>.Fail($"Failed to reserve a download destination for '{fileName}'")
-                    .WithErrors(reserveResult);
-            }
-            var destination = reserveResult.Value;
-
             // Probed before anything is staged, so a policy denial surfaces now rather than after the
             // whole transfer has run.
             var probeResult = await resourceFileSystem.GetInfoAsync(destination);
@@ -163,7 +103,7 @@ public sealed class DownloadService : IDownloadService
             {
                 _logger.LogError($"Download blocked: {probeResult.FirstErrorMessage}");
 
-                RecordFailure(fileName, sourceUrl, DescribeBlockedDestination(probeResult, fileName));
+                RecordFailure(fileName, sourceUrl, _destinations.DescribeBlocked(probeResult, fileName));
 
                 return Result<DownloadTicket>.Fail($"The download destination '{destination}' is not permitted")
                     .WithErrors(probeResult);
@@ -198,34 +138,37 @@ public sealed class DownloadService : IDownloadService
             // Listed under the name it will be saved as, which differs from the suggested one when that
             // name was already taken.
             var downloadId = RecordStart(destination.ResourceName, sourceUrl, stagingResource, destination, transfer);
+            isStarted = true;
 
             return new DownloadTicket(downloadId, stagingPath, destination);
         }
         finally
         {
-            _beginGate.Release();
+            if (!isStarted)
+            {
+                _destinations.Release(destination);
+            }
         }
     }
 
     public void ReportProgress(long downloadId, long bytesReceived, long? totalBytes)
     {
-        var isPublished = false;
+        var isUpdated = _rows.Update(downloadId, entry => entry with
+        {
+            BytesReceived = bytesReceived,
+            TotalBytes = totalBytes
+        });
 
+        if (!isUpdated)
+        {
+            return;
+        }
+
+        // Every report updates the row, so a reader always sees the latest byte count. Only one report in each
+        // interval is announced, since announcing each would redraw the rows faster than anyone can read them.
+        var isPublished = false;
         lock (_lock)
         {
-            var isUpdated = TryUpdateEntry(downloadId, entry => entry with
-            {
-                BytesReceived = bytesReceived,
-                TotalBytes = totalBytes
-            });
-
-            if (!isUpdated)
-            {
-                return;
-            }
-
-            // The list is republished on every report so a reader always sees the latest byte count, but
-            // announcing each one would redraw the rows far faster than anyone can read them.
             var currentTick = Environment.TickCount64;
             if (currentTick >= _nextProgressPublishTick)
             {
@@ -252,7 +195,7 @@ public sealed class DownloadService : IDownloadService
         {
             if (!_workspaceWrapper.HasWorkspaceService)
             {
-                // The project the download belonged to has gone, and its staging file goes with temp:.
+                // The project the download belonged to has closed, and its staging file goes with temp:.
                 SettleAsFailed(downloadId, GetString("Downloads_ImportFailed"));
                 return;
             }
@@ -291,7 +234,7 @@ public sealed class DownloadService : IDownloadService
         {
             // Released once the file has landed, or once the move has failed, so no second download is
             // given the same path while this one is still moving.
-            ReleaseDestination(inFlightDownload.Destination);
+            _destinations.Release(inFlightDownload.Destination);
         }
     }
 
@@ -309,7 +252,7 @@ public sealed class DownloadService : IDownloadService
             await resourceFileSystem.DeleteAsync(inFlightDownload.StagingResource);
         }
 
-        ReleaseDestination(inFlightDownload.Destination);
+        _destinations.Release(inFlightDownload.Destination);
 
         SettleAsFailed(downloadId, reason);
     }
@@ -339,7 +282,7 @@ public sealed class DownloadService : IDownloadService
             await resourceFileSystem.DeleteAsync(inFlightDownload.StagingResource);
         }
 
-        ReleaseDestination(inFlightDownload.Destination);
+        _destinations.Release(inFlightDownload.Destination);
 
         SettleAsFailed(downloadId, reason);
     }
@@ -379,19 +322,10 @@ public sealed class DownloadService : IDownloadService
 
     public void Remove(long downloadId)
     {
-        lock (_lock)
+        // The row of a running download stays, here and in Clear All.
+        if (!_rows.RemoveFinished(downloadId))
         {
-            // A download still running keeps its row, as it does through Clear All.
-            var removedCount = _entries.RemoveAll(entry =>
-                entry.Id == downloadId &&
-                entry.Status != DownloadStatus.InProgress);
-
-            if (removedCount == 0)
-            {
-                return;
-            }
-
-            UpdateDownloads();
+            return;
         }
 
         SendDownloadsChanged(hasArrival: false);
@@ -399,141 +333,14 @@ public sealed class DownloadService : IDownloadService
 
     public void ClearAll()
     {
-        lock (_lock)
+        // The row of a running download stays, so the user can follow the transfer's progress and stop the
+        // transfer. Only the rows of finished downloads go, and their files stay in the project.
+        if (!_rows.ClearFinished())
         {
-            // A download still running keeps its row, so its progress stays in view and it can still be
-            // stopped. Only the records of finished downloads go, and the files they landed on stay.
-            var removedCount = _entries.RemoveAll(entry => entry.Status != DownloadStatus.InProgress);
-            if (removedCount == 0)
-            {
-                return;
-            }
-
-            UpdateDownloads();
+            return;
         }
 
         SendDownloadsChanged(hasArrival: false);
-    }
-
-    // Downloads land in the folder the project names, or downloads/ when it names none, so the project
-    // root stays uncluttered when a session downloads several files.
-    private Result<ResourceKey> ResolveDownloadsFolder(IRootHandlerRegistry rootHandlerRegistry)
-    {
-        var configuredFolder = _projectService.CurrentProject?.Config.Resources.DownloadsFolder ?? string.Empty;
-
-        return DownloadsFolderPath.Resolve(rootHandlerRegistry, _localFileSystem, configuredFolder);
-    }
-
-    // Appends " (N)" before the extension until the destination is free: absent from disk, and not
-    // already promised to another download.
-    private async Task<Result<ResourceKey>> ReserveDestinationAsync(IRootHandlerRegistry rootHandlerRegistry, string fileName)
-    {
-        var folderResult = ResolveDownloadsFolder(rootHandlerRegistry);
-        if (folderResult.IsFailure)
-        {
-            return Result<ResourceKey>.Fail().WithErrors(folderResult);
-        }
-        var downloadsFolder = folderResult.Value;
-
-        if (!ResourceKey.TryCreate($"{downloadsFolder.Path}/{fileName}", out _))
-        {
-            return Result<ResourceKey>.Fail($"'{fileName}' is not a valid download file name");
-        }
-
-        // Only the folder is resolved. The loop below checks the name against the files on disk. A name that
-        // differs from an existing file's name only in letter case then takes the next free name.
-        var resolveResult = rootHandlerRegistry.ResolveResourcePath(downloadsFolder);
-        if (resolveResult.IsFailure)
-        {
-            return Result<ResourceKey>.Fail($"Failed to resolve the downloads folder '{downloadsFolder}'")
-                .WithErrors(resolveResult);
-        }
-
-        try
-        {
-            var requestedPath = Path.GetFullPath(Path.Combine(resolveResult.Value, fileName));
-            var folderPath = Path.GetDirectoryName(requestedPath)!;
-            var nameWithoutExtension = Path.GetFileNameWithoutExtension(requestedPath);
-            var extension = Path.GetExtension(requestedPath);
-            var candidateName = Path.GetFileName(requestedPath);
-            var count = 1;
-
-            while (true)
-            {
-                var candidatePath = Path.Combine(folderPath, candidateName);
-
-                var getKeyResult = rootHandlerRegistry.GetResourceKey(candidatePath);
-                if (getKeyResult.IsFailure)
-                {
-                    return Result<ResourceKey>.Fail($"Failed to resolve the download destination '{candidatePath}'")
-                        .WithErrors(getKeyResult);
-                }
-                var candidateResource = getKeyResult.Value;
-
-                var infoResult = await _localFileSystem.GetInfoAsync(candidatePath);
-                var existsOnDisk = infoResult.IsSuccess &&
-                    infoResult.Value.Kind != StorageItemKind.NotFound;
-
-                if (!existsOnDisk &&
-                    !IsDestinationReserved(candidateResource))
-                {
-                    return candidateResource;
-                }
-
-                candidateName = string.IsNullOrEmpty(extension)
-                    ? $"{nameWithoutExtension} ({count})"
-                    : $"{nameWithoutExtension} ({count}){extension}";
-                count++;
-            }
-        }
-        catch (Exception ex)
-        {
-            return Result<ResourceKey>.Fail($"Failed to find a free download destination for '{fileName}'")
-                .WithException(ex);
-        }
-    }
-
-    // Names the stored folder when the downloads setting differs from the folder's stored name, so the user can
-    // correct the setting or rename the folder. Other failures get the general message.
-    private string DescribeUnavailableDestination(Result reserveResult)
-    {
-        if (reserveResult.FirstException is StoredNameMismatchError { StoredResource: ResourceKey storedFolder } mismatch)
-        {
-            return GetString("Downloads_FolderNameMismatch", mismatch.Resource.Path, storedFolder.Path);
-        }
-
-        return GetString("Downloads_DestinationUnavailable");
-    }
-
-    // Only Celbridge's own reserved folders can deny a destination. Nothing a project configures denies a read
-    // or a write, and a downloads folder inside a reserved folder is refused before it is used. If a destination
-    // still reaches a reserved folder, the row names the folder that matched.
-    private string DescribeBlockedDestination(Result probeResult, string fileName)
-    {
-        if (probeResult.FirstException is not PolicyDenialError denial)
-        {
-            return GetString("Downloads_DestinationUnavailable");
-        }
-
-        var reservedName = denial.MatchedRule.Pattern.Split('/')[0];
-
-        return GetString("Downloads_Blocked", fileName, reservedName);
-    }
-
-    private bool IsDestinationReserved(ResourceKey resource)
-    {
-        lock (_lock)
-        {
-            return _reservedDestinations.Contains(resource);
-        }
-    }
-
-    private void ReleaseDestination(ResourceKey destination)
-    {
-        lock (_lock)
-        {
-            _reservedDestinations.Remove(destination);
-        }
     }
 
     private long RecordStart(
@@ -543,25 +350,11 @@ public sealed class DownloadService : IDownloadService
         ResourceKey destination,
         IDownloadTransfer transfer)
     {
-        long downloadId;
+        var downloadId = _rows.AddRunning(fileName, sourceUrl);
 
         lock (_lock)
         {
-            downloadId = TakeDownloadId();
-
             _inFlightDownloads.Add(downloadId, new InFlightDownload(stagingResource, destination, transfer));
-            _reservedDestinations.Add(destination);
-
-            var entry = new DownloadEntry(
-                downloadId,
-                fileName,
-                ResourceKey.Empty,
-                sourceUrl,
-                DownloadStatus.InProgress,
-                FailureReason: string.Empty,
-                DateTimeOffset.UtcNow);
-
-            AddEntry(entry);
         }
 
         SendDownloadsChanged(hasArrival: false);
@@ -573,37 +366,22 @@ public sealed class DownloadService : IDownloadService
     // silently doing nothing.
     private void RecordFailure(string fileName, string sourceUrl, string reason)
     {
-        lock (_lock)
-        {
-            var entry = new DownloadEntry(
-                TakeDownloadId(),
-                fileName,
-                ResourceKey.Empty,
-                sourceUrl,
-                DownloadStatus.Failed,
-                reason,
-                DateTimeOffset.UtcNow);
-
-            AddEntry(entry);
-        }
+        _rows.AddFailed(fileName, sourceUrl, reason);
 
         SendDownloadsChanged(hasArrival: true);
     }
 
     private void SettleAsSucceeded(long downloadId, ResourceKey destination)
     {
-        lock (_lock)
+        var isUpdated = _rows.Update(downloadId, entry => entry with
         {
-            var isUpdated = TryUpdateEntry(downloadId, entry => entry with
-            {
-                Resource = destination,
-                Status = DownloadStatus.Succeeded
-            });
+            Resource = destination,
+            Status = DownloadStatus.Succeeded
+        });
 
-            if (!isUpdated)
-            {
-                return;
-            }
+        if (!isUpdated)
+        {
+            return;
         }
 
         SendDownloadsChanged(hasArrival: true);
@@ -611,18 +389,15 @@ public sealed class DownloadService : IDownloadService
 
     private void SettleAsFailed(long downloadId, string reason)
     {
-        lock (_lock)
+        var isUpdated = _rows.Update(downloadId, entry => entry with
         {
-            var isUpdated = TryUpdateEntry(downloadId, entry => entry with
-            {
-                Status = DownloadStatus.Failed,
-                FailureReason = reason
-            });
+            Status = DownloadStatus.Failed,
+            FailureReason = reason
+        });
 
-            if (!isUpdated)
-            {
-                return;
-            }
+        if (!isUpdated)
+        {
+            return;
         }
 
         SendDownloadsChanged(hasArrival: true);
@@ -636,7 +411,7 @@ public sealed class DownloadService : IDownloadService
             await resourceFileSystem.DeleteAsync(inFlightDownload.StagingResource);
         }
 
-        ReleaseDestination(inFlightDownload.Destination);
+        _destinations.Release(inFlightDownload.Destination);
 
         SettleAsCanceled(downloadId);
     }
@@ -644,17 +419,14 @@ public sealed class DownloadService : IDownloadService
     // Announced as no arrival: a stopped download brought nothing to draw attention to.
     private void SettleAsCanceled(long downloadId)
     {
-        lock (_lock)
+        var isUpdated = _rows.Update(downloadId, entry => entry with
         {
-            var isUpdated = TryUpdateEntry(downloadId, entry => entry with
-            {
-                Status = DownloadStatus.Canceled
-            });
+            Status = DownloadStatus.Canceled
+        });
 
-            if (!isUpdated)
-            {
-                return;
-            }
+        if (!isUpdated)
+        {
+            return;
         }
 
         SendDownloadsChanged(hasArrival: false);
@@ -673,121 +445,13 @@ public sealed class DownloadService : IDownloadService
         }
     }
 
-    // Subscribes to the files of the succeeded rows whenever they change. The new subscription is made before the
-    // old one is disposed, so no change is missed between the two.
-    private void UpdateFileSubscription()
+    // Clicking a succeeded row reveals its file. A row with a missing file would lead nowhere, so the row
+    // leaves the list. Failed and canceled rows name no file, and they stay.
+    private void OnFilesMissing(IReadOnlySet<ResourceKey> missingFiles)
     {
-        List<ResourceKey> succeededFiles;
-        lock (_lock)
-        {
-            succeededFiles = _entries
-                .Where(entry => entry.Status == DownloadStatus.Succeeded)
-                .Select(entry => entry.Resource)
-                .Distinct()
-                .ToList();
-        }
-
-        lock (_fileSubscriptionLock)
-        {
-            if (_followedFiles.SetEquals(succeededFiles))
-            {
-                return;
-            }
-
-            IResourceKeySubscription? fileSubscription = null;
-            if (succeededFiles.Count > 0
-                && _workspaceWrapper.HasWorkspaceService)
-            {
-                var resourceMonitor = _workspaceWrapper.WorkspaceService.ResourceService.Monitor;
-                var handlers = new ResourceChangeHandlers(OnFilesChanged, OnFilesResync);
-
-                var subscribeResult = resourceMonitor.SubscribeToResources(succeededFiles, handlers);
-                if (subscribeResult.IsFailure)
-                {
-                    _logger.LogWarning(subscribeResult, "Failed to follow the files of the finished downloads");
-                    return;
-                }
-
-                fileSubscription = subscribeResult.Value;
-            }
-
-            var previousSubscription = _fileSubscription;
-            _fileSubscription = fileSubscription;
-            _followedFiles = succeededFiles.ToHashSet();
-            previousSubscription?.Dispose();
-        }
-    }
-
-    // A succeeded row's whole value is that clicking it reveals the file, so a row whose file has gone
-    // leaves the list rather than sitting there as a dead end. A failed or canceled row names no file and
-    // stays.
-    private void OnFilesChanged(ResourceChangeBatch batch)
-    {
-        var goneFiles = batch.Changes
-            .Where(change => change.State != ResourceItemState.File)
-            .Select(change => change.Resource)
-            .ToHashSet();
-
-        RemoveRowsOfGoneFiles(goneFiles);
-    }
-
-    // The watcher lost events, so each succeeded row's file is checked on disk.
-    private void OnFilesResync(ResourceResync resync)
-    {
-        _ = RemoveRowsOfMissingFilesAsync();
-    }
-
-    private async Task RemoveRowsOfMissingFilesAsync()
-    {
-        if (!_workspaceWrapper.HasWorkspaceService)
+        if (!_rows.RemoveSucceeded(missingFiles))
         {
             return;
-        }
-
-        List<ResourceKey> succeededFiles;
-        lock (_lock)
-        {
-            succeededFiles = _entries
-                .Where(entry => entry.Status == DownloadStatus.Succeeded)
-                .Select(entry => entry.Resource)
-                .Distinct()
-                .ToList();
-        }
-
-        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
-        var goneFiles = new HashSet<ResourceKey>();
-        foreach (var succeededFile in succeededFiles)
-        {
-            var infoResult = await resourceFileSystem.GetInfoAsync(succeededFile);
-            if (infoResult.IsSuccess
-                && infoResult.Value.Kind != StorageItemKind.File)
-            {
-                goneFiles.Add(succeededFile);
-            }
-        }
-
-        RemoveRowsOfGoneFiles(goneFiles);
-    }
-
-    private void RemoveRowsOfGoneFiles(IReadOnlySet<ResourceKey> goneFiles)
-    {
-        if (goneFiles.Count == 0)
-        {
-            return;
-        }
-
-        lock (_lock)
-        {
-            var removedCount = _entries.RemoveAll(entry =>
-                entry.Status == DownloadStatus.Succeeded &&
-                goneFiles.Contains(entry.Resource));
-
-            if (removedCount == 0)
-            {
-                return;
-            }
-
-            UpdateDownloads();
         }
 
         SendDownloadsChanged(hasArrival: false);
@@ -798,23 +462,15 @@ public sealed class DownloadService : IDownloadService
     private void OnWorkspaceUnloaded(object recipient, WorkspaceUnloadedMessage message)
     {
         List<InFlightDownload> abandonedDownloads;
-        bool hasClearedEntries;
-
         lock (_lock)
         {
             abandonedDownloads = _inFlightDownloads.Values.ToList();
-
             _inFlightDownloads.Clear();
-            _reservedDestinations.Clear();
-
-            hasClearedEntries = _entries.Count > 0;
-            if (hasClearedEntries)
-            {
-                _entries.Clear();
-
-                UpdateDownloads();
-            }
         }
+
+        _destinations.Clear();
+        _fileTracker.Stop();
+        var hasClearedRows = _rows.Clear();
 
         // Stopped outside the lock, since a transfer can report back into the service as it stops.
         foreach (var abandonedDownload in abandonedDownloads)
@@ -829,7 +485,7 @@ public sealed class DownloadService : IDownloadService
             }
         }
 
-        if (!hasClearedEntries)
+        if (!hasClearedRows)
         {
             return;
         }
@@ -837,63 +493,11 @@ public sealed class DownloadService : IDownloadService
         SendDownloadsChanged(hasArrival: false);
     }
 
-    private long TakeDownloadId()
-    {
-        var downloadId = _nextDownloadId;
-        _nextDownloadId++;
-
-        return downloadId;
-    }
-
-    // A download still running keeps its row, so its progress stays in view and it can still be stopped.
-    // When every row is still running the list grows past the limit rather than dropping one.
-    private void AddEntry(DownloadEntry entry)
-    {
-        while (_entries.Count >= DownloadLimit)
-        {
-            var oldestSettledIndex = _entries.FindLastIndex(
-                candidate => candidate.Status != DownloadStatus.InProgress);
-            if (oldestSettledIndex < 0)
-            {
-                break;
-            }
-
-            _entries.RemoveAt(oldestSettledIndex);
-        }
-
-        _entries.Insert(0, entry);
-
-        UpdateDownloads();
-    }
-
-    private bool TryUpdateEntry(long downloadId, Func<DownloadEntry, DownloadEntry> update)
-    {
-        var entryIndex = _entries.FindIndex(entry => entry.Id == downloadId);
-        if (entryIndex < 0)
-        {
-            return false;
-        }
-
-        _entries[entryIndex] = update(_entries[entryIndex]);
-
-        UpdateDownloads();
-
-        return true;
-    }
-
-    // Each change publishes a new list, since a reader on another thread may still hold the previous one.
-    private void UpdateDownloads()
-    {
-        var downloads = new List<DownloadEntry>(_entries);
-
-        _downloads = downloads.AsReadOnly();
-    }
-
-    // Sent outside the lock, so a recipient reading the list back cannot deadlock with a change on
-    // another thread. Every change to the rows ends here, so the file subscription is brought up to date first.
+    // Sent outside the locks, so a recipient reading the list back cannot deadlock with a change on
+    // another thread. Every change to the rows ends here, so the tracker follows the succeeded rows' files first.
     private void SendDownloadsChanged(bool hasArrival)
     {
-        UpdateFileSubscription();
+        _fileTracker.Follow(_rows.GetSucceededFiles());
 
         var message = new DownloadsChangedMessage(hasArrival);
         _messengerService.Send(message);
