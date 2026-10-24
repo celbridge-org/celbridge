@@ -20,7 +20,7 @@ public enum ResourceAction
 public enum PolicyRuleSource
 {
     /// <summary>
-    /// Hard-coded non-overridable deny rule (e.g. the ".git/" metadata folder).
+    /// Hard-coded non-overridable deny rule (e.g. the ".git" metadata folder).
     /// </summary>
     SystemDeny,
 }
@@ -38,14 +38,14 @@ public interface IPolicyRule
     PolicyRuleSource Source { get; }
 
     /// <summary>
-    /// The pattern the rule matches on, as a synthetic literal for system rules
-    /// (e.g. ".git/").
+    /// The rule's gitignore line, like ".git" for the rule that reserves the
+    /// Git metadata folder.
     /// </summary>
     string Pattern { get; }
 
     /// <summary>
     /// Which actions this rule gates. A single rule may gate multiple actions:
-    /// the .git/ system-deny rule denies Read and Write together.
+    /// the .git system-deny rule denies Read and Write together.
     /// </summary>
     ResourceAction GatedActions { get; }
 

@@ -1078,7 +1078,7 @@ Open with default application instead?</value>
     <value>e.g. node_modules</value>
   </data>
   <data name="ProjectSettings_InvalidPattern" xml:space="preserve">
-    <value>Patterns use forward slashes and are relative to the project folder. Only * and ** are wildcards, not ? or [ ]. A line cannot start with /, ! or #.</value>
+    <value>Patterns follow .gitignore rules, with / between folder names.</value>
   </data>
   <data name="ProjectSettings_DownloadsFolderTitle" xml:space="preserve">
     <value>Downloads folder</value>

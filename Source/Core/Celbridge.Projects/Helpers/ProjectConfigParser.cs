@@ -334,8 +334,8 @@ public static class ProjectConfigParser
 
         return resourcesSection with
         {
-            Hide = ReadStringList(resourcesTable, HideKey) ?? resourcesSection.Hide,
-            SearchExclude = ReadStringList(resourcesTable, SearchExcludeKey) ?? resourcesSection.SearchExclude,
+            Hide = ReadPatternList(resourcesTable, HideKey, entryErrors) ?? resourcesSection.Hide,
+            SearchExclude = ReadPatternList(resourcesTable, SearchExcludeKey, entryErrors) ?? resourcesSection.SearchExclude,
             DownloadsFolder = ReadDownloadsFolder(resourcesTable, entryErrors),
         };
     }
@@ -387,6 +387,36 @@ public static class ProjectConfigParser
         }
 
         return subTable;
+    }
+
+    // Reports and drops each refused line. The rest of the list applies.
+    private static IReadOnlyList<string>? ReadPatternList(
+        TomlTable resourcesTable,
+        string key,
+        List<ProjectConfigEntryError> entryErrors)
+    {
+        var lines = ReadStringList(resourcesTable, key);
+        if (lines is null)
+        {
+            return null;
+        }
+
+        var acceptedLines = new List<string>(lines.Count);
+        foreach (var line in lines)
+        {
+            var compileResult = GitignoreMatcher.Compile([line], ignoreCase: false);
+            if (compileResult.IsFailure)
+            {
+                entryErrors.Add(new ProjectConfigEntryError(
+                    $"{CelbridgeSectionName}.{ResourcesKey}",
+                    $"Dropped an entry in '{key}'. {compileResult.FirstErrorMessage}"));
+                continue;
+            }
+
+            acceptedLines.Add(line);
+        }
+
+        return acceptedLines;
     }
 
     // Reports and drops an entry that names the project root, an invalid path or a folder inside a .git folder.

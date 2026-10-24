@@ -12,17 +12,6 @@ namespace Celbridge.Utilities;
 /// </summary>
 public static class CelbridgeFileFormats
 {
-    private static readonly IReadOnlyList<string> Patterns =
-    [
-        $"*{ProjectConstants.ProjectFileExtension}",
-        PackageConstants.ManifestFileName,
-        $"*{PackageConstants.EditorManifestExtension}",
-        PageConstants.ManifestFileName,
-    ];
-
-    private static readonly IReadOnlyList<ResourcePathMatcher> Matchers =
-        Patterns.Select(pattern => ResourcePathMatcher.Compile(pattern)).ToList();
-
     /// <summary>
     /// True when the file name is one of Celbridge's own formats.
     /// </summary>
@@ -33,14 +22,9 @@ public static class CelbridgeFileFormats
             return false;
         }
 
-        foreach (var matcher in Matchers)
-        {
-            if (matcher.IsMatch(fileName, isFolder: false))
-            {
-                return true;
-            }
-        }
-
-        return false;
+        return fileName.EndsWith(ProjectConstants.ProjectFileExtension, StringComparison.Ordinal)
+            || fileName.Equals(PackageConstants.ManifestFileName, StringComparison.Ordinal)
+            || fileName.EndsWith(PackageConstants.EditorManifestExtension, StringComparison.Ordinal)
+            || fileName.Equals(PageConstants.ManifestFileName, StringComparison.Ordinal);
     }
 }

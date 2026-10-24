@@ -323,6 +323,31 @@ public class ProjectConfigParserTests
     }
 
     [Test]
+    public void ParseFromFile_RefusedPatternLine_IsReportedAndDropped()
+    {
+        var content = """
+            [celbridge]
+            celbridge-version = "1.0.0"
+
+            [celbridge.resources]
+            hide = ['src\bin', "*.log", "!keep.log"]
+            search-exclude = ["node_modules", "*.{js,ts}"]
+            """;
+        var configFilePath = WriteConfigFile(content);
+
+        var result = ProjectConfigParser.ParseFromFile(configFilePath, _fileSystem);
+
+        result.IsSuccess.Should().BeTrue();
+        var config = result.Value;
+        config.Resources.Hide.Should().Equal("*.log", "!keep.log");
+        config.Resources.SearchExclude.Should().Equal("node_modules");
+        config.EntryErrors.Should().HaveCount(2);
+        config.EntryErrors[0].EntryName.Should().Be("celbridge.resources");
+        config.EntryErrors[0].Message.Should().Contain("Dropped an entry in 'hide'").And.Contain("Write '/' between folder names");
+        config.EntryErrors[1].Message.Should().Contain("Dropped an entry in 'search-exclude'").And.Contain("uses braces");
+    }
+
+    [Test]
     public void ParseFromFile_StrayKeyOnResourcesTable_ReportsUnknownKey()
     {
         // A flat [celbridge] key appended after the [celbridge.resources] header

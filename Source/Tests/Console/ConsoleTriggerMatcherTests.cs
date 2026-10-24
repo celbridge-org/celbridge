@@ -9,7 +9,7 @@ public class ConsoleTriggerMatcherTests
 {
     private static ConsoleTrigger Trigger(string pattern, string command)
     {
-        var matcher = ResourcePathMatcher.Compile(pattern);
+        var matcher = GitignoreMatcher.Compile([pattern], ignoreCase: false).Value;
 
         return new ConsoleTrigger(matcher, command);
     }
@@ -80,6 +80,17 @@ public class ConsoleTriggerMatcherTests
                 new ResourceChange(new ResourceKey("src/old.py"), ResourceItemState.Absent)));
 
         invocations.Should().BeEmpty();
+    }
+
+    [Test]
+    public void Resolve_FileInsideAMatchedFolder_Fires()
+    {
+        // 'data/*' matches the folder data/raw, and a matched folder takes everything inside it.
+        var trigger = Trigger("data/*", "%run \"{resource}\"");
+
+        var invocations = ConsoleTriggerMatcher.Resolve(trigger, Batch(FileAt("data/raw/messy.xlsx")));
+
+        invocations.Should().Equal("%run \"data/raw/messy.xlsx\"");
     }
 
     [Test]

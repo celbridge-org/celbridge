@@ -21,7 +21,7 @@ When the move was refused or failed (a reserved path, a read-only root, a file l
 {
   "status": "partial_failure",
   "failedResources": [
-    { "resource": "project:source.txt", "message": "Write of 'project:.git/keep.tmp' was denied by the system policy pattern '.git/**'." },
+    { "resource": "project:source.txt", "message": "Write of 'project:.git/keep.tmp' was denied by the system policy pattern '.git'." },
     ...
   ]
 }

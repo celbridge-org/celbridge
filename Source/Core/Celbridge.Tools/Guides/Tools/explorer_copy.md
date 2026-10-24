@@ -21,7 +21,7 @@ When one or more resources were refused or failed (a reserved path, a read-only 
 {
   "status": "partial_failure",
   "failedResources": [
-    { "resource": "project:source.txt", "message": "Write of 'project:.git/keep.bak' was denied by the system policy pattern '.git/**'." },
+    { "resource": "project:source.txt", "message": "Write of 'project:.git/keep.bak' was denied by the system policy pattern '.git'." },
     ...
   ]
 }

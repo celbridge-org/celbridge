@@ -67,6 +67,17 @@ public class ResourcePolicyTests
     }
 
     [Test]
+    public void Evaluate_DenialInsideGitFolder_NamesTheGitRule()
+    {
+        var policy = BuildPolicy();
+
+        var result = policy.Evaluate(new ResourceKey(".git/hooks/pre-commit"), ResourceAction.Write);
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("pattern '.git'");
+    }
+
+    [Test]
     public void Evaluate_IgnoresHideAndSearchExclude()
     {
         // The two configured lists are ergonomic, not access control: nothing a project
@@ -105,6 +116,36 @@ public class ResourcePolicyTests
         policy.IsHidden(new ResourceKey("drafts"), isFolder: true).Should().BeTrue();
         policy.IsHidden(new ResourceKey("drafts/notes.md"), isFolder: false).Should().BeTrue();
         policy.IsHidden(new ResourceKey("notes.md"), isFolder: false).Should().BeFalse();
+    }
+
+    [Test]
+    public void IsHidden_ReadsTheListAsGitignoreLines()
+    {
+        var section = new ResourcesSection
+        {
+            Hide = new[] { "*.log", "!keep.log", "/build", "# draft", "data?.csv" },
+        };
+        var policy = BuildPolicy(section);
+
+        policy.IsHidden(new ResourceKey("logs/run.log"), isFolder: false).Should().BeTrue();
+        policy.IsHidden(new ResourceKey("logs/keep.log"), isFolder: false).Should().BeFalse();
+        policy.IsHidden(new ResourceKey("build"), isFolder: true).Should().BeTrue();
+        policy.IsHidden(new ResourceKey("src/build"), isFolder: true).Should().BeFalse();
+        policy.IsHidden(new ResourceKey("# draft"), isFolder: false).Should().BeFalse();
+        policy.IsHidden(new ResourceKey("data1.csv"), isFolder: false).Should().BeTrue();
+    }
+
+    [Test]
+    public void IsHidden_MatchesExactLetterCase()
+    {
+        var section = new ResourcesSection
+        {
+            Hide = new[] { "Drafts" },
+        };
+        var policy = BuildPolicy(section);
+
+        policy.IsHidden(new ResourceKey("Drafts"), isFolder: true).Should().BeTrue();
+        policy.IsHidden(new ResourceKey("drafts"), isFolder: true).Should().BeFalse();
     }
 
     [Test]
@@ -197,22 +238,5 @@ public class ResourcePolicyTests
 
         policy.IsHidden(new ResourceKey("logs:run.log"), isFolder: false).Should().BeFalse();
         policy.IsSearchExcluded(new ResourceKey("logs:run.log"), isFolder: false).Should().BeFalse();
-    }
-
-    [Test]
-    public void ReservedMatcher_RejectsAFoldersOnlyPattern()
-    {
-        // Evaluate passes the caller's isFolder hint straight through, so a trailing slash would be
-        // written into the rule set and then quietly do nothing. It is refused at compile time instead.
-        var compile = () => ResourcePolicy.CompileReservedMatcher(".svn/");
-
-        compile.Should().Throw<ArgumentException>().WithMessage("*folders-only*");
-    }
-
-    [Test]
-    public void ReservedMatcher_AcceptsTheShapesTheRuleSetUses()
-    {
-        ResourcePolicy.CompileReservedMatcher(".git").Target.Should().Be(PathMatchTarget.Any);
-        ResourcePolicy.CompileReservedMatcher(".git/**").Target.Should().Be(PathMatchTarget.Any);
     }
 }
