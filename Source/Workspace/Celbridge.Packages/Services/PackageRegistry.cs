@@ -238,7 +238,7 @@ public class PackageRegistry
     // Reads the default template bytes for the given file extension, picking the
     // first available contribution that handles the extension and declares a default template.
     // The reader is chosen by package origin: bundled packages stay on direct File.*
-    // because their bytes live outside any registry root, project packages route
+    // because their bytes live outside every resource root, project packages route
     // through IResourceFileSystem by reverse-resolving the template path.
     public byte[]? GetDefaultTemplateContent(string fileExtension)
     {

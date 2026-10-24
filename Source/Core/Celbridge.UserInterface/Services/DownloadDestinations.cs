@@ -18,9 +18,10 @@ internal sealed class DownloadDestinations
 
     private readonly Lock _lock = new();
 
-    // The destinations promised to downloads. A destination stays here until its file lands or the move fails.
-    // A transfer ends before its move, so during the move only this set shows the destination is taken.
-    private readonly HashSet<ResourceKey> _reservedDestinations = new();
+    // The keys of the destinations promised to downloads. A destination stays here until its download lands, fails
+    // or is canceled. A transfer ends before its move, so during the move only this set shows the destination is
+    // taken. Keys are compared without letter case, since Windows and macOS volumes ignore it.
+    private readonly HashSet<string> _reservedDestinations = new(StringComparer.OrdinalIgnoreCase);
 
     // Finding a free name and reserving it happen as one step. Two downloads of the same name started together
     // then get different names.
@@ -100,7 +101,7 @@ internal sealed class DownloadDestinations
 
             lock (_lock)
             {
-                _reservedDestinations.Add(destination);
+                _reservedDestinations.Add(destination.ToString());
             }
 
             return destination;
@@ -118,7 +119,7 @@ internal sealed class DownloadDestinations
     {
         lock (_lock)
         {
-            _reservedDestinations.Remove(destination);
+            _reservedDestinations.Remove(destination.ToString());
         }
     }
 
@@ -246,7 +247,7 @@ internal sealed class DownloadDestinations
     {
         lock (_lock)
         {
-            return _reservedDestinations.Contains(resource);
+            return _reservedDestinations.Contains(resource.ToString());
         }
     }
 

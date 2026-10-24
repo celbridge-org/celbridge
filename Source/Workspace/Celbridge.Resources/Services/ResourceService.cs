@@ -96,7 +96,7 @@ public class ResourceService : IResourceService, IDisposable
         rootHandlerRegistry.RegisterRootHandler(new UtilsRootHandler(utilsFolder));
 
         // Monitor.Initialize() is called from WorkspaceLoader after construction completes;
-        // the monitor looks up its registry through IWorkspaceWrapper, which is only populated
+        // the monitor reads the root handlers through IWorkspaceWrapper, which is only populated
         // once the WorkspaceService finishes constructing.
     }
 

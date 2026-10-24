@@ -590,9 +590,9 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
 
         var entries = new List<FolderChild>();
 
-        // EnumerateAsync already returns a deterministic folders-first, ordinal
-        // order. Size and modified time come from the directory walk, so the
-        // listing needs no re-sort and no stat per child.
+        // EnumerateAsync returns folders first in ordinal order, with each
+        // entry's size and modified time from the directory walk. The listing
+        // keeps that order and those values.
         foreach (var entry in enumerateResult.Value)
         {
             var folderChild = ToFolderChild(folder, entry);
@@ -667,7 +667,8 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         return folderPath;
     }
 
-    // Returns the child an entry of the folder describes, or null when listings leave the entry out.
+    // Converts an entry of the folder to a FolderChild. Returns null for a reserved folder and for a link, which
+    // listings leave out.
     private FolderChild? ToFolderChild(ResourceKey folder, FileSystemEntry entry)
     {
         var childName = Path.GetFileName(entry.FullPath);

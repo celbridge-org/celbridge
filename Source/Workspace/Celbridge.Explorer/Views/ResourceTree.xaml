@@ -24,6 +24,7 @@
             MinHeight="32"
             Background="{ThemeResource SubtleFillColorTransparentBrush}"
             ToolTipService.ToolTip="{x:Bind TooltipText}"
+            AutomationProperties.AutomationId="{x:Bind RowAutomationId}"
             AutomationProperties.HelpText="{x:Bind ReadOnlyMessage}">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="32"/>
@@ -34,6 +35,7 @@
         <!-- Expand/Collapse chevron button (hidden for project folder) -->
         <Button Grid.Column="0"
                 Click="ExpanderButton_Click"
+                AutomationProperties.AutomationId="{x:Bind ExpanderAutomationId}"
                 AutomationProperties.Name="{x:Bind IsExpanded, Converter={StaticResource ExpanderNameConverter}}"
                 Visibility="{x:Bind ChevronVisibility}"
                 Style="{StaticResource TreeExpanderButtonStyle}">

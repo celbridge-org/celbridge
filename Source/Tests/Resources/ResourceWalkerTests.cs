@@ -8,7 +8,7 @@ using Celbridge.Workspace;
 namespace Celbridge.Tests.Resources;
 
 /// <summary>
-/// Tests for ResourceWalker over a temporary project folder, through a real registry and gateway.
+/// Tests for ResourceWalker over a temporary project folder, through real root handlers and a real gateway.
 /// </summary>
 [TestFixture]
 public class ResourceWalkerTests

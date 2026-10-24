@@ -33,8 +33,8 @@ public record ResourceChangesDeliveredEvent(string RootName, int Keys, long Elap
 public record ResourceEventsLostEvent(string RootName) : AutomationEvent;
 
 /// <summary>
-/// The Explorer has rebuilt the rows it shows. Rows is how many rows it shows, and ElapsedMs is how long the
-/// rebuild took, in milliseconds.
+/// The Explorer has listed and checked the folders on screen, and rebuilt the rows. Rows is how many rows the
+/// Explorer shows, and ElapsedMs is how long the listings, the checks and the rebuild took, in milliseconds.
 /// </summary>
 public record ExplorerTreeBuiltEvent(int Rows, long ElapsedMs) : AutomationEvent;
 

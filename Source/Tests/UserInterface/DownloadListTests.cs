@@ -53,7 +53,8 @@ public class DownloadListTests
 
         var isRemoved = _rows.RemoveSucceeded(new HashSet<ResourceKey> { missingFile, ResourceKey.Empty });
 
-        // Only succeeded rows are removed, so the failed row stays with the empty key among the missing files.
+        // The missing files include the empty key, which is also the failed row's key. The failed row stays, since
+        // only succeeded rows are removed.
         isRemoved.Should().BeTrue();
         _rows.Downloads.Select(download => download.FileName).Should().Equal("failed.pdf", "kept.pdf");
         _rows.GetSucceededFiles().Should().Equal(keptFile);

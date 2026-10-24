@@ -21,7 +21,7 @@ public interface IExplorerPanel
     Task<Result> SelectResources(List<ResourceKey> resources);
 
     /// <summary>
-    /// Lists each folder the resource tree shows, and updates the tree's rows.
+    /// Updates the resource tree's rows, listing each shown folder the tree has no listing of yet.
     /// </summary>
     Task RefreshTreeAsync();
 

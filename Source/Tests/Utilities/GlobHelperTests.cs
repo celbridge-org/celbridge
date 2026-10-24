@@ -3,15 +3,12 @@ using System.Text.RegularExpressions;
 namespace Celbridge.Tests.Utilities;
 
 /// <summary>
-/// Tests for GlobHelper, which converts glob patterns to regular expressions.
+/// Tests for GlobHelper, which converts glob patterns to regular expressions. GlobToRegex matches a single name,
+/// and PathGlobToRegex matches a full resource key path.
 /// </summary>
 [TestFixture]
 public class GlobHelperTests
 {
-    //
-    // GlobHelper.GlobToRegex — matches against a single name (no path separators)
-    //
-
     [TestCase("*.cs", "foo.cs", true)]
     [TestCase("*.cs", "foo.py", false)]
     [TestCase("readme*", "readme", true)]
@@ -43,10 +40,6 @@ public class GlobHelperTests
         caseSensitiveRegex.IsMatch("foo.cs").Should().BeFalse();
         caseInsensitiveRegex.IsMatch("foo.cs").Should().BeTrue();
     }
-
-    //
-    // GlobHelper.PathGlobToRegex — matches against a full resource key path
-    //
 
     [TestCase("*.py", "foo.py", true)]
     [TestCase("*.py", "src/foo.py", true, TestName = "PathGlobToRegex_StarExtension_MatchesAtAnyDepth")]

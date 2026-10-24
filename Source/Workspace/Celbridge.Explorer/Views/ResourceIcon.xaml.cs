@@ -8,7 +8,7 @@ namespace Celbridge.Explorer.Views;
 public sealed partial class ResourceIcon : UserControl
 {
     /// <summary>
-    /// Returns true if the resource is a folder. A folder shows the folder icon.
+    /// Identifies the IsFolder property. A folder shows the folder icon, and a file shows FileIcon.
     /// </summary>
     public static readonly DependencyProperty IsFolderProperty = DependencyProperty.Register(
         nameof(IsFolder),
@@ -17,7 +17,7 @@ public sealed partial class ResourceIcon : UserControl
         new PropertyMetadata(false, OnIconChanged));
 
     /// <summary>
-    /// The icon shown for a file.
+    /// Identifies the FileIcon property, the icon shown for a file.
     /// </summary>
     public static readonly DependencyProperty FileIconProperty = DependencyProperty.Register(
         nameof(FileIcon),

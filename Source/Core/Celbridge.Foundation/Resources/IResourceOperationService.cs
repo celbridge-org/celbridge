@@ -76,16 +76,16 @@ public interface IResourceOperationService
     Task<Result<bool>> DeleteAsync(ResourceKey resource);
 
     /// <summary>
-    /// Imports a file from outside the project into a registry-addressable
-    /// destination. The source path is taken as-is; the destination receives
+    /// Imports a file from outside the project into a destination under a
+    /// resource root. The source path is taken as-is. The destination receives
     /// containment validation through the gateway. A source that is a link is
     /// refused with a LinkNotFollowedError.
     /// </summary>
     Task<Result> ImportExternalFileAsync(string sourcePath, ResourceKey dest);
 
     /// <summary>
-    /// Imports a folder from outside the project into a registry-addressable
-    /// destination. The source is enumerated recursively; each file lands at
+    /// Imports a folder from outside the project into a destination under a
+    /// resource root. The source is enumerated recursively. Each file lands at
     /// its corresponding destination key through the gateway. A source that is
     /// a link is refused with a LinkNotFollowedError. Links inside the folder
     /// are left out, and the result says where each would have landed.

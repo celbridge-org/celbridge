@@ -46,13 +46,29 @@ public class FolderStateService : IFolderStateService
         Guard.IsNotNull(propertyBag);
 
         var expandedFolders = await propertyBag.GetPropertyAsync<List<string>>(ExpandedFoldersKey);
-        if (expandedFolders is not null &&
-            expandedFolders.Count > 0)
+        if (expandedFolders is null)
         {
-            foreach (var expandedFolder in expandedFolders)
+            return;
+        }
+
+        // A folder deleted while the tree did not list its parent stays in the saved list. Each load keeps only the
+        // saved folders still on disk, so the list stays bounded by the project.
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+        foreach (var expandedFolder in expandedFolders)
+        {
+            if (!ResourceKey.TryCreate(expandedFolder, out var folderResource))
             {
-                SetExpanded(expandedFolder, true);
+                continue;
             }
+
+            var infoResult = await resourceFileSystem.GetInfoAsync(folderResource);
+            if (infoResult.IsFailure
+                || infoResult.Value.Kind != StorageItemKind.Folder)
+            {
+                continue;
+            }
+
+            SetExpanded(folderResource, true);
         }
     }
 

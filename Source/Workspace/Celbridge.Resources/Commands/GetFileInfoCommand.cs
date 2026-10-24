@@ -68,8 +68,8 @@ public class GetFileInfoCommand : CommandBase, IGetFileInfoCommand
                 lineCount = await CountLinesAsync(resourceFileSystem, Resource);
             }
 
-            // Surfaces the paired sidecar's key and parse state when the file has a sidecar on disk. Sidecars pair
-            // with files other than .cel files, and this branch runs for files only.
+            // Reports the sidecar's key and parse state when the file has a .cel sidecar on disk. Only a project
+            // file that is not itself a .cel file can have one.
             ResourceKey? sidecarKey = null;
             CelParseStatus? sidecarStatus = null;
             var sidecarService = workspaceService.ResourceService.Sidecars;

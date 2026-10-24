@@ -13,7 +13,7 @@ using Celbridge.Workspace;
 namespace Celbridge.Tests.Search;
 
 /// <summary>
-/// Tests for SearchService over a temporary project folder, walked through a real registry and gateway.
+/// Tests for SearchService over a temporary project folder, walked through real root handlers and a real gateway.
 /// </summary>
 [TestFixture]
 public class SearchServiceTests

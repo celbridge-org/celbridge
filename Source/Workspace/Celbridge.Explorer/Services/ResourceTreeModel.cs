@@ -15,14 +15,15 @@ namespace Celbridge.Explorer.Services;
 
 /// <summary>
 /// The rows of the Explorer's resource tree, and the folder listings they come from. The model lists only the
-/// folders the tree shows. It checks each collapsed subfolder for a child the tree shows, to decide the subfolder's
-/// expander. A subscription follows the changes in the listed and checked folders.
+/// folders the tree shows. In a folder with 50 visible subfolders or fewer, the model also checks each collapsed
+/// subfolder for a child the tree shows. The answer decides the subfolder's expander. A subscription follows the
+/// changes in the listed and checked folders.
 /// </summary>
 public sealed class ResourceTreeModel
 {
     private sealed record ResourceLocation(IReadOnlyList<ResourceKey> FoldersAbove, bool IsHidden);
 
-    // A folder's children, as the file system returned them when the model listed the folder.
+    // A folder's children, from the model's last listing of the folder.
     private sealed record FolderListing(IReadOnlyList<FolderChild> Children)
     {
         public FolderChild? Find(ResourceKey resource)
@@ -65,8 +66,8 @@ public sealed class ResourceTreeModel
         }
     }
 
-    // A visible folder with this many visible subfolders or fewer also checks each collapsed one, so their expanders
-    // are accurate. Above the limit, every subfolder row shows an expander.
+    // The model checks the collapsed subfolders of a visible folder only when the folder has this many visible
+    // subfolders or fewer. Above the limit, every collapsed subfolder row shows an expander.
     private const int LookAheadSubfolderLimit = 50;
 
     private readonly ILogger<ResourceTreeModel> _logger;
@@ -138,8 +139,8 @@ public sealed class ResourceTreeModel
     private IBindableWorkspaceSettings WorkspaceSettings => _workspaceWrapper.WorkspaceService.BindableWorkspaceSettings;
 
     /// <summary>
-    /// Lists each folder the tree shows and checks each collapsed subfolder, reusing the listings and checks the
-    /// model already has. Then rebuilds the rows.
+    /// Lists each folder the tree shows, reusing the listings the model has, and checks the collapsed subfolders
+    /// within the look-ahead limit. Then rebuilds the rows.
     /// </summary>
     public async Task RefreshAsync()
     {
@@ -151,8 +152,8 @@ public sealed class ResourceTreeModel
     /// </summary>
     public async Task SetExpandedAsync(ResourceKey folder, bool isExpanded)
     {
-        // The update collapses an expanded folder that its parent's listing lacks, so the parent's listing must be
-        // current.
+        // UpdateAsync collapses an expanded folder when the parent's listing lacks the folder. The parent is listed
+        // again first if its listing lacks the folder.
         if (isExpanded && !folder.IsEmpty)
         {
             await GetListingContainingAsync(folder.GetParent(), folder);
@@ -183,10 +184,7 @@ public sealed class ResourceTreeModel
     /// </summary>
     public async Task SetShowHiddenFilesAsync(bool showHiddenFiles)
     {
-        WorkspaceSettings.ShowHiddenFiles = showHiddenFiles;
-
-        // Show Hidden Files decides which children count, so every check is made again.
-        _expanderChecks.Clear();
+        SetShowHiddenFiles(showHiddenFiles);
 
         await UpdateAsync([]);
     }
@@ -210,7 +208,7 @@ public sealed class ResourceTreeModel
 
             if (location.IsHidden)
             {
-                WorkspaceSettings.ShowHiddenFiles = true;
+                SetShowHiddenFiles(true);
             }
         }
 
@@ -235,6 +233,19 @@ public sealed class ResourceTreeModel
         _followedFolders = new();
 
         _listings.Clear();
+        _expanderChecks.Clear();
+    }
+
+    // Show Hidden Files decides which children count, so a change to the setting drops every check. The next update
+    // makes each check again.
+    private void SetShowHiddenFiles(bool showHiddenFiles)
+    {
+        if (WorkspaceSettings.ShowHiddenFiles == showHiddenFiles)
+        {
+            return;
+        }
+
+        WorkspaceSettings.ShowHiddenFiles = showHiddenFiles;
         _expanderChecks.Clear();
     }
 

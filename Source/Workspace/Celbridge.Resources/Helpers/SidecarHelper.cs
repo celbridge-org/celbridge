@@ -5,9 +5,9 @@ using Tomlyn.Parsing;
 namespace Celbridge.Resources.Helpers;
 
 /// <summary>
-/// Parses and composes the .cel sidecar format. A
-/// sidecar file is plain TOML; the helpers here are a thin wrapper around
-/// Tomlyn for read and around SidecarTomlEncoder for deterministic write.
+/// Parses and composes the .cel sidecar format. A sidecar file is plain TOML.
+/// The helpers wrap Tomlyn for reads and SidecarTomlEncoder for deterministic
+/// writes.
 /// </summary>
 public static class SidecarHelper
 {

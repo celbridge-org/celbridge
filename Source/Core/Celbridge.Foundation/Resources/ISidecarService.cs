@@ -138,9 +138,8 @@ public interface ISidecarService
     /// Atomically writes a batch of fields, creating the sidecar if it does
     /// not already exist. Every value must pass IsIndexableValue. Read once,
     /// mutate in memory, write once: if any value is rejected the file stays
-    /// untouched. Returns the outcome so callers can distinguish a
-    /// freshly-created sidecar (registry needs to learn about the new file)
-    /// from an in-place update.
+    /// untouched. Returns whether the write created the
+    /// sidecar, updated it in place or changed nothing.
     /// </summary>
     Task<Result<SidecarWriteOutcome>> SetFieldsAsync(ResourceKey resource, IReadOnlyDictionary<string, object> fields);
 

@@ -17,9 +17,9 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.Tests.Explorer;
 
 /// <summary>
-/// Tests the Explorer tree's model against a real project folder. The tests cover the folders the model lists and
-/// checks as folders open and close, and the expanders within and above the look-ahead limit. They also cover
-/// listing and checking again after a change and a resync, rows keeping their identity, the view filter, and reveal.
+/// Tests the Explorer tree's model against a real project folder. The tests cover which folders the model lists and
+/// checks as folders open and close, and the expanders within and above the look-ahead limit. They also cover updates
+/// after a change and a resync, rows keeping their identity, the view filter, and reveal.
 /// </summary>
 [TestFixture]
 public class ResourceTreeModelTests
@@ -307,6 +307,25 @@ public class ResourceTreeModelTests
             .Select(folder => new ResourceKey(folder))
             .Should().Equal(Keys("build", "build/out"));
         RowPaths(model).Should().Equal("", "build", "build/out", "build/out/app.txt");
+    }
+
+    [Test]
+    public async Task Reveal_ThatTurnsShowHiddenFilesOn_ChecksTheCollapsedFoldersAgain()
+    {
+        UsePolicy(hidePatterns: ["*.log"], searchExcludePatterns: ["build/"]);
+        CreateFolder("logs");
+        WriteFile("logs/app.log");
+        CreateFolder("build");
+        WriteFile("build/app.txt");
+        var model = CreateModel();
+        await model.RefreshAsync();
+        Row(model, "logs").HasChildren.Should().BeFalse();
+
+        var revealResult = await model.RevealAsync(ResourceKey.Create("build/app.txt"));
+
+        revealResult.IsSuccess.Should().BeTrue();
+        _workspaceSettings.ShowHiddenFiles.Should().BeTrue();
+        Row(model, "logs").HasChildren.Should().BeTrue();
     }
 
     [Test]

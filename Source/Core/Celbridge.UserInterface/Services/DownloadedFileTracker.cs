@@ -4,8 +4,8 @@ using Celbridge.Workspace;
 namespace Celbridge.UserInterface.Services;
 
 /// <summary>
-/// Follows a set of downloaded files through the resource monitor, and reports each one that a change or a
-/// resync shows is missing.
+/// Follows a set of downloaded files through the resource monitor. Reports a file as missing when a change or a
+/// resync finds something other than a file at its key.
 /// </summary>
 internal sealed class DownloadedFileTracker
 {

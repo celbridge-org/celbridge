@@ -6,8 +6,7 @@ namespace Celbridge.Packages;
 /// <summary>
 /// Reader used for bundled packages. Reads come straight off disk because
 /// bundled assets sit outside every resource root and cannot be
-/// addressed by a ResourceKey. Replaced by an assembly-resource reader when
-/// the bundled-from-assembly migration lands.
+/// addressed by a ResourceKey.
 /// </summary>
 public sealed class DirectPackageReader : IPackageReader
 {

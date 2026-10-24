@@ -114,8 +114,8 @@ public partial class ResourceTreeViewModel : ObservableObject
     public bool ShowHiddenFiles => _model.ShowHiddenFiles;
 
     /// <summary>
-    /// Shows or stops showing the hidden resources. The rows are worked out again from the listings the
-    /// tree already has. Each folder that comes into view is listed too.
+    /// Shows or stops showing the hidden resources. Each collapsed subfolder is checked again, each folder that
+    /// comes into view is listed, and the rows are rebuilt.
     /// </summary>
     public async Task ToggleShowHiddenFilesAsync()
     {
@@ -126,7 +126,7 @@ public partial class ResourceTreeViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Lists the folders the tree shows and updates the rows.
+    /// Lists each folder the tree shows that the model has no listing of yet, and updates the rows.
     /// </summary>
     public async Task RefreshAsync()
     {
@@ -354,8 +354,8 @@ public partial class ResourceTreeViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Expands every folder above each resource so the tree shows them, turning Show Hidden Files on when
-    /// a resource is hidden. Fails when a resource does not exist.
+    /// Expands every folder above each resource so the tree shows each resource. Turns Show Hidden Files on when
+    /// the tree hides a resource or a folder above it. Fails when a resource does not exist.
     /// </summary>
     public async Task<Result> RevealResourcesAsync(IReadOnlyList<ResourceKey> resources)
     {
@@ -450,8 +450,8 @@ public partial class ResourceTreeViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Gets the folder for new resources. A selected folder is used as it is, and a selected file gives its
-    /// parent folder. Returns the project folder when nothing is selected.
+    /// Returns the folder for new resources: the selected folder, the selected file's parent folder, or the
+    /// project folder when nothing is selected.
     /// </summary>
     public ResourceKey GetSelectedResourceFolder()
     {

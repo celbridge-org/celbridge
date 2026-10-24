@@ -147,8 +147,7 @@ public class SidecarServiceTests
         var setResult = await _sidecarService.SetFieldsAsync(regularFile, fields);
 
         setResult.IsSuccess.Should().BeTrue();
-        // The sidecar did not exist on disk, so this write materialises a new
-        // file.
+        // The sidecar did not exist on disk, so this write creates a new file.
         setResult.Value.Should().Be(SidecarWriteOutcome.Created);
         await _resourceFileSystem.Received(1).WriteAllTextAsync(
             siblingSidecar,
@@ -523,9 +522,8 @@ public class SidecarServiceTests
     [Test]
     public void GetSidecarKey_FailsForNonProjectRoot()
     {
-        // Sidecars are a project-scoped metadata system; the tracking pass only
-        // scans the project tree, so cross-root sidecars would be silently
-        // invisible to validation. The API refuses non-project roots up front.
+        // Sidecars belong to the project root alone, so the API refuses other
+        // roots up front.
         var result = _sidecarService.GetSidecarKey(new ResourceKey("logs:foo.txt"));
 
         result.IsFailure.Should().BeTrue();

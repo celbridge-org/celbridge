@@ -26,8 +26,8 @@ public partial class DocumentShortcutViewModel : ObservableObject
 
     private IReadOnlyList<string>? _areaOptions;
 
-    // The answer of the latest check to finish, and how many checks have started. A check's answer is used only
-    // when no later check has started.
+    // The answer of the most recently started check, and how many checks have started. A check that finishes
+    // after a later one started is dropped.
     private bool _resourceExists;
     private int _resourceCheckCount;
 

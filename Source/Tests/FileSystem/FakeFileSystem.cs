@@ -232,6 +232,17 @@ public sealed class FakeFileSystem : ILocalFileSystem
     {
         Record($"HasEntryAsync('{path}')");
 
+        // Matches LocalFileSystem, which fails for a folder that does not exist.
+        bool folderExists;
+        lock (_foldersLock)
+        {
+            folderExists = _folders.Contains(path.TrimEnd('/', '\\'));
+        }
+        if (!folderExists)
+        {
+            return Result<bool>.Fail($"Folder does not exist: '{path}'");
+        }
+
         var enumerateResult = await EnumerateAsync(path, "*", recursive: false);
         if (enumerateResult.IsFailure)
         {

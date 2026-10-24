@@ -21,7 +21,8 @@ public interface IFolderStateService
     bool IsExpanded(ResourceKey folderResource);
 
     /// <summary>
-    /// Loads the folder state from workspace settings.
+    /// Loads the expanded folders from workspace settings, keeping only the saved folders that are still folders
+    /// on disk.
     /// </summary>
     Task LoadAsync();
 

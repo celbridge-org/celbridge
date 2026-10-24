@@ -15,8 +15,8 @@ namespace Celbridge.Tests.Resources;
 
 /// <summary>
 /// Unit tests for GetFileInfoCommand, GetFileTreeCommand, and ListFolderContentsCommand.
-/// Uses a real resource file system rooted at a temp folder. The commands read file-system
-/// metadata from it, such as sizes and modification times.
+/// Uses a real resource file system rooted at a temp folder. The commands read sizes and
+/// modification times from it.
 /// </summary>
 [TestFixture]
 public class ResourceCommandTests
@@ -334,8 +334,7 @@ public class ResourceCommandTests
     [Test]
     public async Task ListFolderContents_ForLogsRoot_ReturnsBackingFolderChildren()
     {
-        // Regression for the logs: enumeration bug. Before the fix, this returned
-        // "Resource not found" because the in-memory tree is project-only.
+        // Listing the logs: root returns the children of the root's backing folder.
         var logsBacking = SetupLogsRoot("session.log", "errors/", "errors/today.log");
         try
         {

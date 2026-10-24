@@ -91,8 +91,8 @@ public class DownloadDestinationsTests
     }
 
     /// <summary>
-    /// A load drops a path that is not a folder path, and a file can take the folder's place after the
-    /// project named it. Either way the download still lands, in the default folder.
+    /// Loading the project drops a downloads folder setting that is not a folder path. A file can also take the
+    /// folder's place after the project names it. Either way the download lands in the default folder.
     /// </summary>
     [TestCase("notes.txt", Description = "a file rather than a folder")]
     [TestCase("../outside", Description = "a path that leaves the project")]
@@ -120,6 +120,17 @@ public class DownloadDestinationsTests
         var thirdResult = await _destinations.ReserveAsync("report.pdf");
 
         thirdResult.Value.Should().Be(new ResourceKey("downloads/report.pdf"));
+    }
+
+    [Test]
+    public async Task AReservedNameInAnotherCase_IsSkipped()
+    {
+        // Neither download has landed yet. On a volume that ignores letter case, the two names are the same file.
+        var firstResult = await _destinations.ReserveAsync("Report.pdf");
+        var secondResult = await _destinations.ReserveAsync("report.pdf");
+
+        firstResult.Value.Should().Be(new ResourceKey("downloads/Report.pdf"));
+        secondResult.Value.Should().Be(new ResourceKey("downloads/report (1).pdf"));
     }
 
     [Test]

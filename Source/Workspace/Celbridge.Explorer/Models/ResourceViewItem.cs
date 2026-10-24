@@ -19,8 +19,8 @@ public readonly record struct ResourceViewItemAppearance(
     string ProjectFolderTooltip);
 
 /// <summary>
-/// Represents a single resource item in the resource view. A row never changes. When a resource's
-/// appearance changes, the resource gets a new row.
+/// A row of the Explorer's resource tree. A row never changes. When a resource's appearance changes, the
+/// resource gets a new row.
 /// </summary>
 public sealed class ResourceViewItem
 {
@@ -66,24 +66,22 @@ public sealed class ResourceViewItem
     public int IndentLevel => Appearance.IndentLevel;
 
     /// <summary>
-    /// Whether this item is a folder resource.
+    /// Returns true if the row's resource is a folder.
     /// </summary>
     public bool IsFolder => Appearance.IsFolder;
 
     /// <summary>
-    /// Whether this item has children that can be expanded.
+    /// Returns true if the row draws an expander for its folder's children.
     /// </summary>
     public bool HasChildren => Appearance.HasChildren;
 
     /// <summary>
-    /// Whether this folder item is currently expanded.
-    /// Only applicable for folder resources.
+    /// Returns true if the row's folder is expanded. Always false for a file.
     /// </summary>
     public bool IsExpanded => Appearance.IsExpanded;
 
     /// <summary>
-    /// Whether this item is the project folder.
-    /// The project folder has special handling.
+    /// Returns true if the row is the project folder.
     /// </summary>
     public bool IsProjectFolder => Appearance.IsProjectFolder;
 
@@ -110,6 +108,16 @@ public sealed class ResourceViewItem
     /// the platform's file manager. Empty for non-project-folder items.
     /// </summary>
     public string ProjectFolderTooltip => Appearance.ProjectFolderTooltip;
+
+    /// <summary>
+    /// The automation ID of the row, which names the row's resource key. The tools find a row by it.
+    /// </summary>
+    public string RowAutomationId => $"explorer-row:{Resource}";
+
+    /// <summary>
+    /// The automation ID of the row's expander. The expander is absent while the row has no expander to show.
+    /// </summary>
+    public string ExpanderAutomationId => $"explorer-expander:{Resource}";
 
     /// <summary>
     /// The margin used for visual indentation based on tree depth.

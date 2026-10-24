@@ -311,8 +311,8 @@ public partial class CustomDocumentViewModel : DocumentViewModel
     /// <summary>
     /// Reads the default template content from the manifest's template file.
     /// Returns empty string if no default template is declared or the file cannot be read.
-    /// Routes through IResourceFileSystem when the template path is registry-addressable, and falls
-    /// back to a direct read for packages installed outside the project tree.
+    /// Routes through IResourceFileSystem when the template path lies under a resource root. A package
+    /// installed outside the project folder is read directly.
     /// </summary>
     private async Task<string> GetDefaultTemplateContentAsync()
     {
