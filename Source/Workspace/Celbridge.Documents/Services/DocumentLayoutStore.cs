@@ -542,22 +542,10 @@ public class DocumentLayoutStore
         }
     }
 
-    // Whether the resource key resolves to a path. A project resource must also be in the registry, which a
-    // virtual-root key (utils:, temp:, logs:) never is.
+    // Returns true if the resource key resolves to a path.
     private bool IsResolvableResource(ResourceKey fileResource)
     {
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
-
-        if (fileResource.Root == ResourceKey.DefaultRoot)
-        {
-            var getResourceResult = resourceRegistry.GetResource(fileResource);
-            if (getResourceResult.IsFailure)
-            {
-                _logger.LogWarning(getResourceResult, $"Failed to open document because '{fileResource}' resource does not exist.");
-                return false;
-            }
-        }
 
         var resolveResult = rootHandlerRegistry.ResolveResourcePath(fileResource);
         if (resolveResult.IsFailure)

@@ -48,6 +48,12 @@ public sealed class DownloadService : IDownloadService
     // started together both find the same path free.
     private readonly SemaphoreSlim _beginGate = new(1, 1);
 
+    // Follows the files of the succeeded rows, so a row leaves the list once its file has gone. Guarded by its own
+    // lock, since the rows change on several threads and the subscription is replaced outside the rows' lock.
+    private readonly object _fileSubscriptionLock = new();
+    private IResourceKeySubscription? _fileSubscription;
+    private HashSet<ResourceKey> _followedFiles = new();
+
     private IReadOnlyList<DownloadEntry> _downloads = Array.Empty<DownloadEntry>();
 
     private long _nextDownloadId = 1;
@@ -70,7 +76,6 @@ public sealed class DownloadService : IDownloadService
         _projectService = projectService;
         _localFileSystem = localFileSystem;
 
-        _messengerService.Register<ResourceRegistryUpdatedMessage>(this, OnResourceRegistryUpdated);
         _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloaded);
     }
 
@@ -668,23 +673,114 @@ public sealed class DownloadService : IDownloadService
         }
     }
 
+    // Subscribes to the files of the succeeded rows whenever they change. The new subscription is made before the
+    // old one is disposed, so no change is missed between the two.
+    private void UpdateFileSubscription()
+    {
+        List<ResourceKey> succeededFiles;
+        lock (_lock)
+        {
+            succeededFiles = _entries
+                .Where(entry => entry.Status == DownloadStatus.Succeeded)
+                .Select(entry => entry.Resource)
+                .Distinct()
+                .ToList();
+        }
+
+        lock (_fileSubscriptionLock)
+        {
+            if (_followedFiles.SetEquals(succeededFiles))
+            {
+                return;
+            }
+
+            IResourceKeySubscription? fileSubscription = null;
+            if (succeededFiles.Count > 0
+                && _workspaceWrapper.HasWorkspaceService)
+            {
+                var resourceMonitor = _workspaceWrapper.WorkspaceService.ResourceService.Monitor;
+                var handlers = new ResourceChangeHandlers(OnFilesChanged, OnFilesResync);
+
+                var subscribeResult = resourceMonitor.SubscribeToResources(succeededFiles, handlers);
+                if (subscribeResult.IsFailure)
+                {
+                    _logger.LogWarning(subscribeResult, "Failed to follow the files of the finished downloads");
+                    return;
+                }
+
+                fileSubscription = subscribeResult.Value;
+            }
+
+            var previousSubscription = _fileSubscription;
+            _fileSubscription = fileSubscription;
+            _followedFiles = succeededFiles.ToHashSet();
+            previousSubscription?.Dispose();
+        }
+    }
+
     // A succeeded row's whole value is that clicking it reveals the file, so a row whose file has gone
     // leaves the list rather than sitting there as a dead end. A failed or canceled row names no file and
     // stays.
-    private void OnResourceRegistryUpdated(object recipient, ResourceRegistryUpdatedMessage message)
+    private void OnFilesChanged(ResourceChangeBatch batch)
+    {
+        var goneFiles = batch.Changes
+            .Where(change => change.State != ResourceItemState.File)
+            .Select(change => change.Resource)
+            .ToHashSet();
+
+        RemoveRowsOfGoneFiles(goneFiles);
+    }
+
+    // The watcher lost events, so each succeeded row's file is checked on disk.
+    private void OnFilesResync(ResourceResync resync)
+    {
+        _ = RemoveRowsOfMissingFilesAsync();
+    }
+
+    private async Task RemoveRowsOfMissingFilesAsync()
     {
         if (!_workspaceWrapper.HasWorkspaceService)
         {
             return;
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        List<ResourceKey> succeededFiles;
+        lock (_lock)
+        {
+            succeededFiles = _entries
+                .Where(entry => entry.Status == DownloadStatus.Succeeded)
+                .Select(entry => entry.Resource)
+                .Distinct()
+                .ToList();
+        }
+
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+        var goneFiles = new HashSet<ResourceKey>();
+        foreach (var succeededFile in succeededFiles)
+        {
+            var infoResult = await resourceFileSystem.GetInfoAsync(succeededFile);
+            if (infoResult.IsSuccess
+                && infoResult.Value.Kind != StorageItemKind.File)
+            {
+                goneFiles.Add(succeededFile);
+            }
+        }
+
+        RemoveRowsOfGoneFiles(goneFiles);
+    }
+
+    private void RemoveRowsOfGoneFiles(IReadOnlySet<ResourceKey> goneFiles)
+    {
+        if (goneFiles.Count == 0)
+        {
+            return;
+        }
 
         lock (_lock)
         {
             var removedCount = _entries.RemoveAll(entry =>
                 entry.Status == DownloadStatus.Succeeded &&
-                resourceRegistry.GetResource(entry.Resource).IsFailure);
+                goneFiles.Contains(entry.Resource));
 
             if (removedCount == 0)
             {
@@ -794,9 +890,11 @@ public sealed class DownloadService : IDownloadService
     }
 
     // Sent outside the lock, so a recipient reading the list back cannot deadlock with a change on
-    // another thread.
+    // another thread. Every change to the rows ends here, so the file subscription is brought up to date first.
     private void SendDownloadsChanged(bool hasArrival)
     {
+        UpdateFileSubscription();
+
         var message = new DownloadsChangedMessage(hasArrival);
         _messengerService.Send(message);
     }

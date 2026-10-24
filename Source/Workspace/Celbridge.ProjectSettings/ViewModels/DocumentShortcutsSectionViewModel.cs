@@ -125,7 +125,7 @@ public class DocumentShortcutsSectionViewModel : ProjectSettingsSectionViewModel
 
     private DocumentShortcutViewModel CreateShortcut(DocumentShortcut documentShortcut)
     {
-        var shortcut = new DocumentShortcutViewModel(_iconService, ResourceExists)
+        var shortcut = new DocumentShortcutViewModel(_iconService, ResourceExistsAsync)
         {
             Resource = documentShortcut.Resource,
             Icon = documentShortcut.Icon,
@@ -137,16 +137,18 @@ public class DocumentShortcutsSectionViewModel : ProjectSettingsSectionViewModel
         return shortcut;
     }
 
-    // Whether the project holds the resource, which decides if a card reports its file as missing.
-    private bool ResourceExists(ResourceKey fileResource)
+    // Returns true if the resource exists on disk. A card reports its file as missing when this is false.
+    private async Task<bool> ResourceExistsAsync(ResourceKey fileResource)
     {
-        var registry = WorkspaceService?.ResourceService.Registry;
-        if (registry is null)
+        var resourceFileSystem = WorkspaceService?.ResourceService.FileSystem;
+        if (resourceFileSystem is null)
         {
+            // A missing-file warning needs a workspace to check against, so the card treats the file as present.
             return true;
         }
 
-        return registry.GetResource(fileResource).IsSuccess;
+        var getResult = await resourceFileSystem.GetResourceItemAsync(fileResource);
+        return getResult.IsSuccess;
     }
 
     // The card list adds, deletes and reorders through the collection, so every one of those lands here.

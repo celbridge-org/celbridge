@@ -23,11 +23,26 @@ public static class ResourceNameHelper
     ///
     /// A dot at the very start of the name is treated as part of the basename
     /// (so ".gitignore" → ".gitignore - Copy" rather than " - Copy.gitignore").
+    /// The source's folder is listed once, and a name is in use when the
+    /// listing has it in any letter case.
     /// </summary>
-    public static Result<ResourceKey> GenerateUniqueDuplicateKey(ResourceKey source, IResourceRegistry registry)
+    public static async Task<Result<ResourceKey>> GenerateUniqueDuplicateKeyAsync(
+        ResourceKey source,
+        IResourceFileSystem resourceFileSystem)
     {
         var parent = source.GetParent();
         var resourceName = source.ResourceName;
+
+        var enumerateResult = await resourceFileSystem.EnumerateFolderAsync(parent);
+        if (enumerateResult.IsFailure)
+        {
+            return Result<ResourceKey>.Fail($"Failed to list the folder of '{source}'")
+                .WithErrors(enumerateResult);
+        }
+
+        var usedNames = enumerateResult.Value
+            .Select(folderChild => folderChild.Resource.ResourceName)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         int extensionIndex = resourceName.LastIndexOf('.');
         string baseName;
@@ -43,18 +58,18 @@ public static class ResourceNameHelper
             extension = string.Empty;
         }
 
-        var firstCandidate = parent.Combine($"{baseName} - Copy{extension}");
-        if (registry.GetResource(firstCandidate).IsFailure)
+        var firstCandidateName = $"{baseName} - Copy{extension}";
+        if (!usedNames.Contains(firstCandidateName))
         {
-            return firstCandidate;
+            return parent.Combine(firstCandidateName);
         }
 
         for (int attempt = 2; attempt <= MaxNameCollisionAttempts; attempt++)
         {
-            var candidate = parent.Combine($"{baseName} - Copy ({attempt}){extension}");
-            if (registry.GetResource(candidate).IsFailure)
+            var candidateName = $"{baseName} - Copy ({attempt}){extension}";
+            if (!usedNames.Contains(candidateName))
             {
-                return candidate;
+                return parent.Combine(candidateName);
             }
         }
 

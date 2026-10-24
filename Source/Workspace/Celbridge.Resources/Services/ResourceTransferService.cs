@@ -13,10 +13,6 @@ public class ResourceTransferService : IResourceTransferService
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ILocalFileSystem _fileSystem;
 
-    private IResourceRegistry? _resourceRegistry;
-    private IResourceRegistry ResourceRegistry =>
-        _resourceRegistry ??= _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-
     private IRootHandlerRegistry RootHandlers =>
         _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
 
@@ -114,7 +110,7 @@ public class ResourceTransferService : IResourceTransferService
                     var checkSourcePathResult = RootHandlers.ResolveResourcePath(sourceResource);
                     Guard.IsTrue(checkSourcePathResult.IsSuccess && sourcePath == checkSourcePathResult.Value);
 
-                    var destResource = ResolveDestinationResource(sourceResource, destFolderResource);
+                    var destResource = await ResolveDestinationResourceAsync(sourceResource, destFolderResource);
 
                     var item = new ResourceTransferItem(resourceType, sourcePath, sourceResource, destResource);
                     transferItems.Add(item);
@@ -160,15 +156,15 @@ public class ResourceTransferService : IResourceTransferService
         return Result.Ok();
     }
 
-    public ResourceKey ResolveDestinationResource(ResourceKey sourceResource, ResourceKey destResource)
+    public async Task<ResourceKey> ResolveDestinationResourceAsync(ResourceKey sourceResource, ResourceKey destResource)
     {
         string output = destResource;
 
-        var getResult = ResourceRegistry.GetResource(destResource);
-        if (getResult.IsSuccess)
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+        var infoResult = await resourceFileSystem.GetInfoAsync(destResource);
+        if (infoResult.IsSuccess)
         {
-            var resource = getResult.Value;
-            if (resource is IFolderResource)
+            if (infoResult.Value.Kind == StorageItemKind.Folder)
             {
                 if (destResource.IsEmpty)
                 {

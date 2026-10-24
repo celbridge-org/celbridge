@@ -172,7 +172,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         }
 
         // Resolve destination to handle folder drops
-        var resolvedDestResource = ResourceTransferService.ResolveDestinationResource(sourceResource, DestResource);
+        var resolvedDestResource = await ResourceTransferService.ResolveDestinationResourceAsync(sourceResource, DestResource);
 
         var infoResult = await ResourceFileSystem.GetInfoAsync(sourceResource);
         if (infoResult.IsFailure)

@@ -36,7 +36,6 @@ public class ApplyRangeEditsCommand : CommandBase, IApplyRangeEditsCommand
         }
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
-        var resourceRegistry = workspaceService.ResourceService.Registry;
         var resourceFileSystem = workspaceService.ResourceService.FileSystem;
 
         var failedResources = new List<ResourceKey>();
@@ -46,7 +45,7 @@ public class ApplyRangeEditsCommand : CommandBase, IApplyRangeEditsCommand
         {
             var resource = fileEdit.Resource;
 
-            var applyResult = await ApplyEditsToDisk(resourceRegistry, resourceFileSystem, resource, fileEdit.Edits);
+            var applyResult = await ApplyEditsToDisk(resourceFileSystem, resource, fileEdit.Edits);
             if (applyResult.IsFailure)
             {
                 _logger.LogWarning($"Failed to apply edits to file on disk: {resource}");
@@ -87,7 +86,6 @@ public class ApplyRangeEditsCommand : CommandBase, IApplyRangeEditsCommand
     }
 
     private static async Task<Result> ApplyEditsToDisk(
-        IResourceRegistry resourceRegistry,
         IResourceFileSystem resourceFileSystem,
         ResourceKey resource,
         List<RangeEdit> edits)

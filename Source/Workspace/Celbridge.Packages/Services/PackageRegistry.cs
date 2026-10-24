@@ -51,7 +51,7 @@ public class PackageRegistry
     private IReadOnlyList<PackageLoadFailure> _lastFailures = Array.Empty<PackageLoadFailure>();
     private IReadOnlyList<ContributionIssue> _lastContributionIssues = Array.Empty<ContributionIssue>();
 
-    // Bundled packages live outside any IResourceRegistry root so their reads
+    // Bundled packages live outside every resource root so their reads
     // stay on direct File.* IO via the gateway. One reader is reused across
     // the discovery and template-fetch paths to keep the bundled branch cheap.
     private readonly IPackageReader _bundledReader;

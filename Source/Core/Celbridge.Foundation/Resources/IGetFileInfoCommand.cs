@@ -3,13 +3,30 @@ using Celbridge.Commands;
 namespace Celbridge.Resources;
 
 /// <summary>
+/// Describes whether a .cel sidecar's content parses as TOML.
+/// </summary>
+public enum CelParseStatus
+{
+    /// <summary>
+    /// The file parses cleanly as TOML.
+    /// </summary>
+    Healthy,
+
+    /// <summary>
+    /// The file failed to parse: malformed TOML, merge-conflict markers, or
+    /// any other parse failure.
+    /// </summary>
+    Broken,
+}
+
+/// <summary>
 /// Snapshot of metadata for a single file or folder resource, produced by IGetFileInfoCommand.
 /// Exists is false when the resource cannot be resolved. IsFile distinguishes file from folder
 /// when Exists is true. IsText and LineCount are only populated for text files. IsReadOnly
 /// reflects the filesystem read-only attribute (Windows DOS bit; derived from write permission
 /// on remote backends) and applies to files and folders. Sidecar* fields describe the paired
-/// .cel sidecar when one is registered on the parent file; they remain null for files without
-/// a sidecar and for folders.
+/// .cel sidecar when the file has one on disk. They remain null for files without a sidecar
+/// and for folders.
 /// </summary>
 public record class FileInfoSnapshot(
     bool Exists,

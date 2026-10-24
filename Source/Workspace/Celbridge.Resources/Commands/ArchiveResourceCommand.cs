@@ -60,7 +60,6 @@ public class ArchiveResourceCommand : CommandBase, IArchiveResourceCommand
         }
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
-        var resourceRegistry = workspaceService.ResourceService.Registry;
         var resourceOpService = workspaceService.ResourceService.Operations;
         var resourceFileSystem = workspaceService.ResourceService.FileSystem;
 

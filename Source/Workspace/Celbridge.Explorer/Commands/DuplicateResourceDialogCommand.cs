@@ -45,7 +45,6 @@ public class DuplicateResourceDialogCommand : CommandBase, IDuplicateResourceDia
             return Result.Fail($"Failed to show duplicate resource dialog because workspace is not loaded");
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
         var getResult = await resourceFileSystem.GetResourceItemAsync(Resource);
@@ -63,7 +62,7 @@ public class DuplicateResourceDialogCommand : CommandBase, IDuplicateResourceDia
         // If the helper somehow can't produce a unique name (very rare; would
         // mean 1000+ existing copies of this name) we fall back to the
         // original name and let the validator reject it on dialog submit.
-        var defaultKeyResult = ResourceNameHelper.GenerateUniqueDuplicateKey(Resource, resourceRegistry);
+        var defaultKeyResult = await ResourceNameHelper.GenerateUniqueDuplicateKeyAsync(Resource, resourceFileSystem);
         var defaultText = defaultKeyResult.IsSuccess
             ? defaultKeyResult.Value.ResourceName
             : resourceName;

@@ -9,6 +9,7 @@ using Celbridge.Resources;
 using Celbridge.Resources.Services;
 using Celbridge.Resources.Services.Roots;
 using Celbridge.Tests.FileSystem;
+using Celbridge.Tests.Helpers;
 using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
 
@@ -35,7 +36,7 @@ public class DownloadServiceTests
     private IMessengerService _messengerService = null!;
     private ICommandService _commandService = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
-    private IResourceRegistry _resourceRegistry = null!;
+    private FakeResourceMonitor _resourceMonitor = null!;
     private RootHandlerRegistry _rootHandlers = null!;
     private IResourceFileSystem _resourceFileSystem = null!;
     private ILocalizerService _localizerService = null!;
@@ -46,7 +47,6 @@ public class DownloadServiceTests
     // Run part way through a move, for a test that needs to see the service mid-import.
     private Func<Task>? _duringMove;
     private ConcurrentDictionary<string, IDownloadTransfer> _transfers = null!;
-    private MessageHandler<object, ResourceRegistryUpdatedMessage>? _registryUpdatedHandler;
     private MessageHandler<object, WorkspaceUnloadedMessage>? _workspaceUnloadedHandler;
 
     private DownloadService _downloadService = null!;
@@ -64,14 +64,6 @@ public class DownloadServiceTests
 
         // The substitute records registrations rather than dispatching, so each handler the service
         // registers is captured for the tests to invoke.
-        _registryUpdatedHandler = null;
-        _messengerService
-            .When(messenger => messenger.Register(
-                Arg.Any<object>(),
-                Arg.Any<MessageHandler<object, ResourceRegistryUpdatedMessage>>()))
-            .Do(callInfo => _registryUpdatedHandler =
-                callInfo.Arg<MessageHandler<object, ResourceRegistryUpdatedMessage>>());
-
         _workspaceUnloadedHandler = null;
         _messengerService
             .When(messenger => messenger.Register(
@@ -85,9 +77,7 @@ public class DownloadServiceTests
         _rootHandlers = TestRootHandlers.Create(ProjectFolderPath);
         _rootHandlers.RegisterRootHandler(new TempRootHandler(TempFolderPath));
 
-        _resourceRegistry = Substitute.For<IResourceRegistry>();
-        _resourceRegistry.GetResource(Arg.Any<ResourceKey>())
-            .Returns(callInfo => GetResource(callInfo.Arg<ResourceKey>()));
+        _resourceMonitor = new FakeResourceMonitor();
 
         _resourceFileSystem = Substitute.For<IResourceFileSystem>();
         _resourceFileSystem.CreateFolderAsync(Arg.Any<ResourceKey>())
@@ -99,7 +89,7 @@ public class DownloadServiceTests
             .Returns(callInfo => DeleteAsync(callInfo.Arg<ResourceKey>()));
 
         var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(_resourceRegistry);
+        resourceService.Monitor.Returns(_resourceMonitor);
         resourceService.RootHandlers.Returns(_rootHandlers);
         resourceService.FileSystem.Returns(_resourceFileSystem);
 
@@ -416,14 +406,43 @@ public class DownloadServiceTests
 
         _downloadService.Downloads.Should().HaveCount(2);
 
-        // The file is deleted in the Explorer, and the registry rebuild that follows is what tells the
-        // service its row now leads nowhere.
+        // The file is deleted in the Explorer, and the change to the file is what tells the service its row now
+        // leads nowhere.
         await _localFileSystem.DeleteFileAsync(ResolvePath(succeededTicket.Destination).Value);
-        RaiseRegistryUpdated();
+        _resourceMonitor.DeliverChange(succeededTicket.Destination, ResourceItemState.Absent);
 
         // The failed row names no file, so there is nothing for it to lose.
         var remaining = _downloadService.Downloads.Should().ContainSingle().Subject;
         remaining.Status.Should().Be(DownloadStatus.Failed);
+    }
+
+    [Test]
+    public async Task ACompletedDownloadWhoseFileIsMissingAfterAResync_LeavesTheList()
+    {
+        var keptTicket = await CompleteDownloadAsync("kept.pdf");
+        await CompleteDownloadAsync("gone.pdf");
+        UseFileOnDisk(keptTicket.Destination);
+
+        // The watcher lost events, so the service checks each row's file on disk.
+        _resourceMonitor.DeliverResync(ResourceKey.DefaultRoot);
+
+        var remaining = _downloadService.Downloads.Should().ContainSingle().Subject;
+        remaining.Resource.Should().Be(keptTicket.Destination);
+    }
+
+    [Test]
+    public async Task TheFilesOfCompletedDownloads_AreFollowed_UntilTheirRowsGo()
+    {
+        var succeededTicket = await CompleteDownloadAsync("report.pdf");
+        await BeginAsync("notes.txt");
+
+        // A running download has no file in the project yet, so only the completed one is followed.
+        _resourceMonitor.KeySubscriptions.Should().ContainSingle()
+            .Which.Resources.Should().Equal(succeededTicket.Destination);
+
+        _downloadService.Remove(succeededTicket.Id);
+
+        _resourceMonitor.KeySubscriptions.Should().BeEmpty();
     }
 
     [Test]
@@ -705,10 +724,12 @@ public class DownloadServiceTests
         return ticket;
     }
 
-    private void RaiseRegistryUpdated()
+    // The resource file system reports a file at the resource. It reports nothing at any other resource.
+    private void UseFileOnDisk(ResourceKey resource)
     {
-        _registryUpdatedHandler.Should().NotBeNull();
-        _registryUpdatedHandler!.Invoke(_downloadService, new ResourceRegistryUpdatedMessage());
+        _resourceFileSystem.GetInfoAsync(resource)
+            .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(
+                new StorageItemInfo(StorageItemKind.File, 7, DateTime.UtcNow, FileSystemAttributes.None))));
     }
 
     private void RaiseWorkspaceUnloaded()
@@ -750,19 +771,4 @@ public class DownloadServiceTests
         return _rootHandlers.ResolveResourcePath(resource);
     }
 
-    private Result<IResource> GetResource(ResourceKey resource)
-    {
-        var path = ResolvePath(resource).Value;
-        if (_localFileSystem.Folders.Contains(path))
-        {
-            return Result<IResource>.Ok(Substitute.For<IFolderResource>());
-        }
-
-        if (!_localFileSystem.Files.ContainsKey(path))
-        {
-            return Result<IResource>.Fail($"'{resource}' does not exist");
-        }
-
-        return Result<IResource>.Ok(Substitute.For<IFileResource>());
-    }
 }

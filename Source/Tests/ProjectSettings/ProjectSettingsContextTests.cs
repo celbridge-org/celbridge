@@ -103,6 +103,7 @@ public class ProjectSettingsContextTests
         workspaceService.PackageService.Returns(packageService);
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
+        workspaceWrapper.HasWorkspaceService.Returns(true);
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
         return new ProjectSettingsContext(

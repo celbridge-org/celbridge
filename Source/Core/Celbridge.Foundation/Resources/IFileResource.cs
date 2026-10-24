@@ -3,28 +3,6 @@ using Celbridge.UserInterface;
 namespace Celbridge.Resources;
 
 /// <summary>
-/// Parse-state axis for a .cel file's content. Binary: parses cleanly or
-/// doesn't. Orthogonal to FileKind (which carries the file's role —
-/// Sidecar / Orphan / InvalidSidecar); the same .cel can independently be
-/// any combination of the two. The agent-facing data_inspect surface projects
-/// the two axes into a single SidecarStatus enum; consumers at the registry
-/// layer keep them separate.
-/// </summary>
-public enum CelParseStatus
-{
-    /// <summary>
-    /// The file parses cleanly as TOML.
-    /// </summary>
-    Healthy,
-
-    /// <summary>
-    /// The file failed to parse: malformed TOML, merge-conflict markers, or
-    /// any other parse failure.
-    /// </summary>
-    Broken,
-}
-
-/// <summary>
 /// Link from a parent file to its paired .cel sidecar, carrying the sidecar's
 /// resource key and current parse state.
 /// </summary>

@@ -15,15 +15,13 @@ namespace Celbridge.Tests.Resources;
 
 /// <summary>
 /// Unit tests for GetFileInfoCommand, GetFileTreeCommand, and ListFolderContentsCommand.
-/// Uses a real ResourceRegistry rooted at a temp folder rather than mocking the registry,
-/// because the commands read file-system metadata (size, mtime) and mocking that would
-/// require shadowing half of System.IO.
+/// Uses a real resource file system rooted at a temp folder. The commands read file-system
+/// metadata from it, such as sizes and modification times.
 /// </summary>
 [TestFixture]
 public class ResourceCommandTests
 {
     private string _projectFolderPath = null!;
-    private ResourceRegistry _resourceRegistry = null!;
     private RootHandlerRegistry _rootHandlerRegistry = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
 
@@ -34,7 +32,7 @@ public class ResourceCommandTests
     private const string FileContents = "Line one\nLine two\nLine three\n";
 
     [SetUp]
-    public async Task Setup()
+    public void Setup()
     {
         _projectFolderPath = Path.Combine(Path.GetTempPath(), $"Celbridge/{nameof(ResourceCommandTests)}/{Guid.NewGuid():N}");
         Directory.CreateDirectory(_projectFolderPath);
@@ -50,14 +48,9 @@ public class ResourceCommandTests
         Directory.CreateDirectory(subFolder);
         File.WriteAllText(Path.Combine(subFolder, NestedFileName), FileContents);
 
-        var messengerService = new MessengerService();
-        var iconService = new IconService();
         _rootHandlerRegistry = TestRootHandlers.Create(_projectFolderPath);
-        _resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, ProjectTreeBuilderTestHelper.Build(_projectFolderPath, iconService), ResourceClassifierTestHelper.BuildEmptyStub(), _rootHandlerRegistry);
-        await _resourceRegistry.UpdateResourceRegistryAsync();
 
         var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(_resourceRegistry);
         resourceService.RootHandlers.Returns(_rootHandlerRegistry);
 
         var workspaceService = Substitute.For<IWorkspaceService>();
@@ -76,6 +69,7 @@ public class ResourceCommandTests
             _workspaceWrapper,
             TestFileSystem.CreateLocal());
         resourceService.FileSystem.Returns(resourceFileSystem);
+        resourceService.Sidecars.Returns(new SidecarService(_workspaceWrapper));
     }
 
     [TearDown]
@@ -144,6 +138,49 @@ public class ResourceCommandTests
         snapshot.Exists.Should().BeTrue();
         snapshot.IsFile.Should().BeFalse();
         snapshot.LineCount.Should().BeNull();
+    }
+
+    [Test]
+    public async Task GetFileInfo_ForAFileWithAHealthySidecar_ReportsTheSidecar()
+    {
+        File.WriteAllText(Path.Combine(_projectFolderPath, RootFileName + ".cel"), "editor = \"celbridge.code-editor\"\n");
+
+        var snapshot = await GetFileInfoAsync(RootFileName);
+
+        snapshot.SidecarKey.Should().Be(new ResourceKey(RootFileName + ".cel"));
+        snapshot.SidecarStatus.Should().Be(CelParseStatus.Healthy);
+    }
+
+    [Test]
+    public async Task GetFileInfo_ForAFileWithABrokenSidecar_ReportsItBroken()
+    {
+        File.WriteAllText(Path.Combine(_projectFolderPath, RootFileName + ".cel"), "editor = \n");
+
+        var snapshot = await GetFileInfoAsync(RootFileName);
+
+        snapshot.SidecarKey.Should().Be(new ResourceKey(RootFileName + ".cel"));
+        snapshot.SidecarStatus.Should().Be(CelParseStatus.Broken);
+    }
+
+    [Test]
+    public async Task GetFileInfo_ForAFileWithoutASidecar_ReportsNoSidecar()
+    {
+        var snapshot = await GetFileInfoAsync(RootFileName);
+
+        snapshot.SidecarKey.Should().BeNull();
+        snapshot.SidecarStatus.Should().BeNull();
+    }
+
+    [Test]
+    public async Task GetFileInfo_ForASidecarFile_ReportsNoSidecarOfItsOwn()
+    {
+        var sidecarName = RootFileName + ".cel";
+        File.WriteAllText(Path.Combine(_projectFolderPath, sidecarName), "editor = \"celbridge.code-editor\"\n");
+
+        var snapshot = await GetFileInfoAsync(sidecarName);
+
+        snapshot.SidecarKey.Should().BeNull();
+        snapshot.SidecarStatus.Should().BeNull();
     }
 
     [Test]
@@ -349,5 +386,19 @@ public class ResourceCommandTests
         {
             Directory.Delete(logsBacking, recursive: true);
         }
+    }
+
+    private async Task<FileInfoSnapshot> GetFileInfoAsync(string path)
+    {
+        var textBinarySniffer = TestFileTypeCatalog.CreateSniffer(new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>()));
+        var command = new GetFileInfoCommand(_workspaceWrapper, textBinarySniffer)
+        {
+            Resource = new ResourceKey(path)
+        };
+
+        var result = await command.ExecuteAsync();
+        result.IsSuccess.Should().BeTrue();
+
+        return command.ResultValue;
     }
 }
