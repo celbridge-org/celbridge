@@ -12,7 +12,7 @@ Tools are plain HTML files that live in your project. Your team opens the projec
 
 <!-- Q: Where do I get it, and how do I learn to use it? -->
 
-Download Celbridge from [celbridge.org](https://celbridge.org/download/). The documentation is at [learn.celbridge.org](https://learn.celbridge.org/).
+Download Celbridge from [celbridge.org](https://celbridge.org/download/). The documentation is at [celbridge.org/learn](https://celbridge.org/learn/).
 
 ## Community
 
