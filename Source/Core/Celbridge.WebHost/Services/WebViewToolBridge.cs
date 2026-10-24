@@ -62,10 +62,10 @@ public partial class WebViewToolBridge : IWebViewToolBridge
 
     // The registered views' entries, oldest first. Tool calls read it on server threads, and views register and
     // close on the UI thread.
-    private readonly object _entriesLock = new();
+    private readonly Lock _entriesLock = new();
     private readonly List<WebViewToolBridgeEntry> _entries = new();
 
-    private readonly object _shimLock = new();
+    private readonly Lock _shimLock = new();
     private string? _cachedShimScript;
 
     public string GetShimScript()
@@ -868,7 +868,7 @@ public partial class WebViewToolBridge : IWebViewToolBridge
 
     private sealed class WebViewToolBridgeEntry
     {
-        private readonly object _gate = new();
+        private readonly Lock _gate = new();
         private readonly List<ConsoleEntry> _consoleHistory = new();
         private readonly List<NetworkEntry> _networkHistory = new();
         private TaskCompletionSource _readyTcs;

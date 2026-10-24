@@ -16,8 +16,8 @@ public sealed class FakeFileSystem : ILocalFileSystem
     private readonly ConcurrentDictionary<string, FileEntry> _files = new(StringComparer.Ordinal);
     private readonly HashSet<string> _folders = new(StringComparer.Ordinal);
     private readonly List<string> _calls = new();
-    private readonly object _foldersLock = new();
-    private readonly object _callsLock = new();
+    private readonly Lock _foldersLock = new();
+    private readonly Lock _callsLock = new();
 
     public IReadOnlyDictionary<string, FileEntry> Files => _files;
     public IReadOnlyCollection<string> Folders

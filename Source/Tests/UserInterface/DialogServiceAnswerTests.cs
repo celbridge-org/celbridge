@@ -243,7 +243,7 @@ public class DialogServiceAnswerTests
         private readonly Dictionary<Type, List<Action<object>>> _handlers = new();
         private readonly Dictionary<Type, List<object>> _recipients = new();
         private readonly Dictionary<Type, List<object>> _sent = new();
-        private readonly object _gate = new();
+        private readonly Lock _gate = new();
 
         public IReadOnlyList<TMessage> Sent<TMessage>() where TMessage : class
         {

@@ -9,7 +9,7 @@ namespace Celbridge.Console.Services;
 public sealed class SharedConsoleStartupWrite
 {
     private readonly Func<Task<Result<ConsoleStartupOptions>>> _write;
-    private readonly object _writeLock = new();
+    private readonly Lock _writeLock = new();
     private Task<Result<ConsoleStartupOptions>>? _writeTask;
 
     public SharedConsoleStartupWrite(Func<Task<Result<ConsoleStartupOptions>>> write)

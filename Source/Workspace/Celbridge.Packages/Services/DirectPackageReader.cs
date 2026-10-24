@@ -14,7 +14,7 @@ public sealed class DirectPackageReader : IPackageReader
     // Lazy default ILocalFileSystem for the parameterless constructor — used by
     // PackageManifestLoader.LoadPackage and tests that aren't wired through DI.
     private static ILocalFileSystem? _defaultFileSystem;
-    private static readonly object _defaultFileSystemLock = new();
+    private static readonly Lock _defaultFileSystemLock = new();
 
     private readonly ILocalFileSystem _fileSystem;
 

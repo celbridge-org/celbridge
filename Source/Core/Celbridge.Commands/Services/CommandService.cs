@@ -27,7 +27,7 @@ public class CommandService : ICommandService
     private readonly List<QueuedCommand> _commandQueue = new();
 
     // The single monitor guarding _commandQueue. Every read and write of the queue takes it.
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
 
     private readonly Stopwatch _stopwatch = new();
     private double _lastWorkspaceUpdateTime = 0;

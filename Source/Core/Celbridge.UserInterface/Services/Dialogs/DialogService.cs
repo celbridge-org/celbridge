@@ -21,7 +21,7 @@ public class DialogService : IDialogService
     private readonly IMessengerService _messengerService;
     private readonly IAutomationService _automationService;
     private readonly DialogAnswerScheduler _answerScheduler;
-    private readonly object _tokenLock = new();
+    private readonly Lock _tokenLock = new();
     private IProgressDialog? _progressDialog;
     private IDisposable? _progressDialogOcclusionScope;
     private bool _suppressProgressDialog;

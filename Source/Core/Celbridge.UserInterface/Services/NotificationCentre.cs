@@ -13,7 +13,7 @@ public sealed class NotificationCentre : INotificationCentre
 
     private readonly IMessengerService _messengerService;
 
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
 
     // Both newest first, which is the order they are listed in.
     private readonly List<PendingCondition> _conditions = new();

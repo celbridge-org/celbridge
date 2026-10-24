@@ -30,7 +30,7 @@ internal sealed class UnixPtyTerminal : IPtyBackend
     private static readonly bool UseDarwinArm64IoctlShim =
         OperatingSystem.IsMacOS() && RuntimeInformation.ProcessArchitecture == Architecture.Arm64;
 
-    private readonly object _processLock = new();
+    private readonly Lock _processLock = new();
     private int _masterFd = -1;
     private int _childPid = -1;
     private bool _childExited;

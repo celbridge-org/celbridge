@@ -10,7 +10,7 @@ public class Terminal : ITerminal, IDisposable
     // Writes reach the pty from more than one thread: user keystrokes from the UI, and trigger runs from
     // the scheduler's own continuations. Neither backend serializes its write, so an invocation submitted
     // while the user is typing could otherwise interleave with their input part way through the line.
-    private readonly object _writeLock = new();
+    private readonly Lock _writeLock = new();
 
     public event EventHandler<string>? OutputReceived;
     public event EventHandler? ProcessExited;

@@ -25,7 +25,7 @@ internal sealed class ChangeBatcher : IDisposable
     private readonly ILogger _logger;
 
     // Guards every field below.
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
 
     // The pending keys in the order they were first touched, each once.
     private List<ResourceKey> _pendingKeys = new();

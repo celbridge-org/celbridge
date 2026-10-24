@@ -18,7 +18,7 @@ public sealed class ResourceUpdateScheduler : IDisposable
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly TimeProvider _timeProvider;
 
-    private readonly object _updateLock = new();
+    private readonly Lock _updateLock = new();
 
     private IMatcherSubscription? _subscription;
     private ITimer? _updateDebounceTimer;

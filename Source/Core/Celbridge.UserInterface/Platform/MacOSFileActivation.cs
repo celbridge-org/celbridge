@@ -30,7 +30,7 @@ public static class MacOSFileActivation
     [return: MarshalAs(UnmanagedType.I1)]
     private static extern bool class_addMethod(IntPtr classHandle, IntPtr selector, IntPtr implementation, string types);
 
-    private static readonly object _gate = new();
+    private static readonly Lock _gate = new();
     private static readonly List<string> _bufferedFilePaths = new();
     private static Action<IReadOnlyList<string>>? _filesOpenedCallback;
 

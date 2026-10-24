@@ -30,7 +30,7 @@ public sealed class DownloadService : IDownloadService
     private readonly DownloadedFileTracker _fileTracker;
 
     // Guards the transfers in flight and the progress clock.
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private readonly Dictionary<long, InFlightDownload> _inFlightDownloads = new();
     private long _nextProgressPublishTick;
 

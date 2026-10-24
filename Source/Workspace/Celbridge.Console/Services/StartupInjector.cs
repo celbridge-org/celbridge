@@ -19,7 +19,7 @@ public sealed class StartupInjector : IDisposable
     private readonly Action? _onInjected;
     private readonly TimeProvider _timeProvider;
     private readonly CancellationTokenSource _cancellation = new();
-    private readonly object _stateLock = new();
+    private readonly Lock _stateLock = new();
 
     private long _lastOutputTimestamp = -1;
     private bool _disposed;

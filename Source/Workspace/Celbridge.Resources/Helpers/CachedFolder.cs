@@ -67,7 +67,7 @@ internal sealed class FolderListing
 /// </summary>
 internal sealed class CachedFolder
 {
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private readonly ListedNameCounter _listedNames;
 
     // Written under the lock. Forget reads it without the lock.

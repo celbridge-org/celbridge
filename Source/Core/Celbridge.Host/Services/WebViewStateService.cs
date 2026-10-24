@@ -19,7 +19,7 @@ public static class StateRpcMethods
 /// </summary>
 public sealed class StateStore : IStateStore
 {
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private readonly Dictionary<string, string> _state = new();
     private readonly List<Connection> _connections = new();
 

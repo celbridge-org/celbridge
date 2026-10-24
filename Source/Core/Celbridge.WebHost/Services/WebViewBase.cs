@@ -31,7 +31,7 @@ public abstract class WebViewBase : IEditorWebView
 
     // Guards the resource and the accessible name. Tool calls read them on server threads, and a rename sets them
     // on the UI thread.
-    private readonly object _identityLock = new();
+    private readonly Lock _identityLock = new();
     private ResourceKey _resource = ResourceKey.Empty;
     private string _accessibleName = string.Empty;
 

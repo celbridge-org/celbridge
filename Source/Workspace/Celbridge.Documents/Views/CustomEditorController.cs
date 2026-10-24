@@ -115,7 +115,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     // editor host cannot tolerate concurrent NotifyExternalChangeAsync calls.
     // Requests arriving while a reload is in flight collapse into a single
     // follow-up pass.
-    private readonly object _reloadLock = new();
+    private readonly Lock _reloadLock = new();
     private bool _isReloadInProgress;
     private bool _hasPendingReload;
 
