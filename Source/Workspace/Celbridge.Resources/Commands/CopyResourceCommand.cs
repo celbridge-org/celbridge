@@ -18,8 +18,6 @@ internal record CopyResourceOutcome(
 
 public class CopyResourceCommand : CommandBase, ICopyResourceCommand
 {
-    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
-
     public List<ResourceKey> SourceResources { get; set; } = new();
     public ResourceKey DestResource { get; set; }
     public DataTransferMode TransferMode { get; set; }

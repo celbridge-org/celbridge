@@ -27,9 +27,8 @@ public partial class FileTools
             return ToolResponse.InvalidResourceKey(resource);
         }
 
-        // Route through the command queue so the snapshot observes state after all
-        // previously enqueued commands have run. The command reads the registry and
-        // builds the filtered tree on the command thread.
+        // Route through the command queue so the snapshot follows every command
+        // ahead of it in the queue.
         var getTreeResult = await ExecuteCommandAsync<IGetFileTreeCommand, FileTreeSnapshot>(command =>
         {
             command.Resource = resourceKey;

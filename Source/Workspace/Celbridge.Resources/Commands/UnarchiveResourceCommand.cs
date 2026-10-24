@@ -8,8 +8,6 @@ namespace Celbridge.Resources.Commands;
 
 public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
 {
-    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
-
     public ResourceKey ArchiveResource { get; set; }
     public ResourceKey DestinationResource { get; set; }
     public bool Overwrite { get; set; }

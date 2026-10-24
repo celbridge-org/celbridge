@@ -1,16 +1,11 @@
 namespace Celbridge.Resources;
 
 /// <summary>
-/// Service for managing project resources including the resource registry, 
-/// resource monitoring, and resource transfer operations.
+/// Service for managing project resources including resource monitoring
+/// and resource transfer operations.
 /// </summary>
 public interface IResourceService
 {
-    /// <summary>
-    /// Returns the Resource Registry associated with the current project.
-    /// </summary>
-    IResourceRegistry Registry { get; }
-
     /// <summary>
     /// Returns the registry of resource root handlers for the current project.
     /// The registry maps resource keys to absolute paths and back, in every root.
@@ -65,21 +60,4 @@ public interface IResourceService
     /// write operations over .cel sidecar files via the file-system gateway.
     /// </summary>
     ISidecarService Sidecars { get; }
-
-    /// <summary>
-    /// Starts watching the roots, and scheduling a resource update after a change in the project.
-    /// </summary>
-    Result StartMonitoring();
-
-    /// <summary>
-    /// Schedules a resource update.
-    /// The update occurs after a short quiet period to coalesce rapid calls from multiple sources.
-    /// </summary>
-    void ScheduleResourceUpdate();
-
-    /// <summary>
-    /// Refreshes the resource registry immediately. Call it on the UI thread: the registry update message it
-    /// sends is handled on the calling thread, and its recipients update the UI.
-    /// </summary>
-    Task<Result> UpdateResourcesAsync();
 }

@@ -88,13 +88,12 @@ public class WorkspaceLoader
         var propertyBag = workspaceSettingsService.PropertyBag;
         Guard.IsNotNull(propertyBag);
 
-        // Populate the resource registry.
         var explorerService = workspaceService.ExplorerService;
         var folderStateService = explorerService.FolderStateService;
 
         try
         {
-            // Restore previous state of expanded folders before populating resources
+            // Restore the expanded folders before the Explorer lists them
             await folderStateService.LoadAsync();
 
             var resourceService = workspaceService.ResourceService;
@@ -103,7 +102,7 @@ public class WorkspaceLoader
             // The monitor cannot be initialized in ResourceService's constructor because
             // it reaches into the workspace via IWorkspaceWrapper, which is only set up
             // once construction completes.
-            var startMonitoringResult = resourceService.StartMonitoring();
+            var startMonitoringResult = resourceService.Monitor.Initialize();
             if (startMonitoringResult.IsFailure)
             {
                 _logger.LogWarning(startMonitoringResult, "Failed to start monitoring resources");
@@ -114,8 +113,6 @@ public class WorkspaceLoader
             // place.
             await _communityService.SeedDocumentAsync();
 
-            // Register packages before the first resource scan so the sidecar
-            // pairing pass sees package-contributed document-editor factories.
             try
             {
                 var packageService = workspaceService.PackageService;
@@ -125,18 +122,10 @@ public class WorkspaceLoader
             {
                 _logger.LogWarning(ex, "An exception occurred while registering packages. The workspace will continue to load with reduced functionality.");
             }
-
-            // Update resource registry immediately to ensure we are up to date
-            var updateResult = await resourceService.UpdateResourcesAsync();
-            if (updateResult.IsFailure)
-            {
-                return Result.Fail("Failed to update resources")
-                    .WithErrors(updateResult);
-            }
         }
         catch (Exception ex)
         {
-            return Result.Fail($"An exception occurred while populating the resource registry")
+            return Result.Fail($"An exception occurred while starting the workspace's resources")
                 .WithException(ex);
         }
 

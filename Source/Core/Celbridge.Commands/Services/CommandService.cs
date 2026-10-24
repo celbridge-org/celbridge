@@ -3,7 +3,6 @@ using System.Runtime.CompilerServices;
 using Celbridge.Dialog;
 using Celbridge.Logging;
 using Celbridge.Messaging;
-using Celbridge.Resources;
 using Celbridge.Settings;
 using Celbridge.Workspace;
 using Microsoft.UI.Dispatching;
@@ -293,14 +292,6 @@ public class CommandService : ICommandService
                         if (executeResult.IsFailure)
                         {
                             _logger.LogError(executeResult, "Execute command failed");
-                        }
-
-                        // Update the resource registry synchronously before notifying callers.
-                        // This ensures ExecuteAsync callers see an up-to-date registry.
-                        if (command.CommandFlags.HasFlag(CommandFlags.UpdateResources))
-                        {
-                            var message = new RequestResourceRegistryUpdateMessage();
-                            _messengerService.Send(message);
                         }
 
                         // Call the OnExecute callback if it is set.

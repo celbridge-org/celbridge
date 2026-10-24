@@ -228,6 +228,19 @@ public sealed class FakeFileSystem : ILocalFileSystem
         return Task.FromResult(Result<IReadOnlyList<FileSystemEntry>>.Ok(list));
     }
 
+    public async Task<Result<bool>> HasEntryAsync(string path, Func<FileSystemEntry, bool> predicate)
+    {
+        Record($"HasEntryAsync('{path}')");
+
+        var enumerateResult = await EnumerateAsync(path, "*", recursive: false);
+        if (enumerateResult.IsFailure)
+        {
+            return Result.Fail(enumerateResult);
+        }
+
+        return enumerateResult.Value.Any(predicate);
+    }
+
     public Task<Result> MoveFileAsync(string source, string dest, bool overwrite = false)
     {
         Record($"MoveFileAsync('{source}', '{dest}')");

@@ -6,10 +6,6 @@ namespace Celbridge.Resources.Commands;
 
 public class WriteFileCommand : CommandBase, IWriteFileCommand
 {
-    // A write can change a file's sidecar classification (e.g. a .cel file
-    // becoming invalid TOML), so refresh the registry after every write.
-    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
-
     private readonly ILogger<WriteFileCommand> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 

@@ -6,9 +6,6 @@ namespace Celbridge.Resources.Commands;
 
 public class WriteBinaryFileCommand : CommandBase, IWriteBinaryFileCommand
 {
-    // See WriteFileCommand for why this command always refreshes the registry.
-    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
-
     private readonly ILogger<WriteBinaryFileCommand> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 

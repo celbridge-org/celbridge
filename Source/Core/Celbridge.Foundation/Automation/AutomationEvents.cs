@@ -22,12 +22,6 @@ public record ServerStartedEvent(int Port) : AutomationEvent;
 public record WorkspaceLoadedEvent(string ProjectFile, long ElapsedMs) : AutomationEvent;
 
 /// <summary>
-/// The resource registry has rescanned the project, and the views that show it have updated. ElapsedMs is how long
-/// the rescan took, in milliseconds.
-/// </summary>
-public record ResourceRegistryUpdatedEvent(long ElapsedMs) : AutomationEvent;
-
-/// <summary>
 /// The resource monitor has delivered a batch of changes in a root to the root's subscriptions. Keys is how many
 /// touched keys the batch held, and ElapsedMs is how long matching them and checking the disk took, in milliseconds.
 /// </summary>

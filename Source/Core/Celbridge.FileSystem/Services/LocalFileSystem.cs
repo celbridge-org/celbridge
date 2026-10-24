@@ -238,6 +238,41 @@ public sealed class LocalFileSystem : ILocalFileSystem
         }
     }
 
+    public async Task<Result<bool>> HasEntryAsync(string path, Func<FileSystemEntry, bool> predicate)
+    {
+        try
+        {
+            var directoryInfo = new DirectoryInfo(path);
+
+            // Probed so a missing folder fails without raising DirectoryNotFoundException.
+            if (!directoryInfo.Exists)
+            {
+                return Result<bool>.Fail($"Folder does not exist: '{path}'");
+            }
+
+            // EnumerateFileSystemInfos reads each entry only when the loop reaches it. Returning at the first accepted
+            // entry leaves the rest of the folder unread.
+            foreach (var entryInfo in directoryInfo.EnumerateFileSystemInfos())
+            {
+                var entry = entryInfo is FileInfo fileInfo
+                    ? await DescribeEntryAsync(fileInfo, StorageItemKind.File, fileInfo.Length)
+                    : await DescribeEntryAsync(entryInfo, StorageItemKind.Folder, size: 0);
+
+                if (predicate(entry))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail($"Failed to enumerate entries at: '{path}'")
+                .WithException(ex);
+        }
+    }
+
     public async Task<Result> MoveFileAsync(string source, string dest, bool overwrite = false)
     {
         var runResult = await RetryPolicy.RunAsync<bool>(

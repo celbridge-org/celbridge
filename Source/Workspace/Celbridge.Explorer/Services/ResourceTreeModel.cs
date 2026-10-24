@@ -15,7 +15,8 @@ namespace Celbridge.Explorer.Services;
 
 /// <summary>
 /// The rows of the Explorer's resource tree, and the folder listings they come from. The model lists only the
-/// folders the tree shows, and follows the changes in those folders through a subscription.
+/// folders the tree shows. It checks each collapsed subfolder for a child the tree shows, to decide the subfolder's
+/// expander. A subscription follows the changes in the listed and checked folders.
 /// </summary>
 public sealed class ResourceTreeModel
 {
@@ -64,8 +65,8 @@ public sealed class ResourceTreeModel
         }
     }
 
-    // A visible folder with this many visible subfolders or fewer also lists each of them, so their expanders are
-    // accurate. Above the limit, every subfolder row shows an expander.
+    // A visible folder with this many visible subfolders or fewer also checks each collapsed one, so their expanders
+    // are accurate. Above the limit, every subfolder row shows an expander.
     private const int LookAheadSubfolderLimit = 50;
 
     private readonly ILogger<ResourceTreeModel> _logger;
@@ -77,11 +78,15 @@ public sealed class ResourceTreeModel
     private readonly IAutomationService _automationService;
 
     private readonly Dictionary<ResourceKey, FolderListing> _listings = new();
+
+    // Maps each checked folder to true when the folder has a child the tree shows. The answers depend on Show Hidden
+    // Files.
+    private readonly Dictionary<ResourceKey, bool> _expanderChecks = new();
     private Dictionary<ResourceKey, ResourceViewItem> _rowsByResource = new();
     private IReadOnlyList<ResourceViewItem> _rows = [];
 
     private IMatcherSubscription? _subscription;
-    private HashSet<ResourceKey> _subscribedFolders = new();
+    private HashSet<ResourceKey> _followedFolders = new();
 
     public ResourceTreeModel(
         ILogger<ResourceTreeModel> logger,
@@ -117,6 +122,11 @@ public sealed class ResourceTreeModel
     public IReadOnlyCollection<ResourceKey> ListedFolders => _listings.Keys;
 
     /// <summary>
+    /// The folders the model has checked for a child the tree shows.
+    /// </summary>
+    public IReadOnlyCollection<ResourceKey> CheckedFolders => _expanderChecks.Keys;
+
+    /// <summary>
     /// Returns true if the tree shows the resources it hides by default.
     /// </summary>
     public bool ShowHiddenFiles => WorkspaceSettings.ShowHiddenFiles;
@@ -128,7 +138,8 @@ public sealed class ResourceTreeModel
     private IBindableWorkspaceSettings WorkspaceSettings => _workspaceWrapper.WorkspaceService.BindableWorkspaceSettings;
 
     /// <summary>
-    /// Lists each folder the tree shows that the model has not listed, and rebuilds the rows.
+    /// Lists each folder the tree shows and checks each collapsed subfolder, reusing the listings and checks the
+    /// model already has. Then rebuilds the rows.
     /// </summary>
     public async Task RefreshAsync()
     {
@@ -174,6 +185,9 @@ public sealed class ResourceTreeModel
     {
         WorkspaceSettings.ShowHiddenFiles = showHiddenFiles;
 
+        // Show Hidden Files decides which children count, so every check is made again.
+        _expanderChecks.Clear();
+
         await UpdateAsync([]);
     }
 
@@ -212,15 +226,16 @@ public sealed class ResourceTreeModel
     }
 
     /// <summary>
-    /// Stops following changes and drops every listing. The rows are left unchanged.
+    /// Stops following changes and drops every listing and check. The rows are left unchanged.
     /// </summary>
     public void Stop()
     {
         _subscription?.Dispose();
         _subscription = null;
-        _subscribedFolders = new();
+        _followedFolders = new();
 
         _listings.Clear();
+        _expanderChecks.Clear();
     }
 
     // Finds the folders above the resource by listing each one from the project folder down. Also reports whether
@@ -278,9 +293,9 @@ public sealed class ResourceTreeModel
         return new ResourceLocation(folders, isHidden);
     }
 
-    // Re-lists the stale folders, then keeps a listing of exactly the folders the tree needs. Those are the project
-    // folder and each expanded folder inside a visible folder. They also include the subfolders of a visible folder,
-    // within the look-ahead limit.
+    // Lists and checks the stale folders again. The model then keeps a listing of exactly the folders the tree
+    // shows. Those are the project folder and each expanded folder inside a visible folder. The model keeps a check
+    // of each collapsed subfolder of a visible folder, within the look-ahead limit.
     private async Task UpdateAsync(IReadOnlyCollection<ResourceKey> staleFolders)
     {
         var stopwatch = Stopwatch.StartNew();
@@ -288,9 +303,11 @@ public sealed class ResourceTreeModel
         foreach (var staleFolder in staleFolders)
         {
             _listings.Remove(staleFolder);
+            _expanderChecks.Remove(staleFolder);
         }
 
         var neededFolders = new HashSet<ResourceKey>();
+        var checkedFolders = new HashSet<ResourceKey>();
         var visibleFolders = new Queue<ResourceKey>();
         visibleFolders.Enqueue(ResourceKey.Empty);
 
@@ -307,7 +324,7 @@ public sealed class ResourceTreeModel
             var visibleSubfolders = listing.Children
                 .Where(folderChild => folderChild.IsFolder && IsVisible(folderChild))
                 .ToList();
-            var listsSubfolders = visibleSubfolders.Count <= LookAheadSubfolderLimit;
+            var checksSubfolders = visibleSubfolders.Count <= LookAheadSubfolderLimit;
 
             foreach (var subfolder in visibleSubfolders)
             {
@@ -315,20 +332,28 @@ public sealed class ResourceTreeModel
                 {
                     visibleFolders.Enqueue(subfolder.Resource);
                 }
-                else if (listsSubfolders)
+                else if (checksSubfolders)
                 {
-                    neededFolders.Add(subfolder.Resource);
-                    await GetListingAsync(subfolder.Resource);
+                    checkedFolders.Add(subfolder.Resource);
+                    await CheckForVisibleChildAsync(subfolder.Resource);
                 }
             }
         }
 
-        var unneededFolders = _listings.Keys
+        var unneededListings = _listings.Keys
             .Where(folder => !neededFolders.Contains(folder))
             .ToList();
-        foreach (var unneededFolder in unneededFolders)
+        foreach (var unneededListing in unneededListings)
         {
-            _listings.Remove(unneededFolder);
+            _listings.Remove(unneededListing);
+        }
+
+        var unneededChecks = _expanderChecks.Keys
+            .Where(folder => !checkedFolders.Contains(folder))
+            .ToList();
+        foreach (var unneededCheck in unneededChecks)
+        {
+            _expanderChecks.Remove(unneededCheck);
         }
 
         RemoveMissingExpandedFolders(neededFolders);
@@ -361,6 +386,24 @@ public sealed class ResourceTreeModel
         _listings[folder] = listing;
 
         return listing;
+    }
+
+    // Records whether the folder has a child the tree shows, unless the model has the answer already. A folder the
+    // check fails on gets no answer, so its row shows an expander.
+    private async Task CheckForVisibleChildAsync(ResourceKey folder)
+    {
+        if (_expanderChecks.ContainsKey(folder))
+        {
+            return;
+        }
+
+        var checkResult = await ResourceService.FileSystem.HasChildAsync(folder, IsVisible);
+        if (checkResult.IsFailure)
+        {
+            return;
+        }
+
+        _expanderChecks[folder] = checkResult.Value;
     }
 
     // Lists the folder again when its held listing lacks the resource. A command that changes the disk can name the
@@ -416,18 +459,18 @@ public sealed class ResourceTreeModel
         }
     }
 
-    // Subscribes again whenever the listed folders change, before disposing the old subscription so no change is
-    // missed between the two.
+    // Subscribes again whenever the listed or checked folders change, before disposing the old subscription so no
+    // change is missed between the two.
     private void UpdateSubscription()
     {
+        var followedFolders = GetFollowedFolders();
         if (_subscription is not null
-            && _subscribedFolders.SetEquals(_listings.Keys))
+            && _followedFolders.SetEquals(followedFolders))
         {
             return;
         }
 
-        var listedFolders = _listings.Keys.ToHashSet();
-        var matcher = new ListedFoldersMatcher(listedFolders);
+        var matcher = new FollowedFoldersMatcher(followedFolders);
         var handlers = new ResourceChangeHandlers(OnChanges, OnResync);
 
         var subscribeResult = ResourceService.Monitor.SubscribeToMatcher(ResourceKey.DefaultRoot, matcher, handlers);
@@ -439,8 +482,16 @@ public sealed class ResourceTreeModel
 
         var previousSubscription = _subscription;
         _subscription = subscribeResult.Value;
-        _subscribedFolders = listedFolders;
+        _followedFolders = followedFolders;
         previousSubscription?.Dispose();
+    }
+
+    private HashSet<ResourceKey> GetFollowedFolders()
+    {
+        var followedFolders = _listings.Keys.ToHashSet();
+        followedFolders.UnionWith(_expanderChecks.Keys);
+
+        return followedFolders;
     }
 
     private void OnChanges(ResourceChangeBatch batch)
@@ -456,7 +507,7 @@ public sealed class ResourceTreeModel
 
     private void OnResync(ResourceResync resync)
     {
-        var staleFolders = _listings.Keys.ToList();
+        var staleFolders = GetFollowedFolders();
 
         _ = UpdateAfterChangesAsync(staleFolders);
     }
@@ -480,26 +531,27 @@ public sealed class ResourceTreeModel
         }
     }
 
-    // A change makes a listed folder stale when the folder contains the changed item, is the changed item, or is
+    // A change makes a followed folder stale when the folder contains the changed item, is the changed item, or is
     // inside the changed item. Letter case is ignored, because a delete on macOS reports the name in the case the
     // caller used.
     private List<ResourceKey> FindStaleFolders(IReadOnlyList<ResourceChange> changes)
     {
         var staleFolders = new HashSet<ResourceKey>();
+        var followedFolders = GetFollowedFolders();
 
         foreach (var change in changes)
         {
             var changedPath = change.Resource.Path;
             var parentPath = change.Resource.GetParent().Path;
 
-            foreach (var listedFolder in _listings.Keys)
+            foreach (var followedFolder in followedFolders)
             {
-                var listedPath = listedFolder.Path;
+                var followedPath = followedFolder.Path;
 
-                if (string.Equals(listedPath, parentPath, StringComparison.OrdinalIgnoreCase)
-                    || ContainsPath(changedPath, listedPath))
+                if (string.Equals(followedPath, parentPath, StringComparison.OrdinalIgnoreCase)
+                    || ContainsPath(changedPath, followedPath))
                 {
-                    staleFolders.Add(listedFolder);
+                    staleFolders.Add(followedFolder);
                 }
             }
         }
@@ -535,16 +587,21 @@ public sealed class ResourceTreeModel
         return !ResourceTreeFilter.IsHidden(folderChild.Resource, folderChild.IsFolder, ResourceService.Policy);
     }
 
-    // Returns true if the folder has a visible child. An unlisted folder counts as having one, so its row shows an
-    // expander.
+    // Returns true if the folder has a visible child. A folder the model has neither listed nor checked counts as
+    // having one, so its row shows an expander.
     private bool HasVisibleChildren(ResourceKey folder)
     {
-        if (!_listings.TryGetValue(folder, out var listing))
+        if (_listings.TryGetValue(folder, out var listing))
         {
-            return true;
+            return listing.Children.Any(IsVisible);
         }
 
-        return listing.Children.Any(IsVisible);
+        if (_expanderChecks.TryGetValue(folder, out var hasVisibleChild))
+        {
+            return hasVisibleChild;
+        }
+
+        return true;
     }
 
     private void BuildRows()

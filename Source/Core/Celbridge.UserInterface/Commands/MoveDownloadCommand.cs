@@ -7,8 +7,6 @@ namespace Celbridge.UserInterface.Commands;
 
 public class MoveDownloadCommand : CommandBase, IMoveDownloadCommand
 {
-    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
-
     public ResourceKey SourceResource { get; set; }
     public ResourceKey DestResource { get; set; }
 

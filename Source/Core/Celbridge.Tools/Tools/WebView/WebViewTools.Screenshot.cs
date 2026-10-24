@@ -86,7 +86,7 @@ public partial class WebViewTools
         if (fileResource is not null)
         {
             // Route the write through IWriteBinaryFileCommand so capability
-            // gating, registry refresh, and RootPathResolver containment all run.
+            // gating and RootPathResolver containment both run.
             // The base64 round-trip is a one-time in-process cost. No network
             // or JSON envelope sees the encoded form, so the JSON-escape
             // corruption that drove the original on-disk redesign cannot recur.

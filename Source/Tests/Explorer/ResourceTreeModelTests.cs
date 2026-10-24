@@ -17,9 +17,9 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.Tests.Explorer;
 
 /// <summary>
-/// Tests the Explorer tree's model against a real project folder. The tests cover the folders the model lists as
-/// folders open and close, and the expanders within and above the look-ahead limit. They also cover re-listing
-/// after a change and a resync, rows keeping their identity, the view filter, and reveal.
+/// Tests the Explorer tree's model against a real project folder. The tests cover the folders the model lists and
+/// checks as folders open and close, and the expanders within and above the look-ahead limit. They also cover
+/// listing and checking again after a change and a resync, rows keeping their identity, the view filter, and reveal.
 /// </summary>
 [TestFixture]
 public class ResourceTreeModelTests
@@ -90,7 +90,7 @@ public class ResourceTreeModelTests
     }
 
     [Test]
-    public async Task Refresh_ListsTheProjectFolderAndEachSubfolder()
+    public async Task Refresh_ListsTheProjectFolder_AndChecksEachSubfolder()
     {
         CreateFolder("a");
         WriteFile("a/x.txt");
@@ -101,7 +101,8 @@ public class ResourceTreeModelTests
         await model.RefreshAsync();
 
         RowPaths(model).Should().Equal("", "a", "b", "c.txt");
-        model.ListedFolders.Should().BeEquivalentTo(Keys("", "a", "b"));
+        model.ListedFolders.Should().BeEquivalentTo(Keys(""));
+        model.CheckedFolders.Should().BeEquivalentTo(Keys("a", "b"));
         Row(model, "a").HasChildren.Should().BeTrue();
         Row(model, "b").HasChildren.Should().BeFalse();
     }
@@ -118,13 +119,14 @@ public class ResourceTreeModelTests
         await model.RefreshAsync();
 
         model.ListedFolders.Should().BeEquivalentTo(Keys(""));
+        model.CheckedFolders.Should().BeEmpty();
         model.Rows
             .Where(row => !row.IsProjectFolder)
             .Should().OnlyContain(row => row.HasChildren);
     }
 
     [Test]
-    public async Task SetExpanded_ListsTheFolderAndItsSubfolders_AndCollapsingDropsThem()
+    public async Task SetExpanded_ListsTheFolderAndChecksItsSubfolders_AndCollapsingChecksTheFolder()
     {
         CreateFolder("a/b/c");
         var model = CreateModel();
@@ -133,12 +135,15 @@ public class ResourceTreeModelTests
         await model.SetExpandedAsync(ResourceKey.Create("a"), true);
 
         RowPaths(model).Should().Equal("", "a", "a/b");
-        model.ListedFolders.Should().BeEquivalentTo(Keys("", "a", "a/b"));
+        model.ListedFolders.Should().BeEquivalentTo(Keys("", "a"));
+        model.CheckedFolders.Should().BeEquivalentTo(Keys("a/b"));
+        Row(model, "a/b").HasChildren.Should().BeTrue();
 
         await model.SetExpandedAsync(ResourceKey.Create("a"), false);
 
         RowPaths(model).Should().Equal("", "a");
-        model.ListedFolders.Should().BeEquivalentTo(Keys("", "a"));
+        model.ListedFolders.Should().BeEquivalentTo(Keys(""));
+        model.CheckedFolders.Should().BeEquivalentTo(Keys("a"));
     }
 
     [Test]
@@ -174,7 +179,22 @@ public class ResourceTreeModelTests
     }
 
     [Test]
-    public async Task ChangeOutsideTheListedFolders_DoesNotReachTheModel()
+    public async Task ChangeInACheckedFolder_ChecksItAgain_WithoutListingIt()
+    {
+        CreateFolder("b");
+        var model = CreateModel();
+        await model.RefreshAsync();
+        Row(model, "b").HasChildren.Should().BeFalse();
+
+        WriteFile("b/y.txt");
+        _monitor.DeliverChange(ResourceKey.Create("b/y.txt"), ResourceItemState.File);
+
+        Row(model, "b").HasChildren.Should().BeTrue();
+        model.ListedFolders.Should().BeEquivalentTo(Keys(""));
+    }
+
+    [Test]
+    public async Task ChangeOutsideTheFollowedFolders_DoesNotReachTheModel()
     {
         CreateFolder("a/b");
         var model = CreateModel();
@@ -202,7 +222,7 @@ public class ResourceTreeModelTests
     }
 
     [Test]
-    public async Task Resync_RelistsEveryListedFolder()
+    public async Task Resync_ListsAndChecksEveryFollowedFolderAgain()
     {
         CreateFolder("b");
         var model = CreateModel();
@@ -254,7 +274,7 @@ public class ResourceTreeModelTests
     }
 
     [Test]
-    public async Task FolderHoldingOnlyHiddenResources_HasNoExpander()
+    public async Task FolderHoldingOnlyHiddenResources_HasAnExpanderOnlyWithShowHiddenFiles()
     {
         UsePolicy(hidePatterns: ["*.log"], searchExcludePatterns: []);
         CreateFolder("logs");
@@ -264,6 +284,10 @@ public class ResourceTreeModelTests
         await model.RefreshAsync();
 
         Row(model, "logs").HasChildren.Should().BeFalse();
+
+        await model.SetShowHiddenFilesAsync(true);
+
+        Row(model, "logs").HasChildren.Should().BeTrue();
     }
 
     [Test]
@@ -313,7 +337,7 @@ public class ResourceTreeModelTests
     }
 
     [Test]
-    public async Task Subscription_MatchesTheListedFoldersAndTheirChildren()
+    public async Task Subscription_MatchesTheFollowedFoldersAndTheirChildren()
     {
         CreateFolder("a/b");
         var model = CreateModel();
@@ -330,7 +354,7 @@ public class ResourceTreeModelTests
     }
 
     [Test]
-    public async Task Subscription_IsReplacedWhenTheListedFoldersChange()
+    public async Task Subscription_IsReplacedWhenTheFollowedFoldersChange()
     {
         CreateFolder("a/b");
         var model = CreateModel();
@@ -344,8 +368,9 @@ public class ResourceTreeModelTests
     }
 
     [Test]
-    public async Task Stop_DisposesTheSubscription_AndDropsTheListings()
+    public async Task Stop_DisposesTheSubscription_AndDropsTheListingsAndChecks()
     {
+        CreateFolder("a");
         var model = CreateModel();
         await model.RefreshAsync();
 
@@ -353,6 +378,7 @@ public class ResourceTreeModelTests
 
         _monitor.MatcherSubscriptions.Should().BeEmpty();
         model.ListedFolders.Should().BeEmpty();
+        model.CheckedFolders.Should().BeEmpty();
     }
 
     [Test]

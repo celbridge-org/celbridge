@@ -429,14 +429,6 @@ public partial class DocumentTabViewModel : ObservableObject
                     var discardedMessage = new WorkspaceItemSaveDiscardedMessage(FileResource);
                     _messengerService.Send(discardedMessage);
                 }
-
-                // If the cached writable state still reads Writable, an external attribute change
-                // probably slipped past the watcher. Schedule a resource update so the cache catches
-                // up. Debouncing inside the resource service coalesces bursts.
-                if (DocumentView.WritableState == WritableState.Writable)
-                {
-                    _commandService.Execute<IUpdateResourcesCommand>();
-                }
             }
         }
 

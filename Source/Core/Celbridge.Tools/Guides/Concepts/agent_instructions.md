@@ -85,7 +85,7 @@ const tree = await cel.file.getTree("");
 
 These auto-attach the first time you call a tool in their namespace, but you can also fetch them explicitly when planning ahead of a domain you have not entered yet:
 
-- `app` — application state, the project's packages, logging, alerts, refresh.
+- `app` — application state, the project's packages, logging, alerts.
 - `document` — open / close / activate editor tabs and snapshot editor state.
 - `explorer` — create / move / rename / delete files and folders, zip and extract archives, manipulate the resource tree.
 - `file` — read, write, search, and edit file contents.

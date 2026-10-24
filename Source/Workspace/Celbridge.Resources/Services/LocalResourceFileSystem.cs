@@ -574,6 +574,66 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
 
     public async Task<Result<IReadOnlyList<FolderChild>>> EnumerateFolderAsync(ResourceKey folder)
     {
+        var resolveResult = await ResolveFolderToListAsync(folder);
+        if (resolveResult.IsFailure)
+        {
+            return Result.Fail(resolveResult);
+        }
+        var folderPath = resolveResult.Value;
+
+        var enumerateResult = await _fileSystem.EnumerateAsync(folderPath, "*", recursive: false);
+        if (enumerateResult.IsFailure)
+        {
+            return Result.Fail($"Failed to enumerate folder: '{folder}'")
+                .WithErrors(enumerateResult);
+        }
+
+        var entries = new List<FolderChild>();
+
+        // EnumerateAsync already returns a deterministic folders-first, ordinal
+        // order. Size and modified time come from the directory walk, so the
+        // listing needs no re-sort and no stat per child.
+        foreach (var entry in enumerateResult.Value)
+        {
+            var folderChild = ToFolderChild(folder, entry);
+            if (folderChild is not null)
+            {
+                entries.Add(folderChild);
+            }
+        }
+
+        IReadOnlyList<FolderChild> result = entries;
+        return result.OkResult();
+    }
+
+    public async Task<Result<bool>> HasChildAsync(ResourceKey folder, Func<FolderChild, bool> predicate)
+    {
+        var resolveResult = await ResolveFolderToListAsync(folder);
+        if (resolveResult.IsFailure)
+        {
+            return Result.Fail(resolveResult);
+        }
+        var folderPath = resolveResult.Value;
+
+        var hasEntryResult = await _fileSystem.HasEntryAsync(folderPath, entry =>
+        {
+            var folderChild = ToFolderChild(folder, entry);
+            return folderChild is not null
+                && predicate(folderChild);
+        });
+        if (hasEntryResult.IsFailure)
+        {
+            return Result.Fail($"Failed to enumerate folder: '{folder}'")
+                .WithErrors(hasEntryResult);
+        }
+
+        return hasEntryResult.Value;
+    }
+
+    // Returns the path of a folder to list. Fails for a reserved folder, for a key that does not resolve, and for a
+    // key that names something other than a folder.
+    private async Task<Result<string>> ResolveFolderToListAsync(ResourceKey folder)
+    {
         // A reserved folder resolves to "no such resource" semantics with a
         // Result.Fail so callers don't mistake a denied listing for an empty
         // folder.
@@ -604,48 +664,36 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             return Result.Fail($"Resource is not a folder: '{folder}'");
         }
 
-        var enumerateResult = await _fileSystem.EnumerateAsync(folderPath, "*", recursive: false);
-        if (enumerateResult.IsFailure)
+        return folderPath;
+    }
+
+    // Returns the child an entry of the folder describes, or null when listings leave the entry out.
+    private FolderChild? ToFolderChild(ResourceKey folder, FileSystemEntry entry)
+    {
+        var childName = Path.GetFileName(entry.FullPath);
+        var childKey = folder.Combine(childName);
+
+        // Enumeration drops the reserved folders and links. The project's
+        // hide patterns are a view filter the Explorer applies, so a hidden entry
+        // is still listed here.
+        if (EvaluatePolicy(childKey, ResourceAction.Read, isFolder: entry.IsFolder).IsFailure)
         {
-            return Result.Fail($"Failed to enumerate folder: '{folder}'")
-                .WithErrors(enumerateResult);
+            return null;
         }
 
-        var entries = new List<FolderChild>();
-
-        // EnumerateAsync already returns a deterministic folders-first, ordinal
-        // order with size and modified-time populated from the directory walk,
-        // so neither a re-sort nor a per-child stat is needed here.
-        foreach (var entry in enumerateResult.Value)
+        // The resolver refuses a link and every path through one. A listing that
+        // offered one would hand the caller an item it cannot open.
+        if (entry.IsLink)
         {
-            var childName = Path.GetFileName(entry.FullPath);
-            var childKey = folder.Combine(childName);
-
-            // Enumeration drops the reserved folders and links. The project's
-            // hide patterns are a view filter the Explorer applies, so a hidden entry
-            // is still listed here.
-            if (EvaluatePolicy(childKey, ResourceAction.Read, isFolder: entry.IsFolder).IsFailure)
-            {
-                continue;
-            }
-
-            // The resolver refuses a link and every path through one. A listing that
-            // offered one would hand the caller an item it cannot open.
-            if (entry.IsLink)
-            {
-                continue;
-            }
-
-            entries.Add(new FolderChild(
-                Resource: childKey,
-                IsFolder: entry.IsFolder,
-                Size: entry.Size,
-                ModifiedUtc: entry.ModifiedUtc,
-                Attributes: entry.Attributes));
+            return null;
         }
 
-        IReadOnlyList<FolderChild> result = entries;
-        return result.OkResult();
+        return new FolderChild(
+            Resource: childKey,
+            IsFolder: entry.IsFolder,
+            Size: entry.Size,
+            ModifiedUtc: entry.ModifiedUtc,
+            Attributes: entry.Attributes);
     }
 
     public async Task<Result<string>> ComputeHashAsync(ResourceKey resource)

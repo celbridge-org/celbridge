@@ -148,9 +148,7 @@ public class SidecarServiceTests
 
         setResult.IsSuccess.Should().BeTrue();
         // The sidecar did not exist on disk, so this write materialises a new
-        // file. The Created outcome is what gates the registry-update flag on
-        // the calling command (existing-file updates must report Updated so
-        // the rescan is skipped).
+        // file.
         setResult.Value.Should().Be(SidecarWriteOutcome.Created);
         await _resourceFileSystem.Received(1).WriteAllTextAsync(
             siblingSidecar,
@@ -160,9 +158,7 @@ public class SidecarServiceTests
     [Test]
     public async Task SetFieldsAsync_ReportsUpdated_WhenSidecarAlreadyExists()
     {
-        // Mutating an existing sidecar reports Updated, not Created. The
-        // command layer uses this distinction to suppress the synchronous
-        // registry rebuild that's only needed when a new .cel file appears.
+        // Mutating an existing sidecar reports Updated, not Created.
         var celResource = new ResourceKey("design.widget.cel");
 
         _resourceFileSystem.GetInfoAsync(celResource)
@@ -185,9 +181,8 @@ public class SidecarServiceTests
     [Test]
     public async Task SetFieldsAsync_ReportsNoChange_WhenValuesMatchExisting()
     {
-        // The canonical-compare short-circuits a redundant write. The outcome
-        // must be NoChange so the command layer can skip both the watcher
-        // fan-out and the registry rebuild for set-to-current-value calls.
+        // The canonical-compare short-circuits a redundant write, so a
+        // set-to-current-value call reports NoChange and fires no watcher event.
         var regularFile = new ResourceKey("photo.png");
         var siblingSidecar = new ResourceKey("photo.png.cel");
 
@@ -483,8 +478,7 @@ public class SidecarServiceTests
     public async Task RemoveFieldsAsync_DeletesSidecar_WhenLastFieldRemoved()
     {
         // Removing the final field empties the sidecar. Rather than leave a
-        // blank .cel file, the service deletes it and reports Deleted so the
-        // calling command forces the registry to drop the removed file.
+        // blank .cel file, the service deletes it and reports Deleted.
         var regularFile = new ResourceKey("photo.png");
         var siblingSidecar = new ResourceKey("photo.png.cel");
 

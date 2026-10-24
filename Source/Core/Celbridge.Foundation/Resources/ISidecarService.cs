@@ -79,20 +79,18 @@ public enum SidecarWriteOutcome
     NoChange,
 
     /// <summary>
-    /// An existing sidecar file was mutated in place. The file's registry
-    /// classification does not change as a result of a content update.
+    /// An existing sidecar file was mutated in place.
     /// </summary>
     Updated,
 
     /// <summary>
-    /// A new sidecar file was created on disk. The registry needs to learn
-    /// about the new file so subsequent reads see it.
+    /// A new sidecar file was created on disk.
     /// </summary>
     Created,
 
     /// <summary>
     /// The mutation emptied an existing sidecar, so the now-blank file was
-    /// deleted from disk. The registry needs to drop the removed file.
+    /// deleted from disk.
     /// </summary>
     Deleted,
 }

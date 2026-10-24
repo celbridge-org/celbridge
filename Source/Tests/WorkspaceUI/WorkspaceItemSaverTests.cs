@@ -1,4 +1,3 @@
-using Celbridge.Commands;
 using Celbridge.Messaging;
 using Celbridge.Resources;
 using Celbridge.Workspace;
@@ -21,7 +20,6 @@ public class WorkspaceItemSaverTests
     private const double FlushTimeout = 0.1;
 
     private IMessengerService _messengerService = null!;
-    private ICommandService _commandService = null!;
     private WorkspaceItemSaver _workspaceItemSaver = null!;
 
     private List<int> _pendingSaveCounts = null!;
@@ -31,7 +29,6 @@ public class WorkspaceItemSaverTests
     public void Setup()
     {
         _messengerService = Substitute.For<IMessengerService>();
-        _commandService = Substitute.For<ICommandService>();
 
         _pendingSaveCounts = new List<int>();
         _retryReports = new List<IReadOnlyList<ResourceKey>>();
@@ -47,7 +44,6 @@ public class WorkspaceItemSaverTests
 
         _workspaceItemSaver = new WorkspaceItemSaver(
             Substitute.For<ILogger<WorkspaceItemSaver>>(),
-            _commandService,
             _messengerService,
             new SaveRetryTracker());
     }
@@ -278,7 +274,7 @@ public class WorkspaceItemSaverTests
 
         await _workspaceItemSaver.SaveModifiedItemsAsync(items, TickDelta);
 
-        // The resource update the first failure asked for reports the file as read-only.
+        // The file turns read-only on disk.
         item.WritableState = WritableState.ReadOnlyAttribute;
         await _workspaceItemSaver.SaveModifiedItemsAsync(items, PastFirstRetryDelta);
 
@@ -302,18 +298,6 @@ public class WorkspaceItemSaverTests
         _retryReports.Select(report => report.Count).Should().Equal(
             new[] { 1, 0 },
             "the report follows the item's current writable state, not the state at its last attempt");
-    }
-
-    [Test]
-    public async Task SaveModifiedItems_GoesOnRequestingAResourceUpdate_WhileASaveKeepsFailing()
-    {
-        var item = new FakeWorkspaceItem { SaveSucceeds = false };
-        var items = new[] { item };
-
-        await _workspaceItemSaver.SaveModifiedItemsAsync(items, TickDelta);
-        await _workspaceItemSaver.SaveModifiedItemsAsync(items, PastFirstRetryDelta);
-
-        _commandService.ReceivedWithAnyArgs(2).Execute<IUpdateResourcesCommand>();
     }
 
     [Test]

@@ -7,8 +7,6 @@ namespace Celbridge.Resources.Commands;
 
 public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
 {
-    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
-
     public List<ResourceKey> Resources { get; set; } = new();
 
     public DeleteCommandResult ResultValue { get; private set; } = new(

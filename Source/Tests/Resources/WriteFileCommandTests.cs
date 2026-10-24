@@ -8,8 +8,7 @@ using Celbridge.Workspace;
 namespace Celbridge.Tests.Resources;
 
 /// <summary>
-/// Verifies WriteFileCommand writes content directly to disk and refreshes
-/// the resource registry when a new file is created.
+/// Verifies WriteFileCommand writes content directly to disk.
 /// </summary>
 [TestFixture]
 public class WriteFileCommandTests
@@ -66,9 +65,6 @@ public class WriteFileCommandTests
         result.IsSuccess.Should().BeTrue();
         File.Exists(path).Should().BeTrue();
         (await File.ReadAllTextAsync(path)).Should().Be("fresh content");
-        // Registry refresh is driven by CommandFlags.UpdateResources, processed
-        // by the command service framework after the command body returns;
-        // ExecuteAsync itself does not call the registry directly.
     }
 
     [Test]

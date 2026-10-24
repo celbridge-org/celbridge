@@ -96,6 +96,13 @@ public interface IResourceFileSystem
     Task<Result<IReadOnlyList<FolderChild>>> EnumerateFolderAsync(ResourceKey folder);
 
     /// <summary>
+    /// Returns true when the predicate accepts a child of a folder resource. The children are the ones
+    /// EnumerateFolderAsync returns, read in the platform's own order. Reading stops at the first child the
+    /// predicate accepts. Fails when the resource is not a folder.
+    /// </summary>
+    Task<Result<bool>> HasChildAsync(ResourceKey folder, Func<FolderChild, bool> predicate);
+
+    /// <summary>
     /// Returns a deterministic content fingerprint for the resource as an
     /// opaque string. Equal bytes yield equal fingerprints within the same
     /// backend; the concrete algorithm is per-implementation. Callers compare

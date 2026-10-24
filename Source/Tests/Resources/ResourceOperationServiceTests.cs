@@ -339,6 +339,33 @@ public class ResourceOperationServiceTests
     }
 
     [Test]
+    public async Task HasChildAsync_LeavesOutLinkedFilesAndFolders()
+    {
+        CreateFolderThatContainsLinks();
+        var offeredNames = new List<string>();
+
+        var hasChildResult = await _resourceFileSystem.HasChildAsync(new ResourceKey("folder"), folderChild =>
+        {
+            offeredNames.Add(folderChild.Resource.ResourceName);
+            return false;
+        });
+
+        hasChildResult.IsSuccess.Should().BeTrue(hasChildResult.MessageChain);
+        hasChildResult.Value.Should().BeFalse();
+        offeredNames.Should().Equal("plain.txt");
+    }
+
+    [Test]
+    public async Task HasChildAsync_FailsForAFile()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_tempFolder, "notes.txt"), "notes");
+
+        var hasChildResult = await _resourceFileSystem.HasChildAsync(new ResourceKey("notes.txt"), _ => true);
+
+        hasChildResult.IsFailure.Should().BeTrue();
+    }
+
+    [Test]
     public async Task CollectSourceFilesAsync_FolderThatContainsLinks_LeavesThemOutOfTheArchive()
     {
         CreateFolderThatContainsLinks();

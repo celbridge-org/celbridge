@@ -149,41 +149,6 @@ public class DocumentTabViewModelTests
     }
 
     [Test]
-    public async Task CloseDocument_SchedulesResourceUpdate_WhenSaveFailsAndViewStillReportsWritable()
-    {
-        // A save failure against a view whose WritableState still reads Writable
-        // suggests an external attribute flip slipped past the watcher. The close
-        // path schedules a resource update so the cache catches up.
-        var documentView = Substitute.For<IDocumentView>();
-        documentView.CanClose().Returns(Task.FromResult(true));
-        documentView.HasUnsavedChanges.Returns(true);
-        documentView.SaveAsync().Returns(Task.FromResult<Result>(Result.Fail("simulated save failure")));
-        documentView.WritableState.Returns(WritableState.Writable);
-
-        var viewModel = CreateViewModel(new ResourceKey("stale.md"), documentView);
-
-        await viewModel.CloseDocument(forceClose: false);
-
-        _commandService.ReceivedWithAnyArgs(1).Execute<IUpdateResourcesCommand>();
-    }
-
-    [Test]
-    public async Task CloseDocument_DoesNotScheduleResourceUpdate_WhenCacheAlreadyKnowsNonWritable()
-    {
-        var documentView = Substitute.For<IDocumentView>();
-        documentView.CanClose().Returns(Task.FromResult(true));
-        documentView.HasUnsavedChanges.Returns(true);
-        documentView.SaveAsync().Returns(Task.FromResult<Result>(Result.Fail("simulated save failure")));
-        documentView.WritableState.Returns(WritableState.ReadOnlyAttribute);
-
-        var viewModel = CreateViewModel(new ResourceKey("readonly.md"), documentView);
-
-        await viewModel.CloseDocument(forceClose: false);
-
-        _commandService.DidNotReceiveWithAnyArgs().Execute<IUpdateResourcesCommand>();
-    }
-
-    [Test]
     public void AChange_AppliesANewWritableState()
     {
         var documentView = Substitute.For<IDocumentView>();

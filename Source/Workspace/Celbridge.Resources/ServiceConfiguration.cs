@@ -22,15 +22,12 @@ public static class ServiceConfiguration
         services.AddTransient<IResourceTransferService, ResourceTransferService>();
         services.AddTransient<IResourceNameValidator, ResourceNameValidator>();
         services.AddTransient<IResourceMonitor, ResourceMonitor>();
-        services.AddTransient<ResourceUpdateScheduler>();
         services.AddTransient<IResourceFileSystem, LocalResourceFileSystem>();
         services.AddTransient<IResourcePolicy, ResourcePolicy>();
         services.AddTransient<ITrashService, TrashService>();
         services.AddTransient<IResourceScanner, ResourceScanner>();
         services.AddTransient<IResourceWalker, ResourceWalker>();
         services.AddTransient<ISidecarService, SidecarService>();
-        services.AddTransient<IResourceClassifier, ResourceClassifier>();
-        services.AddTransient<IProjectTreeBuilder, ProjectTreeBuilder>();
         services.AddTransient<CreateResourceHelper>();
         services.AddTransient<ResourceOperationNotifier>();
 
@@ -38,7 +35,6 @@ public static class ServiceConfiguration
         // Register commands
         //
 
-        services.AddTransient<IUpdateResourcesCommand, UpdateResourcesCommand>();
         services.AddTransient<ICreateResourceCommand, CreateResourceCommand>();
         services.AddTransient<IDeleteResourceCommand, DeleteResourceCommand>();
         services.AddTransient<ICopyResourceCommand, CopyResourceCommand>();

@@ -1,4 +1,3 @@
-using Celbridge.Logging;
 using Tomlyn;
 using Tomlyn.Model;
 using Tomlyn.Parsing;
@@ -6,7 +5,7 @@ using Tomlyn.Parsing;
 namespace Celbridge.Resources.Helpers;
 
 /// <summary>
-/// Parse, compose, and on-disk inspection for the .cel sidecar format. A
+/// Parses and composes the .cel sidecar format. A
 /// sidecar file is plain TOML; the helpers here are a thin wrapper around
 /// Tomlyn for read and around SidecarTomlEncoder for deterministic write.
 /// </summary>
@@ -140,54 +139,6 @@ public static class SidecarHelper
             encoded += "\n";
         }
         return encoded;
-    }
-
-    /// <summary>
-    /// Reads a sidecar file at absolutePath and classifies it as Healthy
-    /// (parses cleanly) or Broken (any parse or read failure). The bytes on
-    /// disk are never modified.
-    /// </summary>
-    public static CelParseStatus Inspect(string absolutePath, ILogger logger)
-    {
-        // Inspect runs synchronously inside ResourceClassifier during
-        // UpdateResourceRegistry. In production the call routes through the
-        // gateway; the direct-read fallback is for the test paths that
-        // construct a registry without standing up the DI host.
-        var text = ReadSidecarText(absolutePath);
-        if (text is null)
-        {
-            logger.LogWarning($"sidecar pairing: failed to read '{absolutePath}'");
-            return CelParseStatus.Broken;
-        }
-
-        var parseResult = Parse(text);
-        if (parseResult.IsFailure)
-        {
-            logger.LogWarning($"sidecar pairing: '{absolutePath}' has unparseable content");
-            return CelParseStatus.Broken;
-        }
-
-        return CelParseStatus.Healthy;
-    }
-
-    [AllowDirectFileSystemAccess]
-    private static string? ReadSidecarText(string absolutePath)
-    {
-        if (ServiceLocator.ServiceProvider is not null)
-        {
-            var fileSystem = ServiceLocator.AcquireService<ILocalFileSystem>();
-            var readResult = SyncRunner.Run(() => fileSystem.ReadAllTextAsync(absolutePath));
-            return readResult.IsSuccess ? readResult.Value : null;
-        }
-
-        try
-        {
-            return File.ReadAllText(absolutePath);
-        }
-        catch
-        {
-            return null;
-        }
     }
 
     private static Result<IReadOnlyDictionary<string, object>> ParseFieldsToml(string tomlText)

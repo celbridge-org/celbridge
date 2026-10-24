@@ -39,7 +39,7 @@ public enum WritableState
 /// and redo, batched grouping, and soft-delete trash on top of the IResourceFileSystem
 /// gateway. Only changes under the project root can be undone. Every method names
 /// its target with a ResourceKey. Imports take their external source as a string
-/// path, because it lies outside the registry.
+/// path, because it lies outside every root.
 /// </summary>
 public interface IResourceOperationService
 {
