@@ -339,6 +339,18 @@ public class ProjectConfigReconcilerTests
             {
                 EditorAssociations = new Dictionary<string, string> { [".png"] = "pixel" },
             },
+            Explorer = new ExplorerSection
+            {
+                Exclude = new[] { ".gitignore" },
+            },
+            Search = new SearchSection
+            {
+                Exclude = new[] { "node_modules", "dist/" },
+            },
+            Downloads = new DownloadsSection
+            {
+                Folder = "assets/incoming",
+            },
             Packages = new PackagesSection
             {
                 Folders = new[] { "vendor/packages" },
@@ -374,6 +386,9 @@ public class ProjectConfigReconcilerTests
         var reparsed = parseResult.Value;
 
         reparsed.EntryErrors.Should().BeEmpty();
+        reparsed.Explorer.Exclude.Should().Equal(".gitignore");
+        reparsed.Search.Exclude.Should().Equal("node_modules", "dist/");
+        reparsed.Downloads.Folder.Should().Be("assets/incoming");
         reparsed.Packages.Folders.Should().Equal("vendor/packages");
         reparsed.Packages.Disabled.Should().Equal("acme.off");
         reparsed.Celbridge.EditorAssociations[".png"].Should().Be("pixel");
@@ -383,5 +398,15 @@ public class ProjectConfigReconcilerTests
         console.Config["flag"].Should().Be(true);
         ((IReadOnlyList<string>)console.Config["deps"]!).Should().Equal("a", "b");
         OverrideOf(reparsed, "acme.notes", "note")!.Disabled.Should().BeTrue();
+    }
+
+    [Test]
+    public void Serialize_EmptyListsAndNoDownloadsFolder_WriteNoTables()
+    {
+        var text = ProjectConfigSerializer.Serialize(EmptyConfig());
+
+        text.Should().NotContain("[celbridge.explorer]");
+        text.Should().NotContain("[celbridge.search]");
+        text.Should().NotContain("[celbridge.downloads]");
     }
 }

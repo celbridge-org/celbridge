@@ -16,7 +16,9 @@ public static class ProjectConfigSerializer
         var builder = new StringBuilder();
 
         WriteCelbridgeTable(builder, config);
-        WriteResourcesTable(builder, config.Resources);
+        WriteExcludeListTable(builder, "explorer", config.Explorer.Exclude);
+        WriteExcludeListTable(builder, "search", config.Search.Exclude);
+        WriteDownloadsTable(builder, config.Downloads);
         WritePackagesTable(builder, config.Packages);
         WriteContributions(builder, config.ContributionOverrides);
         WriteDocumentShortcuts(builder, config.DocumentShortcuts);
@@ -51,16 +53,30 @@ public static class ProjectConfigSerializer
         }
     }
 
-    private static void WriteResourcesTable(StringBuilder builder, ResourcesSection resources)
+    // Emits the [celbridge.<tableKey>] table only when its exclude list has a line.
+    private static void WriteExcludeListTable(StringBuilder builder, string tableKey, IReadOnlyList<string> exclude)
     {
-        builder.Append('\n');
-        builder.Append("[celbridge.resources]\n");
-        WriteKeyValue(builder, "hide", RenderStringArray(resources.Hide));
-        WriteKeyValue(builder, "search-exclude", RenderStringArray(resources.SearchExclude));
-        if (!string.IsNullOrEmpty(resources.DownloadsFolder))
+        if (exclude.Count == 0)
         {
-            WriteKeyValue(builder, "downloads-folder", TomlStringEncoder.EncodeBasicString(resources.DownloadsFolder));
+            return;
         }
+
+        builder.Append('\n');
+        builder.Append($"[celbridge.{tableKey}]\n");
+        WriteKeyValue(builder, "exclude", RenderStringArray(exclude));
+    }
+
+    // Emits the table only when the project names a downloads folder.
+    private static void WriteDownloadsTable(StringBuilder builder, DownloadsSection downloads)
+    {
+        if (string.IsNullOrEmpty(downloads.Folder))
+        {
+            return;
+        }
+
+        builder.Append('\n');
+        builder.Append("[celbridge.downloads]\n");
+        WriteKeyValue(builder, "folder", TomlStringEncoder.EncodeBasicString(downloads.Folder));
     }
 
     // Emits the table only when the project lists a package folder or a disabled package. A project at the

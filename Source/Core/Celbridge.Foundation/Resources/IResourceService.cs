@@ -34,7 +34,7 @@ public interface IResourceService
 
     /// <summary>
     /// Returns the workspace's resource policy engine: the compiled view of the
-    /// project's [celbridge.resources] settings, plus the access invariants.
+    /// project's Explorer and search lists, plus the access invariants.
     /// </summary>
     IResourcePolicy Policy { get; }
 

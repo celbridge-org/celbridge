@@ -171,7 +171,7 @@ internal sealed class DownloadDestinations
     // the project root tidy after several downloads.
     private Result<ResourceKey> ResolveDownloadsFolder(IRootHandlerRegistry rootHandlerRegistry)
     {
-        var configuredFolder = _projectService.CurrentProject?.Config.Resources.DownloadsFolder ?? string.Empty;
+        var configuredFolder = _projectService.CurrentProject?.Config.Downloads.Folder ?? string.Empty;
 
         return DownloadsFolderPath.Resolve(rootHandlerRegistry, _localFileSystem, configuredFolder);
     }

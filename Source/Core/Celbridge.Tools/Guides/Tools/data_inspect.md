@@ -17,7 +17,7 @@ Scope resolution mirrors `file_grep`:
 | empty | set | Every resource key matching the filter. |
 | set | set | Union of the two. |
 
-A whole-project or pattern inspection walks the project each time it is called. The walk leaves out what the project's `search-exclude` list matches. Name a resource in `resources` to inspect it anyway.
+A whole-project or pattern inspection walks the project each time it is called. The walk leaves out what the project's search list, `[celbridge.search] exclude`, matches. Name a resource in `resources` to inspect it anyway.
 
 ## Returns
 

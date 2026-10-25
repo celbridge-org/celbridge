@@ -126,7 +126,7 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Walks the project and lists what the picker offers. The file picker leaves out what search-exclude matches.
+    /// Walks the project and lists what the picker offers. The file picker leaves out what the search list excludes.
     /// The folder picker lists every folder. Only the first call walks, and a later call waits for that walk.
     /// </summary>
     public async Task LoadItemsAsync()
@@ -228,7 +228,7 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
         {
             var walker = _workspaceWrapper.WorkspaceService.ResourceService.Walker;
 
-            // The folder picker offers any folder, including one inside a folder that search-exclude matches.
+            // The folder picker offers any folder, even one inside a folder excluded by the search list.
             var applySearchExclude = !_listsFolders;
             var walkResult = await walker.WalkAsync(ResourceKey.Empty, applySearchExclude);
             if (walkResult.IsFailure)

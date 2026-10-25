@@ -62,7 +62,7 @@ public class ResourceTreeModelTests
             TestFileSystem.CreateLocal());
         _resourceService.FileSystem.Returns(resourceFileSystem);
 
-        UsePolicy(hidePatterns: [], searchExcludePatterns: []);
+        UsePolicy(explorerExcludePatterns: [], searchExcludePatterns: []);
 
         _folderStateService = new FolderStateService(_workspaceWrapper);
         var explorerService = Substitute.For<IExplorerService>();
@@ -253,7 +253,7 @@ public class ResourceTreeModelTests
     [Test]
     public async Task HiddenResources_ShowDimmedOnlyWithShowHiddenFiles()
     {
-        UsePolicy(hidePatterns: [".secret"], searchExcludePatterns: ["build/"]);
+        UsePolicy(explorerExcludePatterns: [".secret", "build/"], searchExcludePatterns: []);
         CreateFolder("build");
         WriteFile(".secret");
         WriteFile("notes.md");
@@ -274,9 +274,24 @@ public class ResourceTreeModelTests
     }
 
     [Test]
+    public async Task SearchExcludedFolder_ShowsWithoutShowHiddenFiles()
+    {
+        UsePolicy(explorerExcludePatterns: [], searchExcludePatterns: ["dist/"]);
+        CreateFolder("dist");
+        WriteFile("dist/app.js");
+        var model = CreateModel();
+
+        await model.RefreshAsync();
+
+        RowPaths(model).Should().Equal("", "dist");
+        Row(model, "dist").IsHidden.Should().BeFalse();
+        Row(model, "dist").HasChildren.Should().BeTrue();
+    }
+
+    [Test]
     public async Task FolderHoldingOnlyHiddenResources_HasAnExpanderOnlyWithShowHiddenFiles()
     {
-        UsePolicy(hidePatterns: ["*.log"], searchExcludePatterns: []);
+        UsePolicy(explorerExcludePatterns: ["*.log"], searchExcludePatterns: []);
         CreateFolder("logs");
         WriteFile("logs/app.log");
         var model = CreateModel();
@@ -293,7 +308,7 @@ public class ResourceTreeModelTests
     [Test]
     public async Task Reveal_ExpandsTheFoldersAbove_AndShowsAHiddenResource()
     {
-        UsePolicy(hidePatterns: [], searchExcludePatterns: ["build/"]);
+        UsePolicy(explorerExcludePatterns: ["build/"], searchExcludePatterns: []);
         CreateFolder("build/out");
         WriteFile("build/out/app.txt");
         var model = CreateModel();
@@ -312,7 +327,7 @@ public class ResourceTreeModelTests
     [Test]
     public async Task Reveal_ThatTurnsShowHiddenFilesOn_ChecksTheCollapsedFoldersAgain()
     {
-        UsePolicy(hidePatterns: ["*.log"], searchExcludePatterns: ["build/"]);
+        UsePolicy(explorerExcludePatterns: ["*.log", "build/"], searchExcludePatterns: []);
         CreateFolder("logs");
         WriteFile("logs/app.log");
         CreateFolder("build");
@@ -503,15 +518,15 @@ public class ResourceTreeModelTests
 
     // Builds the policy into a local before configuring the substitute, since building the policy creates other
     // substitutes.
-    private void UsePolicy(string[] hidePatterns, string[] searchExcludePatterns)
+    private void UsePolicy(string[] explorerExcludePatterns, string[] searchExcludePatterns)
     {
-        var resources = new ResourcesSection
+        var config = new ProjectConfig
         {
-            Hide = hidePatterns,
-            SearchExclude = searchExcludePatterns
+            Explorer = new ExplorerSection { Exclude = explorerExcludePatterns },
+            Search = new SearchSection { Exclude = searchExcludePatterns },
         };
         var project = Substitute.For<IProject>();
-        project.Config.Returns(new ProjectConfig { Resources = resources });
+        project.Config.Returns(config);
         project.ProjectFolderPath.Returns(_projectFolderPath);
         var projectService = Substitute.For<IProjectService>();
         projectService.CurrentProject.Returns(project);

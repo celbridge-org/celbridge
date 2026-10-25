@@ -564,9 +564,9 @@ public class DownloadServiceTests
     {
         var config = new ProjectConfig
         {
-            Resources = new ResourcesSection
+            Downloads = new DownloadsSection
             {
-                DownloadsFolder = downloadsFolder
+                Folder = downloadsFolder
             }
         };
 

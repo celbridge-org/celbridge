@@ -52,7 +52,7 @@ public class ProjectSettingsContextTests
     {
         config.Should().NotBeNull();
         config!.Celbridge.Description.Should().Be("From the file");
-        config.Resources.Hide.Should().Equal("*.tmp");
+        config.Explorer.Exclude.Should().Equal("*.tmp");
         config.Features[FeatureFlagConstants.NoteEditor].Should().BeTrue();
     }
 
@@ -75,10 +75,9 @@ public class ProjectSettingsContextTests
             {
                 Description = "From the file"
             },
-            Resources = new ResourcesSection
+            Explorer = new ExplorerSection
             {
-                Hide = ["*.tmp"],
-                SearchExclude = []
+                Exclude = ["*.tmp"]
             },
             Features = new Dictionary<string, bool>
             {

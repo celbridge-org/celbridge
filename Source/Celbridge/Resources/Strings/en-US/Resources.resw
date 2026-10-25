@@ -1062,20 +1062,20 @@ Open with default application instead?</value>
   <data name="ProjectSettings_ResourcesDescription" xml:space="preserve">
     <value>Choose how Celbridge handles the files and folders in this project.</value>
   </data>
-  <data name="ProjectSettings_HideTitle" xml:space="preserve">
-    <value>Hidden in Explorer</value>
+  <data name="ProjectSettings_ExplorerExcludeTitle" xml:space="preserve">
+    <value>Excluded from Explorer</value>
   </data>
-  <data name="ProjectSettings_HideSubtitle" xml:space="preserve">
-    <value>Patterns to leave out of the tree, one per line. Hidden files can still be opened and edited. The .git folder is always hidden.</value>
+  <data name="ProjectSettings_ExplorerExcludeSubtitle" xml:space="preserve">
+    <value>Patterns to leave out of the Explorer, one per line. The .git folder is always hidden.</value>
   </data>
   <data name="ProjectSettings_SearchExcludeTitle" xml:space="preserve">
     <value>Excluded from search</value>
   </data>
   <data name="ProjectSettings_SearchExcludeSubtitle" xml:space="preserve">
-    <value>Patterns for search to skip, one per line. These are also left out of the Explorer tree.</value>
+    <value>Patterns for search to skip, one per line.</value>
   </data>
   <data name="ProjectSettings_PatternPlaceholder" xml:space="preserve">
-    <value>e.g. node_modules</value>
+    <value>e.g. __pycache__</value>
   </data>
   <data name="ProjectSettings_InvalidPattern" xml:space="preserve">
     <value>Patterns follow .gitignore rules, with / between folder names.</value>

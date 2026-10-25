@@ -67,4 +67,4 @@ Before you move, rename or delete a resource, find the references to it:
 2. Review each match in context. A key quoted as an example, in documentation or a comment, is not a reference. Edit only the real references.
 3. After a move or rename, update each reference to the new key. Before a delete, tell the user which files reference the resource.
 
-A project search skips the folders that the project's `search-exclude` setting names (see `project_structure`). To search one of them, list its files with `file_get_tree` and pass their keys in `file_grep`'s `files` parameter.
+A project search skips the folders on the project's search list, `[celbridge.search] exclude` (see `project_structure`). To search one of them, list its files with `file_get_tree` and pass their keys in `file_grep`'s `files` parameter.

@@ -62,7 +62,7 @@ public static class ProjectConstants
     /// <summary>
     /// Folder name used for WebView downloads. Used both for the in-progress
     /// staging folder under temp: and for the default destination folder under
-    /// project:, which a project's downloads-folder key can change.
+    /// project:. A project's [celbridge.downloads] folder key can change the destination.
     /// </summary>
     public const string DownloadsFolder = "downloads";
 }

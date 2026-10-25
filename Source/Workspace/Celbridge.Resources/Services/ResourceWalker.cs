@@ -8,7 +8,7 @@ namespace Celbridge.Resources.Services;
 /// </summary>
 public sealed class ResourceWalker : IResourceWalker
 {
-    // Records the state of one walk: the gateway and policy for each listing, the search-exclude option and the items
+    // Records the state of one walk: the gateway and policy for each listing, the search list option and the items
     // found so far.
     private sealed record Walk(
         IResourceFileSystem FileSystem,

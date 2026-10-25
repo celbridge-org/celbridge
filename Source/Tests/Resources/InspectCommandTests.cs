@@ -353,7 +353,7 @@ public class InspectCommandTests
     [Test]
     public async Task ListedOrphanSidecar_InAFolderTheWalkLeavesOut_ReportsOrphan()
     {
-        // The pattern makes the command walk the project, and the walk leaves out what search-exclude matches.
+        // The pattern makes the command walk the project, and the walk leaves out what the search list excludes.
         Directory.CreateDirectory(Path.Combine(_projectFolderPath, "build"));
         File.WriteAllText(Path.Combine(_projectFolderPath, "build", "ghost.png.cel"), "_tags = [\"orphan\"]\n");
         File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md"), "Notes.\n");

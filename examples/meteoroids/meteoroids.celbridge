@@ -1,9 +1,11 @@
 [celbridge]
 celbridge-version = "1.5.0"
 
-[celbridge.resources]
-hide = [".gitignore", ".DS_Store", "Thumbs.db", "desktop.ini", ".mcp.json"]
-search-exclude = ["node_modules", "bin", "obj", "dist", ".venv", "__pycache__"]
+[celbridge.explorer]
+exclude = [".gitignore", ".DS_Store", "Thumbs.db", "desktop.ini"]
+
+[celbridge.search]
+exclude = ["node_modules", "bin", "obj", "dist", ".venv", "__pycache__"]
 
 [[shortcut]]
 resource = "python.console"

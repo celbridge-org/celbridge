@@ -6,7 +6,7 @@ namespace Celbridge.Tests.FileSystem;
 
 /// <summary>
 /// Builds a ResourcePolicy for tests that exercise policy-gated services without a live workspace. The default
-/// policy has empty [celbridge.resources] settings.
+/// policy has empty Explorer and search lists.
 /// </summary>
 internal static class TestResourcePolicy
 {
@@ -16,18 +16,18 @@ internal static class TestResourcePolicy
     }
 
     /// <summary>
-    /// Builds a policy whose search-exclude list has the patterns. The policy stands up its own substitutes, so
+    /// Builds a policy with the patterns as its search list. The policy stands up its own substitutes, so
     /// build it into a local before configuring another substitute to return it.
     /// </summary>
     public static ResourcePolicy CreateWithSearchExclude(string projectFolderPath, string[] searchExcludePatterns)
     {
-        var resources = new ResourcesSection
+        var config = new ProjectConfig
         {
-            SearchExclude = searchExcludePatterns
+            Search = new SearchSection { Exclude = searchExcludePatterns },
         };
 
         var project = Substitute.For<IProject>();
-        project.Config.Returns(new ProjectConfig { Resources = resources });
+        project.Config.Returns(config);
         project.ProjectFolderPath.Returns(projectFolderPath);
 
         var projectService = Substitute.For<IProjectService>();

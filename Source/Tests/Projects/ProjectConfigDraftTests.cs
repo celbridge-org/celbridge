@@ -16,10 +16,6 @@ public class ProjectConfigDraftTests
         "celbridge-version = \"0.4.0\"\n" +
         "project-version = \"0.1.0\"\n" +
         "\n" +
-        "[celbridge.resources]\n" +
-        "hide = []\n" +
-        "search-exclude = []\n" +
-        "\n" +
         "[[contribution]]\n" +
         "package = \"celbridge.console\"\n" +
         "contribution = \"console\"\n" +
@@ -59,17 +55,17 @@ public class ProjectConfigDraftTests
     [Test]
     public void Draft_PreservesTheDownloadsFolder_AcrossAnUnrelatedEdit()
     {
-        // The draft rebuilds the resources table on every serialize, so an edit to another section must
+        // The draft rebuilds the downloads table on every serialize, so an edit to another section must
         // carry the downloads folder through rather than reset the project to the default folder.
         var sourceConfig =
             "[celbridge]\n" +
             "\n" +
-            "[celbridge.resources]\n" +
-            "downloads-folder = \"assets/incoming\"\n";
+            "[celbridge.downloads]\n" +
+            "folder = \"assets/incoming\"\n";
 
         var config = ApplyAndParse(sourceConfig, draft => draft.SetPackageDisabled("acme.pixel-editor", true));
 
-        config.Resources.DownloadsFolder.Should().Be("assets/incoming");
+        config.Downloads.Folder.Should().Be("assets/incoming");
     }
 
     [Test]
@@ -77,7 +73,7 @@ public class ProjectConfigDraftTests
     {
         var config = ApplyAndParse(BaseConfig, draft => draft.SetDownloadsFolder(" /assets/incoming/ "));
 
-        config.Resources.DownloadsFolder.Should().Be("assets/incoming");
+        config.Downloads.Folder.Should().Be("assets/incoming");
     }
 
     [TestCase("", Description = "a cleared field")]
@@ -91,7 +87,7 @@ public class ProjectConfigDraftTests
             draft.SetDownloadsFolder(folderPath);
         });
 
-        config.Resources.DownloadsFolder.Should().BeEmpty();
+        config.Downloads.Folder.Should().BeEmpty();
     }
 
     [Test]
@@ -262,7 +258,7 @@ public class ProjectConfigDraftTests
     }
 
     [Test]
-    public void Draft_SetHidePatterns_UpdatesHideList()
+    public void Draft_SetExplorerExcludePatterns_UpdatesTheExplorerList()
     {
         var patterns = new List<string>
         {
@@ -270,8 +266,8 @@ public class ProjectConfigDraftTests
             "drafts/**",
         };
 
-        var config = ApplyAndParse(BaseConfig, draft => draft.SetHidePatterns(patterns));
-        config.Resources.Hide.Should().Equal(".gitignore", "drafts/**");
+        var config = ApplyAndParse(BaseConfig, draft => draft.SetExplorerExcludePatterns(patterns));
+        config.Explorer.Exclude.Should().Equal(".gitignore", "drafts/**");
     }
 
     [Test]
@@ -285,7 +281,7 @@ public class ProjectConfigDraftTests
         };
 
         var config = ApplyAndParse(BaseConfig, draft => draft.SetSearchExcludePatterns(patterns));
-        config.Resources.SearchExclude.Should().Equal("node_modules");
+        config.Search.Exclude.Should().Equal("node_modules");
     }
 
     [Test]

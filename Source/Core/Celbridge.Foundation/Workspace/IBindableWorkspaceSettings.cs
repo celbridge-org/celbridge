@@ -35,7 +35,7 @@ public interface IBindableWorkspaceSettings : INotifyPropertyChanged
     BottomAreaAlignment BottomAreaAlignment { get; set; }
 
     /// <summary>
-    /// Whether the Explorer draws the resources the project's hide patterns match.
+    /// True when the Explorer draws what the project's Explorer list excludes.
     /// </summary>
     bool ShowHiddenFiles { get; set; }
 

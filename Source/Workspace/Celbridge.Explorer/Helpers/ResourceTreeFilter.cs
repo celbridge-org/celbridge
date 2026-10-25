@@ -1,8 +1,8 @@
 namespace Celbridge.Explorer.Helpers;
 
 /// <summary>
-/// Decides which resources the Explorer tree hides. The tree hides .cel files and the resources the
-/// project's hide and search-exclude patterns match, unless the tree is showing hidden files.
+/// Decides which resources the Explorer tree hides. The tree hides .cel files and what the project's
+/// Explorer list excludes, unless the tree is showing hidden files.
 /// </summary>
 public static class ResourceTreeFilter
 {
@@ -17,7 +17,6 @@ public static class ResourceTreeFilter
             return true;
         }
 
-        return policy.IsHidden(resource, isFolder)
-            || policy.IsSearchExcluded(resource, isFolder);
+        return policy.IsExplorerExcluded(resource, isFolder);
     }
 }

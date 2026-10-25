@@ -67,12 +67,12 @@ public class ResourcesSectionViewModelTests
     public void Load_PopulatesBothBlocksFromTheConfig()
     {
         var viewModel = CreateViewModel(
-            hide: new[] { ".gitignore" },
+            explorerExclude: new[] { ".gitignore" },
             searchExclude: new[] { "node_modules", "bin" });
 
         viewModel.Load();
 
-        viewModel.HidePatternsText.Should().Be(".gitignore");
+        viewModel.ExplorerExcludePatternsText.Should().Be(".gitignore");
         viewModel.SearchExcludePatternsText.Should().Be("node_modules\nbin");
     }
 
@@ -86,7 +86,7 @@ public class ResourcesSectionViewModelTests
             Substitute.For<ICommandService>(),
             () => edited = true);
 
-        var viewModel = CreateViewModel(hide: new[] { ".gitignore" });
+        var viewModel = CreateViewModel(explorerExclude: new[] { ".gitignore" });
         viewModel.Load();
 
         edited.Should().BeFalse();
@@ -95,13 +95,13 @@ public class ResourcesSectionViewModelTests
     [Test]
     public void EditingABlock_WritesEveryLineIntoTheDraft()
     {
-        var viewModel = CreateViewModel(hide: new[] { ".gitignore" });
+        var viewModel = CreateViewModel(explorerExclude: new[] { ".gitignore" });
         viewModel.Load();
 
-        viewModel.HidePatternsText = ".gitignore\ndrafts/**";
+        viewModel.ExplorerExcludePatternsText = ".gitignore\ndrafts/**";
 
         var config = _context.Draft!.ToConfig();
-        config.Resources.Hide.Should().Equal(".gitignore", "drafts/**");
+        config.Explorer.Exclude.Should().Equal(".gitignore", "drafts/**");
     }
 
     [Test]
@@ -112,10 +112,10 @@ public class ResourcesSectionViewModelTests
         var viewModel = CreateViewModel();
         viewModel.Load();
 
-        viewModel.HidePatternsText = ".claude\r.gitignore";
+        viewModel.ExplorerExcludePatternsText = ".claude\r.gitignore";
 
         var config = _context.Draft!.ToConfig();
-        config.Resources.Hide.Should().Equal(".claude", ".gitignore");
+        config.Explorer.Exclude.Should().Equal(".claude", ".gitignore");
     }
 
     [Test]
@@ -129,7 +129,7 @@ public class ResourcesSectionViewModelTests
         viewModel.SearchExcludePatternsText = "node_modules\r\n\r\nbin\r\n";
 
         var config = _context.Draft!.ToConfig();
-        config.Resources.SearchExclude.Should().Equal("node_modules", "bin");
+        config.Search.Exclude.Should().Equal("node_modules", "bin");
     }
 
     [Test]
@@ -141,7 +141,7 @@ public class ResourcesSectionViewModelTests
         viewModel.SearchExcludePatternsText = string.Empty;
 
         var config = _context.Draft!.ToConfig();
-        config.Resources.SearchExclude.Should().BeEmpty();
+        config.Search.Exclude.Should().BeEmpty();
     }
 
     [Test]
@@ -150,12 +150,12 @@ public class ResourcesSectionViewModelTests
         var viewModel = CreateViewModel();
         viewModel.Load();
 
-        viewModel.HidePatternsText.Should().BeEmpty();
-        viewModel.HasInvalidHidePattern.Should().BeFalse("an empty block is unfinished, not wrong");
+        viewModel.ExplorerExcludePatternsText.Should().BeEmpty();
+        viewModel.HasInvalidExplorerExcludePattern.Should().BeFalse("an empty block is unfinished, not wrong");
 
         // A leading slash, a '!', a comment and gitignore's wildcards are all valid.
-        viewModel.HidePatternsText = "/rooted.txt\nsrc/**\n!keep.txt\n# Build output\nbin/\nlog?.txt\n*.[oa]";
-        viewModel.HasInvalidHidePattern.Should().BeFalse();
+        viewModel.ExplorerExcludePatternsText = "/rooted.txt\nsrc/**\n!keep.txt\n# Build output\nbin/\nlog?.txt\n*.[oa]";
+        viewModel.HasInvalidExplorerExcludePattern.Should().BeFalse();
     }
 
     [TestCase(@"src\bin", Description = "a Windows separator")]
@@ -168,9 +168,9 @@ public class ResourcesSectionViewModelTests
         var viewModel = CreateViewModel();
         viewModel.Load();
 
-        viewModel.HidePatternsText = "src/**\n" + line;
+        viewModel.ExplorerExcludePatternsText = "src/**\n" + line;
 
-        viewModel.HasInvalidHidePattern.Should().BeTrue();
+        viewModel.HasInvalidExplorerExcludePattern.Should().BeTrue();
         viewModel.HasInvalidSearchExcludePattern.Should().BeFalse("the other block is judged on its own lines");
     }
 
@@ -206,7 +206,7 @@ public class ResourcesSectionViewModelTests
         viewModel.DownloadsFolderText = "/assets/incoming/";
 
         var config = _context.Draft!.ToConfig();
-        config.Resources.DownloadsFolder.Should().Be("assets/incoming");
+        config.Downloads.Folder.Should().Be("assets/incoming");
     }
 
     [TestCase("", Description = "a cleared field")]
@@ -219,7 +219,7 @@ public class ResourcesSectionViewModelTests
         viewModel.DownloadsFolderText = folderText;
 
         var config = _context.Draft!.ToConfig();
-        config.Resources.DownloadsFolder.Should().BeEmpty();
+        config.Downloads.Folder.Should().BeEmpty();
     }
 
     [Test]
@@ -235,7 +235,7 @@ public class ResourcesSectionViewModelTests
         viewModel.IsDownloadsFolderInvalid.Should().BeTrue();
         viewModel.DownloadsFolderText.Should().Be("../outside");
         var config = _context.Draft!.ToConfig();
-        config.Resources.DownloadsFolder.Should().BeEmpty();
+        config.Downloads.Folder.Should().BeEmpty();
     }
 
     [Test]
@@ -254,7 +254,7 @@ public class ResourcesSectionViewModelTests
         viewModel.IsDownloadsFolderInvalid.Should().BeTrue();
         changedProperties.Should().Contain(nameof(ResourcesSectionViewModel.InvalidDownloadsFolderText));
         var config = _context.Draft!.ToConfig();
-        config.Resources.DownloadsFolder.Should().BeEmpty();
+        config.Downloads.Folder.Should().BeEmpty();
     }
 
     [Test]
@@ -268,7 +268,7 @@ public class ResourcesSectionViewModelTests
 
         viewModel.DownloadsFolderText.Should().Be("assets/incoming");
         var config = _context.Draft!.ToConfig();
-        config.Resources.DownloadsFolder.Should().Be("assets/incoming");
+        config.Downloads.Folder.Should().Be("assets/incoming");
     }
 
     [Test]
@@ -366,18 +366,24 @@ public class ResourcesSectionViewModelTests
     }
 
     private ResourcesSectionViewModel CreateViewModel(
-        string[]? hide = null,
+        string[]? explorerExclude = null,
         string[]? searchExclude = null,
         string downloadsFolder = "",
         string[]? packageFolders = null)
     {
         var config = new ProjectConfig
         {
-            Resources = new ResourcesSection
+            Explorer = new ExplorerSection
             {
-                Hide = hide ?? Array.Empty<string>(),
-                SearchExclude = searchExclude ?? Array.Empty<string>(),
-                DownloadsFolder = downloadsFolder
+                Exclude = explorerExclude ?? Array.Empty<string>()
+            },
+            Search = new SearchSection
+            {
+                Exclude = searchExclude ?? Array.Empty<string>()
+            },
+            Downloads = new DownloadsSection
+            {
+                Folder = downloadsFolder
             },
             Packages = new PackagesSection
             {

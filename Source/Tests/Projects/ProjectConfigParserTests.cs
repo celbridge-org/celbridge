@@ -50,14 +50,14 @@ public class ProjectConfigParserTests
         var content = """
             [celbridge]
 
-            [celbridge.resources]
-            downloads-folder = "assets/incoming/"
+            [celbridge.downloads]
+            folder = "assets/incoming/"
             """;
 
         var result = ProjectConfigParser.ParseFromText(content);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Resources.DownloadsFolder.Should().Be("assets/incoming");
+        result.Value.Downloads.Folder.Should().Be("assets/incoming");
         result.Value.EntryErrors.Should().BeEmpty();
     }
 
@@ -68,16 +68,17 @@ public class ProjectConfigParserTests
         var content = """
             [celbridge]
 
-            [celbridge.resources]
-            downloads-folder = "../escape"
+            [celbridge.downloads]
+            folder = "../escape"
             """;
 
         var result = ProjectConfigParser.ParseFromText(content);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Resources.DownloadsFolder.Should().BeEmpty();
+        result.Value.Downloads.Folder.Should().BeEmpty();
         result.Value.EntryErrors.Should().ContainSingle();
-        result.Value.EntryErrors[0].Message.Should().Contain("downloads-folder");
+        result.Value.EntryErrors[0].EntryName.Should().Be("celbridge.downloads");
+        result.Value.EntryErrors[0].Message.Should().Contain("'folder'");
     }
 
     [Test]
@@ -88,16 +89,16 @@ public class ProjectConfigParserTests
         var content = """
             [celbridge]
 
-            [celbridge.resources]
-            downloads-folder = ".git"
+            [celbridge.downloads]
+            folder = ".git"
             """;
 
         var result = ProjectConfigParser.ParseFromText(content);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Resources.DownloadsFolder.Should().BeEmpty();
+        result.Value.Downloads.Folder.Should().BeEmpty();
         result.Value.EntryErrors.Should().ContainSingle();
-        result.Value.EntryErrors[0].Message.Should().Contain("downloads-folder").And.Contain("reserves");
+        result.Value.EntryErrors[0].Message.Should().Contain("'folder'").And.Contain("reserves");
     }
 
     [Test]
@@ -164,9 +165,14 @@ public class ProjectConfigParserTests
             editor-associations = { ".md" = "acme-notes.markdown", ".TXT" = "acme-notes.text" }
             features = { generative-ai = true, experimental = false }
 
-            [celbridge.resources]
-            hide = [".gitignore"]
-            search-exclude = ["node_modules", "Python/.venv/**"]
+            [celbridge.explorer]
+            exclude = [".gitignore"]
+
+            [celbridge.search]
+            exclude = ["node_modules", "Python/.venv/**"]
+
+            [celbridge.downloads]
+            folder = "assets/incoming"
 
             [celbridge.packages]
             folders = ["vendor/packages", "lib"]
@@ -206,8 +212,9 @@ public class ProjectConfigParserTests
         config.Features["generative-ai"].Should().BeTrue();
         config.Features["experimental"].Should().BeFalse();
 
-        config.Resources.Hide.Should().Equal(".gitignore");
-        config.Resources.SearchExclude.Should().Equal("node_modules", "Python/.venv/**");
+        config.Explorer.Exclude.Should().Equal(".gitignore");
+        config.Search.Exclude.Should().Equal("node_modules", "Python/.venv/**");
+        config.Downloads.Folder.Should().Be("assets/incoming");
 
         config.Packages.Folders.Should().Equal("vendor/packages", "lib");
         config.Packages.Disabled.Should().Equal("acme-notes", "acme-charts");
@@ -297,14 +304,11 @@ public class ProjectConfigParserTests
     }
 
     [Test]
-    public void ParseFromFile_LegacyTopLevelSections_ReportsMovedToCelbridge()
+    public void ParseFromFile_LegacyTopLevelFeaturesSection_ReportsMovedToCelbridge()
     {
         var content = """
             [features]
             generative-ai = true
-
-            [resources]
-            hide = [".customignore"]
             """;
         var configFilePath = WriteConfigFile(content);
 
@@ -313,13 +317,64 @@ public class ProjectConfigParserTests
         result.IsSuccess.Should().BeTrue();
         var config = result.Value;
 
-        // The legacy sections are ignored, not parsed from the old location.
+        // The legacy section is ignored, not parsed from the old location.
         config.Features.Should().BeEmpty();
-        config.Resources.Hide.Should().BeEmpty();
         config.ContributionOverrides.Should().BeEmpty();
 
-        config.EntryErrors.Should().HaveCount(2);
-        config.EntryErrors.Should().OnlyContain(error => error.Message.Contains("moved to [celbridge]"));
+        config.EntryErrors.Should().ContainSingle();
+        config.EntryErrors[0].Message.Should().Contain("moved to [celbridge]");
+    }
+
+    [Test]
+    public void ParseFromFile_ResourcesTable_IsReportedAsUnknownAndIgnored()
+    {
+        // The table's three keys belong to the explorer, search and downloads tables. The load report names
+        // the table, and none of its keys applies.
+        var content = """
+            [celbridge]
+            celbridge-version = "1.0.0"
+
+            [celbridge.resources]
+            hide = [".gitignore"]
+            search-exclude = ["node_modules"]
+            downloads-folder = "assets/incoming"
+            """;
+        var configFilePath = WriteConfigFile(content);
+
+        var result = ProjectConfigParser.ParseFromFile(configFilePath, _fileSystem);
+
+        result.IsSuccess.Should().BeTrue();
+        var config = result.Value;
+        config.Explorer.Exclude.Should().BeEmpty();
+        config.Search.Exclude.Should().BeEmpty();
+        config.Downloads.Folder.Should().BeEmpty();
+        config.EntryErrors.Should().ContainSingle();
+        config.EntryErrors[0].EntryName.Should().Be("celbridge");
+        config.EntryErrors[0].Message.Should().Contain("Unknown key 'resources'");
+    }
+
+    [Test]
+    public void ParseFromFile_MissingTablesAndKeys_ReadAsEmpty()
+    {
+        // Only a new project's template writes the default lists. A table or key left out of the file reads as empty.
+        var content = """
+            [celbridge]
+            celbridge-version = "1.0.0"
+
+            [celbridge.explorer]
+
+            [celbridge.downloads]
+            """;
+        var configFilePath = WriteConfigFile(content);
+
+        var result = ProjectConfigParser.ParseFromFile(configFilePath, _fileSystem);
+
+        result.IsSuccess.Should().BeTrue();
+        var config = result.Value;
+        config.Explorer.Exclude.Should().BeEmpty();
+        config.Search.Exclude.Should().BeEmpty();
+        config.Downloads.Folder.Should().BeEmpty();
+        config.EntryErrors.Should().BeEmpty();
     }
 
     [Test]
@@ -329,9 +384,11 @@ public class ProjectConfigParserTests
             [celbridge]
             celbridge-version = "1.0.0"
 
-            [celbridge.resources]
-            hide = ['src\bin', "*.log", "!keep.log"]
-            search-exclude = ["node_modules", "*.{js,ts}"]
+            [celbridge.explorer]
+            exclude = ['src\bin', "*.log", "!keep.log"]
+
+            [celbridge.search]
+            exclude = ["node_modules", "*.{js,ts}"]
             """;
         var configFilePath = WriteConfigFile(content);
 
@@ -339,25 +396,26 @@ public class ProjectConfigParserTests
 
         result.IsSuccess.Should().BeTrue();
         var config = result.Value;
-        config.Resources.Hide.Should().Equal("*.log", "!keep.log");
-        config.Resources.SearchExclude.Should().Equal("node_modules");
+        config.Explorer.Exclude.Should().Equal("*.log", "!keep.log");
+        config.Search.Exclude.Should().Equal("node_modules");
         config.EntryErrors.Should().HaveCount(2);
-        config.EntryErrors[0].EntryName.Should().Be("celbridge.resources");
-        config.EntryErrors[0].Message.Should().Contain("Dropped an entry in 'hide'").And.Contain("Write '/' between folder names");
-        config.EntryErrors[1].Message.Should().Contain("Dropped an entry in 'search-exclude'").And.Contain("uses braces");
+        config.EntryErrors[0].EntryName.Should().Be("celbridge.explorer");
+        config.EntryErrors[0].Message.Should().Contain("Dropped an entry in 'exclude'").And.Contain("Write '/' between folder names");
+        config.EntryErrors[1].EntryName.Should().Be("celbridge.search");
+        config.EntryErrors[1].Message.Should().Contain("Dropped an entry in 'exclude'").And.Contain("uses braces");
     }
 
     [Test]
-    public void ParseFromFile_StrayKeyOnResourcesTable_ReportsUnknownKey()
+    public void ParseFromFile_StrayKeyOnExplorerTable_ReportsUnknownKey()
     {
-        // A flat [celbridge] key appended after the [celbridge.resources] header
-        // lands on the resources table per TOML rules; the parser reports it.
+        // A flat [celbridge] key appended after the [celbridge.explorer] header
+        // lands on the explorer table per TOML rules. The parser reports the key.
         var content = """
             [celbridge]
             celbridge-version = "1.0.0"
 
-            [celbridge.resources]
-            hide = [".gitignore"]
+            [celbridge.explorer]
+            exclude = [".gitignore"]
             description = "Appended after the header."
             """;
         var configFilePath = WriteConfigFile(content);
@@ -367,9 +425,9 @@ public class ProjectConfigParserTests
         result.IsSuccess.Should().BeTrue();
         var config = result.Value;
         config.Celbridge.Description.Should().BeNull();
-        config.Resources.Hide.Should().Equal(".gitignore");
+        config.Explorer.Exclude.Should().Equal(".gitignore");
         config.EntryErrors.Should().ContainSingle();
-        config.EntryErrors[0].EntryName.Should().Be("celbridge.resources");
+        config.EntryErrors[0].EntryName.Should().Be("celbridge.explorer");
         config.EntryErrors[0].Message.Should().Contain("Unknown key 'description'");
     }
 

@@ -36,8 +36,8 @@ internal static class ProjectSettingsLabels
     public static string RevealManifestTooltip => Localizer.GetString("ProjectSettings_RevealManifestTooltip");
     public static string FileExtensionsLabel => Localizer.GetString("ProjectSettings_FileExtensionsLabel");
     public static string FileEditorsEmpty => Localizer.GetString("ProjectSettings_FileEditorsEmpty");
-    public static string HideTitle => Localizer.GetString("ProjectSettings_HideTitle");
-    public static string HideSubtitle => Localizer.GetString("ProjectSettings_HideSubtitle");
+    public static string ExplorerExcludeTitle => Localizer.GetString("ProjectSettings_ExplorerExcludeTitle");
+    public static string ExplorerExcludeSubtitle => Localizer.GetString("ProjectSettings_ExplorerExcludeSubtitle");
     public static string SearchExcludeTitle => Localizer.GetString("ProjectSettings_SearchExcludeTitle");
     public static string SearchExcludeSubtitle => Localizer.GetString("ProjectSettings_SearchExcludeSubtitle");
     public static string PatternPlaceholder => Localizer.GetString("ProjectSettings_PatternPlaceholder");

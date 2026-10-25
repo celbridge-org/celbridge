@@ -107,7 +107,7 @@ public sealed class PolicyDenialError : Exception
 }
 
 /// <summary>
-/// The compiled view of a project's [celbridge.resources] settings, plus the
+/// The compiled view of a project's Explorer and search lists, plus the
 /// non-configurable access invariants. Workspace-scoped: each workspace owns
 /// its own engine reflecting that project's configuration.
 /// </summary>
@@ -122,18 +122,18 @@ public interface IResourcePolicy
     Result Evaluate(ResourceKey resource, ResourceAction action, bool isFolder = false);
 
     /// <summary>
-    /// Whether the project's 'hide' patterns match the resource.
+    /// Returns true if the project's Explorer list excludes the resource.
     /// </summary>
-    bool IsHidden(ResourceKey resource, bool isFolder);
+    bool IsExplorerExcluded(ResourceKey resource, bool isFolder);
 
     /// <summary>
-    /// Whether the project's 'search-exclude' patterns match the resource.
+    /// Returns true if the project's search list excludes the resource.
     /// </summary>
     bool IsSearchExcluded(ResourceKey resource, bool isFolder);
 
     /// <summary>
-    /// Returns a matcher for the project paths that the 'search-exclude' patterns leave in. When the patterns match a
-    /// folder, everything inside the folder is left out too.
+    /// Returns a matcher that matches a project path unless the search list excludes the path. When the list
+    /// matches a folder, the matcher also excludes everything inside the folder.
     /// </summary>
     IPathMatcher SearchScope { get; }
 }

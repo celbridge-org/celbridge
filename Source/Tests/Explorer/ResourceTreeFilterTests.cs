@@ -5,7 +5,7 @@ namespace Celbridge.Tests.Explorer;
 
 /// <summary>
 /// Covers what the Explorer tree hides unless the tree is showing hidden files: .cel files, and the resources
-/// the hide and search-exclude patterns match.
+/// the Explorer's list excludes.
 /// </summary>
 [TestFixture]
 public class ResourceTreeFilterTests
@@ -35,21 +35,21 @@ public class ResourceTreeFilterTests
     }
 
     [Test]
-    public void HidePatternMatch_IsHidden()
+    public void ExplorerExcludeMatch_IsHidden()
     {
         var file = new ResourceKey(".gitignore");
-        _policy.IsHidden(file, false).Returns(true);
+        _policy.IsExplorerExcluded(file, false).Returns(true);
 
         ResourceTreeFilter.IsHidden(file, isFolder: false, _policy).Should().BeTrue();
     }
 
     [Test]
-    public void SearchExcludeMatch_IsHidden()
+    public void SearchExcludeMatch_IsNotHidden()
     {
         var folder = new ResourceKey("node_modules");
         _policy.IsSearchExcluded(folder, true).Returns(true);
 
-        ResourceTreeFilter.IsHidden(folder, isFolder: true, _policy).Should().BeTrue();
+        ResourceTreeFilter.IsHidden(folder, isFolder: true, _policy).Should().BeFalse();
     }
 
     [Test]

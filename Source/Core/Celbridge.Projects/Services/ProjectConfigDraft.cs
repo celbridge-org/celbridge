@@ -19,7 +19,7 @@ public sealed class ProjectConfigDraft
     private readonly Dictionary<string, string> _editorAssociations;
     private readonly Dictionary<string, bool> _features;
     private readonly List<DocumentShortcut> _documentShortcuts;
-    private readonly List<string> _hide;
+    private readonly List<string> _explorerExclude;
     private readonly List<string> _searchExclude;
     private readonly List<string> _packageFolders;
 
@@ -37,9 +37,9 @@ public sealed class ProjectConfigDraft
         _editorAssociations = new Dictionary<string, string>(source.Celbridge.EditorAssociations, StringComparer.Ordinal);
         _features = new Dictionary<string, bool>(source.Features, StringComparer.Ordinal);
         _documentShortcuts = source.DocumentShortcuts.ToList();
-        _hide = source.Resources.Hide.ToList();
-        _searchExclude = source.Resources.SearchExclude.ToList();
-        _downloadsFolder = source.Resources.DownloadsFolder;
+        _explorerExclude = source.Explorer.Exclude.ToList();
+        _searchExclude = source.Search.Exclude.ToList();
+        _downloadsFolder = source.Downloads.Folder;
 
         // Coerced to empty because an unset key parses as null while the editor binds a text box to it.
         // The serializer skips an empty value, so a field left alone still writes no key.
@@ -60,17 +60,17 @@ public sealed class ProjectConfigDraft
     }
 
     /// <summary>
-    /// Replaces the patterns hidden from the Explorer tree. The section edits the list as one block of
-    /// text, so every edit rewrites the whole list.
+    /// Replaces the Explorer's list. The section edits the list as one block of text, so every edit
+    /// rewrites the whole list.
     /// </summary>
-    public void SetHidePatterns(IReadOnlyList<string> patterns)
+    public void SetExplorerExcludePatterns(IReadOnlyList<string> patterns)
     {
-        _hide.Clear();
-        _hide.AddRange(patterns);
+        _explorerExclude.Clear();
+        _explorerExclude.AddRange(patterns);
     }
 
     /// <summary>
-    /// Replaces the patterns the indexers skip.
+    /// Replaces the search list.
     /// </summary>
     public void SetSearchExcludePatterns(IReadOnlyList<string> patterns)
     {
@@ -253,11 +253,17 @@ public sealed class ProjectConfigDraft
                 ProjectVersion = PopulatedProjectVersion(_projectVersion),
                 Description = _description,
             },
-            Resources = new ResourcesSection
+            Explorer = new ExplorerSection
             {
-                Hide = PopulatedPatterns(_hide),
-                SearchExclude = PopulatedPatterns(_searchExclude),
-                DownloadsFolder = PopulatedDownloadsFolder(_downloadsFolder),
+                Exclude = PopulatedPatterns(_explorerExclude),
+            },
+            Search = new SearchSection
+            {
+                Exclude = PopulatedPatterns(_searchExclude),
+            },
+            Downloads = new DownloadsSection
+            {
+                Folder = PopulatedDownloadsFolder(_downloadsFolder),
             },
             Packages = new PackagesSection
             {
