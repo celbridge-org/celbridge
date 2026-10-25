@@ -14,11 +14,11 @@ Resource key for the output zip file. The parent folder must already exist.
 
 ### include
 
-Optional semicolon-separated glob patterns. When set, only matching files are added (e.g. `"*.py;*.md"`). When empty, all files are included.
+Optional search filter. The rules are in `search_filters`. Patterns are separated by commas. When set, only matching files are added (e.g. `"*.py,*.md"`). When empty, all files are included.
 
 ### exclude
 
-Optional semicolon-separated glob patterns to skip (e.g. `"__pycache__;.git"`). Applied after `include`.
+Optional search filter of files to skip (e.g. `"__pycache__,*.log"`). An exclude wins over an include. The patterns match each file's path from the project folder, so a name pattern like `*.log` is the simplest choice.
 
 ### overwrite
 

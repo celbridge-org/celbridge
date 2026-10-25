@@ -145,7 +145,7 @@ public class ResourcesSectionViewModelTests
     }
 
     [Test]
-    public void InvalidPattern_IsReportedForTheBlockHoldingIt()
+    public void GitignoreSyntax_IsAccepted()
     {
         var viewModel = CreateViewModel();
         viewModel.Load();
@@ -153,43 +153,25 @@ public class ResourcesSectionViewModelTests
         viewModel.HidePatternsText.Should().BeEmpty();
         viewModel.HasInvalidHidePattern.Should().BeFalse("an empty block is unfinished, not wrong");
 
-        viewModel.HidePatternsText = "src/**\nbuild/";
+        // A leading slash, a '!', a comment and gitignore's wildcards are all valid.
+        viewModel.HidePatternsText = "/rooted.txt\nsrc/**\n!keep.txt\n# Build output\nbin/\nlog?.txt\n*.[oa]";
         viewModel.HasInvalidHidePattern.Should().BeFalse();
-
-        // A Windows separator, an anchored path, a negation and a comment are all dialects the matcher
-        // does not read.
-        viewModel.HidePatternsText = "src/**\n" + @"src\bin";
-        viewModel.HasInvalidHidePattern.Should().BeTrue();
-
-        viewModel.HidePatternsText = "/rooted.txt";
-        viewModel.HasInvalidHidePattern.Should().BeTrue();
-
-        viewModel.HidePatternsText = "src/**\n!keep.txt";
-        viewModel.HasInvalidHidePattern.Should().BeTrue();
-
-        // The box reads like a .gitignore, so a comment is the other thing people reach for.
-        viewModel.HidePatternsText = "# Build output\nbin";
-        viewModel.HasInvalidHidePattern.Should().BeTrue();
-
-        viewModel.HasInvalidSearchExcludePattern.Should().BeFalse("the other block is judged on its own lines");
     }
 
-    [Test]
-    public void GitignoreWildcard_IsReported()
+    [TestCase(@"src\bin", Description = "a Windows separator")]
+    [TestCase(@"notes\", Description = "a trailing backslash")]
+    [TestCase("data[12.csv", Description = "an unclosed bracket")]
+    [TestCase("*.{js,ts}", Description = "braces")]
+    [TestCase("[[:letter:]]*", Description = "an unknown named class")]
+    public void RefusedLine_IsReportedForTheBlockHoldingIt(string line)
     {
-        // The matcher escapes every character but * and /, so a gitignore wildcard is stored as a literal
-        // and matches a file nobody has.
         var viewModel = CreateViewModel();
         viewModel.Load();
 
-        viewModel.SearchExcludePatternsText = "log?.txt";
-        viewModel.HasInvalidSearchExcludePattern.Should().BeTrue();
+        viewModel.HidePatternsText = "src/**\n" + line;
 
-        viewModel.SearchExcludePatternsText = "*.[oa]";
-        viewModel.HasInvalidSearchExcludePattern.Should().BeTrue();
-
-        viewModel.SearchExcludePatternsText = "**/*.log";
-        viewModel.HasInvalidSearchExcludePattern.Should().BeFalse();
+        viewModel.HasInvalidHidePattern.Should().BeTrue();
+        viewModel.HasInvalidSearchExcludePattern.Should().BeFalse("the other block is judged on its own lines");
     }
 
     [Test]

@@ -1,4 +1,4 @@
-using Celbridge.Projects;
+using Celbridge.Patterns;
 using Celbridge.Resources;
 
 namespace Celbridge.Utilities;
@@ -9,11 +9,6 @@ namespace Celbridge.Utilities;
 /// </summary>
 public static class SettingFolderPath
 {
-    // Matches the reserved .git folder by name at any depth, in any letter case. Keep this in sync with the
-    // resource policy's rule.
-    private static readonly ResourcePathMatcher ReservedFolderMatcher =
-        ResourcePathMatcher.Compile(ProjectConstants.GitFolder, ignoreCase: true);
-
     /// <summary>
     /// Parses a folder path, ignoring whitespace and slashes at either end. Fails for the project root, for a path
     /// that is not a valid resource path, and for a path under another root.
@@ -56,7 +51,7 @@ public static class SettingFolderPath
     /// </summary>
     public static bool IsReserved(ResourceKey folder)
     {
-        return ReservedFolderMatcher.IsMatch(folder.Path, isFolder: true);
+        return GitFolderRule.Matcher.IsMatch(folder.Path, isFolder: true);
     }
 
     private static string TrimPath(string path)

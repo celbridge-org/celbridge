@@ -561,12 +561,11 @@ public class ResourceSubscriptionTests
     }
 
     [Test]
-    public void AMatcherInTheProjectSyntaxMatchesANameAtAnyDepth()
+    public void AGitignoreLineWithoutASlashMatchesANameAtAnyDepth()
     {
-        // A console trigger compiles its pattern in the project's syntax, where a name without a slash matches at any
-        // depth.
+        // A console trigger compiles its pattern as a gitignore line, where a name without a slash matches at any depth.
         var batches = new List<ResourceChangeBatch>();
-        var matcher = ResourcePathMatcher.Compile("*.py");
+        var matcher = GitignoreMatcher.Compile(["*.py"], ignoreCase: false).Value;
         _resourceMonitor.SubscribeToMatcher(ResourceKey.DefaultRoot, matcher, ChangesOnly(batches));
         WriteProjectFile("scripts/tool.py");
         WriteProjectFile("notes.txt");
@@ -787,9 +786,10 @@ public class ResourceSubscriptionTests
         return new ResourceChangeHandlers(batches.Add, _ => { });
     }
 
+    // A leading slash makes a gitignore line relative to the root.
     private static IPathMatcher Anchored(string pattern)
     {
-        return ResourcePathMatcher.Compile(pattern, anchored: true);
+        return GitignoreMatcher.Compile([$"/{pattern}"], ignoreCase: false).Value;
     }
 
     private void AdvanceOneInterval()

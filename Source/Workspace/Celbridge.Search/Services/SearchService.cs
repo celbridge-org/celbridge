@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Text.RegularExpressions;
 using Celbridge.Automation;
 using Celbridge.Logging;
 using Celbridge.Projects;
@@ -51,9 +50,7 @@ public class SearchService : ISearchService, IDisposable
     private readonly IAutomationService _automationService;
     private readonly ISpotlightLandmark _searchSpotlightLandmark;
     private readonly ISpotlightLandmark _searchReplaceSpotlightLandmark;
-    private readonly TextMatcher _textMatcher;
     private readonly SearchResultFormatter _formatter;
-    private readonly TextReplacer _textReplacer;
 
     // Cancelled when the workspace this service belongs to is torn down. A search runs as a sequence of
     // awaits over the resource layer, so a project reload part way through would otherwise leave it
@@ -90,9 +87,7 @@ public class SearchService : ISearchService, IDisposable
         _spotlightService = spotlightService;
         _automationService = automationService;
         _workspaceToken = _workspaceCancellation.Token;
-        _textMatcher = new TextMatcher();
         _formatter = new SearchResultFormatter();
-        _textReplacer = new TextReplacer();
 
         // Register the Search reveals so spotlighting a Search landmark switches to the Search tab
         // first (and, for the replace controls, enables replace mode). Torn down when this
@@ -140,28 +135,19 @@ public class SearchService : ISearchService, IDisposable
         public bool ReachedMaxResults { get; set; }
     }
 
-    public async Task<SearchResults> SearchAsync(
-        string searchTerm,
-        bool matchCase,
-        bool wholeWord,
-        int? maxResults,
-        CancellationToken cancellationToken,
-        bool useRegex = false,
-        string include = "",
-        string exclude = "",
-        string scope = "",
-        bool includeMetadataFiles = false)
+    public async Task<SearchResults> SearchAsync(SearchOptions options, CancellationToken cancellationToken)
     {
         var fileResults = new List<SearchFileResult>();
+        var searchTerm = options.Pattern;
 
         if (string.IsNullOrEmpty(searchTerm))
         {
-            return new SearchResults(searchTerm, fileResults, 0, 0, false, false);
+            return new SearchResults(searchTerm, fileResults, 0, 0, false, false, 0);
         }
 
         if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
-            return new SearchResults(searchTerm, fileResults, 0, 0, false, false);
+            return new SearchResults(searchTerm, fileResults, 0, 0, false, false, 0);
         }
 
         using var searchCancellation = CancellationTokenSource.CreateLinkedTokenSource(
@@ -172,29 +158,30 @@ public class SearchService : ISearchService, IDisposable
 
         if (string.IsNullOrEmpty(projectFolder))
         {
-            return new SearchResults(searchTerm, fileResults, 0, 0, false, false);
+            return new SearchResults(searchTerm, fileResults, 0, 0, false, false, 0);
         }
 
-        Regex? searchRegex = null;
-        if (useRegex)
+        var patternOptions = new SearchPatternOptions(options.Literal, options.MatchCase, options.WholeWord, Multiline: false);
+        var patternResult = SearchPattern.Compile(searchTerm, patternOptions);
+        if (patternResult.IsFailure)
         {
-            try
-            {
-                var regexOptions = matchCase ? RegexOptions.None : RegexOptions.IgnoreCase;
-                searchRegex = new Regex(searchTerm, regexOptions);
-            }
-            catch (ArgumentException ex)
-            {
-                _logger.LogWarning($"Invalid regex pattern '{searchTerm}': {ex.Message}");
-                return new SearchResults(searchTerm, fileResults, 0, 0, false, false);
-            }
+            _logger.LogWarning(patternResult, $"Failed to compile the search pattern: '{searchTerm}'");
+            return new SearchResults(searchTerm, fileResults, 0, 0, false, false, 0);
         }
+        var searchPattern = patternResult.Value;
 
-        var includeRegex = GlobHelper.BuildNameMatcher(include);
-        var excludeRegex = GlobHelper.BuildNameMatcher(exclude);
+        var filterResult = SearchFilter.Compile(options.Include, options.Exclude);
+        if (filterResult.IsFailure)
+        {
+            _logger.LogWarning(filterResult, "Failed to compile the search filter");
+            return new SearchResults(searchTerm, fileResults, 0, 0, false, false, 0);
+        }
+        var filter = filterResult.Value;
 
+        var maxResults = options.MaxResults;
         var searchState = new SearchState();
         var searchedFiles = 0;
+        var filesMatchingFilters = 0;
         var stopwatch = Stopwatch.StartNew();
 
         try
@@ -210,39 +197,30 @@ public class SearchService : ISearchService, IDisposable
         }
         catch (OperationCanceledException)
         {
-            return new SearchResults(searchTerm, fileResults, searchState.TotalMatches, fileResults.Count, true, searchState.ReachedMaxResults);
+            return new SearchResults(searchTerm, fileResults, searchState.TotalMatches, fileResults.Count, true, searchState.ReachedMaxResults, filesMatchingFilters);
         }
         catch (Exception ex)
         {
             _logger.LogError($"Error during search: {ex.Message}");
         }
 
-        return new SearchResults(searchTerm, fileResults, searchState.TotalMatches, fileResults.Count, false, searchState.ReachedMaxResults);
+        return new SearchResults(searchTerm, fileResults, searchState.TotalMatches, fileResults.Count, false, searchState.ReachedMaxResults, filesMatchingFilters);
 
         // Returns false when the scope names nothing that can be searched.
         async Task<bool> SearchScopeAsync()
         {
-            var listResult = await ListScopeFilesAsync(scope, cancellationToken);
+            var listResult = await ListScopeFilesAsync(options.Scope, cancellationToken);
             if (listResult.IsFailure)
             {
-                _logger.LogWarning(listResult, $"Failed to list the search scope: '{scope}'");
+                _logger.LogWarning(listResult, $"Failed to list the search scope: '{options.Scope}'");
                 return false;
             }
-            var files = listResult.Value;
 
-            if (includeRegex != null)
-            {
-                files = files
-                    .Where(file => includeRegex.IsMatch(file.Resource.ResourceName))
-                    .ToList();
-            }
-
-            if (excludeRegex != null)
-            {
-                files = files
-                    .Where(file => !excludeRegex.IsMatch(file.Resource.ResourceName))
-                    .ToList();
-            }
+            // The filters match each file's path within the project, whatever the scope.
+            var files = listResult.Value
+                .Where(file => filter.IsMatch(file.Resource.Path, isFolder: false))
+                .ToList();
+            filesMatchingFilters = files.Count;
 
             files.Sort((a, b) => string.Compare(a.Path, b.Path, StringComparison.OrdinalIgnoreCase));
 
@@ -251,7 +229,8 @@ public class SearchService : ISearchService, IDisposable
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                if (maxResults.HasValue && searchState.TotalMatches >= maxResults.Value)
+                if (maxResults.HasValue
+                    && searchState.TotalMatches >= maxResults.Value)
                 {
                     searchState.ReachedMaxResults = true;
                     break;
@@ -264,16 +243,14 @@ public class SearchService : ISearchService, IDisposable
                 var fileResult = await SearchFileAsync(
                     file,
                     projectFolder,
-                    searchTerm,
-                    matchCase,
-                    wholeWord,
+                    searchPattern,
                     remainingMatches,
                     cancellationToken,
-                    searchRegex,
-                    includeMetadataFiles);
+                    options.IncludeMetadataFiles);
                 searchedFiles++;
 
-                if (fileResult != null && fileResult.Matches.Count > 0)
+                if (fileResult != null
+                    && fileResult.Matches.Count > 0)
                 {
                     fileResults.Add(fileResult);
                     searchState.TotalMatches += fileResult.Matches.Count;
@@ -352,13 +329,10 @@ public class SearchService : ISearchService, IDisposable
     private async Task<SearchFileResult?> SearchFileAsync(
         WalkedItem file,
         string rootDirectory,
-        string searchTerm,
-        bool matchCase,
-        bool wholeWord,
+        SearchPattern searchPattern,
         int maxMatches,
         CancellationToken cancellationToken,
-        Regex? searchRegex = null,
-        bool includeMetadataFiles = false)
+        bool includeMetadataFiles)
     {
         var filePath = file.Path;
         var resourceKey = file.Resource;
@@ -403,9 +377,7 @@ public class SearchService : ISearchService, IDisposable
                     lineNumber++;
                     var line = rawLine.TrimEnd('\r');
 
-                    var lineMatches = searchRegex != null
-                        ? _textMatcher.FindRegexMatches(line, searchRegex)
-                        : _textMatcher.FindMatches(line, searchTerm, matchCase, wholeWord);
+                    var lineMatches = searchPattern.FindMatches(line);
 
                     foreach (var match in lineMatches)
                     {
@@ -453,209 +425,6 @@ public class SearchService : ISearchService, IDisposable
             return relative.TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         }
         return filePath;
-    }
-
-    public async Task<ReplaceResult> ReplaceInFileAsync(
-        ResourceKey resource,
-        string searchText,
-        string replaceText,
-        bool matchCase,
-        bool wholeWord,
-        CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrEmpty(searchText))
-        {
-            return new ReplaceResult(false, 0);
-        }
-
-        if (!_workspaceWrapper.IsWorkspaceLoaded)
-        {
-            return new ReplaceResult(false, 0);
-        }
-
-        var resolveReplaceResult = RootHandlers.ResolveResourcePath(resource);
-        if (resolveReplaceResult.IsFailure)
-        {
-            return new ReplaceResult(false, 0);
-        }
-        var filePath = resolveReplaceResult.Value;
-
-        try
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var readResult = await ResourceFileSystem.ReadAllTextAsync(resource);
-            if (readResult.IsFailure)
-            {
-                return new ReplaceResult(false, 0);
-            }
-            var content = readResult.Value;
-
-            var (newContent, totalReplacements) = _textReplacer.ReplaceAll(
-                content,
-                searchText,
-                replaceText,
-                matchCase,
-                wholeWord);
-
-            if (totalReplacements == 0)
-            {
-                return new ReplaceResult(true, 0);
-            }
-
-            var writeResult = await ResourceFileSystem.WriteAllTextAsync(resource, newContent);
-            if (writeResult.IsFailure)
-            {
-                return new ReplaceResult(false, 0);
-            }
-
-            return new ReplaceResult(true, totalReplacements);
-        }
-        catch (OperationCanceledException)
-        {
-            return new ReplaceResult(false, 0);
-        }
-        catch (IOException ex)
-        {
-            _logger.LogError(ex, $"IO error replacing in file: {filePath}");
-            return new ReplaceResult(false, 0);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, $"Error replacing in file: {filePath}");
-            return new ReplaceResult(false, 0);
-        }
-    }
-
-    public async Task<ReplaceMatchResult> ReplaceMatchAsync(
-        ResourceKey resource,
-        string searchText,
-        string replaceText,
-        int lineNumber,
-        int originalMatchStart,
-        bool matchCase,
-        bool wholeWord,
-        CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrEmpty(searchText))
-        {
-            return new ReplaceMatchResult(false);
-        }
-
-        if (!_workspaceWrapper.IsWorkspaceLoaded)
-        {
-            return new ReplaceMatchResult(false);
-        }
-
-        var resolveMatchResult = RootHandlers.ResolveResourcePath(resource);
-        if (resolveMatchResult.IsFailure)
-        {
-            return new ReplaceMatchResult(false);
-        }
-        var filePath = resolveMatchResult.Value;
-
-        try
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var readResult = await ResourceFileSystem.ReadAllTextAsync(resource);
-            if (readResult.IsFailure)
-            {
-                return new ReplaceMatchResult(false);
-            }
-            var content = readResult.Value;
-
-            var (newContent, success) = _textReplacer.ReplaceMatch(
-                content,
-                searchText,
-                replaceText,
-                lineNumber,
-                originalMatchStart,
-                matchCase,
-                wholeWord);
-
-            if (!success)
-            {
-                return new ReplaceMatchResult(false);
-            }
-
-            var writeResult = await ResourceFileSystem.WriteAllTextAsync(resource, newContent);
-            if (writeResult.IsFailure)
-            {
-                return new ReplaceMatchResult(false);
-            }
-
-            return new ReplaceMatchResult(true);
-        }
-        catch (OperationCanceledException)
-        {
-            return new ReplaceMatchResult(false);
-        }
-        catch (IOException ex)
-        {
-            _logger.LogError(ex, $"IO error replacing match in file: {filePath}");
-            return new ReplaceMatchResult(false);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, $"Error replacing match in file: {filePath}");
-            return new ReplaceMatchResult(false);
-        }
-    }
-
-    public async Task<ReplaceAllResult> ReplaceAllAsync(
-        List<SearchFileResult> fileResults,
-        string searchText,
-        string replaceText,
-        bool matchCase,
-        bool wholeWord,
-        CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrEmpty(searchText))
-        {
-            return new ReplaceAllResult(0, 0, 0, false);
-        }
-
-        if (!_workspaceWrapper.IsWorkspaceLoaded)
-        {
-            return new ReplaceAllResult(0, 0, 0, false);
-        }
-
-        int totalReplacements = 0;
-        int filesModified = 0;
-        int filesFailed = 0;
-
-        try
-        {
-            foreach (var fileResult in fileResults)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                var result = await ReplaceInFileAsync(
-                    fileResult.Resource,
-                    searchText,
-                    replaceText,
-                    matchCase,
-                    wholeWord,
-                    cancellationToken);
-
-                if (result.Success && result.ReplacementsCount > 0)
-                {
-                    totalReplacements += result.ReplacementsCount;
-                    filesModified++;
-                }
-                else if (!result.Success)
-                {
-                    filesFailed++;
-                }
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            return new ReplaceAllResult(totalReplacements, filesModified, filesFailed, true);
-        }
-
-        return new ReplaceAllResult(totalReplacements, filesModified, filesFailed, false);
     }
 
     private const string SearchHistoryKey = "SearchHistory";

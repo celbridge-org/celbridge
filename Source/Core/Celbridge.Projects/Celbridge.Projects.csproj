@@ -35,6 +35,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
+    <ProjectReference Include="..\..\Core\Celbridge.Patterns\Celbridge.Patterns.csproj" />
     <ProjectReference Include="..\..\Core\Celbridge.Utilities\Celbridge.Utilities.csproj" />
     <!-- UndefineProperties stops a global TargetFramework (e.g. dotnet build -f net10.0-desktop)
          from forcing net10.0-desktop onto this net10.0 NoTargets project (NETSDK1139). -->

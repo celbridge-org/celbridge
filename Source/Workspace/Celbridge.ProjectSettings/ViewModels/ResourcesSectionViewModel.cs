@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using Celbridge.Dialog;
+using Celbridge.Patterns;
 using Celbridge.ProjectSettings.Helpers;
 using Celbridge.Utilities;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -41,13 +42,12 @@ public partial class ResourcesSectionViewModel : ProjectSettingsSectionViewModel
     private string _downloadsFolderText = string.Empty;
 
     /// <summary>
-    /// True when a line of the hide list is written in a dialect the matcher does not read, so it would
-    /// silently match nothing.
+    /// True when the gitignore matcher refuses a line of the hide list. Loading the project drops that line.
     /// </summary>
     public bool HasInvalidHidePattern => ContainsInvalidPattern(HidePatternsText);
 
     /// <summary>
-    /// True when a line of the search-exclude list is written in a dialect the matcher does not read.
+    /// True when the gitignore matcher refuses a line of the search-exclude list.
     /// </summary>
     public bool HasInvalidSearchExcludePattern => ContainsInvalidPattern(SearchExcludePatternsText);
 
@@ -284,20 +284,10 @@ public partial class ResourcesSectionViewModel : ProjectSettingsSectionViewModel
 
     private static bool ContainsInvalidPattern(string text)
     {
-        return ParsePatterns(text).Any(IsInvalidPattern);
-    }
+        var lines = ParsePatterns(text);
+        var compileResult = GitignoreMatcher.Compile(lines, ignoreCase: false);
 
-    // The box reads like a .gitignore, so people type the rest of that grammar into it. A line in one of
-    // those forms is reported rather than stored as a pattern that would mean something else here, and so
-    // are the two gitignore wildcards this matcher treats as ordinary characters.
-    private static bool IsInvalidPattern(string pattern)
-    {
-        return pattern.Contains('\\')
-            || pattern.Contains('?')
-            || pattern.Contains('[')
-            || pattern.StartsWith('/')
-            || pattern.StartsWith('!')
-            || pattern.StartsWith('#');
+        return compileResult.IsFailure;
     }
 
     private void Commit()

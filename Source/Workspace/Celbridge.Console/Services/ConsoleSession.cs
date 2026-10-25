@@ -1,5 +1,6 @@
 ﻿using Celbridge.Console.Helpers;
 using Celbridge.Logging;
+using Celbridge.Patterns;
 using Celbridge.Projects;
 using Celbridge.Utilities;
 using Celbridge.WebHost;
@@ -892,16 +893,16 @@ internal sealed class ConsoleSession : IDisposable
         var triggers = new List<ConsoleTrigger>();
         foreach (var trigger in config.Triggers)
         {
-            try
+            // One refused pattern drops its own trigger. The rest of the console still launches.
+            var compileResult = GitignoreMatcher.Compile([trigger.Pattern], ignoreCase: false);
+            if (compileResult.IsFailure)
             {
-                var matcher = ResourcePathMatcher.Compile(trigger.Pattern);
-                triggers.Add(new ConsoleTrigger(matcher, trigger.Command));
+                _logger.LogWarning("Ignoring a console trigger: {Reason}", compileResult.FirstErrorMessage);
+                continue;
             }
-            catch (Exception exception)
-            {
-                // One unusable pattern drops its own trigger. The rest of the console still launches.
-                _logger.LogWarning(exception, "Ignoring console trigger with an invalid pattern '{Pattern}'", trigger.Pattern);
-            }
+
+            var matcher = compileResult.Value;
+            triggers.Add(new ConsoleTrigger(matcher, trigger.Command));
         }
 
         return triggers;

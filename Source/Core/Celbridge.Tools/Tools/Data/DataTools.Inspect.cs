@@ -8,7 +8,7 @@ public partial class DataTools
     /// <summary>Inspect sidecar health for one resource, many resources, or the whole project.</summary>
     [McpServerTool(Name = "data_inspect", ReadOnly = true)]
     [ToolAlias("data.inspect")]
-    [RelatedGuides("resource_keys")]
+    [RelatedGuides("resource_keys", "search_filters")]
     public async partial Task<CallToolResult> Inspect(string resourcesJson = "", string pattern = "", bool summaryOnly = false)
     {
         var resourceKeys = new List<ResourceKey>();

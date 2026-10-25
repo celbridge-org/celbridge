@@ -1,10 +1,9 @@
 # file_search
 
-Searches for resources by name using a glob pattern matched against the full resource path.
+Finds files or folders by name or path with a search filter. The rules are in `search_filters`. `*.py` finds every `.py` file in the project, `src/**/*.cs` finds the `.cs` files under `src`, and `*.{ts,tsx}` finds both kinds.
 
 ## Pattern semantics
 
-- **Patterns without a path separator** match at any depth: `*.py` finds all `.py` files in the project.
-- **Patterns containing a slash** are anchored to their declared position: `src/*.cs` matches only files directly under `src/`.
-- **`**`** matches across path separators within an anchored pattern: `**/Commands/*.cs`, `Services/**/I*.cs`.
-- **A root prefix** picks the root to search: `logs:**/*.log`. A pattern with no prefix, or with `project:`, searches the project.
+- **A root prefix** picks the root to search: `logs:*.log`. The pattern after the prefix is relative to that root, so `logs:*.log` matches at any depth in `logs:`. A pattern with no prefix, or with `project:`, searches the project.
+- **A matched folder takes everything inside it.** With `type: "file"`, `docs/` finds every file under each `docs` folder. With `type: "folder"`, `docs` also finds the folders inside `docs`.
+- **An empty pattern** matches every file, or every folder with `type: "folder"`.

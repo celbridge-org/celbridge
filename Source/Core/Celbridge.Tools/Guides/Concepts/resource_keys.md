@@ -63,7 +63,7 @@ Celbridge does not track references. A move, rename or delete changes only the r
 
 Before you move, rename or delete a resource, find the references to it:
 
-1. Search with `file_grep` for `project:<key>`, with `matchCase: true`, since keys are case-sensitive. For a folder, the same search finds the references to everything inside it, which begin `project:<folder>/`.
+1. Search with `file_grep` for `project:<key>`, with `literal: true`. A key contains characters like `.`, and a regex reads `.` as any character. Letter case is matched by default, and keys are case-sensitive. For a folder, the same search finds the references to everything inside it, which begin `project:<folder>/`.
 2. Review each match in context. A key quoted as an example, in documentation or a comment, is not a reference. Edit only the real references.
 3. After a move or rename, update each reference to the new key. Before a delete, tell the user which files reference the resource.
 

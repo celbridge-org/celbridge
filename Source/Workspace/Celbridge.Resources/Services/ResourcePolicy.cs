@@ -15,14 +15,14 @@ internal sealed class CompiledPolicyRule : IPolicyRule
     public ResourceAction GatedActions { get; }
     public string Description { get; }
 
-    public ResourcePathMatcher Matcher { get; }
+    public IPathMatcher Matcher { get; }
 
     public CompiledPolicyRule(
         PolicyRuleSource source,
         string pattern,
         ResourceAction gatedActions,
         string description,
-        ResourcePathMatcher matcher)
+        IPathMatcher matcher)
     {
         Source = source;
         Pattern = pattern;
@@ -42,16 +42,16 @@ public sealed class ResourcePolicy : IResourcePolicy
 {
     private readonly List<CompiledPolicyRule> _systemDeny;
 
-    private readonly ResourcePatternSet _hide;
-    private readonly ResourcePatternSet _searchExclude;
+    private readonly GitignoreMatcher _hide;
+    private readonly GitignoreMatcher _searchExclude;
 
     public ResourcePolicy(IProjectService projectService)
     {
         var resourcesSection = projectService.CurrentProject?.Config.Resources ?? new ResourcesSection();
 
         _systemDeny = BuildSystemDenyRules();
-        _hide = ResourcePatternSet.Compile(resourcesSection.Hide);
-        _searchExclude = ResourcePatternSet.Compile(resourcesSection.SearchExclude);
+        _hide = CompileList(resourcesSection.Hide);
+        _searchExclude = CompileList(resourcesSection.SearchExclude);
         SearchScope = new SearchScopeMatcher(_searchExclude);
     }
 
@@ -74,9 +74,9 @@ public sealed class ResourcePolicy : IResourcePolicy
             return Result.Ok();
         }
 
-        // A reserved name is reserved whatever kind of entry sits at that path.
-        // CompileReservedMatcher refuses a folders-only pattern, so the caller's hint
-        // cannot change a system verdict.
+        // A reserved name is reserved whatever kind of entry sits at that path. Every
+        // system rule matches files and folders alike, so the caller's hint leaves the
+        // verdict unchanged.
         foreach (var rule in _systemDeny)
         {
             if ((rule.GatedActions & action) != action)
@@ -105,7 +105,7 @@ public sealed class ResourcePolicy : IResourcePolicy
 
     // The configured patterns are written against project paths, so a resource
     // under any other root is never a match.
-    private static bool MatchesProjectPatterns(ResourcePatternSet patterns, ResourceKey resource, bool isFolder)
+    private static bool MatchesProjectPatterns(GitignoreMatcher patterns, ResourceKey resource, bool isFolder)
     {
         if (resource.Root != ResourceKey.DefaultRoot)
         {
@@ -115,22 +115,17 @@ public sealed class ResourcePolicy : IResourcePolicy
         return patterns.IsMatch(resource.Path, isFolder);
     }
 
-    // A system rule reserves a name rather than a kind of entry, so a folders-only
-    // pattern would be written and then ignored at evaluation. The rule set is
-    // hardcoded, so this rejects a mistake in this file rather than any user input.
-    // A reserved name matches in any letter case. The Windows and macOS file systems
-    // ignore case, so .GIT names the same folder as .git there.
-    internal static ResourcePathMatcher CompileReservedMatcher(string pattern)
+    // The project file's parser drops each refused line, so a list read from a project compiles. A list that fails to
+    // compile matches nothing.
+    private static GitignoreMatcher CompileList(IReadOnlyList<string> lines)
     {
-        var matcher = ResourcePathMatcher.Compile(pattern, ignoreCase: true);
-        if (matcher.Target == PathMatchTarget.FoldersOnly)
+        var compileResult = GitignoreMatcher.Compile(lines, ignoreCase: false);
+        if (compileResult.IsFailure)
         {
-            throw new ArgumentException(
-                $"A system deny pattern cannot be folders-only: '{pattern}'. Drop the trailing slash, which a system rule does not honour.",
-                nameof(pattern));
+            return GitignoreMatcher.Compile([], ignoreCase: false).Value;
         }
 
-        return matcher;
+        return compileResult.Value;
     }
 
     private static List<CompiledPolicyRule> BuildSystemDenyRules()
@@ -139,17 +134,10 @@ public sealed class ResourcePolicy : IResourcePolicy
 
         rules.Add(new CompiledPolicyRule(
             source: PolicyRuleSource.SystemDeny,
-            pattern: ProjectConstants.GitFolder,
+            pattern: GitFolderRule.Pattern,
             gatedActions: ResourceAction.Read | ResourceAction.Write,
             description: "The Git metadata folder is reserved and cannot be addressed as a resource.",
-            matcher: CompileReservedMatcher(ProjectConstants.GitFolder)));
-
-        rules.Add(new CompiledPolicyRule(
-            source: PolicyRuleSource.SystemDeny,
-            pattern: $"{ProjectConstants.GitFolder}/**",
-            gatedActions: ResourceAction.Read | ResourceAction.Write,
-            description: "Files under the Git metadata folder are reserved.",
-            matcher: CompileReservedMatcher($"{ProjectConstants.GitFolder}/**")));
+            matcher: GitFolderRule.Matcher));
 
         return rules;
     }

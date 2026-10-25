@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
@@ -11,10 +10,10 @@ public record class SearchResultWithMetadata(string Resource, long Size, string 
 
 public partial class FileTools
 {
-    /// <summary>Find files or folders by name using a glob pattern matched against the resource path.</summary>
+    /// <summary>Find files or folders by name or path using a search filter, like "*.py" or "src/**/*.cs".</summary>
     [McpServerTool(Name = "file_search", ReadOnly = true)]
     [ToolAlias("file.search")]
-    [RelatedGuides("resource_keys")]
+    [RelatedGuides("resource_keys", "search_filters")]
     public async partial Task<CallToolResult> Search(string pattern, bool includeMetadata = false, string type = "")
     {
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
@@ -23,25 +22,29 @@ public partial class FileTools
 
         var isFolderSearch = string.Equals(type, "folder", StringComparison.OrdinalIgnoreCase);
 
-        // A pattern that starts with another root's prefix (logs:, temp:) searches that root and matches the whole
-        // key. Any other pattern searches the project and matches the key's path, after dropping any project: prefix.
+        // A pattern that starts with another root's prefix (logs:, temp:) searches that root. Any other pattern searches
+        // the project, after dropping any project: prefix. The rest of the pattern is a search filter, matched against
+        // each item's path within its root.
         var rootKey = ResourceKey.Empty;
-        var matchesWholeKey = false;
-        var glob = pattern;
+        var filterPattern = pattern;
         var patternRoot = ExtractRootPrefix(pattern);
         if (patternRoot == ResourceKey.DefaultRoot)
         {
-            glob = pattern.Substring(patternRoot.Length + 1);
+            filterPattern = pattern.Substring(patternRoot.Length + 1);
         }
         else if (patternRoot is not null
             && rootHandlerRegistry.RootHandlers.ContainsKey(patternRoot))
         {
             rootKey = new ResourceKey(patternRoot + ":");
-            matchesWholeKey = true;
+            filterPattern = pattern.Substring(patternRoot.Length + 1);
         }
 
-        var regexPattern = GlobHelper.PathGlobToRegex(glob);
-        var regex = new Regex(regexPattern, RegexOptions.IgnoreCase);
+        var filterResult = SearchFilter.Compile(filterPattern, string.Empty);
+        if (filterResult.IsFailure)
+        {
+            return ToolResponse.Error(filterResult);
+        }
+        var filter = filterResult.Value;
 
         var walkResult = await resourceService.Walker.WalkAsync(rootKey);
         if (walkResult.IsFailure)
@@ -58,13 +61,7 @@ public partial class FileTools
                 continue;
             }
 
-            var matchText = item.Resource.Path;
-            if (matchesWholeKey)
-            {
-                matchText = item.Resource.ToString();
-            }
-
-            if (regex.IsMatch(matchText))
+            if (filter.IsMatch(item.Resource.Path, item.IsFolder))
             {
                 matches.Add(item);
             }
@@ -87,7 +84,7 @@ public partial class FileTools
         return ToolResponse.Success(SerializeJson(resourceStrings));
     }
 
-    // Pulls the "logs" out of "logs:**/*.log". Returns null when the pattern has
+    // Pulls the "logs" out of "logs:*.log". Returns null when the pattern has
     // no root prefix or the part before ':' is not a valid root identifier shape.
     private static string? ExtractRootPrefix(string pattern)
     {

@@ -63,8 +63,8 @@ public class ReplaceFileCommandTests
 
         var command = CreateCommand();
         command.FileResource = resource;
-        command.SearchText = "quick";
-        command.ReplaceText = "lazy";
+        command.Pattern = "quick";
+        command.Replacement = "lazy";
 
         var result = await command.ExecuteAsync();
 
@@ -88,8 +88,8 @@ public class ReplaceFileCommandTests
 
         var command = CreateCommand();
         command.FileResource = resource;
-        command.SearchText = "nothing";
-        command.ReplaceText = "x";
+        command.Pattern = "nothing";
+        command.Replacement = "x";
 
         var result = await command.ExecuteAsync();
 
@@ -100,11 +100,11 @@ public class ReplaceFileCommandTests
     }
 
     [Test]
-    public async Task ExecuteAsync_FailsWhenSearchTextEmpty()
+    public async Task ExecuteAsync_FailsWhenPatternEmpty()
     {
         var command = CreateCommand();
         command.FileResource = new ResourceKey("any.md");
-        command.SearchText = string.Empty;
+        command.Pattern = string.Empty;
 
         var result = await command.ExecuteAsync();
 
@@ -118,7 +118,7 @@ public class ReplaceFileCommandTests
 
         var command = CreateCommand();
         command.FileResource = resource;
-        command.SearchText = "x";
+        command.Pattern = "x";
 
         var result = await command.ExecuteAsync();
 
@@ -135,9 +135,9 @@ public class ReplaceFileCommandTests
 
         var command = CreateCommand();
         command.FileResource = resource;
-        command.SearchText = @"\d+";
-        command.ReplaceText = "X";
-        command.UseRegex = true;
+        command.Pattern = @"\d+";
+        command.Replacement = "X";
+        command.Literal = false;
 
         var result = await command.ExecuteAsync();
 
@@ -151,7 +151,7 @@ public class ReplaceFileCommandTests
     }
 
     [Test]
-    public async Task ExecuteAsync_TracksRangesForRegexBackReferences()
+    public async Task ExecuteAsync_TracksRangesForRegexGroupReferences()
     {
         var resource = new ResourceKey("regex.md");
         var path = Path.Combine(_tempFolder, "regex.md");
@@ -159,9 +159,9 @@ public class ReplaceFileCommandTests
 
         var command = CreateCommand();
         command.FileResource = resource;
-        command.SearchText = @"(\w+)_old";
-        command.ReplaceText = "$1_new";
-        command.UseRegex = true;
+        command.Pattern = @"(\w+)_old";
+        command.Replacement = "${1}_new";
+        command.Literal = false;
 
         var result = await command.ExecuteAsync();
 
@@ -183,8 +183,8 @@ public class ReplaceFileCommandTests
 
         var command = CreateCommand();
         command.FileResource = resource;
-        command.SearchText = "x";
-        command.ReplaceText = "Y";
+        command.Pattern = "x";
+        command.Replacement = "Y";
 
         var result = await command.ExecuteAsync();
 
@@ -197,10 +197,10 @@ public class ReplaceFileCommandTests
     }
 
     [Test]
-    public async Task ExecuteAsync_MatchWord_DoesNotMatchSubstrings()
+    public async Task ExecuteAsync_WholeWord_DoesNotMatchSubstrings()
     {
         // The classic substring footgun: replacing 'foo' inside 'food'.
-        // matchWord constrains the match to word boundaries, so 'food' and
+        // wholeWord constrains the match to whole words, so 'food' and
         // 'myfoo' are left alone while standalone 'foo' is replaced.
         var resource = new ResourceKey("word.md");
         var path = Path.Combine(_tempFolder, "word.md");
@@ -208,9 +208,9 @@ public class ReplaceFileCommandTests
 
         var command = CreateCommand();
         command.FileResource = resource;
-        command.SearchText = "foo";
-        command.ReplaceText = "BAR";
-        command.MatchWord = true;
+        command.Pattern = "foo";
+        command.Replacement = "BAR";
+        command.WholeWord = true;
         command.MatchCase = true;
 
         var result = await command.ExecuteAsync();
@@ -222,56 +222,154 @@ public class ReplaceFileCommandTests
     }
 
     [Test]
-    public async Task ExecuteAsync_MatchWord_EscapesRegexMetacharactersInLiteralSearch()
+    public async Task ExecuteAsync_WholeWord_ReadsALiteralAsPlainText()
     {
-        // matchWord wraps the literal in \b...\b. The literal must be regex-
-        // escaped so metacharacters like '.' or '(' don't get reinterpreted.
+        // The '.' in a literal pattern is plain text, so "ax.b" is left alone. "a_b" contains no "a.b" at all.
         var resource = new ResourceKey("dotted.md");
         var path = Path.Combine(_tempFolder, "dotted.md");
         await File.WriteAllTextAsync(path, "a.b\nax.b\na_b\n");
 
         var command = CreateCommand();
         command.FileResource = resource;
-        command.SearchText = "a.b";
-        command.ReplaceText = "XYZ";
-        command.MatchWord = true;
+        command.Pattern = "a.b";
+        command.Replacement = "XYZ";
+        command.WholeWord = true;
         command.MatchCase = true;
 
         var result = await command.ExecuteAsync();
 
         result.IsSuccess.Should().BeTrue();
-        // matchWord requires word boundaries on both ends of the literal "a.b".
-        // 'a' and 'b' are word characters; '.' is not. \ba.b\b matches "a.b"
-        // (boundary before 'a', after 'b'). Critically, the regex-escaped '.'
-        // does NOT match 'x', so "ax.b" is left alone.
         var content = await File.ReadAllTextAsync(path);
         content.Should().Be("XYZ\nax.b\na_b\n");
     }
 
     [Test]
-    public async Task ExecuteAsync_MatchWord_IgnoredWhenUseRegexIsTrue()
+    public async Task ExecuteAsync_WholeWord_AppliesToARegex()
     {
-        // When useRegex is true, matchWord is ignored — regex callers add
-        // their own \b anchors. With useRegex and no \b, 'foo' inside 'food'
-        // matches as a substring just like without matchWord.
         var resource = new ResourceKey("regex.md");
         var path = Path.Combine(_tempFolder, "regex.md");
         await File.WriteAllTextAsync(path, "foo\nfood\n");
 
         var command = CreateCommand();
         command.FileResource = resource;
-        command.SearchText = "foo";
-        command.ReplaceText = "BAR";
-        command.UseRegex = true;
-        command.MatchWord = true; // ignored
-        command.MatchCase = true;
+        command.Pattern = "fo+";
+        command.Replacement = "BAR";
+        command.Literal = false;
+        command.WholeWord = true;
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        command.ResultValue.ReplacementCount.Should().Be(1);
+        var content = await File.ReadAllTextAsync(path);
+        content.Should().Be("BAR\nfood\n");
+    }
+
+    [Test]
+    public async Task ExecuteAsync_ReadsThePatternAsPlainTextByDefault()
+    {
+        var resource = new ResourceKey("plain.md");
+        var path = Path.Combine(_tempFolder, "plain.md");
+        await File.WriteAllTextAsync(path, "price $5 (each)\nprice 5 each\n");
+
+        var command = CreateCommand();
+        command.FileResource = resource;
+        command.Pattern = "$5 (each)";
+        command.Replacement = "$6 (each)";
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        command.ResultValue.ReplacementCount.Should().Be(1);
+        var content = await File.ReadAllTextAsync(path);
+        content.Should().Be("price $6 (each)\nprice 5 each\n");
+    }
+
+    [Test]
+    public async Task ExecuteAsync_RegexWithoutMultiline_MatchesWithinOneLine()
+    {
+        var resource = new ResourceKey("lines.md");
+        var path = Path.Combine(_tempFolder, "lines.md");
+        await File.WriteAllTextAsync(path, "alpha\nbeta\n");
+
+        var command = CreateCommand();
+        command.FileResource = resource;
+        command.Pattern = "a.*";
+        command.Replacement = "X";
+        command.Literal = false;
 
         var result = await command.ExecuteAsync();
 
         result.IsSuccess.Should().BeTrue();
         command.ResultValue.ReplacementCount.Should().Be(2);
         var content = await File.ReadAllTextAsync(path);
-        content.Should().Be("BAR\nBARd\n");
+        content.Should().Be("X\nbetX\n");
+    }
+
+    [Test]
+    public async Task ExecuteAsync_Multiline_MatchesAcrossLinesAndKeepsTheFilesLineEndings()
+    {
+        var resource = new ResourceKey("crlf.md");
+        var path = Path.Combine(_tempFolder, "crlf.md");
+        await File.WriteAllTextAsync(path, "import a\r\nfrom b\r\nrest\r\n");
+
+        var command = CreateCommand();
+        command.FileResource = resource;
+        command.Pattern = @"import (\w+)\nfrom (\w+)";
+        command.Replacement = "from $2\nimport $1";
+        command.Literal = false;
+        command.Multiline = true;
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        command.ResultValue.ReplacementCount.Should().Be(1);
+        var content = await File.ReadAllTextAsync(path);
+        content.Should().Be("from b\r\nimport a\r\nrest\r\n");
+    }
+
+    [Test]
+    public async Task ExecuteAsync_MultilineWithinALineRange_MatchesAcrossTheRangesLines()
+    {
+        var resource = new ResourceKey("range.md");
+        var path = Path.Combine(_tempFolder, "range.md");
+        await File.WriteAllTextAsync(path, "a\nb\na\nb\na\nb\n");
+
+        var command = CreateCommand();
+        command.FileResource = resource;
+        command.Pattern = "a\nb";
+        command.Replacement = "X";
+        command.Multiline = true;
+        command.FromLine = 3;
+        command.ToLine = 4;
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        command.ResultValue.ReplacementCount.Should().Be(1);
+        var content = await File.ReadAllTextAsync(path);
+        content.Should().Be("a\nb\nX\na\nb\n");
+    }
+
+    [Test]
+    public async Task ExecuteAsync_FailsWhenAGroupReferenceNamesNoGroup()
+    {
+        var resource = new ResourceKey("group.md");
+        var path = Path.Combine(_tempFolder, "group.md");
+        await File.WriteAllTextAsync(path, "abc\n");
+
+        var command = CreateCommand();
+        command.FileResource = resource;
+        command.Pattern = "(a)";
+        command.Replacement = "$1st";
+        command.Literal = false;
+
+        var result = await command.ExecuteAsync();
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("${1}st");
+        var content = await File.ReadAllTextAsync(path);
+        content.Should().Be("abc\n");
     }
 
     [Test]
@@ -286,8 +384,8 @@ public class ReplaceFileCommandTests
 
         var command = CreateCommand();
         command.FileResource = resource;
-        command.SearchText = "the";
-        command.ReplaceText = "THE";
+        command.Pattern = "the";
+        command.Replacement = "THE";
         command.MatchCase = true;
 
         var result = await command.ExecuteAsync();
@@ -310,8 +408,8 @@ public class ReplaceFileCommandTests
 
         var command = CreateCommand();
         command.FileResource = resource;
-        command.SearchText = "x";
-        command.ReplaceText = "Y";
+        command.Pattern = "x";
+        command.Replacement = "Y";
         command.FromLine = 2;
         command.ToLine = 4;
 

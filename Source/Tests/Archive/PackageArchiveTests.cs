@@ -214,7 +214,7 @@ public class PackageArchiveTests
         File.WriteAllText(Path.Combine(sourceFolder, "data.csv"), "a,b,c");
 
         var archivePath = Path.Combine(_testFolderPath, "filtered.zip");
-        CreateArchiveFromFolder(sourceFolder, archivePath, include: "*.py;*.md");
+        CreateArchiveFromFolder(sourceFolder, archivePath, include: "*.py,*.md");
 
         using var zipArchive = ZipFile.OpenRead(archivePath);
         zipArchive.Entries.Count.Should().Be(2);
@@ -366,7 +366,7 @@ public class PackageArchiveTests
         File.WriteAllText(Path.Combine(sourceFolder, "notes.txt"), "notes");
 
         var archivePath = Path.Combine(_testFolderPath, "combined.zip");
-        CreateArchiveFromFolder(sourceFolder, archivePath, include: "*.py;*.md", exclude: "test_*");
+        CreateArchiveFromFolder(sourceFolder, archivePath, include: "*.py,*.md", exclude: "test_*");
 
         using var zipArchive = ZipFile.OpenRead(archivePath);
         var entryNames = zipArchive.Entries.Select(e => e.FullName).ToList();
@@ -386,7 +386,7 @@ public class PackageArchiveTests
         File.WriteAllText(Path.Combine(sourceFolder, "backup.bak"), "backup");
 
         var archivePath = Path.Combine(_testFolderPath, "multi_exclude.zip");
-        CreateArchiveFromFolder(sourceFolder, archivePath, exclude: "*.log;*.bak");
+        CreateArchiveFromFolder(sourceFolder, archivePath, exclude: "*.log,*.bak");
 
         using var zipArchive = ZipFile.OpenRead(archivePath);
         var entryNames = zipArchive.Entries.Select(e => e.FullName).ToList();
@@ -499,109 +499,13 @@ public class PackageArchiveTests
         File.WriteAllText(Path.Combine(gitFolder, "abc123"), "object");
 
         var archivePath = Path.Combine(_testFolderPath, "exclude_folders.zip");
-        CreateArchiveFromFolder(sourceFolder, archivePath, exclude: "node_modules;.git");
+        CreateArchiveFromFolder(sourceFolder, archivePath, exclude: "node_modules,.git");
 
         using var zipArchive = ZipFile.OpenRead(archivePath);
         var entryNames = zipArchive.Entries.Select(e => e.FullName).ToList();
         entryNames.Should().Contain("keep.txt");
         entryNames.Should().NotContain("node_modules/pkg/index.js");
         entryNames.Should().NotContain(".git/objects/abc123");
-    }
-
-    [Test]
-    public void ShouldIncludeFileReturnsTrueWhenNoFilters()
-    {
-        var includeRegexes = ArchiveHelper.ParseGlobPatterns("");
-        var excludeRegexes = ArchiveHelper.ParseGlobPatterns("");
-
-        ArchiveHelper.ShouldIncludeFile("any_file.txt", includeRegexes, excludeRegexes).Should().BeTrue();
-    }
-
-    [Test]
-    public void ShouldIncludeFileRespectsExcludeOnly()
-    {
-        var includeRegexes = ArchiveHelper.ParseGlobPatterns("");
-        var excludeRegexes = ArchiveHelper.ParseGlobPatterns("*.log");
-
-        ArchiveHelper.ShouldIncludeFile("app.py", includeRegexes, excludeRegexes).Should().BeTrue();
-        ArchiveHelper.ShouldIncludeFile("debug.log", includeRegexes, excludeRegexes).Should().BeFalse();
-    }
-
-    [Test]
-    public void ShouldIncludeFileRespectsIncludeOnly()
-    {
-        var includeRegexes = ArchiveHelper.ParseGlobPatterns("*.py");
-        var excludeRegexes = ArchiveHelper.ParseGlobPatterns("");
-
-        ArchiveHelper.ShouldIncludeFile("app.py", includeRegexes, excludeRegexes).Should().BeTrue();
-        ArchiveHelper.ShouldIncludeFile("readme.md", includeRegexes, excludeRegexes).Should().BeFalse();
-    }
-
-    [Test]
-    public void ShouldIncludeFileExcludeTakesPrecedenceOverInclude()
-    {
-        var includeRegexes = ArchiveHelper.ParseGlobPatterns("*.py");
-        var excludeRegexes = ArchiveHelper.ParseGlobPatterns("test_*");
-
-        ArchiveHelper.ShouldIncludeFile("app.py", includeRegexes, excludeRegexes).Should().BeTrue();
-        ArchiveHelper.ShouldIncludeFile("test_app.py", includeRegexes, excludeRegexes).Should().BeFalse();
-    }
-
-    [Test]
-    public void ShouldIncludeFileExcludeMatchesPathSegments()
-    {
-        var includeRegexes = ArchiveHelper.ParseGlobPatterns("");
-        var excludeRegexes = ArchiveHelper.ParseGlobPatterns("__pycache__");
-
-        ArchiveHelper.ShouldIncludeFile("__pycache__/module.pyc", includeRegexes, excludeRegexes).Should().BeFalse();
-        ArchiveHelper.ShouldIncludeFile("src/__pycache__/module.pyc", includeRegexes, excludeRegexes).Should().BeFalse();
-        ArchiveHelper.ShouldIncludeFile("src/module.py", includeRegexes, excludeRegexes).Should().BeTrue();
-    }
-
-    [Test]
-    public void ParseGlobPatternsHandlesEmptyInput()
-    {
-        ArchiveHelper.ParseGlobPatterns("").Should().BeEmpty();
-        ArchiveHelper.ParseGlobPatterns("  ").Should().BeEmpty();
-    }
-
-    [Test]
-    public void ParseGlobPatternsHandlesMultiplePatterns()
-    {
-        var regexes = ArchiveHelper.ParseGlobPatterns("*.py;*.md;*.txt");
-        regexes.Count.Should().Be(3);
-
-        regexes[0].IsMatch("app.py").Should().BeTrue();
-        regexes[1].IsMatch("readme.md").Should().BeTrue();
-        regexes[2].IsMatch("notes.txt").Should().BeTrue();
-        regexes[0].IsMatch("readme.md").Should().BeFalse();
-    }
-
-    [Test]
-    public void ParseGlobPatternsTrimsWhitespace()
-    {
-        var regexes = ArchiveHelper.ParseGlobPatterns(" *.py ; *.md ");
-        regexes.Count.Should().Be(2);
-
-        regexes[0].IsMatch("app.py").Should().BeTrue();
-        regexes[1].IsMatch("readme.md").Should().BeTrue();
-    }
-
-    [Test]
-    public void GlobToRegexMatchesWildcards()
-    {
-        var regex = new System.Text.RegularExpressions.Regex(GlobHelper.GlobToRegex("*.py"));
-        regex.IsMatch("app.py").Should().BeTrue();
-        regex.IsMatch("app.txt").Should().BeFalse();
-    }
-
-    [Test]
-    public void GlobToRegexMatchesQuestionMark()
-    {
-        var regex = new System.Text.RegularExpressions.Regex(GlobHelper.GlobToRegex("file?.txt"));
-        regex.IsMatch("file1.txt").Should().BeTrue();
-        regex.IsMatch("fileA.txt").Should().BeTrue();
-        regex.IsMatch("file12.txt").Should().BeFalse();
     }
 
     [Test]
@@ -644,8 +548,7 @@ public class PackageArchiveTests
             throw new InvalidOperationException($"Archive already exists: '{archivePath}'");
         }
 
-        var includeRegexes = ArchiveHelper.ParseGlobPatterns(include);
-        var excludeRegexes = ArchiveHelper.ParseGlobPatterns(exclude);
+        var filter = SearchFilter.Compile(include, exclude).Value;
 
         using var fileStream = new FileStream(archivePath, FileMode.Create, FileAccess.Write, FileShare.None);
         using var zipArchive = new ZipArchive(fileStream, ZipArchiveMode.Create, leaveOpen: false);
@@ -663,7 +566,7 @@ public class PackageArchiveTests
             var relativePath = Path.GetRelativePath(sourceFolderPath, filePath);
             var entryName = relativePath.Replace('\\', '/');
 
-            if (!ArchiveHelper.ShouldIncludeFile(entryName, includeRegexes, excludeRegexes))
+            if (!filter.IsMatch(entryName, isFolder: false))
             {
                 continue;
             }

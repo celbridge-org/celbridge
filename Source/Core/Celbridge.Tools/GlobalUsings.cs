@@ -7,6 +7,7 @@ global using Celbridge.Packages;
 global using Celbridge.Resources;
 global using Celbridge.Server;
 global using Celbridge.UserInterface;
+global using Celbridge.Patterns;
 global using Celbridge.Utilities;
 global using Celbridge.Workspace;
 global using Result = Celbridge.Core.Result;

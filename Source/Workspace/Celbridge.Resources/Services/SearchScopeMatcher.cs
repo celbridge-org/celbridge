@@ -7,9 +7,9 @@ namespace Celbridge.Resources.Services;
 /// </summary>
 internal sealed class SearchScopeMatcher : IPathMatcher
 {
-    private readonly ResourcePatternSet _searchExclude;
+    private readonly GitignoreMatcher _searchExclude;
 
-    public SearchScopeMatcher(ResourcePatternSet searchExclude)
+    public SearchScopeMatcher(GitignoreMatcher searchExclude)
     {
         _searchExclude = searchExclude;
     }

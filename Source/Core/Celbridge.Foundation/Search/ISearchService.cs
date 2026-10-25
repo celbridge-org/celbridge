@@ -1,67 +1,14 @@
 namespace Celbridge.Search;
 
 /// <summary>
-/// Service interface for searching and replacing text across project files.
+/// Service interface for searching text across project files.
 /// </summary>
 public interface ISearchService
 {
     /// <summary>
-    /// Searches for text across all project files.
-    /// When maxResults is specified, search stops after finding that many matches (for display purposes).
-    /// When maxResults is null, all matches are returned (for Replace All operations).
-    /// When useRegex is true, searchTerm is interpreted as a .NET regular expression.
-    /// When include is specified, only files whose names match one of the comma-separated glob patterns are searched (e.g. "*.cs,*.xaml").
-    /// When exclude is specified, files whose names match any of the comma-separated glob patterns are skipped, even if they match include.
-    /// When scope is specified, it names a folder or a file. A folder scope searches only the files inside that folder,
-    /// and a file scope searches that one file.
-    /// When includeMetadataFiles is true, .cel sidecar contents are searched alongside other text files.
+    /// Searches the text of the files in scope for the pattern in the options.
     /// </summary>
-    Task<SearchResults> SearchAsync(
-        string searchTerm,
-        bool matchCase,
-        bool wholeWord,
-        int? maxResults,
-        CancellationToken cancellationToken,
-        bool useRegex = false,
-        string include = "",
-        string exclude = "",
-        string scope = "",
-        bool includeMetadataFiles = false);
-
-    /// <summary>
-    /// Replaces all occurrences of search text with replacement text in a single file.
-    /// </summary>
-    Task<ReplaceResult> ReplaceInFileAsync(
-        ResourceKey resource,
-        string searchText,
-        string replaceText,
-        bool matchCase,
-        bool wholeWord,
-        CancellationToken cancellationToken);
-
-    /// <summary>
-    /// Replaces a single match occurrence at a specific line and column in a file.
-    /// </summary>
-    Task<ReplaceMatchResult> ReplaceMatchAsync(
-        ResourceKey resource,
-        string searchText,
-        string replaceText,
-        int lineNumber,
-        int originalMatchStart,
-        bool matchCase,
-        bool wholeWord,
-        CancellationToken cancellationToken);
-
-    /// <summary>
-    /// Replaces all occurrences of search text across all provided file results.
-    /// </summary>
-    Task<ReplaceAllResult> ReplaceAllAsync(
-        List<SearchFileResult> fileResults,
-        string searchText,
-        string replaceText,
-        bool matchCase,
-        bool wholeWord,
-        CancellationToken cancellationToken);
+    Task<SearchResults> SearchAsync(SearchOptions options, CancellationToken cancellationToken);
 
     /// <summary>
     /// Gets the search and replace history for the current workspace.

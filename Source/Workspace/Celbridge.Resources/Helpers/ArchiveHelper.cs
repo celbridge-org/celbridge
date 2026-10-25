@@ -1,5 +1,4 @@
 using System.IO.Compression;
-using System.Text.RegularExpressions;
 
 namespace Celbridge.Resources.Helpers;
 
@@ -130,75 +129,6 @@ public static class ArchiveHelper
                 sourceFiles.Add(new ArchiveSourceFile(item.Resource, childRelative));
             }
         }
-    }
-
-    /// <summary>
-    /// Determines whether a file should be included based on include and exclude glob patterns.
-    /// Exclude patterns are checked against the file name, each path segment, and the full entry path.
-    /// Include patterns are checked against the file name only.
-    /// </summary>
-    public static bool ShouldIncludeFile(string entryName, List<Regex> includeRegexes, List<Regex> excludeRegexes)
-    {
-        var fileName = entryName;
-        var lastSlashIndex = entryName.LastIndexOf('/');
-        if (lastSlashIndex >= 0)
-        {
-            fileName = entryName.Substring(lastSlashIndex + 1);
-        }
-
-        var segments = entryName.Split('/');
-        foreach (var excludeRegex in excludeRegexes)
-        {
-            if (excludeRegex.IsMatch(fileName) || excludeRegex.IsMatch(entryName))
-            {
-                return false;
-            }
-
-            foreach (var segment in segments)
-            {
-                if (excludeRegex.IsMatch(segment))
-                {
-                    return false;
-                }
-            }
-        }
-
-        if (includeRegexes.Count == 0)
-        {
-            return true;
-        }
-
-        foreach (var includeRegex in includeRegexes)
-        {
-            if (includeRegex.IsMatch(fileName))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /// <summary>
-    /// Parses a semicolon-separated string of glob patterns into a list of compiled regular expressions.
-    /// </summary>
-    public static List<Regex> ParseGlobPatterns(string patterns)
-    {
-        if (string.IsNullOrWhiteSpace(patterns))
-        {
-            return new List<Regex>();
-        }
-
-        var regexList = new List<Regex>();
-
-        var patternParts = patterns.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        foreach (var pattern in patternParts)
-        {
-            var regexPattern = GlobHelper.GlobToRegex(pattern);
-            regexList.Add(new Regex(regexPattern, RegexOptions.IgnoreCase));
-        }
-
-        return regexList;
     }
 
     /// <summary>

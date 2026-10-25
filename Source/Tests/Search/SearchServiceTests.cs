@@ -4,6 +4,7 @@ using Celbridge.Messaging.Services;
 using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
+using Celbridge.Search;
 using Celbridge.Search.Services;
 using Celbridge.Tests.FileSystem;
 using Celbridge.Tests.Packages;
@@ -91,12 +92,7 @@ public class SearchServiceTests
         using var cancellationTokenSource = new CancellationTokenSource();
         cancellationTokenSource.Cancel();
 
-        var result = await _searchService.SearchAsync(
-            "hello",
-            matchCase: false,
-            wholeWord: false,
-            maxResults: null,
-            cancellationTokenSource.Token);
+        var result = await _searchService.SearchAsync(Options("hello"), cancellationTokenSource.Token);
 
         result.WasCancelled.Should().BeTrue();
     }
@@ -106,12 +102,7 @@ public class SearchServiceTests
     {
         using var cancellationTokenSource = new CancellationTokenSource();
 
-        var result = await _searchService.SearchAsync(
-            "hello",
-            matchCase: false,
-            wholeWord: false,
-            maxResults: null,
-            cancellationTokenSource.Token);
+        var result = await _searchService.SearchAsync(Options("hello"), cancellationTokenSource.Token);
 
         result.WasCancelled.Should().BeFalse();
     }
@@ -126,12 +117,7 @@ public class SearchServiceTests
 
         _searchService.Dispose();
 
-        var result = await _searchService.SearchAsync(
-            "hello",
-            matchCase: false,
-            wholeWord: false,
-            maxResults: null,
-            CancellationToken.None);
+        var result = await _searchService.SearchAsync(Options("hello"), CancellationToken.None);
 
         result.WasCancelled.Should().BeTrue();
         result.FileResults.Should().BeEmpty();
@@ -142,12 +128,7 @@ public class SearchServiceTests
     {
         await WriteFileAsync("photo.png.cel", "title: \"sunset photo\"\n");
 
-        var result = await _searchService.SearchAsync(
-            "sunset",
-            matchCase: false,
-            wholeWord: false,
-            maxResults: null,
-            CancellationToken.None);
+        var result = await _searchService.SearchAsync(Options("sunset"), CancellationToken.None);
 
         result.FileResults.Should().BeEmpty();
     }
@@ -157,13 +138,7 @@ public class SearchServiceTests
     {
         await WriteFileAsync("photo.png.cel", "title: \"sunset photo\"\n");
 
-        var result = await _searchService.SearchAsync(
-            "sunset",
-            matchCase: false,
-            wholeWord: false,
-            maxResults: null,
-            CancellationToken.None,
-            includeMetadataFiles: true);
+        var result = await _searchService.SearchAsync(Options("sunset", includeMetadataFiles: true), CancellationToken.None);
 
         result.FileResults.Should().HaveCount(1);
         result.FileResults[0].Resource.ToString().Should().EndWith("photo.png.cel");
@@ -175,12 +150,7 @@ public class SearchServiceTests
         await WriteFileAsync("notes.txt", "hello world");
         await WriteFileAsync("other.txt", "goodbye");
 
-        await _searchService.SearchAsync(
-            "hello",
-            matchCase: false,
-            wholeWord: false,
-            maxResults: null,
-            CancellationToken.None);
+        await _searchService.SearchAsync(Options("hello"), CancellationToken.None);
 
         _automationService.Received(1).LogEvent(Arg.Is<SearchCompletedEvent>(completed => completed.Files == 2));
     }
@@ -193,12 +163,7 @@ public class SearchServiceTests
         using var cancellationTokenSource = new CancellationTokenSource();
         cancellationTokenSource.Cancel();
 
-        await _searchService.SearchAsync(
-            "hello",
-            matchCase: false,
-            wholeWord: false,
-            maxResults: null,
-            cancellationTokenSource.Token);
+        await _searchService.SearchAsync(Options("hello"), cancellationTokenSource.Token);
 
         _automationService.DidNotReceive().LogEvent(Arg.Any<SearchCompletedEvent>());
     }
@@ -209,13 +174,7 @@ public class SearchServiceTests
         await WriteFileAsync("src/app.py", "hello world");
         await WriteFileAsync("src2/app.py", "hello world");
 
-        var result = await _searchService.SearchAsync(
-            "hello",
-            matchCase: false,
-            wholeWord: false,
-            maxResults: null,
-            CancellationToken.None,
-            scope: "src");
+        var result = await _searchService.SearchAsync(Options("hello", scope: "src"), CancellationToken.None);
 
         result.FileResults.Select(fileResult => fileResult.Resource).Should().Equal(new ResourceKey("src/app.py"));
     }
@@ -226,15 +185,91 @@ public class SearchServiceTests
         await WriteFileAsync("src/app.py", "hello world");
         await WriteFileAsync("src/other.py", "hello world");
 
-        var result = await _searchService.SearchAsync(
-            "hello",
-            matchCase: false,
-            wholeWord: false,
-            maxResults: null,
-            CancellationToken.None,
-            scope: "src/app.py");
+        var result = await _searchService.SearchAsync(Options("hello", scope: "src/app.py"), CancellationToken.None);
 
         result.FileResults.Select(fileResult => fileResult.Resource).Should().Equal(new ResourceKey("src/app.py"));
+    }
+
+    [Test]
+    public async Task SearchAsync_Include_SearchesOnlyTheFilesItMatches()
+    {
+        await WriteFileAsync("src/app.py", "hello world");
+        await WriteFileAsync("src/app.js", "hello world");
+        await WriteFileAsync("docs/guide.md", "hello world");
+
+        var options = Options("hello") with { Include = "*.py,docs/" };
+        var result = await _searchService.SearchAsync(options, CancellationToken.None);
+
+        var resources = result.FileResults.Select(fileResult => fileResult.Resource);
+        resources.Should().BeEquivalentTo([new ResourceKey("docs/guide.md"), new ResourceKey("src/app.py")]);
+        result.FilesMatchingFilters.Should().Be(2);
+    }
+
+    [Test]
+    public async Task SearchAsync_Exclude_WinsOverInclude()
+    {
+        await WriteFileAsync("src/app.js", "hello world");
+        await WriteFileAsync("src/app.min.js", "hello world");
+
+        var options = Options("hello") with { Include = "*.js", Exclude = "*.min.js" };
+        var result = await _searchService.SearchAsync(options, CancellationToken.None);
+
+        result.FileResults.Select(fileResult => fileResult.Resource).Should().Equal(new ResourceKey("src/app.js"));
+    }
+
+    [Test]
+    public async Task SearchAsync_IncludeUnderAScope_IsRelativeToTheProject()
+    {
+        await WriteFileAsync("src/lib/util.py", "hello world");
+        await WriteFileAsync("src/main.py", "hello world");
+
+        var options = Options("hello", scope: "src") with { Include = "src/lib/**" };
+        var result = await _searchService.SearchAsync(options, CancellationToken.None);
+
+        result.FileResults.Select(fileResult => fileResult.Resource).Should().Equal(new ResourceKey("src/lib/util.py"));
+    }
+
+    [Test]
+    public async Task SearchAsync_IncludeThatMatchesNoFile_ReportsNoFilesMatchingTheFilters()
+    {
+        await WriteFileAsync("src/app.py", "hello world");
+
+        var options = Options("hello") with { Include = "*.cs" };
+        var result = await _searchService.SearchAsync(options, CancellationToken.None);
+
+        result.FileResults.Should().BeEmpty();
+        result.FilesMatchingFilters.Should().Be(0);
+    }
+
+    [Test]
+    public async Task SearchAsync_Regex_MatchesARipgrepPattern()
+    {
+        await WriteFileAsync("notes.txt", "alpha 12\nbeta\ngamma 3\n");
+
+        var options = new SearchOptions(@"(?P<word>\w+) \d+", Literal: false, MatchCase: true, WholeWord: false);
+        var result = await _searchService.SearchAsync(options, CancellationToken.None);
+
+        result.TotalMatches.Should().Be(2);
+    }
+
+    [Test]
+    public async Task SearchAsync_RefusedPattern_FindsNothing()
+    {
+        await WriteFileAsync("notes.txt", "alpha\n");
+
+        var options = new SearchOptions("a(?=l)", Literal: false, MatchCase: true, WholeWord: false);
+        var result = await _searchService.SearchAsync(options, CancellationToken.None);
+
+        result.FileResults.Should().BeEmpty();
+    }
+
+    private static SearchOptions Options(string pattern, string scope = "", bool includeMetadataFiles = false)
+    {
+        return new SearchOptions(pattern, Literal: true, MatchCase: false, WholeWord: false)
+        {
+            Scope = scope,
+            IncludeMetadataFiles = includeMetadataFiles,
+        };
     }
 
     private async Task WriteFileAsync(string relativePath, string content)

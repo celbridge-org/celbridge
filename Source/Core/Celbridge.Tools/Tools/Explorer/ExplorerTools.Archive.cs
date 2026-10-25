@@ -14,7 +14,7 @@ public partial class ExplorerTools
     /// <summary>Zip a file or folder into a project-tree archive (folder contents at archive root).</summary>
     [McpServerTool(Name = "explorer_archive")]
     [ToolAlias("explorer.archive")]
-    [RelatedGuides("resource_keys")]
+    [RelatedGuides("resource_keys", "search_filters")]
     public async partial Task<CallToolResult> Archive(
         string resource,
         string archive,

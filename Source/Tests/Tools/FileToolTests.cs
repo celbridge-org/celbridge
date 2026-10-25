@@ -142,8 +142,10 @@ public class FileToolTests
 
         capturedCommand.Should().NotBeNull();
         capturedCommand!.FileResource.Should().Be(resource);
-        capturedCommand.SearchText.Should().Be("old");
-        capturedCommand.ReplaceText.Should().Be("new");
+        capturedCommand.Pattern.Should().Be("old");
+        capturedCommand.Replacement.Should().Be("new");
+        capturedCommand.Literal.Should().BeTrue();
+        capturedCommand.MatchCase.Should().BeTrue();
         root.GetProperty("replacementCount").GetInt32().Should().Be(2);
         root.GetProperty("truncated").GetBoolean().Should().BeFalse();
 
@@ -560,7 +562,7 @@ public class FileToolTests
         // JsonException ("'w' is an invalid start of a value") tells the
         // caller something is wrong but not what to type instead.
         var tools = new FileTools(_services);
-        var result = await tools.Grep(searchTerm: "needle", files: "workspace/*.cs");
+        var result = await tools.Grep(pattern: "needle", files: "workspace/*.cs");
 
         result.IsError.Should().BeTrue();
         var text = result.Content.OfType<TextContentBlock>().Single().Text;
@@ -572,7 +574,7 @@ public class FileToolTests
     public async Task Grep_FilesParameter_RejectsMalformedJsonArray_WithExampleShape()
     {
         var tools = new FileTools(_services);
-        var result = await tools.Grep(searchTerm: "needle", files: "[\"folder/a.txt\",");
+        var result = await tools.Grep(pattern: "needle", files: "[\"folder/a.txt\",");
 
         result.IsError.Should().BeTrue();
         var text = result.Content.OfType<TextContentBlock>().Single().Text;
@@ -791,7 +793,7 @@ public class FileToolTests
         RegisterTempRoot();
 
         var tools = new FileTools(_services);
-        var result = await tools.Grep(searchTerm: "alpha|beta", useRegex: true, resource: "temp:staging/sample-package");
+        var result = await tools.Grep(pattern: "alpha|beta", path: "temp:staging/sample-package");
 
         result.IsError.Should().NotBe(true);
         var root = ParseResult(result);
@@ -812,7 +814,7 @@ public class FileToolTests
         RegisterTempRoot();
 
         var tools = new FileTools(_services);
-        var result = await tools.Grep(searchTerm: "alpha", resource: "temp:staging/sample-package/src/app.js");
+        var result = await tools.Grep(pattern: "alpha", path: "temp:staging/sample-package/src/app.js");
 
         result.IsError.Should().NotBe(true);
         var root = ParseResult(result);
@@ -832,12 +834,110 @@ public class FileToolTests
 
         var tools = new FileTools(_services);
         // The only matching file is a .js, so an include of *.css must exclude it.
-        var result = await tools.Grep(searchTerm: "alpha", resource: "temp:staging/sample-package", include: "*.css");
+        var result = await tools.Grep(pattern: "alpha", path: "temp:staging/sample-package", include: "*.css");
 
         result.IsError.Should().NotBe(true);
         var root = ParseResult(result);
         root.GetProperty("totalMatches").GetInt32().Should().Be(0);
         root.GetProperty("totalFiles").GetInt32().Should().Be(0);
+        root.GetProperty("warning").GetString().Should().Contain("No file matched the include patterns '*.css'");
+    }
+
+    [Test]
+    public async Task Grep_NonDefaultRootScope_IncludeIsRelativeToTheRoot()
+    {
+        var stagingDir = Path.Combine(_tempFolder, "staging", "sample-package", "src");
+        Directory.CreateDirectory(stagingDir);
+        await File.WriteAllTextAsync(Path.Combine(stagingDir, "app.js"), "const alpha = 'beta';\n");
+        await File.WriteAllTextAsync(Path.Combine(_tempFolder, "staging", "sample-package", "top.js"), "alpha\n");
+
+        RegisterTempRoot();
+
+        var tools = new FileTools(_services);
+        var result = await tools.Grep(pattern: "alpha", path: "temp:staging/sample-package", include: "staging/sample-package/src/**");
+
+        var root = ParseResult(result);
+        root.GetProperty("totalFiles").GetInt32().Should().Be(1);
+        root.GetProperty("files")[0].GetProperty("resource").GetString()
+            .Should().Be("temp:staging/sample-package/src/app.js");
+        root.TryGetProperty("warning", out _).Should().BeFalse();
+    }
+
+    [Test]
+    public async Task Grep_NonDefaultRootScope_ReadsThePatternAsARegexByDefault()
+    {
+        var stagingDir = Path.Combine(_tempFolder, "staging");
+        Directory.CreateDirectory(stagingDir);
+        await File.WriteAllTextAsync(Path.Combine(stagingDir, "notes.txt"), "item 1\nitem 22\nitems\n");
+
+        RegisterTempRoot();
+
+        var tools = new FileTools(_services);
+        var regexResult = await tools.Grep(pattern: @"item \d+", path: "temp:staging");
+        var literalResult = await tools.Grep(pattern: @"item \d+", literal: true, path: "temp:staging");
+
+        ParseResult(regexResult).GetProperty("totalMatches").GetInt32().Should().Be(2);
+        ParseResult(literalResult).GetProperty("totalMatches").GetInt32().Should().Be(0);
+    }
+
+    [Test]
+    public async Task Grep_MatchesLetterCaseByDefault()
+    {
+        var stagingDir = Path.Combine(_tempFolder, "staging");
+        Directory.CreateDirectory(stagingDir);
+        await File.WriteAllTextAsync(Path.Combine(stagingDir, "notes.txt"), "Hello\nhello\n");
+
+        RegisterTempRoot();
+
+        var tools = new FileTools(_services);
+        var exactResult = await tools.Grep(pattern: "hello", path: "temp:staging");
+        var ignoringResult = await tools.Grep(pattern: "hello", matchCase: false, path: "temp:staging");
+
+        ParseResult(exactResult).GetProperty("totalMatches").GetInt32().Should().Be(1);
+        ParseResult(ignoringResult).GetProperty("totalMatches").GetInt32().Should().Be(2);
+    }
+
+    [Test]
+    public async Task Grep_MissingPath_FailsTheCall()
+    {
+        Directory.CreateDirectory(Path.Combine(_tempFolder, "staging"));
+        RegisterTempRoot();
+
+        var tools = new FileTools(_services);
+        var result = await tools.Grep(pattern: "alpha", path: "temp:stagin", include: "*.js");
+
+        result.IsError.Should().BeTrue();
+        result.Content.OfType<TextContentBlock>().Single().Text.Should().Contain("Resource not found: 'temp:stagin'");
+    }
+
+    [Test]
+    public async Task Grep_RefusedPattern_FailsTheCallWithTheReason()
+    {
+        var tools = new FileTools(_services);
+        var result = await tools.Grep(pattern: "a(?=b)");
+
+        result.IsError.Should().BeTrue();
+        result.Content.OfType<TextContentBlock>().Single().Text.Should().Contain("Lookaround");
+    }
+
+    [Test]
+    public async Task Grep_RefusedFilter_FailsTheCallWithTheReason()
+    {
+        var tools = new FileTools(_services);
+        var result = await tools.Grep(pattern: "alpha", exclude: "!*.js");
+
+        result.IsError.Should().BeTrue();
+        result.Content.OfType<TextContentBlock>().Single().Text.Should().Contain("starts with '!'");
+    }
+
+    [Test]
+    public async Task Replace_RefusedReplacement_FailsTheCallWithTheReason()
+    {
+        var tools = new FileTools(_services);
+        var result = await tools.Replace("find.md", "(a)", "$1st", literal: false);
+
+        result.IsError.Should().BeTrue();
+        result.Content.OfType<TextContentBlock>().Single().Text.Should().Contain("${1}st");
     }
 
     [Test]
@@ -866,7 +966,8 @@ public class FileToolTests
         var tools = new FileTools(_services);
         var result = await tools.Search("doc*", type: "folder");
 
-        ParseStringList(result).Should().Equal("project:docs");
+        // A matched folder takes everything inside it, so the folders inside docs match too.
+        ParseStringList(result).Should().Equal("project:docs", "project:docs/images");
     }
 
     [Test]
@@ -895,6 +996,34 @@ public class FileToolTests
         var result = await tools.Search("project:*.md");
 
         ParseStringList(result).Should().Equal("project:docs/notes.md", "project:readme.md");
+    }
+
+    [Test]
+    public async Task Search_PatternWithASlash_IsRelativeToTheRoot()
+    {
+        UseWalkedItems(
+            WalkedFile("src/app.cs"),
+            WalkedFile("src/lib/util.cs"),
+            WalkedFile("test/src/other.cs"));
+
+        var tools = new FileTools(_services);
+        var result = await tools.Search("src/**/*.cs");
+
+        ParseStringList(result).Should().Equal("project:src/app.cs", "project:src/lib/util.cs");
+    }
+
+    [Test]
+    public async Task Search_Braces_ExpandToEachAlternative()
+    {
+        UseWalkedItems(
+            WalkedFile("app.ts"),
+            WalkedFile("app.tsx"),
+            WalkedFile("app.js"));
+
+        var tools = new FileTools(_services);
+        var result = await tools.Search("*.{ts,tsx}");
+
+        ParseStringList(result).Should().Equal("project:app.ts", "project:app.tsx");
     }
 
     [Test]

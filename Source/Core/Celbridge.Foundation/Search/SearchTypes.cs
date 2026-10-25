@@ -23,7 +23,27 @@ public record SearchFileResult(
     List<SearchMatchLine> Matches);
 
 /// <summary>
-/// Represents the complete search results.
+/// What a text search looks for and where. Pattern is a search pattern in ripgrep's regex dialect, or plain text when
+/// Literal is true. MaxResults stops the search after that many matches, and null finds every match. Include and
+/// Exclude are search filters, relative to the project folder. Scope names the folder or file to search, and empty
+/// searches the project. IncludeMetadataFiles also searches the text of .cel sidecars.
+/// </summary>
+public sealed record SearchOptions(string Pattern, bool Literal, bool MatchCase, bool WholeWord)
+{
+    public int? MaxResults { get; init; }
+
+    public string Include { get; init; } = string.Empty;
+
+    public string Exclude { get; init; } = string.Empty;
+
+    public string Scope { get; init; } = string.Empty;
+
+    public bool IncludeMetadataFiles { get; init; }
+}
+
+/// <summary>
+/// Represents the complete search results. FilesMatchingFilters counts the files in scope that the include and
+/// exclude filters let through.
 /// </summary>
 public record SearchResults(
     string SearchTerm,
@@ -31,29 +51,8 @@ public record SearchResults(
     int TotalMatches,
     int TotalFiles,
     bool WasCancelled,
-    bool ReachedMaxResults);
-
-/// <summary>
-/// Represents the result of a replace operation in a single file.
-/// </summary>
-public record ReplaceResult(
-    bool Success,
-    int ReplacementsCount);
-
-/// <summary>
-/// Represents the result of a single-match replace operation.
-/// </summary>
-public record ReplaceMatchResult(
-    bool Success);
-
-/// <summary>
-/// Represents the result of a Replace All operation across multiple files.
-/// </summary>
-public record ReplaceAllResult(
-    int TotalReplacements,
-    int FilesModified,
-    int FilesFailed,
-    bool WasCancelled);
+    bool ReachedMaxResults,
+    int FilesMatchingFilters);
 
 /// <summary>
 /// Contains the search and replace history for a workspace.

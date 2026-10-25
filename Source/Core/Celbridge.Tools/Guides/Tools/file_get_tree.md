@@ -14,7 +14,7 @@ Maximum depth to traverse, counted from the root node. Folders at the depth limi
 
 ### glob
 
-Optional glob filter applied to file names. Folders are kept in the tree when they have at least one matching descendant, so a glob like `*.py` collapses the tree to only the branches containing Python files.
+Optional search filter applied to files. The rules are in `search_filters`. A folder stays in the tree when at least one file below it matches. So a glob like `*.py` collapses the tree to the branches containing Python files. A pattern with a `/` is relative to the root, not to the folder walked.
 
 ### type
 
