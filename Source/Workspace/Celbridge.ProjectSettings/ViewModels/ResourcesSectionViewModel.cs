@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using Celbridge.Dialog;
+using Celbridge.Patterns;
 using Celbridge.ProjectSettings.Helpers;
 using Celbridge.Utilities;
 using CommunityToolkit.Mvvm.ComponentModel;

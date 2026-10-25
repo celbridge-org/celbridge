@@ -1,6 +1,6 @@
 using Celbridge.Resources;
 
-namespace Celbridge.Utilities;
+namespace Celbridge.Patterns;
 
 /// <summary>
 /// Matches paths against a list of gitignore lines, with git's rules. A line without a slash matches at any depth,

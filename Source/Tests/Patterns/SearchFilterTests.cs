@@ -1,4 +1,4 @@
-namespace Celbridge.Tests.Utilities;
+namespace Celbridge.Tests.Patterns;
 
 /// <summary>
 /// Covers common agent filters for the search tools, and the rules where the filter differs from ripgrep's

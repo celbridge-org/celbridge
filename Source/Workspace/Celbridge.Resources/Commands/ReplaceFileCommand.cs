@@ -1,5 +1,4 @@
 using System.Text;
-using System.Text.RegularExpressions;
 using Celbridge.Commands;
 using Celbridge.Logging;
 using Celbridge.Resources.Helpers;
@@ -15,14 +14,15 @@ public class ReplaceFileCommand : CommandBase, IReplaceFileCommand
     public ResourceKey FileResource { get; set; }
 
     [RedactedInLogs]
-    public string SearchText { get; set; } = string.Empty;
+    public string Pattern { get; set; } = string.Empty;
 
     [RedactedInLogs]
-    public string ReplaceText { get; set; } = string.Empty;
+    public string Replacement { get; set; } = string.Empty;
 
-    public bool MatchCase { get; set; }
-    public bool MatchWord { get; set; }
-    public bool UseRegex { get; set; }
+    public bool Literal { get; set; } = true;
+    public bool MatchCase { get; set; } = true;
+    public bool WholeWord { get; set; }
+    public bool Multiline { get; set; }
     public int FromLine { get; set; }
     public int ToLine { get; set; }
     public ReplaceFileResult ResultValue { get; private set; } = new(0, Array.Empty<FileEditAffectedRange>(), false);
@@ -37,10 +37,13 @@ public class ReplaceFileCommand : CommandBase, IReplaceFileCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        if (string.IsNullOrEmpty(SearchText))
+        var patternOptions = new SearchPatternOptions(Literal, MatchCase, WholeWord, Multiline);
+        var patternResult = SearchPattern.Compile(Pattern, patternOptions);
+        if (patternResult.IsFailure)
         {
-            return Result.Fail("Search text cannot be empty");
+            return Result.Fail(patternResult.FirstErrorMessage);
         }
+        var searchPattern = patternResult.Value;
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceFileSystem = workspaceService.ResourceService.FileSystem;
@@ -53,10 +56,10 @@ public class ReplaceFileCommand : CommandBase, IReplaceFileCommand
                 .WithErrors(infoResult);
         }
 
-        return await ReplaceOnDisk(resourceFileSystem);
+        return await ReplaceOnDisk(resourceFileSystem, searchPattern);
     }
 
-    private async Task<Result> ReplaceOnDisk(IResourceFileSystem resourceFileSystem)
+    private async Task<Result> ReplaceOnDisk(IResourceFileSystem resourceFileSystem, SearchPattern searchPattern)
     {
         var readResult = await resourceFileSystem.ReadAllTextAsync(FileResource);
         if (readResult.IsFailure)
@@ -66,28 +69,48 @@ public class ReplaceFileCommand : CommandBase, IReplaceFileCommand
         }
         var content = readResult.Value;
 
+        // A line break in the replacement takes the file's own line ending.
+        var separator = LineEndingHelper.DetectSeparatorOrDefault(content);
+        var replacementText = LineEndingHelper.ConvertLineEndings(Replacement, separator);
+        var replacementResult = searchPattern.CompileReplacement(replacementText);
+        if (replacementResult.IsFailure)
+        {
+            return Result.Fail(replacementResult.FirstErrorMessage);
+        }
+        var replacement = replacementResult.Value;
+
+        var (scopeStart, scopeEnd) = FindScope(content);
+        var scopeText = content.Substring(scopeStart, scopeEnd - scopeStart);
+        var matches = searchPattern.FindMatches(scopeText);
+
         // Match positions in the post-edit buffer plus the actual substituted
-        // text for each match. Regex back-references can make every match's
+        // text for each match. Group references can make every match's
         // substitution different, so we capture per-match output to compute
         // accurate line ranges later.
-        var matchOffsets = new List<int>();
-        var matchSubstitutions = new List<string>();
-        string newContent;
+        var matchOffsets = new List<int>(matches.Count);
+        var matchSubstitutions = new List<string>(matches.Count);
+        var newContent = new StringBuilder(content.Length);
+        var position = 0;
+        foreach (var match in matches)
+        {
+            var matchStart = scopeStart + match.Start;
+            newContent.Append(content, position, matchStart - position);
+            matchOffsets.Add(newContent.Length);
 
-        if (FromLine > 0 || ToLine > 0)
-        {
-            newContent = ApplyScopedReplacement(content, matchOffsets, matchSubstitutions);
+            var substitution = replacement.Expand(match);
+            matchSubstitutions.Add(substitution);
+            newContent.Append(substitution);
+
+            position = matchStart + match.Length;
         }
-        else
-        {
-            newContent = ApplyUnscopedReplacement(content, matchOffsets, matchSubstitutions);
-        }
+        newContent.Append(content, position, content.Length - position);
 
         var replacementCount = matchOffsets.Count;
+        var newText = newContent.ToString();
 
         if (replacementCount > 0)
         {
-            var writeResult = await resourceFileSystem.WriteAllTextAsync(FileResource, newContent);
+            var writeResult = await resourceFileSystem.WriteAllTextAsync(FileResource, newText);
             if (writeResult.IsFailure)
             {
                 return writeResult;
@@ -97,7 +120,7 @@ public class ReplaceFileCommand : CommandBase, IReplaceFileCommand
         var affectedRanges = new List<FileEditAffectedRange>(replacementCount);
         for (var i = 0; i < replacementCount; i++)
         {
-            affectedRanges.Add(FileEditMatching.RangeForReplacement(newContent, matchOffsets[i], matchSubstitutions[i]));
+            affectedRanges.Add(FileEditMatching.RangeForReplacement(newText, matchOffsets[i], matchSubstitutions[i]));
         }
 
         var mergedRanges = FileEditMatching.MergeSameLineRanges(affectedRanges);
@@ -107,170 +130,70 @@ public class ReplaceFileCommand : CommandBase, IReplaceFileCommand
         return Result.Ok();
     }
 
-    /// <summary>
-    /// When MatchWord is requested without UseRegex, the literal search is
-    /// translated into a regex with word-boundary anchors so the matcher can
-    /// honour the boundary constraint. UseRegex takes precedence — regex
-    /// callers add their own \b anchors if they want word matching.
-    /// </summary>
-    private bool ShouldRouteThroughRegex => UseRegex || MatchWord;
-
-    private string BuildEffectiveRegexPattern(string normalisedSearchText)
+    // Returns the span of the content that FromLine and ToLine select. The span runs from the start of the first line
+    // to the end of the last line's text, before its line break. A line ends at '\n', with or without a '\r' before it.
+    private (int Start, int End) FindScope(string content)
     {
-        if (UseRegex)
+        if (FromLine <= 0
+            && ToLine <= 0)
         {
-            return normalisedSearchText;
+            return (0, content.Length);
         }
-        return $@"\b{Regex.Escape(normalisedSearchText)}\b";
-    }
 
-    private string ApplyUnscopedReplacement(string content, List<int> matchOffsets, List<string> matchSubstitutions)
-    {
-        var sb = new StringBuilder(content.Length);
-
-        if (ShouldRouteThroughRegex)
+        var lineStarts = new List<int>
         {
-            // UseRegex passes SearchText verbatim; MatchWord wraps the escaped
-            // literal in \b...\b. Either way, ReplaceText is used as the
-            // substitution template (back-references supported by Match.Result).
-            var fileSeparator = LineEndingHelper.DetectSeparatorOrDefault(content);
-            var normalisedSearch = UseRegex
-                ? SearchText
-                : LineEndingHelper.ConvertLineEndings(SearchText, fileSeparator);
-            var pattern = BuildEffectiveRegexPattern(normalisedSearch);
-            var regexOptions = MatchCase ? RegexOptions.None : RegexOptions.IgnoreCase;
-            var regex = new Regex(pattern, regexOptions);
-            var lastEnd = 0;
-            foreach (Match match in regex.Matches(content))
+            0,
+        };
+        for (var index = 0; index < content.Length; index++)
+        {
+            if (content[index] == '\n'
+                && index + 1 < content.Length)
             {
-                sb.Append(content, lastEnd, match.Index - lastEnd);
-                matchOffsets.Add(sb.Length);
-                var substitution = match.Result(ReplaceText);
-                matchSubstitutions.Add(substitution);
-                sb.Append(substitution);
-                lastEnd = match.Index + match.Length;
+                lineStarts.Add(index + 1);
             }
-            sb.Append(content, lastEnd, content.Length - lastEnd);
-            return sb.ToString();
         }
 
-        // Normalise the search and replacement text to match the file's actual
-        // line endings. Agents typically construct strings with \n. Files on
-        // Windows use \r\n.
-        var separator = LineEndingHelper.DetectSeparatorOrDefault(content);
-        var searchText = LineEndingHelper.ConvertLineEndings(SearchText, separator);
-        var replaceText = LineEndingHelper.ConvertLineEndings(ReplaceText, separator);
-        var comparison = MatchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
-
-        var searchIndex = 0;
-        while (searchIndex < content.Length)
+        var start = 0;
+        if (FromLine > 0)
         {
-            var matchIndex = content.IndexOf(searchText, searchIndex, comparison);
-            if (matchIndex < 0)
+            if (FromLine > lineStarts.Count)
             {
-                sb.Append(content, searchIndex, content.Length - searchIndex);
-                break;
+                return (content.Length, content.Length);
             }
-
-            sb.Append(content, searchIndex, matchIndex - searchIndex);
-            matchOffsets.Add(sb.Length);
-            matchSubstitutions.Add(replaceText);
-            sb.Append(replaceText);
-            searchIndex = matchIndex + searchText.Length;
+            start = lineStarts[FromLine - 1];
         }
 
-        return sb.ToString();
-    }
-
-    private string ApplyScopedReplacement(string content, List<int> matchOffsets, List<string> matchSubstitutions)
-    {
-        // Line-based replacement for scoped operations. Multi-line patterns
-        // do not match across line breaks here — the line-by-line strategy
-        // preserves the historical behaviour and keeps positions easy to
-        // track. Per-edit absolute offsets in the post-edit buffer are
-        // accumulated as each new line is built.
-        var separator = LineEndingHelper.DetectSeparatorOrDefault(content);
-        var endsWithNewline = LineEndingHelper.EndsWithNewline(content);
-        var lines = LineEndingHelper.SplitToContentLines(content);
-
-        // The scoped path matches line-by-line against content with line
-        // terminators stripped, so we normalise every variant of SearchText
-        // here (including the UseRegex case). A literal \n in a regex pattern
-        // could never fire against an isolated line anyway. The unscoped
-        // branch is different: it passes the regex pattern through verbatim
-        // so the caller keeps full control over \n vs \r\n semantics.
-        var searchText = LineEndingHelper.ConvertLineEndings(SearchText, separator);
-        var replaceText = LineEndingHelper.ConvertLineEndings(ReplaceText, separator);
-        var comparison = MatchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
-        var regexOptions = MatchCase ? RegexOptions.None : RegexOptions.IgnoreCase;
-
-        Regex? regex = null;
-        if (ShouldRouteThroughRegex)
+        var end = content.Length;
+        if (ToLine > 0
+            && ToLine < lineStarts.Count)
         {
-            regex = new Regex(BuildEffectiveRegexPattern(searchText), regexOptions);
-        }
-
-        var newLines = new List<string>(lines.Count);
-        var absoluteOffset = 0;
-
-        for (var lineIndex = 0; lineIndex < lines.Count; lineIndex++)
-        {
-            var line = lines[lineIndex];
-            var lineNumber = lineIndex + 1;
-
-            string newLine;
-            if ((FromLine > 0 && lineNumber < FromLine) ||
-                (ToLine > 0 && lineNumber > ToLine))
+            end = lineStarts[ToLine] - 1;
+            if (end > 0
+                && content[end - 1] == '\r')
             {
-                newLine = line;
+                end--;
             }
-            else if (regex is not null)
+        }
+        else if (ToLine > 0)
+        {
+            end = content.Length;
+            if (end > 0
+                && content[end - 1] == '\n')
             {
-                var sb = new StringBuilder();
-                var lastEnd = 0;
-                foreach (Match match in regex.Matches(line))
+                end--;
+                if (end > 0
+                    && content[end - 1] == '\r')
                 {
-                    sb.Append(line, lastEnd, match.Index - lastEnd);
-                    matchOffsets.Add(absoluteOffset + sb.Length);
-                    var substitution = match.Result(replaceText);
-                    matchSubstitutions.Add(substitution);
-                    sb.Append(substitution);
-                    lastEnd = match.Index + match.Length;
+                    end--;
                 }
-                sb.Append(line, lastEnd, line.Length - lastEnd);
-                newLine = sb.ToString();
             }
-            else
-            {
-                var sb = new StringBuilder();
-                var searchOffset = 0;
-                while (searchOffset < line.Length)
-                {
-                    var matchPosition = line.IndexOf(searchText, searchOffset, comparison);
-                    if (matchPosition < 0)
-                    {
-                        sb.Append(line, searchOffset, line.Length - searchOffset);
-                        break;
-                    }
-                    sb.Append(line, searchOffset, matchPosition - searchOffset);
-                    matchOffsets.Add(absoluteOffset + sb.Length);
-                    matchSubstitutions.Add(replaceText);
-                    sb.Append(replaceText);
-                    searchOffset = matchPosition + searchText.Length;
-                }
-                newLine = sb.ToString();
-            }
-
-            newLines.Add(newLine);
-            absoluteOffset += newLine.Length + separator.Length;
         }
 
-        var output = string.Join(separator, newLines);
-        if (endsWithNewline && output.Length > 0)
+        if (end < start)
         {
-            output += separator;
+            return (start, start);
         }
 
-        return output;
+        return (start, end);
     }
 }

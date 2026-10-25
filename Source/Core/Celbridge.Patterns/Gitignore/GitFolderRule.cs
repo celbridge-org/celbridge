@@ -1,6 +1,6 @@
 using Celbridge.Projects;
 
-namespace Celbridge.Utilities;
+namespace Celbridge.Patterns;
 
 /// <summary>
 /// The rule that reserves the gitignore line '.git', in any letter case. The line matches a .git folder or file at

@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
@@ -16,10 +15,10 @@ public record class ListContentsFolderItem(string Name, string Type, string Modi
 
 public partial class FileTools
 {
-    /// <summary>List the immediate (single-level) children of a folder, with optional glob filter.</summary>
+    /// <summary>List the immediate (single-level) children of a folder, with an optional search filter.</summary>
     [McpServerTool(Name = "file_list_contents", ReadOnly = true)]
     [ToolAlias("file.list_contents")]
-    [RelatedGuides("resource_keys")]
+    [RelatedGuides("resource_keys", "search_filters")]
     public async partial Task<CallToolResult> ListContents(string resource, string glob = "")
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
@@ -37,17 +36,23 @@ public partial class FileTools
         }
         var snapshot = listContentsResult.Value;
 
-        Regex? globRegex = null;
-        if (!string.IsNullOrEmpty(glob))
+        var filterResult = SearchFilter.Compile(glob, string.Empty);
+        if (filterResult.IsFailure)
         {
-            var regexPattern = GlobHelper.GlobToRegex(glob);
-            globRegex = new Regex(regexPattern, RegexOptions.IgnoreCase);
+            return ToolResponse.Error(filterResult);
         }
+        var filter = filterResult.Value;
 
         var items = new List<object>();
         foreach (var entry in snapshot.Entries)
         {
-            if (globRegex is not null && !globRegex.IsMatch(entry.Name))
+            var entryPath = entry.Name;
+            if (!resourceKey.IsEmpty)
+            {
+                entryPath = $"{resourceKey.Path}/{entry.Name}";
+            }
+
+            if (!filter.IsMatch(entryPath, entry.IsFolder))
             {
                 continue;
             }

@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace Celbridge.Utilities;
+namespace Celbridge.Patterns;
 
 /// <summary>
 /// Matches paths against a tool's include and exclude patterns, read as ripgrep's globs. Each pattern is a gitignore
@@ -17,6 +17,11 @@ public sealed class SearchFilter
         _include = include;
         _exclude = exclude;
     }
+
+    /// <summary>
+    /// Returns true when the include parameter names a pattern that includes paths.
+    /// </summary>
+    public bool HasIncludePatterns => _include is not null;
 
     /// <summary>
     /// Compiles the include and exclude parameters. In the include parameter, a pattern that starts with '!'

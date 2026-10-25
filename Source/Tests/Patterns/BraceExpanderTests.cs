@@ -1,4 +1,4 @@
-namespace Celbridge.Tests.Utilities;
+namespace Celbridge.Tests.Patterns;
 
 [TestFixture]
 public class BraceExpanderTests

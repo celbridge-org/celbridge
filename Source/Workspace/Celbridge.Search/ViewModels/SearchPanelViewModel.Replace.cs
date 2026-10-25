@@ -141,12 +141,8 @@ public partial class SearchPanelViewModel
 
         try
         {
-            var allResults = await _searchService.SearchAsync(
-                SearchText,
-                MatchCase,
-                WholeWord,
-                maxResults: null,
-                CancellationToken.None);
+            var searchOptions = new SearchOptions(SearchText, Literal: true, MatchCase, WholeWord);
+            var allResults = await _searchService.SearchAsync(searchOptions, CancellationToken.None);
 
             if (allResults.TotalMatches == 0)
             {

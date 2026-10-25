@@ -1,5 +1,6 @@
 ﻿using Celbridge.Console.Helpers;
 using Celbridge.Logging;
+using Celbridge.Patterns;
 using Celbridge.Projects;
 using Celbridge.Utilities;
 using Celbridge.WebHost;

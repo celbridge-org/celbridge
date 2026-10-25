@@ -79,7 +79,7 @@ public sealed record InspectResult(
 /// <summary>
 /// Inspects one or more resources for sidecar health. Scope is resolved from
 /// Resources and Pattern: both empty means whole project, Resources only checks
-/// those specific keys, Pattern only matches via glob, and both together is the
+/// those specific keys, Pattern only matches via a search filter, and both together is the
 /// union. SummaryOnly trims per-record payloads while keeping status counts.
 /// </summary>
 public interface IInspectCommand : IExecutableCommand<InspectResult>
@@ -91,7 +91,7 @@ public interface IInspectCommand : IExecutableCommand<InspectResult>
     IReadOnlyList<ResourceKey> Resources { get; set; }
 
     /// <summary>
-    /// Glob pattern matched against resource keys (e.g. "assets/**"). Empty
+    /// Search filter patterns matched against each resource's path in the project (e.g. "assets/**"). Empty
     /// when Resources is the sole scope or when the scope is whole-project.
     /// </summary>
     string Pattern { get; set; }

@@ -5,7 +5,7 @@ Per-resource inventory and health for `.cel` sidecars. Scope ranges from a singl
 ## Parameters
 
 - `resources` — JSON array of resource keys to inspect (e.g. `["notes.md", "drafts/article.md"]`). Optional.
-- `pattern` — glob matched against resource keys (e.g. `"assets/**"`). Optional.
+- `pattern` — search filter matched against each resource's path in the project (e.g. `"assets/**"` or `"*.md"`). The rules are in `search_filters`. Optional.
 - `summaryOnly` — boolean. When `true`, `tags` and `fields` drop from each record; `status` and `parseError` stay. The aggregate summary counts always populate. Defaults to `false`.
 
 Scope resolution mirrors `file_grep`:
@@ -14,7 +14,7 @@ Scope resolution mirrors `file_grep`:
 |---|---|---|
 | empty | empty | Whole project: every parent file that could carry a sidecar, plus every orphan/broken/invalid sidecar. |
 | set | empty | Just the listed keys. |
-| empty | set | Every resource key matching the glob. |
+| empty | set | Every resource key matching the filter. |
 | set | set | Union of the two. |
 
 A whole-project or pattern inspection walks the project each time it is called. The walk leaves out what the project's `search-exclude` list matches. Name a resource in `resources` to inspect it anyway.

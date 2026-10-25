@@ -1,3 +1,4 @@
+using Celbridge.Patterns;
 using Celbridge.Resources;
 
 namespace Celbridge.Utilities;

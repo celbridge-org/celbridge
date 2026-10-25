@@ -1,12 +1,12 @@
 using System.Text;
 
-namespace Celbridge.Utilities;
+namespace Celbridge.Patterns;
 
 /// <summary>
 /// Expands the braces in a glob, so 'src/*.{ts,tsx}' becomes 'src/*.ts' and 'src/*.tsx'. Braces can nest. A
 /// character after '\' and the characters inside a class like '[{,]' stay as written.
 /// </summary>
-public static class BraceExpander
+internal static class BraceExpander
 {
     /// <summary>
     /// Caps how many patterns one glob can expand to.

@@ -1,7 +1,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace Celbridge.Utilities;
+namespace Celbridge.Patterns;
 
 /// <summary>
 /// One line of a gitignore list, compiled with git's rules for reading the line and matching it.

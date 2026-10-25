@@ -26,42 +26,45 @@ public interface IReplaceFileCommand : IExecutableCommand<ReplaceFileResult>
     ResourceKey FileResource { get; set; }
 
     /// <summary>
-    /// The text to search for.
+    /// The search pattern: a regex in ripgrep's dialect, or plain text when Literal is true.
     /// </summary>
-    string SearchText { get; set; }
+    string Pattern { get; set; }
 
     /// <summary>
-    /// The replacement text.
+    /// The replacement. For a regex it follows ripgrep's --replace, so '$1' and '$name' write a group. For plain
+    /// text it is plain text.
     /// </summary>
-    string ReplaceText { get; set; }
+    string Replacement { get; set; }
 
     /// <summary>
-    /// If true, the search is case-sensitive.
+    /// If true, the pattern is plain text.
+    /// </summary>
+    bool Literal { get; set; }
+
+    /// <summary>
+    /// If true, the search matches letter case exactly.
     /// </summary>
     bool MatchCase { get; set; }
 
     /// <summary>
-    /// If true, the search matches whole words only — the match must start and
-    /// end on a word boundary. Ignored when UseRegex is true; regex users add
-    /// their own \b anchors. Has no effect when UseRegex is false and the
-    /// search text already starts and ends on non-word characters.
+    /// If true, a match counts only when no word character touches it on either side.
     /// </summary>
-    bool MatchWord { get; set; }
+    bool WholeWord { get; set; }
 
     /// <summary>
-    /// If true, the search text is treated as a regular expression.
+    /// If true, the pattern can match across lines. Otherwise it matches within one line.
     /// </summary>
-    bool UseRegex { get; set; }
+    bool Multiline { get; set; }
 
     /// <summary>
     /// First line number (1-based, inclusive) to include in the replacement scope.
-    /// Zero means no lower bound — all lines from the start of the file are included.
+    /// Zero means no lower bound, so the scope starts at the first line.
     /// </summary>
     int FromLine { get; set; }
 
     /// <summary>
     /// Last line number (1-based, inclusive) to include in the replacement scope.
-    /// Zero means no upper bound — all lines to the end of the file are included.
+    /// Zero means no upper bound, so the scope runs to the end of the file.
     /// </summary>
     int ToLine { get; set; }
 }

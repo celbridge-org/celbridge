@@ -315,12 +315,11 @@ public partial class SearchPanelViewModel : ObservableObject
             IsSearching = true;
             StatusText = _stringLocalizer.GetString("SearchPanel_Searching");
 
-            var results = await _searchService.SearchAsync(
-                SearchText,
-                MatchCase,
-                WholeWord,
-                maxResults: MaxSearchResults,
-                cancellationToken);
+            var searchOptions = new SearchOptions(SearchText, Literal: true, MatchCase, WholeWord)
+            {
+                MaxResults = MaxSearchResults,
+            };
+            var results = await _searchService.SearchAsync(searchOptions, cancellationToken);
 
             if (cancellationToken.IsCancellationRequested)
             {

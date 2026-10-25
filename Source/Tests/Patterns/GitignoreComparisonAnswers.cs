@@ -1,4 +1,4 @@
-namespace Celbridge.Tests.Utilities;
+namespace Celbridge.Tests.Patterns;
 
 /// <summary>
 /// The paths git ignores for each list in GitignoreComparisonCases. GitignoreComparisonRecorder writes this file.

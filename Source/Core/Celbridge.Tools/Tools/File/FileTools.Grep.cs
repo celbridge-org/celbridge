@@ -1,14 +1,15 @@
 using System.Text.Json;
-using System.Text.RegularExpressions;
+using Celbridge.Search;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
 namespace Celbridge.Tools;
 
 /// <summary>
-/// Top-level result returned by file_grep with match totals and per-file results.
+/// Top-level result returned by file_grep with match totals and per-file results. Warning is set when the include
+/// patterns matched no file.
 /// </summary>
-public record class GrepResult(int TotalMatches, int TotalFiles, bool Truncated, List<GrepFileResult> Files);
+public record class GrepResult(int TotalMatches, int TotalFiles, bool Truncated, List<GrepFileResult> Files, string? Warning = null);
 
 /// <summary>
 /// Per-file result within a file_grep response. MatchCount is always populated; Matches is empty
@@ -33,6 +34,11 @@ public record class GrepMatchWithContext(int LineNumber, string LineText, int Ma
 /// </summary>
 public record class GrepOversizeError(string Error, int TotalMatches, int TotalFiles, int ResponseChars, int LimitChars, string Hint);
 
+/// <summary>
+/// Sets how many matches file_grep returns, and the context and content that come with each one.
+/// </summary>
+internal sealed record GrepOutputOptions(int MaxResults, int ContextLines, bool IncludeContent, bool SummaryOnly);
+
 public partial class FileTools
 {
     /// <summary>
@@ -43,23 +49,28 @@ public partial class FileTools
     /// </summary>
     private const int MaxGrepResponseChars = 50_000;
 
-    /// <summary>Search file contents by text or regex across the project, with optional context lines.</summary>
+    /// <summary>Search file contents with a ripgrep regex or plain text, with optional context lines.</summary>
     [McpServerTool(Name = "file_grep", ReadOnly = true)]
     [ToolAlias("file.grep")]
-    [RelatedGuides("resource_keys", "regex_syntax")]
-    public async partial Task<CallToolResult> Grep(string searchTerm, bool useRegex = false, bool matchCase = false, bool wholeWord = false, string include = "", string exclude = "", string resource = "", int maxResults = 100, int contextLines = 0, string files = "", bool includeContent = false, bool summaryOnly = false)
+    [RelatedGuides("resource_keys", "regex_syntax", "search_filters")]
+    public async partial Task<CallToolResult> Grep(string pattern, bool literal = false, bool matchCase = true, bool wholeWord = false, string path = "", string include = "", string exclude = "", int maxResults = 100, int contextLines = 0, string files = "", bool includeContent = false, bool summaryOnly = false)
     {
-        if (useRegex)
+        var patternOptions = new SearchPatternOptions(literal, matchCase, wholeWord, Multiline: false);
+        var patternResult = SearchPattern.Compile(pattern, patternOptions);
+        if (patternResult.IsFailure)
         {
-            try
-            {
-                _ = new Regex(searchTerm);
-            }
-            catch (ArgumentException ex)
-            {
-                return ToolResponse.Error($"Invalid regular expression: {ex.Message}");
-            }
+            return ToolResponse.Error(patternResult);
         }
+        var searchPattern = patternResult.Value;
+
+        var filterResult = SearchFilter.Compile(include, exclude);
+        if (filterResult.IsFailure)
+        {
+            return ToolResponse.Error(filterResult);
+        }
+        var filter = filterResult.Value;
+
+        var output = new GrepOutputOptions(maxResults, contextLines, includeContent, summaryOnly);
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
         var resourceService = workspaceWrapper.WorkspaceService.ResourceService;
@@ -67,35 +78,31 @@ public partial class FileTools
 
         if (!string.IsNullOrEmpty(files))
         {
-            return await GrepTargetedFiles(files, searchTerm, useRegex, matchCase, wholeWord, maxResults, contextLines, includeContent, summaryOnly, resourceFileSystem);
+            return await GrepTargetedFiles(files, searchPattern, output, resourceFileSystem);
         }
 
-        // A scope under another root (temp:, logs:) is listed here and matched the same way the files= path is.
-        // A bare or project: scope goes to SearchService.
+        // A path under another root (temp:, logs:) is listed here and matched the same way the files= path is.
+        // A bare or project: path goes to SearchService.
         var rootHandlerRegistry = resourceService.RootHandlers;
-        if (!string.IsNullOrEmpty(resource)
-            && ResourceKey.TryCreate(resource, out var scopeKey)
+        if (!string.IsNullOrEmpty(path)
+            && ResourceKey.TryCreate(path, out var scopeKey)
             && scopeKey.Root != ResourceKey.DefaultRoot
             && rootHandlerRegistry.RootHandlers.ContainsKey(scopeKey.Root))
         {
-            return await GrepNonDefaultRootScopeAsync(
-                scopeKey, searchTerm, useRegex, matchCase, wholeWord, include, exclude,
-                maxResults, contextLines, includeContent, summaryOnly, resourceService);
+            return await GrepNonDefaultRootScopeAsync(scopeKey, searchPattern, filter, include, output, resourceService);
         }
 
         var searchService = workspaceWrapper.WorkspaceService.SearchService;
 
-        var results = await searchService.SearchAsync(
-            searchTerm,
-            matchCase,
-            wholeWord,
-            maxResults,
-            CancellationToken.None,
-            useRegex,
-            include,
-            exclude,
-            resource,
-            includeMetadataFiles: true);
+        var searchOptions = new SearchOptions(pattern, literal, matchCase, wholeWord)
+        {
+            MaxResults = maxResults,
+            Include = include,
+            Exclude = exclude,
+            Scope = path,
+            IncludeMetadataFiles = true,
+        };
+        var results = await searchService.SearchAsync(searchOptions, CancellationToken.None);
 
         var truncated = results.ReachedMaxResults || results.WasCancelled;
 
@@ -173,8 +180,21 @@ public partial class FileTools
                 fileContent));
         }
 
-        var grepResult = new GrepResult(results.TotalMatches, results.TotalFiles, truncated, fileResults);
+        var warning = IncludeWarning(filter, include, results.FilesMatchingFilters);
+        var grepResult = new GrepResult(results.TotalMatches, results.TotalFiles, truncated, fileResults, warning);
         return BuildGrepResponse(grepResult);
+    }
+
+    // Returns a warning when the include patterns matched no file, so a wrong filter shows in the result.
+    private static string? IncludeWarning(SearchFilter filter, string include, int filesMatchingFilters)
+    {
+        if (!filter.HasIncludePatterns
+            || filesMatchingFilters > 0)
+        {
+            return null;
+        }
+
+        return $"No file matched the include patterns '{include}'. A pattern with no '/' matches a name at any depth, like '*.py'. A pattern with a '/' is relative to the root, like 'src/**/*.py', even when path names a folder.";
     }
 
     private static CallToolResult BuildGrepResponse(GrepResult grepResult)
@@ -191,7 +211,7 @@ public partial class FileTools
             TotalFiles: grepResult.TotalFiles,
             ResponseChars: json.Length,
             LimitChars: MaxGrepResponseChars,
-            Hint: "Re-run with summaryOnly:true to probe, then narrow scope via resource, include/exclude, or files.");
+            Hint: "Re-run with summaryOnly:true to probe, then narrow scope via path, include/exclude, or files.");
 
         return new CallToolResult
         {
@@ -230,7 +250,7 @@ public partial class FileTools
         return lines.ToArray();
     }
 
-    private async Task<CallToolResult> GrepTargetedFiles(string filesJson, string searchTerm, bool useRegex, bool matchCase, bool wholeWord, int maxResults, int contextLines, bool includeContent, bool summaryOnly, IResourceFileSystem resourceFileSystem)
+    private async Task<CallToolResult> GrepTargetedFiles(string filesJson, SearchPattern searchPattern, GrepOutputOptions output, IResourceFileSystem resourceFileSystem)
     {
         // Detect the most common mis-use: a glob or single path passed where a
         // JSON array is required. The raw JsonException for this case ("'w' is
@@ -272,27 +292,22 @@ public partial class FileTools
             }
         }
 
-        return await GrepFileListAsync(targets, searchTerm, useRegex, matchCase, wholeWord, maxResults, contextLines, includeContent, summaryOnly, resourceFileSystem);
+        var grepResult = await GrepFileListAsync(targets, searchPattern, output, resourceFileSystem);
+        return BuildGrepResponse(grepResult);
     }
 
-    // Lists a scope under another root (temp:, logs:): the one file the scope names, or the files inside the scope
-    // folder. The files are matched the same way the files= path matches, with include/exclude applied to the file
-    // name.
+    // Lists a path under another root (temp:, logs:): the one file the path names, or the files inside the folder.
+    // The files are matched the same way the files= path matches. The filter matches each file's path within its
+    // root.
     private async Task<CallToolResult> GrepNonDefaultRootScopeAsync(
         ResourceKey scopeKey,
-        string searchTerm,
-        bool useRegex,
-        bool matchCase,
-        bool wholeWord,
+        SearchPattern searchPattern,
+        SearchFilter filter,
         string include,
-        string exclude,
-        int maxResults,
-        int contextLines,
-        bool includeContent,
-        bool summaryOnly,
+        GrepOutputOptions output,
         IResourceService resourceService)
     {
-        // If the scope is a file, grep that file. Otherwise grep every file in the scope folder. A failed walk finds no
+        // If the path is a file, grep that file. Otherwise grep every file in the folder. A failed walk finds no
         // files.
         var fileKeys = new List<ResourceKey>();
         var scopeIsFile = false;
@@ -320,54 +335,26 @@ public partial class FileTools
             }
         }
 
-        var includeRegex = GlobHelper.BuildNameMatcher(include);
-        var excludeRegex = GlobHelper.BuildNameMatcher(exclude);
+        var targets = fileKeys
+            .Where(fileKey => filter.IsMatch(fileKey.Path, isFolder: false))
+            .Select(fileKey => (fileKey, fileKey.ToString()))
+            .ToList();
 
-        var targets = new List<(ResourceKey Key, string Display)>();
-        foreach (var fileKey in fileKeys)
-        {
-            var fileName = fileKey.ResourceName;
-            if (includeRegex is not null
-                && !includeRegex.IsMatch(fileName))
-            {
-                continue;
-            }
-            if (excludeRegex is not null
-                && excludeRegex.IsMatch(fileName))
-            {
-                continue;
-            }
+        var grepResult = await GrepFileListAsync(targets, searchPattern, output, resourceService.FileSystem);
+        var warning = IncludeWarning(filter, include, targets.Count);
 
-            targets.Add((fileKey, fileKey.ToString()));
-        }
-
-        return await GrepFileListAsync(targets, searchTerm, useRegex, matchCase, wholeWord, maxResults, contextLines, includeContent, summaryOnly, resourceService.FileSystem);
+        return BuildGrepResponse(grepResult with { Warning = warning });
     }
 
     // Greps an explicit list of files, accumulating matches up to maxResults.
     // Shared by the targeted files= path and the non-default-root scope walk;
     // each target carries the display string used for its result Resource field.
-    private async Task<CallToolResult> GrepFileListAsync(
+    private async Task<GrepResult> GrepFileListAsync(
         List<(ResourceKey Key, string Display)> targets,
-        string searchTerm,
-        bool useRegex,
-        bool matchCase,
-        bool wholeWord,
-        int maxResults,
-        int contextLines,
-        bool includeContent,
-        bool summaryOnly,
+        SearchPattern searchPattern,
+        GrepOutputOptions output,
         IResourceFileSystem resourceFileSystem)
     {
-        var searchPattern = useRegex ? searchTerm : Regex.Escape(searchTerm);
-        if (wholeWord && !useRegex)
-        {
-            searchPattern = $@"\b{searchPattern}\b";
-        }
-
-        var regexOptions = matchCase ? RegexOptions.None : RegexOptions.IgnoreCase;
-        var searchRegex = new Regex(searchPattern, regexOptions);
-
         var fileResults = new List<GrepFileResult>();
         int totalMatches = 0;
         bool truncated = false;
@@ -395,18 +382,18 @@ public partial class FileTools
             for (int lineIdx = 0; lineIdx < fileLines.Length && !truncated; lineIdx++)
             {
                 var lineText = fileLines[lineIdx];
-                var lineMatches = searchRegex.Matches(lineText);
+                var lineMatches = searchPattern.FindMatches(lineText);
 
-                foreach (Match regexMatch in lineMatches)
+                foreach (var lineMatch in lineMatches)
                 {
                     var lineNumber = lineIdx + 1;
 
-                    if (!summaryOnly)
+                    if (!output.SummaryOnly)
                     {
-                        if (contextLines > 0)
+                        if (output.ContextLines > 0)
                         {
-                            var contextBeforeStart = Math.Max(0, lineIdx - contextLines);
-                            var contextAfterEnd = Math.Min(fileLines.Length - 1, lineIdx + contextLines);
+                            var contextBeforeStart = Math.Max(0, lineIdx - output.ContextLines);
+                            var contextAfterEnd = Math.Min(fileLines.Length - 1, lineIdx + output.ContextLines);
 
                             var contextBefore = new List<string>();
                             for (int i = contextBeforeStart; i < lineIdx; i++)
@@ -423,20 +410,20 @@ public partial class FileTools
                             matchList.Add(new GrepMatchWithContext(
                                 lineNumber,
                                 lineText,
-                                regexMatch.Index,
-                                regexMatch.Length,
+                                lineMatch.Start,
+                                lineMatch.Length,
                                 contextBefore,
                                 contextAfter));
                         }
                         else
                         {
-                            matchList.Add(new GrepMatch(lineNumber, lineText, regexMatch.Index, regexMatch.Length));
+                            matchList.Add(new GrepMatch(lineNumber, lineText, lineMatch.Start, lineMatch.Length));
                         }
                     }
 
                     fileMatchCount++;
                     totalMatches++;
-                    if (totalMatches >= maxResults)
+                    if (totalMatches >= output.MaxResults)
                     {
                         truncated = true;
                         break;
@@ -447,8 +434,8 @@ public partial class FileTools
             if (fileMatchCount > 0)
             {
                 string? fileContent = null;
-                if (includeContent
-                    && !summaryOnly)
+                if (output.IncludeContent
+                    && !output.SummaryOnly)
                 {
                     fileContent = string.Join(Environment.NewLine, fileLines);
                 }
@@ -462,8 +449,6 @@ public partial class FileTools
             }
         }
 
-        var grepResult = new GrepResult(totalMatches, fileResults.Count, truncated, fileResults);
-        return BuildGrepResponse(grepResult);
+        return new GrepResult(totalMatches, fileResults.Count, truncated, fileResults);
     }
-
 }

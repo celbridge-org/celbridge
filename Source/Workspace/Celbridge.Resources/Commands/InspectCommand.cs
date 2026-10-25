@@ -1,5 +1,4 @@
 using System.Text;
-using System.Text.RegularExpressions;
 using Celbridge.Commands;
 using Celbridge.Resources.Helpers;
 using Celbridge.Workspace;
@@ -9,7 +8,7 @@ namespace Celbridge.Resources.Commands;
 /// <summary>
 /// Inspects sidecar health for a scope of resources. Scope is resolved from
 /// Resources and Pattern: both empty means whole project, Resources only
-/// checks those keys, Pattern only matches via glob, and both together is
+/// checks those keys, Pattern only matches via a search filter, and both together is
 /// the union. SummaryOnly trims per-record payloads while keeping counts.
 /// </summary>
 public sealed class InspectCommand : CommandBase, IInspectCommand
@@ -90,17 +89,18 @@ public sealed class InspectCommand : CommandBase, IInspectCommand
             var candidates = BuildWholeProjectScope(sidecarPairs);
             if (hasPattern)
             {
-                // Pattern mode filters over the same candidate set as whole-project,
-                // so a `**` glob matches the same universe (parents + attention-state
-                // sidecars) rather than doubling up parent and healthy-sidecar
-                // entries. Match against the bare Path: PathGlobToRegex builds an
-                // anchored regex that expects a path like "foo/bar.md", not the
-                // canonical "project:foo/bar.md" form ToString() emits.
-                var regexPattern = GlobHelper.PathGlobToRegex(Pattern);
-                var regex = new Regex(regexPattern, RegexOptions.IgnoreCase);
+                // Pattern mode filters the same candidates as a whole-project inspection: the parents and the
+                // sidecars that need attention. The filter matches each candidate's path within the project.
+                var filterResult = SearchFilter.Compile(Pattern, string.Empty);
+                if (filterResult.IsFailure)
+                {
+                    return Result.Fail(filterResult.FirstErrorMessage);
+                }
+                var filter = filterResult.Value;
+
                 foreach (var candidate in candidates)
                 {
-                    if (regex.IsMatch(candidate.Path))
+                    if (filter.IsMatch(candidate.Path, isFolder: false))
                     {
                         scope.Add(candidate);
                     }

@@ -17,17 +17,18 @@ public record class ReplaceResult(
 
 public partial class FileTools
 {
-    /// <summary>Find and replace text in a file using a literal or regex pattern, optionally within a line range.</summary>
+    /// <summary>Find and replace in a file with plain text or a ripgrep regex, optionally within a line range.</summary>
     [McpServerTool(Name = "file_replace")]
     [ToolAlias("file.replace")]
     [RelatedGuides("resource_keys", "regex_syntax", "editing_documents", "file_changes")]
     public async partial Task<CallToolResult> Replace(
         string fileResource,
-        string searchText,
-        string replaceText,
+        string pattern,
+        string replacement,
+        bool literal = true,
         bool matchCase = true,
-        bool matchWord = false,
-        bool useRegex = false,
+        bool wholeWord = false,
+        bool multiline = false,
         int fromLine = 0,
         int toLine = 0)
     {
@@ -36,14 +37,30 @@ public partial class FileTools
             return ToolResponse.InvalidResourceKey(fileResource);
         }
 
+        // A refused pattern or replacement fails the call before the command runs.
+        var patternOptions = new SearchPatternOptions(literal, matchCase, wholeWord, multiline);
+        var patternResult = SearchPattern.Compile(pattern, patternOptions);
+        if (patternResult.IsFailure)
+        {
+            return ToolResponse.Error(patternResult);
+        }
+        var searchPattern = patternResult.Value;
+
+        var replacementResult = searchPattern.CompileReplacement(replacement);
+        if (replacementResult.IsFailure)
+        {
+            return ToolResponse.Error(replacementResult);
+        }
+
         var findReplaceResult = await ExecuteCommandAsync<IReplaceFileCommand, ReplaceFileResult>(command =>
         {
             command.FileResource = fileResourceKey;
-            command.SearchText = searchText;
-            command.ReplaceText = replaceText;
+            command.Pattern = pattern;
+            command.Replacement = replacement;
+            command.Literal = literal;
             command.MatchCase = matchCase;
-            command.MatchWord = matchWord;
-            command.UseRegex = useRegex;
+            command.WholeWord = wholeWord;
+            command.Multiline = multiline;
             command.FromLine = fromLine;
             command.ToLine = toLine;
         });

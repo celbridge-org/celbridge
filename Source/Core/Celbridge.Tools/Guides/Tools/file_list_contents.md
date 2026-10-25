@@ -10,7 +10,7 @@ Folder resource key. The empty string `""` lists the project root — the canoni
 
 ### glob
 
-Optional glob matched (case-insensitively) against entry names. The match is on the bare name only, not the full path, so `*.py` filters to Python files in that folder.
+Optional search filter. The rules are in `search_filters`. Letter case is ignored. A pattern with no `/` matches the entry's name, so `*.py` filters to Python files in that folder. A pattern with a `/` is relative to the root, not to the folder listed.
 
 ## Returns
 

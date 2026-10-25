@@ -40,13 +40,13 @@ public interface IArchiveResourceCommand : IExecutableCommand<ArchiveResult>
     ResourceKey ArchiveResource { get; set; }
 
     /// <summary>
-    /// Semicolon-separated glob patterns to include (e.g. "*.py;*.md").
-    /// When empty, all files are included.
+    /// Search filter patterns to include, separated by commas (e.g. "*.py,*.md"). When empty, all files are
+    /// included.
     /// </summary>
     string Include { get; set; }
 
     /// <summary>
-    /// Semicolon-separated glob patterns to exclude (e.g. "__pycache__;.git").
+    /// Search filter patterns to exclude, separated by commas (e.g. "__pycache__,*.log").
     /// </summary>
     string Exclude { get; set; }
 

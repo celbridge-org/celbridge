@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Celbridge.Tests.Utilities;
+namespace Celbridge.Tests.Patterns;
 
 /// <summary>
 /// A path in the comparison tree. Listed is the path from the Tree list, which ends in '/' for a folder.

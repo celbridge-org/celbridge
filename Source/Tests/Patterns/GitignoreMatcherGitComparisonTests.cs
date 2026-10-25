@@ -1,4 +1,4 @@
-namespace Celbridge.Tests.Utilities;
+namespace Celbridge.Tests.Patterns;
 
 /// <summary>
 /// Compares GitignoreMatcher with git's recorded answers. GitignoreComparisonRecorder records them from git

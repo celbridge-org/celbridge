@@ -23,6 +23,7 @@
     <Project Path="Source/Core/Celbridge.Tools/Celbridge.Tools.csproj" />
     <Project Path="Source/Core/Celbridge.Messaging/Celbridge.Messaging.csproj" />
     <Project Path="Source/Core/Celbridge.Modules/Celbridge.Modules.csproj" />
+    <Project Path="Source/Core/Celbridge.Patterns/Celbridge.Patterns.csproj" />
     <Project Path="Source/Core/Celbridge.Projects/Celbridge.Projects.csproj" />
     <Project Path="Source/Core/Celbridge.Settings/Celbridge.Settings.csproj" />
     <Project Path="Source/Core/Celbridge.UserInterface/Celbridge.UserInterface.csproj" />

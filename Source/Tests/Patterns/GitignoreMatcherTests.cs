@@ -1,4 +1,4 @@
-namespace Celbridge.Tests.Utilities;
+namespace Celbridge.Tests.Patterns;
 
 /// <summary>
 /// Covers refused lines, letter case and CanMatchInside. GitignoreMatcherGitComparisonTests covers how lines

@@ -6,7 +6,7 @@ The `file` namespace operates on the contents of files in the project tree: read
 
 - **Edits write straight to disk.** `file_write`, `file_edit`, `file_multi_edit`, `file_replace`, and `file_write_binary` save immediately. If the document is open, the editor reloads from disk and Monaco's undo history is wiped. The agent's edit cannot be reverted with Ctrl+Z. See `file_changes`.
 - **Resource keys are forward-slash relative paths.** No backslashes, no absolute paths. See `resource_keys`.
-- **`file_grep` and `file_replace` use .NET regex syntax.** See `regex_syntax`.
+- **`file_grep` and `file_replace` read patterns the way ripgrep does.** `file_grep` reads a regex by default, and `file_replace` reads plain text by default. See `regex_syntax`. Tools that filter files take ripgrep's globs. See `search_filters`.
 - **Reading binary content takes a separate tool.** `file_read` returns text; `file_read_binary` returns base64. `file_read_image` returns an inline image content block for vision-capable models.
 
 ## Picking an edit tool
@@ -32,8 +32,8 @@ The `file` namespace operates on the contents of files in the project tree: read
 
 **Searching.**
 
-- `file_grep` — regex search across file contents.
-- `file_search` — fuzzy / glob search by name.
+- `file_grep` — regex or plain-text search across file contents.
+- `file_search` — search by name or path with a filter like `*.py` or `src/**`.
 
 **Writing.**
 

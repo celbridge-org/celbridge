@@ -94,8 +94,12 @@ public class ArchiveResourceCommand : CommandBase, IArchiveResourceCommand
             return Result.Fail($"Archive already exists: '{ArchiveResource}'. Set overwrite to true to replace it.");
         }
 
-        var includeRegexes = ArchiveHelper.ParseGlobPatterns(Include);
-        var excludeRegexes = ArchiveHelper.ParseGlobPatterns(Exclude);
+        var filterResult = SearchFilter.Compile(Include, Exclude);
+        if (filterResult.IsFailure)
+        {
+            return Result.Fail(filterResult.FirstErrorMessage);
+        }
+        var filter = filterResult.Value;
 
         // If overwriting, delete the existing file first so it can be restored on undo
         if (Overwrite && archiveExists)
@@ -114,7 +118,7 @@ public class ArchiveResourceCommand : CommandBase, IArchiveResourceCommand
         {
             var sourceFiles = await ArchiveHelper.CollectSourceFilesAsync(resourceFileSystem, SourceResource, isFolder);
             var includedFiles = sourceFiles
-                .Where(sourceFile => ArchiveHelper.ShouldIncludeFile(sourceFile.EntryName, includeRegexes, excludeRegexes))
+                .Where(sourceFile => filter.IsMatch(sourceFile.Resource.Path, isFolder: false))
                 .ToList();
 
             using var memoryStream = new MemoryStream();

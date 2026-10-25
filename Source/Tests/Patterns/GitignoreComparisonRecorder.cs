@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
 
-namespace Celbridge.Tests.Utilities;
+namespace Celbridge.Tests.Patterns;
 
 /// <summary>
 /// Records git's answers for the comparison cases into GitignoreComparisonAnswers.cs. Run it after changing the tree
@@ -91,7 +91,7 @@ public class GitignoreComparisonRecorder
         }
 
         var source = new StringBuilder();
-        source.Append("namespace Celbridge.Tests.Utilities;\n");
+        source.Append("namespace Celbridge.Tests.Patterns;\n");
         source.Append('\n');
         source.Append("/// <summary>\n");
         source.Append("/// The paths git ignores for each list in GitignoreComparisonCases. GitignoreComparisonRecorder writes this file.\n");
