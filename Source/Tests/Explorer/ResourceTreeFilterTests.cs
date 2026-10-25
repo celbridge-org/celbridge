@@ -4,8 +4,8 @@ using Celbridge.Resources;
 namespace Celbridge.Tests.Explorer;
 
 /// <summary>
-/// Covers what the Explorer tree hides unless the tree is showing hidden files: .cel files, and the resources
-/// the Explorer's list excludes.
+/// Covers what the Explorer tree hides unless the tree is showing hidden files: .cel files, and what the
+/// Explorer's list excludes.
 /// </summary>
 [TestFixture]
 public class ResourceTreeFilterTests

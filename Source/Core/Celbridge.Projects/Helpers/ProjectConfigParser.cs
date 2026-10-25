@@ -167,14 +167,8 @@ public static class ProjectConfigParser
             celbridgeObject is TomlTable celbridgeTable)
         {
             celbridgeSection = ParseCelbridgeTable(celbridgeTable, entryErrors, out featuresDict);
-            explorerSection = new ExplorerSection
-            {
-                Exclude = ParseExcludeList(celbridgeTable, ExplorerKey, entryErrors),
-            };
-            searchSection = new SearchSection
-            {
-                Exclude = ParseExcludeList(celbridgeTable, SearchKey, entryErrors),
-            };
+            explorerSection = ParseExplorerTable(celbridgeTable, entryErrors);
+            searchSection = ParseSearchTable(celbridgeTable, entryErrors);
             downloadsSection = ParseDownloadsTable(celbridgeTable, entryErrors);
             packagesSection = ParsePackagesTable(celbridgeTable, entryErrors);
         }
@@ -339,19 +333,20 @@ public static class ProjectConfigParser
         };
     }
 
-    // Reads the exclude list of the [celbridge.<key>] sub-table. A missing table or key is an empty list.
-    private static IReadOnlyList<string> ParseExcludeList(
-        TomlTable celbridgeTable,
-        string key,
-        List<ProjectConfigEntryError> entryErrors)
+    private static ExplorerSection ParseExplorerTable(TomlTable celbridgeTable, List<ProjectConfigEntryError> entryErrors)
     {
-        var listTable = ReadSubTable(celbridgeTable, key, KnownExcludeListKeys, entryErrors);
-        if (listTable is null)
+        return new ExplorerSection
         {
-            return Array.Empty<string>();
-        }
+            Exclude = ReadExcludeList(celbridgeTable, ExplorerKey, entryErrors),
+        };
+    }
 
-        return ReadPatternList(listTable, $"{CelbridgeSectionName}.{key}", ExcludeKey, entryErrors) ?? Array.Empty<string>();
+    private static SearchSection ParseSearchTable(TomlTable celbridgeTable, List<ProjectConfigEntryError> entryErrors)
+    {
+        return new SearchSection
+        {
+            Exclude = ReadExcludeList(celbridgeTable, SearchKey, entryErrors),
+        };
     }
 
     private static DownloadsSection ParseDownloadsTable(TomlTable celbridgeTable, List<ProjectConfigEntryError> entryErrors)
@@ -383,6 +378,13 @@ public static class ProjectConfigParser
         };
     }
 
+    // Returns a [celbridge] sub-table's dotted name, like "celbridge.packages". Entry errors name a sub-table
+    // this way.
+    private static string SubTableName(string key)
+    {
+        return $"{CelbridgeSectionName}.{key}";
+    }
+
     // Returns the [celbridge.<key>] sub-table, or null when the file has none or the key is not a table.
     private static TomlTable? ReadSubTable(
         TomlTable celbridgeTable,
@@ -395,7 +397,7 @@ public static class ProjectConfigParser
             return null;
         }
 
-        var tableName = $"{CelbridgeSectionName}.{key}";
+        var tableName = SubTableName(key);
 
         if (subTableObject is not TomlTable subTable)
         {
@@ -417,17 +419,23 @@ public static class ProjectConfigParser
         return subTable;
     }
 
-    // Reports and drops each refused line. The rest of the list applies.
-    private static IReadOnlyList<string>? ReadPatternList(
-        TomlTable listTable,
-        string tableName,
-        string key,
+    // Returns the [celbridge.<tableKey>] sub-table's exclude list. A missing table or key is an empty list. Reports
+    // and drops each refused line, and the rest of the list applies.
+    private static IReadOnlyList<string> ReadExcludeList(
+        TomlTable celbridgeTable,
+        string tableKey,
         List<ProjectConfigEntryError> entryErrors)
     {
-        var lines = ReadStringList(listTable, key);
+        var listTable = ReadSubTable(celbridgeTable, tableKey, KnownExcludeListKeys, entryErrors);
+        if (listTable is null)
+        {
+            return Array.Empty<string>();
+        }
+
+        var lines = ReadStringList(listTable, ExcludeKey);
         if (lines is null)
         {
-            return null;
+            return Array.Empty<string>();
         }
 
         var acceptedLines = new List<string>(lines.Count);
@@ -437,8 +445,8 @@ public static class ProjectConfigParser
             if (compileResult.IsFailure)
             {
                 entryErrors.Add(new ProjectConfigEntryError(
-                    tableName,
-                    $"Dropped an entry in '{key}'. {compileResult.FirstErrorMessage}"));
+                    SubTableName(tableKey),
+                    $"Dropped an entry in '{ExcludeKey}'. {compileResult.FirstErrorMessage}"));
                 continue;
             }
 
@@ -458,7 +466,7 @@ public static class ProjectConfigParser
             return folders;
         }
 
-        var tableName = $"{CelbridgeSectionName}.{PackagesKey}";
+        var tableName = SubTableName(PackagesKey);
 
         if (foldersObject is not TomlArray foldersArray)
         {
@@ -518,7 +526,7 @@ public static class ProjectConfigParser
             return disabledPackages;
         }
 
-        var tableName = $"{CelbridgeSectionName}.{PackagesKey}";
+        var tableName = SubTableName(PackagesKey);
 
         if (disabledPackagesObject is not TomlArray disabledPackagesArray)
         {
@@ -578,7 +586,7 @@ public static class ProjectConfigParser
                 : "must be a folder path from the project root";
 
             entryErrors.Add(new ProjectConfigEntryError(
-                $"{CelbridgeSectionName}.{DownloadsKey}",
+                SubTableName(DownloadsKey),
                 $"'{DownloadsFolderKey}' value '{downloadsFolder}' {problem}. The key was dropped."));
 
             return string.Empty;

@@ -55,8 +55,8 @@ public class ProjectConfigDraftTests
     [Test]
     public void Draft_PreservesTheDownloadsFolder_AcrossAnUnrelatedEdit()
     {
-        // The draft rebuilds the downloads table on every serialize, so an edit to another section must
-        // carry the downloads folder through rather than reset the project to the default folder.
+        // The draft rebuilds the downloads table on every serialize, so an edit to another section must keep
+        // the downloads folder.
         var sourceConfig =
             "[celbridge]\n" +
             "\n" +
