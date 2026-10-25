@@ -66,6 +66,30 @@ export class EditorController {
         return this.#editor ? this.#editor.getValue() : '';
     }
 
+    getFontSize() {
+        return this.#editor ? this.#editor.getOption(monaco.editor.EditorOption.fontSize) : 14;
+    }
+
+    setFontSize(fontSize) {
+        this.#editor?.updateOptions({ fontSize });
+    }
+
+    /**
+     * Binds Command or Ctrl with =, - and 0 to the zoom actions while the
+     * editor has the keyboard.
+     */
+    addZoomKeybindings({ zoomIn, zoomOut, reset }) {
+        if (!this.#editor) {
+            return;
+        }
+
+        const { KeyMod, KeyCode } = monaco;
+        this.#editor.addCommand(KeyMod.CtrlCmd | KeyCode.Equal, zoomIn);
+        this.#editor.addCommand(KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.Equal, zoomIn);
+        this.#editor.addCommand(KeyMod.CtrlCmd | KeyCode.Minus, zoomOut);
+        this.#editor.addCommand(KeyMod.CtrlCmd | KeyCode.Digit0, reset);
+    }
+
     layout() {
         if (this.#editor) {
             this.#editor.layout();

@@ -13,6 +13,7 @@ using Celbridge.Packages;
 using Celbridge.Projects;
 using Celbridge.Reports;
 using Celbridge.Server;
+using Celbridge.Settings;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.WebHost;
@@ -1548,6 +1549,21 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         // and its project-config keys) rides the Options channel.
         return new CelbridgeContext(
             _contribution.Package.Secrets,
-            _resolvedEditor.Config);
+            AddFeatureOptions(_resolvedEditor.Config));
+    }
+
+    // Adds the enabled feature flags that editors read as options. Each editor ignores the options it does not use.
+    private IReadOnlyDictionary<string, string> AddFeatureOptions(IReadOnlyDictionary<string, string> config)
+    {
+        var featureFlags = _serviceProvider.GetRequiredService<IFeatureFlags>();
+        if (!featureFlags.IsEnabled(FeatureFlagConstants.EditorZoomControls))
+        {
+            return config;
+        }
+
+        return new Dictionary<string, string>(config)
+        {
+            ["enable_zoom_controls"] = "true"
+        };
     }
 }

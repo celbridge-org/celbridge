@@ -1,6 +1,6 @@
 // Wires up the in-HTML editor toolbar: view-mode buttons, the optional button
-// that reloads the preview, and the optional snippet insertion menu. All are
-// plain DOM — no framework.
+// that reloads the preview, the optional snippet insertion menu and the
+// optional zoom buttons. All are plain DOM — no framework.
 //
 // The toolbar elements are declared in index.html and are hidden by default
 // via CSS. initializeToolbar() reveals whichever sections the package options
@@ -26,6 +26,7 @@ export function initializeToolbar({
     showSnippets,
     snippetSet,
     viewModeController,
+    zoomController,
     onReloadPreview,
     onInsertSnippet
 }) {
@@ -41,10 +42,14 @@ export function initializeToolbar({
     const snippetMenu = document.getElementById('snippet-menu');
     const snippetSeparator = document.getElementById('snippet-separator');
 
+    const zoomPanel = document.getElementById('zoom-panel');
+    const zoomSeparator = document.getElementById('zoom-separator');
+
     const hasViewMode = showViewMode && viewModePanel;
     const hasSnippets = showSnippets && snippetPanel && snippetMenu;
+    const hasZoom = zoomController && zoomPanel;
 
-    if (!hasViewMode && !hasSnippets) {
+    if (!hasViewMode && !hasSnippets && !hasZoom) {
         toolbar.hidden = true;
         return;
     }
@@ -69,6 +74,14 @@ export function initializeToolbar({
         }
         populateSnippetMenu(snippetMenu, snippetSet, onInsertSnippet);
         attachSnippetButton(snippetButton, snippetMenu);
+    }
+
+    if (hasZoom) {
+        zoomPanel.hidden = false;
+        if (zoomSeparator && (hasViewMode || hasSnippets)) {
+            zoomSeparator.hidden = false;
+        }
+        attachZoomButtons(zoomController);
     }
 }
 
@@ -295,3 +308,20 @@ function closeMenu(menu) {
     }
 }
 
+
+function attachZoomButtons(zoomController) {
+    document.getElementById('zoom-in-button')?.addEventListener('click', () => zoomController.zoomIn());
+    document.getElementById('zoom-out-button')?.addEventListener('click', () => zoomController.zoomOut());
+    document.getElementById('zoom-reset-button')?.addEventListener('click', () => zoomController.reset());
+
+    zoomController.onChanged(updateZoomButtons);
+    updateZoomButtons(zoomController.getZoom());
+}
+
+// Shows the zoom level as a percentage on the reset button.
+function updateZoomButtons(zoom) {
+    const resetButton = document.getElementById('zoom-reset-button');
+    if (resetButton) {
+        resetButton.textContent = `${Math.round(zoom * 100)}%`;
+    }
+}

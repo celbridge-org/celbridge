@@ -1260,6 +1260,12 @@ Open with default application instead?</value>
   <data name="ProjectSettings_FeatureFlag_NoteEditor_Description" xml:space="preserve">
     <value>An experimental editor for .note files, which may be removed in a later release.</value>
   </data>
+  <data name="ProjectSettings_FeatureFlag_EditorZoomControls_Title" xml:space="preserve">
+    <value>Editor Zoom Controls</value>
+  </data>
+  <data name="ProjectSettings_FeatureFlag_EditorZoomControls_Description" xml:space="preserve">
+    <value>Adds zoom buttons to code editors, which make the text and the HTML and Markdown previews larger or smaller.</value>
+  </data>
   <data name="ProjectSettings_CelbridgeVersionLabel" xml:space="preserve">
     <value>Celbridge version</value>
   </data>

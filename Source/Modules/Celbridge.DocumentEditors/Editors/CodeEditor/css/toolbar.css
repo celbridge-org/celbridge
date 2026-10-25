@@ -147,3 +147,12 @@
     margin: 4px 0;
     background-color: var(--cel-divider);
 }
+
+/* The zoom level reads as text, so its button is wider than an icon button. */
+.toolbar-btn.zoom-level {
+    width: auto;
+    min-width: 44px;
+    padding: 0 6px;
+    font-size: var(--cel-font-size-base);
+    font-variant-numeric: tabular-nums;
+}
