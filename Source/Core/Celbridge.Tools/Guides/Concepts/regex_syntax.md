@@ -30,6 +30,7 @@
 - A line break in a pattern without `multiline`. With `multiline`, a `\r`: write `\n` for any line break.
 - `wholeWord` on a regex that can match empty text, or match text that starts or ends with a non-word character, like `a*` or `-foo`. Use `\b` where the pattern needs it.
 - A repetition too large to match in linear time, like `a{100000}`.
+- A pattern nested 250 or more levels deep, like 250 groups inside one another. ripgrep refuses these too. Each group, class, repetition, sequence and alternation counts as a level.
 
 ## Replacements
 
@@ -37,7 +38,7 @@
 
 ## Differences from ripgrep
 
-- `\b`, `\B` and `wholeWord` on a regex read some of ripgrep's word characters as non-word characters. These are the spacing marks, like Devanagari's vowel signs, and every character above U+FFFF. So `\b` can find a boundary inside a Devanagari word.
+- `\b`, `\B` and `wholeWord` on a regex read some of ripgrep's word characters as non-word characters. These are spacing marks like Devanagari's vowel signs, letter numbers like `Ⅻ`, circled letters like `Ⓐ`, enclosing marks, and every character above U+FFFF. So `\b` can find a boundary inside a Devanagari word.
 - With `multiline`, each line break reads as one `\n`, even in a file that ends its lines with `\r\n`. So `a\nb` matches `a\r\nb`, and `a[^x]b` matches it too.
 - An empty match falls between characters. ripgrep can report one between the bytes of a character above U+007F.
 - With `literal: true`, a replacement is plain text. ripgrep expands `$` even with `-F`.

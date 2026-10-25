@@ -898,6 +898,19 @@ public class FileToolTests
     }
 
     [Test]
+    public async Task Grep_MissingPath_FailsTheCall()
+    {
+        Directory.CreateDirectory(Path.Combine(_tempFolder, "staging"));
+        RegisterTempRoot();
+
+        var tools = new FileTools(_services);
+        var result = await tools.Grep(pattern: "alpha", path: "temp:stagin", include: "*.js");
+
+        result.IsError.Should().BeTrue();
+        result.Content.OfType<TextContentBlock>().Single().Text.Should().Contain("Resource not found: 'temp:stagin'");
+    }
+
+    [Test]
     public async Task Grep_RefusedPattern_FailsTheCallWithTheReason()
     {
         var tools = new FileTools(_services);

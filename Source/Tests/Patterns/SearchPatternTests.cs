@@ -103,6 +103,39 @@ public class SearchPatternTests
     }
 
     [Test]
+    public void LongPlainTextIgnoringCase_IsRefusedWithAdviceForPlainText()
+    {
+        var longText = new string('a', 20000);
+        var ignoringCase = Literal with { MatchCase = false };
+
+        CompileError(longText, ignoringCase).Should().Contain("matchCase");
+        Compile(longText, Literal);
+    }
+
+    [TestCase(250)]
+    [TestCase(5000)]
+    public void NestingPastRipgrepsLimit_IsRefused(int depth)
+    {
+        var groups = new string('(', depth) + "a" + new string(')', depth);
+        var repetitions = "a" + new string('*', depth);
+        var classes = new string('[', depth) + "a" + new string(']', depth);
+
+        CompileError(groups, Regex).Should().Contain("250");
+        CompileError(repetitions, Regex).Should().Contain("250");
+        CompileError(classes, Regex).Should().Contain("250");
+    }
+
+    [Test]
+    public void NestingWithinRipgrepsLimit_Compiles()
+    {
+        var groups = new string('(', 249) + "a" + new string(')', 249);
+        var repetitions = "a" + new string('*', 249);
+
+        MatchedText(Compile(groups, Regex), "a").Should().Equal("a");
+        MatchedText(Compile(repetitions, Regex), "aa").Should().Equal("aa");
+    }
+
+    [Test]
     public void LinesEndingInEachWay_AreMatchedApart()
     {
         var pattern = Compile("^.+$", Regex);

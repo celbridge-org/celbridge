@@ -22,7 +22,7 @@ Defaults to `false`. When `true`, a match counts only when no word character tou
 
 ### multiline
 
-Defaults to `false`, so a pattern matches within one line, and a line break in `pattern` is refused. When `true`, a pattern can match across lines. Write `\n` for a line break, whatever the file's line endings: the tool reads each `\r\n` as `\n`, and keeps the file's own line endings. In a regex, `.` still stops at a line break unless the pattern starts with `(?s)`, and `^` and `$` still match at each line.
+Defaults to `false`, so a pattern matches within one line, and a line break in `pattern` is refused. When `true`, a pattern can match across lines. Write `\n` for a line break, whatever the file's line endings: the tool reads each `\r\n` as `\n`, and keeps the file's own line endings. In a regex, `.` still stops at a line break unless the pattern sets `(?s)`, and `^` and `$` still match at each line.
 
 ### fromLine / toLine
 

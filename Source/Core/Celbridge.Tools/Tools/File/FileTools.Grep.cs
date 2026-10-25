@@ -81,12 +81,30 @@ public partial class FileTools
             return await GrepTargetedFiles(files, searchPattern, output, resourceFileSystem);
         }
 
+        // A path that names nothing fails the call. Otherwise the result would look like a search that found no match.
+        var scopeKey = ResourceKey.Empty;
+        if (!string.IsNullOrEmpty(path))
+        {
+            if (!ResourceKey.TryCreate(path, out scopeKey))
+            {
+                return ToolResponse.InvalidResourceKey(path);
+            }
+
+            if (!scopeKey.IsEmpty)
+            {
+                var scopeInfoResult = await resourceFileSystem.GetInfoAsync(scopeKey);
+                if (scopeInfoResult.IsFailure
+                    || scopeInfoResult.Value.Kind == StorageItemKind.NotFound)
+                {
+                    return ToolResponse.ResourceNotFound(path);
+                }
+            }
+        }
+
         // A path under another root (temp:, logs:) is listed here and matched the same way the files= path is.
         // A bare or project: path goes to SearchService.
         var rootHandlerRegistry = resourceService.RootHandlers;
-        if (!string.IsNullOrEmpty(path)
-            && ResourceKey.TryCreate(path, out var scopeKey)
-            && scopeKey.Root != ResourceKey.DefaultRoot
+        if (scopeKey.Root != ResourceKey.DefaultRoot
             && rootHandlerRegistry.RootHandlers.ContainsKey(scopeKey.Root))
         {
             return await GrepNonDefaultRootScopeAsync(scopeKey, searchPattern, filter, include, output, resourceService);

@@ -256,6 +256,25 @@ public static class SearchPatternComparisonCases
         // Repetitions too large for the linear-time engine.
         Row("huge_count_refused", "a{100000}", "a\n", refusal: SearchPatternRefusal.Pattern),
 
+        // Nesting up to ripgrep's limit and past it. ripgrep wraps the pattern in a group, so the pattern itself can
+        // nest 249 levels.
+        Row("groups_nested_to_the_limit", Nested("(", "a", ")", 249), "a\n"),
+        Row("groups_nested_past_the_limit", Nested("(", "a", ")", 250), "a\n"),
+        Row("repetitions_stacked_to_the_limit", "a" + new string('*', 249), "aa\n"),
+        Row("repetitions_stacked_past_the_limit", "a" + new string('*', 250), "aa\n"),
+        Row("classes_nested_to_the_limit", Nested("[", "a", "]", 249), "a\n"),
+        Row("classes_nested_past_the_limit", Nested("[", "a", "]", 250), "a\n"),
+        Row("sequences_nested_to_the_limit", Nested("(a", string.Empty, ")", 125), new string('a', 125) + "\n"),
+        Row("sequences_nested_past_the_limit", Nested("(a", string.Empty, ")", 126), new string('a', 126) + "\n"),
+        Row("alternations_nested_to_the_limit", Nested("(a|", "b", ")", 124), "ab\n"),
+        Row("alternations_nested_past_the_limit", Nested("(a|", "b", ")", 125), "ab\n"),
+        Row("flag_groups_in_sequences_to_the_limit", Nested("((?i)", "a", ")", 124), "aA\n"),
+        Row("flag_groups_in_sequences_past_the_limit", Nested("((?i)", "a", ")", 125), "aA\n"),
+        Row("class_lists_nested_to_the_limit", Nested("[a", string.Empty, "]", 125), "a\n"),
+        Row("class_lists_nested_past_the_limit", Nested("[a", string.Empty, "]", 126), "a\n"),
+        Row("class_operators_to_the_limit", "[a" + Repeated("&&a", 248) + "]", "a\n"),
+        Row("class_operators_past_the_limit", "[a" + Repeated("&&a", 249) + "]", "a\n"),
+
         // Whole words with a regex.
         Row("whole_word_regex", "foo", "foo food (foo)\n", "-w"),
         Row("whole_word_takes_a_later_branch", "foo|foobar", "foobar foo\n", "-w"),
@@ -343,6 +362,17 @@ public static class SearchPatternComparisonCases
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(text.ToString()));
 
         return Convert.ToHexString(hash).Substring(0, 16).ToLowerInvariant();
+    }
+
+    // Returns the middle text wrapped in the open and close text, each repeated depth times.
+    private static string Nested(string open, string middle, string close, int depth)
+    {
+        return Repeated(open, depth) + middle + Repeated(close, depth);
+    }
+
+    private static string Repeated(string text, int count)
+    {
+        return string.Concat(Enumerable.Repeat(text, count));
     }
 
     private static SearchPatternCase Row(

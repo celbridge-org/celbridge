@@ -82,10 +82,21 @@ internal sealed class RipgrepRegexParser
 
     private const int MaxHexValue = 0x10FFFF;
 
+    // ripgrep refuses a pattern nested more than 250 levels deep. Each group, class, repetition, sequence and
+    // alternation is a level. ripgrep wraps the pattern in a group, which takes one of the levels.
+    private const int MaxNesting = 249;
+
+    private const string NestingMessage =
+        "The pattern is nested 250 or more levels deep, past ripgrep's limit. Nest fewer groups, classes and repetitions inside one another.";
+
     private readonly string _pattern;
     private readonly Dictionary<string, int> _groupNumbers = new(StringComparer.Ordinal);
     private int _position;
     private int _groupCount;
+
+    // Counts the groups and classes that enclose the current position. The parser checks this count before it
+    // recurses, so deep nesting is refused before the stack runs out.
+    private int _depth;
 
     private RipgrepRegexParser(string pattern)
     {
@@ -98,11 +109,13 @@ internal sealed class RipgrepRegexParser
         try
         {
             var flags = new Flags(ignoreCase, DotMatchesLineBreak: false, SwapGreed: false, IgnoreWhitespace: false);
-            var root = parser.ParseAlternation(ref flags);
+            var root = parser.ParseAlternation(ref flags, out var height);
             if (!parser.IsEnd)
             {
                 throw Refuse("A ')' has no opening '('. Write '\\)' for a literal parenthesis.");
             }
+
+            CheckNesting(height);
 
             return new ParsedRegex(root, parser._groupCount, parser._groupNumbers);
         }
@@ -134,17 +147,39 @@ internal sealed class RipgrepRegexParser
         return new RefusalException(message);
     }
 
-    private RegexNode ParseAlternation(ref Flags flags)
+    // Refuses a height past ripgrep's limit. A height is the number of levels of nesting in a part of the pattern,
+    // counted the way ripgrep counts them.
+    private static void CheckNesting(int height)
+    {
+        if (height > MaxNesting)
+        {
+            throw Refuse(NestingMessage);
+        }
+    }
+
+    private void EnterNesting()
+    {
+        _depth++;
+        CheckNesting(_depth);
+    }
+
+    private void ExitNesting()
+    {
+        _depth--;
+    }
+
+    private RegexNode ParseAlternation(ref Flags flags, out int height)
     {
         var branches = new List<RegexNode>
         {
-            ParseSequence(ref flags),
+            ParseSequence(ref flags, out height),
         };
         while (!IsEnd
             && Peek() == '|')
         {
             _position++;
-            branches.Add(ParseSequence(ref flags));
+            branches.Add(ParseSequence(ref flags, out var branchHeight));
+            height = Math.Max(height, branchHeight);
         }
 
         if (branches.Count == 1)
@@ -152,13 +187,18 @@ internal sealed class RipgrepRegexParser
             return branches[0];
         }
 
+        height++;
         return new AlternationNode(branches);
     }
 
-    private RegexNode ParseSequence(ref Flags flags)
+    private RegexNode ParseSequence(ref Flags flags, out int height)
     {
         var items = new List<RegexNode>();
+        var itemHeights = new List<int>();
         var canRepeat = false;
+
+        // ripgrep counts a group that only sets flags as an item of the sequence. The group adds no node here.
+        var flagGroupCount = 0;
         while (true)
         {
             SkipIgnoredWhitespace(flags);
@@ -185,18 +225,28 @@ internal sealed class RipgrepRegexParser
                 }
 
                 items[^1] = ParseRepetition(items[^1], flags);
+                itemHeights[^1]++;
+                CheckNesting(itemHeights[^1]);
                 continue;
             }
 
-            var atom = ParseAtom(ref flags);
+            var atom = ParseAtom(ref flags, out var atomHeight);
             if (atom is null)
             {
+                flagGroupCount++;
                 canRepeat = false;
                 continue;
             }
 
             items.Add(atom);
+            itemHeights.Add(atomHeight);
             canRepeat = true;
+        }
+
+        height = itemHeights.Count > 0 ? itemHeights.Max() : 0;
+        if (items.Count + flagGroupCount > 1)
+        {
+            height++;
         }
 
         if (items.Count == 1)
@@ -329,17 +379,18 @@ internal sealed class RipgrepRegexParser
     }
 
     // Returns null for a group that only sets flags, like '(?i)'.
-    private RegexNode? ParseAtom(ref Flags flags)
+    private RegexNode? ParseAtom(ref Flags flags, out int height)
     {
+        height = 0;
         var character = Peek();
         switch (character)
         {
             case '(':
-                return ParseGroup(ref flags);
+                return ParseGroup(ref flags, out height);
 
             case '[':
                 _position++;
-                var classSet = ParseClass(flags);
+                var classSet = ParseClass(flags, out height);
                 return new CharacterSetNode(classSet);
 
             case '.':
@@ -380,8 +431,9 @@ internal sealed class RipgrepRegexParser
         return CodePointSet.All.Except(lineBreaks);
     }
 
-    private RegexNode? ParseGroup(ref Flags outerFlags)
+    private RegexNode? ParseGroup(ref Flags outerFlags, out int height)
     {
+        height = 0;
         var groupStart = _position;
         _position++;
         SkipIgnoredWhitespace(outerFlags);
@@ -435,13 +487,17 @@ internal sealed class RipgrepRegexParser
             captureNumber = _groupCount;
         }
 
-        var inner = ParseAlternation(ref innerFlags);
+        EnterNesting();
+        var inner = ParseAlternation(ref innerFlags, out var innerHeight);
+        ExitNesting();
+
         if (IsEnd
             || Peek() != ')')
         {
             throw Refuse($"The '(' at position {groupStart + 1} has no closing ')'. Write '\\(' for a literal parenthesis.");
         }
         _position++;
+        height = innerHeight + 1;
 
         if (captureNumber is null)
         {
@@ -846,9 +902,11 @@ internal sealed class RipgrepRegexParser
     }
 
     // Parses a bracketed class after its '['. A ']' straight after the '[' or '[^' is literal, and so is any '-'
-    // there. Inside, '&&', '--' and '~~' give the intersection, difference and symmetric difference.
-    private CodePointSet ParseClass(Flags flags)
+    // there. Inside, '&&', '--' and '~~' give the intersection, difference and symmetric difference. The height
+    // counts the class, each list of two or more items, each operator and each class inside.
+    private CodePointSet ParseClass(Flags flags, out int height)
     {
+        EnterNesting();
         var classStart = _position - 1;
         SkipIgnoredWhitespace(flags);
 
@@ -861,24 +919,27 @@ internal sealed class RipgrepRegexParser
         }
 
         var union = new CodePointSet.Builder();
-        var isUnionEmpty = true;
+        var unionItemCount = 0;
+        var unionItemHeight = 0;
         while (!IsEnd
             && Peek() == '-')
         {
             union.Add(LiteralItem('-', flags).Set);
-            isUnionEmpty = false;
+            unionItemCount++;
             _position++;
             SkipIgnoredWhitespace(flags);
         }
 
-        if (isUnionEmpty
+        if (unionItemCount == 0
             && Peek() == ']')
         {
             union.Add(LiteralItem(']', flags).Set);
+            unionItemCount++;
             _position++;
         }
 
         CodePointSet? left = null;
+        var leftHeight = 0;
         ClassOperator? pendingOperator = null;
         while (true)
         {
@@ -901,12 +962,15 @@ internal sealed class RipgrepRegexParser
                 if (TryParsePosixClass(flags, out var posixSet))
                 {
                     union.Add(posixSet);
+                    unionItemCount++;
                     continue;
                 }
 
                 _position++;
-                var nestedSet = ParseClass(flags);
+                var nestedSet = ParseClass(flags, out var nestedHeight);
                 union.Add(nestedSet);
+                unionItemCount++;
+                unionItemHeight = Math.Max(unionItemHeight, nestedHeight);
                 continue;
             }
 
@@ -931,29 +995,38 @@ internal sealed class RipgrepRegexParser
             {
                 _position += 2;
                 var operand = union.ToSet();
+                var operandHeight = UnionHeight(unionItemCount, unionItemHeight);
                 if (left is null
                     || pendingOperator is null)
                 {
                     left = operand;
+                    leftHeight = operandHeight;
                 }
                 else
                 {
                     left = ApplyClassOperator(left, pendingOperator.Value, operand);
+                    leftHeight = Math.Max(leftHeight, operandHeight) + 1;
+                    CheckNesting(leftHeight);
                 }
                 pendingOperator = classOperator;
                 union = new CodePointSet.Builder();
+                unionItemCount = 0;
+                unionItemHeight = 0;
                 continue;
             }
 
             var rangeSet = ParseClassRange(flags);
             union.Add(rangeSet);
+            unionItemCount++;
         }
 
         var result = union.ToSet();
+        var setHeight = UnionHeight(unionItemCount, unionItemHeight);
         if (left is not null
             && pendingOperator is not null)
         {
             result = ApplyClassOperator(left, pendingOperator.Value, result);
+            setHeight = Math.Max(leftHeight, setHeight) + 1;
         }
 
         if (isNegated)
@@ -961,7 +1034,20 @@ internal sealed class RipgrepRegexParser
             result = result.Complement();
         }
 
+        ExitNesting();
+        height = setHeight + 1;
+
         return result;
+    }
+
+    private static int UnionHeight(int itemCount, int itemHeight)
+    {
+        if (itemCount > 1)
+        {
+            return itemHeight + 1;
+        }
+
+        return itemHeight;
     }
 
     private static CodePointSet ApplyClassOperator(CodePointSet left, ClassOperator classOperator, CodePointSet right)

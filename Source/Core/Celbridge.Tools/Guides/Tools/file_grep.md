@@ -33,7 +33,7 @@ Accepts a match only when no word character touches it on either side, the same 
 
 ### path
 
-A folder or a file. Only files within the folder (and its descendants) are searched, or only that one file. Empty string searches the whole project.
+A folder or a file. Only files within the folder (and its descendants) are searched, or only that one file. Empty string searches the whole project. A path that names nothing fails the call.
 
 A path under another root (e.g. `temp:staging/my-pkg`, `logs:`) is searched too. The tool walks that root's tree directly. `include`/`exclude` still apply. A whole-project search with an empty path covers only the project root, so name another root explicitly to search it.
 

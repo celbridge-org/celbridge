@@ -53,6 +53,9 @@ public sealed class SearchPattern
     private const string TooLargeMessage =
         "The pattern is too large to match in linear time. Make its repetition counts smaller, like '{100}'.";
 
+    private const string LongLiteralMessage =
+        "The plain-text pattern is too long to match with matchCase off. Set matchCase, or search for a shorter part of the text.";
+
     private const RegexOptions DotNetRegexOptions =
         RegexOptions.NonBacktracking | RegexOptions.CultureInvariant | RegexOptions.Multiline;
 
@@ -257,7 +260,10 @@ public sealed class SearchPattern
         }
         catch (NotSupportedException)
         {
-            return Result.Fail(TooLargeMessage);
+            // Plain text that ignores letter case compiles to one class for each character. Long text then exceeds
+            // the engine's size limit.
+            var message = options.Literal ? LongLiteralMessage : TooLargeMessage;
+            return Result.Fail(message);
         }
         catch (ArgumentException exception)
         {

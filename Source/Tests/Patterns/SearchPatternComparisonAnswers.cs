@@ -14,7 +14,7 @@ public static class SearchPatternComparisonAnswers
     /// The hash of the rows at the time of recording. SearchPatternComparisonCases.Fingerprint gives the current
     /// one.
     /// </summary>
-    public const string CasesFingerprint = "b95e9729e64d0464";
+    public const string CasesFingerprint = "a110c5449f20db52";
 
     /// <summary>
     /// ripgrep's answer for each row, by row name.
@@ -24,6 +24,8 @@ public static class SearchPatternComparisonAnswers
         ["alternation"] = new(false, "0:3 4:3", null),
         ["alternation_takes_the_first_branch"] = new(false, "0:1", null),
         ["alternation_with_empty_branch"] = new(false, "0:0 1:1", null),
+        ["alternations_nested_past_the_limit"] = SearchPatternAnswer.Refused,
+        ["alternations_nested_to_the_limit"] = new(false, "0:1 1:1", null),
         ["any"] = new(false, "0:1 1:2", null),
         ["ascii"] = new(false, "0:2 3:1", null),
         ["assigned"] = new(false, "0:2", null),
@@ -34,12 +36,18 @@ public static class SearchPatternComparisonAnswers
         ["bracket_first_is_literal"] = new(false, "0:2", null),
         ["carriage_return_escape"] = SearchPatternAnswer.Refused,
         ["class_above_ffff"] = new(false, "0:2", null),
+        ["class_lists_nested_past_the_limit"] = SearchPatternAnswer.Refused,
+        ["class_lists_nested_to_the_limit"] = new(false, "0:1", null),
         ["class_of_a_line_break"] = SearchPatternAnswer.Refused,
         ["class_operator_ignore_case"] = new(false, "3:2", null),
+        ["class_operators_past_the_limit"] = SearchPatternAnswer.Refused,
+        ["class_operators_to_the_limit"] = new(false, "0:1", null),
         ["class_range"] = new(false, "0:3", null),
         ["class_range_above_ffff"] = new(false, "0:4", null),
         ["class_range_over_line_breaks"] = new(false, "1:1", null),
         ["class_with_line_break"] = new(false, "0:1", null),
+        ["classes_nested_past_the_limit"] = SearchPatternAnswer.Refused,
+        ["classes_nested_to_the_limit"] = new(false, "0:1", null),
         ["closing_brackets_are_literal"] = new(false, "0:4", null),
         ["count_range_backwards"] = SearchPatternAnswer.Refused,
         ["count_with_a_space_for_its_maximum"] = SearchPatternAnswer.Refused,
@@ -77,10 +85,14 @@ public static class SearchPatternComparisonAnswers
         ["escaped_punctuation"] = new(false, "0:4", null),
         ["escaped_space"] = new(false, "0:3", null),
         ["flag_group_with_negation"] = new(false, "", null),
+        ["flag_groups_in_sequences_past_the_limit"] = SearchPatternAnswer.Refused,
+        ["flag_groups_in_sequences_to_the_limit"] = new(false, "0:1 1:1", null),
         ["general_category_key"] = new(false, "0:1 2:1", null),
         ["general_category_not_equal"] = new(false, "1:1", null),
         ["greedy_star"] = new(false, "0:6", null),
         ["group_name_starting_with_a_digit"] = SearchPatternAnswer.Refused,
+        ["groups_nested_past_the_limit"] = SearchPatternAnswer.Refused,
+        ["groups_nested_to_the_limit"] = new(false, "0:1", null),
         ["groups_take_the_first_branch_that_matches"] = new(false, "0:4", "[a][bcd]\n"),
         ["hex_braced"] = new(false, "0:2", null),
         ["hex_two_digits"] = new(false, "0:1", null),
@@ -200,6 +212,8 @@ public static class SearchPatternComparisonAnswers
         ["repeated_group"] = new(false, "0:4", null),
         ["repetition_after_alternation"] = SearchPatternAnswer.Refused,
         ["repetition_of_nothing"] = SearchPatternAnswer.Refused,
+        ["repetitions_stacked_past_the_limit"] = SearchPatternAnswer.Refused,
+        ["repetitions_stacked_to_the_limit"] = new(false, "0:2", null),
         ["replacement_ampersand_is_literal"] = new(false, "0:1", "$&\n"),
         ["replacement_braced_name"] = new(false, "0:1", "ay\n"),
         ["replacement_braced_number"] = new(false, "0:1", "ab\n"),
@@ -218,6 +232,8 @@ public static class SearchPatternComparisonAnswers
         ["replacement_whole_match"] = new(false, "0:1", "[a]\n"),
         ["scoped_ignore_case"] = new(false, "0:2", null),
         ["script_refused"] = new(false, "0:1", null),
+        ["sequences_nested_past_the_limit"] = SearchPatternAnswer.Refused,
+        ["sequences_nested_to_the_limit"] = new(false, "0:125", null),
         ["space_before_a_count"] = new(false, "3:3", null),
         ["spaces"] = new(false, "1:3", null),
         ["start_of_line"] = new(false, "0:3 8:3", null),
