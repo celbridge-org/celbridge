@@ -5,7 +5,8 @@ namespace Celbridge.Patterns;
 
 /// <summary>
 /// Matches paths against a tool's include and exclude patterns, read as ripgrep's globs. Each pattern is a gitignore
-/// line that can also use braces, and commas outside braces separate the patterns. Letter case is ignored.
+/// line that can also use braces, and commas outside braces separate the patterns. A pattern that starts with "./"
+/// names a path from the root, like "./docs/api". Letter case is ignored.
 /// </summary>
 public sealed class SearchFilter : IPathMatcher
 {
@@ -125,8 +126,9 @@ public sealed class SearchFilter : IPathMatcher
         return _include.CanMatchInside(folderPath);
     }
 
-    // Adds the gitignore lines from expanding a pattern's braces. A line that would start with '!' or '#' gets a '\'
-    // first, since ripgrep reads those characters literally there.
+    // Adds the gitignore lines from expanding a pattern's braces. A line that starts with "./" names a path from the
+    // root, so the line becomes gitignore's root-anchored form, with a leading '/'. A line that would start with '!'
+    // or '#' gets a '\' first, since ripgrep reads those characters literally there.
     private static Result AddExpandedLines(List<string> lines, string pattern)
     {
         var expandResult = BraceExpander.Expand(pattern);
@@ -135,8 +137,12 @@ public sealed class SearchFilter : IPathMatcher
             return Result.Fail(expandResult.FirstErrorMessage);
         }
 
-        foreach (var line in expandResult.Value)
+        foreach (var expandedLine in expandResult.Value)
         {
+            var line = expandedLine.StartsWith("./", StringComparison.Ordinal)
+                ? expandedLine.Substring(1)
+                : expandedLine;
+
             if (line.StartsWith('!')
                 || line.StartsWith('#'))
             {

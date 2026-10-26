@@ -19,15 +19,15 @@ public enum SearchLandmarkReveal
     ReplaceControls,
 
     /// <summary>
-    /// The landmark shows only with the scope controls shown.
+    /// The landmark shows only with the search filters shown.
     /// </summary>
-    ScopeControls,
+    FilterControls,
 }
 
 /// <summary>
 /// Prepares a Search landmark for spotlighting by switching the Utility Panel to the Search tab,
 /// since the Search content is collapsed while another activity, like the Explorer, is active. A
-/// replace landmark also turns on replace mode, and a scope landmark also shows the scope controls.
+/// replace landmark also turns on replace mode, and a filters landmark also shows the search filters.
 /// Clearing the spotlight hides those controls again, unless they were already shown.
 /// </summary>
 public sealed class SearchSpotlightLandmark : ISpotlightLandmark
@@ -64,10 +64,10 @@ public sealed class SearchSpotlightLandmark : ISpotlightLandmark
             _controlsWereShown = searchPanel.IsReplaceModeEnabled;
             searchPanel.SetReplaceMode(true);
         }
-        else if (_reveal == SearchLandmarkReveal.ScopeControls)
+        else if (_reveal == SearchLandmarkReveal.FilterControls)
         {
-            _controlsWereShown = searchPanel.IsScopeVisible;
-            searchPanel.SetScopeVisible(true);
+            _controlsWereShown = searchPanel.AreFiltersVisible;
+            searchPanel.SetFiltersVisible(true);
         }
 
         return Result.Ok();
@@ -89,7 +89,7 @@ public sealed class SearchSpotlightLandmark : ISpotlightLandmark
         }
         else
         {
-            searchPanel.SetScopeVisible(false);
+            searchPanel.SetFiltersVisible(false);
         }
     }
 }

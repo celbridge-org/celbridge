@@ -1723,7 +1723,7 @@ Open with default application instead?</value>
     <value>Search</value>
   </data>
   <data name="SearchPanel_Searching" xml:space="preserve">
-    <value>Searching...</value>
+    <value>Searching</value>
   </data>
   <data name="SearchPanel_NoResults" xml:space="preserve">
     <value>No results found</value>
@@ -1839,44 +1839,29 @@ Open with default application instead?</value>
   <data name="SearchPanel_ClearHistoryText" xml:space="preserve">
     <value>Clear Recent</value>
   </data>
-  <data name="SearchPanel_ScopeToggleTooltip" xml:space="preserve">
-    <value>Toggle Folder and Filters</value>
+  <data name="SearchPanel_FiltersTooltip" xml:space="preserve">
+    <value>Toggle Search Filters</value>
   </data>
-  <data name="SearchPanel_FolderPlaceholder" xml:space="preserve">
-    <value>Whole project</value>
-  </data>
-  <data name="SearchPanel_FolderBrowseTooltip" xml:space="preserve">
-    <value>Choose a Folder</value>
-  </data>
-  <data name="SearchPanel_FolderPickerTitle" xml:space="preserve">
-    <value>Choose a Folder to Search</value>
-  </data>
-  <data name="SearchPanel_FolderClearTooltip" xml:space="preserve">
-    <value>Clear Folder</value>
+  <data name="SearchPanel_FilesToIncludeLabel" xml:space="preserve">
+    <value>Files to Include</value>
   </data>
   <data name="SearchPanel_FilesToIncludePlaceholder" xml:space="preserve">
-    <value>Files to include</value>
+    <value>e.g. *.py, ./src</value>
+  </data>
+  <data name="SearchPanel_FilesToExcludeLabel" xml:space="preserve">
+    <value>Files to Exclude</value>
   </data>
   <data name="SearchPanel_FilesToExcludePlaceholder" xml:space="preserve">
-    <value>Files to exclude</value>
+    <value>e.g. *.min.js, dist/</value>
   </data>
-  <data name="SearchPanel_SearchListLabel" xml:space="preserve">
-    <value>Skip excluded files</value>
+  <data name="SearchPanel_OnlyOpenDocumentsTooltip" xml:space="preserve">
+    <value>Search Only in Open Documents</value>
   </data>
-  <data name="SearchPanel_SearchListTooltip" xml:space="preserve">
-    <value>Excluded files are set in Project Settings, under Resources.</value>
+  <data name="SearchPanel_ApplySearchExcludeSettingsTooltip" xml:space="preserve">
+    <value>Apply Search Exclude Settings. The search excludes are set in Project Settings, under Resources.</value>
   </data>
   <data name="SearchPanel_InvalidFilter" xml:space="preserve">
-    <value>One of the file filters is not valid.</value>
-  </data>
-  <data name="SearchPanel_ScopeSummary_Folder" xml:space="preserve">
-    <value>Searching in '{0}'</value>
-  </data>
-  <data name="SearchPanel_ScopeSummary_Filters" xml:space="preserve">
-    <value>Searching with filters</value>
-  </data>
-  <data name="SearchPanel_ScopeSummary_FolderAndFilters" xml:space="preserve">
-    <value>Searching in '{0}', with filters</value>
+    <value>A file filter is not valid.</value>
   </data>
   <data name="Workshop_PublishPackageConfirm_Title" xml:space="preserve">
     <value>Publish Package</value>

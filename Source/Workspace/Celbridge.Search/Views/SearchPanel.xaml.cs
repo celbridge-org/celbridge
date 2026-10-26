@@ -251,14 +251,14 @@ public sealed partial class SearchPanel : UserControl, ISearchPanel
 
     public void SetFolder(ResourceKey folder)
     {
-        ViewModel.Scope.SetFolder(folder);
+        ViewModel.Filters.SetFolder(folder);
     }
 
-    public bool IsScopeVisible => ViewModel.Scope.IsVisible;
+    public bool AreFiltersVisible => ViewModel.Filters.AreFiltersVisible;
 
-    public void SetScopeVisible(bool visible)
+    public void SetFiltersVisible(bool visible)
     {
-        ViewModel.Scope.IsVisible = visible;
+        ViewModel.Filters.AreFiltersVisible = visible;
     }
 
     public void ExecuteSearch()

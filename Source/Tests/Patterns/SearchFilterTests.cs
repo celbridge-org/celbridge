@@ -52,6 +52,18 @@ public class SearchFilterTests
     }
 
     [Test]
+    public void DotSlashPattern_IsRelativeToTheRoot()
+    {
+        var filter = Compile("./docs, !./docs/drafts");
+
+        filter.IsMatch("docs/guide.md", isFolder: false).Should().BeTrue();
+        filter.IsMatch("src/docs/guide.md", isFolder: false).Should().BeFalse();
+        filter.IsMatch("docs/drafts/guide.md", isFolder: false).Should().BeFalse();
+        filter.CanMatchInside("src").Should().BeFalse();
+        filter.CanMatchInside("docs").Should().BeTrue();
+    }
+
+    [Test]
     public void CommasOutsideBraces_SeparatePatterns()
     {
         var filter = Compile("tests/, *.min.js");

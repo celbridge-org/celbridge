@@ -83,7 +83,7 @@ public partial class SearchPanelViewModel
     {
         await _searchService.AddSearchTermToHistoryAsync(SearchText);
 
-        _dispatcherQueue.TryEnqueue(() =>
+        _dispatcher.TryEnqueue(() =>
         {
             var existingIndex = SearchHistory.IndexOf(SearchText);
             if (existingIndex >= 0)
@@ -113,7 +113,7 @@ public partial class SearchPanelViewModel
     {
         await _searchService.AddReplaceTermToHistoryAsync(ReplaceText);
 
-        _dispatcherQueue.TryEnqueue(() =>
+        _dispatcher.TryEnqueue(() =>
         {
             var existingIndex = ReplaceHistory.IndexOf(ReplaceText);
             if (existingIndex >= 0)

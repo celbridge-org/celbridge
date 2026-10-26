@@ -6,9 +6,14 @@ namespace Celbridge.Search;
 public interface ISearchService
 {
     /// <summary>
-    /// Searches the text of the files in scope for the pattern in the options.
+    /// Searches the text of the files in scope for the pattern in the options. The search reads the files in path
+    /// order, and calls fileResultFound with each matching file's result once the search has read the file. The
+    /// calls come from a worker thread, in the order of the results returned.
     /// </summary>
-    Task<SearchResults> SearchAsync(SearchOptions options, CancellationToken cancellationToken);
+    Task<SearchResults> SearchAsync(
+        SearchOptions options,
+        Action<SearchFileResult>? fileResultFound,
+        CancellationToken cancellationToken);
 
     /// <summary>
     /// Gets the search and replace history for the current workspace.

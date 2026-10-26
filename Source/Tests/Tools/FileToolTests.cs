@@ -1037,7 +1037,7 @@ public class FileToolTests
         var result = await tools.Search("logs:*.log");
 
         ParseStringList(result).Should().Equal("logs:app.log");
-        await _resourceService.Walker.Received(1).WalkAsync(new ResourceKey("logs:"), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+        await _resourceService.Walker.Received(1).WalkAsync(new ResourceKey("logs:"), Arg.Any<bool>(), Arg.Any<IPathMatcher?>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -1049,8 +1049,8 @@ public class FileToolTests
         await tools.Search("*.md");
         await tools.Search("*.md", applySearchExclude: false);
 
-        await _resourceService.Walker.Received(1).WalkAsync(ResourceKey.Empty, true, Arg.Any<CancellationToken>());
-        await _resourceService.Walker.Received(1).WalkAsync(ResourceKey.Empty, false, Arg.Any<CancellationToken>());
+        await _resourceService.Walker.Received(1).WalkAsync(ResourceKey.Empty, true, Arg.Any<IPathMatcher?>(), Arg.Any<CancellationToken>());
+        await _resourceService.Walker.Received(1).WalkAsync(ResourceKey.Empty, false, Arg.Any<IPathMatcher?>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -1058,12 +1058,13 @@ public class FileToolTests
     {
         SearchOptions? searchOptions = null;
         var searchService = Substitute.For<ISearchService>();
-        searchService.SearchAsync(Arg.Any<SearchOptions>(), Arg.Any<CancellationToken>()).Returns(callInfo =>
-        {
-            searchOptions = callInfo.Arg<SearchOptions>();
-            var noFiles = new List<SearchFileResult>();
-            return Task.FromResult(new SearchResults("alpha", noFiles, 0, 0, false, false, 0));
-        });
+        searchService.SearchAsync(Arg.Any<SearchOptions>(), Arg.Any<Action<SearchFileResult>?>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                searchOptions = callInfo.Arg<SearchOptions>();
+                var noFiles = new List<SearchFileResult>();
+                return Task.FromResult(new SearchResults("alpha", noFiles, 0, 0, false, false, 0));
+            });
         var workspaceWrapper = _services.GetRequiredService<IWorkspaceWrapper>();
         workspaceWrapper.WorkspaceService.SearchService.Returns(searchService);
 
@@ -1088,7 +1089,7 @@ public class FileToolTests
     {
         IReadOnlyList<WalkedItem> walkedItems = items;
         var walker = Substitute.For<IResourceWalker>();
-        walker.WalkAsync(Arg.Any<ResourceKey>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+        walker.WalkAsync(Arg.Any<ResourceKey>(), Arg.Any<bool>(), Arg.Any<IPathMatcher?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(Result<IReadOnlyList<WalkedItem>>.Ok(walkedItems)));
         _resourceService.Walker.Returns(walker);
     }

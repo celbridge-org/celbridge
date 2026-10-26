@@ -119,7 +119,7 @@ public partial class FileTools
             IncludeMetadataFiles = true,
             ApplySearchExclude = applySearchExclude,
         };
-        var results = await searchService.SearchAsync(searchOptions, CancellationToken.None);
+        var results = await searchService.SearchAsync(searchOptions, null, CancellationToken.None);
 
         var truncated = results.ReachedMaxResults || results.WasCancelled;
 

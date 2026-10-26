@@ -110,18 +110,17 @@ public static class SettingCatalog
         public static readonly SettingDescriptor<bool> ReplaceMode =
             new("Search.ReplaceMode", SettingScope.Workspace, false);
 
-        public static readonly SettingDescriptor<bool> ScopeVisible =
-            new("Search.ScopeVisible", SettingScope.Workspace, false);
-
-        // The key of the panel's search folder. Empty searches the whole project.
-        public static readonly SettingDescriptor<string> Folder =
-            new("Search.Folder", SettingScope.Workspace, "");
+        public static readonly SettingDescriptor<bool> FiltersVisible =
+            new("Search.FiltersVisible", SettingScope.Workspace, false);
 
         public static readonly SettingDescriptor<string> FilesToInclude =
             new("Search.FilesToInclude", SettingScope.Workspace, "");
 
         public static readonly SettingDescriptor<string> FilesToExclude =
             new("Search.FilesToExclude", SettingScope.Workspace, "");
+
+        public static readonly SettingDescriptor<bool> OnlyOpenDocuments =
+            new("Search.OnlyOpenDocuments", SettingScope.Workspace, false);
 
         public static readonly SettingDescriptor<bool> ApplySearchExclude =
             new("Search.ApplySearchExclude", SettingScope.Workspace, true);

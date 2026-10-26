@@ -32,10 +32,10 @@ public class SearchSpotlightLandmarkTests
     }
 
     [Test]
-    public async Task ScopeLandmark_ShowsTheScope_AndHidesItAgainOnClear()
+    public async Task FiltersLandmark_ShowsTheFilters_AndHidesThemAgainOnClear()
     {
-        _searchPanel.IsScopeVisible.Returns(false);
-        var landmark = new SearchSpotlightLandmark(_workspaceWrapper, SearchLandmarkReveal.ScopeControls);
+        _searchPanel.AreFiltersVisible.Returns(false);
+        var landmark = new SearchSpotlightLandmark(_workspaceWrapper, SearchLandmarkReveal.FilterControls);
 
         var revealResult = await landmark.PreSpotlightAsync();
         landmark.PostSpotlight();
@@ -44,26 +44,26 @@ public class SearchSpotlightLandmarkTests
         _utilityPanel.Received(1).ShowUtility(BuiltInUtilityIds.Search);
         Received.InOrder(() =>
         {
-            _searchPanel.SetScopeVisible(true);
-            _searchPanel.SetScopeVisible(false);
+            _searchPanel.SetFiltersVisible(true);
+            _searchPanel.SetFiltersVisible(false);
         });
         _searchPanel.DidNotReceive().SetReplaceMode(Arg.Any<bool>());
     }
 
     [Test]
-    public async Task ScopeLandmark_LeavesAShownScopeShownOnClear()
+    public async Task FiltersLandmark_LeavesShownFiltersShownOnClear()
     {
-        _searchPanel.IsScopeVisible.Returns(true);
-        var landmark = new SearchSpotlightLandmark(_workspaceWrapper, SearchLandmarkReveal.ScopeControls);
+        _searchPanel.AreFiltersVisible.Returns(true);
+        var landmark = new SearchSpotlightLandmark(_workspaceWrapper, SearchLandmarkReveal.FilterControls);
 
         await landmark.PreSpotlightAsync();
         landmark.PostSpotlight();
 
-        _searchPanel.DidNotReceive().SetScopeVisible(false);
+        _searchPanel.DidNotReceive().SetFiltersVisible(false);
     }
 
     [Test]
-    public async Task ReplaceLandmark_TurnsOnReplaceMode_AndLeavesTheScopeAlone()
+    public async Task ReplaceLandmark_TurnsOnReplaceMode_AndLeavesTheFiltersAlone()
     {
         _searchPanel.IsReplaceModeEnabled.Returns(false);
         var landmark = new SearchSpotlightLandmark(_workspaceWrapper, SearchLandmarkReveal.ReplaceControls);
@@ -76,7 +76,7 @@ public class SearchSpotlightLandmarkTests
             _searchPanel.SetReplaceMode(true);
             _searchPanel.SetReplaceMode(false);
         });
-        _searchPanel.DidNotReceive().SetScopeVisible(Arg.Any<bool>());
+        _searchPanel.DidNotReceive().SetFiltersVisible(Arg.Any<bool>());
     }
 
     [Test]
@@ -88,7 +88,7 @@ public class SearchSpotlightLandmarkTests
         landmark.PostSpotlight();
 
         _utilityPanel.Received(1).ShowUtility(BuiltInUtilityIds.Search);
-        _searchPanel.DidNotReceive().SetScopeVisible(Arg.Any<bool>());
+        _searchPanel.DidNotReceive().SetFiltersVisible(Arg.Any<bool>());
         _searchPanel.DidNotReceive().SetReplaceMode(Arg.Any<bool>());
     }
 }

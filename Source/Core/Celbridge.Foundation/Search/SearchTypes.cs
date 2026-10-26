@@ -25,14 +25,17 @@ public record SearchFileResult(
 /// <summary>
 /// What a text search looks for and where. Matcher finds the matches in each line. Filter matches the files to search,
 /// by their paths in the project. MaxResults stops the search after that many matches, and null finds every match.
-/// Scope names the folder or file to search, and empty searches the project. IncludeMetadataFiles also searches the
-/// text of .cel sidecars. ApplySearchExclude, true by default, leaves out what the project's search list excludes.
+/// Scope names the folder or file to search, and empty searches the project. Files, when set, names the only files to
+/// search, in place of Scope. IncludeMetadataFiles also searches the text of .cel sidecars. ApplySearchExclude, true by
+/// default, leaves out what the project's search list excludes.
 /// </summary>
 public sealed record SearchOptions(ITextMatcher Matcher, IPathMatcher Filter)
 {
     public int? MaxResults { get; init; }
 
     public string Scope { get; init; } = string.Empty;
+
+    public IReadOnlyList<ResourceKey>? Files { get; init; }
 
     public bool IncludeMetadataFiles { get; init; }
 

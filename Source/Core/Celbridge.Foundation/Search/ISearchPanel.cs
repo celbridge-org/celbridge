@@ -41,20 +41,21 @@ public interface ISearchPanel
     void SetReplaceText(string replaceText);
 
     /// <summary>
-    /// Sets the folder to search. The empty key searches the whole project.
+    /// Sets the files to include to the folder, like "./docs/api", and shows the search filters. The empty key clears
+    /// the files to include. When the search list excludes the folder, Apply Search Exclude Settings turns off. The
+    /// caller starts the search.
     /// </summary>
     void SetFolder(ResourceKey folder);
 
     /// <summary>
-    /// Returns true when the scope controls are shown: the folder field, the file filters and the search list
-    /// toggle.
+    /// Returns true when the search filters are shown: the files to include and the files to exclude.
     /// </summary>
-    bool IsScopeVisible { get; }
+    bool AreFiltersVisible { get; }
 
     /// <summary>
-    /// Shows or hides the scope controls.
+    /// Shows or hides the search filters.
     /// </summary>
-    void SetScopeVisible(bool visible);
+    void SetFiltersVisible(bool visible);
 
     /// <summary>
     /// Executes the search with current settings.

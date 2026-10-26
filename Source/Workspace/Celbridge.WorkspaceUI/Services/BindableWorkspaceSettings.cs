@@ -93,16 +93,10 @@ public sealed class BindableWorkspaceSettings : IBindableWorkspaceSettings
         set => Set(SettingCatalog.Search.ReplaceMode, value);
     }
 
-    public bool SearchScopeVisible
+    public bool SearchFiltersVisible
     {
-        get => Get(SettingCatalog.Search.ScopeVisible);
-        set => Set(SettingCatalog.Search.ScopeVisible, value);
-    }
-
-    public string SearchFolder
-    {
-        get => Get(SettingCatalog.Search.Folder);
-        set => Set(SettingCatalog.Search.Folder, value);
+        get => Get(SettingCatalog.Search.FiltersVisible);
+        set => Set(SettingCatalog.Search.FiltersVisible, value);
     }
 
     public string SearchFilesToInclude
@@ -115,6 +109,12 @@ public sealed class BindableWorkspaceSettings : IBindableWorkspaceSettings
     {
         get => Get(SettingCatalog.Search.FilesToExclude);
         set => Set(SettingCatalog.Search.FilesToExclude, value);
+    }
+
+    public bool SearchOnlyOpenDocuments
+    {
+        get => Get(SettingCatalog.Search.OnlyOpenDocuments);
+        set => Set(SettingCatalog.Search.OnlyOpenDocuments, value);
     }
 
     public bool ApplySearchExclude

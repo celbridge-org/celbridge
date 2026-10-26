@@ -35,7 +35,7 @@ Utilities (dynamic; the `{utilityId}` is the id `app_list_utilities` reports, e.
 
 - `{utilityId}-utility-button` — a utility's button in the Utility Panel rail.
 
-Search panel. Each switches to the Search tab first. The replace landmarks also turn on replace mode, and the scope landmarks also show the folder and file filters:
+Search panel. Each switches to the Search tab first. The replace landmarks also turn on replace mode, and the landmarks in the search filters also show the filters:
 
 - `search-input` — the search text box.
 - `search-run-button` — the run-search button (the magnifying glass).
@@ -43,17 +43,15 @@ Search panel. Each switches to the Search tab first. The replace landmarks also 
 - `search-match-case-button` — the match-case toggle.
 - `search-whole-word-button` — the match-whole-word toggle.
 - `search-collapse-results-button` — the collapse-all-results button.
+- `search-filters-button` — the filter toggle in the options row. It shows the search filters: the files to include and to exclude.
 - `search-replace-toggle-button` — the toggle that shows the replace controls.
-- `search-scope-toggle-button` — the toggle that shows the folder and file filters.
 - `search-replace-input` — the replace text box.
 - `search-replace-history-button` — the recent-replacements dropdown.
 - `search-replace-all-button` — the replace-all button.
-- `search-folder-input` — the scope's field naming the folder to search, empty for the whole project.
-- `search-folder-browse-button` — the scope's button that picks the folder.
-- `search-folder-clear-button` — the scope's button that clears the folder.
-- `search-files-include-input` — the scope's field for the files to include.
-- `search-files-exclude-input` — the scope's field for the files to exclude.
-- `search-list-toggle-button` — the scope's Skip excluded files checkbox, which applies the project's search list.
+- `search-files-include-input` — the files to include field.
+- `search-only-open-documents-button` — the Search Only in Open Documents toggle, beside the files to include field.
+- `search-files-exclude-input` — the files to exclude field.
+- `search-exclude-settings-button` — the Apply Search Exclude Settings toggle, beside the files to exclude field.
 
 Documents:
 

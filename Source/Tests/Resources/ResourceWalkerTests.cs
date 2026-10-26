@@ -1,5 +1,6 @@
 using Celbridge.Messaging;
 using Celbridge.Messaging.Services;
+using Celbridge.Patterns;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
 using Celbridge.Tests.FileSystem;
@@ -102,6 +103,22 @@ public class ResourceWalkerTests
         var items = await WalkAsync(new ResourceKey("src"));
 
         items.Select(item => item.Resource.Path).Should().Equal("src/app.py");
+    }
+
+    [Test]
+    public async Task Walk_WithAFilter_ListsOnlyTheFoldersTheFilterCanMatchInside()
+    {
+        WriteFile("docs/api/guide.md");
+        WriteFile("src/lib/util.py");
+        var filter = SearchFilter.Compile("./docs/api", string.Empty).Value;
+
+        var walkResult = await _walker.WalkAsync(ResourceKey.Empty, filter: filter);
+
+        walkResult.Value.Select(item => item.Resource.Path).Should().Equal(
+            "docs",
+            "docs/api",
+            "docs/api/guide.md",
+            "src");
     }
 
     [Test]

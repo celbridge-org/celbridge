@@ -90,34 +90,34 @@ public class WorkspaceSettingsFacadeTests
         settings.SearchMatchCase.Should().BeFalse();
         settings.SearchWholeWord.Should().BeFalse();
         settings.ReplaceMode.Should().BeFalse();
-        settings.SearchScopeVisible.Should().BeFalse();
-        settings.SearchFolder.Should().BeEmpty();
+        settings.SearchFiltersVisible.Should().BeFalse();
         settings.SearchFilesToInclude.Should().BeEmpty();
         settings.SearchFilesToExclude.Should().BeEmpty();
+        settings.SearchOnlyOpenDocuments.Should().BeFalse();
         settings.ApplySearchExclude.Should().BeTrue();
         settings.PreviousNewFileExtension.Should().Be(".py");
     }
 
     [Test]
-    public async Task SearchScope_AfterFlush_SurvivesReload()
+    public async Task SearchFilters_AfterFlush_SurviveReload()
     {
         var folderPath = Path.Combine(_rootFolderPath, "projectA");
 
         var fixture = await LoadWorkspaceAsync(folderPath);
-        fixture.Settings.SearchScopeVisible = true;
-        fixture.Settings.SearchFolder = "project:docs";
-        fixture.Settings.SearchFilesToInclude = "*.md";
+        fixture.Settings.SearchFiltersVisible = true;
+        fixture.Settings.SearchFilesToInclude = "./docs";
         fixture.Settings.SearchFilesToExclude = "drafts/";
+        fixture.Settings.SearchOnlyOpenDocuments = true;
         fixture.Settings.ApplySearchExclude = false;
 
         await fixture.WorkspaceSettingsService.WorkspaceSettingsStore!.FlushAsync();
         fixture.WorkspaceSettingsService.UnloadWorkspaceSettings();
 
         var reloaded = await LoadWorkspaceAsync(folderPath);
-        reloaded.Settings.SearchScopeVisible.Should().BeTrue();
-        reloaded.Settings.SearchFolder.Should().Be("project:docs");
-        reloaded.Settings.SearchFilesToInclude.Should().Be("*.md");
+        reloaded.Settings.SearchFiltersVisible.Should().BeTrue();
+        reloaded.Settings.SearchFilesToInclude.Should().Be("./docs");
         reloaded.Settings.SearchFilesToExclude.Should().Be("drafts/");
+        reloaded.Settings.SearchOnlyOpenDocuments.Should().BeTrue();
         reloaded.Settings.ApplySearchExclude.Should().BeFalse();
     }
 
