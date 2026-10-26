@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Dialog;
+using Celbridge.Documents;
 using Celbridge.Messaging;
 using Celbridge.Resources;
 using Celbridge.Search;
@@ -19,16 +20,25 @@ namespace Celbridge.Tests.Search;
 public class SearchPanelViewModelTests
 {
     private ISearchService _searchService = null!;
+    private ICommandService _commandService = null!;
+    private MessageHandler<object, DocumentSaveCompletedMessage> _saveCompletedHandler = null!;
     private SearchPanelViewModel _viewModel = null!;
 
     [SetUp]
     public void Setup()
     {
         _searchService = Substitute.For<ISearchService>();
+        _commandService = Substitute.For<ICommandService>();
+
+        var messengerService = Substitute.For<IMessengerService>();
+        messengerService
+            .When(service => service.Register(
+                Arg.Any<object>(),
+                Arg.Any<MessageHandler<object, DocumentSaveCompletedMessage>>()))
+            .Do(call => _saveCompletedHandler = call.Arg<MessageHandler<object, DocumentSaveCompletedMessage>>());
 
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
-        resourceService.Monitor.Returns(new FakeResourceMonitor());
 
         // A substitute's settable properties return the value last set, the way the settings store does.
         var workspaceSettings = Substitute.For<IBindableWorkspaceSettings>();
@@ -60,8 +70,8 @@ public class SearchPanelViewModelTests
 
         _viewModel = new SearchPanelViewModel(
             _searchService,
-            Substitute.For<ICommandService>(),
-            Substitute.For<IMessengerService>(),
+            _commandService,
+            messengerService,
             workspaceWrapper,
             Substitute.For<IDialogService>(),
             stringLocalizer,
@@ -142,6 +152,143 @@ public class SearchPanelViewModelTests
     }
 
     [Test]
+    public async Task Refresh_ExpandsANewFile_OnlyWithinTheLimitOfExpandedMatches()
+    {
+        var pendingSearches = UseSearches(2);
+        var firstSearch = _viewModel.ExecuteSearchAsync();
+        pendingSearches[0].Find("a.txt");
+        pendingSearches[0].End("a.txt");
+        await firstSearch;
+
+        var refresh = _viewModel.ExecuteSearchAsync(isRefresh: true);
+        pendingSearches[1].EndWith(
+            FileResult("a.txt"),
+            FileResult("b.txt", matchCount: 60),
+            FileResult("c.txt", matchCount: 60));
+        await refresh;
+
+        var expandedPaths = _viewModel.FileResults
+            .Where(fileResult => fileResult.IsExpanded)
+            .Select(fileResult => fileResult.Resource.Path);
+        expandedPaths.Should().Equal("a.txt", "b.txt");
+    }
+
+    [Test]
+    public async Task FailedSearch_ShowsTheErrorInTheStatusBar()
+    {
+        _searchService.SearchAsync(Arg.Any<SearchOptions>(), Arg.Any<Action<SearchFileResult>?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<SearchResults>(new InvalidOperationException("The search failed.")));
+
+        await _viewModel.ExecuteSearchAsync();
+
+        _viewModel.StatusText.Should().Be("SearchPanel_Error");
+        _viewModel.ShowStatusBar.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task Refresh_DuringASearchThatShowsEachFile_ShowsEachFileToo()
+    {
+        var pendingSearches = UseSearches(2);
+        var firstSearch = _viewModel.ExecuteSearchAsync();
+        pendingSearches[0].Find("a.txt");
+        _viewModel.AddFoundResults();
+
+        var refresh = _viewModel.ExecuteSearchAsync(isRefresh: true);
+        pendingSearches[0].End("a.txt");
+        await firstSearch;
+        pendingSearches[1].Find("b.txt");
+        _viewModel.AddFoundResults();
+        var resultsWhileRefreshing = ResultPaths();
+
+        pendingSearches[1].End("b.txt");
+        await refresh;
+
+        pendingSearches[1].FileResultFound.Should().NotBeNull("the list of the canceled search was unfinished");
+        resultsWhileRefreshing.Should().Equal("b.txt");
+        ResultPaths().Should().Equal("b.txt");
+    }
+
+    [Test]
+    public async Task ASearchStartedAtOnce_DropsTheSearchWaitingOnTheDebounceTimer()
+    {
+        var pendingSearch = UseSearches(1)[0];
+        var pendingBeforeTheSearch = _viewModel.IsSearchPending;
+
+        var search = _viewModel.ExecuteSearchAsync();
+        var pendingDuringTheSearch = _viewModel.IsSearchPending;
+        pendingSearch.End();
+        await search;
+
+        pendingBeforeTheSearch.Should().BeTrue("the setup typed the search text");
+        pendingDuringTheSearch.Should().BeFalse();
+    }
+
+    [Test]
+    public async Task SavingADocument_SearchesThatFileAgain_AndUpdatesOnlyItsEntry()
+    {
+        var pendingSearches = UseSearches(3);
+        var search = _viewModel.ExecuteSearchAsync();
+        pendingSearches[0].Find("a.txt");
+        pendingSearches[0].Find("c.txt");
+        pendingSearches[0].End("a.txt", "c.txt");
+        await search;
+
+        SaveDocument("b.txt");
+        pendingSearches[1].End("b.txt");
+        var resultsAfterSavingB = ResultPaths();
+        SaveDocument("a.txt");
+        pendingSearches[2].End();
+
+        pendingSearches[1].Options!.Files.Should().Equal(new ResourceKey("b.txt"));
+        resultsAfterSavingB.Should().Equal("a.txt", "b.txt", "c.txt");
+        ResultPaths().Should().Equal("b.txt", "c.txt");
+    }
+
+    [Test]
+    public async Task ReplaceMatch_WithTheFileUnchanged_ReplacesTheMatch()
+    {
+        var pendingSearches = UseSearches(2);
+        await ShowResultsAsync(pendingSearches[0], "a.txt");
+        var match = _viewModel.FileResults[0].Matches[0];
+
+        var replace = _viewModel.ReplaceMatchAsync(match);
+        pendingSearches[1].End("a.txt");
+        await replace;
+
+        RangeEditCount().Should().Be(1);
+        _viewModel.FileResults.Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task ReplaceMatch_WithTheFileChangedSinceTheSearch_ShowsTheNewMatchesAndReplacesNothing()
+    {
+        var pendingSearches = UseSearches(2);
+        await ShowResultsAsync(pendingSearches[0], "a.txt");
+        var match = _viewModel.FileResults[0].Matches[0];
+
+        var replace = _viewModel.ReplaceMatchAsync(match);
+        pendingSearches[1].EndWith(FileResult("a.txt", matchCount: 2));
+        await replace;
+
+        RangeEditCount().Should().Be(0);
+        _viewModel.FileResults.Single().MatchCount.Should().Be(2);
+    }
+
+    [Test]
+    public async Task ReplaceInFile_WithTheFileChangedSinceTheSearch_ShowsTheNewMatchesAndReplacesNothing()
+    {
+        var pendingSearches = UseSearches(2);
+        await ShowResultsAsync(pendingSearches[0], "a.txt");
+
+        var replace = _viewModel.ReplaceInFileAsync(_viewModel.FileResults[0]);
+        pendingSearches[1].EndWith(FileResult("a.txt", matchCount: 2));
+        await replace;
+
+        RangeEditCount().Should().Be(0);
+        _viewModel.FileResults.Single().MatchCount.Should().Be(2);
+    }
+
+    [Test]
     public async Task ChangingTheSearchText_ClearsTheResultsAtOnce()
     {
         var pendingSearch = UseSearches(1)[0];
@@ -172,11 +319,38 @@ public class SearchPanelViewModelTests
                 var pendingSearch = pendingSearches[searchCount];
                 searchCount++;
 
+                pendingSearch.Options = call.ArgAt<SearchOptions>(0);
                 pendingSearch.FileResultFound = call.ArgAt<Action<SearchFileResult>?>(1);
                 return pendingSearch.Task;
             });
 
         return pendingSearches;
+    }
+
+    // Shows the results of a search that finds the files.
+    private async Task ShowResultsAsync(PendingSearch pendingSearch, params string[] paths)
+    {
+        var search = _viewModel.ExecuteSearchAsync();
+        foreach (var path in paths)
+        {
+            pendingSearch.Find(path);
+        }
+        pendingSearch.End(paths);
+        await search;
+        _viewModel.ReplaceText = "goodbye";
+    }
+
+    private void SaveDocument(string path)
+    {
+        _saveCompletedHandler(this, new DocumentSaveCompletedMessage(new ResourceKey(path)));
+    }
+
+    // Counts the range edits the panel sent to the command service.
+    private int RangeEditCount()
+    {
+        return _commandService.ReceivedCalls()
+            .Count(call => call.GetMethodInfo().Name == nameof(ICommandService.ExecuteAsync)
+                && call.GetMethodInfo().GetGenericArguments().FirstOrDefault() == typeof(IApplyRangeEditsCommand));
     }
 
     private List<string> ResultPaths()
@@ -186,18 +360,20 @@ public class SearchPanelViewModelTests
             .ToList();
     }
 
-    private static SearchFileResult FileResult(string path)
+    private static SearchFileResult FileResult(string path, int matchCount = 1)
     {
-        var match = new SearchMatchLine(1, "hello", 0, 5, 0);
+        var matches = Enumerable.Range(1, matchCount)
+            .Select(lineNumber => new SearchMatchLine(lineNumber, "hello", 0, 5, 0))
+            .ToList();
 
-        return new SearchFileResult(new ResourceKey(path), Path.GetFileName(path), path, [match]);
+        return new SearchFileResult(new ResourceKey(path), Path.GetFileName(path), path, matches);
     }
 
-    private static SearchResults Results(params string[] paths)
+    private static SearchResults Results(IReadOnlyList<SearchFileResult> fileResults)
     {
-        var fileResults = paths.Select(FileResult).ToList();
+        var matchCount = fileResults.Sum(fileResult => fileResult.Matches.Count);
 
-        return new SearchResults("hello", fileResults, fileResults.Count, fileResults.Count, false, false, fileResults.Count);
+        return new SearchResults("hello", fileResults.ToList(), matchCount, fileResults.Count, false, false, fileResults.Count);
     }
 
     // A pending search, which ends when the test calls End. Find reports a file to the panel the way SearchService
@@ -205,6 +381,8 @@ public class SearchPanelViewModelTests
     private sealed class PendingSearch
     {
         private readonly TaskCompletionSource<SearchResults> _completion = new();
+
+        public SearchOptions? Options { get; set; }
 
         public Action<SearchFileResult>? FileResultFound { get; set; }
 
@@ -217,7 +395,15 @@ public class SearchPanelViewModelTests
 
         public void End(params string[] paths)
         {
-            _completion.SetResult(Results(paths));
+            var fileResults = paths
+                .Select(path => FileResult(path))
+                .ToArray();
+            EndWith(fileResults);
+        }
+
+        public void EndWith(params SearchFileResult[] fileResults)
+        {
+            _completion.SetResult(Results(fileResults));
         }
     }
 }

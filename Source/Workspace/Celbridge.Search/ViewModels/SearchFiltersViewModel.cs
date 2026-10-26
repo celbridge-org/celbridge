@@ -1,5 +1,4 @@
 using System.Text;
-using Celbridge.Resources;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Localization;
@@ -12,27 +11,9 @@ namespace Celbridge.Search.ViewModels;
 public sealed record SearchFiltersChange(bool IsTyped);
 
 /// <summary>
-/// Matches every path in a root.
-/// </summary>
-internal sealed class EveryPathMatcher : IPathMatcher
-{
-    public static EveryPathMatcher Instance { get; } = new();
-
-    public bool IsMatch(string path, bool isFolder)
-    {
-        return true;
-    }
-
-    public bool CanMatchInside(string folderPath)
-    {
-        return true;
-    }
-}
-
-/// <summary>
 /// The Search panel's filters: the files to include, the files to exclude, Search Only in Open Documents and Apply
 /// Search Exclude Settings. Apply Search Exclude Settings applies the project's search list. The filters keep their
-/// values in the workspace settings, and follow the changes to the searched files.
+/// values in the workspace settings.
 /// </summary>
 public partial class SearchFiltersViewModel : ObservableObject
 {
@@ -44,9 +25,6 @@ public partial class SearchFiltersViewModel : ObservableObject
 
     // Null while the files to include or the files to exclude are refused.
     private SearchFilter? _filter;
-
-    // Follows the changes to the searched files. The monitor drops the subscription when the workspace unloads.
-    private IMatcherSubscription? _subscription;
 
     // False while the constructor reads the workspace settings, so a value read back is not written again.
     private bool _isLoaded;
@@ -96,11 +74,6 @@ public partial class SearchFiltersViewModel : ObservableObject
     /// </summary>
     public event EventHandler<SearchFiltersChange>? Changed;
 
-    /// <summary>
-    /// Raised when a searched file changes, whether Celbridge or another program made the change.
-    /// </summary>
-    public event EventHandler? SearchedFilesChanged;
-
     public string FiltersTooltip { get; }
 
     public string FilesToIncludeLabel { get; }
@@ -119,8 +92,6 @@ public partial class SearchFiltersViewModel : ObservableObject
 
     private IBindableWorkspaceSettings WorkspaceSettings =>
         _workspaceWrapper.WorkspaceService.BindableWorkspaceSettings;
-
-    private IResourceService ResourceService => _workspaceWrapper.WorkspaceService.ResourceService;
 
     public SearchFiltersViewModel(
         IWorkspaceWrapper workspaceWrapper,
@@ -148,13 +119,11 @@ public partial class SearchFiltersViewModel : ObservableObject
         _isLoaded = true;
 
         CompileFilter();
-        UpdateSubscription();
     }
 
     /// <summary>
     /// Sets the files to include to the folder, like "./docs/api", and shows the filters. The empty key clears the
-    /// files to include. When the search list excludes the folder, Apply Search Exclude Settings turns off, so the
-    /// search reads the folder. The caller starts the search.
+    /// files to include. The caller starts the search.
     /// </summary>
     public void SetFolder(ResourceKey folder)
     {
@@ -165,12 +134,6 @@ public partial class SearchFiltersViewModel : ObservableObject
                 ? string.Empty
                 : FormatFolderPattern(folder);
             AreFiltersVisible = true;
-
-            if (!folder.IsEmpty
-                && ResourceService.Policy.IsSearchExcluded(folder, isFolder: true))
-            {
-                ApplySearchExclude = false;
-            }
         }
         finally
         {
@@ -262,7 +225,6 @@ public partial class SearchFiltersViewModel : ObservableObject
         }
 
         WorkspaceSettings.ApplySearchExclude = value;
-        UpdateSubscription();
         RaiseChanged(isTyped: false);
     }
 
@@ -288,51 +250,6 @@ public partial class SearchFiltersViewModel : ObservableObject
 
         _filter = compileResult.Value;
         HasInvalidFilter = false;
-    }
-
-    // While Apply Search Exclude Settings is off, the search reads what the search list excludes, so the subscription
-    // follows every path.
-    private IPathMatcher ChooseSubscriptionMatcher()
-    {
-        if (!ApplySearchExclude)
-        {
-            return EveryPathMatcher.Instance;
-        }
-
-        return ResourceService.Policy.SearchScope;
-    }
-
-    // Subscribes with the new matcher before disposing of the old subscription, so no change is missed.
-    private void UpdateSubscription()
-    {
-        var matcher = ChooseSubscriptionMatcher();
-        if (_subscription is not null
-            && ReferenceEquals(_subscription.Matcher, matcher))
-        {
-            return;
-        }
-
-        var handlers = new ResourceChangeHandlers(OnSearchedFilesChanged, OnSearchedFilesResync);
-        var subscribeResult = ResourceService.Monitor.SubscribeToMatcher(ResourceKey.DefaultRoot, matcher, handlers);
-        if (subscribeResult.IsFailure)
-        {
-            return;
-        }
-
-        var previousSubscription = _subscription;
-        _subscription = subscribeResult.Value;
-        previousSubscription?.Dispose();
-    }
-
-    private void OnSearchedFilesChanged(ResourceChangeBatch batch)
-    {
-        SearchedFilesChanged?.Invoke(this, EventArgs.Empty);
-    }
-
-    // The lost events may have changed any searched file.
-    private void OnSearchedFilesResync(ResourceResync resync)
-    {
-        SearchedFilesChanged?.Invoke(this, EventArgs.Empty);
     }
 
     // Writes a folder as a pattern from the project folder, like "./docs/api". A pattern reads some characters

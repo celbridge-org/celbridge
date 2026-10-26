@@ -20,6 +20,12 @@ public partial class SearchPanelViewModel
 
         try
         {
+            // A file changed since the search shows its new matches, and nothing is replaced.
+            if (!await UpdateFileResultsAsync([fileResult.Resource]))
+            {
+                return;
+            }
+
             var textEdits = BuildRangeEditsForMatches(fileResult.Matches);
 
             var fileEdit = new FileRangeEdit(fileResult.Resource, textEdits);
@@ -59,6 +65,11 @@ public partial class SearchPanelViewModel
         try
         {
             var fileResult = matchLine.Parent;
+            // A file changed since the search shows its new matches, and nothing is replaced.
+            if (!await UpdateFileResultsAsync([fileResult.Resource]))
+            {
+                return;
+            }
 
             var textEdit = CreateRangeEditForMatch(matchLine);
 
@@ -96,6 +107,15 @@ public partial class SearchPanelViewModel
             var matchesByFile = selectedMatches
                 .GroupBy(m => m.Parent.Resource)
                 .ToList();
+
+            var files = matchesByFile
+                .Select(fileGroup => fileGroup.Key)
+                .ToList();
+            // A file changed since the search shows its new matches, and nothing is replaced.
+            if (!await UpdateFileResultsAsync(files))
+            {
+                return;
+            }
 
             var fileEdits = new List<FileRangeEdit>();
 

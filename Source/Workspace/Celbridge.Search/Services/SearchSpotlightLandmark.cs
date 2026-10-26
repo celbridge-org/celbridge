@@ -4,7 +4,7 @@ using Celbridge.Workspace;
 namespace Celbridge.Search.Services;
 
 /// <summary>
-/// The controls a Search landmark's reveal shows beyond the Search tab.
+/// Picks the controls to show with the Search tab when a Search landmark is spotlighted.
 /// </summary>
 public enum SearchLandmarkReveal
 {

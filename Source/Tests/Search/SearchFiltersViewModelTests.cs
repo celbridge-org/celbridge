@@ -13,8 +13,8 @@ namespace Celbridge.Tests.Search;
 
 /// <summary>
 /// Tests for the Search panel's filters: the files to include and to exclude, Search Only in Open Documents and Apply
-/// Search Exclude Settings. Covers the workspace settings, the search options, Search in Folder, the dot on the
-/// filters button, and the subscription to the searched files.
+/// Search Exclude Settings. Covers the workspace settings, the search options, Search in Folder and the dot on the
+/// filters button.
 /// </summary>
 [TestFixture]
 public class SearchFiltersViewModelTests
@@ -24,16 +24,12 @@ public class SearchFiltersViewModelTests
     private IWorkspaceWrapper _workspaceWrapper = null!;
     private IBindableWorkspaceSettings _workspaceSettings = null!;
     private IStringLocalizer _stringLocalizer = null!;
-    private FakeResourceMonitor _resourceMonitor = null!;
 
     [SetUp]
     public void Setup()
     {
-        _resourceMonitor = new FakeResourceMonitor();
-
         _resourceService = Substitute.For<IResourceService>();
         _resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
-        _resourceService.Monitor.Returns(_resourceMonitor);
 
         _documentsService = Substitute.For<IDocumentsService>();
 
@@ -219,16 +215,20 @@ public class SearchFiltersViewModelTests
     }
 
     [Test]
-    public void SetFolder_OnAFolderTheSearchListExcludes_TurnsOffApplySearchExclude()
+    public void SetFolder_LeavesTheTogglesAsTheUserSetThem()
     {
         UseSearchExclude("node_modules");
         var filters = CreateFilters();
+        filters.SearchOnlyOpenDocuments = true;
 
         filters.SetFolder(new ResourceKey("node_modules/lib"));
+        var applyAfterAnExcludedFolder = filters.ApplySearchExclude;
+        filters.ApplySearchExclude = false;
+        filters.SetFolder(new ResourceKey("src"));
 
-        filters.FilesToInclude.Should().Be("./node_modules/lib");
+        applyAfterAnExcludedFolder.Should().BeTrue("Search in Folder sets only the files to include");
         filters.ApplySearchExclude.Should().BeFalse();
-        _workspaceSettings.ApplySearchExclude.Should().BeFalse();
+        filters.SearchOnlyOpenDocuments.Should().BeTrue();
     }
 
     [Test]
@@ -268,52 +268,6 @@ public class SearchFiltersViewModelTests
         filters.FilesToInclude = "  ";
 
         filters.ShowHiddenFiltersDot.Should().BeFalse();
-    }
-
-    [Test]
-    public void Subscription_UsesTheSearchList_WhileTheListApplies()
-    {
-        var policy = UseSearchExclude("dist");
-
-        CreateFilters();
-
-        _resourceMonitor.MatcherSubscriptions.Should().ContainSingle()
-            .Which.Matcher.Should().BeSameAs(policy.SearchScope);
-    }
-
-    [Test]
-    public void Subscription_FollowsEveryPath_WithApplySearchExcludeOff()
-    {
-        var policy = UseSearchExclude("dist");
-        var filters = CreateFilters();
-
-        filters.ApplySearchExclude = false;
-        var matcherWhileOff = _resourceMonitor.MatcherSubscriptions.Single().Matcher;
-
-        filters.ApplySearchExclude = true;
-        var matcherWhileOn = _resourceMonitor.MatcherSubscriptions.Single().Matcher;
-
-        matcherWhileOff.IsMatch("dist/app.js", isFolder: false).Should().BeTrue();
-        matcherWhileOff.Should().NotBeSameAs(policy.SearchScope);
-        matcherWhileOn.Should().BeSameAs(policy.SearchScope);
-    }
-
-    [Test]
-    public void SearchedFilesChanged_FollowsAnExcludedFolder_OnlyWithApplySearchExcludeOff()
-    {
-        UseSearchExclude("dist");
-        var filters = CreateFilters();
-        var changeCount = 0;
-        filters.SearchedFilesChanged += (_, _) => changeCount++;
-
-        _resourceMonitor.DeliverChange(new ResourceKey("dist/app.js"), ResourceItemState.File);
-        var countWhileOn = changeCount;
-
-        filters.ApplySearchExclude = false;
-        _resourceMonitor.DeliverChange(new ResourceKey("dist/app.js"), ResourceItemState.File);
-
-        countWhileOn.Should().Be(0);
-        changeCount.Should().Be(1);
     }
 
     private SearchFiltersViewModel CreateFilters()

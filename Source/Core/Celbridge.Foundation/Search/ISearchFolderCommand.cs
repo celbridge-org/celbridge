@@ -3,8 +3,8 @@ using Celbridge.Commands;
 namespace Celbridge.Search;
 
 /// <summary>
-/// Shows the Search panel on a folder, and searches the folder when the search field has text. The command leaves
-/// the search text and the search options unchanged.
+/// Shows the Search panel with the files to include set to a folder. The command searches when the search field has
+/// text.
 /// </summary>
 public interface ISearchFolderCommand : IExecutableCommand
 {

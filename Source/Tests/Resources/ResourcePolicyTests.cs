@@ -168,33 +168,6 @@ public class ResourcePolicyTests
     }
 
     [Test]
-    public void SearchScope_MatchesWhatTheExclusionsLeaveIn()
-    {
-        var scope = BuildPolicy(searchExclude: new[] { "node_modules", "dist/" }).SearchScope;
-
-        scope.IsMatch("src/main.py", isFolder: false).Should().BeTrue();
-        scope.IsMatch("src", isFolder: true).Should().BeTrue();
-        scope.IsMatch("dist", isFolder: false).Should().BeTrue();
-
-        scope.IsMatch("node_modules", isFolder: true).Should().BeFalse();
-        scope.IsMatch("src/node_modules/pkg/index.js", isFolder: false).Should().BeFalse();
-        scope.IsMatch("dist", isFolder: true).Should().BeFalse();
-        scope.IsMatch("dist/bundle.js", isFolder: false).Should().BeFalse();
-    }
-
-    [Test]
-    public void SearchScope_RulesOutTheInsideOfAnExcludedFolder()
-    {
-        var scope = BuildPolicy(searchExclude: new[] { "node_modules" }).SearchScope;
-
-        scope.CanMatchInside(string.Empty).Should().BeTrue();
-        scope.CanMatchInside("src").Should().BeTrue();
-
-        scope.CanMatchInside("node_modules").Should().BeFalse();
-        scope.CanMatchInside("src/node_modules/pkg").Should().BeFalse();
-    }
-
-    [Test]
     public void ProjectPatterns_DoNotMatchOtherRoots()
     {
         var policy = BuildPolicy(explorerExclude: new[] { "run.log" }, searchExclude: new[] { "run.log" });

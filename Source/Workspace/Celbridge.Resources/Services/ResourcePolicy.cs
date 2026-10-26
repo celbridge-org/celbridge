@@ -52,10 +52,7 @@ public sealed class ResourcePolicy : IResourcePolicy
         _systemDeny = BuildSystemDenyRules();
         _explorerExclude = CompileList(config.Explorer.Exclude);
         _searchExclude = CompileList(config.Search.Exclude);
-        SearchScope = new SearchScopeMatcher(_searchExclude);
     }
-
-    public IPathMatcher SearchScope { get; }
 
     public Result Evaluate(ResourceKey resource, ResourceAction action, bool isFolder = false)
     {

@@ -47,6 +47,9 @@ public partial class SearchPanelViewModel : ObservableObject
     // Counts the matches in the expanded files. The count decides whether the next file found expands.
     private int _expandedMatchCount;
 
+    // Goes up each time the list clears, so a file search can tell that its list was replaced.
+    private int _resultsVersion;
+
     [ObservableProperty]
     private string _titleText = string.Empty;
 
@@ -64,6 +67,7 @@ public partial class SearchPanelViewModel : ObservableObject
     private bool _isSearching;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowStatusBar))]
     private string _statusText = string.Empty;
 
     [ObservableProperty]
@@ -89,10 +93,12 @@ public partial class SearchPanelViewModel : ObservableObject
     private bool _isReplacing;
 
     /// <summary>
-    /// True while a search runs or the results show. The status bar shows the spinner while a search runs, and the
-    /// count of matches after it ends.
+    /// True while a search runs, while the results show, or while the status text has a message, like the error from
+    /// a failed search. The status bar shows the spinner while a search runs, and the count of matches after it ends.
     /// </summary>
-    public bool ShowStatusBar => IsSearching || HasResults;
+    public bool ShowStatusBar => IsSearching
+        || HasResults
+        || !string.IsNullOrEmpty(StatusText);
 
     // Selection tracking for multi-select (can be either a file result or a match line)
     private ISelectableSearchItem? _selectionAnchor;
@@ -196,10 +202,10 @@ public partial class SearchPanelViewModel : ObservableObject
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
         _messengerService.Register<DocumentOpenedMessage>(this, OnDocumentOpened);
         _messengerService.Register<DocumentClosedMessage>(this, OnDocumentClosed);
+        _messengerService.Register<DocumentSaveCompletedMessage>(this, OnDocumentSaveCompleted);
 
         Filters = new SearchFiltersViewModel(_workspaceWrapper, _stringLocalizer);
         Filters.Changed += OnFiltersChanged;
-        Filters.SearchedFilesChanged += OnSearchedFilesChanged;
     }
 
     // With Search Only in Open Documents on, opening or closing a document changes the searched files.
@@ -234,17 +240,24 @@ public partial class SearchPanelViewModel : ObservableObject
         }
     }
 
-    // Search again after a change to a searched file, whether Celbridge or another program made the change.
-    private void OnSearchedFilesChanged(object? sender, EventArgs e)
+    // Saving a document writes the document's file, so the file's entry updates. A save during a search leaves the list
+    // to the search. Other changes on disk show once the user searches again.
+    private void OnDocumentSaveCompleted(object recipient, DocumentSaveCompletedMessage message)
     {
-        ScheduleSearch(isRefresh: true);
+        if (string.IsNullOrEmpty(SearchText)
+            || IsSearching)
+        {
+            return;
+        }
+
+        _ = UpdateFileResultsAsync([message.DocumentResource]);
     }
 
     // Clears the results at once, since the old results don't match the new search, and searches once the typing
     // stops.
     private void ScheduleNewSearch()
     {
-        _searchDebounceTimer?.Dispose();
+        DropPendingSearch();
         CancelSearch();
         ClearResults();
 
@@ -272,6 +285,16 @@ public partial class SearchPanelViewModel : ObservableObject
             null,
             SearchDebounceDelayMs,
             Timeout.Infinite);
+    }
+
+    // True while a search waits on the debounce timer. Internal for the test suite.
+    internal bool IsSearchPending => _searchDebounceTimer is not null;
+
+    // Drops the search waiting on the debounce timer.
+    private void DropPendingSearch()
+    {
+        _searchDebounceTimer?.Dispose();
+        _searchDebounceTimer = null;
     }
 
     partial void OnSearchTextChanged(string value)
@@ -323,9 +346,11 @@ public partial class SearchPanelViewModel : ObservableObject
     // for the test suite.
     internal async Task ExecuteSearchAsync(bool isRefresh = false)
     {
-        // An empty list has nothing to keep still, so a refresh of an empty list also shows each result once found.
+        // A refresh keeps a finished list still. An empty list is unfinished, and so is the list of a search that still
+        // adds results. A refresh of an unfinished list shows each result once found.
         var showsResultsAsFound = !isRefresh
-            || FileResults.Count == 0;
+            || FileResults.Count == 0
+            || _currentSearch?.ShowsResultsAsFound == true;
 
         var search = StartSearch(showsResultsAsFound);
 
@@ -389,9 +414,11 @@ public partial class SearchPanelViewModel : ObservableObject
         }
     }
 
-    // Starts a search in place of the current one, and shows the spinner in place of the count of matches.
+    // Starts a search in place of the current one, and drops the search waiting on the debounce timer. The spinner
+    // shows in place of the count of matches.
     private SearchRun StartSearch(bool showsResultsAsFound)
     {
+        DropPendingSearch();
         CancelSearch();
 
         var search = new SearchRun(showsResultsAsFound);
@@ -477,14 +504,27 @@ public partial class SearchPanelViewModel : ObservableObject
     // The expanded files show at most this many matches, so a file with many matches doesn't bury the files after it.
     private const int MaxExpandedMatches = 100;
 
-    // Adds a file found by a search. The file expands while the expanded files stay within MaxExpandedMatches, and
-    // the first file always expands, so the user always sees a match.
-    private void AddFileResult(SearchFileResult fileResult)
+    // Adds a file found by a search at the end of the list.
+    private void AddFileResult(SearchFileResult fileResult, bool? keptExpandedState = null)
+    {
+        var fileViewModel = CreateFileViewModel(fileResult, keptExpandedState);
+
+        FileResults.Add(fileViewModel);
+        HasResults = true;
+        ShowNoResults = false;
+    }
+
+    // Creates a file's entry. The file expands while the expanded files stay within MaxExpandedMatches, and the first
+    // file always expands, so the user always sees a match. A file that was in the list before keeps its expanded
+    // state instead.
+    private SearchFileResultViewModel CreateFileViewModel(SearchFileResult fileResult, bool? keptExpandedState)
     {
         var fileViewModel = new SearchFileResultViewModel(fileResult, this, _workspaceWrapper);
 
-        if (FileResults.Count == 0
-            || _expandedMatchCount + fileViewModel.MatchCount <= MaxExpandedMatches)
+        var isExpanded = keptExpandedState
+            ?? (FileResults.Count == 0
+                || _expandedMatchCount + fileViewModel.MatchCount <= MaxExpandedMatches);
+        if (isExpanded)
         {
             _expandedMatchCount += fileViewModel.MatchCount;
         }
@@ -493,13 +533,116 @@ public partial class SearchPanelViewModel : ObservableObject
             fileViewModel.IsExpanded = false;
         }
 
-        FileResults.Add(fileViewModel);
-        HasResults = true;
-        ShowNoResults = false;
+        return fileViewModel;
     }
 
-    // Replaces the list with a refresh's results. Each file stays expanded or collapsed, and the view keeps the
-    // scroll position.
+    // Searches the files again, and updates their entries in the list. Returns true when every file's entry was
+    // current. A replace writes at each match's stored line and column, so each replace checks its files here first.
+    // A file search started before a new search or a cleared list drops its results.
+    private async Task<bool> UpdateFileResultsAsync(IReadOnlyList<ResourceKey> files)
+    {
+        var patternResult = CompileSearchPattern();
+        if (patternResult.IsFailure)
+        {
+            return false;
+        }
+
+        var searchOptions = Filters.CreateSearchOptions(patternResult.Value, maxResults: null);
+        if (searchOptions is null)
+        {
+            return false;
+        }
+
+        var resultsVersion = _resultsVersion;
+        var fileSearchOptions = searchOptions with { Files = files };
+        var results = await _searchService.SearchAsync(fileSearchOptions, null, CancellationToken.None);
+        if (resultsVersion != _resultsVersion
+            || results.WasCancelled)
+        {
+            return false;
+        }
+
+        var foundResults = results.FileResults.ToDictionary(fileResult => fileResult.Resource);
+        var isCurrent = true;
+        foreach (var file in files.Distinct())
+        {
+            var shownResult = FileResults.FirstOrDefault(fileResult => fileResult.Resource == file);
+            foundResults.TryGetValue(file, out var foundResult);
+            if (HasSameMatches(shownResult, foundResult))
+            {
+                continue;
+            }
+
+            isCurrent = false;
+            UpdateFileResult(shownResult, foundResult);
+        }
+
+        if (!isCurrent
+            && !IsSearching)
+        {
+            UpdateResultsStatus();
+        }
+
+        return isCurrent;
+    }
+
+    // Returns true when the entry's matches equal the file's matches now, or when neither exists.
+    private static bool HasSameMatches(SearchFileResultViewModel? shownResult, SearchFileResult? foundResult)
+    {
+        if (shownResult is null
+            || foundResult is null)
+        {
+            return shownResult is null
+                && foundResult is null;
+        }
+
+        var shownMatches = shownResult.Matches
+            .Select(match => (match.LineNumber, match.OriginalMatchStart, match.MatchLength));
+        var foundMatches = foundResult.Matches
+            .Select(match => (match.LineNumber, match.OriginalMatchStart, match.MatchLength));
+
+        return shownMatches.SequenceEqual(foundMatches);
+    }
+
+    // Puts a file's new result in place of its entry. The entry keeps its expanded state. A file without matches
+    // leaves the list, and a newly matching file joins the list in path order.
+    private void UpdateFileResult(SearchFileResultViewModel? shownResult, SearchFileResult? foundResult)
+    {
+        _selectionAnchor = null;
+
+        var index = -1;
+        if (shownResult is not null)
+        {
+            index = FileResults.IndexOf(shownResult);
+            FileResults.RemoveAt(index);
+            if (shownResult.IsExpanded)
+            {
+                _expandedMatchCount -= shownResult.MatchCount;
+            }
+        }
+
+        if (foundResult is null)
+        {
+            return;
+        }
+
+        if (index < 0)
+        {
+            var path = foundResult.Resource.Path;
+            index = 0;
+            while (index < FileResults.Count
+                && string.Compare(FileResults[index].Resource.Path, path, StringComparison.OrdinalIgnoreCase) < 0)
+            {
+                index++;
+            }
+        }
+
+        var fileViewModel = CreateFileViewModel(foundResult, shownResult?.IsExpanded);
+        FileResults.Insert(index, fileViewModel);
+    }
+
+    // Replaces the list with a refresh's results. Each file that was already in the list stays expanded or collapsed,
+    // and each new file follows the rule in AddFileResult. The view keeps the scroll position.
     private void ReplaceResults(SearchResults results)
     {
         var expandedStates = FileResults.ToDictionary(f => f.Resource, f => f.IsExpanded);
@@ -509,13 +652,10 @@ public partial class SearchPanelViewModel : ObservableObject
         ClearResults();
         foreach (var fileResult in results.FileResults)
         {
-            var fileViewModel = new SearchFileResultViewModel(fileResult, this, _workspaceWrapper);
-            if (expandedStates.TryGetValue(fileViewModel.Resource, out var wasExpanded))
-            {
-                fileViewModel.IsExpanded = wasExpanded;
-            }
-
-            FileResults.Add(fileViewModel);
+            bool? keptExpandedState = expandedStates.TryGetValue(fileResult.Resource, out var wasExpanded)
+                ? wasExpanded
+                : null;
+            AddFileResult(fileResult, keptExpandedState);
         }
 
         AfterResultsRefresh?.Invoke(this, EventArgs.Empty);
@@ -523,6 +663,7 @@ public partial class SearchPanelViewModel : ObservableObject
 
     public void ClearResults()
     {
+        _resultsVersion++;
         FileResults.Clear();
         HasResults = false;
         ShowNoResults = false;

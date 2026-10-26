@@ -42,8 +42,7 @@ public interface ISearchPanel
 
     /// <summary>
     /// Sets the files to include to the folder, like "./docs/api", and shows the search filters. The empty key clears
-    /// the files to include. When the search list excludes the folder, Apply Search Exclude Settings turns off. The
-    /// caller starts the search.
+    /// the files to include. The caller starts the search.
     /// </summary>
     void SetFolder(ResourceKey folder);
 

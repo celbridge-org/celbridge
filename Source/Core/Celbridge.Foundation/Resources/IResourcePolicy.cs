@@ -130,10 +130,4 @@ public interface IResourcePolicy
     /// Returns true if the project's search list excludes the resource.
     /// </summary>
     bool IsSearchExcluded(ResourceKey resource, bool isFolder);
-
-    /// <summary>
-    /// Returns a matcher that matches a project path unless the search list excludes the path. When the list
-    /// matches a folder, the matcher also excludes everything inside the folder.
-    /// </summary>
-    IPathMatcher SearchScope { get; }
 }
