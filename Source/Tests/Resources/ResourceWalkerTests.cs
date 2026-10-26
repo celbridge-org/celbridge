@@ -151,6 +151,47 @@ public class ResourceWalkerTests
     }
 
     [Test]
+    public async Task Walk_FromAnExcludedFolder_ListsTheFolderInFull()
+    {
+        WriteFile("node_modules/lib/index.js");
+        WriteFile("node_modules/lib/node_modules/inner.js");
+        WriteFile("src/app.py");
+        UseSearchExclude("node_modules");
+
+        var items = await WalkAsync(new ResourceKey("node_modules"));
+
+        items.Select(item => item.Resource.Path).Should().Equal(
+            "node_modules/lib",
+            "node_modules/lib/node_modules",
+            "node_modules/lib/node_modules/inner.js",
+            "node_modules/lib/index.js");
+    }
+
+    [Test]
+    public async Task Walk_FromAFolderInsideAnExcludedFolder_ListsTheFolderInFull()
+    {
+        WriteFile("build/output/app.dll");
+        WriteFile("build/output/app.pdb");
+        UseSearchExclude("build/", "*.pdb");
+
+        var items = await WalkAsync(new ResourceKey("build/output"));
+
+        items.Select(item => item.Resource.Path).Should().Equal("build/output/app.dll", "build/output/app.pdb");
+    }
+
+    [Test]
+    public async Task Walk_FromAFolderTheListLeavesIn_StillAppliesTheList()
+    {
+        WriteFile("src/app.py");
+        WriteFile("src/build/output.txt");
+        UseSearchExclude("build/");
+
+        var items = await WalkAsync(new ResourceKey("src"));
+
+        items.Select(item => item.Resource.Path).Should().Equal("src/app.py");
+    }
+
+    [Test]
     public async Task Walk_LeavesOutLinksAndGit()
     {
         WriteFile("target/inside.txt");

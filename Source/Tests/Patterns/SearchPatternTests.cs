@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Celbridge.Search;
 
 namespace Celbridge.Tests.Patterns;
 
@@ -35,6 +36,17 @@ public class SearchPatternTests
             .FindMatches(text)
             .Select(match => text.Substring(match.Start, match.Length))
             .ToList();
+    }
+
+    [Test]
+    public void AsATextMatcher_GivesThePatternAsWrittenAndEachMatchInALine()
+    {
+        ITextMatcher matcher = Compile(@"b\w", Regex);
+
+        var matches = matcher.FindMatches("abc abd");
+
+        matcher.Pattern.Should().Be(@"b\w");
+        matches.Should().Equal(new TextMatch(1, 2), new TextMatch(5, 2));
     }
 
     [Test]

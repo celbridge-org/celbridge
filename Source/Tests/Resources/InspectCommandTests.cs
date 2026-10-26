@@ -367,4 +367,24 @@ public class InspectCommandTests
         var ghost = _command.ResultValue.Records.Single(record => record.Resource.Equals(new ResourceKey("build/ghost.png.cel")));
         ghost.Status.Should().Be(SidecarStatus.Orphan);
     }
+
+    [Test]
+    public async Task WholeProject_ApplySearchExcludeOff_CoversWhatTheSearchListExcludes()
+    {
+        Directory.CreateDirectory(Path.Combine(_projectFolderPath, "build"));
+        File.WriteAllText(Path.Combine(_projectFolderPath, "build", "app.md"), "Built.\n");
+        File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md"), "Notes.\n");
+        var policy = TestResourcePolicy.CreateWithSearchExclude(_projectFolderPath, new[] { "build/" });
+        _resourceService.Policy.Returns(policy);
+
+        (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
+        var defaultResources = _command.ResultValue.Records.Select(record => record.Resource).ToList();
+
+        _command.ApplySearchExclude = false;
+        (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
+        var includedResources = _command.ResultValue.Records.Select(record => record.Resource).ToList();
+
+        defaultResources.Should().Equal(new ResourceKey("notes.md"));
+        includedResources.Should().Equal(new ResourceKey("build/app.md"), new ResourceKey("notes.md"));
+    }
 }

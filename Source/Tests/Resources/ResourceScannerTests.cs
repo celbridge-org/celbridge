@@ -14,6 +14,7 @@ namespace Celbridge.Tests.Resources;
 public class ResourceScannerTests
 {
     private string _projectFolderPath = null!;
+    private IResourceService _resourceService = null!;
     private ResourceScanner _scanner = null!;
 
     [SetUp]
@@ -31,6 +32,7 @@ public class ResourceScannerTests
         var resourceService = Substitute.For<IResourceService>();
         resourceService.RootHandlers.Returns(TestRootHandlers.Create(_projectFolderPath));
         resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
+        _resourceService = resourceService;
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
@@ -77,7 +79,7 @@ public class ResourceScannerTests
         WriteFile("images/photo.png", "png");
         WriteFile("images/photo.png.cel", "_tags = [\"boring\"]\n");
 
-        var results = await _scanner.FindByTagAsync("boring");
+        var results = await _scanner.FindByTagAsync("boring", applySearchExclude: true);
 
         results.Should().ContainSingle()
             .Which.Should().Be(new ResourceKey("images/photo.png"));
@@ -91,9 +93,45 @@ public class ResourceScannerTests
         // point of view. data_inspect lists them separately.
         WriteFile("leftover.cel", "_tags = [\"boring\"]\n");
 
-        var results = await _scanner.FindByTagAsync("boring");
+        var results = await _scanner.FindByTagAsync("boring", applySearchExclude: true);
 
         results.Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task FindByTagAsync_LeavesOutWhatTheSearchListExcludes_UnlessAskedToIncludeIt()
+    {
+        WriteFile("dist/photo.png", "png");
+        WriteFile("dist/photo.png.cel", "_tags = [\"boring\"]\n");
+        UseSearchExclude("dist");
+
+        var defaultResults = await _scanner.FindByTagAsync("boring", applySearchExclude: true);
+        var includedResults = await _scanner.FindByTagAsync("boring", applySearchExclude: false);
+
+        defaultResults.Should().BeEmpty();
+        includedResults.Should().Equal(new ResourceKey("dist/photo.png"));
+    }
+
+    [Test]
+    public async Task ListAllTagsAsync_LeavesOutWhatTheSearchListExcludes_UnlessAskedToIncludeIt()
+    {
+        WriteFile("notes.md", "notes");
+        WriteFile("notes.md.cel", "_tags = [\"kept\"]\n");
+        WriteFile("dist/photo.png", "png");
+        WriteFile("dist/photo.png.cel", "_tags = [\"built\"]\n");
+        UseSearchExclude("dist");
+
+        var defaultTags = await _scanner.ListAllTagsAsync(applySearchExclude: true);
+        var includedTags = await _scanner.ListAllTagsAsync(applySearchExclude: false);
+
+        defaultTags.Should().Equal("kept");
+        includedTags.Should().Equal("built", "kept");
+    }
+
+    private void UseSearchExclude(params string[] patterns)
+    {
+        var policy = TestResourcePolicy.CreateWithSearchExclude(_projectFolderPath, patterns);
+        _resourceService.Policy.Returns(policy);
     }
 
     private void WriteFile(string relativePath, string content)

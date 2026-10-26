@@ -55,6 +55,31 @@ public interface IBindableWorkspaceSettings : INotifyPropertyChanged
     bool ReplaceMode { get; set; }
 
     /// <summary>
+    /// True when the search panel shows its scope controls: the folder, the file filters and the search list toggle.
+    /// </summary>
+    bool SearchScopeVisible { get; set; }
+
+    /// <summary>
+    /// The key of the folder to search in the search panel. Empty searches the whole project.
+    /// </summary>
+    string SearchFolder { get; set; }
+
+    /// <summary>
+    /// The search panel's filter of the files to include, like "*.md".
+    /// </summary>
+    string SearchFilesToInclude { get; set; }
+
+    /// <summary>
+    /// The search panel's filter of the files to exclude, like "*.min.js".
+    /// </summary>
+    string SearchFilesToExclude { get; set; }
+
+    /// <summary>
+    /// True when the search panel skips what the project's search list excludes.
+    /// </summary>
+    bool ApplySearchExclude { get; set; }
+
+    /// <summary>
     /// The file extension of the previously created file via the Add File dialog.
     /// </summary>
     string PreviousNewFileExtension { get; set; }

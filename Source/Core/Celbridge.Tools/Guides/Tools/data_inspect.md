@@ -7,6 +7,7 @@ Per-resource inventory and health for `.cel` sidecars. Scope ranges from a singl
 - `resources` — JSON array of resource keys to inspect (e.g. `["notes.md", "drafts/article.md"]`). Optional.
 - `pattern` — search filter matched against each resource's path in the project (e.g. `"assets/**"` or `"*.md"`). The rules are in `search_filters`. Optional.
 - `summaryOnly` — boolean. When `true`, `tags` and `fields` drop from each record; `status` and `parseError` stay. The aggregate summary counts always populate. Defaults to `false`.
+- `applySearchExclude` — boolean. When `false`, a whole-project or pattern inspection also covers what the project's search list excludes. Defaults to `true`.
 
 Scope resolution mirrors `file_grep`:
 
@@ -17,7 +18,7 @@ Scope resolution mirrors `file_grep`:
 | empty | set | Every resource key matching the filter. |
 | set | set | Union of the two. |
 
-A whole-project or pattern inspection walks the project each time it is called. The walk leaves out what the project's search list, `[celbridge.search] exclude`, matches. Name a resource in `resources` to inspect it anyway.
+A whole-project or pattern inspection walks the project each time it is called. The walk leaves out what the project's search list, `[celbridge.search] exclude`, matches, unless `applySearchExclude` is `false`. A resource named in `resources` is inspected either way.
 
 ## Returns
 

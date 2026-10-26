@@ -45,6 +45,7 @@ public enum IconSymbol
     ChevronUp,
     MatchCase,
     Replace,
+    Filter,
     Add,
     Copy,
     Cut,

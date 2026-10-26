@@ -53,7 +53,7 @@ public partial class FileTools
     [McpServerTool(Name = "file_grep", ReadOnly = true)]
     [ToolAlias("file.grep")]
     [RelatedGuides("resource_keys", "regex_syntax", "search_filters")]
-    public async partial Task<CallToolResult> Grep(string pattern, bool literal = false, bool matchCase = true, bool wholeWord = false, string path = "", string include = "", string exclude = "", int maxResults = 100, int contextLines = 0, string files = "", bool includeContent = false, bool summaryOnly = false)
+    public async partial Task<CallToolResult> Grep(string pattern, bool literal = false, bool matchCase = true, bool wholeWord = false, string path = "", string include = "", string exclude = "", int maxResults = 100, int contextLines = 0, string files = "", bool includeContent = false, bool summaryOnly = false, bool applySearchExclude = true)
     {
         var patternOptions = new SearchPatternOptions(literal, matchCase, wholeWord, Multiline: false);
         var patternResult = SearchPattern.Compile(pattern, patternOptions);
@@ -112,13 +112,12 @@ public partial class FileTools
 
         var searchService = workspaceWrapper.WorkspaceService.SearchService;
 
-        var searchOptions = new SearchOptions(pattern, literal, matchCase, wholeWord)
+        var searchOptions = new SearchOptions(searchPattern, filter)
         {
             MaxResults = maxResults,
-            Include = include,
-            Exclude = exclude,
             Scope = path,
             IncludeMetadataFiles = true,
+            ApplySearchExclude = applySearchExclude,
         };
         var results = await searchService.SearchAsync(searchOptions, CancellationToken.None);
 

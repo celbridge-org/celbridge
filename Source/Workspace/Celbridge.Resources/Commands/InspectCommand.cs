@@ -27,6 +27,7 @@ public sealed class InspectCommand : CommandBase, IInspectCommand
     public IReadOnlyList<ResourceKey> Resources { get; set; } = Array.Empty<ResourceKey>();
     public string Pattern { get; set; } = string.Empty;
     public bool SummaryOnly { get; set; }
+    public bool ApplySearchExclude { get; set; } = true;
 
     public InspectResult ResultValue { get; private set; } = new InspectResult(
         Array.Empty<InspectRecord>(),
@@ -71,7 +72,7 @@ public sealed class InspectCommand : CommandBase, IInspectCommand
         if (!hasResources
             || hasPattern)
         {
-            var walkResult = await resourceService.Walker.WalkAsync(ResourceKey.Empty);
+            var walkResult = await resourceService.Walker.WalkAsync(ResourceKey.Empty, ApplySearchExclude);
             if (walkResult.IsFailure)
             {
                 return Result.Fail("Failed to walk the project to inspect its sidecars.")

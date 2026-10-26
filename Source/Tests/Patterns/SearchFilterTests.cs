@@ -148,6 +148,23 @@ public class SearchFilterTests
         compileResult.FirstErrorMessage.Should().Contain("starts with '!'");
     }
 
+    [TestCase("", "", "src", true)]
+    [TestCase("", "", "", true)]
+    [TestCase("", "tests/", "tests", false)]
+    [TestCase("", "tests/", "tests/unit", false)]
+    [TestCase("", "*.min.js", "dist", true)]
+    [TestCase("!tests/", "", "tests", false)]
+    [TestCase("src/**", "", "src/app", true)]
+    [TestCase("src/**", "", "lib", false)]
+    [TestCase("*.py", "", "lib", true)]
+    [TestCase("src/**", "src/generated/", "src/generated", false)]
+    public void CanMatchInside_RulesOutOnlyTheFoldersNoFileInsideCanMatch(string include, string exclude, string folderPath, bool canMatch)
+    {
+        var filter = Compile(include, exclude);
+
+        filter.CanMatchInside(folderPath).Should().Be(canMatch);
+    }
+
     [Test]
     public void ARefusedPattern_FailsTheFilter()
     {

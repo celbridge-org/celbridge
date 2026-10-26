@@ -9,9 +9,12 @@ public partial class DataTools
     [McpServerTool(Name = "data_list_tags", ReadOnly = true)]
     [ToolAlias("data.list_tags")]
     [RelatedGuides("resource_keys")]
-    public async partial Task<CallToolResult> ListTags()
+    public async partial Task<CallToolResult> ListTags(bool applySearchExclude = true)
     {
-        var commandResult = await ExecuteCommandAsync<IListTagsCommand, IReadOnlyList<string>>();
+        var commandResult = await ExecuteCommandAsync<IListTagsCommand, IReadOnlyList<string>>(command =>
+        {
+            command.ApplySearchExclude = applySearchExclude;
+        });
         if (commandResult.IsFailure)
         {
             return ToolResponse.Error(commandResult);

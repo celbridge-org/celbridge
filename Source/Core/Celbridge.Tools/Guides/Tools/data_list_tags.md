@@ -4,7 +4,7 @@ Enumerates every distinct tag string across every healthy `.cel` sidecar in the 
 
 ## Parameters
 
-None.
+- `applySearchExclude` — boolean. The scan skips what the project's search list, `[celbridge.search] exclude`, excludes. Set it to `false` to scan those sidecars too. Defaults to `true`.
 
 ## Returns
 

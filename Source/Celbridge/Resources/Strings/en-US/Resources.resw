@@ -1401,6 +1401,9 @@ Open with default application instead?</value>
   <data name="ResourceTree_CopyResourceKey" xml:space="preserve">
     <value>Copy Resource Key</value>
   </data>
+  <data name="ResourceTree_SearchInFolder" xml:space="preserve">
+    <value>Search in Folder</value>
+  </data>
   <data name="ResourceTree_CopyPath" xml:space="preserve">
     <value>Copy Path</value>
   </data>
@@ -1835,6 +1838,45 @@ Open with default application instead?</value>
   </data>
   <data name="SearchPanel_ClearHistoryText" xml:space="preserve">
     <value>Clear Recent</value>
+  </data>
+  <data name="SearchPanel_ScopeToggleTooltip" xml:space="preserve">
+    <value>Toggle Folder and Filters</value>
+  </data>
+  <data name="SearchPanel_FolderPlaceholder" xml:space="preserve">
+    <value>Whole project</value>
+  </data>
+  <data name="SearchPanel_FolderBrowseTooltip" xml:space="preserve">
+    <value>Choose a Folder</value>
+  </data>
+  <data name="SearchPanel_FolderPickerTitle" xml:space="preserve">
+    <value>Choose a Folder to Search</value>
+  </data>
+  <data name="SearchPanel_FolderClearTooltip" xml:space="preserve">
+    <value>Clear Folder</value>
+  </data>
+  <data name="SearchPanel_FilesToIncludePlaceholder" xml:space="preserve">
+    <value>Files to include</value>
+  </data>
+  <data name="SearchPanel_FilesToExcludePlaceholder" xml:space="preserve">
+    <value>Files to exclude</value>
+  </data>
+  <data name="SearchPanel_SearchListLabel" xml:space="preserve">
+    <value>Skip excluded files</value>
+  </data>
+  <data name="SearchPanel_SearchListTooltip" xml:space="preserve">
+    <value>Excluded files are set in Project Settings, under Resources.</value>
+  </data>
+  <data name="SearchPanel_InvalidFilter" xml:space="preserve">
+    <value>One of the file filters is not valid.</value>
+  </data>
+  <data name="SearchPanel_ScopeSummary_Folder" xml:space="preserve">
+    <value>Searching in '{0}'</value>
+  </data>
+  <data name="SearchPanel_ScopeSummary_Filters" xml:space="preserve">
+    <value>Searching with filters</value>
+  </data>
+  <data name="SearchPanel_ScopeSummary_FolderAndFilters" xml:space="preserve">
+    <value>Searching in '{0}', with filters</value>
   </data>
   <data name="Workshop_PublishPackageConfirm_Title" xml:space="preserve">
     <value>Publish Package</value>

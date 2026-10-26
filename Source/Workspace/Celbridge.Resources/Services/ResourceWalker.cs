@@ -64,7 +64,13 @@ public sealed class ResourceWalker : IResourceWalker
         }
         var folderChildren = listResult.Value;
 
-        var walk = new Walk(resourceService.FileSystem, resourceService.Policy, applySearchExclude, cancellationToken);
+        // The search list matches each folder on a path, so the list leaves out everything below an excluded folder.
+        // A walk that starts in an excluded folder, or in a folder inside one, lists the folder in full.
+        var startsInExcludedFolder = resourceService.Policy.IsSearchExcluded(folder, isFolder: true);
+        var walkApplySearchExclude = applySearchExclude
+            && !startsInExcludedFolder;
+
+        var walk = new Walk(resourceService.FileSystem, resourceService.Policy, walkApplySearchExclude, cancellationToken);
         await AddFolderContentsAsync(walk, folderChildren, folderPath);
 
         IReadOnlyList<WalkedItem> items = walk.Items;

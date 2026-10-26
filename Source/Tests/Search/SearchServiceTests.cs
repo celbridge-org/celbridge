@@ -1,6 +1,7 @@
 using Celbridge.Automation;
 using Celbridge.FileSystem.Services;
 using Celbridge.Messaging.Services;
+using Celbridge.Patterns;
 using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
@@ -20,6 +21,7 @@ namespace Celbridge.Tests.Search;
 public class SearchServiceTests
 {
     private string _tempFolder = null!;
+    private IResourceService _resourceService = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
     private SearchService _searchService = null!;
     private IAutomationService _automationService = null!;
@@ -35,6 +37,7 @@ public class SearchServiceTests
         var resourceService = Substitute.For<IResourceService>();
         resourceService.RootHandlers.Returns(TestRootHandlers.Create(_tempFolder));
         resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
+        _resourceService = resourceService;
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
@@ -197,7 +200,7 @@ public class SearchServiceTests
         await WriteFileAsync("src/app.js", "hello world");
         await WriteFileAsync("docs/guide.md", "hello world");
 
-        var options = Options("hello") with { Include = "*.py,docs/" };
+        var options = Options("hello", include: "*.py,docs/");
         var result = await _searchService.SearchAsync(options, CancellationToken.None);
 
         var resources = result.FileResults.Select(fileResult => fileResult.Resource);
@@ -211,7 +214,7 @@ public class SearchServiceTests
         await WriteFileAsync("src/app.js", "hello world");
         await WriteFileAsync("src/app.min.js", "hello world");
 
-        var options = Options("hello") with { Include = "*.js", Exclude = "*.min.js" };
+        var options = Options("hello", include: "*.js", exclude: "*.min.js");
         var result = await _searchService.SearchAsync(options, CancellationToken.None);
 
         result.FileResults.Select(fileResult => fileResult.Resource).Should().Equal(new ResourceKey("src/app.js"));
@@ -223,7 +226,7 @@ public class SearchServiceTests
         await WriteFileAsync("src/lib/util.py", "hello world");
         await WriteFileAsync("src/main.py", "hello world");
 
-        var options = Options("hello", scope: "src") with { Include = "src/lib/**" };
+        var options = Options("hello", scope: "src", include: "src/lib/**");
         var result = await _searchService.SearchAsync(options, CancellationToken.None);
 
         result.FileResults.Select(fileResult => fileResult.Resource).Should().Equal(new ResourceKey("src/lib/util.py"));
@@ -234,7 +237,7 @@ public class SearchServiceTests
     {
         await WriteFileAsync("src/app.py", "hello world");
 
-        var options = Options("hello") with { Include = "*.cs" };
+        var options = Options("hello", include: "*.cs");
         var result = await _searchService.SearchAsync(options, CancellationToken.None);
 
         result.FileResults.Should().BeEmpty();
@@ -246,30 +249,93 @@ public class SearchServiceTests
     {
         await WriteFileAsync("notes.txt", "alpha 12\nbeta\ngamma 3\n");
 
-        var options = new SearchOptions(@"(?P<word>\w+) \d+", Literal: false, MatchCase: true, WholeWord: false);
+        var patternOptions = new SearchPatternOptions(Literal: false, MatchCase: true, WholeWord: false, Multiline: false);
+        var matcher = SearchPattern.Compile(@"(?P<word>\w+) \d+", patternOptions).Value;
+        var options = new SearchOptions(matcher, SearchFilter.Compile(string.Empty, string.Empty).Value);
         var result = await _searchService.SearchAsync(options, CancellationToken.None);
 
         result.TotalMatches.Should().Be(2);
+        result.SearchTerm.Should().Be(@"(?P<word>\w+) \d+");
     }
 
     [Test]
-    public async Task SearchAsync_RefusedPattern_FindsNothing()
+    public async Task SearchAsync_LeavesOutWhatTheSearchListExcludes()
     {
-        await WriteFileAsync("notes.txt", "alpha\n");
+        await WriteFileAsync("src/app.js", "hello world");
+        await WriteFileAsync("dist/app.js", "hello world");
+        UseSearchExclude("dist");
 
-        var options = new SearchOptions("a(?=l)", Literal: false, MatchCase: true, WholeWord: false);
-        var result = await _searchService.SearchAsync(options, CancellationToken.None);
+        var result = await _searchService.SearchAsync(Options("hello"), CancellationToken.None);
 
-        result.FileResults.Should().BeEmpty();
+        result.FileResults.Select(fileResult => fileResult.Resource).Should().Equal(new ResourceKey("src/app.js"));
     }
 
-    private static SearchOptions Options(string pattern, string scope = "", bool includeMetadataFiles = false)
+    [Test]
+    public async Task SearchAsync_ApplySearchExcludeOff_SearchesWhatTheListExcludes()
     {
-        return new SearchOptions(pattern, Literal: true, MatchCase: false, WholeWord: false)
+        await WriteFileAsync("src/app.js", "hello world");
+        await WriteFileAsync("dist/app.js", "hello world");
+        UseSearchExclude("dist");
+
+        var options = Options("hello") with { ApplySearchExclude = false };
+        var result = await _searchService.SearchAsync(options, CancellationToken.None);
+
+        var resources = result.FileResults.Select(fileResult => fileResult.Resource);
+        resources.Should().Equal(new ResourceKey("dist/app.js"), new ResourceKey("src/app.js"));
+    }
+
+    [Test]
+    public async Task SearchAsync_ScopedToAnExcludedFolder_SearchesTheFolderInFull()
+    {
+        await WriteFileAsync("node_modules/lib/index.js", "hello world");
+        await WriteFileAsync("src/app.js", "hello world");
+        UseSearchExclude("node_modules");
+
+        var result = await _searchService.SearchAsync(Options("hello", scope: "node_modules/lib"), CancellationToken.None);
+
+        result.FileResults.Select(fileResult => fileResult.Resource).Should().Equal(new ResourceKey("node_modules/lib/index.js"));
+    }
+
+    [Test]
+    public async Task SearchAsync_WithNoCap_FindsEveryMatchInTheFolderAndFilters()
+    {
+        var manyMatches = string.Join("\n", Enumerable.Repeat("hello", 1500));
+        await WriteFileAsync("docs/guide.md", manyMatches);
+        await WriteFileAsync("docs/notes.txt", manyMatches);
+        await WriteFileAsync("other/guide.md", manyMatches);
+
+        var cappedOptions = Options("hello", scope: "docs", include: "*.md") with { MaxResults = 1000 };
+        var cappedResult = await _searchService.SearchAsync(cappedOptions, CancellationToken.None);
+        var allOptions = Options("hello", scope: "docs", include: "*.md");
+        var allResult = await _searchService.SearchAsync(allOptions, CancellationToken.None);
+
+        cappedResult.TotalMatches.Should().Be(1000);
+        allResult.TotalMatches.Should().Be(1500);
+        allResult.FileResults.Select(fileResult => fileResult.Resource).Should().Equal(new ResourceKey("docs/guide.md"));
+    }
+
+    private static SearchOptions Options(
+        string pattern,
+        string scope = "",
+        bool includeMetadataFiles = false,
+        string include = "",
+        string exclude = "")
+    {
+        var patternOptions = new SearchPatternOptions(Literal: true, MatchCase: false, WholeWord: false, Multiline: false);
+        var matcher = SearchPattern.Compile(pattern, patternOptions).Value;
+        var filter = SearchFilter.Compile(include, exclude).Value;
+
+        return new SearchOptions(matcher, filter)
         {
             Scope = scope,
             IncludeMetadataFiles = includeMetadataFiles,
         };
+    }
+
+    private void UseSearchExclude(params string[] patterns)
+    {
+        var policy = TestResourcePolicy.CreateWithSearchExclude(_tempFolder, patterns);
+        _resourceService.Policy.Returns(policy);
     }
 
     private async Task WriteFileAsync(string relativePath, string content)

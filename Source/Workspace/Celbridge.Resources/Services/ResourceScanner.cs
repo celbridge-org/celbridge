@@ -24,11 +24,11 @@ public sealed class ResourceScanner : IResourceScanner
         _workspaceWrapper = workspaceWrapper;
     }
 
-    public async Task<IReadOnlyList<string>> ListAllTagsAsync()
+    public async Task<IReadOnlyList<string>> ListAllTagsAsync(bool applySearchExclude)
     {
         var tags = new ConcurrentDictionary<string, byte>(StringComparer.Ordinal);
 
-        await EnumerateProjectSidecarFilesAsync(async (sidecarKey, _) =>
+        await EnumerateProjectSidecarFilesAsync(applySearchExclude, async (sidecarKey, _) =>
         {
             var text = await ReadFileTextAsync(sidecarKey);
             if (text is null)
@@ -58,7 +58,7 @@ public sealed class ResourceScanner : IResourceScanner
             .ToList();
     }
 
-    public async Task<IReadOnlyList<ResourceKey>> FindByTagAsync(string tag)
+    public async Task<IReadOnlyList<ResourceKey>> FindByTagAsync(string tag, bool applySearchExclude)
     {
         if (string.IsNullOrEmpty(tag))
         {
@@ -67,7 +67,7 @@ public sealed class ResourceScanner : IResourceScanner
 
         var matches = new ConcurrentBag<ResourceKey>();
 
-        await EnumerateProjectSidecarFilesAsync(async (sidecarKey, parentKey) =>
+        await EnumerateProjectSidecarFilesAsync(applySearchExclude, async (sidecarKey, parentKey) =>
         {
             var text = await ReadFileTextAsync(sidecarKey);
             if (text is null)
@@ -121,12 +121,12 @@ public sealed class ResourceScanner : IResourceScanner
 
     // Walks the project, and visits each sidecar with the file it describes. Tag queries cover paired sidecars
     // only, so an orphan, whose file is gone, is left out.
-    private async Task EnumerateProjectSidecarFilesAsync(Func<ResourceKey, ResourceKey, Task> visit)
+    private async Task EnumerateProjectSidecarFilesAsync(bool applySearchExclude, Func<ResourceKey, ResourceKey, Task> visit)
     {
         var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
         var sidecarService = resourceService.Sidecars;
 
-        var walkResult = await resourceService.Walker.WalkAsync(ResourceKey.Empty);
+        var walkResult = await resourceService.Walker.WalkAsync(ResourceKey.Empty, applySearchExclude);
         if (walkResult.IsFailure)
         {
             _logger.LogWarning(walkResult, "Failed to walk the project for sidecars");

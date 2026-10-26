@@ -41,6 +41,22 @@ public interface ISearchPanel
     void SetReplaceText(string replaceText);
 
     /// <summary>
+    /// Sets the folder to search. The empty key searches the whole project.
+    /// </summary>
+    void SetFolder(ResourceKey folder);
+
+    /// <summary>
+    /// Returns true when the scope controls are shown: the folder field, the file filters and the search list
+    /// toggle.
+    /// </summary>
+    bool IsScopeVisible { get; }
+
+    /// <summary>
+    /// Shows or hides the scope controls.
+    /// </summary>
+    void SetScopeVisible(bool visible);
+
+    /// <summary>
     /// Executes the search with current settings.
     /// </summary>
     void ExecuteSearch();

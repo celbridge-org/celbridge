@@ -41,6 +41,12 @@ A path under another root (e.g. `temp:staging/my-pkg`, `logs:`) is searched too.
 
 Search filters, like `"*.cs,*.xaml"`, `"*.{ts,tsx}"`, `"src/**"` and `"*.js,!*.min.js"`. The rules are in `search_filters`. `exclude` wins when a file matches both. The patterns are relative to the root, even when `path` names a folder. So `include: "src/lib/**"` with `path: "src"` searches `src/lib`. A `warning` in the result reports include patterns that matched no file.
 
+### applySearchExclude
+
+A path search skips what the project's search list, `[celbridge.search] exclude`, excludes. Set `applySearchExclude: false` to search those files too. Defaults to `true`.
+
+An excluded `path` is searched in full, and so is a folder inside an excluded folder. So `path: "node_modules/lib"` searches every file in that folder, whatever the flag says. The list never applies to `files`, which names each file directly.
+
 ### files
 
 JSON array of resource keys, e.g. `["src/foo.cs","src/bar.cs"]`. When non-empty the tool searches only those files and ignores `path`, `include`, and `exclude`. Useful for a follow-up pass after another tool has narrowed the candidate set.

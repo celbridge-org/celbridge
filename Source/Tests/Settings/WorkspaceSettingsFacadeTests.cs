@@ -90,7 +90,35 @@ public class WorkspaceSettingsFacadeTests
         settings.SearchMatchCase.Should().BeFalse();
         settings.SearchWholeWord.Should().BeFalse();
         settings.ReplaceMode.Should().BeFalse();
+        settings.SearchScopeVisible.Should().BeFalse();
+        settings.SearchFolder.Should().BeEmpty();
+        settings.SearchFilesToInclude.Should().BeEmpty();
+        settings.SearchFilesToExclude.Should().BeEmpty();
+        settings.ApplySearchExclude.Should().BeTrue();
         settings.PreviousNewFileExtension.Should().Be(".py");
+    }
+
+    [Test]
+    public async Task SearchScope_AfterFlush_SurvivesReload()
+    {
+        var folderPath = Path.Combine(_rootFolderPath, "projectA");
+
+        var fixture = await LoadWorkspaceAsync(folderPath);
+        fixture.Settings.SearchScopeVisible = true;
+        fixture.Settings.SearchFolder = "project:docs";
+        fixture.Settings.SearchFilesToInclude = "*.md";
+        fixture.Settings.SearchFilesToExclude = "drafts/";
+        fixture.Settings.ApplySearchExclude = false;
+
+        await fixture.WorkspaceSettingsService.WorkspaceSettingsStore!.FlushAsync();
+        fixture.WorkspaceSettingsService.UnloadWorkspaceSettings();
+
+        var reloaded = await LoadWorkspaceAsync(folderPath);
+        reloaded.Settings.SearchScopeVisible.Should().BeTrue();
+        reloaded.Settings.SearchFolder.Should().Be("project:docs");
+        reloaded.Settings.SearchFilesToInclude.Should().Be("*.md");
+        reloaded.Settings.SearchFilesToExclude.Should().Be("drafts/");
+        reloaded.Settings.ApplySearchExclude.Should().BeFalse();
     }
 
     [Test]

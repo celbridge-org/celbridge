@@ -17,6 +17,14 @@
                                      TrueBrush="{ThemeResource SelectionBackgroundBrush}"
                                      FalseBrush="Transparent"/>
     <converters:CountToBoolConverter x:Key="CountToBoolConverter"/>
+
+    <!-- The line that names the scope. The style strips the padding, so the line lines up with the search field. -->
+    <Style x:Key="ScopeSummaryLinkStyle" TargetType="HyperlinkButton">
+      <Setter Property="Padding" Value="0"/>
+      <Setter Property="MinWidth" Value="0"/>
+      <Setter Property="MinHeight" Value="0"/>
+      <Setter Property="HorizontalAlignment" Value="Left"/>
+    </Style>
   </UserControl.Resources>
 
   <Grid VerticalAlignment="Stretch"
@@ -40,6 +48,7 @@
     <Grid Grid.Row="1"
           Padding="4,8,12,4">
       <Grid.RowDefinitions>
+        <RowDefinition Height="Auto"/>
         <RowDefinition Height="Auto"/>
         <RowDefinition Height="Auto"/>
       </Grid.RowDefinitions>
@@ -172,6 +181,21 @@
           <controls:Icon Symbol="Replace" FontSize="14"/>
         </controls:IconButton>
       </Grid>
+
+      <!-- Names the scope in force while the scope controls are hidden. Clicking the line shows them. -->
+      <HyperlinkButton Grid.Row="2"
+                       Grid.Column="1"
+                       Grid.ColumnSpan="3"
+                       Margin="0,4,0,0"
+                       Style="{StaticResource ScopeSummaryLinkStyle}"
+                       AutomationProperties.AutomationId="search-scope-summary"
+                       AutomationProperties.Name="{x:Bind ViewModel.Scope.SummaryText, Mode=OneWay}"
+                       Command="{x:Bind ViewModel.Scope.ShowCommand}"
+                       ToolTipService.ToolTip="{x:Bind ViewModel.Scope.ToggleTooltip}"
+                       Visibility="{x:Bind ViewModel.Scope.ShowSummary, Mode=OneWay}">
+        <TextBlock Text="{x:Bind ViewModel.Scope.SummaryText, Mode=OneWay}"
+                   TextWrapping="Wrap"/>
+      </HyperlinkButton>
     </Grid>
 
     <!-- Search Options -->
@@ -179,6 +203,7 @@
     <Border Grid.Row="2"
             BorderBrush="{ThemeResource DividerBrush}"
             BorderThickness="0,0,0,1">
+    <StackPanel>
     <StackPanel Orientation="Horizontal"
                 Padding="12,4,12,8"
                 Spacing="4"
@@ -201,6 +226,15 @@
         <TextBlock Text="ab" FontWeight="SemiBold"/>
       </controls:IconToggleButton>
 
+      <!-- Scope toggle button, which shows the folder, the file filters and the search list toggle -->
+      <controls:IconToggleButton IsChecked="{x:Bind ViewModel.Scope.IsVisible, Mode=TwoWay}"
+                                 AutomationProperties.AutomationId="search-scope-toggle-button"
+                                 ToolTipService.ToolTip="{x:Bind ViewModel.Scope.ToggleTooltip}"
+                                 Padding="8,6"
+                                 MinWidth="36">
+        <controls:Icon Symbol="Filter" FontSize="14"/>
+      </controls:IconToggleButton>
+
       <!-- Collapse All button -->
       <controls:IconButton Command="{x:Bind ViewModel.CollapseAllCommand}"
                            AutomationProperties.AutomationId="search-collapse-results-button"
@@ -210,6 +244,68 @@
                            MinWidth="36">
         <controls:Icon Symbol="Collapse" FontSize="14"/>
       </controls:IconButton>
+    </StackPanel>
+
+    <!-- Scope controls (visible only when the scope toggle is on) -->
+    <StackPanel Padding="12,0,12,8"
+                Spacing="4"
+                Visibility="{x:Bind ViewModel.Scope.IsVisible, Mode=OneWay}">
+      <!-- The folder field is filled by the folder picker or by Search in Folder, and is empty for the whole
+           project. -->
+      <Grid ColumnSpacing="4">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+
+        <TextBox Grid.Column="0"
+                 AutomationProperties.AutomationId="search-folder-input"
+                 IsReadOnly="True"
+                 IsSpellCheckEnabled="False"
+                 PlaceholderText="{x:Bind ViewModel.Scope.FolderPlaceholder}"
+                 Text="{x:Bind ViewModel.Scope.FolderText, Mode=OneWay}"/>
+
+        <controls:IconButton Grid.Column="1"
+                             AutomationProperties.AutomationId="search-folder-browse-button"
+                             Command="{x:Bind ViewModel.Scope.BrowseFolderCommand}"
+                             VerticalAlignment="Stretch"
+                             ToolTipService.ToolTip="{x:Bind ViewModel.Scope.BrowseFolderTooltip}">
+          <controls:Icon Symbol="More" FontSize="14"/>
+        </controls:IconButton>
+
+        <controls:IconButton Grid.Column="2"
+                             AutomationProperties.AutomationId="search-folder-clear-button"
+                             Command="{x:Bind ViewModel.Scope.ClearFolderCommand}"
+                             IsEnabled="{x:Bind ViewModel.Scope.HasFolder, Mode=OneWay}"
+                             VerticalAlignment="Stretch"
+                             ToolTipService.ToolTip="{x:Bind ViewModel.Scope.ClearFolderTooltip}">
+          <controls:Icon Symbol="Close" FontSize="12"/>
+        </controls:IconButton>
+      </Grid>
+
+      <TextBox AutomationProperties.AutomationId="search-files-include-input"
+               IsSpellCheckEnabled="False"
+               PlaceholderText="{x:Bind ViewModel.Scope.FilesToIncludePlaceholder}"
+               Text="{x:Bind ViewModel.Scope.FilesToInclude, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+
+      <TextBox AutomationProperties.AutomationId="search-files-exclude-input"
+               IsSpellCheckEnabled="False"
+               PlaceholderText="{x:Bind ViewModel.Scope.FilesToExcludePlaceholder}"
+               Text="{x:Bind ViewModel.Scope.FilesToExclude, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+
+      <TextBlock AutomationProperties.AutomationId="search-invalid-filter-text"
+                 Text="{x:Bind ViewModel.Scope.InvalidFilterText}"
+                 Style="{StaticResource SupportingTextStyle}"
+                 Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                 TextWrapping="Wrap"
+                 Visibility="{x:Bind ViewModel.Scope.HasInvalidFilter, Mode=OneWay}"/>
+
+      <CheckBox AutomationProperties.AutomationId="search-list-toggle-button"
+                Content="{x:Bind ViewModel.Scope.SearchListLabel}"
+                IsChecked="{x:Bind ViewModel.Scope.ApplySearchExclude, Mode=TwoWay}"
+                ToolTipService.ToolTip="{x:Bind ViewModel.Scope.SearchListTooltip}"/>
+    </StackPanel>
     </StackPanel>
     </Border>
 

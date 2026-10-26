@@ -1,4 +1,5 @@
 using System.Text;
+using Celbridge.Resources;
 
 namespace Celbridge.Patterns;
 
@@ -6,7 +7,7 @@ namespace Celbridge.Patterns;
 /// Matches paths against a tool's include and exclude patterns, read as ripgrep's globs. Each pattern is a gitignore
 /// line that can also use braces, and commas outside braces separate the patterns. Letter case is ignored.
 /// </summary>
-public sealed class SearchFilter
+public sealed class SearchFilter : IPathMatcher
 {
     // Null when the include parameter names no pattern, so every path is included.
     private readonly GitignoreMatcher? _include;
@@ -103,6 +104,25 @@ public sealed class SearchFilter
         }
 
         return !_exclude.IsMatch(path, isFolder);
+    }
+
+    /// <summary>
+    /// Returns false when an exclude pattern matches the folder, or when no include pattern can match inside the
+    /// folder. The folder's path is relative to the root of the keys searched, and an empty path names the root.
+    /// </summary>
+    public bool CanMatchInside(string folderPath)
+    {
+        if (_exclude.IsMatch(folderPath, isFolder: true))
+        {
+            return false;
+        }
+
+        if (_include is null)
+        {
+            return true;
+        }
+
+        return _include.CanMatchInside(folderPath);
     }
 
     // Adds the gitignore lines from expanding a pattern's braces. A line that would start with '!' or '#' gets a '\'

@@ -35,7 +35,7 @@ Utilities (dynamic; the `{utilityId}` is the id `app_list_utilities` reports, e.
 
 - `{utilityId}-utility-button` — a utility's button in the Utility Panel rail.
 
-Search panel (all switch to the Search tab first; the replace ones also enable replace mode):
+Search panel. Each switches to the Search tab first. The replace landmarks also turn on replace mode, and the scope landmarks also show the folder and file filters:
 
 - `search-input` — the search text box.
 - `search-run-button` — the run-search button (the magnifying glass).
@@ -44,9 +44,16 @@ Search panel (all switch to the Search tab first; the replace ones also enable r
 - `search-whole-word-button` — the match-whole-word toggle.
 - `search-collapse-results-button` — the collapse-all-results button.
 - `search-replace-toggle-button` — the toggle that shows the replace controls.
+- `search-scope-toggle-button` — the toggle that shows the folder and file filters.
 - `search-replace-input` — the replace text box.
 - `search-replace-history-button` — the recent-replacements dropdown.
 - `search-replace-all-button` — the replace-all button.
+- `search-folder-input` — the scope's field naming the folder to search, empty for the whole project.
+- `search-folder-browse-button` — the scope's button that picks the folder.
+- `search-folder-clear-button` — the scope's button that clears the folder.
+- `search-files-include-input` — the scope's field for the files to include.
+- `search-files-exclude-input` — the scope's field for the files to exclude.
+- `search-list-toggle-button` — the scope's Skip excluded files checkbox, which applies the project's search list.
 
 Documents:
 

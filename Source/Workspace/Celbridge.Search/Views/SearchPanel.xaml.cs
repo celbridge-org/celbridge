@@ -249,6 +249,18 @@ public sealed partial class SearchPanel : UserControl, ISearchPanel
         ViewModel.ReplaceText = replaceText;
     }
 
+    public void SetFolder(ResourceKey folder)
+    {
+        ViewModel.Scope.SetFolder(folder);
+    }
+
+    public bool IsScopeVisible => ViewModel.Scope.IsVisible;
+
+    public void SetScopeVisible(bool visible)
+    {
+        ViewModel.Scope.IsVisible = visible;
+    }
+
     public void ExecuteSearch()
     {
         ViewModel.ExecuteSearchCommand.Execute(null);

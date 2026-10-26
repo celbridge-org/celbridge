@@ -141,7 +141,21 @@ public partial class SearchPanelViewModel
 
         try
         {
-            var searchOptions = new SearchOptions(SearchText, Literal: true, MatchCase, WholeWord);
+            var patternResult = CompileSearchPattern();
+            if (patternResult.IsFailure)
+            {
+                return;
+            }
+            var searchPattern = patternResult.Value;
+
+            // Replace All searches the panel's scope again with no cap, so it replaces every match, beyond the matches
+            // shown.
+            var searchOptions = await Scope.CreateSearchOptionsAsync(searchPattern, maxResults: null);
+            if (searchOptions is null)
+            {
+                return;
+            }
+
             var allResults = await _searchService.SearchAsync(searchOptions, CancellationToken.None);
 
             if (allResults.TotalMatches == 0)

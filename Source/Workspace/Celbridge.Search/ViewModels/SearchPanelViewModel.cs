@@ -19,6 +19,7 @@ namespace Celbridge.Search.ViewModels;
 /// - SearchPanelViewModel.Replace.cs: Replace operations
 /// - SearchPanelViewModel.Selection.cs: Multi-select handling
 /// - SearchPanelViewModel.History.cs: Search/replace history management
+/// The scope, a child view model, keeps the folder and the file filters of a search.
 /// </summary>
 public partial class SearchPanelViewModel : ObservableObject
 {
@@ -35,9 +36,6 @@ public partial class SearchPanelViewModel : ObservableObject
 
     // Unified debounce timer for all search triggers (typing, file changes, etc.)
     private Timer? _searchDebounceTimer;
-
-    // Follows the changes to the files a search reads. The monitor drops the subscription when the workspace unloads.
-    private readonly IMatcherSubscription? _searchScopeSubscription;
     private const int SearchDebounceDelayMs = 300;
 
     // Flags for pending search behavior
@@ -119,6 +117,11 @@ public partial class SearchPanelViewModel : ObservableObject
     public ObservableCollection<SearchFileResultViewModel> FileResults { get; } = new();
 
     /// <summary>
+    /// The folder and the file filters of a search, and the search list toggle.
+    /// </summary>
+    public SearchScopeViewModel Scope { get; }
+
+    /// <summary>
     /// Event raised before search results are refreshed.
     /// Subscribers should save scroll position or other UI state.
     /// </summary>
@@ -174,26 +177,28 @@ public partial class SearchPanelViewModel : ObservableObject
         // Listen for workspace loaded to load search/replace history from workspace settings
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
 
-        // Search again after a change to a file a search reads, whether Celbridge or another program made it.
-        var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
-        var handlers = new ResourceChangeHandlers(OnSearchScopeChanges, OnSearchScopeResync);
-        var subscribeResult = resourceService.Monitor.SubscribeToMatcher(
-            ResourceKey.DefaultRoot,
-            resourceService.Policy.SearchScope,
-            handlers);
-        if (subscribeResult.IsSuccess)
+        Scope = new SearchScopeViewModel(_workspaceWrapper, _dialogService, _stringLocalizer);
+        Scope.Changed += OnScopeChanged;
+        Scope.SearchedFilesChanged += OnSearchedFilesChanged;
+    }
+
+    // A filter typed into a field waits for the typing to stop, the same as the search text.
+    private void OnScopeChanged(object? sender, SearchScopeChange change)
+    {
+        if (change.IsTyped)
         {
-            _searchScopeSubscription = subscribeResult.Value;
+            ScheduleSearch(preserveExpandedState: false, raiseRefreshEvents: false);
+            return;
+        }
+
+        if (!string.IsNullOrEmpty(SearchText))
+        {
+            _ = ExecuteSearchAsync();
         }
     }
 
-    private void OnSearchScopeChanges(ResourceChangeBatch batch)
-    {
-        ScheduleSearch(preserveExpandedState: true, raiseRefreshEvents: true);
-    }
-
-    // The lost events may have changed any file a search reads.
-    private void OnSearchScopeResync(ResourceResync resync)
+    // Search again after a change to a searched file, whether Celbridge or another program made the change.
+    private void OnSearchedFilesChanged(object? sender, EventArgs e)
     {
         ScheduleSearch(preserveExpandedState: true, raiseRefreshEvents: true);
     }
@@ -315,10 +320,23 @@ public partial class SearchPanelViewModel : ObservableObject
             IsSearching = true;
             StatusText = _stringLocalizer.GetString("SearchPanel_Searching");
 
-            var searchOptions = new SearchOptions(SearchText, Literal: true, MatchCase, WholeWord)
+            var patternResult = CompileSearchPattern();
+            if (patternResult.IsFailure)
             {
-                MaxResults = MaxSearchResults,
-            };
+                FileResults.Clear();
+                UpdateResultsStatus();
+                return;
+            }
+            var searchPattern = patternResult.Value;
+
+            // A refused file filter shows its own line under the filter fields, so the results stay empty.
+            var searchOptions = await Scope.CreateSearchOptionsAsync(searchPattern, MaxSearchResults);
+            if (searchOptions is null)
+            {
+                ClearResults();
+                return;
+            }
+
             var results = await _searchService.SearchAsync(searchOptions, cancellationToken);
 
             if (cancellationToken.IsCancellationRequested)
@@ -342,6 +360,15 @@ public partial class SearchPanelViewModel : ObservableObject
         {
             IsSearching = false;
         }
+    }
+
+    // Compiles the search text as plain text. With Match Case off, the matcher refuses text that is too long to
+    // match.
+    private Result<SearchPattern> CompileSearchPattern()
+    {
+        var patternOptions = new SearchPatternOptions(Literal: true, MatchCase, WholeWord, Multiline: false);
+
+        return SearchPattern.Compile(SearchText, patternOptions);
     }
 
     // When total matches exceed this threshold, use smart collapse behavior
