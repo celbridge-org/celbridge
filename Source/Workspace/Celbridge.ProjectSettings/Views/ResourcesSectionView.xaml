@@ -15,9 +15,9 @@
 
       <StackPanel Spacing="8">
         <StackPanel Spacing="2">
-          <TextBlock Text="{x:Bind ViewModel.HideTitle, Mode=OneWay}"
+          <TextBlock Text="{x:Bind ViewModel.ExplorerExcludeTitle, Mode=OneWay}"
                      Style="{StaticResource SectionHeadingTextStyle}" />
-          <TextBlock Text="{x:Bind ViewModel.HideSubtitle, Mode=OneWay}"
+          <TextBlock Text="{x:Bind ViewModel.ExplorerExcludeSubtitle, Mode=OneWay}"
                      Style="{StaticResource SupportingTextStyle}"
                      TextWrapping="Wrap" />
         </StackPanel>
@@ -29,13 +29,13 @@
                  ScrollViewer.VerticalScrollBarVisibility="Auto"
                  IsSpellCheckEnabled="False"
                  PlaceholderText="{x:Bind ViewModel.PatternPlaceholder, Mode=OneWay}"
-                 Text="{x:Bind ViewModel.HidePatternsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                 Text="{x:Bind ViewModel.ExplorerExcludePatternsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
         <TextBlock Text="{x:Bind ViewModel.InvalidPatternText, Mode=OneWay}"
                    Style="{StaticResource SupportingTextStyle}"
                    Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                    TextWrapping="Wrap"
-                   Visibility="{x:Bind ViewModel.HasInvalidHidePattern, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+                   Visibility="{x:Bind ViewModel.HasInvalidExplorerExcludePattern, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
       </StackPanel>
 
       <StackPanel Spacing="8">

@@ -13,4 +13,9 @@ public interface IFindTagCommand : IExecutableCommand<IReadOnlyList<ResourceKey>
     /// the empty list when no sidecar carries the tag.
     /// </summary>
     string Tag { get; set; }
+
+    /// <summary>
+    /// When true, the command leaves out what the project's search list excludes. True by default.
+    /// </summary>
+    bool ApplySearchExclude { get; set; }
 }

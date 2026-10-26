@@ -674,9 +674,9 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         var childName = Path.GetFileName(entry.FullPath);
         var childKey = folder.Combine(childName);
 
-        // Enumeration drops the reserved folders and links. The project's
-        // hide patterns are a view filter the Explorer applies, so a hidden entry
-        // is still listed here.
+        // Enumeration drops the reserved folders and links. The Explorer applies
+        // the project's Explorer list as a view filter, so a hidden entry is
+        // still listed here.
         if (EvaluatePolicy(childKey, ResourceAction.Read, isFolder: entry.IsFolder).IsFailure)
         {
             return null;

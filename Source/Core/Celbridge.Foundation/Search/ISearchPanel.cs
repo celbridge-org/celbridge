@@ -41,6 +41,22 @@ public interface ISearchPanel
     void SetReplaceText(string replaceText);
 
     /// <summary>
+    /// Sets the files to include to the folder, like "./docs/api", and shows the search filters. The empty key clears
+    /// the files to include. The caller starts the search.
+    /// </summary>
+    void SetFolder(ResourceKey folder);
+
+    /// <summary>
+    /// Returns true when the search filters are shown: the files to include and the files to exclude.
+    /// </summary>
+    bool AreFiltersVisible { get; }
+
+    /// <summary>
+    /// Shows or hides the search filters.
+    /// </summary>
+    void SetFiltersVisible(bool visible);
+
+    /// <summary>
     /// Executes the search with current settings.
     /// </summary>
     void ExecuteSearch();

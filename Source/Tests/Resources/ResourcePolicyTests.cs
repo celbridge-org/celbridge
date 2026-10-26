@@ -10,12 +10,13 @@ public class ResourcePolicyTests
 {
     private const string ProjectFolderPath = @"C:\fake\project";
 
-    // Builds a policy over an in-memory [celbridge.resources] section.
-    private static ResourcePolicy BuildPolicy(ResourcesSection? section = null)
+    // Builds a policy over in-memory Explorer and search lists.
+    private static ResourcePolicy BuildPolicy(string[]? explorerExclude = null, string[]? searchExclude = null)
     {
         var config = new ProjectConfig
         {
-            Resources = section ?? new ResourcesSection(),
+            Explorer = new ExplorerSection { Exclude = explorerExclude ?? [] },
+            Search = new SearchSection { Exclude = searchExclude ?? [] },
         };
         var project = Substitute.For<IProject>();
         project.Config.Returns(config);
@@ -78,16 +79,11 @@ public class ResourcePolicyTests
     }
 
     [Test]
-    public void Evaluate_IgnoresHideAndSearchExclude()
+    public void Evaluate_IgnoresTheExplorerAndSearchLists()
     {
         // The two configured lists are ergonomic, not access control: nothing a project
         // writes can deny a read or a write.
-        var section = new ResourcesSection
-        {
-            Hide = new[] { "secret.txt" },
-            SearchExclude = new[] { "node_modules" },
-        };
-        var policy = BuildPolicy(section);
+        var policy = BuildPolicy(explorerExclude: new[] { "secret.txt" }, searchExclude: new[] { "node_modules" });
 
         policy.Evaluate(new ResourceKey("secret.txt"), ResourceAction.Read).IsSuccess.Should().BeTrue();
         policy.Evaluate(new ResourceKey("secret.txt"), ResourceAction.Write).IsSuccess.Should().BeTrue();
@@ -104,57 +100,45 @@ public class ResourcePolicyTests
     }
 
     [Test]
-    public void IsHidden_MatchesPatternsAndTheirSubtrees()
+    public void IsExplorerExcluded_MatchesPatternsAndTheirSubtrees()
     {
-        var section = new ResourcesSection
-        {
-            Hide = new[] { ".gitignore", "drafts" },
-        };
-        var policy = BuildPolicy(section);
+        var policy = BuildPolicy(explorerExclude: new[] { ".gitignore", "drafts" });
 
-        policy.IsHidden(new ResourceKey(".gitignore"), isFolder: false).Should().BeTrue();
-        policy.IsHidden(new ResourceKey("drafts"), isFolder: true).Should().BeTrue();
-        policy.IsHidden(new ResourceKey("drafts/notes.md"), isFolder: false).Should().BeTrue();
-        policy.IsHidden(new ResourceKey("notes.md"), isFolder: false).Should().BeFalse();
+        policy.IsExplorerExcluded(new ResourceKey(".gitignore"), isFolder: false).Should().BeTrue();
+        policy.IsExplorerExcluded(new ResourceKey("drafts"), isFolder: true).Should().BeTrue();
+        policy.IsExplorerExcluded(new ResourceKey("drafts/notes.md"), isFolder: false).Should().BeTrue();
+        policy.IsExplorerExcluded(new ResourceKey("notes.md"), isFolder: false).Should().BeFalse();
     }
 
     [Test]
-    public void IsHidden_ReadsTheListAsGitignoreLines()
+    public void IsExplorerExcluded_ReadsTheListAsGitignoreLines()
     {
-        var section = new ResourcesSection
-        {
-            Hide = new[] { "*.log", "!keep.log", "/build", "# draft", "data?.csv" },
-        };
-        var policy = BuildPolicy(section);
+        var policy = BuildPolicy(explorerExclude: new[] { "*.log", "!keep.log", "/build", "# draft", "data?.csv" });
 
-        policy.IsHidden(new ResourceKey("logs/run.log"), isFolder: false).Should().BeTrue();
-        policy.IsHidden(new ResourceKey("logs/keep.log"), isFolder: false).Should().BeFalse();
-        policy.IsHidden(new ResourceKey("build"), isFolder: true).Should().BeTrue();
-        policy.IsHidden(new ResourceKey("src/build"), isFolder: true).Should().BeFalse();
-        policy.IsHidden(new ResourceKey("# draft"), isFolder: false).Should().BeFalse();
-        policy.IsHidden(new ResourceKey("data1.csv"), isFolder: false).Should().BeTrue();
+        policy.IsExplorerExcluded(new ResourceKey("logs/run.log"), isFolder: false).Should().BeTrue();
+        policy.IsExplorerExcluded(new ResourceKey("logs/keep.log"), isFolder: false).Should().BeFalse();
+        policy.IsExplorerExcluded(new ResourceKey("build"), isFolder: true).Should().BeTrue();
+        policy.IsExplorerExcluded(new ResourceKey("src/build"), isFolder: true).Should().BeFalse();
+        policy.IsExplorerExcluded(new ResourceKey("# draft"), isFolder: false).Should().BeFalse();
+        policy.IsExplorerExcluded(new ResourceKey("data1.csv"), isFolder: false).Should().BeTrue();
     }
 
     [Test]
-    public void IsHidden_MatchesExactLetterCase()
+    public void IsExplorerExcluded_MatchesExactLetterCase()
     {
-        var section = new ResourcesSection
-        {
-            Hide = new[] { "Drafts" },
-        };
-        var policy = BuildPolicy(section);
+        var policy = BuildPolicy(explorerExclude: new[] { "Drafts" });
 
-        policy.IsHidden(new ResourceKey("Drafts"), isFolder: true).Should().BeTrue();
-        policy.IsHidden(new ResourceKey("drafts"), isFolder: true).Should().BeFalse();
+        policy.IsExplorerExcluded(new ResourceKey("Drafts"), isFolder: true).Should().BeTrue();
+        policy.IsExplorerExcluded(new ResourceKey("drafts"), isFolder: true).Should().BeFalse();
     }
 
     [Test]
-    public void IsHidden_ReportsFalse_WithNoPatterns()
+    public void IsExplorerExcluded_ReportsFalse_WithNoPatterns()
     {
         var policy = BuildPolicy();
 
-        policy.IsHidden(new ResourceKey(".gitignore"), isFolder: false).Should().BeFalse();
-        policy.IsHidden(new ResourceKey("bin"), isFolder: true).Should().BeFalse();
+        policy.IsExplorerExcluded(new ResourceKey(".gitignore"), isFolder: false).Should().BeFalse();
+        policy.IsExplorerExcluded(new ResourceKey("bin"), isFolder: true).Should().BeFalse();
     }
 
     [Test]
@@ -162,11 +146,7 @@ public class ResourcePolicyTests
     {
         // A pattern that matches a folder matches everything beneath it, whether it is
         // written bare, with a leading wildcard, or as a path.
-        var section = new ResourcesSection
-        {
-            SearchExclude = new[] { "bin", "**/cache", "src/obj" },
-        };
-        var policy = BuildPolicy(section);
+        var policy = BuildPolicy(searchExclude: new[] { "bin", "**/cache", "src/obj" });
 
         policy.IsSearchExcluded(new ResourceKey("bin/app.exe"), isFolder: false).Should().BeTrue();
         policy.IsSearchExcluded(new ResourceKey("src/bin/app.exe"), isFolder: false).Should().BeTrue();
@@ -180,11 +160,7 @@ public class ResourcePolicyTests
     [Test]
     public void IsSearchExcluded_FolderOnlyPattern_SkipsAFileOfTheSameName()
     {
-        var section = new ResourcesSection
-        {
-            SearchExclude = new[] { "dist/" },
-        };
-        var policy = BuildPolicy(section);
+        var policy = BuildPolicy(searchExclude: new[] { "dist/" });
 
         policy.IsSearchExcluded(new ResourceKey("dist"), isFolder: true).Should().BeTrue();
         policy.IsSearchExcluded(new ResourceKey("dist/bundle.js"), isFolder: false).Should().BeTrue();
@@ -192,51 +168,20 @@ public class ResourcePolicyTests
     }
 
     [Test]
-    public void SearchScope_MatchesWhatTheExclusionsLeaveIn()
-    {
-        var section = new ResourcesSection
-        {
-            SearchExclude = new[] { "node_modules", "dist/" },
-        };
-        var scope = BuildPolicy(section).SearchScope;
-
-        scope.IsMatch("src/main.py", isFolder: false).Should().BeTrue();
-        scope.IsMatch("src", isFolder: true).Should().BeTrue();
-        scope.IsMatch("dist", isFolder: false).Should().BeTrue();
-
-        scope.IsMatch("node_modules", isFolder: true).Should().BeFalse();
-        scope.IsMatch("src/node_modules/pkg/index.js", isFolder: false).Should().BeFalse();
-        scope.IsMatch("dist", isFolder: true).Should().BeFalse();
-        scope.IsMatch("dist/bundle.js", isFolder: false).Should().BeFalse();
-    }
-
-    [Test]
-    public void SearchScope_RulesOutTheInsideOfAnExcludedFolder()
-    {
-        var section = new ResourcesSection
-        {
-            SearchExclude = new[] { "node_modules" },
-        };
-        var scope = BuildPolicy(section).SearchScope;
-
-        scope.CanMatchInside(string.Empty).Should().BeTrue();
-        scope.CanMatchInside("src").Should().BeTrue();
-
-        scope.CanMatchInside("node_modules").Should().BeFalse();
-        scope.CanMatchInside("src/node_modules/pkg").Should().BeFalse();
-    }
-
-    [Test]
     public void ProjectPatterns_DoNotMatchOtherRoots()
     {
-        var section = new ResourcesSection
-        {
-            Hide = new[] { "run.log" },
-            SearchExclude = new[] { "run.log" },
-        };
-        var policy = BuildPolicy(section);
+        var policy = BuildPolicy(explorerExclude: new[] { "run.log" }, searchExclude: new[] { "run.log" });
 
-        policy.IsHidden(new ResourceKey("logs:run.log"), isFolder: false).Should().BeFalse();
+        policy.IsExplorerExcluded(new ResourceKey("logs:run.log"), isFolder: false).Should().BeFalse();
         policy.IsSearchExcluded(new ResourceKey("logs:run.log"), isFolder: false).Should().BeFalse();
+    }
+
+    [Test]
+    public void EachList_AnswersOnlyItsOwnQuestion()
+    {
+        var policy = BuildPolicy(explorerExclude: new[] { ".gitignore" }, searchExclude: new[] { "dist" });
+
+        policy.IsExplorerExcluded(new ResourceKey("dist"), isFolder: true).Should().BeFalse();
+        policy.IsSearchExcluded(new ResourceKey(".gitignore"), isFolder: false).Should().BeFalse();
     }
 }

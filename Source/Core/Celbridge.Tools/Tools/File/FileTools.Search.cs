@@ -14,7 +14,7 @@ public partial class FileTools
     [McpServerTool(Name = "file_search", ReadOnly = true)]
     [ToolAlias("file.search")]
     [RelatedGuides("resource_keys", "search_filters")]
-    public async partial Task<CallToolResult> Search(string pattern, bool includeMetadata = false, string type = "")
+    public async partial Task<CallToolResult> Search(string pattern, bool includeMetadata = false, string type = "", bool applySearchExclude = true)
     {
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
         var resourceService = workspaceWrapper.WorkspaceService.ResourceService;
@@ -46,7 +46,7 @@ public partial class FileTools
         }
         var filter = filterResult.Value;
 
-        var walkResult = await resourceService.Walker.WalkAsync(rootKey);
+        var walkResult = await resourceService.Walker.WalkAsync(rootKey, applySearchExclude);
         if (walkResult.IsFailure)
         {
             return ToolResponse.Error(walkResult);

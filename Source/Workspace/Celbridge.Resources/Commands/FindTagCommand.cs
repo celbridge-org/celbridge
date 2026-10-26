@@ -13,6 +13,8 @@ public sealed class FindTagCommand : CommandBase, IFindTagCommand
 
     public string Tag { get; set; } = string.Empty;
 
+    public bool ApplySearchExclude { get; set; } = true;
+
     public IReadOnlyList<ResourceKey> ResultValue { get; private set; } = Array.Empty<ResourceKey>();
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -30,7 +32,7 @@ public sealed class FindTagCommand : CommandBase, IFindTagCommand
         }
 
         var scanner = _workspaceWrapper.WorkspaceService.ResourceService.Scanner;
-        ResultValue = await scanner.FindByTagAsync(Tag);
+        ResultValue = await scanner.FindByTagAsync(Tag, ApplySearchExclude);
         return Result.Ok();
     }
 }

@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.RegularExpressions;
+using Celbridge.Search;
 
 namespace Celbridge.Patterns;
 
@@ -42,7 +43,7 @@ public sealed class SearchMatch
 /// A search pattern in ripgrep's regex dialect, or plain text. A pattern matches the same text that ripgrep matches
 /// with --crlf, in time linear in the length of the text.
 /// </summary>
-public sealed class SearchPattern
+public sealed class SearchPattern : ITextMatcher
 {
     private const string LineBreakMessage =
         "A pattern matches within one line, so it cannot match a line break. Use multiline to match across lines.";
@@ -71,6 +72,7 @@ public sealed class SearchPattern
     private readonly IReadOnlyDictionary<string, int> _groupNumbers;
 
     private SearchPattern(
+        string pattern,
         SearchPatternOptions options,
         string? literal,
         Regex? regex,
@@ -78,6 +80,7 @@ public sealed class SearchPattern
         int groupCount,
         IReadOnlyDictionary<string, int> groupNumbers)
     {
+        Pattern = pattern;
         _options = options;
         _literal = literal;
         _regex = regex;
@@ -85,6 +88,8 @@ public sealed class SearchPattern
         _groupCount = groupCount;
         _groupNumbers = groupNumbers;
     }
+
+    public string Pattern { get; }
 
     /// <summary>
     /// Compiles a pattern, or refuses one outside ripgrep's dialect with a message that says what to write.
@@ -157,6 +162,24 @@ public sealed class SearchPattern
         return matches;
     }
 
+    IReadOnlyList<TextMatch> ITextMatcher.FindMatches(string line)
+    {
+        var matches = FindMatches(line);
+        if (matches.Count == 0)
+        {
+            return Array.Empty<TextMatch>();
+        }
+
+        var textMatches = new TextMatch[matches.Count];
+        for (var index = 0; index < matches.Count; index++)
+        {
+            var match = matches[index];
+            textMatches[index] = new TextMatch(match.Start, match.Length);
+        }
+
+        return textMatches;
+    }
+
     /// <summary>
     /// Compiles a replacement against the pattern's groups. For a regex, the replacement follows ripgrep's --replace.
     /// For plain text, the replacement is plain text too.
@@ -186,7 +209,7 @@ public sealed class SearchPattern
         if (options.MatchCase)
         {
             var emptyGroupNumbers = new Dictionary<string, int>(StringComparer.Ordinal);
-            return new SearchPattern(options, literal, regex: null, partition: null, groupCount: 0, emptyGroupNumbers);
+            return new SearchPattern(pattern, options, literal, regex: null, partition: null, groupCount: 0, emptyGroupNumbers);
         }
 
         var items = new List<RegexNode>();
@@ -200,7 +223,7 @@ public sealed class SearchPattern
         var root = new SequenceNode(items);
         var groupNumbers = new Dictionary<string, int>(StringComparer.Ordinal);
 
-        return Build(root, options, groupCount: 0, groupNumbers);
+        return Build(pattern, root, options, groupCount: 0, groupNumbers);
     }
 
     private static Result<SearchPattern> CompileRegex(string pattern, SearchPatternOptions options)
@@ -237,10 +260,11 @@ public sealed class SearchPattern
             root = new SequenceNode(bounded);
         }
 
-        return Build(root, options, parsed.GroupCount, parsed.GroupNumbers);
+        return Build(pattern, root, options, parsed.GroupCount, parsed.GroupNumbers);
     }
 
     private static Result<SearchPattern> Build(
+        string pattern,
         RegexNode root,
         SearchPatternOptions options,
         int groupCount,
@@ -270,7 +294,7 @@ public sealed class SearchPattern
             return Result.Fail($"The pattern could not be compiled: {exception.Message}");
         }
 
-        return new SearchPattern(options, literal: null, regex, written.Partition, groupCount, groupNumbers);
+        return new SearchPattern(pattern, options, literal: null, regex, written.Partition, groupCount, groupNumbers);
     }
 
     // A line contains no line break, so ripgrep refuses a set of line breaks alone. With multiline, the text reads

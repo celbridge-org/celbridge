@@ -116,28 +116,38 @@ public sealed record class CelbridgeSection
 }
 
 /// <summary>
-/// Models the [celbridge.resources] sub-table from the .celbridge project config.
+/// Models the [celbridge.explorer] sub-table from the .celbridge project config.
 /// </summary>
-public sealed record class ResourcesSection
+public sealed record class ExplorerSection
 {
     /// <summary>
-    /// Patterns matching resources the Explorer leaves out of the tree unless
-    /// Show Hidden Files is on.
+    /// The Explorer's list: gitignore lines for the Explorer to leave out of its tree. Show Hidden Files
+    /// shows the matching resources, dimmed.
     /// </summary>
-    public IReadOnlyList<string> Hide { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> Exclude { get; init; } = Array.Empty<string>();
+}
 
+/// <summary>
+/// Models the [celbridge.search] sub-table from the .celbridge project config.
+/// </summary>
+public sealed record class SearchSection
+{
     /// <summary>
-    /// Patterns matching resources that search, reference scanning and tag
-    /// queries skip. The Explorer leaves them out as well unless Show Hidden
-    /// Files is on.
+    /// The search list: gitignore lines for search and tag queries to skip.
     /// </summary>
-    public IReadOnlyList<string> SearchExclude { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> Exclude { get; init; } = Array.Empty<string>();
+}
 
+/// <summary>
+/// Models the [celbridge.downloads] sub-table from the .celbridge project config.
+/// </summary>
+public sealed record class DownloadsSection
+{
     /// <summary>
     /// The folder files downloaded from web pages are saved to, as a path from
     /// the project root. Empty saves them to the default downloads folder.
     /// </summary>
-    public string DownloadsFolder { get; init; } = string.Empty;
+    public string Folder { get; init; } = string.Empty;
 }
 
 /// <summary>
@@ -170,9 +180,19 @@ public sealed record class ProjectConfig
     public CelbridgeSection Celbridge { get; init; } = new();
 
     /// <summary>
-    /// File policy from the [celbridge.resources] sub-table.
+    /// The Explorer's list from the [celbridge.explorer] sub-table.
     /// </summary>
-    public ResourcesSection Resources { get; init; } = new();
+    public ExplorerSection Explorer { get; init; } = new();
+
+    /// <summary>
+    /// The search list from the [celbridge.search] sub-table.
+    /// </summary>
+    public SearchSection Search { get; init; } = new();
+
+    /// <summary>
+    /// The downloads folder from the [celbridge.downloads] sub-table.
+    /// </summary>
+    public DownloadsSection Downloads { get; init; } = new();
 
     /// <summary>
     /// Package folders and package activation from the [celbridge.packages] sub-table.

@@ -32,7 +32,7 @@ public static class ServiceConfiguration
         // Register commands
         //
 
-        services.AddTransient<IShowSearchCommand, ShowSearchCommand>();
+        services.AddTransient<ISearchFolderCommand, SearchFolderCommand>();
         services.AddTransient<IReplaceCommand, ReplaceCommand>();
     }
 }

@@ -1,6 +1,8 @@
 [celbridge]
 celbridge-version = "<application-version>"
 
-[celbridge.resources]
-hide = [".gitignore", ".DS_Store", "Thumbs.db", "desktop.ini"]
-search-exclude = ["node_modules", "bin", "obj", "dist", ".venv", "__pycache__"]
+[celbridge.explorer]
+exclude = [".gitignore", ".DS_Store", "Thumbs.db", "desktop.ini", "__pycache__"]
+
+[celbridge.search]
+exclude = ["node_modules", "bin", "obj", "dist", ".venv", "__pycache__"]

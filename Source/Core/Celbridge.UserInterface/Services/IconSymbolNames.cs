@@ -49,6 +49,7 @@ internal static class IconSymbolNames
         { IconSymbol.ChevronUp, "bs-chevron-up" },
         { IconSymbol.MatchCase, "bs-type" },
         { IconSymbol.Replace, "bs-arrow-left-right" },
+        { IconSymbol.Filter, "bs-funnel" },
         { IconSymbol.Add, "bs-plus-lg" },
         { IconSymbol.Copy, "bs-copy" },
         { IconSymbol.Cut, "bs-scissors" },

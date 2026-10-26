@@ -34,28 +34,25 @@ internal sealed class CompiledPolicyRule : IPolicyRule
 
 /// <summary>
 /// Workspace-scoped policy engine. Access is decided by the system-deny tier
-/// alone, which no project configuration can reach. The project's 'hide' and
-/// 'search-exclude' patterns are compiled alongside it and answer the two
-/// ergonomic questions: what the Explorer draws, and what the indexers walk.
+/// alone, which no project configuration can reach. The project's Explorer and
+/// search lists are compiled alongside it and answer the two ergonomic
+/// questions: what the Explorer draws, and what search walks.
 /// </summary>
 public sealed class ResourcePolicy : IResourcePolicy
 {
     private readonly List<CompiledPolicyRule> _systemDeny;
 
-    private readonly GitignoreMatcher _hide;
+    private readonly GitignoreMatcher _explorerExclude;
     private readonly GitignoreMatcher _searchExclude;
 
     public ResourcePolicy(IProjectService projectService)
     {
-        var resourcesSection = projectService.CurrentProject?.Config.Resources ?? new ResourcesSection();
+        var config = projectService.CurrentProject?.Config ?? new ProjectConfig();
 
         _systemDeny = BuildSystemDenyRules();
-        _hide = CompileList(resourcesSection.Hide);
-        _searchExclude = CompileList(resourcesSection.SearchExclude);
-        SearchScope = new SearchScopeMatcher(_searchExclude);
+        _explorerExclude = CompileList(config.Explorer.Exclude);
+        _searchExclude = CompileList(config.Search.Exclude);
     }
-
-    public IPathMatcher SearchScope { get; }
 
     public Result Evaluate(ResourceKey resource, ResourceAction action, bool isFolder = false)
     {
@@ -93,9 +90,9 @@ public sealed class ResourcePolicy : IResourcePolicy
         return Result.Ok();
     }
 
-    public bool IsHidden(ResourceKey resource, bool isFolder)
+    public bool IsExplorerExcluded(ResourceKey resource, bool isFolder)
     {
-        return MatchesProjectPatterns(_hide, resource, isFolder);
+        return MatchesProjectPatterns(_explorerExclude, resource, isFolder);
     }
 
     public bool IsSearchExcluded(ResourceKey resource, bool isFolder)

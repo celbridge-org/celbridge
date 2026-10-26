@@ -64,6 +64,7 @@ public static class ServiceConfiguration
         services.AddSingleton<IMenuOption<ExplorerMenuContext>, PasteMenuOption>();
         services.AddSingleton<IMenuOption<ExplorerMenuContext>, DeleteMenuOption>();
         services.AddSingleton<IMenuOption<ExplorerMenuContext>, RenameMenuOption>();
+        services.AddSingleton<IMenuOption<ExplorerMenuContext>, SearchInFolderMenuOption>();
         services.AddSingleton<IMenuOption<ExplorerMenuContext>, CopyPathMenuOption>();
         services.AddSingleton<IMenuOption<ExplorerMenuContext>, CopyResourceKeyMenuOption>();
         services.AddSingleton<IMenuOption<ExplorerMenuContext>, ArchiveMenuOption>();

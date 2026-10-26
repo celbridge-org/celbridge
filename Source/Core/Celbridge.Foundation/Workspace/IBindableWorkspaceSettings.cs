@@ -35,7 +35,7 @@ public interface IBindableWorkspaceSettings : INotifyPropertyChanged
     BottomAreaAlignment BottomAreaAlignment { get; set; }
 
     /// <summary>
-    /// Whether the Explorer draws the resources the project's hide patterns match.
+    /// True when the Explorer draws what the project's Explorer list excludes.
     /// </summary>
     bool ShowHiddenFiles { get; set; }
 
@@ -53,6 +53,31 @@ public interface IBindableWorkspaceSettings : INotifyPropertyChanged
     /// Whether replace mode is enabled in the search panel.
     /// </summary>
     bool ReplaceMode { get; set; }
+
+    /// <summary>
+    /// True when the search panel shows its filters: the files to include and the files to exclude.
+    /// </summary>
+    bool SearchFiltersVisible { get; set; }
+
+    /// <summary>
+    /// The search panel's files to include, like "*.md" or "./docs, !*.min.js". Empty includes every file.
+    /// </summary>
+    string SearchFilesToInclude { get; set; }
+
+    /// <summary>
+    /// The search panel's files to exclude, like "*.min.js".
+    /// </summary>
+    string SearchFilesToExclude { get; set; }
+
+    /// <summary>
+    /// True when the search panel searches only the files open in documents.
+    /// </summary>
+    bool SearchOnlyOpenDocuments { get; set; }
+
+    /// <summary>
+    /// True when the search panel leaves out what the project's search list excludes.
+    /// </summary>
+    bool ApplySearchExclude { get; set; }
 
     /// <summary>
     /// The file extension of the previously created file via the Add File dialog.

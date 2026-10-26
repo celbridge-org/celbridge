@@ -85,7 +85,7 @@ public class ResourcePickerDialogViewModelTests
         _viewModel.InitializeForFolders();
         await _viewModel.LoadItemsAsync();
 
-        await _walker.Received(1).WalkAsync(ResourceKey.Empty, false, Arg.Any<CancellationToken>());
+        await _walker.Received(1).WalkAsync(ResourceKey.Empty, false, Arg.Any<IPathMatcher?>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -118,7 +118,7 @@ public class ResourcePickerDialogViewModelTests
         _viewModel.Initialize(Array.Empty<string>(), showPreview: false);
         await _viewModel.LoadItemsAsync();
 
-        await _walker.Received(1).WalkAsync(ResourceKey.Empty, true, Arg.Any<CancellationToken>());
+        await _walker.Received(1).WalkAsync(ResourceKey.Empty, true, Arg.Any<IPathMatcher?>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -146,7 +146,7 @@ public class ResourcePickerDialogViewModelTests
     public async Task TheList_ShowsThatItIsLoading_UntilTheWalkFinishes()
     {
         var walkCompletion = new TaskCompletionSource<Result<IReadOnlyList<WalkedItem>>>();
-        _walker.WalkAsync(Arg.Any<ResourceKey>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+        _walker.WalkAsync(Arg.Any<ResourceKey>(), Arg.Any<bool>(), Arg.Any<IPathMatcher?>(), Arg.Any<CancellationToken>())
             .Returns(walkCompletion.Task);
 
         _viewModel.Initialize(Array.Empty<string>(), showPreview: false);
@@ -192,7 +192,7 @@ public class ResourcePickerDialogViewModelTests
     [Test]
     public async Task TheList_StopsLoadingAndStaysEmpty_WhenTheWalkThrows()
     {
-        _walker.WalkAsync(Arg.Any<ResourceKey>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+        _walker.WalkAsync(Arg.Any<ResourceKey>(), Arg.Any<bool>(), Arg.Any<IPathMatcher?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException<Result<IReadOnlyList<WalkedItem>>>(new IOException("The disk went away")));
 
         _viewModel.Initialize(Array.Empty<string>(), showPreview: false);
@@ -205,7 +205,7 @@ public class ResourcePickerDialogViewModelTests
     private void UseWalkedItems(params WalkedItem[] items)
     {
         IReadOnlyList<WalkedItem> walkedItems = items;
-        _walker.WalkAsync(Arg.Any<ResourceKey>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+        _walker.WalkAsync(Arg.Any<ResourceKey>(), Arg.Any<bool>(), Arg.Any<IPathMatcher?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(Result<IReadOnlyList<WalkedItem>>.Ok(walkedItems)));
     }
 

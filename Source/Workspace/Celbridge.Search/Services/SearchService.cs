@@ -32,6 +32,7 @@ public class SearchService : ISearchService, IDisposable
         "search-whole-word-button",
         "search-collapse-results-button",
         "search-replace-toggle-button",
+        "search-filters-button",
     };
 
     // Search landmarks whose spotlight also needs replace mode enabled to reveal the replace controls.
@@ -42,6 +43,15 @@ public class SearchService : ISearchService, IDisposable
         "search-replace-all-button",
     };
 
+    // Search landmarks that also need the search filters shown before a spotlight.
+    private static readonly string[] SearchFiltersLandmarkIds =
+    {
+        "search-files-include-input",
+        "search-only-open-documents-button",
+        "search-files-exclude-input",
+        "search-exclude-settings-button",
+    };
+
     private readonly ILogger<SearchService> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IProjectService _projectService;
@@ -50,6 +60,7 @@ public class SearchService : ISearchService, IDisposable
     private readonly IAutomationService _automationService;
     private readonly ISpotlightLandmark _searchSpotlightLandmark;
     private readonly ISpotlightLandmark _searchReplaceSpotlightLandmark;
+    private readonly ISpotlightLandmark _searchFiltersSpotlightLandmark;
     private readonly SearchResultFormatter _formatter;
 
     // Cancelled when the workspace this service belongs to is torn down. A search runs as a sequence of
@@ -67,6 +78,7 @@ public class SearchService : ISearchService, IDisposable
     private IResourceFileSystem ResourceFileSystem => _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
     private IRootHandlerRegistry RootHandlers => _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
     private IResourceWalker ResourceWalker => _workspaceWrapper.WorkspaceService.ResourceService.Walker;
+    private IResourcePolicy ResourcePolicy => _workspaceWrapper.WorkspaceService.ResourceService.Policy;
     private IWorkspacePropertyBag PropertyBag => _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag!;
 
     public SearchService(
@@ -90,10 +102,11 @@ public class SearchService : ISearchService, IDisposable
         _formatter = new SearchResultFormatter();
 
         // Register the Search reveals so spotlighting a Search landmark switches to the Search tab
-        // first (and, for the replace controls, enables replace mode). Torn down when this
+        // first (and, for the replace controls or the search filters, shows them). Torn down when this
         // workspace-scoped service is disposed.
-        _searchSpotlightLandmark = new SearchSpotlightLandmark(workspaceWrapper, revealReplace: false);
-        _searchReplaceSpotlightLandmark = new SearchSpotlightLandmark(workspaceWrapper, revealReplace: true);
+        _searchSpotlightLandmark = new SearchSpotlightLandmark(workspaceWrapper, SearchLandmarkReveal.SearchTab);
+        _searchReplaceSpotlightLandmark = new SearchSpotlightLandmark(workspaceWrapper, SearchLandmarkReveal.ReplaceControls);
+        _searchFiltersSpotlightLandmark = new SearchSpotlightLandmark(workspaceWrapper, SearchLandmarkReveal.FilterControls);
         foreach (var landmarkId in SearchLandmarkIds)
         {
             _spotlightService.RegisterLandmark(landmarkId, _searchSpotlightLandmark);
@@ -101,6 +114,10 @@ public class SearchService : ISearchService, IDisposable
         foreach (var landmarkId in SearchReplaceLandmarkIds)
         {
             _spotlightService.RegisterLandmark(landmarkId, _searchReplaceSpotlightLandmark);
+        }
+        foreach (var landmarkId in SearchFiltersLandmarkIds)
+        {
+            _spotlightService.RegisterLandmark(landmarkId, _searchFiltersSpotlightLandmark);
         }
     }
 
@@ -135,15 +152,13 @@ public class SearchService : ISearchService, IDisposable
         public bool ReachedMaxResults { get; set; }
     }
 
-    public async Task<SearchResults> SearchAsync(SearchOptions options, CancellationToken cancellationToken)
+    public async Task<SearchResults> SearchAsync(
+        SearchOptions options,
+        Action<SearchFileResult>? fileResultFound,
+        CancellationToken cancellationToken)
     {
         var fileResults = new List<SearchFileResult>();
-        var searchTerm = options.Pattern;
-
-        if (string.IsNullOrEmpty(searchTerm))
-        {
-            return new SearchResults(searchTerm, fileResults, 0, 0, false, false, 0);
-        }
+        var searchTerm = options.Matcher.Pattern;
 
         if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
@@ -161,23 +176,8 @@ public class SearchService : ISearchService, IDisposable
             return new SearchResults(searchTerm, fileResults, 0, 0, false, false, 0);
         }
 
-        var patternOptions = new SearchPatternOptions(options.Literal, options.MatchCase, options.WholeWord, Multiline: false);
-        var patternResult = SearchPattern.Compile(searchTerm, patternOptions);
-        if (patternResult.IsFailure)
-        {
-            _logger.LogWarning(patternResult, $"Failed to compile the search pattern: '{searchTerm}'");
-            return new SearchResults(searchTerm, fileResults, 0, 0, false, false, 0);
-        }
-        var searchPattern = patternResult.Value;
-
-        var filterResult = SearchFilter.Compile(options.Include, options.Exclude);
-        if (filterResult.IsFailure)
-        {
-            _logger.LogWarning(filterResult, "Failed to compile the search filter");
-            return new SearchResults(searchTerm, fileResults, 0, 0, false, false, 0);
-        }
-        var filter = filterResult.Value;
-
+        var matcher = options.Matcher;
+        var filter = options.Filter;
         var maxResults = options.MaxResults;
         var searchState = new SearchState();
         var searchedFiles = 0;
@@ -209,7 +209,9 @@ public class SearchService : ISearchService, IDisposable
         // Returns false when the scope names nothing that can be searched.
         async Task<bool> SearchScopeAsync()
         {
-            var listResult = await ListScopeFilesAsync(options.Scope, cancellationToken);
+            var listResult = options.Files is null
+                ? await ListScopeFilesAsync(options.Scope, options.ApplySearchExclude, filter, cancellationToken)
+                : await ListNamedFilesAsync(options.Files, options.ApplySearchExclude);
             if (listResult.IsFailure)
             {
                 _logger.LogWarning(listResult, $"Failed to list the search scope: '{options.Scope}'");
@@ -243,7 +245,7 @@ public class SearchService : ISearchService, IDisposable
                 var fileResult = await SearchFileAsync(
                     file,
                     projectFolder,
-                    searchPattern,
+                    matcher,
                     remainingMatches,
                     cancellationToken,
                     options.IncludeMetadataFiles);
@@ -254,6 +256,7 @@ public class SearchService : ISearchService, IDisposable
                 {
                     fileResults.Add(fileResult);
                     searchState.TotalMatches += fileResult.Matches.Count;
+                    fileResultFound?.Invoke(fileResult);
                 }
             }
 
@@ -263,7 +266,11 @@ public class SearchService : ISearchService, IDisposable
 
     // Lists the files a search covers: the one file the scope names, or every file inside the scope folder. An empty
     // scope names the project folder, and a bare scope, for example "Data", names "project:Data".
-    private async Task<Result<List<WalkedItem>>> ListScopeFilesAsync(string scope, CancellationToken cancellationToken)
+    private async Task<Result<List<WalkedItem>>> ListScopeFilesAsync(
+        string scope,
+        bool applySearchExclude,
+        IPathMatcher filter,
+        CancellationToken cancellationToken)
     {
         var scopeKey = ResourceKey.Empty;
         if (!string.IsNullOrEmpty(scope)
@@ -282,7 +289,7 @@ public class SearchService : ISearchService, IDisposable
             return scopeFiles;
         }
 
-        var walkResult = await ResourceWalker.WalkAsync(scopeKey, cancellationToken: cancellationToken);
+        var walkResult = await ResourceWalker.WalkAsync(scopeKey, applySearchExclude, filter, cancellationToken);
         if (walkResult.IsFailure)
         {
             return Result.Fail($"Failed to walk the search scope: '{scopeKey}'")
@@ -293,6 +300,31 @@ public class SearchService : ISearchService, IDisposable
         var files = walkedItems
             .Where(item => !item.IsFolder)
             .ToList();
+        return files;
+    }
+
+    // Lists the named files that exist, once each. With applySearchExclude, the list leaves out each file excluded by
+    // the search list.
+    private async Task<Result<List<WalkedItem>>> ListNamedFilesAsync(
+        IReadOnlyList<ResourceKey> fileKeys,
+        bool applySearchExclude)
+    {
+        var files = new List<WalkedItem>();
+        foreach (var fileKey in fileKeys.Distinct())
+        {
+            if (applySearchExclude
+                && ResourcePolicy.IsSearchExcluded(fileKey, isFolder: false))
+            {
+                continue;
+            }
+
+            var file = await GetScopeFileAsync(fileKey);
+            if (file is not null)
+            {
+                files.Add(file);
+            }
+        }
+
         return files;
     }
 
@@ -329,7 +361,7 @@ public class SearchService : ISearchService, IDisposable
     private async Task<SearchFileResult?> SearchFileAsync(
         WalkedItem file,
         string rootDirectory,
-        SearchPattern searchPattern,
+        ITextMatcher matcher,
         int maxMatches,
         CancellationToken cancellationToken,
         bool includeMetadataFiles)
@@ -377,7 +409,7 @@ public class SearchService : ISearchService, IDisposable
                     lineNumber++;
                     var line = rawLine.TrimEnd('\r');
 
-                    var lineMatches = searchPattern.FindMatches(line);
+                    var lineMatches = matcher.FindMatches(line);
 
                     foreach (var match in lineMatches)
                     {
@@ -555,6 +587,10 @@ public class SearchService : ISearchService, IDisposable
                     _spotlightService.UnregisterLandmark(landmarkId);
                 }
                 foreach (var landmarkId in SearchReplaceLandmarkIds)
+                {
+                    _spotlightService.UnregisterLandmark(landmarkId);
+                }
+                foreach (var landmarkId in SearchFiltersLandmarkIds)
                 {
                     _spotlightService.UnregisterLandmark(landmarkId);
                 }

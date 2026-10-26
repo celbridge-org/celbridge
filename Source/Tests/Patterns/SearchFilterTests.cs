@@ -52,6 +52,18 @@ public class SearchFilterTests
     }
 
     [Test]
+    public void DotSlashPattern_IsRelativeToTheRoot()
+    {
+        var filter = Compile("./docs, !./docs/drafts");
+
+        filter.IsMatch("docs/guide.md", isFolder: false).Should().BeTrue();
+        filter.IsMatch("src/docs/guide.md", isFolder: false).Should().BeFalse();
+        filter.IsMatch("docs/drafts/guide.md", isFolder: false).Should().BeFalse();
+        filter.CanMatchInside("src").Should().BeFalse();
+        filter.CanMatchInside("docs").Should().BeTrue();
+    }
+
+    [Test]
     public void CommasOutsideBraces_SeparatePatterns()
     {
         var filter = Compile("tests/, *.min.js");
@@ -146,6 +158,23 @@ public class SearchFilterTests
 
         compileResult.IsFailure.Should().BeTrue();
         compileResult.FirstErrorMessage.Should().Contain("starts with '!'");
+    }
+
+    [TestCase("", "", "src", true)]
+    [TestCase("", "", "", true)]
+    [TestCase("", "tests/", "tests", false)]
+    [TestCase("", "tests/", "tests/unit", false)]
+    [TestCase("", "*.min.js", "dist", true)]
+    [TestCase("!tests/", "", "tests", false)]
+    [TestCase("src/**", "", "src/app", true)]
+    [TestCase("src/**", "", "lib", false)]
+    [TestCase("*.py", "", "lib", true)]
+    [TestCase("src/**", "src/generated/", "src/generated", false)]
+    public void CanMatchInside_RulesOutOnlyTheFoldersNoFileInsideCanMatch(string include, string exclude, string folderPath, bool canMatch)
+    {
+        var filter = Compile(include, exclude);
+
+        filter.CanMatchInside(folderPath).Should().Be(canMatch);
     }
 
     [Test]

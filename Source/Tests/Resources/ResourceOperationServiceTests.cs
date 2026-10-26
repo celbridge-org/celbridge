@@ -477,13 +477,13 @@ public class ResourceOperationServiceTests
     {
         // Hiding is cosmetic: a destination the Explorer would not draw is still a
         // destination anything may write to.
-        var section = new ResourcesSection
+        var config = new ProjectConfig
         {
-            Hide = new[] { "*.log" },
+            Explorer = new ExplorerSection { Exclude = new[] { "*.log" } },
         };
         // Built into a local first: BuildPolicy stands up its own substitutes, which would
         // corrupt NSubstitute's last-call context if it ran inside Returns(...).
-        var policy = BuildPolicy(section);
+        var policy = BuildPolicy(config);
         _workspaceWrapper.WorkspaceService.ResourceService.Policy.Returns(policy);
 
         var result = await _operationService.CreateFileAsync(new ResourceKey("notes.log"), new byte[] { 0x01 });
@@ -525,14 +525,14 @@ public class ResourceOperationServiceTests
     [Test]
     public void CanAddToFolder_Succeeds_WhenFolderIsSearchExcluded()
     {
-        // Scan scope binds the indexers, not the operation layer.
-        var section = new ResourcesSection
+        // The search list binds search, not the operation layer.
+        var config = new ProjectConfig
         {
-            SearchExclude = new[] { "node_modules" },
+            Search = new SearchSection { Exclude = new[] { "node_modules" } },
         };
         // Built into a local first: BuildPolicy stands up its own substitutes, which would
         // corrupt NSubstitute's last-call context if it ran inside Returns(...).
-        var policy = BuildPolicy(section);
+        var policy = BuildPolicy(config);
         _workspaceWrapper.WorkspaceService.ResourceService.Policy.Returns(policy);
 
         var result = _operationService.CanAddToFolder(new ResourceKey("node_modules"));
@@ -540,9 +540,8 @@ public class ResourceOperationServiceTests
         result.IsSuccess.Should().BeTrue();
     }
 
-    private static ResourcePolicy BuildPolicy(ResourcesSection section)
+    private static ResourcePolicy BuildPolicy(ProjectConfig config)
     {
-        var config = new ProjectConfig { Resources = section };
         var project = Substitute.For<IProject>();
         project.Config.Returns(config);
         project.ProjectFolderPath.Returns(@"C:\fake\project");

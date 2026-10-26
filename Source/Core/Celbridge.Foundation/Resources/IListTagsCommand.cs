@@ -9,4 +9,8 @@ namespace Celbridge.Resources;
 /// </summary>
 public interface IListTagsCommand : IExecutableCommand<IReadOnlyList<string>>
 {
+    /// <summary>
+    /// When true, the command leaves out the tags of what the project's search list excludes. True by default.
+    /// </summary>
+    bool ApplySearchExclude { get; set; }
 }

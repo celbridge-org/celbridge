@@ -23,22 +23,23 @@ public record SearchFileResult(
     List<SearchMatchLine> Matches);
 
 /// <summary>
-/// What a text search looks for and where. Pattern is a search pattern in ripgrep's regex dialect, or plain text when
-/// Literal is true. MaxResults stops the search after that many matches, and null finds every match. Include and
-/// Exclude are search filters, relative to the project folder. Scope names the folder or file to search, and empty
-/// searches the project. IncludeMetadataFiles also searches the text of .cel sidecars.
+/// What a text search looks for and where. Matcher finds the matches in each line. Filter matches the files to search,
+/// by their paths in the project. MaxResults stops the search after that many matches, and null finds every match.
+/// Scope names the folder or file to search, and empty searches the project. Files, when set, names the only files to
+/// search, in place of Scope. IncludeMetadataFiles also searches the text of .cel sidecars. ApplySearchExclude, true by
+/// default, leaves out what the project's search list excludes.
 /// </summary>
-public sealed record SearchOptions(string Pattern, bool Literal, bool MatchCase, bool WholeWord)
+public sealed record SearchOptions(ITextMatcher Matcher, IPathMatcher Filter)
 {
     public int? MaxResults { get; init; }
 
-    public string Include { get; init; } = string.Empty;
-
-    public string Exclude { get; init; } = string.Empty;
-
     public string Scope { get; init; } = string.Empty;
 
+    public IReadOnlyList<ResourceKey>? Files { get; init; }
+
     public bool IncludeMetadataFiles { get; init; }
+
+    public bool ApplySearchExclude { get; init; } = true;
 }
 
 /// <summary>

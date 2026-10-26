@@ -28,8 +28,8 @@ public partial class ResourcesSectionViewModel : ProjectSettingsSectionViewModel
     public ObservableCollection<PackageFolderViewModel> PackageFolders { get; } = new();
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasInvalidHidePattern))]
-    private string _hidePatternsText = string.Empty;
+    [NotifyPropertyChangedFor(nameof(HasInvalidExplorerExcludePattern))]
+    private string _explorerExcludePatternsText = string.Empty;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasInvalidSearchExcludePattern))]
@@ -42,12 +42,12 @@ public partial class ResourcesSectionViewModel : ProjectSettingsSectionViewModel
     private string _downloadsFolderText = string.Empty;
 
     /// <summary>
-    /// True when the gitignore matcher refuses a line of the hide list. Loading the project drops that line.
+    /// True when the gitignore matcher refuses a line of the Explorer's list. Loading the project drops that line.
     /// </summary>
-    public bool HasInvalidHidePattern => ContainsInvalidPattern(HidePatternsText);
+    public bool HasInvalidExplorerExcludePattern => ContainsInvalidPattern(ExplorerExcludePatternsText);
 
     /// <summary>
-    /// True when the gitignore matcher refuses a line of the search-exclude list.
+    /// True when the gitignore matcher refuses a line of the search list.
     /// </summary>
     public bool HasInvalidSearchExcludePattern => ContainsInvalidPattern(SearchExcludePatternsText);
 
@@ -64,8 +64,8 @@ public partial class ResourcesSectionViewModel : ProjectSettingsSectionViewModel
     /// </summary>
     public string DefaultDownloadsFolder => DownloadsFolderPath.DefaultFolder.Path;
 
-    public string HideTitle => ProjectSettingsLabels.HideTitle;
-    public string HideSubtitle => ProjectSettingsLabels.HideSubtitle;
+    public string ExplorerExcludeTitle => ProjectSettingsLabels.ExplorerExcludeTitle;
+    public string ExplorerExcludeSubtitle => ProjectSettingsLabels.ExplorerExcludeSubtitle;
     public string SearchExcludeTitle => ProjectSettingsLabels.SearchExcludeTitle;
     public string SearchExcludeSubtitle => ProjectSettingsLabels.SearchExcludeSubtitle;
     public string PatternPlaceholder => ProjectSettingsLabels.PatternPlaceholder;
@@ -107,9 +107,9 @@ public partial class ResourcesSectionViewModel : ProjectSettingsSectionViewModel
         _suppressCommit = true;
         try
         {
-            HidePatternsText = FormatPatterns(config?.Resources.Hide);
-            SearchExcludePatternsText = FormatPatterns(config?.Resources.SearchExclude);
-            DownloadsFolderText = config?.Resources.DownloadsFolder ?? string.Empty;
+            ExplorerExcludePatternsText = FormatPatterns(config?.Explorer.Exclude);
+            SearchExcludePatternsText = FormatPatterns(config?.Search.Exclude);
+            DownloadsFolderText = config?.Downloads.Folder ?? string.Empty;
 
             // Clearing raises a reset, which reports no old items, so the outgoing rows are detached here.
             foreach (var packageFolder in PackageFolders)
@@ -197,7 +197,7 @@ public partial class ResourcesSectionViewModel : ProjectSettingsSectionViewModel
         DownloadsFolderText = folder.Path;
     }
 
-    partial void OnHidePatternsTextChanged(string value)
+    partial void OnExplorerExcludePatternsTextChanged(string value)
     {
         Commit();
     }
@@ -297,7 +297,7 @@ public partial class ResourcesSectionViewModel : ProjectSettingsSectionViewModel
             return;
         }
 
-        var hide = ParsePatterns(HidePatternsText);
+        var explorerExclude = ParsePatterns(ExplorerExcludePatternsText);
         var searchExclude = ParsePatterns(SearchExcludePatternsText);
         var packageFolders = PackageFolders
             .Select(packageFolder => packageFolder.Path)
@@ -305,7 +305,7 @@ public partial class ResourcesSectionViewModel : ProjectSettingsSectionViewModel
 
         EditConfig(draft =>
         {
-            draft.SetHidePatterns(hide);
+            draft.SetExplorerExcludePatterns(explorerExclude);
             draft.SetSearchExcludePatterns(searchExclude);
             draft.SetDownloadsFolder(DownloadsFolderText);
             draft.SetPackageFolders(packageFolders);

@@ -8,12 +8,13 @@ namespace Celbridge.Resources.Services;
 /// </summary>
 public sealed class ResourceWalker : IResourceWalker
 {
-    // Records the state of one walk: the gateway and policy for each listing, the search-exclude option and the items
-    // found so far.
+    // Records the state of one walk: the gateway and policy for each listing, the search list option, the filter
+    // and the items found so far.
     private sealed record Walk(
         IResourceFileSystem FileSystem,
         IResourcePolicy Policy,
         bool ApplySearchExclude,
+        IPathMatcher? Filter,
         CancellationToken CancellationToken)
     {
         public List<WalkedItem> Items { get; } = new();
@@ -33,15 +34,19 @@ public sealed class ResourceWalker : IResourceWalker
     public async Task<Result<IReadOnlyList<WalkedItem>>> WalkAsync(
         ResourceKey folder,
         bool applySearchExclude = true,
+        IPathMatcher? filter = null,
         CancellationToken cancellationToken = default)
     {
         // The gateway lists a folder synchronously, so the whole walk runs on a worker thread.
-        return await Task.Run(() => WalkFolderAsync(folder, applySearchExclude, cancellationToken), cancellationToken);
+        return await Task.Run(
+            () => WalkFolderAsync(folder, applySearchExclude, filter, cancellationToken),
+            cancellationToken);
     }
 
     private async Task<Result<IReadOnlyList<WalkedItem>>> WalkFolderAsync(
         ResourceKey folder,
         bool applySearchExclude,
+        IPathMatcher? filter,
         CancellationToken cancellationToken)
     {
         var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
@@ -64,7 +69,18 @@ public sealed class ResourceWalker : IResourceWalker
         }
         var folderChildren = listResult.Value;
 
-        var walk = new Walk(resourceService.FileSystem, resourceService.Policy, applySearchExclude, cancellationToken);
+        // The search list matches each folder on a path, so the list leaves out everything below an excluded folder.
+        // A walk that starts in an excluded folder, or in a folder inside one, lists the folder in full.
+        var startsInExcludedFolder = resourceService.Policy.IsSearchExcluded(folder, isFolder: true);
+        var walkApplySearchExclude = applySearchExclude
+            && !startsInExcludedFolder;
+
+        var walk = new Walk(
+            resourceService.FileSystem,
+            resourceService.Policy,
+            walkApplySearchExclude,
+            filter,
+            cancellationToken);
         await AddFolderContentsAsync(walk, folderChildren, folderPath);
 
         IReadOnlyList<WalkedItem> items = walk.Items;
@@ -94,6 +110,12 @@ public sealed class ResourceWalker : IResourceWalker
             walk.Items.Add(walkedItem);
 
             if (!folderChild.IsFolder)
+            {
+                continue;
+            }
+
+            if (walk.Filter is not null
+                && !walk.Filter.CanMatchInside(folderChild.Resource.Path))
             {
                 continue;
             }

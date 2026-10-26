@@ -11,6 +11,8 @@ public sealed class ListTagsCommand : CommandBase, IListTagsCommand
 {
     public override CommandFlags CommandFlags => CommandFlags.SuppressCommandLog;
 
+    public bool ApplySearchExclude { get; set; } = true;
+
     public IReadOnlyList<string> ResultValue { get; private set; } = Array.Empty<string>();
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -23,7 +25,7 @@ public sealed class ListTagsCommand : CommandBase, IListTagsCommand
     public override async Task<Result> ExecuteAsync()
     {
         var scanner = _workspaceWrapper.WorkspaceService.ResourceService.Scanner;
-        ResultValue = await scanner.ListAllTagsAsync();
+        ResultValue = await scanner.ListAllTagsAsync(ApplySearchExclude);
         return Result.Ok();
     }
 }

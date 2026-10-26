@@ -6,6 +6,7 @@ A tool's file filter, like `file_grep`'s `include` and `exclude`, follows ripgre
 
 - A pattern with no `/` matches a name at any depth: `*.py` matches `app.py` and `src/lib/util.py`.
 - A pattern with a `/` at the start or in the middle is relative to the root: `src/*.cs` matches `src/app.cs` only.
+- A pattern that starts with `./` is relative to the root too, the same as a leading `/`. So `./docs` matches the `docs` folder at the root, and not `src/docs`.
 - `**` spans folders: `src/**/*.cs`, `**/tests`. A trailing `/` matches folders only.
 - `*` matches within one name, `?` matches one character, and `[abc]`, `[a-z]` or `[[:digit:]]` match one character from a class.
 - `\` escapes a special character, like `\*` or `\[`. A `\` before an ordinary character is refused, so write `/` between folder names.

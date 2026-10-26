@@ -20,6 +20,12 @@ public partial class SearchPanelViewModel
 
         try
         {
+            // A file changed since the search shows its new matches, and nothing is replaced.
+            if (!await UpdateFileResultsAsync([fileResult.Resource]))
+            {
+                return;
+            }
+
             var textEdits = BuildRangeEditsForMatches(fileResult.Matches);
 
             var fileEdit = new FileRangeEdit(fileResult.Resource, textEdits);
@@ -59,6 +65,11 @@ public partial class SearchPanelViewModel
         try
         {
             var fileResult = matchLine.Parent;
+            // A file changed since the search shows its new matches, and nothing is replaced.
+            if (!await UpdateFileResultsAsync([fileResult.Resource]))
+            {
+                return;
+            }
 
             var textEdit = CreateRangeEditForMatch(matchLine);
 
@@ -96,6 +107,15 @@ public partial class SearchPanelViewModel
             var matchesByFile = selectedMatches
                 .GroupBy(m => m.Parent.Resource)
                 .ToList();
+
+            var files = matchesByFile
+                .Select(fileGroup => fileGroup.Key)
+                .ToList();
+            // A file changed since the search shows its new matches, and nothing is replaced.
+            if (!await UpdateFileResultsAsync(files))
+            {
+                return;
+            }
 
             var fileEdits = new List<FileRangeEdit>();
 
@@ -141,8 +161,22 @@ public partial class SearchPanelViewModel
 
         try
         {
-            var searchOptions = new SearchOptions(SearchText, Literal: true, MatchCase, WholeWord);
-            var allResults = await _searchService.SearchAsync(searchOptions, CancellationToken.None);
+            var patternResult = CompileSearchPattern();
+            if (patternResult.IsFailure)
+            {
+                return;
+            }
+            var searchPattern = patternResult.Value;
+
+            // Replace All searches again within the panel's filters with no cap, so it replaces every match, beyond
+            // the matches shown.
+            var searchOptions = Filters.CreateSearchOptions(searchPattern, maxResults: null);
+            if (searchOptions is null)
+            {
+                return;
+            }
+
+            var allResults = await _searchService.SearchAsync(searchOptions, null, CancellationToken.None);
 
             if (allResults.TotalMatches == 0)
             {

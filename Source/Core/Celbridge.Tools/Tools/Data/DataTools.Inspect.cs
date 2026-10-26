@@ -9,7 +9,7 @@ public partial class DataTools
     [McpServerTool(Name = "data_inspect", ReadOnly = true)]
     [ToolAlias("data.inspect")]
     [RelatedGuides("resource_keys", "search_filters")]
-    public async partial Task<CallToolResult> Inspect(string resourcesJson = "", string pattern = "", bool summaryOnly = false)
+    public async partial Task<CallToolResult> Inspect(string resourcesJson = "", string pattern = "", bool summaryOnly = false, bool applySearchExclude = true)
     {
         var resourceKeys = new List<ResourceKey>();
         if (!string.IsNullOrWhiteSpace(resourcesJson))
@@ -34,6 +34,7 @@ public partial class DataTools
             command.Resources = resourceKeys;
             command.Pattern = pattern ?? string.Empty;
             command.SummaryOnly = summaryOnly;
+            command.ApplySearchExclude = applySearchExclude;
         });
         if (commandResult.IsFailure)
         {

@@ -4,23 +4,44 @@ using Celbridge.Workspace;
 namespace Celbridge.Search.Services;
 
 /// <summary>
+/// Picks the controls to show with the Search tab when a Search landmark is spotlighted.
+/// </summary>
+public enum SearchLandmarkReveal
+{
+    /// <summary>
+    /// The landmark shows whenever the Search tab is active.
+    /// </summary>
+    SearchTab,
+
+    /// <summary>
+    /// The landmark shows only with replace mode on.
+    /// </summary>
+    ReplaceControls,
+
+    /// <summary>
+    /// The landmark shows only with the search filters shown.
+    /// </summary>
+    FilterControls,
+}
+
+/// <summary>
 /// Prepares a Search landmark for spotlighting by switching the Utility Panel to the Search tab,
-/// since the Search content is collapsed while another activity (such as Explorer) is active. For
-/// the replace controls it also enables replace mode, which it restores to its prior state on clear.
+/// since the Search content is collapsed while another activity, like the Explorer, is active. A
+/// replace landmark also turns on replace mode, and a filters landmark also shows the search filters.
+/// Clearing the spotlight hides those controls again, unless they were already shown.
 /// </summary>
 public sealed class SearchSpotlightLandmark : ISpotlightLandmark
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly bool _revealReplace;
+    private readonly SearchLandmarkReveal _reveal;
 
-    // Whether replace mode was already on when this reveal enabled it, so PostSpotlight only turns
-    // it back off if the reveal was what turned it on.
-    private bool _replaceModeWasEnabled;
+    // True when the revealed controls were shown before the spotlight. PostSpotlight then leaves them shown.
+    private bool _controlsWereShown;
 
-    public SearchSpotlightLandmark(IWorkspaceWrapper workspaceWrapper, bool revealReplace)
+    public SearchSpotlightLandmark(IWorkspaceWrapper workspaceWrapper, SearchLandmarkReveal reveal)
     {
         _workspaceWrapper = workspaceWrapper;
-        _revealReplace = revealReplace;
+        _reveal = reveal;
     }
 
     public async Task<Result> PreSpotlightAsync()
@@ -38,10 +59,15 @@ public sealed class SearchSpotlightLandmark : ISpotlightLandmark
         // activity (such as Explorer) is the active tab.
         _workspaceWrapper.WorkspaceService.UtilityPanel.ShowUtility(BuiltInUtilityIds.Search);
 
-        if (_revealReplace)
+        if (_reveal == SearchLandmarkReveal.ReplaceControls)
         {
-            _replaceModeWasEnabled = searchPanel.IsReplaceModeEnabled;
+            _controlsWereShown = searchPanel.IsReplaceModeEnabled;
             searchPanel.SetReplaceMode(true);
+        }
+        else if (_reveal == SearchLandmarkReveal.FilterControls)
+        {
+            _controlsWereShown = searchPanel.AreFiltersVisible;
+            searchPanel.SetFiltersVisible(true);
         }
 
         return Result.Ok();
@@ -49,13 +75,21 @@ public sealed class SearchSpotlightLandmark : ISpotlightLandmark
 
     public void PostSpotlight()
     {
-        if (!_revealReplace ||
-            _replaceModeWasEnabled ||
-            !_workspaceWrapper.IsWorkspaceLoaded)
+        if (_reveal == SearchLandmarkReveal.SearchTab
+            || _controlsWereShown
+            || !_workspaceWrapper.IsWorkspaceLoaded)
         {
             return;
         }
 
-        _workspaceWrapper.WorkspaceService.UtilityPanel.SearchPanel.SetReplaceMode(false);
+        var searchPanel = _workspaceWrapper.WorkspaceService.UtilityPanel.SearchPanel;
+        if (_reveal == SearchLandmarkReveal.ReplaceControls)
+        {
+            searchPanel.SetReplaceMode(false);
+        }
+        else
+        {
+            searchPanel.SetFiltersVisible(false);
+        }
     }
 }

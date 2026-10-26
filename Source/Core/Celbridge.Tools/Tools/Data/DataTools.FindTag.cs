@@ -9,7 +9,7 @@ public partial class DataTools
     [McpServerTool(Name = "data_find_tag", ReadOnly = true)]
     [ToolAlias("data.find_tag")]
     [RelatedGuides("resource_keys")]
-    public async partial Task<CallToolResult> FindTag(string tag)
+    public async partial Task<CallToolResult> FindTag(string tag, bool applySearchExclude = true)
     {
         if (string.IsNullOrEmpty(tag))
         {
@@ -19,6 +19,7 @@ public partial class DataTools
         var commandResult = await ExecuteCommandAsync<IFindTagCommand, IReadOnlyList<ResourceKey>>(command =>
         {
             command.Tag = tag;
+            command.ApplySearchExclude = applySearchExclude;
         });
         if (commandResult.IsFailure)
         {

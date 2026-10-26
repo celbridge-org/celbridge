@@ -101,4 +101,10 @@ public interface IInspectCommand : IExecutableCommand<InspectResult>
     /// ParseError remain. The aggregate summary counts are always populated.
     /// </summary>
     bool SummaryOnly { get; set; }
+
+    /// <summary>
+    /// When true, a whole-project or Pattern inspection leaves out what the project's search list excludes. True by
+    /// default. A resource listed in Resources is inspected either way.
+    /// </summary>
+    bool ApplySearchExclude { get; set; }
 }

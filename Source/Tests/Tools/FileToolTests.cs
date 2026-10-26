@@ -4,6 +4,7 @@ using Celbridge.Messaging;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
 using Celbridge.Resources.Services.Roots;
+using Celbridge.Search;
 using Celbridge.Server;
 using Celbridge.Tests.FileSystem;
 using Celbridge.Tools;
@@ -1036,7 +1037,45 @@ public class FileToolTests
         var result = await tools.Search("logs:*.log");
 
         ParseStringList(result).Should().Equal("logs:app.log");
-        await _resourceService.Walker.Received(1).WalkAsync(new ResourceKey("logs:"), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+        await _resourceService.Walker.Received(1).WalkAsync(new ResourceKey("logs:"), Arg.Any<bool>(), Arg.Any<IPathMatcher?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Search_AppliesTheSearchList_UnlessApplySearchExcludeIsOff()
+    {
+        UseWalkedItems(WalkedFile("readme.md"));
+
+        var tools = new FileTools(_services);
+        await tools.Search("*.md");
+        await tools.Search("*.md", applySearchExclude: false);
+
+        await _resourceService.Walker.Received(1).WalkAsync(ResourceKey.Empty, true, Arg.Any<IPathMatcher?>(), Arg.Any<CancellationToken>());
+        await _resourceService.Walker.Received(1).WalkAsync(ResourceKey.Empty, false, Arg.Any<IPathMatcher?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Grep_PassesTheCompiledPatternFilterAndFlagToTheSearch()
+    {
+        SearchOptions? searchOptions = null;
+        var searchService = Substitute.For<ISearchService>();
+        searchService.SearchAsync(Arg.Any<SearchOptions>(), Arg.Any<Action<SearchFileResult>?>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                searchOptions = callInfo.Arg<SearchOptions>();
+                var noFiles = new List<SearchFileResult>();
+                return Task.FromResult(new SearchResults("alpha", noFiles, 0, 0, false, false, 0));
+            });
+        var workspaceWrapper = _services.GetRequiredService<IWorkspaceWrapper>();
+        workspaceWrapper.WorkspaceService.SearchService.Returns(searchService);
+
+        var tools = new FileTools(_services);
+        await tools.Grep(pattern: "alpha", include: "*.md", applySearchExclude: false);
+
+        searchOptions.Should().NotBeNull();
+        searchOptions!.Matcher.Pattern.Should().Be("alpha");
+        searchOptions.Filter.IsMatch("docs/notes.md", isFolder: false).Should().BeTrue();
+        searchOptions.Filter.IsMatch("docs/notes.txt", isFolder: false).Should().BeFalse();
+        searchOptions.ApplySearchExclude.Should().BeFalse();
     }
 
     // Backs the temp: root with the test folder, so a temp: key resolves to the same file as the project key with
@@ -1050,7 +1089,7 @@ public class FileToolTests
     {
         IReadOnlyList<WalkedItem> walkedItems = items;
         var walker = Substitute.For<IResourceWalker>();
-        walker.WalkAsync(Arg.Any<ResourceKey>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+        walker.WalkAsync(Arg.Any<ResourceKey>(), Arg.Any<bool>(), Arg.Any<IPathMatcher?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(Result<IReadOnlyList<WalkedItem>>.Ok(walkedItems)));
         _resourceService.Walker.Returns(walker);
     }

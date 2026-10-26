@@ -38,8 +38,8 @@ public class DataFolderMigrationStepTests
             data-folder = "variant-a"
             description = "Acme"
 
-            [celbridge.resources]
-            hide = ["*.log"]
+            [celbridge.explorer]
+            exclude = ["*.log"]
             """);
 
         _celbridgeFolderPath = Path.Combine(_projectFolderPath, ".celbridge");
@@ -80,7 +80,7 @@ public class DataFolderMigrationStepTests
         projectFileText.Should().NotContain("data-folder");
         projectFileText.Should().Contain("# Acme's project file");
         projectFileText.Should().Contain("description = \"Acme\"");
-        projectFileText.Should().Contain("hide = [\"*.log\"]");
+        projectFileText.Should().Contain("exclude = [\"*.log\"]");
         MigrationTestHelper.ReadVersionFromFile(_projectFilePath).Should().Be(ApplicationVersion);
 
         var parseResult = ProjectConfigParser.ParseFromText(projectFileText);
