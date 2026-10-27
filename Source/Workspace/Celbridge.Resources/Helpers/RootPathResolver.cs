@@ -308,7 +308,7 @@ public class RootPathResolver
         var segments = relativePart.Split(PathSeparators, StringSplitOptions.RemoveEmptyEntries);
 
         var folder = _folderCache.TryGet(_normalizedBackingTrimmed)
-            ?? _folderCache.Add(_normalizedBackingTrimmed, parent: null);
+            ?? _folderCache.Acquire(_normalizedBackingTrimmed, parent: null);
         var currentPath = _normalizedBackingTrimmed;
 
         for (int index = 0; index < segments.Length; index++)
@@ -396,7 +396,7 @@ public class RootPathResolver
         if (attributes.HasFlag(System.IO.FileAttributes.Directory))
         {
             partFolder = _folderCache.TryGet(part.FullName)
-                ?? _folderCache.Add(part.FullName, folder);
+                ?? _folderCache.Acquire(part.FullName, folder);
         }
 
         return Result.Ok();

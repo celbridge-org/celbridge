@@ -59,11 +59,14 @@ internal sealed class FolderCache
     private readonly int _maxCachedFolders;
     private readonly int _maxListedNames;
 
-    // Resolution runs on the scanner's parallel workers as well as the tree walk. The cache compares paths with
-    // PathComparison, so a change recorded in any letter case finds the folder. A lookup also compares the cached
-    // folder's path exactly. A key that differs from a cached folder's stored path is then checked again. The
-    // counts are tracked separately because ConcurrentDictionary.Count locks every bucket.
-    private readonly ConcurrentDictionary<string, CachedFolder> _cachedFolders;
+    // Resolution runs on the scanner's parallel workers as well as the tree walk. The cache keys a path with
+    // PathComparison, so the watcher finds a folder whatever letter case it reports the path in. Each key contains
+    // the folders stored under the path, each with its exact path. There is one folder under a key, except on a
+    // case-sensitive volume, where sibling folders can differ only in case. The write lock guards every change to the
+    // dictionary, and a lookup takes no lock. The counts are tracked separately because ConcurrentDictionary.Count
+    // locks every bucket.
+    private readonly ConcurrentDictionary<string, CachedFolder[]> _cachedFolders;
+    private readonly Lock _writeLock = new();
     private int _cachedFolderCount;
     private int _listingCount;
 
@@ -85,7 +88,7 @@ internal sealed class FolderCache
         _timeProvider = timeProvider;
         _maxCachedFolders = maxCachedFolders;
         _maxListedNames = maxListedNames;
-        _cachedFolders = new ConcurrentDictionary<string, CachedFolder>(PathComparison.Comparer);
+        _cachedFolders = new ConcurrentDictionary<string, CachedFolder[]>(PathComparison.Comparer);
         _listFolder = ListFolder;
     }
 
@@ -95,9 +98,10 @@ internal sealed class FolderCache
     public bool HasListings => _listingPolicy != ListingPolicy.None;
 
     /// <summary>
-    /// Returns the number of folders in the cache.
+    /// Returns the number of folders in the cache. The count walks the cache, so tests read it and the valves use
+    /// their own counts.
     /// </summary>
-    public int Count => _cachedFolders.Count;
+    public int Count => _cachedFolders.Values.Sum(folders => folders.Length);
 
     /// <summary>
     /// Returns the number of folder listings the cache has read.
@@ -113,13 +117,18 @@ internal sealed class FolderCache
     }
 
     /// <summary>
-    /// Returns the cached folder at the path when the path matches the folder's stored path exactly. An expired
-    /// folder is dropped, with every folder below.
+    /// Returns the cached folder stored under exactly the path. An expired folder is dropped, with every folder
+    /// below.
     /// </summary>
     public CachedFolder? TryGet(string folderPath)
     {
-        if (!_cachedFolders.TryGetValue(folderPath, out var folder)
-            || !string.Equals(folder.FolderPath, folderPath, StringComparison.Ordinal))
+        if (!_cachedFolders.TryGetValue(folderPath, out var folders))
+        {
+            return null;
+        }
+
+        var folder = FindExactPath(folders, folderPath);
+        if (folder is null)
         {
             return null;
         }
@@ -127,11 +136,7 @@ internal sealed class FolderCache
         if (_listingPolicy == ListingPolicy.Expiring
             && _timeProvider.GetUtcNow() - folder.CachedAt > ExpiringFolderLifetime)
         {
-            if (_cachedFolders.TryRemove(KeyValuePair.Create(folder.FolderPath, folder)))
-            {
-                DropRemovedFolder(folder);
-            }
-
+            RemoveFolder(folder);
             return null;
         }
 
@@ -139,16 +144,29 @@ internal sealed class FolderCache
     }
 
     /// <summary>
-    /// Caches a folder that the resolver has checked, below its parent. The path in another letter case may be
-    /// cached already, as for sibling folders that differ only in case. The folder is then returned uncached, and
-    /// its names are listed on each use.
+    /// Caches a folder the resolver has checked, below its parent, and returns the cached folder. A folder cached
+    /// already under the same path is returned instead. Nothing is released afterwards.
     /// </summary>
-    public CachedFolder Add(string folderPath, CachedFolder? parent)
+    public CachedFolder Acquire(string folderPath, CachedFolder? parent)
     {
         var folder = new CachedFolder(folderPath, parent, _timeProvider.GetUtcNow(), _listedNames);
-        if (!_cachedFolders.TryAdd(folderPath, folder))
+
+        lock (_writeLock)
         {
-            return TryGet(folderPath) ?? folder;
+            if (_cachedFolders.TryGetValue(folderPath, out var folders))
+            {
+                var cachedFolder = FindExactPath(folders, folderPath);
+                if (cachedFolder is not null)
+                {
+                    return cachedFolder;
+                }
+
+                _cachedFolders[folderPath] = [.. folders, folder];
+            }
+            else
+            {
+                _cachedFolders[folderPath] = [folder];
+            }
         }
 
         parent?.AddCachedChild();
@@ -241,7 +259,7 @@ internal sealed class FolderCache
             return;
         }
 
-        DropFolder(itemPath);
+        DropFolders(itemPath);
 
         if (!HasListings)
         {
@@ -279,7 +297,7 @@ internal sealed class FolderCache
             return;
         }
 
-        DropFolder(itemPath);
+        DropFolders(itemPath);
 
         var folderPath = Path.GetDirectoryName(itemPath);
         if (folderPath is null)
@@ -287,9 +305,12 @@ internal sealed class FolderCache
             return;
         }
 
-        if (_cachedFolders.TryGetValue(folderPath, out var folder))
+        if (_cachedFolders.TryGetValue(folderPath, out var folders))
         {
-            folder.MarkStale();
+            foreach (var folder in folders)
+            {
+                folder.MarkStale();
+            }
         }
     }
 
@@ -298,7 +319,11 @@ internal sealed class FolderCache
     /// </summary>
     public void Clear()
     {
-        _cachedFolders.Clear();
+        lock (_writeLock)
+        {
+            _cachedFolders.Clear();
+        }
+
         Interlocked.Exchange(ref _cachedFolderCount, 0);
         _listedNames.Reset();
     }
@@ -336,10 +361,61 @@ internal sealed class FolderCache
         return XxHash3.HashToUInt64(MemoryMarshal.AsBytes(name));
     }
 
-    // Drops the cached folder at the path, in any letter case, and every cached folder below it.
-    private void DropFolder(string folderPath)
+    // Returns the folder stored under exactly the path, or null.
+    private static CachedFolder? FindExactPath(CachedFolder[] folders, string folderPath)
     {
-        if (_cachedFolders.TryRemove(folderPath, out var folder))
+        foreach (var folder in folders)
+        {
+            if (string.Equals(folder.FolderPath, folderPath, StringComparison.Ordinal))
+            {
+                return folder;
+            }
+        }
+
+        return null;
+    }
+
+    // Drops one folder, and every cached folder below it. Another thread may have dropped the folder already. The
+    // folder is then left alone.
+    private void RemoveFolder(CachedFolder folder)
+    {
+        lock (_writeLock)
+        {
+            if (!_cachedFolders.TryGetValue(folder.FolderPath, out var folders)
+                || !folders.Contains(folder))
+            {
+                return;
+            }
+
+            var remainingFolders = folders.Where(cached => cached != folder).ToArray();
+            if (remainingFolders.Length == 0)
+            {
+                _cachedFolders.TryRemove(folder.FolderPath, out _);
+            }
+            else
+            {
+                _cachedFolders[folder.FolderPath] = remainingFolders;
+            }
+        }
+
+        DropRemovedFolder(folder);
+    }
+
+    // Drops the cached folders at the path, in any letter case, and every cached folder below them.
+    private void DropFolders(string folderPath)
+    {
+        CachedFolder[]? folders;
+        lock (_writeLock)
+        {
+            _cachedFolders.TryRemove(folderPath, out folders);
+        }
+
+        if (folders is null)
+        {
+            return;
+        }
+
+        foreach (var folder in folders)
         {
             DropRemovedFolder(folder);
         }
@@ -361,10 +437,20 @@ internal sealed class FolderCache
         var descendantPrefix = folder.FolderPath + Path.DirectorySeparatorChar;
         foreach (var entry in _cachedFolders)
         {
-            if (entry.Key.StartsWith(descendantPrefix, PathComparison.Comparison)
-                && _cachedFolders.TryRemove(entry))
+            if (!entry.Key.StartsWith(descendantPrefix, PathComparison.Comparison))
             {
-                ForgetFolder(entry.Value);
+                continue;
+            }
+
+            CachedFolder[]? descendants;
+            lock (_writeLock)
+            {
+                _cachedFolders.TryRemove(entry.Key, out descendants);
+            }
+
+            foreach (var descendant in descendants ?? [])
+            {
+                ForgetFolder(descendant);
             }
         }
     }

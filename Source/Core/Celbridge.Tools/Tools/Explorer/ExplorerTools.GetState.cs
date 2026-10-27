@@ -32,7 +32,7 @@ public partial class ExplorerTools
         var result = new ExplorerStateResult(
             selectedResourceString,
             explorerService.SelectedResources.Select(r => r.ToString()).ToList(),
-            explorerService.FolderStateService.ExpandedFolders);
+            explorerService.FolderStateService.ExpandedFolders.Order().Select(folder => folder.ToString()).ToList());
 
         var json = JsonSerializer.Serialize(result, JsonOptions);
         return ToolResponse.Success(json);

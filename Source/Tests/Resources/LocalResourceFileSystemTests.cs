@@ -567,6 +567,33 @@ public class LocalResourceFileSystemTests
     }
 
     [Test]
+    public async Task MoveAsync_IntoAFolderBelowTheSource_IsRefused()
+    {
+        var folderPath = Path.Combine(_tempFolder, "folder");
+        Directory.CreateDirectory(Path.Combine(folderPath, "nested"));
+
+        var result = await _resourceFileSystem.MoveAsync(new ResourceKey("folder"), new ResourceKey("folder/nested/folder"));
+
+        result.IsFailure.Should().BeTrue();
+        Directory.Exists(Path.Combine(folderPath, "nested", "folder")).Should().BeFalse();
+        _messengerService.DidNotReceive().Send(Arg.Any<ResourceKeyChangedMessage>());
+        _reports.Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task CopyAsync_IntoAFolderBelowTheSource_IsRefused()
+    {
+        var folderPath = Path.Combine(_tempFolder, "folder");
+        Directory.CreateDirectory(Path.Combine(folderPath, "nested"));
+
+        var result = await _resourceFileSystem.CopyAsync(new ResourceKey("folder"), new ResourceKey("folder/nested/folder"));
+
+        result.IsFailure.Should().BeTrue();
+        Directory.Exists(Path.Combine(folderPath, "nested", "folder")).Should().BeFalse();
+        _reports.Should().BeEmpty();
+    }
+
+    [Test]
     public async Task MoveAsync_ReportsAfterTheKeyChangedMessage()
     {
         await File.WriteAllTextAsync(Path.Combine(_tempFolder, "a.txt"), "hello");

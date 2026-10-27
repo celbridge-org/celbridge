@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.DataTransfer;
+using Celbridge.Resources.Helpers;
 using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Services;
@@ -69,16 +70,6 @@ public class ResourceTransferService : IResourceTransferService
 
             foreach (var sourcePath in sourcePaths)
             {
-                if (PathContainsSubPath(destFolderPath, sourcePath) &&
-                    string.Compare(destFolderPath, sourcePath, StringComparison.OrdinalIgnoreCase) != 0)
-                {
-                    // Ignore attempts to transfer a resource into a subfolder of itself.
-                    // This check is case insensitive to err on the safe side for Windows file systems.
-                    // Without this check, a transfer operation could generate thousands of nested folders!
-                    // It is ok to "transfer" a resource to the same path however as this indicates a duplicate operation.
-                    return Result<List<ResourceTransferItem>>.Fail($"Cannot transfer a resource into a subfolder of itself.");
-                }
-
                 ResourceType resourceType = ResourceType.Invalid;
                 var sourceInfoResult = await _fileSystem.GetInfoAsync(sourcePath);
                 if (sourceInfoResult.IsSuccess
@@ -106,11 +97,27 @@ public class ResourceTransferService : IResourceTransferService
 
                     var sourceResource = getKeyResult.Value;
 
-                    // Sanity check that the generated sourceResource matches the original source path
+                    // The key leads back to the path only for a resource. The root refuses to resolve the key of
+                    // a link inside the project. The key of a path in another letter case resolves elsewhere.
                     var checkSourcePathResult = RootHandlers.ResolveResourcePath(sourceResource);
-                    Guard.IsTrue(checkSourcePathResult.IsSuccess && sourcePath == checkSourcePathResult.Value);
+                    if (checkSourcePathResult.IsFailure)
+                    {
+                        return Result<List<ResourceTransferItem>>.Fail($"The path '{sourcePath}' is not a resource that can be transferred.")
+                            .WithErrors(checkSourcePathResult);
+                    }
+                    if (!string.Equals(sourcePath, checkSourcePathResult.Value, StringComparison.Ordinal))
+                    {
+                        return Result<List<ResourceTransferItem>>.Fail(
+                            $"The path '{sourcePath}' resolves to '{checkSourcePathResult.Value}', so it cannot be transferred.");
+                    }
 
                     var destResource = await ResolveDestinationResourceAsync(sourceResource, destFolderResource);
+
+                    var destinationResult = TransferRules.CheckDestination(sourceResource, destResource);
+                    if (destinationResult.IsFailure)
+                    {
+                        return Result.Fail(destinationResult);
+                    }
 
                     var item = new ResourceTransferItem(resourceType, sourcePath, sourceResource, destResource);
                     transferItems.Add(item);
@@ -120,6 +127,14 @@ public class ResourceTransferService : IResourceTransferService
                     // This file or folder resource is outside the project folder, so we should add it to the project
                     // via the CreateResource command, which will create new metadata for the resource.
                     // This behaviour is indicated by having an empty source resource property.
+
+                    // A folder outside the project that contains the destination would be copied into itself without
+                    // end. The check ignores letter case, since Windows stores names that way.
+                    if (PathContains(sourcePath, destFolderPath))
+                    {
+                        return Result<List<ResourceTransferItem>>.Fail($"Cannot transfer '{sourcePath}' into itself.");
+                    }
+
                     var sourceResource = new ResourceKey();
                     var resourcename = Path.GetFileName(sourcePath);
                     var destResource = destFolderResource.Combine(resourcename);
@@ -192,10 +207,13 @@ public class ResourceTransferService : IResourceTransferService
         return output;
     }
 
-    private static bool PathContainsSubPath(string path, string subPath)
+    // Returns true if the path is the outer path or lies inside it. A sibling lies outside, even when the sibling's
+    // name starts with the outer path's name.
+    private static bool PathContains(string outerPath, string path)
     {
-        string pathA = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        string pathB = Path.GetFullPath(subPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        return pathA.StartsWith(pathB, StringComparison.OrdinalIgnoreCase);
+        var outer = Path.GetFullPath(outerPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var inner = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        return inner.Equals(outer, StringComparison.OrdinalIgnoreCase)
+            || inner.StartsWith(outer + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
     }
 }

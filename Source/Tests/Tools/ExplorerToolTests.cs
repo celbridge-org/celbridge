@@ -38,7 +38,7 @@ public class ExplorerToolTests
         explorerService.SelectedResource.Returns(selectedResource);
         explorerService.SelectedResources.Returns(new List<ResourceKey> { selectedResource });
         explorerService.FolderStateService.Returns(folderStateService);
-        folderStateService.ExpandedFolders.Returns(new List<string> { "src", "src/utils" });
+        folderStateService.ExpandedFolders.Returns(new HashSet<ResourceKey> { new("src/utils"), new("src") });
 
         _workspaceService.ExplorerService.Returns(explorerService);
 
@@ -51,13 +51,11 @@ public class ExplorerToolTests
         selectedResources.GetArrayLength().Should().Be(1);
         selectedResources[0].GetString().Should().Be("project:src/main.py");
 
-        // The folder state service is mocked with bare strings so the response
-        // pass-through is bare. In production the persisted list also stores
-        // the canonical prefixed form (see FolderStateService).
+        // The tool lists the folders in key order, whatever order the set holds them in.
         var expandedFolders = root.GetProperty("expandedFolders");
         expandedFolders.GetArrayLength().Should().Be(2);
-        expandedFolders[0].GetString().Should().Be("src");
-        expandedFolders[1].GetString().Should().Be("src/utils");
+        expandedFolders[0].GetString().Should().Be("project:src");
+        expandedFolders[1].GetString().Should().Be("project:src/utils");
     }
 
     [Test]
@@ -69,7 +67,7 @@ public class ExplorerToolTests
         explorerService.SelectedResource.Returns(ResourceKey.Empty);
         explorerService.SelectedResources.Returns(new List<ResourceKey>());
         explorerService.FolderStateService.Returns(folderStateService);
-        folderStateService.ExpandedFolders.Returns(new List<string>());
+        folderStateService.ExpandedFolders.Returns(new HashSet<ResourceKey>());
 
         _workspaceService.ExplorerService.Returns(explorerService);
 
@@ -92,7 +90,7 @@ public class ExplorerToolTests
         explorerService.SelectedResource.Returns(anchorResource);
         explorerService.SelectedResources.Returns(new List<ResourceKey> { anchorResource, secondResource });
         explorerService.FolderStateService.Returns(folderStateService);
-        folderStateService.ExpandedFolders.Returns(new List<string> { "src" });
+        folderStateService.ExpandedFolders.Returns(new HashSet<ResourceKey> { new("src") });
 
         _workspaceService.ExplorerService.Returns(explorerService);
 

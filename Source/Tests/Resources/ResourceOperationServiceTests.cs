@@ -221,6 +221,32 @@ public class ResourceOperationServiceTests
     }
 
     [Test]
+    public async Task CommittedBatches_StayWithinTheUndoLimit()
+    {
+        // One batch more than the undo stack contains. The oldest batch leaves the stack, so its file stays once
+        // every remaining batch is undone.
+        var batchCount = ResourceOperationService.MaxUndoStackSize + 1;
+        for (var i = 0; i < batchCount; i++)
+        {
+            using var batch = _operationService.BeginBatch();
+            var createResult = await _operationService.CreateFileAsync(new ResourceKey($"file{i}.txt"), [0x01]);
+            createResult.IsSuccess.Should().BeTrue();
+        }
+
+        var undoCount = 0;
+        while (_operationService.CanUndo)
+        {
+            var undoResult = await _operationService.UndoAsync();
+            undoResult.IsSuccess.Should().BeTrue();
+            undoCount++;
+        }
+
+        undoCount.Should().Be(ResourceOperationService.MaxUndoStackSize);
+        File.Exists(Path.Combine(_tempFolder, "file0.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(_tempFolder, "file1.txt")).Should().BeFalse();
+    }
+
+    [Test]
     public async Task BatchScope_CommitsOnDispose_EvenWhenReturnExitsEarly()
     {
         var firstResource = new ResourceKey("a.txt");

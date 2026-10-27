@@ -5,6 +5,11 @@ using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Services;
 
+/// <summary>
+/// The path and kind of the source of a move, copy or delete, checked before the operation runs.
+/// </summary>
+internal readonly record struct SourceItem(string Path, bool IsFolder);
+
 public sealed class LocalResourceFileSystem : IResourceFileSystem
 {
     private readonly ILogger<LocalResourceFileSystem> _logger;
@@ -88,7 +93,7 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
 
     public Task<Result> WriteAllBytesAsync(ResourceKey resource, byte[] bytes)
     {
-        var gateResult = EvaluateWriteDestination(resource, isFolder: false);
+        var gateResult = CheckWriteDestination(resource, isFolder: false);
         if (gateResult.IsFailure)
         {
             return Task.FromResult<Result>(Result.Fail(gateResult));
@@ -99,7 +104,7 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
 
     public Task<Result> WriteAllTextAsync(ResourceKey resource, string content)
     {
-        var gateResult = EvaluateWriteDestination(resource, isFolder: false);
+        var gateResult = CheckWriteDestination(resource, isFolder: false);
         if (gateResult.IsFailure)
         {
             return Task.FromResult<Result>(Result.Fail(gateResult));
@@ -111,7 +116,7 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
 
     public async Task<Result<Stream>> OpenWriteAsync(ResourceKey resource)
     {
-        var gateResult = EvaluateWriteDestination(resource, isFolder: false);
+        var gateResult = CheckWriteDestination(resource, isFolder: false);
         if (gateResult.IsFailure)
         {
             return Result.Fail(gateResult);
@@ -158,26 +163,29 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
                 "CopyAsync followed by DeleteAsync.");
         }
 
-        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
-
-        var resolveSourceResult = rootHandlerRegistry.ResolveResourcePath(source);
-        if (resolveSourceResult.IsFailure)
+        var destinationResult = TransferRules.CheckDestination(source, dest);
+        if (destinationResult.IsFailure)
         {
-            return Result.Fail($"Failed to resolve path for source resource: '{source}'")
-                .WithErrors(resolveSourceResult);
+            return Result.Fail(destinationResult);
         }
-        var sourcePath = resolveSourceResult.Value;
+
+        var sourceResult = await CheckSourceAsync(source, ResourceAction.Write);
+        if (sourceResult.IsFailure)
+        {
+            return Result.Fail(sourceResult);
+        }
+        var sourceItem = sourceResult.Value;
 
         string destPath;
         if (LetterCaseHelper.DiffersOnlyInNameCase(source, dest))
         {
             // The item is still stored under the source's name, so resolving the destination would refuse its
             // letter case. The destination's path is the source's path with the new name.
-            destPath = Path.Combine(Path.GetDirectoryName(sourcePath)!, dest.ResourceName);
+            destPath = Path.Combine(Path.GetDirectoryName(sourceItem.Path)!, dest.ResourceName);
         }
         else
         {
-            var resolveDestResult = rootHandlerRegistry.ResolveResourcePath(dest);
+            var resolveDestResult = ResolvePath(dest);
             if (resolveDestResult.IsFailure)
             {
                 return Result.Fail($"Failed to resolve path for destination resource: '{dest}'")
@@ -186,87 +194,45 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             destPath = resolveDestResult.Value;
         }
 
-        var sourceInfoResult = await _fileSystem.GetInfoAsync(sourcePath);
-        if (sourceInfoResult.IsFailure)
+        var destGateResult = CheckWriteDestination(dest, isFolder: sourceItem.IsFolder);
+        if (destGateResult.IsFailure)
         {
-            return Result.Fail(sourceInfoResult);
-        }
-        var sourceInfo = sourceInfoResult.Value;
-
-        bool sourceIsFile = sourceInfo.Kind == StorageItemKind.File;
-        bool sourceIsFolder = sourceInfo.Kind == StorageItemKind.Folder;
-        if (!sourceIsFile
-            && !sourceIsFolder)
-        {
-            return Result.Fail($"Source resource does not exist: '{source}'");
-        }
-
-        // Policy runs after the kind probe so folder-only locked patterns
-        // deny on the actual on-disk shape.
-        var sourcePolicy = EvaluatePolicy(source, ResourceAction.Write, isFolder: sourceIsFolder);
-        if (sourcePolicy.IsFailure)
-        {
-            return Result.Fail(sourcePolicy);
-        }
-
-        var destPolicy = EvaluateWriteDestination(dest, isFolder: sourceIsFolder);
-        if (destPolicy.IsFailure)
-        {
-            return Result.Fail(destPolicy);
-        }
-
-        if (!IsRootWritable(rootHandlerRegistry, source))
-        {
-            return Result.Fail($"Root '{source.Root}' is read-only.");
-        }
-
-        if (!IsRootWritable(rootHandlerRegistry, dest))
-        {
-            return Result.Fail($"Root '{dest.Root}' is read-only.");
+            return Result.Fail(destGateResult);
         }
 
         // A rename that changes only letter case keeps the item in place, so the destination exists already.
-        bool isSameLocation = string.Equals(sourcePath, destPath, PathComparison.Comparison);
+        bool isSameLocation = string.Equals(sourceItem.Path, destPath, PathComparison.Comparison);
         if (!isSameLocation)
         {
-            var destInfoResult = await _fileSystem.GetInfoAsync(destPath);
-            if (destInfoResult.IsFailure)
+            var destAbsentResult = await CheckDestinationAbsentAsync(destPath, dest);
+            if (destAbsentResult.IsFailure)
             {
-                return Result.Fail(destInfoResult);
-            }
-            if (destInfoResult.Value.Kind != StorageItemKind.NotFound)
-            {
-                return Result.Fail($"Destination already exists: '{dest}'");
+                return Result.Fail(destAbsentResult);
             }
         }
 
-        var destParent = Path.GetDirectoryName(destPath);
-        if (!string.IsNullOrEmpty(destParent))
+        var ensureParentResult = await EnsureParentFolderExistsAsync(destPath, dest);
+        if (ensureParentResult.IsFailure)
         {
-            var ensureParentResult = await _fileSystem.CreateFolderAsync(destParent);
-            if (ensureParentResult.IsFailure)
-            {
-                return Result.Fail($"Failed to create destination parent folder: '{destParent}'")
-                    .WithErrors(ensureParentResult);
-            }
+            return Result.Fail(ensureParentResult);
         }
 
         Result moveResult;
-        if (sourceIsFile)
+        if (!sourceItem.IsFolder)
         {
             // Clear read-only so the move itself is not blocked by an
             // attribute the user has explicitly chosen to override by
             // invoking a move on the file.
-            var clearReadOnlyResult = await _fileSystem.SetAttributesAsync(sourcePath, FileSystemAttributes.ReadOnly, set: false);
+            var clearReadOnlyResult = await _fileSystem.SetAttributesAsync(sourceItem.Path, FileSystemAttributes.ReadOnly, set: false);
             if (clearReadOnlyResult.IsFailure)
             {
                 _logger.LogDebug(clearReadOnlyResult.FirstException, $"Could not clear read-only attribute before moving '{source}'");
             }
-            moveResult = await _fileSystem.MoveFileAsync(sourcePath, destPath);
+            moveResult = await _fileSystem.MoveFileAsync(sourceItem.Path, destPath);
         }
         else
         {
-            moveResult = await _fileSystem.MoveFolderAsync(sourcePath, destPath);
+            moveResult = await _fileSystem.MoveFolderAsync(sourceItem.Path, destPath);
         }
 
         if (moveResult.IsFailure)
@@ -278,7 +244,7 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         // A rename that changes only letter case keeps the item in place. The old name leaves the listing before
         // the new name joins it.
         using var changes = CreateChangeRecorder();
-        changes.RecordRemoved(source, sourcePath);
+        changes.RecordRemoved(source, sourceItem.Path);
         changes.RecordCreated(dest, destPath);
 
         var sidecarOutcome = await _sidecarCascade.TryMoveAsync(source, dest, changes);
@@ -296,17 +262,20 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
 
     public async Task<Result<CopyResult>> CopyAsync(ResourceKey source, ResourceKey dest)
     {
-        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
-
-        var resolveSourceResult = rootHandlerRegistry.ResolveResourcePath(source);
-        if (resolveSourceResult.IsFailure)
+        var destinationResult = TransferRules.CheckDestination(source, dest);
+        if (destinationResult.IsFailure)
         {
-            return Result.Fail($"Failed to resolve path for source resource: '{source}'")
-                .WithErrors(resolveSourceResult);
+            return Result.Fail(destinationResult);
         }
-        var sourcePath = resolveSourceResult.Value;
 
-        var resolveDestResult = rootHandlerRegistry.ResolveResourcePath(dest);
+        var sourceResult = await CheckSourceAsync(source, ResourceAction.Read);
+        if (sourceResult.IsFailure)
+        {
+            return Result.Fail(sourceResult);
+        }
+        var sourceItem = sourceResult.Value;
+
+        var resolveDestResult = ResolvePath(dest);
         if (resolveDestResult.IsFailure)
         {
             return Result.Fail($"Failed to resolve path for destination resource: '{dest}'")
@@ -314,62 +283,27 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         }
         var destPath = resolveDestResult.Value;
 
-        var sourceInfoResult = await _fileSystem.GetInfoAsync(sourcePath);
-        if (sourceInfoResult.IsFailure)
+        var destGateResult = CheckWriteDestination(dest, isFolder: sourceItem.IsFolder);
+        if (destGateResult.IsFailure)
         {
-            return Result.Fail(sourceInfoResult);
-        }
-        var sourceInfo = sourceInfoResult.Value;
-
-        bool sourceIsFile = sourceInfo.Kind == StorageItemKind.File;
-        bool sourceIsFolder = sourceInfo.Kind == StorageItemKind.Folder;
-        if (!sourceIsFile
-            && !sourceIsFolder)
-        {
-            return Result.Fail($"Source resource does not exist: '{source}'");
+            return Result.Fail(destGateResult);
         }
 
-        var sourcePolicy = EvaluatePolicy(source, ResourceAction.Read, isFolder: sourceIsFolder);
-        if (sourcePolicy.IsFailure)
+        var destAbsentResult = await CheckDestinationAbsentAsync(destPath, dest);
+        if (destAbsentResult.IsFailure)
         {
-            return Result.Fail(sourcePolicy);
+            return Result.Fail(destAbsentResult);
         }
 
-        var destPolicy = EvaluateWriteDestination(dest, isFolder: sourceIsFolder);
-        if (destPolicy.IsFailure)
+        var ensureParentResult = await EnsureParentFolderExistsAsync(destPath, dest);
+        if (ensureParentResult.IsFailure)
         {
-            return Result.Fail(destPolicy);
+            return Result.Fail(ensureParentResult);
         }
 
-        if (!IsRootWritable(rootHandlerRegistry, dest))
+        if (!sourceItem.IsFolder)
         {
-            return Result.Fail($"Root '{dest.Root}' is read-only.");
-        }
-
-        var destInfoResult = await _fileSystem.GetInfoAsync(destPath);
-        if (destInfoResult.IsFailure)
-        {
-            return Result.Fail(destInfoResult);
-        }
-        if (destInfoResult.Value.Kind != StorageItemKind.NotFound)
-        {
-            return Result.Fail($"Destination already exists: '{dest}'");
-        }
-
-        var destParent = Path.GetDirectoryName(destPath);
-        if (!string.IsNullOrEmpty(destParent))
-        {
-            var ensureParentResult = await _fileSystem.CreateFolderAsync(destParent);
-            if (ensureParentResult.IsFailure)
-            {
-                return Result.Fail($"Failed to create destination parent folder: '{destParent}'")
-                    .WithErrors(ensureParentResult);
-            }
-        }
-
-        if (sourceIsFile)
-        {
-            var copyResult = await _fileSystem.CopyFileAsync(sourcePath, destPath);
+            var copyResult = await _fileSystem.CopyFileAsync(sourceItem.Path, destPath);
             if (copyResult.IsFailure)
             {
                 return Result.Fail($"Failed to copy resource: '{source}' to '{dest}'")
@@ -378,7 +312,7 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         }
         else
         {
-            var copyResult = await CopyFolderRecursiveAsync(sourcePath, destPath);
+            var copyResult = await FolderTreeCopier.CopyAsync(_fileSystem, sourceItem.Path, destPath);
             if (copyResult.IsFailure)
             {
                 return Result.Fail($"Failed to copy resource: '{source}' to '{dest}'")
@@ -397,67 +331,36 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
 
     public async Task<Result<DeleteResult>> DeleteAsync(ResourceKey source)
     {
-        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
-
-        var resolveResult = rootHandlerRegistry.ResolveResourcePath(source);
-        if (resolveResult.IsFailure)
+        var sourceResult = await CheckSourceAsync(source, ResourceAction.Write);
+        if (sourceResult.IsFailure)
         {
-            return Result.Fail($"Failed to resolve path for resource: '{source}'")
-                .WithErrors(resolveResult);
+            return Result.Fail(sourceResult);
         }
-        var sourcePath = resolveResult.Value;
-
-        var sourceInfoResult = await _fileSystem.GetInfoAsync(sourcePath);
-        if (sourceInfoResult.IsFailure)
-        {
-            return Result.Fail(sourceInfoResult);
-        }
-        var sourceInfo = sourceInfoResult.Value;
-
-        bool sourceIsFile = sourceInfo.Kind == StorageItemKind.File;
-        bool sourceIsFolder = sourceInfo.Kind == StorageItemKind.Folder;
-        if (!sourceIsFile
-            && !sourceIsFolder)
-        {
-            return Result.Fail($"Resource does not exist: '{source}'");
-        }
-
-        // Policy runs after the kind probe so folder-only locked patterns
-        // deny on the actual on-disk shape rather than guessing.
-        var policyResult = EvaluatePolicy(source, ResourceAction.Write, isFolder: sourceIsFolder);
-        if (policyResult.IsFailure)
-        {
-            return Result.Fail(policyResult);
-        }
-
-        if (!IsRootWritable(rootHandlerRegistry, source))
-        {
-            return Result.Fail($"Root '{source.Root}' is read-only.");
-        }
+        var sourceItem = sourceResult.Value;
 
         using var changes = CreateChangeRecorder();
         var sidecarOutcome = await _sidecarCascade.TryDeleteAsync(source, changes);
 
         Result deleteResult;
-        if (sourceIsFile)
+        if (!sourceItem.IsFolder)
         {
             // Clear read-only so the delete doesn't trip on the attribute.
             // Matches OS Explorer's "delete read-only file?" behaviour
             // (proceed when the user explicitly invokes delete).
-            var clearReadOnlyResult = await _fileSystem.SetAttributesAsync(sourcePath, FileSystemAttributes.ReadOnly, set: false);
+            var clearReadOnlyResult = await _fileSystem.SetAttributesAsync(sourceItem.Path, FileSystemAttributes.ReadOnly, set: false);
             if (clearReadOnlyResult.IsFailure)
             {
                 _logger.LogDebug(clearReadOnlyResult.FirstException, $"Could not clear read-only attribute before deleting '{source}'");
             }
-            deleteResult = await _fileSystem.DeleteFileAsync(sourcePath);
+            deleteResult = await _fileSystem.DeleteFileAsync(sourceItem.Path);
         }
         else
         {
             // Recursive delete fails on any contained read-only file, so
             // strip the attribute throughout the subtree first.
-            var deleteValidator = ResolvePathValidator(rootHandlerRegistry, source);
-            await ClearReadOnlyAttributesRecursiveAsync(sourcePath, deleteValidator);
-            deleteResult = await _fileSystem.DeleteFolderAsync(sourcePath, recursive: true);
+            var deleteValidator = ResolvePathValidator(source);
+            await ClearReadOnlyAttributesRecursiveAsync(sourceItem.Path, deleteValidator);
+            deleteResult = await _fileSystem.DeleteFolderAsync(sourceItem.Path, recursive: true);
         }
 
         if (deleteResult.IsFailure)
@@ -466,7 +369,7 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
                 .WithErrors(deleteResult);
         }
 
-        changes.RecordRemoved(source, sourcePath);
+        changes.RecordRemoved(source, sourceItem.Path);
 
         var result = new DeleteResult(sidecarOutcome);
         return result;
@@ -476,8 +379,9 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
     // validator predicate, or null when no handler is registered. Callers that
     // walk a subtree apply it to each enumerated entry; a null predicate means
     // no entries are filtered out.
-    private static Func<string, bool>? ResolvePathValidator(IRootHandlerRegistry rootHandlerRegistry, ResourceKey key)
+    private Func<string, bool>? ResolvePathValidator(ResourceKey key)
     {
+        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
         if (rootHandlerRegistry.RootHandlers.TryGetValue(key.Root, out var handler))
         {
             return handler.PathValidator;
@@ -487,7 +391,7 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
 
     public async Task<Result> CreateFolderAsync(ResourceKey folder)
     {
-        var gateResult = EvaluateWriteDestination(folder, isFolder: true);
+        var gateResult = CheckWriteDestination(folder, isFolder: true);
         if (gateResult.IsFailure)
         {
             return Result.Fail(gateResult);
@@ -500,12 +404,6 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
                 .WithErrors(resolveResult);
         }
         var folderPath = resolveResult.Value;
-
-        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
-        if (!IsRootWritable(rootHandlerRegistry, folder))
-        {
-            return Result.Fail($"Root '{folder.Root}' is read-only.");
-        }
 
         var infoResult = await _fileSystem.GetInfoAsync(folderPath);
         if (infoResult.IsFailure)
@@ -763,74 +661,87 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         return policy.Evaluate(resource, action, isFolder);
     }
 
-    // Gate for the destination of a create, write, move, or copy. Raw
-    // non-resource writes that intentionally land on a reserved path stay
-    // available through ILocalFileSystem.
-    private Result EvaluateWriteDestination(ResourceKey resource, bool isFolder)
+    // Resolves the source's path, probes the item and gates the action on the item. The policy runs after the
+    // probe, so folder-only patterns deny on the item's actual kind. A write also needs a writable root.
+    private async Task<Result<SourceItem>> CheckSourceAsync(ResourceKey source, ResourceAction action)
     {
-        return EvaluatePolicy(resource, ResourceAction.Write, isFolder);
+        var resolveResult = ResolvePath(source);
+        if (resolveResult.IsFailure)
+        {
+            return Result.Fail($"Failed to resolve path for source resource: '{source}'")
+                .WithErrors(resolveResult);
+        }
+        var sourcePath = resolveResult.Value;
+
+        var infoResult = await _fileSystem.GetInfoAsync(sourcePath);
+        if (infoResult.IsFailure)
+        {
+            return Result.Fail(infoResult);
+        }
+
+        var kind = infoResult.Value.Kind;
+        if (kind != StorageItemKind.File
+            && kind != StorageItemKind.Folder)
+        {
+            return Result.Fail($"Source resource does not exist: '{source}'");
+        }
+        var isFolder = kind == StorageItemKind.Folder;
+
+        var policyResult = EvaluatePolicy(source, action, isFolder);
+        if (policyResult.IsFailure)
+        {
+            return Result.Fail(policyResult);
+        }
+
+        if (action == ResourceAction.Write
+            && !IsRootWritable(source))
+        {
+            return Result.Fail($"Root '{source.Root}' is read-only.");
+        }
+
+        return new SourceItem(sourcePath, isFolder);
     }
 
-    // Returns false for a root with no handler.
-    private static bool IsRootWritable(IRootHandlerRegistry rootHandlerRegistry, ResourceKey key)
+    // Gates the destination of a create, write, move or copy: the policy first, then the root. A raw write to a
+    // reserved path stays available through ILocalFileSystem.
+    private Result CheckWriteDestination(ResourceKey resource, bool isFolder)
     {
-        return rootHandlerRegistry.RootHandlers.TryGetValue(key.Root, out var handler)
-            && handler.Capabilities.IsWritable;
-    }
-
-    // Recursive folder copy used by CopyAsync. Stays here because the gateway
-    // exposes only single-file copy at this layer; recursive composition is a
-    // resource-layer concern.
-    private async Task<Result> CopyFolderRecursiveAsync(string sourceFolder, string destFolder)
-    {
-        var createResult = await _fileSystem.CreateFolderAsync(destFolder);
-        if (createResult.IsFailure)
+        var policyResult = EvaluatePolicy(resource, ResourceAction.Write, isFolder);
+        if (policyResult.IsFailure)
         {
-            return createResult;
+            return Result.Fail(policyResult);
         }
 
-        var enumerateResult = await _fileSystem.EnumerateAsync(sourceFolder, "*", recursive: false);
-        if (enumerateResult.IsFailure)
+        if (!IsRootWritable(resource))
         {
-            return Result.Fail(enumerateResult);
-        }
-
-        // A copy would replace a link with what it points at, so links are left out.
-        var entries = enumerateResult.Value
-            .Where(entry => !entry.IsLink)
-            .ToList();
-
-        foreach (var entry in entries)
-        {
-            if (entry.IsFolder)
-            {
-                continue;
-            }
-            var fileName = Path.GetFileName(entry.FullPath);
-            var destFile = Path.Combine(destFolder, fileName);
-            var copyResult = await _fileSystem.CopyFileAsync(entry.FullPath, destFile);
-            if (copyResult.IsFailure)
-            {
-                return copyResult;
-            }
-        }
-
-        foreach (var entry in entries)
-        {
-            if (!entry.IsFolder)
-            {
-                continue;
-            }
-            var folderName = Path.GetFileName(entry.FullPath);
-            var destSubFolder = Path.Combine(destFolder, folderName);
-            var recursiveResult = await CopyFolderRecursiveAsync(entry.FullPath, destSubFolder);
-            if (recursiveResult.IsFailure)
-            {
-                return recursiveResult;
-            }
+            return Result.Fail($"Root '{resource.Root}' is read-only.");
         }
 
         return Result.Ok();
+    }
+
+    // Fails when the destination's path already has an item stored at it.
+    private async Task<Result> CheckDestinationAbsentAsync(string destPath, ResourceKey dest)
+    {
+        var destInfoResult = await _fileSystem.GetInfoAsync(destPath);
+        if (destInfoResult.IsFailure)
+        {
+            return Result.Fail(destInfoResult);
+        }
+        if (destInfoResult.Value.Kind != StorageItemKind.NotFound)
+        {
+            return Result.Fail($"Destination already exists: '{dest}'");
+        }
+
+        return Result.Ok();
+    }
+
+    // Returns false for a root with no handler.
+    private bool IsRootWritable(ResourceKey key)
+    {
+        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
+        return rootHandlerRegistry.RootHandlers.TryGetValue(key.Root, out var handler)
+            && handler.Capabilities.IsWritable;
     }
 
     // Recursive read-only clear before a recursive delete: Directory.Delete

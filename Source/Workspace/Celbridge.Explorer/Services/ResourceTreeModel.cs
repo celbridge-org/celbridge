@@ -439,10 +439,8 @@ public sealed class ResourceTreeModel
     {
         var missingFolders = new List<ResourceKey>();
 
-        foreach (var expandedFolderPath in FolderStateService.ExpandedFolders)
+        foreach (var expandedFolder in FolderStateService.ExpandedFolders)
         {
-            var expandedFolder = new ResourceKey(expandedFolderPath);
-
             if (neededFolders.Contains(expandedFolder)
                 && !_listings.ContainsKey(expandedFolder))
             {

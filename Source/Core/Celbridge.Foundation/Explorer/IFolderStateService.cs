@@ -6,9 +6,9 @@ namespace Celbridge.Explorer;
 public interface IFolderStateService
 {
     /// <summary>
-    /// Returns the list of expanded folders in the resource tree.
+    /// Returns the expanded folders in the resource tree.
     /// </summary>
-    List<string> ExpandedFolders { get; }
+    IReadOnlySet<ResourceKey> ExpandedFolders { get; }
 
     /// <summary>
     /// Mark a folder resource as expanded or collapsed in the resource tree.

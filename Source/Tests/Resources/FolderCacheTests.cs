@@ -40,8 +40,8 @@ public class FolderCacheTests
     public void TryGetFindsACachedFolderOnlyByItsExactPath()
     {
         var cache = CreateCache();
-        var backing = cache.Add(_backingFolderPath, parent: null);
-        cache.Add(PathFor("docs"), backing);
+        var backing = cache.Acquire(_backingFolderPath, parent: null);
+        cache.Acquire(PathFor("docs"), backing);
 
         cache.TryGet(PathFor("docs")).Should().NotBeNull();
         cache.TryGet(PathFor("DOCS")).Should().BeNull();
@@ -53,7 +53,7 @@ public class FolderCacheTests
         WriteFile("a.txt");
         WriteFile("b.txt");
         var cache = CreateCache();
-        var backing = cache.Add(_backingFolderPath, parent: null);
+        var backing = cache.Acquire(_backingFolderPath, parent: null);
 
         cache.FindName(backing, "a.txt").Should().Be(NameLookup.Found);
         cache.FindName(backing, "b.txt").Should().Be(NameLookup.Found);
@@ -66,7 +66,7 @@ public class FolderCacheTests
     {
         WriteFile("a.txt");
         var cache = CreateCache();
-        var backing = cache.Add(_backingFolderPath, parent: null);
+        var backing = cache.Acquire(_backingFolderPath, parent: null);
         cache.FindName(backing, "a.txt").Should().Be(NameLookup.Found);
 
         // Created without telling the cache, so the first listing lacks the name.
@@ -81,7 +81,7 @@ public class FolderCacheTests
     public void FindNameReportsAFolderThatCannotBeListed()
     {
         var cache = CreateCache();
-        var missingFolder = cache.Add(PathFor("gone"), parent: null);
+        var missingFolder = cache.Acquire(PathFor("gone"), parent: null);
 
         cache.FindName(missingFolder, "a.txt").Should().Be(NameLookup.Unlisted);
     }
@@ -91,7 +91,7 @@ public class FolderCacheTests
     {
         WriteFile("a.txt");
         var cache = CreateCache();
-        var backing = cache.Add(_backingFolderPath, parent: null);
+        var backing = cache.Acquire(_backingFolderPath, parent: null);
         cache.FindName(backing, "a.txt").Should().Be(NameLookup.Found);
 
         WriteFile("docs/new/b.txt");
@@ -106,7 +106,7 @@ public class FolderCacheTests
     {
         WriteFile("a.txt");
         var cache = CreateCache();
-        var backing = cache.Add(_backingFolderPath, parent: null);
+        var backing = cache.Acquire(_backingFolderPath, parent: null);
         cache.FindName(backing, "a.txt").Should().Be(NameLookup.Found);
 
         // The file stays on disk, so only a fresh listing finds the name again.
@@ -120,10 +120,10 @@ public class FolderCacheTests
     public void RecordItemRemovedDropsTheFolderAndEveryFolderBelowIt()
     {
         var cache = CreateCache();
-        var backing = cache.Add(_backingFolderPath, parent: null);
-        var docs = cache.Add(PathFor("docs"), backing);
-        cache.Add(PathFor("docs/sub"), docs);
-        cache.Add(PathFor("other"), backing);
+        var backing = cache.Acquire(_backingFolderPath, parent: null);
+        var docs = cache.Acquire(PathFor("docs"), backing);
+        cache.Acquire(PathFor("docs/sub"), docs);
+        cache.Acquire(PathFor("other"), backing);
 
         cache.RecordItemRemoved(PathFor("docs"));
 
@@ -136,8 +136,8 @@ public class FolderCacheTests
     public void RecordItemRemovedForTheBackingFolderClearsTheCache()
     {
         var cache = CreateCache();
-        var backing = cache.Add(_backingFolderPath, parent: null);
-        cache.Add(PathFor("docs"), backing);
+        var backing = cache.Acquire(_backingFolderPath, parent: null);
+        cache.Acquire(PathFor("docs"), backing);
 
         cache.RecordItemRemoved(_backingFolderPath);
 
@@ -149,9 +149,9 @@ public class FolderCacheTests
     {
         var timeProvider = new FakeTimeProvider();
         var cache = CreateCache(ListingPolicy.Expiring, timeProvider);
-        var backing = cache.Add(_backingFolderPath, parent: null);
-        var docs = cache.Add(PathFor("docs"), backing);
-        cache.Add(PathFor("docs/sub"), docs);
+        var backing = cache.Acquire(_backingFolderPath, parent: null);
+        var docs = cache.Acquire(PathFor("docs"), backing);
+        cache.Acquire(PathFor("docs/sub"), docs);
 
         timeProvider.Advance(TimeSpan.FromSeconds(30));
         cache.TryGet(PathFor("docs")).Should().NotBeNull();
@@ -167,11 +167,11 @@ public class FolderCacheTests
     public void ReachingTheFolderBudgetClearsTheCache()
     {
         var cache = CreateCache(maxCachedFolders: 3);
-        var backing = cache.Add(_backingFolderPath, parent: null);
-        cache.Add(PathFor("a"), backing);
+        var backing = cache.Acquire(_backingFolderPath, parent: null);
+        cache.Acquire(PathFor("a"), backing);
         cache.Count.Should().Be(2);
 
-        cache.Add(PathFor("b"), backing);
+        cache.Acquire(PathFor("b"), backing);
 
         cache.Count.Should().Be(0);
     }
@@ -183,7 +183,7 @@ public class FolderCacheTests
         WriteFile("b.txt");
         WriteFile("c.txt");
         var cache = CreateCache(maxListedNames: 2);
-        var backing = cache.Add(_backingFolderPath, parent: null);
+        var backing = cache.Acquire(_backingFolderPath, parent: null);
 
         // The lookup in progress still uses the listing that passed the budget.
         cache.FindName(backing, "a.txt").Should().Be(NameLookup.Found);
@@ -192,11 +192,42 @@ public class FolderCacheTests
     }
 
     [Test]
+    public void AcquireReturnsTheFolderCachedUnderTheSamePath()
+    {
+        var cache = CreateCache();
+        var backing = cache.Acquire(_backingFolderPath, parent: null);
+        var docs = cache.Acquire(PathFor("docs"), backing);
+
+        cache.Acquire(PathFor("docs"), backing).Should().BeSameAs(docs);
+        cache.Count.Should().Be(2);
+    }
+
+    [Test]
+    [Platform(Exclude = "Linux", Reason = "Paths that differ only in letter case are different keys on Linux.")]
+    public void SiblingsThatDifferOnlyInLetterCaseAreBothCached()
+    {
+        var cache = CreateCache();
+        var backing = cache.Acquire(_backingFolderPath, parent: null);
+        var lower = cache.Acquire(PathFor("docs"), backing);
+        var upper = cache.Acquire(PathFor("DOCS"), backing);
+
+        upper.Should().NotBeSameAs(lower);
+        cache.TryGet(PathFor("docs")).Should().BeSameAs(lower);
+        cache.TryGet(PathFor("DOCS")).Should().BeSameAs(upper);
+        cache.Count.Should().Be(3);
+
+        // A change reported in any letter case reaches both siblings.
+        cache.RecordItemRemoved(PathFor("Docs"));
+
+        cache.Count.Should().Be(1);
+    }
+
+    [Test]
     public void RecordNameChangedMakesTheListingStale()
     {
         WriteFile("a.txt");
         var cache = CreateCache();
-        var backing = cache.Add(_backingFolderPath, parent: null);
+        var backing = cache.Acquire(_backingFolderPath, parent: null);
         cache.FindName(backing, "a.txt").Should().Be(NameLookup.Found);
 
         cache.RecordNameChanged(PathFor("b.txt"));
@@ -210,7 +241,7 @@ public class FolderCacheTests
     {
         WriteFile("a.txt");
         var cache = CreateCache();
-        var backing = cache.Add(_backingFolderPath, parent: null);
+        var backing = cache.Acquire(_backingFolderPath, parent: null);
         var timestamp = cache.GetListingTimestamp();
         cache.FindName(backing, "a.txt", timestamp).Should().Be(NameLookup.Found);
 
@@ -231,7 +262,7 @@ public class FolderCacheTests
     {
         WriteFile("a.txt");
         var cache = CreateCache();
-        var backing = cache.Add(_backingFolderPath, parent: null);
+        var backing = cache.Acquire(_backingFolderPath, parent: null);
         cache.FindName(backing, "a.txt").Should().Be(NameLookup.Found);
 
         WriteFile("b.txt");
@@ -247,7 +278,7 @@ public class FolderCacheTests
     public void TheNonePolicyKeepsNoListings()
     {
         var cache = CreateCache(ListingPolicy.None);
-        var backing = cache.Add(_backingFolderPath, parent: null);
+        var backing = cache.Acquire(_backingFolderPath, parent: null);
 
         cache.RecordItemCreated(PathFor("a.txt"));
 

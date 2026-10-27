@@ -107,6 +107,26 @@ public class SearchFiltersViewModelTests
     }
 
     [Test]
+    public void CreateSearchOptions_NamesOnlyTheProjectFilesOpenInDocuments()
+    {
+        var address = new DocumentAddress(WindowIndex: 0, Section: DocumentSection.MainLeft, TabOrder: 0);
+        _documentsService.GetOpenDocuments().Returns(new List<OpenDocumentInfo>
+        {
+            new(new ResourceKey("notes.md"), address, EditorId.Empty),
+            new(new ResourceKey("utils:scratch.webview"), address, EditorId.Empty),
+            new(new ResourceKey("temp:community.webview"), address, EditorId.Empty),
+            new(new ResourceKey("docs/guide.md"), address, EditorId.Empty),
+        });
+        var filters = CreateFilters();
+        filters.SearchOnlyOpenDocuments = true;
+
+        var options = filters.CreateSearchOptions(Matcher("hello"), maxResults: null);
+
+        options.Should().NotBeNull();
+        options!.Files.Should().Equal(new ResourceKey("notes.md"), new ResourceKey("docs/guide.md"));
+    }
+
+    [Test]
     public void CreateSearchOptions_CarriesTheFieldsAndApplySearchExclude()
     {
         var filters = CreateFilters();

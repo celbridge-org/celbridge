@@ -16,7 +16,7 @@ namespace Celbridge.Resources.Services;
 /// </summary>
 public class ResourceOperationService : IResourceOperationService
 {
-    private const int MaxUndoStackSize = 50;
+    internal const int MaxUndoStackSize = 50;
 
     private readonly ILogger<ResourceOperationService> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -285,12 +285,11 @@ public class ResourceOperationService : IResourceOperationService
         return Policy.Evaluate(folder, ResourceAction.Write, isFolder: true);
     }
 
-    // Treats a root with no registered handler as writable so unit tests that
-    // stub the registry directly do not need to populate the handler dictionary.
+    // Returns false for a root with no handler.
     private bool IsRootWritable(ResourceKey key)
     {
-        return !RootHandlerRegistry.RootHandlers.TryGetValue(key.Root, out var handler)
-            || handler.Capabilities.IsWritable;
+        return RootHandlerRegistry.RootHandlers.TryGetValue(key.Root, out var handler)
+            && handler.Capabilities.IsWritable;
     }
 
     public async Task<Result> ImportExternalFileAsync(string sourcePath, ResourceKey dest)
@@ -359,6 +358,7 @@ public class ResourceOperationService : IResourceOperationService
         {
             _undoStack.Add(_currentBatch);
             ClearRedoStack();
+            TrimUndoStack();
         }
 
         _currentBatch = null;

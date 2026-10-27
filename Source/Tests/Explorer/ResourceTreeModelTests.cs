@@ -318,9 +318,7 @@ public class ResourceTreeModelTests
 
         revealResult.IsSuccess.Should().BeTrue();
         _workspaceSettings.ShowHiddenFiles.Should().BeTrue();
-        _folderStateService.ExpandedFolders
-            .Select(folder => new ResourceKey(folder))
-            .Should().Equal(Keys("build", "build/out"));
+        _folderStateService.ExpandedFolders.Order().Should().Equal(Keys("build", "build/out"));
         RowPaths(model).Should().Equal("", "build", "build/out", "build/out/app.txt");
     }
 
