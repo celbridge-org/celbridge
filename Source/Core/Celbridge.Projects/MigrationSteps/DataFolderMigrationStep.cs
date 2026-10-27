@@ -1,7 +1,8 @@
 using System.Text.RegularExpressions;
 using Celbridge.Logging;
+using Celbridge.Projects.Services;
 
-namespace Celbridge.Projects.Services;
+namespace Celbridge.Projects.MigrationSteps;
 
 /// <summary>
 /// Removes the local data that earlier versions kept in the project folder. Deletes the .celbridge folder and
