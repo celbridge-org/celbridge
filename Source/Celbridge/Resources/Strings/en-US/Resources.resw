@@ -1456,9 +1456,6 @@ Open with default application instead?</value>
     <value>Hide the other panels to focus on the current document</value>
   </data>
   <data name="LayoutToolbar_PresentationModeTooltip" xml:space="preserve">
-    <value>Show only the document content</value>
-  </data>
-  <data name="LayoutToolbar_PresentationModeFullScreenTooltip" xml:space="preserve">
     <value>Show only the document content, full screen</value>
   </data>
   <data name="LayoutToolbar_BottomPanelLabel" xml:space="preserve">

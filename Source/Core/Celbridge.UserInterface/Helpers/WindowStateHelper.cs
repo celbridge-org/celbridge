@@ -95,8 +95,8 @@ public sealed class WindowStateHelper
             // Track window state changes
             _appWindow.Changed += OnAppWindowChanged;
 
-            // Listen for fullscreen state changes to drive the platform fullscreen controller
-            _messengerService.Register<FullScreenChangedMessage>(this, OnFullScreenChanged);
+            // Move the window into or out of fullscreen when the app asks
+            _messengerService.Register<FullScreenRequestedMessage>(this, OnFullScreenRequested);
 
             // Listen for requests to restore window state (e.g., after layout reset)
             _messengerService.Register<RestoreWindowStateMessage>(this, OnRestoreWindowState);
@@ -110,7 +110,7 @@ public sealed class WindowStateHelper
         }
     }
 
-    private void OnFullScreenChanged(object recipient, FullScreenChangedMessage message)
+    private void OnFullScreenRequested(object recipient, FullScreenRequestedMessage message)
     {
         ApplyFullScreen(message.IsFullScreen);
     }
@@ -307,7 +307,9 @@ public sealed class WindowStateHelper
         }
 
         _isMaximized = isMaximized;
-        _messengerService.Send(new WindowMaximizedChangedMessage(isMaximized));
+
+        var message = new WindowMaximizedChangedMessage(isMaximized);
+        _messengerService.Send(message);
     }
 
     private void OnAppWindowChanged(AppWindow sender, AppWindowChangedEventArgs args)
@@ -341,7 +343,8 @@ public sealed class WindowStateHelper
                 
                 // Notify the layout system that we've exited fullscreen via drag
                 // This ensures the UI state is synchronized with the window state
-                _messengerService.Send(new ExitedFullscreenViaDragMessage());
+                var message = new WindowFullScreenChangedMessage(false);
+                _messengerService.Send(message);
             }
             
             // Update the tracked presenter kind

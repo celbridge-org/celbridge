@@ -33,9 +33,9 @@ public record MainPageLoadedMessage();
 public record LayoutModeChangedMessage(LayoutMode LayoutMode);
 
 /// <summary>
-/// Message sent when the window's fullscreen state changes.
+/// Message sent when the app asks for the window to enter or leave full screen.
 /// </summary>
-public record FullScreenChangedMessage(bool IsFullScreen);
+public record FullScreenRequestedMessage(bool IsFullScreen);
 
 /// <summary>
 /// Message sent when the window's presenter changes between maximized and not maximized.
@@ -43,15 +43,16 @@ public record FullScreenChangedMessage(bool IsFullScreen);
 public record WindowMaximizedChangedMessage(bool IsMaximized);
 
 /// <summary>
+/// Message sent when the window enters or leaves full screen, including changes the user makes with the window's
+/// own controls.
+/// </summary>
+public record WindowFullScreenChangedMessage(bool IsFullScreen);
+
+/// <summary>
 /// Message sent to request the window state (maximized/restored) to be synchronized
 /// with the current editor settings.
 /// </summary>
 public record RestoreWindowStateMessage();
-
-/// <summary>
-/// Message sent when the user exits fullscreen mode by dragging the window.
-/// </summary>
-public record ExitedFullscreenViaDragMessage();
 
 /// <summary>
 /// Message sent to request closing the active document tab.

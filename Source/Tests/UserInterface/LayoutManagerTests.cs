@@ -160,18 +160,72 @@ public class LayoutManagerTests
     }
 
     [Test]
-    public void TransitionToPresentation_WithNativeFullScreen_LeavesFullScreenAlone()
+    public void TransitionToPresentation_WithNativeFullScreen_FillsTheScreen()
     {
         _platformInfo.HasNativeFullScreenAffordance.Returns(true);
 
-        bool messageReceived = false;
+        var changes = new List<string>();
         var recipient = new object();
-        _messengerService.Register<FullScreenChangedMessage>(recipient, (r, m) => messageReceived = true);
+        _messengerService.Register<FullScreenRequestedMessage>(recipient, (r, m) => changes.Add($"FullScreen {m.IsFullScreen}"));
+        _messengerService.Register<LayoutModeChangedMessage>(recipient, (r, m) => changes.Add($"Mode {m.LayoutMode}"));
+
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Presentation);
+
+        // Presentation asked for full screen, and the window reports it.
+        _messengerService.Send(new WindowFullScreenChangedMessage(true));
+
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Default);
+
+        changes.Should().Equal("FullScreen True", "Mode Presentation", "Mode Default", "FullScreen False");
+    }
+
+    [Test]
+    public void TransitionToPresentation_FromNativeFullScreen_KeepsFullScreenAfterwards()
+    {
+        _platformInfo.HasNativeFullScreenAffordance.Returns(true);
+
+        // The user made the window fill the screen with its own button.
+        _messengerService.Send(new WindowFullScreenChangedMessage(true));
+
+        var changes = new List<bool>();
+        var recipient = new object();
+        _messengerService.Register<FullScreenRequestedMessage>(recipient, (r, m) => changes.Add(m.IsFullScreen));
 
         _layoutManager.RequestLayoutTransition(LayoutTransition.Presentation);
         _layoutManager.RequestLayoutTransition(LayoutTransition.Default);
 
-        messageReceived.Should().BeFalse();
+        // Full screen was on before Presentation, so Presentation leaves it on.
+        changes.Should().BeEmpty();
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void NativeFullScreenEndingDuringPresentation_MovesToFocus(bool fullScreenBeforePresentation)
+    {
+        _platformInfo.HasNativeFullScreenAffordance.Returns(true);
+        if (fullScreenBeforePresentation)
+        {
+            _messengerService.Send(new WindowFullScreenChangedMessage(true));
+        }
+
+        _layoutManager.RequestLayoutTransition(LayoutTransition.Presentation);
+
+        // The user left full screen with the window's own button.
+        _messengerService.Send(new WindowFullScreenChangedMessage(false));
+
+        _layoutManager.LayoutMode.Should().Be(LayoutMode.Focus);
+        _layoutManager.VisibleAreas.Should().BeEquivalentTo(VisibleAreas());
+    }
+
+    [Test]
+    public void NativeFullScreenStarting_DoesNotChangeLayoutMode()
+    {
+        _platformInfo.HasNativeFullScreenAffordance.Returns(true);
+
+        _messengerService.Send(new WindowFullScreenChangedMessage(true));
+
+        _layoutManager.LayoutMode.Should().Be(LayoutMode.Default);
+        _layoutManager.VisibleAreas.Should().BeEquivalentTo(WorkspaceAreaHelper.AllAreasVisible);
     }
 
     [Test]
@@ -180,7 +234,7 @@ public class LayoutManagerTests
         _layoutManager.RequestLayoutTransition(LayoutTransition.Presentation);
 
         // The user dragged the window down from the top of the screen.
-        _messengerService.Send(new ExitedFullscreenViaDragMessage());
+        _messengerService.Send(new WindowFullScreenChangedMessage(false));
 
         _layoutManager.LayoutMode.Should().Be(LayoutMode.Focus);
         _layoutManager.VisibleAreas.Should().BeEquivalentTo(VisibleAreas());
@@ -209,7 +263,7 @@ public class LayoutManagerTests
     {
         var changes = new List<string>();
         var recipient = new object();
-        _messengerService.Register<FullScreenChangedMessage>(recipient, (r, m) => changes.Add($"FullScreen {m.IsFullScreen}"));
+        _messengerService.Register<FullScreenRequestedMessage>(recipient, (r, m) => changes.Add($"FullScreen {m.IsFullScreen}"));
         _messengerService.Register<LayoutModeChangedMessage>(recipient, (r, m) => changes.Add($"Mode {m.LayoutMode}"));
 
         _layoutManager.RequestLayoutTransition(LayoutTransition.Presentation);
@@ -599,11 +653,11 @@ public class LayoutManagerTests
     }
 
     [Test]
-    public void FullScreenToggle_SendsFullScreenChangedMessage()
+    public void FullScreenToggle_SendsFullScreenRequestedMessage()
     {
-        FullScreenChangedMessage? receivedMessage = null;
+        FullScreenRequestedMessage? receivedMessage = null;
         var recipient = new object();
-        _messengerService.Register<FullScreenChangedMessage>(recipient, (r, m) => receivedMessage = m);
+        _messengerService.Register<FullScreenRequestedMessage>(recipient, (r, m) => receivedMessage = m);
 
         _layoutManager.RequestLayoutTransition(LayoutTransition.ToggleFullScreen);
 

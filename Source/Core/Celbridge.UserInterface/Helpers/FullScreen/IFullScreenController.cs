@@ -4,8 +4,9 @@ namespace Celbridge.UserInterface.Helpers.FullScreen;
 
 /// <summary>
 /// Applies and exits OS-level fullscreen for the main window. The mechanism is platform-specific:
-/// the packaged WinAppSDK head uses the native fullscreen presenter, while the Skia desktop heads
-/// emulate fullscreen because the WPF shell's fullscreen presenter has no visual effect.
+/// the packaged WinAppSDK head uses the native fullscreen presenter, and the macOS Skia head uses native
+/// macOS fullscreen. The Windows Skia desktop head emulates fullscreen because the WPF shell's fullscreen
+/// presenter has no visual effect.
 /// </summary>
 public interface IFullScreenController
 {

@@ -50,8 +50,7 @@ public class LayoutManager : IWindowModeService, ILayoutService
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
         _messengerService.Register<AreaPresentationChangedMessage>(this, OnAreaPresentationChanged);
 
-        // Listen for when the user exits fullscreen by dragging the window (Windows built-in behavior)
-        _messengerService.Register<ExitedFullscreenViaDragMessage>(this, OnExitedFullscreenViaDrag);
+        _messengerService.Register<WindowFullScreenChangedMessage>(this, OnWindowFullScreenChanged);
 
         _messengerService.Register<WindowMaximizedChangedMessage>(this, OnWindowMaximizedChanged);
     }
@@ -231,7 +230,8 @@ public class LayoutManager : IWindowModeService, ILayoutService
         if (isVisible
             && !wasVisible)
         {
-            _messengerService.Send(new FlashAreaMessage(area));
+            var message = new FlashAreaMessage(area);
+            _messengerService.Send(message);
         }
 
         return Result.Ok();
@@ -253,14 +253,16 @@ public class LayoutManager : IWindowModeService, ILayoutService
         UpdateBottomAreaAlignment(alignment, shouldPersist: true);
     }
 
-    private void OnExitedFullscreenViaDrag(object recipient, ExitedFullscreenViaDragMessage message)
+    // The window can enter or leave full screen by itself, so the app follows the window's reports.
+    private void OnWindowFullScreenChanged(object recipient, WindowFullScreenChangedMessage message)
     {
-        // The window has exited fullscreen via drag, so sync our fullscreen state.
-        if (_isFullScreen)
+        if (_isFullScreen == message.IsFullScreen)
         {
-            _logger.LogDebug("Detected fullscreen exit via drag, clearing fullscreen state");
-            SetFullScreenInternal(false);
+            return;
         }
+
+        _logger.LogDebug($"The window changed full screen without the app asking: {message.IsFullScreen}");
+        SetFullScreenInternal(message.IsFullScreen);
     }
 
     private Result TransitionToLayoutMode(LayoutMode mode)
@@ -346,11 +348,12 @@ public class LayoutManager : IWindowModeService, ILayoutService
         }
 
         // Sync the window state (e.g., restore from maximized).
-        _messengerService.Send(new RestoreWindowStateMessage());
+        var restoreWindowMessage = new RestoreWindowStateMessage();
+        _messengerService.Send(restoreWindowMessage);
 
         // Notify listeners to reset their layout state (e.g., document sections)
-        var message = new ResetLayoutRequestedMessage();
-        _messengerService.Send(message);
+        var resetLayoutMessage = new ResetLayoutRequestedMessage();
+        _messengerService.Send(resetLayoutMessage);
 
         return Result.Ok();
     }
@@ -441,9 +444,7 @@ public class LayoutManager : IWindowModeService, ILayoutService
 
     private void EnterPresentationFullScreen()
     {
-        // On macOS the window's own button controls full screen, so Presentation leaves it alone.
-        if (_platformInfo.HasNativeFullScreenAffordance
-            || _isFullScreen)
+        if (_isFullScreen)
         {
             return;
         }
@@ -473,14 +474,15 @@ public class LayoutManager : IWindowModeService, ILayoutService
         _isFullScreen = isFullScreen;
 
         // Switch to Focus if full screen ends during Presentation, for example when the user drags the window
-        // down from the top of the screen. Focus brings the toolbar back before the window leaves full screen.
+        // down from the top of the screen on Windows, or uses the window's full screen button on macOS. Focus brings
+        // the toolbar back before the window leaves full screen.
         if (!isFullScreen
             && _layoutMode == LayoutMode.Presentation)
         {
             TransitionToLayoutMode(LayoutMode.Focus);
         }
 
-        var message = new FullScreenChangedMessage(isFullScreen);
+        var message = new FullScreenRequestedMessage(isFullScreen);
         _messengerService.Send(message);
 
         _logger.LogDebug($"Fullscreen changed: {isFullScreen}");

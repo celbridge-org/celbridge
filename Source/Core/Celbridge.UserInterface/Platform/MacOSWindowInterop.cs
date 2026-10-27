@@ -18,8 +18,8 @@ internal readonly record struct MacScreen(
 /// <summary>
 /// Objective-C interop for the native AppKit window and screens behind Uno's macOS Skia head, which
 /// surfaces neither the NSWindow nor (on the Skia head) the DisplayArea APIs. Reads display geometry and
-/// native-fullscreen state, places the window, sets the window's minimum size, and updates the window's first
-/// responder.
+/// native-fullscreen state, moves the window into and out of native fullscreen, places the window, sets the window's
+/// minimum size, and updates the window's first responder.
 /// macOS-only. Call on the main (UI) thread, where AppKit is safe.
 /// </summary>
 internal static class MacOSWindowInterop
@@ -348,6 +348,26 @@ internal static class MacOSWindowInterop
 
         var styleMask = SendMessageReturnNuint(window, GetSelector("styleMask"));
         return (styleMask & NSWindowStyleMaskFullScreen) != 0;
+    }
+
+    /// <summary>
+    /// Moves the application window into native macOS fullscreen, or out of it. The window animates the change.
+    /// The call returns at once off macOS, or when the window is missing.
+    /// </summary>
+    public static void ToggleMainWindowFullScreen()
+    {
+        if (!OperatingSystem.IsMacOS())
+        {
+            return;
+        }
+
+        var window = GetMainWindow();
+        if (window == IntPtr.Zero)
+        {
+            return;
+        }
+
+        SendMessageVoid(window, GetSelector("toggleFullScreen:"), IntPtr.Zero);
     }
 
     /// <summary>
