@@ -108,13 +108,18 @@ public sealed partial class WebViewFindBar : UserControl
     private void DebounceTimer_Tick(Microsoft.UI.Dispatching.DispatcherQueueTimer sender, object args)
     {
         // A search selects its match in the page, which moves the caret out of any page field. If the keyboard
-        // has left the find bar, the user has moved on, so the pending search is dropped.
-        if (!HoldsKeyboard())
+        // has left the find bar, the user has moved on, so the pending search is dropped. A click into the page
+        // reports its focus change through a queued callback that may not have run yet. The check therefore runs
+        // at low priority, after any such callback.
+        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
         {
-            return;
-        }
+            if (!HoldsKeyboard())
+            {
+                return;
+            }
 
-        StartFind();
+            StartFind();
+        });
     }
 
     private bool HoldsKeyboard()
