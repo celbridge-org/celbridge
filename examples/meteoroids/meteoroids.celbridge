@@ -1,5 +1,5 @@
 [celbridge]
-celbridge-version = "1.5.0"
+celbridge-version = "1.6.0"
 
 [celbridge.explorer]
 exclude = [".gitignore", ".DS_Store", "Thumbs.db", "desktop.ini"]
