@@ -68,6 +68,8 @@ internal sealed class FolderListing
 internal sealed class CachedFolder
 {
     private readonly Lock _lock = new();
+
+    // The cache's count of listed names. This folder's listings join the count.
     private readonly ListedNameCounter _listedNames;
 
     // Written under the lock. Forget reads it without the lock.

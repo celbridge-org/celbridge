@@ -59,8 +59,7 @@ public interface IResourceFileSystem
 
     /// <summary>
     /// Copies the resource and cascades the paired sidecar to the destination.
-    /// References inside the copied content keep pointing at their original
-    /// targets. Cross-root copies are supported.
+    /// Cross-root copies are supported.
     /// </summary>
     Task<Result<CopyResult>> CopyAsync(ResourceKey source, ResourceKey dest);
 

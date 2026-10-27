@@ -11,7 +11,9 @@ public class FolderStateService : IFolderStateService
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public List<string> ExpandedFolders { get; } = [];
+    private readonly HashSet<ResourceKey> _expandedFolders = [];
+
+    public IReadOnlySet<ResourceKey> ExpandedFolders => _expandedFolders;
 
     public FolderStateService(IWorkspaceWrapper workspaceWrapper)
     {
@@ -22,22 +24,20 @@ public class FolderStateService : IFolderStateService
     {
         if (isExpanded)
         {
-            if (!folderResource.IsEmpty &&
-                !ExpandedFolders.Contains(folderResource))
+            if (!folderResource.IsEmpty)
             {
-                ExpandedFolders.Add(folderResource);
-                ExpandedFolders.Sort();
+                _expandedFolders.Add(folderResource);
             }
         }
         else
         {
-            ExpandedFolders.Remove(folderResource);
+            _expandedFolders.Remove(folderResource);
         }
     }
 
     public bool IsExpanded(ResourceKey folderResource)
     {
-        return ExpandedFolders.Contains(folderResource);
+        return _expandedFolders.Contains(folderResource);
     }
 
     public async Task LoadAsync()
@@ -77,6 +77,8 @@ public class FolderStateService : IFolderStateService
         var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;
         Guard.IsNotNull(propertyBag);
 
-        await propertyBag.SetPropertyAsync(ExpandedFoldersKey, ExpandedFolders);
+        // The folders are saved in key order, so the same folders produce the same file.
+        var expandedFolders = _expandedFolders.Order().Select(folder => folder.ToString()).ToList();
+        await propertyBag.SetPropertyAsync(ExpandedFoldersKey, expandedFolders);
     }
 }

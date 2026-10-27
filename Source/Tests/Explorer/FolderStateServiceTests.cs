@@ -78,7 +78,7 @@ public class FolderStateServiceTests
 
         await _folderStateService.LoadAsync();
 
-        _folderStateService.ExpandedFolders.Should().Equal("project:kept", "project:kept/inner");
+        _folderStateService.ExpandedFolders.Order().Should().Equal(new ResourceKey("kept"), new ResourceKey("kept/inner"));
     }
 
     [Test]
@@ -89,7 +89,7 @@ public class FolderStateServiceTests
 
         await _folderStateService.LoadAsync();
 
-        _folderStateService.ExpandedFolders.Should().Equal("project:kept");
+        _folderStateService.ExpandedFolders.Should().Equal(new ResourceKey("kept"));
     }
 
     private void SaveExpandedFolders(params string[] expandedFolders)

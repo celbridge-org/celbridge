@@ -143,7 +143,8 @@ public partial class SearchFiltersViewModel : ObservableObject
 
     /// <summary>
     /// Returns the options for a search of the matcher's pattern within the filters, or null while a field is refused.
-    /// With Search Only in Open Documents on, the options name the files open in documents.
+    /// With Search Only in Open Documents on, the options name the project files open in documents. A document on
+    /// another root is left out, a docked utility for one: the panel searches the project.
     /// </summary>
     public SearchOptions? CreateSearchOptions(ITextMatcher matcher, int? maxResults)
     {
@@ -159,6 +160,7 @@ public partial class SearchFiltersViewModel : ObservableObject
             files = _workspaceWrapper.WorkspaceService.DocumentsService
                 .GetOpenDocuments()
                 .Select(document => document.FileResource)
+                .Where(file => file.Root == ResourceKey.DefaultRoot)
                 .ToList();
         }
 

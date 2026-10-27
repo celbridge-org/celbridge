@@ -1,4 +1,5 @@
 using Celbridge.DataTransfer;
+using Celbridge.Explorer.Helpers;
 using Celbridge.Explorer.Models;
 using Celbridge.UserInterface.DragDrop;
 using Celbridge.UserInterface.Helpers;
@@ -114,7 +115,7 @@ public sealed partial class ResourceTree : IResourceDropTarget
             return null;
         }
 
-        if (!CanDropInto(destFolder, resources.ToList()))
+        if (!ResourceDropRules.CanDropInto(_operationService, destFolder, resources.ToList()))
         {
             ClearDragFeedback();
             return null;
@@ -154,7 +155,7 @@ public sealed partial class ResourceTree : IResourceDropTarget
         }
 
         var draggedResources = resources.ToList();
-        if (!CanDropInto(destFolder, draggedResources))
+        if (!ResourceDropRules.CanDropInto(_operationService, destFolder, draggedResources))
         {
             return false;
         }
@@ -216,7 +217,7 @@ public sealed partial class ResourceTree : IResourceDropTarget
 
     private void TransferResourcesToFolder(List<ResourceItem> resources, ResourceKey destFolder, DataTransferMode transferMode)
     {
-        var sourceResources = GetResourcesToTransfer(resources, destFolder);
+        var sourceResources = ResourceDropRules.GetResourcesToTransfer(resources, destFolder);
 
         if (sourceResources.Count > 0)
         {

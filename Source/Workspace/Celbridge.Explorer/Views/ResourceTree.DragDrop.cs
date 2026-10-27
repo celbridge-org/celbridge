@@ -1,4 +1,5 @@
 using Celbridge.DataTransfer;
+using Celbridge.Explorer.Helpers;
 using Celbridge.Explorer.Models;
 using Microsoft.Extensions.Localization;
 using Windows.ApplicationModel.DataTransfer;
@@ -112,47 +113,11 @@ public sealed partial class ResourceTree
             }
 
             var destFolder = ResolveDropTargetFolder(targetItem);
-            var canDrop = CanDropInto(destFolder, _internalDragResources);
+            var canDrop = ResourceDropRules.CanDropInto(_operationService, destFolder, _internalDragResources);
             return (canDrop, IsInternalDrag: true);
         }
 
         return (CanDrop: false, IsInternalDrag: false);
-    }
-
-    // Predicts whether the dragged resources can land in the destination folder:
-    // the folder must accept additions, and every dragged item's destination key
-    // must itself be a permitted resource. Mirrors the gate the move/copy executor
-    // enforces so the no-drop cursor never disagrees with the outcome.
-    private bool CanDropInto(ResourceKey destFolderKey, List<ResourceItem>? draggedResources)
-    {
-        if (_operationService.CanAddToFolder(destFolderKey).IsFailure)
-        {
-            return false;
-        }
-
-        if (draggedResources is null)
-        {
-            return true;
-        }
-
-        foreach (var resourceItem in draggedResources)
-        {
-            var sourceKey = resourceItem.Resource;
-
-            // A no-op move back into the resource's current folder is always fine.
-            if (sourceKey.GetParent() == destFolderKey)
-            {
-                continue;
-            }
-
-            var destKey = destFolderKey.Combine(sourceKey.ResourceName);
-            if (_operationService.CanCreateResource(destKey, resourceItem.IsFolder).IsFailure)
-            {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     private void ApplyDragVisuals(DragEventArgs e, (bool CanDrop, bool IsInternalDrag) dropInfo)
@@ -220,7 +185,7 @@ public sealed partial class ResourceTree
 
     private void MoveResourcesToFolder(List<ResourceItem> resources, ResourceKey destFolder)
     {
-        var sourceResources = GetResourcesToTransfer(resources, destFolder);
+        var sourceResources = ResourceDropRules.GetResourcesToTransfer(resources, destFolder);
 
         if (sourceResources.Count > 0)
         {
@@ -235,26 +200,6 @@ public sealed partial class ResourceTree
             // the rebuild completes so the Explorer panel keeps focus and the utility rail button stays lit.
             _restoreTreeFocusAfterMove = true;
         }
-    }
-
-    // Leaves out each resource already in the destination folder, and a folder dropped onto itself.
-    private static List<ResourceKey> GetResourcesToTransfer(List<ResourceItem> resources, ResourceKey destFolder)
-    {
-        var sourceResources = new List<ResourceKey>();
-
-        foreach (var resourceItem in resources)
-        {
-            var sourceResource = resourceItem.Resource;
-            if (sourceResource == destFolder
-                || sourceResource.GetParent() == destFolder)
-            {
-                continue;
-            }
-
-            sourceResources.Add(sourceResource);
-        }
-
-        return sourceResources;
     }
 
     private async Task ProcessExternalDrop(DataPackageView dataView, ResourceKey destFolderResource)

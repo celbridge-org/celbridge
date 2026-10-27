@@ -86,8 +86,12 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         {
             // Spin up one file system monitor per registered root that opted in via Capabilities.IsWatched.
             // WorkspaceLoader calls Initialize after the workspace finishes constructing, so the wrapper
-            // returns the configured registry instance here.
-            var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
+            // returns the configured registry instance here. The watcher's callbacks keep the policy from here
+            // on, and leave the workspace service alone. The wrapper throws once the workspace unloads, and a
+            // callback in flight at that moment would otherwise throw on the watcher's thread.
+            var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
+            var rootHandlerRegistry = resourceService.RootHandlers;
+            var policy = resourceService.Policy;
             foreach (var handler in rootHandlerRegistry.RootHandlers.Values)
             {
                 if (!handler.Capabilities.IsWatched)
@@ -98,7 +102,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
                 var batcher = GetOrCreateBatcher(handler);
                 var monitor = _fileSystemMonitorFactory.Create(handler.BackingLocation);
                 monitor.FileSystemChanged +=
-                    (sender, monitorEvent) => OnFileSystemChanged(handler, batcher, monitorEvent);
+                    (sender, monitorEvent) => OnFileSystemChanged(handler, batcher, policy, monitorEvent);
                 monitor.MonitoringDesynchronized += (sender, args) => OnMonitoringDesynchronized(handler, batcher);
 
                 var startResult = monitor.Start();
@@ -175,6 +179,8 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
             return;
         }
 
+        var policy = _workspaceWrapper.WorkspaceService.ResourceService.Policy;
+
         foreach (var rootResources in resources.GroupBy(resource => resource.Root))
         {
             ChangeBatcher? batcher;
@@ -189,7 +195,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
             }
 
             var batchedResources = rootResources
-                .Where(IsBatched)
+                .Where(resource => IsBatched(policy, resource))
                 .ToList();
             if (batchedResources.Count > 0)
             {
@@ -274,25 +280,27 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         return batcher;
     }
 
-    private void OnFileSystemChanged(
+    // Runs on the watcher's thread, so the method uses only what Initialize captured.
+    private static void OnFileSystemChanged(
         IResourceRootHandler handler,
         ChangeBatcher batcher,
+        IResourcePolicy policy,
         FileSystemMonitorEvent monitorEvent)
     {
         // Each change to a name reaches the resolver, ignored paths included. A changed event leaves the listings
         // alone, since only a change to a name alters a listing.
         bool isNameChange = monitorEvent.Kind != FileSystemMonitorEventKind.Changed;
 
-        batcher.AddTouchedPath(monitorEvent.Path, GetBatchedKey(handler, monitorEvent.Path), isNameChange);
+        batcher.AddTouchedPath(monitorEvent.Path, GetBatchedKey(handler, policy, monitorEvent.Path), isNameChange);
         if (monitorEvent.OldPath is not null)
         {
-            batcher.AddTouchedPath(monitorEvent.OldPath, GetBatchedKey(handler, monitorEvent.OldPath), isNameChange);
+            batcher.AddTouchedPath(monitorEvent.OldPath, GetBatchedKey(handler, policy, monitorEvent.OldPath), isNameChange);
         }
     }
 
     // Returns the key that a touched path adds to the root's batch. The empty key is returned for the root folder
     // itself, for a path in the reserved .git folder, and for a path outside every valid key.
-    private ResourceKey GetBatchedKey(IResourceRootHandler handler, string fullPath)
+    private static ResourceKey GetBatchedKey(IResourceRootHandler handler, IResourcePolicy policy, string fullPath)
     {
         var keyResult = handler.GetResourceKey(fullPath);
         if (keyResult.IsFailure)
@@ -301,20 +309,19 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         }
         var resource = keyResult.Value;
 
-        return IsBatched(resource)
+        return IsBatched(policy, resource)
             ? resource
             : ResourceKey.Empty;
     }
 
     // Returns false for the root key itself, and for a key in the reserved .git folder.
-    private bool IsBatched(ResourceKey resource)
+    private static bool IsBatched(IResourcePolicy policy, ResourceKey resource)
     {
         if (resource.IsEmpty)
         {
             return false;
         }
 
-        var policy = _workspaceWrapper.WorkspaceService.ResourceService.Policy;
         var policyResult = policy.Evaluate(resource, ResourceAction.Read);
 
         return policyResult.IsSuccess;
