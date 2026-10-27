@@ -1,3 +1,4 @@
+using Celbridge.Workspace;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls.Primitives;
 
@@ -149,6 +150,11 @@ public sealed partial class SettingsSectionSwitcher : UserControl
 
         var navWidth = (double)resources["SectionNavWidth"];
         NavColumn.Width = new GridLength(navWidth);
+
+        // The switcher stops shrinking once the section beside the rail reaches the smallest legible document
+        // width. A host narrower than that clips the switcher on the right.
+        var gutterSize = (double)resources["GutterSize"];
+        MinWidth = navWidth + gutterSize + WorkspaceConstants.DocumentMinWidth;
 
         var footerGap = (double)resources["SectionFooterGap"];
         RailFooterPresenter.Margin = new Thickness(0, footerGap, 0, 0);
