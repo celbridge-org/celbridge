@@ -33,9 +33,10 @@ public record MainPageLoadedMessage();
 public record LayoutModeChangedMessage(LayoutMode LayoutMode);
 
 /// <summary>
-/// Message sent when the window's fullscreen state changes.
+/// Message sent when the app asks for the window to enter or leave full screen. The layout manager sends the message.
+/// The window state helper moves the window to match, and the layout toolbar updates its full screen toggle.
 /// </summary>
-public record FullScreenChangedMessage(bool IsFullScreen);
+public record FullScreenRequestedMessage(bool IsFullScreen);
 
 /// <summary>
 /// Message sent when the window's presenter changes between maximized and not maximized.
@@ -49,9 +50,12 @@ public record WindowMaximizedChangedMessage(bool IsMaximized);
 public record RestoreWindowStateMessage();
 
 /// <summary>
-/// Message sent when the user exits fullscreen mode by dragging the window.
+/// Message sent when the window enters or leaves full screen, including changes the app did not ask for. On Windows
+/// the user can drag the window down from the top of the screen. On macOS the user can press the window's full
+/// screen button. The window state helper and the macOS fullscreen controller send the message, and the layout
+/// manager follows the window's state.
 /// </summary>
-public record ExitedFullscreenViaDragMessage();
+public record WindowFullScreenChangedMessage(bool IsFullScreen);
 
 /// <summary>
 /// Message sent to request closing the active document tab.

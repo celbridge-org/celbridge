@@ -19,8 +19,8 @@ public enum LayoutMode
 
     /// <summary>
     /// As Focus, with the application toolbar and document tabs hidden as well, leaving only the
-    /// document content. Except on macOS, entering Presentation turns full screen on, and leaving it turns full
-    /// screen off again. If full screen was already on, it stays on.
+    /// document content. Entering Presentation turns full screen on, and leaving it turns full screen off again. If
+    /// full screen was already on, it stays on.
     /// </summary>
     Presentation
 }

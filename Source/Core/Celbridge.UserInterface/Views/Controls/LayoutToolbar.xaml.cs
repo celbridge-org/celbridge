@@ -55,7 +55,7 @@ public sealed partial class LayoutToolbar : UserControl
 
         // Register for layout manager state change messages
         _messengerService.Register<LayoutModeChangedMessage>(this, OnLayoutModeChanged);
-        _messengerService.Register<FullScreenChangedMessage>(this, OnFullScreenChanged);
+        _messengerService.Register<FullScreenRequestedMessage>(this, OnFullScreenRequested);
         _messengerService.Register<AreaVisibilityChangedMessage>(this, OnAreaVisibilityChanged);
         _messengerService.Register<BottomAreaAlignmentChangedMessage>(this, OnBottomAreaAlignmentChanged);
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
@@ -143,11 +143,7 @@ public sealed partial class LayoutToolbar : UserControl
         ToolTipService.SetToolTip(FocusModeRadio, focusModeTooltip);
         ToolTipService.SetPlacement(FocusModeRadio, PlacementMode.Bottom);
 
-        // Presentation leaves full screen alone when the window has its own full screen button.
-        var presentationModeTooltipKey = _platformInfo.HasNativeFullScreenAffordance
-            ? "LayoutToolbar_PresentationModeTooltip"
-            : "LayoutToolbar_PresentationModeFullScreenTooltip";
-        var presentationModeTooltip = _stringLocalizer.GetString(presentationModeTooltipKey);
+        var presentationModeTooltip = _stringLocalizer.GetString("LayoutToolbar_PresentationModeTooltip");
         ToolTipService.SetToolTip(PresentationModeRadio, presentationModeTooltip);
         ToolTipService.SetPlacement(PresentationModeRadio, PlacementMode.Bottom);
 
@@ -204,7 +200,7 @@ public sealed partial class LayoutToolbar : UserControl
         UpdateLayoutModeRadios();
     }
 
-    private void OnFullScreenChanged(object recipient, FullScreenChangedMessage message)
+    private void OnFullScreenRequested(object recipient, FullScreenRequestedMessage message)
     {
         UpdateFullScreenToggle();
     }
