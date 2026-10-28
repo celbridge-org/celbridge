@@ -78,6 +78,7 @@ export class PreviewController {
     #pendingContent = null;
     #pendingRefreshUrl = null;
     #hasRendered = false;
+    #zoom = 1;
 
     constructor(iframeElement, callbacks) {
         this.#iframe = iframeElement;
@@ -89,6 +90,19 @@ export class PreviewController {
 
     isActive() {
         return this.#module !== null;
+    }
+
+    // Scales the preview's page. Each load replaces the frame's document, so the zoom is applied again on load.
+    setZoom(zoom) {
+        this.#zoom = zoom;
+        this.#applyZoom();
+    }
+
+    #applyZoom() {
+        const root = this.#iframe?.contentDocument?.documentElement;
+        if (root) {
+            root.style.zoom = this.#zoom === 1 ? '' : String(this.#zoom);
+        }
     }
 
     async setRenderer(rendererUrl) {
@@ -256,6 +270,7 @@ export class PreviewController {
         }
 
         frameDocument.addEventListener('click', this.#handleLinkClick);
+        this.#applyZoom();
 
         // Also cleared here, not only on click, in case the page stops the click from reaching this listener.
         for (const link of frameDocument.querySelectorAll('a[download][target], area[download][target]')) {

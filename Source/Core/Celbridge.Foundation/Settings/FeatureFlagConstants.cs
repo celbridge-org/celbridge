@@ -30,4 +30,10 @@ public static class FeatureFlagConstants
     /// Registers the bundled Notes editor for .note files, with its New File template. Off by default.
     /// </summary>
     public const string NoteEditor = "note-editor";
+
+    /// <summary>
+    /// Adds zoom buttons to the code editor's toolbar, which scale the source's font and the HTML and Markdown
+    /// previews. Off by default.
+    /// </summary>
+    public const string EditorZoomControls = "editor-zoom-controls";
 }

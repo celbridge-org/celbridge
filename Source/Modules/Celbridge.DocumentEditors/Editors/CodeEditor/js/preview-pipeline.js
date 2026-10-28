@@ -108,6 +108,10 @@ export class PreviewPipeline {
         });
     }
 
+    setZoom(zoom) {
+        this.#previewController.setZoom(zoom);
+    }
+
     get viewModeController() {
         return this.#viewModeController;
     }
