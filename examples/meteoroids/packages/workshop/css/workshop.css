@@ -1,0 +1,237 @@
+/* Fonts, colours, theme switching, the cel-rail toolbar and the controls' look come from celbridge.css.
+   Everything here is the Workshop mockup's own: the layout of the Assets grid and the details page. */
+
+html, body {
+    height: 100%;
+    overflow: hidden;
+}
+
+#app {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+#app[hidden],
+[hidden] {
+    display: none !important;
+}
+
+#toolbar {
+    flex: 0 0 auto;
+}
+
+.workshop-spacer {
+    flex: 1 1 auto;
+    min-width: 8px;
+}
+
+.search-box {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 1 260px;
+    min-width: 120px;
+    padding: 4px 10px;
+    border: 1px solid var(--cel-control-border);
+    border-radius: var(--cel-radius-control);
+    background: var(--cel-control-bg);
+    color: var(--cel-text-secondary);
+}
+
+.search-box input {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    color: var(--cel-text-primary);
+    padding: 0;
+}
+
+.search-box input:focus {
+    outline: none;
+}
+
+.notice {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: var(--cel-notice-bg);
+    border-bottom: 1px solid var(--cel-warning-text);
+    font-size: var(--cel-font-size-small);
+}
+
+#content {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: var(--cel-settings-inset);
+}
+
+.view-header {
+    margin-bottom: 16px;
+}
+
+.view-header h1 {
+    margin: 0 0 4px;
+}
+
+.view-header p {
+    margin: 0;
+    color: var(--cel-text-secondary);
+}
+
+.empty-message {
+    margin: 24px 0;
+    text-align: center;
+    color: var(--cel-text-secondary);
+    font-size: var(--cel-font-size-small);
+}
+
+/* — Asset grid — */
+
+.asset-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.tile {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 10px;
+    margin: 0;
+    font: inherit;
+    text-align: left;
+    color: inherit;
+    cursor: pointer;
+    border: 1px solid var(--cel-panel-edge);
+    border-radius: var(--cel-radius-card);
+    background: var(--cel-chrome-bg);
+    position: relative;
+}
+
+.tile:hover {
+    background: var(--cel-button-hover-bg);
+}
+
+.tile:focus-visible {
+    outline: 2px solid var(--cel-accent);
+    outline-offset: 2px;
+}
+
+.tile-thumbnail {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 16 / 10;
+    border-radius: var(--cel-radius-control);
+    color: #fff;
+    font-weight: var(--cel-font-weight-strong);
+    font-size: var(--cel-icon-size-large);
+    text-align: center;
+    padding: 8px;
+    word-break: break-word;
+}
+
+.tile-title {
+    margin: 0;
+    font-weight: var(--cel-font-weight-strong);
+}
+
+.tile-description {
+    margin: 0;
+    color: var(--cel-text-secondary);
+    font-size: var(--cel-font-size-small);
+    /* Three lines, then an ellipsis — the details page has the rest. */
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
+}
+
+.installed-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    align-self: flex-start;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--cel-button-active-bg);
+    color: var(--cel-text-primary);
+    font-size: var(--cel-font-size-small);
+}
+
+.tile .installed-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: var(--cel-chrome-bg);
+    border: 1px solid var(--cel-panel-edge);
+}
+
+/* — Details page — */
+
+.details-card {
+    display: flex;
+    gap: 24px;
+    max-width: 760px;
+}
+
+.details-thumbnail {
+    flex: 0 0 auto;
+    width: 160px;
+    height: 160px;
+    border-radius: var(--cel-radius-card);
+}
+
+.details-body {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.details-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.details-header h1 {
+    margin: 0;
+}
+
+.details-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    margin: 6px 0 14px;
+    color: var(--cel-text-secondary);
+    font-size: var(--cel-font-size-small);
+}
+
+#details-description {
+    margin: 0 0 14px;
+}
+
+.details-readme p {
+    margin: 0 0 10px;
+    line-height: 1.5;
+}
+
+.details-actions {
+    display: flex;
+    gap: 8px;
+    margin: 18px 0 10px;
+}
+
+.mockup-note {
+    margin: 0;
+    color: var(--cel-text-secondary);
+    font-size: var(--cel-font-size-small);
+    font-style: italic;
+}

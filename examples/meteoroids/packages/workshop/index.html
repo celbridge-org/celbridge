@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workshop</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="/assets/bootstrap-icons/bootstrap-icons.css">
+    <link rel="stylesheet" href="/assets/celbridge-client/celbridge.css">
+    <link rel="stylesheet" href="css/workshop.css">
+</head>
+<body>
+    <div id="app" hidden>
+        <!-- The rail mixes navigation (Back), filtering (search, Installed only) and the three links out to
+             the wider community site. The links are mocked: Workshop and Package Redesign gives each one its
+             own WebView document, which this mockup does not implement. -->
+        <div id="toolbar" class="cel-rail cel-rail-horizontal" role="toolbar"
+             data-loc-key="Workshop_Toolbar_Label" data-loc-attr="aria-label">
+            <button id="back-btn" class="cel-rail-button" type="button" hidden
+                    data-loc-key="Workshop_Back" data-loc-attr="title,aria-label"><i class="bi bi-arrow-left"></i></button>
+
+            <div class="search-box">
+                <i class="bi bi-search"></i>
+                <input type="text" id="search-input" spellcheck="false" autocomplete="off"
+                       data-loc-key="Workshop_SearchPlaceholder" data-loc-attr="placeholder">
+            </div>
+
+            <button id="installed-filter" class="cel-rail-button" type="button" aria-pressed="false"
+                    data-loc-key="Workshop_InstalledFilter" data-loc-attr="title,aria-label"><i class="bi bi-check2-square"></i></button>
+
+            <div class="workshop-spacer"></div>
+
+            <div class="cel-rail-separator"></div>
+            <button id="link-site" class="cel-rail-button" type="button" disabled
+                    data-loc-key="Workshop_Link_Site" data-loc-attr="title,aria-label"><i class="bi bi-globe2"></i></button>
+            <button id="link-learn" class="cel-rail-button" type="button" disabled
+                    data-loc-key="Workshop_Link_Learn" data-loc-attr="title,aria-label"><i class="bi bi-mortarboard"></i></button>
+            <button id="link-forum" class="cel-rail-button" type="button" disabled
+                    data-loc-key="Workshop_Link_Forum" data-loc-attr="title,aria-label"><i class="bi bi-chat-dots"></i></button>
+        </div>
+
+        <div id="notice" class="notice" hidden>
+            <i class="bi bi-info-circle"></i>
+            <span id="notice-text"></span>
+        </div>
+
+        <div id="content">
+            <!-- The Assets page: the only page the design gives the Workshop at launch. -->
+            <div id="browse-view" class="view">
+                <div class="view-header">
+                    <h1 data-loc-key="Workshop_Assets_Title"></h1>
+                    <p data-loc-key="Workshop_Assets_Description"></p>
+                </div>
+                <p id="empty-results" class="empty-message" hidden data-loc-key="Workshop_NoResults"></p>
+                <div id="asset-grid" class="asset-grid"></div>
+            </div>
+
+            <!-- The details page for one package, reached by clicking its tile. -->
+            <div id="details-view" class="view" hidden>
+                <div class="details-card">
+                    <div id="details-thumbnail" class="tile-thumbnail details-thumbnail"></div>
+                    <div class="details-body">
+                        <div class="details-header">
+                            <h1 id="details-title"></h1>
+                            <span id="details-badge" class="installed-badge" hidden data-loc-key="Workshop_InstalledBadge"></span>
+                        </div>
+                        <div class="details-meta">
+                            <span id="details-author"></span>
+                            <span id="details-version"></span>
+                            <span id="details-license"></span>
+                            <span id="details-updated"></span>
+                        </div>
+                        <p id="details-description"></p>
+                        <div id="details-readme" class="details-readme"></div>
+                        <div class="details-actions">
+                            <button id="install-btn" class="cel-accent" type="button" data-loc-key="Workshop_Install"></button>
+                            <button id="update-btn" type="button" disabled data-loc-key="Workshop_Update"
+                                    data-loc-title="Workshop_UpToDate"></button>
+                            <button id="uninstall-btn" type="button" data-loc-key="Workshop_Uninstall"></button>
+                        </div>
+                        <p class="mockup-note" data-loc-key="Workshop_MockupNote"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="js/workshop.js"></script>
+</body>
+</html>

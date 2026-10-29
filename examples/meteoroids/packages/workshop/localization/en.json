@@ -1,0 +1,30 @@
+{
+    "Workshop_DisplayName": "Workshop",
+    "Workshop_Description": "Browse, install and manage community packages (design mockup)",
+    "Workshop_FileType": "Workshop",
+
+    "Workshop_Toolbar_Label": "Workshop toolbar",
+    "Workshop_Back": "Back to Assets",
+    "Workshop_SearchPlaceholder": "Search packages",
+    "Workshop_InstalledFilter": "Show installed packages only",
+    "Workshop_Link_Site": "Celbridge.org — not available in this mockup",
+    "Workshop_Link_Learn": "Learn — not available in this mockup",
+    "Workshop_Link_Forum": "Forum — not available in this mockup",
+
+    "Workshop_Assets_Title": "Assets",
+    "Workshop_Assets_Description": "Browse community packages and install them into this project.",
+    "Workshop_NoResults": "No packages match your search.",
+
+    "Workshop_InstalledBadge": "Installed",
+    "Workshop_By": "by {0}",
+    "Workshop_Version": "v{0}",
+    "Workshop_Updated": "Updated {0}",
+
+    "Workshop_Install": "Install",
+    "Workshop_Update": "Update",
+    "Workshop_UpToDate": "No update available",
+    "Workshop_Uninstall": "Uninstall",
+    "Workshop_MockupNote": "This is a design mockup of the Workshop. Install, update and uninstall only change what is shown here, not any files on disk.",
+
+    "Workshop_Error_InitFailed": "Failed to initialize the Celbridge connection."
+}

@@ -12,3 +12,7 @@ resource = "python.console"
 icon = "bs-terminal"
 area = "bottom"
 open-on-load = true
+
+[[shortcut]]
+resource = "demo.workshop"
+icon = "bs-hammer"

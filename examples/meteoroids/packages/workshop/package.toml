@@ -1,0 +1,8 @@
+# Workshop — a mockup of the proposed asset browser and package details view.
+
+[package]
+name = "workshop"
+title = "Workshop"
+
+[contributes]
+editors = ["workshop.editor.toml"]

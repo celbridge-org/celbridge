@@ -1,0 +1,10 @@
+[editor]
+id = "workshop"
+type = "document"
+entry-point = "index.html"
+display-name = "Workshop_DisplayName"
+description = "Workshop_Description"
+
+[[file-types]]
+extension = ".workshop"
+display-name = "Workshop_FileType"
