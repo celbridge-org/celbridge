@@ -30,6 +30,12 @@ public record DocumentResourceChangedMessage(ResourceKey OldResource, ResourceKe
 public record DocumentSaveCompletedMessage(ResourceKey DocumentResource);
 
 /// <summary>
+/// A message sent when a custom editor sets or clears its status. The resource is the editor's document, or the
+/// backing file of a utility. A null status means the editor cleared it.
+/// </summary>
+public record DocumentStatusChangedMessage(ResourceKey DocumentResource, DocumentStatus? Status);
+
+/// <summary>
 /// A message sent when a document view's content area receives focus.
 /// </summary>
 public record DocumentViewFocusedMessage(ResourceKey DocumentResource);

@@ -28,6 +28,7 @@ public class ClientApiSurfaceTests
         },
         ["api/document-api.js"] = new[]
         {
+            "clearStatus",
             "load",
             "notifyChanged",
             "notifyContentLoaded",
@@ -38,6 +39,7 @@ public class ClientApiSurfaceTests
             "onRequestState",
             "onRestoreState",
             "save",
+            "setStatus",
             "writeReport"
         },
         ["api/input-api.js"] = new[]

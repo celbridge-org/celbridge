@@ -1,6 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.Logging;
 using Celbridge.Messaging;
+using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Localization;
@@ -47,6 +48,12 @@ public partial class DocumentTabViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _isSaveRetrying;
+
+    /// <summary>
+    /// The current status of the tab's editor, or null when the editor has set none.
+    /// </summary>
+    [ObservableProperty]
+    private DocumentStatus? _status;
 
     /// <summary>
     /// True when this tab borrows a utility's live view rather than holding a document of its own. Such a
@@ -103,15 +110,32 @@ public partial class DocumentTabViewModel : ObservableObject
     public bool CanRevealInExplorer => FileResource.Root == ResourceKey.DefaultRoot;
 
     /// <summary>
+    /// The kind of the editor's status, or null when the editor reports none. Picks the color of the tab's pip.
+    /// </summary>
+    public StatusKind? StatusKind => Status?.Kind;
+
+    /// <summary>
+    /// The label of the editor's status, or an empty string when the editor reports none. The label is the
+    /// tab's help text.
+    /// </summary>
+    public string StatusLabel => Status?.Label ?? string.Empty;
+
+    /// <summary>
     /// Tooltip text for the tab. A utility tab shows its manifest description, falling back to its title
     /// when none is declared. An ordinary tab shows its file path plus the editor name when multiple
-    /// editors are available. A tab whose file cannot be written says so below that.
+    /// editors are available. The editor's status label goes on the line below. A last line says when the tab's
+    /// file cannot be written.
     /// </summary>
     public string TabTooltip
     {
         get
         {
             var description = ComposeTabDescription();
+
+            if (Status is not null)
+            {
+                description = _stringLocalizer.GetString("StatusPip_Tooltip_WithLabel", description, Status.Label);
+            }
 
             if (!IsSaveRetrying)
             {
@@ -175,7 +199,8 @@ public partial class DocumentTabViewModel : ObservableObject
     private IDocumentView? _documentView;
 
     /// <summary>
-    /// The tab's document view. Setting it gives the view the tab's name as its accessible name.
+    /// The tab's document view. Setting the view gives the view the tab's name as an accessible name, and gives
+    /// the tab the view's current status.
     /// </summary>
     public IDocumentView? DocumentView
     {
@@ -184,6 +209,9 @@ public partial class DocumentTabViewModel : ObservableObject
         {
             _documentView = value;
             _documentView?.SetAccessibleName(DocumentName);
+
+            // A status is sent only when it changes, so a docked utility's new tab reads the utility's status.
+            Status = _documentView?.Status;
         }
     }
 
@@ -215,6 +243,7 @@ public partial class DocumentTabViewModel : ObservableObject
 
         _messengerService.Register<ResourceKeyChangedMessage>(this, OnResourceKeyChangedMessage);
         _messengerService.Register<WorkspaceItemSaveRetriesChangedMessage>(this, OnSaveRetriesChanged);
+        _messengerService.Register<DocumentStatusChangedMessage>(this, OnDocumentStatusChanged);
     }
 
     private void OnSaveRetriesChanged(object recipient, WorkspaceItemSaveRetriesChangedMessage message)
@@ -238,6 +267,23 @@ public partial class DocumentTabViewModel : ObservableObject
     partial void OnIsSaveRetryingChanged(bool value)
     {
         OnPropertyChanged(nameof(TabTooltip));
+    }
+
+    partial void OnStatusChanged(DocumentStatus? value)
+    {
+        OnPropertyChanged(nameof(StatusKind));
+        OnPropertyChanged(nameof(StatusLabel));
+        OnPropertyChanged(nameof(TabTooltip));
+    }
+
+    private void OnDocumentStatusChanged(object recipient, DocumentStatusChangedMessage message)
+    {
+        if (message.DocumentResource != FileResource)
+        {
+            return;
+        }
+
+        Status = message.Status;
     }
 
     /// <summary>

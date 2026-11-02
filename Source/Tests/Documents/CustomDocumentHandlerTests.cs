@@ -79,7 +79,8 @@ public class CustomDocumentHandlerTests
             projectService,
             reportWriter,
             () => throw new NotSupportedException(),
-            () => throw new NotSupportedException());
+            () => throw new NotSupportedException(),
+            status => throw new NotSupportedException());
     }
 
     [TearDown]

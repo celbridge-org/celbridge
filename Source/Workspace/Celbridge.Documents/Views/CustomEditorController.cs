@@ -32,7 +32,7 @@ public sealed record CustomEditorFocusContext(FocusPanelId Panel, Action OnFocus
 /// <summary>
 /// Drives a custom (WebView-based) editor: it acquires and disposes its web view, owns the JSON-RPC
 /// host channel and its RPC targets, mirrors app/view state, bridges the webview_* tools, coordinates saves
-/// and external reloads, and implements the edit-target and link-routing behaviour.
+/// and external reloads, keeps the editor's status, and implements the edit-target and link-routing behaviour.
 /// </summary>
 public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarget
 {
@@ -78,6 +78,9 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     private EditAvailability _editAvailability = EditAvailability.None;
 
     private CustomDocumentHandler? _documentHandler;
+
+    // The status from the page's last setStatus call, or null after a clear.
+    private DocumentStatus? _status;
     private PackageToolsHandler? _toolsHandler;
 
     // A package-declared channel (e.g. the console terminal I/O bridge) registered as an additional RPC
@@ -276,6 +279,25 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     }
 
     public bool HasUnsavedChanges => _viewModel.HasUnsavedChanges;
+
+    /// <summary>
+    /// The current status of the editor's page, or null when the page has set none.
+    /// </summary>
+    public DocumentStatus? Status => _status;
+
+    // Sends the change to every surface that draws the editor's pip, keyed by the editor's resource.
+    private void SetStatus(DocumentStatus? status)
+    {
+        if (_status == status)
+        {
+            return;
+        }
+
+        _status = status;
+
+        var message = new DocumentStatusChangedMessage(_viewModel.FileResource, status);
+        _messengerService.Send(message);
+    }
 
     /// <summary>
     /// Saves the editor content by asking the WebView to flush its state, then writing it through the view
@@ -485,7 +507,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             _projectService,
             _reportWriter,
             CreateDocumentMetadata,    // Callback to construct document metadata on demand
-            CompleteSave);             // Callback to update state when saving has completed
+            CompleteSave,              // Callback to update state when saving has completed
+            SetStatus);                // Callback to report the status the page sets
 
         _documentHandler.ContentLoaded += SetContentLoaded;
 

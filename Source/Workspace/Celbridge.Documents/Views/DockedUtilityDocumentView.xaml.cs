@@ -53,6 +53,8 @@ public sealed partial class DockedUtilityDocumentView : DocumentView
 
     public override IEditTarget EditTarget => _controller;
 
+    public override DocumentStatus? Status => _controller.Status;
+
     public override void SetAccessibleName(string name)
     {
         _controller.SetAccessibleName(name);

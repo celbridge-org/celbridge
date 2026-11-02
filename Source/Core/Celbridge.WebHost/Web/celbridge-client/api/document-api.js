@@ -4,6 +4,7 @@
  * @typedef {import('../types.js').DocumentMetadata} DocumentMetadata
  * @typedef {import('../types.js').LoadResult} LoadResult
  * @typedef {import('../types.js').SaveResult} SaveResult
+ * @typedef {import('../types.js').StatusKind} StatusKind
  */
 
 /**
@@ -160,6 +161,27 @@ export class DocumentAPI {
         });
 
         return result.resource;
+    }
+
+    /**
+     * Sets the editor's status, replacing any status before it. The host shows the status as a colored pip
+     * and adds the label to a tooltip.
+     *
+     * @param {StatusKind} kind - The kind of state the status marks, which picks the pip's color. The host
+     *   rejects any other value.
+     * @param {string} label - One line, already localized by the caller. The host rejects an empty label.
+     * @returns {Promise<void>}
+     */
+    async setStatus(kind, label) {
+        await this.#transport.request('document/setStatus', { kind, label });
+    }
+
+    /**
+     * Clears the editor's status.
+     * @returns {Promise<void>}
+     */
+    async clearStatus() {
+        await this.#transport.request('document/clearStatus', {});
     }
 
     /**

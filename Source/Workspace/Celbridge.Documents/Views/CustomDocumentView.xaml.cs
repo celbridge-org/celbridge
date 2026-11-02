@@ -122,6 +122,8 @@ public sealed partial class CustomDocumentView : DocumentView
 
     public override WebViewHealth GetHealth() => _controller.GetHealth();
 
+    public override DocumentStatus? Status => _controller.Status;
+
     public override async Task PrepareToClose()
     {
         _messengerService.UnregisterAll(this);

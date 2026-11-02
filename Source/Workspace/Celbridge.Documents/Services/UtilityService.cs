@@ -520,6 +520,13 @@ public class UtilityService : IUtilityService, IDisposable
         _messengerService.Send(new FlashDocumentMessage(fileResource));
     }
 
+    public DocumentStatus? GetStatus(EditorId utilityId)
+    {
+        var panelView = _utilities.FirstOrDefault(utility => utility.UtilityId == utilityId);
+
+        return panelView?.Controller.Status;
+    }
+
     public IReadOnlyList<IWorkspaceItem> GetWorkspaceItems()
     {
         return new List<IWorkspaceItem>(_utilities);

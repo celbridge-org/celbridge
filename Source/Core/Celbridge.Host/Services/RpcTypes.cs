@@ -58,3 +58,13 @@ public record ShowNotificationResult();
 /// Result of the document/writeReport request, carrying the resource key the written report opens by.
 /// </summary>
 public record WriteReportResult(string Resource);
+
+/// <summary>
+/// Result of the document/setStatus request.
+/// </summary>
+public record SetStatusResult();
+
+/// <summary>
+/// Result of the document/clearStatus request.
+/// </summary>
+public record ClearStatusResult();

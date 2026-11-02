@@ -1,5 +1,6 @@
 {
     "UtilityDemo_Package": "Utility Demo",
     "UtilityDemo_DisplayName": "Utility Demo Editor",
-    "UtilityDemo_Description": "A utility that keeps notes with the project as a JSON state blob"
+    "UtilityDemo_Description": "A utility that keeps notes with the project as a JSON state blob",
+    "UtilityDemo_Status_Label": "Demo status is set"
 }

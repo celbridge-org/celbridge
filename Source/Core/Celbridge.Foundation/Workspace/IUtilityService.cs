@@ -63,6 +63,12 @@ public interface IUtilityService
     EditorId? GetDockedUtilityId(ResourceKey resource);
 
     /// <summary>
+    /// Returns the status reported by a live utility's editor, or null when the editor reports none. Only a live
+    /// utility's id returns a status.
+    /// </summary>
+    DocumentStatus? GetStatus(EditorId utilityId);
+
+    /// <summary>
     /// The utilities as workspace items. A utility docked into a document tab is included.
     /// </summary>
     IReadOnlyList<IWorkspaceItem> GetWorkspaceItems();

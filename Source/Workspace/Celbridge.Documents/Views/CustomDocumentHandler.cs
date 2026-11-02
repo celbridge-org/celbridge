@@ -3,13 +3,14 @@ using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Projects;
 using Celbridge.Reports;
+using Celbridge.UserInterface;
 using Celbridge.Utilities;
 
 namespace Celbridge.Documents.Views;
 
 /// <summary>
 /// Handles IHostDocument RPC methods for contribution document views.
-/// Manages document initialization, loading, saving, change tracking, and report writing.
+/// Manages document initialization, loading, saving, change tracking, report writing and the editor's status.
 /// </summary>
 internal sealed class CustomDocumentHandler : IHostDocument
 {
@@ -19,6 +20,7 @@ internal sealed class CustomDocumentHandler : IHostDocument
     private readonly IReportWriter _reportWriter;
     private readonly Func<DocumentMetadata> _createMetadata;
     private readonly Func<bool> _completeSave;
+    private readonly Action<DocumentStatus?> _setStatus;
 
     /// <summary>
     /// Set by the owning view before requesting a save from JS.
@@ -38,7 +40,8 @@ internal sealed class CustomDocumentHandler : IHostDocument
         IProjectService projectService,
         IReportWriter reportWriter,
         Func<DocumentMetadata> createMetadata,
-        Func<bool> completeSave)
+        Func<bool> completeSave,
+        Action<DocumentStatus?> setStatus)
     {
         _viewModel = viewModel;
         _logger = logger;
@@ -46,11 +49,15 @@ internal sealed class CustomDocumentHandler : IHostDocument
         _reportWriter = reportWriter;
         _createMetadata = createMetadata;
         _completeSave = completeSave;
+        _setStatus = setStatus;
     }
 
     public async Task<InitializeResult> InitializeAsync(string protocolVersion)
     {
         DocumentRpcMethods.ValidateProtocolVersion(protocolVersion);
+
+        // A page that starts again, for any reason, starts with no status.
+        _setStatus(null);
 
         var content = await _viewModel.LoadTextContentAsync();
         var metadata = _createMetadata();
@@ -137,6 +144,40 @@ internal sealed class CustomDocumentHandler : IHostDocument
         return new WriteReportResult(reportResource.ToString());
     }
 
+    public async Task<SetStatusResult> SetStatusAsync(string kind, string label)
+    {
+        await Task.CompletedTask;
+
+        // An unknown kind is a mistake in the editor. A guessed kind could show an urgent state in a calmer color
+        // and mislead the user.
+        if (!TryParseStatusKind(kind, out var statusKind))
+        {
+            throw new ArgumentException(
+                $"Unknown status kind: '{kind}'. Expected 'info', 'success', 'warning' or 'critical'.",
+                nameof(kind));
+        }
+
+        var firstLine = ReadFirstLine(label);
+        if (firstLine.Length == 0)
+        {
+            throw new ArgumentException("Status label is empty.", nameof(label));
+        }
+
+        var status = new DocumentStatus(statusKind, firstLine);
+        _setStatus(status);
+
+        return new SetStatusResult();
+    }
+
+    public async Task<ClearStatusResult> ClearStatusAsync()
+    {
+        await Task.CompletedTask;
+
+        _setStatus(null);
+
+        return new ClearStatusResult();
+    }
+
     public void OnDocumentChanged()
     {
         _viewModel.OnDataChanged();
@@ -157,5 +198,46 @@ internal sealed class CustomDocumentHandler : IHostDocument
         var detail = string.IsNullOrEmpty(error) ? "no detail reported" : error;
 
         _logger.LogError($"Editor failed to import '{_viewModel.FileResource}': {detail}");
+    }
+
+    private static bool TryParseStatusKind(string kind, out StatusKind parsedKind)
+    {
+        switch (kind?.ToLowerInvariant())
+        {
+            case "info":
+                parsedKind = StatusKind.Info;
+                return true;
+
+            case "success":
+                parsedKind = StatusKind.Success;
+                return true;
+
+            case "warning":
+                parsedKind = StatusKind.Warning;
+                return true;
+
+            case "critical":
+                parsedKind = StatusKind.Critical;
+                return true;
+
+            default:
+                parsedKind = StatusKind.Info;
+                return false;
+        }
+    }
+
+    // Returns the first line of the label with the surrounding whitespace removed, or an empty string for a
+    // label with no text.
+    private static string ReadFirstLine(string? label)
+    {
+        if (string.IsNullOrWhiteSpace(label))
+        {
+            return string.Empty;
+        }
+
+        var lines = label.Trim().Split('\n');
+        var firstLine = lines[0].Trim();
+
+        return firstLine;
     }
 }

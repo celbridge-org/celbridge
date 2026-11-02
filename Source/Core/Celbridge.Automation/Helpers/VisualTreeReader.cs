@@ -191,6 +191,7 @@ internal static class VisualTreeReader
         var bounds = new ControlBounds(frame.X, frame.Y, frame.Width, frame.Height);
 
         var value = ReadValue(element, peer);
+        var helpText = ReadHelpText(peer);
 
         var control = new ControlInfo(
             automationId ?? string.Empty,
@@ -201,6 +202,7 @@ internal static class VisualTreeReader
             peer.IsEnabled(),
             CheckedState(peer),
             value,
+            helpText,
             hasKeyboardFocus);
 
         return control;
@@ -223,6 +225,18 @@ internal static class VisualTreeReader
         }
 
         return null;
+    }
+
+    // Returns null for a control with no help text, so the field is left out of the control's description.
+    private static string? ReadHelpText(AutomationPeer peer)
+    {
+        var helpText = peer.GetHelpText();
+        if (string.IsNullOrEmpty(helpText))
+        {
+            return null;
+        }
+
+        return helpText;
     }
 
     private static bool? CheckedState(AutomationPeer peer)

@@ -41,6 +41,8 @@ public static class DocumentRpcMethods
     public const string RequestState = "document/requestState";
     public const string RestoreState = "document/restoreState";
     public const string WriteReport = "document/writeReport";
+    public const string SetStatus = "document/setStatus";
+    public const string ClearStatus = "document/clearStatus";
 
     /// <summary>
     /// Validates the protocol version from the WebView client.
@@ -89,6 +91,19 @@ public interface IHostDocument
     /// </summary>
     [JsonRpcMethod(DocumentRpcMethods.WriteReport)]
     Task<WriteReportResult> WriteReportAsync(string reportJson);
+
+    /// <summary>
+    /// Sets the editor's status, replacing any status before it. The kind names a StatusKind, and the label is
+    /// already localized by the caller.
+    /// </summary>
+    [JsonRpcMethod(DocumentRpcMethods.SetStatus)]
+    Task<SetStatusResult> SetStatusAsync(string kind, string label);
+
+    /// <summary>
+    /// Clears the editor's status.
+    /// </summary>
+    [JsonRpcMethod(DocumentRpcMethods.ClearStatus)]
+    Task<ClearStatusResult> ClearStatusAsync();
 
     /// <summary>
     /// Called when the document content has changed in the WebView.

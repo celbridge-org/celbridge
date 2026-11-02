@@ -264,6 +264,9 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
         await Task.CompletedTask;
     }
 
+    // A status comes from an editor page, and the settings form is native.
+    public DocumentStatus? Status => null;
+
     public WebViewHealth GetHealth() => WebViewHealth.Healthy;
 
     // The settings form has no find of its own, so the host offers none.

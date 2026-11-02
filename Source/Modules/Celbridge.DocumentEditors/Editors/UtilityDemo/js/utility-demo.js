@@ -6,11 +6,13 @@
 import celbridge from '/assets/celbridge-client/celbridge.js';
 import { ContentLoadedReason } from '/assets/celbridge-client/api/document-api.js';
 import { attachSectionSwitcher } from '/assets/celbridge-client/ui/section-switcher.js';
+import { t } from '/assets/celbridge-client/localization.js';
 
 const client = celbridge;
 
 const notesInput = document.getElementById('notes-input');
 const showNotesButton = document.getElementById('show-notes');
+const toggleStatusButton = document.getElementById('toggle-status');
 
 const switcher = attachSectionSwitcher(document.getElementById('demo-switcher'));
 
@@ -57,6 +59,27 @@ async function showNotes() {
 }
 
 showNotesButton.addEventListener('click', () => { showNotes(); });
+
+// The host clears the status whenever the page starts again. This flag says whether the page has set a status
+// since loading.
+let isStatusSet = false;
+
+async function toggleStatus() {
+    try {
+        if (isStatusSet) {
+            await client.document.clearStatus();
+        } else {
+            await client.document.setStatus('critical', t('UtilityDemo_Status_Label'));
+        }
+
+        isStatusSet = !isStatusSet;
+        toggleStatusButton.textContent = isStatusSet ? 'Clear Status' : 'Set Status';
+    } catch (e) {
+        console.error('[UtilityDemo] Failed to change the status:', e);
+    }
+}
+
+toggleStatusButton.addEventListener('click', () => { toggleStatus(); });
 
 client.viewState.onChanged((viewState) => {
     if (viewState.writable) {

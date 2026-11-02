@@ -59,6 +59,50 @@ describe('DocumentAPI.writeReport', () => {
     });
 });
 
+describe('DocumentAPI status', () => {
+    function createTransport() {
+        const requests = [];
+
+        return {
+            requests,
+            async request(method, params) {
+                requests.push({ method, params });
+                return {};
+            }
+        };
+    }
+
+    it('sends setStatus with the kind and the label', async () => {
+        const transport = createTransport();
+
+        await new DocumentAPI(transport).setStatus('critical', 'Syncing');
+
+        expect(transport.requests).toEqual([
+            { method: 'document/setStatus', params: { kind: 'critical', label: 'Syncing' } }
+        ]);
+    });
+
+    it('sends clearStatus with no parameters', async () => {
+        const transport = createTransport();
+
+        await new DocumentAPI(transport).clearStatus();
+
+        expect(transport.requests).toEqual([
+            { method: 'document/clearStatus', params: {} }
+        ]);
+    });
+
+    it('rejects when the host refuses the status', async () => {
+        const transport = {
+            async request() {
+                throw new Error("Unknown status kind: 'urgent'.");
+            }
+        };
+
+        await expect(new DocumentAPI(transport).setStatus('urgent', 'Syncing')).rejects.toThrow('urgent');
+    });
+});
+
 describe('DocumentAPI.onRestoreState', () => {
     function createHostedDocument() {
         const sent = [];

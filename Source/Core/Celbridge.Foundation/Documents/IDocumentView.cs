@@ -80,6 +80,11 @@ public interface IDocumentView : IWorkspaceItem
     Task RestoreEditorStateAsync(string state);
 
     /// <summary>
+    /// The current status of the document's editor, or null when the editor has set none.
+    /// </summary>
+    DocumentStatus? Status { get; }
+
+    /// <summary>
     /// The health of the document's web view. A document with no web view is always healthy.
     /// </summary>
     WebViewHealth GetHealth();
