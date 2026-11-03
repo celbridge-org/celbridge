@@ -18,6 +18,12 @@ public record WorkspaceItemSaveRetriesChangedMessage(IReadOnlyList<ResourceKey> 
 public record WorkspaceItemSaveDiscardedMessage(ResourceKey Resource);
 
 /// <summary>
+/// Sent when a custom editor's page sets or clears the pip of the editor's workspace item, keyed by the item's
+/// file resource. A null pip means the page cleared it.
+/// </summary>
+public record WorkspaceItemPipChangedMessage(ResourceKey FileResource, WorkspaceItemPip? Pip);
+
+/// <summary>
 /// Sent when the workspace service has been created.
 /// The WorkspaceService has the same lifetime as the loaded workspace.
 /// </summary>

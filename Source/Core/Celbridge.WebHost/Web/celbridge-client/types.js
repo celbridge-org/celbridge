@@ -35,4 +35,9 @@
  * @typedef {'none' | 'error' | 'warn' | 'debug'} LogLevel
  */
 
+/**
+ * The kind of state a status pip marks. The pip shows each kind in its own color.
+ * @typedef {'neutral' | 'success' | 'notice' | 'alert'} PipKind
+ */
+
 export const Types = {};

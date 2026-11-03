@@ -4,6 +4,7 @@
  * @typedef {import('../types.js').DocumentMetadata} DocumentMetadata
  * @typedef {import('../types.js').LoadResult} LoadResult
  * @typedef {import('../types.js').SaveResult} SaveResult
+ * @typedef {import('../types.js').PipKind} PipKind
  */
 
 /**
@@ -160,6 +161,34 @@ export class DocumentAPI {
         });
 
         return result.resource;
+    }
+
+    /**
+     * Sets the editor's status pip, replacing any pip before it. The host adds the label to the tooltip of
+     * the surface that draws the pip.
+     *
+     * @param {PipKind} kind - The kind of state the pip marks, which picks the pip's color. The host
+     *   rejects any other value.
+     * @param {string} label - One line, already localized by the caller. The host rejects an empty label.
+     * @param {Object} [options] - Options for the pip.
+     * @param {boolean} [options.pulse] - Fades the pip out and back in every few seconds, for a state that
+     *   is under way. Defaults to false.
+     * @returns {Promise<void>}
+     */
+    async setPip(kind, label, options) {
+        await this.#transport.request('document/setPip', {
+            kind,
+            label,
+            pulse: options?.pulse ?? false
+        });
+    }
+
+    /**
+     * Clears the editor's status pip.
+     * @returns {Promise<void>}
+     */
+    async clearPip() {
+        await this.#transport.request('document/clearPip', {});
     }
 
     /**

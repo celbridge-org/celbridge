@@ -1,0 +1,42 @@
+<UserControl
+    x:Class="Celbridge.UserInterface.Views.Controls.StatusPip"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    IsTabStop="False"
+    IsHitTestVisible="False"
+    AutomationProperties.AccessibilityView="Raw"
+    Visibility="Collapsed">
+
+    <!-- Collapsed until a kind is set. The surface that places the pip carries the status label in the
+         surface's tooltip and help text. The pip itself stays out of the automation tree. -->
+    <Grid>
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup x:Name="KindStates">
+                <VisualState x:Name="Neutral">
+                    <VisualState.Setters>
+                        <Setter Target="PipEllipse.Fill" Value="{ThemeResource AccentBrush}" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Success">
+                    <VisualState.Setters>
+                        <Setter Target="PipEllipse.Fill" Value="{ThemeResource SystemFillColorSuccessBrush}" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Notice">
+                    <VisualState.Setters>
+                        <Setter Target="PipEllipse.Fill" Value="{ThemeResource CautionBrush}" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Alert">
+                    <VisualState.Setters>
+                        <Setter Target="PipEllipse.Fill" Value="{ThemeResource SystemFillColorCriticalBrush}" />
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+
+        <Ellipse x:Name="PipEllipse"
+                 Width="6"
+                 Height="6" />
+    </Grid>
+</UserControl>

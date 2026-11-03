@@ -67,6 +67,9 @@ given.
   pixels.
 - `isChecked` appears only for a control that can be toggled or selected, and `value` only for one that holds a
   value, such as a text field's text.
+- `helpText` appears only for a control with help text. A document's tab and a utility's rail button report the
+  label of their editor's status pip as their help text. Find a tab by its name and the `TabItem` control type, and
+  a utility's rail button by the automation ID `{utilityId}-utility-button`.
 - `hasKeyboardFocus` is true for the one control that holds the keyboard, and false for every other. A control the
   platform draws natively always reports false.
 - An empty `controls` list means nothing matched. It is not an error.

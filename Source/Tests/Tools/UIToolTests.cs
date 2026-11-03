@@ -110,6 +110,30 @@ public class UIToolTests
     }
 
     [Test]
+    public async Task FindControls_ReportsHelpText_OnlyForAControlThatHasSome()
+    {
+        var toolsButton = ToggleButton with
+        {
+            AutomationId = "acme.tools-utility-button",
+            HelpText = "Syncing"
+        };
+        var controls = new List<ControlInfo>
+        {
+            ToggleButton,
+            toolsButton
+        };
+        var snapshot = new ControlSnapshot(controls, 1920, 948, 2);
+        _automationService.GetControlsAsync().Returns(Task.FromResult<Result<ControlSnapshot>>(snapshot));
+
+        var tools = new UITools(_services);
+        var root = ParseResult(await tools.FindControls(controlType: "Button"));
+
+        var found = root.GetProperty("controls");
+        found[0].TryGetProperty("helpText", out _).Should().BeFalse();
+        found[1].GetProperty("helpText").GetString().Should().Be("Syncing");
+    }
+
+    [Test]
     public async Task FindControls_EmptyQuery_FailsWithoutReadingTheControls()
     {
         var tools = new UITools(_services);

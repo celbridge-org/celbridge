@@ -9,6 +9,7 @@
     xmlns:services="using:Celbridge.UserInterface.Services"
     DataContext="{x:Bind ViewModel}"
     AutomationProperties.Name="{x:Bind ViewModel.DocumentName, Mode=OneWay}"
+    AutomationProperties.HelpText="{x:Bind ViewModel.PipLabel, Mode=OneWay}"
     VerticalContentAlignment="Stretch"
     DoubleTapped="DocumentTab_DoubleTapped"
     Tapped="DocumentTab_Tapped"
@@ -58,10 +59,11 @@
             <StackPanel Orientation="Horizontal"
                         VerticalAlignment="Center">
                 <!-- The identity glyph and the warning share one slot, so the tab keeps its width when a
-                     file cannot be written. -->
+                     file cannot be written. The status pip's negative margins place it beyond the glyph's
+                     top-right corner, so it clears the glyph without widening the slot. The pip hides with the
+                     glyph. -->
                 <Grid>
-                    <StackPanel Orientation="Horizontal"
-                                Visibility="{x:Bind ViewModel.IsSaveRetrying, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverted}">
+                    <Grid Visibility="{x:Bind ViewModel.IsSaveRetrying, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverted}">
                         <!-- Ordinary document tabs show a file-type icon. A tab a utility editor opens
                              shows that editor's manifest glyph in the tab's own text colour. File-type
                              icons sit inside a luminance band that excludes that colour, so an untinted
@@ -79,7 +81,14 @@
                                        MinWidth="20"
                                        Margin="0"
                                        Visibility="{x:Bind ViewModel.IsUtilityEditor, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
-                    </StackPanel>
+
+                        <controls:StatusPip x:Name="TabStatusPip"
+                                            Kind="{x:Bind ViewModel.PipKind, Mode=OneWay}"
+                                            IsPulsing="{x:Bind ViewModel.IsPipPulsing, Mode=OneWay}"
+                                            HorizontalAlignment="Right"
+                                            VerticalAlignment="Top"
+                                            Margin="0,-5,-3,0" />
+                    </Grid>
 
                     <controls:Icon x:Name="SaveRetryIcon"
                                    Symbol="Warning"
@@ -90,7 +99,7 @@
                                    MinWidth="22"
                                    VerticalAlignment="Center"
                                    Margin="0"
-                                   Foreground="{ThemeResource SystemFillColorCautionBrush}" />
+                                   Foreground="{ThemeResource CautionBrush}" />
                 </Grid>
 
                 <!-- The hidden copy holds the label at the width it takes when the tab is selected and drawn

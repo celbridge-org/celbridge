@@ -41,6 +41,8 @@ public static class DocumentRpcMethods
     public const string RequestState = "document/requestState";
     public const string RestoreState = "document/restoreState";
     public const string WriteReport = "document/writeReport";
+    public const string SetPip = "document/setPip";
+    public const string ClearPip = "document/clearPip";
 
     /// <summary>
     /// Validates the protocol version from the WebView client.
@@ -89,6 +91,19 @@ public interface IHostDocument
     /// </summary>
     [JsonRpcMethod(DocumentRpcMethods.WriteReport)]
     Task<WriteReportResult> WriteReportAsync(string reportJson);
+
+    /// <summary>
+    /// Sets the editor's status pip, replacing any pip before it. The kind names a PipKind, the label is
+    /// already localized by the caller, and pulse sets whether the pip pulses.
+    /// </summary>
+    [JsonRpcMethod(DocumentRpcMethods.SetPip)]
+    Task<SetPipResult> SetPipAsync(string kind, string label, bool pulse = false);
+
+    /// <summary>
+    /// Clears the editor's status pip.
+    /// </summary>
+    [JsonRpcMethod(DocumentRpcMethods.ClearPip)]
+    Task<ClearPipResult> ClearPipAsync();
 
     /// <summary>
     /// Called when the document content has changed in the WebView.

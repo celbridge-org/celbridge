@@ -300,6 +300,23 @@ This sits under `dialog` alongside `showAlert`, but it is the opposite kind of c
 
 Use it for an outcome the user should know about but did not ask a question about — a conversion that finished with failures, a long operation that completed. **One operation raises one notification**, whatever it found: a loop that notifies per item fills the user's list with lines they have to dismiss one by one. When there is per-item detail worth reading, say it once here and write the detail as a report.
 
+### Showing a status pip
+
+A notification tells the user that something happened. A status pip shows a state that lasts, so the user sees it even while your editor is out of sight. `client.document.setPip(kind, label)` draws a small colored pip on your editor's tab, or on a utility's rail button. `client.document.clearPip()` removes the pip.
+
+```javascript
+await client.document.setPip('neutral', t('MyEditor_Status_Syncing'), { pulse: true });
+
+// Later, when the sync finishes
+await client.document.clearPip();
+```
+
+`kind` is `'neutral'`, `'success'`, `'notice'` or `'alert'`, and picks the pip's color. Use `'alert'` for a state the user must keep in mind, like a recording, and `'notice'` for something they should look at. Any other kind is rejected. `label` is one line you have already localized, and the host adds it to the tooltip of the tab or button. Only its first line is shown, and an empty label is rejected.
+
+`{ pulse: true }` makes the pip pulse, for a state that is under way, like the sync above. A pulsing pip fades out and back in every few seconds, at the same moments as every other pulsing pip. Leave the option out for a steady pip.
+
+An editor has one pip at a time, and a new pip replaces the one before it. The pip lasts until you clear it, your page starts again or the document closes. A page that reloads starts with no pip, so set it again from your own state once the page has loaded. The host never saves a pip.
+
 ## Reporting per-item detail
 
 `client.document.writeReport(report)` writes a `.report` document into the project and returns the resource key it opens by. Hand that key to `dialog.notify` as its action resource and the notification gains a button that opens it.

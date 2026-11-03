@@ -9,9 +9,9 @@ namespace Celbridge.Automation;
 public record ControlBounds(double X, double Y, double Width, double Height);
 
 /// <summary>
-/// One of the application's own controls, whether the application or the platform draws it. IsChecked is null for
-/// a control that cannot be toggled or selected, and Value is null for a control that has no value.
-/// HasKeyboardFocus is true for the one control that holds the keyboard.
+/// One of the application's own controls, whether the application or the platform draws it. IsChecked is set only
+/// for a control that can be toggled or selected. Value is set only for a control with a value, and HelpText only
+/// for a control with help text. HasKeyboardFocus is true for the one control that has the keyboard.
 /// </summary>
 public record ControlInfo(
     string AutomationId,
@@ -22,6 +22,7 @@ public record ControlInfo(
     bool IsEnabled,
     bool? IsChecked,
     string? Value,
+    string? HelpText = null,
     bool HasKeyboardFocus = false);
 
 /// <summary>

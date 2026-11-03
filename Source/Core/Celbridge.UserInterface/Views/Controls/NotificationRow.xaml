@@ -33,7 +33,7 @@
         <controls:Icon x:Name="WarningIcon"
                        Symbol="Warning"
                        FontSize="{StaticResource IconSizeSmall}"
-                       Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                       Foreground="{ThemeResource CautionBrush}"
                        Visibility="Collapsed"/>
         <controls:Icon x:Name="InfoIcon"
                        Symbol="Info"

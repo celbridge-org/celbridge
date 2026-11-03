@@ -6,11 +6,13 @@
 import celbridge from '/assets/celbridge-client/celbridge.js';
 import { ContentLoadedReason } from '/assets/celbridge-client/api/document-api.js';
 import { attachSectionSwitcher } from '/assets/celbridge-client/ui/section-switcher.js';
+import { t } from '/assets/celbridge-client/localization.js';
 
 const client = celbridge;
 
 const notesInput = document.getElementById('notes-input');
 const showNotesButton = document.getElementById('show-notes');
+const togglePipButton = document.getElementById('toggle-pip');
 
 const switcher = attachSectionSwitcher(document.getElementById('demo-switcher'));
 
@@ -57,6 +59,27 @@ async function showNotes() {
 }
 
 showNotesButton.addEventListener('click', () => { showNotes(); });
+
+// The host clears the pip whenever the page starts again. This flag says whether the page has set a pip since
+// loading.
+let isPipSet = false;
+
+async function togglePip() {
+    try {
+        if (isPipSet) {
+            await client.document.clearPip();
+        } else {
+            await client.document.setPip('alert', t('UtilityDemo_Status_Label'), { pulse: true });
+        }
+
+        isPipSet = !isPipSet;
+        togglePipButton.textContent = isPipSet ? 'Clear Pip' : 'Set Pip';
+    } catch (e) {
+        console.error('[UtilityDemo] Failed to change the pip:', e);
+    }
+}
+
+togglePipButton.addEventListener('click', () => { togglePip(); });
 
 client.viewState.onChanged((viewState) => {
     if (viewState.writable) {

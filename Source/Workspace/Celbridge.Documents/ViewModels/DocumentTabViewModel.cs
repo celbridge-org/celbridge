@@ -49,6 +49,12 @@ public partial class DocumentTabViewModel : ObservableObject
     private bool _isSaveRetrying;
 
     /// <summary>
+    /// The pip the tab's editor has set, or null when the editor has set none.
+    /// </summary>
+    [ObservableProperty]
+    private WorkspaceItemPip? _pip;
+
+    /// <summary>
     /// True when this tab borrows a utility's live view rather than holding a document of its own. Such a
     /// tab takes its title and icon from the manifest, offers no menu actions on the backing file, and
     /// announces neither an open nor a close because it was never opened as a document and is never
@@ -103,15 +109,37 @@ public partial class DocumentTabViewModel : ObservableObject
     public bool CanRevealInExplorer => FileResource.Root == ResourceKey.DefaultRoot;
 
     /// <summary>
+    /// The kind of the editor's pip, or null when the editor has set none. The kind picks the pip's color.
+    /// </summary>
+    public PipKind? PipKind => Pip?.Kind;
+
+    /// <summary>
+    /// The label of the editor's pip, or an empty string when the editor has set none. The label is the tab's
+    /// help text.
+    /// </summary>
+    public string PipLabel => Pip?.Label ?? string.Empty;
+
+    /// <summary>
+    /// Returns true if the editor's pip pulses, and false when the editor has set none.
+    /// </summary>
+    public bool IsPipPulsing => Pip?.IsPulsing ?? false;
+
+    /// <summary>
     /// Tooltip text for the tab. A utility tab shows its manifest description, falling back to its title
     /// when none is declared. An ordinary tab shows its file path plus the editor name when multiple
-    /// editors are available. A tab whose file cannot be written says so below that.
+    /// editors are available. The label of the editor's pip goes on the line below. A last line says when the
+    /// tab's file cannot be written.
     /// </summary>
     public string TabTooltip
     {
         get
         {
             var description = ComposeTabDescription();
+
+            if (Pip is not null)
+            {
+                description = _stringLocalizer.GetString("StatusPip_Tooltip_WithLabel", description, Pip.Label);
+            }
 
             if (!IsSaveRetrying)
             {
@@ -175,7 +203,8 @@ public partial class DocumentTabViewModel : ObservableObject
     private IDocumentView? _documentView;
 
     /// <summary>
-    /// The tab's document view. Setting it gives the view the tab's name as its accessible name.
+    /// The tab's document view. Setting the view gives the view the tab's name as an accessible name, and gives
+    /// the tab the view's current pip.
     /// </summary>
     public IDocumentView? DocumentView
     {
@@ -184,6 +213,10 @@ public partial class DocumentTabViewModel : ObservableObject
         {
             _documentView = value;
             _documentView?.SetAccessibleName(DocumentName);
+
+            // The change message is sent only when the pip changes, so a docked utility's new tab reads the
+            // utility's current pip.
+            Pip = _documentView?.Pip;
         }
     }
 
@@ -215,6 +248,7 @@ public partial class DocumentTabViewModel : ObservableObject
 
         _messengerService.Register<ResourceKeyChangedMessage>(this, OnResourceKeyChangedMessage);
         _messengerService.Register<WorkspaceItemSaveRetriesChangedMessage>(this, OnSaveRetriesChanged);
+        _messengerService.Register<WorkspaceItemPipChangedMessage>(this, OnWorkspaceItemPipChanged);
     }
 
     private void OnSaveRetriesChanged(object recipient, WorkspaceItemSaveRetriesChangedMessage message)
@@ -238,6 +272,24 @@ public partial class DocumentTabViewModel : ObservableObject
     partial void OnIsSaveRetryingChanged(bool value)
     {
         OnPropertyChanged(nameof(TabTooltip));
+    }
+
+    partial void OnPipChanged(WorkspaceItemPip? value)
+    {
+        OnPropertyChanged(nameof(PipKind));
+        OnPropertyChanged(nameof(PipLabel));
+        OnPropertyChanged(nameof(IsPipPulsing));
+        OnPropertyChanged(nameof(TabTooltip));
+    }
+
+    private void OnWorkspaceItemPipChanged(object recipient, WorkspaceItemPipChangedMessage message)
+    {
+        if (message.FileResource != FileResource)
+        {
+            return;
+        }
+
+        Pip = message.Pip;
     }
 
     /// <summary>

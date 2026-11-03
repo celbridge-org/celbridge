@@ -1,5 +1,6 @@
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
+using Microsoft.Extensions.Localization;
 using Microsoft.UI.Xaml.Media.Animation;
 
 namespace Celbridge.WorkspaceUI.Views.Controls;
@@ -9,8 +10,15 @@ namespace Celbridge.WorkspaceUI.Views.Controls;
 /// </summary>
 public sealed partial class UtilityButton : UserControl
 {
+    private readonly IStringLocalizer _stringLocalizer;
+
     // Whether the pointer is over the cell. Combines with the selection inputs to pick the visual state.
     private bool _isPointerOver;
+
+    // The tooltip that names the button's item, and the label of the button's pip. The tooltip on screen joins
+    // the two.
+    private string _tooltip = string.Empty;
+    private string _pipLabel = string.Empty;
 
     private Storyboard? _attentionStoryboard;
 
@@ -30,6 +38,8 @@ public sealed partial class UtilityButton : UserControl
 
     public UtilityButton()
     {
+        _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
+
         this.InitializeComponent();
 
         // Re-apply the visual state once loaded so the initial selection renders even if IsSelected was set
@@ -66,11 +76,17 @@ public sealed partial class UtilityButton : UserControl
         IconElement.IconName = iconName;
     }
 
+    /// <summary>
+    /// Sets the tooltip that names the button's item. The tooltip is also the button's accessible name.
+    /// </summary>
     public void SetTooltip(string tooltip)
     {
-        ToolTipService.SetToolTip(ButtonElement, tooltip);
+        _tooltip = tooltip;
+
         ToolTipService.SetPlacement(ButtonElement, PlacementMode.Right);
         AutomationProperties.SetName(ButtonElement, tooltip);
+
+        ApplyTooltip();
     }
 
     public void SetAutomationId(string automationId)
@@ -79,11 +95,29 @@ public sealed partial class UtilityButton : UserControl
     }
 
     /// <summary>
-    /// Shows or hides the caution pip reporting that this surface has something the user should look at.
+    /// Shows the status pip in the color for the kind, or hides it for a null kind. A label adds a line to the
+    /// tooltip and becomes the button's help text. A pulsing pip fades out and back in every few seconds.
     /// </summary>
-    public void SetIssuePipVisible(bool isVisible)
+    public void SetPip(PipKind? kind, string label, bool isPulsing)
     {
-        IssuePip.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+        PipElement.Kind = kind;
+        PipElement.IsPulsing = isPulsing;
+
+        _pipLabel = kind is null ? string.Empty : label;
+        AutomationProperties.SetHelpText(ButtonElement, _pipLabel);
+
+        ApplyTooltip();
+    }
+
+    private void ApplyTooltip()
+    {
+        var tooltip = _tooltip;
+        if (!string.IsNullOrEmpty(_pipLabel))
+        {
+            tooltip = _stringLocalizer.GetString("StatusPip_Tooltip_WithLabel", _tooltip, _pipLabel);
+        }
+
+        ToolTipService.SetToolTip(ButtonElement, tooltip);
     }
 
     /// <summary>

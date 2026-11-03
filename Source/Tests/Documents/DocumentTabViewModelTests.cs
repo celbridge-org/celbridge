@@ -10,9 +10,9 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.Tests.Documents;
 
 /// <summary>
-/// Tests for DocumentTabViewModel close-path behaviour and the menu predicates derived from its file
-/// resource. The save-failure tolerance is load-bearing for locked or otherwise read-only documents,
-/// where the save will never succeed and the close path must still complete.
+/// Tests for DocumentTabViewModel: the close path, the editor's pip, and the menu predicates derived from the
+/// tab's file resource. The save-failure tolerance is load-bearing for locked or otherwise read-only
+/// documents, where the save will never succeed and the close path must still complete.
 /// </summary>
 [TestFixture]
 public class DocumentTabViewModelTests
@@ -431,6 +431,79 @@ public class DocumentTabViewModelTests
         viewModel.TabTooltip.Should()
             .StartWith("DocumentTab_Tooltip_SaveFailed(")
             .And.Contain("C:/project/locked.md");
+    }
+
+    [Test]
+    public void APipChange_ForTheTabsResource_SetsTheTabsPip()
+    {
+        var fileResource = new ResourceKey("notes.md");
+        var viewModel = CreateViewModel(fileResource);
+        var pip = new WorkspaceItemPip(PipKind.Alert, "Syncing", IsPulsing: true);
+
+        _messengerService.Send(new WorkspaceItemPipChangedMessage(fileResource, pip));
+
+        viewModel.Pip.Should().Be(pip);
+        viewModel.PipKind.Should().Be(PipKind.Alert);
+        viewModel.PipLabel.Should().Be("Syncing");
+        viewModel.IsPipPulsing.Should().BeTrue();
+
+        _messengerService.Send(new WorkspaceItemPipChangedMessage(fileResource, null));
+
+        viewModel.PipKind.Should().BeNull();
+        viewModel.PipLabel.Should().BeEmpty();
+        viewModel.IsPipPulsing.Should().BeFalse();
+    }
+
+    [Test]
+    public void APipChange_ForAnotherResource_IsIgnored()
+    {
+        var viewModel = CreateViewModel(new ResourceKey("notes.md"));
+        var pip = new WorkspaceItemPip(PipKind.Alert, "Syncing", IsPulsing: false);
+
+        _messengerService.Send(new WorkspaceItemPipChangedMessage(new ResourceKey("other.md"), pip));
+
+        viewModel.Pip.Should().BeNull();
+    }
+
+    [Test]
+    public void SettingTheView_ReadsThePipTheViewAlreadyHas()
+    {
+        // A docked utility's new tab missed the pip change, which was sent before the tab existed.
+        var pip = new WorkspaceItemPip(PipKind.Notice, "Low disk space", IsPulsing: false);
+        var documentView = Substitute.For<IDocumentView>();
+        documentView.Pip.Returns(pip);
+
+        var viewModel = CreateViewModel(new ResourceKey("utils:acme.tools._tools"), documentView);
+
+        viewModel.Pip.Should().Be(pip);
+    }
+
+    [Test]
+    public void TabTooltip_AddsThePipLabelBelowTheDescription()
+    {
+        var fileResource = new ResourceKey("notes.md");
+        var viewModel = CreateViewModel(fileResource);
+        viewModel.FilePath = "C:/project/notes.md";
+
+        _messengerService.Send(new WorkspaceItemPipChangedMessage(fileResource, new WorkspaceItemPip(PipKind.Neutral, "Syncing", IsPulsing: false)));
+
+        viewModel.TabTooltip.Should().Be("StatusPip_Tooltip_WithLabel(C:/project/notes.md, Syncing)");
+    }
+
+    [Test]
+    public void TabTooltip_SaysTheFileCouldNotBeSaved_BelowThePipLabel()
+    {
+        var fileResource = new ResourceKey("notes.md");
+        _workspaceWrapper.IsWorkspaceLoaded.Returns(true);
+        _workspaceService.GetRetryingResources().Returns(new[] { fileResource });
+
+        var viewModel = CreateViewModel(fileResource);
+        viewModel.FilePath = "C:/project/notes.md";
+
+        _messengerService.Send(new WorkspaceItemPipChangedMessage(fileResource, new WorkspaceItemPip(PipKind.Neutral, "Syncing", IsPulsing: false)));
+
+        viewModel.TabTooltip.Should().Be(
+            "DocumentTab_Tooltip_SaveFailed(StatusPip_Tooltip_WithLabel(C:/project/notes.md, Syncing))");
     }
 
     [Test]

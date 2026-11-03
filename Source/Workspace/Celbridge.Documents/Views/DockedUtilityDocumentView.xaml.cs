@@ -53,6 +53,8 @@ public sealed partial class DockedUtilityDocumentView : DocumentView
 
     public override IEditTarget EditTarget => _controller;
 
+    public override WorkspaceItemPip? Pip => _controller.Pip;
+
     public override void SetAccessibleName(string name)
     {
         _controller.SetAccessibleName(name);

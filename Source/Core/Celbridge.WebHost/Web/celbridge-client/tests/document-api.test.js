@@ -59,6 +59,60 @@ describe('DocumentAPI.writeReport', () => {
     });
 });
 
+describe('DocumentAPI pip', () => {
+    function createTransport() {
+        const requests = [];
+
+        return {
+            requests,
+            async request(method, params) {
+                requests.push({ method, params });
+                return {};
+            }
+        };
+    }
+
+    it('sends setPip with the kind and the label, and no pulse by default', async () => {
+        const transport = createTransport();
+
+        await new DocumentAPI(transport).setPip('alert', 'Syncing');
+
+        expect(transport.requests).toEqual([
+            { method: 'document/setPip', params: { kind: 'alert', label: 'Syncing', pulse: false } }
+        ]);
+    });
+
+    it('sends the pulse the options ask for', async () => {
+        const transport = createTransport();
+
+        await new DocumentAPI(transport).setPip('neutral', 'Syncing', { pulse: true });
+
+        expect(transport.requests).toEqual([
+            { method: 'document/setPip', params: { kind: 'neutral', label: 'Syncing', pulse: true } }
+        ]);
+    });
+
+    it('sends clearPip with no parameters', async () => {
+        const transport = createTransport();
+
+        await new DocumentAPI(transport).clearPip();
+
+        expect(transport.requests).toEqual([
+            { method: 'document/clearPip', params: {} }
+        ]);
+    });
+
+    it('rejects when the host refuses the pip', async () => {
+        const transport = {
+            async request() {
+                throw new Error("Unknown pip kind: 'urgent'.");
+            }
+        };
+
+        await expect(new DocumentAPI(transport).setPip('urgent', 'Syncing')).rejects.toThrow('urgent');
+    });
+});
+
 describe('DocumentAPI.onRestoreState', () => {
     function createHostedDocument() {
         const sent = [];

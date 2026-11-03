@@ -192,6 +192,9 @@ public abstract partial class DocumentView : UserControl, IDocumentView
         return Task.CompletedTask;
     }
 
+    // Only a custom editor's page sets a pip.
+    public virtual WorkspaceItemPip? Pip => null;
+
     // A document with no hosted page has nothing that can stop responding.
     public virtual WebViewHealth GetHealth() => WebViewHealth.Healthy;
 

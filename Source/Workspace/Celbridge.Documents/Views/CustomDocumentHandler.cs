@@ -4,12 +4,13 @@ using Celbridge.Logging;
 using Celbridge.Projects;
 using Celbridge.Reports;
 using Celbridge.Utilities;
+using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Views;
 
 /// <summary>
 /// Handles IHostDocument RPC methods for contribution document views.
-/// Manages document initialization, loading, saving, change tracking, and report writing.
+/// Manages document initialization, loading, saving, change tracking, report writing and the editor's status pip.
 /// </summary>
 internal sealed class CustomDocumentHandler : IHostDocument
 {
@@ -19,6 +20,7 @@ internal sealed class CustomDocumentHandler : IHostDocument
     private readonly IReportWriter _reportWriter;
     private readonly Func<DocumentMetadata> _createMetadata;
     private readonly Func<bool> _completeSave;
+    private readonly Action<WorkspaceItemPip?> _setPip;
 
     /// <summary>
     /// Set by the owning view before requesting a save from JS.
@@ -38,7 +40,8 @@ internal sealed class CustomDocumentHandler : IHostDocument
         IProjectService projectService,
         IReportWriter reportWriter,
         Func<DocumentMetadata> createMetadata,
-        Func<bool> completeSave)
+        Func<bool> completeSave,
+        Action<WorkspaceItemPip?> setPip)
     {
         _viewModel = viewModel;
         _logger = logger;
@@ -46,11 +49,15 @@ internal sealed class CustomDocumentHandler : IHostDocument
         _reportWriter = reportWriter;
         _createMetadata = createMetadata;
         _completeSave = completeSave;
+        _setPip = setPip;
     }
 
     public async Task<InitializeResult> InitializeAsync(string protocolVersion)
     {
         DocumentRpcMethods.ValidateProtocolVersion(protocolVersion);
+
+        // A page that starts again, for any reason, starts with no pip.
+        _setPip(null);
 
         var content = await _viewModel.LoadTextContentAsync();
         var metadata = _createMetadata();
@@ -137,6 +144,40 @@ internal sealed class CustomDocumentHandler : IHostDocument
         return new WriteReportResult(reportResource.ToString());
     }
 
+    public async Task<SetPipResult> SetPipAsync(string kind, string label, bool pulse = false)
+    {
+        await Task.CompletedTask;
+
+        // An unknown kind is a mistake in the editor. A guessed kind could show an alert in a calmer color and
+        // mislead the user.
+        if (!TryParsePipKind(kind, out var pipKind))
+        {
+            throw new ArgumentException(
+                $"Unknown pip kind: '{kind}'. Expected 'neutral', 'success', 'notice' or 'alert'.",
+                nameof(kind));
+        }
+
+        var firstLine = ReadFirstLine(label);
+        if (firstLine.Length == 0)
+        {
+            throw new ArgumentException("Pip label is empty.", nameof(label));
+        }
+
+        var pip = new WorkspaceItemPip(pipKind, firstLine, pulse);
+        _setPip(pip);
+
+        return new SetPipResult();
+    }
+
+    public async Task<ClearPipResult> ClearPipAsync()
+    {
+        await Task.CompletedTask;
+
+        _setPip(null);
+
+        return new ClearPipResult();
+    }
+
     public void OnDocumentChanged()
     {
         _viewModel.OnDataChanged();
@@ -157,5 +198,46 @@ internal sealed class CustomDocumentHandler : IHostDocument
         var detail = string.IsNullOrEmpty(error) ? "no detail reported" : error;
 
         _logger.LogError($"Editor failed to import '{_viewModel.FileResource}': {detail}");
+    }
+
+    private static bool TryParsePipKind(string kind, out PipKind parsedKind)
+    {
+        switch (kind?.ToLowerInvariant())
+        {
+            case "neutral":
+                parsedKind = PipKind.Neutral;
+                return true;
+
+            case "success":
+                parsedKind = PipKind.Success;
+                return true;
+
+            case "notice":
+                parsedKind = PipKind.Notice;
+                return true;
+
+            case "alert":
+                parsedKind = PipKind.Alert;
+                return true;
+
+            default:
+                parsedKind = PipKind.Neutral;
+                return false;
+        }
+    }
+
+    // Returns the first line of the label with the surrounding whitespace removed, or an empty string for a
+    // label with no text.
+    private static string ReadFirstLine(string? label)
+    {
+        if (string.IsNullOrWhiteSpace(label))
+        {
+            return string.Empty;
+        }
+
+        var lines = label.Trim().Split('\n');
+        var firstLine = lines[0].Trim();
+
+        return firstLine;
     }
 }

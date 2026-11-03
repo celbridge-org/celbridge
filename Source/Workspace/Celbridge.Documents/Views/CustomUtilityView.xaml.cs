@@ -152,6 +152,8 @@ public sealed partial class CustomUtilityView : UserControl, IWorkspaceItem
 
     public ResourceKey FileResource => _viewModel.FileResource;
 
+    public WorkspaceItemPip? Pip => _controller.Pip;
+
     public Result<bool> UpdateSaveTimer(double deltaTime)
     {
         return _viewModel.UpdateSaveTimer(deltaTime);
