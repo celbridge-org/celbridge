@@ -18,11 +18,11 @@ namespace Celbridge.Tests.Documents;
 /// and a page that starts again starts with no pip.
 /// </summary>
 [TestFixture]
-public class CustomDocumentHandlerPipTests
+public class CustomDocumentRpcHandlerPipTests
 {
     private IServiceProvider? _previousServiceProvider;
     private CustomDocumentViewModel _viewModel = null!;
-    private CustomDocumentHandler _handler = null!;
+    private CustomDocumentRpcHandler _handler = null!;
     private List<WorkspaceItemPip?> _reportedPips = null!;
 
     [SetUp]
@@ -57,9 +57,9 @@ public class CustomDocumentHandlerPipTests
 
         var metadata = new DocumentMetadata("C:/Projects/Acme/notes.md", "notes.md", "notes.md", "en");
 
-        _handler = new CustomDocumentHandler(
+        _handler = new CustomDocumentRpcHandler(
             _viewModel,
-            Substitute.For<ILogger<CustomDocumentHandlerPipTests>>(),
+            Substitute.For<ILogger<CustomDocumentRpcHandlerPipTests>>(),
             Substitute.For<IProjectService>(),
             Substitute.For<IReportWriter>(),
             () => metadata,

@@ -26,11 +26,11 @@ public static class ToolRpcErrorCodes
 /// package editor and the tool surface, and the seam a privilege model plugs into. The only tools it
 /// withholds are the ones no package may reach regardless of what it declares.
 /// </summary>
-public sealed class PackageToolsHandler
+public sealed class PackageToolsRpcHandler
 {
     private readonly IMcpToolBridge _bridge;
 
-    public PackageToolsHandler(IMcpToolBridge bridge)
+    public PackageToolsRpcHandler(IMcpToolBridge bridge)
     {
         _bridge = bridge;
     }

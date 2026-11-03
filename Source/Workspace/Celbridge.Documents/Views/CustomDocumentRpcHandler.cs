@@ -12,7 +12,7 @@ namespace Celbridge.Documents.Views;
 /// Handles IHostDocument RPC methods for contribution document views.
 /// Manages document initialization, loading, saving, change tracking, report writing and the editor's status pip.
 /// </summary>
-internal sealed class CustomDocumentHandler : IHostDocument
+internal sealed class CustomDocumentRpcHandler : IHostDocument
 {
     private readonly CustomDocumentViewModel _viewModel;
     private readonly ILogger _logger;
@@ -34,7 +34,7 @@ internal sealed class CustomDocumentHandler : IHostDocument
     /// </summary>
     internal event Action<ContentLoadedReason>? ContentLoaded;
 
-    public CustomDocumentHandler(
+    public CustomDocumentRpcHandler(
         CustomDocumentViewModel viewModel,
         ILogger logger,
         IProjectService projectService,

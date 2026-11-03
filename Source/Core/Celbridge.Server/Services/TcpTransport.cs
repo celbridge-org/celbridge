@@ -122,7 +122,7 @@ public class TcpTransport : ITcpTransport
         // [JsonRpcMethod]-decorated methods that live on the concrete class.
         jsonRpc.AddLocalRpcTarget(_mcpToolBridge.GetType(), _mcpToolBridge, targetOptions);
 
-        // Register any additional targets (e.g. PythonRpcHandler)
+        // Register any additional targets (e.g. AgentReportBuilderRpcHandler)
         foreach (var target in _additionalTargets)
         {
             jsonRpc.AddLocalRpcTarget(target, targetOptions);
