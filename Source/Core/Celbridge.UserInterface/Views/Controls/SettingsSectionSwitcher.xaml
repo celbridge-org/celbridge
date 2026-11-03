@@ -53,7 +53,7 @@
                          Margin="0,-2,-7,0"
                          HorizontalAlignment="Right"
                          VerticalAlignment="Top"
-                         Fill="{ThemeResource SystemFillColorCautionBrush}"
+                         Fill="{ThemeResource CautionBrush}"
                          ToolTipService.ToolTip="{x:Bind IssueTooltip}"
                          Visibility="{x:Bind HasIssue, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
               </Grid>

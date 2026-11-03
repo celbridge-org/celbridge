@@ -24,7 +24,7 @@
                 </VisualState>
                 <VisualState x:Name="Notice">
                     <VisualState.Setters>
-                        <Setter Target="PipEllipse.Fill" Value="{ThemeResource SystemFillColorCautionBrush}" />
+                        <Setter Target="PipEllipse.Fill" Value="{ThemeResource CautionBrush}" />
                     </VisualState.Setters>
                 </VisualState>
                 <VisualState x:Name="Alert">

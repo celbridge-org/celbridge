@@ -58,7 +58,7 @@
                            VerticalAlignment="Center"
                            Margin="0,0,8,0"
                            FontSize="{StaticResource IconSizeMedium}"
-                           Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                           Foreground="{ThemeResource CautionBrush}"
                            Symbol="Warning"/>
 
             <controls:Icon x:Name="SaveIcon"

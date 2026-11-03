@@ -212,7 +212,7 @@
                            FontSize="16"
                            Margin="8,0,8,0"
                            VerticalAlignment="Center"
-                           Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                           Foreground="{ThemeResource CautionBrush}"
                            ToolTipService.ToolTip="{x:Bind IssuesTooltip}"
                            Visibility="{x:Bind HasIssues, Converter={StaticResource BoolToVisibilityConverter}}"/>
           </Grid>

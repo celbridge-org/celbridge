@@ -480,12 +480,15 @@
           "comment": "Fill behind a notice pinned in a settings section, outlined and read against warning-text. A tint of that colour rather than a tone of its own, so the callout reads as the same severity the text does."
         },
         "caution": {
-          "targets": ["css"],
+          "targets": ["xaml", "css"],
+          "xaml": "CautionColor",
+          "xamlBrush": "CautionBrush",
           "css": "--cel-caution",
-          "light": "#9D5D00",
+          "light": "#C77C00",
           "dark": "#FCE100",
           "published": true,
-          "comment": "Attention pip fill (WinUI SystemFillColorCaution), matching the pips on the native rail and tab strip."
+          "comment": "The caution colour of a graphic: a warning glyph or a status pip. Caution text keeps WinUI's SystemFillColorCaution, because text needs more contrast than a graphic does. Lighter than WinUI's caution, so a caution pip reads apart from a critical one at the same size, while holding 3:1 against the chrome.",
+          "darkComment": "WinUI's own caution, which already reads apart from the critical pink."
         },
         "search-highlight": {
           "targets": ["xaml", "css"],

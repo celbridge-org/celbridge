@@ -59,7 +59,9 @@
             <StackPanel Orientation="Horizontal"
                         VerticalAlignment="Center">
                 <!-- The identity glyph and the warning share one slot, so the tab keeps its width when a
-                     file cannot be written. The status pip sits on the glyph's corner and hides with it. -->
+                     file cannot be written. The status pip's negative margins place it beyond the glyph's
+                     top-right corner, so it clears the glyph without widening the slot. The pip hides with the
+                     glyph. -->
                 <Grid>
                     <Grid Visibility="{x:Bind ViewModel.IsSaveRetrying, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverted}">
                         <!-- Ordinary document tabs show a file-type icon. A tab a utility editor opens
@@ -85,7 +87,7 @@
                                             IsPulsing="{x:Bind ViewModel.IsPipPulsing, Mode=OneWay}"
                                             HorizontalAlignment="Right"
                                             VerticalAlignment="Top"
-                                            Margin="0,-1,-1,0" />
+                                            Margin="0,-5,-3,0" />
                     </Grid>
 
                     <controls:Icon x:Name="SaveRetryIcon"
@@ -97,7 +99,7 @@
                                    MinWidth="22"
                                    VerticalAlignment="Center"
                                    Margin="0"
-                                   Foreground="{ThemeResource SystemFillColorCautionBrush}" />
+                                   Foreground="{ThemeResource CautionBrush}" />
                 </Grid>
 
                 <!-- The hidden copy holds the label at the width it takes when the tab is selected and drawn
