@@ -10,7 +10,7 @@ The folder to start from. Pass the empty string for the project root.
 
 ### depth
 
-Maximum depth to traverse, counted from the root node. Folders at the depth limit that have unexplored children come back with `truncated: true` and an empty `children` array.
+Maximum depth to traverse, counted from the root node. Folders at the depth limit that have unexplored children come back with `truncated: true` and an empty `children` array. A glob keeps a folder at the depth limit only when the glob could match inside it.
 
 ### glob
 
@@ -18,8 +18,8 @@ Optional search filter applied to files. The rules are in `search_filters`. A fo
 
 ### type
 
-Filter by node type. `"file"` keeps only files (folders remain in the structure when they contain matches). `"folder"` keeps only folders. Empty string returns both.
+Filter by node type. `"file"` lists files and the folders that contain them, and leaves out each folder with no file below it. `"folder"` lists only folders, and a glob narrows them to the folders that have a matching file below them. Empty string returns both. Any other value fails the call.
 
 ## Returns
 
-A JSON tree of nodes. Each folder node has `name`, `type: "folder"`, `children`, and an optional `truncated` flag. Each file node has `name` and `type: "file"`. The root node always uses the folder shape, even when the resource itself is the project root.
+A JSON tree of nodes. Each folder node has `name`, `type: "folder"`, `children`, and an optional `truncated` flag. Each file node has `name` and `type: "file"`. The root node always uses the folder shape, even when the resource itself is the project root. The root comes back with its name and an empty `children` array when nothing matches.

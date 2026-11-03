@@ -1,6 +1,6 @@
 # file_search
 
-Finds files or folders by name or path with a search filter. The rules are in `search_filters`. `*.py` finds every `.py` file in the project, `src/**/*.cs` finds the `.cs` files under `src`, and `*.{ts,tsx}` finds both kinds.
+Finds files or folders by name or path with a search filter. The rules are in `search_filters`. `*.py` finds every `.py` file in the project, `src/**/*.cs` finds the `.cs` files under `src`, and `*.{ts,tsx}` finds both kinds. `type: "folder"` finds folders, and `"file"` or an empty string finds files. Any other value fails the call.
 
 ## Pattern semantics
 

@@ -26,6 +26,8 @@ public class ResourceCommandTests
     private IWorkspaceWrapper _workspaceWrapper = null!;
 
     private const string FolderName = "Folder";
+    private const string EmptyFolderName = "Empty";
+    private const string OtherFolderName = "Other";
     private const string RootFileName = "root.txt";
     private const string NestedFileName = "nested.md";
     private const string BinaryFileName = "image.png";
@@ -222,18 +224,9 @@ public class ResourceCommandTests
     [Test]
     public async Task GetFileTree_ForRoot_ReturnsFullTreeWithinDepth()
     {
-        var command = new GetFileTreeCommand(_workspaceWrapper)
-        {
-            Resource = ResourceKey.Empty,
-            Depth = 3
-        };
+        var root = await GetFileTreeRootAsync(depth: 3);
 
-        var result = await command.ExecuteAsync();
-
-        result.IsSuccess.Should().BeTrue();
-        var root = command.ResultValue.Root;
-        root.Should().NotBeNull();
-        root!.IsFolder.Should().BeTrue();
+        root.IsFolder.Should().BeTrue();
 
         var childNames = root.Children.Select(childNode => childNode.Name).ToList();
         childNames.Should().Contain(new[] { FolderName, RootFileName, BinaryFileName });
@@ -247,17 +240,8 @@ public class ResourceCommandTests
     [Test]
     public async Task GetFileTree_WithDepthOne_TruncatesNestedFolders()
     {
-        var command = new GetFileTreeCommand(_workspaceWrapper)
-        {
-            Resource = ResourceKey.Empty,
-            Depth = 1
-        };
+        var root = await GetFileTreeRootAsync(depth: 1);
 
-        var result = await command.ExecuteAsync();
-
-        result.IsSuccess.Should().BeTrue();
-        var root = command.ResultValue.Root;
-        Guard.IsNotNull(root);
         var subFolder = root.Children.SingleOrDefault(childNode => childNode.Name == FolderName);
         Guard.IsNotNull(subFolder);
 
@@ -269,18 +253,7 @@ public class ResourceCommandTests
     [Test]
     public async Task GetFileTree_WithGlob_FiltersFilesByPattern()
     {
-        var command = new GetFileTreeCommand(_workspaceWrapper)
-        {
-            Resource = ResourceKey.Empty,
-            Depth = 3,
-            Glob = "*.md"
-        };
-
-        var result = await command.ExecuteAsync();
-
-        result.IsSuccess.Should().BeTrue();
-        var root = command.ResultValue.Root;
-        Guard.IsNotNull(root);
+        var root = await GetFileTreeRootAsync(depth: 3, glob: "*.md");
 
         // No .md files at the root level, so only the Folder/ subtree survives.
         root.Children.Where(childNode => !childNode.IsFolder).Should().BeEmpty();
@@ -290,21 +263,123 @@ public class ResourceCommandTests
     }
 
     [Test]
-    public async Task GetFileTree_WithFileOnlyFilter_OmitsFolders()
+    public async Task GetFileTree_WithGlobMatchingNothing_ReturnsEmptyRootWithItsName()
+    {
+        var root = await GetFileTreeRootAsync(depth: 3, glob: "*.json");
+
+        root.Name.Should().Be(ResourceKey.DefaultRoot);
+        root.IsFolder.Should().BeTrue();
+        root.Children.Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task GetFileTree_WithGlobAtDepthLimit_LeavesOutFoldersTheGlobCannotReach()
+    {
+        var otherFolder = Path.Combine(_projectFolderPath, OtherFolderName);
+        Directory.CreateDirectory(otherFolder);
+        File.WriteAllText(Path.Combine(otherFolder, "other.md"), FileContents);
+
+        var root = await GetFileTreeRootAsync(depth: 1, glob: "Folder/*.md");
+
+        // The glob could match inside Folder, so Folder stays as a truncated node. The glob cannot match inside Other.
+        var subFolder = root.Children.Should().ContainSingle().Subject;
+        subFolder.Name.Should().Be(FolderName);
+        subFolder.Truncated.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task GetFileTree_WithDepthZero_TruncatesRoot()
+    {
+        var root = await GetFileTreeRootAsync(depth: 0);
+
+        root.Truncated.Should().BeTrue();
+        root.Children.Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task GetFileTree_WithFileOnlyFilter_KeepsFoldersThatContainFiles()
+    {
+        Directory.CreateDirectory(Path.Combine(_projectFolderPath, EmptyFolderName));
+
+        var root = await GetFileTreeRootAsync(depth: 3, typeFilter: "file");
+
+        // The empty folder has no file below it, so the tree leaves the folder out.
+        var expectedNames = new[]
+        {
+            FolderName,
+            RootFileName,
+            BinaryFileName
+        };
+        root.Children.Select(childNode => childNode.Name).Should().BeEquivalentTo(expectedNames);
+
+        var subFolder = root.Children.Single(childNode => childNode.Name == FolderName);
+        subFolder.Children.Should().ContainSingle(childNode => childNode.Name == NestedFileName);
+    }
+
+    [Test]
+    public async Task GetFileTree_WithFileOnlyFilterAndGlob_FindsNestedMatches()
+    {
+        var root = await GetFileTreeRootAsync(depth: 3, glob: "*.md", typeFilter: "file");
+
+        var subFolder = root.Children.Should().ContainSingle().Subject;
+        subFolder.Name.Should().Be(FolderName);
+        subFolder.Children.Should().ContainSingle(childNode => childNode.Name == NestedFileName);
+    }
+
+    [Test]
+    public async Task GetFileTree_WithFolderOnlyFilter_KeepsEveryFolder()
+    {
+        Directory.CreateDirectory(Path.Combine(_projectFolderPath, EmptyFolderName));
+
+        var root = await GetFileTreeRootAsync(depth: 3, typeFilter: "folder");
+
+        var expectedNames = new[]
+        {
+            FolderName,
+            EmptyFolderName
+        };
+        root.Children.Select(childNode => childNode.Name).Should().BeEquivalentTo(expectedNames);
+
+        var subFolder = root.Children.Single(childNode => childNode.Name == FolderName);
+        subFolder.Children.Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task GetFileTree_WithFolderOnlyFilterAndGlob_KeepsFoldersThatContainMatches()
+    {
+        var otherFolder = Path.Combine(_projectFolderPath, OtherFolderName);
+        Directory.CreateDirectory(otherFolder);
+        File.WriteAllText(Path.Combine(otherFolder, "other.txt"), FileContents);
+
+        var root = await GetFileTreeRootAsync(depth: 3, glob: "*.md", typeFilter: "folder");
+
+        var subFolder = root.Children.Should().ContainSingle().Subject;
+        subFolder.Name.Should().Be(FolderName);
+        subFolder.Children.Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task GetFileTree_TypeFilterIgnoresCase()
+    {
+        var root = await GetFileTreeRootAsync(depth: 3, typeFilter: "FOLDER");
+
+        var subFolder = root.Children.Should().ContainSingle().Subject;
+        subFolder.Name.Should().Be(FolderName);
+    }
+
+    [Test]
+    public async Task GetFileTree_WithUnknownTypeFilter_Fails()
     {
         var command = new GetFileTreeCommand(_workspaceWrapper)
         {
             Resource = ResourceKey.Empty,
-            Depth = 3,
-            TypeFilter = "file"
+            TypeFilter = "files"
         };
 
         var result = await command.ExecuteAsync();
 
-        result.IsSuccess.Should().BeTrue();
-        var root = command.ResultValue.Root;
-        Guard.IsNotNull(root);
-        root.Children.Should().OnlyContain(childNode => !childNode.IsFolder);
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("'files'");
     }
 
     // Registers a logs: root backed by a fresh temp folder pre-populated with the
@@ -374,7 +449,6 @@ public class ResourceCommandTests
 
             result.IsSuccess.Should().BeTrue();
             var root = command.ResultValue.Root;
-            Guard.IsNotNull(root);
 
             var errorsNode = root.Children.Single(childNode => childNode.Name == "errors");
             errorsNode.IsFolder.Should().BeTrue();
@@ -399,5 +473,24 @@ public class ResourceCommandTests
         result.IsSuccess.Should().BeTrue();
 
         return command.ResultValue;
+    }
+
+    // Runs GetFileTreeCommand from the project root and returns the root node of the tree.
+    private async Task<FileTreeSnapshotNode> GetFileTreeRootAsync(int depth, string glob = "", string typeFilter = "")
+    {
+        var command = new GetFileTreeCommand(_workspaceWrapper)
+        {
+            Resource = ResourceKey.Empty,
+            Depth = depth,
+            Glob = glob,
+            TypeFilter = typeFilter
+        };
+
+        var result = await command.ExecuteAsync();
+        result.IsSuccess.Should().BeTrue();
+
+        var root = command.ResultValue.Root;
+
+        return root;
     }
 }
