@@ -12,7 +12,7 @@ namespace Celbridge.Tests.Documents;
 /// the host refuses on the way in is the whole of what stops one report damaging another.
 /// </summary>
 [TestFixture]
-public class CustomDocumentHandlerTests
+public class CustomDocumentRpcHandlerTests
 {
     private const string ConvertReportJson = """
         {
@@ -46,7 +46,7 @@ public class CustomDocumentHandlerTests
     private string _testFolderPath = null!;
     private string _projectFolderPath = null!;
     private string _dataFolderPath = null!;
-    private CustomDocumentHandler _handler = null!;
+    private CustomDocumentRpcHandler _handler = null!;
 
     [SetUp]
     public void Setup()
@@ -54,7 +54,7 @@ public class CustomDocumentHandlerTests
         _testFolderPath = Path.Combine(
             Path.GetTempPath(),
             "Celbridge",
-            nameof(CustomDocumentHandlerTests),
+            nameof(CustomDocumentRpcHandlerTests),
             Guid.NewGuid().ToString("N"));
 
         // In the application, the data folder is outside the project folder.
@@ -73,9 +73,9 @@ public class CustomDocumentHandlerTests
             TestFileSystem.CreateLocal(),
             Substitute.For<ILogger<ReportWriter>>());
 
-        _handler = new CustomDocumentHandler(
+        _handler = new CustomDocumentRpcHandler(
             null!,
-            Substitute.For<ILogger<CustomDocumentHandlerTests>>(),
+            Substitute.For<ILogger<CustomDocumentRpcHandlerTests>>(),
             projectService,
             reportWriter,
             () => throw new NotSupportedException(),

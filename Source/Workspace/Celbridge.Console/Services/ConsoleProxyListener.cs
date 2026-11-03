@@ -49,7 +49,7 @@ internal sealed class ConsoleProxyListener : IDisposable
             // Bind one handshake target per connection so the handshake can attribute the connection, and
             // follow lost connections to stale the owning session's runners. Both must be wired before
             // listening starts.
-            _tcpTransport.AddRpcTargetFactory(connectionId => new SessionHandshakeHandler(_sessionService, connectionId));
+            _tcpTransport.AddRpcTargetFactory(connectionId => new SessionHandshakeRpcHandler(_sessionService, connectionId));
             _tcpTransport.ConnectionLost += OnConnectionLost;
 
             _listenerCancellation = new CancellationTokenSource();

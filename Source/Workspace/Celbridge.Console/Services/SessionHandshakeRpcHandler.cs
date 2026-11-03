@@ -7,12 +7,12 @@ namespace Celbridge.Console.Services;
 /// One instance is created per transport connection with that connection's id, so the registry can map the
 /// connection to the console that launched it.
 /// </summary>
-internal sealed class SessionHandshakeHandler
+internal sealed class SessionHandshakeRpcHandler
 {
     private readonly IConsoleSessionService _sessionService;
     private readonly int _connectionId;
 
-    public SessionHandshakeHandler(IConsoleSessionService sessionService, int connectionId)
+    public SessionHandshakeRpcHandler(IConsoleSessionService sessionService, int connectionId)
     {
         _sessionService = sessionService;
         _connectionId = connectionId;

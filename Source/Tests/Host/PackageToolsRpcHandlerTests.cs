@@ -7,7 +7,7 @@ using StreamJsonRpc;
 namespace Celbridge.Tests.Host;
 
 [TestFixture]
-public class PackageToolsHandlerTests
+public class PackageToolsRpcHandlerTests
 {
     [Test]
     public async Task ListToolsAsync_ReturnsEveryToolTheBridgeOffers()
@@ -21,7 +21,7 @@ public class PackageToolsHandlerTests
                 Descriptor("file_read",       "file.read")
             }
         };
-        var handler = new PackageToolsHandler(bridge);
+        var handler = new PackageToolsRpcHandler(bridge);
 
         var result = await handler.ListToolsAsync();
 
@@ -40,7 +40,7 @@ public class PackageToolsHandlerTests
                 Descriptor("webview_reload",  "webview.reload")
             }
         };
-        var handler = new PackageToolsHandler(bridge);
+        var handler = new PackageToolsRpcHandler(bridge);
 
         var result = await handler.ListToolsAsync();
 
@@ -60,7 +60,7 @@ public class PackageToolsHandlerTests
                 Descriptor("workshop_publish_page",    "workshop.publish_page")
             }
         };
-        var handler = new PackageToolsHandler(bridge);
+        var handler = new PackageToolsRpcHandler(bridge);
 
         var result = await handler.ListToolsAsync();
 
@@ -76,7 +76,7 @@ public class PackageToolsHandlerTests
         workshopTools.Should().NotBeEmpty("the workshop_* tools should be discoverable by reflection");
 
         var bridge = new StubToolBridge { Tools = workshopTools };
-        var handler = new PackageToolsHandler(bridge);
+        var handler = new PackageToolsRpcHandler(bridge);
 
         var result = await handler.ListToolsAsync();
 
@@ -87,7 +87,7 @@ public class PackageToolsHandlerTests
     public void CallToolAsync_WebViewNamespace_ThrowsDenied()
     {
         var bridge = new StubToolBridge();
-        var handler = new PackageToolsHandler(bridge);
+        var handler = new PackageToolsRpcHandler(bridge);
 
         Func<Task> act = () => handler.CallToolAsync("webview.eval", (JsonElement?)null);
 
@@ -104,7 +104,7 @@ public class PackageToolsHandlerTests
     public void CallToolAsync_WebViewMcpStyleName_ThrowsDenied()
     {
         var bridge = new StubToolBridge();
-        var handler = new PackageToolsHandler(bridge);
+        var handler = new PackageToolsRpcHandler(bridge);
 
         Func<Task> act = () => handler.CallToolAsync("webview_eval", (JsonElement?)null);
 
@@ -122,7 +122,7 @@ public class PackageToolsHandlerTests
     public void CallToolAsync_WorkshopTool_ThrowsDenied(string name)
     {
         var bridge = new StubToolBridge();
-        var handler = new PackageToolsHandler(bridge);
+        var handler = new PackageToolsRpcHandler(bridge);
 
         Func<Task> act = () => handler.CallToolAsync(name, (JsonElement?)null);
 
@@ -141,7 +141,7 @@ public class PackageToolsHandlerTests
     public async Task CallToolAsync_PackageListingAndArchiveTools_ReachTheBridge(string name)
     {
         var bridge = new StubToolBridge();
-        var handler = new PackageToolsHandler(bridge);
+        var handler = new PackageToolsRpcHandler(bridge);
 
         await handler.CallToolAsync(name, (JsonElement?)null);
 
@@ -155,7 +155,7 @@ public class PackageToolsHandlerTests
         {
             CallResult = new ToolCallResult(true, string.Empty, "0.2.5")
         };
-        var handler = new PackageToolsHandler(bridge);
+        var handler = new PackageToolsRpcHandler(bridge);
 
         var result = await handler.CallToolAsync("app.get_state", (JsonElement?)null);
 
@@ -168,7 +168,7 @@ public class PackageToolsHandlerTests
     public void CallToolAsync_EmptyName_ThrowsInvalidArgs()
     {
         var bridge = new StubToolBridge();
-        var handler = new PackageToolsHandler(bridge);
+        var handler = new PackageToolsRpcHandler(bridge);
 
         Func<Task> act = () => handler.CallToolAsync("", (JsonElement?)null);
 
@@ -186,7 +186,7 @@ public class PackageToolsHandlerTests
         {
             CallThrows = new InvalidOperationException("boom")
         };
-        var handler = new PackageToolsHandler(bridge);
+        var handler = new PackageToolsRpcHandler(bridge);
 
         Func<Task> act = () => handler.CallToolAsync("app.get_state", (JsonElement?)null);
 

@@ -15,10 +15,10 @@ namespace Celbridge.Tests.Documents;
 /// contract.
 /// </summary>
 [TestFixture]
-public class CustomDialogHandlerTests
+public class CustomDialogRpcHandlerTests
 {
     private IMessengerService _messengerService = null!;
-    private CustomDialogHandler _handler = null!;
+    private CustomDialogRpcHandler _handler = null!;
 
     private readonly List<EditorNotificationMessage> _sentMessages = new();
 
@@ -28,7 +28,7 @@ public class CustomDialogHandlerTests
         _messengerService = new MessengerService();
         _messengerService.Register<EditorNotificationMessage>(this, (_, message) => _sentMessages.Add(message));
 
-        _handler = new CustomDialogHandler(
+        _handler = new CustomDialogRpcHandler(
             Substitute.For<IDialogService>(),
             Substitute.For<IStringLocalizer>(),
             _messengerService,

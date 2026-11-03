@@ -1,7 +1,7 @@
 namespace Celbridge.Tests.Architecture;
 
 /// <summary>
-/// Guards the workshop boundary in the tool surface. PackageToolsHandler withholds the workshop_* prefix from
+/// Guards the workshop boundary in the tool surface. PackageToolsRpcHandler withholds the workshop_* prefix from
 /// package editors, so every tool that reaches the workshop through a workshop API client must be a workshop
 /// tool in Celbridge.Tools/Tools/Workshop, where the prefix covers it.
 /// </summary>

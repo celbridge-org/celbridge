@@ -77,11 +77,11 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     // Latest edit availability reported by the editor over the bridge. Drives CanPerformEdit.
     private EditAvailability _editAvailability = EditAvailability.None;
 
-    private CustomDocumentHandler? _documentHandler;
+    private CustomDocumentRpcHandler? _documentHandler;
 
     // The pip from the page's last setPip call, or null after a clear.
     private WorkspaceItemPip? _pip;
-    private PackageToolsHandler? _toolsHandler;
+    private PackageToolsRpcHandler? _toolsHandler;
 
     // A package-declared channel (e.g. the console terminal I/O bridge) registered as an additional RPC
     // target set, plus the host adapter it talks through. Null for editors whose package declares no
@@ -501,7 +501,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         Host.AddLocalRpcTarget<IHostInput>(this);
         Host.AddLocalRpcTarget<IHostContext>(this);
 
-        _documentHandler = new CustomDocumentHandler(
+        _documentHandler = new CustomDocumentRpcHandler(
             _viewModel,
             _logger,
             _projectService,
@@ -512,7 +512,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
         _documentHandler.ContentLoaded += SetContentLoaded;
 
-        var dialogHandler = new CustomDialogHandler(
+        var dialogHandler = new CustomDialogRpcHandler(
             _dialogService,
             _stringLocalizer,
             _messengerService,
@@ -524,8 +524,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         var mcpToolBridge = _serviceProvider.GetService<IMcpToolBridge>();
         if (mcpToolBridge is not null)
         {
-            _toolsHandler = new PackageToolsHandler(mcpToolBridge);
-            Host.AddLocalRpcTarget<PackageToolsHandler>(_toolsHandler);
+            _toolsHandler = new PackageToolsRpcHandler(mcpToolBridge);
+            Host.AddLocalRpcTarget<PackageToolsRpcHandler>(_toolsHandler);
         }
 
         // Attach a package-declared channel as an additional RPC target set. Must run before StartListening
