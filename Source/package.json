@@ -22,5 +22,10 @@
     "globals": "^17.11.0",
     "jsdom": "^29.0.0",
     "vitest": "^4.0.0"
+  },
+  "overrides": {
+    "eslint": {
+      "minimatch": "^11.0.1"
+    }
   }
 }
