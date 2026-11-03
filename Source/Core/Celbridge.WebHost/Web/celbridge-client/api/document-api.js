@@ -5,6 +5,8 @@
  * @typedef {import('../types.js').LoadResult} LoadResult
  * @typedef {import('../types.js').SaveResult} SaveResult
  * @typedef {import('../types.js').PipKind} PipKind
+ * @typedef {import('../types.js').WatchFilesOptions} WatchFilesOptions
+ * @typedef {import('../types.js').FileChange} FileChange
  */
 
 /**
@@ -47,6 +49,14 @@ export function projectUrl(resourceKey) {
 export class DocumentAPI {
     /** @type {import('../core/rpc-transport.js').RpcTransport} */
     #transport;
+
+    // The page picks each watch id, counting up from 1, so a handler is registered before the host can send a change.
+    #nextWatchId = 1;
+
+    /** @type {Map<number, (changes: FileChange[]) => void>} */
+    #watchHandlers = new Map();
+
+    #isListeningForFileChanges = false;
 
     /**
      * @param {import('../core/rpc-transport.js').RpcTransport} transport
@@ -189,6 +199,81 @@ export class DocumentAPI {
      */
     async clearPip() {
         await this.#transport.request('document/clearPip', {});
+    }
+
+    /**
+     * Starts a watch on the files in a root. The host calls the handler with each batch of changes to the files and
+     * folders that the filters match, made in Celbridge or outside it. A page can run several watches, each with
+     * its own handler. A watch never changes, so a page that wants other filters starts a new watch, then ends the
+     * old one. Start watches once `initialize()` has resolved, because initializing ends every watch on the page.
+     * `watchFiles` rejects when called before then.
+     *
+     * Each change says what is at the key when the change is delivered, not how the item changed. The same change
+     * can arrive twice. A changed folder may contain new or changed files, so list the folder again. A rename arrives
+     * as the old key absent and a file at the new key. When the host loses track of changes, the handler receives a
+     * change that names the root itself as a folder.
+     *
+     * @param {WatchFilesOptions} options - The root and the filters. Pass `{}` to follow every file and folder in
+     *   the project.
+     * @param {(changes: FileChange[]) => void} handler - Called with the changes of each batch.
+     * @returns {Promise<number>} - The watch id, to pass to `unwatchFiles`. The host rejects an unknown or
+     *   unwatched root, and a pattern it refuses.
+     */
+    async watchFiles(options, handler) {
+        if (typeof handler !== 'function') {
+            throw new TypeError('watchFiles needs a handler function.');
+        }
+
+        // Initializing ends every watch on the page, so a watch started before initializing would end unseen.
+        if (!this.#transport.isInitialized) {
+            throw new Error('watchFiles needs the client initialized. Await initialize() first.');
+        }
+
+        this.#listenForFileChanges();
+
+        const watchId = this.#nextWatchId++;
+        this.#watchHandlers.set(watchId, handler);
+
+        try {
+            await this.#transport.request('document/watchFiles', {
+                watchId,
+                root: options?.root ?? 'project:',
+                include: options?.include ?? '',
+                exclude: options?.exclude ?? ''
+            });
+        } catch (error) {
+            this.#watchHandlers.delete(watchId);
+            throw error;
+        }
+
+        return watchId;
+    }
+
+    /**
+     * Ends a watch. The handler receives no more changes, including any batch already on its way. Ending a watch
+     * twice is not an error.
+     * @param {number} watchId - The watch id from `watchFiles`.
+     * @returns {Promise<void>}
+     */
+    async unwatchFiles(watchId) {
+        this.#watchHandlers.delete(watchId);
+
+        await this.#transport.request('document/unwatchFiles', { watchId });
+    }
+
+    #listenForFileChanges() {
+        if (this.#isListeningForFileChanges) {
+            return;
+        }
+
+        this.#isListeningForFileChanges = true;
+        this.#transport.addEventListener('document/filesChanged', (params) => {
+            // A batch for a watch that has ended is dropped.
+            const handler = this.#watchHandlers.get(params?.watchId);
+            if (handler) {
+                handler(params.changes ?? []);
+            }
+        });
     }
 
     /**

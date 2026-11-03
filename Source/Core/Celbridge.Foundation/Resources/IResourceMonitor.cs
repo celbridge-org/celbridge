@@ -95,7 +95,7 @@ public interface IResourceMonitor
     /// subscription when the matcher can match a path inside the folder. The matcher is called on a worker thread,
     /// so it must not change after the call. To change the matcher, subscribe again before disposing the old
     /// subscription. A change can then reach both subscriptions, and none is missed. Fails for a root that is not
-    /// registered.
+    /// registered, and for a registered root that is not watched.
     /// </summary>
     Result<IMatcherSubscription> SubscribeToMatcher(
         string rootName,

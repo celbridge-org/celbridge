@@ -100,6 +100,44 @@ client.viewState.onChanged((viewState) => {
 - **`onRenamed(metadata)`** — the document was renamed or moved, and it stays open in the same editor. `metadata` carries the new `resourceKey`, `fileName` and `filePath`. Update anything the editor derived from them at `onContent`, such as a URL built with `projectUrl()` or a syntax mode chosen by extension. An editor that uses only its content can leave this out.
 - **`onRequestState()` / `onRestoreState(stateJson)`** — opaque string round-trip for scroll, selection, pending view state. Survives external reloads and session restore. Return `null` if nothing to preserve.
 
+## Watching files
+
+`onExternalChange` tells your editor when its own document changes. To follow other files, start a watch. `client.document.watchFiles(options, handler)` calls the handler with each batch of changes to the files and folders in a root that match the watch's filters. The changes include those Celbridge makes and those other programs make.
+
+```javascript
+const watchId = await client.document.watchFiles(
+    { root: 'project:', include: '*.py,*.js', exclude: 'history/' },
+    (changes) => {
+        for (const { resource, state } of changes) {
+            // state is 'file', 'folder' or 'absent'
+        }
+    });
+
+// Later
+await client.document.unwatchFiles(watchId);
+```
+
+`root` is `'project:'`, `'temp:'` or `'utils:'`, and defaults to `'project:'`. `include` and `exclude` take the same patterns as `file_grep`, relative to the root. The `search_filters` guide describes the patterns. Both default to empty, so `watchFiles({}, handler)` follows every file and folder in the project. The call rejects an unknown root, the `logs:` root and a refused pattern, with a message that says what is wrong.
+
+A page can run several watches at once, on one root or on several, and each watch calls its own handler. A watch never changes. To follow other patterns, start the new watch, then end the old one. A change can then reach both watches, and none is missed. Ending a watch twice is not an error.
+
+Start your watches once `client.initialize()` or `client.initializeDocument()` has resolved. `watchFiles` rejects when called earlier. Initializing ends every watch the page started. So a page that reloads starts with none, and starts the watches again. A watch also ends when the document closes or the project closes. A utility runs its watches for as long as the project is open, and keeps them while the utility moves between areas.
+
+### What a change says
+
+Each change is `{ resource, state }`. `resource` is the key with the root's prefix, like `'project:src/main.py'`, so you can pass it straight to `cel.file.read`. `state` says what is at the key when the change reaches you: `'file'`, `'folder'` or `'absent'`. A change does not say whether the item was created, modified or deleted. To know that, compare each change with your own record of the files.
+
+- **The same change can arrive twice.** Celbridge reports each of its own changes when the operation finishes, and the file watcher reports the change again a moment later. Make the handling of a change safe to repeat.
+- **Your own writes come back to you.** A watch follows every change in the watch's root, including your page's own writes. An editor that records a history inside the watched root excludes the history's folder in the watch's filter.
+- **A folder can stand for everything inside it.** When another program renames or deletes a folder, the change names the folder alone. The change reaches every watch with a filter that can match a path inside the folder. An absent folder means everything inside the folder is gone. A folder that exists may contain new or changed files, so list the folder again with `cel.file.list_contents` or `cel.file.get_tree`, using the watch's filter.
+- **A rename arrives as two changes**: the old key as absent and the new key as a file, usually in one batch.
+
+Celbridge sends each batch as soon as it is ready. An editor that wants fewer, larger steps collects the changes for a moment itself. A command that touches thousands of files sends every matching change. Narrow the filter to the files you need.
+
+### Lost changes
+
+Now and then the file watcher loses track of changes, after a very large burst of them for example. Each watch on that root then receives one change that names the root itself, like `'project:'`, with the state `'folder'`. The folder rule above covers it: list the whole root again with the watch's filter, and compare the listing with your record.
+
 ## Styling
 
 Link the shared stylesheet to inherit the host's fonts and colors, so a WebView editor reads as part of the native app rather than a foreign web page:

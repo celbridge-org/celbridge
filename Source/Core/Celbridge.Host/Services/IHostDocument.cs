@@ -43,6 +43,9 @@ public static class DocumentRpcMethods
     public const string WriteReport = "document/writeReport";
     public const string SetPip = "document/setPip";
     public const string ClearPip = "document/clearPip";
+    public const string WatchFiles = "document/watchFiles";
+    public const string UnwatchFiles = "document/unwatchFiles";
+    public const string FilesChanged = "document/filesChanged";
 
     /// <summary>
     /// Validates the protocol version from the WebView client.
@@ -106,6 +109,20 @@ public interface IHostDocument
     Task<ClearPipResult> ClearPipAsync();
 
     /// <summary>
+    /// Starts a watch on a root, under a watch id the page picks. The root is a root key, like "project:". The include
+    /// and exclude filters follow the search filters of the file tools. Each batch of changes that the filters match
+    /// goes to the page in a document/filesChanged notification with the watch id.
+    /// </summary>
+    [JsonRpcMethod(DocumentRpcMethods.WatchFiles)]
+    Task<WatchFilesResult> WatchFilesAsync(int watchId, string root = "project:", string include = "", string exclude = "");
+
+    /// <summary>
+    /// Ends the watch with the watch id. Ending a watch id that has no watch succeeds.
+    /// </summary>
+    [JsonRpcMethod(DocumentRpcMethods.UnwatchFiles)]
+    Task<UnwatchFilesResult> UnwatchFilesAsync(int watchId);
+
+    /// <summary>
     /// Called when the document content has changed in the WebView.
     /// </summary>
     [JsonRpcMethod(DocumentRpcMethods.Changed)]
@@ -149,6 +166,12 @@ public static class HostDocumentExtensions
     /// </summary>
     public static Task NotifyRenamedAsync(this CelbridgeHost host, DocumentMetadata metadata)
         => host.Rpc.NotifyWithParameterObjectAsync(DocumentRpcMethods.Renamed, new { metadata });
+
+    /// <summary>
+    /// Sends the WebView one batch of changes for the watch with the watch id.
+    /// </summary>
+    public static Task NotifyFilesChangedAsync(this CelbridgeHost host, int watchId, IReadOnlyList<WatchedFileChange> changes)
+        => host.Rpc.NotifyWithParameterObjectAsync(DocumentRpcMethods.FilesChanged, new { watchId, changes });
 
     /// <summary>
     /// Requests the WebView to return its current editor state as an opaque JSON string.

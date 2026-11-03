@@ -40,6 +40,8 @@ public class ClientApiSurfaceTests
             "onRestoreState",
             "save",
             "setPip",
+            "unwatchFiles",
+            "watchFiles",
             "writeReport"
         },
         ["api/input-api.js"] = new[]

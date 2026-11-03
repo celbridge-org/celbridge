@@ -40,6 +40,10 @@ The area survives a reload: a utility that was docked as a document when the pro
 
 A utility shows a status pip with the same `client.document.setPip` call as any editor. `document_editor_contributions` describes the call. The pip shows on the utility's rail button wherever the utility is. While the utility is docked as a document, the pip shows on the utility's tab as well. Moving the utility between areas keeps the pip, because the utility's page keeps running.
 
+## Watching files
+
+A utility watches files with the same `client.document.watchFiles` call as any editor. `document_editor_contributions` describes the call. A utility runs for as long as the project is open. Its watches therefore follow the files the whole time, while the utility is out of sight too. Moving the utility between areas keeps its watches.
+
 ## The `[utility]` manifest section
 
 A utility ships as a normal package with the standard two-file manifest. `type = "utility"` requires a `[utility]` section and forbids `[[file-types]]`.

@@ -501,14 +501,23 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         Host.AddLocalRpcTarget<IHostInput>(this);
         Host.AddLocalRpcTarget<IHostContext>(this);
 
+        var capturedHost = Host;
+        var workspaceWrapper = _serviceProvider.GetRequiredService<IWorkspaceWrapper>();
+        var resourceMonitor = workspaceWrapper.WorkspaceService.ResourceService.Monitor;
+
+        var callbacks = new CustomDocumentCallbacks(
+            CreateDocumentMetadata,    // Callback to construct document metadata on demand
+            CompleteSave,              // Callback to update state when saving has completed
+            SetPip,                    // Callback to report the pip the page sets
+            (watchId, changes) => capturedHost.NotifyFilesChangedAsync(watchId, changes));
+
         _documentHandler = new CustomDocumentRpcHandler(
             _viewModel,
             _logger,
             _projectService,
             _reportWriter,
-            CreateDocumentMetadata,    // Callback to construct document metadata on demand
-            CompleteSave,              // Callback to update state when saving has completed
-            SetPip);                   // Callback to report the pip the page sets
+            resourceMonitor,
+            callbacks);
 
         _documentHandler.ContentLoaded += SetContentLoaded;
 
@@ -538,7 +547,6 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         // Registering pushes the current snapshot, so it must run after StartListening. Seed writability
         // before registering so the connect push carries it.
         var stateService = _serviceProvider.GetRequiredService<IWebViewStateService>();
-        var capturedHost = Host;
         _appStateConnection = stateService.AppState.RegisterConnection(
             snapshot => capturedHost.Rpc.NotifyWithParameterObjectAsync(StateRpcMethods.AppStateChanged, snapshot));
 
@@ -711,9 +719,11 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         // The tool bridge and the focus registry drop the web view as it closes.
         _toolBridge = null;
 
+        // The page's watches end before the host is disposed, so no change goes to a disposed host.
         if (_documentHandler is not null)
         {
             _documentHandler.ContentLoaded -= SetContentLoaded;
+            _documentHandler.EndAllWatches();
         }
 
         _webView?.Dispose();
