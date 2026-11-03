@@ -972,6 +972,31 @@ public class FileToolTests
     }
 
     [Test]
+    public async Task Search_TypeFileInAnyCase_MatchesTheWalkedFiles()
+    {
+        UseWalkedItems(
+            WalkedFolder("docs"),
+            WalkedFile("docs/notes.md"));
+
+        var tools = new FileTools(_services);
+        var result = await tools.Search("*", type: "File");
+
+        ParseStringList(result).Should().Equal("project:docs/notes.md");
+    }
+
+    [Test]
+    public async Task Search_UnknownType_Fails()
+    {
+        UseWalkedItems(WalkedFile("readme.md"));
+
+        var tools = new FileTools(_services);
+        var result = await tools.Search("*.md", type: "files");
+
+        result.IsError.Should().BeTrue();
+        result.Content.OfType<TextContentBlock>().Single().Text.Should().Contain("'files'");
+    }
+
+    [Test]
     public async Task Search_IncludeMetadata_ReportsTheWalkedSizeAndModifiedTime()
     {
         UseWalkedItems(WalkedFile("notes.md", size: 42));

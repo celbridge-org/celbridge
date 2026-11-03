@@ -43,9 +43,7 @@ public partial class FileTools
         }
 
         var snapshot = getTreeResult.Value;
-        var rootNode = snapshot.Root is not null
-            ? ConvertNode(snapshot.Root)
-            : new TreeFolderNode(string.Empty, "folder", new List<object>());
+        var rootNode = ConvertNode(snapshot.Root);
 
         return ToolResponse.Success(SerializeJson(rootNode));
     }

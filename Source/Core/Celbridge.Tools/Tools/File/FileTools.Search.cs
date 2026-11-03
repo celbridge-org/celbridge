@@ -20,7 +20,14 @@ public partial class FileTools
         var resourceService = workspaceWrapper.WorkspaceService.ResourceService;
         var rootHandlerRegistry = resourceService.RootHandlers;
 
+        var isFileSearch = string.IsNullOrEmpty(type)
+            || string.Equals(type, "file", StringComparison.OrdinalIgnoreCase);
         var isFolderSearch = string.Equals(type, "folder", StringComparison.OrdinalIgnoreCase);
+        if (!isFileSearch
+            && !isFolderSearch)
+        {
+            return ToolResponse.Error($"Invalid type '{type}': must be \"file\" or \"folder\", or empty for files.");
+        }
 
         // A pattern that starts with another root's prefix (logs:, temp:) searches that root. Any other pattern searches
         // the project, after dropping any project: prefix. The rest of the pattern is a search filter, matched against
