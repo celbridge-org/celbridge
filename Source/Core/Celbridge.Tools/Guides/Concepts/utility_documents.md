@@ -36,9 +36,9 @@ The manifest's `dock-area` key names the document area a utility docks into. A m
 
 The area survives a reload: a utility that was docked as a document when the project closed reopens in the same tab position.
 
-## Showing a status
+## Showing a status pip
 
-A utility shows a status with the same `client.document.setStatus` call as any editor. `document_editor_contributions` describes the call. The pip shows on the utility's rail button wherever the utility is. While the utility is docked as a document, the pip shows on the utility's tab as well. Moving the utility between areas keeps the status, because the utility's page keeps running.
+A utility shows a status pip with the same `client.document.setPip` call as any editor. `document_editor_contributions` describes the call. The pip shows on the utility's rail button wherever the utility is. While the utility is docked as a document, the pip shows on the utility's tab as well. Moving the utility between areas keeps the pip, because the utility's page keeps running.
 
 ## The `[utility]` manifest section
 

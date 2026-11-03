@@ -8,23 +8,22 @@ using Celbridge.Reports;
 using Celbridge.Resources;
 using Celbridge.Tests.FileSystem;
 using Celbridge.Tests.Helpers;
-using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.Tests.Documents;
 
 /// <summary>
-/// Tests for the status half of the editor bridge. The host checks each new status from a page before any surface
-/// draws it, and a page that starts again starts with no status.
+/// Tests for the editor bridge's pip calls. The host checks each new pip from a page before any surface draws it,
+/// and a page that starts again starts with no pip.
 /// </summary>
 [TestFixture]
-public class CustomDocumentHandlerStatusTests
+public class CustomDocumentHandlerPipTests
 {
     private IServiceProvider? _previousServiceProvider;
     private CustomDocumentViewModel _viewModel = null!;
     private CustomDocumentHandler _handler = null!;
-    private List<DocumentStatus?> _reportedStatuses = null!;
+    private List<WorkspaceItemPip?> _reportedPips = null!;
 
     [SetUp]
     public void Setup()
@@ -54,18 +53,18 @@ public class CustomDocumentHandlerStatusTests
 
         _viewModel = new CustomDocumentViewModel(workspaceWrapper, TestFileSystem.CreateLocal(), []);
 
-        _reportedStatuses = new List<DocumentStatus?>();
+        _reportedPips = new List<WorkspaceItemPip?>();
 
         var metadata = new DocumentMetadata("C:/Projects/Acme/notes.md", "notes.md", "notes.md", "en");
 
         _handler = new CustomDocumentHandler(
             _viewModel,
-            Substitute.For<ILogger<CustomDocumentHandlerStatusTests>>(),
+            Substitute.For<ILogger<CustomDocumentHandlerPipTests>>(),
             Substitute.For<IProjectService>(),
             Substitute.For<IReportWriter>(),
             () => metadata,
             () => throw new NotSupportedException(),
-            status => _reportedStatuses.Add(status));
+            pip => _reportedPips.Add(pip));
     }
 
     [TearDown]
@@ -83,58 +82,66 @@ public class CustomDocumentHandlerStatusTests
         }
     }
 
-    [TestCase("info", StatusKind.Info)]
-    [TestCase("success", StatusKind.Success)]
-    [TestCase("warning", StatusKind.Warning)]
-    [TestCase("critical", StatusKind.Critical)]
-    public async Task SetStatus_ReportsTheKindAndTheLabel(string kind, StatusKind expectedKind)
+    [TestCase("neutral", PipKind.Neutral)]
+    [TestCase("success", PipKind.Success)]
+    [TestCase("notice", PipKind.Notice)]
+    [TestCase("alert", PipKind.Alert)]
+    public async Task SetPip_ReportsTheKindAndTheLabel(string kind, PipKind expectedKind)
     {
-        await _handler.SetStatusAsync(kind, "Syncing");
+        await _handler.SetPipAsync(kind, "Syncing");
 
-        _reportedStatuses.Should().Equal(new DocumentStatus(expectedKind, "Syncing"));
+        _reportedPips.Should().Equal(new WorkspaceItemPip(expectedKind, "Syncing", IsPulsing: false));
     }
 
     [Test]
-    public async Task SetStatus_AnUnknownKind_IsRefused()
+    public async Task SetPip_Pulses_WhenThePageAsks()
     {
-        var setStatus = () => _handler.SetStatusAsync("urgent", "Syncing");
+        await _handler.SetPipAsync("neutral", "Syncing", pulse: true);
 
-        await setStatus.Should().ThrowAsync<ArgumentException>().WithMessage("*'urgent'*");
-        _reportedStatuses.Should().BeEmpty();
+        _reportedPips.Should().Equal(new WorkspaceItemPip(PipKind.Neutral, "Syncing", IsPulsing: true));
+    }
+
+    [Test]
+    public async Task SetPip_AnUnknownKind_IsRefused()
+    {
+        var setPip = () => _handler.SetPipAsync("urgent", "Syncing");
+
+        await setPip.Should().ThrowAsync<ArgumentException>().WithMessage("*'urgent'*");
+        _reportedPips.Should().BeEmpty();
     }
 
     [TestCase("")]
     [TestCase("   ")]
     [TestCase("\n\n")]
-    public async Task SetStatus_AnEmptyLabel_IsRefused(string label)
+    public async Task SetPip_AnEmptyLabel_IsRefused(string label)
     {
-        var setStatus = () => _handler.SetStatusAsync("info", label);
+        var setPip = () => _handler.SetPipAsync("neutral", label);
 
-        await setStatus.Should().ThrowAsync<ArgumentException>();
-        _reportedStatuses.Should().BeEmpty();
+        await setPip.Should().ThrowAsync<ArgumentException>();
+        _reportedPips.Should().BeEmpty();
     }
 
     [Test]
-    public async Task SetStatus_KeepsOnlyTheFirstLineOfTheLabel()
+    public async Task SetPip_KeepsOnlyTheFirstLineOfTheLabel()
     {
-        await _handler.SetStatusAsync("critical", "Syncing\r\n3 files left");
+        await _handler.SetPipAsync("alert", "Syncing\r\n3 files left");
 
-        _reportedStatuses.Should().Equal(new DocumentStatus(StatusKind.Critical, "Syncing"));
+        _reportedPips.Should().Equal(new WorkspaceItemPip(PipKind.Alert, "Syncing", IsPulsing: false));
     }
 
     [Test]
-    public async Task ClearStatus_ReportsNoStatus()
+    public async Task ClearPip_ReportsNoPip()
     {
-        await _handler.ClearStatusAsync();
+        await _handler.ClearPipAsync();
 
-        _reportedStatuses.Should().Equal(new DocumentStatus?[] { null });
+        _reportedPips.Should().Equal(new WorkspaceItemPip?[] { null });
     }
 
     [Test]
-    public async Task Initialize_ClearsTheStatus()
+    public async Task Initialize_ClearsThePip()
     {
         await _handler.InitializeAsync(DocumentRpcMethods.CurrentProtocolVersion);
 
-        _reportedStatuses.Should().Equal(new DocumentStatus?[] { null });
+        _reportedPips.Should().Equal(new WorkspaceItemPip?[] { null });
     }
 }

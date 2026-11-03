@@ -122,7 +122,7 @@ public sealed partial class CustomDocumentView : DocumentView
 
     public override WebViewHealth GetHealth() => _controller.GetHealth();
 
-    public override DocumentStatus? Status => _controller.Status;
+    public override WorkspaceItemPip? Pip => _controller.Pip;
 
     public override async Task PrepareToClose()
     {

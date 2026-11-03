@@ -12,7 +12,7 @@ const client = celbridge;
 
 const notesInput = document.getElementById('notes-input');
 const showNotesButton = document.getElementById('show-notes');
-const toggleStatusButton = document.getElementById('toggle-status');
+const togglePipButton = document.getElementById('toggle-pip');
 
 const switcher = attachSectionSwitcher(document.getElementById('demo-switcher'));
 
@@ -60,26 +60,26 @@ async function showNotes() {
 
 showNotesButton.addEventListener('click', () => { showNotes(); });
 
-// The host clears the status whenever the page starts again. This flag says whether the page has set a status
-// since loading.
-let isStatusSet = false;
+// The host clears the pip whenever the page starts again. This flag says whether the page has set a pip since
+// loading.
+let isPipSet = false;
 
-async function toggleStatus() {
+async function togglePip() {
     try {
-        if (isStatusSet) {
-            await client.document.clearStatus();
+        if (isPipSet) {
+            await client.document.clearPip();
         } else {
-            await client.document.setStatus('critical', t('UtilityDemo_Status_Label'));
+            await client.document.setPip('alert', t('UtilityDemo_Status_Label'), { pulse: true });
         }
 
-        isStatusSet = !isStatusSet;
-        toggleStatusButton.textContent = isStatusSet ? 'Clear Status' : 'Set Status';
+        isPipSet = !isPipSet;
+        togglePipButton.textContent = isPipSet ? 'Clear Pip' : 'Set Pip';
     } catch (e) {
-        console.error('[UtilityDemo] Failed to change the status:', e);
+        console.error('[UtilityDemo] Failed to change the pip:', e);
     }
 }
 
-toggleStatusButton.addEventListener('click', () => { toggleStatus(); });
+togglePipButton.addEventListener('click', () => { togglePip(); });
 
 client.viewState.onChanged((viewState) => {
     if (viewState.writable) {

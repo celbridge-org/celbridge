@@ -32,7 +32,7 @@ public sealed record CustomEditorFocusContext(FocusPanelId Panel, Action OnFocus
 /// <summary>
 /// Drives a custom (WebView-based) editor: it acquires and disposes its web view, owns the JSON-RPC
 /// host channel and its RPC targets, mirrors app/view state, bridges the webview_* tools, coordinates saves
-/// and external reloads, keeps the editor's status, and implements the edit-target and link-routing behaviour.
+/// and external reloads, keeps the editor's status pip, and implements the edit-target and link-routing behaviour.
 /// </summary>
 public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarget
 {
@@ -79,8 +79,8 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
 
     private CustomDocumentHandler? _documentHandler;
 
-    // The status from the page's last setStatus call, or null after a clear.
-    private DocumentStatus? _status;
+    // The pip from the page's last setPip call, or null after a clear.
+    private WorkspaceItemPip? _pip;
     private PackageToolsHandler? _toolsHandler;
 
     // A package-declared channel (e.g. the console terminal I/O bridge) registered as an additional RPC
@@ -281,21 +281,21 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
     public bool HasUnsavedChanges => _viewModel.HasUnsavedChanges;
 
     /// <summary>
-    /// The current status of the editor's page, or null when the page has set none.
+    /// The pip the editor's page has set, or null when the page has set none.
     /// </summary>
-    public DocumentStatus? Status => _status;
+    public WorkspaceItemPip? Pip => _pip;
 
     // Sends the change to every surface that draws the editor's pip, keyed by the editor's resource.
-    private void SetStatus(DocumentStatus? status)
+    private void SetPip(WorkspaceItemPip? pip)
     {
-        if (_status == status)
+        if (_pip == pip)
         {
             return;
         }
 
-        _status = status;
+        _pip = pip;
 
-        var message = new DocumentStatusChangedMessage(_viewModel.FileResource, status);
+        var message = new WorkspaceItemPipChangedMessage(_viewModel.FileResource, pip);
         _messengerService.Send(message);
     }
 
@@ -508,7 +508,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             _reportWriter,
             CreateDocumentMetadata,    // Callback to construct document metadata on demand
             CompleteSave,              // Callback to update state when saving has completed
-            SetStatus);                // Callback to report the status the page sets
+            SetPip);                   // Callback to report the pip the page sets
 
         _documentHandler.ContentLoaded += SetContentLoaded;
 

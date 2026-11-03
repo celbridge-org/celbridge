@@ -80,7 +80,7 @@ public class CustomDocumentHandlerTests
             reportWriter,
             () => throw new NotSupportedException(),
             () => throw new NotSupportedException(),
-            status => throw new NotSupportedException());
+            pip => throw new NotSupportedException());
     }
 
     [TearDown]

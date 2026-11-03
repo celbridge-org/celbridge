@@ -112,23 +112,6 @@ public class UtilityServiceRegisterTests
     }
 
     [Test]
-    public async Task GetStatus_IsNull_ForAnItemThatIsNotALiveUtility()
-    {
-        var service = CreateService();
-
-        service.RegisterBuiltInUtilityItems(new List<UtilityRailItem>
-        {
-            CreateBuiltInUtilityItem(BuiltInUtilityIds.Explorer, "Explorer")
-        });
-
-        await service.CreateUtilitiesAsync(Array.Empty<ResolvedEditor>());
-
-        // Explorer is on the rail, but the Utility Panel owns the Explorer view, and no editor page backs it.
-        service.GetStatus(BuiltInUtilityIds.Explorer).Should().BeNull();
-        service.GetStatus(new EditorId("acme.tools")).Should().BeNull();
-    }
-
-    [Test]
     public void GetRailItems_IsEmptyBeforeTheUtilitiesAreCreated()
     {
         var service = CreateService();

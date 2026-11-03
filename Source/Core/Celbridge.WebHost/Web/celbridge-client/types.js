@@ -36,8 +36,8 @@
  */
 
 /**
- * The kind of state a status marks. The status pip shows each kind in its own color.
- * @typedef {'info' | 'success' | 'warning' | 'critical'} StatusKind
+ * The kind of state a status pip marks. The pip shows each kind in its own color.
+ * @typedef {'neutral' | 'success' | 'notice' | 'alert'} PipKind
  */
 
 export const Types = {};

@@ -3,14 +3,14 @@ using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Projects;
 using Celbridge.Reports;
-using Celbridge.UserInterface;
 using Celbridge.Utilities;
+using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Views;
 
 /// <summary>
 /// Handles IHostDocument RPC methods for contribution document views.
-/// Manages document initialization, loading, saving, change tracking, report writing and the editor's status.
+/// Manages document initialization, loading, saving, change tracking, report writing and the editor's status pip.
 /// </summary>
 internal sealed class CustomDocumentHandler : IHostDocument
 {
@@ -20,7 +20,7 @@ internal sealed class CustomDocumentHandler : IHostDocument
     private readonly IReportWriter _reportWriter;
     private readonly Func<DocumentMetadata> _createMetadata;
     private readonly Func<bool> _completeSave;
-    private readonly Action<DocumentStatus?> _setStatus;
+    private readonly Action<WorkspaceItemPip?> _setPip;
 
     /// <summary>
     /// Set by the owning view before requesting a save from JS.
@@ -41,7 +41,7 @@ internal sealed class CustomDocumentHandler : IHostDocument
         IReportWriter reportWriter,
         Func<DocumentMetadata> createMetadata,
         Func<bool> completeSave,
-        Action<DocumentStatus?> setStatus)
+        Action<WorkspaceItemPip?> setPip)
     {
         _viewModel = viewModel;
         _logger = logger;
@@ -49,15 +49,15 @@ internal sealed class CustomDocumentHandler : IHostDocument
         _reportWriter = reportWriter;
         _createMetadata = createMetadata;
         _completeSave = completeSave;
-        _setStatus = setStatus;
+        _setPip = setPip;
     }
 
     public async Task<InitializeResult> InitializeAsync(string protocolVersion)
     {
         DocumentRpcMethods.ValidateProtocolVersion(protocolVersion);
 
-        // A page that starts again, for any reason, starts with no status.
-        _setStatus(null);
+        // A page that starts again, for any reason, starts with no pip.
+        _setPip(null);
 
         var content = await _viewModel.LoadTextContentAsync();
         var metadata = _createMetadata();
@@ -144,38 +144,38 @@ internal sealed class CustomDocumentHandler : IHostDocument
         return new WriteReportResult(reportResource.ToString());
     }
 
-    public async Task<SetStatusResult> SetStatusAsync(string kind, string label)
+    public async Task<SetPipResult> SetPipAsync(string kind, string label, bool pulse = false)
     {
         await Task.CompletedTask;
 
-        // An unknown kind is a mistake in the editor. A guessed kind could show an urgent state in a calmer color
-        // and mislead the user.
-        if (!TryParseStatusKind(kind, out var statusKind))
+        // An unknown kind is a mistake in the editor. A guessed kind could show an alert in a calmer color and
+        // mislead the user.
+        if (!TryParsePipKind(kind, out var pipKind))
         {
             throw new ArgumentException(
-                $"Unknown status kind: '{kind}'. Expected 'info', 'success', 'warning' or 'critical'.",
+                $"Unknown pip kind: '{kind}'. Expected 'neutral', 'success', 'notice' or 'alert'.",
                 nameof(kind));
         }
 
         var firstLine = ReadFirstLine(label);
         if (firstLine.Length == 0)
         {
-            throw new ArgumentException("Status label is empty.", nameof(label));
+            throw new ArgumentException("Pip label is empty.", nameof(label));
         }
 
-        var status = new DocumentStatus(statusKind, firstLine);
-        _setStatus(status);
+        var pip = new WorkspaceItemPip(pipKind, firstLine, pulse);
+        _setPip(pip);
 
-        return new SetStatusResult();
+        return new SetPipResult();
     }
 
-    public async Task<ClearStatusResult> ClearStatusAsync()
+    public async Task<ClearPipResult> ClearPipAsync()
     {
         await Task.CompletedTask;
 
-        _setStatus(null);
+        _setPip(null);
 
-        return new ClearStatusResult();
+        return new ClearPipResult();
     }
 
     public void OnDocumentChanged()
@@ -200,28 +200,28 @@ internal sealed class CustomDocumentHandler : IHostDocument
         _logger.LogError($"Editor failed to import '{_viewModel.FileResource}': {detail}");
     }
 
-    private static bool TryParseStatusKind(string kind, out StatusKind parsedKind)
+    private static bool TryParsePipKind(string kind, out PipKind parsedKind)
     {
         switch (kind?.ToLowerInvariant())
         {
-            case "info":
-                parsedKind = StatusKind.Info;
+            case "neutral":
+                parsedKind = PipKind.Neutral;
                 return true;
 
             case "success":
-                parsedKind = StatusKind.Success;
+                parsedKind = PipKind.Success;
                 return true;
 
-            case "warning":
-                parsedKind = StatusKind.Warning;
+            case "notice":
+                parsedKind = PipKind.Notice;
                 return true;
 
-            case "critical":
-                parsedKind = StatusKind.Critical;
+            case "alert":
+                parsedKind = PipKind.Alert;
                 return true;
 
             default:
-                parsedKind = StatusKind.Info;
+                parsedKind = PipKind.Neutral;
                 return false;
         }
     }

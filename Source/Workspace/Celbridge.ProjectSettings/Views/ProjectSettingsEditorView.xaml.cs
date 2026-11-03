@@ -264,8 +264,8 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
         await Task.CompletedTask;
     }
 
-    // A status comes from an editor page, and the settings form is native.
-    public DocumentStatus? Status => null;
+    // A pip comes from an editor page, and the settings form is native.
+    public WorkspaceItemPip? Pip => null;
 
     public WebViewHealth GetHealth() => WebViewHealth.Healthy;
 

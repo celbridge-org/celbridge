@@ -12,7 +12,7 @@
     <Grid>
         <VisualStateManager.VisualStateGroups>
             <VisualStateGroup x:Name="KindStates">
-                <VisualState x:Name="Info">
+                <VisualState x:Name="Neutral">
                     <VisualState.Setters>
                         <Setter Target="PipEllipse.Fill" Value="{ThemeResource AccentBrush}" />
                     </VisualState.Setters>
@@ -22,12 +22,12 @@
                         <Setter Target="PipEllipse.Fill" Value="{ThemeResource SystemFillColorSuccessBrush}" />
                     </VisualState.Setters>
                 </VisualState>
-                <VisualState x:Name="Warning">
+                <VisualState x:Name="Notice">
                     <VisualState.Setters>
                         <Setter Target="PipEllipse.Fill" Value="{ThemeResource SystemFillColorCautionBrush}" />
                     </VisualState.Setters>
                 </VisualState>
-                <VisualState x:Name="Critical">
+                <VisualState x:Name="Alert">
                     <VisualState.Setters>
                         <Setter Target="PipEllipse.Fill" Value="{ThemeResource SystemFillColorCriticalBrush}" />
                     </VisualState.Setters>

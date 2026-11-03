@@ -9,7 +9,7 @@
     xmlns:services="using:Celbridge.UserInterface.Services"
     DataContext="{x:Bind ViewModel}"
     AutomationProperties.Name="{x:Bind ViewModel.DocumentName, Mode=OneWay}"
-    AutomationProperties.HelpText="{x:Bind ViewModel.StatusLabel, Mode=OneWay}"
+    AutomationProperties.HelpText="{x:Bind ViewModel.PipLabel, Mode=OneWay}"
     VerticalContentAlignment="Stretch"
     DoubleTapped="DocumentTab_DoubleTapped"
     Tapped="DocumentTab_Tapped"
@@ -81,7 +81,8 @@
                                        Visibility="{x:Bind ViewModel.IsUtilityEditor, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
 
                         <controls:StatusPip x:Name="TabStatusPip"
-                                            Kind="{x:Bind ViewModel.StatusKind, Mode=OneWay}"
+                                            Kind="{x:Bind ViewModel.PipKind, Mode=OneWay}"
+                                            IsPulsing="{x:Bind ViewModel.IsPipPulsing, Mode=OneWay}"
                                             HorizontalAlignment="Right"
                                             VerticalAlignment="Top"
                                             Margin="0,-1,-1,0" />

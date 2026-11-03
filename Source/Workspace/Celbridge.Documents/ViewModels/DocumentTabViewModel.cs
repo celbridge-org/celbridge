@@ -1,7 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Logging;
 using Celbridge.Messaging;
-using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Localization;
@@ -50,10 +49,10 @@ public partial class DocumentTabViewModel : ObservableObject
     private bool _isSaveRetrying;
 
     /// <summary>
-    /// The current status of the tab's editor, or null when the editor has set none.
+    /// The pip the tab's editor has set, or null when the editor has set none.
     /// </summary>
     [ObservableProperty]
-    private DocumentStatus? _status;
+    private WorkspaceItemPip? _pip;
 
     /// <summary>
     /// True when this tab borrows a utility's live view rather than holding a document of its own. Such a
@@ -110,21 +109,26 @@ public partial class DocumentTabViewModel : ObservableObject
     public bool CanRevealInExplorer => FileResource.Root == ResourceKey.DefaultRoot;
 
     /// <summary>
-    /// The kind of the editor's status, or null when the editor reports none. Picks the color of the tab's pip.
+    /// The kind of the editor's pip, or null when the editor has set none. The kind picks the pip's color.
     /// </summary>
-    public StatusKind? StatusKind => Status?.Kind;
+    public PipKind? PipKind => Pip?.Kind;
 
     /// <summary>
-    /// The label of the editor's status, or an empty string when the editor reports none. The label is the
-    /// tab's help text.
+    /// The label of the editor's pip, or an empty string when the editor has set none. The label is the tab's
+    /// help text.
     /// </summary>
-    public string StatusLabel => Status?.Label ?? string.Empty;
+    public string PipLabel => Pip?.Label ?? string.Empty;
+
+    /// <summary>
+    /// Returns true if the editor's pip pulses, and false when the editor has set none.
+    /// </summary>
+    public bool IsPipPulsing => Pip?.IsPulsing ?? false;
 
     /// <summary>
     /// Tooltip text for the tab. A utility tab shows its manifest description, falling back to its title
     /// when none is declared. An ordinary tab shows its file path plus the editor name when multiple
-    /// editors are available. The editor's status label goes on the line below. A last line says when the tab's
-    /// file cannot be written.
+    /// editors are available. The label of the editor's pip goes on the line below. A last line says when the
+    /// tab's file cannot be written.
     /// </summary>
     public string TabTooltip
     {
@@ -132,9 +136,9 @@ public partial class DocumentTabViewModel : ObservableObject
         {
             var description = ComposeTabDescription();
 
-            if (Status is not null)
+            if (Pip is not null)
             {
-                description = _stringLocalizer.GetString("StatusPip_Tooltip_WithLabel", description, Status.Label);
+                description = _stringLocalizer.GetString("StatusPip_Tooltip_WithLabel", description, Pip.Label);
             }
 
             if (!IsSaveRetrying)
@@ -200,7 +204,7 @@ public partial class DocumentTabViewModel : ObservableObject
 
     /// <summary>
     /// The tab's document view. Setting the view gives the view the tab's name as an accessible name, and gives
-    /// the tab the view's current status.
+    /// the tab the view's current pip.
     /// </summary>
     public IDocumentView? DocumentView
     {
@@ -210,8 +214,9 @@ public partial class DocumentTabViewModel : ObservableObject
             _documentView = value;
             _documentView?.SetAccessibleName(DocumentName);
 
-            // A status is sent only when it changes, so a docked utility's new tab reads the utility's status.
-            Status = _documentView?.Status;
+            // The change message is sent only when the pip changes, so a docked utility's new tab reads the
+            // utility's current pip.
+            Pip = _documentView?.Pip;
         }
     }
 
@@ -243,7 +248,7 @@ public partial class DocumentTabViewModel : ObservableObject
 
         _messengerService.Register<ResourceKeyChangedMessage>(this, OnResourceKeyChangedMessage);
         _messengerService.Register<WorkspaceItemSaveRetriesChangedMessage>(this, OnSaveRetriesChanged);
-        _messengerService.Register<DocumentStatusChangedMessage>(this, OnDocumentStatusChanged);
+        _messengerService.Register<WorkspaceItemPipChangedMessage>(this, OnWorkspaceItemPipChanged);
     }
 
     private void OnSaveRetriesChanged(object recipient, WorkspaceItemSaveRetriesChangedMessage message)
@@ -269,21 +274,22 @@ public partial class DocumentTabViewModel : ObservableObject
         OnPropertyChanged(nameof(TabTooltip));
     }
 
-    partial void OnStatusChanged(DocumentStatus? value)
+    partial void OnPipChanged(WorkspaceItemPip? value)
     {
-        OnPropertyChanged(nameof(StatusKind));
-        OnPropertyChanged(nameof(StatusLabel));
+        OnPropertyChanged(nameof(PipKind));
+        OnPropertyChanged(nameof(PipLabel));
+        OnPropertyChanged(nameof(IsPipPulsing));
         OnPropertyChanged(nameof(TabTooltip));
     }
 
-    private void OnDocumentStatusChanged(object recipient, DocumentStatusChangedMessage message)
+    private void OnWorkspaceItemPipChanged(object recipient, WorkspaceItemPipChangedMessage message)
     {
-        if (message.DocumentResource != FileResource)
+        if (message.FileResource != FileResource)
         {
             return;
         }
 
-        Status = message.Status;
+        Pip = message.Pip;
     }
 
     /// <summary>

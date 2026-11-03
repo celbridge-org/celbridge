@@ -395,6 +395,8 @@ public class WorkspaceItemSaverTests
 
         public WritableState WritableState { get; set; } = WritableState.Writable;
 
+        public WorkspaceItemPip? Pip => null;
+
         // Whether the pass finds the item due to be written. Ignored once SaveDelay is set.
         public bool IsDueToSave { get; set; } = true;
 

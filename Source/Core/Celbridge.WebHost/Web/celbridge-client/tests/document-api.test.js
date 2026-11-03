@@ -59,7 +59,7 @@ describe('DocumentAPI.writeReport', () => {
     });
 });
 
-describe('DocumentAPI status', () => {
+describe('DocumentAPI pip', () => {
     function createTransport() {
         const requests = [];
 
@@ -72,34 +72,44 @@ describe('DocumentAPI status', () => {
         };
     }
 
-    it('sends setStatus with the kind and the label', async () => {
+    it('sends setPip with the kind and the label, and no pulse by default', async () => {
         const transport = createTransport();
 
-        await new DocumentAPI(transport).setStatus('critical', 'Syncing');
+        await new DocumentAPI(transport).setPip('alert', 'Syncing');
 
         expect(transport.requests).toEqual([
-            { method: 'document/setStatus', params: { kind: 'critical', label: 'Syncing' } }
+            { method: 'document/setPip', params: { kind: 'alert', label: 'Syncing', pulse: false } }
         ]);
     });
 
-    it('sends clearStatus with no parameters', async () => {
+    it('sends the pulse the options ask for', async () => {
         const transport = createTransport();
 
-        await new DocumentAPI(transport).clearStatus();
+        await new DocumentAPI(transport).setPip('neutral', 'Syncing', { pulse: true });
 
         expect(transport.requests).toEqual([
-            { method: 'document/clearStatus', params: {} }
+            { method: 'document/setPip', params: { kind: 'neutral', label: 'Syncing', pulse: true } }
         ]);
     });
 
-    it('rejects when the host refuses the status', async () => {
+    it('sends clearPip with no parameters', async () => {
+        const transport = createTransport();
+
+        await new DocumentAPI(transport).clearPip();
+
+        expect(transport.requests).toEqual([
+            { method: 'document/clearPip', params: {} }
+        ]);
+    });
+
+    it('rejects when the host refuses the pip', async () => {
         const transport = {
             async request() {
-                throw new Error("Unknown status kind: 'urgent'.");
+                throw new Error("Unknown pip kind: 'urgent'.");
             }
         };
 
-        await expect(new DocumentAPI(transport).setStatus('urgent', 'Syncing')).rejects.toThrow('urgent');
+        await expect(new DocumentAPI(transport).setPip('urgent', 'Syncing')).rejects.toThrow('urgent');
     });
 });
 

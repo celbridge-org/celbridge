@@ -60,11 +60,11 @@ public record ShowNotificationResult();
 public record WriteReportResult(string Resource);
 
 /// <summary>
-/// Result of the document/setStatus request.
+/// Result of the document/setPip request.
 /// </summary>
-public record SetStatusResult();
+public record SetPipResult();
 
 /// <summary>
-/// Result of the document/clearStatus request.
+/// Result of the document/clearPip request.
 /// </summary>
-public record ClearStatusResult();
+public record ClearPipResult();

@@ -46,9 +46,9 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
     // click activates its document tab instead of showing it in the panel.
     private readonly Dictionary<EditorId, ResourceKey> _dockedUtilityResources = new();
 
-    // The contributed utilities by backing file, so a status change finds the utility's rail button. A
-    // document shortcut is left out. Closing its document sends no status change, so a pip there would stay
-    // after the close.
+    // The contributed utilities by backing file, so a pip change finds the utility's rail button. A document
+    // shortcut is left out. Closing its document sends no pip change, so a pip there would stay after the
+    // close.
     private readonly Dictionary<ResourceKey, EditorId> _utilityIdsByResource = new();
 
     // The document shortcuts, by rail id. A shortcut never occupies the panel, so its descriptor is what
@@ -365,9 +365,9 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         _messengerService.Register<AreaVisibilityChangedMessage>(this, OnAreaVisibilityChanged);
         ViewModel.SetPanelVisible(_layoutService.IsAreaVisible(WorkspaceArea.Utility));
 
-        // A utility's status is sent only when it changes, so the current statuses are read again here.
-        _messengerService.Register<DocumentStatusChangedMessage>(this, OnDocumentStatusChanged);
-        RefreshUtilityStatuses();
+        // The change message is sent only when a pip changes, so the rail reads each utility's current pip here.
+        _messengerService.Register<WorkspaceItemPipChangedMessage>(this, OnWorkspaceItemPipChanged);
+        RefreshUtilityPips();
     }
 
     private void UtilityPanel_Unloaded(object sender, RoutedEventArgs e)
@@ -375,7 +375,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         _messengerService.Unregister<PanelFocusChangedMessage>(this);
         _messengerService.Unregister<PackagesInitializedMessage>(this);
         _messengerService.Unregister<AreaVisibilityChangedMessage>(this);
-        _messengerService.Unregister<DocumentStatusChangedMessage>(this);
+        _messengerService.Unregister<WorkspaceItemPipChangedMessage>(this);
         _focusService.SetPanelFocusHandler(FocusPanelId.Explorer, null);
         _focusService.SetPanelFocusHandler(FocusPanelId.Search, null);
         _focusService.SetPanelFocusHandler(FocusPanelId.CustomUtility, null);
@@ -396,7 +396,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         UpdateProjectSettingsIssuePip();
     }
 
-    // Flags the Project Settings rail button with a warning pip when any contribution has dropped
+    // Flags the Project Settings rail button with a notice pip when any contribution has dropped
     // configuration. The panel sets this pip itself, because Project Settings is a native view.
     private void UpdateProjectSettingsIssuePip()
     {
@@ -409,43 +409,46 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         var hasIssues = packageService is not null
             && packageService.GetContributionIssues().Count > 0;
 
-        StatusKind? kind = hasIssues ? StatusKind.Warning : null;
-        projectSettingsButton.SetStatus(kind, string.Empty);
+        PipKind? kind = hasIssues ? PipKind.Notice : null;
+        projectSettingsButton.SetPip(kind, string.Empty, isPulsing: false);
     }
 
-    private void OnDocumentStatusChanged(object recipient, DocumentStatusChangedMessage message)
+    private void OnWorkspaceItemPipChanged(object recipient, WorkspaceItemPipChangedMessage message)
     {
-        if (_utilityIdsByResource.TryGetValue(message.DocumentResource, out var utilityId))
+        if (_utilityIdsByResource.TryGetValue(message.FileResource, out var utilityId))
         {
-            ApplyUtilityStatus(utilityId, message.Status);
+            ApplyUtilityPip(utilityId, message.Pip);
         }
     }
 
-    // Reads each contributed utility's current status, for the statuses set before the rail button existed.
-    private void RefreshUtilityStatuses()
+    // Reads each contributed utility's current pip, for the pips set before the rail button existed.
+    private void RefreshUtilityPips()
     {
         if (!_workspaceWrapper.HasWorkspaceService)
         {
             return;
         }
 
-        var utilityService = _workspaceWrapper.WorkspaceService.UtilityService;
-        foreach (var utilityId in _utilityIdsByResource.Values)
+        var utilities = _workspaceWrapper.WorkspaceService.UtilityService.GetWorkspaceItems();
+        foreach (var utility in utilities)
         {
-            var status = utilityService.GetStatus(utilityId);
-            ApplyUtilityStatus(utilityId, status);
+            if (_utilityIdsByResource.TryGetValue(utility.FileResource, out var utilityId))
+            {
+                ApplyUtilityPip(utilityId, utility.Pip);
+            }
         }
     }
 
-    private void ApplyUtilityStatus(EditorId utilityId, DocumentStatus? status)
+    private void ApplyUtilityPip(EditorId utilityId, WorkspaceItemPip? pip)
     {
         if (!_buttons.TryGetValue(utilityId, out var railButton))
         {
             return;
         }
 
-        var label = status?.Label ?? string.Empty;
-        railButton.SetStatus(status?.Kind, label);
+        var label = pip?.Label ?? string.Empty;
+        var isPulsing = pip?.IsPulsing ?? false;
+        railButton.SetPip(pip?.Kind, label, isPulsing);
     }
 
     private void OnPanelFocusChanged(object recipient, PanelFocusChangedMessage message)
@@ -739,7 +742,7 @@ public sealed partial class UtilityPanel : UserControl, IUtilityPanel
         // The Project Settings button is rebuilt above, so its issue pip is re-applied to the new button.
         UpdateProjectSettingsIssuePip();
 
-        RefreshUtilityStatuses();
+        RefreshUtilityPips();
     }
 
     // Rebuilds the rail as three visual bands: the built-in utilities, then everything the project brings,

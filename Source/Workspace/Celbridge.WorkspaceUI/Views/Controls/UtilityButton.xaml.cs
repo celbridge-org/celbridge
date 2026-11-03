@@ -15,10 +15,10 @@ public sealed partial class UtilityButton : UserControl
     // Whether the pointer is over the cell. Combines with the selection inputs to pick the visual state.
     private bool _isPointerOver;
 
-    // The tooltip that names the button's item, and the label of the button's status. The tooltip on screen
-    // joins the two.
+    // The tooltip that names the button's item, and the label of the button's pip. The tooltip on screen joins
+    // the two.
     private string _tooltip = string.Empty;
-    private string _statusLabel = string.Empty;
+    private string _pipLabel = string.Empty;
 
     private Storyboard? _attentionStoryboard;
 
@@ -96,14 +96,15 @@ public sealed partial class UtilityButton : UserControl
 
     /// <summary>
     /// Shows the status pip in the color for the kind, or hides it for a null kind. A label adds a line to the
-    /// tooltip and becomes the button's help text.
+    /// tooltip and becomes the button's help text. A pulsing pip fades out and back in every few seconds.
     /// </summary>
-    public void SetStatus(StatusKind? kind, string label)
+    public void SetPip(PipKind? kind, string label, bool isPulsing)
     {
         PipElement.Kind = kind;
+        PipElement.IsPulsing = isPulsing;
 
-        _statusLabel = kind is null ? string.Empty : label;
-        AutomationProperties.SetHelpText(ButtonElement, _statusLabel);
+        _pipLabel = kind is null ? string.Empty : label;
+        AutomationProperties.SetHelpText(ButtonElement, _pipLabel);
 
         ApplyTooltip();
     }
@@ -111,9 +112,9 @@ public sealed partial class UtilityButton : UserControl
     private void ApplyTooltip()
     {
         var tooltip = _tooltip;
-        if (!string.IsNullOrEmpty(_statusLabel))
+        if (!string.IsNullOrEmpty(_pipLabel))
         {
-            tooltip = _stringLocalizer.GetString("StatusPip_Tooltip_WithLabel", _tooltip, _statusLabel);
+            tooltip = _stringLocalizer.GetString("StatusPip_Tooltip_WithLabel", _tooltip, _pipLabel);
         }
 
         ToolTipService.SetToolTip(ButtonElement, tooltip);
