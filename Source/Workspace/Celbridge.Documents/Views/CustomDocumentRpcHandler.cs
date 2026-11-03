@@ -11,6 +11,16 @@ using Celbridge.Workspace;
 namespace Celbridge.Documents.Views;
 
 /// <summary>
+/// Callbacks into the view that owns a contribution document's RPC handler. SendFilesChanged sends a watch's batch of
+/// changes to the page.
+/// </summary>
+internal sealed record CustomDocumentCallbacks(
+    Func<DocumentMetadata> CreateMetadata,
+    Func<bool> CompleteSave,
+    Action<WorkspaceItemPip?> SetPip,
+    Func<int, IReadOnlyList<WatchedFileChange>, Task> SendFilesChanged);
+
+/// <summary>
 /// Handles IHostDocument RPC methods for contribution document views.
 /// Manages document initialization, loading, saving, change tracking, report writing, the editor's status pip and
 /// the page's watches on files.
@@ -22,10 +32,7 @@ internal sealed class CustomDocumentRpcHandler : IHostDocument
     private readonly IProjectService _projectService;
     private readonly IReportWriter _reportWriter;
     private readonly IResourceMonitor _resourceMonitor;
-    private readonly Func<DocumentMetadata> _createMetadata;
-    private readonly Func<bool> _completeSave;
-    private readonly Action<WorkspaceItemPip?> _setPip;
-    private readonly Func<int, IReadOnlyList<WatchedFileChange>, Task> _sendFilesChanged;
+    private readonly CustomDocumentCallbacks _callbacks;
 
     // The page's watches, by watch id.
     private readonly Dictionary<int, IMatcherSubscription> _watches = new();
@@ -48,20 +55,14 @@ internal sealed class CustomDocumentRpcHandler : IHostDocument
         IProjectService projectService,
         IReportWriter reportWriter,
         IResourceMonitor resourceMonitor,
-        Func<DocumentMetadata> createMetadata,
-        Func<bool> completeSave,
-        Action<WorkspaceItemPip?> setPip,
-        Func<int, IReadOnlyList<WatchedFileChange>, Task> sendFilesChanged)
+        CustomDocumentCallbacks callbacks)
     {
         _viewModel = viewModel;
         _logger = logger;
         _projectService = projectService;
         _reportWriter = reportWriter;
         _resourceMonitor = resourceMonitor;
-        _createMetadata = createMetadata;
-        _completeSave = completeSave;
-        _setPip = setPip;
-        _sendFilesChanged = sendFilesChanged;
+        _callbacks = callbacks;
     }
 
     public async Task<InitializeResult> InitializeAsync(string protocolVersion)
@@ -69,11 +70,11 @@ internal sealed class CustomDocumentRpcHandler : IHostDocument
         DocumentRpcMethods.ValidateProtocolVersion(protocolVersion);
 
         // A page that starts again, for any reason, starts with the pip cleared and every watch ended.
-        _setPip(null);
+        _callbacks.SetPip(null);
         EndAllWatches();
 
         var content = await _viewModel.LoadTextContentAsync();
-        var metadata = _createMetadata();
+        var metadata = _callbacks.CreateMetadata();
 
         return new InitializeResult(content, metadata);
     }
@@ -81,7 +82,7 @@ internal sealed class CustomDocumentRpcHandler : IHostDocument
     public async Task<LoadResult> LoadAsync()
     {
         var content = await _viewModel.LoadTextContentAsync();
-        var metadata = _createMetadata();
+        var metadata = _callbacks.CreateMetadata();
 
         return new LoadResult(content, metadata);
     }
@@ -95,14 +96,14 @@ internal sealed class CustomDocumentRpcHandler : IHostDocument
             if (saveResult.IsFailure)
             {
                 _logger.LogError(saveResult, "Failed to save contribution document");
-                _completeSave();
+                _callbacks.CompleteSave();
                 SaveResultTcs?.TrySetResult(saveResult);
                 return new SaveResult(false, saveResult.DiagnosticReport);
             }
 
             _viewModel.OnSaveCompleted();
 
-            if (_completeSave())
+            if (_callbacks.CompleteSave())
             {
                 _logger.LogDebug("Processing pending save request");
                 _viewModel.OnDataChanged();
@@ -114,7 +115,7 @@ internal sealed class CustomDocumentRpcHandler : IHostDocument
         catch (Exception exception)
         {
             _logger.LogError(exception, "Exception during contribution save");
-            _completeSave();
+            _callbacks.CompleteSave();
             var failResult = Result.Fail("Exception during save").WithException(exception);
             SaveResultTcs?.TrySetResult(failResult);
             return new SaveResult(false, exception.Message);
@@ -177,7 +178,7 @@ internal sealed class CustomDocumentRpcHandler : IHostDocument
         }
 
         var pip = new WorkspaceItemPip(pipKind, firstLine, pulse);
-        _setPip(pip);
+        _callbacks.SetPip(pip);
 
         return new SetPipResult();
     }
@@ -186,7 +187,7 @@ internal sealed class CustomDocumentRpcHandler : IHostDocument
     {
         await Task.CompletedTask;
 
-        _setPip(null);
+        _callbacks.SetPip(null);
 
         return new ClearPipResult();
     }
@@ -216,7 +217,7 @@ internal sealed class CustomDocumentRpcHandler : IHostDocument
         var subscribeResult = _resourceMonitor.SubscribeToMatcher(rootName, filter, handlers);
         if (subscribeResult.IsFailure)
         {
-            throw new ArgumentException(subscribeResult.FirstErrorMessage, nameof(root));
+            throw new ArgumentException(subscribeResult.FirstErrorMessage);
         }
 
         _watches[watchId] = subscribeResult.Value;
@@ -237,8 +238,7 @@ internal sealed class CustomDocumentRpcHandler : IHostDocument
     }
 
     /// <summary>
-    /// Ends every watch the page started. The owning view calls this before it disposes the host, so no change is
-    /// sent to a disposed host.
+    /// Ends every watch the page started.
     /// </summary>
     internal void EndAllWatches()
     {
@@ -344,7 +344,7 @@ internal sealed class CustomDocumentRpcHandler : IHostDocument
     {
         try
         {
-            await _sendFilesChanged(watchId, changes);
+            await _callbacks.SendFilesChanged(watchId, changes);
         }
         catch (Exception exception)
         {

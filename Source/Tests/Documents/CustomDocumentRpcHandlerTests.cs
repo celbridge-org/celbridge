@@ -80,10 +80,11 @@ public class CustomDocumentRpcHandlerTests
             projectService,
             reportWriter,
             new FakeResourceMonitor(),
-            () => throw new NotSupportedException(),
-            () => throw new NotSupportedException(),
-            pip => throw new NotSupportedException(),
-            (watchId, changes) => throw new NotSupportedException());
+            new CustomDocumentCallbacks(
+                () => throw new NotSupportedException(),
+                () => throw new NotSupportedException(),
+                pip => throw new NotSupportedException(),
+                (watchId, changes) => throw new NotSupportedException()));
     }
 
     [TearDown]

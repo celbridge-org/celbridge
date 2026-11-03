@@ -203,12 +203,13 @@ export class DocumentAPI {
 
     /**
      * Starts a watch on the files in a root. The host calls the handler with each batch of changes to the files and
-     * folders that the filters match, made in Celbridge or outside it. A page can hold several watches, each with
+     * folders that the filters match, made in Celbridge or outside it. A page can run several watches, each with
      * its own handler. A watch never changes, so a page that wants other filters starts a new watch, then ends the
      * old one. Start watches once `initialize()` has resolved, because initializing ends every watch on the page.
+     * `watchFiles` rejects when called before then.
      *
      * Each change says what is at the key when the change is delivered, not how the item changed. The same change
-     * can arrive twice. A changed folder may hold new or changed files, so list the folder again. A rename arrives
+     * can arrive twice. A changed folder may contain new or changed files, so list the folder again. A rename arrives
      * as the old key absent and a file at the new key. When the host loses track of changes, the handler receives a
      * change that names the root itself as a folder.
      *
@@ -221,6 +222,11 @@ export class DocumentAPI {
     async watchFiles(options, handler) {
         if (typeof handler !== 'function') {
             throw new TypeError('watchFiles needs a handler function.');
+        }
+
+        // Initializing ends every watch on the page, so a watch started before initializing would end unseen.
+        if (!this.#transport.isInitialized) {
+            throw new Error('watchFiles needs the client initialized. Await initialize() first.');
         }
 
         this.#listenForFileChanges();

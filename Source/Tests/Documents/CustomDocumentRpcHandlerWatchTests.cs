@@ -67,14 +67,15 @@ public class CustomDocumentRpcHandlerWatchTests
             Substitute.For<IProjectService>(),
             Substitute.For<IReportWriter>(),
             _monitor,
-            () => metadata,
-            () => throw new NotSupportedException(),
-            pip => { },
-            (watchId, changes) =>
-            {
-                _sent.Add(new SentChanges(watchId, changes));
-                return Task.CompletedTask;
-            });
+            new CustomDocumentCallbacks(
+                () => metadata,
+                () => throw new NotSupportedException(),
+                pip => { },
+                (watchId, changes) =>
+                {
+                    _sent.Add(new SentChanges(watchId, changes));
+                    return Task.CompletedTask;
+                }));
     }
 
     [TearDown]
@@ -139,7 +140,8 @@ public class CustomDocumentRpcHandlerWatchTests
 
         var watchFiles = () => _handler.WatchFilesAsync(1, "logs:");
 
-        await watchFiles.Should().ThrowAsync<ArgumentException>().WithMessage("*not watched*");
+        await watchFiles.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("The resource root 'logs' is not watched for changes");
         _monitor.MatcherSubscriptions.Should().BeEmpty();
     }
 

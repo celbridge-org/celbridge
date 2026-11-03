@@ -159,7 +159,7 @@ describe('DocumentAPI.onRestoreState', () => {
 });
 
 describe('DocumentAPI file watches', () => {
-    function createHostedDocument() {
+    function createHostedDocument({ isInitialized = true } = {}) {
         const sent = [];
         let messageHandler = null;
 
@@ -167,6 +167,9 @@ describe('DocumentAPI file watches', () => {
             postMessage: (message) => sent.push(JSON.parse(message)),
             onMessage: (handler) => { messageHandler = handler; }
         });
+        if (isInitialized) {
+            transport.markInitialized();
+        }
 
         const receive = (message) => messageHandler(JSON.stringify({ jsonrpc: '2.0', ...message }));
         const lastRequestId = () => sent[sent.length - 1].id;
@@ -255,6 +258,13 @@ describe('DocumentAPI file watches', () => {
         const hosted = createHostedDocument();
 
         await expect(hosted.document.watchFiles({})).rejects.toThrow(TypeError);
+        expect(hosted.sent).toEqual([]);
+    });
+
+    it('refuses a watch before the client has initialized', async () => {
+        const hosted = createHostedDocument({ isInitialized: false });
+
+        await expect(hosted.document.watchFiles({}, () => { })).rejects.toThrow('initialize()');
         expect(hosted.sent).toEqual([]);
     });
 });

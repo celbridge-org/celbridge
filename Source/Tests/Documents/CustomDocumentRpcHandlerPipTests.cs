@@ -63,10 +63,11 @@ public class CustomDocumentRpcHandlerPipTests
             Substitute.For<IProjectService>(),
             Substitute.For<IReportWriter>(),
             new FakeResourceMonitor(),
-            () => metadata,
-            () => throw new NotSupportedException(),
-            pip => _reportedPips.Add(pip),
-            (watchId, changes) => throw new NotSupportedException());
+            new CustomDocumentCallbacks(
+                () => metadata,
+                () => throw new NotSupportedException(),
+                pip => _reportedPips.Add(pip),
+                (watchId, changes) => throw new NotSupportedException()));
     }
 
     [TearDown]

@@ -505,16 +505,19 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
         var workspaceWrapper = _serviceProvider.GetRequiredService<IWorkspaceWrapper>();
         var resourceMonitor = workspaceWrapper.WorkspaceService.ResourceService.Monitor;
 
+        var callbacks = new CustomDocumentCallbacks(
+            CreateDocumentMetadata,    // Callback to construct document metadata on demand
+            CompleteSave,              // Callback to update state when saving has completed
+            SetPip,                    // Callback to report the pip the page sets
+            (watchId, changes) => capturedHost.NotifyFilesChangedAsync(watchId, changes));
+
         _documentHandler = new CustomDocumentRpcHandler(
             _viewModel,
             _logger,
             _projectService,
             _reportWriter,
             resourceMonitor,
-            CreateDocumentMetadata,    // Callback to construct document metadata on demand
-            CompleteSave,              // Callback to update state when saving has completed
-            SetPip,                    // Callback to report the pip the page sets
-            (watchId, changes) => capturedHost.NotifyFilesChangedAsync(watchId, changes));
+            callbacks);
 
         _documentHandler.ContentLoaded += SetContentLoaded;
 

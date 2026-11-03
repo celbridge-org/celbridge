@@ -121,7 +121,7 @@ await client.document.unwatchFiles(watchId);
 
 A page can run several watches at once, on one root or on several, and each watch calls its own handler. A watch never changes. To follow other patterns, start the new watch, then end the old one. A change can then reach both watches, and none is missed. Ending a watch twice is not an error.
 
-Start your watches once `client.initialize()` or `client.initializeDocument()` has resolved. Initializing ends every watch the page started. So a page that reloads starts with none, and starts the watches again. A watch also ends when the document closes or the project closes. A utility runs its watches for as long as the project is open, and keeps them while the utility moves between areas.
+Start your watches once `client.initialize()` or `client.initializeDocument()` has resolved. `watchFiles` rejects when called earlier. Initializing ends every watch the page started. So a page that reloads starts with none, and starts the watches again. A watch also ends when the document closes or the project closes. A utility runs its watches for as long as the project is open, and keeps them while the utility moves between areas.
 
 ### What a change says
 
