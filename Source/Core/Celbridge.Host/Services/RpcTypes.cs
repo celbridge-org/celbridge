@@ -68,3 +68,19 @@ public record SetPipResult();
 /// Result of the document/clearPip request.
 /// </summary>
 public record ClearPipResult();
+
+/// <summary>
+/// Result of the document/watchFiles request.
+/// </summary>
+public record WatchFilesResult();
+
+/// <summary>
+/// Result of the document/unwatchFiles request.
+/// </summary>
+public record UnwatchFilesResult();
+
+/// <summary>
+/// One change in a document/filesChanged notification. The resource is a key in the canonical "root:path" form. The
+/// state says what is at the key when the change is delivered: "file", "folder" or "absent".
+/// </summary>
+public record WatchedFileChange(string Resource, string State);

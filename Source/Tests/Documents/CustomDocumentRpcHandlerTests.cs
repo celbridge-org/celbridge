@@ -3,6 +3,7 @@ using Celbridge.Host;
 using Celbridge.Projects;
 using Celbridge.Reports;
 using Celbridge.Tests.FileSystem;
+using Celbridge.Tests.Helpers;
 using Celbridge.Utilities;
 
 namespace Celbridge.Tests.Documents;
@@ -78,9 +79,11 @@ public class CustomDocumentRpcHandlerTests
             Substitute.For<ILogger<CustomDocumentRpcHandlerTests>>(),
             projectService,
             reportWriter,
+            new FakeResourceMonitor(),
             () => throw new NotSupportedException(),
             () => throw new NotSupportedException(),
-            pip => throw new NotSupportedException());
+            pip => throw new NotSupportedException(),
+            (watchId, changes) => throw new NotSupportedException());
     }
 
     [TearDown]

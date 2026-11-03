@@ -66,6 +66,12 @@ public sealed class FakeResourceMonitor : IResourceMonitor
     /// </summary>
     public IReadOnlyList<IResourceKeySubscription> KeySubscriptions => _keySubscriptions.ToList();
 
+    /// <summary>
+    /// Returns the names of the roots refused for matcher subscriptions. A test adds a root to the set in place of a
+    /// root the monitor leaves unwatched.
+    /// </summary>
+    public HashSet<string> RefusedMatcherRoots { get; } = new();
+
     public Result Initialize()
     {
         return Result.Ok();
@@ -73,6 +79,11 @@ public sealed class FakeResourceMonitor : IResourceMonitor
 
     public Result<IMatcherSubscription> SubscribeToMatcher(string rootName, IPathMatcher matcher, ResourceChangeHandlers handlers)
     {
+        if (RefusedMatcherRoots.Contains(rootName))
+        {
+            return Result.Fail($"The resource root '{rootName}' is not watched for changes");
+        }
+
         var subscription = new MatcherSubscription(this, rootName, matcher, handlers);
         _matcherSubscriptions.Add(subscription);
 

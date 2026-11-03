@@ -40,4 +40,26 @@
  * @typedef {'neutral' | 'success' | 'notice' | 'alert'} PipKind
  */
 
+/**
+ * The root and the filters of a watch on files. The filters are relative to the root, and follow the search filters
+ * of the file tools.
+ * @typedef {Object} WatchFilesOptions
+ * @property {string} [root] - The root to watch, as a root key: 'project:', 'temp:' or 'utils:'. Defaults to
+ *   'project:'.
+ * @property {string} [include] - The patterns of the paths to follow, separated by commas. Defaults to every path.
+ * @property {string} [exclude] - The patterns of the paths to leave out, separated by commas. Defaults to none.
+ */
+
+/**
+ * The item at a key when a change is delivered: a file, a folder or nothing.
+ * @typedef {'file' | 'folder' | 'absent'} FileChangeState
+ */
+
+/**
+ * One change to a key. The change gives the key and the item at the key when the change is delivered.
+ * @typedef {Object} FileChange
+ * @property {string} resource - The resource key, with the root's prefix, like 'project:src/main.py'.
+ * @property {FileChangeState} state - The item at the key.
+ */
+
 export const Types = {};

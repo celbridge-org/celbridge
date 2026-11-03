@@ -140,9 +140,15 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         }
 
         var rootHandlers = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers.RootHandlers;
-        if (!rootHandlers.ContainsKey(rootName))
+        if (!rootHandlers.TryGetValue(rootName, out var rootHandler))
         {
             return Result.Fail($"No resource root is registered with the name '{rootName}'");
+        }
+
+        // Only a watched root delivers changes to a matcher subscription.
+        if (!rootHandler.Capabilities.IsWatched)
+        {
+            return Result.Fail($"The resource root '{rootName}' is not watched for changes");
         }
 
         var subscription = new MatcherSubscription(rootName, matcher, handlers, _subscriptions.Remove);

@@ -587,6 +587,17 @@ public class ResourceSubscriptionTests
     }
 
     [Test]
+    public void SubscribingAMatcherToARootThatIsNotWatchedFails()
+    {
+        _rootHandlers[LogsRootHandler.Name] = new LogsRootHandler(Path.Combine(_projectFolder, "logs"));
+
+        var subscribeResult = _resourceMonitor.SubscribeToMatcher(LogsRootHandler.Name, Anchored("**"), new Received().Handlers);
+
+        subscribeResult.IsFailure.Should().BeTrue();
+        subscribeResult.FirstErrorMessage.Should().Contain("not watched");
+    }
+
+    [Test]
     public void ADisposedSubscriptionReceivesNothing()
     {
         var received = new Received();

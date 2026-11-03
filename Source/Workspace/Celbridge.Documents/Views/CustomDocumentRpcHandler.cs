@@ -1,8 +1,10 @@
 using Celbridge.Documents.ViewModels;
 using Celbridge.Host;
 using Celbridge.Logging;
+using Celbridge.Patterns;
 using Celbridge.Projects;
 using Celbridge.Reports;
+using Celbridge.Resources;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
 
@@ -10,7 +12,8 @@ namespace Celbridge.Documents.Views;
 
 /// <summary>
 /// Handles IHostDocument RPC methods for contribution document views.
-/// Manages document initialization, loading, saving, change tracking, report writing and the editor's status pip.
+/// Manages document initialization, loading, saving, change tracking, report writing, the editor's status pip and
+/// the page's watches on files.
 /// </summary>
 internal sealed class CustomDocumentRpcHandler : IHostDocument
 {
@@ -18,9 +21,14 @@ internal sealed class CustomDocumentRpcHandler : IHostDocument
     private readonly ILogger _logger;
     private readonly IProjectService _projectService;
     private readonly IReportWriter _reportWriter;
+    private readonly IResourceMonitor _resourceMonitor;
     private readonly Func<DocumentMetadata> _createMetadata;
     private readonly Func<bool> _completeSave;
     private readonly Action<WorkspaceItemPip?> _setPip;
+    private readonly Func<int, IReadOnlyList<WatchedFileChange>, Task> _sendFilesChanged;
+
+    // The page's watches, by watch id.
+    private readonly Dictionary<int, IMatcherSubscription> _watches = new();
 
     /// <summary>
     /// Set by the owning view before requesting a save from JS.
@@ -39,25 +47,30 @@ internal sealed class CustomDocumentRpcHandler : IHostDocument
         ILogger logger,
         IProjectService projectService,
         IReportWriter reportWriter,
+        IResourceMonitor resourceMonitor,
         Func<DocumentMetadata> createMetadata,
         Func<bool> completeSave,
-        Action<WorkspaceItemPip?> setPip)
+        Action<WorkspaceItemPip?> setPip,
+        Func<int, IReadOnlyList<WatchedFileChange>, Task> sendFilesChanged)
     {
         _viewModel = viewModel;
         _logger = logger;
         _projectService = projectService;
         _reportWriter = reportWriter;
+        _resourceMonitor = resourceMonitor;
         _createMetadata = createMetadata;
         _completeSave = completeSave;
         _setPip = setPip;
+        _sendFilesChanged = sendFilesChanged;
     }
 
     public async Task<InitializeResult> InitializeAsync(string protocolVersion)
     {
         DocumentRpcMethods.ValidateProtocolVersion(protocolVersion);
 
-        // A page that starts again, for any reason, starts with no pip.
+        // A page that starts again, for any reason, starts with the pip cleared and every watch ended.
         _setPip(null);
+        EndAllWatches();
 
         var content = await _viewModel.LoadTextContentAsync();
         var metadata = _createMetadata();
@@ -178,6 +191,65 @@ internal sealed class CustomDocumentRpcHandler : IHostDocument
         return new ClearPipResult();
     }
 
+    public async Task<WatchFilesResult> WatchFilesAsync(int watchId, string root = "project:", string include = "", string exclude = "")
+    {
+        await Task.CompletedTask;
+
+        if (_watches.ContainsKey(watchId))
+        {
+            throw new ArgumentException($"Watch id {watchId} is already in use.", nameof(watchId));
+        }
+
+        var rootName = ReadRootName(root);
+
+        var filterResult = SearchFilter.Compile(include ?? string.Empty, exclude ?? string.Empty);
+        if (filterResult.IsFailure)
+        {
+            throw new ArgumentException(filterResult.FirstErrorMessage);
+        }
+        var filter = filterResult.Value;
+
+        var handlers = new ResourceChangeHandlers(
+            batch => SendChanges(watchId, batch),
+            resync => SendResync(watchId, resync));
+
+        var subscribeResult = _resourceMonitor.SubscribeToMatcher(rootName, filter, handlers);
+        if (subscribeResult.IsFailure)
+        {
+            throw new ArgumentException(subscribeResult.FirstErrorMessage, nameof(root));
+        }
+
+        _watches[watchId] = subscribeResult.Value;
+
+        return new WatchFilesResult();
+    }
+
+    public async Task<UnwatchFilesResult> UnwatchFilesAsync(int watchId)
+    {
+        await Task.CompletedTask;
+
+        if (_watches.Remove(watchId, out var subscription))
+        {
+            subscription.Dispose();
+        }
+
+        return new UnwatchFilesResult();
+    }
+
+    /// <summary>
+    /// Ends every watch the page started. The owning view calls this before it disposes the host, so no change is
+    /// sent to a disposed host.
+    /// </summary>
+    internal void EndAllWatches()
+    {
+        foreach (var subscription in _watches.Values)
+        {
+            subscription.Dispose();
+        }
+
+        _watches.Clear();
+    }
+
     public void OnDocumentChanged()
     {
         _viewModel.OnDataChanged();
@@ -225,6 +297,62 @@ internal sealed class CustomDocumentRpcHandler : IHostDocument
                 return false;
         }
     }
+
+    // Returns the root name of a root key, like "project" for "project:".
+    private static string ReadRootName(string? root)
+    {
+        if (string.IsNullOrEmpty(root)
+            || !root.EndsWith(':')
+            || !ResourceKey.TryCreate(root, out var rootKey)
+            || !rootKey.IsEmpty)
+        {
+            throw new ArgumentException(
+                $"Invalid root: '{root}'. Expected a root key like 'project:', 'temp:' or 'utils:'.",
+                nameof(root));
+        }
+
+        return rootKey.Root;
+    }
+
+    private void SendChanges(int watchId, ResourceChangeBatch batch)
+    {
+        var changes = new List<WatchedFileChange>();
+        foreach (var change in batch.Changes)
+        {
+            var resource = change.Resource.ToString();
+            var state = FormatState(change.State);
+            changes.Add(new WatchedFileChange(resource, state));
+        }
+
+        _ = SendFilesChangedAsync(watchId, changes);
+    }
+
+    // Lost events arrive as a change to the root's own folder. A page lists a changed folder again, so the page
+    // lists the whole root.
+    private void SendResync(int watchId, ResourceResync resync)
+    {
+        var rootKey = ResourceKey.Create(resync.RootName + ":");
+        var changes = new List<WatchedFileChange>
+        {
+            new WatchedFileChange(rootKey.ToString(), FormatState(ResourceItemState.Folder)),
+        };
+
+        _ = SendFilesChangedAsync(watchId, changes);
+    }
+
+    private async Task SendFilesChangedAsync(int watchId, IReadOnlyList<WatchedFileChange> changes)
+    {
+        try
+        {
+            await _sendFilesChanged(watchId, changes);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Failed to send the file changes of watch {WatchId} to the editor", watchId);
+        }
+    }
+
+    private static string FormatState(ResourceItemState state) => state.ToString().ToLowerInvariant();
 
     // Returns the first line of the label with the surrounding whitespace removed, or an empty string for a
     // label with no text.

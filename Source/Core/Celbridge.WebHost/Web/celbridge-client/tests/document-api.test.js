@@ -157,3 +157,104 @@ describe('DocumentAPI.onRestoreState', () => {
         expect(sent).toEqual([{ jsonrpc: '2.0', id: 7, result: null }]);
     });
 });
+
+describe('DocumentAPI file watches', () => {
+    function createHostedDocument() {
+        const sent = [];
+        let messageHandler = null;
+
+        const transport = new RpcTransport({
+            postMessage: (message) => sent.push(JSON.parse(message)),
+            onMessage: (handler) => { messageHandler = handler; }
+        });
+
+        const receive = (message) => messageHandler(JSON.stringify({ jsonrpc: '2.0', ...message }));
+        const lastRequestId = () => sent[sent.length - 1].id;
+
+        return {
+            document: new DocumentAPI(transport),
+            sent,
+            answer: () => receive({ id: lastRequestId(), result: {} }),
+            refuse: (message) => receive({ id: lastRequestId(), error: { code: -32000, message } }),
+            sendChanges: (watchId, changes) => receive({
+                method: 'document/filesChanged',
+                params: { watchId, changes }
+            })
+        };
+    }
+
+    async function watch(hosted, options, handler) {
+        const watching = hosted.document.watchFiles(options, handler);
+        hosted.answer();
+        return watching;
+    }
+
+    it('sends watchFiles with the defaults, and gives each watch a new id', async () => {
+        const hosted = createHostedDocument();
+
+        const firstId = await watch(hosted, {}, () => { });
+        const secondId = await watch(hosted, { root: 'temp:', include: '*.py', exclude: 'history/' }, () => { });
+
+        expect(firstId).toBe(1);
+        expect(secondId).toBe(2);
+        expect(hosted.sent.map(({ method, params }) => ({ method, params }))).toEqual([
+            {
+                method: 'document/watchFiles',
+                params: { watchId: 1, root: 'project:', include: '', exclude: '' }
+            },
+            {
+                method: 'document/watchFiles',
+                params: { watchId: 2, root: 'temp:', include: '*.py', exclude: 'history/' }
+            }
+        ]);
+    });
+
+    it('calls each handler with only the changes of its own watch', async () => {
+        const hosted = createHostedDocument();
+        const scripts = [];
+        const notes = [];
+
+        const scriptsId = await watch(hosted, { include: '*.py' }, (changes) => scripts.push(changes));
+        const notesId = await watch(hosted, { include: '*.md' }, (changes) => notes.push(changes));
+
+        hosted.sendChanges(scriptsId, [{ resource: 'project:main.py', state: 'file' }]);
+        hosted.sendChanges(notesId, [{ resource: 'project:notes.md', state: 'absent' }]);
+
+        expect(scripts).toEqual([[{ resource: 'project:main.py', state: 'file' }]]);
+        expect(notes).toEqual([[{ resource: 'project:notes.md', state: 'absent' }]]);
+    });
+
+    it('sends unwatchFiles with the id, and drops a batch that arrives afterwards', async () => {
+        const hosted = createHostedDocument();
+        const received = [];
+
+        const watchId = await watch(hosted, {}, (changes) => received.push(changes));
+        const unwatching = hosted.document.unwatchFiles(watchId);
+        hosted.answer();
+        await unwatching;
+        hosted.sendChanges(watchId, [{ resource: 'project:main.py', state: 'file' }]);
+
+        expect(hosted.sent[1].method).toBe('document/unwatchFiles');
+        expect(hosted.sent[1].params).toEqual({ watchId: 1 });
+        expect(received).toEqual([]);
+    });
+
+    it('leaves no handler registered when the host rejects the watch', async () => {
+        const hosted = createHostedDocument();
+        const received = [];
+
+        const watching = hosted.document.watchFiles({ root: 'logs:' }, (changes) => received.push(changes));
+        hosted.refuse("The resource root 'logs' is not watched for changes");
+        await expect(watching).rejects.toThrow('not watched');
+        hosted.sendChanges(1, [{ resource: 'logs:app.log', state: 'file' }]);
+
+        expect(received).toEqual([]);
+    });
+
+    it('refuses a watch with no handler', async () => {
+        const hosted = createHostedDocument();
+
+        await expect(hosted.document.watchFiles({})).rejects.toThrow(TypeError);
+        expect(hosted.sent).toEqual([]);
+    });
+});
