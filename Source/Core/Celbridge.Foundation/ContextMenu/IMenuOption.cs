@@ -18,10 +18,10 @@ public record MenuItemState(bool IsVisible, bool IsEnabled);
 public partial record MenuOptionGroup(string Id);
 
 /// <summary>
-/// A dynamically generated child of a menu option: its label, optional icon, and the action to run when
-/// chosen.
+/// A dynamically generated child of a menu option: the child's label, optional icon, action and check
+/// mark. The action runs when the user chooses the child. A null IsChecked shows a plain item.
 /// </summary>
-public record SubMenuItem(string LocalizedText, IconSymbol? Icon, Action Execute);
+public record SubMenuItem(string LocalizedText, IconSymbol? Icon, Action Execute, bool? IsChecked = null);
 
 /// <summary>
 /// Represents a single context menu option.

@@ -409,16 +409,16 @@ public class DocumentsService : IDocumentsService, IDisposable
 
         var defaultEditorId = GetDefaultEditorId(fileResource);
 
-        // Preselect the current editor. If it is no longer a candidate (a stale override), preselect the
-        // project default instead.
+        // Check the current editor. When a stale override names an editor outside the candidates, check
+        // the project default.
         var currentIsCandidate = factories.Any(factory => factory.EditorId == currentEditorId);
-        var preselectId = currentIsCandidate ? currentEditorId : defaultEditorId;
+        var checkedId = currentIsCandidate ? currentEditorId : defaultEditorId;
 
         var stringLocalizer = _serviceProvider.GetRequiredService<IStringLocalizer>();
 
         var editorIds = new List<EditorId>();
         var labels = new List<string>();
-        var selectedIndex = 0;
+        var currentIndex = 0;
         for (var i = 0; i < factories.Count; i++)
         {
             var factory = factories[i];
@@ -427,7 +427,7 @@ public class DocumentsService : IDocumentsService, IDisposable
             string label;
             if (factory.EditorId == defaultEditorId)
             {
-                label = stringLocalizer.GetString("OpenWithDialog_DefaultFormat", factory.DisplayName);
+                label = stringLocalizer.GetString("OpenWith_DefaultFormat", factory.DisplayName);
             }
             else
             {
@@ -435,13 +435,13 @@ public class DocumentsService : IDocumentsService, IDisposable
             }
             labels.Add(label);
 
-            if (factory.EditorId == preselectId)
+            if (factory.EditorId == checkedId)
             {
-                selectedIndex = i;
+                currentIndex = i;
             }
         }
 
-        return new EditorPickList(editorIds, labels, selectedIndex);
+        return new EditorPickList(editorIds, labels, currentIndex);
     }
 
     public ExtensionEditorCandidates GetEditorCandidatesForExtension(string fileExtension)

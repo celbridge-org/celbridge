@@ -1,4 +1,5 @@
 using Celbridge.DataTransfer;
+using Celbridge.Documents;
 using Celbridge.Explorer.Menu;
 using Windows.Foundation;
 
@@ -81,6 +82,8 @@ public sealed partial class ResourceTree
         var canModifySelection = await EvaluateSelectionModifiable(selectedResources);
         var canAddToTargetFolder = EvaluateTargetFolderAddable(clickedResource);
 
+        var clickedFileEditorId = await GetClickedFileEditorAsync(clickedResource);
+
         var context = new ExplorerMenuContext(
             ClickedResource: clickedResource,
             SelectedResources: selectedResources,
@@ -92,9 +95,38 @@ public sealed partial class ResourceTree
         {
             CanModifySelection = canModifySelection,
             CanAddToTargetFolder = canAddToTargetFolder,
+            ClickedFileEditorId = clickedFileEditorId,
         };
 
         return context;
+    }
+
+    // Returns the editor to check in the Open with submenu for the clicked file. This is the editor of
+    // the file's open document, or else the file's own editor override. The override is read only when
+    // the submenu will show.
+    private async Task<EditorId> GetClickedFileEditorAsync(ResourceItem clickedResource)
+    {
+        if (clickedResource.IsFolder)
+        {
+            return EditorId.Empty;
+        }
+
+        var fileResource = clickedResource.Resource;
+
+        var candidates = _documentsService.DocumentEditorRegistry.GetUserPickableFactoriesForResource(fileResource);
+        if (candidates.Count < 2)
+        {
+            return EditorId.Empty;
+        }
+
+        var openDocument = _documentsService.FindOpenDocument(fileResource);
+        if (openDocument is not null
+            && !openDocument.EditorId.IsEmpty)
+        {
+            return openDocument.EditorId;
+        }
+
+        return await _documentsService.GetPreferredEditorAsync(fileResource);
     }
 
     // Returns whether every selected resource can be deleted, renamed, moved, or

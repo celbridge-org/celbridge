@@ -19,7 +19,7 @@ public static class SidecarFile
 public static class SidecarFieldNames
 {
     /// <summary>
-    /// The user's per-file editor choice (last "Open with..." selection).
+    /// The user's per-file editor choice (last Open with selection).
     /// </summary>
     public const string Editor = "_editor";
 

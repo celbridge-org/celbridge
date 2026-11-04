@@ -10,8 +10,8 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.Tests.Documents;
 
 /// <summary>
-/// Tests for DocumentTabViewModel: the close path, the editor's pip, and the menu predicates derived from the
-/// tab's file resource. The save-failure tolerance is load-bearing for locked or otherwise read-only
+/// Tests for DocumentTabViewModel: the close path, the editor's pip, the menu predicates derived from the
+/// tab's file resource, and opening the document in another editor. The save-failure tolerance is load-bearing for locked or otherwise read-only
 /// documents, where the save will never succeed and the close path must still complete.
 /// </summary>
 [TestFixture]
@@ -522,6 +522,33 @@ public class DocumentTabViewModelTests
         var viewModel = CreateViewModel(new ResourceKey("temp:community.webview"));
 
         viewModel.CanRevealInExplorer.Should().BeFalse();
+    }
+
+    [Test]
+    public async Task OpenWithEditorAsync_RecordsTheChoiceAndOpensTheDocumentInThatEditor()
+    {
+        var fileResource = new ResourceKey("docs/notes.md");
+        var codeEditor = new EditorId("acme.code");
+        var documentsService = Substitute.For<IDocumentsService>();
+        documentsService.SetPreferredEditorAsync(Arg.Any<ResourceKey>(), Arg.Any<EditorId>())
+            .Returns(Task.FromResult(Result.Ok()));
+        _workspaceService.DocumentsService.Returns(documentsService);
+        _workspaceWrapper.IsWorkspaceLoaded.Returns(true);
+        Action<IOpenDocumentCommand>? configure = null;
+        _commandService.Execute(
+            Arg.Do<Action<IOpenDocumentCommand>>(action => configure = action),
+            Arg.Any<string>(),
+            Arg.Any<int>());
+        var viewModel = CreateViewModel(fileResource);
+
+        await viewModel.OpenWithEditorAsync(codeEditor);
+
+        await documentsService.Received(1).SetPreferredEditorAsync(fileResource, codeEditor);
+        configure.Should().NotBeNull();
+        var openCommand = Substitute.For<IOpenDocumentCommand>();
+        configure!(openCommand);
+        openCommand.FileResource.Should().Be(fileResource);
+        openCommand.EditorId.Should().Be(codeEditor);
     }
 
     private static IDocumentView CreateUnwritableDocumentView()

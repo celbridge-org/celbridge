@@ -97,8 +97,8 @@ public class ProjectSettingsEditorFactoryTests
     [Test]
     public void PickList_ForAnotherConfiguration_HoldsOnlyTheCodeEditor()
     {
-        // Fewer than two entries means no "Open with..." choice is offered, which is what makes the
-        // alternate configuration open as text without a dialog.
+        // A single entry hides the Open with menu, so the alternate configuration opens straight in
+        // the code editor.
         var registry = CreateRegistry();
 
         var candidates = registry.GetUserPickableFactoriesForResource(new ResourceKey("Designer.celbridge"));

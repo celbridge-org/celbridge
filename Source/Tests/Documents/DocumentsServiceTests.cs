@@ -11,8 +11,8 @@ namespace Celbridge.Tests.Documents;
 /// <summary>
 /// Covers the editor-selection surface on DocumentsService: SetPreferredEditorAsync writes the sidecar
 /// override only when the choice deviates from the project default and clears it otherwise (the #746
-/// self-shadow fix), and GetEditorPickList badges the default, preselects the effective editor, and
-/// falls back to the default for a stale override.
+/// self-shadow fix), and GetEditorPickList badges the default, checks the effective editor, and falls
+/// back to the default for a stale override.
 /// </summary>
 [TestFixture]
 public class DocumentsServiceTests
@@ -71,11 +71,11 @@ public class DocumentsServiceTests
         workspaceWrapper.IsWorkspaceLoaded.Returns(false);
 
         _stringLocalizer = Substitute.For<IStringLocalizer>();
-        _stringLocalizer["OpenWithDialog_DefaultFormat", Arg.Any<object[]>()]
+        _stringLocalizer["OpenWith_DefaultFormat", Arg.Any<object[]>()]
             .Returns(callInfo =>
             {
                 var arguments = (object[])callInfo[1];
-                return new LocalizedString("OpenWithDialog_DefaultFormat", $"{arguments[0]} (default)");
+                return new LocalizedString("OpenWith_DefaultFormat", $"{arguments[0]} (default)");
             });
 
         _serviceProvider = Substitute.For<IServiceProvider>();
@@ -163,7 +163,7 @@ public class DocumentsServiceTests
     }
 
     [Test]
-    public void GetEditorPickList_BadgesDefaultAndPreselectsCurrentEditor()
+    public void GetEditorPickList_BadgesDefaultAndChecksCurrentEditor()
     {
         // The first-registered editor is the project default; the current editor is the second one.
         var editorA = new EditorId("test.editor-a");
@@ -177,14 +177,14 @@ public class DocumentsServiceTests
         pickList!.EditorIds.Should().Equal(editorA, editorB);
         pickList.Labels[0].Should().Be("Editor A (default)");
         pickList.Labels[1].Should().Be("Editor B");
-        pickList.SelectedIndex.Should().Be(1);
+        pickList.CurrentIndex.Should().Be(1);
     }
 
     [Test]
-    public void GetEditorPickList_PreselectsDefaultWhenCurrentEditorIsStale()
+    public void GetEditorPickList_ChecksDefaultWhenCurrentEditorIsStale()
     {
         // The current id names an editor that is no longer a candidate (a stale sidecar), so the
-        // preselection falls back to the project default at index 0.
+        // check falls back to the project default at index 0.
         var editorA = new EditorId("test.editor-a");
         var editorB = new EditorId("test.editor-b");
         _registry.RegisterFactory(CreateFactory(editorA, ".md", "Editor A"));
@@ -194,7 +194,7 @@ public class DocumentsServiceTests
             new ResourceKey("doc.md"), new EditorId("test.uninstalled"));
 
         pickList.Should().NotBeNull();
-        pickList!.SelectedIndex.Should().Be(0);
+        pickList!.CurrentIndex.Should().Be(0);
     }
 
     [Test]

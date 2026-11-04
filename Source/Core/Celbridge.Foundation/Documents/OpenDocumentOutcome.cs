@@ -17,7 +17,7 @@ public enum OpenDocumentOutcome
 
     /// <summary>
     /// The open operation was cancelled. This happens when opening a document would require
-    /// closing an existing tab (for example, when "Open With..." switches an already-open file
+    /// closing an existing tab (for example, when Open with switches an already-open file
     /// to a different editor) and the close was refused. The refusal can originate from the user
     /// (declining a save-prompt dialog) or programmatically from the document view itself
     /// (a mod-defined editor returning false from CanClose, e.g. a permanent dashboard panel).

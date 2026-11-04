@@ -31,7 +31,7 @@ public interface IDocumentEditorFactory
     /// True for factories that exist solely to reserve a filename or extension
     /// for a known non-document role (e.g. package.toml, *.celbridge,
     /// *.editor.toml). Placeholders do not produce real document views and
-    /// are hidden from user-facing pickers such as the "Open with..." menu.
+    /// are hidden from user-facing pickers, like the Open with menu.
     /// </summary>
     bool IsPlaceholder { get; }
 

@@ -93,7 +93,7 @@ Once a utility is a tab the user moves it like any other tab, to any section the
 
 ## Never an ordinary project file
 
-A utility is never created as a normal project file — it does not appear in New File, text search, the Explorer tree, or the "Reopen with..." picker. Its `utils:` resource is reachable only through the utility itself: its rail button, or docking it into a document tab.
+A utility is not a normal project file. New File, text search, the Explorer tree and the Open with menu all leave utilities out. A utility's `utils:` resource is reachable only through the utility itself: the utility's rail button, or docking the utility into a document tab.
 
 ## The `utils:` root and state file naming
 

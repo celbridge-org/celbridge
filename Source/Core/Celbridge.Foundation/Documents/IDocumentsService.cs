@@ -22,14 +22,14 @@ public enum ReloadHint
 }
 
 /// <summary>
-/// The editors offered by an "Open with..." dialog for a file: their ids, the display labels (with the
-/// project default badged), and the index to preselect (the file's current effective editor, or the
-/// default when that editor is no longer a candidate).
+/// The Open with choices for a file: the editor ids, their display labels and the index of the editor
+/// to check. The project default's label carries a badge. The checked editor is the file's current
+/// editor, or the project default when the current editor is not a candidate.
 /// </summary>
 public sealed record EditorPickList(
     IReadOnlyList<EditorId> EditorIds,
     IReadOnlyList<string> Labels,
-    int SelectedIndex);
+    int CurrentIndex);
 
 /// <summary>
 /// A candidate editor for a file extension on the Project Settings File Types page: the editor id
@@ -165,9 +165,8 @@ public interface IDocumentsService
     Task<Result> SetPreferredEditorAsync(ResourceKey fileResource, EditorId editorId);
 
     /// <summary>
-    /// Builds the "Open with..." choices for a file: the pickable editors, their badged labels, and the
-    /// index to preselect. Returns null when fewer than two editors can open the file, so no choice is
-    /// worth offering.
+    /// Builds the Open with choices for a file: the pickable editors, their badged labels, and the index
+    /// of the editor to check. Returns null when fewer than two editors can open the file.
     /// </summary>
     EditorPickList? GetEditorPickList(ResourceKey fileResource, EditorId currentEditorId);
 

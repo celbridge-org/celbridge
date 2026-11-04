@@ -293,21 +293,46 @@ public partial class DocumentTabViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Returns true if more than one editor is registered for this document's file extension,
-    /// meaning a "Reopen with..." menu option is worth showing to the user. Returns false during
-    /// workspace teardown.
+    /// Returns the Open with choices for this document, with the tab's own editor checked. Returns null
+    /// when fewer than two editors can open the file, and during workspace teardown.
     /// </summary>
-    public bool HasMultipleCompatibleEditors()
+    public EditorPickList? GetEditorPickList()
     {
         if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
-            return false;
+            return null;
         }
 
-        var factories = _workspaceWrapper.WorkspaceService.DocumentsService.DocumentEditorRegistry
-            .GetUserPickableFactoriesForResource(FileResource);
+        var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
 
-        return factories.Count >= 2;
+        return documentsService.GetEditorPickList(FileResource, EditorId);
+    }
+
+    /// <summary>
+    /// Records the editor as the file's editor choice, then opens the document in that editor. A document
+    /// already open in another editor reopens in the new one at the same place in its section.
+    /// </summary>
+    public async Task OpenWithEditorAsync(EditorId editorId)
+    {
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
+        {
+            return;
+        }
+
+        var fileResource = FileResource;
+        var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
+
+        var setResult = await documentsService.SetPreferredEditorAsync(fileResource, editorId);
+        if (setResult.IsFailure)
+        {
+            _logger.LogWarning(setResult, $"Failed to record the editor choice for '{fileResource}'");
+        }
+
+        _commandService.Execute<IOpenDocumentCommand>(command =>
+        {
+            command.FileResource = fileResource;
+            command.EditorId = editorId;
+        });
     }
 
     // Subscribes for the key before disposing the old subscription, so no change between the two is missed.

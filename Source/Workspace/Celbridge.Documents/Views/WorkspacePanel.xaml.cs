@@ -986,8 +986,8 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
             editorState = await ViewModel.LoadDocumentEditorState(fileResource);
         }
 
-        // Editor state is private to the editor that wrote it, so state another editor saved, as a
-        // Reopen With or a changed association leaves behind, is dropped rather than handed over.
+        // Editor state is private to the editor that wrote the state. After an Open with switch or a
+        // changed association, the state from the previous editor is dropped.
         if (editorState is not null &&
             !string.IsNullOrEmpty(editorState.Json))
         {

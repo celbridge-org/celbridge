@@ -1,11 +1,10 @@
 using Celbridge.Commands;
-using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Documents.Views;
 
 /// <summary>
 /// Document tab context-menu handling for WorkspacePanel: the close family, moving a tab between the
-/// sections of its area, the clipboard and reveal actions, and reopening with a different editor.
+/// sections of its area, the clipboard and reveal actions, and reopening.
 /// </summary>
 public sealed partial class WorkspacePanel
 {
@@ -57,9 +56,6 @@ public sealed partial class WorkspacePanel
                 break;
             case DocumentTabMenuAction.Reopen:
                 _ = ReopenTab(tab);
-                break;
-            case DocumentTabMenuAction.ReopenWith:
-                _ = ReopenTabWithDialog(tab);
                 break;
         }
     }
@@ -263,53 +259,18 @@ public sealed partial class WorkspacePanel
         }
     }
 
-    private Task ReopenTab(DocumentTab tab)
-    {
-        // Reopen using the current editor (no dialog)
-        return ReopenTabWithEditor(tab, tab.ViewModel.EditorId);
-    }
-
-    private async Task ReopenTabWithDialog(DocumentTab tab)
+    // Closes the document and opens the document again in the same editor and the same place in the
+    // section. The editor's view state is restored.
+    private async Task ReopenTab(DocumentTab tab)
     {
         var fileResource = tab.ViewModel.FileResource;
-
-        var selectedEditorId = tab.ViewModel.EditorId;
-
-        var pickList = ViewModel.GetEditorPickList(fileResource, tab.ViewModel.EditorId);
-        if (pickList is not null)
-        {
-            // Multiple editors available, show choice dialog.
-            var title = _stringLocalizer.GetString("OpenWithDialog_Title");
-            var message = _stringLocalizer.GetString("OpenWithDialog_Message");
-
-            var choiceResult = await _dialogService.ShowChoiceDialogAsync(
-                title, message, pickList.Labels, pickList.SelectedIndex, checkbox: null);
-            if (choiceResult.IsFailure)
-            {
-                return;
-            }
-
-            selectedEditorId = pickList.EditorIds[choiceResult.Value.SelectedIndex];
-
-            // The choice is recorded in a sidecar beside the file. A reserved file type takes the
-            // reopen but not the sidecar, which the documents service applies.
-            await ViewModel.SetPreferredEditorAsync(fileResource, selectedEditorId);
-        }
-
-        await ReopenTabWithEditor(tab, selectedEditorId);
-    }
-
-    private async Task ReopenTabWithEditor(DocumentTab tab, EditorId editorId)
-    {
-        var fileResource = tab.ViewModel.FileResource;
+        var editorId = tab.ViewModel.EditorId;
 
         // Capture state before closing so we can restore it after reopening
         var section = tab.Section;
         var currentLocation = SectionContainer.FindDocumentTab(fileResource);
         var tabIndex = currentLocation?.SectionView.GetTabIndex(tab) ?? 0;
 
-        // Captured with the editor that saved it, so a reopen with a different editor starts fresh
-        // rather than handing that editor a state in another editor's schema.
         var editorState = await TryCaptureEditorStateAsync(tab);
 
         // Close then reopen via the command service, which processes them sequentially. The close does not

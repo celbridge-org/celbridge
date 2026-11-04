@@ -269,16 +269,6 @@ public partial class WorkspacePanelViewModel : ObservableObject
         return new EditorDisplayInfo(factoryResult.Value.EditorId, displayName);
     }
 
-    public EditorPickList? GetEditorPickList(ResourceKey fileResource, EditorId currentEditorId)
-    {
-        return _documentsService.GetEditorPickList(fileResource, currentEditorId);
-    }
-
-    public async Task<Result> SetPreferredEditorAsync(ResourceKey fileResource, EditorId editorId)
-    {
-        return await _documentsService.SetPreferredEditorAsync(fileResource, editorId);
-    }
-
     public record class UtilityTabInfo(string IconName, string Title, string Tooltip);
 
     // Looks up the title the named editor gives its document tabs. Returns an empty title when the editor

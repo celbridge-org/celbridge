@@ -165,7 +165,7 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
     public IReadOnlyList<IDocumentEditorFactory> GetFactoriesForResource(ResourceKey fileResource)
     {
         // Dedupe by editor id so a factory registered against both a filename and an extension does
-        // not appear twice in the "Open with..." dialog.
+        // not appear twice in the Open with menu.
         var seenEditorIds = new HashSet<EditorId>();
         var candidates = new List<IDocumentEditorFactory>();
 

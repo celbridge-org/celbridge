@@ -30,8 +30,7 @@ public enum DocumentTabMenuAction
     OpenFileExplorer,
     OpenApplication,
     RestoreChrome,
-    Reopen,
-    ReopenWith
+    Reopen
 }
 
 // Defined in XAML rather than as a C# Markup subclass of TabViewItem: a derived Markup class throws on
@@ -157,7 +156,7 @@ public partial class DocumentTab : TabViewItem
         OpenFileExplorerMenuItem.Text = _stringLocalizer.GetString("DocumentTab_OpenFileManager", fileManagerName);
         OpenApplicationMenuItem.Text = _stringLocalizer.GetString("DocumentTab_OpenApplication");
         ReopenMenuItem.Text = _stringLocalizer.GetString("DocumentTab_Reopen");
-        ReopenWithMenuItem.Text = _stringLocalizer.GetString("DocumentTab_ReopenWith");
+        OpenWithMenuItem.Text = _stringLocalizer.GetString("DocumentTab_OpenWith");
 
         ApplyCloseShortcutHints();
     }
@@ -331,11 +330,6 @@ public partial class DocumentTab : TabViewItem
         ContextMenuActionRequested?.Invoke(this, DocumentTabMenuAction.Reopen);
     }
 
-    private void ContextMenu_ReopenWith(object sender, RoutedEventArgs e)
-    {
-        ContextMenuActionRequested?.Invoke(this, DocumentTabMenuAction.ReopenWith);
-    }
-
     private void TabContextMenu_Opening(object sender, object e)
     {
         // Find the parent TabView to get tab count and position
@@ -423,10 +417,41 @@ public partial class DocumentTab : TabViewItem
         ReopenSeparator.Visibility = isUtility ? Visibility.Collapsed : Visibility.Visible;
         ReopenMenuItem.Visibility = isUtility ? Visibility.Collapsed : Visibility.Visible;
 
-        // Show "Reopen with..." only when there are multiple editors registered for this file type.
-        bool showReopenWith = !isUtility
-            && ViewModel.HasMultipleCompatibleEditors();
-        ReopenWithMenuItem.Visibility = showReopenWith ? Visibility.Visible : Visibility.Collapsed;
+        EditorPickList? pickList = null;
+        if (!isUtility)
+        {
+            pickList = ViewModel.GetEditorPickList();
+        }
+        PopulateOpenWithMenu(pickList);
+    }
+
+    // Lists the editors that can open this document, with a check against the one the tab uses. The
+    // submenu shows only when there are at least two editors to choose from.
+    private void PopulateOpenWithMenu(EditorPickList? pickList)
+    {
+        OpenWithMenuItem.Items.Clear();
+
+        if (pickList is null)
+        {
+            OpenWithMenuItem.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        for (int i = 0; i < pickList.EditorIds.Count; i++)
+        {
+            var editorId = pickList.EditorIds[i];
+
+            var editorItem = new ToggleMenuFlyoutItem
+            {
+                Text = pickList.Labels[i],
+                IsChecked = i == pickList.CurrentIndex
+            };
+            editorItem.Click += (_, _) => _ = ViewModel.OpenWithEditorAsync(editorId);
+
+            OpenWithMenuItem.Items.Add(editorItem);
+        }
+
+        OpenWithMenuItem.Visibility = Visibility.Visible;
     }
 
     private TabView? FindParentTabView()

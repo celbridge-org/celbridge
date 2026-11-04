@@ -26,6 +26,9 @@
             <MenuFlyoutItem x:Name="CloseToTheRightMenuItem" Click="ContextMenu_CloseToTheRight" />
             <MenuFlyoutItem x:Name="CloseToTheLeftMenuItem" Click="ContextMenu_CloseToTheLeft" />
             <MenuFlyoutItem x:Name="CloseAllMenuItem" Click="ContextMenu_CloseAll" />
+            <MenuFlyoutSeparator x:Name="ReopenSeparator" />
+            <MenuFlyoutItem x:Name="ReopenMenuItem" Click="ContextMenu_Reopen" />
+            <MenuFlyoutSubItem x:Name="OpenWithMenuItem" />
             <MenuFlyoutSeparator x:Name="MoveSeparator" />
             <MenuFlyoutItem x:Name="MoveToPrimarySectionMenuItem" Click="ContextMenu_MoveToPrimarySection" />
             <MenuFlyoutItem x:Name="MoveToSecondarySectionMenuItem" Click="ContextMenu_MoveToSecondarySection" />
@@ -39,9 +42,6 @@
             <MenuFlyoutItem x:Name="CopyFullPathMenuItem" Click="ContextMenu_CopyFullPath" />
             <MenuFlyoutSeparator x:Name="RestoreChromeSeparator" />
             <MenuFlyoutItem x:Name="RestoreChromeMenuItem" Click="ContextMenu_RestoreChrome" />
-            <MenuFlyoutSeparator x:Name="ReopenSeparator" />
-            <MenuFlyoutItem x:Name="ReopenMenuItem" Click="ContextMenu_Reopen" />
-            <MenuFlyoutItem x:Name="ReopenWithMenuItem" Click="ContextMenu_ReopenWith" />
         </MenuFlyout>
     </muxc:TabViewItem.ContextFlyout>
 

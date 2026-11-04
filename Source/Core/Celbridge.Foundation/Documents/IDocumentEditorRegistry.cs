@@ -60,8 +60,8 @@ public interface IDocumentEditorRegistry
     bool IsReservedResource(ResourceKey fileResource);
 
     /// <summary>
-    /// Returns the factories a user could reasonably pick from an "Open with..."
-    /// dialog: non-placeholder factories that claim the file, plus the code
+    /// Returns the factories a user could reasonably pick from the Open with
+    /// menu: non-placeholder factories that claim the file, plus the code
     /// editor appended as a "view as text" option for text-shaped files.
     /// </summary>
     IReadOnlyList<IDocumentEditorFactory> GetUserPickableFactoriesForResource(ResourceKey fileResource);

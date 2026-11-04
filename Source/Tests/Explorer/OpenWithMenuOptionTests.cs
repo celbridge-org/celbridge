@@ -1,6 +1,5 @@
 using Celbridge.Commands;
 using Celbridge.DataTransfer;
-using Celbridge.Dialog;
 using Celbridge.Explorer.Menu;
 using Celbridge.Explorer.Menu.Options;
 using Celbridge.Resources;
@@ -10,14 +9,13 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.Tests.Explorer;
 
 /// <summary>
-/// Unit tests for OpenWithMenuOption's visibility / display logic.
+/// Unit tests for OpenWithMenuOption's visibility, its submenu of editors, and choosing an editor.
 /// </summary>
 [TestFixture]
 public class OpenWithMenuOptionTests
 {
     private IStringLocalizer _stringLocalizer = null!;
     private ICommandService _commandService = null!;
-    private IDialogService _dialogService = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
     private IDocumentEditorRegistry _editorRegistry = null!;
     private IDocumentsService _documentsService = null!;
@@ -28,7 +26,6 @@ public class OpenWithMenuOptionTests
     {
         _stringLocalizer = Substitute.For<IStringLocalizer>();
         _commandService = Substitute.For<ICommandService>();
-        _dialogService = Substitute.For<IDialogService>();
         _logger = Substitute.For<Logging.ILogger<OpenWithMenuOption>>();
 
         _editorRegistry = Substitute.For<IDocumentEditorRegistry>();
@@ -43,6 +40,7 @@ public class OpenWithMenuOptionTests
         workspaceService.DocumentsService.Returns(_documentsService);
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
+        _workspaceWrapper.IsWorkspaceLoaded.Returns(true);
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
     }
 
@@ -52,7 +50,6 @@ public class OpenWithMenuOptionTests
             _stringLocalizer,
             _commandService,
             _workspaceWrapper,
-            _dialogService,
             _logger);
     }
 
@@ -214,7 +211,7 @@ public class OpenWithMenuOptionTests
     {
         // Placeholder factories (PackageManifestFactory, EditorManifestFactory) exist
         // only to register an extension for resource classification. They cannot create
-        // document views and must not appear in the "Open with..." picker. With one placeholder plus the text fallback,
+        // document views and must not appear in the Open with menu. With one placeholder plus the text fallback,
         // only the fallback survives the filter, so the menu stays hidden (one
         // candidate, nothing to pick between).
         var clickedFile = CreateFileResource("package.toml");
@@ -238,7 +235,7 @@ public class OpenWithMenuOptionTests
     {
         // The code editor registers itself explicitly for .md (alongside the
         // markdown preview editor). The augmentation must dedupe by editor id,
-        // otherwise the dialog would show two "Source Code Editor" entries.
+        // otherwise the menu would show two "Source Code Editor" entries.
         var clickedFile = CreateFileResource("readme.md");
         var fallback = CreateFactory("celbridge.code-editor.code-document");
 
@@ -254,5 +251,56 @@ public class OpenWithMenuOptionTests
         var state = option.GetState(ContextFor(clickedFile));
 
         state.IsVisible.Should().BeFalse();
+    }
+
+    [Test]
+    public void GetSubMenuItems_ListsEachEditorAndChecksTheCurrentOne()
+    {
+        var clickedFile = CreateFileResource("readme.md");
+        var markdownEditor = new EditorId("acme.markdown");
+        var codeEditor = new EditorId("acme.code");
+        var pickList = new EditorPickList(
+            new[] { markdownEditor, codeEditor },
+            new[] { "Markdown (default)", "Code" },
+            CurrentIndex: 1);
+        _documentsService.GetEditorPickList(clickedFile.Resource, codeEditor).Returns(pickList);
+        var context = ContextFor(clickedFile) with { ClickedFileEditorId = codeEditor };
+
+        var option = CreateOption();
+        var items = option.GetSubMenuItems(context);
+
+        items.Select(item => item.LocalizedText).Should().Equal("Markdown (default)", "Code");
+        items.Select(item => item.IsChecked).Should().Equal(false, true);
+    }
+
+    [Test]
+    public void ChoosingAnEditor_RecordsTheChoiceAndOpensTheFileInIt()
+    {
+        var clickedFile = CreateFileResource("readme.md");
+        var markdownEditor = new EditorId("acme.markdown");
+        var codeEditor = new EditorId("acme.code");
+        var pickList = new EditorPickList(
+            new[] { markdownEditor, codeEditor },
+            new[] { "Markdown (default)", "Code" },
+            CurrentIndex: 0);
+        _documentsService.GetEditorPickList(clickedFile.Resource, Arg.Any<EditorId>()).Returns(pickList);
+        _documentsService.SetPreferredEditorAsync(Arg.Any<ResourceKey>(), Arg.Any<EditorId>())
+            .Returns(Task.FromResult(Result.Ok()));
+        Action<IOpenDocumentCommand>? configure = null;
+        _commandService.Execute(
+            Arg.Do<Action<IOpenDocumentCommand>>(action => configure = action),
+            Arg.Any<string>(),
+            Arg.Any<int>());
+
+        var option = CreateOption();
+        var items = option.GetSubMenuItems(ContextFor(clickedFile));
+        items[1].Execute();
+
+        _documentsService.Received(1).SetPreferredEditorAsync(clickedFile.Resource, codeEditor);
+        configure.Should().NotBeNull();
+        var openCommand = Substitute.For<IOpenDocumentCommand>();
+        configure!(openCommand);
+        openCommand.FileResource.Should().Be(clickedFile.Resource);
+        openCommand.EditorId.Should().Be(codeEditor);
     }
 }
