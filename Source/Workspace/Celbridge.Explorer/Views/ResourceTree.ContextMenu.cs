@@ -1,4 +1,5 @@
 using Celbridge.DataTransfer;
+using Celbridge.Documents;
 using Celbridge.Explorer.Menu;
 using Windows.Foundation;
 
@@ -81,6 +82,12 @@ public sealed partial class ResourceTree
         var canModifySelection = await EvaluateSelectionModifiable(selectedResources);
         var canAddToTargetFolder = EvaluateTargetFolderAddable(clickedResource);
 
+        EditorPickList? openWithChoices = null;
+        if (!clickedResource.IsFolder)
+        {
+            openWithChoices = await _documentsService.GetEditorsForFileAsync(clickedResource.Resource);
+        }
+
         var context = new ExplorerMenuContext(
             ClickedResource: clickedResource,
             SelectedResources: selectedResources,
@@ -92,6 +99,7 @@ public sealed partial class ResourceTree
         {
             CanModifySelection = canModifySelection,
             CanAddToTargetFolder = canAddToTargetFolder,
+            OpenWithChoices = openWithChoices,
         };
 
         return context;

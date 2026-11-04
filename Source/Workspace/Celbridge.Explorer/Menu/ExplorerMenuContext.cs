@@ -1,5 +1,6 @@
 using Celbridge.ContextMenu;
 using Celbridge.DataTransfer;
+using Celbridge.Documents;
 
 namespace Celbridge.Explorer.Menu;
 
@@ -24,9 +25,16 @@ public record ExplorerMenuContext(
 
     /// <summary>
     /// True when new resources can be added into the target folder (writable
-    /// root, visible folder, folder not itself locked). Precomputed at build time.
+    /// root, visible folder, folder not itself locked). Precomputed when the context menu opens.
     /// </summary>
     public bool CanAddToTargetFolder { get; init; } = true;
+
+    /// <summary>
+    /// The Open with choices for the clicked file, with the file's current editor checked. Null when the
+    /// clicked resource is a folder, or when fewer than two editors can open the file. Precomputed when
+    /// the context menu opens.
+    /// </summary>
+    public EditorPickList? OpenWithChoices { get; init; }
 
     /// <summary>
     /// True when exactly one resource is selected.

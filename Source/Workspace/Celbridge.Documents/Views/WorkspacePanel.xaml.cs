@@ -859,7 +859,15 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
                 var tabOrder = effectiveOptions.Address?.TabOrder ?? existingTabOrder;
                 var reopenAddress = new DocumentAddress(WindowIndex: 0, Section: reopenSection, TabOrder: tabOrder);
                 var reopenOptions = effectiveOptions with { Address = reopenAddress };
-                return await OpenDocument(fileResource, reopenOptions);
+                var reopenResult = await OpenDocument(fileResource, reopenOptions);
+                if (reopenResult.IsFailure)
+                {
+                    // The document is still recorded as active but its tab has gone, so the workspace has
+                    // to move to a document that exists.
+                    SectionContainer.ReconcileMissingActiveDocument();
+                }
+
+                return reopenResult;
             }
 
             // Without an explicit address the existing tab stays in its own
@@ -986,8 +994,8 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
             editorState = await ViewModel.LoadDocumentEditorState(fileResource);
         }
 
-        // Editor state is private to the editor that wrote it, so state another editor saved, as a
-        // Reopen With or a changed association leaves behind, is dropped rather than handed over.
+        // Editor state is private to the editor that wrote the state. After an Open with switch or a
+        // changed association, the state from the previous editor is dropped.
         if (editorState is not null &&
             !string.IsNullOrEmpty(editorState.Json))
         {

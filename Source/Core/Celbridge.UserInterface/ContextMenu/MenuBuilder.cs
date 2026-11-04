@@ -72,7 +72,20 @@ public class MenuBuilder<TContext> : IMenuBuilder<TContext> where TContext : IMe
 
                 foreach (var child in subMenuItems)
                 {
-                    var childItem = new MenuFlyoutItem { Text = child.LocalizedText };
+                    MenuFlyoutItem childItem;
+                    if (child.IsChecked is bool isChecked)
+                    {
+                        childItem = new ToggleMenuFlyoutItem
+                        {
+                            Text = child.LocalizedText,
+                            IsChecked = isChecked
+                        };
+                    }
+                    else
+                    {
+                        childItem = new MenuFlyoutItem { Text = child.LocalizedText };
+                    }
+
                     if (child.Icon is IconSymbol childIcon)
                     {
                         childItem.Icon = new Icon { Symbol = childIcon };

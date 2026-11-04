@@ -293,21 +293,48 @@ public partial class DocumentTabViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Returns true if more than one editor is registered for this document's file extension,
-    /// meaning a "Reopen with..." menu option is worth showing to the user. Returns false during
-    /// workspace teardown.
+    /// Returns the Open with choices for this document, with the tab's own editor checked. Returns null
+    /// when fewer than two editors can open the file, and during workspace teardown.
     /// </summary>
-    public bool HasMultipleCompatibleEditors()
+    public EditorPickList? GetEditors()
     {
         if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
-            return false;
+            return null;
         }
 
-        var factories = _workspaceWrapper.WorkspaceService.DocumentsService.DocumentEditorRegistry
-            .GetUserPickableFactoriesForResource(FileResource);
+        var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
 
-        return factories.Count >= 2;
+        return documentsService.GetEditorsForDocument(FileResource, EditorId);
+    }
+
+    /// <summary>
+    /// Opens the document in the given editor and records the editor as the file's editor choice. Logs a
+    /// failure or an exception, so the tab menu can start the switch without awaiting it.
+    /// </summary>
+    public async Task OpenWithEditorAsync(EditorId editorId)
+    {
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
+        {
+            return;
+        }
+
+        var fileResource = FileResource;
+
+        try
+        {
+            var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
+
+            var openResult = await documentsService.OpenWithEditorAsync(fileResource, editorId);
+            if (openResult.IsFailure)
+            {
+                _logger.LogWarning(openResult, $"Failed to open '{fileResource}' in editor '{editorId}'");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Failed to open '{fileResource}' in editor '{editorId}'");
+        }
     }
 
     // Subscribes for the key before disposing the old subscription, so no change between the two is missed.

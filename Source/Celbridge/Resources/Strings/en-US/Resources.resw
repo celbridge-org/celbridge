@@ -432,7 +432,7 @@ This file could not be saved</value>
     <value>Cancel Download</value>
   </data>
   <data name="Downloads_Remove" xml:space="preserve">
-    <value>Remove From List</value>
+    <value>Remove from List</value>
   </data>
   <data name="Downloads_Progress" xml:space="preserve">
     <value>{0} of {1}</value>
@@ -825,7 +825,7 @@ This file could not be saved</value>
     <value>Manage Bookmarks</value>
   </data>
   <data name="WebView_Settings_ShowBookmarksBarLabel" xml:space="preserve">
-    <value>Show bookmarks bar</value>
+    <value>Show Bookmarks Bar</value>
   </data>
   <data name="WebView_Settings_ShowBookmarksBarHint" xml:space="preserve">
     <value>The bar only appears when you have bookmarks.</value>
@@ -1070,7 +1070,7 @@ Open with default application instead?</value>
     <value>Patterns to leave out of the Explorer, one per line. The .git folder is always hidden.</value>
   </data>
   <data name="ProjectSettings_SearchExcludeTitle" xml:space="preserve">
-    <value>Excluded from search</value>
+    <value>Excluded from Search</value>
   </data>
   <data name="ProjectSettings_SearchExcludeSubtitle" xml:space="preserve">
     <value>Patterns for search to skip, one per line.</value>
@@ -1082,7 +1082,7 @@ Open with default application instead?</value>
     <value>Patterns follow .gitignore rules, with / between folder names.</value>
   </data>
   <data name="ProjectSettings_DownloadsFolderTitle" xml:space="preserve">
-    <value>Downloads folder</value>
+    <value>Downloads Folder</value>
   </data>
   <data name="ProjectSettings_DownloadsFolderSubtitle" xml:space="preserve">
     <value>Where files downloaded from web pages are saved, as a path from the project root.</value>
@@ -1100,7 +1100,7 @@ Open with default application instead?</value>
     <value>Celbridge cannot save downloads inside a .git folder, so they are saved to '{0}'.</value>
   </data>
   <data name="ProjectSettings_PackageFoldersTitle" xml:space="preserve">
-    <value>Package folders</value>
+    <value>Package Folders</value>
   </data>
   <data name="ProjectSettings_PackageFoldersSubtitle" xml:space="preserve">
     <value>Enter each folder as a path from the project root.</value>
@@ -1187,7 +1187,7 @@ Open with default application instead?</value>
     <value>Only applies when the file is not already open.</value>
   </data>
   <data name="ProjectSettings_ShortcutOpenOnLoadLabel" xml:space="preserve">
-    <value>Open when project loads</value>
+    <value>Open When Project Loads</value>
   </data>
   <data name="ProjectSettings_ShortcutOpenOnLoadHint" xml:space="preserve">
     <value>Opens the file every time the project loads, even if it was closed in the last session.</value>
@@ -1196,7 +1196,7 @@ Open with default application instead?</value>
     <value>Off by default</value>
   </data>
   <data name="ProjectSettings_ShortcutRailButtonLabel" xml:space="preserve">
-    <value>Show Utility button</value>
+    <value>Show Utility Button</value>
   </data>
   <data name="ProjectSettings_ShortcutRailButtonHint" xml:space="preserve">
     <value>Adds a Utility button that opens the file.</value>
@@ -1205,13 +1205,13 @@ Open with default application instead?</value>
     <value>On by default</value>
   </data>
   <data name="ProjectSettings_WorkspaceArea_Main" xml:space="preserve">
-    <value>Main area</value>
+    <value>Main Panel</value>
   </data>
   <data name="ProjectSettings_WorkspaceArea_Bottom" xml:space="preserve">
-    <value>Bottom area</value>
+    <value>Bottom Panel</value>
   </data>
   <data name="ProjectSettings_WorkspaceArea_Side" xml:space="preserve">
-    <value>Side area</value>
+    <value>Right Panel</value>
   </data>
   <data name="ProjectSettings_FeatureFlagsHeader" xml:space="preserve">
     <value>Features</value>
@@ -1262,10 +1262,10 @@ Open with default application instead?</value>
     <value>An experimental editor for .note files, which may be removed in a later release.</value>
   </data>
   <data name="ProjectSettings_CelbridgeVersionLabel" xml:space="preserve">
-    <value>Celbridge version</value>
+    <value>Celbridge Version</value>
   </data>
   <data name="ProjectSettings_ProjectVersionLabel" xml:space="preserve">
-    <value>Project version</value>
+    <value>Project Version</value>
   </data>
   <data name="ProjectSettings_DescriptionLabel" xml:space="preserve">
     <value>Description</value>
@@ -1970,25 +1970,16 @@ Open with default application instead?</value>
     <value>Select Image</value>
   </data>
   <data name="Explorer_OpenWith" xml:space="preserve">
-    <value>Open with...</value>
+    <value>Open with</value>
   </data>
-  <data name="OpenWithDialog_Title" xml:space="preserve">
-    <value>Choose Editor</value>
-  </data>
-  <data name="OpenWithDialog_Message" xml:space="preserve">
-    <value>Select which editor opens this file:</value>
-  </data>
-  <data name="OpenWithDialog_DefaultFormat" xml:space="preserve">
+  <data name="OpenWith_DefaultFormat" xml:space="preserve">
     <value>{0} (default)</value>
-  </data>
-  <data name="OpenWithDialog_OpenButton" xml:space="preserve">
-    <value>Open</value>
   </data>
   <data name="DocumentTab_Reopen" xml:space="preserve">
     <value>Reopen</value>
   </data>
-  <data name="DocumentTab_ReopenWith" xml:space="preserve">
-    <value>Reopen with...</value>
+  <data name="DocumentTab_OpenWith" xml:space="preserve">
+    <value>Open with</value>
   </data>
   <data name="Report_Finding_Project_MigrationNotReached" xml:space="preserve">
     <value>Migration step was not reached.</value>

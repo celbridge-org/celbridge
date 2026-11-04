@@ -4,8 +4,8 @@ using Celbridge.Workspace;
 namespace Celbridge.Documents.Services;
 
 /// <summary>
-/// Reads the user's preferred editor for a file from the per-file sidecar '_editor' field, set by
-/// "Open with...".
+/// Reads the user's preferred editor for a file from the per-file sidecar '_editor' field, set by the
+/// Open with menu.
 /// </summary>
 public class DocumentEditorPreferenceStore
 {

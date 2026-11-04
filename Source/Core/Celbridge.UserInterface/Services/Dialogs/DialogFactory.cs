@@ -145,25 +145,6 @@ public class DialogFactory : IDialogFactory
         return WithFocusGuard(dialog);
     }
 
-    public IChoiceDialog CreateChoiceDialog(string titleText, string messageText, IReadOnlyList<string> options, int defaultIndex = 0, ChoiceDialogCheckbox? checkbox = null, string? primaryButtonText = null, string? secondaryButtonText = null)
-    {
-        var dialog = new ChoiceDialog();
-        dialog.Initialize(titleText, messageText, options, defaultIndex, checkbox);
-
-        // Only override the default button text if custom text is provided
-        if (primaryButtonText is not null)
-        {
-            dialog.PrimaryButtonText = primaryButtonText;
-        }
-
-        if (secondaryButtonText is not null)
-        {
-            dialog.SecondaryButtonText = secondaryButtonText;
-        }
-
-        return WithFocusGuard(dialog);
-    }
-
     // Attaches the shared focus guard to every dialog this factory creates and returns the dialog. Centralised
     // here because the factory is the single place dialogs are constructed, so no dialog author has to remember
     // to wire up focus handling for a new dialog.
