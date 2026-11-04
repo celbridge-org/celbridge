@@ -58,7 +58,7 @@ public static class ArchiveHelper
     /// <summary>
     /// Lists the files to archive for a file or folder resource. A file is stored under its own name, and a
     /// folder's files under their paths relative to the folder, so the folder's contents sit at the archive
-    /// root. The folder walk goes through the gateway, so reserved folders such as .celbridge are never listed.
+    /// root. The folder walk goes through the gateway, so reserved folders like .git are never listed.
     /// </summary>
     public static async Task<List<ArchiveSourceFile>> CollectSourceFilesAsync(
         IResourceFileSystem resourceFileSystem,

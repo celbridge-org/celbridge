@@ -83,7 +83,7 @@ public sealed class ResourcePolicy : IResourcePolicy
             if (rule.Matcher.IsMatch(path, isFolder))
             {
                 var error = new PolicyDenialError(resource, action, rule);
-                return Result.Fail(error.Message).WithException(error);
+                return Result.Fail().WithException(error);
             }
         }
 

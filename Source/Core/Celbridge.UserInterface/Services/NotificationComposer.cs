@@ -9,8 +9,8 @@ namespace Celbridge.UserInterface.Services;
 
 /// <summary>
 /// Records what the application's notification sources report as entries in the notification centre. A
-/// project load that found issues is a condition. A failed resource operation, a discarded save and a
-/// notification raised by an editor are each an event.
+/// project load that found issues is a condition. A failed resource operation, an extraction that skipped
+/// entries, a discarded save and a notification raised by an editor are each an event.
 /// </summary>
 public sealed class NotificationComposer
 {
@@ -47,6 +47,7 @@ public sealed class NotificationComposer
         // Each source raises its message on whichever thread it runs on, and the centre accepts calls from any.
         _messengerService.Register<ProjectLoadNotificationMessage>(this, OnProjectLoadNotification);
         _messengerService.Register<ResourceOperationFailedMessage>(this, OnResourceOperationFailed);
+        _messengerService.Register<ArchiveEntriesSkippedMessage>(this, OnArchiveEntriesSkipped);
         _messengerService.Register<WorkspaceItemSaveDiscardedMessage>(this, OnWorkspaceItemSaveDiscarded);
         _messengerService.Register<EditorNotificationMessage>(this, OnEditorNotification);
     }
@@ -65,6 +66,23 @@ public sealed class NotificationComposer
         }
 
         var content = ComposeOperationNotification(message);
+        _notificationCentre.AddEvent(content);
+    }
+
+    // The log names each skipped entry, so the line gives only the count.
+    private void OnArchiveEntriesSkipped(object recipient, ArchiveEntriesSkippedMessage message)
+    {
+        var skippedCount = message.SkippedEntries.Count;
+        if (skippedCount == 0)
+        {
+            return;
+        }
+
+        var messageKey = skippedCount == 1
+            ? "Notification_ArchiveEntriesSkipped_One"
+            : "Notification_ArchiveEntriesSkipped_Many";
+
+        var content = Compose(ReportSeverity.Warning, messageKey, action: null, skippedCount);
         _notificationCentre.AddEvent(content);
     }
 

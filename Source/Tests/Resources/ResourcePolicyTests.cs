@@ -79,6 +79,17 @@ public class ResourcePolicyTests
     }
 
     [Test]
+    public void Evaluate_Denial_CarriesItsMessageOnce()
+    {
+        var policy = BuildPolicy();
+
+        var result = policy.Evaluate(new ResourceKey(".git/config"), ResourceAction.Write);
+
+        result.HasException<PolicyDenialError>().Should().BeTrue();
+        result.MessageChain.Should().Be(result.FirstErrorMessage);
+    }
+
+    [Test]
     public void Evaluate_IgnoresTheExplorerAndSearchLists()
     {
         // The two configured lists are ergonomic, not access control: nothing a project

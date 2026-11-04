@@ -10,8 +10,8 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.Tests.Explorer;
 
 /// <summary>
-/// Unit tests for ExportArchiveMenuOption, which offers the project folder for export and passes the path
-/// chosen in the save dialog to the export command.
+/// Unit tests for ExportArchiveMenuOption. The option offers the project folder or a single selected folder for
+/// export. It passes the path chosen in the save dialog to the export command.
 /// </summary>
 [TestFixture]
 public class ExportArchiveMenuOptionTests
@@ -63,11 +63,34 @@ public class ExportArchiveMenuOptionTests
     }
 
     [Test]
-    public void GetState_HiddenForSelectedFolder()
+    public void GetState_VisibleForSelectedFolder()
     {
         var folder = new ResourceItem(new ResourceKey("Docs"), IsFolder: true);
 
-        var state = CreateOption().GetState(SelectedResourceContext(folder));
+        var state = CreateOption().GetState(SelectedResourcesContext(folder));
+
+        state.IsVisible.Should().BeTrue();
+        state.IsEnabled.Should().BeTrue();
+    }
+
+    [Test]
+    public void GetState_HiddenForSelectedFile()
+    {
+        var file = new ResourceItem(new ResourceKey("notes.md"), IsFolder: false);
+
+        var state = CreateOption().GetState(SelectedResourcesContext(file));
+
+        state.IsVisible.Should().BeFalse();
+        state.IsEnabled.Should().BeFalse();
+    }
+
+    [Test]
+    public void GetState_HiddenForSeveralSelectedItems()
+    {
+        var docsFolder = new ResourceItem(new ResourceKey("Docs"), IsFolder: true);
+        var imagesFolder = new ResourceItem(new ResourceKey("Images"), IsFolder: true);
+
+        var state = CreateOption().GetState(SelectedResourcesContext(docsFolder, imagesFolder));
 
         state.IsVisible.Should().BeFalse();
         state.IsEnabled.Should().BeFalse();
@@ -86,6 +109,23 @@ public class ExportArchiveMenuOptionTests
 
         suggestedFileName.Should().Be("Acme.zip");
         _exportCommand.SourceResource.Should().Be(ResourceKey.Empty);
+        _exportCommand.ArchiveFilePath.Should().Be(archiveFilePath);
+    }
+
+    [Test]
+    public void Execute_ExportsSelectedFolderToChosenFile()
+    {
+        string? suggestedFileName = null;
+        var folderResource = new ResourceKey("Notes/Docs");
+        var archiveFilePath = Path.Combine(Path.GetTempPath(), "Exports", "Docs.zip");
+        _filePickerService
+            .PickSaveFileAsync(Arg.Do<string>(fileName => suggestedFileName = fileName), Arg.Any<string>(), Arg.Any<IEnumerable<string>>())
+            .Returns(Task.FromResult(Result<string>.Ok(archiveFilePath)));
+
+        CreateOption().Execute(SelectedResourcesContext(new ResourceItem(folderResource, IsFolder: true)));
+
+        suggestedFileName.Should().Be("Docs.zip");
+        _exportCommand.SourceResource.Should().Be(folderResource);
         _exportCommand.ArchiveFilePath.Should().Be(archiveFilePath);
     }
 
@@ -122,15 +162,10 @@ public class ExportArchiveMenuOptionTests
             ClipboardOperation: ClipboardContentOperation.None);
     }
 
-    private static ExplorerMenuContext SelectedResourceContext(ResourceItem selectedResource)
+    private static ExplorerMenuContext SelectedResourcesContext(params ResourceItem[] selectedResources)
     {
-        var selectedResources = new List<ResourceItem>
-        {
-            selectedResource
-        };
-
         return new ExplorerMenuContext(
-            ClickedResource: selectedResource,
+            ClickedResource: selectedResources[0],
             SelectedResources: selectedResources,
             IsProjectFolderTargeted: false,
             HasClipboardData: false,

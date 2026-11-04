@@ -22,6 +22,7 @@ public class NotificationComposerTests
 
     private MessageHandler<object, ProjectLoadNotificationMessage>? _loadHandler;
     private MessageHandler<object, ResourceOperationFailedMessage>? _operationHandler;
+    private MessageHandler<object, ArchiveEntriesSkippedMessage>? _skippedEntriesHandler;
     private MessageHandler<object, WorkspaceItemSaveDiscardedMessage>? _saveDiscardedHandler;
     private MessageHandler<object, EditorNotificationMessage>? _editorHandler;
 
@@ -42,6 +43,12 @@ public class NotificationComposerTests
                 Arg.Any<object>(),
                 Arg.Any<MessageHandler<object, ResourceOperationFailedMessage>>()))
             .Do(call => _operationHandler = call.Arg<MessageHandler<object, ResourceOperationFailedMessage>>());
+
+        _messengerService
+            .When(service => service.Register(
+                Arg.Any<object>(),
+                Arg.Any<MessageHandler<object, ArchiveEntriesSkippedMessage>>()))
+            .Do(call => _skippedEntriesHandler = call.Arg<MessageHandler<object, ArchiveEntriesSkippedMessage>>());
 
         _messengerService
             .When(service => service.Register(
@@ -140,6 +147,31 @@ public class NotificationComposerTests
         SendOperationFailure(ResourceOperationType.Delete, Array.Empty<FailedResource>(), ResourceKey.Empty);
 
         _centre.Notifications.Should().BeEmpty();
+    }
+
+    [Test]
+    public void OneSkippedArchiveEntry_IsCountedAsAWarning()
+    {
+        var message = new ArchiveEntriesSkippedMessage(new ResourceKey("project:site.zip"), [".git/config"]);
+
+        _skippedEntriesHandler!.Invoke(this, message);
+
+        var notification = _centre.Notifications.Should().ContainSingle().Subject;
+        notification.Kind.Should().Be(NotificationKind.Event);
+        notification.Content.Severity.Should().Be(ReportSeverity.Warning);
+        notification.Content.Message.Should().Be("Could not extract 1 item");
+        notification.Content.Action.Should().BeNull();
+    }
+
+    [Test]
+    public void SeveralSkippedArchiveEntries_AreCounted()
+    {
+        var message = new ArchiveEntriesSkippedMessage(new ResourceKey("project:site.zip"), [".git/config", ".git/HEAD"]);
+
+        _skippedEntriesHandler!.Invoke(this, message);
+
+        _centre.Notifications.Should().ContainSingle()
+            .Which.Content.Message.Should().Be("Could not extract 2 items");
     }
 
     [Test]

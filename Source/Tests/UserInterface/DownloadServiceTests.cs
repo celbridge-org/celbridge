@@ -254,7 +254,7 @@ public class DownloadServiceTests
         var denial = new PolicyDenialError(new ResourceKey("downloads/.git"), ResourceAction.Read, rule);
 
         _resourceFileSystem.GetInfoAsync(Arg.Any<ResourceKey>())
-            .Returns(Task.FromResult<Result<StorageItemInfo>>(Result.Fail(denial.Message).WithException(denial)));
+            .Returns(Task.FromResult<Result<StorageItemInfo>>(Result.Fail().WithException(denial)));
 
         var beginResult = await _downloadService.BeginAsync(
             ".git",

@@ -72,3 +72,11 @@ public record ResourceOperationFailedMessage(
     /// </summary>
     public ResourceKey ReportResource { get; init; } = ResourceKey.Empty;
 }
+
+/// <summary>
+/// A message sent when an archive was extracted without the entries the resource policy refuses. Each skipped
+/// entry is named by its path inside the archive.
+/// </summary>
+public record ArchiveEntriesSkippedMessage(
+    ResourceKey ArchiveResource,
+    IReadOnlyList<string> SkippedEntries);

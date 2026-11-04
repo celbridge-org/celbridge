@@ -77,6 +77,20 @@ public sealed class ResourceOperationNotifier
         _messengerService.Send(message);
     }
 
+    /// <summary>
+    /// Reports the entries an extraction left out because the resource policy refuses them.
+    /// </summary>
+    public void NotifySkippedArchiveEntries(ResourceKey archiveResource, IReadOnlyList<string> skippedEntries)
+    {
+        if (skippedEntries.Count == 0)
+        {
+            return;
+        }
+
+        var message = new ArchiveEntriesSkippedMessage(archiveResource, skippedEntries);
+        _messengerService.Send(message);
+    }
+
     // The operation itself has already run, so a report that could not be written is logged rather
     // than turned into a second failure. The notification still fires, without its action.
     private async Task<ResourceKey> WriteReportAsync(

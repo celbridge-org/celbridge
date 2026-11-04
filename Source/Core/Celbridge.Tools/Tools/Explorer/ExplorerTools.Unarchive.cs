@@ -7,7 +7,7 @@ namespace Celbridge.Tools;
 /// <summary>
 /// Result returned by explorer_unarchive with the extraction summary.
 /// </summary>
-public record class ExplorerUnarchiveResult(int Entries, string Destination);
+public record class ExplorerUnarchiveResult(int Entries, string Destination, int Skipped);
 
 public partial class ExplorerTools
 {
@@ -43,7 +43,10 @@ public partial class ExplorerTools
         }
 
         var unarchiveResult = unarchiveResultWrapper.Value;
-        var result = new ExplorerUnarchiveResult(unarchiveResult.Entries, unarchiveResult.Destination);
+        var result = new ExplorerUnarchiveResult(
+            unarchiveResult.Entries,
+            unarchiveResult.Destination,
+            unarchiveResult.SkippedEntries.Count);
         var json = JsonSerializer.Serialize(result, JsonOptions);
         return ToolResponse.Success(json);
     }

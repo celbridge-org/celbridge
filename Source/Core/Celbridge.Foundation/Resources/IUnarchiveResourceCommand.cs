@@ -16,6 +16,12 @@ public record class UnarchiveResult
     /// The resource key of the destination folder.
     /// </summary>
     public required string Destination { get; init; }
+
+    /// <summary>
+    /// The entries the resource policy refused, which the extraction left out. Each entry is named by its path
+    /// inside the archive.
+    /// </summary>
+    public required IReadOnlyList<string> SkippedEntries { get; init; }
 }
 
 /// <summary>
