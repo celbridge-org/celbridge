@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using Celbridge.Logging;
+using Celbridge.Projects;
 using Celbridge.Workspace;
 using Microsoft.UI.Xaml.Media.Imaging;
 
@@ -17,6 +18,7 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
 
     private readonly ILogger<ResourcePickerDialogViewModel> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IProjectService _projectService;
     private readonly IIconService _iconService;
     private readonly IStringLocalizer _stringLocalizer;
 
@@ -24,6 +26,7 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
     private IResourceFileSystem? _resourceFileSystem;
     private List<string> _extensions = [];
     private bool _listsFolders;
+    private bool _listsProjectFolder;
     private List<ResourcePickerItem> _allItems = [];
     private List<ResourcePickerItem> _matchingItems = [];
     private bool _showPreview;
@@ -68,11 +71,13 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
     public ResourcePickerDialogViewModel(
         ILogger<ResourcePickerDialogViewModel> logger,
         IWorkspaceWrapper workspaceWrapper,
+        IProjectService projectService,
         IIconService iconService,
         IStringLocalizer stringLocalizer)
     {
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;
+        _projectService = projectService;
         _iconService = iconService;
         _stringLocalizer = stringLocalizer;
         PropertyChanged += OnPropertyChanged;
@@ -93,6 +98,7 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
         _resourceFileSystem = workspaceService.ResourceService.FileSystem;
         _showPreview = showPreview;
         _listsFolders = false;
+        _listsProjectFolder = false;
         _extensions = extensions
             .Select(e => e.TrimStart('.').ToLowerInvariant())
             .ToList();
@@ -105,10 +111,11 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Sets the picker up to list every folder in the project, at any depth, but not the project folder itself.
-    /// The list stays empty, and shows that it is loading, until LoadItemsAsync has walked the project.
+    /// Sets the picker up to list every folder in the project, at any depth. The project folder itself comes first
+    /// when listProjectFolder is true. The list stays empty, and shows that it is loading, until LoadItemsAsync has
+    /// walked the project.
     /// </summary>
-    public void InitializeForFolders()
+    public void InitializeForFolders(bool listProjectFolder)
     {
         Guard.IsTrue(_workspaceWrapper.IsWorkspaceLoaded);
 
@@ -117,6 +124,7 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
         _resourceFileSystem = workspaceService.ResourceService.FileSystem;
         _showPreview = false;
         _listsFolders = true;
+        _listsProjectFolder = listProjectFolder;
         _extensions = [];
 
         PreviewPanelVisibility = Visibility.Collapsed;
@@ -302,9 +310,21 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
     private void ShowItems(List<ResourcePickerItem> items)
     {
         items.Sort((a, b) => string.Compare(a.DisplayText, b.DisplayText, StringComparison.OrdinalIgnoreCase));
+        if (_listsProjectFolder)
+        {
+            items.Insert(0, CreateProjectFolderItem());
+        }
         _allItems = items;
 
         UpdateFilteredItems();
+    }
+
+    private ResourcePickerItem CreateProjectFolderItem()
+    {
+        var projectName = _projectService.CurrentProject?.ProjectName ?? string.Empty;
+        var displayText = _stringLocalizer.GetString("ResourcePickerDialog_ProjectFolder", projectName);
+
+        return ResourcePickerItem.ForProjectFolder(displayText, _iconService.DefaultFolderIcon);
     }
 
     private void UpdateFilteredItems()

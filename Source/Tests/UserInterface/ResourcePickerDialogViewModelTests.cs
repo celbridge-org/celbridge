@@ -1,3 +1,4 @@
+using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.ViewModels;
@@ -45,6 +46,11 @@ public class ResourcePickerDialogViewModelTests
         workspaceWrapper.IsWorkspaceLoaded.Returns(true);
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
+        var project = Substitute.For<IProject>();
+        project.ProjectName.Returns("Acme");
+        var projectService = Substitute.For<IProjectService>();
+        projectService.CurrentProject.Returns(project);
+
         var iconService = Substitute.For<IIconService>();
         iconService.DefaultFolderIcon.Returns(FolderIcon);
         iconService.GetFileIconForFileName(Arg.Any<string>()).Returns(Result<IconDefinition>.Ok(FileIcon));
@@ -63,6 +69,7 @@ public class ResourcePickerDialogViewModelTests
         _viewModel = new ResourcePickerDialogViewModel(
             Substitute.For<ILogger<ResourcePickerDialogViewModel>>(),
             workspaceWrapper,
+            projectService,
             iconService,
             stringLocalizer);
     }
@@ -70,7 +77,7 @@ public class ResourcePickerDialogViewModelTests
     [Test]
     public async Task TheFolderList_HoldsEveryFolderAtAnyDepth_AndNoFile()
     {
-        _viewModel.InitializeForFolders();
+        _viewModel.InitializeForFolders(listProjectFolder: false);
         await _viewModel.LoadItemsAsync();
 
         _viewModel.FilteredItems.Select(item => item.DisplayText)
@@ -80,9 +87,35 @@ public class ResourcePickerDialogViewModelTests
     }
 
     [Test]
+    public async Task TheFolderList_StartsWithTheProjectFolder_WhenAskedTo()
+    {
+        _viewModel.InitializeForFolders(listProjectFolder: true);
+        await _viewModel.LoadItemsAsync();
+
+        _viewModel.FilteredItems.Select(item => item.DisplayText)
+            .Should().Equal("ResourcePickerDialog_ProjectFolder:Acme", "assets", "docs", "docs/images");
+        _viewModel.FilteredItems[0].ResourceKey.Should().Be(ResourceKey.Empty);
+        _viewModel.FindMatchingItem(ResourceKey.Empty).Should().NotBeNull();
+    }
+
+    [Test]
+    public async Task TheProjectFolder_IsNarrowedByTheSearch_LikeAnyFolder()
+    {
+        _viewModel.InitializeForFolders(listProjectFolder: true);
+        await _viewModel.LoadItemsAsync();
+
+        _viewModel.SearchText = "acme";
+        _viewModel.FilteredItems.Should().ContainSingle()
+            .Which.ResourceKey.Should().Be(ResourceKey.Empty);
+
+        _viewModel.SearchText = "docs";
+        _viewModel.FilteredItems.Should().NotContain(item => item.ResourceKey.IsEmpty);
+    }
+
+    [Test]
     public async Task TheFolderList_WalksWithSearchExcludeSwitchedOff()
     {
-        _viewModel.InitializeForFolders();
+        _viewModel.InitializeForFolders(listProjectFolder: false);
         await _viewModel.LoadItemsAsync();
 
         await _walker.Received(1).WalkAsync(ResourceKey.Empty, false, Arg.Any<IPathMatcher?>(), Arg.Any<CancellationToken>());
@@ -91,7 +124,7 @@ public class ResourcePickerDialogViewModelTests
     [Test]
     public async Task TheFolderList_IsNarrowedByTheSearch()
     {
-        _viewModel.InitializeForFolders();
+        _viewModel.InitializeForFolders(listProjectFolder: false);
         await _viewModel.LoadItemsAsync();
 
         _viewModel.SearchText = "IMA";

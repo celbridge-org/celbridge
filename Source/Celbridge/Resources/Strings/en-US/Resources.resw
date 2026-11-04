@@ -1648,6 +1648,9 @@ Open with default application instead?</value>
   <data name="ResourcePickerDialog_Loading" xml:space="preserve">
     <value>Loading...</value>
   </data>
+  <data name="ResourcePickerDialog_ProjectFolder" xml:space="preserve">
+    <value>{0} (project folder)</value>
+  </data>
   <data name="ResourcePickerDialog_MoreMatches_One" xml:space="preserve">
     <value>1 more match is not shown.</value>
   </data>

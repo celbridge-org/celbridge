@@ -129,7 +129,7 @@ public class DialogFactory : IDialogFactory
     public IResourcePickerDialog CreateFolderPickerDialog(string? title = null)
     {
         var dialog = new ResourcePickerDialog();
-        dialog.ViewModel.InitializeForFolders();
+        dialog.ViewModel.InitializeForFolders(listProjectFolder: false);
         if (title is not null)
         {
             dialog.SetTitle(title);
