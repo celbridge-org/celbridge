@@ -37,11 +37,11 @@ public sealed partial class WorkspacePanel
             case DocumentTabMenuAction.UnsplitArea:
                 UnsplitArea(tab);
                 break;
-            case DocumentTabMenuAction.CopyResourceKey:
-                CopyResourceKeyForTab(tab);
+            case DocumentTabMenuAction.CopyRelativePath:
+                CopyRelativePathForTab(tab);
                 break;
-            case DocumentTabMenuAction.CopyFilePath:
-                CopyFilePathForTab(tab);
+            case DocumentTabMenuAction.CopyFullPath:
+                CopyFullPathForTab(tab);
                 break;
             case DocumentTabMenuAction.RevealInExplorer:
                 RevealInExplorerForTab(tab);
@@ -235,14 +235,14 @@ public sealed partial class WorkspacePanel
         ViewModel.RevealInExplorerForTab(tab.ViewModel.FileResource);
     }
 
-    private void CopyResourceKeyForTab(DocumentTab tab)
+    private void CopyRelativePathForTab(DocumentTab tab)
     {
-        ViewModel.CopyResourceKeyForTab(tab.ViewModel.FileResource);
+        ViewModel.CopyRelativePathForTab(tab.ViewModel.FileResource);
     }
 
-    private void CopyFilePathForTab(DocumentTab tab)
+    private void CopyFullPathForTab(DocumentTab tab)
     {
-        ViewModel.CopyFilePathForTab(tab.ViewModel.FilePath);
+        ViewModel.CopyFullPathForTab(tab.ViewModel.FilePath);
     }
 
     private void OpenFileExplorerForTab(DocumentTab tab)

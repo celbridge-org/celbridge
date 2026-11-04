@@ -210,16 +210,16 @@ public partial class WorkspacePanelViewModel : ObservableObject
         });
     }
 
-    public void CopyResourceKeyForTab(ResourceKey fileResource)
+    public void CopyRelativePathForTab(ResourceKey fileResource)
     {
         _commandService.Execute<ICopyTextToClipboardCommand>(command =>
         {
-            command.Text = fileResource.Path;
+            command.Text = fileResource.ShortKey;
             command.TransferMode = DataTransferMode.Copy;
         });
     }
 
-    public void CopyFilePathForTab(string filePath)
+    public void CopyFullPathForTab(string filePath)
     {
         _commandService.Execute<ICopyTextToClipboardCommand>(command =>
         {

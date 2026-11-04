@@ -8,8 +8,8 @@ public enum ExplorerMenuGroup
     DocumentActions,
     AddItems,
     EditActions,
-    Utilities,
     FileSystem,
+    Utilities,
     Extensions
 }
 

@@ -259,6 +259,28 @@ public class ResourceKeyTests
     }
 
     [Test]
+    public void ShortKeyDropsOnlyTheProjectRootPrefix()
+    {
+        new ResourceKey("foo/bar").ShortKey.Should().Be("foo/bar");
+        new ResourceKey("project:foo/bar").ShortKey.Should().Be("foo/bar");
+        new ResourceKey("temp:staging/foo").ShortKey.Should().Be("temp:staging/foo");
+        new ResourceKey("logs:session.log").ShortKey.Should().Be("logs:session.log");
+        new ResourceKey("temp:").ShortKey.Should().Be("temp:");
+        ResourceKey.Empty.ShortKey.Should().Be("");
+    }
+
+    [Test]
+    public void ShortKeyParsesBackToTheSameKey()
+    {
+        var keys = new[] { "foo/bar", "project:foo/bar", "temp:staging/foo", "logs:session.log", "temp:", "" };
+        foreach (var key in keys)
+        {
+            var resource = new ResourceKey(key);
+            new ResourceKey(resource.ShortKey).Should().Be(resource);
+        }
+    }
+
+    [Test]
     public void ToStringEmitsCanonicalForm()
     {
         // ToString always carries the root prefix, including "project:" for the default
