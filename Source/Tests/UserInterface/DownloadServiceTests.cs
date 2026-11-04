@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Celbridge.Commands;
+using Celbridge.Dialog;
 using Celbridge.Downloads;
 using Celbridge.Explorer;
 using Celbridge.Localization;
@@ -16,11 +17,11 @@ using Celbridge.Workspace;
 namespace Celbridge.Tests.UserInterface;
 
 /// <summary>
-/// The download badge lists what this service holds, and every download in the application goes through
-/// it. These tests pin the rules that keep a download inside the project and its record honest: a download
-/// lands in the folder the project names, a taken name is uniquified even against a transfer still running,
-/// a denied destination is reported rather than written, a staged file is always cleaned up, and a record
-/// with a missing file leaves the list.
+/// Covers the download service. Every download in the application goes through it. A download is staged under
+/// temp: while the Download File dialog asks where the file goes. The answer reserves a free name in the chosen
+/// folder, and the file moves there once the transfer has finished. Cancel, a failed transfer and a denied
+/// destination each delete the staged file. A download fails when the Download File dialog cannot open. A row with a
+/// missing file leaves the list.
 /// </summary>
 [TestFixture]
 public class DownloadServiceTests
@@ -33,16 +34,23 @@ public class DownloadServiceTests
     private static readonly string TempFolderPath =
         Path.Combine(Path.GetTempPath(), "celbridge-download-tests", "data", "temp");
 
+    private static readonly ResourceKey DownloadFolder = new("downloads");
+
     private IMessengerService _messengerService = null!;
     private ICommandService _commandService = null!;
+    private IDialogService _dialogService = null!;
+    private IBindableWorkspaceSettings _workspaceSettings = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
     private FakeResourceMonitor _resourceMonitor = null!;
     private RootHandlerRegistry _rootHandlers = null!;
     private IResourceFileSystem _resourceFileSystem = null!;
     private ILocalizerService _localizerService = null!;
-    private IProject _project = null!;
     private FakeFileSystem _localFileSystem = null!;
     private List<Move> _moves = null!;
+
+    // The answer each Download File dialog gives at once. A dialog answers later when a test keeps the answer back.
+    private Result<DownloadFileAnswer> _answer = null!;
+    private Queue<TaskCompletionSource<Result<DownloadFileAnswer>>> _heldAnswers = null!;
 
     // Run part way through a move, for a test that needs to see the service mid-import.
     private Func<Task>? _duringMove;
@@ -79,12 +87,13 @@ public class DownloadServiceTests
 
         _resourceMonitor = new FakeResourceMonitor();
 
+        // Each key reports the in-memory file system's item at the key's path. A folder seeded by a test then counts
+        // as a folder.
         _resourceFileSystem = Substitute.For<IResourceFileSystem>();
         _resourceFileSystem.CreateFolderAsync(Arg.Any<ResourceKey>())
             .Returns(Task.FromResult(Result.Ok()));
         _resourceFileSystem.GetInfoAsync(Arg.Any<ResourceKey>())
-            .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(
-                new StorageItemInfo(StorageItemKind.NotFound, 0, DateTime.UtcNow, FileSystemAttributes.None))));
+            .Returns(callInfo => GetInfoAsync(callInfo.Arg<ResourceKey>()));
         _resourceFileSystem.DeleteAsync(Arg.Any<ResourceKey>())
             .Returns(callInfo => DeleteAsync(callInfo.Arg<ResourceKey>()));
 
@@ -93,8 +102,13 @@ public class DownloadServiceTests
         resourceService.RootHandlers.Returns(_rootHandlers);
         resourceService.FileSystem.Returns(_resourceFileSystem);
 
+        // A project that remembers no download folder, until a download's answer records one.
+        _workspaceSettings = Substitute.For<IBindableWorkspaceSettings>();
+        _workspaceSettings.DownloadFolder = string.Empty;
+
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
+        workspaceService.BindableWorkspaceSettings.Returns(_workspaceSettings);
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.HasWorkspaceService.Returns(true);
@@ -107,14 +121,16 @@ public class DownloadServiceTests
                 Arg.Any<int>())
             .Returns(callInfo => MoveAsync(callInfo.Arg<Action<IMoveDownloadCommand>>()));
 
-        // A project that names no downloads folder of its own, until a test gives it one.
-        _project = Substitute.For<IProject>();
-        _project.Config.Returns(new ProjectConfig());
+        // Every dialog saves to downloads/ at once, unless a test changes the answer or delays it.
+        _answer = SaveTo(DownloadFolder);
+        _heldAnswers = new Queue<TaskCompletionSource<Result<DownloadFileAnswer>>>();
 
-        var projectService = Substitute.For<IProjectService>();
-        projectService.CurrentProject.Returns(_project);
+        _dialogService = Substitute.For<IDialogService>();
+        _dialogService.IsDialogOpen.Returns(false);
+        _dialogService.ShowDownloadFileDialogAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<ResourceKey>())
+            .Returns(callInfo => AnswerDialogAsync());
 
-        // Every reason the service records is a localized string; these tests read the key.
+        // Every reason the service records is a localized string. These tests read the key.
         _localizerService = Substitute.For<ILocalizerService>();
         _localizerService.GetString(Arg.Any<string>(), Arg.Any<object[]>())
             .Returns(callInfo => callInfo.Arg<string>());
@@ -125,7 +141,7 @@ public class DownloadServiceTests
             _localizerService,
             _commandService,
             _workspaceWrapper,
-            projectService,
+            _dialogService,
             _localFileSystem);
     }
 
@@ -145,16 +161,33 @@ public class DownloadServiceTests
     }
 
     [Test]
-    public async Task ADownload_IsStagedUnderTemp_AndMovedToTheDownloadsFolder()
+    public async Task ADownload_IsStagedUnderTheSitesName_BeforeTheDialogNamesItsDestination()
     {
+        HoldTheNextAnswer();
+
         var ticket = await BeginAsync("report.pdf");
 
-        ticket.Destination.Should().Be(new ResourceKey("downloads/report.pdf"));
-        ticket.StagingPath.Should().StartWith(TempFolderPath);
+        ticket.StagingPath.Should().StartWith(Path.Combine(TempFolderPath, ProjectConstants.DownloadsFolder));
 
         var download = _downloadService.Downloads.Should().ContainSingle().Subject;
         download.FileName.Should().Be("report.pdf");
+        download.Resource.Should().Be(ResourceKey.Empty);
         download.Status.Should().Be(DownloadStatus.InProgress);
+
+        // With no folder remembered, the dialog opens on the project folder.
+        await _dialogService.Received(1).ShowDownloadFileDialogAsync(
+            "report.pdf",
+            "https://example.com/report.pdf",
+            ResourceKey.Empty);
+
+        _moves.Should().BeEmpty();
+        _workspaceSettings.DownloadFolder.Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task ADownload_IsMovedToTheFolderTheDialogNames()
+    {
+        var ticket = await BeginAsync("report.pdf");
 
         // The transfer writes its bytes to the staging path the ticket named.
         _localFileSystem.SeedFile(ticket.StagingPath, "payload");
@@ -173,11 +206,41 @@ public class DownloadServiceTests
         _localFileSystem.Files.Should().NotContainKey(ticket.StagingPath);
         _localFileSystem.Files.Should().ContainKey(ResolvePath(settled.Resource).Value);
 
+        // The answer is remembered for the next download in this project.
+        _workspaceSettings.DownloadFolder.Should().Be(DownloadFolder.ToString());
+
         // Selecting in the Explorer would take the keyboard from whatever the user was doing.
         _commandService.DidNotReceive().Execute<ISelectResourceCommand>(
             Arg.Any<Action<ISelectResourceCommand>>(),
             Arg.Any<string>(),
             Arg.Any<int>());
+    }
+
+    [Test]
+    public async Task AFileThatArrivesBeforeTheAnswer_LandsOnceTheDialogAnswers()
+    {
+        var pendingAnswer = HoldTheNextAnswer();
+
+        var ticket = await BeginAsync("report.pdf");
+        _localFileSystem.SeedFile(ticket.StagingPath, "payload");
+
+        await _downloadService.CompleteAsync(ticket.Id);
+
+        // The file waits in temp: until the user says where it goes.
+        _moves.Should().BeEmpty();
+        _localFileSystem.Files.Should().ContainKey(ticket.StagingPath);
+        _downloadService.Downloads.Should().ContainSingle()
+            .Which.Status.Should().Be(DownloadStatus.InProgress);
+
+        pendingAnswer.SetResult(SaveTo(DownloadFolder));
+
+        _moves.Should().ContainSingle()
+            .Which.DestResource.Should().Be(new ResourceKey("downloads/report.pdf"));
+
+        var settled = _downloadService.Downloads.Should().ContainSingle().Subject;
+        settled.Status.Should().Be(DownloadStatus.Succeeded);
+        settled.Resource.Should().Be(new ResourceKey("downloads/report.pdf"));
+        _localFileSystem.Files.Should().NotContainKey(ticket.StagingPath);
     }
 
     [Test]
@@ -187,9 +250,7 @@ public class DownloadServiceTests
 
         var ticket = await BeginAsync("report.pdf");
 
-        ticket.Destination.Should().Be(new ResourceKey("downloads/report (1).pdf"));
-
-        // The row names the file the download is saved as, from the moment it starts.
+        // Once the dialog answers, the row shows the saved name.
         _downloadService.Downloads.Should().ContainSingle()
             .Which.FileName.Should().Be("report (1).pdf");
 
@@ -202,24 +263,119 @@ public class DownloadServiceTests
     }
 
     [Test]
-    public async Task AFolderTheProjectNamesButHasNotMade_IsMadeByTheFirstDownload()
+    public async Task TheProjectFolder_CanBeTheDownloadFolder()
     {
-        NameDownloadsFolder("incoming");
+        _answer = SaveTo(ResourceKey.Empty);
 
-        var ticket = await CompleteDownloadAsync("report.pdf");
+        var settled = await CompleteDownloadAsync("report.pdf");
 
-        ticket.Destination.Should().Be(new ResourceKey("incoming/report.pdf"));
-        _localFileSystem.Files.Should().ContainKey(ResolvePath(ticket.Destination).Value);
+        settled.Status.Should().Be(DownloadStatus.Succeeded);
+        settled.Resource.Should().Be(new ResourceKey("report.pdf"));
+        _localFileSystem.Files.Should().ContainKey(Path.Combine(ProjectFolderPath, "report.pdf"));
     }
 
     [Test]
-    [Platform(Exclude = "Linux", Reason = "On a case-sensitive file system, Incoming and incoming are different folders.")]
-    public async Task AFolderNamedInAnotherCase_IsRefused_AndTheRowGivesItsStoredName()
+    public async Task TheDialogOpensOnTheFolderLastChosen()
     {
-        // The resolver reads the stored names from the real disk, so the folder is made there too.
-        Directory.CreateDirectory(Path.Combine(ProjectFolderPath, "Incoming"));
-        _localFileSystem.SeedFolder(Path.Combine(ProjectFolderPath, "Incoming"));
-        NameDownloadsFolder("incoming");
+        var incomingFolder = new ResourceKey("downloads/incoming");
+        _localFileSystem.SeedFolder(Path.Combine(ProjectFolderPath, "downloads", "incoming"));
+        _answer = SaveTo(incomingFolder);
+
+        await CompleteDownloadAsync("report.pdf");
+
+        _workspaceSettings.DownloadFolder.Should().Be(incomingFolder.ToString());
+
+        await BeginAsync("notes.txt");
+
+        await _dialogService.Received(1).ShowDownloadFileDialogAsync(
+            "notes.txt",
+            "https://example.com/notes.txt",
+            incomingFolder);
+    }
+
+    [Test]
+    public async Task TheDialogOpensOnTheProjectFolder_OnceTheFolderLastChosenHasGone()
+    {
+        _workspaceSettings.DownloadFolder = new ResourceKey("downloads/incoming").ToString();
+
+        await BeginAsync("report.pdf");
+
+        await _dialogService.Received(1).ShowDownloadFileDialogAsync(
+            "report.pdf",
+            "https://example.com/report.pdf",
+            ResourceKey.Empty);
+    }
+
+    [Test]
+    public async Task CancelInTheDialog_BeforeTheTransferFinishes_StopsTheTransfer_AndDeletesTheStagedFile()
+    {
+        var pendingAnswer = HoldTheNextAnswer();
+
+        var ticket = await BeginAsync("report.pdf");
+        _localFileSystem.SeedFile(ticket.StagingPath, "partial");
+
+        pendingAnswer.SetResult(CancelTheDownload());
+
+        _transfers["report.pdf"].Received(1).Cancel();
+
+        var download = _downloadService.Downloads.Should().ContainSingle().Subject;
+        download.Status.Should().Be(DownloadStatus.Canceled);
+        download.FailureReason.Should().BeEmpty();
+
+        _localFileSystem.Files.Should().NotContainKey(ticket.StagingPath);
+        _moves.Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task CancelInTheDialog_AfterTheTransferFinishes_DeletesTheStagedFile()
+    {
+        var pendingAnswer = HoldTheNextAnswer();
+
+        var ticket = await BeginAsync("report.pdf");
+        _localFileSystem.SeedFile(ticket.StagingPath, "payload");
+        await _downloadService.CompleteAsync(ticket.Id);
+
+        pendingAnswer.SetResult(CancelTheDownload());
+
+        _downloadService.Downloads.Should().ContainSingle()
+            .Which.Status.Should().Be(DownloadStatus.Canceled);
+
+        _localFileSystem.Files.Should().NotContainKey(ticket.StagingPath);
+        _moves.Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task ATransferThatFailsWhileTheDialogAsks_IsRecorded_AndTheAnswerSavesNothing()
+    {
+        var pendingAnswer = HoldTheNextAnswer();
+
+        var ticket = await BeginAsync("report.pdf");
+        _localFileSystem.SeedFile(ticket.StagingPath, "partial");
+
+        await _downloadService.FailAsync(ticket.Id, "The transfer did not complete.");
+
+        var failed = _downloadService.Downloads.Should().ContainSingle().Subject;
+        failed.Status.Should().Be(DownloadStatus.Failed);
+        failed.FailureReason.Should().Be("The transfer did not complete.");
+        _localFileSystem.Files.Should().NotContainKey(ticket.StagingPath);
+
+        pendingAnswer.SetResult(SaveTo(DownloadFolder));
+
+        _moves.Should().BeEmpty();
+        var unchanged = _downloadService.Downloads.Should().ContainSingle().Subject;
+        unchanged.Status.Should().Be(DownloadStatus.Failed);
+        unchanged.FileName.Should().Be("report.pdf");
+
+        // The answer reserved no name, so the next download of the file takes the name itself.
+        var nextTicket = await BeginAsync("report.pdf");
+
+        GetRow(nextTicket.Id).FileName.Should().Be("report.pdf");
+    }
+
+    [Test]
+    public async Task ADownloadThatStartsWhileAnotherDialogIsOpen_Fails_AndNothingIsStaged()
+    {
+        _dialogService.IsDialogOpen.Returns(true);
 
         var beginResult = await _downloadService.BeginAsync(
             "report.pdf",
@@ -229,20 +385,37 @@ public class DownloadServiceTests
         beginResult.IsFailure.Should().BeTrue();
 
         var download = _downloadService.Downloads.Should().ContainSingle().Subject;
+        download.FileName.Should().Be("report.pdf");
         download.Status.Should().Be(DownloadStatus.Failed);
-        download.FailureReason.Should().Be("Downloads_FolderNameMismatch");
-        _localizerService.Received().GetString(
-            "Downloads_FolderNameMismatch",
-            Arg.Is<object[]>(arguments =>
-                arguments.Length == 2
-                && Equals(arguments[0], "incoming")
-                && Equals(arguments[1], "Incoming")));
+        download.FailureReason.Should().Be("Downloads_TransferFailed");
 
+        await _dialogService.DidNotReceive().ShowDownloadFileDialogAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<ResourceKey>());
         await _resourceFileSystem.DidNotReceive().CreateFolderAsync(Arg.Any<ResourceKey>());
     }
 
     [Test]
-    public async Task ADeniedDestination_IsRecordedAsAFailure_AndNothingIsStaged()
+    public async Task ADownloadTheDialogServiceRefusesToAsk_Fails_AndTheStagedFileIsDeleted()
+    {
+        var pendingAnswer = HoldTheNextAnswer();
+
+        var ticket = await BeginAsync("report.pdf");
+        _localFileSystem.SeedFile(ticket.StagingPath, "partial");
+
+        pendingAnswer.SetResult(Result<DownloadFileAnswer>.Fail("Another dialog is open"));
+
+        _transfers["report.pdf"].Received(1).Cancel();
+
+        var download = _downloadService.Downloads.Should().ContainSingle().Subject;
+        download.Status.Should().Be(DownloadStatus.Failed);
+        download.FailureReason.Should().Be("Downloads_TransferFailed");
+        _localFileSystem.Files.Should().NotContainKey(ticket.StagingPath);
+    }
+
+    [Test]
+    public async Task ADeniedDestination_FailsTheDownload_AndDeletesTheStagedFile()
     {
         // WebKit tidies a file name that starts with a dot, but the service does not rely on the platform
         // doing so.
@@ -251,47 +424,62 @@ public class DownloadServiceTests
         rule.Pattern.Returns(".git");
         rule.GatedActions.Returns(ResourceAction.Read | ResourceAction.Write);
         rule.Description.Returns("The Git metadata folder is reserved and cannot be addressed as a resource.");
-        var denial = new PolicyDenialError(new ResourceKey("downloads/.git"), ResourceAction.Read, rule);
 
-        _resourceFileSystem.GetInfoAsync(Arg.Any<ResourceKey>())
+        var deniedDestination = new ResourceKey("downloads/.git");
+        var denial = new PolicyDenialError(deniedDestination, ResourceAction.Read, rule);
+        _resourceFileSystem.GetInfoAsync(deniedDestination)
             .Returns(Task.FromResult<Result<StorageItemInfo>>(Result.Fail().WithException(denial)));
 
-        var beginResult = await _downloadService.BeginAsync(
-            ".git",
-            "https://example.com/.git",
-            Substitute.For<IDownloadTransfer>());
+        var pendingAnswer = HoldTheNextAnswer();
 
-        beginResult.IsFailure.Should().BeTrue();
+        var ticket = await BeginAsync(".git");
+        _localFileSystem.SeedFile(ticket.StagingPath, "partial");
+
+        pendingAnswer.SetResult(SaveTo(DownloadFolder));
 
         var download = _downloadService.Downloads.Should().ContainSingle().Subject;
         download.Status.Should().Be(DownloadStatus.Failed);
         download.FailureReason.Should().Be("Downloads_Blocked");
 
-        // The row names the folder Celbridge reserves, rather than a project-file rule that does not exist.
+        // The row names the reserved folder that matched.
         _localizerService.Received().GetString(
             "Downloads_Blocked",
             Arg.Is<object[]>(arguments => arguments.Length == 2 && Equals(arguments[1], ".git")));
 
-        await _resourceFileSystem.DidNotReceive().CreateFolderAsync(Arg.Any<ResourceKey>());
+        _transfers[".git"].Received(1).Cancel();
+        _localFileSystem.Files.Should().NotContainKey(ticket.StagingPath);
+        _moves.Should().BeEmpty();
     }
 
     [Test]
-    public async Task ADestinationThatCannotBeChecked_SaysTheFolderCouldNotBePrepared()
+    public async Task ADestinationThatCannotBeChecked_FailsTheDownload_AsUnavailable()
     {
-        _resourceFileSystem.GetInfoAsync(Arg.Any<ResourceKey>())
+        _resourceFileSystem.GetInfoAsync(new ResourceKey("downloads/report.pdf"))
             .Returns(Task.FromResult(Result<StorageItemInfo>.Fail("The disk could not be read")));
 
-        var beginResult = await _downloadService.BeginAsync(
-            "report.pdf",
-            "https://example.com/report.pdf",
-            Substitute.For<IDownloadTransfer>());
-
-        beginResult.IsFailure.Should().BeTrue();
+        await BeginAsync("report.pdf");
 
         var download = _downloadService.Downloads.Should().ContainSingle().Subject;
+        download.Status.Should().Be(DownloadStatus.Failed);
+        download.FailureReason.Should().Be("Downloads_DestinationUnavailable");
+    }
+
+    [Test]
+    public async Task AnAnswerNamingAFolderThatHasGone_FailsTheDownload_AsUnavailable()
+    {
+        _answer = SaveTo(new ResourceKey("downloads/incoming"));
+
+        var ticket = await BeginAsync("report.pdf");
+
+        var download = _downloadService.Downloads.Should().ContainSingle().Subject;
+        download.Status.Should().Be(DownloadStatus.Failed);
         download.FailureReason.Should().Be("Downloads_DestinationUnavailable");
 
-        await _resourceFileSystem.DidNotReceive().CreateFolderAsync(Arg.Any<ResourceKey>());
+        _transfers["report.pdf"].Received(1).Cancel();
+
+        await _downloadService.CompleteAsync(ticket.Id);
+
+        _moves.Should().BeEmpty();
     }
 
     [Test]
@@ -334,9 +522,30 @@ public class DownloadServiceTests
     }
 
     [Test]
+    public async Task RecordFailure_ListsAFailedRow_WithoutAsking()
+    {
+        _downloadService.RecordFailure(
+            "report.pdf",
+            "https://example.com/report.pdf",
+            "Downloads_TransferFailed");
+
+        var download = _downloadService.Downloads.Should().ContainSingle().Subject;
+        download.FileName.Should().Be("report.pdf");
+        download.Status.Should().Be(DownloadStatus.Failed);
+        download.FailureReason.Should().Be("Downloads_TransferFailed");
+        download.Resource.Should().Be(ResourceKey.Empty);
+
+        await _dialogService.DidNotReceive().ShowDownloadFileDialogAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<ResourceKey>());
+        _messengerService.Received(1).Send(Arg.Is<DownloadsChangedMessage>(message => message.HasArrival));
+    }
+
+    [Test]
     public async Task ACompletedDownloadWhoseFileIsMissing_LeavesTheList()
     {
-        var succeededTicket = await CompleteDownloadAsync("report.pdf");
+        var succeeded = await CompleteDownloadAsync("report.pdf");
 
         var failedTicket = await BeginAsync("notes.txt");
         await _downloadService.FailAsync(failedTicket.Id, "The transfer did not complete.");
@@ -345,8 +554,8 @@ public class DownloadServiceTests
 
         // The file is deleted in the Explorer, and the change to the file is what tells the service its row now
         // leads nowhere.
-        await _localFileSystem.DeleteFileAsync(ResolvePath(succeededTicket.Destination).Value);
-        _resourceMonitor.DeliverChange(succeededTicket.Destination, ResourceItemState.Absent);
+        await _localFileSystem.DeleteFileAsync(ResolvePath(succeeded.Resource).Value);
+        _resourceMonitor.DeliverChange(succeeded.Resource, ResourceItemState.Absent);
 
         // The failed row names no file, so there is nothing for it to lose.
         var remaining = _downloadService.Downloads.Should().ContainSingle().Subject;
@@ -356,7 +565,7 @@ public class DownloadServiceTests
     [Test]
     public async Task ClearAll_RemovesFinishedDownloads_AndKeepsOneStillRunning()
     {
-        var succeededTicket = await CompleteDownloadAsync("report.pdf");
+        var succeeded = await CompleteDownloadAsync("report.pdf");
 
         var failedTicket = await BeginAsync("notes.txt");
         await _downloadService.FailAsync(failedTicket.Id, "The transfer did not complete.");
@@ -372,7 +581,7 @@ public class DownloadServiceTests
         running.Status.Should().Be(DownloadStatus.InProgress);
 
         // The file a cleared record named stays in the project.
-        _localFileSystem.Files.Should().ContainKey(ResolvePath(succeededTicket.Destination).Value);
+        _localFileSystem.Files.Should().ContainKey(ResolvePath(succeeded.Resource).Value);
 
         await _downloadService.CompleteAsync(runningTicket.Id);
 
@@ -407,7 +616,7 @@ public class DownloadServiceTests
         await _downloadService.CompleteAsync(ticket.Id);
 
         concurrentTicket.Should().NotBeNull();
-        concurrentTicket!.Destination.Should().Be(new ResourceKey("downloads/report (1).pdf"));
+        GetRow(concurrentTicket!.Id).FileName.Should().Be("report (1).pdf");
     }
 
     [Test]
@@ -490,9 +699,9 @@ public class DownloadServiceTests
     [Test]
     public async Task AbandoningADownloadThatHasSettled_ChangesNothing()
     {
-        var ticket = await CompleteDownloadAsync("report.pdf");
+        var succeeded = await CompleteDownloadAsync("report.pdf");
 
-        await _downloadService.AbandonAsync(ticket.Id, "the surface went away");
+        await _downloadService.AbandonAsync(succeeded.Id, "the surface went away");
 
         _transfers["report.pdf"].DidNotReceive().Cancel();
         _downloadService.Downloads.Should().ContainSingle()
@@ -518,7 +727,7 @@ public class DownloadServiceTests
     [Test]
     public async Task Removing_AFinishedDownload_LeavesTheOthers_AndKeepsItsFile()
     {
-        var succeededTicket = await CompleteDownloadAsync("report.pdf");
+        var succeeded = await CompleteDownloadAsync("report.pdf");
 
         var failedTicket = await BeginAsync("notes.txt");
         await _downloadService.FailAsync(failedTicket.Id, "The transfer did not complete.");
@@ -526,13 +735,13 @@ public class DownloadServiceTests
         _downloadService.Remove(failedTicket.Id);
 
         _downloadService.Downloads.Should().ContainSingle()
-            .Which.Id.Should().Be(succeededTicket.Id);
+            .Which.Id.Should().Be(succeeded.Id);
 
-        _downloadService.Remove(succeededTicket.Id);
+        _downloadService.Remove(succeeded.Id);
 
         // The record goes and the file it named stays in the project.
         _downloadService.Downloads.Should().BeEmpty();
-        _localFileSystem.Files.Should().ContainKey(ResolvePath(succeededTicket.Destination).Value);
+        _localFileSystem.Files.Should().ContainKey(ResolvePath(succeeded.Resource).Value);
     }
 
     [Test]
@@ -560,17 +769,38 @@ public class DownloadServiceTests
         download.TotalBytes.Should().Be(2048);
     }
 
-    private void NameDownloadsFolder(string downloadsFolder)
+    private static Result<DownloadFileAnswer> SaveTo(ResourceKey folder)
     {
-        var config = new ProjectConfig
-        {
-            Downloads = new DownloadsSection
-            {
-                Folder = downloadsFolder
-            }
-        };
+        var answer = new DownloadFileAnswer(DownloadFileChoice.ProjectFolder, folder);
 
-        _project.Config.Returns(config);
+        return Result<DownloadFileAnswer>.Ok(answer);
+    }
+
+    private static Result<DownloadFileAnswer> CancelTheDownload()
+    {
+        var answer = new DownloadFileAnswer(DownloadFileChoice.Cancel, ResourceKey.Empty);
+
+        return Result<DownloadFileAnswer>.Ok(answer);
+    }
+
+    // The next dialog waits until the test sets the returned answer. The rest of the service's answer handling then
+    // runs inside SetResult, so the test reads the outcome straight after.
+    private TaskCompletionSource<Result<DownloadFileAnswer>> HoldTheNextAnswer()
+    {
+        var pendingAnswer = new TaskCompletionSource<Result<DownloadFileAnswer>>();
+        _heldAnswers.Enqueue(pendingAnswer);
+
+        return pendingAnswer;
+    }
+
+    private Task<Result<DownloadFileAnswer>> AnswerDialogAsync()
+    {
+        if (_heldAnswers.TryDequeue(out var pendingAnswer))
+        {
+            return pendingAnswer.Task;
+        }
+
+        return Task.FromResult(_answer);
     }
 
     private async Task<DownloadTicket> BeginAsync(string fileName)
@@ -585,14 +815,20 @@ public class DownloadServiceTests
         return beginResult.Value;
     }
 
-    private async Task<DownloadTicket> CompleteDownloadAsync(string fileName)
+    // Runs a download to the end with the dialog's current answer, and returns the download's settled row.
+    private async Task<DownloadEntry> CompleteDownloadAsync(string fileName)
     {
         var ticket = await BeginAsync(fileName);
         _localFileSystem.SeedFile(ticket.StagingPath, "payload");
 
         await _downloadService.CompleteAsync(ticket.Id);
 
-        return ticket;
+        return GetRow(ticket.Id);
+    }
+
+    private DownloadEntry GetRow(long downloadId)
+    {
+        return _downloadService.Downloads.Should().ContainSingle(download => download.Id == downloadId).Subject;
     }
 
     private void RaiseWorkspaceUnloaded()
@@ -622,6 +858,18 @@ public class DownloadServiceTests
         return Result.Ok();
     }
 
+    private async Task<Result<StorageItemInfo>> GetInfoAsync(ResourceKey resource)
+    {
+        var resolveResult = ResolvePath(resource);
+        if (resolveResult.IsFailure)
+        {
+            return Result<StorageItemInfo>.Fail($"Failed to resolve '{resource}'")
+                .WithErrors(resolveResult);
+        }
+
+        return await _localFileSystem.GetInfoAsync(resolveResult.Value);
+    }
+
     private async Task<Result<DeleteResult>> DeleteAsync(ResourceKey resource)
     {
         await _localFileSystem.DeleteFileAsync(ResolvePath(resource).Value);
@@ -633,5 +881,4 @@ public class DownloadServiceTests
     {
         return _rootHandlers.ResolveResourcePath(resource);
     }
-
 }

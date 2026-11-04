@@ -66,6 +66,12 @@ public interface IDialogFactory
     IResourcePickerDialog CreateFolderPickerDialog(string? title = null);
 
     /// <summary>
+    /// Create a Download File Dialog for a file downloaded from the source URL, opening on the given download
+    /// folder. Requires a loaded workspace.
+    /// </summary>
+    IDownloadFileDialog CreateDownloadFileDialog(string fileName, string sourceUrl, ResourceKey downloadFolder);
+
+    /// <summary>
     /// Create an Icon Picker Dialog over the supported icon set, opening its search on the given text.
     /// Text that names one of the supported icons also opens with that icon selected.
     /// </summary>

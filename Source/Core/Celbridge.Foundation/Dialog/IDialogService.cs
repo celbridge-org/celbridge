@@ -14,6 +14,7 @@ public enum DialogKind
     SecretInput,
     ResourcePicker,
     IconPicker,
+    DownloadFile,
 }
 
 /// <summary>
@@ -90,6 +91,12 @@ public interface IDialogService
     /// Fails if no project is currently loaded.
     /// </summary>
     Task<Result<ResourceKey>> ShowFolderPickerDialogAsync(string? title = null);
+
+    /// <summary>
+    /// Display the Download File Dialog, which asks where to save a file downloaded from the source URL. The
+    /// dialog opens on the given download folder. Fails if no project is loaded or another dialog is open.
+    /// </summary>
+    Task<Result<DownloadFileAnswer>> ShowDownloadFileDialogAsync(string fileName, string sourceUrl, ResourceKey downloadFolder);
 
     /// <summary>
     /// Display an Icon Picker Dialog over the supported icon set, opening its search on the given text.

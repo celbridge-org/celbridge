@@ -136,6 +136,15 @@ public static class SettingCatalog
     }
 
     /// <summary>
+    /// Where files downloaded in a web view are saved.
+    /// </summary>
+    public static class Downloads
+    {
+        public static readonly SettingDescriptor<string> DownloadFolder =
+            new("Downloads.DownloadFolder", SettingScope.Workspace, "");
+    }
+
+    /// <summary>
     /// Project history. These belong to the user and installation, not to any
     /// single project, so they stay Application-scoped.
     /// </summary>

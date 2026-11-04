@@ -137,6 +137,13 @@ public class DialogFactory : IDialogFactory
         return WithFocusGuard(dialog);
     }
 
+    public IDownloadFileDialog CreateDownloadFileDialog(string fileName, string sourceUrl, ResourceKey downloadFolder)
+    {
+        var dialog = new DownloadFileDialog();
+        dialog.ViewModel.Initialize(fileName, sourceUrl, downloadFolder);
+        return WithFocusGuard(dialog);
+    }
+
     public IIconPickerDialog CreateIconPickerDialog(string searchText = "")
     {
         var dialog = new IconPickerDialog();

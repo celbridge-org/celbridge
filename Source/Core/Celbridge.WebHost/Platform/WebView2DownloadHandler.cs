@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Celbridge.Downloads;
 using Celbridge.Localization;
 using Celbridge.Logging;
@@ -40,6 +41,9 @@ internal sealed class WebView2DownloadTransfer : IDownloadTransfer
 /// </summary>
 internal sealed class WebView2DownloadHandler : IWebViewDownloadHandler
 {
+    // FOLDERID_Downloads, Windows' known folder for the user's Downloads folder.
+    private static readonly Guid DownloadsKnownFolderId = new("374DE290-123F-4565-9164-39C4925E467B");
+
     // A download this surface has handed to the service and not yet seen settle.
     private sealed class TrackedDownload
     {
@@ -63,6 +67,9 @@ internal sealed class WebView2DownloadHandler : IWebViewDownloadHandler
     private readonly IDownloadService _downloadService;
     private readonly CoreWebView2 _coreWebView2;
 
+    // The system Downloads folder, where WebView2 writes every download that no Save As dialog placed.
+    private readonly string _defaultDownloadFolderPath;
+
     // Chromium retries a download whose transfer broke off, and WebView2 raises DownloadStarting again for
     // each retry, so the downloads under way are kept to recognize a retry of one of them.
     private readonly List<TrackedDownload> _trackedDownloads = new();
@@ -80,6 +87,7 @@ internal sealed class WebView2DownloadHandler : IWebViewDownloadHandler
         _downloadService = ServiceLocator.AcquireService<IDownloadService>();
 
         _coreWebView2 = coreWebView2;
+        _defaultDownloadFolderPath = GetSystemDownloadsFolderPath();
     }
 
     /// <summary>
@@ -97,26 +105,23 @@ internal sealed class WebView2DownloadHandler : IWebViewDownloadHandler
     }
 
     // WebView2 writes a download to its default download folder unless the user names another in a Save As
-    // dialog, so pointing that folder at the project's downloads folder is what makes a path anywhere else
-    // the user's own choice rather than a folder nobody picked. It is also the folder that dialog then
-    // opens on, which is where a file downloaded from a project's page belongs. Applied per web view,
-    // because the project's downloads folder can change between one and the next.
+    // dialog, so a path anywhere else is the user's own choice. The folder is the system Downloads folder,
+    // WebView2's own default, which always exists. The profile is shared by every project and keeps the setting
+    // across sessions, so each web view sets it again.
     private void ApplyDefaultDownloadFolder()
     {
-        var folderResult = _downloadService.GetDestinationFolderPath();
-        if (folderResult.IsFailure)
+        if (string.IsNullOrEmpty(_defaultDownloadFolderPath))
         {
             return;
         }
 
         try
         {
-            // The folder need not exist: WebView2 creates it when a download first needs it.
-            _coreWebView2.Profile.DefaultDownloadFolderPath = folderResult.Value;
+            _coreWebView2.Profile.DefaultDownloadFolderPath = _defaultDownloadFolderPath;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to point the default download folder at the project");
+            _logger.LogError(ex, "Failed to point the default download folder at the system Downloads folder");
         }
     }
 
@@ -178,9 +183,9 @@ internal sealed class WebView2DownloadHandler : IWebViewDownloadHandler
                 return;
             }
 
-            // A path the user named in a Save As dialog is theirs, so the file goes where they said and the
-            // download list, which records only what landed in the project, records nothing. The download
-            // then runs with no UI at all, because Handled has already suppressed WebView2's.
+            // A path the user named in a Save As dialog is theirs. The file goes to that path, the Download File
+            // dialog stays closed, and the download list leaves the download out. The download runs without any
+            // UI, because Handled has already suppressed WebView2's.
             if (IsUserChosenPath(resultFilePath))
             {
                 _logger.LogDebug($"Download saved to '{resultFilePath}', the path its Save As dialog named");
@@ -227,10 +232,9 @@ internal sealed class WebView2DownloadHandler : IWebViewDownloadHandler
 
     /// <summary>
     /// Whether the download is going to a path the user named in a Save As dialog. WebView2 writes every
-    /// other download to its default download folder, which is the project's downloads folder, so a
-    /// destination anywhere else is one the user chose. A path that cannot be compared is treated as an
-    /// ordinary download, which keeps the file in the project rather than writing it somewhere nothing
-    /// vouched for.
+    /// other download to its default download folder, so a destination anywhere else is one the user chose. A
+    /// path that fails to compare counts as an ordinary download. The Download File dialog then asks where the
+    /// file goes.
     /// </summary>
     internal static bool IsUserChosenPath(string resultFilePath, string downloadsFolderPath)
     {
@@ -258,19 +262,30 @@ internal sealed class WebView2DownloadHandler : IWebViewDownloadHandler
         }
     }
 
-    // Compared against where the service would put the download rather than against the web view's own
-    // setting, so a project whose downloads folder has changed since this web view was attached routes the
-    // download rather than writing it to the folder the setting still names.
     private bool IsUserChosenPath(string resultFilePath)
     {
-        var folderResult = _downloadService.GetDestinationFolderPath();
-        if (folderResult.IsFailure)
-        {
-            return false;
-        }
-
-        return IsUserChosenPath(resultFilePath, folderResult.Value);
+        return IsUserChosenPath(resultFilePath, _defaultDownloadFolderPath);
     }
+
+    // Read from Windows' known folders, since the user can move the Downloads folder.
+    private static string GetSystemDownloadsFolderPath()
+    {
+        try
+        {
+            return GetKnownFolderPath(DownloadsKnownFolderId, 0, IntPtr.Zero);
+        }
+        catch (Exception)
+        {
+            return string.Empty;
+        }
+    }
+
+    [DllImport("shell32.dll", EntryPoint = "SHGetKnownFolderPath", CharSet = CharSet.Unicode, ExactSpelling = true, PreserveSig = false)]
+    [return: MarshalAs(UnmanagedType.LPWStr)]
+    private static extern string GetKnownFolderPath(
+        [MarshalAs(UnmanagedType.LPStruct)] Guid folderId,
+        uint flags,
+        IntPtr token);
 
     /// <summary>
     /// Whether an attempt at a download has been given up on for a retry. The attempt raises no further events,

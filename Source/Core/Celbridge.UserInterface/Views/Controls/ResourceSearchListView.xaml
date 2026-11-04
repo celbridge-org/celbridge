@@ -11,10 +11,11 @@
     <services:BoolToDimmedOpacityConverter x:Key="BoolToDimmedOpacityConverter"/>
   </UserControl.Resources>
 
+  <!-- The list takes whatever height the dialog gives the control. -->
   <Grid>
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/>
-      <RowDefinition Height="400"/>
+      <RowDefinition Height="*"/>
       <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
 
@@ -38,6 +39,13 @@
               IsDoubleTapEnabled="True"
               DoubleTapped="ResourceList_DoubleTapped"
               PreviewKeyDown="ResourceList_PreviewKeyDown">
+      <!-- A plain StackPanel, since the Skia heads' virtualizing panel misjudges the list's height. Scrolling a row
+           into view then pushes the first rows out of a list short enough to show them all. -->
+      <ListView.ItemsPanel>
+        <ItemsPanelTemplate>
+          <StackPanel VerticalAlignment="Top"/>
+        </ItemsPanelTemplate>
+      </ListView.ItemsPanel>
       <ListView.ItemContainerStyle>
         <Style TargetType="ListViewItem">
           <Setter Property="HorizontalContentAlignment" Value="Stretch"/>

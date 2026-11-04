@@ -8,8 +8,9 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.Tests.UserInterface;
 
 /// <summary>
-/// The resource picker lists either the project's files or its folders, from a walk of the project. A project's
-/// downloads folder is chosen from the folder list, so these tests pin that it holds every folder and nothing else.
+/// The resource picker lists either the project's files or its folders, from a walk of the project. The Download
+/// File dialog chooses the download folder from the folder list. These tests pin that the list contains every
+/// folder and no file.
 /// </summary>
 [TestFixture]
 public class ResourcePickerDialogViewModelTests

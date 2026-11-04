@@ -690,6 +690,8 @@ public class AgentResponseFilterTests
         public Task<Result<ResourceKey>> ShowResourcePickerDialogAsync(IReadOnlyList<string> extensions, string? title = null, bool showPreview = false) => throw new NotSupportedException();
         public Task<Result<ResourceKey>> ShowFolderPickerDialogAsync(string? title = null) => throw new NotSupportedException();
 
+        public Task<Result<DownloadFileAnswer>> ShowDownloadFileDialogAsync(string fileName, string sourceUrl, ResourceKey downloadFolder) => throw new NotSupportedException();
+
         public Task<Result<string>> ShowIconPickerDialogAsync(string searchText = "") => throw new NotSupportedException();
 
         public void ScheduleAnswer(DialogKind dialogKind, string payload = "", int delayMs = 250) => throw new NotSupportedException();

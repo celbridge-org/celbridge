@@ -54,6 +54,21 @@ public sealed partial class ResourceSearchListView : UserControl
         SearchTextBox.Focus(FocusState.Programmatic);
     }
 
+    /// <summary>
+    /// Selects the item for the resource and scrolls the item into view, when the shown list has one.
+    /// </summary>
+    public void SelectAndShow(ResourceKey resource)
+    {
+        var item = ViewModel.FilteredItems.FirstOrDefault(candidate => candidate.ResourceKey.Equals(resource));
+        if (item is null)
+        {
+            return;
+        }
+
+        ViewModel.SelectedItem = item;
+        ResourceList.ScrollIntoView(item);
+    }
+
     private void SearchTextBox_KeyDown(object sender, KeyRoutedEventArgs e)
     {
         if (e.Key == VirtualKey.Down)

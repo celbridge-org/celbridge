@@ -25,11 +25,9 @@ public static class ProjectConfigParser
     private const string FeaturesKey = "features";
     private const string ExplorerKey = "explorer";
     private const string SearchKey = "search";
-    private const string DownloadsKey = "downloads";
     private const string PackagesKey = "packages";
 
     private const string ExcludeKey = "exclude";
-    private const string DownloadsFolderKey = "folder";
 
     private const string PackageFoldersKey = "folders";
     private const string DisabledPackagesKey = "disabled";
@@ -54,18 +52,12 @@ public static class ProjectConfigParser
         FeaturesKey,
         ExplorerKey,
         SearchKey,
-        DownloadsKey,
         PackagesKey,
     };
 
     private static readonly IReadOnlySet<string> KnownExcludeListKeys = new HashSet<string>(StringComparer.Ordinal)
     {
         ExcludeKey,
-    };
-
-    private static readonly IReadOnlySet<string> KnownDownloadsKeys = new HashSet<string>(StringComparer.Ordinal)
-    {
-        DownloadsFolderKey,
     };
 
     private static readonly IReadOnlySet<string> KnownPackagesKeys = new HashSet<string>(StringComparer.Ordinal)
@@ -159,7 +151,6 @@ public static class ProjectConfigParser
         var celbridgeSection = new CelbridgeSection();
         var explorerSection = new ExplorerSection();
         var searchSection = new SearchSection();
-        var downloadsSection = new DownloadsSection();
         var packagesSection = new PackagesSection();
         var featuresDict = new Dictionary<string, bool>();
 
@@ -169,7 +160,6 @@ public static class ProjectConfigParser
             celbridgeSection = ParseCelbridgeTable(celbridgeTable, entryErrors, out featuresDict);
             explorerSection = ParseExplorerTable(celbridgeTable, entryErrors);
             searchSection = ParseSearchTable(celbridgeTable, entryErrors);
-            downloadsSection = ParseDownloadsTable(celbridgeTable, entryErrors);
             packagesSection = ParsePackagesTable(celbridgeTable, entryErrors);
         }
 
@@ -247,7 +237,6 @@ public static class ProjectConfigParser
             Celbridge = celbridgeSection,
             Explorer = explorerSection,
             Search = searchSection,
-            Downloads = downloadsSection,
             Packages = packagesSection,
             Features = featuresDict,
             ContributionOverrides = contributions,
@@ -346,20 +335,6 @@ public static class ProjectConfigParser
         return new SearchSection
         {
             Exclude = ReadExcludeList(celbridgeTable, SearchKey, entryErrors),
-        };
-    }
-
-    private static DownloadsSection ParseDownloadsTable(TomlTable celbridgeTable, List<ProjectConfigEntryError> entryErrors)
-    {
-        var downloadsTable = ReadSubTable(celbridgeTable, DownloadsKey, KnownDownloadsKeys, entryErrors);
-        if (downloadsTable is null)
-        {
-            return new DownloadsSection();
-        }
-
-        return new DownloadsSection
-        {
-            Folder = ReadDownloadsFolder(downloadsTable, entryErrors),
         };
     }
 
@@ -568,31 +543,6 @@ public static class ProjectConfigParser
         }
 
         return projectVersion;
-    }
-
-    // An unusable path is dropped rather than applied, which leaves downloads going to the default folder.
-    private static string ReadDownloadsFolder(TomlTable downloadsTable, List<ProjectConfigEntryError> entryErrors)
-    {
-        var downloadsFolder = ReadString(downloadsTable, DownloadsFolderKey);
-        if (string.IsNullOrEmpty(downloadsFolder))
-        {
-            return string.Empty;
-        }
-
-        if (!DownloadsFolderPath.TryParse(downloadsFolder, out var folder))
-        {
-            var problem = DownloadsFolderPath.IsReserved(downloadsFolder)
-                ? "is inside a .git folder, where Celbridge cannot save downloads"
-                : "must be a folder path from the project root";
-
-            entryErrors.Add(new ProjectConfigEntryError(
-                SubTableName(DownloadsKey),
-                $"'{DownloadsFolderKey}' value '{downloadsFolder}' {problem}. The key was dropped."));
-
-            return string.Empty;
-        }
-
-        return folder.Path;
     }
 
     private static ContributionOverride? ParseContributionEntry(

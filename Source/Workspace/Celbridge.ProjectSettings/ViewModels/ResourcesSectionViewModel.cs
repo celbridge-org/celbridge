@@ -35,12 +35,6 @@ public partial class ResourcesSectionViewModel : ProjectSettingsSectionViewModel
     [NotifyPropertyChangedFor(nameof(HasInvalidSearchExcludePattern))]
     private string _searchExcludePatternsText = string.Empty;
 
-    // Empty while the project names no folder of its own, and the placeholder then names the default.
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsDownloadsFolderInvalid))]
-    [NotifyPropertyChangedFor(nameof(InvalidDownloadsFolderText))]
-    private string _downloadsFolderText = string.Empty;
-
     /// <summary>
     /// True when the gitignore matcher refuses a line of the Explorer's list. Loading the project drops that line.
     /// </summary>
@@ -51,34 +45,12 @@ public partial class ResourcesSectionViewModel : ProjectSettingsSectionViewModel
     /// </summary>
     public bool HasInvalidSearchExcludePattern => ContainsInvalidPattern(SearchExcludePatternsText);
 
-    /// <summary>
-    /// True when the downloads folder is not a folder path, or is inside a folder Celbridge reserves, which
-    /// leaves downloads going to the default folder.
-    /// </summary>
-    public bool IsDownloadsFolderInvalid =>
-        !string.IsNullOrWhiteSpace(DownloadsFolderText)
-        && !DownloadsFolderPath.TryParse(DownloadsFolderText, out _);
-
-    /// <summary>
-    /// The folder downloads are saved to while the project names no other.
-    /// </summary>
-    public string DefaultDownloadsFolder => DownloadsFolderPath.DefaultFolder.Path;
-
     public string ExplorerExcludeTitle => ProjectSettingsLabels.ExplorerExcludeTitle;
     public string ExplorerExcludeSubtitle => ProjectSettingsLabels.ExplorerExcludeSubtitle;
     public string SearchExcludeTitle => ProjectSettingsLabels.SearchExcludeTitle;
     public string SearchExcludeSubtitle => ProjectSettingsLabels.SearchExcludeSubtitle;
     public string PatternPlaceholder => ProjectSettingsLabels.PatternPlaceholder;
     public string InvalidPatternText => ProjectSettingsLabels.InvalidPattern;
-    public string DownloadsFolderTitle => ProjectSettingsLabels.DownloadsFolderTitle;
-    public string DownloadsFolderSubtitle => ProjectSettingsLabels.DownloadsFolderSubtitle;
-    public string DownloadsFolderBrowseTooltip => ProjectSettingsLabels.DownloadsFolderBrowseTooltip;
-    /// <summary>
-    /// Why the downloads folder is not used, said beneath the field while IsDownloadsFolderInvalid is true.
-    /// </summary>
-    public string InvalidDownloadsFolderText => DownloadsFolderPath.IsReserved(DownloadsFolderText)
-        ? ProjectSettingsLabels.ReservedDownloadsFolder
-        : ProjectSettingsLabels.InvalidDownloadsFolder;
 
     public string PackageFoldersTitle => ProjectSettingsLabels.PackageFoldersTitle;
     public string PackageFoldersSubtitle => ProjectSettingsLabels.PackageFoldersSubtitle;
@@ -109,7 +81,6 @@ public partial class ResourcesSectionViewModel : ProjectSettingsSectionViewModel
         {
             ExplorerExcludePatternsText = FormatPatterns(config?.Explorer.Exclude);
             SearchExcludePatternsText = FormatPatterns(config?.Search.Exclude);
-            DownloadsFolderText = config?.Downloads.Folder ?? string.Empty;
 
             // Clearing raises a reset, which reports no old items, so the outgoing rows are detached here.
             foreach (var packageFolder in PackageFolders)
@@ -174,40 +145,12 @@ public partial class ResourcesSectionViewModel : ProjectSettingsSectionViewModel
         packageFolder.Path = folder.Path;
     }
 
-    /// <summary>
-    /// Replaces the downloads folder with one chosen from the project's folders.
-    /// </summary>
-    public async Task PickDownloadsFolderAsync()
-    {
-        var pickResult = await _dialogService.ShowFolderPickerDialogAsync(ProjectSettingsLabels.DownloadsFolderPickerTitle);
-
-        // The dialog reports a dismissal as a failure, so the field keeps the folder it had.
-        if (pickResult.IsFailure)
-        {
-            return;
-        }
-
-        var folder = pickResult.Value;
-        if (folder == DownloadsFolderPath.DefaultFolder)
-        {
-            DownloadsFolderText = string.Empty;
-            return;
-        }
-
-        DownloadsFolderText = folder.Path;
-    }
-
     partial void OnExplorerExcludePatternsTextChanged(string value)
     {
         Commit();
     }
 
     partial void OnSearchExcludePatternsTextChanged(string value)
-    {
-        Commit();
-    }
-
-    partial void OnDownloadsFolderTextChanged(string value)
     {
         Commit();
     }
@@ -307,7 +250,6 @@ public partial class ResourcesSectionViewModel : ProjectSettingsSectionViewModel
         {
             draft.SetExplorerExcludePatterns(explorerExclude);
             draft.SetSearchExcludePatterns(searchExclude);
-            draft.SetDownloadsFolder(DownloadsFolderText);
             draft.SetPackageFolders(packageFolders);
         });
     }

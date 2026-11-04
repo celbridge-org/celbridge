@@ -27,18 +27,18 @@ public enum DownloadStatus
 }
 
 /// <summary>
-/// A download the service has reserved a destination for: the id to report its outcome against, the
-/// absolute path the platform writes it to, and where the finished file lands.
+/// A download the service has staged. Id identifies the download when the platform reports the outcome, and
+/// StagingPath is the absolute path the platform writes the file to.
 /// </summary>
 public partial record DownloadTicket(
     long Id,
-    string StagingPath,
-    ResourceKey Destination);
+    string StagingPath);
 
 /// <summary>
-/// A download recorded this session. FileName is the name the file is saved under, uniquified when that
-/// name was already taken. Resource is empty until the transfer succeeds, FailureReason is empty unless
-/// it failed, and TotalBytes is null until the server says how large the file is.
+/// A download recorded this session. FileName is the name the site suggests until the user chooses a folder.
+/// FileName then becomes the name the file is saved under, uniquified when that name was already taken. Resource
+/// is empty until the transfer succeeds. FailureReason is empty unless the download failed. TotalBytes is null until
+/// the server says how large the file is.
 /// </summary>
 public partial record DownloadEntry(
     long Id,
@@ -84,17 +84,18 @@ public interface IDownloadService
     IReadOnlyList<DownloadEntry> Downloads { get; }
 
     /// <summary>
-    /// The absolute path of the folder downloads land in, which is the folder the project names. Fails
-    /// while no workspace is loaded, since a download has nowhere to go.
-    /// </summary>
-    Result<string> GetDestinationFolderPath();
-
-    /// <summary>
-    /// Reserves a destination and a staging path for a download that is about to start. Fails when the
-    /// destination is denied by policy, before any bytes move. The transfer is held for as long as the
-    /// download runs, so the platform's handle for it stays alive and the download can be cancelled.
+    /// Stages a download that is about to start, records its row, and asks the user where the file goes. The
+    /// transfer runs while the user decides. Fails at once while a dialog is open, since only one dialog shows at a
+    /// time. The row then records the failure. The transfer is held for as long as the download runs, so the
+    /// platform's handle for it stays alive and the download can be canceled.
     /// </summary>
     Task<Result<DownloadTicket>> BeginAsync(string suggestedFileName, string sourceUrl, IDownloadTransfer transfer);
+
+    /// <summary>
+    /// Records a download that failed before it started, with a row that gives the reason. The user is not asked
+    /// where the file goes.
+    /// </summary>
+    void RecordFailure(string suggestedFileName, string sourceUrl, string reason);
 
     /// <summary>
     /// Records how far a running download has got. Safe to call as often as the platform reports.
@@ -102,8 +103,8 @@ public interface IDownloadService
     void ReportProgress(long downloadId, long bytesReceived, long? totalBytes);
 
     /// <summary>
-    /// Moves the staged file to its reserved destination. The move is not recorded for undo, since a
-    /// download is not an edit the user made.
+    /// Records that the transfer finished. The staged file moves to its destination as soon as the user has
+    /// chosen one. The move stays off the undo stack.
     /// </summary>
     Task CompleteAsync(long downloadId);
 

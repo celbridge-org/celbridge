@@ -4,8 +4,8 @@ using Celbridge.Resources;
 namespace Celbridge.Utilities;
 
 /// <summary>
-/// Parses a folder that a project setting names as a path from the project root. The downloads folder and the
-/// package folders are named this way.
+/// Parses a folder path from the project root, as a project setting writes it. The package folders are named this
+/// way.
 /// </summary>
 public static class SettingFolderPath
 {

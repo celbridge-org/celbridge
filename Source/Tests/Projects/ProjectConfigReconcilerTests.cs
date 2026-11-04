@@ -347,10 +347,6 @@ public class ProjectConfigReconcilerTests
             {
                 Exclude = new[] { "node_modules", "dist/" },
             },
-            Downloads = new DownloadsSection
-            {
-                Folder = "assets/incoming",
-            },
             Packages = new PackagesSection
             {
                 Folders = new[] { "vendor/packages" },
@@ -388,7 +384,6 @@ public class ProjectConfigReconcilerTests
         reparsed.EntryErrors.Should().BeEmpty();
         reparsed.Explorer.Exclude.Should().Equal(".gitignore");
         reparsed.Search.Exclude.Should().Equal("node_modules", "dist/");
-        reparsed.Downloads.Folder.Should().Be("assets/incoming");
         reparsed.Packages.Folders.Should().Equal("vendor/packages");
         reparsed.Packages.Disabled.Should().Equal("acme.off");
         reparsed.Celbridge.EditorAssociations[".png"].Should().Be("pixel");
@@ -401,12 +396,11 @@ public class ProjectConfigReconcilerTests
     }
 
     [Test]
-    public void Serialize_EmptyListsAndNoDownloadsFolder_WriteNoTables()
+    public void Serialize_EmptyLists_WriteNoTables()
     {
         var text = ProjectConfigSerializer.Serialize(EmptyConfig());
 
         text.Should().NotContain("[celbridge.explorer]");
         text.Should().NotContain("[celbridge.search]");
-        text.Should().NotContain("[celbridge.downloads]");
     }
 }

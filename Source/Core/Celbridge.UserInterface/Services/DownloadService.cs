@@ -1,9 +1,9 @@
 using Celbridge.Commands;
+using Celbridge.Dialog;
 using Celbridge.Downloads;
 using Celbridge.Localization;
 using Celbridge.Logging;
 using Celbridge.Projects;
-using Celbridge.Utilities;
 using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.Services;
@@ -14,16 +14,34 @@ public sealed class DownloadService : IDownloadService
     // which is far more often than a list of rows can usefully redraw.
     private static readonly TimeSpan ProgressPublishInterval = TimeSpan.FromMilliseconds(250);
 
-    // What a download still running needs: where the platform is writing it, where it is going, and the
-    // transfer to stop it with. Held apart from the rows, so a row that leaves the list cannot orphan
-    // its transfer, and holding the transfer is what keeps the platform's handle alive.
-    private record InFlightDownload(ResourceKey StagingResource, ResourceKey Destination, IDownloadTransfer Transfer);
+    // Holds the state of a download still running. StagingResource is where the platform writes the file,
+    // Transfer stops the download, and Destination is set once the user has chosen one. The service keeps this
+    // apart from the rows, so removing a row leaves the transfer held. Holding the transfer keeps the platform's
+    // handle alive. The service changes this only under its lock.
+    private sealed class InFlightDownload
+    {
+        public InFlightDownload(ResourceKey stagingResource, IDownloadTransfer transfer)
+        {
+            StagingResource = stagingResource;
+            Transfer = transfer;
+        }
+
+        public ResourceKey StagingResource { get; }
+        public IDownloadTransfer Transfer { get; }
+
+        // Null until the user has chosen where the file goes.
+        public ResourceKey? Destination { get; set; }
+
+        // True once the transfer has finished. The file then waits in temp: until the user has answered.
+        public bool IsTransferFinished { get; set; }
+    }
 
     private readonly ILogger<DownloadService> _logger;
     private readonly IMessengerService _messengerService;
     private readonly ILocalizerService _localizerService;
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IDialogService _dialogService;
 
     private readonly DownloadList _rows = new();
     private readonly DownloadDestinations _destinations;
@@ -40,7 +58,7 @@ public sealed class DownloadService : IDownloadService
         ILocalizerService localizerService,
         ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper,
-        IProjectService projectService,
+        IDialogService dialogService,
         ILocalFileSystem localFileSystem)
     {
         _logger = logger;
@@ -48,19 +66,15 @@ public sealed class DownloadService : IDownloadService
         _localizerService = localizerService;
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
+        _dialogService = dialogService;
 
-        _destinations = new DownloadDestinations(workspaceWrapper, projectService, localFileSystem, localizerService);
+        _destinations = new DownloadDestinations(workspaceWrapper, localFileSystem, localizerService);
         _fileTracker = new DownloadedFileTracker(logger, workspaceWrapper, OnFilesMissing);
 
         _messengerService.Register<WorkspaceUnloadedMessage>(this, OnWorkspaceUnloaded);
     }
 
     public IReadOnlyList<DownloadEntry> Downloads => _rows.Downloads;
-
-    public Result<string> GetDestinationFolderPath()
-    {
-        return _destinations.GetFolderPath();
-    }
 
     public async Task<Result<DownloadTicket>> BeginAsync(
         string suggestedFileName,
@@ -78,77 +92,61 @@ public sealed class DownloadService : IDownloadService
             return Result<DownloadTicket>.Fail($"Cannot start a download because '{suggestedFileName}' names no file");
         }
 
+        // Only one dialog shows at a time. A download fails when it starts under an open dialog. That dialog may be
+        // an earlier download's Download File dialog.
+        if (_dialogService.IsDialogOpen)
+        {
+            RecordFailure(fileName, sourceUrl, GetString("Downloads_TransferFailed"));
+
+            return Result<DownloadTicket>.Fail($"Cannot start the download of '{fileName}' because a dialog is open");
+        }
+
         var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
         var rootHandlerRegistry = resourceService.RootHandlers;
         var resourceFileSystem = resourceService.FileSystem;
 
-        var reserveResult = await _destinations.ReserveAsync(fileName);
-        if (reserveResult.IsFailure)
+        // temp:/ is wiped on workspace load, so the staging folder may not be there yet.
+        var stagingFolder = new ResourceKey($"{ProjectConstants.TempFolder}:{ProjectConstants.DownloadsFolder}");
+        var createFolderResult = await resourceFileSystem.CreateFolderAsync(stagingFolder);
+        if (createFolderResult.IsFailure)
         {
-            RecordFailure(fileName, sourceUrl, _destinations.DescribeUnavailable(reserveResult));
+            RecordFailure(fileName, sourceUrl, GetString("Downloads_DestinationUnavailable"));
 
-            return Result<DownloadTicket>.Fail($"Failed to reserve a download destination for '{fileName}'")
-                .WithErrors(reserveResult);
+            return Result<DownloadTicket>.Fail($"Failed to create the download staging folder '{stagingFolder}'")
+                .WithErrors(createFolderResult);
         }
-        var destination = reserveResult.Value;
 
-        // The destination stays reserved only for a download that started.
-        var isStarted = false;
-        try
+        // Staged under temp:, which is wiped on workspace load, so an abandoned download leaves
+        // nothing behind for long. The name is random, because two downloads may share a file name.
+        var stagingName = $"{Path.GetFileNameWithoutExtension(Path.GetRandomFileName())}{Path.GetExtension(fileName)}";
+        var stagingResource = new ResourceKey($"{ProjectConstants.TempFolder}:{ProjectConstants.DownloadsFolder}/{stagingName}");
+
+        var resolveStagingResult = rootHandlerRegistry.ResolveResourcePath(stagingResource);
+        if (resolveStagingResult.IsFailure)
         {
-            // Probed before anything is staged, so a policy denial surfaces now rather than after the
-            // whole transfer has run.
-            var probeResult = await resourceFileSystem.GetInfoAsync(destination);
-            if (probeResult.IsFailure)
-            {
-                _logger.LogError($"Download blocked: {probeResult.FirstErrorMessage}");
+            RecordFailure(fileName, sourceUrl, GetString("Downloads_DestinationUnavailable"));
 
-                RecordFailure(fileName, sourceUrl, _destinations.DescribeBlocked(probeResult, fileName));
-
-                return Result<DownloadTicket>.Fail($"The download destination '{destination}' is not permitted")
-                    .WithErrors(probeResult);
-            }
-
-            // temp:/ is wiped on workspace load, so the staging folder may not be there yet.
-            var stagingFolder = new ResourceKey($"{ProjectConstants.TempFolder}:{ProjectConstants.DownloadsFolder}");
-            var createFolderResult = await resourceFileSystem.CreateFolderAsync(stagingFolder);
-            if (createFolderResult.IsFailure)
-            {
-                RecordFailure(fileName, sourceUrl, GetString("Downloads_DestinationUnavailable"));
-
-                return Result<DownloadTicket>.Fail($"Failed to create the download staging folder '{stagingFolder}'")
-                    .WithErrors(createFolderResult);
-            }
-
-            // Staged under temp:, which is wiped on workspace load, so an abandoned download leaves
-            // nothing behind for long. The name is random, because two downloads may share a file name.
-            var stagingName = $"{Path.GetFileNameWithoutExtension(Path.GetRandomFileName())}{Path.GetExtension(fileName)}";
-            var stagingResource = new ResourceKey($"{ProjectConstants.TempFolder}:{ProjectConstants.DownloadsFolder}/{stagingName}");
-
-            var resolveStagingResult = rootHandlerRegistry.ResolveResourcePath(stagingResource);
-            if (resolveStagingResult.IsFailure)
-            {
-                RecordFailure(fileName, sourceUrl, GetString("Downloads_DestinationUnavailable"));
-
-                return Result<DownloadTicket>.Fail($"Failed to resolve the download staging path '{stagingResource}'")
-                    .WithErrors(resolveStagingResult);
-            }
-            var stagingPath = resolveStagingResult.Value;
-
-            // Listed under the name it will be saved as, which differs from the suggested one when that
-            // name was already taken.
-            var downloadId = RecordStart(destination.ResourceName, sourceUrl, stagingResource, destination, transfer);
-            isStarted = true;
-
-            return new DownloadTicket(downloadId, stagingPath, destination);
+            return Result<DownloadTicket>.Fail($"Failed to resolve the download staging path '{stagingResource}'")
+                .WithErrors(resolveStagingResult);
         }
-        finally
-        {
-            if (!isStarted)
-            {
-                _destinations.Release(destination);
-            }
-        }
+        var stagingPath = resolveStagingResult.Value;
+
+        // Listed under the site's name until the user has chosen a folder.
+        var downloadId = RecordStart(fileName, sourceUrl, stagingResource, transfer);
+
+        _ = AskForDestinationAsync(downloadId, fileName, sourceUrl);
+
+        return new DownloadTicket(downloadId, stagingPath);
+    }
+
+    // A download that failed to start still gets a row, so the user sees the failure.
+    public void RecordFailure(string suggestedFileName, string sourceUrl, string reason)
+    {
+        var fileName = Path.GetFileName(suggestedFileName);
+
+        _rows.AddFailed(fileName, sourceUrl, reason);
+
+        SendDownloadsChanged(hasArrival: true);
     }
 
     public void ReportProgress(long downloadId, long bytesReceived, long? totalBytes)
@@ -185,57 +183,25 @@ public sealed class DownloadService : IDownloadService
 
     public async Task CompleteAsync(long downloadId)
     {
-        var inFlightDownload = TakeInFlight(downloadId);
-        if (inFlightDownload is null)
+        InFlightDownload? inFlightDownload;
+        lock (_lock)
         {
-            return;
-        }
-
-        try
-        {
-            if (!_workspaceWrapper.HasWorkspaceService)
+            if (!_inFlightDownloads.TryGetValue(downloadId, out inFlightDownload))
             {
-                // The project the download belonged to has closed, and its staging file goes with temp:.
-                SettleAsFailed(downloadId, GetString("Downloads_ImportFailed"));
                 return;
             }
 
-            // Moved rather than copied. temp: lives inside the project folder, so the move is a rename: it
-            // writes no second copy for antivirus to scan, keeps the mark of the web the platform gave the
-            // file, and puts no limit on its size.
-            var moveResult = await _commandService.ExecuteAsync<IMoveDownloadCommand>(command =>
+            if (inFlightDownload.Destination is null)
             {
-                command.SourceResource = inFlightDownload.StagingResource;
-                command.DestResource = inFlightDownload.Destination;
-            });
-
-            if (moveResult.IsFailure)
-            {
-                _logger.LogError(
-                    $"Failed to move the downloaded file to '{inFlightDownload.Destination}'. {moveResult.DiagnosticReport}");
-
-                SettleAsFailed(downloadId, GetString("Downloads_ImportFailed"));
-
-                // A move that failed leaves the staged file behind.
-                if (_workspaceWrapper.HasWorkspaceService)
-                {
-                    var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
-                    await resourceFileSystem.DeleteAsync(inFlightDownload.StagingResource);
-                }
+                // The dialog is still asking where the file goes, and the answer moves the file.
+                inFlightDownload.IsTransferFinished = true;
                 return;
             }
 
-            // Nothing in the Explorer is selected or expanded, since selecting there takes the keyboard from
-            // whatever the user was doing when the download finished. The badge announces the arrival, and its
-            // row finds the file.
-            SettleAsSucceeded(downloadId, inFlightDownload.Destination);
+            _inFlightDownloads.Remove(downloadId);
         }
-        finally
-        {
-            // Released once the file has landed, or once the move has failed, so no second download is
-            // given the same path while this one is still moving.
-            _destinations.Release(inFlightDownload.Destination);
-        }
+
+        await MoveIntoPlaceAsync(downloadId, inFlightDownload);
     }
 
     public async Task FailAsync(long downloadId, string reason)
@@ -252,39 +218,14 @@ public sealed class DownloadService : IDownloadService
             await resourceFileSystem.DeleteAsync(inFlightDownload.StagingResource);
         }
 
-        _destinations.Release(inFlightDownload.Destination);
+        ReleaseDestination(inFlightDownload);
 
         SettleAsFailed(downloadId, reason);
     }
 
     public async Task AbandonAsync(long downloadId, string reason)
     {
-        var inFlightDownload = TakeInFlight(downloadId);
-        if (inFlightDownload is null)
-        {
-            return;
-        }
-
-        // Taken out of flight before the transfer is stopped, so the cancellation the platform may report
-        // finds nothing to settle and the row keeps the reason given here.
-        try
-        {
-            inFlightDownload.Transfer.Cancel();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to stop an abandoned download");
-        }
-
-        if (_workspaceWrapper.HasWorkspaceService)
-        {
-            var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
-            await resourceFileSystem.DeleteAsync(inFlightDownload.StagingResource);
-        }
-
-        _destinations.Release(inFlightDownload.Destination);
-
-        SettleAsFailed(downloadId, reason);
+        await StopAsFailedAsync(downloadId, reason);
     }
 
     public async Task CancelAsync(long downloadId)
@@ -343,32 +284,273 @@ public sealed class DownloadService : IDownloadService
         SendDownloadsChanged(hasArrival: false);
     }
 
+    // Asks where the file goes while the transfer runs. The answer either reserves a destination or stops the
+    // download. The service ignores the answer for a download that has already failed or been canceled.
+    private async Task AskForDestinationAsync(long downloadId, string fileName, string sourceUrl)
+    {
+        try
+        {
+            var downloadFolder = await GetRememberedFolderAsync();
+
+            var showResult = await _dialogService.ShowDownloadFileDialogAsync(fileName, sourceUrl, downloadFolder);
+            if (showResult.IsFailure)
+            {
+                _logger.LogWarning($"Could not ask where to save '{fileName}'. {showResult.FirstErrorMessage}");
+
+                await StopAsFailedAsync(downloadId, GetString("Downloads_TransferFailed"));
+                return;
+            }
+            var answer = showResult.Value;
+
+            if (answer.Choice == DownloadFileChoice.Cancel)
+            {
+                await CancelAsync(downloadId);
+                return;
+            }
+
+            RememberFolder(answer.Folder);
+
+            await SaveToFolderAsync(downloadId, fileName, answer.Folder);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Failed to ask where to save '{fileName}'");
+
+            await StopAsFailedAsync(downloadId, GetString("Downloads_DestinationUnavailable"));
+        }
+    }
+
+    // Returns the folder the dialog opens on. That is the folder last chosen in this project, or the project
+    // folder when nothing was chosen or the chosen folder has gone. A folder renamed to another letter case
+    // counts as gone, since the remembered key differs from the stored name.
+    private async Task<ResourceKey> GetRememberedFolderAsync()
+    {
+        if (!_workspaceWrapper.HasWorkspaceService)
+        {
+            return ResourceKey.Empty;
+        }
+
+        var workspaceService = _workspaceWrapper.WorkspaceService;
+        var rememberedPath = workspaceService.BindableWorkspaceSettings.DownloadFolder;
+        if (string.IsNullOrEmpty(rememberedPath)
+            || !ResourceKey.TryCreate(rememberedPath, out var rememberedFolder))
+        {
+            return ResourceKey.Empty;
+        }
+
+        var infoResult = await workspaceService.ResourceService.FileSystem.GetInfoAsync(rememberedFolder);
+        if (infoResult.IsFailure
+            || infoResult.Value.Kind != StorageItemKind.Folder)
+        {
+            return ResourceKey.Empty;
+        }
+
+        return rememberedFolder;
+    }
+
+    private void RememberFolder(ResourceKey folder)
+    {
+        if (!_workspaceWrapper.HasWorkspaceService)
+        {
+            return;
+        }
+
+        var rememberedPath = string.Empty;
+        if (!folder.IsEmpty)
+        {
+            rememberedPath = folder.ToString();
+        }
+
+        _workspaceWrapper.WorkspaceService.BindableWorkspaceSettings.DownloadFolder = rememberedPath;
+    }
+
+    // Reserves the saved name in the folder the user chose, and moves the file there once the transfer has
+    // finished. A failure here stops the download, and its row says why.
+    private async Task SaveToFolderAsync(long downloadId, string fileName, ResourceKey folder)
+    {
+        if (!_workspaceWrapper.HasWorkspaceService)
+        {
+            return;
+        }
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+
+        // The answer can name any key, so the folder is checked before a name is reserved in it.
+        if (!folder.IsEmpty)
+        {
+            var folderInfoResult = await resourceFileSystem.GetInfoAsync(folder);
+            if (folderInfoResult.IsFailure
+                || folderInfoResult.Value.Kind != StorageItemKind.Folder)
+            {
+                _logger.LogError($"Download folder '{folder}' is not a folder in the project");
+
+                await StopAsFailedAsync(downloadId, GetString("Downloads_DestinationUnavailable"));
+                return;
+            }
+        }
+
+        var reserveResult = await _destinations.ReserveAsync(folder, fileName);
+        if (reserveResult.IsFailure)
+        {
+            _logger.LogError($"Failed to reserve a download destination for '{fileName}'. {reserveResult.DiagnosticReport}");
+
+            await StopAsFailedAsync(downloadId, GetString("Downloads_DestinationUnavailable"));
+            return;
+        }
+        var destination = reserveResult.Value;
+
+        // Probed before the move, so a policy denial stops the transfer straight away.
+        var probeResult = await resourceFileSystem.GetInfoAsync(destination);
+        if (probeResult.IsFailure)
+        {
+            _logger.LogError($"Download blocked: {probeResult.FirstErrorMessage}");
+
+            _destinations.Release(destination);
+            await StopAsFailedAsync(downloadId, _destinations.DescribeBlocked(probeResult, fileName));
+            return;
+        }
+
+        InFlightDownload? finishedDownload = null;
+        lock (_lock)
+        {
+            if (!_inFlightDownloads.TryGetValue(downloadId, out var inFlightDownload))
+            {
+                // The transfer failed or was stopped while the dialog was asking.
+                _destinations.Release(destination);
+                return;
+            }
+
+            inFlightDownload.Destination = destination;
+
+            if (inFlightDownload.IsTransferFinished)
+            {
+                _inFlightDownloads.Remove(downloadId);
+                finishedDownload = inFlightDownload;
+            }
+        }
+
+        // The row shows the saved name. A taken name gets " (N)" before its extension.
+        var isUpdated = _rows.Update(downloadId, entry => entry with
+        {
+            FileName = destination.ResourceName
+        });
+        if (isUpdated)
+        {
+            SendDownloadsChanged(hasArrival: false);
+        }
+
+        if (finishedDownload is not null)
+        {
+            await MoveIntoPlaceAsync(downloadId, finishedDownload);
+        }
+    }
+
+    // Moves a finished transfer's staged file to the destination the user chose.
+    private async Task MoveIntoPlaceAsync(long downloadId, InFlightDownload inFlightDownload)
+    {
+        var destination = inFlightDownload.Destination!.Value;
+
+        try
+        {
+            if (!_workspaceWrapper.HasWorkspaceService)
+            {
+                // The project the download belonged to has closed, and its staging file goes with temp:.
+                SettleAsFailed(downloadId, GetString("Downloads_ImportFailed"));
+                return;
+            }
+
+            // temp: lies in the application data folder. The move is a rename when the project shares that
+            // folder's volume, and a copy otherwise.
+            var moveResult = await _commandService.ExecuteAsync<IMoveDownloadCommand>(command =>
+            {
+                command.SourceResource = inFlightDownload.StagingResource;
+                command.DestResource = destination;
+            });
+
+            if (moveResult.IsFailure)
+            {
+                _logger.LogError(
+                    $"Failed to move the downloaded file to '{destination}'. {moveResult.DiagnosticReport}");
+
+                SettleAsFailed(downloadId, GetString("Downloads_ImportFailed"));
+
+                // A move that failed leaves the staged file behind.
+                if (_workspaceWrapper.HasWorkspaceService)
+                {
+                    var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+                    await resourceFileSystem.DeleteAsync(inFlightDownload.StagingResource);
+                }
+                return;
+            }
+
+            // Nothing in the Explorer is selected or expanded, since selecting there takes the keyboard from
+            // whatever the user was doing when the download finished. The badge announces the arrival, and its
+            // row finds the file.
+            SettleAsSucceeded(downloadId, destination);
+        }
+        finally
+        {
+            // Released once the file has landed or the move has failed. Until then a second download gets
+            // another path.
+            _destinations.Release(destination);
+        }
+    }
+
+    // Stops a running download, records the download as failed with the reason given, and deletes the staged
+    // file.
+    private async Task StopAsFailedAsync(long downloadId, string reason)
+    {
+        var inFlightDownload = TakeInFlight(downloadId);
+        if (inFlightDownload is null)
+        {
+            return;
+        }
+
+        // Taken out of flight before the transfer is stopped. A cancellation the platform reports afterwards then
+        // finds nothing to settle, and the row keeps the reason given here.
+        try
+        {
+            inFlightDownload.Transfer.Cancel();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to stop a download");
+        }
+
+        if (_workspaceWrapper.HasWorkspaceService)
+        {
+            var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+            await resourceFileSystem.DeleteAsync(inFlightDownload.StagingResource);
+        }
+
+        ReleaseDestination(inFlightDownload);
+
+        SettleAsFailed(downloadId, reason);
+    }
+
+    private void ReleaseDestination(InFlightDownload inFlightDownload)
+    {
+        if (inFlightDownload.Destination is ResourceKey destination)
+        {
+            _destinations.Release(destination);
+        }
+    }
+
     private long RecordStart(
         string fileName,
         string sourceUrl,
         ResourceKey stagingResource,
-        ResourceKey destination,
         IDownloadTransfer transfer)
     {
         var downloadId = _rows.AddRunning(fileName, sourceUrl);
 
         lock (_lock)
         {
-            _inFlightDownloads.Add(downloadId, new InFlightDownload(stagingResource, destination, transfer));
+            _inFlightDownloads.Add(downloadId, new InFlightDownload(stagingResource, transfer));
         }
 
         SendDownloadsChanged(hasArrival: false);
 
         return downloadId;
-    }
-
-    // A download that never started still gets a row: a denial the user cannot see looks like the download
-    // silently doing nothing.
-    private void RecordFailure(string fileName, string sourceUrl, string reason)
-    {
-        _rows.AddFailed(fileName, sourceUrl, reason);
-
-        SendDownloadsChanged(hasArrival: true);
     }
 
     private void SettleAsSucceeded(long downloadId, ResourceKey destination)
@@ -411,7 +593,7 @@ public sealed class DownloadService : IDownloadService
             await resourceFileSystem.DeleteAsync(inFlightDownload.StagingResource);
         }
 
-        _destinations.Release(inFlightDownload.Destination);
+        ReleaseDestination(inFlightDownload);
 
         SettleAsCanceled(downloadId);
     }

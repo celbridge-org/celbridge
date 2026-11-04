@@ -274,8 +274,8 @@ export class PreviewController {
             return;
         }
 
-        // Downloads are not intercepted: the head saves them to the project's downloads folder. The target is
-        // cleared so the download runs in this frame, because the editor opens no new windows.
+        // Downloads are not intercepted: the host asks the user where each one goes. The target is cleared so the
+        // download runs in this frame, because the editor opens no new windows.
         if (link.hasAttribute('download')) {
             link.removeAttribute('target');
             return;

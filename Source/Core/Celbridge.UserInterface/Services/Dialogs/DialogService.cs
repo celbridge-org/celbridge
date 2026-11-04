@@ -443,6 +443,23 @@ public class DialogService : IDialogService
         return await ShowDialogAsync(dialog, dialog.ShowDialogAsync);
     }
 
+    public async Task<Result<DownloadFileAnswer>> ShowDownloadFileDialogAsync(string fileName, string sourceUrl, ResourceKey downloadFolder)
+    {
+        if (!_workspaceWrapper.IsWorkspaceLoaded)
+        {
+            return Result<DownloadFileAnswer>.Fail("Cannot show the Download File dialog: no project is currently loaded.");
+        }
+
+        if (!await WaitForClosingDialogAsync())
+        {
+            return RefuseSecondDialog();
+        }
+
+        var dialog = _dialogFactory.CreateDownloadFileDialog(fileName, sourceUrl, downloadFolder);
+        _answerScheduler.OnDialogShown(DialogKind.DownloadFile);
+        return await ShowDialogAsync(dialog, dialog.ShowDialogAsync);
+    }
+
     public async Task<Result<string>> ShowIconPickerDialogAsync(string searchText = "")
     {
         if (!await WaitForClosingDialogAsync())

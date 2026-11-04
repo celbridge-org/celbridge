@@ -10,7 +10,8 @@
   IsPrimaryButtonEnabled="{x:Bind ViewModel.IsSubmitEnabled, Mode=OneWay}"
   Opened="Dialog_Opened">
 
-  <Grid Width="480">
+  <Grid Width="480"
+        Height="440">
     <!-- Preview thumbnail positioned at top-right, overlapping title area -->
     <Border Width="100"
             Height="100"

@@ -302,7 +302,6 @@ public class ProjectTemplateServiceTests
 
         var gitIgnoreContents = await File.ReadAllTextAsync(Path.Combine(projectFolderPath, ".gitignore"));
         gitIgnoreContents.Should().Contain("node_modules/");
-        gitIgnoreContents.Should().Contain("/downloads/");
 
         // A fresh file is the canonical one, so it carries no merge marker.
         gitIgnoreContents.Should().NotContain("# Added by Celbridge");
@@ -330,6 +329,6 @@ public class ProjectTemplateServiceTests
         gitIgnoreContents.Should().Contain("# The user's rules");
         gitIgnoreContents.Should().Contain("*.log");
         gitIgnoreContents.Should().Contain("# Added by Celbridge");
-        gitIgnoreContents.Should().Contain("/downloads/");
+        gitIgnoreContents.Should().Contain("__pycache__/");
     }
 }
