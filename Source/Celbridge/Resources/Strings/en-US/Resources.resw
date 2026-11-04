@@ -1003,11 +1003,11 @@ Open with default application instead?</value>
   <data name="DocumentTab_UnsplitAll" xml:space="preserve">
     <value>Unsplit All</value>
   </data>
-  <data name="DocumentTab_CopyResourceKey" xml:space="preserve">
-    <value>Copy Resource Key</value>
+  <data name="DocumentTab_CopyRelativePath" xml:space="preserve">
+    <value>Copy Relative Path</value>
   </data>
-  <data name="DocumentTab_CopyFilePath" xml:space="preserve">
-    <value>Copy File Path</value>
+  <data name="DocumentTab_CopyFullPath" xml:space="preserve">
+    <value>Copy Full Path</value>
   </data>
   <data name="DocumentTab_RevealInExplorer" xml:space="preserve">
     <value>Reveal in Explorer</value>
@@ -1399,14 +1399,14 @@ Open with default application instead?</value>
   <data name="ResourceTree_NewFolder" xml:space="preserve">
     <value>New Folder</value>
   </data>
-  <data name="ResourceTree_CopyResourceKey" xml:space="preserve">
-    <value>Copy Resource Key</value>
+  <data name="ResourceTree_CopyRelativePath" xml:space="preserve">
+    <value>Copy Relative Path</value>
   </data>
   <data name="ResourceTree_SearchInFolder" xml:space="preserve">
     <value>Search in Folder</value>
   </data>
-  <data name="ResourceTree_CopyPath" xml:space="preserve">
-    <value>Copy Path</value>
+  <data name="ResourceTree_CopyFullPath" xml:space="preserve">
+    <value>Copy Full Path</value>
   </data>
   <data name="LayoutToolbar_ToggleUtilityAreaTooltip" xml:space="preserve">
     <value>Toggle Left Panel</value>

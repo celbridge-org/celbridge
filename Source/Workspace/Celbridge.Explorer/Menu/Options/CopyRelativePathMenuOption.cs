@@ -6,17 +6,18 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.Explorer.Menu.Options;
 
 /// <summary>
-/// Menu option to copy resource key to clipboard.
+/// Menu option to copy the resource's path relative to the project folder to the clipboard.
+/// The path uses forward slashes on every platform.
 /// </summary>
-public class CopyResourceKeyMenuOption : IMenuOption<ExplorerMenuContext>
+public class CopyRelativePathMenuOption : IMenuOption<ExplorerMenuContext>
 {
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
 
-    public int Priority => 2;
+    public int Priority => 1;
     public string GroupId => nameof(ExplorerMenuGroup.Utilities);
 
-    public CopyResourceKeyMenuOption(
+    public CopyRelativePathMenuOption(
         IStringLocalizer stringLocalizer,
         ICommandService commandService)
     {
@@ -26,7 +27,7 @@ public class CopyResourceKeyMenuOption : IMenuOption<ExplorerMenuContext>
 
     public MenuItemDisplayInfo GetDisplayInfo(ExplorerMenuContext context)
     {
-        return new MenuItemDisplayInfo(_stringLocalizer.GetString("ResourceTree_CopyResourceKey"));
+        return new MenuItemDisplayInfo(_stringLocalizer.GetString("ResourceTree_CopyRelativePath"));
     }
 
     public MenuItemState GetState(ExplorerMenuContext context)
@@ -48,7 +49,7 @@ public class CopyResourceKeyMenuOption : IMenuOption<ExplorerMenuContext>
 
         _commandService.Execute<ICopyTextToClipboardCommand>(command =>
         {
-            command.Text = resourceKey.Path;
+            command.Text = resourceKey.ShortKey;
         });
     }
 }

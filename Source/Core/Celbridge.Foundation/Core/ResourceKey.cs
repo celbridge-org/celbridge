@@ -87,6 +87,12 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
     public string FullKey => (_root ?? DefaultRoot) + ":" + (_path ?? string.Empty);
 
     /// <summary>
+    /// The shortest string that parses back to this key. For the default "project" root, the string is the bare
+    /// path with no prefix. For any other root, the string is the full "root:path" form.
+    /// </summary>
+    public string ShortKey => Root == DefaultRoot ? Path : FullKey;
+
+    /// <summary>
     /// Canonical serialised form: always "root:path", including the explicit "project:" prefix
     /// for the default root. Matches the literal form the reference scanner detects in file
     /// content, so any resource key surfaced through ToString (tool responses, log messages,

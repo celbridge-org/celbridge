@@ -24,8 +24,8 @@ public enum DocumentTabMenuAction
     MoveToPrimarySection,
     MoveToSecondarySection,
     UnsplitArea,
-    CopyResourceKey,
-    CopyFilePath,
+    CopyRelativePath,
+    CopyFullPath,
     RevealInExplorer,
     OpenFileExplorer,
     OpenApplication,
@@ -150,8 +150,8 @@ public partial class DocumentTab : TabViewItem
         CloseToTheLeftMenuItem.Text = _stringLocalizer.GetString("DocumentTab_CloseLeft");
         CloseAllMenuItem.Text = _stringLocalizer.GetString("DocumentTab_CloseAll");
         ApplyMoveMenuLabels();
-        CopyResourceKeyMenuItem.Text = _stringLocalizer.GetString("DocumentTab_CopyResourceKey");
-        CopyFilePathMenuItem.Text = _stringLocalizer.GetString("DocumentTab_CopyFilePath");
+        CopyRelativePathMenuItem.Text = _stringLocalizer.GetString("DocumentTab_CopyRelativePath");
+        CopyFullPathMenuItem.Text = _stringLocalizer.GetString("DocumentTab_CopyFullPath");
         RevealInExplorerMenuItem.Text = _stringLocalizer.GetString("DocumentTab_RevealInExplorer");
         string fileManagerName = _stringLocalizer.GetString(_platformInfo.FileManagerNameStringKey);
         OpenFileExplorerMenuItem.Text = _stringLocalizer.GetString("DocumentTab_OpenFileManager", fileManagerName);
@@ -301,14 +301,14 @@ public partial class DocumentTab : TabViewItem
         ContextMenuActionRequested?.Invoke(this, DocumentTabMenuAction.RevealInExplorer);
     }
 
-    private void ContextMenu_CopyResourceKey(object sender, RoutedEventArgs e)
+    private void ContextMenu_CopyRelativePath(object sender, RoutedEventArgs e)
     {
-        ContextMenuActionRequested?.Invoke(this, DocumentTabMenuAction.CopyResourceKey);
+        ContextMenuActionRequested?.Invoke(this, DocumentTabMenuAction.CopyRelativePath);
     }
 
-    private void ContextMenu_CopyFilePath(object sender, RoutedEventArgs e)
+    private void ContextMenu_CopyFullPath(object sender, RoutedEventArgs e)
     {
-        ContextMenuActionRequested?.Invoke(this, DocumentTabMenuAction.CopyFilePath);
+        ContextMenuActionRequested?.Invoke(this, DocumentTabMenuAction.CopyFullPath);
     }
 
     private void ContextMenu_OpenFileExplorer(object sender, RoutedEventArgs e)
@@ -393,8 +393,8 @@ public partial class DocumentTab : TabViewItem
         bool isUtility = ViewModel.IsDockedUtility;
         var fileActionsVisibility = isUtility ? Visibility.Collapsed : Visibility.Visible;
         CopySeparator.Visibility = fileActionsVisibility;
-        CopyResourceKeyMenuItem.Visibility = fileActionsVisibility;
-        CopyFilePathMenuItem.Visibility = fileActionsVisibility;
+        CopyRelativePathMenuItem.Visibility = fileActionsVisibility;
+        CopyFullPathMenuItem.Visibility = fileActionsVisibility;
         OpenSeparator.Visibility = fileActionsVisibility;
         OpenFileExplorerMenuItem.Visibility = fileActionsVisibility;
         OpenApplicationMenuItem.Visibility = fileActionsVisibility;
