@@ -82,7 +82,7 @@ public class ProjectConfigParserTests
     }
 
     [Test]
-    public void ParseFromText_DownloadsFolderCelbridgeReserves_IsIgnoredWithAnEntryErrorThatSaysSo()
+    public void ParseFromText_DownloadsFolderInsideGit_IsIgnoredWithAnEntryErrorThatSaysSo()
     {
         // Nothing can be saved in .git, so the folder would fail every download. The error says why the
         // path was dropped rather than calling a valid path invalid.
@@ -98,7 +98,7 @@ public class ProjectConfigParserTests
         result.IsSuccess.Should().BeTrue();
         result.Value.Downloads.Folder.Should().BeEmpty();
         result.Value.EntryErrors.Should().ContainSingle();
-        result.Value.EntryErrors[0].Message.Should().Contain("'folder'").And.Contain("reserves");
+        result.Value.EntryErrors[0].Message.Should().Contain("'folder'").And.Contain("cannot save downloads");
     }
 
     [Test]
@@ -510,7 +510,7 @@ public class ProjectConfigParserTests
         var config = result.Value;
         config.Packages.Folders.Should().BeEmpty();
         config.EntryErrors.Should().ContainSingle();
-        config.EntryErrors[0].Message.Should().Contain("is inside a .git folder");
+        config.EntryErrors[0].Message.Should().Contain("is inside a .git folder").And.Contain("cannot load packages");
     }
 
     [Test]

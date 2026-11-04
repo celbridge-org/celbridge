@@ -41,7 +41,7 @@ public static class ServiceConfiguration
         services.AddTransient<ITransferResourcesCommand, TransferResourcesCommand>();
 
         services.AddTransient<IArchiveResourceCommand, ArchiveResourceCommand>();
-        services.AddTransient<IUnarchiveResourceCommand, UnarchiveResourceCommand>();
+        services.AddTransient<IExtractArchiveCommand, ExtractArchiveCommand>();
         services.AddTransient<IExportArchiveCommand, ExportArchiveCommand>();
 
         services.AddTransient<IUndoResourceCommand, UndoResourceCommand>();

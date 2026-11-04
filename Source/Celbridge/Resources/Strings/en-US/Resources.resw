@@ -211,7 +211,7 @@
     <value>Bundled package — read-only by design.</value>
   </data>
   <data name="Policy_Reserved_Single" xml:space="preserve">
-    <value>'{0}' is reserved by Celbridge and cannot be changed.</value>
+    <value>Celbridge cannot create or change '{0}'.</value>
   </data>
   <data name="Policy_Blocked_Multiple" xml:space="preserve">
     <value>{0} items cannot be changed.</value>
@@ -296,6 +296,12 @@ This file could not be saved</value>
   <data name="Notification_OperationFailed_Export_Multiple" xml:space="preserve">
     <value>Could not export {0} archives</value>
   </data>
+  <data name="Notification_ArchiveEntriesSkipped_One" xml:space="preserve">
+    <value>Could not extract 1 item</value>
+  </data>
+  <data name="Notification_ArchiveEntriesSkipped_Many" xml:space="preserve">
+    <value>Could not extract {0} items</value>
+  </data>
   <data name="Notification_OperationFailed_Unknown_Single" xml:space="preserve">
     <value>The operation failed on '{0}': {1}</value>
   </data>
@@ -304,15 +310,6 @@ This file could not be saved</value>
   </data>
   <data name="ResourceTree_Rename" xml:space="preserve">
     <value>Rename</value>
-  </data>
-  <data name="ResourceTree_CreateArchive" xml:space="preserve">
-    <value>Create Archive</value>
-  </data>
-  <data name="ResourceTree_CreateArchiveTitle" xml:space="preserve">
-    <value>Create Archive from '{0}'</value>
-  </data>
-  <data name="ResourceTree_EnterArchiveName" xml:space="preserve">
-    <value>Enter a name for the zip archive:</value>
   </data>
   <data name="ResourceTree_ExtractArchive" xml:space="preserve">
     <value>Extract Archive</value>
@@ -360,7 +357,7 @@ This file could not be saved</value>
     <value>Name contains invalid characters: {0}</value>
   </data>
   <data name="Validation_CelExtensionReserved" xml:space="preserve">
-    <value>The .cel extension is reserved.</value>
+    <value>File names cannot end in .cel. Celbridge uses that extension for its own files.</value>
   </data>
   <data name="ResourceTree_Copy" xml:space="preserve">
     <value>Copy</value>
@@ -504,7 +501,7 @@ This file could not be saved</value>
     <value>{0} hours ago</value>
   </data>
   <data name="Downloads_Blocked" xml:space="preserve">
-    <value>Download of '{0}' was blocked, because '{1}' is reserved by Celbridge.</value>
+    <value>Celbridge stopped the download of '{0}' to protect '{1}'.</value>
   </data>
   <data name="Downloads_DestinationUnavailable" xml:space="preserve">
     <value>The downloads folder could not be prepared.</value>
@@ -1100,7 +1097,7 @@ Open with default application instead?</value>
     <value>This is not a valid folder path, so downloads are saved to '{0}'.</value>
   </data>
   <data name="ProjectSettings_ReservedDownloadsFolder" xml:space="preserve">
-    <value>Celbridge reserves this folder, so downloads are saved to '{0}'.</value>
+    <value>Celbridge cannot save downloads inside a .git folder, so they are saved to '{0}'.</value>
   </data>
   <data name="ProjectSettings_PackageFoldersTitle" xml:space="preserve">
     <value>Package folders</value>
@@ -1130,7 +1127,7 @@ Open with default application instead?</value>
     <value>The project folder cannot be a package folder.</value>
   </data>
   <data name="ProjectSettings_ReservedPackageFolder" xml:space="preserve">
-    <value>Celbridge reserves this folder, so it cannot be a package folder.</value>
+    <value>A package folder cannot be inside a .git folder.</value>
   </data>
   <data name="ProjectSettings_RepeatedPackageFolder" xml:space="preserve">
     <value>This folder is already a package folder.</value>

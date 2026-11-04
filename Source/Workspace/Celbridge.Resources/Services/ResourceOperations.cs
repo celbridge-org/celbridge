@@ -463,6 +463,6 @@ internal class ImportExternalOperation : FileOperation
     {
         var error = new LinkNotFollowedError(linkPath);
 
-        return Result.Fail(error.Message).WithException(error);
+        return Result.Fail().WithException(error);
     }
 }

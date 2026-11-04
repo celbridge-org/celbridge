@@ -160,19 +160,19 @@ public partial class WorkshopTools
         int extractedEntries;
         try
         {
-            var unarchiveResultWrapper = await ExecuteCommandAsync<IUnarchiveResourceCommand, UnarchiveResult>(command =>
+            var extractResultWrapper = await ExecuteCommandAsync<IExtractArchiveCommand, ExtractArchiveResult>(command =>
             {
                 command.ArchiveResource = stagedArchive;
                 command.DestinationResource = installFolder;
                 command.Overwrite = false;
             });
 
-            if (unarchiveResultWrapper.IsFailure)
+            if (extractResultWrapper.IsFailure)
             {
-                return ToolResponse.Error(unarchiveResultWrapper);
+                return ToolResponse.Error(extractResultWrapper);
             }
 
-            extractedEntries = unarchiveResultWrapper.Value.Entries;
+            extractedEntries = extractResultWrapper.Value.Entries;
         }
         finally
         {

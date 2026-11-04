@@ -56,7 +56,7 @@ internal static class IconSymbolNames
         { IconSymbol.Paste, "bs-clipboard" },
         { IconSymbol.Rename, "bs-pencil" },
         { IconSymbol.Archive, "bs-archive" },
-        { IconSymbol.Unarchive, "bs-box-arrow-up" },
+        { IconSymbol.Extract, "bs-box-arrow-up" },
         { IconSymbol.Recent, "bs-clock-history" },
         { IconSymbol.Menu, "bs-list" },
         { IconSymbol.Play, "bs-play-fill" },

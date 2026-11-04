@@ -507,7 +507,7 @@ public static class ProjectConfigParser
                 case PackageFolderProblem.Reserved:
                     entryErrors.Add(new ProjectConfigEntryError(
                         tableName,
-                        $"'{PackageFoldersKey}' entry '{folderPath}' is inside a .git folder, which Celbridge reserves. The entry was dropped."));
+                        $"'{PackageFoldersKey}' entry '{folderPath}' is inside a .git folder, where Celbridge cannot load packages. The entry was dropped."));
                     break;
 
                 case PackageFolderProblem.AlreadyListed:
@@ -582,7 +582,7 @@ public static class ProjectConfigParser
         if (!DownloadsFolderPath.TryParse(downloadsFolder, out var folder))
         {
             var problem = DownloadsFolderPath.IsReserved(downloadsFolder)
-                ? "is inside a folder Celbridge reserves, where nothing can be saved"
+                ? "is inside a .git folder, where Celbridge cannot save downloads"
                 : "must be a folder path from the project root";
 
             entryErrors.Add(new ProjectConfigEntryError(

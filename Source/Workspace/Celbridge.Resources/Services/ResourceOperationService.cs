@@ -179,7 +179,7 @@ public class ResourceOperationService : IResourceOperationService
     {
         var error = new ProjectFileMoveRefusedError(refusal);
 
-        return Result.Fail(error.Message).WithException(error);
+        return Result.Fail().WithException(error);
     }
 
     public async Task<Result<bool>> DeleteAsync(ResourceKey resource)

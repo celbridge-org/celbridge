@@ -358,7 +358,7 @@ public sealed class TrashService : ITrashService
     {
         var error = new ResourceContainsLinkError(linkPath);
 
-        return Result<TrashEntry>.Fail(error.Message).WithException(error);
+        return Result<TrashEntry>.Fail().WithException(error);
     }
 
     // Move a file into the trash subtree, creating any missing parent folders

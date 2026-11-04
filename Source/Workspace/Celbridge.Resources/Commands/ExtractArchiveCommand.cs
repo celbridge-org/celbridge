@@ -6,23 +6,26 @@ using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Commands;
 
-public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
+public class ExtractArchiveCommand : CommandBase, IExtractArchiveCommand
 {
+    private const int MaxLoggedSkippedEntries = 10;
+
     public ResourceKey ArchiveResource { get; set; }
     public ResourceKey DestinationResource { get; set; }
     public bool Overwrite { get; set; }
-    public UnarchiveResult ResultValue { get; private set; } = new UnarchiveResult
+    public ExtractArchiveResult ResultValue { get; private set; } = new ExtractArchiveResult
     {
         Entries = 0,
-        Destination = string.Empty
+        Destination = string.Empty,
+        SkippedEntries = []
     };
 
-    private readonly ILogger<UnarchiveResourceCommand> _logger;
+    private readonly ILogger<ExtractArchiveCommand> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ResourceOperationNotifier _operationNotifier;
 
-    public UnarchiveResourceCommand(
-        ILogger<UnarchiveResourceCommand> logger,
+    public ExtractArchiveCommand(
+        ILogger<ExtractArchiveCommand> logger,
         IWorkspaceWrapper workspaceWrapper,
         ResourceOperationNotifier operationNotifier)
     {
@@ -43,6 +46,10 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
 
             await _operationNotifier.NotifyFailuresAsync(ResourceOperationType.Extract, failedResources);
         }
+        else
+        {
+            _operationNotifier.NotifySkippedArchiveEntries(ArchiveResource, ResultValue.SkippedEntries);
+        }
 
         return result;
     }
@@ -58,6 +65,7 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
         var rootHandlerRegistry = workspaceService.ResourceService.RootHandlers;
         var resourceOpService = workspaceService.ResourceService.Operations;
         var resourceFileSystem = workspaceService.ResourceService.FileSystem;
+        var resourcePolicy = workspaceService.ResourceService.Policy;
 
         if (!ResourceKey.IsValidKey(ArchiveResource))
         {
@@ -69,8 +77,8 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
             return Result.Fail($"Invalid destination resource key: '{DestinationResource}'");
         }
 
-        // Path resolution is still needed for entry-name validation and the
-        // zip-slip canonicalization check below; the operation-service writes
+        // Resolve the destination path for entry-name validation and the
+        // zip-slip canonicalization check below. The operation-service writes
         // themselves take ResourceKey arguments.
         var resolveDestinationResult = rootHandlerRegistry.ResolveResourcePath(DestinationResource);
         if (resolveDestinationResult.IsFailure)
@@ -89,6 +97,8 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
 
         int entryCount = 0;
         long totalExtractedBytes = 0;
+        var skippedEntries = new List<string>();
+        var skippedPatterns = new List<string>();
 
         try
         {
@@ -127,6 +137,25 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
                     continue;
                 }
 
+                // Combine segment by segment. Entry names like "audio/music.mp3"
+                // are multi-segment relative paths, and Combine alone rejects them.
+                var entryResource = DestinationResource.CombinePath(entryName);
+
+                // Skip an entry when the policy refuses it, for example an entry inside .git.
+                var policyGateResult = resourcePolicy.Evaluate(entryResource, ResourceAction.Write);
+                if (policyGateResult.IsFailure)
+                {
+                    var pattern = (policyGateResult.FirstException as PolicyDenialError)?.MatchedRule.Pattern
+                        ?? policyGateResult.FirstErrorMessage;
+                    if (!skippedPatterns.Contains(pattern))
+                    {
+                        skippedPatterns.Add(pattern);
+                    }
+
+                    skippedEntries.Add(entryName);
+                    continue;
+                }
+
                 // Zip bomb protection
                 totalExtractedBytes += entry.Length;
                 if (totalExtractedBytes > ArchiveHelper.MaxExtractedBytes)
@@ -150,9 +179,6 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
 
                 if (!Overwrite)
                 {
-                    // Combine segment by segment: entry names like "audio/music.mp3"
-                    // are multi-segment relative paths, which Combine alone rejects.
-                    var entryResource = DestinationResource.CombinePath(entryName);
                     var existingInfoResult = await resourceFileSystem.GetInfoAsync(entryResource);
                     if (existingInfoResult.IsSuccess
                         && existingInfoResult.Value.Kind == StorageItemKind.File)
@@ -173,11 +199,16 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
                 }
             }
 
+            if (skippedEntries.Count > 0)
+            {
+                LogSkippedEntries(skippedEntries, skippedPatterns);
+            }
+
             // Begin batch so all operations are a single undo unit.
             using var batch = resourceOpService.BeginBatch();
 
             // Create the destination folder and any missing ancestors through
-            // the operation service so the whole chain lands in the unarchive's
+            // the operation service so the whole chain lands in the extraction's
             // undo batch.
             var destInfoResult = await resourceFileSystem.GetInfoAsync(DestinationResource);
             if (destInfoResult.IsFailure)
@@ -298,13 +329,31 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
             return Result.Fail($"The file '{ArchiveResource}' is not a valid zip archive.");
         }
 
-        ResultValue = new UnarchiveResult
+        ResultValue = new ExtractArchiveResult
         {
             Entries = entryCount,
-            Destination = DestinationResource.ToString()
+            Destination = DestinationResource.ToString(),
+            SkippedEntries = skippedEntries
         };
 
         return Result.Ok();
+    }
+
+    // Logs one line for the whole archive, with the count, the rules and the first few entry names.
+    private void LogSkippedEntries(IReadOnlyList<string> skippedEntries, IReadOnlyList<string> skippedPatterns)
+    {
+        var patternList = string.Join(", ", skippedPatterns.Select(pattern => $"'{pattern}'"));
+
+        var sample = string.Join(", ", skippedEntries.Take(MaxLoggedSkippedEntries));
+        var remainingCount = skippedEntries.Count - MaxLoggedSkippedEntries;
+        if (remainingCount > 0)
+        {
+            sample += $" and {remainingCount} more";
+        }
+
+        var entryWord = skippedEntries.Count == 1 ? "entry" : "entries";
+
+        _logger.LogWarning($"Skipped {skippedEntries.Count} {entryWord} of '{ArchiveResource}' that the resource policy refuses ({patternList}): {sample}");
     }
 
     private static ResourceKey BuildDescendantKey(

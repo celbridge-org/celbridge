@@ -1,6 +1,8 @@
-# explorer_unarchive
+# explorer_extract
 
 Extracts a zip archive that lives somewhere under the project content root into a destination folder. The counterpart to `explorer_archive`.
+
+The resource policy refuses writes to some paths, for example anything inside a `.git` folder. Extraction skips each entry at a refused path, extracts the rest, and counts the skipped entries in `skipped`.
 
 ## Parameters
 
@@ -14,3 +16,4 @@ A JSON object:
 
 - `entries` (int) — number of files extracted.
 - `destination` (string) — resource key of the destination folder.
+- `skipped` (int) — number of entries skipped because the resource policy refused their paths.

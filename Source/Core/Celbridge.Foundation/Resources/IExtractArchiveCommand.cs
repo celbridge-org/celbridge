@@ -3,9 +3,9 @@ using Celbridge.Commands;
 namespace Celbridge.Resources;
 
 /// <summary>
-/// Result data returned by the unarchive resource command.
+/// Result data returned by the extract archive command.
 /// </summary>
-public record class UnarchiveResult
+public record class ExtractArchiveResult
 {
     /// <summary>
     /// The number of files extracted from the archive.
@@ -16,12 +16,18 @@ public record class UnarchiveResult
     /// The resource key of the destination folder.
     /// </summary>
     public required string Destination { get; init; }
+
+    /// <summary>
+    /// The entries left out because the resource policy refused them. Each entry is named by its path inside the
+    /// archive.
+    /// </summary>
+    public required IReadOnlyList<string> SkippedEntries { get; init; }
 }
 
 /// <summary>
 /// Extracts a zip archive to a destination folder.
 /// </summary>
-public interface IUnarchiveResourceCommand : IExecutableCommand<UnarchiveResult>
+public interface IExtractArchiveCommand : IExecutableCommand<ExtractArchiveResult>
 {
     /// <summary>
     /// Resource key of the zip file to extract.
@@ -34,7 +40,7 @@ public interface IUnarchiveResourceCommand : IExecutableCommand<UnarchiveResult>
     ResourceKey DestinationResource { get; set; }
 
     /// <summary>
-    /// Whether to overwrite existing files.
+    /// Replaces existing files when true.
     /// </summary>
     bool Overwrite { get; set; }
 }

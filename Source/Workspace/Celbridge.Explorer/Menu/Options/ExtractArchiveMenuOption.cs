@@ -6,17 +6,17 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.Explorer.Menu.Options;
 
 /// <summary>
-/// Menu option to create a zip archive from a folder.
+/// Menu option to extract a zip archive to a folder.
 /// </summary>
-public class ArchiveMenuOption : IMenuOption<ExplorerMenuContext>
+public class ExtractArchiveMenuOption : IMenuOption<ExplorerMenuContext>
 {
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
 
-    public int Priority => 6;
+    public int Priority => 7;
     public string GroupId => nameof(ExplorerMenuGroup.EditActions);
 
-    public ArchiveMenuOption(
+    public ExtractArchiveMenuOption(
         IStringLocalizer stringLocalizer,
         ICommandService commandService)
     {
@@ -27,36 +27,36 @@ public class ArchiveMenuOption : IMenuOption<ExplorerMenuContext>
     public MenuItemDisplayInfo GetDisplayInfo(ExplorerMenuContext context)
     {
         return new MenuItemDisplayInfo(
-            _stringLocalizer.GetString("ResourceTree_CreateArchive"),
-            Icon: IconSymbol.Archive);
+            _stringLocalizer.GetString("ResourceTree_ExtractArchive"),
+            Icon: IconSymbol.Extract);
     }
 
     public MenuItemState GetState(ExplorerMenuContext context)
     {
         var selectedResource = context.SingleSelectedResource;
-        var isSingleFolder = selectedResource is not null
-            && selectedResource.IsFolder
-            && !context.SelectionContainsProjectFolder;
+        var isZipFile = selectedResource is not null
+            && !selectedResource.IsFolder
+            && selectedResource.Resource.ResourceName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase);
 
         return new MenuItemState(
-            IsVisible: isSingleFolder,
-            IsEnabled: isSingleFolder);
+            IsVisible: isZipFile,
+            IsEnabled: isZipFile);
     }
 
     public void Execute(ExplorerMenuContext context)
     {
         var selectedResource = context.SingleSelectedResource;
         if (selectedResource is null
-            || !selectedResource.IsFolder)
+            || selectedResource.IsFolder)
         {
             return;
         }
 
         var resourceKey = selectedResource.Resource;
 
-        _commandService.Execute<IArchiveResourceDialogCommand>(command =>
+        _commandService.Execute<IExtractArchiveDialogCommand>(command =>
         {
-            command.FolderResource = resourceKey;
+            command.ArchiveResource = resourceKey;
         });
     }
 }
