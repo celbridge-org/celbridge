@@ -420,7 +420,7 @@ public partial class DocumentTab : TabViewItem
         EditorPickList? pickList = null;
         if (!isUtility)
         {
-            pickList = ViewModel.GetEditorPickList();
+            pickList = ViewModel.GetEditors();
         }
         PopulateOpenWithMenu(pickList);
     }
