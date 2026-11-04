@@ -9,7 +9,7 @@ public record ArchiveSourceFile(ResourceKey Resource, string EntryName);
 
 /// <summary>
 /// Static utility methods for creating and extracting zip archives.
-/// Used by ArchiveResourceCommand, ExportArchiveCommand and UnarchiveResourceCommand.
+/// Used by ArchiveResourceCommand, ExportArchiveCommand and ExtractArchiveCommand.
 /// </summary>
 public static class ArchiveHelper
 {

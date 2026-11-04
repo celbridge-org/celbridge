@@ -52,7 +52,7 @@ public enum IconSymbol
     Paste,
     Rename,
     Archive,
-    Unarchive,
+    Extract,
     Recent,
     Menu,
     Play,

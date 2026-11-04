@@ -8,7 +8,7 @@ namespace Celbridge.Explorer.Menu.Options;
 /// <summary>
 /// Menu option to extract a zip archive to a folder.
 /// </summary>
-public class UnarchiveMenuOption : IMenuOption<ExplorerMenuContext>
+public class ExtractArchiveMenuOption : IMenuOption<ExplorerMenuContext>
 {
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
@@ -16,7 +16,7 @@ public class UnarchiveMenuOption : IMenuOption<ExplorerMenuContext>
     public int Priority => 7;
     public string GroupId => nameof(ExplorerMenuGroup.EditActions);
 
-    public UnarchiveMenuOption(
+    public ExtractArchiveMenuOption(
         IStringLocalizer stringLocalizer,
         ICommandService commandService)
     {
@@ -28,7 +28,7 @@ public class UnarchiveMenuOption : IMenuOption<ExplorerMenuContext>
     {
         return new MenuItemDisplayInfo(
             _stringLocalizer.GetString("ResourceTree_ExtractArchive"),
-            Icon: IconSymbol.Unarchive);
+            Icon: IconSymbol.Extract);
     }
 
     public MenuItemState GetState(ExplorerMenuContext context)
@@ -54,7 +54,7 @@ public class UnarchiveMenuOption : IMenuOption<ExplorerMenuContext>
 
         var resourceKey = selectedResource.Resource;
 
-        _commandService.Execute<IUnarchiveResourceDialogCommand>(command =>
+        _commandService.Execute<IExtractArchiveDialogCommand>(command =>
         {
             command.ArchiveResource = resourceKey;
         });

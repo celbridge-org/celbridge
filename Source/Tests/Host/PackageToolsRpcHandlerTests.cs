@@ -137,7 +137,7 @@ public class PackageToolsRpcHandlerTests
 
     [TestCase("app.list_packages")]
     [TestCase("explorer.archive")]
-    [TestCase("explorer.unarchive")]
+    [TestCase("explorer.extract")]
     public async Task CallToolAsync_PackageListingAndArchiveTools_ReachTheBridge(string name)
     {
         var bridge = new StubToolBridge();

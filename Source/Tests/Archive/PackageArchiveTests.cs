@@ -78,7 +78,7 @@ public class PackageArchiveTests
     }
 
     [Test]
-    public void UnarchiveExtractsFilesCorrectly()
+    public void ExtractRestoresFilesCorrectly()
     {
         var sourceFolder = Path.Combine(_testFolderPath, "source");
         Directory.CreateDirectory(sourceFolder);
@@ -263,7 +263,7 @@ public class PackageArchiveTests
     }
 
     [Test]
-    public void UnarchiveCreatesDestinationFolderIfMissing()
+    public void ExtractCreatesDestinationFolderIfMissing()
     {
         var sourceFolder = Path.Combine(_testFolderPath, "source");
         Directory.CreateDirectory(sourceFolder);

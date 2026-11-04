@@ -6,26 +6,26 @@ using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Commands;
 
-public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
+public class ExtractArchiveCommand : CommandBase, IExtractArchiveCommand
 {
     private const int MaxLoggedSkippedEntries = 10;
 
     public ResourceKey ArchiveResource { get; set; }
     public ResourceKey DestinationResource { get; set; }
     public bool Overwrite { get; set; }
-    public UnarchiveResult ResultValue { get; private set; } = new UnarchiveResult
+    public ExtractArchiveResult ResultValue { get; private set; } = new ExtractArchiveResult
     {
         Entries = 0,
         Destination = string.Empty,
         SkippedEntries = []
     };
 
-    private readonly ILogger<UnarchiveResourceCommand> _logger;
+    private readonly ILogger<ExtractArchiveCommand> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ResourceOperationNotifier _operationNotifier;
 
-    public UnarchiveResourceCommand(
-        ILogger<UnarchiveResourceCommand> logger,
+    public ExtractArchiveCommand(
+        ILogger<ExtractArchiveCommand> logger,
         IWorkspaceWrapper workspaceWrapper,
         ResourceOperationNotifier operationNotifier)
     {
@@ -78,7 +78,7 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
         }
 
         // Path resolution is still needed for entry-name validation and the
-        // zip-slip canonicalization check below; the operation-service writes
+        // zip-slip canonicalization check below. The operation-service writes
         // themselves take ResourceKey arguments.
         var resolveDestinationResult = rootHandlerRegistry.ResolveResourcePath(DestinationResource);
         if (resolveDestinationResult.IsFailure)
@@ -208,7 +208,7 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
             using var batch = resourceOpService.BeginBatch();
 
             // Create the destination folder and any missing ancestors through
-            // the operation service so the whole chain lands in the unarchive's
+            // the operation service so the whole chain lands in the extraction's
             // undo batch.
             var destInfoResult = await resourceFileSystem.GetInfoAsync(DestinationResource);
             if (destInfoResult.IsFailure)
@@ -329,7 +329,7 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
             return Result.Fail($"The file '{ArchiveResource}' is not a valid zip archive.");
         }
 
-        ResultValue = new UnarchiveResult
+        ResultValue = new ExtractArchiveResult
         {
             Entries = entryCount,
             Destination = DestinationResource.ToString(),

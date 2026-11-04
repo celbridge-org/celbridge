@@ -6,21 +6,21 @@ using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Explorer.Commands;
 
-public class UnarchiveResourceDialogCommand : CommandBase, IUnarchiveResourceDialogCommand
+public class ExtractArchiveDialogCommand : CommandBase, IExtractArchiveDialogCommand
 {
     public override CommandFlags CommandFlags => CommandFlags.None;
 
     public ResourceKey ArchiveResource { get; set; }
 
-    private readonly ILogger<UnarchiveResourceDialogCommand> _logger;
+    private readonly ILogger<ExtractArchiveDialogCommand> _logger;
     private readonly IServiceProvider _serviceProvider;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
     private readonly IDialogService _dialogService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public UnarchiveResourceDialogCommand(
-        ILogger<UnarchiveResourceDialogCommand> logger,
+    public ExtractArchiveDialogCommand(
+        ILogger<ExtractArchiveDialogCommand> logger,
         IServiceProvider serviceProvider,
         IStringLocalizer stringLocalizer,
         ICommandService commandService,
@@ -37,10 +37,10 @@ public class UnarchiveResourceDialogCommand : CommandBase, IUnarchiveResourceDia
 
     public override async Task<Result> ExecuteAsync()
     {
-        return await ShowUnarchiveResourceDialogAsync();
+        return await ShowExtractArchiveDialogAsync();
     }
 
-    private async Task<Result> ShowUnarchiveResourceDialogAsync()
+    private async Task<Result> ShowExtractArchiveDialogAsync()
     {
         if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
@@ -86,7 +86,7 @@ public class UnarchiveResourceDialogCommand : CommandBase, IUnarchiveResourceDia
             var parentResource = ArchiveResource.GetParent();
             var destinationResource = parentResource.Combine(folderName);
 
-            _commandService.Execute<IUnarchiveResourceCommand>(command =>
+            _commandService.Execute<IExtractArchiveCommand>(command =>
             {
                 command.ArchiveResource = ArchiveResource;
                 command.DestinationResource = destinationResource;

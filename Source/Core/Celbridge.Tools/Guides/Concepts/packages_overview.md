@@ -36,6 +36,6 @@ The `package-version` is three dot-separated numbers, such as `1.2.0`, with no `
 
 `app_list_packages` reports each project package's name, package version, and folder, plus any load failures such as a duplicate-name fault, and `app_get_state` carries the same packages as a summary. Both report the packages as the project loaded. A package added, removed or edited on disk during the session shows after the project reloads, so read the `package.toml` and `.celbridge` files to see what a project declares now.
 
-`explorer_archive` and `explorer_unarchive` zip and unzip against the project tree, useful for staging or vendoring a package by hand.
+`explorer_archive` and `explorer_extract` zip and unzip against the project tree, useful for staging or vendoring a package by hand.
 
 For the JS proxy conventions packages need at runtime, see `agent_instructions`.

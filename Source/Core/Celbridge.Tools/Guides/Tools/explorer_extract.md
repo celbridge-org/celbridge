@@ -1,4 +1,4 @@
-# explorer_unarchive
+# explorer_extract
 
 Extracts a zip archive that lives somewhere under the project content root into a destination folder. The counterpart to `explorer_archive`.
 

@@ -23,7 +23,7 @@ The `explorer` namespace operates on the resource tree: it creates, renames, mov
 **Archives.**
 
 - `explorer_archive` — zip a file or folder into an archive, with optional include and exclude patterns.
-- `explorer_unarchive` — extract a zip archive into a folder.
+- `explorer_extract` — extract a zip archive into a folder.
 
 **Selection and tree state.**
 

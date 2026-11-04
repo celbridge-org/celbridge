@@ -42,7 +42,7 @@ public static class ServiceConfiguration
         services.AddTransient<IDeleteResourceDialogCommand, DeleteResourceDialogCommand>();
         services.AddTransient<IRenameResourceDialogCommand, RenameResourceDialogCommand>();
         services.AddTransient<IDuplicateResourceDialogCommand, DuplicateResourceDialogCommand>();
-        services.AddTransient<IUnarchiveResourceDialogCommand, UnarchiveResourceDialogCommand>();
+        services.AddTransient<IExtractArchiveDialogCommand, ExtractArchiveDialogCommand>();
         services.AddTransient<ISelectResourceCommand, SelectResourceCommand>();
         services.AddTransient<IExpandFolderCommand, ExpandFolderCommand>();
         services.AddTransient<ICollapseAllCommand, CollapseAllCommand>();
@@ -67,7 +67,7 @@ public static class ServiceConfiguration
         services.AddSingleton<IMenuOption<ExplorerMenuContext>, CopyPathMenuOption>();
         services.AddSingleton<IMenuOption<ExplorerMenuContext>, CopyResourceKeyMenuOption>();
         services.AddSingleton<IMenuOption<ExplorerMenuContext>, ExportArchiveMenuOption>();
-        services.AddSingleton<IMenuOption<ExplorerMenuContext>, UnarchiveMenuOption>();
+        services.AddSingleton<IMenuOption<ExplorerMenuContext>, ExtractArchiveMenuOption>();
         services.AddSingleton<IMenuOption<ExplorerMenuContext>, OpenFileExplorerMenuOption>();
         services.AddSingleton<IMenuOption<ExplorerMenuContext>, OpenApplicationMenuOption>();
         services.AddSingleton<IMenuOption<ExplorerMenuContext>, OpenWithMenuOption>();

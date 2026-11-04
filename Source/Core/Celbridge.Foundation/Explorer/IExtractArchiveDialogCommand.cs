@@ -5,7 +5,7 @@ namespace Celbridge.Explorer;
 /// <summary>
 /// Display the Extract Archive dialog to allow the user to extract a zip archive to a folder.
 /// </summary>
-public interface IUnarchiveResourceDialogCommand : IExecutableCommand
+public interface IExtractArchiveDialogCommand : IExecutableCommand
 {
     /// <summary>
     /// The zip archive resource to extract.

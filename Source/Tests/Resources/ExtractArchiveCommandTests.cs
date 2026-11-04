@@ -13,16 +13,16 @@ using Celbridge.Workspace;
 namespace Celbridge.Tests.Resources;
 
 /// <summary>
-/// Tests for UnarchiveResourceCommand over a real resource file system and the default resource policy. The
+/// Tests for ExtractArchiveCommand over a real resource file system and the default resource policy. The
 /// operation service is a substitute, so each test reads the extracted files from the substitute's received calls.
 /// </summary>
 [TestFixture]
-public class UnarchiveResourceCommandTests
+public class ExtractArchiveCommandTests
 {
     private string _projectFolderPath = null!;
     private IResourceOperationService _operationService = null!;
     private IMessengerService _messengerService = null!;
-    private ILogger<UnarchiveResourceCommand> _logger = null!;
+    private ILogger<ExtractArchiveCommand> _logger = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
 
     [SetUp]
@@ -31,7 +31,7 @@ public class UnarchiveResourceCommandTests
         _projectFolderPath = Path.Combine(
             Path.GetTempPath(),
             "Celbridge",
-            nameof(UnarchiveResourceCommandTests),
+            nameof(ExtractArchiveCommandTests),
             Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_projectFolderPath);
 
@@ -42,7 +42,7 @@ public class UnarchiveResourceCommandTests
             .Returns(Task.FromResult(Result.Ok()));
 
         _messengerService = Substitute.For<IMessengerService>();
-        _logger = Substitute.For<ILogger<UnarchiveResourceCommand>>();
+        _logger = Substitute.For<ILogger<ExtractArchiveCommand>>();
 
         var resourceService = Substitute.For<IResourceService>();
         resourceService.RootHandlers.Returns(TestRootHandlers.Create(_projectFolderPath));
@@ -74,7 +74,7 @@ public class UnarchiveResourceCommandTests
     }
 
     [Test]
-    public async Task Unarchive_EntryInsideGitFolder_IsSkippedAndTheRestExtracted()
+    public async Task Extract_EntryInsideGitFolder_IsSkippedAndTheRestExtracted()
     {
         WriteArchive("Acme.zip", "readme.md", ".git/config");
 
@@ -100,7 +100,7 @@ public class UnarchiveResourceCommandTests
     }
 
     [Test]
-    public async Task Unarchive_ManySkippedEntries_AreLoggedOnOneCappedLine()
+    public async Task Extract_ManySkippedEntries_AreLoggedOnOneCappedLine()
     {
         var gitEntries = Enumerable.Range(1, 12).Select(index => $".git/objects/{index:D2}").ToArray();
         WriteArchive("Acme.zip", ["readme.md", .. gitEntries]);
@@ -123,7 +123,7 @@ public class UnarchiveResourceCommandTests
     }
 
     [Test]
-    public async Task Unarchive_WithNothingSkipped_SendsNoSkippedMessage()
+    public async Task Extract_WithNothingSkipped_SendsNoSkippedMessage()
     {
         WriteArchive("Acme.zip", "readme.md");
 
@@ -138,7 +138,7 @@ public class UnarchiveResourceCommandTests
         _messengerService.DidNotReceive().Send(Arg.Any<ArchiveEntriesSkippedMessage>());
     }
 
-    private UnarchiveResourceCommand CreateCommand()
+    private ExtractArchiveCommand CreateCommand()
     {
         var operationNotifier = new ResourceOperationNotifier(
             Substitute.For<ILogger<ResourceOperationNotifier>>(),
@@ -147,7 +147,7 @@ public class UnarchiveResourceCommandTests
             Substitute.For<IReportWriter>(),
             Substitute.For<ILocalizerService>());
 
-        return new UnarchiveResourceCommand(
+        return new ExtractArchiveCommand(
             _logger,
             _workspaceWrapper,
             operationNotifier);
