@@ -74,8 +74,8 @@ public record ResourceOperationFailedMessage(
 }
 
 /// <summary>
-/// A message sent when an archive was extracted without the entries the resource policy refuses. Each skipped
-/// entry is named by its path inside the archive.
+/// A message sent when an extraction skipped archive entries because the resource policy refused them. Each
+/// skipped entry is named by its path inside the archive.
 /// </summary>
 public record ArchiveEntriesSkippedMessage(
     ResourceKey ArchiveResource,

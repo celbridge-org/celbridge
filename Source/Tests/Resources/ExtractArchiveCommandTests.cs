@@ -97,6 +97,11 @@ public class ExtractArchiveCommandTests
         _messengerService.Received(1).Send(Arg.Is<ArchiveEntriesSkippedMessage>(message =>
             message.ArchiveResource == new ResourceKey("Acme.zip")
             && message.SkippedEntries.SequenceEqual(new[] { ".git/config" })));
+
+        _logger.Received(1).LogWarning(
+            Arg.Is<string?>(message => message != null
+                && message.StartsWith("Skipped 1 entry of 'project:Acme.zip'")),
+            Arg.Any<object?[]>());
     }
 
     [Test]

@@ -211,7 +211,7 @@
     <value>Bundled package — read-only by design.</value>
   </data>
   <data name="Policy_Reserved_Single" xml:space="preserve">
-    <value>'{0}' is reserved by Celbridge and cannot be changed.</value>
+    <value>Celbridge cannot create or change '{0}'.</value>
   </data>
   <data name="Policy_Blocked_Multiple" xml:space="preserve">
     <value>{0} items cannot be changed.</value>
@@ -357,7 +357,7 @@ This file could not be saved</value>
     <value>Name contains invalid characters: {0}</value>
   </data>
   <data name="Validation_CelExtensionReserved" xml:space="preserve">
-    <value>The .cel extension is reserved.</value>
+    <value>File names cannot end in .cel. Celbridge uses that extension for its own files.</value>
   </data>
   <data name="ResourceTree_Copy" xml:space="preserve">
     <value>Copy</value>
@@ -501,7 +501,7 @@ This file could not be saved</value>
     <value>{0} hours ago</value>
   </data>
   <data name="Downloads_Blocked" xml:space="preserve">
-    <value>Download of '{0}' was blocked, because '{1}' is reserved by Celbridge.</value>
+    <value>Celbridge stopped the download of '{0}' to protect '{1}'.</value>
   </data>
   <data name="Downloads_DestinationUnavailable" xml:space="preserve">
     <value>The downloads folder could not be prepared.</value>
@@ -1097,7 +1097,7 @@ Open with default application instead?</value>
     <value>This is not a valid folder path, so downloads are saved to '{0}'.</value>
   </data>
   <data name="ProjectSettings_ReservedDownloadsFolder" xml:space="preserve">
-    <value>Celbridge reserves this folder, so downloads are saved to '{0}'.</value>
+    <value>Celbridge cannot save downloads inside a .git folder, so they are saved to '{0}'.</value>
   </data>
   <data name="ProjectSettings_PackageFoldersTitle" xml:space="preserve">
     <value>Package folders</value>
@@ -1127,7 +1127,7 @@ Open with default application instead?</value>
     <value>The project folder cannot be a package folder.</value>
   </data>
   <data name="ProjectSettings_ReservedPackageFolder" xml:space="preserve">
-    <value>Celbridge reserves this folder, so it cannot be a package folder.</value>
+    <value>A package folder cannot be inside a .git folder.</value>
   </data>
   <data name="ProjectSettings_RepeatedPackageFolder" xml:space="preserve">
     <value>This folder is already a package folder.</value>

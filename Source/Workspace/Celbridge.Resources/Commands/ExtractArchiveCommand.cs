@@ -77,7 +77,7 @@ public class ExtractArchiveCommand : CommandBase, IExtractArchiveCommand
             return Result.Fail($"Invalid destination resource key: '{DestinationResource}'");
         }
 
-        // Path resolution is still needed for entry-name validation and the
+        // Resolve the destination path for entry-name validation and the
         // zip-slip canonicalization check below. The operation-service writes
         // themselves take ResourceKey arguments.
         var resolveDestinationResult = rootHandlerRegistry.ResolveResourcePath(DestinationResource);
@@ -141,7 +141,7 @@ public class ExtractArchiveCommand : CommandBase, IExtractArchiveCommand
                 // are multi-segment relative paths, and Combine alone rejects them.
                 var entryResource = DestinationResource.CombinePath(entryName);
 
-                // An entry the policy refuses, for example an entry inside .git, is left out of the extraction.
+                // Skip an entry when the policy refuses it, for example an entry inside .git.
                 var policyGateResult = resourcePolicy.Evaluate(entryResource, ResourceAction.Write);
                 if (policyGateResult.IsFailure)
                 {
@@ -339,7 +339,7 @@ public class ExtractArchiveCommand : CommandBase, IExtractArchiveCommand
         return Result.Ok();
     }
 
-    // Logs one line for the whole archive, however many entries the policy refused, and names the first few.
+    // Logs one line for the whole archive, with the count, the rules and the first few entry names.
     private void LogSkippedEntries(IReadOnlyList<string> skippedEntries, IReadOnlyList<string> skippedPatterns)
     {
         var patternList = string.Join(", ", skippedPatterns.Select(pattern => $"'{pattern}'"));
@@ -351,7 +351,9 @@ public class ExtractArchiveCommand : CommandBase, IExtractArchiveCommand
             sample += $" and {remainingCount} more";
         }
 
-        _logger.LogWarning($"Skipped {skippedEntries.Count} entries of '{ArchiveResource}' that the resource policy refuses ({patternList}): {sample}");
+        var entryWord = skippedEntries.Count == 1 ? "entry" : "entries";
+
+        _logger.LogWarning($"Skipped {skippedEntries.Count} {entryWord} of '{ArchiveResource}' that the resource policy refuses ({patternList}): {sample}");
     }
 
     private static ResourceKey BuildDescendantKey(

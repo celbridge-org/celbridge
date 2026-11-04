@@ -48,7 +48,7 @@ public class ExportArchiveMenuOption : IMenuOption<ExplorerMenuContext>
 
     public MenuItemState GetState(ExplorerMenuContext context)
     {
-        var isFolderTargeted = GetTargetFolder(context) is not null;
+        var isFolderTargeted = GetExportFolder(context) is not null;
 
         return new MenuItemState(
             IsVisible: isFolderTargeted,
@@ -71,18 +71,20 @@ public class ExportArchiveMenuOption : IMenuOption<ExplorerMenuContext>
     // user chooses where to save.
     private async Task ExecuteAsync(ExplorerMenuContext context)
     {
-        var targetFolder = GetTargetFolder(context);
-        if (targetFolder is null)
+        var exportFolder = GetExportFolder(context);
+        if (exportFolder is null)
         {
             return;
         }
-        var folderResource = targetFolder.Value;
+        var folderResource = exportFolder.Value;
 
-        // The project folder's resource key has an empty name, so the project's archive is named after the folder on
-        // disk.
-        var folderName = folderResource.IsEmpty
-            ? Path.GetFileName(_projectService.CurrentProject!.ProjectFolderPath)
-            : folderResource.ResourceName;
+        var folderName = folderResource.ResourceName;
+        if (folderResource.IsEmpty)
+        {
+            // The project folder's resource key has an empty name, so the project's archive is named after the
+            // folder on disk.
+            folderName = Path.GetFileName(_projectService.CurrentProject!.ProjectFolderPath);
+        }
         var suggestedFileName = $"{folderName}{ZipFileExtension}";
         var fileTypeDescription = _stringLocalizer.GetString("ResourceTree_ExportArchiveFileType");
         var fileExtensions = new List<string>
@@ -106,7 +108,7 @@ public class ExportArchiveMenuOption : IMenuOption<ExplorerMenuContext>
 
     // Returns the project folder when it is targeted, or the folder when exactly one folder is selected.
     // Returns null for a file and for a selection of several items.
-    private static ResourceKey? GetTargetFolder(ExplorerMenuContext context)
+    private static ResourceKey? GetExportFolder(ExplorerMenuContext context)
     {
         if (context.IsProjectFolderTargeted)
         {

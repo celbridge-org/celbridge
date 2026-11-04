@@ -69,7 +69,7 @@ public sealed class NotificationComposer
         _notificationCentre.AddEvent(content);
     }
 
-    // The log names each skipped entry, so the line gives only the count.
+    // The log names the skipped entries, so the notification gives only the count.
     private void OnArchiveEntriesSkipped(object recipient, ArchiveEntriesSkippedMessage message)
     {
         var skippedCount = message.SkippedEntries.Count;

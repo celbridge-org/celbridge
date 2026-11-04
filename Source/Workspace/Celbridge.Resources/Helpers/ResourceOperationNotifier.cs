@@ -78,7 +78,7 @@ public sealed class ResourceOperationNotifier
     }
 
     /// <summary>
-    /// Reports the entries an extraction left out because the resource policy refuses them.
+    /// Reports the archive entries skipped by an extraction because the resource policy refused them.
     /// </summary>
     public void NotifySkippedArchiveEntries(ResourceKey archiveResource, IReadOnlyList<string> skippedEntries)
     {
