@@ -30,11 +30,11 @@ public record ExplorerMenuContext(
     public bool CanAddToTargetFolder { get; init; } = true;
 
     /// <summary>
-    /// The clicked file's current editor: the editor of the file's open document, or else the file's own
-    /// editor override. Empty when the file has neither, or when the clicked resource is a folder.
-    /// Precomputed when the context menu opens.
+    /// The Open with choices for the clicked file, with the file's current editor checked. Null when the
+    /// clicked resource is a folder, or when fewer than two editors can open the file. Precomputed when
+    /// the context menu opens.
     /// </summary>
-    public EditorId ClickedFileEditorId { get; init; }
+    public EditorPickList? OpenWithChoices { get; init; }
 
     /// <summary>
     /// True when exactly one resource is selected.

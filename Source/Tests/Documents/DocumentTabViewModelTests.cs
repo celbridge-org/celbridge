@@ -11,8 +11,9 @@ namespace Celbridge.Tests.Documents;
 
 /// <summary>
 /// Tests for DocumentTabViewModel: the close path, the editor's pip, the menu predicates derived from the
-/// tab's file resource, and opening the document in another editor. The save-failure tolerance is load-bearing for locked or otherwise read-only
-/// documents, where the save will never succeed and the close path must still complete.
+/// tab's file resource, and opening the document in another editor. The save-failure tolerance is
+/// load-bearing for locked or otherwise read-only documents, where the save will never succeed and the
+/// close path must still complete.
 /// </summary>
 [TestFixture]
 public class DocumentTabViewModelTests
@@ -525,30 +526,38 @@ public class DocumentTabViewModelTests
     }
 
     [Test]
-    public async Task OpenWithEditorAsync_RecordsTheChoiceAndOpensTheDocumentInThatEditor()
+    public async Task OpenWithEditorAsync_OpensTheDocumentInThatEditor()
     {
         var fileResource = new ResourceKey("docs/notes.md");
         var codeEditor = new EditorId("acme.code");
         var documentsService = Substitute.For<IDocumentsService>();
-        documentsService.SetPreferredEditorAsync(Arg.Any<ResourceKey>(), Arg.Any<EditorId>())
+        documentsService.OpenWithEditorAsync(Arg.Any<ResourceKey>(), Arg.Any<EditorId>())
             .Returns(Task.FromResult(Result.Ok()));
         _workspaceService.DocumentsService.Returns(documentsService);
         _workspaceWrapper.IsWorkspaceLoaded.Returns(true);
-        Action<IOpenDocumentCommand>? configure = null;
-        _commandService.Execute(
-            Arg.Do<Action<IOpenDocumentCommand>>(action => configure = action),
-            Arg.Any<string>(),
-            Arg.Any<int>());
         var viewModel = CreateViewModel(fileResource);
 
         await viewModel.OpenWithEditorAsync(codeEditor);
 
-        await documentsService.Received(1).SetPreferredEditorAsync(fileResource, codeEditor);
-        configure.Should().NotBeNull();
-        var openCommand = Substitute.For<IOpenDocumentCommand>();
-        configure!(openCommand);
-        openCommand.FileResource.Should().Be(fileResource);
-        openCommand.EditorId.Should().Be(codeEditor);
+        await documentsService.Received(1).OpenWithEditorAsync(fileResource, codeEditor);
+    }
+
+    [Test]
+    public async Task OpenWithEditorAsync_AnExceptionIsLoggedAndNotThrown()
+    {
+        // The tab menu starts the switch without awaiting the task, so the view model logs any exception.
+        var documentsService = Substitute.For<IDocumentsService>();
+        documentsService.OpenWithEditorAsync(Arg.Any<ResourceKey>(), Arg.Any<EditorId>())
+            .Returns<Task<Result>>(_ => throw new InvalidOperationException("The workspace unloaded"));
+        _workspaceService.DocumentsService.Returns(documentsService);
+        _workspaceWrapper.IsWorkspaceLoaded.Returns(true);
+        var viewModel = CreateViewModel(new ResourceKey("docs/notes.md"));
+
+        var open = () => viewModel.OpenWithEditorAsync(new EditorId("acme.code"));
+
+        await open.Should().NotThrowAsync();
+        _logger.Received(1).LogError(
+            Arg.Any<InvalidOperationException>(), Arg.Any<string?>(), Arg.Any<object?[]>());
     }
 
     private static IDocumentView CreateUnwritableDocumentView()

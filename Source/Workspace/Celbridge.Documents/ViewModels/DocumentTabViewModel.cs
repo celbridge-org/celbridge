@@ -296,7 +296,7 @@ public partial class DocumentTabViewModel : ObservableObject
     /// Returns the Open with choices for this document, with the tab's own editor checked. Returns null
     /// when fewer than two editors can open the file, and during workspace teardown.
     /// </summary>
-    public EditorPickList? GetEditorPickList()
+    public EditorPickList? GetEditors()
     {
         if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
@@ -305,12 +305,12 @@ public partial class DocumentTabViewModel : ObservableObject
 
         var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
 
-        return documentsService.GetEditorPickList(FileResource, EditorId);
+        return documentsService.GetEditorsForDocument(FileResource, EditorId);
     }
 
     /// <summary>
-    /// Records the editor as the file's editor choice, then opens the document in that editor. A document
-    /// already open in another editor reopens in the new one at the same place in its section.
+    /// Opens the document in the given editor and records the editor as the file's editor choice. Logs a
+    /// failure or an exception, so the tab menu can start the switch without awaiting it.
     /// </summary>
     public async Task OpenWithEditorAsync(EditorId editorId)
     {
@@ -320,19 +320,21 @@ public partial class DocumentTabViewModel : ObservableObject
         }
 
         var fileResource = FileResource;
-        var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
 
-        var setResult = await documentsService.SetPreferredEditorAsync(fileResource, editorId);
-        if (setResult.IsFailure)
+        try
         {
-            _logger.LogWarning(setResult, $"Failed to record the editor choice for '{fileResource}'");
+            var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
+
+            var openResult = await documentsService.OpenWithEditorAsync(fileResource, editorId);
+            if (openResult.IsFailure)
+            {
+                _logger.LogWarning(openResult, $"Failed to open '{fileResource}' in editor '{editorId}'");
+            }
         }
-
-        _commandService.Execute<IOpenDocumentCommand>(command =>
+        catch (Exception ex)
         {
-            command.FileResource = fileResource;
-            command.EditorId = editorId;
-        });
+            _logger.LogError(ex, $"Failed to open '{fileResource}' in editor '{editorId}'");
+        }
     }
 
     // Subscribes for the key before disposing the old subscription, so no change between the two is missed.

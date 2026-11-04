@@ -859,7 +859,15 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
                 var tabOrder = effectiveOptions.Address?.TabOrder ?? existingTabOrder;
                 var reopenAddress = new DocumentAddress(WindowIndex: 0, Section: reopenSection, TabOrder: tabOrder);
                 var reopenOptions = effectiveOptions with { Address = reopenAddress };
-                return await OpenDocument(fileResource, reopenOptions);
+                var reopenResult = await OpenDocument(fileResource, reopenOptions);
+                if (reopenResult.IsFailure)
+                {
+                    // The document is still recorded as active but its tab has gone, so the workspace has
+                    // to move to a document that exists.
+                    SectionContainer.ReconcileMissingActiveDocument();
+                }
+
+                return reopenResult;
             }
 
             // Without an explicit address the existing tab stays in its own

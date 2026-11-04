@@ -70,11 +70,4 @@ public interface IDialogFactory
     /// Text that names one of the supported icons also opens with that icon selected.
     /// </summary>
     IIconPickerDialog CreateIconPickerDialog(string searchText = "");
-
-    /// <summary>
-    /// Create a Choice Dialog that lets the user pick from a list of named options.
-    /// When checkbox is provided, shows a checkbox below the options.
-    /// Optional primaryButtonText and secondaryButtonText override the default OK/Cancel labels.
-    /// </summary>
-    IChoiceDialog CreateChoiceDialog(string titleText, string messageText, IReadOnlyList<string> options, int defaultIndex = 0, ChoiceDialogCheckbox? checkbox = null, string? primaryButtonText = null, string? secondaryButtonText = null);
 }

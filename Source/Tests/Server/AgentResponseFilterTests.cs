@@ -692,8 +692,6 @@ public class AgentResponseFilterTests
 
         public Task<Result<string>> ShowIconPickerDialogAsync(string searchText = "") => throw new NotSupportedException();
 
-        public Task<Result<ChoiceDialogResult>> ShowChoiceDialogAsync(string titleText, string messageText, IReadOnlyList<string> options, int defaultIndex = 0, ChoiceDialogCheckbox? checkbox = null, string? primaryButtonText = null, string? secondaryButtonText = null) => throw new NotSupportedException();
-
         public void ScheduleAnswer(DialogKind dialogKind, string payload = "", int delayMs = 250) => throw new NotSupportedException();
     }
 }

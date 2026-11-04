@@ -9,10 +9,10 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.Tests.Documents;
 
 /// <summary>
-/// Covers the editor-selection surface on DocumentsService: SetPreferredEditorAsync writes the sidecar
-/// override only when the choice deviates from the project default and clears it otherwise (the #746
-/// self-shadow fix), and GetEditorPickList badges the default, checks the effective editor, and falls
-/// back to the default for a stale override.
+/// Covers the editor-selection surface on DocumentsService. OpenWithEditorAsync opens the file in the
+/// chosen editor and records the choice in the sidecar once the document opens. The sidecar stores an
+/// override only when the choice differs from the project default (the #746 self-shadow fix). The pick
+/// lists badge the default and check the current editor. A stale override checks the default.
 /// </summary>
 [TestFixture]
 public class DocumentsServiceTests
@@ -23,17 +23,34 @@ public class DocumentsServiceTests
     private IStringLocalizer _stringLocalizer = null!;
     private DocumentsService _documentsService = null!;
     private DocumentEditorRegistry _registry = null!;
+    private ISidecarService _sidecarService = null!;
+    private IDocumentsPanel _documentsPanel = null!;
 
     private IRemoveFieldsCommand? _capturedRemoveCommand;
     private ISetFieldsCommand? _capturedSetCommand;
+    private IOpenDocumentCommand? _capturedOpenCommand;
+    private Result<OpenDocumentOutcome> _openResult = null!;
 
     [SetUp]
     public void Setup()
     {
         _capturedRemoveCommand = null;
         _capturedSetCommand = null;
+        _capturedOpenCommand = null;
+        _openResult = Result<OpenDocumentOutcome>.Ok(OpenDocumentOutcome.Opened);
 
         _commandService = Substitute.For<ICommandService>();
+
+        _commandService.ExecuteAsync<IOpenDocumentCommand, OpenDocumentOutcome>(
+                Arg.Any<Action<IOpenDocumentCommand>>(), Arg.Any<string>(), Arg.Any<int>())
+            .Returns(callInfo =>
+            {
+                var configure = callInfo.Arg<Action<IOpenDocumentCommand>>();
+                var command = Substitute.For<IOpenDocumentCommand>();
+                configure?.Invoke(command);
+                _capturedOpenCommand = command;
+                return Task.FromResult(_openResult);
+            });
 
         // Capture the configured command by running the caller's configure action against a substitute,
         // so a test can assert what the service wrote. The trailing caller-info arguments are matched loosely.
@@ -66,9 +83,23 @@ public class DocumentsServiceTests
         var moduleService = Substitute.For<IModuleService>();
         moduleService.LoadedModules.Returns(new List<IModule>());
 
+        _sidecarService = Substitute.For<ISidecarService>();
+        _sidecarService.IsSidecarKey(Arg.Any<ResourceKey>()).Returns(false);
+        _sidecarService.ReadAsync(Arg.Any<ResourceKey>())
+            .Returns(Task.FromResult(Result<SidecarReadResult>.Ok(
+                new SidecarReadResult(SidecarReadOutcome.NoSidecar, null, null))));
+
+        _documentsPanel = Substitute.For<IDocumentsPanel>();
+        _documentsPanel.GetOpenDocuments().Returns(Array.Empty<OpenDocumentInfo>());
+
+        var workspaceService = Substitute.For<IWorkspaceService>();
+        workspaceService.ResourceService.Sidecars.Returns(_sidecarService);
+        workspaceService.DocumentsPanel.Returns(_documentsPanel);
+
         // The service guards that the workspace page is not yet loaded during construction.
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.IsWorkspaceLoaded.Returns(false);
+        workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
         _stringLocalizer = Substitute.For<IStringLocalizer>();
         _stringLocalizer["OpenWith_DefaultFormat", Arg.Any<object[]>()]
@@ -100,14 +131,14 @@ public class DocumentsServiceTests
     }
 
     [Test]
-    public async Task SetPreferredEditorAsync_ChoiceEqualsProjectDefault_ClearsSidecarOverride()
+    public async Task OpenWithEditorAsync_ChoosingTheProjectDefault_ClearsTheSidecarOverride()
     {
         // The single registered editor is the project default, so choosing it must clear the sidecar
         // rather than write a redundant override that would shadow the default (the #746 fix).
         var defaultEditorId = new EditorId("test.default-editor");
         _registry.RegisterFactory(CreateFactory(defaultEditorId, ".md", "Default Editor"));
 
-        var result = await _documentsService.SetPreferredEditorAsync(
+        var result = await _documentsService.OpenWithEditorAsync(
             new ResourceKey("doc.md"), defaultEditorId);
 
         result.IsSuccess.Should().BeTrue();
@@ -118,16 +149,19 @@ public class DocumentsServiceTests
     }
 
     [Test]
-    public async Task SetPreferredEditorAsync_ChoiceDiffersFromDefault_WritesSidecarOverride()
+    public async Task OpenWithEditorAsync_ChoosingAnotherEditor_OpensTheFileInItAndWritesTheOverride()
     {
         var defaultEditorId = new EditorId("test.default-editor");
         var chosenEditorId = new EditorId("test.other-editor");
         _registry.RegisterFactory(CreateFactory(defaultEditorId, ".md", "Default Editor"));
 
-        var result = await _documentsService.SetPreferredEditorAsync(
+        var result = await _documentsService.OpenWithEditorAsync(
             new ResourceKey("doc.md"), chosenEditorId);
 
         result.IsSuccess.Should().BeTrue();
+        _capturedOpenCommand.Should().NotBeNull();
+        _capturedOpenCommand!.FileResource.Should().Be(new ResourceKey("doc.md"));
+        _capturedOpenCommand.EditorId.Should().Be(chosenEditorId);
         _capturedSetCommand.Should().NotBeNull();
         _capturedSetCommand!.Resource.Should().Be(new ResourceKey("doc.md"));
         _capturedSetCommand.Fields[SidecarFieldNames.Editor].Should().Be(chosenEditorId.ToString());
@@ -135,7 +169,7 @@ public class DocumentsServiceTests
     }
 
     [Test]
-    public async Task SetPreferredEditorAsync_AReservedFileType_RecordsNothing()
+    public async Task OpenWithEditorAsync_AReservedFileType_OpensTheFileAndRecordsNothing()
     {
         // A reserved type opens in another editor for a look, but the look is not persisted: no sidecar
         // is written beside a file the application depends on, and none is cleared either.
@@ -144,8 +178,25 @@ public class DocumentsServiceTests
         factory.ReservesFileType.Returns(true);
         _registry.RegisterFactory(factory);
 
-        var result = await _documentsService.SetPreferredEditorAsync(
+        var result = await _documentsService.OpenWithEditorAsync(
             new ResourceKey("Acme.celbridge"), new EditorId("test.code-editor"));
+
+        result.IsSuccess.Should().BeTrue();
+        _capturedOpenCommand.Should().NotBeNull();
+        _capturedSetCommand.Should().BeNull();
+        _capturedRemoveCommand.Should().BeNull();
+    }
+
+    [Test]
+    public async Task OpenWithEditorAsync_ADocumentThatRefusesToClose_RecordsNothing()
+    {
+        // The open document refuses to close and stays in the current editor. Recording the choice would
+        // open the file in the other editor next time.
+        _registry.RegisterFactory(CreateFactory(new EditorId("test.default-editor"), ".md", "Default Editor"));
+        _openResult = Result<OpenDocumentOutcome>.Ok(OpenDocumentOutcome.Cancelled);
+
+        var result = await _documentsService.OpenWithEditorAsync(
+            new ResourceKey("doc.md"), new EditorId("test.other-editor"));
 
         result.IsSuccess.Should().BeTrue();
         _capturedSetCommand.Should().BeNull();
@@ -153,17 +204,31 @@ public class DocumentsServiceTests
     }
 
     [Test]
-    public void GetEditorPickList_ReturnsNullWhenFewerThanTwoEditors()
+    public async Task OpenWithEditorAsync_AFailedOpen_FailsAndRecordsNothing()
+    {
+        _registry.RegisterFactory(CreateFactory(new EditorId("test.default-editor"), ".md", "Default Editor"));
+        _openResult = Result<OpenDocumentOutcome>.Fail("The editor could not create its view");
+
+        var result = await _documentsService.OpenWithEditorAsync(
+            new ResourceKey("doc.md"), new EditorId("test.other-editor"));
+
+        result.IsFailure.Should().BeTrue();
+        _capturedSetCommand.Should().BeNull();
+        _capturedRemoveCommand.Should().BeNull();
+    }
+
+    [Test]
+    public void GetEditorsForDocument_ReturnsNullWhenFewerThanTwoEditors()
     {
         _registry.RegisterFactory(CreateFactory(new EditorId("test.only"), ".md", "Only Editor"));
 
-        var pickList = _documentsService.GetEditorPickList(new ResourceKey("doc.md"), EditorId.Empty);
+        var pickList = _documentsService.GetEditorsForDocument(new ResourceKey("doc.md"), EditorId.Empty);
 
         pickList.Should().BeNull();
     }
 
     [Test]
-    public void GetEditorPickList_BadgesDefaultAndChecksCurrentEditor()
+    public void GetEditorsForDocument_BadgesDefaultAndChecksCurrentEditor()
     {
         // The first-registered editor is the project default; the current editor is the second one.
         var editorA = new EditorId("test.editor-a");
@@ -171,7 +236,7 @@ public class DocumentsServiceTests
         _registry.RegisterFactory(CreateFactory(editorA, ".md", "Editor A"));
         _registry.RegisterFactory(CreateFactory(editorB, ".md", "Editor B"));
 
-        var pickList = _documentsService.GetEditorPickList(new ResourceKey("doc.md"), editorB);
+        var pickList = _documentsService.GetEditorsForDocument(new ResourceKey("doc.md"), editorB);
 
         pickList.Should().NotBeNull();
         pickList!.EditorIds.Should().Equal(editorA, editorB);
@@ -181,7 +246,7 @@ public class DocumentsServiceTests
     }
 
     [Test]
-    public void GetEditorPickList_ChecksDefaultWhenCurrentEditorIsStale()
+    public void GetEditorsForDocument_ChecksDefaultWhenCurrentEditorIsStale()
     {
         // The current id names an editor that is no longer a candidate (a stale sidecar), so the
         // check falls back to the project default at index 0.
@@ -190,11 +255,54 @@ public class DocumentsServiceTests
         _registry.RegisterFactory(CreateFactory(editorA, ".md", "Editor A"));
         _registry.RegisterFactory(CreateFactory(editorB, ".md", "Editor B"));
 
-        var pickList = _documentsService.GetEditorPickList(
+        var pickList = _documentsService.GetEditorsForDocument(
             new ResourceKey("doc.md"), new EditorId("test.uninstalled"));
 
         pickList.Should().NotBeNull();
         pickList!.CurrentIndex.Should().Be(0);
+    }
+
+    [Test]
+    public async Task GetEditorsForFileAsync_ChecksTheEditorOfTheOpenDocument()
+    {
+        var editorA = new EditorId("test.editor-a");
+        var editorB = new EditorId("test.editor-b");
+        _registry.RegisterFactory(CreateFactory(editorA, ".md", "Editor A"));
+        _registry.RegisterFactory(CreateFactory(editorB, ".md", "Editor B"));
+        var fileResource = new ResourceKey("doc.md");
+        var address = new DocumentAddress(0, DocumentSection.MainLeft, 0);
+        _documentsPanel.GetOpenDocuments().Returns(new[] { new OpenDocumentInfo(fileResource, address, editorB) });
+
+        var pickList = await _documentsService.GetEditorsForFileAsync(fileResource);
+
+        pickList.Should().NotBeNull();
+        pickList!.CurrentIndex.Should().Be(1);
+    }
+
+    [Test]
+    public async Task GetEditorsForFileAsync_ChecksTheOverrideOfAClosedFile()
+    {
+        var editorA = new EditorId("test.editor-a");
+        var editorB = new EditorId("test.editor-b");
+        _registry.RegisterFactory(CreateFactory(editorA, ".md", "Editor A"));
+        _registry.RegisterFactory(CreateFactory(editorB, ".md", "Editor B"));
+        StubSidecarEditor(editorB);
+
+        var pickList = await _documentsService.GetEditorsForFileAsync(new ResourceKey("doc.md"));
+
+        pickList.Should().NotBeNull();
+        pickList!.CurrentIndex.Should().Be(1);
+    }
+
+    [Test]
+    public async Task GetEditorsForFileAsync_ASingleEditor_ReturnsNullWithoutReadingTheSidecar()
+    {
+        _registry.RegisterFactory(CreateFactory(new EditorId("test.only"), ".md", "Only Editor"));
+
+        var pickList = await _documentsService.GetEditorsForFileAsync(new ResourceKey("doc.md"));
+
+        pickList.Should().BeNull();
+        await _sidecarService.DidNotReceive().ReadAsync(Arg.Any<ResourceKey>());
     }
 
     [Test]
@@ -227,6 +335,18 @@ public class DocumentsServiceTests
         _registry.RegisterFactory(factory);
 
         _documentsService.IsReservedFileType(".toml").Should().BeFalse();
+    }
+
+    private void StubSidecarEditor(EditorId editorId)
+    {
+        var fields = new Dictionary<string, object>
+        {
+            [SidecarFieldNames.Editor] = editorId.ToString(),
+        };
+        var content = new SidecarContent(fields);
+        _sidecarService.ReadAsync(Arg.Any<ResourceKey>())
+            .Returns(Task.FromResult(Result<SidecarReadResult>.Ok(
+                new SidecarReadResult(SidecarReadOutcome.Healthy, content, null))));
     }
 
     private static IDocumentEditorFactory CreateFactory(

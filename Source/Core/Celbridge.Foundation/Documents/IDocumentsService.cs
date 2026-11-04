@@ -152,23 +152,25 @@ public interface IDocumentsService
     string GetDocumentLanguage(ResourceKey fileResource);
 
     /// <summary>
-    /// Returns the file's per-file editor override from the sidecar's '_editor' field, or
-    /// EditorId.Empty when the file has none.
+    /// Opens the file in the given editor, then records the editor as the file's editor choice. A document
+    /// open in another editor reopens in the given editor at the same place in its section. The choice is
+    /// recorded only when the document opens.
     /// </summary>
-    Task<EditorId> GetPreferredEditorAsync(ResourceKey fileResource);
+    Task<Result> OpenWithEditorAsync(ResourceKey fileResource, EditorId editorId);
 
     /// <summary>
-    /// Records the user's editor choice for a file. Writes the sidecar '_editor' override when the
-    /// choice differs from the project default, and clears it when the choice is the default, so the
-    /// sidecar only ever stores a deviation.
+    /// Builds the Open with choices for an open document, with the document's editor checked. The choices
+    /// are the pickable editors, their badged labels, and the index of the editor to check. Returns null
+    /// when fewer than two editors can open the file.
     /// </summary>
-    Task<Result> SetPreferredEditorAsync(ResourceKey fileResource, EditorId editorId);
+    EditorPickList? GetEditorsForDocument(ResourceKey fileResource, EditorId documentEditorId);
 
     /// <summary>
-    /// Builds the Open with choices for a file: the pickable editors, their badged labels, and the index
-    /// of the editor to check. Returns null when fewer than two editors can open the file.
+    /// Builds the Open with choices for a file, open or closed, with the file's current editor checked.
+    /// The current editor is the editor of the file's open document, or else the file's editor override.
+    /// Returns null when fewer than two editors can open the file.
     /// </summary>
-    EditorPickList? GetEditorPickList(ResourceKey fileResource, EditorId currentEditorId);
+    Task<EditorPickList?> GetEditorsForFileAsync(ResourceKey fileResource);
 
     /// <summary>
     /// The editors that can open the given file extension, and the default among them, for the Project

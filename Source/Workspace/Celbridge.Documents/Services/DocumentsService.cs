@@ -360,10 +360,31 @@ public class DocumentsService : IDocumentsService, IDisposable
         return _fileTypeHelper.GetTextEditorLanguage(extension);
     }
 
-    public Task<EditorId> GetPreferredEditorAsync(ResourceKey fileResource) =>
-        _preferenceStore.GetPreferredEditorAsync(fileResource);
+    public async Task<Result> OpenWithEditorAsync(ResourceKey fileResource, EditorId editorId)
+    {
+        var openResult = await _commandService.ExecuteAsync<IOpenDocumentCommand, OpenDocumentOutcome>(command =>
+        {
+            command.FileResource = fileResource;
+            command.EditorId = editorId;
+        });
+        if (openResult.IsFailure)
+        {
+            return Result.Fail($"Failed to open '{fileResource}' in editor '{editorId}'")
+                .WithErrors(openResult);
+        }
 
-    public async Task<Result> SetPreferredEditorAsync(ResourceKey fileResource, EditorId editorId)
+        // A document that refuses to close stays in its current editor. Record the choice only when the
+        // document opens.
+        if (openResult.Value != OpenDocumentOutcome.Opened)
+        {
+            return Result.Ok();
+        }
+
+        return await SetPreferredEditorAsync(fileResource, editorId);
+    }
+
+    // Records the user's editor choice for a file in the sidecar's '_editor' field.
+    private async Task<Result> SetPreferredEditorAsync(ResourceKey fileResource, EditorId editorId)
     {
         if (_documentEditorRegistry.IsReservedResource(fileResource))
         {
@@ -399,7 +420,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         });
     }
 
-    public EditorPickList? GetEditorPickList(ResourceKey fileResource, EditorId currentEditorId)
+    public EditorPickList? GetEditorsForDocument(ResourceKey fileResource, EditorId documentEditorId)
     {
         var factories = _documentEditorRegistry.GetUserPickableFactoriesForResource(fileResource);
         if (factories.Count < 2)
@@ -407,6 +428,32 @@ public class DocumentsService : IDocumentsService, IDisposable
             return null;
         }
 
+        return BuildEditorPickList(fileResource, factories, documentEditorId);
+    }
+
+    public async Task<EditorPickList?> GetEditorsForFileAsync(ResourceKey fileResource)
+    {
+        // Count the editors first, so the sidecar is read only for a file with a choice of editors.
+        var factories = _documentEditorRegistry.GetUserPickableFactoriesForResource(fileResource);
+        if (factories.Count < 2)
+        {
+            return null;
+        }
+
+        var currentEditorId = FindOpenDocument(fileResource)?.EditorId ?? EditorId.Empty;
+        if (currentEditorId.IsEmpty)
+        {
+            currentEditorId = await _preferenceStore.GetPreferredEditorAsync(fileResource);
+        }
+
+        return BuildEditorPickList(fileResource, factories, currentEditorId);
+    }
+
+    private EditorPickList BuildEditorPickList(
+        ResourceKey fileResource,
+        IReadOnlyList<IDocumentEditorFactory> factories,
+        EditorId currentEditorId)
+    {
         var defaultEditorId = GetDefaultEditorId(fileResource);
 
         // Check the current editor. When a stale override names an editor outside the candidates, check
