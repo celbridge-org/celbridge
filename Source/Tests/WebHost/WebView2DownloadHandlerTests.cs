@@ -6,7 +6,9 @@ namespace Celbridge.Tests.WebHost;
 /// <summary>
 /// Chromium retries a download whose transfer broke off, and WebView2 announces each retry as a download of
 /// its own. These tests pin how the attempt it gave up on is told from one still running, which is what
-/// keeps a retry on the row it belongs to while two downloads of the same file keep a row each.
+/// keeps a retry on the row it belongs to while two downloads of the same file keep a row each. They also pin
+/// how the handler tells a download saved by a context-menu Save As from an ordinary download. WebView2 writes an
+/// ordinary download to the system Downloads folder.
 /// </summary>
 [TestFixture]
 public class WebView2DownloadHandlerTests
@@ -44,15 +46,15 @@ public class WebView2DownloadHandlerTests
     // built with them too: Windows separators read as ordinary characters everywhere else, which leaves a
     // path in one unparsed lump and the comparison meaningless. The folder is mixed case on purpose, so
     // the case the comparison ignores really differs on a host whose temp path is all lower case.
-    private static readonly string DownloadsFolder = Path.Combine(Path.GetTempPath(), "Notes", "Downloads");
+    private static readonly string DownloadsFolder = Path.Combine(Path.GetTempPath(), "Ada", "Downloads");
     private static readonly string FileInDownloads = Path.Combine(DownloadsFolder, "report.pdf");
-    private static readonly string FileElsewhere = Path.Combine(Path.GetTempPath(), "ada", "report.pdf");
+    private static readonly string FileElsewhere = Path.Combine(Path.GetTempPath(), "Ada", "Documents", "report.pdf");
 
     [Test]
-    public void ADownloadToTheProjectsDownloadsFolder_IsNotUserChosen()
+    public void ADownloadToTheSystemDownloadsFolder_IsNotUserChosen()
     {
-        // What an ordinary link download looks like, and what a Save As left on the dialog's own default
-        // looks like: either way the file belongs in the project, where the dialog said it would go.
+        // An ordinary link download arrives with a path in the system Downloads folder. So does a context-menu
+        // Save As to that folder. Either way the Download File dialog asks where the file goes.
         WebView2DownloadHandler.IsUserChosenPath(FileInDownloads, DownloadsFolder)
             .Should().BeFalse();
     }
@@ -75,13 +77,13 @@ public class WebView2DownloadHandlerTests
     [Test]
     public void ADownloadToAnyOtherFolder_IsUserChosen()
     {
-        // Only a Save As dialog puts a download anywhere else, so the file goes where the user said.
+        // Only a context-menu Save As puts a download anywhere else, so the file goes where the user said.
         WebView2DownloadHandler.IsUserChosenPath(FileElsewhere, DownloadsFolder)
             .Should().BeTrue();
     }
 
     [Test]
-    public void ADownloadToASubfolderOfTheProjectsDownloadsFolder_IsUserChosen()
+    public void ADownloadToASubfolderOfTheSystemDownloadsFolder_IsUserChosen()
     {
         // WebView2 downloads into the folder itself, so a subfolder was named in a dialog.
         WebView2DownloadHandler.IsUserChosenPath(Path.Combine(DownloadsFolder, "invoices", "report.pdf"), DownloadsFolder)
@@ -91,7 +93,8 @@ public class WebView2DownloadHandlerTests
     [Test]
     public void ADownloadWithNoFolderToCompareAgainst_IsNotUserChosen()
     {
-        // No workspace, so nothing vouches for the path and the download is routed and reported instead.
+        // The system Downloads folder could not be read. The download is routed, and the Download File dialog
+        // asks where the file goes.
         WebView2DownloadHandler.IsUserChosenPath(FileElsewhere, string.Empty)
             .Should().BeFalse();
     }

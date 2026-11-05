@@ -136,6 +136,18 @@ public static class SettingCatalog
     }
 
     /// <summary>
+    /// The Download File dialog's last choice: the download folder, and whether Other Location was used.
+    /// </summary>
+    public static class Downloads
+    {
+        public static readonly SettingDescriptor<string> DownloadFolder =
+            new("Downloads.DownloadFolder", SettingScope.Workspace, "");
+
+        public static readonly SettingDescriptor<bool> DownloadToOtherLocation =
+            new("Downloads.DownloadToOtherLocation", SettingScope.Workspace, false);
+    }
+
+    /// <summary>
     /// Project history. These belong to the user and installation, not to any
     /// single project, so they stay Application-scoped.
     /// </summary>

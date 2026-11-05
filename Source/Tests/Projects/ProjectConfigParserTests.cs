@@ -45,63 +45,6 @@ public class ProjectConfigParserTests
     }
 
     [Test]
-    public void ParseFromText_DownloadsFolder_NamesTheFolderDownloadsAreSavedTo()
-    {
-        var content = """
-            [celbridge]
-
-            [celbridge.downloads]
-            folder = "assets/incoming/"
-            """;
-
-        var result = ProjectConfigParser.ParseFromText(content);
-
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Downloads.Folder.Should().Be("assets/incoming");
-        result.Value.EntryErrors.Should().BeEmpty();
-    }
-
-    [Test]
-    public void ParseFromText_DownloadsFolderThatLeavesTheProject_IsIgnoredWithAnEntryError()
-    {
-        // Downloads then go to the default folder, and the project is told why its own was not used.
-        var content = """
-            [celbridge]
-
-            [celbridge.downloads]
-            folder = "../escape"
-            """;
-
-        var result = ProjectConfigParser.ParseFromText(content);
-
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Downloads.Folder.Should().BeEmpty();
-        result.Value.EntryErrors.Should().ContainSingle();
-        result.Value.EntryErrors[0].EntryName.Should().Be("celbridge.downloads");
-        result.Value.EntryErrors[0].Message.Should().Contain("'folder'");
-    }
-
-    [Test]
-    public void ParseFromText_DownloadsFolderInsideGit_IsIgnoredWithAnEntryErrorThatSaysSo()
-    {
-        // Nothing can be saved in .git, so the folder would fail every download. The error says why the
-        // path was dropped rather than calling a valid path invalid.
-        var content = """
-            [celbridge]
-
-            [celbridge.downloads]
-            folder = ".git"
-            """;
-
-        var result = ProjectConfigParser.ParseFromText(content);
-
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Downloads.Folder.Should().BeEmpty();
-        result.Value.EntryErrors.Should().ContainSingle();
-        result.Value.EntryErrors[0].Message.Should().Contain("'folder'").And.Contain("cannot save downloads");
-    }
-
-    [Test]
     public void ParseFromText_ProjectVersion_IsRead()
     {
         var content = """
@@ -171,9 +114,6 @@ public class ProjectConfigParserTests
             [celbridge.search]
             exclude = ["node_modules", "Python/.venv/**"]
 
-            [celbridge.downloads]
-            folder = "assets/incoming"
-
             [celbridge.packages]
             folders = ["vendor/packages", "lib"]
             disabled = ["acme-notes", "acme-charts"]
@@ -214,7 +154,6 @@ public class ProjectConfigParserTests
 
         config.Explorer.Exclude.Should().Equal(".gitignore");
         config.Search.Exclude.Should().Equal("node_modules", "Python/.venv/**");
-        config.Downloads.Folder.Should().Be("assets/incoming");
 
         config.Packages.Folders.Should().Equal("vendor/packages", "lib");
         config.Packages.Disabled.Should().Equal("acme-notes", "acme-charts");
@@ -328,8 +267,8 @@ public class ProjectConfigParserTests
     [Test]
     public void ParseFromFile_ResourcesTable_IsReportedAsUnknownAndIgnored()
     {
-        // The table's three keys belong to the explorer, search and downloads tables. The load report names
-        // the table, and none of its keys applies.
+        // The explorer and search tables own hide and search-exclude. Loading reports [celbridge.resources] as
+        // unknown and applies none of its keys.
         var content = """
             [celbridge]
             celbridge-version = "1.0.0"
@@ -337,7 +276,6 @@ public class ProjectConfigParserTests
             [celbridge.resources]
             hide = [".gitignore"]
             search-exclude = ["node_modules"]
-            downloads-folder = "assets/incoming"
             """;
         var configFilePath = WriteConfigFile(content);
 
@@ -347,7 +285,6 @@ public class ProjectConfigParserTests
         var config = result.Value;
         config.Explorer.Exclude.Should().BeEmpty();
         config.Search.Exclude.Should().BeEmpty();
-        config.Downloads.Folder.Should().BeEmpty();
         config.EntryErrors.Should().ContainSingle();
         config.EntryErrors[0].EntryName.Should().Be("celbridge");
         config.EntryErrors[0].Message.Should().Contain("Unknown key 'resources'");
@@ -362,8 +299,6 @@ public class ProjectConfigParserTests
             celbridge-version = "1.0.0"
 
             [celbridge.explorer]
-
-            [celbridge.downloads]
             """;
         var configFilePath = WriteConfigFile(content);
 
@@ -373,7 +308,6 @@ public class ProjectConfigParserTests
         var config = result.Value;
         config.Explorer.Exclude.Should().BeEmpty();
         config.Search.Exclude.Should().BeEmpty();
-        config.Downloads.Folder.Should().BeEmpty();
         config.EntryErrors.Should().BeEmpty();
     }
 

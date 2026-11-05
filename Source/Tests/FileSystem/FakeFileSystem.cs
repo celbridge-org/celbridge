@@ -254,7 +254,15 @@ public sealed class FakeFileSystem : ILocalFileSystem
 
     public Task<Result> MoveFileAsync(string source, string dest, bool overwrite = false)
     {
-        Record($"MoveFileAsync('{source}', '{dest}')");
+        Record($"MoveFileAsync('{source}', '{dest}', overwrite={overwrite})");
+
+        // Matches LocalFileSystem, which replaces a file at the destination only when asked to overwrite it.
+        if (!overwrite
+            && _files.ContainsKey(dest))
+        {
+            return Task.FromResult<Result>(Result.Fail($"File already exists: '{dest}'"));
+        }
+
         if (!_files.TryRemove(source, out var entry))
         {
             return Task.FromResult<Result>(Result.Fail($"File not found: '{source}'"));

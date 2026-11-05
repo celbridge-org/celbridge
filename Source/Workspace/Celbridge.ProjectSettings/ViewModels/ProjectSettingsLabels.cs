@@ -1,5 +1,4 @@
 using Celbridge.Packages;
-using Celbridge.Utilities;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -42,12 +41,6 @@ internal static class ProjectSettingsLabels
     public static string SearchExcludeSubtitle => Localizer.GetString("ProjectSettings_SearchExcludeSubtitle");
     public static string PatternPlaceholder => Localizer.GetString("ProjectSettings_PatternPlaceholder");
     public static string InvalidPattern => Localizer.GetString("ProjectSettings_InvalidPattern");
-    public static string DownloadsFolderTitle => Localizer.GetString("ProjectSettings_DownloadsFolderTitle");
-    public static string DownloadsFolderSubtitle => Localizer.GetString("ProjectSettings_DownloadsFolderSubtitle");
-    public static string DownloadsFolderBrowseTooltip => Localizer.GetString("ProjectSettings_DownloadsFolderBrowseTooltip");
-    public static string DownloadsFolderPickerTitle => Localizer.GetString("ProjectSettings_DownloadsFolderPickerTitle");
-    public static string InvalidDownloadsFolder => Localizer.GetString("ProjectSettings_InvalidDownloadsFolder", DownloadsFolderPath.DefaultFolder.Path);
-    public static string ReservedDownloadsFolder => Localizer.GetString("ProjectSettings_ReservedDownloadsFolder", DownloadsFolderPath.DefaultFolder.Path);
     public static string PackageFoldersTitle => Localizer.GetString("ProjectSettings_PackageFoldersTitle");
     public static string PackageFoldersSubtitle => Localizer.GetString("ProjectSettings_PackageFoldersSubtitle");
     public static string DefaultPackageFolderTooltip => Localizer.GetString("ProjectSettings_DefaultPackageFolderTooltip");

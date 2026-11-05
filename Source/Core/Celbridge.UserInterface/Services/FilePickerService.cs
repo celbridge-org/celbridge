@@ -15,11 +15,15 @@ public class FilePickerService : IFilePickerService
         _platformInfo = platformInfo;
     }
 
-    public async Task<Result<string>> PickSingleFileAsync(IEnumerable<string> extensions)
+    public async Task<Result<string>> PickSingleFileAsync(
+        IEnumerable<string> extensions,
+        PickerStartFolder startFolder = PickerStartFolder.Documents,
+        string settingsIdentifier = "")
     {
         var fileOpenPicker = new FileOpenPicker
         {
-            SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
+            SuggestedStartLocation = GetPickerLocationId(startFolder),
+            SettingsIdentifier = settingsIdentifier
         };
 
         foreach (var extension in extensions)
@@ -46,11 +50,14 @@ public class FilePickerService : IFilePickerService
         return Result<string>.Ok(file.Path);
     }
 
-    public async Task<Result<string>> PickSingleFolderAsync()
+    public async Task<Result<string>> PickSingleFolderAsync(
+        PickerStartFolder startFolder = PickerStartFolder.Documents,
+        string settingsIdentifier = "")
     {
         var folderPicker = new FolderPicker
         {
-            SuggestedStartLocation = PickerLocationId.DocumentsLibrary
+            SuggestedStartLocation = GetPickerLocationId(startFolder),
+            SettingsIdentifier = settingsIdentifier
         };
 
         folderPicker.FileTypeFilter.Add("*");
@@ -68,16 +75,25 @@ public class FilePickerService : IFilePickerService
         return Result<string>.Ok(folderPath);
     }
 
-    public async Task<Result<string>> PickSaveFileAsync(string suggestedFileName, string fileTypeDescription, IEnumerable<string> fileExtensions)
+    public async Task<Result<string>> PickSaveFileAsync(
+        string suggestedFileName,
+        string fileTypeDescription,
+        IEnumerable<string> fileExtensions,
+        PickerStartFolder startFolder = PickerStartFolder.Documents,
+        string settingsIdentifier = "")
     {
         var fileSavePicker = new FileSavePicker
         {
-            SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
-            SuggestedFileName = suggestedFileName
+            SuggestedStartLocation = GetPickerLocationId(startFolder),
+            SuggestedFileName = suggestedFileName,
+            SettingsIdentifier = settingsIdentifier
         };
 
-        var extensions = fileExtensions.ToList();
-        fileSavePicker.FileTypeChoices.Add(fileTypeDescription, extensions);
+        var fileTypes = GetFileTypes(fileExtensions);
+        if (fileTypes.Count > 0)
+        {
+            fileSavePicker.FileTypeChoices.Add(fileTypeDescription, fileTypes);
+        }
 
         InitializeWithMainWindow(fileSavePicker);
 
@@ -88,6 +104,37 @@ public class FilePickerService : IFilePickerService
         }
 
         return Result<string>.Ok(file.Path);
+    }
+
+    // No extensions means any name, which takes the platform's own file type.
+    internal List<string> GetFileTypes(IEnumerable<string> fileExtensions)
+    {
+        var extensions = fileExtensions.ToList();
+        if (extensions.Count > 0)
+        {
+            return extensions;
+        }
+
+        return _platformInfo.SaveDialogAnyNameFileType is string anyNameFileType
+            ? [anyNameFileType]
+            : [];
+    }
+
+    // An unspecified location leaves the folder to the platform, which opens the folder last used under the
+    // settings identifier. A save dialog that requires a start location gets Downloads. That dialog treats the
+    // location as a suggestion, and opens the folder the user last navigated to under the settings identifier.
+    internal PickerLocationId GetPickerLocationId(PickerStartFolder startFolder)
+    {
+        if (startFolder == PickerStartFolder.LastUsed)
+        {
+            return _platformInfo.SaveDialogRequiresStartLocation
+                ? PickerLocationId.Downloads
+                : PickerLocationId.Unspecified;
+        }
+
+        return startFolder == PickerStartFolder.Downloads
+            ? PickerLocationId.Downloads
+            : PickerLocationId.DocumentsLibrary;
     }
 
     // The packaged WinUI head requires a picker to be associated with the owning window handle.

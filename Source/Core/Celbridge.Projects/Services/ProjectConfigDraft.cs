@@ -25,7 +25,6 @@ public sealed class ProjectConfigDraft
 
     private string _projectVersion;
     private string _description;
-    private string _downloadsFolder;
 
     public ProjectConfigDraft(ProjectConfig source)
     {
@@ -39,7 +38,6 @@ public sealed class ProjectConfigDraft
         _documentShortcuts = source.DocumentShortcuts.ToList();
         _explorerExclude = source.Explorer.Exclude.ToList();
         _searchExclude = source.Search.Exclude.ToList();
-        _downloadsFolder = source.Downloads.Folder;
 
         // Coerced to empty because an unset key parses as null while the editor binds a text box to it.
         // The serializer skips an empty value, so a field left alone still writes no key.
@@ -76,14 +74,6 @@ public sealed class ProjectConfigDraft
     {
         _searchExclude.Clear();
         _searchExclude.AddRange(patterns);
-    }
-
-    /// <summary>
-    /// Sets the folder downloads are saved to, as a path from the project root.
-    /// </summary>
-    public void SetDownloadsFolder(string folderPath)
-    {
-        _downloadsFolder = folderPath;
     }
 
     /// <summary>
@@ -261,10 +251,6 @@ public sealed class ProjectConfigDraft
             {
                 Exclude = PopulatedPatterns(_searchExclude),
             },
-            Downloads = new DownloadsSection
-            {
-                Folder = PopulatedDownloadsFolder(_downloadsFolder),
-            },
             Packages = new PackagesSection
             {
                 // Write only the folders that the parser keeps. If the draft wrote others, the saved file would read
@@ -296,21 +282,6 @@ public sealed class ProjectConfigDraft
         }
 
         return projectVersion;
-    }
-
-    // A folder path is written as the path it names. The default folder is written as no key at all, and
-    // so is anything that is not a folder path or is a reserved one, which a load would drop, so the file
-    // reads back as the draft wrote it. Downloads then go to the default folder, which the section says
-    // beneath the field.
-    private static string PopulatedDownloadsFolder(string folderPath)
-    {
-        if (!DownloadsFolderPath.TryParse(folderPath, out var folder)
-            || folder == DownloadsFolderPath.DefaultFolder)
-        {
-            return string.Empty;
-        }
-
-        return folder.Path;
     }
 
     // A blank pattern matches nothing, so it is dropped rather than written as an empty entry. The blank

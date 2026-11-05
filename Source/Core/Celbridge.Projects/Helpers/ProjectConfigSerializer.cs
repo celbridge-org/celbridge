@@ -18,7 +18,6 @@ public static class ProjectConfigSerializer
         WriteCelbridgeTable(builder, config);
         WriteExcludeListTable(builder, "explorer", config.Explorer.Exclude);
         WriteExcludeListTable(builder, "search", config.Search.Exclude);
-        WriteDownloadsTable(builder, config.Downloads);
         WritePackagesTable(builder, config.Packages);
         WriteContributions(builder, config.ContributionOverrides);
         WriteDocumentShortcuts(builder, config.DocumentShortcuts);
@@ -64,19 +63,6 @@ public static class ProjectConfigSerializer
         builder.Append('\n');
         builder.Append($"[celbridge.{tableKey}]\n");
         WriteKeyValue(builder, "exclude", RenderStringArray(exclude));
-    }
-
-    // Emits the table only when the project names a downloads folder.
-    private static void WriteDownloadsTable(StringBuilder builder, DownloadsSection downloads)
-    {
-        if (string.IsNullOrEmpty(downloads.Folder))
-        {
-            return;
-        }
-
-        builder.Append('\n');
-        builder.Append("[celbridge.downloads]\n");
-        WriteKeyValue(builder, "folder", TomlStringEncoder.EncodeBasicString(downloads.Folder));
     }
 
     // Emits the table only when the project lists a package folder or a disabled package. A project at the

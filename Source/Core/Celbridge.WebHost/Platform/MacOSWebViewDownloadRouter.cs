@@ -101,9 +101,8 @@ internal sealed class MacOSWebViewDownloadRouter : IMacOSDownloadListener
 
     public void OnDownloadDestinationRequested(IntPtr download, string suggestedFileName, string sourceUrl, int statusCode)
     {
-        // WebKit asks again when it restarts a download, as it does after a redirect. The download keeps
-        // the row and staging path it already has, so answer from those rather than reserving a second
-        // destination and listing the download twice.
+        // WebKit asks again when it restarts a download, for example after a redirect. The download keeps its
+        // row and staging path, so the answer reuses the staging path and the list shows the download once.
         if (_transfers.TryGetValue(download, out var runningTransfer))
         {
             if (runningTransfer.StagingPath.Length > 0)
@@ -111,21 +110,25 @@ internal sealed class MacOSWebViewDownloadRouter : IMacOSDownloadListener
                 MacOSWebViewInterop.ProvideDownloadDestination(download, runningTransfer.StagingPath);
             }
 
-            // The first request is still reserving a destination, and will answer this one too.
+            // The first request is still staging the download, and will answer this one too.
+            return;
+        }
+
+        // WebKit downloads the server's error page as if it were the file. The router records a failed row instead
+        // and refuses the destination, so the Download File dialog never opens. Windows records the same failure.
+        if (IsErrorStatus(statusCode))
+        {
+            _logger.LogWarning($"A download failed: the server answered with HTTP status {statusCode}");
+
+            var reason = _localizerService.GetString("Downloads_Failed");
+            _downloadService.RecordFailure(suggestedFileName, sourceUrl, reason);
+
+            MacOSWebViewInterop.ProvideDownloadDestination(download, null);
             return;
         }
 
         var transfer = new DownloadTransfer(this, download);
         _transfers[download] = transfer;
-
-        // WebKit downloads the server's error page as if it were the file. The row records a failure instead,
-        // as it does on Windows, and the destination is refused once the row is reserved.
-        if (IsErrorStatus(statusCode))
-        {
-            transfer.IsSettled = true;
-            transfer.FailureReason = _localizerService.GetString("Downloads_TransferFailed");
-            _logger.LogWarning($"A download failed: the server answered with HTTP status {statusCode}");
-        }
 
         _ = BeginAsync(transfer, suggestedFileName, sourceUrl);
     }
@@ -171,13 +174,13 @@ internal sealed class MacOSWebViewDownloadRouter : IMacOSDownloadListener
         var reason = string.Empty;
         if (!isCancelled)
         {
-            reason = _localizerService.GetString("Downloads_TransferFailed");
+            reason = _localizerService.GetString("Downloads_Failed");
             _logger.LogWarning($"A download failed: {description}");
         }
 
         if (transfer.DownloadId == 0)
         {
-            // The service is still reserving the destination, and settles the row once it has.
+            // The service is still staging the download, and settles the row once it has.
             transfer.IsCanceled = isCancelled;
             transfer.FailureReason = reason;
             return;
@@ -260,8 +263,7 @@ internal sealed class MacOSWebViewDownloadRouter : IMacOSDownloadListener
 
         if (transfer.IsSettled)
         {
-            // WebKit gave up on the download, it was stopped, or the server answered with an error, while its
-            // destination was being reserved.
+            // WebKit gave up on the download, or the user stopped the download, while the service was staging it.
             _transfers.Remove(transfer.Download);
             MacOSWebViewInterop.ProvideDownloadDestination(transfer.Download, null);
 
@@ -436,17 +438,17 @@ internal sealed class MacOSWebViewDownloadRouter : IMacOSDownloadListener
 
         public IntPtr Download { get; }
 
-        // Zero until the service has reserved the download its destination.
+        // Zero until the service has staged the download.
         public long DownloadId { get; set; }
 
-        // Where WebKit writes the download, empty until the service has reserved it.
+        // Where WebKit writes the download, empty until the service has staged it.
         public string StagingPath { get; set; } = string.Empty;
 
         // Set once the download has ended or been stopped, after which WebKit is not asked about it again.
         public bool IsSettled { get; set; }
 
-        // How WebKit ended the download while its destination was still being reserved: stopped, or failed for
-        // the reason given.
+        // How WebKit ended the download while it was still being staged: stopped, or failed for the reason
+        // given.
         public bool IsCanceled { get; set; }
         public string FailureReason { get; set; } = string.Empty;
 

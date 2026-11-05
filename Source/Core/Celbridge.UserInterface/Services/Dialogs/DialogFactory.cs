@@ -129,11 +129,22 @@ public class DialogFactory : IDialogFactory
     public IResourcePickerDialog CreateFolderPickerDialog(string? title = null)
     {
         var dialog = new ResourcePickerDialog();
-        dialog.ViewModel.InitializeForFolders();
+        dialog.ViewModel.InitializeForFolders(listProjectFolder: false);
         if (title is not null)
         {
             dialog.SetTitle(title);
         }
+        return WithFocusGuard(dialog);
+    }
+
+    public IDownloadFileDialog CreateDownloadFileDialog(
+        string fileName,
+        string sourceUrl,
+        ResourceKey downloadFolder,
+        DownloadFileChoice rememberedChoice)
+    {
+        var dialog = new DownloadFileDialog();
+        dialog.ViewModel.Initialize(fileName, sourceUrl, downloadFolder, rememberedChoice);
         return WithFocusGuard(dialog);
     }
 

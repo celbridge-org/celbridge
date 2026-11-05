@@ -139,18 +139,6 @@ public sealed record class SearchSection
 }
 
 /// <summary>
-/// Models the [celbridge.downloads] sub-table from the .celbridge project config.
-/// </summary>
-public sealed record class DownloadsSection
-{
-    /// <summary>
-    /// The folder files downloaded from web pages are saved to, as a path from
-    /// the project root. Empty saves them to the default downloads folder.
-    /// </summary>
-    public string Folder { get; init; } = string.Empty;
-}
-
-/// <summary>
 /// Models the [celbridge.packages] sub-table from the .celbridge project config.
 /// </summary>
 public sealed record class PackagesSection
@@ -188,11 +176,6 @@ public sealed record class ProjectConfig
     /// The search list from the [celbridge.search] sub-table.
     /// </summary>
     public SearchSection Search { get; init; } = new();
-
-    /// <summary>
-    /// The downloads folder from the [celbridge.downloads] sub-table.
-    /// </summary>
-    public DownloadsSection Downloads { get; init; } = new();
 
     /// <summary>
     /// Package folders and package activation from the [celbridge.packages] sub-table.

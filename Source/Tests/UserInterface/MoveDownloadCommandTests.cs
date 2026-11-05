@@ -6,7 +6,8 @@ namespace Celbridge.Tests.UserInterface;
 
 /// <summary>
 /// Verifies that MoveDownloadCommand moves a staged download through the resource gateway, and that it
-/// refuses any source outside temp:, so it cannot be used to take a file out of the project.
+/// refuses any source outside temp:, so it cannot be used to take a file out of the project. The move replaces a
+/// file at the destination only when ReplaceExisting is set.
 /// </summary>
 [TestFixture]
 public class MoveDownloadCommandTests
@@ -81,5 +82,56 @@ public class MoveDownloadCommandTests
         var result = await _command.ExecuteAsync();
 
         result.IsFailure.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task ReplaceExisting_ReplacesTheFileAtTheDestination()
+    {
+        GivenAFileAtTheDestination();
+
+        _command.SourceResource = StagedResource;
+        _command.DestResource = Destination;
+        _command.ReplaceExisting = true;
+
+        var result = await _command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue(result.DiagnosticReport);
+        await _resourceFileSystem.Received(1).MoveAsync(
+            StagedResource,
+            Destination,
+            Arg.Is<MoveOptions>(options => options.AllowCrossRoot && options.ReplaceExisting));
+    }
+
+    [Test]
+    public async Task WithoutReplaceExisting_AFileAtTheDestination_FailsTheMove()
+    {
+        GivenAFileAtTheDestination();
+
+        _command.SourceResource = StagedResource;
+        _command.DestResource = Destination;
+
+        var result = await _command.ExecuteAsync();
+
+        result.IsFailure.Should().BeTrue();
+        await _resourceFileSystem.Received(1).MoveAsync(
+            StagedResource,
+            Destination,
+            Arg.Is<MoveOptions>(options => !options.ReplaceExisting));
+    }
+
+    // The gateway refuses a move onto the destination's file, unless the options let the move replace the file.
+    private void GivenAFileAtTheDestination()
+    {
+        _resourceFileSystem.MoveAsync(StagedResource, Destination, Arg.Any<MoveOptions?>())
+            .Returns(callInfo =>
+            {
+                var options = callInfo.Arg<MoveOptions?>();
+                if (options?.ReplaceExisting == true)
+                {
+                    return Task.FromResult(Result<MoveResult>.Ok(new MoveResult(SidecarOutcome.NotPresent)));
+                }
+
+                return Task.FromResult(Result<MoveResult>.Fail("Destination already exists"));
+            });
     }
 }

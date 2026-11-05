@@ -34,6 +34,30 @@ public sealed class PlatformInfo : IPlatformInfo
         }
     }
 
+    public string? SaveDialogAnyNameFileType
+    {
+        get
+        {
+#if WINDOWS
+            return ".";
+#else
+            return OperatingSystem.IsMacOS() ? ".public.data" : null;
+#endif
+        }
+    }
+
+    public bool SaveDialogRequiresStartLocation
+    {
+        get
+        {
+#if WINDOWS
+            return true;
+#else
+            return false;
+#endif
+        }
+    }
+
     // The window constraint goes through the overlapped presenter on every head but macOS, which takes
     // physical pixels, while the macOS constraint is set on the native window in points.
     public bool WindowSizesUsePhysicalPixels => !OperatingSystem.IsMacOS();

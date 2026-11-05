@@ -160,7 +160,6 @@ public class GitIgnoreWriterTests
         // The bundled resource is what lands, so a fresh file carries no merge marker.
         var gitIgnoreContents = await File.ReadAllTextAsync(gitIgnorePath);
         gitIgnoreContents.Should().Contain("node_modules/");
-        gitIgnoreContents.Should().Contain("/downloads/");
         gitIgnoreContents.Should().NotContain("# Added by Celbridge");
     }
 
@@ -200,6 +199,6 @@ public class GitIgnoreWriterTests
         blockCount.Should().Be(1);
 
         gitIgnoreContents.Should().StartWith("*.log\n");
-        gitIgnoreContents.Should().Contain("/downloads/");
+        gitIgnoreContents.Should().Contain("node_modules/");
     }
 }

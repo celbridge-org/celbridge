@@ -1,12 +1,13 @@
 using System.Globalization;
 using Celbridge.Downloads;
+using Celbridge.Platform;
 
 namespace Celbridge.UserInterface.Views.Controls;
 
 /// <summary>
 /// One download in the download list: how far it has got, its file name and how large it is. A running
 /// download can be stopped, and a finished one can be taken off the list. Clicking a completed one finds its
-/// file in the Explorer.
+/// file in the Explorer, or in the system file manager for a file saved outside the project.
 /// </summary>
 public sealed partial class DownloadRow : UserControl, IBadgeRow
 {
@@ -19,6 +20,7 @@ public sealed partial class DownloadRow : UserControl, IBadgeRow
     private static readonly TimeSpan MinimumElapsedForEstimate = TimeSpan.FromSeconds(2);
 
     private readonly IStringLocalizer _stringLocalizer;
+    private readonly IPlatformInfo _platformInfo;
 
     /// <summary>
     /// The download this row shows.
@@ -28,7 +30,7 @@ public sealed partial class DownloadRow : UserControl, IBadgeRow
     long IBadgeRow.EntryId => Download.Id;
 
     /// <summary>
-    /// Raised when the user asks for the row's file to be found in the Explorer.
+    /// Raised when the user asks for the row's file to be found.
     /// </summary>
     public event Action<DownloadEntry>? RevealRequested;
 
@@ -47,6 +49,7 @@ public sealed partial class DownloadRow : UserControl, IBadgeRow
         InitializeComponent();
 
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
+        _platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
 
         Download = download;
 
@@ -62,8 +65,17 @@ public sealed partial class DownloadRow : UserControl, IBadgeRow
     /// </summary>
     public void Update(DownloadEntry download)
     {
+        // The labels name the file. The file's name, and whether the file is outside the project, can change after
+        // the row is built.
+        var isLabelChanged = download.FileName != Download.FileName
+            || download.FilePath != Download.FilePath;
+
         Download = download;
 
+        if (isLabelChanged)
+        {
+            ApplyLabels(download);
+        }
         Apply(download);
     }
 
@@ -248,7 +260,12 @@ public sealed partial class DownloadRow : UserControl, IBadgeRow
         ToolTipService.SetToolTip(CancelButton, cancelText);
         AutomationProperties.SetName(CancelButton, $"{cancelText}. {download.FileName}");
 
-        var revealText = _stringLocalizer.GetString("Downloads_Reveal");
+        // The Explorer lists only the project, so a file saved outside it is shown in the system file manager.
+        var revealText = string.IsNullOrEmpty(download.FilePath)
+            ? _stringLocalizer.GetString("Downloads_Reveal")
+            : _stringLocalizer.GetString(
+                "Downloads_RevealInFileManager",
+                _stringLocalizer.GetString(_platformInfo.FileManagerNameStringKey));
         ToolTipService.SetToolTip(RevealButton, revealText);
         AutomationProperties.SetName(RevealButton, $"{download.FileName}. {revealText}");
 
@@ -256,7 +273,7 @@ public sealed partial class DownloadRow : UserControl, IBadgeRow
         ToolTipService.SetToolTip(RemoveButton, removeText);
         AutomationProperties.SetName(RemoveButton, $"{removeText}. {download.FileName}");
 
-        CanceledText.Text = _stringLocalizer.GetString("Downloads_TransferCancelled");
+        CanceledText.Text = _stringLocalizer.GetString("Downloads_Canceled");
     }
 
     // Stopping a transfer and finding the file it produced are never both on offer: a download still

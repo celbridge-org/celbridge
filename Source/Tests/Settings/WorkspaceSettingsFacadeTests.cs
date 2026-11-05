@@ -9,7 +9,7 @@ using Celbridge.WorkspaceUI.Services;
 namespace Celbridge.Tests.Settings;
 
 /// <summary>
-/// Covers the Workspace-scoped panel, search, and editor settings: first-open
+/// Covers the Workspace-scoped panel, search, editor and download settings: first-open
 /// defaults, per-project independence, the typed WorkspaceSettings facade
 /// round-trip through the JSON store, and that ResetAreaSizeCommand resets the
 /// current project rather than a global setting.
@@ -96,6 +96,7 @@ public class WorkspaceSettingsFacadeTests
         settings.SearchOnlyOpenDocuments.Should().BeFalse();
         settings.ApplySearchExclude.Should().BeTrue();
         settings.PreviousNewFileExtension.Should().Be(".py");
+        settings.DownloadFolder.Should().BeEmpty();
     }
 
     [Test]
@@ -130,6 +131,7 @@ public class WorkspaceSettingsFacadeTests
         fixture.Settings.UtilityPanelWidth = 480f;
         fixture.Settings.SearchMatchCase = true;
         fixture.Settings.PreviousNewFileExtension = ".md";
+        fixture.Settings.DownloadFolder = "project:downloads";
 
         // Writes are deferred, so they only reach disk on flush.
         await fixture.WorkspaceSettingsService.WorkspaceSettingsStore!.FlushAsync();
@@ -139,6 +141,7 @@ public class WorkspaceSettingsFacadeTests
         reloaded.Settings.UtilityPanelWidth.Should().Be(480f);
         reloaded.Settings.SearchMatchCase.Should().BeTrue();
         reloaded.Settings.PreviousNewFileExtension.Should().Be(".md");
+        reloaded.Settings.DownloadFolder.Should().Be("project:downloads");
     }
 
     [Test]

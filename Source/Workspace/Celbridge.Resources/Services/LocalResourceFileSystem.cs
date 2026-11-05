@@ -202,12 +202,20 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
 
         // A rename that changes only letter case keeps the item in place, so the destination exists already.
         bool isSameLocation = string.Equals(sourceItem.Path, destPath, PathComparison.Comparison);
+        var isReplacingFile = false;
         if (!isSameLocation)
         {
-            var destAbsentResult = await CheckDestinationAbsentAsync(destPath, dest);
-            if (destAbsentResult.IsFailure)
+            isReplacingFile = options?.ReplaceExisting == true
+                && !sourceItem.IsFolder
+                && await FileExistsAsync(destPath);
+
+            if (!isReplacingFile)
             {
-                return Result.Fail(destAbsentResult);
+                var destAbsentResult = await CheckDestinationAbsentAsync(destPath, dest);
+                if (destAbsentResult.IsFailure)
+                {
+                    return Result.Fail(destAbsentResult);
+                }
             }
         }
 
@@ -228,7 +236,7 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             {
                 _logger.LogDebug(clearReadOnlyResult.FirstException, $"Could not clear read-only attribute before moving '{source}'");
             }
-            moveResult = await _fileSystem.MoveFileAsync(sourceItem.Path, destPath);
+            moveResult = await _fileSystem.MoveFileAsync(sourceItem.Path, destPath, overwrite: isReplacingFile);
         }
         else
         {
@@ -245,7 +253,15 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         // the new name joins it.
         using var changes = CreateChangeRecorder();
         changes.RecordRemoved(source, sourceItem.Path);
-        changes.RecordCreated(dest, destPath);
+        if (isReplacingFile)
+        {
+            // The destination's file was already listed, so only its content changed.
+            changes.RecordChanged(dest);
+        }
+        else
+        {
+            changes.RecordCreated(dest, destPath);
+        }
 
         var sidecarOutcome = await _sidecarCascade.TryMoveAsync(source, dest, changes);
 
@@ -718,6 +734,14 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         }
 
         return Result.Ok();
+    }
+
+    // Returns true when a file exists at the path, and false when the file system cannot inspect the path.
+    private async Task<bool> FileExistsAsync(string path)
+    {
+        var infoResult = await _fileSystem.GetInfoAsync(path);
+        return infoResult.IsSuccess
+            && infoResult.Value.Kind == StorageItemKind.File;
     }
 
     // Fails when the destination's path already has an item stored at it.

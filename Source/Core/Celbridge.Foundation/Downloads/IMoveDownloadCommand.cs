@@ -18,4 +18,10 @@ public interface IMoveDownloadCommand : IExecutableCommand
     /// Where the download goes.
     /// </summary>
     ResourceKey DestResource { get; set; }
+
+    /// <summary>
+    /// Replaces a file already at the destination when true. When false, a file at the destination makes the move
+    /// fail.
+    /// </summary>
+    bool ReplaceExisting { get; set; }
 }

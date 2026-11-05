@@ -9,6 +9,11 @@ using Celbridge.Workspace;
 
 namespace Celbridge.Tests.UserInterface;
 
+/// <summary>
+/// Covers the answers scheduled for a dialog kind. Showing a dialog of that kind broadcasts the scheduled answer
+/// once, after its delay. A dialog of another kind leaves the schedule in place, and unloading the workspace
+/// clears the schedule.
+/// </summary>
 [TestFixture]
 public class DialogServiceAnswerTests
 {
@@ -67,6 +72,12 @@ public class DialogServiceAnswerTests
         fakeResourcePicker.ShowDialogAsync().Returns(Task.FromResult(Result<ResourceKey>.Fail("cancelled")));
         _dialogFactory.CreateResourcePickerDialog(
             Arg.Any<IReadOnlyList<string>>(), Arg.Any<string?>(), Arg.Any<bool>()).Returns(fakeResourcePicker);
+
+        var canceledAnswer = new DownloadFileAnswer(DownloadFileChoice.Cancel, ResourceKey.Empty);
+        var fakeDownloadFile = Substitute.For<IDownloadFileDialog>();
+        fakeDownloadFile.ShowDialogAsync().Returns(Task.FromResult(canceledAnswer));
+        _dialogFactory.CreateDownloadFileDialog(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<ResourceKey>(), Arg.Any<DownloadFileChoice>()).Returns(fakeDownloadFile);
     }
 
     [Test]
@@ -195,6 +206,21 @@ public class DialogServiceAnswerTests
         var sent = _messengerService.Sent<DialogAnswerMessage>();
         sent.Should().HaveCount(1);
         sent[0].Payload.Should().Be("Folder/picked.txt");
+    }
+
+    [Test]
+    public async Task ShowingDownloadFileDialog_FiresScheduledAnswerWithFolderKey()
+    {
+        _dialogService.ScheduleAnswer(DialogKind.DownloadFile, payload: "downloads", delayMs: 0);
+
+        await _dialogService.ShowDownloadFileDialogAsync(
+            "report.pdf", "https://example.com/report.pdf", ResourceKey.Empty, DownloadFileChoice.InProject);
+        await WaitForBroadcast<DialogAnswerMessage>();
+
+        var sent = _messengerService.Sent<DialogAnswerMessage>();
+        sent.Should().HaveCount(1);
+        sent[0].Kind.Should().Be(DialogKind.DownloadFile);
+        sent[0].Payload.Should().Be("downloads");
     }
 
     [Test]
