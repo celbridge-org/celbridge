@@ -102,6 +102,7 @@ public static class ServiceConfiguration
         services.AddTransient<SecretInputDialogViewModel>();
         services.AddTransient<NewFileDialogViewModel>();
         services.AddTransient<ResourcePickerDialogViewModel>();
+        services.AddTransient<DownloadFileDialogViewModel>();
         services.AddTransient<IconPickerDialogViewModel>();
     }
 

@@ -18,9 +18,9 @@ internal sealed record NewTable(string TableKey, List<string> KeyLines);
 
 /// <summary>
 /// Moves the settings from the [celbridge.resources] table and the disabled-packages key on the [celbridge] table
-/// into the [celbridge.explorer], [celbridge.search], [celbridge.downloads] and [celbridge.packages] tables. The
-/// values are copied unchanged, and the rest of the file stays the same. Packages load only from the subfolders of
-/// a package folder. The step therefore lists every folder that contains a package, other than the packages folder.
+/// into the [celbridge.explorer], [celbridge.search] and [celbridge.packages] tables. The values are copied
+/// unchanged, and the rest of the file stays the same. Packages load only from the subfolders of a package folder.
+/// The step therefore lists every folder that contains a package, other than the packages folder.
 /// </summary>
 public sealed class ResourceSettingsMigrationStep : IMigrationStep
 {
@@ -186,7 +186,6 @@ public sealed class ResourceSettingsMigrationStep : IMigrationStep
         {
             AddSetting(context, tables, new SettingMove(resourcesTable, "hide", "explorer", "exclude"));
             AddSetting(context, tables, new SettingMove(resourcesTable, "search-exclude", "search", "exclude"));
-            AddSetting(context, tables, new SettingMove(resourcesTable, "downloads-folder", "downloads", "folder"));
         }
 
         if (packageFolders.Count > 0)
@@ -304,8 +303,9 @@ public sealed class ResourceSettingsMigrationStep : IMigrationStep
         }
     }
 
-    // Removes the [celbridge.resources] table and the comment lines directly above its header. Returns the index
-    // where the table started, or null when the file has no [celbridge.resources] header.
+    // Removes the [celbridge.resources] table, including any key the step does not move, and the comment lines
+    // directly above its header. Returns the index where the table started, or null when the file has no
+    // [celbridge.resources] header.
     private static int? RemoveResourcesTable(List<string> lines)
     {
         var headerIndex = lines.FindIndex(line => ResourcesHeaderRegex.IsMatch(line));

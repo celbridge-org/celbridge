@@ -60,35 +60,33 @@
         </Flyout>
       </Button.Flyout>
 
-      <StackPanel Orientation="Horizontal"
-                  Spacing="4">
-        <!-- The settled glyph is two elements, one per foreground, so each stays a ThemeResource and
-             follows a theme change. -->
-        <Grid VerticalAlignment="Center">
-          <ProgressRing x:Name="TransferRing"
-                        Width="{StaticResource IconSizeSmall}"
-                        Height="{StaticResource IconSizeSmall}"
-                        IsActive="False"
-                        Visibility="Collapsed"/>
-          <controls:Icon x:Name="SettledIcon"
-                         Symbol="Download"
-                         FontSize="{StaticResource IconSizeMedium}"
-                         Visibility="Collapsed"/>
-          <controls:Icon x:Name="FailedIcon"
-                         Symbol="Download"
-                         FontSize="{StaticResource IconSizeMedium}"
-                         Foreground="{ThemeResource SystemFillColorCriticalBrush}"
-                         Visibility="Collapsed"/>
-        </Grid>
-
-        <!-- Wide enough for two digits, which is as many as the count can reach, so the badge does not
-             reflow as the count passes from nine to ten. Canceled downloads are not counted. -->
-        <TextBlock x:Name="CountText"
-                   Style="{StaticResource BadgeCountTextStyle}"
-                   MinWidth="14"
-                   TextAlignment="Center"
-                   VerticalAlignment="Center"/>
-      </StackPanel>
+      <!-- The meter, the ring and the settled glyph share one cell, and only one of them shows at a time. The settled
+           glyph is two elements, one per foreground, so each element stays a ThemeResource and follows a theme
+           change. -->
+      <Grid Width="{StaticResource IconSizeMedium}"
+            Height="{StaticResource IconSizeMedium}"
+            VerticalAlignment="Center">
+        <controls:DownloadMeter x:Name="TransferMeter"
+                                AutomationProperties.AutomationId="download-meter"
+                                Visibility="Collapsed"/>
+        <ProgressRing x:Name="TransferRing"
+                      AutomationProperties.AutomationId="download-ring"
+                      Width="{StaticResource IconSizeSmall}"
+                      Height="{StaticResource IconSizeSmall}"
+                      IsActive="False"
+                      Visibility="Collapsed"/>
+        <controls:Icon x:Name="SettledIcon"
+                       AutomationProperties.AutomationId="download-glyph"
+                       Symbol="Download"
+                       FontSize="{StaticResource IconSizeMedium}"
+                       Visibility="Collapsed"/>
+        <controls:Icon x:Name="FailedIcon"
+                       AutomationProperties.AutomationId="download-failed-glyph"
+                       Symbol="Download"
+                       FontSize="{StaticResource IconSizeMedium}"
+                       Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                       Visibility="Collapsed"/>
+      </Grid>
     </controls:IconButton>
   </Grid>
 </UserControl>

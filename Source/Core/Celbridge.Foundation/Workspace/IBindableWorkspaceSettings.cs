@@ -83,4 +83,16 @@ public interface IBindableWorkspaceSettings : INotifyPropertyChanged
     /// The file extension of the previously created file via the Add File dialog.
     /// </summary>
     string PreviousNewFileExtension { get; set; }
+
+    /// <summary>
+    /// The project folder the Download File dialog last saved a file to, as a resource key. Empty for the project
+    /// folder itself.
+    /// </summary>
+    string DownloadFolder { get; set; }
+
+    /// <summary>
+    /// True when the Download File dialog last saved a file with Other Location. False after a save to a project
+    /// folder.
+    /// </summary>
+    bool DownloadToOtherLocation { get; set; }
 }

@@ -38,15 +38,32 @@ internal sealed class DownloadList
     }
 
     /// <summary>
-    /// Returns the file of each succeeded row, once each.
+    /// Returns the resource key of each succeeded row's file in the project, with no key listed twice.
     /// </summary>
-    public IReadOnlyList<ResourceKey> GetSucceededFiles()
+    public IReadOnlyList<ResourceKey> GetSucceededResources()
     {
         lock (_lock)
         {
             return _entries
-                .Where(entry => entry.Status == DownloadStatus.Succeeded)
+                .Where(entry => entry.Status == DownloadStatus.Succeeded
+                    && !entry.Resource.IsEmpty)
                 .Select(entry => entry.Resource)
+                .Distinct()
+                .ToList();
+        }
+    }
+
+    /// <summary>
+    /// Returns the path of each succeeded row's file outside the project, with no path listed twice.
+    /// </summary>
+    public IReadOnlyList<string> GetSucceededFilePaths()
+    {
+        lock (_lock)
+        {
+            return _entries
+                .Where(entry => entry.Status == DownloadStatus.Succeeded
+                    && !string.IsNullOrEmpty(entry.FilePath))
+                .Select(entry => entry.FilePath)
                 .Distinct()
                 .ToList();
         }
@@ -136,13 +153,25 @@ internal sealed class DownloadList
     }
 
     /// <summary>
-    /// Removes each succeeded row that names one of the files. Returns true if a row was removed.
+    /// Removes each succeeded row with a resource key in the set. Returns true if a row was removed.
     /// </summary>
-    public bool RemoveSucceeded(IReadOnlySet<ResourceKey> files)
+    public bool RemoveSucceededResources(IReadOnlySet<ResourceKey> resources)
     {
         return RemoveAll(entry =>
             entry.Status == DownloadStatus.Succeeded &&
-            files.Contains(entry.Resource));
+            !entry.Resource.IsEmpty &&
+            resources.Contains(entry.Resource));
+    }
+
+    /// <summary>
+    /// Removes each succeeded row with a file path in the set. Returns true if a row was removed.
+    /// </summary>
+    public bool RemoveSucceededFilePaths(IReadOnlySet<string> filePaths)
+    {
+        return RemoveAll(entry =>
+            entry.Status == DownloadStatus.Succeeded &&
+            !string.IsNullOrEmpty(entry.FilePath) &&
+            filePaths.Contains(entry.FilePath));
     }
 
     /// <summary>

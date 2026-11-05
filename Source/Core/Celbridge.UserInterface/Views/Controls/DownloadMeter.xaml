@@ -1,0 +1,17 @@
+<UserControl
+    x:Class="Celbridge.UserInterface.Views.Controls.DownloadMeter"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    IsTabStop="False"
+    IsHitTestVisible="False">
+
+  <!-- Both shapes paint with the meter's inherited foreground, so the meter follows the button's states, like the
+       download glyph. The wedge sits inside the circle, with a gap between the two. -->
+  <Grid>
+    <Ellipse x:Name="MeterCircle"
+             Stroke="{x:Bind Foreground, Mode=OneWay}"
+             StrokeThickness="1.5" />
+    <Path x:Name="MeterWedge"
+          Fill="{x:Bind Foreground, Mode=OneWay}" />
+  </Grid>
+</UserControl>

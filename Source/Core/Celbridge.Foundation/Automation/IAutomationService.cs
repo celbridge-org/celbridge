@@ -10,8 +10,9 @@ public record ControlBounds(double X, double Y, double Width, double Height);
 
 /// <summary>
 /// One of the application's own controls, whether the application or the platform draws it. IsChecked is set only
-/// for a control that can be toggled or selected. Value is set only for a control with a value, and HelpText only
-/// for a control with help text. HasKeyboardFocus is true for the one control that has the keyboard.
+/// for a control that can be toggled or selected. Value is set only for a control with a value. A range control, for
+/// example a progress bar, gives its value as a number. HelpText is set only for a control with help text.
+/// HasKeyboardFocus is true for the one control that has the keyboard.
 /// </summary>
 public record ControlInfo(
     string AutomationId,

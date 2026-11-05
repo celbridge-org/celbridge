@@ -65,8 +65,8 @@ given.
 - `bounds` is in device-independent pixels, measured from the top left of the window's content, which sits below
   the title bar on macOS and takes in the title bar on Windows. Multiply by `rasterizationScale` for physical
   pixels.
-- `isChecked` appears only for a control that can be toggled or selected, and `value` only for one that holds a
-  value, such as a text field's text.
+- `isChecked` appears only for a control that can be toggled or selected. `value` appears only for a control with
+  a value, for example a text field's text. A range control, for example a progress bar, reports a number.
 - `helpText` appears only for a control with help text. A document's tab and a utility's rail button report the
   label of their editor's status pip as their help text. Find a tab by its name and the `TabItem` control type, and
   a utility's rail button by the automation ID `{utilityId}-utility-button`.

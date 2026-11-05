@@ -73,7 +73,8 @@ public class ResourceSettingsMigrationStepTests
 
         upgradeResult.Status.Should().Be(MigrationStatus.Complete, upgradeResult.OperationResult.MessageChain);
 
-        // The migration removes the comment above the old table and leaves the rest of the file unchanged.
+        // The migration removes the comment above the old table and drops downloads-folder, which has no new
+        // table. The rest of the file stays the same.
         var projectFileText = ReadProjectFile();
         projectFileText.Should().Be($"""
             # Acme's project file
@@ -86,9 +87,6 @@ public class ResourceSettingsMigrationStepTests
 
             [celbridge.search]
             exclude = ["node_modules", "Python/.venv/**"]
-
-            [celbridge.downloads]
-            folder = "assets/incoming"
 
             [celbridge.packages]
             disabled = ["acme.unused"]
@@ -103,7 +101,6 @@ public class ResourceSettingsMigrationStepTests
         config.EntryErrors.Should().BeEmpty();
         config.Explorer.Exclude.Should().Equal(".gitignore", ".DS_Store");
         config.Search.Exclude.Should().Equal("node_modules", "Python/.venv/**");
-        config.Downloads.Folder.Should().Be("assets/incoming");
         config.Packages.Disabled.Should().Equal("acme.unused");
     }
 

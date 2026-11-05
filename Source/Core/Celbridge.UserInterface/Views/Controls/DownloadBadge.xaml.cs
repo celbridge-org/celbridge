@@ -1,4 +1,3 @@
-using System.Globalization;
 using Celbridge.Downloads;
 using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.ViewModels.Controls;
@@ -6,8 +5,9 @@ using Celbridge.UserInterface.ViewModels.Controls;
 namespace Celbridge.UserInterface.Views.Controls;
 
 /// <summary>
-/// The title bar badge for the downloads this session made. It shows a ring while a transfer runs and a
-/// count once they have settled, flashes when one lands or fails, and opens the list of them on click.
+/// The title bar badge for the downloads this session made. While a download runs, the badge shows how far the newest
+/// running download has come. Once every download has finished, the badge shows the download glyph. The badge flashes
+/// when a download lands or fails, and opens the list of downloads on click.
 /// </summary>
 public sealed partial class DownloadBadge : UserControl
 {
@@ -42,6 +42,11 @@ public sealed partial class DownloadBadge : UserControl
     private void OnDownloadBadge_Loaded(object sender, RoutedEventArgs e)
     {
         TitleText.Text = _stringLocalizer.GetString("Downloads_Title");
+
+        var badgeTooltip = _stringLocalizer.GetString("Downloads_BadgeTooltip");
+        ToolTipService.SetToolTip(BadgeButton, badgeTooltip);
+        AutomationProperties.SetName(BadgeButton, badgeTooltip);
+
         ClearAllButton.Content = _stringLocalizer.GetString("Downloads_ClearAll");
         ToolTipService.SetToolTip(ClearAllButton, _stringLocalizer.GetString("Downloads_ClearAllTooltip"));
         ToolTipService.SetPlacement(BadgeButton, PlacementMode.Bottom);
@@ -97,31 +102,30 @@ public sealed partial class DownloadBadge : UserControl
             return;
         }
 
-        ApplyGlyph(ViewModel.IsTransferring, ViewModel.HasFailure);
+        ApplyState(ViewModel.State, ViewModel.Progress);
 
-        // A list holding only canceled downloads still has a badge to open it by, but nothing to count.
-        var badgeCount = ViewModel.BadgeCount;
-        CountText.Text = badgeCount.ToString(CultureInfo.CurrentCulture);
-        CountText.Visibility = badgeCount > 0 ? Visibility.Visible : Visibility.Collapsed;
-
-        var summary = ViewModel.Summary;
-        ToolTipService.SetToolTip(BadgeButton, summary);
-        AutomationProperties.SetName(BadgeButton, summary);
+        // The tooltip names the badge's action, and the list gives the detail. The help text gives a screen reader
+        // the summary.
+        AutomationProperties.SetHelpText(BadgeButton, ViewModel.Summary);
 
         SetBadgeVisible(true);
     }
 
-    // A running transfer takes the ring, since it is the one state that is still changing. What settled
-    // shows as a count beside it either way.
-    private void ApplyGlyph(bool isTransferring, bool hasFailure)
+    // Shows the meter for InProgress, the spinning ring for UnknownProgress, and the download glyph for Settled. The
+    // glyph takes the critical color for Failed.
+    private void ApplyState(DownloadBadgeState state, double progress)
     {
-        TransferRing.IsActive = isTransferring;
-        TransferRing.Visibility = isTransferring ? Visibility.Visible : Visibility.Collapsed;
+        var showsMeter = state == DownloadBadgeState.InProgress;
+        TransferMeter.Fraction = progress;
+        TransferMeter.Visibility = showsMeter ? Visibility.Visible : Visibility.Collapsed;
 
-        var isSettled = !isTransferring;
+        // A hidden ring stops spinning, so the badge never animates a hidden element.
+        var showsRing = state == DownloadBadgeState.UnknownProgress;
+        TransferRing.IsActive = showsRing;
+        TransferRing.Visibility = showsRing ? Visibility.Visible : Visibility.Collapsed;
 
-        SettledIcon.Visibility = isSettled && !hasFailure ? Visibility.Visible : Visibility.Collapsed;
-        FailedIcon.Visibility = isSettled && hasFailure ? Visibility.Visible : Visibility.Collapsed;
+        SettledIcon.Visibility = state == DownloadBadgeState.Settled ? Visibility.Visible : Visibility.Collapsed;
+        FailedIcon.Visibility = state == DownloadBadgeState.Failed ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void SetBadgeVisible(bool isVisible)
@@ -154,6 +158,9 @@ public sealed partial class DownloadBadge : UserControl
         _list.CapHeightToWindow();
 
         UpdateList();
+
+        // The check takes a row off the open list once the row's file outside the project has gone.
+        ViewModel.CheckFilesOutsideProject();
     }
 
     private void OnDownloadFlyout_Closed(object? sender, object e)

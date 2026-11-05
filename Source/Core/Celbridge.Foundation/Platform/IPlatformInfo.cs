@@ -46,6 +46,19 @@ public interface IPlatformInfo
     bool PickersRequireWindowHandle { get; }
 
     /// <summary>
+    /// The file type that lets the system save dialog accept any name, or null on a platform that needs none. The
+    /// packaged Windows head uses a lone ".", since its dialog needs at least one file type before it opens. macOS uses
+    /// ".public.data", since a picker with no file types inherits the previous picker's. Uno requires the leading dot.
+    /// Its macOS picker removes that dot, which leaves "public.data", the type identifier that covers every file.
+    /// </summary>
+    string? SaveDialogAnyNameFileType { get; }
+
+    /// <summary>
+    /// Returns true on the packaged Windows head, where the system save dialog refuses an unspecified start location.
+    /// </summary>
+    bool SaveDialogRequiresStartLocation { get; }
+
+    /// <summary>
     /// Whether the window's sizes and resize constraints are in physical pixels rather than device-independent
     /// ones, so a size composed from layout values has to be scaled before it is applied to the window. True on
     /// Windows (both the packaged and Skia heads) and Linux. False on macOS, whose constraint is set in points,

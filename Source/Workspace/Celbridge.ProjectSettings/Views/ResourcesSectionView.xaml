@@ -65,43 +65,6 @@
 
       <StackPanel Spacing="8">
         <StackPanel Spacing="2">
-          <TextBlock Text="{x:Bind ViewModel.DownloadsFolderTitle, Mode=OneWay}"
-                     Style="{StaticResource SectionHeadingTextStyle}" />
-          <TextBlock Text="{x:Bind ViewModel.DownloadsFolderSubtitle, Mode=OneWay}"
-                     Style="{StaticResource SupportingTextStyle}"
-                     TextWrapping="Wrap" />
-        </StackPanel>
-
-        <Grid ColumnSpacing="4">
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="Auto" />
-          </Grid.ColumnDefinitions>
-
-          <TextBox Grid.Column="0"
-                   IsSpellCheckEnabled="False"
-                   AutomationProperties.Name="{x:Bind ViewModel.DownloadsFolderTitle, Mode=OneWay}"
-                   PlaceholderText="{x:Bind ViewModel.DefaultDownloadsFolder, Mode=OneWay}"
-                   Text="{x:Bind ViewModel.DownloadsFolderText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-
-          <controls:IconButton Grid.Column="1"
-                               VerticalAlignment="Center"
-                               AutomationProperties.Name="{x:Bind ViewModel.DownloadsFolderBrowseTooltip, Mode=OneWay}"
-                               ToolTipService.ToolTip="{x:Bind ViewModel.DownloadsFolderBrowseTooltip, Mode=OneWay}"
-                               Click="BrowseDownloadsFolderButton_Click">
-            <controls:Icon IconName="bs-three-dots" FontSize="{StaticResource IconSizeMedium}" />
-          </controls:IconButton>
-        </Grid>
-
-        <TextBlock Text="{x:Bind ViewModel.InvalidDownloadsFolderText, Mode=OneWay}"
-                   Style="{StaticResource SupportingTextStyle}"
-                   Foreground="{ThemeResource SystemFillColorCriticalBrush}"
-                   TextWrapping="Wrap"
-                   Visibility="{x:Bind ViewModel.IsDownloadsFolderInvalid, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
-      </StackPanel>
-
-      <StackPanel Spacing="8">
-        <StackPanel Spacing="2">
           <TextBlock Text="{x:Bind ViewModel.PackageFoldersTitle, Mode=OneWay}"
                      Style="{StaticResource SectionHeadingTextStyle}" />
           <TextBlock Text="{x:Bind ViewModel.PackageFoldersSubtitle, Mode=OneWay}"

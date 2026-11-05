@@ -56,18 +56,43 @@ public class ResourcePickerItem
         IconDefinition iconDefinition,
         WritableState writableState,
         string? readOnlyMessage = null)
+        : this(resourceKey, DisplayTextFor(resourceKey), iconDefinition, writableState, readOnlyMessage)
+    {
+    }
+
+    private ResourcePickerItem(
+        ResourceKey resourceKey,
+        string displayText,
+        IconDefinition iconDefinition,
+        WritableState writableState,
+        string? readOnlyMessage)
     {
         ResourceKey = resourceKey;
         IconDefinition = iconDefinition;
         WritableState = writableState;
-        // Display text uses the bare path for project-rooted resources (cleaner
-        // for the picker UI) and falls back to the full "root:path" form for
-        // non-default roots so the root is visible when it matters.
-        DisplayText = resourceKey.Root == ResourceKey.DefaultRoot
-            ? resourceKey.Path
-            : resourceKey.ToString();
+        DisplayText = displayText;
         DisplayTextLower = DisplayText.ToLowerInvariant();
         ReadOnlyMessage = readOnlyMessage ?? string.Empty;
+    }
+
+    /// <summary>
+    /// Creates the item for the project folder itself. The item has an empty key and shows the given display text.
+    /// </summary>
+    public static ResourcePickerItem ForProjectFolder(string displayText, IconDefinition iconDefinition)
+    {
+        return new ResourcePickerItem(ResourceKey.Empty, displayText, iconDefinition, WritableState.Writable, null);
+    }
+
+    // A resource in the `project:` root shows its bare path. A resource in any other root shows the full "root:path"
+    // form, so the list names its root.
+    private static string DisplayTextFor(ResourceKey resourceKey)
+    {
+        if (resourceKey.Root == ResourceKey.DefaultRoot)
+        {
+            return resourceKey.Path;
+        }
+
+        return resourceKey.ToString();
     }
 
     /// <summary>

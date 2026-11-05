@@ -53,44 +53,6 @@ public class ProjectConfigDraftTests
     }
 
     [Test]
-    public void Draft_PreservesTheDownloadsFolder_AcrossAnUnrelatedEdit()
-    {
-        // The draft rebuilds the downloads table on every serialize, so an edit to another section must keep
-        // the downloads folder.
-        var sourceConfig =
-            "[celbridge]\n" +
-            "\n" +
-            "[celbridge.downloads]\n" +
-            "folder = \"assets/incoming\"\n";
-
-        var config = ApplyAndParse(sourceConfig, draft => draft.SetPackageDisabled("acme.pixel-editor", true));
-
-        config.Downloads.Folder.Should().Be("assets/incoming");
-    }
-
-    [Test]
-    public void Draft_SetDownloadsFolder_WritesThePathItNames()
-    {
-        var config = ApplyAndParse(BaseConfig, draft => draft.SetDownloadsFolder(" /assets/incoming/ "));
-
-        config.Downloads.Folder.Should().Be("assets/incoming");
-    }
-
-    [TestCase("", Description = "a cleared field")]
-    [TestCase("downloads", Description = "the default folder")]
-    [TestCase("../outside", Description = "a path that is not a folder path, which a load would drop")]
-    public void Draft_SetDownloadsFolderThatNamesNoOtherFolder_WritesNoKey(string folderPath)
-    {
-        var config = ApplyAndParse(BaseConfig, draft =>
-        {
-            draft.SetDownloadsFolder("assets/incoming");
-            draft.SetDownloadsFolder(folderPath);
-        });
-
-        config.Downloads.Folder.Should().BeEmpty();
-    }
-
-    [Test]
     public void Draft_SetPackageDisabled_AddsToDisabledPackages()
     {
         var config = ApplyAndParse(BaseConfig, draft => draft.SetPackageDisabled("acme.pixel-editor", true));

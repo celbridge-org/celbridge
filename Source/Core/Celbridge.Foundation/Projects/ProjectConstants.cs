@@ -60,9 +60,8 @@ public static class ProjectConstants
     public const string SettingsFolder = "settings";
 
     /// <summary>
-    /// Folder name used for WebView downloads. Used both for the in-progress
-    /// staging folder under temp: and for the default destination folder under
-    /// project:. A project's [celbridge.downloads] folder key can change the destination.
+    /// The folder under temp: where a web view download is staged until its file moves to the folder the user
+    /// chose.
     /// </summary>
     public const string DownloadsFolder = "downloads";
 }

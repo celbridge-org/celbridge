@@ -129,6 +129,18 @@ public sealed class BindableWorkspaceSettings : IBindableWorkspaceSettings
         set => Set(SettingCatalog.Editor.PreviousNewFileExtension, value);
     }
 
+    public string DownloadFolder
+    {
+        get => Get(SettingCatalog.Downloads.DownloadFolder);
+        set => Set(SettingCatalog.Downloads.DownloadFolder, value);
+    }
+
+    public bool DownloadToOtherLocation
+    {
+        get => Get(SettingCatalog.Downloads.DownloadToOtherLocation);
+        set => Set(SettingCatalog.Downloads.DownloadToOtherLocation, value);
+    }
+
     // The area set is stored as tokens rather than as enum values, so reordering the enum cannot silently
     // reinterpret stored data. A token that names no area is dropped, and Main is added whatever the stored
     // value holds, because it is always on screen.
