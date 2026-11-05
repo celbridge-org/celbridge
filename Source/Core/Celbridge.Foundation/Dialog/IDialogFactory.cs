@@ -67,9 +67,13 @@ public interface IDialogFactory
 
     /// <summary>
     /// Create a Download File Dialog for a file downloaded from the source URL, opening on the given download
-    /// folder. Requires a loaded workspace.
+    /// folder with the given remembered choice selected. Requires a loaded workspace.
     /// </summary>
-    IDownloadFileDialog CreateDownloadFileDialog(string fileName, string sourceUrl, ResourceKey downloadFolder);
+    IDownloadFileDialog CreateDownloadFileDialog(
+        string fileName,
+        string sourceUrl,
+        ResourceKey downloadFolder,
+        DownloadFileChoice rememberedChoice);
 
     /// <summary>
     /// Create an Icon Picker Dialog over the supported icon set, opening its search on the given text.

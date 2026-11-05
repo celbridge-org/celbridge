@@ -1,3 +1,4 @@
+using Celbridge.Dialog;
 using Celbridge.Projects;
 using Celbridge.UserInterface.ViewModels;
 using Microsoft.Extensions.Localization;
@@ -7,11 +8,13 @@ namespace Celbridge.Tests.UserInterface;
 
 /// <summary>
 /// Covers what the Download File dialog shows: the site offering the file, the download folder, and the title and
-/// button texts of its two pages. The project folder shows as the project's name.
+/// button texts of its two pages. The project folder shows as the project's name. The remembered choice starts
+/// selected. Other location opens the system save dialog on the file's name.
 /// </summary>
 [TestFixture]
 public class DownloadFileDialogViewModelTests
 {
+    private IFilePickerService _filePickerService = null!;
     private DownloadFileDialogViewModel _viewModel = null!;
 
     [SetUp]
@@ -33,7 +36,16 @@ public class DownloadFileDialogViewModelTests
             return new LocalizedString(name, $"{name}:{arguments[0]}");
         });
 
-        _viewModel = new DownloadFileDialogViewModel(stringLocalizer, projectService);
+        _filePickerService = Substitute.For<IFilePickerService>();
+        _filePickerService.PickSaveFileAsync(
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<IEnumerable<string>>(),
+                Arg.Any<PickerStartFolder>(),
+                Arg.Any<string>())
+            .Returns(Task.FromResult(Result<string>.Ok("/Users/acme/Downloads/report.pdf")));
+
+        _viewModel = new DownloadFileDialogViewModel(stringLocalizer, projectService, _filePickerService);
     }
 
     [TestCase("https://example.com/files/report.pdf", "example.com")]
@@ -47,7 +59,11 @@ public class DownloadFileDialogViewModelTests
     [Test]
     public void TheFirstPage_ShowsTheFileTheSiteAndTheProjectFolder()
     {
-        _viewModel.Initialize("report.pdf", "https://example.com/files/report.pdf", ResourceKey.Empty);
+        _viewModel.Initialize(
+            "report.pdf",
+            "https://example.com/files/report.pdf",
+            ResourceKey.Empty,
+            DownloadFileChoice.InProject);
 
         _viewModel.FileName.Should().Be("report.pdf");
         _viewModel.SourceText.Should().Be("DownloadFileDialog_Source:example.com");
@@ -55,6 +71,8 @@ public class DownloadFileDialogViewModelTests
 
         _viewModel.DownloadFolder.Should().Be(ResourceKey.Empty);
         _viewModel.DownloadFolderText.Should().Be("ResourcePickerDialog_ProjectFolder:Acme");
+        _viewModel.IsInProjectSelected.Should().BeTrue();
+        _viewModel.IsOtherLocationSelected.Should().BeFalse();
 
         _viewModel.IsChoosingFolder.Should().BeFalse();
         _viewModel.TitleText.Should().Be("DownloadFileDialog_Title");
@@ -67,7 +85,11 @@ public class DownloadFileDialogViewModelTests
     [Test]
     public void AnAddressWithNoHost_HidesTheSite()
     {
-        _viewModel.Initialize("hello.txt", "data:text/plain;base64,SGVsbG8=", ResourceKey.Empty);
+        _viewModel.Initialize(
+            "hello.txt",
+            "data:text/plain;base64,SGVsbG8=",
+            ResourceKey.Empty,
+            DownloadFileChoice.InProject);
 
         _viewModel.SourceText.Should().BeEmpty();
         _viewModel.SourceVisibility.Should().Be(Visibility.Collapsed);
@@ -76,7 +98,11 @@ public class DownloadFileDialogViewModelTests
     [Test]
     public void AFolderInTheProject_ShowsAsItsPath()
     {
-        _viewModel.Initialize("report.pdf", "https://example.com/report.pdf", new ResourceKey("downloads"));
+        _viewModel.Initialize(
+            "report.pdf",
+            "https://example.com/report.pdf",
+            new ResourceKey("downloads"),
+            DownloadFileChoice.InProject);
 
         _viewModel.DownloadFolderText.Should().Be("downloads");
 
@@ -90,7 +116,11 @@ public class DownloadFileDialogViewModelTests
     [Test]
     public void TheSecondPage_ChoosesTheFolder_AndTheFirstPageReturns()
     {
-        _viewModel.Initialize("report.pdf", "https://example.com/report.pdf", ResourceKey.Empty);
+        _viewModel.Initialize(
+            "report.pdf",
+            "https://example.com/report.pdf",
+            ResourceKey.Empty,
+            DownloadFileChoice.InProject);
 
         _viewModel.ShowFolderPage();
 
@@ -109,5 +139,82 @@ public class DownloadFileDialogViewModelTests
         _viewModel.SecondaryButtonText.Should().Be("DialogButton_Cancel");
         _viewModel.FilePageVisibility.Should().Be(Visibility.Visible);
         _viewModel.FolderPageVisibility.Should().Be(Visibility.Collapsed);
+    }
+
+    [Test]
+    public void ARememberedChoiceOfOtherLocation_SelectsOtherLocation()
+    {
+        _viewModel.Initialize(
+            "report.pdf",
+            "https://example.com/report.pdf",
+            new ResourceKey("downloads"),
+            DownloadFileChoice.OtherLocation);
+
+        _viewModel.RememberedChoice.Should().Be(DownloadFileChoice.OtherLocation);
+        _viewModel.IsOtherLocationSelected.Should().BeTrue();
+        _viewModel.IsInProjectSelected.Should().BeFalse();
+
+        // The download folder stays ready for the In project option.
+        _viewModel.DownloadFolderText.Should().Be("downloads");
+    }
+
+    [Test]
+    public async Task OtherLocation_AfterAProjectFolderSave_OpensTheSaveDialogOnTheDownloadsFolder()
+    {
+        _viewModel.Initialize(
+            "report.pdf",
+            "https://example.com/report.pdf",
+            ResourceKey.Empty,
+            DownloadFileChoice.InProject);
+
+        var pickResult = await _viewModel.PickOtherLocationAsync();
+
+        pickResult.IsSuccess.Should().BeTrue();
+        pickResult.Value.Should().Be("/Users/acme/Downloads/report.pdf");
+
+        await _filePickerService.Received(1).PickSaveFileAsync(
+            "report.pdf",
+            "DownloadFileDialog_FileType:PDF",
+            Arg.Is<IEnumerable<string>>(extensions => extensions.SequenceEqual(new[] { ".pdf" })),
+            PickerStartFolder.Downloads,
+            "DownloadFile");
+    }
+
+    [Test]
+    public async Task OtherLocation_AfterAnOtherLocationSave_OpensTheSaveDialogOnTheFolderLastUsed()
+    {
+        _viewModel.Initialize(
+            "report.pdf",
+            "https://example.com/report.pdf",
+            ResourceKey.Empty,
+            DownloadFileChoice.OtherLocation);
+
+        await _viewModel.PickOtherLocationAsync();
+
+        await _filePickerService.Received(1).PickSaveFileAsync(
+            "report.pdf",
+            Arg.Any<string>(),
+            Arg.Any<IEnumerable<string>>(),
+            PickerStartFolder.LastUsed,
+            "DownloadFile");
+    }
+
+    [Test]
+    public async Task OtherLocation_ForANameWithNoExtension_OffersNoFileType()
+    {
+        _viewModel.Initialize(
+            "README",
+            "https://example.com/README",
+            ResourceKey.Empty,
+            DownloadFileChoice.InProject);
+
+        await _viewModel.PickOtherLocationAsync();
+
+        await _filePickerService.Received(1).PickSaveFileAsync(
+            "README",
+            Arg.Any<string>(),
+            Arg.Is<IEnumerable<string>>(extensions => !extensions.Any()),
+            PickerStartFolder.Downloads,
+            "DownloadFile");
     }
 }

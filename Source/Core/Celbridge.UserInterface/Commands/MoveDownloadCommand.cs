@@ -9,6 +9,7 @@ public class MoveDownloadCommand : CommandBase, IMoveDownloadCommand
 {
     public ResourceKey SourceResource { get; set; }
     public ResourceKey DestResource { get; set; }
+    public bool ReplaceExisting { get; set; }
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
@@ -35,7 +36,7 @@ public class MoveDownloadCommand : CommandBase, IMoveDownloadCommand
         // file, so the move out of temp: has no identity to carry with it.
         var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
-        var moveOptions = new MoveOptions(AllowCrossRoot: true);
+        var moveOptions = new MoveOptions(AllowCrossRoot: true, ReplaceExisting: ReplaceExisting);
 
         var moveResult = await resourceFileSystem.MoveAsync(SourceResource, DestResource, moveOptions);
         if (moveResult.IsFailure)

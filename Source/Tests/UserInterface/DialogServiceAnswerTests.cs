@@ -77,7 +77,7 @@ public class DialogServiceAnswerTests
         var fakeDownloadFile = Substitute.For<IDownloadFileDialog>();
         fakeDownloadFile.ShowDialogAsync().Returns(Task.FromResult(canceledAnswer));
         _dialogFactory.CreateDownloadFileDialog(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<ResourceKey>()).Returns(fakeDownloadFile);
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<ResourceKey>(), Arg.Any<DownloadFileChoice>()).Returns(fakeDownloadFile);
     }
 
     [Test]
@@ -214,7 +214,7 @@ public class DialogServiceAnswerTests
         _dialogService.ScheduleAnswer(DialogKind.DownloadFile, payload: "downloads", delayMs: 0);
 
         await _dialogService.ShowDownloadFileDialogAsync(
-            "report.pdf", "https://example.com/report.pdf", ResourceKey.Empty);
+            "report.pdf", "https://example.com/report.pdf", ResourceKey.Empty, DownloadFileChoice.InProject);
         await WaitForBroadcast<DialogAnswerMessage>();
 
         var sent = _messengerService.Sent<DialogAnswerMessage>();

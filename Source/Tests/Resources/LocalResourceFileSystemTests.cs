@@ -642,6 +642,63 @@ public class LocalResourceFileSystemTests
     }
 
     [Test]
+    public async Task MoveAsync_WithReplaceExisting_ReplacesTheFileAtTheDestination()
+    {
+        var sourceKey = new ResourceKey("temp:downloads/staged.bin");
+        var destKey = new ResourceKey("downloads/report.bin");
+        var sourcePath = Path.Combine(_tempRootFolder, "downloads", "staged.bin");
+        var destPath = Path.Combine(_tempFolder, "downloads", "report.bin");
+        Directory.CreateDirectory(Path.GetDirectoryName(sourcePath)!);
+        Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
+        await File.WriteAllTextAsync(sourcePath, "src");
+        await File.WriteAllTextAsync(destPath, "dst");
+
+        var options = new MoveOptions(AllowCrossRoot: true, ReplaceExisting: true);
+        var result = await _resourceFileSystem.MoveAsync(sourceKey, destKey, options);
+
+        result.IsSuccess.Should().BeTrue(result.DiagnosticReport);
+        File.Exists(sourcePath).Should().BeFalse();
+        (await File.ReadAllTextAsync(destPath)).Should().Be("src");
+        _reports.Should().ContainSingle().Which.Should().Equal(sourceKey, destKey);
+    }
+
+    [Test]
+    public async Task MoveAsync_WithReplaceExisting_RefusesToMoveAFolderOntoAFile()
+    {
+        var sourcePath = Path.Combine(_tempFolder, "folder");
+        var destPath = Path.Combine(_tempFolder, "renamed");
+        Directory.CreateDirectory(sourcePath);
+        await File.WriteAllTextAsync(Path.Combine(sourcePath, "a.txt"), "src");
+        await File.WriteAllTextAsync(destPath, "dst");
+
+        var options = new MoveOptions(ReplaceExisting: true);
+        var result = await _resourceFileSystem.MoveAsync(new ResourceKey("folder"), new ResourceKey("renamed"), options);
+
+        result.IsFailure.Should().BeTrue();
+        ListNames(sourcePath).Should().Equal("a.txt");
+        (await File.ReadAllTextAsync(destPath)).Should().Be("dst");
+        _reports.Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task MoveAsync_WithReplaceExisting_RefusesToMoveAFileOntoAFolder()
+    {
+        var sourcePath = Path.Combine(_tempFolder, "a.txt");
+        var destPath = Path.Combine(_tempFolder, "folder");
+        await File.WriteAllTextAsync(sourcePath, "src");
+        Directory.CreateDirectory(destPath);
+        await File.WriteAllTextAsync(Path.Combine(destPath, "b.txt"), "dst");
+
+        var options = new MoveOptions(ReplaceExisting: true);
+        var result = await _resourceFileSystem.MoveAsync(new ResourceKey("a.txt"), new ResourceKey("folder"), options);
+
+        result.IsFailure.Should().BeTrue();
+        (await File.ReadAllTextAsync(sourcePath)).Should().Be("src");
+        ListNames(destPath).Should().Equal("b.txt");
+        _reports.Should().BeEmpty();
+    }
+
+    [Test]
     public async Task MoveAsync_LeavesAFileThatReferencesTheMovedResourceUnchanged()
     {
         var sourceKey = new ResourceKey("source.txt");

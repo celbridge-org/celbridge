@@ -1,15 +1,20 @@
+using Celbridge.Dialog;
 using Celbridge.Projects;
 
 namespace Celbridge.UserInterface.ViewModels;
 
 /// <summary>
-/// Holds the state of the Download File dialog: the file, the site offering the file and the download folder.
-/// The view model also says which of the dialog's two pages shows.
+/// Contains the state of the Download File dialog: the file, the site offering the file, the download folder and the
+/// selected option. The view model also says which of the dialog's two pages shows.
 /// </summary>
 public partial class DownloadFileDialogViewModel : ObservableObject
 {
+    // Keeps the folder the download's system save dialog last used apart from Celbridge's other save dialogs.
+    private const string SaveDialogSettingsIdentifier = "DownloadFile";
+
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IProjectService _projectService;
+    private readonly IFilePickerService _filePickerService;
 
     [ObservableProperty]
     private string _fileName = string.Empty;
@@ -25,6 +30,21 @@ public partial class DownloadFileDialogViewModel : ObservableObject
 
     [ObservableProperty]
     private string _downloadFolderText = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsInProjectSelected))]
+    private bool _isOtherLocationSelected;
+
+    /// <summary>
+    /// True while the In project option is selected, which is whenever Other location is not.
+    /// </summary>
+    public bool IsInProjectSelected => !IsOtherLocationSelected;
+
+    /// <summary>
+    /// The option the user last saved a file with in this project. When that option is Other location, the system
+    /// save dialog opens on the folder last used. Otherwise the save dialog opens on the Downloads folder.
+    /// </summary>
+    public DownloadFileChoice RememberedChoice { get; private set; } = DownloadFileChoice.InProject;
 
     [ObservableProperty]
     private bool _isChoosingFolder;
@@ -46,17 +66,19 @@ public partial class DownloadFileDialogViewModel : ObservableObject
 
     public DownloadFileDialogViewModel(
         IStringLocalizer stringLocalizer,
-        IProjectService projectService)
+        IProjectService projectService,
+        IFilePickerService filePickerService)
     {
         _stringLocalizer = stringLocalizer;
         _projectService = projectService;
+        _filePickerService = filePickerService;
     }
 
     /// <summary>
     /// Sets the dialog up for a file downloaded from the source URL, with the given download folder, showing the
-    /// first page.
+    /// first page. The remembered choice starts selected.
     /// </summary>
-    public void Initialize(string fileName, string sourceUrl, ResourceKey downloadFolder)
+    public void Initialize(string fileName, string sourceUrl, ResourceKey downloadFolder, DownloadFileChoice rememberedChoice)
     {
         FileName = fileName;
 
@@ -73,7 +95,41 @@ public partial class DownloadFileDialogViewModel : ObservableObject
         }
 
         SetDownloadFolder(downloadFolder);
+
+        RememberedChoice = rememberedChoice;
+        IsOtherLocationSelected = rememberedChoice == DownloadFileChoice.OtherLocation;
+
         ShowFilePage();
+    }
+
+    /// <summary>
+    /// Opens the system save dialog on the file's name, and returns the path the user chose. The dialog offers
+    /// only the extension of the file's name, since a save dialog accepts no wildcard file type.
+    /// </summary>
+    public async Task<Result<string>> PickOtherLocationAsync()
+    {
+        var extension = Path.GetExtension(FileName);
+
+        List<string> extensions = [];
+        if (!string.IsNullOrEmpty(extension))
+        {
+            extensions.Add(extension);
+        }
+
+        var fileTypeDescription = _stringLocalizer.GetString(
+            "DownloadFileDialog_FileType",
+            extension.TrimStart('.').ToUpperInvariant());
+
+        var startFolder = RememberedChoice == DownloadFileChoice.OtherLocation
+            ? PickerStartFolder.LastUsed
+            : PickerStartFolder.Downloads;
+
+        return await _filePickerService.PickSaveFileAsync(
+            FileName,
+            fileTypeDescription,
+            extensions,
+            startFolder,
+            SaveDialogSettingsIdentifier);
     }
 
     /// <summary>

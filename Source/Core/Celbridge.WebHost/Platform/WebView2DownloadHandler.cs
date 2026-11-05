@@ -141,7 +141,7 @@ internal sealed class WebView2DownloadHandler : IWebViewDownloadHandler
             return;
         }
 
-        var reason = _localizerService.GetString("Downloads_TransferAbandoned");
+        var reason = _localizerService.GetString("Downloads_Abandoned");
 
         foreach (var abandonedDownload in abandonedDownloads)
         {
@@ -410,7 +410,9 @@ internal sealed class WebView2DownloadHandler : IWebViewDownloadHandler
             return;
         }
 
-        var reason = _localizerService.GetString("Downloads_TransferFailed");
+        _logger.LogWarning($"A download failed: WebView2 interrupted it with the reason {interruptReason}");
+
+        var reason = _localizerService.GetString("Downloads_Failed");
         await _downloadService.FailAsync(downloadId, reason);
     }
 }

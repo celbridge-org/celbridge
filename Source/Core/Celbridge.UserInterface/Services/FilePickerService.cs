@@ -15,11 +15,15 @@ public class FilePickerService : IFilePickerService
         _platformInfo = platformInfo;
     }
 
-    public async Task<Result<string>> PickSingleFileAsync(IEnumerable<string> extensions)
+    public async Task<Result<string>> PickSingleFileAsync(
+        IEnumerable<string> extensions,
+        PickerStartFolder startFolder = PickerStartFolder.Documents,
+        string settingsIdentifier = "")
     {
         var fileOpenPicker = new FileOpenPicker
         {
-            SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
+            SuggestedStartLocation = ToPickerLocationId(startFolder),
+            SettingsIdentifier = settingsIdentifier
         };
 
         foreach (var extension in extensions)
@@ -46,11 +50,14 @@ public class FilePickerService : IFilePickerService
         return Result<string>.Ok(file.Path);
     }
 
-    public async Task<Result<string>> PickSingleFolderAsync()
+    public async Task<Result<string>> PickSingleFolderAsync(
+        PickerStartFolder startFolder = PickerStartFolder.Documents,
+        string settingsIdentifier = "")
     {
         var folderPicker = new FolderPicker
         {
-            SuggestedStartLocation = PickerLocationId.DocumentsLibrary
+            SuggestedStartLocation = ToPickerLocationId(startFolder),
+            SettingsIdentifier = settingsIdentifier
         };
 
         folderPicker.FileTypeFilter.Add("*");
@@ -68,16 +75,25 @@ public class FilePickerService : IFilePickerService
         return Result<string>.Ok(folderPath);
     }
 
-    public async Task<Result<string>> PickSaveFileAsync(string suggestedFileName, string fileTypeDescription, IEnumerable<string> fileExtensions)
+    public async Task<Result<string>> PickSaveFileAsync(
+        string suggestedFileName,
+        string fileTypeDescription,
+        IEnumerable<string> fileExtensions,
+        PickerStartFolder startFolder = PickerStartFolder.Documents,
+        string settingsIdentifier = "")
     {
         var fileSavePicker = new FileSavePicker
         {
-            SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
-            SuggestedFileName = suggestedFileName
+            SuggestedStartLocation = ToPickerLocationId(startFolder),
+            SuggestedFileName = suggestedFileName,
+            SettingsIdentifier = settingsIdentifier
         };
 
         var extensions = fileExtensions.ToList();
-        fileSavePicker.FileTypeChoices.Add(fileTypeDescription, extensions);
+        if (extensions.Count > 0)
+        {
+            fileSavePicker.FileTypeChoices.Add(fileTypeDescription, extensions);
+        }
 
         InitializeWithMainWindow(fileSavePicker);
 
@@ -88,6 +104,18 @@ public class FilePickerService : IFilePickerService
         }
 
         return Result<string>.Ok(file.Path);
+    }
+
+    // An unspecified location leaves the folder to the platform, which opens the folder last used under the
+    // settings identifier.
+    private static PickerLocationId ToPickerLocationId(PickerStartFolder startFolder)
+    {
+        return startFolder switch
+        {
+            PickerStartFolder.Downloads => PickerLocationId.Downloads,
+            PickerStartFolder.LastUsed => PickerLocationId.Unspecified,
+            _ => PickerLocationId.DocumentsLibrary
+        };
     }
 
     // The packaged WinUI head requires a picker to be associated with the owning window handle.

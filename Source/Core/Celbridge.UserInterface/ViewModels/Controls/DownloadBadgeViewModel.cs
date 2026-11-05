@@ -2,6 +2,8 @@ using Celbridge.Commands;
 using Celbridge.Downloads;
 using Celbridge.Explorer;
 using Celbridge.Localization;
+using Celbridge.Logging;
+using Celbridge.Platform;
 using Celbridge.Utilities;
 
 namespace Celbridge.UserInterface.ViewModels.Controls;
@@ -17,6 +19,8 @@ public class DownloadBadgeViewModel
     private readonly ILocalizerService _localizerService;
     private readonly IDownloadService _downloadService;
     private readonly ICommandService _commandService;
+    private readonly IFileManagerLauncher _fileManagerLauncher;
+    private readonly ILogger<DownloadBadgeViewModel> _logger;
 
     /// <summary>
     /// Raised on the UI thread when the recorded downloads change.
@@ -64,13 +68,17 @@ public class DownloadBadgeViewModel
         IDispatcher dispatcher,
         ILocalizerService localizerService,
         IDownloadService downloadService,
-        ICommandService commandService)
+        ICommandService commandService,
+        IFileManagerLauncher fileManagerLauncher,
+        ILogger<DownloadBadgeViewModel> logger)
     {
         _messengerService = messengerService;
         _dispatcher = dispatcher;
         _localizerService = localizerService;
         _downloadService = downloadService;
         _commandService = commandService;
+        _fileManagerLauncher = fileManagerLauncher;
+        _logger = logger;
     }
 
     public void OnLoaded()
@@ -86,10 +94,17 @@ public class DownloadBadgeViewModel
     }
 
     /// <summary>
-    /// Finds a completed download in the Explorer, leaving its record in the list.
+    /// Finds a completed download's file, leaving its record in the list. A file in the project shows in the
+    /// Explorer, and a file outside the project shows in the system file manager.
     /// </summary>
     public void Reveal(DownloadEntry download)
     {
+        if (!string.IsNullOrEmpty(download.FilePath))
+        {
+            _ = RevealInFileManagerAsync(download.FilePath);
+            return;
+        }
+
         if (download.Resource.IsEmpty)
         {
             return;
@@ -100,6 +115,15 @@ public class DownloadBadgeViewModel
             command.Resource = download.Resource;
             command.ShowExplorerPanel = true;
         });
+    }
+
+    /// <summary>
+    /// Checks the files saved outside the project. A row leaves the list once the row's file has gone. The service
+    /// follows the files in the project as they change, but nothing follows the others.
+    /// </summary>
+    public void CheckFilesOutsideProject()
+    {
+        _ = _downloadService.CheckFilesOutsideProjectAsync();
     }
 
     /// <summary>
@@ -187,5 +211,14 @@ public class DownloadBadgeViewModel
 
         var sentence = _localizerService.GetString(key, count);
         sentences.Add(sentence);
+    }
+
+    private async Task RevealInFileManagerAsync(string filePath)
+    {
+        var openResult = await _fileManagerLauncher.OpenFileManagerAsync(filePath);
+        if (openResult.IsFailure)
+        {
+            _logger.LogWarning(openResult, $"Failed to show the downloaded file '{filePath}' in the file manager");
+        }
     }
 }

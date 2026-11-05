@@ -6,7 +6,7 @@ namespace Celbridge.Downloads;
 public enum DownloadStatus
 {
     /// <summary>
-    /// The transfer is running. Nothing has reached the project yet.
+    /// The transfer is running. The file has not reached its destination yet.
     /// </summary>
     InProgress,
 
@@ -16,12 +16,12 @@ public enum DownloadStatus
     Succeeded,
 
     /// <summary>
-    /// The transfer or the move into the project failed. Nothing was left in the project.
+    /// The transfer or the move to the destination failed. No file was saved.
     /// </summary>
     Failed,
 
     /// <summary>
-    /// The transfer was stopped before it finished, which is not a failure. Nothing was left in the project.
+    /// The transfer was stopped before it finished, which is not a failure. No file was saved.
     /// </summary>
     Canceled
 }
@@ -35,10 +35,11 @@ public partial record DownloadTicket(
     string StagingPath);
 
 /// <summary>
-/// A download recorded this session. FileName is the name the site suggests until the user chooses a folder.
-/// FileName then becomes the name the file is saved under, uniquified when that name was already taken. Resource
-/// is empty until the transfer succeeds. FailureReason is empty unless the download failed. TotalBytes is null until
-/// the server says how large the file is.
+/// A download recorded this session. FileName is the name the site suggests until the user chooses where the file
+/// goes. FileName then becomes the name the file is saved under, uniquified when a project folder already had that
+/// name. Resource is empty until the transfer succeeds, and stays empty for a file saved outside the project.
+/// FailureReason is empty unless the download failed. TotalBytes is null until the server says how large the file
+/// is.
 /// </summary>
 public partial record DownloadEntry(
     long Id,
@@ -58,6 +59,12 @@ public partial record DownloadEntry(
     /// How large the file is, or null where the server did not say.
     /// </summary>
     public long? TotalBytes { get; init; }
+
+    /// <summary>
+    /// The absolute path of a file saved outside the project. A file outside the project has no resource key, so
+    /// the path replaces Resource. Empty until the transfer succeeds, and for a file saved in the project.
+    /// </summary>
+    public string FilePath { get; init; } = string.Empty;
 }
 
 /// <summary>
@@ -133,13 +140,19 @@ public interface IDownloadService
 
     /// <summary>
     /// Removes the record of a finished download. A download still running keeps its record, and the file a
-    /// finished download landed on stays in the project.
+    /// finished download saved stays where it is.
     /// </summary>
     void Remove(long downloadId);
 
     /// <summary>
     /// Removes the records of finished downloads. A download still running keeps its record, and the files
-    /// finished downloads landed on stay in the project.
+    /// finished downloads saved stay where they are.
     /// </summary>
     void ClearAll();
+
+    /// <summary>
+    /// Checks that each file a download saved outside the project still exists, and removes the record of each
+    /// file that has gone. Files in the project need no check, since the service follows them as they change.
+    /// </summary>
+    Task CheckFilesOutsideProjectAsync();
 }

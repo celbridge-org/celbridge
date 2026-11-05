@@ -13,11 +13,11 @@
   Closing="Dialog_Closing"
   Opened="Dialog_Opened">
 
-  <!-- Both pages fill the same fixed height, so the dialog's size stays the same on either page. -->
-  <Grid Width="480"
-        Height="440">
+  <!-- The dialog takes the height of the page it shows. The first page, seen on every download, has no empty space,
+       and the dialog grows while the folder list shows. -->
+  <Grid Width="480">
 
-    <!-- The first page saves the file to the download folder. -->
+    <!-- The first page saves the file to the download folder, or opens the system save dialog. -->
     <StackPanel Spacing="16"
                 Visibility="{x:Bind ViewModel.FilePageVisibility, Mode=OneWay}">
       <StackPanel Spacing="2">
@@ -30,11 +30,16 @@
                    Visibility="{x:Bind ViewModel.SourceVisibility, Mode=OneWay}" />
       </StackPanel>
 
-      <StackPanel Spacing="2">
-        <TextBlock Text="{x:Bind ProjectFolderString}"
-                   Style="{StaticResource FieldLabelTextStyle}" />
+      <StackPanel Spacing="4">
+        <RadioButton x:Name="InProjectRadioButton"
+                     GroupName="DownloadLocation"
+                     Content="{x:Bind InProjectString}"
+                     IsChecked="{x:Bind ViewModel.IsInProjectSelected, Mode=OneWay}"
+                     Checked="InProjectRadioButton_Checked" />
 
-        <Grid ColumnSpacing="4">
+        <!-- Indented to line up with the option's label. -->
+        <Grid ColumnSpacing="4"
+              Margin="28,0,0,0">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="Auto" />
@@ -45,7 +50,7 @@
                    IsReadOnly="True"
                    IsTabStop="False"
                    Text="{x:Bind ViewModel.DownloadFolderText, Mode=OneWay}"
-                   AutomationProperties.Name="{x:Bind ProjectFolderString}" />
+                   AutomationProperties.Name="{x:Bind InProjectString}" />
 
           <controls:IconButton x:Name="ChooseFolderButton"
                                Grid.Column="1"
@@ -57,11 +62,27 @@
                            FontSize="{StaticResource IconSizeMedium}" />
           </controls:IconButton>
         </Grid>
+
+        <RadioButton x:Name="OtherLocationRadioButton"
+                     GroupName="DownloadLocation"
+                     Margin="0,8,0,0"
+                     IsChecked="{x:Bind ViewModel.IsOtherLocationSelected, Mode=OneWay}"
+                     AutomationProperties.Name="{x:Bind OtherLocationString}"
+                     AutomationProperties.HelpText="{x:Bind OtherLocationHintString}"
+                     Checked="OtherLocationRadioButton_Checked">
+          <StackPanel Spacing="2">
+            <TextBlock Text="{x:Bind OtherLocationString}" />
+            <TextBlock Text="{x:Bind OtherLocationHintString}"
+                       Style="{StaticResource SupportingTextStyle}" />
+          </StackPanel>
+        </RadioButton>
       </StackPanel>
     </StackPanel>
 
-    <!-- The second page chooses the download folder. -->
+    <!-- The second page chooses the download folder. The folder list has a fixed height, so the page is the same size
+         whatever the number of folders in the project. -->
     <controls:ResourceSearchListView x:Name="FolderList"
+                                     Height="440"
                                      Visibility="{x:Bind ViewModel.FolderPageVisibility, Mode=OneWay}"
                                      ItemInvoked="FolderList_ItemInvoked"
                                      EscapePressed="FolderList_EscapePressed" />

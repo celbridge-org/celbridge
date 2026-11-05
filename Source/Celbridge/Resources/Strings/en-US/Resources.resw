@@ -470,6 +470,9 @@ This file could not be saved</value>
   <data name="Downloads_Reveal" xml:space="preserve">
     <value>Show in Explorer</value>
   </data>
+  <data name="Downloads_RevealInFileManager" xml:space="preserve">
+    <value>Show in {0}</value>
+  </data>
   <data name="Downloads_Summary_InProgress_One" xml:space="preserve">
     <value>1 download in progress.</value>
   </data>
@@ -512,20 +515,14 @@ This file could not be saved</value>
   <data name="Downloads_Blocked" xml:space="preserve">
     <value>Celbridge stopped the download of '{0}' to protect '{1}'.</value>
   </data>
-  <data name="Downloads_DestinationUnavailable" xml:space="preserve">
-    <value>The downloads folder could not be prepared.</value>
+  <data name="Downloads_Failed" xml:space="preserve">
+    <value>The download could not complete.</value>
   </data>
-  <data name="Downloads_ImportFailed" xml:space="preserve">
-    <value>The downloaded file could not be added to the project.</value>
+  <data name="Downloads_Canceled" xml:space="preserve">
+    <value>The download was canceled.</value>
   </data>
-  <data name="Downloads_TransferFailed" xml:space="preserve">
-    <value>The transfer did not complete.</value>
-  </data>
-  <data name="Downloads_TransferCancelled" xml:space="preserve">
-    <value>The transfer was canceled.</value>
-  </data>
-  <data name="Downloads_TransferAbandoned" xml:space="preserve">
-    <value>The transfer stopped when its document closed.</value>
+  <data name="Downloads_Abandoned" xml:space="preserve">
+    <value>The download stopped when its document closed.</value>
   </data>
   <data name="PanelHeader_CollapseTooltip" xml:space="preserve">
     <value>Collapse Panel</value>
@@ -1642,11 +1639,20 @@ Open with default application instead?</value>
   <data name="DownloadFileDialog_Source" xml:space="preserve">
     <value>From {0}</value>
   </data>
-  <data name="DownloadFileDialog_ProjectFolder" xml:space="preserve">
-    <value>Project Folder</value>
+  <data name="DownloadFileDialog_InProject" xml:space="preserve">
+    <value>In Project</value>
   </data>
   <data name="DownloadFileDialog_ChooseFolder" xml:space="preserve">
     <value>Choose Download Folder</value>
+  </data>
+  <data name="DownloadFileDialog_OtherLocation" xml:space="preserve">
+    <value>Other Location</value>
+  </data>
+  <data name="DownloadFileDialog_OtherLocationHint" xml:space="preserve">
+    <value>Opens the system save dialog</value>
+  </data>
+  <data name="DownloadFileDialog_FileType" xml:space="preserve">
+    <value>{0} File</value>
   </data>
   <data name="DownloadFileDialog_SelectFolderTitle" xml:space="preserve">
     <value>Select Folder</value>

@@ -154,6 +154,9 @@ public sealed partial class DownloadBadge : UserControl
         _list.CapHeightToWindow();
 
         UpdateList();
+
+        // The check takes a row off the open list once the row's file outside the project has gone.
+        ViewModel.CheckFilesOutsideProject();
     }
 
     private void OnDownloadFlyout_Closed(object? sender, object e)

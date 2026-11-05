@@ -1,6 +1,8 @@
 using Celbridge.Commands;
 using Celbridge.Downloads;
+using Celbridge.Explorer;
 using Celbridge.Messaging;
+using Celbridge.Platform;
 using Celbridge.Tests.Localization;
 using Celbridge.UserInterface.ViewModels.Controls;
 
@@ -10,11 +12,14 @@ namespace Celbridge.Tests.UserInterface;
 /// Tests for what the download list offers. Clear All removes only the downloads that have finished, so
 /// it has nothing to do while every download is still running. A canceled download stays in the list but
 /// is neither a failure nor counted by the badge. The summary counts downloads by outcome, even a single one.
+/// Revealing a file saved outside the project opens the system file manager on the file.
 /// </summary>
 [TestFixture]
 public class DownloadBadgeViewModelTests
 {
     private IDownloadService _downloadService = null!;
+    private ICommandService _commandService = null!;
+    private IFileManagerLauncher _fileManagerLauncher = null!;
     private DownloadBadgeViewModel _viewModel = null!;
 
     [SetUp]
@@ -31,12 +36,20 @@ public class DownloadBadgeViewModelTests
             return true;
         });
 
+        _commandService = Substitute.For<ICommandService>();
+
+        _fileManagerLauncher = Substitute.For<IFileManagerLauncher>();
+        _fileManagerLauncher.OpenFileManagerAsync(Arg.Any<string>())
+            .Returns(Task.FromResult(Result.Ok()));
+
         _viewModel = new DownloadBadgeViewModel(
             Substitute.For<IMessengerService>(),
             dispatcher,
             new TestLocalizerService(),
             _downloadService,
-            Substitute.For<ICommandService>());
+            _commandService,
+            _fileManagerLauncher,
+            Substitute.For<ILogger<DownloadBadgeViewModel>>());
     }
 
     [Test]
@@ -95,6 +108,24 @@ public class DownloadBadgeViewModelTests
             CreateEntry(3, DownloadStatus.Failed));
 
         _viewModel.Summary.Should().Be("1 download failed. 2 downloads completed.");
+    }
+
+    [Test]
+    public async Task RevealingAFileOutsideTheProject_OpensTheFileManagerOnItsPath()
+    {
+        var filePath = Path.Combine(Path.GetTempPath(), "elsewhere", "file1.bin");
+        var download = CreateEntry(1, DownloadStatus.Succeeded) with
+        {
+            FilePath = filePath
+        };
+
+        _viewModel.Reveal(download);
+
+        await _fileManagerLauncher.Received(1).OpenFileManagerAsync(filePath);
+        _commandService.DidNotReceive().Execute<ISelectResourceCommand>(
+            Arg.Any<Action<ISelectResourceCommand>>(),
+            Arg.Any<string>(),
+            Arg.Any<int>());
     }
 
     private void ShowDownloads(params DownloadEntry[] downloads)

@@ -120,7 +120,7 @@ internal sealed class MacOSWebViewDownloadRouter : IMacOSDownloadListener
         {
             _logger.LogWarning($"A download failed: the server answered with HTTP status {statusCode}");
 
-            var reason = _localizerService.GetString("Downloads_TransferFailed");
+            var reason = _localizerService.GetString("Downloads_Failed");
             _downloadService.RecordFailure(suggestedFileName, sourceUrl, reason);
 
             MacOSWebViewInterop.ProvideDownloadDestination(download, null);
@@ -174,7 +174,7 @@ internal sealed class MacOSWebViewDownloadRouter : IMacOSDownloadListener
         var reason = string.Empty;
         if (!isCancelled)
         {
-            reason = _localizerService.GetString("Downloads_TransferFailed");
+            reason = _localizerService.GetString("Downloads_Failed");
             _logger.LogWarning($"A download failed: {description}");
         }
 

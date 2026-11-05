@@ -103,7 +103,7 @@ internal sealed class DownloadDestinations
         // read or a write.
         if (probeResult.FirstException is not PolicyDenialError denial)
         {
-            return GetString("Downloads_DestinationUnavailable");
+            return GetString("Downloads_Failed");
         }
 
         var reservedName = denial.MatchedRule.Pattern.Split('/')[0];

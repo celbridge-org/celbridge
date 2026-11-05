@@ -142,6 +142,9 @@ public static class SettingCatalog
     {
         public static readonly SettingDescriptor<string> DownloadFolder =
             new("Downloads.DownloadFolder", SettingScope.Workspace, "");
+
+        public static readonly SettingDescriptor<bool> DownloadToOtherLocation =
+            new("Downloads.DownloadToOtherLocation", SettingScope.Workspace, false);
     }
 
     /// <summary>

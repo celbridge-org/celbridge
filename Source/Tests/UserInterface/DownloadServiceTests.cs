@@ -21,18 +21,23 @@ namespace Celbridge.Tests.UserInterface;
 /// temp: while the Download File dialog asks where the file goes. The answer reserves a free name in the chosen
 /// folder, and the file moves there once the transfer has finished. Cancel, a failed transfer and a denied
 /// destination each delete the staged file. A download fails when the Download File dialog cannot open. A row with a
-/// missing file leaves the list.
+/// missing file leaves the list. Other location saves the file to the path chosen in the system save dialog, and
+/// replaces any file there. A file saved outside the project moves through the local file system, and its row
+/// records the path.
 /// </summary>
 [TestFixture]
 public class DownloadServiceTests
 {
-    private record Move(ResourceKey SourceResource, ResourceKey DestResource);
+    private record Move(ResourceKey SourceResource, ResourceKey DestResource, bool ReplaceExisting);
 
     private static readonly string ProjectFolderPath =
         Path.Combine(Path.GetTempPath(), "celbridge-download-tests", "project");
 
     private static readonly string TempFolderPath =
         Path.Combine(Path.GetTempPath(), "celbridge-download-tests", "data", "temp");
+
+    private static readonly string OutsideFolderPath =
+        Path.Combine(Path.GetTempPath(), "celbridge-download-tests", "elsewhere");
 
     private static readonly ResourceKey DownloadFolder = new("downloads");
 
@@ -102,9 +107,10 @@ public class DownloadServiceTests
         resourceService.RootHandlers.Returns(_rootHandlers);
         resourceService.FileSystem.Returns(_resourceFileSystem);
 
-        // A project that remembers no download folder, until a download's answer records one.
+        // A project that remembers no download folder or option, until a download's answer records one.
         _workspaceSettings = Substitute.For<IBindableWorkspaceSettings>();
         _workspaceSettings.DownloadFolder = string.Empty;
+        _workspaceSettings.DownloadToOtherLocation = false;
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
@@ -127,7 +133,11 @@ public class DownloadServiceTests
 
         _dialogService = Substitute.For<IDialogService>();
         _dialogService.IsDialogOpen.Returns(false);
-        _dialogService.ShowDownloadFileDialogAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<ResourceKey>())
+        _dialogService.ShowDownloadFileDialogAsync(
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<ResourceKey>(),
+                Arg.Any<DownloadFileChoice>())
             .Returns(callInfo => AnswerDialogAsync());
 
         // Every reason the service records is a localized string. These tests read the key.
@@ -174,11 +184,12 @@ public class DownloadServiceTests
         download.Resource.Should().Be(ResourceKey.Empty);
         download.Status.Should().Be(DownloadStatus.InProgress);
 
-        // With no folder remembered, the dialog opens on the project folder.
+        // With no folder remembered, the dialog opens on the project folder, with In project selected.
         await _dialogService.Received(1).ShowDownloadFileDialogAsync(
             "report.pdf",
             "https://example.com/report.pdf",
-            ResourceKey.Empty);
+            ResourceKey.Empty,
+            DownloadFileChoice.InProject);
 
         _moves.Should().BeEmpty();
         _workspaceSettings.DownloadFolder.Should().BeEmpty();
@@ -290,7 +301,8 @@ public class DownloadServiceTests
         await _dialogService.Received(1).ShowDownloadFileDialogAsync(
             "notes.txt",
             "https://example.com/notes.txt",
-            incomingFolder);
+            incomingFolder,
+            DownloadFileChoice.InProject);
     }
 
     [Test]
@@ -303,7 +315,8 @@ public class DownloadServiceTests
         await _dialogService.Received(1).ShowDownloadFileDialogAsync(
             "report.pdf",
             "https://example.com/report.pdf",
-            ResourceKey.Empty);
+            ResourceKey.Empty,
+            DownloadFileChoice.InProject);
     }
 
     [Test]
@@ -352,11 +365,11 @@ public class DownloadServiceTests
         var ticket = await BeginAsync("report.pdf");
         _localFileSystem.SeedFile(ticket.StagingPath, "partial");
 
-        await _downloadService.FailAsync(ticket.Id, "The transfer did not complete.");
+        await _downloadService.FailAsync(ticket.Id, "The download could not complete.");
 
         var failed = _downloadService.Downloads.Should().ContainSingle().Subject;
         failed.Status.Should().Be(DownloadStatus.Failed);
-        failed.FailureReason.Should().Be("The transfer did not complete.");
+        failed.FailureReason.Should().Be("The download could not complete.");
         _localFileSystem.Files.Should().NotContainKey(ticket.StagingPath);
 
         pendingAnswer.SetResult(SaveTo(DownloadFolder));
@@ -387,12 +400,13 @@ public class DownloadServiceTests
         var download = _downloadService.Downloads.Should().ContainSingle().Subject;
         download.FileName.Should().Be("report.pdf");
         download.Status.Should().Be(DownloadStatus.Failed);
-        download.FailureReason.Should().Be("Downloads_TransferFailed");
+        download.FailureReason.Should().Be("Downloads_Failed");
 
         await _dialogService.DidNotReceive().ShowDownloadFileDialogAsync(
             Arg.Any<string>(),
             Arg.Any<string>(),
-            Arg.Any<ResourceKey>());
+            Arg.Any<ResourceKey>(),
+            Arg.Any<DownloadFileChoice>());
         await _resourceFileSystem.DidNotReceive().CreateFolderAsync(Arg.Any<ResourceKey>());
     }
 
@@ -410,7 +424,7 @@ public class DownloadServiceTests
 
         var download = _downloadService.Downloads.Should().ContainSingle().Subject;
         download.Status.Should().Be(DownloadStatus.Failed);
-        download.FailureReason.Should().Be("Downloads_TransferFailed");
+        download.FailureReason.Should().Be("Downloads_Failed");
         _localFileSystem.Files.Should().NotContainKey(ticket.StagingPath);
     }
 
@@ -461,7 +475,7 @@ public class DownloadServiceTests
 
         var download = _downloadService.Downloads.Should().ContainSingle().Subject;
         download.Status.Should().Be(DownloadStatus.Failed);
-        download.FailureReason.Should().Be("Downloads_DestinationUnavailable");
+        download.FailureReason.Should().Be("Downloads_Failed");
     }
 
     [Test]
@@ -473,7 +487,7 @@ public class DownloadServiceTests
 
         var download = _downloadService.Downloads.Should().ContainSingle().Subject;
         download.Status.Should().Be(DownloadStatus.Failed);
-        download.FailureReason.Should().Be("Downloads_DestinationUnavailable");
+        download.FailureReason.Should().Be("Downloads_Failed");
 
         _transfers["report.pdf"].Received(1).Cancel();
 
@@ -488,11 +502,11 @@ public class DownloadServiceTests
         var ticket = await BeginAsync("report.pdf");
         _localFileSystem.SeedFile(ticket.StagingPath, "partial");
 
-        await _downloadService.FailAsync(ticket.Id, "The transfer did not complete.");
+        await _downloadService.FailAsync(ticket.Id, "The download could not complete.");
 
         var download = _downloadService.Downloads.Should().ContainSingle().Subject;
         download.Status.Should().Be(DownloadStatus.Failed);
-        download.FailureReason.Should().Be("The transfer did not complete.");
+        download.FailureReason.Should().Be("The download could not complete.");
         download.Resource.Should().Be(ResourceKey.Empty);
 
         _localFileSystem.Files.Should().NotContainKey(ticket.StagingPath);
@@ -515,7 +529,7 @@ public class DownloadServiceTests
 
         var download = _downloadService.Downloads.Should().ContainSingle().Subject;
         download.Status.Should().Be(DownloadStatus.Failed);
-        download.FailureReason.Should().Be("Downloads_ImportFailed");
+        download.FailureReason.Should().Be("Downloads_Failed");
 
         // A move that failed leaves the staged file behind, so it is deleted.
         _localFileSystem.Files.Should().NotContainKey(ticket.StagingPath);
@@ -527,18 +541,19 @@ public class DownloadServiceTests
         _downloadService.RecordFailure(
             "report.pdf",
             "https://example.com/report.pdf",
-            "Downloads_TransferFailed");
+            "Downloads_Failed");
 
         var download = _downloadService.Downloads.Should().ContainSingle().Subject;
         download.FileName.Should().Be("report.pdf");
         download.Status.Should().Be(DownloadStatus.Failed);
-        download.FailureReason.Should().Be("Downloads_TransferFailed");
+        download.FailureReason.Should().Be("Downloads_Failed");
         download.Resource.Should().Be(ResourceKey.Empty);
 
         await _dialogService.DidNotReceive().ShowDownloadFileDialogAsync(
             Arg.Any<string>(),
             Arg.Any<string>(),
-            Arg.Any<ResourceKey>());
+            Arg.Any<ResourceKey>(),
+            Arg.Any<DownloadFileChoice>());
         _messengerService.Received(1).Send(Arg.Is<DownloadsChangedMessage>(message => message.HasArrival));
     }
 
@@ -548,7 +563,7 @@ public class DownloadServiceTests
         var succeeded = await CompleteDownloadAsync("report.pdf");
 
         var failedTicket = await BeginAsync("notes.txt");
-        await _downloadService.FailAsync(failedTicket.Id, "The transfer did not complete.");
+        await _downloadService.FailAsync(failedTicket.Id, "The download could not complete.");
 
         _downloadService.Downloads.Should().HaveCount(2);
 
@@ -568,7 +583,7 @@ public class DownloadServiceTests
         var succeeded = await CompleteDownloadAsync("report.pdf");
 
         var failedTicket = await BeginAsync("notes.txt");
-        await _downloadService.FailAsync(failedTicket.Id, "The transfer did not complete.");
+        await _downloadService.FailAsync(failedTicket.Id, "The download could not complete.");
 
         var runningTicket = await BeginAsync("data.csv");
         _localFileSystem.SeedFile(runningTicket.StagingPath, "payload");
@@ -730,7 +745,7 @@ public class DownloadServiceTests
         var succeeded = await CompleteDownloadAsync("report.pdf");
 
         var failedTicket = await BeginAsync("notes.txt");
-        await _downloadService.FailAsync(failedTicket.Id, "The transfer did not complete.");
+        await _downloadService.FailAsync(failedTicket.Id, "The download could not complete.");
 
         _downloadService.Remove(failedTicket.Id);
 
@@ -769,9 +784,121 @@ public class DownloadServiceTests
         download.TotalBytes.Should().Be(2048);
     }
 
+    [Test]
+    public async Task AnOtherLocationOutsideTheProject_ReceivesTheFile_ReplacingTheFileThere()
+    {
+        _workspaceSettings.DownloadFolder = DownloadFolder.ToString();
+
+        var filePath = Path.Combine(OutsideFolderPath, "quarterly.pdf");
+        _localFileSystem.SeedFile(filePath, "existing");
+        _answer = SaveToPath(filePath);
+
+        var ticket = await BeginAsync("report.pdf");
+        _localFileSystem.SeedFile(ticket.StagingPath, "payload");
+
+        await _downloadService.CompleteAsync(ticket.Id);
+
+        // The system save dialog asked before replacing the file, so the move overwrites it.
+        _localFileSystem.Calls.Should().Contain($"MoveFileAsync('{ticket.StagingPath}', '{filePath}', overwrite=True)");
+        (await _localFileSystem.ReadAllTextAsync(filePath)).Value.Should().Be("payload");
+        _localFileSystem.Files.Should().NotContainKey(ticket.StagingPath);
+        _moves.Should().BeEmpty();
+
+        // The row shows the chosen name, and finds the file by its path.
+        var settled = GetRow(ticket.Id);
+        settled.Status.Should().Be(DownloadStatus.Succeeded);
+        settled.FileName.Should().Be("quarterly.pdf");
+        settled.FilePath.Should().Be(filePath);
+        settled.Resource.Should().Be(ResourceKey.Empty);
+
+        // The option is remembered, and the folder last chosen stays for the next save in the project.
+        _workspaceSettings.DownloadToOtherLocation.Should().BeTrue();
+        _workspaceSettings.DownloadFolder.Should().Be(DownloadFolder.ToString());
+    }
+
+    [Test]
+    public async Task AnOtherLocationInsideTheProject_MovesTheFileIntoTheProject_ReplacingTheFileThere()
+    {
+        var destination = new ResourceKey("downloads/report.pdf");
+        var filePath = ResolvePath(destination).Value;
+        _localFileSystem.SeedFile(filePath, "existing");
+        _answer = SaveToPath(filePath);
+
+        var settled = await CompleteDownloadAsync("report.pdf");
+
+        var move = _moves.Should().ContainSingle().Subject;
+        move.DestResource.Should().Be(destination);
+        move.ReplaceExisting.Should().BeTrue();
+
+        settled.Status.Should().Be(DownloadStatus.Succeeded);
+        settled.Resource.Should().Be(destination);
+        settled.FilePath.Should().BeEmpty();
+        (await _localFileSystem.ReadAllTextAsync(filePath)).Value.Should().Be("payload");
+    }
+
+    [Test]
+    public async Task AProjectFolderAnswer_MovesWithoutReplacing_AndForgetsOtherLocation()
+    {
+        _workspaceSettings.DownloadToOtherLocation = true;
+
+        var settled = await CompleteDownloadAsync("report.pdf");
+
+        // An In project save moves the file to a reserved free name.
+        _moves.Should().ContainSingle()
+            .Which.ReplaceExisting.Should().BeFalse();
+        settled.Resource.Should().Be(new ResourceKey("downloads/report.pdf"));
+
+        _workspaceSettings.DownloadToOtherLocation.Should().BeFalse();
+        _workspaceSettings.DownloadFolder.Should().Be(DownloadFolder.ToString());
+    }
+
+    [Test]
+    public async Task TheDialogSelectsOtherLocation_OnceOtherLocationWasLastUsed()
+    {
+        _answer = SaveToPath(Path.Combine(OutsideFolderPath, "report.pdf"));
+
+        await CompleteDownloadAsync("report.pdf");
+
+        await BeginAsync("notes.txt");
+
+        await _dialogService.Received(1).ShowDownloadFileDialogAsync(
+            "notes.txt",
+            "https://example.com/notes.txt",
+            ResourceKey.Empty,
+            DownloadFileChoice.OtherLocation);
+    }
+
+    [Test]
+    public async Task CheckFilesOutsideProject_RemovesTheRowOfADeletedFile_AndKeepsTheRowOfAFileThatExists()
+    {
+        var deletedPath = Path.Combine(OutsideFolderPath, "report.pdf");
+        _answer = SaveToPath(deletedPath);
+        await CompleteDownloadAsync("report.pdf");
+
+        var keptPath = Path.Combine(OutsideFolderPath, "notes.txt");
+        _answer = SaveToPath(keptPath);
+        var kept = await CompleteDownloadAsync("notes.txt");
+
+        await _localFileSystem.DeleteFileAsync(deletedPath);
+        _messengerService.ClearReceivedCalls();
+
+        await _downloadService.CheckFilesOutsideProjectAsync();
+
+        _downloadService.Downloads.Should().ContainSingle()
+            .Which.Id.Should().Be(kept.Id);
+        _messengerService.Received(1).Send(Arg.Any<DownloadsChangedMessage>());
+    }
+
     private static Result<DownloadFileAnswer> SaveTo(ResourceKey folder)
     {
-        var answer = new DownloadFileAnswer(DownloadFileChoice.ProjectFolder, folder);
+        var answer = new DownloadFileAnswer(DownloadFileChoice.InProject, folder);
+
+        return Result<DownloadFileAnswer>.Ok(answer);
+    }
+
+    private static Result<DownloadFileAnswer> SaveToPath(string filePath)
+    {
+        var answer = new DownloadFileAnswer(DownloadFileChoice.OtherLocation, ResourceKey.Empty, filePath);
 
         return Result<DownloadFileAnswer>.Ok(answer);
     }
@@ -843,7 +970,7 @@ public class DownloadServiceTests
         var command = Substitute.For<IMoveDownloadCommand>();
         configure(command);
 
-        _moves.Add(new Move(command.SourceResource, command.DestResource));
+        _moves.Add(new Move(command.SourceResource, command.DestResource, command.ReplaceExisting));
 
         if (_duringMove is not null)
         {
@@ -852,7 +979,8 @@ public class DownloadServiceTests
 
         var moveResult = await _localFileSystem.MoveFileAsync(
             ResolvePath(command.SourceResource).Value,
-            ResolvePath(command.DestResource).Value);
+            ResolvePath(command.DestResource).Value,
+            overwrite: command.ReplaceExisting);
         moveResult.IsSuccess.Should().BeTrue(moveResult.DiagnosticReport);
 
         return Result.Ok();

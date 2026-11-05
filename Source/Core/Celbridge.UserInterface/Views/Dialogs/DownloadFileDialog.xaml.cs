@@ -5,8 +5,9 @@ using Celbridge.Logging;
 namespace Celbridge.UserInterface.Views;
 
 /// <summary>
-/// Asks where to save a file downloaded in a web view. The first page saves the file to the download folder, and
-/// the second page chooses that folder. The dialog stays open while the user switches between the pages.
+/// Asks where to save a file downloaded in a web view. The first page saves the file to the download folder, or
+/// opens the system save dialog for Other location. The second page chooses the download folder. The dialog stays
+/// open while the user switches between the pages, and beneath the system save dialog.
 /// </summary>
 public sealed partial class DownloadFileDialog : ContentDialog, IDownloadFileDialog
 {
@@ -16,12 +17,18 @@ public sealed partial class DownloadFileDialog : ContentDialog, IDownloadFileDia
 
     private Button? _primaryButton;
     private bool _isFolderListInitialized;
-    private DownloadFileAnswer? _automaticAnswer;
+    private bool _isPickingOtherLocation;
+
+    // Set when something other than the dialog's buttons settles it: an automatic answer, or the path the system
+    // save dialog returned.
+    private DownloadFileAnswer? _answer;
 
     public DownloadFileDialogViewModel ViewModel { get; }
 
-    private string ProjectFolderString => _stringLocalizer.GetString("DownloadFileDialog_ProjectFolder");
+    private string InProjectString => _stringLocalizer.GetString("DownloadFileDialog_InProject");
     private string ChooseFolderString => _stringLocalizer.GetString("DownloadFileDialog_ChooseFolder");
+    private string OtherLocationString => _stringLocalizer.GetString("DownloadFileDialog_OtherLocation");
+    private string OtherLocationHintString => _stringLocalizer.GetString("DownloadFileDialog_OtherLocationHint");
 
     public DownloadFileDialog()
     {
@@ -46,23 +53,23 @@ public sealed partial class DownloadFileDialog : ContentDialog, IDownloadFileDia
 
     public async Task<DownloadFileAnswer> ShowDialogAsync()
     {
-        _automaticAnswer = null;
+        _answer = null;
         _messengerService.Register<DialogAnswerMessage>(this, OnDialogAnswer);
         FolderList.ViewModel.PropertyChanged += OnFolderListPropertyChanged;
         try
         {
             var result = await ShowAsync();
 
-            if (_automaticAnswer is not null)
+            if (_answer is not null)
             {
-                return _automaticAnswer;
+                return _answer;
             }
 
-            // Save is the only button that closes the dialog with the primary result. On the second page the
-            // primary button is Select, which keeps the dialog open.
+            // Save with In project selected is the only button that closes the dialog with the primary result.
+            // Save with Other location waits for the system save dialog, and Select keeps the dialog open.
             if (result == ContentDialogResult.Primary)
             {
-                return new DownloadFileAnswer(DownloadFileChoice.ProjectFolder, ViewModel.DownloadFolder);
+                return new DownloadFileAnswer(DownloadFileChoice.InProject, ViewModel.DownloadFolder);
             }
 
             return new DownloadFileAnswer(DownloadFileChoice.Cancel, ResourceKey.Empty);
@@ -82,13 +89,18 @@ public sealed partial class DownloadFileDialog : ContentDialog, IDownloadFileDia
 
     private void Dialog_PrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
     {
-        if (!ViewModel.IsChoosingFolder)
+        if (ViewModel.IsChoosingFolder)
         {
+            args.Cancel = true;
+            ChooseSelectedFolder();
             return;
         }
 
-        args.Cancel = true;
-        ChooseSelectedFolder();
+        if (ViewModel.IsOtherLocationSelected)
+        {
+            args.Cancel = true;
+            _ = SaveToOtherLocationAsync();
+        }
     }
 
     private void Dialog_SecondaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
@@ -108,7 +120,7 @@ public sealed partial class DownloadFileDialog : ContentDialog, IDownloadFileDia
     {
         if (ViewModel.IsChoosingFolder
             && args.Result == ContentDialogResult.None
-            && _automaticAnswer is null)
+            && _answer is null)
         {
             args.Cancel = true;
             ShowFilePage();
@@ -117,7 +129,62 @@ public sealed partial class DownloadFileDialog : ContentDialog, IDownloadFileDia
 
     private void ChooseFolderButton_Click(object sender, RoutedEventArgs e)
     {
+        ViewModel.IsOtherLocationSelected = false;
         ShowFolderPage();
+    }
+
+    private void InProjectRadioButton_Checked(object sender, RoutedEventArgs e)
+    {
+        ViewModel.IsOtherLocationSelected = false;
+    }
+
+    private void OtherLocationRadioButton_Checked(object sender, RoutedEventArgs e)
+    {
+        ViewModel.IsOtherLocationSelected = true;
+    }
+
+    // The dialog stays open beneath the system save dialog. A path chosen there closes the dialog. Canceling the
+    // system save dialog returns to this dialog, where Cancel stops the download.
+    private async Task SaveToOtherLocationAsync()
+    {
+        if (_isPickingOtherLocation)
+        {
+            return;
+        }
+        _isPickingOtherLocation = true;
+
+        var pickedPath = string.Empty;
+        try
+        {
+            var pickResult = await ViewModel.PickOtherLocationAsync();
+            if (pickResult.IsSuccess)
+            {
+                pickedPath = pickResult.Value;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to show the system save dialog for a download");
+        }
+        finally
+        {
+            _isPickingOtherLocation = false;
+        }
+
+        // An automatic answer that arrived meanwhile has already closed the dialog.
+        if (_answer is not null)
+        {
+            return;
+        }
+
+        if (string.IsNullOrEmpty(pickedPath))
+        {
+            DispatcherQueue.TryEnqueue(() => _primaryButton?.Focus(FocusState.Programmatic));
+            return;
+        }
+
+        _answer = new DownloadFileAnswer(DownloadFileChoice.OtherLocation, ResourceKey.Empty, pickedPath);
+        Hide();
     }
 
     private void FolderList_ItemInvoked(object? sender, EventArgs e)
@@ -208,12 +275,12 @@ public sealed partial class DownloadFileDialog : ContentDialog, IDownloadFileDia
         {
             _logger.LogWarning(
                 $"Download File auto-answer failed: payload '{message.Payload}' is not a valid resource key.");
-            _automaticAnswer = new DownloadFileAnswer(DownloadFileChoice.Cancel, ResourceKey.Empty);
+            _answer = new DownloadFileAnswer(DownloadFileChoice.Cancel, ResourceKey.Empty);
             Hide();
             return;
         }
 
-        _automaticAnswer = new DownloadFileAnswer(DownloadFileChoice.ProjectFolder, folder);
+        _answer = new DownloadFileAnswer(DownloadFileChoice.InProject, folder);
         _logger.LogInformation($"Download File dialog answered automatically with '{folder}'.");
         Hide();
     }

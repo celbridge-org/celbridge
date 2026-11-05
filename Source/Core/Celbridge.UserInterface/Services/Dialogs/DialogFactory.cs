@@ -137,10 +137,14 @@ public class DialogFactory : IDialogFactory
         return WithFocusGuard(dialog);
     }
 
-    public IDownloadFileDialog CreateDownloadFileDialog(string fileName, string sourceUrl, ResourceKey downloadFolder)
+    public IDownloadFileDialog CreateDownloadFileDialog(
+        string fileName,
+        string sourceUrl,
+        ResourceKey downloadFolder,
+        DownloadFileChoice rememberedChoice)
     {
         var dialog = new DownloadFileDialog();
-        dialog.ViewModel.Initialize(fileName, sourceUrl, downloadFolder);
+        dialog.ViewModel.Initialize(fileName, sourceUrl, downloadFolder, rememberedChoice);
         return WithFocusGuard(dialog);
     }
 

@@ -13,14 +13,20 @@ public enum DownloadFileChoice
     /// <summary>
     /// The user chose to save the file to a folder in the project.
     /// </summary>
-    ProjectFolder
+    InProject,
+
+    /// <summary>
+    /// The user chose a path in the system save dialog. The path can be inside the project or outside it.
+    /// </summary>
+    OtherLocation
 }
 
 /// <summary>
-/// The user's answer to the Download File dialog. Folder is the project folder the file goes to, and is empty for
-/// the project folder itself.
+/// The user's answer to the Download File dialog. Folder is the folder in the project that the In project option
+/// saves to, and is empty for the project folder itself. FilePath is the absolute path an Other location answer
+/// saves to.
 /// </summary>
-public record DownloadFileAnswer(DownloadFileChoice Choice, ResourceKey Folder);
+public record DownloadFileAnswer(DownloadFileChoice Choice, ResourceKey Folder, string FilePath = "");
 
 /// <summary>
 /// A modal dialog that asks the user where to save a file downloaded in a web view.

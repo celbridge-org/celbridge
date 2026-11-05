@@ -443,7 +443,11 @@ public class DialogService : IDialogService
         return await ShowDialogAsync(dialog, dialog.ShowDialogAsync);
     }
 
-    public async Task<Result<DownloadFileAnswer>> ShowDownloadFileDialogAsync(string fileName, string sourceUrl, ResourceKey downloadFolder)
+    public async Task<Result<DownloadFileAnswer>> ShowDownloadFileDialogAsync(
+        string fileName,
+        string sourceUrl,
+        ResourceKey downloadFolder,
+        DownloadFileChoice rememberedChoice)
     {
         if (!_workspaceWrapper.IsWorkspaceLoaded)
         {
@@ -455,7 +459,7 @@ public class DialogService : IDialogService
             return RefuseSecondDialog();
         }
 
-        var dialog = _dialogFactory.CreateDownloadFileDialog(fileName, sourceUrl, downloadFolder);
+        var dialog = _dialogFactory.CreateDownloadFileDialog(fileName, sourceUrl, downloadFolder, rememberedChoice);
         _answerScheduler.OnDialogShown(DialogKind.DownloadFile);
         return await ShowDialogAsync(dialog, dialog.ShowDialogAsync);
     }

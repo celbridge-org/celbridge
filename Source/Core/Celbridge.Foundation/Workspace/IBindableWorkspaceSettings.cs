@@ -89,4 +89,10 @@ public interface IBindableWorkspaceSettings : INotifyPropertyChanged
     /// folder itself.
     /// </summary>
     string DownloadFolder { get; set; }
+
+    /// <summary>
+    /// True when the Download File dialog last saved a file with Other location. False after a save to a project
+    /// folder.
+    /// </summary>
+    bool DownloadToOtherLocation { get; set; }
 }
