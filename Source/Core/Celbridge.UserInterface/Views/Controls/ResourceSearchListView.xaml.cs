@@ -85,7 +85,7 @@ public sealed partial class ResourceSearchListView : UserControl
         }
         else if (e.Key == VirtualKey.Escape)
         {
-            // Handled, so the key doesn't reach the control that gets the keyboard back when the dialog closes.
+            // Handled, so the key stops here. A closing dialog gives the keyboard back to another control.
             e.Handled = true;
             EscapePressed?.Invoke(this, EventArgs.Empty);
         }
@@ -99,9 +99,9 @@ public sealed partial class ResourceSearchListView : UserControl
         }
     }
 
-    // Uses PreviewKeyDown because the list handles Enter itself, so a KeyDown handler never sees it. A dialog that
+    // Uses PreviewKeyDown, because the list handles Enter itself and a KeyDown handler never sees it. A dialog that
     // starts to close gives the keyboard back to the control that opened the dialog. WinUI delivers this same key
-    // to that control. The handler marks the key handled, so the Enter that chooses an item never also presses the
+    // to that control. The handler marks the key handled. The Enter that chooses an item then never presses the
     // button that opened the dialog.
     private void ResourceList_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
     {

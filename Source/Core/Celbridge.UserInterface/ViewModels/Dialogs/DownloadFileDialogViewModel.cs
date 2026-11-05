@@ -36,12 +36,12 @@ public partial class DownloadFileDialogViewModel : ObservableObject
     private bool _isOtherLocationSelected;
 
     /// <summary>
-    /// True while the In project option is selected, which is whenever Other location is not.
+    /// True while the In Project option is selected, which is whenever Other Location is not.
     /// </summary>
     public bool IsInProjectSelected => !IsOtherLocationSelected;
 
     /// <summary>
-    /// The option the user last saved a file with in this project. When that option is Other location, the system
+    /// The option the user last saved a file with in this project. When that option is Other Location, the system
     /// save dialog opens on the folder last used. Otherwise the save dialog opens on the Downloads folder.
     /// </summary>
     public DownloadFileChoice RememberedChoice { get; private set; } = DownloadFileChoice.InProject;
@@ -103,22 +103,27 @@ public partial class DownloadFileDialogViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Opens the system save dialog on the file's name, and returns the path the user chose. The dialog offers
-    /// only the extension of the file's name, since a save dialog accepts no wildcard file type.
+    /// Opens the system save dialog on the file's name, and returns the path the user chose. The dialog offers the
+    /// file's extension as its one file type. The list of file types is empty for a name without an extension, and
+    /// the dialog then accepts any name.
     /// </summary>
     public async Task<Result<string>> PickOtherLocationAsync()
     {
         var extension = Path.GetExtension(FileName);
 
         List<string> extensions = [];
-        if (!string.IsNullOrEmpty(extension))
+        string fileTypeDescription;
+        if (string.IsNullOrEmpty(extension))
+        {
+            fileTypeDescription = _stringLocalizer.GetString("DownloadFileDialog_NoExtensionFileType");
+        }
+        else
         {
             extensions.Add(extension);
+            fileTypeDescription = _stringLocalizer.GetString(
+                "DownloadFileDialog_FileType",
+                extension.TrimStart('.').ToUpperInvariant());
         }
-
-        var fileTypeDescription = _stringLocalizer.GetString(
-            "DownloadFileDialog_FileType",
-            extension.TrimStart('.').ToUpperInvariant());
 
         var startFolder = RememberedChoice == DownloadFileChoice.OtherLocation
             ? PickerStartFolder.LastUsed

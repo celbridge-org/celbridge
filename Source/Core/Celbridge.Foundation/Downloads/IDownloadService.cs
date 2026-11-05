@@ -16,12 +16,14 @@ public enum DownloadStatus
     Succeeded,
 
     /// <summary>
-    /// The transfer or the move to the destination failed. No file was saved.
+    /// The download failed to start, its transfer failed, or its file failed to move to the destination. Nothing was
+    /// saved.
     /// </summary>
     Failed,
 
     /// <summary>
-    /// The transfer was stopped before it finished, which is not a failure. No file was saved.
+    /// The user or the platform stopped the download before the file was saved. A cancellation is not a failure. No
+    /// file was saved.
     /// </summary>
     Canceled
 }

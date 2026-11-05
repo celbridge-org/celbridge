@@ -6,6 +6,8 @@ namespace Celbridge.UserInterface.Services;
 
 public class FilePickerService : IFilePickerService
 {
+    private const string NoExtensionFileType = ".";
+
     private readonly ILocalFileSystem _fileSystem;
     private readonly IPlatformInfo _platformInfo;
 
@@ -93,6 +95,11 @@ public class FilePickerService : IFilePickerService
         if (extensions.Count > 0)
         {
             fileSavePicker.FileTypeChoices.Add(fileTypeDescription, extensions);
+        }
+        else if (_platformInfo.SaveDialogRequiresFileType)
+        {
+            // A lone "." is the file type of a name with no extension, so the dialog accepts any name.
+            fileSavePicker.FileTypeChoices.Add(fileTypeDescription, [NoExtensionFileType]);
         }
 
         InitializeWithMainWindow(fileSavePicker);

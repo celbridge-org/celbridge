@@ -38,7 +38,7 @@ internal sealed class DownloadList
     }
 
     /// <summary>
-    /// Returns the resource key of each file in the project that a succeeded row names, with no key listed twice.
+    /// Returns the resource key of each succeeded row's file in the project, with no key listed twice.
     /// </summary>
     public IReadOnlyList<ResourceKey> GetSucceededResources()
     {
@@ -54,7 +54,7 @@ internal sealed class DownloadList
     }
 
     /// <summary>
-    /// Returns the path of each file outside the project that a succeeded row names, with no path listed twice.
+    /// Returns the path of each succeeded row's file outside the project, with no path listed twice.
     /// </summary>
     public IReadOnlyList<string> GetSucceededFilePaths()
     {

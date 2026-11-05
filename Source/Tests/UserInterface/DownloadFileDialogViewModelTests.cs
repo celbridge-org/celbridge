@@ -9,7 +9,7 @@ namespace Celbridge.Tests.UserInterface;
 /// <summary>
 /// Covers what the Download File dialog shows: the site offering the file, the download folder, and the title and
 /// button texts of its two pages. The project folder shows as the project's name. The remembered choice starts
-/// selected. Other location opens the system save dialog on the file's name.
+/// selected. Other Location opens the system save dialog on the file's name.
 /// </summary>
 [TestFixture]
 public class DownloadFileDialogViewModelTests
@@ -154,7 +154,7 @@ public class DownloadFileDialogViewModelTests
         _viewModel.IsOtherLocationSelected.Should().BeTrue();
         _viewModel.IsInProjectSelected.Should().BeFalse();
 
-        // The download folder stays ready for the In project option.
+        // The download folder stays ready for the In Project option.
         _viewModel.DownloadFolderText.Should().Be("downloads");
     }
 
@@ -210,9 +210,10 @@ public class DownloadFileDialogViewModelTests
 
         await _viewModel.PickOtherLocationAsync();
 
+        // A save dialog that needs a file type shows the description for a name with no extension.
         await _filePickerService.Received(1).PickSaveFileAsync(
             "README",
-            Arg.Any<string>(),
+            "DownloadFileDialog_NoExtensionFileType",
             Arg.Is<IEnumerable<string>>(extensions => !extensions.Any()),
             PickerStartFolder.Downloads,
             "DownloadFile");

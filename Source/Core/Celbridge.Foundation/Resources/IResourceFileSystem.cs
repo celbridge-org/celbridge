@@ -2,10 +2,10 @@ namespace Celbridge.Resources;
 
 /// <summary>
 /// Options for a move. AllowCrossRoot lets the source and destination sit on
-/// different roots, which a caller has to ask for: a resource keeps no identity
-/// across roots, so such a move announces no key change. ReplaceExisting lets a
-/// file move onto a file already at the destination, replacing it in one step.
-/// A folder never replaces anything.
+/// different roots. A caller has to ask for that. Keys only make sense within
+/// a root, so a move across roots counts as a delete and a create.
+/// ReplaceExisting lets a file move onto a file already at the destination,
+/// replacing it in one step. A folder never replaces anything.
 /// </summary>
 public sealed record MoveOptions(bool AllowCrossRoot = false, bool ReplaceExisting = false);
 
@@ -57,7 +57,8 @@ public interface IResourceFileSystem
     /// roots is refused unless the options allow it. Such a move is a delete from
     /// one root and a create in the other, like CopyAsync followed by DeleteAsync.
     /// An item at the destination makes the move fail, unless the options let a
-    /// file replace a file. A replaced file keeps its sidecar.
+    /// file replace a file. A replaced file's sidecar stays when the moving file
+    /// has none.
     /// </summary>
     Task<Result<MoveResult>> MoveAsync(ResourceKey source, ResourceKey dest, MoveOptions? options = null);
 

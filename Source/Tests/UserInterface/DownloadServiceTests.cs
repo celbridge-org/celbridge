@@ -21,7 +21,7 @@ namespace Celbridge.Tests.UserInterface;
 /// temp: while the Download File dialog asks where the file goes. The answer reserves a free name in the chosen
 /// folder, and the file moves there once the transfer has finished. Cancel, a failed transfer and a denied
 /// destination each delete the staged file. A download fails when the Download File dialog cannot open. A row with a
-/// missing file leaves the list. Other location saves the file to the path chosen in the system save dialog, and
+/// missing file leaves the list. Other Location saves the file to the path chosen in the system save dialog, and
 /// replaces any file there. A file saved outside the project moves through the local file system, and its row
 /// records the path.
 /// </summary>
@@ -184,7 +184,7 @@ public class DownloadServiceTests
         download.Resource.Should().Be(ResourceKey.Empty);
         download.Status.Should().Be(DownloadStatus.InProgress);
 
-        // With no folder remembered, the dialog opens on the project folder, with In project selected.
+        // With no folder remembered, the dialog opens on the project folder, with In Project selected.
         await _dialogService.Received(1).ShowDownloadFileDialogAsync(
             "report.pdf",
             "https://example.com/report.pdf",
@@ -379,7 +379,7 @@ public class DownloadServiceTests
         unchanged.Status.Should().Be(DownloadStatus.Failed);
         unchanged.FileName.Should().Be("report.pdf");
 
-        // The answer reserved no name, so the next download of the file takes the name itself.
+        // The answer reserved nothing, so the next download of report.pdf gets the plain name report.pdf.
         var nextTicket = await BeginAsync("report.pdf");
 
         GetRow(nextTicket.Id).FileName.Should().Be("report.pdf");
@@ -843,7 +843,7 @@ public class DownloadServiceTests
 
         var settled = await CompleteDownloadAsync("report.pdf");
 
-        // An In project save moves the file to a reserved free name.
+        // An In Project save moves the file to a reserved free name.
         _moves.Should().ContainSingle()
             .Which.ReplaceExisting.Should().BeFalse();
         settled.Resource.Should().Be(new ResourceKey("downloads/report.pdf"));
@@ -887,6 +887,64 @@ public class DownloadServiceTests
         _downloadService.Downloads.Should().ContainSingle()
             .Which.Id.Should().Be(kept.Id);
         _messengerService.Received(1).Send(Arg.Any<DownloadsChangedMessage>());
+    }
+
+    [Test]
+    public async Task CancelingAnOtherLocationDownload_DeletesTheEmptyFileTheSaveDialogMade()
+    {
+        // The system save dialog on Windows makes an empty file at the path it returns.
+        var filePath = Path.Combine(OutsideFolderPath, "report.pdf");
+        _localFileSystem.SeedFile(filePath, string.Empty);
+        _answer = SaveToPath(filePath);
+
+        var ticket = await BeginAsync("report.pdf");
+        await _downloadService.CancelAsync(ticket.Id);
+
+        GetRow(ticket.Id).Status.Should().Be(DownloadStatus.Canceled);
+        _localFileSystem.Files.Should().NotContainKey(filePath);
+    }
+
+    [Test]
+    public async Task AFailedOtherLocationDownload_KeepsAFileWithContentAtThePath()
+    {
+        var filePath = Path.Combine(OutsideFolderPath, "report.pdf");
+        _localFileSystem.SeedFile(filePath, "existing");
+        _answer = SaveToPath(filePath);
+
+        var ticket = await BeginAsync("report.pdf");
+        await _downloadService.FailAsync(ticket.Id, "The download could not complete.");
+
+        GetRow(ticket.Id).Status.Should().Be(DownloadStatus.Failed);
+        (await _localFileSystem.ReadAllTextAsync(filePath)).Value.Should().Be("existing");
+    }
+
+    [Test]
+    public async Task AFailedOtherLocationDownloadInsideTheProject_DeletesTheEmptyFileThroughTheProject()
+    {
+        var destination = new ResourceKey("downloads/report.pdf");
+        var filePath = ResolvePath(destination).Value;
+        _localFileSystem.SeedFile(filePath, string.Empty);
+        _answer = SaveToPath(filePath);
+
+        var ticket = await BeginAsync("report.pdf");
+        await _downloadService.FailAsync(ticket.Id, "The download could not complete.");
+
+        await _resourceFileSystem.Received(1).DeleteAsync(destination);
+        _localFileSystem.Files.Should().NotContainKey(filePath);
+    }
+
+    [Test]
+    public async Task AnOtherLocationAnswerAfterTheTransferFailed_DeletesTheEmptyFileTheSaveDialogMade()
+    {
+        var pendingAnswer = HoldTheNextAnswer();
+        var ticket = await BeginAsync("report.pdf");
+        await _downloadService.FailAsync(ticket.Id, "The download could not complete.");
+
+        var filePath = Path.Combine(OutsideFolderPath, "report.pdf");
+        _localFileSystem.SeedFile(filePath, string.Empty);
+        pendingAnswer.SetResult(SaveToPath(filePath));
+
+        _localFileSystem.Files.Should().NotContainKey(filePath);
     }
 
     private static Result<DownloadFileAnswer> SaveTo(ResourceKey folder)

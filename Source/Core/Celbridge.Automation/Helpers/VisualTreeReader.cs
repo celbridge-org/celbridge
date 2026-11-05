@@ -210,9 +210,9 @@ internal static class VisualTreeReader
     }
 
     /// <summary>
-    /// Returns the control's value from its peer's value provider, or null if the peer has none. A range control, for
+    /// Returns the control's value from its peer's value provider or range value provider. A range control, for
     /// example a progress bar, gives its value as a number. WinUI's TextBox peer doesn't expose a value provider to
-    /// managed code, so for a TextBox this returns its Text.
+    /// managed code, so for a TextBox this returns its Text. Returns null for any other control.
     /// </summary>
     private static string? ReadValue(FrameworkElement element, AutomationPeer peer)
     {

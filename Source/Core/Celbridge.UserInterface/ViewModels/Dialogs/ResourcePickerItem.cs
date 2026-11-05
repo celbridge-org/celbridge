@@ -83,7 +83,7 @@ public class ResourcePickerItem
         return new ResourcePickerItem(ResourceKey.Empty, displayText, iconDefinition, WritableState.Writable, null);
     }
 
-    // A resource in the project: root shows its bare path. A resource in any other root shows the full "root:path"
+    // A resource in the `project:` root shows its bare path. A resource in any other root shows the full "root:path"
     // form, so the list names its root.
     private static string DisplayTextFor(ResourceKey resourceKey)
     {

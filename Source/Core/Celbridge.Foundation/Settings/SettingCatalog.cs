@@ -136,7 +136,7 @@ public static class SettingCatalog
     }
 
     /// <summary>
-    /// Where files downloaded in a web view are saved.
+    /// The Download File dialog's last choice: the download folder, and whether Other Location was used.
     /// </summary>
     public static class Downloads
     {

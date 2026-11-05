@@ -1657,6 +1657,9 @@ Open with default application instead?</value>
   <data name="DownloadFileDialog_FileType" xml:space="preserve">
     <value>{0} File</value>
   </data>
+  <data name="DownloadFileDialog_NoExtensionFileType" xml:space="preserve">
+    <value>File</value>
+  </data>
   <data name="DownloadFileDialog_SelectFolderTitle" xml:space="preserve">
     <value>Select Folder</value>
   </data>

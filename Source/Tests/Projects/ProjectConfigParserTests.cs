@@ -267,8 +267,8 @@ public class ProjectConfigParserTests
     [Test]
     public void ParseFromFile_ResourcesTable_IsReportedAsUnknownAndIgnored()
     {
-        // The table's keys belong to the explorer and search tables. The load report names the table, and none
-        // of its keys applies.
+        // The explorer and search tables own hide and search-exclude. Loading reports [celbridge.resources] as
+        // unknown and applies none of its keys.
         var content = """
             [celbridge]
             celbridge-version = "1.0.0"

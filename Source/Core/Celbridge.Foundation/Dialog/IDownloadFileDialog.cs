@@ -22,9 +22,8 @@ public enum DownloadFileChoice
 }
 
 /// <summary>
-/// The user's answer to the Download File dialog. Folder is the folder in the project that the In project option
-/// saves to, and is empty for the project folder itself. FilePath is the absolute path an Other location answer
-/// saves to.
+/// The user's answer to the Download File dialog. An In Project answer saves to Folder, a folder in the project.
+/// Folder is empty for the project folder itself. An Other Location answer saves to FilePath, an absolute path.
 /// </summary>
 public record DownloadFileAnswer(DownloadFileChoice Choice, ResourceKey Folder, string FilePath = "");
 

@@ -156,7 +156,7 @@ public class DownloadBadgeViewModel
     }
 
     /// <summary>
-    /// Takes a finished download off the list, leaving the file it landed on in the project.
+    /// Takes a finished download off the list, leaving the file where it was saved.
     /// </summary>
     public void Remove(DownloadEntry download)
     {

@@ -23,9 +23,9 @@ public sealed class DownloadService : IDownloadService
     }
 
     // Contains the state of a download still running. StagingResource is where the platform writes the file, at
-    // StagingPath. Transfer stops the download, and Destination is set once the user has chosen one. The service
-    // keeps this apart from the rows, so removing a row leaves the transfer held. Holding the transfer keeps the
-    // platform's handle alive. The service changes this only under its lock.
+    // StagingPath. Transfer is the platform's handle, which can cancel the download. Destination is set once the user
+    // has chosen one. The service keeps this state apart from the rows, so removing a row keeps the transfer held.
+    // Holding the transfer keeps the platform's handle alive. The service changes this state only under its lock.
     private sealed class InFlightDownload
     {
         public InFlightDownload(ResourceKey stagingResource, string stagingPath, IDownloadTransfer transfer)
@@ -230,7 +230,7 @@ public sealed class DownloadService : IDownloadService
             await resourceFileSystem.DeleteAsync(inFlightDownload.StagingResource);
         }
 
-        ReleaseDestination(inFlightDownload);
+        await ReleaseDestinationAsync(inFlightDownload);
 
         SettleAsFailed(downloadId, reason);
     }
@@ -287,7 +287,7 @@ public sealed class DownloadService : IDownloadService
     public void ClearAll()
     {
         // The row of a running download stays, so the user can follow the transfer's progress and stop the
-        // transfer. Only the rows of finished downloads go, and their files stay in the project.
+        // transfer. Only the rows of finished downloads go, and their files stay where they were saved.
         if (!_rows.ClearFinished())
         {
             return;
@@ -398,8 +398,8 @@ public sealed class DownloadService : IDownloadService
         return rememberedFolder;
     }
 
-    // Returns the option the user last saved a file with in this project. That is the In project option until
-    // Other location has been used.
+    // Returns the option the user last saved a file with in this project. That is the In Project option until
+    // Other Location has been used.
     private DownloadFileChoice GetRememberedChoice()
     {
         if (_workspaceWrapper.HasWorkspaceService
@@ -411,7 +411,7 @@ public sealed class DownloadService : IDownloadService
         return DownloadFileChoice.InProject;
     }
 
-    // Remembers the option the user saved with. Only a save with the In project option changes the download folder,
+    // Remembers the option the user saved with. Only a save with the In Project option changes the download folder,
     // so the folder chosen last stays for the next save in the project.
     private void RememberChoice(DownloadFileAnswer answer)
     {
@@ -524,22 +524,28 @@ public sealed class DownloadService : IDownloadService
     private async Task SetDestinationAsync(long downloadId, Destination destination)
     {
         InFlightDownload? finishedDownload = null;
+        var isInFlight = false;
         lock (_lock)
         {
-            if (!_inFlightDownloads.TryGetValue(downloadId, out var inFlightDownload))
+            if (_inFlightDownloads.TryGetValue(downloadId, out var inFlightDownload))
             {
-                // The transfer failed or was stopped while the dialog was asking.
-                ReleaseReservation(destination);
-                return;
-            }
+                isInFlight = true;
+                inFlightDownload.Destination = destination;
 
-            inFlightDownload.Destination = destination;
-
-            if (inFlightDownload.IsTransferFinished)
-            {
-                _inFlightDownloads.Remove(downloadId);
-                finishedDownload = inFlightDownload;
+                if (inFlightDownload.IsTransferFinished)
+                {
+                    _inFlightDownloads.Remove(downloadId);
+                    finishedDownload = inFlightDownload;
+                }
             }
+        }
+
+        if (!isInFlight)
+        {
+            // The transfer failed or was stopped while the dialog was asking.
+            ReleaseReservation(destination);
+            await DeleteEmptyFileAsync(destination);
+            return;
         }
 
         var savedName = destination.IsInProject
@@ -570,7 +576,8 @@ public sealed class DownloadService : IDownloadService
         {
             if (!_workspaceWrapper.HasWorkspaceService)
             {
-                // The project the download belonged to has closed, and its staging file goes with temp:.
+                // The download's project has closed. Loading the next workspace wipes temp:, and the staged file
+                // with it.
                 _logger.LogWarning(
                     $"A download failed: its project closed before '{inFlightDownload.StagingPath}' moved");
 
@@ -618,12 +625,12 @@ public sealed class DownloadService : IDownloadService
                     var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
                     await resourceFileSystem.DeleteAsync(inFlightDownload.StagingResource);
                 }
+                await DeleteEmptyFileAsync(destination);
                 return;
             }
 
-            // Nothing in the Explorer is selected or expanded, since selecting there takes the keyboard from
-            // whatever the user was doing when the download finished. The badge announces the arrival, and its
-            // row finds the file.
+            // The badge announces the arrival, and the download's row in the list reveals the file. The Explorer
+            // selection stays put, so the keyboard stays where the user was working.
             SettleAsSucceeded(downloadId, destination);
         }
         finally
@@ -661,17 +668,74 @@ public sealed class DownloadService : IDownloadService
             await resourceFileSystem.DeleteAsync(inFlightDownload.StagingResource);
         }
 
-        ReleaseDestination(inFlightDownload);
+        await ReleaseDestinationAsync(inFlightDownload);
 
         SettleAsFailed(downloadId, reason);
     }
 
-    private void ReleaseDestination(InFlightDownload inFlightDownload)
+    // Frees the destination of a download that saves nothing there.
+    private async Task ReleaseDestinationAsync(InFlightDownload inFlightDownload)
     {
-        if (inFlightDownload.Destination is Destination destination)
+        if (inFlightDownload.Destination is not Destination destination)
         {
-            ReleaseReservation(destination);
+            return;
         }
+
+        ReleaseReservation(destination);
+        await DeleteEmptyFileAsync(destination);
+    }
+
+    // The system save dialog on Windows creates an empty file at the path it returns. A download that saves nothing
+    // deletes that file. A file with content stays, because the save dialog only asked to replace it. A reserved
+    // destination never has a file, since the In Project option picks a free name.
+    private async Task DeleteEmptyFileAsync(Destination destination)
+    {
+        if (destination.IsReserved)
+        {
+            return;
+        }
+
+        if (destination.IsInProject)
+        {
+            if (!_workspaceWrapper.HasWorkspaceService)
+            {
+                return;
+            }
+            var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+
+            var resourceInfoResult = await resourceFileSystem.GetInfoAsync(destination.Resource);
+            if (resourceInfoResult.IsFailure
+                || !IsEmptyFile(resourceInfoResult.Value))
+            {
+                return;
+            }
+
+            var deleteResult = await resourceFileSystem.DeleteAsync(destination.Resource);
+            if (deleteResult.IsFailure)
+            {
+                _logger.LogWarning(deleteResult, $"Failed to delete the empty file at '{destination.Resource}'");
+            }
+            return;
+        }
+
+        var infoResult = await _localFileSystem.GetInfoAsync(destination.FilePath);
+        if (infoResult.IsFailure
+            || !IsEmptyFile(infoResult.Value))
+        {
+            return;
+        }
+
+        var deleteFileResult = await _localFileSystem.DeleteFileAsync(destination.FilePath);
+        if (deleteFileResult.IsFailure)
+        {
+            _logger.LogWarning(deleteFileResult, $"Failed to delete the empty file at '{destination.FilePath}'");
+        }
+    }
+
+    private static bool IsEmptyFile(StorageItemInfo info)
+    {
+        return info.Kind == StorageItemKind.File
+            && info.Size == 0;
     }
 
     private void ReleaseReservation(Destination destination)
@@ -742,7 +806,7 @@ public sealed class DownloadService : IDownloadService
             await resourceFileSystem.DeleteAsync(inFlightDownload.StagingResource);
         }
 
-        ReleaseDestination(inFlightDownload);
+        await ReleaseDestinationAsync(inFlightDownload);
 
         SettleAsCanceled(downloadId);
     }

@@ -6,7 +6,7 @@ namespace Celbridge.UserInterface.Views;
 
 /// <summary>
 /// Asks where to save a file downloaded in a web view. The first page saves the file to the download folder, or
-/// opens the system save dialog for Other location. The second page chooses the download folder. The dialog stays
+/// opens the system save dialog for Other Location. The second page chooses the download folder. The dialog stays
 /// open while the user switches between the pages, and beneath the system save dialog.
 /// </summary>
 public sealed partial class DownloadFileDialog : ContentDialog, IDownloadFileDialog
@@ -65,8 +65,7 @@ public sealed partial class DownloadFileDialog : ContentDialog, IDownloadFileDia
                 return _answer;
             }
 
-            // Save with In project selected is the only button that closes the dialog with the primary result.
-            // Save with Other location waits for the system save dialog, and Select keeps the dialog open.
+            // A primary result means Save with In Project selected.
             if (result == ContentDialogResult.Primary)
             {
                 return new DownloadFileAnswer(DownloadFileChoice.InProject, ViewModel.DownloadFolder);
