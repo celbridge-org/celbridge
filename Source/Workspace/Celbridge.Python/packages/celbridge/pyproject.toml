@@ -1,7 +1,7 @@
 [build-system]
 # Pinned because setuptools stamps its version into the wheel, whose hash gates the application's Python
 # install: an unpinned range reinstalls it wherever a different release resolves. Bump deliberately.
-requires = ["setuptools==84.0.0"]
+requires = ["setuptools==84.2.1"]
 build-backend = "setuptools.build_meta"
 
 [project]
