@@ -24,7 +24,7 @@ public class FilePickerService : IFilePickerService
     {
         var fileOpenPicker = new FileOpenPicker
         {
-            SuggestedStartLocation = ToPickerLocationId(startFolder),
+            SuggestedStartLocation = GetPickerLocationId(startFolder),
             SettingsIdentifier = settingsIdentifier
         };
 
@@ -58,7 +58,7 @@ public class FilePickerService : IFilePickerService
     {
         var folderPicker = new FolderPicker
         {
-            SuggestedStartLocation = ToPickerLocationId(startFolder),
+            SuggestedStartLocation = GetPickerLocationId(startFolder),
             SettingsIdentifier = settingsIdentifier
         };
 
@@ -86,7 +86,7 @@ public class FilePickerService : IFilePickerService
     {
         var fileSavePicker = new FileSavePicker
         {
-            SuggestedStartLocation = ToPickerLocationId(startFolder),
+            SuggestedStartLocation = GetPickerLocationId(startFolder),
             SuggestedFileName = suggestedFileName,
             SettingsIdentifier = settingsIdentifier
         };
@@ -114,15 +114,20 @@ public class FilePickerService : IFilePickerService
     }
 
     // An unspecified location leaves the folder to the platform, which opens the folder last used under the
-    // settings identifier.
-    private static PickerLocationId ToPickerLocationId(PickerStartFolder startFolder)
+    // settings identifier. A save dialog that requires a start location gets Downloads. That dialog treats the
+    // location as a suggestion, and opens the folder the user last navigated to under the settings identifier.
+    internal PickerLocationId GetPickerLocationId(PickerStartFolder startFolder)
     {
-        return startFolder switch
+        if (startFolder == PickerStartFolder.LastUsed)
         {
-            PickerStartFolder.Downloads => PickerLocationId.Downloads,
-            PickerStartFolder.LastUsed => PickerLocationId.Unspecified,
-            _ => PickerLocationId.DocumentsLibrary
-        };
+            return _platformInfo.SaveDialogRequiresStartLocation
+                ? PickerLocationId.Downloads
+                : PickerLocationId.Unspecified;
+        }
+
+        return startFolder == PickerStartFolder.Downloads
+            ? PickerLocationId.Downloads
+            : PickerLocationId.DocumentsLibrary;
     }
 
     // The packaged WinUI head requires a picker to be associated with the owning window handle.

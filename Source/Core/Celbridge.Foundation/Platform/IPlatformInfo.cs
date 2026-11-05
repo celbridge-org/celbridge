@@ -52,6 +52,11 @@ public interface IPlatformInfo
     bool SaveDialogRequiresFileType { get; }
 
     /// <summary>
+    /// Returns true on the packaged Windows head, where the system save dialog refuses an unspecified start location.
+    /// </summary>
+    bool SaveDialogRequiresStartLocation { get; }
+
+    /// <summary>
     /// Whether the window's sizes and resize constraints are in physical pixels rather than device-independent
     /// ones, so a size composed from layout values has to be scaled before it is applied to the window. True on
     /// Windows (both the packaged and Skia heads) and Linux. False on macOS, whose constraint is set in points,

@@ -66,6 +66,9 @@ public sealed partial class ResourceSearchListView : UserControl
         }
 
         ViewModel.SelectedItem = item;
+
+        // A list that has just been filled ignores a request to scroll until it has been laid out.
+        ResourceList.UpdateLayout();
         ResourceList.ScrollIntoView(item);
     }
 
