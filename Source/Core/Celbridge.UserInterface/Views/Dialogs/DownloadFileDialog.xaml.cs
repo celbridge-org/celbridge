@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using Celbridge.Dialog;
 using Celbridge.Logging;
+using Microsoft.UI.Xaml.Input;
 
 namespace Celbridge.UserInterface.Views;
 
@@ -84,6 +85,17 @@ public sealed partial class DownloadFileDialog : ContentDialog, IDownloadFileDia
     {
         // Save takes the keyboard, so Enter saves the file to the download folder.
         _primaryButton?.Focus(FocusState.Programmatic);
+    }
+
+    // ContentDialog makes one programmatic move of the keyboard to the dialog's first control, either before or after
+    // Opened. This handler sends that move to Save. A click or Tab on In Project has a different focus state, so that
+    // click or Tab still reaches In Project.
+    private void InProjectRadioButton_GettingFocus(UIElement sender, GettingFocusEventArgs args)
+    {
+        if (args.FocusState == FocusState.Programmatic && _primaryButton is not null)
+        {
+            args.TrySetNewFocusedElement(_primaryButton);
+        }
     }
 
     private void Dialog_PrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)

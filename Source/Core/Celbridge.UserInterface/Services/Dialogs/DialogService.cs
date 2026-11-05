@@ -240,7 +240,9 @@ public class DialogService : IDialogService
 
     private void OnDialogOpened(ContentDialog sender, ContentDialogOpenedEventArgs args)
     {
-        // The factory's focus guard handles Opened first, so the dialog holds the keyboard by now.
+        // The factory's focus guard handles Opened first, so the dialog usually has the keyboard by now. The exception
+        // is a web view that has just taken the keyboard, which can keep the keyboard until a moment after Opened.
+        // ContentDialog moves the keyboard into the dialog at that later moment.
         _automationService.LogEvent(new DialogOpenedEvent(sender.GetType().Name));
     }
 

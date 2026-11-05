@@ -32,6 +32,7 @@
 
       <StackPanel Spacing="4">
         <RadioButton x:Name="InProjectRadioButton"
+                     GettingFocus="InProjectRadioButton_GettingFocus"
                      GroupName="DownloadLocation"
                      Content="{x:Bind InProjectString}"
                      IsChecked="{x:Bind ViewModel.IsInProjectSelected, Mode=OneWay}"
