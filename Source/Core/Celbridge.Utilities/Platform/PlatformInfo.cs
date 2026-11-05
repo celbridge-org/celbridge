@@ -34,14 +34,14 @@ public sealed class PlatformInfo : IPlatformInfo
         }
     }
 
-    public bool SaveDialogRequiresFileType
+    public string? SaveDialogAnyNameFileType
     {
         get
         {
 #if WINDOWS
-            return true;
+            return ".";
 #else
-            return false;
+            return OperatingSystem.IsMacOS() ? ".public.data" : null;
 #endif
         }
     }

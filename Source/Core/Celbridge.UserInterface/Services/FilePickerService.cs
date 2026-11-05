@@ -6,8 +6,6 @@ namespace Celbridge.UserInterface.Services;
 
 public class FilePickerService : IFilePickerService
 {
-    private const string NoExtensionFileType = ".";
-
     private readonly ILocalFileSystem _fileSystem;
     private readonly IPlatformInfo _platformInfo;
 
@@ -91,15 +89,10 @@ public class FilePickerService : IFilePickerService
             SettingsIdentifier = settingsIdentifier
         };
 
-        var extensions = fileExtensions.ToList();
-        if (extensions.Count > 0)
+        var fileTypes = GetFileTypes(fileExtensions);
+        if (fileTypes.Count > 0)
         {
-            fileSavePicker.FileTypeChoices.Add(fileTypeDescription, extensions);
-        }
-        else if (_platformInfo.SaveDialogRequiresFileType)
-        {
-            // A lone "." is the file type of a name with no extension, so the dialog accepts any name.
-            fileSavePicker.FileTypeChoices.Add(fileTypeDescription, [NoExtensionFileType]);
+            fileSavePicker.FileTypeChoices.Add(fileTypeDescription, fileTypes);
         }
 
         InitializeWithMainWindow(fileSavePicker);
@@ -111,6 +104,20 @@ public class FilePickerService : IFilePickerService
         }
 
         return Result<string>.Ok(file.Path);
+    }
+
+    // No extensions means any name, which takes the platform's own file type.
+    internal List<string> GetFileTypes(IEnumerable<string> fileExtensions)
+    {
+        var extensions = fileExtensions.ToList();
+        if (extensions.Count > 0)
+        {
+            return extensions;
+        }
+
+        return _platformInfo.SaveDialogAnyNameFileType is string anyNameFileType
+            ? [anyNameFileType]
+            : [];
     }
 
     // An unspecified location leaves the folder to the platform, which opens the folder last used under the
