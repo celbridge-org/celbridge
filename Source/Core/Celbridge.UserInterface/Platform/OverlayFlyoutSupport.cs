@@ -43,9 +43,9 @@ internal sealed class OverlayFlyoutSupport : IOverlayFlyoutSupport
             suppressionScope?.Dispose();
             suppressionScope = null;
 
-            // Both corrections below are for the head where hosted web views take focus and mouse input
-            // natively. Elsewhere a web view takes part in managed focus, the toolkit hands the keyboard
-            // back when a popup closes, and there is nothing to undo.
+            // Both corrections below are for macOS, where hosted web views take focus and mouse input natively.
+            // On Windows, a web view takes part in managed focus. WinUI hands the keyboard back when a popup
+            // closes, so there is nothing to undo.
             if (!_platformInfo.HostedWebViewFocusIsNative)
             {
                 return;

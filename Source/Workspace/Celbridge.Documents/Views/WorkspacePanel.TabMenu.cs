@@ -55,7 +55,7 @@ public sealed partial class WorkspacePanel
                 RestoreChromeForTab(tab);
                 break;
             case DocumentTabMenuAction.Reopen:
-                _ = ReopenTab(tab);
+                ReopenTab(tab);
                 break;
         }
     }
@@ -106,6 +106,14 @@ public sealed partial class WorkspacePanel
         }
 
         SectionContainer.Areas.SetAreaSplit(area, false);
+
+        // Folding the area moves the second section's tabs. A moved tab gives up the keyboard if the keyboard
+        // was in the tab. Unsplit All then activates the tab that showed the menu, and the activation carries
+        // the keyboard to that tab.
+        SectionContainer.ActivateDocument(
+            tab.ViewModel.FileResource,
+            tab.Section,
+            ActiveDocumentChangeReason.Activated);
 
         UpdateAllTabDisplayNames();
         NotifyLayoutChanged();
@@ -261,46 +269,12 @@ public sealed partial class WorkspacePanel
 
     // Closes the document and opens the document again in the same editor and the same place in the
     // section. The editor's view state is restored.
-    private async Task ReopenTab(DocumentTab tab)
+    private void ReopenTab(DocumentTab tab)
     {
-        var fileResource = tab.ViewModel.FileResource;
-        var editorId = tab.ViewModel.EditorId;
-
-        // Capture state before closing so we can restore it after reopening
-        var section = tab.Section;
-        var currentLocation = SectionContainer.FindDocumentTab(fileResource);
-        var tabIndex = currentLocation?.SectionView.GetTabIndex(tab) ?? 0;
-
-        var editorState = await TryCaptureEditorStateAsync(tab);
-
-        // Close then reopen via the command service, which processes them sequentially. The close does not
-        // pick a neighbour: the same document is coming straight back to this section and index, so
-        // activating another one in between would only be undone by the reopen.
-        var closeResult = await _commandService.ExecuteAsync<ICloseDocumentCommand>(command =>
+        _commandService.Execute<IOpenDocumentCommand>(command =>
         {
-            command.FileResource = fileResource;
-            command.SelectNeighbour = false;
+            command.FileResource = tab.ViewModel.FileResource;
+            command.Refresh = DocumentRefresh.Reopen;
         });
-
-        if (closeResult.IsFailure)
-        {
-            return;
-        }
-
-        var openResult = await _commandService.ExecuteAsync<IOpenDocumentCommand>(command =>
-        {
-            command.FileResource = fileResource;
-            command.EditorId = editorId;
-            command.EditorState = editorState;
-            command.TargetSection = section;
-            command.TargetTabIndex = tabIndex;
-        });
-
-        if (openResult.IsFailure)
-        {
-            // The document is still recorded as active but its tab has gone, so the reopen has to put
-            // the workspace back on a document that exists.
-            SectionContainer.ReconcileMissingActiveDocument();
-        }
     }
 }

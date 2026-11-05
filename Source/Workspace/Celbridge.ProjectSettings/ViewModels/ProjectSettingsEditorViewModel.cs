@@ -480,7 +480,6 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
         {
             command.FileResource = FileResource;
             command.EditorId = DocumentConstants.CodeEditorId;
-            command.ForceReload = true;
         });
     }
 }

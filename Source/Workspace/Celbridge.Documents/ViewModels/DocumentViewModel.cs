@@ -83,6 +83,18 @@ public abstract partial class DocumentViewModel : ObservableObject
     }
 
     /// <summary>
+    /// Discards any change waiting to be saved and asks the view to read the file again.
+    /// </summary>
+    public void RequestReload()
+    {
+        // The file supersedes any pending or in-flight buffer save. Discarding the queued save lets the reload win.
+        SaveTimer = 0;
+        HasUnsavedChanges = false;
+
+        RaiseReloadRequested();
+    }
+
+    /// <summary>
     /// Enables file-change monitoring for this document. Subscribes to the changes to the file's key, and registers
     /// for DocumentSaveCompletedMessage. Call this in the ViewModel constructor for editors that need external file
     /// change detection.
@@ -171,13 +183,8 @@ public abstract partial class DocumentViewModel : ObservableObject
         // ignored. Genuine external changes differ and proceed.
         if (await IsFileChangedExternallyAsync())
         {
-            // External edits supersede any pending or in-flight buffer save.
-            // Discard the queued save so the buffer reload wins.
-            SaveTimer = 0;
-            HasUnsavedChanges = false;
-
             _logger?.LogDebug($"External change detected for '{FileResource}', requesting reload");
-            RaiseReloadRequested();
+            RequestReload();
         }
     }
 

@@ -1,3 +1,4 @@
+using Celbridge.Platform;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Services;
 using Celbridge.WebHost;
@@ -10,6 +11,7 @@ public class FocusReconcilerTests
     private IWebViewFocusRegistry _webViewFocusRegistry = null!;
     private IManagedFocus _managedFocus = null!;
     private IHostWindowFocus _hostWindowFocus = null!;
+    private IPlatformInfo _platformInfo = null!;
     private ILogger<FocusReconciler> _logger = null!;
     private FocusReconciler _focusReconciler = null!;
 
@@ -19,8 +21,33 @@ public class FocusReconcilerTests
         _webViewFocusRegistry = Substitute.For<IWebViewFocusRegistry>();
         _managedFocus = Substitute.For<IManagedFocus>();
         _hostWindowFocus = Substitute.For<IHostWindowFocus>();
+
+        // Most tests use the head where a hosted web view takes native focus. The reconcile yields managed
+        // focus only on that head.
+        _platformInfo = Substitute.For<IPlatformInfo>();
+        _platformInfo.HostedWebViewFocusIsNative.Returns(true);
+
         _logger = Substitute.For<ILogger<FocusReconciler>>();
-        _focusReconciler = new FocusReconciler(_webViewFocusRegistry, _managedFocus, _hostWindowFocus, _logger);
+        _focusReconciler = new FocusReconciler(
+            _webViewFocusRegistry,
+            _managedFocus,
+            _hostWindowFocus,
+            _platformInfo,
+            _logger);
+    }
+
+    [Test]
+    public void Reconcile_WhereWebViewFocusIsManaged_FocusesTheSurfaceWithoutYielding()
+    {
+        _platformInfo.HostedWebViewFocusIsNative.Returns(false);
+        _webViewFocusRegistry.HasFocusedSurface.Returns(true);
+
+        _focusReconciler.Reconcile();
+
+        // On this head the focused surface's web view has managed focus. A yield would take managed focus off
+        // that web view.
+        _managedFocus.DidNotReceive().YieldFocus();
+        _webViewFocusRegistry.Received(1).FocusFocusedSurface();
     }
 
     [Test]

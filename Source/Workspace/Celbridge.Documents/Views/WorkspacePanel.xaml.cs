@@ -4,6 +4,7 @@ using Celbridge.Documents.ViewModels;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
+using Celbridge.UserInterface.Services;
 using Celbridge.WebHost;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
@@ -27,6 +28,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
     private readonly IDialogService _dialogService;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IWebViewFocusRegistry _webViewFocusRegistry;
+    private readonly IManagedFocus _managedFocus;
     private readonly IFocusService _focusService;
     private readonly Dictionary<DocumentArea, DocumentToolbar> _areaToolbars = new();
 
@@ -95,6 +97,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         _dialogService = dialogService;
         _stringLocalizer = stringLocalizer;
         _webViewFocusRegistry = serviceProvider.AcquireService<IWebViewFocusRegistry>();
+        _managedFocus = serviceProvider.AcquireService<IManagedFocus>();
         _focusService = serviceProvider.AcquireService<IFocusService>();
 
         ViewModel = serviceProvider.AcquireService<WorkspacePanelViewModel>();
@@ -831,12 +834,28 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
             bool isDifferentEditor = !effectiveOptions.EditorId.IsEmpty &&
                 effectiveOptions.EditorId != existingTab.ViewModel.EditorId;
 
-            if (isDifferentEditor)
+            // Switching to another editor needs a new view, and so does a reopen. Both close the document and
+            // open the document again in one step. No other document becomes active in between.
+            if (isDifferentEditor
+                || effectiveOptions.Refresh == DocumentRefresh.Reopen)
             {
+                var reopenEditorId = isDifferentEditor
+                    ? effectiveOptions.EditorId
+                    : existingTab.ViewModel.EditorId;
+
+                // A reopen in the same editor keeps the view state. A caller's EditorState replaces the
+                // captured state. The state is read before the view closes.
+                var reopenEditorState = effectiveOptions.EditorState;
+                if (!isDifferentEditor
+                    && reopenEditorState is null)
+                {
+                    reopenEditorState = await TryCaptureEditorStateAsync(existingTab);
+                }
+
                 var closeResult = await existingTab.ViewModel.CloseDocument(forceClose: false);
                 if (closeResult.IsFailure)
                 {
-                    return Result<OpenDocumentOutcome>.Fail($"Failed to close existing document before reopening with a different editor: '{fileResource}'")
+                    return Result<OpenDocumentOutcome>.Fail($"Failed to close existing document before reopening it: '{fileResource}'")
                         .WithErrors(closeResult);
                 }
 
@@ -845,6 +864,13 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
                     // The existing tab refused to close: either the user declined a save-prompt dialog,
                     // or the document view itself vetoed via CanClose.
                     return Result<OpenDocumentOutcome>.Ok(OpenDocumentOutcome.Cancelled);
+                }
+
+                // A reopen in the same editor stores the view state. The document then comes back at this place even
+                // when the project closes before the new page loads.
+                if (!isDifferentEditor)
+                {
+                    await ViewModel.StoreDocumentEditorState(fileResource, reopenEditorState);
                 }
 
                 // Read before the tab is removed, so a reopen that requests no position returns the
@@ -858,7 +884,12 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
                 var reopenSection = address is not null ? section : existingSectionView.Section;
                 var tabOrder = effectiveOptions.Address?.TabOrder ?? existingTabOrder;
                 var reopenAddress = new DocumentAddress(WindowIndex: 0, Section: reopenSection, TabOrder: tabOrder);
-                var reopenOptions = effectiveOptions with { Address = reopenAddress };
+                var reopenOptions = effectiveOptions with
+                {
+                    Address = reopenAddress,
+                    EditorId = reopenEditorId,
+                    EditorState = reopenEditorState
+                };
                 var reopenResult = await OpenDocument(fileResource, reopenOptions);
                 if (reopenResult.IsFailure)
                 {
@@ -893,7 +924,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
                 SectionContainer.ActivateDocument(fileResource, section, ActiveDocumentChangeReason.Activated);
             }
 
-            if (effectiveOptions.ForceReload)
+            if (effectiveOptions.Refresh == DocumentRefresh.Reload)
             {
                 var reloadResult = await existingTab.ViewModel.ReloadDocument();
                 if (reloadResult.IsFailure)
@@ -1059,17 +1090,20 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
 
                 // Get the tab index before removing it (needed for selecting next document)
                 int tabIndex = sectionView.GetTabIndex(documentTab);
+                var activeDocumentBeforeClose = SectionContainer.ActiveDocument;
 
                 // Handle selection of next document before removing the tab
-                if (closeOptions.SelectNeighbour)
-                {
-                    SectionContainer.HandleDocumentClosing(fileResource, sectionView.Section, tabIndex);
-                }
+                SectionContainer.HandleDocumentClosing(fileResource, sectionView.Section, tabIndex);
 
                 RemoveTabFromSection(sectionView, documentTab);
 
                 // Update all tab names since closing a tab may resolve filename ambiguity
                 UpdateAllTabDisplayNames();
+
+                if (SectionContainer.ActiveDocument == activeDocumentBeforeClose)
+                {
+                    ReturnKeyboardAfterClose();
+                }
             }
 
             return Result.Ok();
@@ -1128,6 +1162,21 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
     {
         var location = SectionContainer.FindDocumentTab(fileResource);
         location?.Tab.FlashAttention();
+    }
+
+    // Gives the keyboard back to the active document after a close that left the keyboard nowhere. The caller runs
+    // this only when the active document stayed the same. When another document becomes active, the activation gives
+    // that document the keyboard. On Windows, choosing Close from a tab's menu returns the keyboard to that tab, and
+    // removing the tab gives the keyboard up. On macOS the keyboard stays on the dismissed menu.
+    private void ReturnKeyboardAfterClose()
+    {
+        if (_webViewFocusRegistry.HasFocusedSurface
+            || _managedFocus.HasFocusedControl)
+        {
+            return;
+        }
+
+        FocusActiveDocument();
     }
 
     // Removes a tab, folding its area back when that leaves one of a split area's sections empty.

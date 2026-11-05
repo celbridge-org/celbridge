@@ -211,6 +211,27 @@ public class DocumentToolTests
         root.GetProperty("openDocuments").GetArrayLength().Should().Be(0);
     }
 
+    [TestCase(true, DocumentRefresh.Reload)]
+    [TestCase(false, DocumentRefresh.None)]
+    public async Task Open_SetsTheRefreshFromReload(bool reload, DocumentRefresh expectedRefresh)
+    {
+        Action<IOpenDocumentCommand>? configure = null;
+        _commandService
+            .ExecuteAsync<IOpenDocumentCommand, OpenDocumentOutcome>(
+                Arg.Do<Action<IOpenDocumentCommand>?>(action => configure = action),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(Result<OpenDocumentOutcome>.Ok(OpenDocumentOutcome.Opened));
+
+        var tools = new DocumentTools(_services);
+        await tools.Open("project:notes/readme.md", reload: reload);
+
+        configure.Should().NotBeNull();
+        var openCommand = Substitute.For<IOpenDocumentCommand>();
+        configure!(openCommand);
+        openCommand.Refresh.Should().Be(expectedRefresh);
+    }
+
     private static JsonElement ParseResult(CallToolResult result)
     {
         var json = result.Content.OfType<TextContentBlock>().Single().Text;

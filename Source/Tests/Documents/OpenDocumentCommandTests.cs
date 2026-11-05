@@ -118,11 +118,11 @@ public class OpenDocumentCommandTests
     }
 
     [Test]
-    public async Task ExecuteAsync_ForwardsForceReloadLocationActivateEditorIdAndState()
+    public async Task ExecuteAsync_ForwardsRefreshLocationActivateEditorIdAndState()
     {
         var command = CreateCommand();
         command.FileResource = new ResourceKey("notes/readme.md");
-        command.ForceReload = true;
+        command.Refresh = DocumentRefresh.Reload;
         command.Location = "line:42";
         command.Activate = false;
         command.EditorId = new EditorId("celbridge.markdown-editor");
@@ -134,13 +134,32 @@ public class OpenDocumentCommandTests
         await _documentsService.Received(1).OpenDocument(
             new ResourceKey("notes/readme.md"),
             Arg.Is<OpenDocumentOptions>(options =>
-                options.ForceReload == true &&
+                options.Refresh == DocumentRefresh.Reload &&
                 options.Location == "line:42" &&
                 options.Activate == false &&
                 options.EditorId == new EditorId("celbridge.markdown-editor") &&
                 options.EditorState != null &&
                 options.EditorState.Json == "{\"scroll\":0.5}" &&
                 options.EditorState.EditorId == new EditorId("celbridge.markdown-editor")));
+    }
+
+    [Test]
+    public async Task ExecuteAsync_WithReopen_ForwardsReopen()
+    {
+        var command = CreateCommand();
+        command.FileResource = new ResourceKey("notes/readme.md");
+        command.Refresh = DocumentRefresh.Reopen;
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        await _documentsService.Received(1).OpenDocument(
+            new ResourceKey("notes/readme.md"),
+            Arg.Is<OpenDocumentOptions>(options =>
+                options.Refresh == DocumentRefresh.Reopen &&
+                options.Address == null &&
+                options.EditorId.IsEmpty &&
+                options.EditorState == null));
     }
 
     [Test]

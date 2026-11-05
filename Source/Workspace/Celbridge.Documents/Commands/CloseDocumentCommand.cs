@@ -13,8 +13,6 @@ public class CloseDocumentCommand : CommandBase, ICloseDocumentCommand
 
     public bool ForceClose { get; set; }
 
-    public bool SelectNeighbour { get; set; } = true;
-
     public CloseDocumentCommand(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
@@ -34,7 +32,7 @@ public class CloseDocumentCommand : CommandBase, ICloseDocumentCommand
             return await utilityService.DockUtilityAsync(dockedUtilityId, WorkspaceArea.Utility);
         }
 
-        var closeOptions = new CloseDocumentOptions(ForceClose, SelectNeighbour);
+        var closeOptions = new CloseDocumentOptions(ForceClose);
 
         var closeResult = await documentsService.CloseDocument(FileResource, closeOptions);
         if (closeResult.IsFailure)

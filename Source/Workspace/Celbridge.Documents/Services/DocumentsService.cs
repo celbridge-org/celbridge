@@ -386,6 +386,13 @@ public class DocumentsService : IDocumentsService, IDisposable
     // Records the user's editor choice for a file in the sidecar's '_editor' field.
     private async Task<Result> SetPreferredEditorAsync(ResourceKey fileResource, EditorId editorId)
     {
+        if (fileResource.Root != ResourceKey.DefaultRoot)
+        {
+            // Sidecars belong to project files, so a generated temp: page or any other file outside the
+            // project root has nowhere to record the choice.
+            return Result.Ok();
+        }
+
         if (_documentEditorRegistry.IsReservedResource(fileResource))
         {
             // A reserved file type opens in another editor for a look, but the choice is not recorded:

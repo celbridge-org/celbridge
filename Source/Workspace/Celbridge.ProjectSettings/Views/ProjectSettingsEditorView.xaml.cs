@@ -170,6 +170,11 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
         return Result.Ok();
     }
 
+    public Task<Result> ReloadContent()
+    {
+        return LoadContent();
+    }
+
     public bool HasUnsavedChanges => ViewModel.HasUnsavedChanges;
 
     public Result<bool> UpdateSaveTimer(double deltaTime)

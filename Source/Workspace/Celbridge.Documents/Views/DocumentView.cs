@@ -99,6 +99,14 @@ public abstract partial class DocumentView : UserControl, IDocumentView
 
     public abstract Task<Result> LoadContent();
 
+    /// <summary>
+    /// Loads the content again.
+    /// </summary>
+    public virtual Task<Result> ReloadContent()
+    {
+        return LoadContent();
+    }
+
     public WritableState WritableState { get; private set; } = WritableState.Writable;
 
     public void SetWritableState(WritableState state)
@@ -195,8 +203,8 @@ public abstract partial class DocumentView : UserControl, IDocumentView
     // Only a custom editor's page sets a pip.
     public virtual WorkspaceItemPip? Pip => null;
 
-    // A document with no hosted page has nothing that can stop responding.
-    public virtual WebViewHealth GetHealth() => WebViewHealth.Healthy;
+    // Each document view reports the health of the web view that shows its content.
+    public abstract WebViewHealth GetHealth();
 
     // A document with no find of its own offers the host none, and leaves the find shortcut to its content.
     public virtual bool CanFind => false;

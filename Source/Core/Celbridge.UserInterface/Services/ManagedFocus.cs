@@ -1,5 +1,4 @@
 using Celbridge.Logging;
-using Celbridge.Platform;
 
 namespace Celbridge.UserInterface.Services;
 
@@ -10,7 +9,6 @@ namespace Celbridge.UserInterface.Services;
 public class ManagedFocus : IManagedFocus
 {
     private readonly IUserInterfaceService _userInterfaceService;
-    private readonly IPlatformInfo _platformInfo;
     private readonly ILogger<ManagedFocus> _logger;
 
     private ContentControl? _placeholder;
@@ -22,11 +20,9 @@ public class ManagedFocus : IManagedFocus
 
     public ManagedFocus(
         IUserInterfaceService userInterfaceService,
-        IPlatformInfo platformInfo,
         ILogger<ManagedFocus> logger)
     {
         _userInterfaceService = userInterfaceService;
-        _platformInfo = platformInfo;
         _logger = logger;
 
         Microsoft.UI.Xaml.Input.FocusManager.GotFocus += OnGotFocus;
@@ -122,16 +118,20 @@ public class ManagedFocus : IManagedFocus
         return false;
     }
 
+    public bool HasFocusedControl
+    {
+        get
+        {
+            var focusedElement = FocusedElement;
+
+            return focusedElement is not null
+                && !ReferenceEquals(focusedElement, _placeholder)
+                && FocusTracking.GetFocusLocation(focusedElement) != FocusLocation.Detached;
+        }
+    }
+
     public void YieldFocus()
     {
-        // Yielding only means something where a web surface's native focus leaves managed focus behind. On
-        // the other heads focusing the web view is itself a managed focus change, so there is nothing to
-        // yield and managed focus must stay free to move to the web view.
-        if (!_platformInfo.HostedWebViewFocusIsNative)
-        {
-            return;
-        }
-
         var placeholder = _placeholder ??= CreatePlaceholder();
         if (placeholder is null)
         {

@@ -4,6 +4,7 @@ using Celbridge.Messaging;
 using Celbridge.Platform;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
+using Celbridge.UserInterface.Services;
 using Celbridge.WebHost;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
@@ -27,6 +28,7 @@ public sealed partial class DocumentSectionView : UserControl
     private readonly IPlatformInfo _platformInfo;
     private readonly IMessengerService _messengerService;
     private readonly IWebViewFocusRegistry _webViewFocusRegistry;
+    private readonly IManagedFocus _managedFocus;
     private readonly PointerEventHandler _tabStripWheelHandler;
     private readonly PointerEventHandler _documentPointerPressedHandler;
     private bool _isShuttingDown = false;
@@ -124,6 +126,7 @@ public sealed partial class DocumentSectionView : UserControl
         _platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _webViewFocusRegistry = ServiceLocator.AcquireService<IWebViewFocusRegistry>();
+        _managedFocus = ServiceLocator.AcquireService<IManagedFocus>();
         _tabPointerPressedHandler = OnTabPointerPressed;
         _tabStripWheelHandler = OnTabStripPointerWheelChanged;
         _wheelGestureAxisTracker = new WheelGestureAxisTracker();
@@ -595,10 +598,19 @@ public sealed partial class DocumentSectionView : UserControl
     }
 
     /// <summary>
-    /// Removes a document tab from this section.
+    /// Removes a document tab from this section. Gives up keyboard focus first if the keyboard is on the tab's header.
     /// </summary>
     public void RemoveTab(DocumentTab tab)
     {
+        // WinUI passes the keyboard of a removed element to the next tab stop. That is often the web view of the
+        // document in front. The web view reports focus a moment later, and the report makes its document active.
+        // By then the caller may have activated another document.
+        if (IsKeyboardInTab(tab))
+        {
+            _logger.LogTrace("Giving up the keyboard before removing the tab of {Document}", tab.ViewModel.FileResource);
+            _managedFocus.YieldFocus();
+        }
+
         tab.ContextMenuActionRequested -= OnDocumentTabContextMenuAction;
         tab.DragStarted -= OnDocumentTabDragStarted;
         RemoveTabPointerPressedHandler(tab);
@@ -612,6 +624,22 @@ public sealed partial class DocumentSectionView : UserControl
         }
 
         UpdateEmptySectionVisuals();
+    }
+
+    // Returns true if the keyboard is on the tab's header or on a control in the header. Right-clicking a tab gives
+    // the header the keyboard. Choosing an item from the tab's menu returns the keyboard to the header. The TabView
+    // shows the document's content outside the tab, so the keyboard in the document's content counts as outside the
+    // tab.
+    private bool IsKeyboardInTab(DocumentTab tab)
+    {
+        var focusedElement = _managedFocus.FocusedElement;
+        if (focusedElement is null)
+        {
+            return false;
+        }
+
+        return VisualTree.GetAncestors(focusedElement, includeSelf: true)
+            .Any(ancestor => ReferenceEquals(ancestor, tab));
     }
 
     /// <summary>

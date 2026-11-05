@@ -24,8 +24,8 @@ internal enum EditRouting
     Unavailable,
 
     /// <summary>
-    /// The platform, because nothing focused handles the verb. macOS offers it to the AppKit responder
-    /// chain; the other heads have nowhere further to send it.
+    /// The platform, because nothing focused handles the verb. On macOS the verb goes to the AppKit responder
+    /// chain. On Windows the verb goes no further.
     /// </summary>
     ResponderChain
 }

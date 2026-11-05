@@ -105,6 +105,14 @@ public sealed partial class CustomDocumentView : DocumentView
         return await _controller.InitializeAsync(ResolvedEditor);
     }
 
+    public override Task<Result> ReloadContent()
+    {
+        // The editor's page reads the file again and stays open, so the document keeps its view state.
+        _viewModel.RequestReload();
+
+        return Task.FromResult(Result.Ok());
+    }
+
     public override async Task<Result> NavigateToLocation(string location)
     {
         return await _controller.NavigateToLocationAsync(location);

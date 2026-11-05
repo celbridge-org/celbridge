@@ -554,7 +554,7 @@ public partial class DocumentTabViewModel : ObservableObject
     {
         Guard.IsNotNull(DocumentView);
 
-        return await DocumentView.LoadContent();
+        return await DocumentView.ReloadContent();
     }
 
     private void UnregisterMessageHandlers()
