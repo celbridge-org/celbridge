@@ -9,10 +9,11 @@ using Celbridge.UserInterface.ViewModels.Controls;
 namespace Celbridge.Tests.UserInterface;
 
 /// <summary>
-/// Tests for what the download list offers. Clear All removes only the downloads that have finished, so
-/// it has nothing to do while every download is still running. A canceled download stays in the list but
-/// is neither a failure nor counted by the badge. The summary counts downloads by outcome, even a single one.
-/// Revealing a file saved outside the project opens the system file manager on the file.
+/// Tests for the download badge's state and what its list offers. While a download runs, the newest running download
+/// decides between InProgress and UnknownProgress. Once every download has finished, the state is Failed only while the
+/// newest row is a failure. Clear All removes only the downloads that have finished, so it has nothing to do while
+/// every download is still running. The summary counts downloads by outcome, even a single one. Revealing a file saved
+/// outside the project opens the system file manager on the file.
 /// </summary>
 [TestFixture]
 public class DownloadBadgeViewModelTests
@@ -71,22 +72,55 @@ public class DownloadBadgeViewModelTests
     }
 
     [Test]
-    public void ACanceledDownload_IsNotAFailure_AndIsLeftOutOfTheCount()
+    public void TheProgress_FollowsTheNewestRunningDownload()
     {
-        ShowDownloads(CreateEntry(1, DownloadStatus.Succeeded), CreateEntry(2, DownloadStatus.Canceled));
+        ShowDownloads(
+            CreateEntry(1, DownloadStatus.Succeeded),
+            CreateRunningEntry(2, bytesReceived: 50, totalBytes: 200),
+            CreateRunningEntry(3, bytesReceived: 90, totalBytes: 100));
 
-        _viewModel.HasFailure.Should().BeFalse();
-        _viewModel.BadgeCount.Should().Be(1);
-        _viewModel.Downloads.Should().HaveCount(2);
+        _viewModel.State.Should().Be(DownloadBadgeState.InProgress);
+        _viewModel.Progress.Should().Be(0.25);
     }
 
     [Test]
-    public void AFailedDownload_IsAFailure_AndIsCounted()
+    public void ANewestRunningDownloadOfUnknownSize_GivesUnknownProgress()
     {
-        ShowDownloads(CreateEntry(1, DownloadStatus.Succeeded), CreateEntry(2, DownloadStatus.Failed));
+        ShowDownloads(
+            CreateRunningEntry(1, bytesReceived: 50, totalBytes: null),
+            CreateRunningEntry(2, bytesReceived: 50, totalBytes: 100));
 
-        _viewModel.HasFailure.Should().BeTrue();
-        _viewModel.BadgeCount.Should().Be(2);
+        _viewModel.State.Should().Be(DownloadBadgeState.UnknownProgress);
+        _viewModel.Progress.Should().Be(0);
+    }
+
+    [Test]
+    public void ARunningDownload_IsInProgressOverANewerFailure()
+    {
+        ShowDownloads(
+            CreateEntry(1, DownloadStatus.Failed),
+            CreateRunningEntry(2, bytesReceived: 30, totalBytes: 100));
+
+        _viewModel.State.Should().Be(DownloadBadgeState.InProgress);
+        _viewModel.Progress.Should().Be(0.3);
+    }
+
+    [Test]
+    public void ANewestRowThatFailed_GivesTheFailedState()
+    {
+        ShowDownloads(CreateEntry(1, DownloadStatus.Failed), CreateEntry(2, DownloadStatus.Succeeded));
+
+        _viewModel.State.Should().Be(DownloadBadgeState.Failed);
+    }
+
+    [TestCase(DownloadStatus.Succeeded)]
+    [TestCase(DownloadStatus.Canceled)]
+    public void ANewestRowThatDidNotFail_IsSettledOverAnOlderFailure(DownloadStatus newestStatus)
+    {
+        ShowDownloads(CreateEntry(1, newestStatus), CreateEntry(2, DownloadStatus.Failed));
+
+        _viewModel.State.Should().Be(DownloadBadgeState.Settled);
+        _viewModel.Downloads.Should().HaveCount(2);
     }
 
     [TestCase(DownloadStatus.InProgress, "1 download in progress.")]
@@ -133,6 +167,15 @@ public class DownloadBadgeViewModelTests
         _downloadService.Downloads.Returns(downloads);
 
         _viewModel.OnLoaded();
+    }
+
+    private static DownloadEntry CreateRunningEntry(long id, long bytesReceived, long? totalBytes)
+    {
+        return CreateEntry(id, DownloadStatus.InProgress) with
+        {
+            BytesReceived = bytesReceived,
+            TotalBytes = totalBytes
+        };
     }
 
     private static DownloadEntry CreateEntry(long id, DownloadStatus status)

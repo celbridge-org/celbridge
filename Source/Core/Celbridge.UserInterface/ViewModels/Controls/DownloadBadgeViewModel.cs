@@ -9,6 +9,32 @@ using Celbridge.Utilities;
 namespace Celbridge.UserInterface.ViewModels.Controls;
 
 /// <summary>
+/// Lists the four states of the download badge. The badge shows one state at a time.
+/// </summary>
+public enum DownloadBadgeState
+{
+    /// <summary>
+    /// A download runs, and the newest running download has a known size.
+    /// </summary>
+    InProgress,
+
+    /// <summary>
+    /// A download runs, and the server gave no size for the newest running download.
+    /// </summary>
+    UnknownProgress,
+
+    /// <summary>
+    /// Every download has finished, and the newest row succeeded or was canceled.
+    /// </summary>
+    Settled,
+
+    /// <summary>
+    /// Every download has finished, and the newest row is a failure.
+    /// </summary>
+    Failed
+}
+
+/// <summary>
 /// Drives the download badge and the list it opens: what this session has downloaded, what the badge says
 /// about it, and what the user can do with each row.
 /// </summary>
@@ -38,20 +64,15 @@ public class DownloadBadgeViewModel
     public IReadOnlyList<DownloadEntry> Downloads { get; private set; } = Array.Empty<DownloadEntry>();
 
     /// <summary>
-    /// Whether a transfer is still running, which is when the badge shows a progress ring.
+    /// Gets the badge's current state. While any download runs, the newest running download decides the state. The
+    /// user most likely waits for that download. Once every download has finished, the newest row decides the state.
     /// </summary>
-    public bool IsTransferring { get; private set; }
+    public DownloadBadgeState State { get; private set; } = DownloadBadgeState.Settled;
 
     /// <summary>
-    /// Whether any recorded download failed, which turns the badge to the error colour.
+    /// How much of the newest running download has arrived, from 0 to 1. Zero unless the state is InProgress.
     /// </summary>
-    public bool HasFailure { get; private set; }
-
-    /// <summary>
-    /// The number the badge shows: every recorded download except the canceled ones, which stay in the
-    /// list but are not counted.
-    /// </summary>
-    public int BadgeCount { get; private set; }
+    public double Progress { get; private set; }
 
     /// <summary>
     /// Whether any recorded download has finished, which is what Clear All takes off the list.
@@ -59,7 +80,7 @@ public class DownloadBadgeViewModel
     public bool CanClearAll { get; private set; }
 
     /// <summary>
-    /// What the badge's tooltip and accessible name say about the recorded downloads.
+    /// Gets the summary of the recorded downloads for the badge's help text.
     /// </summary>
     public string Summary { get; private set; } = string.Empty;
 
@@ -168,11 +189,37 @@ public class DownloadBadgeViewModel
         var downloads = _downloadService.Downloads;
 
         Downloads = downloads;
-        IsTransferring = downloads.Any(download => download.Status == DownloadStatus.InProgress);
-        HasFailure = downloads.Any(download => download.Status == DownloadStatus.Failed);
-        BadgeCount = downloads.Count(download => download.Status != DownloadStatus.Canceled);
+        var report = ReportState(downloads);
+        State = report.State;
+        Progress = report.Progress;
         CanClearAll = downloads.Any(download => download.Status != DownloadStatus.InProgress);
         Summary = ComposeSummary(downloads);
+    }
+
+    // The downloads are newest first, so the first running one is the newest. Once every download has finished, the
+    // newest row decides the state. A later success gives Settled, even with a failed row further down the list.
+    private static BadgeReport ReportState(IReadOnlyList<DownloadEntry> downloads)
+    {
+        var newestRunning = downloads.FirstOrDefault(download => download.Status == DownloadStatus.InProgress);
+        if (newestRunning is not null)
+        {
+            if (newestRunning.TotalBytes is not long totalBytes ||
+                totalBytes <= 0)
+            {
+                return new BadgeReport(DownloadBadgeState.UnknownProgress, 0);
+            }
+
+            var progress = Math.Clamp((double)newestRunning.BytesReceived / totalBytes, 0, 1);
+            return new BadgeReport(DownloadBadgeState.InProgress, progress);
+        }
+
+        if (downloads.Count > 0 &&
+            downloads[0].Status == DownloadStatus.Failed)
+        {
+            return new BadgeReport(DownloadBadgeState.Failed, 0);
+        }
+
+        return new BadgeReport(DownloadBadgeState.Settled, 0);
     }
 
     // Summarises the downloads as a count per outcome, even when there's only one. The list shows the file names.
@@ -221,4 +268,7 @@ public class DownloadBadgeViewModel
             _logger.LogWarning(openResult, $"Failed to show the downloaded file '{filePath}' in the file manager");
         }
     }
+
+    // The badge's state, and how much of the newest running download has arrived.
+    private record BadgeReport(DownloadBadgeState State, double Progress);
 }

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Automation.Provider;
@@ -209,14 +210,20 @@ internal static class VisualTreeReader
     }
 
     /// <summary>
-    /// Returns the control's value from its peer's value provider, or null if the peer has none. WinUI's TextBox
-    /// peer doesn't expose a value provider to managed code, so for a TextBox this returns its Text.
+    /// Returns the control's value from its peer's value provider, or null if the peer has none. A range control, for
+    /// example a progress bar, gives its value as a number. WinUI's TextBox peer doesn't expose a value provider to
+    /// managed code, so for a TextBox this returns its Text.
     /// </summary>
     private static string? ReadValue(FrameworkElement element, AutomationPeer peer)
     {
         if (peer.GetPattern(PatternInterface.Value) is IValueProvider valueProvider)
         {
             return valueProvider.Value;
+        }
+
+        if (peer.GetPattern(PatternInterface.RangeValue) is IRangeValueProvider rangeValueProvider)
+        {
+            return rangeValueProvider.Value.ToString(CultureInfo.InvariantCulture);
         }
 
         if (element is TextBox textBox)

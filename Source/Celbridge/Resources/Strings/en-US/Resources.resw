@@ -431,6 +431,9 @@ This file could not be saved</value>
   <data name="Downloads_Title" xml:space="preserve">
     <value>Downloads</value>
   </data>
+  <data name="Downloads_BadgeTooltip" xml:space="preserve">
+    <value>Show Downloads</value>
+  </data>
   <data name="Downloads_ClearAll" xml:space="preserve">
     <value>Clear All</value>
   </data>
