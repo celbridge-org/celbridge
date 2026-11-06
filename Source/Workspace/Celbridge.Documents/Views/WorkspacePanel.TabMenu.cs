@@ -63,7 +63,22 @@ public sealed partial class WorkspacePanel
     private void CloseTab(DocumentTab tab)
     {
         var fileResource = tab.ViewModel.FileResource;
-        ViewModel.OnCloseDocumentRequested(fileResource);
+        _ = CloseFromTabStripAsync([fileResource]);
+    }
+
+    // Closes documents for a tab strip gesture, then returns the keyboard to the active document if that document
+    // stayed active. The gesture takes the keyboard off the document.
+    private async Task CloseFromTabStripAsync(IReadOnlyList<ResourceKey> fileResources)
+    {
+        var activeDocument = ActiveDocument;
+        await Task.WhenAll(fileResources.Select(ViewModel.CloseDocumentAsync));
+
+        // Activating another document already gives that document the keyboard.
+        if (!_isShuttingDown
+            && ActiveDocument == activeDocument)
+        {
+            FocusActiveDocument();
+        }
     }
 
     // Moves a tab between the two sections of its own area, splitting the area first when it is not split
@@ -141,10 +156,7 @@ public sealed partial class WorkspacePanel
             }
         }
 
-        foreach (var fileResource in tabsToClose)
-        {
-            ViewModel.OnCloseDocumentRequested(fileResource);
-        }
+        _ = CloseFromTabStripAsync(tabsToClose);
     }
 
     private void CloseOtherTabsRight(DocumentTab referenceTab)
@@ -174,10 +186,7 @@ public sealed partial class WorkspacePanel
             }
         }
 
-        foreach (var fileResource in tabsToClose)
-        {
-            ViewModel.OnCloseDocumentRequested(fileResource);
-        }
+        _ = CloseFromTabStripAsync(tabsToClose);
     }
 
     private void CloseOtherTabsLeft(DocumentTab referenceTab)
@@ -203,10 +212,7 @@ public sealed partial class WorkspacePanel
             tabsToClose.Add(documentTab.ViewModel.FileResource);
         }
 
-        foreach (var fileResource in tabsToClose)
-        {
-            ViewModel.OnCloseDocumentRequested(fileResource);
-        }
+        _ = CloseFromTabStripAsync(tabsToClose);
     }
 
     private void CloseAllTabs(DocumentTab referenceTab)
@@ -228,10 +234,7 @@ public sealed partial class WorkspacePanel
             tabsToClose.Add(documentTab.ViewModel.FileResource);
         }
 
-        foreach (var fileResource in tabsToClose)
-        {
-            ViewModel.OnCloseDocumentRequested(fileResource);
-        }
+        _ = CloseFromTabStripAsync(tabsToClose);
     }
 
     private void RevealInExplorerForTab(DocumentTab tab)

@@ -43,13 +43,6 @@ public interface IManagedFocus
     INotedFocus NoteFocus();
 
     /// <summary>
-    /// Returns true if a control in the window has managed keyboard focus. Returns false when managed focus is on
-    /// the YieldFocus placeholder or on an element removed from the window. Also returns false when nothing has
-    /// managed focus.
-    /// </summary>
-    bool HasFocusedControl { get; }
-
-    /// <summary>
     /// Gives up managed keyboard focus by moving it onto an inert placeholder. The control that had focus then
     /// stops receiving keys. Does nothing if managed focus is already on the placeholder. A caller about to
     /// remove the focused element calls this first. If the caller skips this, WinUI hands focus to the next tab

@@ -4,8 +4,6 @@ using Celbridge.Documents.ViewModels;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
-using Celbridge.UserInterface.Services;
-using Celbridge.WebHost;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -27,8 +25,6 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
     private readonly IWindowModeService _windowModeService;
     private readonly IDialogService _dialogService;
     private readonly IStringLocalizer _stringLocalizer;
-    private readonly IWebViewFocusRegistry _webViewFocusRegistry;
-    private readonly IManagedFocus _managedFocus;
     private readonly IFocusService _focusService;
     private readonly Dictionary<DocumentArea, DocumentToolbar> _areaToolbars = new();
 
@@ -96,8 +92,6 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
         _windowModeService = windowModeService;
         _dialogService = dialogService;
         _stringLocalizer = stringLocalizer;
-        _webViewFocusRegistry = serviceProvider.AcquireService<IWebViewFocusRegistry>();
-        _managedFocus = serviceProvider.AcquireService<IManagedFocus>();
         _focusService = serviceProvider.AcquireService<IFocusService>();
 
         ViewModel = serviceProvider.AcquireService<WorkspacePanelViewModel>();
@@ -208,7 +202,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
     private void OnSectionCloseRequested(DocumentSectionView sectionView, ResourceKey fileResource)
     {
         // A docked utility is never destroyed: closing its tab docks it back into the Utility Panel instead.
-        ViewModel.OnCloseDocumentRequested(fileResource);
+        _ = CloseFromTabStripAsync([fileResource]);
     }
 
     private void OnSectionContextMenuActionRequested(DocumentSectionView sectionView, DocumentTab tab, DocumentTabMenuAction action)
@@ -1090,7 +1084,6 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
 
                 // Get the tab index before removing it (needed for selecting next document)
                 int tabIndex = sectionView.GetTabIndex(documentTab);
-                var activeDocumentBeforeClose = SectionContainer.ActiveDocument;
 
                 // Handle selection of next document before removing the tab
                 SectionContainer.HandleDocumentClosing(fileResource, sectionView.Section, tabIndex);
@@ -1099,11 +1092,6 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
 
                 // Update all tab names since closing a tab may resolve filename ambiguity
                 UpdateAllTabDisplayNames();
-
-                if (SectionContainer.ActiveDocument == activeDocumentBeforeClose)
-                {
-                    ReturnKeyboardAfterClose();
-                }
             }
 
             return Result.Ok();
@@ -1162,21 +1150,6 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
     {
         var location = SectionContainer.FindDocumentTab(fileResource);
         location?.Tab.FlashAttention();
-    }
-
-    // Gives the keyboard back to the active document after a close that left the keyboard nowhere. The caller runs
-    // this only when the active document stayed the same. When another document becomes active, the activation gives
-    // that document the keyboard. On Windows, choosing Close from a tab's menu returns the keyboard to that tab, and
-    // removing the tab gives the keyboard up. On macOS the keyboard stays on the dismissed menu.
-    private void ReturnKeyboardAfterClose()
-    {
-        if (_webViewFocusRegistry.HasFocusedSurface
-            || _managedFocus.HasFocusedControl)
-        {
-            return;
-        }
-
-        FocusActiveDocument();
     }
 
     // Removes a tab, folding its area back when that leaves one of a split area's sections empty.

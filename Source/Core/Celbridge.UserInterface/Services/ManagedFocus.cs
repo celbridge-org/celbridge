@@ -118,18 +118,6 @@ public class ManagedFocus : IManagedFocus
         return false;
     }
 
-    public bool HasFocusedControl
-    {
-        get
-        {
-            var focusedElement = FocusedElement;
-
-            return focusedElement is not null
-                && !ReferenceEquals(focusedElement, _placeholder)
-                && FocusTracking.GetFocusLocation(focusedElement) != FocusLocation.Detached;
-        }
-    }
-
     public void YieldFocus()
     {
         var placeholder = _placeholder ??= CreatePlaceholder();

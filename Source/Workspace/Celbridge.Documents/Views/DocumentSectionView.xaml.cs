@@ -627,9 +627,9 @@ public sealed partial class DocumentSectionView : UserControl
     }
 
     // Returns true if the keyboard is on the tab's header or on a control in the header. Right-clicking a tab gives
-    // the header the keyboard. Choosing an item from the tab's menu returns the keyboard to the header. The TabView
-    // shows the document's content outside the tab, so the keyboard in the document's content counts as outside the
-    // tab.
+    // the header the keyboard. On Windows, choosing an item from the tab's menu returns the keyboard to the header. The
+    // TabView shows the document's content outside the tab, so the keyboard in the document's content counts as outside
+    // the tab.
     private bool IsKeyboardInTab(DocumentTab tab)
     {
         var focusedElement = _managedFocus.FocusedElement;

@@ -74,9 +74,9 @@ public partial class WorkspacePanelViewModel : ObservableObject
         return createResult.Value.OkResult<IDocumentView>();
     }
 
-    public void OnCloseDocumentRequested(ResourceKey fileResource)
+    public async Task<Result> CloseDocumentAsync(ResourceKey fileResource)
     {
-        _commandService.Execute<ICloseDocumentCommand>(command =>
+        return await _commandService.ExecuteAsync<ICloseDocumentCommand>(command =>
         {
             command.FileResource = fileResource;
         });
