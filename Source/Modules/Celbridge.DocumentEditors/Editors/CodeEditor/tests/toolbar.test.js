@@ -8,6 +8,7 @@ import {
     showToolbarReloadButton
 } from '../js/toolbar.js';
 import { ViewMode } from '../js/view-mode-controller.js';
+import { ZoomController } from '../js/zoom-controller.js';
 
 function buildToolbarDom() {
     document.body.innerHTML = `
@@ -24,6 +25,12 @@ function buildToolbarDom() {
             <div id="snippet-separator" class="toolbar-separator" hidden></div>
             <div id="snippet-panel" class="toolbar-panel" hidden>
                 <button id="snippet-button" type="button" aria-haspopup="true" aria-expanded="false"></button>
+            </div>
+            <div id="zoom-separator" class="toolbar-separator" hidden></div>
+            <div id="zoom-panel" class="toolbar-panel" hidden>
+                <button id="zoom-out-button" type="button"></button>
+                <button id="zoom-reset-button" type="button">100%</button>
+                <button id="zoom-in-button" type="button"></button>
             </div>
         </div>
         <div id="snippet-menu" class="snippet-menu" role="menu" hidden></div>
@@ -233,5 +240,87 @@ describe('toolbar preview reload', () => {
         pressToolbarReloadButton();
 
         expect(onReloadPreview).not.toHaveBeenCalled();
+    });
+});
+
+function newZoomController() {
+    return new ZoomController({
+        editorController: { getFontSize: () => 14, setFontSize: vi.fn() },
+        previewPipeline: null
+    });
+}
+
+describe('toolbar zoom buttons', () => {
+    beforeEach(() => {
+        buildToolbarDom();
+    });
+
+    it('stays hidden without a zoom controller', () => {
+        initializeToolbar({
+            showViewMode: false,
+            showSnippets: false,
+            zoomController: null
+        });
+
+        expect(document.getElementById('toolbar').hidden).toBe(true);
+        expect(document.getElementById('zoom-panel').hidden).toBe(true);
+    });
+
+    it('shows the toolbar for zoom alone, with no separator', () => {
+        initializeToolbar({
+            showViewMode: false,
+            showSnippets: false,
+            zoomController: newZoomController()
+        });
+
+        expect(document.getElementById('toolbar').hidden).toBe(false);
+        expect(document.getElementById('zoom-panel').hidden).toBe(false);
+        expect(document.getElementById('zoom-separator').hidden).toBe(true);
+    });
+
+    it('separates the zoom buttons from the view mode buttons', () => {
+        initializeToolbar({
+            showViewMode: true,
+            showSnippets: false,
+            viewModeController: fakeViewModeController(),
+            zoomController: newZoomController()
+        });
+
+        expect(document.getElementById('zoom-separator').hidden).toBe(false);
+    });
+
+    it('zooms with the buttons and shows the level', () => {
+        const zoomController = newZoomController();
+        initializeToolbar({
+            showViewMode: false,
+            showSnippets: false,
+            zoomController
+        });
+        const level = document.getElementById('zoom-reset-button');
+
+        document.getElementById('zoom-in-button').click();
+        expect(zoomController.getZoom()).toBe(1.1);
+        expect(level.textContent).toBe('110%');
+
+        document.getElementById('zoom-out-button').click();
+        document.getElementById('zoom-out-button').click();
+        expect(level.textContent).toBe('90%');
+
+        level.click();
+        expect(zoomController.getZoom()).toBe(1);
+        expect(level.textContent).toBe('100%');
+    });
+
+    it('shows a level set without the buttons', () => {
+        const zoomController = newZoomController();
+        initializeToolbar({
+            showViewMode: false,
+            showSnippets: false,
+            zoomController
+        });
+
+        zoomController.setZoom(2.5);
+
+        expect(document.getElementById('zoom-reset-button').textContent).toBe('250%');
     });
 });
