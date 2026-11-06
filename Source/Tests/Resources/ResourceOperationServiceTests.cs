@@ -70,6 +70,9 @@ public class ResourceOperationServiceTests
             TestFileSystem.CreateLocal());
         resourceService.FileSystem.Returns(_resourceFileSystem);
 
+        var walker = new ResourceWalker(Substitute.For<ILogger<ResourceWalker>>(), _workspaceWrapper);
+        resourceService.Walker.Returns(walker);
+
         _projectService = Substitute.For<IProjectService>();
         StubCurrentProject("Acme.celbridge");
 
@@ -279,6 +282,278 @@ public class ResourceOperationServiceTests
         var undoResult = await _operationService.UndoAsync();
         undoResult.IsSuccess.Should().BeTrue();
         File.Exists(Path.Combine(_tempFolder, "a.txt")).Should().BeFalse();
+    }
+
+    [Test]
+    public async Task UndoCreate_FileEditedAfterwards_FailsAndKeepsTheFile()
+    {
+        var path = await CreateProjectFileAsync("new.py", "original");
+        await File.WriteAllTextAsync(path, "an hour of work");
+
+        var firstUndo = await _operationService.UndoAsync();
+        var secondUndo = await _operationService.UndoAsync();
+
+        firstUndo.IsFailure.Should().BeTrue();
+        firstUndo.FirstErrorMessage.Should().Contain("new.py");
+        secondUndo.IsFailure.Should().BeTrue();
+        secondUndo.FirstErrorMessage.Should().Be(firstUndo.FirstErrorMessage);
+        (await File.ReadAllTextAsync(path)).Should().Be("an hour of work");
+        _operationService.CanUndo.Should().BeTrue();
+        _operationService.CanRedo.Should().BeFalse();
+    }
+
+    [Test]
+    public async Task UndoCreate_FileEditedToTheSameSize_FailsAndKeepsTheFile()
+    {
+        var path = await CreateProjectFileAsync("new.py", "aaaa");
+        await File.WriteAllTextAsync(path, "bbbb");
+
+        // Two quick writes can share a clock tick, so the test moves the modified time on.
+        File.SetLastWriteTimeUtc(path, File.GetLastWriteTimeUtc(path).AddMinutes(1));
+
+        var undoResult = await _operationService.UndoAsync();
+
+        undoResult.IsFailure.Should().BeTrue();
+        (await File.ReadAllTextAsync(path)).Should().Be("bbbb");
+    }
+
+    [Test]
+    public async Task UndoCreate_UnchangedFile_RemovesTheFileAndRedoRestoresTheBytes()
+    {
+        var path = await CreateProjectFileAsync("new.py", "original");
+
+        var undoResult = await _operationService.UndoAsync();
+
+        undoResult.IsSuccess.Should().BeTrue(undoResult.MessageChain);
+        File.Exists(path).Should().BeFalse();
+
+        var redoResult = await _operationService.RedoAsync();
+
+        redoResult.IsSuccess.Should().BeTrue(redoResult.MessageChain);
+        (await File.ReadAllTextAsync(path)).Should().Be("original");
+    }
+
+    [Test]
+    public async Task UndoCreate_AfterARedo_RemovesTheFile()
+    {
+        var path = await CreateProjectFileAsync("new.py", "original");
+        await _operationService.UndoAsync();
+        await _operationService.RedoAsync();
+
+        // Redo gives the file a new modified time and records a new stamp. This undo needs the new stamp.
+        var undoResult = await _operationService.UndoAsync();
+
+        undoResult.IsSuccess.Should().BeTrue(undoResult.MessageChain);
+        File.Exists(path).Should().BeFalse();
+    }
+
+    [Test]
+    public async Task UndoCreate_AfterARenameIsUndone_RemovesTheFile()
+    {
+        var path = await CreateProjectFileAsync("new.py", "original");
+        await _operationService.MoveAsync(new ResourceKey("new.py"), new ResourceKey("renamed.py"));
+
+        var undoRename = await _operationService.UndoAsync();
+        var undoCreate = await _operationService.UndoAsync();
+
+        undoRename.IsSuccess.Should().BeTrue(undoRename.MessageChain);
+        undoCreate.IsSuccess.Should().BeTrue(undoCreate.MessageChain);
+        File.Exists(path).Should().BeFalse();
+    }
+
+    [Test]
+    public async Task UndoCreate_FileEditedAfterARename_FailsOnTheSecondUndo()
+    {
+        var path = await CreateProjectFileAsync("new.py", "original");
+        await _operationService.MoveAsync(new ResourceKey("new.py"), new ResourceKey("renamed.py"));
+        await File.WriteAllTextAsync(Path.Combine(_tempFolder, "renamed.py"), "an hour of work");
+
+        var undoRename = await _operationService.UndoAsync();
+        var undoCreate = await _operationService.UndoAsync();
+
+        undoRename.IsSuccess.Should().BeTrue(undoRename.MessageChain);
+        undoCreate.IsFailure.Should().BeTrue();
+        (await File.ReadAllTextAsync(path)).Should().Be("an hour of work");
+    }
+
+    [Test]
+    public async Task UndoCreate_AfterADeleteIsUndone_RemovesTheFile()
+    {
+        var path = await CreateProjectFileAsync("new.py", "original");
+        await _operationService.DeleteAsync(new ResourceKey("new.py"));
+
+        var undoDelete = await _operationService.UndoAsync();
+
+        undoDelete.IsSuccess.Should().BeTrue(undoDelete.MessageChain);
+        File.Exists(path).Should().BeTrue();
+
+        var undoCreate = await _operationService.UndoAsync();
+
+        undoCreate.IsSuccess.Should().BeTrue(undoCreate.MessageChain);
+        File.Exists(path).Should().BeFalse();
+    }
+
+    [Test]
+    public async Task UndoCreate_FolderThatIsNotEmpty_SucceedsAndLeavesTheFolder()
+    {
+        await _operationService.CreateFolderAsync(new ResourceKey("folder"));
+        var filePath = Path.Combine(_tempFolder, "folder", "inside.txt");
+        await File.WriteAllTextAsync(filePath, "inside");
+
+        var undoResult = await _operationService.UndoAsync();
+
+        undoResult.IsSuccess.Should().BeTrue(undoResult.MessageChain);
+        (await File.ReadAllTextAsync(filePath)).Should().Be("inside");
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task UndoCopyOrImport_FileEditedAfterwards_FailsAndKeepsTheFile(bool isImport)
+    {
+        var path = await AddFileAsync(isImport, "added.txt");
+        await File.WriteAllTextAsync(path, "an hour of work");
+
+        var undoResult = await _operationService.UndoAsync();
+
+        undoResult.IsFailure.Should().BeTrue();
+        undoResult.FirstErrorMessage.Should().Contain("added.txt");
+        (await File.ReadAllTextAsync(path)).Should().Be("an hour of work");
+    }
+
+    [Test]
+    public async Task UndoCopy_SourceEditedAfterwards_FailsAndKeepsTheCopy()
+    {
+        var sourcePath = Path.Combine(_tempFolder, "source.txt");
+        await File.WriteAllTextAsync(sourcePath, "original");
+        await _operationService.CopyAsync(new ResourceKey("source.txt"), new ResourceKey("backup.txt"));
+        await File.WriteAllTextAsync(sourcePath, "an hour of work");
+
+        var undoResult = await _operationService.UndoAsync();
+
+        undoResult.IsFailure.Should().BeTrue();
+        undoResult.FirstErrorMessage.Should().Contain("backup.txt");
+        (await File.ReadAllTextAsync(Path.Combine(_tempFolder, "backup.txt"))).Should().Be("original");
+    }
+
+    [Test]
+    public async Task UndoImport_SourceDeletedAfterwards_FailsAndKeepsTheFile()
+    {
+        var sourcePath = Path.Combine(_testFolder, "source.txt");
+        await File.WriteAllTextAsync(sourcePath, "original");
+        await _operationService.ImportExternalFileAsync(sourcePath, new ResourceKey("imported.txt"));
+        File.Delete(sourcePath);
+
+        var undoResult = await _operationService.UndoAsync();
+
+        undoResult.IsFailure.Should().BeTrue();
+        (await File.ReadAllTextAsync(Path.Combine(_tempFolder, "imported.txt"))).Should().Be("original");
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task UndoCopyOrImport_FolderWithAFileEdited_FailsAndKeepsTheFolder(bool isImport)
+    {
+        var folderPath = await AddFolderAsync(isImport);
+        var filePath = Path.Combine(folderPath, "sub", "inside.txt");
+        await File.WriteAllTextAsync(filePath, "an hour of work");
+
+        var undoResult = await _operationService.UndoAsync();
+
+        undoResult.IsFailure.Should().BeTrue();
+        (await File.ReadAllTextAsync(filePath)).Should().Be("an hour of work");
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task UndoCopyOrImport_FolderWithAFileAdded_FailsAndKeepsTheFolder(bool isImport)
+    {
+        var folderPath = await AddFolderAsync(isImport);
+        var filePath = Path.Combine(folderPath, "new.txt");
+        await File.WriteAllTextAsync(filePath, "new");
+
+        var undoResult = await _operationService.UndoAsync();
+
+        undoResult.IsFailure.Should().BeTrue();
+        File.Exists(filePath).Should().BeTrue();
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task UndoCopyOrImport_UnchangedFolder_RemovesTheFolder(bool isImport)
+    {
+        var folderPath = await AddFolderAsync(isImport);
+
+        var undoResult = await _operationService.UndoAsync();
+
+        undoResult.IsSuccess.Should().BeTrue(undoResult.MessageChain);
+        Directory.Exists(folderPath).Should().BeFalse();
+    }
+
+    [Test]
+    public async Task UndoImport_SourceFolderWithAFileEdited_FailsAndKeepsTheFolder()
+    {
+        var folderPath = await AddFolderAsync(isImport: true);
+        await File.WriteAllTextAsync(Path.Combine(_testFolder, "SourceFolder", "sub", "inside.txt"), "an hour of work");
+
+        var undoResult = await _operationService.UndoAsync();
+
+        undoResult.IsFailure.Should().BeTrue();
+        Directory.Exists(folderPath).Should().BeTrue();
+    }
+
+    [Test]
+    public async Task UndoCopy_FolderThatCannotBeWalked_FailsAndKeepsTheFolder()
+    {
+        // The copy operation stores this walker, so the test changes the walker's result after the copy.
+        var realWalker = _resourceService.Walker;
+        var walker = Substitute.For<IResourceWalker>();
+        walker.WalkAsync(Arg.Any<ResourceKey>(), Arg.Any<bool>(), Arg.Any<IPathMatcher?>(), Arg.Any<CancellationToken>())
+            .Returns(call => realWalker.WalkAsync(call.ArgAt<ResourceKey>(0), call.ArgAt<bool>(1)));
+        _resourceService.Walker.Returns(walker);
+
+        var folderPath = await AddFolderAsync(isImport: false);
+
+        var failedWalk = Result<IReadOnlyList<WalkedItem>>.Fail("The folder could not be listed");
+        walker.WalkAsync(Arg.Any<ResourceKey>(), Arg.Any<bool>(), Arg.Any<IPathMatcher?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(failedWalk));
+
+        var undoResult = await _operationService.UndoAsync();
+
+        undoResult.IsFailure.Should().BeTrue();
+        Directory.Exists(folderPath).Should().BeTrue();
+    }
+
+    [Test]
+    public async Task UndoCopy_FileDeletedOutsideTheUndoStack_Succeeds()
+    {
+        var path = await AddFileAsync(isImport: false, "added.txt");
+        File.Delete(path);
+
+        var undoResult = await _operationService.UndoAsync();
+
+        undoResult.IsSuccess.Should().BeTrue(undoResult.MessageChain);
+        _operationService.CanUndo.Should().BeFalse();
+    }
+
+    [Test]
+    public async Task UndoBatch_WithOneChangedFile_RemovesNothingAndKeepsTheEntry()
+    {
+        using (var batch = _operationService.BeginBatch())
+        {
+            await _operationService.CreateFileAsync(new ResourceKey("first.txt"), new byte[] { 0x01 });
+            await _operationService.CreateFileAsync(new ResourceKey("second.txt"), new byte[] { 0x02 });
+            await _operationService.CreateFileAsync(new ResourceKey("third.txt"), new byte[] { 0x03 });
+        }
+        await File.WriteAllTextAsync(Path.Combine(_tempFolder, "second.txt"), "an hour of work");
+
+        var undoResult = await _operationService.UndoAsync();
+
+        undoResult.IsFailure.Should().BeTrue();
+        undoResult.FirstErrorMessage.Should().Contain("second.txt");
+        File.Exists(Path.Combine(_tempFolder, "first.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(_tempFolder, "second.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(_tempFolder, "third.txt")).Should().BeTrue();
+        _operationService.CanUndo.Should().BeTrue();
     }
 
     [Test]
@@ -576,6 +851,62 @@ public class ResourceOperationServiceTests
         projectService.CurrentProject.Returns(project);
 
         return new ResourcePolicy(projectService);
+    }
+
+    // Creates a file through the operation service. Returns the file's path.
+    private async Task<string> CreateProjectFileAsync(string name, string content)
+    {
+        var bytes = System.Text.Encoding.UTF8.GetBytes(content);
+        var createResult = await _operationService.CreateFileAsync(new ResourceKey(name), bytes);
+        createResult.IsSuccess.Should().BeTrue(createResult.MessageChain);
+
+        return Path.Combine(_tempFolder, name);
+    }
+
+    // Adds a file to the project by copying or importing a source file. Returns the added file's path.
+    private async Task<string> AddFileAsync(bool isImport, string name)
+    {
+        Result addResult;
+        if (isImport)
+        {
+            var sourcePath = Path.Combine(_testFolder, "source.txt");
+            await File.WriteAllTextAsync(sourcePath, "original");
+            addResult = await _operationService.ImportExternalFileAsync(sourcePath, new ResourceKey(name));
+        }
+        else
+        {
+            await File.WriteAllTextAsync(Path.Combine(_tempFolder, "source.txt"), "original");
+            addResult = await _operationService.CopyAsync(new ResourceKey("source.txt"), new ResourceKey(name));
+        }
+        addResult.IsSuccess.Should().BeTrue(addResult.MessageChain);
+
+        return Path.Combine(_tempFolder, name);
+    }
+
+    // Adds a folder named added to the project by copying or importing a source folder. The source folder contains
+    // sub/inside.txt. Returns the added folder's path.
+    private async Task<string> AddFolderAsync(bool isImport)
+    {
+        var sourceParent = isImport
+            ? _testFolder
+            : _tempFolder;
+        var sourcePath = Path.Combine(sourceParent, "SourceFolder");
+        Directory.CreateDirectory(Path.Combine(sourcePath, "sub"));
+        await File.WriteAllTextAsync(Path.Combine(sourcePath, "sub", "inside.txt"), "original");
+
+        var dest = new ResourceKey("added");
+        Result addResult;
+        if (isImport)
+        {
+            addResult = await _operationService.ImportExternalFolderAsync(sourcePath, dest);
+        }
+        else
+        {
+            addResult = await _operationService.CopyAsync(new ResourceKey("SourceFolder"), dest);
+        }
+        addResult.IsSuccess.Should().BeTrue(addResult.MessageChain);
+
+        return Path.Combine(_tempFolder, "added");
     }
 
     // Creates a folder outside the project containing a plain file, a link to a file and a link to a folder.

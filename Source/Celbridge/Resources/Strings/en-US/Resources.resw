@@ -213,6 +213,18 @@
   <data name="ResourceTree_CannotRename" xml:space="preserve">
     <value>Cannot rename</value>
   </data>
+  <data name="ResourceTree_CannotUndo" xml:space="preserve">
+    <value>Cannot undo</value>
+  </data>
+  <data name="ResourceTree_CannotUndoMessage" xml:space="preserve">
+    <value>The last change in the Explorer panel cannot be undone.</value>
+  </data>
+  <data name="ResourceTree_CannotRedo" xml:space="preserve">
+    <value>Cannot redo</value>
+  </data>
+  <data name="ResourceTree_CannotRedoMessage" xml:space="preserve">
+    <value>The last change in the Explorer panel cannot be redone.</value>
+  </data>
   <data name="Resource_ReadOnly_ReadOnlyAttribute" xml:space="preserve">
     <value>File is read-only on disk.</value>
   </data>

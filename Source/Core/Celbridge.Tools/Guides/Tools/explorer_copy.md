@@ -1,6 +1,6 @@
 # explorer_copy
 
-Copies a single resource (file or folder) to a new location in the project tree. The original resource is left in place. Folder copies are recursive. A copy into `project:` is recorded on the explorer undo stack and can be reversed with `explorer_undo`.
+Copies a single resource (file or folder) to a new location in the project tree. The original resource is left in place. Folder copies are recursive. A copy into `project:` is recorded on the explorer undo stack, and `explorer_undo` removes the copy. Undo refuses after a change to the copy, or when the source has changed or gone. See [undo_semantics](../Concepts/undo_semantics.md).
 
 A paired `.cel` sidecar is copied alongside its parent. References inside the copied content are copied as they are, so the copy points at the same targets as the original. If you want the copied content to reference the copies of its dependencies, edit the references after the copy.
 

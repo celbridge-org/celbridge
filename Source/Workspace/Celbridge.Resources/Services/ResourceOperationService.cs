@@ -44,6 +44,9 @@ public class ResourceOperationService : IResourceOperationService
     private IResourceFileSystem ResourceFileSystem =>
         _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
+    private IResourceWalker ResourceWalker =>
+        _workspaceWrapper.WorkspaceService.ResourceService.Walker;
+
     private ITrashService TrashService =>
         _workspaceWrapper.WorkspaceService.ResourceService.Trash;
 
@@ -55,7 +58,7 @@ public class ResourceOperationService : IResourceOperationService
 
     public async Task<Result> CreateFileAsync(ResourceKey resource, byte[] content)
     {
-        var operation = new CreateOperation(resource, content, ResourceFileSystem);
+        var operation = new CreateOperation(resource, content, ResourceFileSystem, ResourceWalker);
         var result = await operation.ExecuteAsync();
 
         if (result.IsSuccess)
@@ -68,7 +71,7 @@ public class ResourceOperationService : IResourceOperationService
 
     public async Task<Result> CreateFolderAsync(ResourceKey resource)
     {
-        var operation = new CreateOperation(resource, ResourceFileSystem);
+        var operation = new CreateOperation(resource, ResourceFileSystem, ResourceWalker);
         var result = await operation.ExecuteAsync();
 
         if (result.IsSuccess)
@@ -92,7 +95,8 @@ public class ResourceOperationService : IResourceOperationService
         var operation = new CopyOperation(
             source,
             dest,
-            ResourceFileSystem);
+            ResourceFileSystem,
+            ResourceWalker);
 
         var executeResult = await operation.ExecuteAsync();
         if (executeResult.IsFailure)
@@ -296,7 +300,7 @@ public class ResourceOperationService : IResourceOperationService
     {
         sourcePath = Path.GetFullPath(sourcePath);
 
-        var operation = new ImportExternalOperation(sourcePath, dest, isFolder: false, ResourceFileSystem, _fileSystem, _logger);
+        var operation = new ImportExternalOperation(sourcePath, dest, isFolder: false, ResourceFileSystem, ResourceWalker, _fileSystem, _logger);
         var result = await operation.ExecuteAsync();
 
         if (result.IsSuccess)
@@ -311,7 +315,7 @@ public class ResourceOperationService : IResourceOperationService
     {
         sourcePath = Path.GetFullPath(sourcePath);
 
-        var operation = new ImportExternalOperation(sourcePath, dest, isFolder: true, ResourceFileSystem, _fileSystem, _logger);
+        var operation = new ImportExternalOperation(sourcePath, dest, isFolder: true, ResourceFileSystem, ResourceWalker, _fileSystem, _logger);
         var result = await operation.ExecuteAsync();
         if (result.IsFailure)
         {
