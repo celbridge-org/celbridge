@@ -350,16 +350,20 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
             && _registrations.ContainsKey(view);
     }
 
-    public bool HasFocusedSurface => _focusedRegistration is not null;
+    // The surface with the keyboard. A modal dialog takes the keyboard from the surface. The surface stays in
+    // _focusedRegistration, so the keyboard can return to it once the dialog closes.
+    private WebViewFocusRegistration? KeyboardRegistration => _isModalDialogOpen ? null : _focusedRegistration;
+
+    public bool HasFocusedSurface => KeyboardRegistration is not null;
 
     public bool IsFocusedSurface(IWebView view)
     {
-        return ReferenceEquals(_focusedRegistration?.View, view);
+        return ReferenceEquals(KeyboardRegistration?.View, view);
     }
 
     public void FocusFocusedSurface()
     {
-        var registration = _focusedRegistration;
+        var registration = KeyboardRegistration;
         if (registration is null)
         {
             return;
@@ -374,7 +378,7 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
 
     public bool TryForwardKeyEvent(IntPtr nativeKeyEvent)
     {
-        if (_focusedRegistration?.View is not WebViewBase view)
+        if (KeyboardRegistration?.View is not WebViewBase view)
         {
             return false;
         }
@@ -384,7 +388,7 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
 
     public bool TryHandleTabKey(bool shift, IntPtr nativeKeyEvent)
     {
-        var registration = _focusedRegistration;
+        var registration = KeyboardRegistration;
         if (registration is null)
         {
             return false;

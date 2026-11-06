@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.Platform;
 
 namespace Celbridge.Documents.Views;
 
@@ -38,25 +39,41 @@ public sealed partial class WorkspacePanel
                 break;
             case DocumentTabMenuAction.CopyRelativePath:
                 CopyRelativePathForTab(tab);
+                ReturnKeyboardAfterMenuItem();
                 break;
             case DocumentTabMenuAction.CopyFullPath:
                 CopyFullPathForTab(tab);
+                ReturnKeyboardAfterMenuItem();
                 break;
             case DocumentTabMenuAction.RevealInExplorer:
                 RevealInExplorerForTab(tab);
                 break;
             case DocumentTabMenuAction.OpenFileExplorer:
                 OpenFileExplorerForTab(tab);
+                ReturnKeyboardAfterMenuItem();
                 break;
             case DocumentTabMenuAction.OpenApplication:
                 OpenApplicationForTab(tab);
+                ReturnKeyboardAfterMenuItem();
                 break;
             case DocumentTabMenuAction.RestoreChrome:
                 RestoreChromeForTab(tab);
+                ReturnKeyboardAfterMenuItem();
                 break;
             case DocumentTabMenuAction.Reopen:
                 ReopenTab(tab);
                 break;
+        }
+    }
+
+    // UNO-BUG: on macOS, closing a menu drops the keyboard on the window's first focusable element, and that element
+    // ignores keys. On Windows, the keyboard returns to the tab's header.
+    private void ReturnKeyboardAfterMenuItem()
+    {
+        var platformInfo = _serviceProvider.AcquireService<IPlatformInfo>();
+        if (platformInfo.HostedWebViewFocusIsNative)
+        {
+            FocusActiveDocument();
         }
     }
 

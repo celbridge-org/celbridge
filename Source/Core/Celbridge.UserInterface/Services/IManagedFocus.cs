@@ -37,8 +37,8 @@ public interface IManagedFocus
     /// <summary>
     /// Records which element has managed keyboard focus, so a caller can later check whether it still has focus,
     /// or give focus back to it after a modal dialog or anything else that took the keyboard has gone. If focus is
-    /// in an open menu, this records the element that had focus before the menu opened, because choosing an item
-    /// closes the menu and returns focus there.
+    /// in an open menu, this records the element that had focus before the menu opened. The focused item goes when the
+    /// menu closes.
     /// </summary>
     INotedFocus NoteFocus();
 

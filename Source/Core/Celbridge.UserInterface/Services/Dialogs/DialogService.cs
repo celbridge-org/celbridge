@@ -296,8 +296,8 @@ public class DialogService : IDialogService
     // packaged Windows head can leave focus in the Explorer when a confirmation opens as the New Project dialog
     // closes. The control that held the keyboard gets it back first, unless it already has it. If the control
     // can't take it, its panel is refocused instead. This also applies to a control outside any panel, such as a
-    // title bar button. A web surface still reports focus while the dialog is open, but only gets its caret back
-    // when its document takes focus again, so its panel is always refocused.
+    // title bar button. A web surface has the keyboard again as soon as the dialog closes. The surface only gets the
+    // caret back when the document takes focus again, so the panel is always refocused.
     private void ReturnKeyboard(FocusPanelId focusedPanel, INotedFocus notedFocus)
     {
         if (!_webViewFocusRegistry.HasFocusedSurface)

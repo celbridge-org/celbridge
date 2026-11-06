@@ -14,8 +14,8 @@ public class ManagedFocus : IManagedFocus
     private ContentControl? _placeholder;
     private bool _reportedFocusFailure;
 
-    // The last element in the window content that had managed focus. A popup returns the keyboard to it when it
-    // closes. Held as a weak reference because the element can be removed from the window.
+    // The last element in the window content that had managed focus. NoteFocus records it when focus is in a menu.
+    // Held as a weak reference because the element can be removed from the window.
     private WeakReference<UIElement>? _lastContentFocus;
 
     public ManagedFocus(
@@ -88,10 +88,9 @@ public class ManagedFocus : IManagedFocus
     {
         var focusedElement = FocusedElement;
 
-        // Choosing a menu item closes the menu and returns focus to the window content. On the Skia heads, focus
-        // can still be on the chosen item when the dialog it requested opens. In that case, the element the menu
-        // will return focus to is noted instead. Other popups, such as flyouts, stay open, so focus inside them is
-        // noted as is.
+        // Choosing a menu item closes the menu. On the Skia heads, focus can still be on the chosen item when the
+        // dialog it requested opens. In that case, the element that had focus before the menu opened is noted
+        // instead. Flyouts stay open, so focus inside a flyout is noted as is.
         if (focusedElement is not null
             && FocusTracking.GetFocusLocation(focusedElement) == FocusLocation.Popup
             && IsInMenu(focusedElement)

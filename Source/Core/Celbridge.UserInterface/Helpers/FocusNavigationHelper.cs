@@ -29,12 +29,7 @@ public static class FocusNavigationHelper
         // head rejects TryMoveFocus without options ("Catastrophic failure", it wants the options overload
         // with a loaded SearchRoot), and the Skia head throws for the options overload. Walking the tree for
         // the next tab stop behaves the same on both.
-        //
-        // Searched from the root of the element's own tree rather than from the XamlRoot content, so a
-        // field inside a dialog searches the popup holding it rather than the window behind it.
-        var searchRoot = VisualTree.GetAncestors(current, includeSelf: true).Last();
-
-        var tabStops = GetTabStops(searchRoot).ToList();
+        var tabStops = GetTabStops(FindTabOrderRoot(current)).ToList();
 
         var currentIndex = tabStops.FindIndex(tabStop => ReferenceEquals(tabStop, current));
         if (currentIndex < 0)
@@ -46,6 +41,28 @@ public static class FocusNavigationHelper
         var nextTabStop = tabStops[(currentIndex + step) % tabStops.Count];
 
         nextTabStop.Focus(FocusState.Programmatic);
+    }
+
+    // Returns the content of the open popup around the element, so a field inside a dialog stays inside the dialog.
+    // On the Skia heads, the root of a popup's tree also contains the window content. An element outside any popup uses
+    // the root of the element's own tree.
+    private static DependencyObject FindTabOrderRoot(DependencyObject element)
+    {
+        var ancestors = VisualTree.GetAncestors(element, includeSelf: true).ToList();
+
+        if (element is UIElement { XamlRoot: { } xamlRoot })
+        {
+            foreach (var popup in VisualTreeHelper.GetOpenPopupsForXamlRoot(xamlRoot))
+            {
+                if (popup.Child is { } popupContent
+                    && ancestors.Contains(popupContent))
+                {
+                    return popupContent;
+                }
+            }
+        }
+
+        return ancestors.Last();
     }
 
     /// <summary>

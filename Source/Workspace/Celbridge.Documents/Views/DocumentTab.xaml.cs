@@ -42,6 +42,10 @@ public partial class DocumentTab : TabViewItem
     private readonly IMessengerService _messengerService;
     private readonly IPlatformInfo _platformInfo;
     private readonly IShortcutHintService _shortcutHintService;
+    private readonly IFocusService _focusService;
+
+    // True once an item is chosen from the open menu. Cleared each time the menu opens.
+    private bool _menuItemChosen;
 
     /// <summary>
     /// The gap the tab keeps between itself and the top of the strip band.
@@ -138,10 +142,12 @@ public partial class DocumentTab : TabViewItem
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
         _shortcutHintService = ServiceLocator.AcquireService<IShortcutHintService>();
+        _focusService = ServiceLocator.AcquireService<IFocusService>();
         ViewModel = ServiceLocator.AcquireService<DocumentTabViewModel>();
 
         var overlayFlyoutSupport = ServiceLocator.AcquireService<IOverlayFlyoutSupport>();
-        overlayFlyoutSupport.Apply(TabContextMenu);
+        overlayFlyoutSupport.Apply(TabContextMenu, ReturnKeyboardAfterDismissal);
+        ContextMenuActionRequested += (_, _) => _menuItemChosen = true;
 
         CloseMenuItem.Text = _stringLocalizer.GetString("DocumentTab_Close");
         CloseOthersMenuItem.Text = _stringLocalizer.GetString("DocumentTab_CloseOthers");
@@ -255,6 +261,17 @@ public partial class DocumentTab : TabViewItem
         return true;
     }
 
+    // UNO-BUG: on macOS, closing a menu drops the keyboard on the window's first focusable element, and that element
+    // ignores keys. Escape and a click elsewhere close the menu without running an item, so the keyboard returns from
+    // here.
+    private void ReturnKeyboardAfterDismissal()
+    {
+        if (!_menuItemChosen)
+        {
+            _focusService.RefocusPanel(FocusPanelId.Documents);
+        }
+    }
+
     private void ContextMenu_Close(object sender, RoutedEventArgs e)
     {
         ContextMenuActionRequested?.Invoke(this, DocumentTabMenuAction.Close);
@@ -332,6 +349,8 @@ public partial class DocumentTab : TabViewItem
 
     private void TabContextMenu_Opening(object sender, object e)
     {
+        _menuItemChosen = false;
+
         // Find the parent TabView to get tab count and position
         var tabView = FindParentTabView();
         if (tabView is null)
@@ -446,7 +465,11 @@ public partial class DocumentTab : TabViewItem
                 Text = pickList.Labels[i],
                 IsChecked = i == pickList.CurrentIndex
             };
-            editorItem.Click += (_, _) => _ = ViewModel.OpenWithEditorAsync(editorId);
+            editorItem.Click += (_, _) =>
+            {
+                _menuItemChosen = true;
+                _ = ViewModel.OpenWithEditorAsync(editorId);
+            };
 
             OpenWithMenuItem.Items.Add(editorItem);
         }
