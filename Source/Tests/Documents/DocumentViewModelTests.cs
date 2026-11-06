@@ -241,6 +241,22 @@ public class DocumentViewModelTests
     }
 
     [Test]
+    public void RequestReload_DiscardsThePendingSave_AndRaisesReload()
+    {
+        // The file has not changed, and the request alone raises the reload.
+        _vm.HasUnsavedChanges = true;
+        _vm.SaveTimer = 0.5;
+        var reloadRequested = false;
+        _vm.ReloadRequested += (_, _) => reloadRequested = true;
+
+        _vm.RequestReload();
+
+        reloadRequested.Should().BeTrue();
+        _vm.HasUnsavedChanges.Should().BeFalse();
+        _vm.SaveTimer.Should().Be(0);
+    }
+
+    [Test]
     public void FileChange_DoesNotRaiseReload_WhenTheFileIsAbsent()
     {
         // The document tab closes the document when the file is absent.

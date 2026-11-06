@@ -4,8 +4,8 @@ namespace Celbridge.WebHost;
 
 /// <summary>
 /// The focus state the reconciler should establish. FocusWebSurface makes the focused web surface the
-/// native focus target. YieldManagedFocus moves managed focus onto the placeholder, so that the keys the
-/// platform routes through the managed tree reach no control.
+/// native focus target. YieldManagedFocus moves managed focus onto an inert placeholder, so the control that
+/// had focus stops receiving keys.
 /// </summary>
 public sealed record DesiredFocus(bool FocusWebSurface, bool YieldManagedFocus);
 
@@ -15,9 +15,13 @@ public sealed record DesiredFocus(bool FocusWebSurface, bool YieldManagedFocus);
 public static class FocusDerivation
 {
     /// <summary>
-    /// Maps the focus model to the focus state the reconciler should apply.
+    /// Maps the focus model to the focus state the reconciler should apply. hostedWebViewFocusIsNative is
+    /// true on macOS. There a hosted web view takes native focus, and managed focus stays where it was.
     /// </summary>
-    public static DesiredFocus Derive(bool webSurfaceHoldsFocus, FocusLocation managedFocusLocation)
+    public static DesiredFocus Derive(
+        bool webSurfaceHoldsFocus,
+        FocusLocation managedFocusLocation,
+        bool hostedWebViewFocusIsNative)
     {
         // An open popup owns the keyboard, whatever the surface underneath it is. A popup reports no
         // panel, so the model still names that surface. Yielding managed focus to the placeholder would
@@ -33,8 +37,15 @@ public static class FocusDerivation
         // and the managed world yields the keyboard to it. Otherwise native focus returns to the host window
         // and managed focus stays wherever the managed world put it, unless that is an element no longer in
         // the tree, which holds the keyboard away from everything the user can see.
+        //
+        // On macOS a web view takes native focus and leaves managed focus behind, so managed focus yields to the
+        // placeholder. On Windows, focusing the web view moves managed focus to the web view as well. Managed
+        // focus must then stay free to follow the web view, so the reconciler never yields there.
+        var yieldManagedFocus = hostedWebViewFocusIsNative
+            && (webSurfaceHoldsFocus || managedFocusLocation == FocusLocation.Detached);
+
         return new DesiredFocus(
             FocusWebSurface: webSurfaceHoldsFocus,
-            YieldManagedFocus: webSurfaceHoldsFocus || managedFocusLocation == FocusLocation.Detached);
+            YieldManagedFocus: yieldManagedFocus);
     }
 }

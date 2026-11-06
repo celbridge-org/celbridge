@@ -13,7 +13,8 @@ public interface IOverlayFlyoutSupport
     /// is given up once it closes rather than left on an item that is gone. Call once for each flyout, when
     /// the control that owns it is constructed. Suppressions nest, so a flyout opened over another keeps the
     /// suppression until both have closed. Both halves act only on the heads where hosted web views take
-    /// native focus and native mouse input of their own.
+    /// native focus and native mouse input of their own. Runs onKeyboardGivenUp after the keyboard is given up, so the
+    /// flyout's owner can send the keyboard on. A flyout dismissed by a click into another application skips the call.
     /// </summary>
-    void Apply(FlyoutBase flyout);
+    void Apply(FlyoutBase flyout, Action? onKeyboardGivenUp = null);
 }

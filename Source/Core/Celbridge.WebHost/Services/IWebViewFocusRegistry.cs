@@ -43,13 +43,14 @@ public interface IWebViewFocusRegistry
     bool IsRegisteredWebSurface(DependencyObject element);
 
     /// <summary>
-    /// Whether a hosted web surface's focus report is current. The reconciler derives the desired focus
+    /// Returns true if a hosted web surface has the keyboard. Returns false while a modal dialog has the keyboard,
+    /// even when the keyboard returns to a surface once the dialog closes. The reconciler derives the desired focus
     /// state from this.
     /// </summary>
     bool HasFocusedSurface { get; }
 
     /// <summary>
-    /// Whether the given web view is the hosted surface whose focus report is current.
+    /// Returns true if the given web view is the hosted surface with the keyboard.
     /// </summary>
     bool IsFocusedSurface(IWebView view);
 

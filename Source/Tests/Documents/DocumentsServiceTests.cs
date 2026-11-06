@@ -188,6 +188,22 @@ public class DocumentsServiceTests
     }
 
     [Test]
+    public async Task OpenWithEditorAsync_AFileOutsideTheProject_OpensTheFileAndRecordsNothing()
+    {
+        // Sidecars belong to project files, so a generated temp: page or any other file outside the project
+        // root has nowhere to record the choice. Trying would fail the call after the file had opened.
+        _registry.RegisterFactory(CreateFactory(new EditorId("test.default-editor"), ".webview", "Default Editor"));
+
+        var result = await _documentsService.OpenWithEditorAsync(
+            new ResourceKey("temp:community.webview"), new EditorId("test.other-editor"));
+
+        result.IsSuccess.Should().BeTrue();
+        _capturedOpenCommand.Should().NotBeNull();
+        _capturedSetCommand.Should().BeNull();
+        _capturedRemoveCommand.Should().BeNull();
+    }
+
+    [Test]
     public async Task OpenWithEditorAsync_ADocumentThatRefusesToClose_RecordsNothing()
     {
         // The open document refuses to close and stays in the current editor. Recording the choice would

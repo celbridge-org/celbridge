@@ -24,9 +24,9 @@ public interface IOpenDocumentCommand : IExecutableCommand<OpenDocumentOutcome>
     ResourceKey FileResource { get; set; }
 
     /// <summary>
-    /// Reload the document from the file, if the document is already open.
+    /// How to refresh the document, if the document is already open.
     /// </summary>
-    bool ForceReload { get; set; }
+    DocumentRefresh Refresh { get; set; }
 
     /// <summary>
     /// Optional location within the document to navigate to when opening.

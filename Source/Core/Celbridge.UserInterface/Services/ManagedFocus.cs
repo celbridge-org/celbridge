@@ -1,5 +1,4 @@
 using Celbridge.Logging;
-using Celbridge.Platform;
 
 namespace Celbridge.UserInterface.Services;
 
@@ -10,23 +9,20 @@ namespace Celbridge.UserInterface.Services;
 public class ManagedFocus : IManagedFocus
 {
     private readonly IUserInterfaceService _userInterfaceService;
-    private readonly IPlatformInfo _platformInfo;
     private readonly ILogger<ManagedFocus> _logger;
 
     private ContentControl? _placeholder;
     private bool _reportedFocusFailure;
 
-    // The last element in the window content that had managed focus. A popup returns the keyboard to it when it
-    // closes. Held as a weak reference because the element can be removed from the window.
+    // The last element in the window content that had managed focus. NoteFocus records it when focus is in a menu.
+    // Held as a weak reference because the element can be removed from the window.
     private WeakReference<UIElement>? _lastContentFocus;
 
     public ManagedFocus(
         IUserInterfaceService userInterfaceService,
-        IPlatformInfo platformInfo,
         ILogger<ManagedFocus> logger)
     {
         _userInterfaceService = userInterfaceService;
-        _platformInfo = platformInfo;
         _logger = logger;
 
         Microsoft.UI.Xaml.Input.FocusManager.GotFocus += OnGotFocus;
@@ -92,10 +88,9 @@ public class ManagedFocus : IManagedFocus
     {
         var focusedElement = FocusedElement;
 
-        // Choosing a menu item closes the menu and returns focus to the window content. On the Skia heads, focus
-        // can still be on the chosen item when the dialog it requested opens. In that case, the element the menu
-        // will return focus to is noted instead. Other popups, such as flyouts, stay open, so focus inside them is
-        // noted as is.
+        // Choosing a menu item closes the menu. On the Skia heads, focus can still be on the chosen item when the
+        // dialog it requested opens. In that case, the element that had focus before the menu opened is noted
+        // instead. Flyouts stay open, so focus inside a flyout is noted as is.
         if (focusedElement is not null
             && FocusTracking.GetFocusLocation(focusedElement) == FocusLocation.Popup
             && IsInMenu(focusedElement)
@@ -124,14 +119,6 @@ public class ManagedFocus : IManagedFocus
 
     public void YieldFocus()
     {
-        // Yielding only means something where a web surface's native focus leaves managed focus behind. On
-        // the other heads focusing the web view is itself a managed focus change, so there is nothing to
-        // yield and managed focus must stay free to move to the web view.
-        if (!_platformInfo.HostedWebViewFocusIsNative)
-        {
-            return;
-        }
-
         var placeholder = _placeholder ??= CreatePlaceholder();
         if (placeholder is null)
         {

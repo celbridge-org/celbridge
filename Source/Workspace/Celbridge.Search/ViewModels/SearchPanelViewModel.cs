@@ -737,7 +737,6 @@ public partial class SearchPanelViewModel : ObservableObject
         _commandService.Execute<IOpenDocumentCommand>(command =>
         {
             command.FileResource = resource;
-            command.ForceReload = false;
             command.Location = location;
         });
     }

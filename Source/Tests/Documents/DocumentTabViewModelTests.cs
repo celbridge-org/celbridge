@@ -99,6 +99,22 @@ public class DocumentTabViewModelTests
     }
 
     [Test]
+    public async Task ReloadDocument_HasTheViewReadTheFileAgain()
+    {
+        // A view that loads its content once ignores a second load, so a reload goes through ReloadContent.
+        var documentView = Substitute.For<IDocumentView>();
+        documentView.ReloadContent().Returns(Task.FromResult<Result>(Result.Ok()));
+
+        var viewModel = CreateViewModel(new ResourceKey("notes.md"), documentView);
+
+        var result = await viewModel.ReloadDocument();
+
+        result.IsSuccess.Should().BeTrue();
+        await documentView.Received(1).ReloadContent();
+        await documentView.DidNotReceive().LoadContent();
+    }
+
+    [Test]
     public async Task CloseDocument_CompletesAsClosed_WhenSaveFails()
     {
         var documentView = Substitute.For<IDocumentView>();

@@ -53,11 +53,33 @@ public sealed record ExtensionEditorCandidates(
 public sealed record DocumentEditorState(EditorId EditorId, string Json);
 
 /// <summary>
-/// Options for opening a document in the documents panel.
+/// Describes how a document that is already open is refreshed when it is opened again.
+/// </summary>
+public enum DocumentRefresh
+{
+    /// <summary>
+    /// The document is left unchanged.
+    /// </summary>
+    None,
+
+    /// <summary>
+    /// The document's view reads the file again, in the same tab.
+    /// </summary>
+    Reload,
+
+    /// <summary>
+    /// The document closes and opens again in a new view, with the same editor, tab position and view state.
+    /// </summary>
+    Reopen,
+}
+
+/// <summary>
+/// Options for opening a document in the documents panel. Refresh acts only on a document that is already open.
+/// EditorState, when set, replaces the view state of a reopened document.
 /// </summary>
 public record OpenDocumentOptions(
     DocumentAddress? Address = null,
-    bool ForceReload = false,
+    DocumentRefresh Refresh = DocumentRefresh.None,
     string Location = "",
     bool Activate = true,
     EditorId EditorId = default,
@@ -65,11 +87,10 @@ public record OpenDocumentOptions(
 
 /// <summary>
 /// Options for closing a document in the documents panel. ForceClose closes the document without letting
-/// it cancel. SelectNeighbour decides whether another document takes over when the closing one was active.
+/// it cancel.
 /// </summary>
 public record CloseDocumentOptions(
-    bool ForceClose = false,
-    bool SelectNeighbour = true);
+    bool ForceClose = false);
 
 /// <summary>
 /// The documents service provides functionality to support the documents panel in the workspace UI.
@@ -154,7 +175,7 @@ public interface IDocumentsService
     /// <summary>
     /// Opens the file in the given editor, then records the editor as the file's editor choice. A document
     /// open in another editor reopens in the given editor at the same place in its section. The choice is
-    /// recorded only when the document opens.
+    /// recorded only when the document opens, and only for a file in the project root.
     /// </summary>
     Task<Result> OpenWithEditorAsync(ResourceKey fileResource, EditorId editorId);
 

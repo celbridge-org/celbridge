@@ -24,6 +24,7 @@ public class WebViewFocusRegistryTests
     private IAutomationService _automationService = null!;
     private MessageHandler<object, MainWindowDeactivatedMessage>? _onWindowDeactivated;
     private MessageHandler<object, ModalDialogOpenedMessage>? _onModalDialogOpened;
+    private MessageHandler<object, ModalDialogClosedMessage>? _onModalDialogClosed;
     private WebViewFocusRegistry _registry = null!;
 
     [SetUp]
@@ -52,6 +53,9 @@ public class WebViewFocusRegistryTests
         messengerService
             .When(service => service.Register(Arg.Any<object>(), Arg.Any<MessageHandler<object, ModalDialogOpenedMessage>>()))
             .Do(call => _onModalDialogOpened = call.Arg<MessageHandler<object, ModalDialogOpenedMessage>>());
+        messengerService
+            .When(service => service.Register(Arg.Any<object>(), Arg.Any<MessageHandler<object, ModalDialogClosedMessage>>()))
+            .Do(call => _onModalDialogClosed = call.Arg<MessageHandler<object, ModalDialogClosedMessage>>());
 
         _logger = new RecordingLogger<WebViewFocusRegistry>();
         _automationService = Substitute.For<IAutomationService>();
@@ -245,7 +249,51 @@ public class WebViewFocusRegistryTests
         view.RaiseFocusLost();
 
         ShouldHaveIgnoredFocusLoss("a modal dialog holds the keyboard");
+    }
+
+    [Test]
+    public void OpeningAModalDialog_TakesTheKeyboardFromTheSurface()
+    {
+        var view = new FakeWebView("notes.md");
+        _registry.Register(view, new TestFocusContext(FocusPanelId.Documents).Create());
+        _registry.GrantFocus(view);
+
+        _onModalDialogOpened!.Invoke(this, new ModalDialogOpenedMessage());
+
+        _registry.HasFocusedSurface.Should().BeFalse();
+        _registry.IsFocusedSurface(view).Should().BeFalse();
+    }
+
+    [Test]
+    public void TabKey_WhileAModalDialogIsOpen_StaysOutOfTheSurface()
+    {
+        var view = new FakeWebView("notes.md");
+        var focusContext = new TestFocusContext(FocusPanelId.Documents);
+        focusContext.EditTarget.TryHandleTabKey(Arg.Any<bool>()).Returns(true);
+        _registry.Register(view, focusContext.Create());
+        _registry.GrantFocus(view);
+        _onModalDialogOpened!.Invoke(this, new ModalDialogOpenedMessage());
+
+        var handled = _registry.TryHandleTabKey(shift: false, IntPtr.Zero);
+
+        handled.Should().BeFalse();
+        focusContext.EditTarget.DidNotReceive().TryHandleTabKey(Arg.Any<bool>());
+    }
+
+    [Test]
+    public void ClosingAModalDialog_ReturnsTheKeyboardToTheSurface()
+    {
+        var view = new FakeWebView("notes.md");
+        _registry.Register(view, new TestFocusContext(FocusPanelId.Documents).Create());
+        _registry.GrantFocus(view);
+        _onModalDialogOpened!.Invoke(this, new ModalDialogOpenedMessage());
+        view.RaiseFocusLost();
+
+        _onModalDialogClosed!.Invoke(this, new ModalDialogClosedMessage());
+
+        _registry.HasFocusedSurface.Should().BeTrue();
         _registry.IsFocusedSurface(view).Should().BeTrue();
+        _focusService.DidNotReceive().ClearFocus();
     }
 
     private void ShouldHaveIgnoredFocusLoss(string reason)

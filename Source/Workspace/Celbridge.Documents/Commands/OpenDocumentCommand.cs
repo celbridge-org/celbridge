@@ -22,7 +22,7 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
 
     public ResourceKey FileResource { get; set; }
 
-    public bool ForceReload { get; set; }
+    public DocumentRefresh Refresh { get; set; }
 
     public string Location { get; set; } = string.Empty;
 
@@ -94,7 +94,7 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
             ? new DocumentAddress(WindowIndex: 0, Section: TargetSection.Value, TabOrder: tabOrder)
             : null;
 
-        var options = new OpenDocumentOptions(address, ForceReload, Location, Activate, EditorId, EditorState);
+        var options = new OpenDocumentOptions(address, Refresh, Location, Activate, EditorId, EditorState);
 
         var openResult = await documentsService.OpenDocument(FileResource, options);
 
@@ -188,29 +188,6 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
         commandService.Execute<IOpenDocumentCommand>(command =>
         {
             command.FileResource = fileResource;
-        });
-    }
-
-    public static void OpenDocument(ResourceKey fileResource, bool forceReload)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<IOpenDocumentCommand>(command =>
-        {
-            command.FileResource = fileResource;
-            command.ForceReload = forceReload;
-        });
-    }
-
-    public static void OpenDocument(ResourceKey fileResource, bool forceReload, string location)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<IOpenDocumentCommand>(command =>
-        {
-            command.FileResource = fileResource;
-            command.ForceReload = forceReload;
-            command.Location = location;
         });
     }
 

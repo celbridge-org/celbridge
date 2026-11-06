@@ -37,15 +37,17 @@ public interface IManagedFocus
     /// <summary>
     /// Records which element has managed keyboard focus, so a caller can later check whether it still has focus,
     /// or give focus back to it after a modal dialog or anything else that took the keyboard has gone. If focus is
-    /// in an open menu, this records the element that had focus before the menu opened, because choosing an item
-    /// closes the menu and returns focus there.
+    /// in an open menu, this records the element that had focus before the menu opened. The focused item goes when the
+    /// menu closes.
     /// </summary>
     INotedFocus NoteFocus();
 
     /// <summary>
-    /// Gives up managed keyboard focus, so the keys the platform routes through the managed tree reach no
-    /// control. A no-op on heads where hosted web views participate in managed focus, and when managed
-    /// focus has already been given up.
+    /// Gives up managed keyboard focus by moving it onto an inert placeholder. The control that had focus then
+    /// stops receiving keys. Does nothing if managed focus is already on the placeholder. A caller about to
+    /// remove the focused element calls this first. If the caller skips this, WinUI hands focus to the next tab
+    /// stop when the element goes. That tab stop can be a hosted web view. The application would then read the
+    /// web view's focus report as a move the user made.
     /// </summary>
     void YieldFocus();
 }

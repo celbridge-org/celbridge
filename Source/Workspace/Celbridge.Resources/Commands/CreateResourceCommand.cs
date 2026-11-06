@@ -73,7 +73,6 @@ public class CreateResourceCommand : CommandBase, ICreateResourceCommand
             _commandService.Execute<IOpenDocumentCommand>(command =>
             {
                 command.FileResource = DestResource;
-                command.ForceReload = false;
             });
 
             _commandService.Execute<IActivateDocumentCommand>(command =>

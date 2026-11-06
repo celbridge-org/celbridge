@@ -25,6 +25,11 @@ public interface IDocumentView : IWorkspaceItem
     Task<Result> LoadContent();
 
     /// <summary>
+    /// Reads the document's file again into this view.
+    /// </summary>
+    Task<Result> ReloadContent();
+
+    /// <summary>
     /// Sets the document's writable state.
     /// </summary>
     void SetWritableState(WritableState state);

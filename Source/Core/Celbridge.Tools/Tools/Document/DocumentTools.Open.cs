@@ -10,7 +10,7 @@ public partial class DocumentTools
     [McpServerTool(Name = "document_open", ReadOnly = false, Idempotent = true)]
     [ToolAlias("document.open")]
     [RelatedGuides("resource_keys", "workspace_panels")]
-    public async partial Task<CallToolResult> Open(string fileResource, string section = "", bool forceReload = false, bool activate = false, int line = 0, int column = 0)
+    public async partial Task<CallToolResult> Open(string fileResource, string section = "", bool reload = false, bool activate = false, int line = 0, int column = 0)
     {
         if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))
         {
@@ -36,12 +36,13 @@ public partial class DocumentTools
         }
 
         var location = DocumentLocation.Compose(line, column);
+        var refresh = reload ? DocumentRefresh.Reload : DocumentRefresh.None;
 
         var openResult = await ExecuteCommandAsync<IOpenDocumentCommand, OpenDocumentOutcome>(command =>
         {
             command.FileResource = fileResourceKey;
             command.TargetSection = targetSection;
-            command.ForceReload = forceReload;
+            command.Refresh = refresh;
             command.Activate = activate;
             command.Location = location;
         });

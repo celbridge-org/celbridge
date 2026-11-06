@@ -16,9 +16,9 @@ Naming a section for a document that is already open in another section moves it
 
 Naming a secondary section (`main_right`, `bottom_right`, `side_bottom`) while its area is not split splits the area so the document opens where it was asked for. If that leaves the area's primary section empty — the area held nothing beforehand — the split folds straight back and the document ends up in the primary section, because a split section is never left empty. Naming a section in a collapsed area shows that area, even when `activate` is false, so the document is on screen where you asked for it. In Focus or Presentation mode a hidden area is shown only when `activate` is true, and that ends the mode.
 
-### forceReload
+### reload
 
-When `true`, reload the document from disk even if it is already open. The normal save model already reloads on external writes, so this is rarely needed.
+When `true` and the document is already open, the document's editor reads the file again, in the same tab. Most editors already reload by themselves when another program changes the file, so this is rarely needed. A file in `logs:` is the exception, since Celbridge doesn't watch that root.
 
 ### activate
 

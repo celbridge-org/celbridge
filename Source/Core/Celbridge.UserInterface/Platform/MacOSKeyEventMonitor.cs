@@ -198,8 +198,10 @@ internal static class MacOSKeyEventMonitor
 
             // Only act while a document is focused. Tab still navigates the managed panels (Explorer, Search,
             // and so on) everywhere else, the close shortcuts must not close a hidden document from another
-            // panel, and Command+F falls through to the Find menu item, which drives the same document.
-            if (_focusService?.FocusedPanel != FocusPanelId.Documents)
+            // panel, and Command+F falls through to the Find menu item, which drives the same document. The focused
+            // panel stays on the document behind a modal dialog, but the dialog has the keyboard.
+            if (_focusService?.FocusedPanel != FocusPanelId.Documents
+                || IsDialogOpen())
             {
                 return ReleaseCommandChord(nsEvent, modifierFlags);
             }
