@@ -10,6 +10,13 @@ Only operations under `project:` go on the stack, and a copy counts when its des
 
 A delete under `project:` moves the resource to the trash, and undo brings it back. A symbolic link or junction, or a folder that contains one, is deleted permanently instead. `explorer_delete` reports `"undoable": false` for every delete that undo cannot reverse. Do not call `explorer_undo` to recover such a delete, because it would reverse an earlier operation instead.
 
+Undoing a create, a copy or an import deletes what the operation added, permanently. The user makes an import by dragging or pasting a file or folder into the project from outside. Undo protects the user's work in two ways:
+
+- Undo refuses to remove a file or folder that has changed since the operation added it. Saving a file counts as a change, even with identical content. A created folder is the exception. Undo removes an empty folder. Undo leaves a folder with contents in place and reports success.
+- Undo refuses to remove a copied or imported item when the source has changed or gone, because redo reads the source again.
+
+A refused undo returns an error that names the item, and changes nothing. The refused entry stays on the stack and blocks older operations, so calling `explorer_undo` again returns the same error. Operations made later go on top and undo normally. A refused batch removes nothing. Extracting an archive makes one batch, and so does copying several items.
+
 Explorer undo cannot reverse:
 
 - Document text edits — different stack.

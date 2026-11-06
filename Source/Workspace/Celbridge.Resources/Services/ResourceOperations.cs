@@ -12,13 +12,73 @@ internal abstract class FileOperation
     public abstract bool IsUndoable { get; }
 
     public abstract Task<Result> ExecuteAsync();
-    public abstract Task<Result> UndoAsync();
+
+    // Returns a failure when undo would lose the user's work. The check changes nothing.
+    public virtual async Task<Result> CheckUndoAsync()
+    {
+        await Task.CompletedTask;
+
+        return Result.Ok();
+    }
+
+    // Reverses the operation. UndoAsync calls this after CheckUndoAsync passes.
+    public abstract Task<Result> ApplyUndoAsync();
+
+    public async Task<Result> UndoAsync()
+    {
+        var checkResult = await CheckUndoAsync();
+        if (checkResult.IsFailure)
+        {
+            return checkResult;
+        }
+
+        return await ApplyUndoAsync();
+    }
+
     public virtual Task<Result> RedoAsync() => ExecuteAsync();
 
     // Only the project root contains the user's files. The other roots contain Celbridge's own files.
     protected static bool IsUnderProjectRoot(ResourceKey resource)
     {
         return resource.Root == ResourceKey.DefaultRoot;
+    }
+
+    // Returns a failure when an added item has changed or can't be read. An absent item passes the check.
+    protected static async Task<Result<ItemStampComparison>> CheckAddedItemAsync(
+        ResourceKey item,
+        ItemStamp? recordedStamp,
+        ItemStampReader stampReader)
+    {
+        var comparison = await stampReader.CompareAsync(item, recordedStamp);
+        if (comparison == ItemStampComparison.Changed)
+        {
+            return Result.Fail($"Undo left '{item}' in place because the item has changed or could not be read.");
+        }
+
+        return comparison;
+    }
+
+    // Deletes an item that passed the undo check. An absent item leaves nothing to do.
+    protected static async Task<Result> RemoveItemAsync(ResourceKey item, IResourceFileSystem resourceFileSystem)
+    {
+        var infoResult = await resourceFileSystem.GetInfoAsync(item);
+        if (infoResult.IsFailure)
+        {
+            return Result.Fail(infoResult);
+        }
+
+        if (infoResult.Value.Kind == StorageItemKind.NotFound)
+        {
+            return Result.Ok();
+        }
+
+        var deleteResult = await resourceFileSystem.DeleteAsync(item);
+        if (deleteResult.IsFailure)
+        {
+            return Result.Fail(deleteResult);
+        }
+
+        return Result.Ok();
     }
 }
 
@@ -47,11 +107,26 @@ internal class FileOperationBatch : FileOperation
         return Result.Ok();
     }
 
-    public override async Task<Result> UndoAsync()
+    // A refused batch removes nothing, so every check runs before the first operation is undone.
+    public override async Task<Result> CheckUndoAsync()
+    {
+        foreach (var operation in Operations)
+        {
+            var checkResult = await operation.CheckUndoAsync();
+            if (checkResult.IsFailure)
+            {
+                return checkResult;
+            }
+        }
+
+        return Result.Ok();
+    }
+
+    public override async Task<Result> ApplyUndoAsync()
     {
         for (int i = Operations.Count - 1; i >= 0; i--)
         {
-            var result = await Operations[i].UndoAsync();
+            var result = await Operations[i].ApplyUndoAsync();
             if (result.IsFailure)
             {
                 return result;
@@ -63,11 +138,10 @@ internal class FileOperationBatch : FileOperation
 
 /// <summary>
 /// Undoable create-file or create-folder operation. The folder variant runs
-/// through the gateway's idempotent CreateFolderAsync; undo deletes the
-/// folder only when it is still empty so user content added after creation is
-/// not silently wiped. The file variant writes bytes through the gateway;
-/// undo hard-deletes (no trash) since the user is reversing a just-created
-/// resource they did not previously want.
+/// through the gateway's idempotent CreateFolderAsync. Undo deletes the folder
+/// only when the folder is empty. The file variant writes bytes through the
+/// gateway. Undo deletes the file permanently, and refuses when the file has
+/// changed since the operation created it.
 /// </summary>
 internal class CreateOperation : FileOperation
 {
@@ -75,21 +149,32 @@ internal class CreateOperation : FileOperation
     private readonly bool _isFile;
     private readonly byte[]? _content;
     private readonly IResourceFileSystem _resourceFileSystem;
+    private readonly ItemStampReader _stampReader;
+    private ItemStamp? _stamp;
 
-    public CreateOperation(ResourceKey resource, byte[] content, IResourceFileSystem resourceFileSystem)
+    public CreateOperation(
+        ResourceKey resource,
+        byte[] content,
+        IResourceFileSystem resourceFileSystem,
+        IResourceWalker resourceWalker)
     {
         _resource = resource;
         _isFile = true;
         _content = content;
         _resourceFileSystem = resourceFileSystem;
+        _stampReader = new ItemStampReader(resourceFileSystem, resourceWalker);
     }
 
-    public CreateOperation(ResourceKey resource, IResourceFileSystem resourceFileSystem)
+    public CreateOperation(
+        ResourceKey resource,
+        IResourceFileSystem resourceFileSystem,
+        IResourceWalker resourceWalker)
     {
         _resource = resource;
         _isFile = false;
         _content = null;
         _resourceFileSystem = resourceFileSystem;
+        _stampReader = new ItemStampReader(resourceFileSystem, resourceWalker);
     }
 
     public override bool IsUndoable => IsUnderProjectRoot(_resource);
@@ -105,14 +190,37 @@ internal class CreateOperation : FileOperation
                 return Result.Fail($"Resource already exists: '{_resource}'");
             }
 
-            return await _resourceFileSystem.WriteAllBytesAsync(_resource, _content!);
+            var writeResult = await _resourceFileSystem.WriteAllBytesAsync(_resource, _content!);
+            if (writeResult.IsSuccess
+                && IsUndoable)
+            {
+                _stamp = await _stampReader.ReadAsync(_resource);
+            }
+
+            return writeResult;
         }
 
         return await _resourceFileSystem.CreateFolderAsync(_resource);
     }
 
-    public override async Task<Result> UndoAsync()
+    public override async Task<Result> CheckUndoAsync()
     {
+        // A created folder has no stamp, because undo removes the folder only when the folder is empty.
+        if (!_isFile)
+        {
+            return Result.Ok();
+        }
+
+        return await CheckAddedItemAsync(_resource, _stamp, _stampReader);
+    }
+
+    public override async Task<Result> ApplyUndoAsync()
+    {
+        if (_isFile)
+        {
+            return await RemoveItemAsync(_resource, _resourceFileSystem);
+        }
+
         var infoResult = await _resourceFileSystem.GetInfoAsync(_resource);
         if (infoResult.IsFailure
             || infoResult.Value.Kind == StorageItemKind.NotFound)
@@ -120,43 +228,49 @@ internal class CreateOperation : FileOperation
             return Result.Ok();
         }
 
-        if (!_isFile)
+        // Only remove an empty folder. If the user filled it after the
+        // original create, leave the contents alone.
+        var enumerateResult = await _resourceFileSystem.EnumerateFolderAsync(_resource);
+        if (enumerateResult.IsFailure
+            || enumerateResult.Value.Count > 0)
         {
-            // Only remove an empty folder. If the user filled it after the
-            // original create, leave the contents alone.
-            var enumerateResult = await _resourceFileSystem.EnumerateFolderAsync(_resource);
-            if (enumerateResult.IsFailure
-                || enumerateResult.Value.Count > 0)
-            {
-                return Result.Ok();
-            }
+            return Result.Ok();
         }
 
         var deleteResult = await _resourceFileSystem.DeleteAsync(_resource);
-        return deleteResult.IsSuccess
-            ? Result.Ok()
-            : Result.Fail(deleteResult);
+        if (deleteResult.IsFailure)
+        {
+            return Result.Fail(deleteResult);
+        }
+
+        return Result.Ok();
     }
 }
 
 /// <summary>
 /// Undoable copy of a file or folder through the gateway. The bytes-and-sidecar
-/// cascade runs inside the gateway's CopyAsync.
+/// cascade runs inside the gateway's CopyAsync. Undo refuses after a change to
+/// the copy or the source, because redo reads the source again.
 /// </summary>
 internal class CopyOperation : FileOperation
 {
     private readonly ResourceKey _source;
     private readonly ResourceKey _dest;
     private readonly IResourceFileSystem _resourceFileSystem;
+    private readonly ItemStampReader _stampReader;
+    private ItemStamp? _sourceStamp;
+    private ItemStamp? _destStamp;
 
     public CopyOperation(
         ResourceKey source,
         ResourceKey dest,
-        IResourceFileSystem resourceFileSystem)
+        IResourceFileSystem resourceFileSystem,
+        IResourceWalker resourceWalker)
     {
         _source = source;
         _dest = dest;
         _resourceFileSystem = resourceFileSystem;
+        _stampReader = new ItemStampReader(resourceFileSystem, resourceWalker);
     }
 
     // A copy changes only its destination.
@@ -164,22 +278,45 @@ internal class CopyOperation : FileOperation
 
     public override async Task<Result> ExecuteAsync()
     {
+        // The source's stamp comes first. A source that changes during the copy then fails the undo check.
+        if (IsUndoable)
+        {
+            _sourceStamp = await _stampReader.ReadAsync(_source);
+        }
+
         var copyResult = await _resourceFileSystem.CopyAsync(_source, _dest);
         if (copyResult.IsFailure)
         {
             return Result.Fail(copyResult);
         }
 
+        if (IsUndoable)
+        {
+            _destStamp = await _stampReader.ReadAsync(_dest);
+        }
+
         return Result.Ok();
     }
 
-    public override async Task<Result> UndoAsync()
+    public override async Task<Result> CheckUndoAsync()
     {
-        var deleteResult = await _resourceFileSystem.DeleteAsync(_dest);
-        return deleteResult.IsSuccess
-            ? Result.Ok()
-            : Result.Fail(deleteResult);
+        var itemResult = await CheckAddedItemAsync(_dest, _destStamp, _stampReader);
+        if (itemResult.IsFailure
+            || itemResult.Value == ItemStampComparison.Absent)
+        {
+            return itemResult;
+        }
+
+        var currentSourceStamp = await _stampReader.ReadAsync(_source);
+        if (!ItemStamp.Matches(_sourceStamp, currentSourceStamp))
+        {
+            return Result.Fail($"Undo left '{_dest}' in place because the source '{_source}' has changed, has gone or could not be read.");
+        }
+
+        return Result.Ok();
     }
+
+    public override Task<Result> ApplyUndoAsync() => RemoveItemAsync(_dest, _resourceFileSystem);
 }
 
 /// <summary>
@@ -217,7 +354,7 @@ internal class MoveOperation : FileOperation
         return Result.Ok();
     }
 
-    public override async Task<Result> UndoAsync()
+    public override async Task<Result> ApplyUndoAsync()
     {
         var moveResult = await _resourceFileSystem.MoveAsync(_dest, _source);
         return moveResult.IsSuccess
@@ -258,7 +395,7 @@ internal class DeleteOperation : FileOperation
         return Result.Ok();
     }
 
-    public override async Task<Result> UndoAsync()
+    public override async Task<Result> ApplyUndoAsync()
     {
         if (_trashEntry is null)
         {
@@ -284,7 +421,8 @@ internal class DeleteOperation : FileOperation
 /// import has no paired sidecar in the project, so the sidecar cascade does
 /// not apply. The source bytes are read directly, since the source is outside
 /// every root. The destination goes through the gateway for containment
-/// validation.
+/// validation. Undo refuses after a change to the imported item or the source,
+/// because redo reads the source again.
 /// </summary>
 internal class ImportExternalOperation : FileOperation
 {
@@ -294,7 +432,10 @@ internal class ImportExternalOperation : FileOperation
     private readonly IResourceFileSystem _resourceFileSystem;
     private readonly ILocalFileSystem _fileSystem;
     private readonly ILogger _logger;
+    private readonly ItemStampReader _stampReader;
     private readonly List<FailedResource> _leftOutLinks = new();
+    private ItemStamp? _sourceStamp;
+    private ItemStamp? _destStamp;
 
     // Lists each link the folder import left out, keyed by where it would have landed.
     public IReadOnlyList<FailedResource> LeftOutLinks => _leftOutLinks;
@@ -304,6 +445,7 @@ internal class ImportExternalOperation : FileOperation
         ResourceKey dest,
         bool isFolder,
         IResourceFileSystem resourceFileSystem,
+        IResourceWalker resourceWalker,
         ILocalFileSystem fileSystem,
         ILogger logger)
     {
@@ -313,11 +455,50 @@ internal class ImportExternalOperation : FileOperation
         _resourceFileSystem = resourceFileSystem;
         _fileSystem = fileSystem;
         _logger = logger;
+        _stampReader = new ItemStampReader(resourceFileSystem, resourceWalker);
     }
 
     public override bool IsUndoable => IsUnderProjectRoot(_dest);
 
     public override async Task<Result> ExecuteAsync()
+    {
+        // The source's stamp comes first. A source that changes during the import then fails the undo check.
+        if (IsUndoable)
+        {
+            _sourceStamp = await ItemStampReader.ReadExternalAsync(_sourcePath, _isFolder, _fileSystem);
+        }
+
+        var importResult = await ImportAsync();
+        if (importResult.IsSuccess
+            && IsUndoable)
+        {
+            _destStamp = await _stampReader.ReadAsync(_dest);
+        }
+
+        return importResult;
+    }
+
+    public override async Task<Result> CheckUndoAsync()
+    {
+        var itemResult = await CheckAddedItemAsync(_dest, _destStamp, _stampReader);
+        if (itemResult.IsFailure
+            || itemResult.Value == ItemStampComparison.Absent)
+        {
+            return itemResult;
+        }
+
+        var currentSourceStamp = await ItemStampReader.ReadExternalAsync(_sourcePath, _isFolder, _fileSystem);
+        if (!ItemStamp.Matches(_sourceStamp, currentSourceStamp))
+        {
+            return Result.Fail($"Undo left '{_dest}' in place because the source '{_sourcePath}' has changed, has gone or could not be read.");
+        }
+
+        return Result.Ok();
+    }
+
+    public override Task<Result> ApplyUndoAsync() => RemoveItemAsync(_dest, _resourceFileSystem);
+
+    private async Task<Result> ImportAsync()
     {
         if (_isFolder)
         {
@@ -372,21 +553,6 @@ internal class ImportExternalOperation : FileOperation
                 .WithErrors(readResult);
         }
         return await _resourceFileSystem.WriteAllBytesAsync(_dest, readResult.Value);
-    }
-
-    public override async Task<Result> UndoAsync()
-    {
-        var infoResult = await _resourceFileSystem.GetInfoAsync(_dest);
-        if (infoResult.IsFailure
-            || infoResult.Value.Kind == StorageItemKind.NotFound)
-        {
-            return Result.Ok();
-        }
-
-        var deleteResult = await _resourceFileSystem.DeleteAsync(_dest);
-        return deleteResult.IsSuccess
-            ? Result.Ok()
-            : Result.Fail(deleteResult);
     }
 
     private async Task<Result> ImportFolderAsync(string sourceFolderPath, ResourceKey destinationFolder)

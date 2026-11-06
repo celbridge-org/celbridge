@@ -4,6 +4,7 @@ using Celbridge.Resources;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
+using Microsoft.Extensions.Localization;
 using Windows.System;
 
 namespace Celbridge.Explorer.Views;
@@ -104,12 +105,42 @@ public sealed partial class ResourceTree : IEditTarget
                 break;
 
             case EditIntent.Undo:
-                _commandService.Execute<IUndoResourceCommand>();
+                _ = UndoAsync();
                 break;
 
             case EditIntent.Redo:
-                _commandService.Execute<IRedoResourceCommand>();
+                _ = RedoAsync();
                 break;
+        }
+    }
+
+    // The command queue waits while a dialog is open, so the alert opens after the command finishes.
+    // A refused undo leaves its entry on the stack, so the alert shows. An empty stack shows no alert, because an
+    // earlier queued press has already done the undo.
+    private async Task UndoAsync()
+    {
+        var undoResult = await _commandService.ExecuteAsync<IUndoResourceCommand>();
+        if (undoResult.IsFailure
+            && _operationService.CanUndo)
+        {
+            var title = _stringLocalizer.GetString("ResourceTree_CannotUndo");
+            var message = _stringLocalizer.GetString("ResourceTree_CannotUndoMessage");
+            await _dialogService.ShowAlertDialogAsync(title, message);
+        }
+    }
+
+    // The command queue waits while a dialog is open, so the alert opens after the command finishes.
+    // A failed redo leaves its entry on the stack, so the alert shows. An empty stack shows no alert, because an
+    // earlier queued press has already done the redo.
+    private async Task RedoAsync()
+    {
+        var redoResult = await _commandService.ExecuteAsync<IRedoResourceCommand>();
+        if (redoResult.IsFailure
+            && _operationService.CanRedo)
+        {
+            var title = _stringLocalizer.GetString("ResourceTree_CannotRedo");
+            var message = _stringLocalizer.GetString("ResourceTree_CannotRedoMessage");
+            await _dialogService.ShowAlertDialogAsync(title, message);
         }
     }
 

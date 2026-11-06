@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.DataTransfer;
+using Celbridge.Dialog;
 using Celbridge.Documents;
 using Celbridge.Explorer.Menu;
 using Celbridge.Explorer.Models;
@@ -20,6 +21,7 @@ namespace Celbridge.Explorer.Views;
 public sealed partial class ResourceTree : UserControl
 {
     private readonly ICommandService _commandService;
+    private readonly IDialogService _dialogService;
     private readonly IResourceTransferService _resourceTransferService;
     private readonly IResourceOperationService _operationService;
     private readonly ISidecarService _sidecarService;
@@ -40,6 +42,7 @@ public sealed partial class ResourceTree : UserControl
 
         ViewModel = ServiceLocator.AcquireService<ResourceTreeViewModel>();
         _commandService = ServiceLocator.AcquireService<ICommandService>();
+        _dialogService = ServiceLocator.AcquireService<IDialogService>();
         _menuBuilder = ServiceLocator.AcquireService<IMenuBuilder<ExplorerMenuContext>>();
         _platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
