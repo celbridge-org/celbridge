@@ -5,6 +5,7 @@ using Celbridge.UserInterface;
 using Celbridge.WebHost;
 using Celbridge.Workspace;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Celbridge.Tests.WebHost;
 
@@ -25,6 +26,7 @@ public class WebViewFocusRegistryTests
     private MessageHandler<object, MainWindowDeactivatedMessage>? _onWindowDeactivated;
     private MessageHandler<object, ModalDialogOpenedMessage>? _onModalDialogOpened;
     private MessageHandler<object, ModalDialogClosedMessage>? _onModalDialogClosed;
+    private FakeTimeProvider _clock = null!;
     private WebViewFocusRegistry _registry = null!;
 
     [SetUp]
@@ -59,12 +61,14 @@ public class WebViewFocusRegistryTests
 
         _logger = new RecordingLogger<WebViewFocusRegistry>();
         _automationService = Substitute.For<IAutomationService>();
+        _clock = new FakeTimeProvider();
 
         _registry = new WebViewFocusRegistry(
             _focusService,
             messengerService,
             _automationService,
-            _logger);
+            _logger,
+            _clock);
     }
 
     [TearDown]
@@ -92,16 +96,14 @@ public class WebViewFocusRegistryTests
         return view;
     }
 
-    private static async Task WaitForFocusPageCountAsync(ControlFreeWebView view, int expectedCount)
+    // Advances the clock past one of the registry's checks for a view reaching its window.
+    private void AdvancePastAWindowCheck()
     {
-        for (var attempt = 0; attempt < 200 && view.FocusPageCount < expectedCount; attempt++)
-        {
-            await Task.Delay(10);
-        }
+        _clock.Advance(TimeSpan.FromMilliseconds(20));
     }
 
     [Test]
-    public async Task FocusFocusedSurface_ForAViewOutsideAWindow_FocusesThePageOnceTheViewArrives()
+    public void FocusFocusedSurface_ForAViewOutsideAWindow_FocusesThePageOnceTheViewArrives()
     {
         var view = CreateViewOutsideAWindow("page.browser");
         _registry.GrantFocus(view);
@@ -111,13 +113,13 @@ public class WebViewFocusRegistryTests
         view.FocusPageCount.Should().Be(1);
 
         view.IsInWindowForTest = true;
-        await WaitForFocusPageCountAsync(view, 2);
+        AdvancePastAWindowCheck();
 
         view.FocusPageCount.Should().Be(2);
     }
 
     [Test]
-    public async Task FocusFocusedSurface_ForAViewOutsideAWindow_StopsWaitingWhenTheKeyboardMoves()
+    public void FocusFocusedSurface_ForAViewOutsideAWindow_StopsWaitingWhenTheKeyboardMoves()
     {
         var view = CreateViewOutsideAWindow("page.browser");
         var otherView = new FakeWebView("other.browser");
@@ -127,7 +129,7 @@ public class WebViewFocusRegistryTests
 
         _registry.GrantFocus(otherView);
         view.IsInWindowForTest = true;
-        await Task.Delay(100);
+        AdvancePastAWindowCheck();
 
         _registry.IsFocusedSurface(otherView).Should().BeTrue();
         view.FocusPageCount.Should().Be(1);

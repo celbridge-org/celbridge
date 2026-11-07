@@ -274,7 +274,7 @@
     },
 
     {
-      "comment": "Grab band of a splitter dividing two panes of one document, mirroring the GrabAreaSize set on the native Splitter where it does the same job (BrowserDocumentView.xaml). Keep the two in sync when either changes. Wider than the workspace gutter because a band inside a document has no field behind it to widen the target.",
+      "comment": "Grab band of a splitter dividing two panes of one document. Wider than the workspace gutter because a band inside a document has no field behind it to widen the target.",
       "tokens": {
         "splitter-width": {
           "targets": ["css"],

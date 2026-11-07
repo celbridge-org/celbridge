@@ -17,13 +17,13 @@ public class BrowserEditorFactoryTests
     }
 
     [Test]
-    public void SupportedExtensions_IncludesDotWebview()
+    public void SupportedExtensions_IncludesDotBrowser()
     {
         _factory.SupportedExtensions.Should().Contain(".browser");
     }
 
     [Test]
-    public void SupportedExtensions_DoesNotIncludeDotWebviewCel()
+    public void SupportedExtensions_DoesNotIncludeDotBrowserCel()
     {
         // .cel is reserved for project metadata sidecars. The browser editor binds to the plain .browser extension,
         // and the document's data goes in the .browser file as TOML.

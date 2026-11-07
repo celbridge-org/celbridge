@@ -9,9 +9,8 @@ using Celbridge.WebHost;
 namespace Celbridge.Browser.Services;
 
 /// <summary>
-/// Keeps favicons in a folder of the project data folder. An icon's file is named for the address the icon came from,
-/// so every page naming that address reuses the file. A bookmark's file is named for the bookmark's address. A bookmark
-/// therefore shows an icon before the page loads, and documents with the same bookmark address share a file.
+/// Stores favicons for the current project: the icon from an icon address, and the icon of a bookmark's page, by the
+/// bookmark's address.
 /// </summary>
 public interface IBrowserFaviconCache : IWebViewFaviconStore
 {
@@ -26,6 +25,9 @@ public interface IBrowserFaviconCache : IWebViewFaviconStore
     Task WriteBookmarkIconAsync(string url, byte[] favicon);
 }
 
+// Keeps favicons in a folder of the project data folder. An icon's file is named for the icon's address, so every
+// page naming that address reuses the file. A bookmark's file is named for the bookmark's address, so
+// documents with the same bookmark address share a file.
 internal sealed class BrowserFaviconCache : IBrowserFaviconCache
 {
     private const string FaviconFileExtension = ".favicon";

@@ -12,8 +12,7 @@
     AutomationProperties.HelpText="{x:Bind ViewModel.PipLabel, Mode=OneWay}"
     VerticalContentAlignment="Stretch"
     DoubleTapped="DocumentTab_DoubleTapped"
-    Tapped="DocumentTab_Tapped"
-    DragStarting="DocumentTab_DragStarting">
+    Tapped="DocumentTab_Tapped">
 
     <muxc:TabViewItem.Resources>
         <services:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />

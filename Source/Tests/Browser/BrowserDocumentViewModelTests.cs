@@ -451,16 +451,6 @@ public class BrowserDocumentViewModelTests
         Addresses(restored).Should().Equal(PageThree, PageOne, PageTwo);
     }
 
-    [TestCase(2, 0, 0)]
-    [TestCase(0, 2, 1)]
-    [TestCase(0, 3, 2)]
-    [TestCase(1, 1, 1)]
-    [TestCase(1, 2, 1)]
-    public void GetTargetIndex_CountsTheDraggedTabInItsSlot(int currentIndex, int slot, int expected)
-    {
-        BrowserTabDragHandler.GetTargetIndex(currentIndex, slot).Should().Be(expected);
-    }
-
     [Test]
     public void TheSavedState_LeavesOutABlankTab_AndShowsTheTabNextToIt()
     {
@@ -501,6 +491,21 @@ public class BrowserDocumentViewModelTests
         Addresses(restored).Should().Equal(PageOne);
     }
 
+    [TestCase("blob:https://example.com/7f3a")]
+    [TestCase("data:text/html,<p>Report</p>")]
+    public void TheSavedState_LeavesOutAPageWithNoWebAddress(string url)
+    {
+        var viewModel = CreateViewModelWithTabs(PageOne);
+        var tab = viewModel.OpenTabForNewWindow(url, isUserInitiated: true, viewModel.Tabs[0])!;
+        tab.NotifyNavigationCommitted(url);
+
+        var restored = CreateViewModel();
+        restored.RestoreEditorState(viewModel.TrySerializeEditorState()!);
+
+        Addresses(restored).Should().Equal(PageOne);
+        restored.ShownTab!.CurrentUrl.Should().Be(PageOne);
+    }
+
     [Test]
     public void OpenBookmark_OpensANewTabAndClosesTheSettings()
     {
@@ -515,23 +520,46 @@ public class BrowserDocumentViewModelTests
     }
 
     [Test]
-    public void GetOrOpenTabForAddress_WithZeroTabs_OpensATab()
+    public void NavigateShownTab_WithZeroTabs_OpensATab()
     {
         var viewModel = CreateViewModelWithTabs();
 
-        var tab = viewModel.GetOrOpenTabForAddress();
+        var tab = viewModel.NavigateShownTab(PageOne);
 
         viewModel.Tabs.Should().ContainSingle().Which.Should().BeSameAs(tab);
         viewModel.ShownTab.Should().BeSameAs(tab);
+        Addresses(viewModel).Should().Equal(PageOne);
     }
 
     [Test]
-    public void GetOrOpenTabForAddress_UsesTheShownTab()
+    public void NavigateShownTab_SendsTheShownTab()
     {
         var viewModel = CreateViewModelWithTabs(PageOne, PageTwo);
 
-        viewModel.GetOrOpenTabForAddress().Should().BeSameAs(viewModel.Tabs[1]);
-        viewModel.Tabs.Should().HaveCount(2);
+        viewModel.NavigateShownTab(PageThree).Should().BeSameAs(viewModel.Tabs[1]);
+        Addresses(viewModel).Should().Equal(PageOne, PageThree);
+    }
+
+    [Test]
+    public void NavigateShownTab_ToAnAddressThatIsNotAbsolute_OpensNothing()
+    {
+        var viewModel = CreateViewModelWithTabs();
+
+        viewModel.NavigateShownTab("example.com").Should().BeNull();
+        viewModel.Tabs.Should().BeEmpty();
+    }
+
+    // A tab sent to an address names the address in its absolute form, matching what the page reports on commit.
+    [Test]
+    public void ATabSentToAnAddress_NamesItInTheFormThePageCommits()
+    {
+        var viewModel = CreateViewModelWithTabs();
+
+        var typed = viewModel.NavigateShownTab("https://example.com")!;
+        var opened = viewModel.OpenBookmark(viewModel.CreateBookmark(new BrowserBookmark("example.com")))!;
+
+        typed.CurrentUrl.Should().Be("https://example.com/");
+        opened.CurrentUrl.Should().Be("https://example.com/");
     }
 
     [Test]
@@ -659,43 +687,21 @@ public class BrowserDocumentViewModelTests
     }
 
     [Test]
-    public void OpenBookmarkInShownTab_SendsTheBlankTabToTheBookmarkWithItsIcon()
+    public void NavigateShownTab_ToABookmarkedPage_ShowsTheBookmarksIcon()
     {
         var favicon = new byte[] { 1, 2, 3 };
         var viewModel = CreateViewModelWithTabs(PageOne);
         var blankTab = viewModel.OpenBlankTab();
         var bookmark = viewModel.CreateBookmark(new BrowserBookmark(PageTwo));
         bookmark.Favicon = favicon;
+        viewModel.Bookmarks.Add(bookmark);
 
-        var tab = viewModel.OpenBookmarkInShownTab(bookmark);
+        var tab = viewModel.NavigateShownTab(PageTwo);
 
         tab.Should().BeSameAs(blankTab);
         Addresses(viewModel).Should().Equal(PageOne, PageTwo);
         blankTab.Favicon.Should().BeSameAs(favicon);
         viewModel.IsPageOnScreen.Should().BeTrue();
-    }
-
-    [Test]
-    public void OpenBookmarkInShownTab_WithZeroTabs_OpensATabForTheBookmark()
-    {
-        var viewModel = CreateViewModelWithTabs();
-
-        var tab = viewModel.OpenBookmarkInShownTab(viewModel.CreateBookmark(new BrowserBookmark(PageOne)));
-
-        viewModel.Tabs.Should().ContainSingle().Which.Should().BeSameAs(tab);
-        viewModel.ShownTab.Should().BeSameAs(tab);
-        Addresses(viewModel).Should().Equal(PageOne);
-    }
-
-    [Test]
-    public void OpenBookmarkInShownTab_ForAnAddressThatCannotBeNavigatedTo_OpensNothing()
-    {
-        var viewModel = CreateViewModelWithTabs();
-
-        var tab = viewModel.OpenBookmarkInShownTab(viewModel.CreateBookmark(new BrowserBookmark("ftp://example.com")));
-
-        tab.Should().BeNull();
-        viewModel.Tabs.Should().BeEmpty();
     }
 
     [Test]
@@ -951,6 +957,32 @@ public class BrowserDocumentViewModelTests
     }
 
     [Test]
+    public async Task ABookmarkAddedWhileLoadContentReadsTheFavicons_IsRecordedAndEveryIconLoads()
+    {
+        var cached = new byte[] { 1, 2, 3 };
+        StubBrowserFile("""
+            [[bookmarks]]
+            url = "https://example.com/one"
+
+            [[bookmarks]]
+            url = "https://example.com/two"
+            """);
+        var viewModel = CreateViewModel();
+        _faviconCache.TryReadBookmarkIconAsync(PageOne).Returns(_ =>
+        {
+            viewModel.Bookmarks.Add(viewModel.CreateBookmark(new BrowserBookmark(PageThree)));
+            return (byte[]?)null;
+        });
+        _faviconCache.TryReadBookmarkIconAsync(PageTwo).Returns(cached);
+
+        var result = await viewModel.LoadContent();
+
+        result.IsSuccess.Should().BeTrue();
+        viewModel.Bookmarks[1].Favicon.Should().BeSameAs(cached);
+        viewModel.HasUnsavedChanges.Should().BeTrue();
+    }
+
+    [Test]
     public void RestoringATab_UsesTheCachedIconOnlyWhenItsAddressMatchesABookmark()
     {
         var cached = new byte[] { 1, 2, 3 };
@@ -1029,6 +1061,55 @@ public class BrowserDocumentViewModelTests
 
         bookmark.Favicon.Should().BeSameAs(favicon);
         await _faviconCache.Received(1).WriteBookmarkIconAsync(PageOne, favicon);
+    }
+
+    [Test]
+    public async Task ABookmarkAddedWhileAFaviconIsWritten_LeavesTheOtherBookmarksIcon()
+    {
+        var favicon = new byte[] { 1, 2, 3 };
+        var viewModel = CreateViewModelWithTabs(PageOne);
+        var first = viewModel.CreateBookmark(new BrowserBookmark(PageOne));
+        var second = viewModel.CreateBookmark(new BrowserBookmark(PageOne));
+        viewModel.Bookmarks.Add(first);
+        viewModel.Bookmarks.Add(second);
+        var isFirstWrite = true;
+        _faviconCache.WriteBookmarkIconAsync(Arg.Any<string>(), Arg.Any<byte[]>()).Returns(_ =>
+        {
+            if (isFirstWrite)
+            {
+                isFirstWrite = false;
+                viewModel.Bookmarks.Add(viewModel.CreateBookmark(new BrowserBookmark(PageThree)));
+            }
+            return Task.CompletedTask;
+        });
+
+        await viewModel.ReportTabFaviconAsync(viewModel.Tabs[0], PageOne, new WebViewFavicon(IconAddress, favicon));
+
+        first.Favicon.Should().BeSameAs(favicon);
+        second.Favicon.Should().BeSameAs(favicon);
+    }
+
+    [Test]
+    public async Task ATabThatMovesOnWhileAFaviconIsWritten_LeavesTheNewPagesBookmarkAlone()
+    {
+        var favicon = new byte[] { 1, 2, 3 };
+        var viewModel = CreateViewModelWithTabs(PageOne);
+        var tab = viewModel.Tabs[0];
+        var pageOneBookmark = viewModel.CreateBookmark(new BrowserBookmark(PageOne));
+        var pageTwoBookmark = viewModel.CreateBookmark(new BrowserBookmark(PageTwo));
+        viewModel.Bookmarks.Add(pageOneBookmark);
+        viewModel.Bookmarks.Add(pageTwoBookmark);
+        _faviconCache.WriteBookmarkIconAsync(PageOne, Arg.Any<byte[]>()).Returns(_ =>
+        {
+            tab.NotifyUserNavigation(PageTwo);
+            return Task.CompletedTask;
+        });
+
+        await viewModel.ReportTabFaviconAsync(tab, PageOne, new WebViewFavicon(IconAddress, favicon));
+
+        pageOneBookmark.Favicon.Should().BeSameAs(favicon);
+        pageTwoBookmark.Favicon.Should().BeNull();
+        await _faviconCache.DidNotReceive().WriteBookmarkIconAsync(PageTwo, Arg.Any<byte[]>());
     }
 
     [Test]

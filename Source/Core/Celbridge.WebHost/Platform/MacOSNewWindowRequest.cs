@@ -6,7 +6,8 @@ namespace Celbridge.WebHost.Platform;
 internal sealed class MacOSNewWindowRequest : WebNewWindowRequest
 {
     // How long the new view may take to enter the visual tree before WebKit gets its answer. Uno reports a view's
-    // navigations only once it has, and the page waiting on the answer is paused.
+    // navigations only after the view enters the visual tree. The page that asked stays paused until it gets the
+    // answer.
     private static readonly TimeSpan LoadedTimeout = TimeSpan.FromSeconds(2);
 
     public MacOSNewWindowRequest(IntPtr nativeRequest, MacNewWindowAction action)

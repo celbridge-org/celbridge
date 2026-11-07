@@ -18,7 +18,7 @@ public sealed partial class WorkspacePanel : IResourceDropTarget
     private void ConfigureResourceDropTarget()
     {
         var platformInfo = _serviceProvider.AcquireService<IPlatformInfo>();
-        if (!platformInfo.UsesPointerDrivenTabDrag)
+        if (!platformInfo.UsesPointerDrivenResourceDrag)
         {
             return;
         }

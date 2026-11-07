@@ -67,7 +67,7 @@ public static class BuiltInEditors
     /// The package built-ins: bundled contributions registered under host-assigned ids. Ordered to
     /// match the shared editors' relative order in BuiltInResolutionOrder, which is the authority for
     /// open precedence; the two lists differ only in that BuiltInResolutionOrder also carries the
-    /// natively registered WebView editor, which is not a package contribution.
+    /// natively registered browser editor, which is not a package contribution.
     /// </summary>
     public static readonly IReadOnlyList<BuiltInEditorDefinition> PackageBuiltIns =
     [
@@ -83,7 +83,7 @@ public static class BuiltInEditors
     /// Fixed resolution order for built-in editors, applied after every declared editor. Specialized
     /// editors rank ahead of the general code editor. This
     /// is the authority for built-in open precedence; PackageBuiltIns lists the same contributions
-    /// (minus the natively registered WebView editor) in the same relative order.
+    /// (minus the natively registered browser editor) in the same relative order.
     /// </summary>
     public static readonly IReadOnlyList<EditorId> BuiltInResolutionOrder =
     [

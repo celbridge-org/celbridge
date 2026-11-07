@@ -5,6 +5,7 @@ using Celbridge.Platform;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.UserInterface.Services;
+using Celbridge.UserInterface.Views.Controls;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Xaml.Media.Animation;
@@ -45,11 +46,6 @@ public partial class DocumentTab : TabViewItem
 
     // True once an item is chosen from the open menu. Cleared each time the menu opens.
     private bool _menuItemChosen;
-
-    /// <summary>
-    /// The gap the tab keeps between itself and the top of the strip band.
-    /// </summary>
-    public const double StripTopGap = 7;
 
     // How long after handling a double tap a second one is treated as the duplicate event rather than a
     // new gesture. Wide enough to cover the duplicate, which trails by a few milliseconds, and well short
@@ -123,18 +119,13 @@ public partial class DocumentTab : TabViewItem
     /// </summary>
     public event Action<DocumentTab, DocumentTabMenuAction>? ContextMenuActionRequested;
 
-    /// <summary>
-    /// Event raised when this tab starts being dragged.
-    /// </summary>
-    public event Action<DocumentTab>? DragStarted;
-
     public DocumentTab()
     {
         this.InitializeComponent();
 
-        // The tab takes the strip band less the gap it holds above itself.
-        Height = WorkspaceConstants.SectionTabStripHeight - StripTopGap;
-        Margin = new Thickness(0, StripTopGap, 0, 0);
+        // The tab takes the strip band less the gap it keeps above itself.
+        Height = TabStripView.TabHeight;
+        Margin = new Thickness(0, TabStripView.TabTopGap, 0, 0);
 
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _commandService = ServiceLocator.AcquireService<ICommandService>();
@@ -520,11 +511,5 @@ public partial class DocumentTab : TabViewItem
             var documentView = this.Content as IDocumentView;
             documentView?.FocusDocument();
         });
-    }
-
-    private void DocumentTab_DragStarting(UIElement sender, DragStartingEventArgs args)
-    {
-        // Notify that this tab is being dragged
-        DragStarted?.Invoke(this);
     }
 }

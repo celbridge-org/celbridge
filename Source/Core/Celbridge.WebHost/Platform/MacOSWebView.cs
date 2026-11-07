@@ -143,7 +143,7 @@ public sealed class MacOSWebView : SkiaWebView
     /// <summary>
     /// Waits for the control to enter the visual tree, for at most the timeout.
     /// </summary>
-    internal async Task WaitForLoadedAsync(TimeSpan timeout)
+    internal async Task WaitForLoadedAsync(TimeSpan timeout, TimeProvider? timeProvider = null)
     {
         var control = Control;
         if (control is null
@@ -162,7 +162,7 @@ public sealed class MacOSWebView : SkiaWebView
         control.Loaded += OnLoaded;
         try
         {
-            await Task.WhenAny(loaded.Task, Task.Delay(timeout));
+            await Task.WhenAny(loaded.Task, Task.Delay(timeout, timeProvider ?? TimeProvider.System));
         }
         finally
         {
@@ -605,7 +605,7 @@ public sealed class MacOSWebView : SkiaWebView
         return _platform.RouteDownloads(nativeHandle);
     }
 
-    // Uno implements no favicon event, so each page that loads may have a new icon.
+    // Uno raises no favicon event, so every page that finishes loading reports a possible new icon.
     private void MacOSWebView_NavigationCompleted(object? sender, WebNavigationCompletedEventArgs e)
     {
         if (e.Result == WebNavigationResult.Succeeded)
@@ -652,7 +652,8 @@ public sealed class MacOSWebView : SkiaWebView
         return Task.Run(() => MacOSWebViewInterop.RenderImageAsPng(svgFile, RenderedFaviconPixels));
     }
 
-    // The Uno control's own request carries only an address, and is answered with no opener link.
+    // Uno's own new window event carries only the address, and Uno answers WebKit with no view. That cuts the new page
+    // off from its opener, so the view hooks WebKit's callbacks.
     protected override void ObserveNewWindows()
     {
         if (!TryGetNativeHandle(out var nativeHandle, out var detail))

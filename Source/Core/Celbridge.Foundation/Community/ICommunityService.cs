@@ -1,13 +1,13 @@
 namespace Celbridge.Community;
 
 /// <summary>
-/// Maintains the web view document that presents the community resources. The document is generated rather
+/// Maintains the browser document that presents the community resources. The document is generated rather
 /// than authored by the user.
 /// </summary>
 public interface ICommunityService
 {
     /// <summary>
-    /// The resource key of the web view document that presents the community resources.
+    /// The resource key of the browser document that presents the community resources.
     /// </summary>
     ResourceKey DocumentResource { get; }
 

@@ -58,7 +58,7 @@ public sealed record BrowserFileContent
         }
         catch (TomlException exception)
         {
-            // A shape error carries no diagnostic, only a message.
+            // A shape error has only a message, so the detail falls back to the message.
             var detail = exception.Message;
             if (exception.Diagnostics.Count > 0)
             {
@@ -81,7 +81,7 @@ public sealed record BrowserFileContent
     }
 
     /// <summary>
-    /// Serialises this content as the canonical .browser TOML document. A key at its default value is left out, so a
+    /// Serializes this content as the canonical .browser TOML document. A key at its default value is left out, so a
     /// shared file records only what someone chose.
     /// </summary>
     public string ToToml()

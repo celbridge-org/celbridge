@@ -37,6 +37,7 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
     private readonly IMessengerService _messengerService;
     private readonly IAutomationService _automationService;
     private readonly ILogger<WebViewFocusRegistry> _logger;
+    private readonly TimeProvider _timeProvider;
 
     // Used only on the UI thread. Views register and close there, and focus signals are marshalled there.
     private readonly Dictionary<IWebView, WebViewFocusRegistration> _registrations = new();
@@ -73,11 +74,22 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         IMessengerService messengerService,
         IAutomationService automationService,
         ILogger<WebViewFocusRegistry> logger)
+        : this(focusService, messengerService, automationService, logger, TimeProvider.System)
+    {
+    }
+
+    internal WebViewFocusRegistry(
+        IFocusService focusService,
+        IMessengerService messengerService,
+        IAutomationService automationService,
+        ILogger<WebViewFocusRegistry> logger,
+        TimeProvider timeProvider)
     {
         _focusService = focusService;
         _messengerService = messengerService;
         _automationService = automationService;
         _logger = logger;
+        _timeProvider = timeProvider;
 
         _messengerService.Register<MainWindowActivatedMessage>(this, (_, _) => OnHostWindowActivationChanged(true));
         _messengerService.Register<MainWindowDeactivatedMessage>(this, (_, _) => OnHostWindowActivationChanged(false));
@@ -408,7 +420,7 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         {
             for (var attempt = 0; attempt < WindowWaitAttempts; attempt++)
             {
-                await Task.Delay(WindowWaitInterval);
+                await Task.Delay(WindowWaitInterval, _timeProvider);
 
                 if (view.IsDisposed
                     || !ReferenceEquals(KeyboardRegistration, registration))

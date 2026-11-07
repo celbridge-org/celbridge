@@ -134,8 +134,12 @@ internal static class WebViewFaviconReader
             }
 
             var isSvg = string.Equals(response.Content.Headers.ContentType?.MediaType, SvgMediaType, StringComparison.OrdinalIgnoreCase);
+            if (!isSvg)
+            {
+                return null;
+            }
 
-            return isSvg ? await renderSvg(bytes) : null;
+            return await renderSvg(bytes);
         }
         catch (Exception ex) when (ex is HttpRequestException or IOException or OperationCanceledException)
         {

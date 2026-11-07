@@ -1,6 +1,6 @@
-using Celbridge.Documents.Helpers;
+using Celbridge.UserInterface.Helpers;
 
-namespace Celbridge.Tests.Documents;
+namespace Celbridge.Tests.UserInterface;
 
 /// <summary>
 /// Covers WheelGestureAxisTracker: which of a gesture's events count as travelling along the axis it

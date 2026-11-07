@@ -223,7 +223,7 @@ public class WebViewFaviconReaderTests
     }
 
     [Test]
-    public async Task ReadAsync_ABodyThatStopsArriving_GivesUpAtTheTimeout()
+    public async Task FetchAsync_ABodyThatStopsArriving_GivesUpAtTheTimeout()
     {
         // The headers arrive and the body stalls, so a limit on the headers alone would wait for the server.
         var headers = Encoding.ASCII.GetBytes("HTTP/1.1 200 OK\r\nContent-Type: image/png\r\nContent-Length: 1000\r\n\r\nabc");
@@ -240,7 +240,7 @@ public class WebViewFaviconReaderTests
     }
 
     [Test]
-    public async Task ReadAsync_AConnectionThatDrops_ReturnsNull()
+    public async Task FetchAsync_AConnectionThatDrops_ReturnsNull()
     {
         var listener = new TcpListener(IPAddress.Loopback, 0);
         listener.Start();

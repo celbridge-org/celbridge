@@ -122,7 +122,7 @@ public interface IEditorWebView : IWebView, IDisposable
 
     /// <summary>
     /// Raised when the page asks to open a window. No window opens by itself. A view with no handler ignores the
-    /// request. The Windows Skia head never raises this.
+    /// request.
     /// </summary>
     event EventHandler<WebNewWindowRequest>? NewWindowRequested;
 
@@ -147,9 +147,8 @@ public interface IEditorWebView : IWebView, IDisposable
     event EventHandler? FaviconChanged;
 
     /// <summary>
-    /// Returns the current page's favicon, or null when the page has none the application can draw. A returned icon is
-    /// in the store under the favicon's address. A head that fetches the icon itself also reads the store, so each
-    /// address is fetched once. The Windows Skia head always returns null.
+    /// Returns the current page's favicon, or null when the page has no drawable icon. The icon may come from the store,
+    /// and a returned icon is in the store under the favicon's address.
     /// </summary>
     Task<WebViewFavicon?> ReadFaviconAsync(IWebViewFaviconStore store);
 

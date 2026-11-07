@@ -58,8 +58,11 @@ public static class BrowserUrlHelper
         return absoluteUrl == otherAbsoluteUrl;
     }
 
-    // The absolute form of an address, which is the form two of them can be compared in.
-    private static bool TryGetAbsoluteUrl(string input, out string absoluteUrl)
+    /// <summary>
+    /// Gets the absolute form of a user-entered address, which matches what a page reports on commit. Returns false when
+    /// the input cannot become a navigable external URL.
+    /// </summary>
+    public static bool TryGetAbsoluteUrl(string input, out string absoluteUrl)
     {
         absoluteUrl = string.Empty;
 

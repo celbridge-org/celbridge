@@ -780,7 +780,7 @@ This file could not be saved</value>
     <value>Bookmarks</value>
   </data>
   <data name="Browser_Settings_BookmarksDescription" xml:space="preserve">
-    <value>Pages you can open from the bookmark button on the tab bar.</value>
+    <value>Pages you can open from the bookmark button on the URL bar.</value>
   </data>
   <data name="Browser_Settings_AddBookmarkFromCurrentPage" xml:space="preserve">
     <value>Bookmark Current Page</value>
@@ -798,7 +798,7 @@ This file could not be saved</value>
     <value>Name</value>
   </data>
   <data name="Browser_Settings_BookmarkNamePlaceholder" xml:space="preserve">
-    <value>Name shown on the button</value>
+    <value>Name shown in the bookmark list</value>
   </data>
   <data name="Browser_Settings_BookmarkOpenTooltip" xml:space="preserve">
     <value>Open This Bookmark</value>

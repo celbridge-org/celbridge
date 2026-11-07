@@ -1,4 +1,4 @@
-namespace Celbridge.Documents.Helpers;
+namespace Celbridge.UserInterface.Helpers;
 
 /// <summary>
 /// Follows a wheel gesture across the events it arrives as, and reports which of them travel along the axis

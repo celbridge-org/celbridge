@@ -5,8 +5,7 @@ using static Celbridge.Utilities.Platform.ObjectiveCRuntime;
 namespace Celbridge.WebHost.Platform;
 
 /// <summary>
-/// A window a page asked WebKit to open, waiting for its answer. The page's script stays paused until the answer
-/// arrives, so every request gets exactly one answer, and soon.
+/// The address of a page's new window request, and whether the user's input prompted the request.
 /// </summary>
 public sealed record MacNewWindowAction(string Url, bool IsUserInitiated);
 
@@ -46,7 +45,7 @@ public static partial class MacOSWebViewInterop
     // The configuration WebKit gave for a new window. The next UNOWebView takes this configuration in place of Uno's own.
     private static IntPtr _nextWebViewConfiguration;
 
-    // The requests waiting on an answer, with WebKit's completion handler for each. A request is its handler's address.
+    // The requests still waiting on an answer. Each request is the address of WebKit's copied completion handler.
     private static readonly HashSet<IntPtr> _pendingNewWindows = new();
 
     // The configuration for each waiting request, which builds the request's view.
@@ -56,7 +55,8 @@ public static partial class MacOSWebViewInterop
     /// Reports the web view's new window requests and closing pages to the listener. One listener hears every web
     /// view, so every call must pass the same listener. The hooks go on Uno's class once per process. The web view's
     /// delegate is then set again, because WebKit reads a delegate's methods only when the delegate is set. Returns
-    /// false with the reason in detail when the hooks cannot go on Uno's class.
+    /// false with the reason in detail for a null view, a failed hook install on Uno's class, or a view lacking a UI
+    /// delegate.
     /// </summary>
     // UNO-BUG: UNOWebView answers every new window with nil, which cuts the new page off from the opener. UNOWebView
     // also lacks webViewDidClose:.
@@ -91,7 +91,8 @@ public static partial class MacOSWebViewInterop
 
     /// <summary>
     /// Runs an action that creates exactly one UNOWebView. That view is built from the configuration WebKit gave for the
-    /// request, which links the new page to the opener. Returns false when the action created no view.
+    /// request, which links the new page to the opener. Returns false when the request has already been answered or
+    /// the action created no view.
     /// </summary>
     public static bool CreateWebViewForNewWindow(IntPtr request, Action createWebView)
     {
@@ -150,8 +151,8 @@ public static partial class MacOSWebViewInterop
         }
 
         var webViewClass = GetClass("UNOWebView");
-        if (webViewClass == IntPtr.Zero ||
-            class_getInstanceMethod(webViewClass, GetSelector("initWithFrame:configuration:")) == IntPtr.Zero)
+        if (webViewClass == IntPtr.Zero
+            || class_getInstanceMethod(webViewClass, GetSelector("initWithFrame:configuration:")) == IntPtr.Zero)
         {
             detail = "Uno's web view class has no initWithFrame:configuration: to build a linked view through";
             return false;
@@ -216,8 +217,8 @@ public static partial class MacOSWebViewInterop
         IntPtr windowFeatures,
         IntPtr completionHandler)
     {
-        // WebKit keeps the page paused until the handler runs, and raises an exception if it never does. Never let an
-        // exception unwind into WebKit.
+        // WebKit keeps the page paused until the handler runs, and raises an exception if the handler is released
+        // without running. Never let an exception unwind into WebKit.
         var request = _Block_copy(completionHandler);
         try
         {

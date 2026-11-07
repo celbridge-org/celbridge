@@ -191,7 +191,7 @@
                           HorizontalScrollBarVisibility="Disabled"
                           VerticalScrollBarVisibility="Auto">
                 <!-- A tab stop, so a document with nothing else to focus still takes the keyboard. Its accessible name
-                     is set in code-behind. The content spans the width, and each part is centred at its maximum
+                     is set in code-behind. The content spans the width, and each part is centered at its maximum
                      width. -->
                 <ContentControl x:Name="PlaceholderContent"
                                 Margin="16"
@@ -269,6 +269,12 @@
         <local:BrowserDocumentSettingsView x:Name="SettingsSurface"
                                            Grid.Row="3"
                                            Visibility="Collapsed" />
+
+        <!-- Spans the document, so a dragged tab's ghost follows the pointer over the page. Display-only content
+             draws over the native web views on every head. -->
+        <Canvas x:Name="TabDragOverlay"
+                Grid.RowSpan="4"
+                IsHitTestVisible="False" />
 
     </Grid>
 </documents:DocumentView>

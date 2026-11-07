@@ -102,7 +102,7 @@ public class CommunityServiceTests
 
         await service.SeedDocumentAsync();
 
-        // The landing page is bookmarked too, so the bookmark list alone is a complete way around the site.
+        // Every section, the landing page included, is a bookmark, so the bookmark list covers the whole site.
         var urls = ReadWrittenDocument().Bookmarks.Select(bookmark => bookmark.Url);
 
         urls.Should().Equal(CommunityUrls.Celbridge, CommunityUrls.Learn, CommunityUrls.Forum);

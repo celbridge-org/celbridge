@@ -70,7 +70,7 @@ public sealed partial class WorkspaceView : UserControl, IWorkspaceView
 
         // Enable the pointer-driven resource drag overlay on heads where the built-in drag-and-drop is
         // disabled. The panels register their drop targets with the coordinator as they load.
-        if (_platformInfo.UsesPointerDrivenTabDrag)
+        if (_platformInfo.UsesPointerDrivenResourceDrag)
         {
             _resourceDragCoordinator.Initialize(ResourceDragOverlay, LayoutRoot);
         }

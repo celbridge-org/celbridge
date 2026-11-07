@@ -13,7 +13,7 @@ url = "https://example.com/docs/"
 name = "Docs"
 ```
 
-Each bookmark has a `url`, a `name` and an optional `open_on_start`. A `url` must be an external `http://` or `https://` address. Local paths and resource keys are not supported here. For project-local HTML, open the `.html` file itself, which shows it in the HTML editor.
+Each bookmark has a `url`, an optional `name` and an optional `open_on_start`. A `url` must be an external `http://` or `https://` address. Local paths and resource keys are not supported here. For project-local HTML, open the `.html` file itself, which shows it in the HTML editor.
 
 A bookmark with `open_on_start = true` opens in a tab when the document opens with no saved tabs. The bookmark button at the left of the URL bar lists every bookmark, and choosing one opens a new tab. The file stores the bookmarks, so a team shares them. The open tabs are saved for each user, and they come back when the project loads again. Closing a document discards its open tabs, so the next open shows the Open on Start bookmarks.
 

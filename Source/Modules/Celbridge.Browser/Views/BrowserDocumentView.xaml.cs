@@ -113,6 +113,7 @@ public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarg
 
         TabBar.ViewModel = ViewModel;
         TabBar.TabCloseRequested += TabBar_TabCloseRequested;
+        TabBar.SetDragOverlay(TabDragOverlay);
 
         var overlayFlyoutSupport = ServiceLocator.AcquireService<IOverlayFlyoutSupport>();
         overlayFlyoutSupport.Apply(BookmarkListFlyout, FocusDocumentContent);
@@ -233,8 +234,7 @@ public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarg
 
         content.IsAcquiringWebView = true;
 
-        // An exception here must not escape, because a Loaded handler is on the path, and an unobserved failure would
-        // end the process.
+        // Catches every failure, so the tab stays empty and the error is logged.
         try
         {
             var acquireTimer = Stopwatch.StartNew();
@@ -335,27 +335,23 @@ public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarg
 
     // Opens an address the user chose in the shown tab, or in a new tab with none shown. The address bar names the
     // address at once. A web view still on the way loads the tab's address on arrival.
-    private void NavigateShownTab(string url)
+    private void SendShownTabTo(string url)
     {
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var destination))
+        var tab = ViewModel.NavigateShownTab(url);
+        if (tab is null)
         {
             _logger.LogWarning($"Cannot navigate to invalid URL: '{url}'");
             return;
         }
 
-        var tab = ViewModel.GetOrOpenTabForAddress();
-        var address = destination.AbsoluteUri;
-
-        tab.NotifyUserNavigation(address);
-
         var webView = FindContent(tab)?.WebView;
 
         _logger.LogDebug(
             "The user sent a browser tab to '{Url}', and its web view is {WebViewState}",
-            address,
+            tab.CurrentUrl,
             webView is null ? "still on the way" : "ready");
 
-        webView?.Navigate(address);
+        webView?.Navigate(tab.CurrentUrl);
     }
 
     private void LoadAddress(IEditorWebView webView, string url)
@@ -396,7 +392,7 @@ public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarg
         UpdateNavigationState(content);
     }
 
-    // Only a failed navigation means the page failed to load. A cancelled or abandoned navigation leaves the old page on
+    // Only a failed navigation means the page failed to load. A canceled or abandoned navigation leaves the old page on
     // screen. Such a navigation may be one a later navigation superseded, one the user stopped, or one that became a
     // download.
     private static NavigationOutcome ResolveNavigationOutcome(WebNavigationCompletedEventArgs e)
@@ -640,22 +636,13 @@ public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarg
     private void EmptyPageBookmark_Click(object sender, RoutedEventArgs e)
     {
         var button = (FrameworkElement)sender;
-        if (button.DataContext is not BrowserBookmarkViewModel bookmark)
+        if (button.DataContext is not BrowserBookmarkViewModel bookmark
+            || !ViewModel.TryNormalizeUserUrl(bookmark.Url, out var url))
         {
             return;
         }
 
-        var tab = ViewModel.OpenBookmarkInShownTab(bookmark);
-        if (tab is null)
-        {
-            return;
-        }
-
-        var webView = FindContent(tab)?.WebView;
-        if (webView is not null)
-        {
-            LoadAddress(webView, tab.CurrentUrl);
-        }
+        SendShownTabTo(url);
 
         GiveFocusToWebContent();
     }
@@ -774,7 +761,7 @@ public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarg
                 ViewModel.CloseSettings();
                 if (ViewModel.ShownTab is not null)
                 {
-                    NavigateShownTab("about:blank");
+                    SendShownTabTo("about:blank");
                 }
             }
             else if (ViewModel.TryNormalizeUserUrl(address, out var url))
@@ -784,7 +771,7 @@ public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarg
                 // Navigating to the address already showing raises no change for the binding to follow, so an edit
                 // in the box would survive the navigation.
                 SyncAddressText();
-                NavigateShownTab(url);
+                SendShownTabTo(url);
 
                 // The next keystroke reaches the content the user just navigated to, and the panel focus reflects it.
                 GiveFocusToWebContent();
@@ -983,7 +970,7 @@ public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarg
         return setResult;
     }
 
-    // Reads the bookmarks, and leaves the open tabs in place.
+    // Reads the bookmarks from the file.
     public override async Task<Result> LoadContent()
     {
         return await ViewModel.LoadContent();

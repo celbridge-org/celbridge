@@ -5,7 +5,7 @@ namespace Celbridge.WebHost;
 /// <summary>
 /// Whether the webview_* tools support a particular resource. When IsSupported
 /// is false, Reason carries a human-readable explanation (e.g. document not
-/// open, opened with the wrong editor, external-URL .browser, or the
+/// open, opened with the wrong editor, a .browser document, or the
 /// contributing package opts out via DevToolsBlocked). Reason is null when
 /// IsSupported is true.
 /// </summary>

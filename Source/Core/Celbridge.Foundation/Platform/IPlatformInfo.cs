@@ -115,10 +115,10 @@ public interface IPlatformInfo
     bool RequiresMacOSTabWheelScroll { get; }
 
     /// <summary>
-    /// Whether document tabs are dragged by the pointer-driven drag controller because the platform's
-    /// built-in tab drag-and-drop is unreliable. True on the Skia desktop head (all operating systems).
+    /// Whether resources dragged from the Explorer use the pointer-driven drag coordinator because the
+    /// platform's built-in drag-and-drop is unreliable. True on the Skia desktop head (all operating systems).
     /// </summary>
-    bool UsesPointerDrivenTabDrag { get; }
+    bool UsesPointerDrivenResourceDrag { get; }
 
     /// <summary>
     /// Whether the tab strip must lay out every tab rather than virtualize them, because the platform's
@@ -141,5 +141,11 @@ public interface IPlatformInfo
     /// True on macOS.
     /// </summary>
     bool HostedWebViewFocusIsNative { get; }
+
+    /// <summary>
+    /// Returns true when a bitmap image throws for a source it cannot decode. Otherwise an undecodable image loads with a
+    /// pixel width of zero. True on the packaged Windows head only.
+    /// </summary>
+    bool ThrowsForUndecodableImage { get; }
 
 }

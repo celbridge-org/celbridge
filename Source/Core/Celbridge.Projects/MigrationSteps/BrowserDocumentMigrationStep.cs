@@ -7,18 +7,17 @@ using Tomlyn.Model;
 namespace Celbridge.Projects.MigrationSteps;
 
 /// <summary>
-/// Turns each .webview file in the project into a .browser file at the same path. A file's sidecar moves with the file,
-/// and each [[shortcut]] entry in the project file takes the new name. A file the step cannot move stays in place, and
-/// the shortcut goes on naming the file. The file's source_url becomes a bookmark that opens on start, and the keys for
-/// hiding the toolbars and for bookmark icons go. A file with none of those keys, or one that fails to parse, keeps the
-/// same contents.
+/// Renames each .webview file in the project to .browser in the same folder. A file's sidecar moves with the file, and
+/// each [[shortcut]] entry naming a moved file takes the new name. A file that cannot move stays in place, and its
+/// shortcut goes on naming the file. The step turns source_url into a bookmark that opens on start. It also removes the
+/// keys for hiding the toolbars and for bookmark icons. A file with none of those keys, or one that fails to parse,
+/// keeps the same contents.
 /// </summary>
 public sealed class BrowserDocumentMigrationStep : IMigrationStep
 {
     private const string OldExtension = ".webview";
     private const string NewExtension = ".browser";
     private const string SidecarExtension = ".cel";
-    private const string ProjectRootPrefix = "project:";
 
     private const string SourceUrlKey = "source_url";
     private const string ShowUrlBarKey = "show_url_bar";
@@ -43,16 +42,12 @@ public sealed class BrowserDocumentMigrationStep : IMigrationStep
         var documentPaths = new List<string>();
         await CollectDocumentsAsync(context, context.ProjectFolderPath, documentPaths);
 
-        var leftBehind = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var documentPath in documentPaths)
         {
-            if (await MoveDocumentAsync(context, documentPath) is null)
-            {
-                leftBehind.Add(ToProjectRelativePath(context, documentPath));
-            }
+            await MoveDocumentAsync(context, documentPath);
         }
 
-        return await RenameShortcutsAsync(context, leftBehind);
+        return await RenameShortcutsAsync(context);
     }
 
     // The search skips the .git folder and links.
@@ -90,8 +85,7 @@ public sealed class BrowserDocumentMigrationStep : IMigrationStep
         }
     }
 
-    // Returns the document's new path, or null when the document stays where it is.
-    private static async Task<string?> MoveDocumentAsync(MigrationContext context, string documentPath)
+    private static async Task MoveDocumentAsync(MigrationContext context, string documentPath)
     {
         var newPath = Path.ChangeExtension(documentPath, NewExtension);
 
@@ -100,22 +94,20 @@ public sealed class BrowserDocumentMigrationStep : IMigrationStep
             || infoResult.Value.Kind != StorageItemKind.NotFound)
         {
             context.Logger.LogWarning($"Left '{documentPath}' in place because a {NewExtension} file already exists at that path");
-            return null;
+            return;
         }
 
         var moveResult = await context.FileSystem.MoveFileAsync(documentPath, newPath);
         if (moveResult.IsFailure)
         {
             context.Logger.LogWarning(moveResult, $"Failed to move '{documentPath}' to its {NewExtension} name");
-            return null;
+            return;
         }
 
         await MoveSidecarAsync(context, documentPath, newPath);
         await MigrateContentsAsync(context, newPath);
 
         context.Logger.LogInformation($"Moved '{documentPath}' to its {NewExtension} name");
-
-        return newPath;
     }
 
     private static async Task MoveSidecarAsync(MigrationContext context, string documentPath, string newPath)
@@ -153,7 +145,7 @@ public sealed class BrowserDocumentMigrationStep : IMigrationStep
         }
         catch (TomlException exception)
         {
-            context.Logger.LogWarning($"Left the contents of '{documentPath}' unchanged because it failed to parse: {exception.Message}");
+            context.Logger.LogWarning(exception, $"Left the contents of '{documentPath}' unchanged because it failed to parse");
             return;
         }
 
@@ -205,8 +197,8 @@ public sealed class BrowserDocumentMigrationStep : IMigrationStep
             || bookmarks.Any(bookmark => bookmark.ContainsKey(BookmarkIconKey));
     }
 
-    // A document's old Home becomes a bookmark at the top of the list that opens on start. A bookmark already naming the
-    // address opens on start in its place. A blank value adds nothing.
+    // Turns source_url into a bookmark at the top of the list, with open_on_start on. A bookmark with the same address
+    // gets open_on_start instead. A blank or non-web value adds no bookmark.
     private static void ApplySourceUrl(MigrationContext context, TomlTable document, TomlTableArray bookmarks, string documentPath)
     {
         if (!document.TryGetValue(SourceUrlKey, out var sourceUrlObject)
@@ -244,7 +236,7 @@ public sealed class BrowserDocumentMigrationStep : IMigrationStep
         bookmarks.Insert(0, newBookmark);
     }
 
-    // A value with no scheme takes https. The old document's address bar did the same.
+    // Adds https:// to a value with no scheme.
     private static bool TryParseAddress(string value, out string address, out Uri uri)
     {
         address = value.Trim();
@@ -264,12 +256,7 @@ public sealed class BrowserDocumentMigrationStep : IMigrationStep
         return true;
     }
 
-    private static string ToProjectRelativePath(MigrationContext context, string path)
-    {
-        return Path.GetRelativePath(context.ProjectFolderPath, path).Replace(Path.DirectorySeparatorChar, '/');
-    }
-
-    private static async Task<Result> RenameShortcutsAsync(MigrationContext context, HashSet<string> leftBehind)
+    private static async Task<Result> RenameShortcutsAsync(MigrationContext context)
     {
         var readResult = await context.FileSystem.ReadAllTextAsync(context.ProjectFilePath);
         if (readResult.IsFailure)
@@ -304,7 +291,7 @@ public sealed class BrowserDocumentMigrationStep : IMigrationStep
             }
 
             var resource = match.Groups["resource"].Value;
-            if (leftBehind.Contains($"{RemoveProjectPrefix(resource)}{OldExtension}"))
+            if (!await WasMovedAsync(context, resource))
             {
                 continue;
             }
@@ -328,10 +315,29 @@ public sealed class BrowserDocumentMigrationStep : IMigrationStep
         return Result.Ok();
     }
 
-    private static string RemoveProjectPrefix(string resource)
+    // Returns true when the step moved the file named by a shortcut's resource, which comes without its extension. The
+    // .browser file is then there, and the .webview file is gone. The step never looks at files on another root.
+    private static async Task<bool> WasMovedAsync(MigrationContext context, string resource)
     {
-        return resource.StartsWith(ProjectRootPrefix, StringComparison.Ordinal)
-            ? resource[ProjectRootPrefix.Length..]
-            : resource;
+        if (!ResourceKey.TryCreate(resource, out var key)
+            || key.Root != ResourceKey.DefaultRoot
+            || key.IsEmpty)
+        {
+            return false;
+        }
+
+        var basePath = Path.Combine(context.ProjectFolderPath, key.Path.Replace('/', Path.DirectorySeparatorChar));
+
+        var oldInfo = await context.FileSystem.GetInfoAsync(basePath + OldExtension);
+        if (oldInfo.IsFailure
+            || oldInfo.Value.Kind != StorageItemKind.NotFound)
+        {
+            return false;
+        }
+
+        var newInfo = await context.FileSystem.GetInfoAsync(basePath + NewExtension);
+
+        return newInfo.IsSuccess
+            && newInfo.Value.Kind == StorageItemKind.File;
     }
 }

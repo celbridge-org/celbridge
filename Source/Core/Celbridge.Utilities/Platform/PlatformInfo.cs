@@ -96,7 +96,7 @@ public sealed class PlatformInfo : IPlatformInfo
 
     public bool HostedWebViewFocusIsNative => OperatingSystem.IsMacOS();
 
-    public bool UsesPointerDrivenTabDrag
+    public bool UsesPointerDrivenResourceDrag
     {
         get
         {
@@ -116,6 +116,18 @@ public sealed class PlatformInfo : IPlatformInfo
             return false;
 #else
             return true;
+#endif
+        }
+    }
+
+    public bool ThrowsForUndecodableImage
+    {
+        get
+        {
+#if WINDOWS
+            return true;
+#else
+            return false;
 #endif
         }
     }

@@ -1,4 +1,4 @@
-namespace Celbridge.Documents.Views;
+namespace Celbridge.UserInterface.Views.Controls;
 
 /// <summary>
 /// The thin scroll indicator drawn along the bottom of an overflowing tab strip. The thumb reports how much of

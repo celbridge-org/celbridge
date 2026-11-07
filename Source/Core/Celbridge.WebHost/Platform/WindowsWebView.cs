@@ -286,8 +286,10 @@ internal sealed class WindowsWebView : WebViewBase
                 return Task.CompletedTask;
             }
 
-            _isAnswered = true;
+            // The request counts as answered only once the view is set. A setter that throws leaves Decline able to
+            // complete the request.
             _args.NewWindow = ((WindowsWebView)webView).LiveCoreWebView2;
+            _isAnswered = true;
             _args.Handled = true;
             _deferral.Complete();
 

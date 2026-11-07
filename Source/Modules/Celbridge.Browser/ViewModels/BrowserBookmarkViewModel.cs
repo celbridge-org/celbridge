@@ -6,8 +6,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace Celbridge.Browser.ViewModels;
 
 /// <summary>
-/// One bookmark, for the settings card and the bookmark list. Url is the page to open, and Name is the label. OpenOnStart
-/// opens the page in a tab when a document with no saved tabs opens.
+/// One bookmark of a browser document. Url is the page to open, and Name is the label. OpenOnStart opens the page in a
+/// tab when the document opens with no saved tabs.
 /// </summary>
 public partial class BrowserBookmarkViewModel : ObservableObject
 {

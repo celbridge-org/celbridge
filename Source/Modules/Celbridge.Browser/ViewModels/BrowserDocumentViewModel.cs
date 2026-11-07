@@ -28,7 +28,7 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
     private const string WwwPrefix = "www.";
     private const string MailAddressPrefix = "mailto:";
 
-    // The address schemes a tab can show for a new window. The opener creates a blob or data page itself.
+    // The schemes a new window's tab can show. A blob or data address names content built by the opener page.
     private static readonly string[] NewWindowTabSchemes =
     [
         Uri.UriSchemeHttp,
@@ -54,8 +54,8 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
     // nothing writes them back out.
     private bool _isLoadingContent;
 
-    // Set once the open has restored the editor state or opened the Open on Start bookmarks. A save before then would
-    // write empty tabs over good state.
+    // Set once opening the document has restored the editor state or opened the Open on Start bookmarks. A save before
+    // then would write empty tabs over the stored state.
     private bool _isEditorStateReady;
 
     // The URL bar's navigation controls would act on a hidden page while the settings show. Each control's state
@@ -249,14 +249,23 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
     {
         _isLoadingContent = true;
 
+        Result loadResult;
         try
         {
-            return await LoadBookmarksAsync();
+            loadResult = await LoadBookmarksAsync();
         }
         finally
         {
             _isLoadingContent = false;
         }
+
+        // The icons load once the bookmarks count as loaded, so an edit made during the reads is recorded.
+        if (loadResult.IsSuccess)
+        {
+            await LoadBookmarkFaviconsAsync();
+        }
+
+        return loadResult;
     }
 
     private async Task<Result> LoadBookmarksAsync()
@@ -296,14 +305,13 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
 
         PopulateBookmarks(content.Bookmarks);
 
-        await LoadBookmarkFaviconsAsync();
-
         return Result.Ok();
     }
 
     private async Task LoadBookmarkFaviconsAsync()
     {
-        foreach (var bookmark in Bookmarks)
+        // A copy, since the bookmarks can change while a read is in flight.
+        foreach (var bookmark in Bookmarks.ToList())
         {
             if (bookmark.IsNavigable)
             {
@@ -328,9 +336,10 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
         tab.Favicon = favicon.Image;
         tab.FaviconAddress = favicon.Address;
 
-        foreach (var bookmark in Bookmarks)
+        // A copy, since the bookmarks and the tab can change while a write is in flight.
+        foreach (var bookmark in Bookmarks.ToList())
         {
-            if (!BrowserUrlHelper.IsSameUrl(bookmark.Url, tab.CurrentUrl))
+            if (!BrowserUrlHelper.IsSameUrl(bookmark.Url, pageUrl))
             {
                 continue;
             }
@@ -383,7 +392,8 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
         }
     }
 
-    // A bookmark pointed at another address shows that address's cached icon, or the default.
+    // Shows the cached icon for a bookmark's new address, or else the icon of an open tab at that address, or else the
+    // default.
     private async Task RefreshBookmarkFaviconAsync(BrowserBookmarkViewModel bookmark)
     {
         bookmark.Favicon = null;
@@ -470,8 +480,8 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
     }
 
     /// <summary>
-    /// Opens a tab for each Open on Start bookmark and shows the first one. This runs for a document with no saved state,
-    /// and for a saved state with zero tabs.
+    /// Opens a tab for each Open on Start bookmark and shows the first one. Does nothing when the document already has
+    /// tabs.
     /// </summary>
     public void OpenStartTabs()
     {
@@ -485,10 +495,8 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
         foreach (var bookmark in Bookmarks)
         {
             if (bookmark.OpenOnStart
-                && TryNormalizeUserUrl(bookmark.Url, out var url))
+                && CreateBookmarkTab(bookmark) is { } tab)
             {
-                var tab = BrowserTabViewModel.Create(BlankTabLabel, url);
-                tab.Favicon = bookmark.Favicon;
                 Tabs.Add(tab);
             }
         }
@@ -547,9 +555,10 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
     }
 
     /// <summary>
-    /// Returns the editor state as JSON, or null before the open has settled the tabs. A blank tab has nothing to
-    /// restore, so the state leaves it out. With a blank tab shown, the state shows the next saved tab to the right, or
-    /// else the nearest one to the left.
+    /// Returns the editor state as JSON, or null until opening the document has settled the tabs. A blank tab has
+    /// nothing to restore, and a blob or data page is gone after a reload. The state therefore saves only the tabs with a
+    /// web address. With another tab shown, the state shows the next saved tab to the right, or else the nearest one to
+    /// the left.
     /// </summary>
     public string? TrySerializeEditorState()
     {
@@ -559,15 +568,15 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
         }
 
         var savedTabs = Tabs
-            .Where(tab => !tab.IsBlank)
+            .Where(tab => tab.HasNavigablePage)
             .ToList();
 
         var shownIndex = 0;
         if (ShownTab is not null)
         {
             var shownPosition = Tabs.IndexOf(ShownTab);
-            var savedShownTab = Tabs.Skip(shownPosition).FirstOrDefault(tab => !tab.IsBlank)
-                ?? Tabs.Take(shownPosition).LastOrDefault(tab => !tab.IsBlank);
+            var savedShownTab = Tabs.Skip(shownPosition).FirstOrDefault(tab => tab.HasNavigablePage)
+                ?? Tabs.Take(shownPosition).LastOrDefault(tab => tab.HasNavigablePage);
 
             if (savedShownTab is not null)
             {
@@ -623,13 +632,12 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
     /// </summary>
     public BrowserTabViewModel? OpenBookmark(BrowserBookmarkViewModel bookmark)
     {
-        if (!TryNormalizeUserUrl(bookmark.Url, out var url))
+        var tab = CreateBookmarkTab(bookmark);
+        if (tab is null)
         {
             return null;
         }
 
-        var tab = BrowserTabViewModel.Create(BlankTabLabel, url);
-        tab.Favicon = bookmark.Favicon;
         Tabs.Add(tab);
 
         ChooseTab(tab);
@@ -638,35 +646,37 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
     }
 
     /// <summary>
-    /// Opens a bookmark from the empty page in the shown tab, or in a new tab with no tab shown. An address typed in the
-    /// URL bar opens in the same place. Returns the tab, or null for a bookmark that cannot be navigated to. The view
-    /// loads the page.
+    /// Sends the shown tab to an address the user chose, or opens a tab for the address with no tab shown. A
+    /// bookmarked page shows the bookmark's icon until the page loads. Returns the tab, or null for an address that is
+    /// not absolute. The view loads the page.
     /// </summary>
-    public BrowserTabViewModel? OpenBookmarkInShownTab(BrowserBookmarkViewModel bookmark)
+    public BrowserTabViewModel? NavigateShownTab(string url)
     {
-        if (!TryNormalizeUserUrl(bookmark.Url, out var url))
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var destination))
         {
             return null;
         }
 
-        var tab = GetOrOpenTabForAddress();
-        tab.NotifyUserNavigation(url);
-        tab.Favicon = bookmark.Favicon;
+        var tab = ShownTab ?? OpenBlankTab();
+        tab.NotifyUserNavigation(destination.AbsoluteUri);
+        ApplyBookmarkFavicon(tab);
 
         return tab;
     }
 
-    /// <summary>
-    /// Returns the tab that should load an address typed in the URL bar: the shown tab, or a new tab with none shown.
-    /// </summary>
-    public BrowserTabViewModel GetOrOpenTabForAddress()
+    // A tab for a bookmark's page, showing the bookmark's icon until the page loads. Null for a bookmark that cannot be
+    // navigated to.
+    private BrowserTabViewModel? CreateBookmarkTab(BrowserBookmarkViewModel bookmark)
     {
-        if (ShownTab is not null)
+        if (!BrowserUrlHelper.TryGetAbsoluteUrl(bookmark.Url, out var url))
         {
-            return ShownTab;
+            return null;
         }
 
-        return OpenBlankTab();
+        var tab = BrowserTabViewModel.Create(BlankTabLabel, url);
+        tab.Favicon = bookmark.Favicon;
+
+        return tab;
     }
 
     /// <summary>
@@ -695,7 +705,12 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
 
         var tab = BrowserTabViewModel.CreateForNewWindow(BlankTabLabel, url, opener);
 
-        var openerIndex = opener is null ? -1 : Tabs.IndexOf(opener);
+        var openerIndex = -1;
+        if (opener is not null)
+        {
+            openerIndex = Tabs.IndexOf(opener);
+        }
+
         if (openerIndex >= 0)
         {
             Tabs.Insert(openerIndex + 1, tab);

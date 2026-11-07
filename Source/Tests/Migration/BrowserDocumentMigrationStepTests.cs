@@ -157,6 +157,29 @@ public class BrowserDocumentMigrationStepTests
             """);
     }
 
+    // The step moves only files in the project folder. A shortcut on another root, or to a file that is not there,
+    // goes on naming the old file.
+    [Test]
+    public async Task Upgrade_LeavesAShortcutToAFileTheStepDidNotMove()
+    {
+        File.WriteAllText(_projectFilePath, $"""
+            [celbridge]
+            celbridge-version = "{RecordedVersion}"
+
+            [[shortcut]]
+            resource = "utils:scratch.webview"
+
+            [[shortcut]]
+            resource = "missing.webview"
+            """);
+
+        await UpgradeAsync();
+
+        var projectFile = File.ReadAllText(_projectFilePath);
+        projectFile.Should().Contain("resource = \"utils:scratch.webview\"");
+        projectFile.Should().Contain("resource = \"missing.webview\"");
+    }
+
     private async Task<BrowserFileContent> UpgradeAndReadAsync(string oldContents)
     {
         WriteProjectFile("page.webview", oldContents);

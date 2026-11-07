@@ -20,10 +20,6 @@ public class LayoutMinimumContainmentTests
     // Floors that are not part of the workspace layout, so nothing composes upward from them.
     private static readonly string[] FloorsOutsideTheLayout =
     {
-        // The settings panel splitter divides two panes of one document rather than two workspace surfaces.
-        // Its floors are local to that document and invisible to the section containing it.
-        Path.Combine("Modules", "Celbridge.Browser", "Views", "BrowserDocumentView.xaml.cs"),
-
         // The viewport a headless WebView is rendered at, which no surface is laid out against.
         Path.Combine("Core", "Celbridge.WebHost", "Platform", "SkiaWebViewPlatform.cs"),
 

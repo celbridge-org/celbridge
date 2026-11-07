@@ -1,3 +1,4 @@
+using Celbridge.Packages;
 using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Documents;
@@ -87,7 +88,7 @@ public class UtilityRailItemTests
             "Community",
             "Community",
             new ResourceKey("temp:community.browser"),
-            EditorId.Create("celbridge", "webview"),
+            BuiltInEditors.BrowserEditorId,
             WorkspaceArea.Main);
 
         railItem.Kind.Should().Be(RailItemKind.DocumentShortcut);

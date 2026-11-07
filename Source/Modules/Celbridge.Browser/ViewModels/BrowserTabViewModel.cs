@@ -34,12 +34,12 @@ public partial class BrowserTabViewModel : ObservableObject
 
     private readonly string _blankLabel;
 
-    // Set by the stop gesture, and cleared when a navigation starts. The cancelled navigation after a stop then counts
+    // Set by the stop gesture, and cleared when a navigation starts. The canceled navigation after a stop then counts
     // as stopped, with no failed load to report.
     private bool _navigationStoppedByUser;
 
-    // Set for a new window, so a page its opener fills with script keeps the document area before any commit. Cleared
-    // when the user sends the tab to an address.
+    // Set for a new window. Its opener may fill the page with script before anything commits, and the page shows in the
+    // meantime. Cleared when the user sends the tab to an address.
     private bool _showsBlankPage;
 
     // The address the page last committed to, which names the page on screen during a navigation. Empty until a page
@@ -103,8 +103,8 @@ public partial class BrowserTabViewModel : ObservableObject
     public bool IsNewWindow { get; private init; }
 
     /// <summary>
-    /// Where the navigation in flight is heading, or empty when none is. The address bar names the destination for an
-    /// address the user chose, and for a failed load the placeholder reports.
+    /// Where the navigation in flight is heading, or empty when none is. A failed navigation puts this address in the
+    /// URL bar. A tab with no page shows the address as the tab's label.
     /// </summary>
     public string NavigationDestination { get; private set; } = string.Empty;
 

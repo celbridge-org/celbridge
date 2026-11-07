@@ -1,3 +1,4 @@
+using Celbridge.Platform;
 using Celbridge.UserInterface.Views.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
 
@@ -133,10 +134,14 @@ public sealed class BrowserFaviconImage : UserControl
             var stream = new MemoryStream(imageBytes);
             await bitmap.SetSourceAsync(stream.AsRandomAccessStream());
 
-            // WinUI throws for a bad image. The macOS head reports a bad image with no size.
-            var isDecoded = OperatingSystem.IsWindows() || bitmap.PixelWidth > 0;
+            var platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
+            if (!platformInfo.ThrowsForUndecodableImage
+                && bitmap.PixelWidth <= 0)
+            {
+                return null;
+            }
 
-            return isDecoded ? bitmap : null;
+            return bitmap;
         }
         catch (Exception)
         {
