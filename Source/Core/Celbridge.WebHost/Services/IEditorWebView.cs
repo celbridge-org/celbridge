@@ -15,6 +15,40 @@ public sealed record FindOptions(
 public sealed record FindMatchState(bool MatchFound, int? MatchCount = null, int? ActiveMatchIndex = null);
 
 /// <summary>
+/// A page's request to open a new window. The page waits for the answer, so the view's owner answers once and promptly.
+/// The owner calls Decline, or AcceptAsync with a view from IWebViewFactory.AcquireForNewWindowAsync.
+/// </summary>
+public abstract class WebNewWindowRequest
+{
+    protected WebNewWindowRequest(string url, bool isUserInitiated)
+    {
+        Url = url;
+        IsUserInitiated = isUserInitiated;
+    }
+
+    /// <summary>
+    /// The address the page asked to open, or empty for a window the page goes on to fill itself.
+    /// </summary>
+    public string Url { get; }
+
+    /// <summary>
+    /// True when the page asked while handling the user's input, for example in a click handler.
+    /// </summary>
+    public bool IsUserInitiated { get; }
+
+    /// <summary>
+    /// Shows the new page in the view, with a link back to the page that asked. The view must already be in its
+    /// container.
+    /// </summary>
+    public abstract Task AcceptAsync(IEditorWebView webView);
+
+    /// <summary>
+    /// Opens no window. The page's window.open returns null.
+    /// </summary>
+    public abstract void Decline();
+}
+
+/// <summary>
 /// The owner-facing interface to a web view. It adds the members that only the view's owner calls.
 /// </summary>
 public interface IEditorWebView : IWebView, IDisposable
@@ -87,9 +121,37 @@ public interface IEditorWebView : IWebView, IDisposable
     event EventHandler<string>? NavigationCommitted;
 
     /// <summary>
-    /// Raised with the address of a window the page asks to open. The window never opens.
+    /// Raised when the page asks to open a window. No window opens by itself. A view with no handler ignores the
+    /// request. The Windows Skia head never raises this.
     /// </summary>
-    event EventHandler<string>? NewWindowRequested;
+    event EventHandler<WebNewWindowRequest>? NewWindowRequested;
+
+    /// <summary>
+    /// Raised when the page closes itself with window.close().
+    /// </summary>
+    event EventHandler? PageClosed;
+
+    /// <summary>
+    /// The title of the current page, or empty when it has none.
+    /// </summary>
+    string DocumentTitle { get; }
+
+    /// <summary>
+    /// Raised when the current page's title changes.
+    /// </summary>
+    event EventHandler? DocumentTitleChanged;
+
+    /// <summary>
+    /// Raised when the current page's favicon may have changed. ReadFaviconAsync returns the new image.
+    /// </summary>
+    event EventHandler? FaviconChanged;
+
+    /// <summary>
+    /// Returns the current page's favicon, or null when the page has none the application can draw. A returned icon is
+    /// in the store under the favicon's address. A head that fetches the icon itself also reads the store, so each
+    /// address is fetched once. The Windows Skia head always returns null.
+    /// </summary>
+    Task<WebViewFavicon?> ReadFaviconAsync(IWebViewFaviconStore store);
 
     /// <summary>
     /// True when the page's history has an entry to go back to.

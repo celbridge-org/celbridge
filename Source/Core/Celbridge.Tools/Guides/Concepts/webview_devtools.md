@@ -67,7 +67,7 @@ Pass exactly one of `role` (with optional `name`), `text`, or `selector`. Role q
 
 ## Supported targets
 
-Any open document editor — text, markdown, HTML, custom contribution editors. Excluded: external-URL `.webview` documents, and editors whose package opts out. The resource key must match an open tab.
+Any open document editor — text, markdown, HTML, custom contribution editors. Excluded: `.browser` documents, and editors from a package that opts out. The resource key must match an open tab.
 
 ## `webview_eval` is gated by an extra feature flag
 

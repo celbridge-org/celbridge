@@ -26,7 +26,7 @@ public class CommunityService : ICommunityService
     }
 
     public ResourceKey DocumentResource =>
-        new ResourceKey($"{ProjectConstants.TempFolder}:{DocumentName}{ExplorerConstants.WebViewExtension}");
+        new ResourceKey($"{ProjectConstants.TempFolder}:{DocumentName}{ExplorerConstants.BrowserExtension}");
 
     public async Task SeedDocumentAsync()
     {
@@ -48,17 +48,15 @@ public class CommunityService : ICommunityService
 
         var resource = DocumentResource;
 
-        // The landing page is bookmarked as well as being the Home target, so the bookmarks bar alone is a
-        // complete way around the site.
-        var bookmarks = new List<WebViewBookmark>
+        // The landing page opens when the document has no saved tabs, and the other sections are a click away.
+        var bookmarks = new List<BrowserBookmark>
         {
-            CreateBookmark(CommunityUrls.Celbridge, "Community_Section_Celbridge", "bs-house"),
-            CreateBookmark(CommunityUrls.Learn, "Community_Section_Learn", "bs-book"),
-            CreateBookmark(CommunityUrls.Forum, "Community_Section_Forum", "bs-chat-dots")
+            CreateBookmark(CommunityUrls.Celbridge, "Community_Section_Celbridge", openOnStart: true),
+            CreateBookmark(CommunityUrls.Learn, "Community_Section_Learn"),
+            CreateBookmark(CommunityUrls.Forum, "Community_Section_Forum")
         };
 
-        // The URL bar stays on: the sections link out to the wider web, and the user needs the way back.
-        var content = new WebViewFileContent(CommunityUrls.Celbridge)
+        var content = new BrowserFileContent
         {
             Bookmarks = bookmarks
         };
@@ -75,10 +73,10 @@ public class CommunityService : ICommunityService
         return Result.Ok();
     }
 
-    // Names are resolved at seed time rather than when the bar is drawn, so a language change reaches the
-    // bookmarks on the next workspace load.
-    private WebViewBookmark CreateBookmark(string url, string nameKey, string iconName)
+    // Names are resolved when the document is written, so a language change reaches the bookmarks on the next
+    // workspace load.
+    private BrowserBookmark CreateBookmark(string url, string nameKey, bool openOnStart = false)
     {
-        return new WebViewBookmark(url, _stringLocalizer.GetString(nameKey), iconName);
+        return new BrowserBookmark(url, _stringLocalizer.GetString(nameKey), openOnStart);
     }
 }

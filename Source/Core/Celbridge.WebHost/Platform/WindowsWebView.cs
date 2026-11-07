@@ -32,6 +32,58 @@ internal sealed class WindowsWebView : WebViewBase
         _controlKeyDownHandler = Control_KeyDown;
         control.AddHandler(UIElement.KeyDownEvent, _controlKeyDownHandler, handledEventsToo: true);
         control.GotFocus += Control_GotFocus;
+
+        LiveCoreWebView2.WindowCloseRequested += CoreWebView2_WindowCloseRequested;
+        LiveCoreWebView2.FaviconChanged += CoreWebView2_FaviconChanged;
+    }
+
+    private void CoreWebView2_FaviconChanged(CoreWebView2 sender, object args)
+    {
+        RaiseFaviconChanged();
+    }
+
+    // WebView2 fetches and caches the icon. The store gets a copy, so a restored tab can show the icon before the page
+    // loads.
+    public override async Task<WebViewFavicon?> ReadFaviconAsync(IWebViewFaviconStore store)
+    {
+        var address = LiveCoreWebView2.FaviconUri;
+        if (string.IsNullOrEmpty(address))
+        {
+            return null;
+        }
+
+        using var stream = await LiveCoreWebView2.GetFaviconAsync(CoreWebView2FaviconImageFormat.Png);
+        if (stream is null
+            || stream.Size == 0)
+        {
+            return null;
+        }
+
+        using var memoryStream = new MemoryStream();
+        await stream.AsStreamForRead().CopyToAsync(memoryStream);
+
+        var image = memoryStream.ToArray();
+        await store.WriteIconAsync(address, image);
+
+        return new WebViewFavicon(address, image);
+    }
+
+    private void CoreWebView2_WindowCloseRequested(CoreWebView2 sender, object args)
+    {
+        RaisePageClosed();
+    }
+
+    // The owner answers through the request, and the request's deferral pauses the page's window.open until then. With
+    // no owner listening, the request is declined.
+    protected override void OnPlatformNewWindowRequested(CoreWebView2NewWindowRequestedEventArgs args)
+    {
+        if (!HasNewWindowHandler)
+        {
+            args.Handled = true;
+            return;
+        }
+
+        RaiseNewWindowRequested(new WindowsNewWindowRequest(args));
     }
 
     private void Control_GotFocus(object sender, RoutedEventArgs e)
@@ -74,6 +126,9 @@ internal sealed class WindowsWebView : WebViewBase
     protected override void ReleaseResources()
     {
         base.ReleaseResources();
+
+        LiveCoreWebView2.WindowCloseRequested -= CoreWebView2_WindowCloseRequested;
+        LiveCoreWebView2.FaviconChanged -= CoreWebView2_FaviconChanged;
 
         if (Control is not null)
         {
@@ -205,6 +260,51 @@ internal sealed class WindowsWebView : WebViewBase
     protected override IDisposable ObserveNavigationCommits(NavigationCommitted onCommitted)
     {
         return new SourceChangedObserver(LiveCoreWebView2, onCommitted);
+    }
+
+    /// <summary>
+    /// A new window request that WebView2 leaves waiting until the deferral completes. Giving the request a view's
+    /// CoreWebView2 links the new page to the opener. That view must not have navigated yet.
+    /// </summary>
+    private sealed class WindowsNewWindowRequest : WebNewWindowRequest
+    {
+        private readonly CoreWebView2NewWindowRequestedEventArgs _args;
+        private readonly Windows.Foundation.Deferral _deferral;
+        private bool _isAnswered;
+
+        public WindowsNewWindowRequest(CoreWebView2NewWindowRequestedEventArgs args)
+            : base(args.Uri ?? string.Empty, args.IsUserInitiated)
+        {
+            _args = args;
+            _deferral = args.GetDeferral();
+        }
+
+        public override Task AcceptAsync(IEditorWebView webView)
+        {
+            if (_isAnswered)
+            {
+                return Task.CompletedTask;
+            }
+
+            _isAnswered = true;
+            _args.NewWindow = ((WindowsWebView)webView).LiveCoreWebView2;
+            _args.Handled = true;
+            _deferral.Complete();
+
+            return Task.CompletedTask;
+        }
+
+        public override void Decline()
+        {
+            if (_isAnswered)
+            {
+                return;
+            }
+
+            _isAnswered = true;
+            _args.Handled = true;
+            _deferral.Complete();
+        }
     }
 
     private static string BuildCaptureScreenshotParams(ScreenshotRequest request)

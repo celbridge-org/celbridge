@@ -44,6 +44,7 @@ public abstract class WebViewBase : IEditorWebView
     private IWebViewDownloadHandler? _downloadHandler;
     private IDisposable? _navigationCommits;
     private EventHandler<string>? _navigationCommitted;
+    private EventHandler<WebNewWindowRequest>? _newWindowRequested;
 
     // Created when the view is handed out, so a view waiting in the prewarm queue logs nothing.
     private WebViewLoadDiagnostics? _diagnostics;
@@ -93,6 +94,7 @@ public abstract class WebViewBase : IEditorWebView
         CoreWebView2.NavigationCompleted += CoreWebView2_NavigationCompleted;
         CoreWebView2.HistoryChanged += CoreWebView2_HistoryChanged;
         CoreWebView2.NewWindowRequested += CoreWebView2_NewWindowRequested;
+        CoreWebView2.DocumentTitleChanged += CoreWebView2_DocumentTitleChanged;
         CoreWebView2.ProcessFailed += CoreWebView2_ProcessFailed;
         CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
     }
@@ -277,7 +279,27 @@ public abstract class WebViewBase : IEditorWebView
 
     public event EventHandler? IsSizedChanged;
 
-    public event EventHandler<string>? NewWindowRequested;
+    public event EventHandler<WebNewWindowRequest>? NewWindowRequested
+    {
+        add
+        {
+            _newWindowRequested += value;
+
+            ObserveNewWindows();
+        }
+        remove
+        {
+            _newWindowRequested -= value;
+        }
+    }
+
+    public event EventHandler? PageClosed;
+
+    public event EventHandler? DocumentTitleChanged;
+
+    public event EventHandler? FaviconChanged;
+
+    public string DocumentTitle => CoreWebView2?.DocumentTitle ?? string.Empty;
 
     public event EventHandler? HistoryChanged;
 
@@ -634,6 +656,12 @@ public abstract class WebViewBase : IEditorWebView
     }
 
     /// <summary>
+    /// Returns true when the page's native view is in a window, where it can take the keyboard. On macOS, Uno takes a
+    /// hidden web view out of the window, and puts the view back on the next render.
+    /// </summary>
+    internal virtual bool IsInWindow => true;
+
+    /// <summary>
     /// Whether the platform still routes the keyboard to the view. The answer comes from the focus manager, so it is
     /// only correct after a focus change has finished. Inside a focus event, the focus manager still names the
     /// element that focus is leaving.
@@ -748,6 +776,7 @@ public abstract class WebViewBase : IEditorWebView
             CoreWebView2.NavigationCompleted -= CoreWebView2_NavigationCompleted;
             CoreWebView2.HistoryChanged -= CoreWebView2_HistoryChanged;
             CoreWebView2.NewWindowRequested -= CoreWebView2_NewWindowRequested;
+            CoreWebView2.DocumentTitleChanged -= CoreWebView2_DocumentTitleChanged;
             CoreWebView2.ProcessFailed -= CoreWebView2_ProcessFailed;
             CoreWebView2.WebMessageReceived -= CoreWebView2_WebMessageReceived;
         }
@@ -927,26 +956,82 @@ public abstract class WebViewBase : IEditorWebView
         HistoryChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    // No new window ever opens. The owner can follow the address in the same view.
     private void CoreWebView2_NewWindowRequested(CoreWebView2 sender, CoreWebView2NewWindowRequestedEventArgs args)
     {
-        args.Handled = true;
-
-        var uri = args.Uri;
-        if (string.IsNullOrEmpty(uri))
-        {
-            return;
-        }
-
         // Raised inside a native callback, where an exception would end the process.
         try
         {
-            NewWindowRequested?.Invoke(this, uri);
+            OnPlatformNewWindowRequested(args);
+        }
+        catch (Exception ex)
+        {
+            args.Handled = true;
+            _logger.LogError(ex, "Failed to handle a new window requested by the page of {Resource}", Resource);
+        }
+    }
+
+    /// <summary>
+    /// Handles a new window the platform's control reports. Uno's arguments implement only Uri and Handled on the
+    /// Skia heads, and any other member throws, so a head that can read more overrides this. No window opens here.
+    /// </summary>
+    protected virtual void OnPlatformNewWindowRequested(CoreWebView2NewWindowRequestedEventArgs args)
+    {
+        args.Handled = true;
+    }
+
+    /// <summary>
+    /// True when the view's owner handles new window requests.
+    /// </summary>
+    protected bool HasNewWindowHandler => _newWindowRequested is not null;
+
+    /// <summary>
+    /// Called when the owner starts handling new window requests.
+    /// </summary>
+    protected virtual void ObserveNewWindows()
+    {
+    }
+
+    /// <summary>
+    /// Passes a page's new window request to the owner. A failing handler declines the request, because the page is
+    /// waiting on its answer.
+    /// </summary>
+    protected void RaiseNewWindowRequested(WebNewWindowRequest request)
+    {
+        try
+        {
+            _newWindowRequested?.Invoke(this, request);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to handle a new window requested by the page of {Resource}", Resource);
+            request.Decline();
         }
+    }
+
+    public virtual Task<WebViewFavicon?> ReadFaviconAsync(IWebViewFaviconStore store)
+    {
+        return Task.FromResult<WebViewFavicon?>(null);
+    }
+
+    /// <summary>
+    /// Reports that the favicon may have changed, for a signal the subclass observes.
+    /// </summary>
+    protected void RaiseFaviconChanged()
+    {
+        FaviconChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Reports the page closing itself, for a signal the subclass observes.
+    /// </summary>
+    protected void RaisePageClosed()
+    {
+        PageClosed?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void CoreWebView2_DocumentTitleChanged(CoreWebView2 sender, object args)
+    {
+        DocumentTitleChanged?.Invoke(this, EventArgs.Empty);
     }
 
     // Only the packaged Windows head raises ProcessFailed. The macOS view reads its renderer's process itself.
@@ -1090,7 +1175,10 @@ public abstract class WebViewBase : IEditorWebView
         NavigationStarting = null;
         NavigationCompleted = null;
         IsSizedChanged = null;
-        NewWindowRequested = null;
+        _newWindowRequested = null;
+        PageClosed = null;
+        DocumentTitleChanged = null;
+        FaviconChanged = null;
         HistoryChanged = null;
         DownloadStarted = null;
         LoadedEmpty = null;

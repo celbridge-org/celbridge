@@ -40,8 +40,6 @@
             <MenuFlyoutSeparator x:Name="CopySeparator" />
             <MenuFlyoutItem x:Name="CopyRelativePathMenuItem" Click="ContextMenu_CopyRelativePath" />
             <MenuFlyoutItem x:Name="CopyFullPathMenuItem" Click="ContextMenu_CopyFullPath" />
-            <MenuFlyoutSeparator x:Name="RestoreChromeSeparator" />
-            <MenuFlyoutItem x:Name="RestoreChromeMenuItem" Click="ContextMenu_RestoreChrome" />
         </MenuFlyout>
     </muxc:TabViewItem.ContextFlyout>
 

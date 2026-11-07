@@ -264,10 +264,12 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
         return null;
     }
 
-    public async Task RestoreEditorStateAsync(string state)
+    public async Task RestoreEditorStateAsync(string? state)
     {
         await Task.CompletedTask;
     }
+
+    public bool KeepsEditorStateAfterClose => true;
 
     // A pip comes from an editor page, and the settings form is native.
     public WorkspaceItemPip? Pip => null;

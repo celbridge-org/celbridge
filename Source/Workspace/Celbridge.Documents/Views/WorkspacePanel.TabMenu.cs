@@ -56,10 +56,6 @@ public sealed partial class WorkspacePanel
                 OpenApplicationForTab(tab);
                 ReturnKeyboardAfterMenuItem();
                 break;
-            case DocumentTabMenuAction.RestoreChrome:
-                RestoreChromeForTab(tab);
-                ReturnKeyboardAfterMenuItem();
-                break;
             case DocumentTabMenuAction.Reopen:
                 ReopenTab(tab);
                 break;
@@ -277,14 +273,6 @@ public sealed partial class WorkspacePanel
     private void OpenApplicationForTab(DocumentTab tab)
     {
         ViewModel.OpenApplicationForTab(tab.ViewModel.FileResource);
-    }
-
-    private void RestoreChromeForTab(DocumentTab tab)
-    {
-        if (tab.Content is IDocumentChromeOwner chromeOwner)
-        {
-            chromeOwner.RestoreChrome();
-        }
     }
 
     // Closes the document and opens the document again in the same editor and the same place in the

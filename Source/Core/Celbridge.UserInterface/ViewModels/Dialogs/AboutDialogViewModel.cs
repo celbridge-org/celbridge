@@ -34,6 +34,6 @@ public partial class AboutDialogViewModel : ObservableObject
     private void OpenLink(string url)
     {
         // The open dialog holds the command queue, so the link opens outside it.
-        _ = _commandService.ExecuteImmediate<IOpenBrowserCommand>(command => command.URL = url);
+        _ = _commandService.ExecuteImmediate<IOpenSystemBrowserCommand>(command => command.URL = url);
     }
 }

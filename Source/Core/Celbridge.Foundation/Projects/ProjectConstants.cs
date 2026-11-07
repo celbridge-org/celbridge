@@ -60,6 +60,11 @@ public static class ProjectConstants
     public const string SettingsFolder = "settings";
 
     /// <summary>
+    /// Sub-folder of the project data folder that caches the favicons of browser document bookmarks.
+    /// </summary>
+    public const string FaviconsFolder = "favicons";
+
+    /// <summary>
     /// The folder under temp: where a web view download is staged until its file moves to the folder the user
     /// chose.
     /// </summary>

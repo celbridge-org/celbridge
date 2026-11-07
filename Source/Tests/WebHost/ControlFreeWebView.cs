@@ -25,6 +25,17 @@ internal sealed class ControlFreeWebView : WebViewBase
 
     public FakeDownloadHandler Downloads { get; } = new();
 
+    public bool IsInWindowForTest { get; set; } = true;
+
+    public int FocusPageCount { get; private set; }
+
+    internal override bool IsInWindow => IsInWindowForTest;
+
+    internal override void FocusPage()
+    {
+        FocusPageCount++;
+    }
+
     public override Task StopAsync() => Task.CompletedTask;
 
     public override Task StartFindAsync(string term, FindOptions options) => Task.CompletedTask;

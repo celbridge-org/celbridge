@@ -23,7 +23,7 @@ public class UtilityServiceRegisterTests
     private const string ProjectFilePath = "C:/Projects/Acme/Acme.celbridge";
 
     private static readonly ResourceKey ProjectFileResource = new("Acme.celbridge");
-    private static readonly ResourceKey CommunityResource = new("temp:community.webview");
+    private static readonly ResourceKey CommunityResource = new("temp:community.browser");
 
     private IServiceProvider _serviceProvider = null!;
     private IResourceFileSystem _resourceFileSystem = null!;
@@ -281,7 +281,7 @@ public class UtilityServiceRegisterTests
         var openDocument = new OpenDocumentInfo(
             CommunityResource,
             new DocumentAddress(0, DocumentSection.BottomLeft, 0),
-            BuiltInEditors.WebViewEditorId);
+            BuiltInEditors.BrowserEditorId);
         _documentsService.FindOpenDocument(CommunityResource).Returns(openDocument);
 
         await service.CreateUtilitiesAsync(Array.Empty<ResolvedEditor>());

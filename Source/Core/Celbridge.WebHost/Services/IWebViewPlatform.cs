@@ -39,6 +39,11 @@ public interface IWebViewPlatform
     Task<WebViewBase> CreateWebViewAsync();
 
     /// <summary>
+    /// Creates a web view to show the new page of a window request. The page has not navigated.
+    /// </summary>
+    Task<WebViewBase> CreateWebViewForNewWindowAsync(WebNewWindowRequest request);
+
+    /// <summary>
     /// Clears the browsing data that every web view shares. Callers check SupportsLiveBrowsingDataClear first.
     /// Throws if the clear does not complete.
     /// </summary>

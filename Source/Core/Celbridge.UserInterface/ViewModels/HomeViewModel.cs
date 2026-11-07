@@ -80,7 +80,7 @@ public partial class HomeViewModel : ObservableObject
     // No workspace is loaded on the Home page, so there is nowhere to dock a web view document.
     private void OpenCommunityUrl(string url)
     {
-        _commandService.Execute<IOpenBrowserCommand>(command =>
+        _commandService.Execute<IOpenSystemBrowserCommand>(command =>
         {
             command.URL = url;
         });

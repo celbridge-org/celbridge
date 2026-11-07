@@ -908,13 +908,26 @@ public static partial class MacOSWebViewInterop
             GetSelector("representationUsingType:properties:"),
             fileType,
             properties);
-        if (imageData == IntPtr.Zero)
+
+        var managedBytes = CopyNSData(imageData);
+        if (managedBytes is null)
         {
             return null;
         }
 
-        var length = (long)SendMessage(imageData, GetSelector("length"));
-        var bytesPointer = SendMessage(imageData, GetSelector("bytes"));
+        return new MacWebViewSnapshot(managedBytes, width, height);
+    }
+
+    // Returns null for a missing or empty NSData.
+    private static byte[]? CopyNSData(IntPtr data)
+    {
+        if (data == IntPtr.Zero)
+        {
+            return null;
+        }
+
+        var length = (long)SendMessage(data, GetSelector("length"));
+        var bytesPointer = SendMessage(data, GetSelector("bytes"));
         if (bytesPointer == IntPtr.Zero
             || length <= 0)
         {
@@ -923,7 +936,8 @@ public static partial class MacOSWebViewInterop
 
         var managedBytes = new byte[length];
         Marshal.Copy(bytesPointer, managedBytes, 0, (int)length);
-        return new MacWebViewSnapshot(managedBytes, width, height);
+
+        return managedBytes;
     }
 
     /// <summary>

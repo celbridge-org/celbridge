@@ -11,10 +11,9 @@ namespace Celbridge.Resources.Services;
 /// </summary>
 public class FileTemplateService : IFileTemplateService
 {
-    private const string WebViewTemplate =
+    private const string BrowserTemplate =
         """
-        # Opens a web page in an embedded browser.
-        source_url = ""
+        # A browser document. Bookmarks are listed here as [[bookmarks]] entries.
         """;
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -36,9 +35,9 @@ public class FileTemplateService : IFileTemplateService
             return packageContent;
         }
 
-        if (extension == ExplorerConstants.WebViewExtension)
+        if (extension == ExplorerConstants.BrowserExtension)
         {
-            return Encoding.UTF8.GetBytes(WebViewTemplate + "\n");
+            return Encoding.UTF8.GetBytes(BrowserTemplate + "\n");
         }
 
         if (extension == ExplorerConstants.ExcelExtension)

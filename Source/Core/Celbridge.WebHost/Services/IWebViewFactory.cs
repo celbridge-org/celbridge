@@ -12,6 +12,12 @@ public interface IWebViewFactory
     Task<IEditorWebView> AcquireAsync(WebViewOptions options);
 
     /// <summary>
+    /// Returns a web view for answering a page's new window request. The caller places the view in a container, and
+    /// passes the view to the request's AcceptAsync. The caller then owns the view and disposes of the view.
+    /// </summary>
+    Task<IEditorWebView> AcquireForNewWindowAsync(WebNewWindowRequest request, WebViewOptions options);
+
+    /// <summary>
     /// Closes the views created ahead of time. Views already handed out are left to their owners.
     /// </summary>
     void Shutdown();

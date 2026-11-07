@@ -1021,12 +1021,12 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
 
         // Editor state is private to the editor that wrote the state. After an Open with switch or a
         // changed association, the state from the previous editor is dropped.
-        if (editorState is not null &&
-            !string.IsNullOrEmpty(editorState.Json))
+        string? stateToRestore = null;
+        if (editorState is not null)
         {
             if (editorState.EditorId == documentView.EditorId)
             {
-                await documentView.RestoreEditorStateAsync(editorState.Json);
+                stateToRestore = editorState.Json;
             }
             else
             {
@@ -1035,6 +1035,8 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
                     fileResource, editorState.EditorId, documentView.EditorId);
             }
         }
+
+        await documentView.RestoreEditorStateAsync(stateToRestore);
 
         return Result<OpenDocumentOutcome>.Ok(OpenDocumentOutcome.Opened);
     }
@@ -1069,6 +1071,11 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
             // If the close is cancelled this value is discarded.
             var capturedEditorState = await TryCaptureEditorStateAsync(documentTab);
 
+            // A view that drops its state on close stores null, which clears the state saved at an earlier close.
+            var stateToStore = documentTab.ViewModel.DocumentView?.KeepsEditorStateAfterClose == true
+                ? capturedEditorState
+                : null;
+
             var closeResult = await documentTab.ViewModel.CloseDocument(closeOptions.ForceClose);
             if (closeResult.IsFailure)
             {
@@ -1080,7 +1087,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
             {
                 // Persist the captured state so the next open can restore it. The service call
                 // is best-effort and handles its own errors.
-                await ViewModel.StoreDocumentEditorState(fileResource, capturedEditorState);
+                await ViewModel.StoreDocumentEditorState(fileResource, stateToStore);
 
                 // Get the tab index before removing it (needed for selecting next document)
                 int tabIndex = sectionView.GetTabIndex(documentTab);

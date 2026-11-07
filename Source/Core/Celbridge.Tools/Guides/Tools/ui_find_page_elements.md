@@ -9,7 +9,7 @@ real input, or reads where an element is and what it holds. To read a page witho
 
 ## Parameters
 
-- `resource` — the resource key of a document whose page has a tool bridge. A `.webview` document has none.
+- `resource` — the resource key of a document with a tool bridge on its page. A `.browser` document has no tool bridge.
 - `selector`, `role` and `text` — the lookup's mode, exactly one per call, as `webview_query` takes them. `name`
   narrows a `role` lookup to accessible names that contain it.
 - `frame` — the frame to search, as the `webview` tools name it. Empty searches the page's content frame, or the

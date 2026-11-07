@@ -80,6 +80,59 @@ public class WebViewFocusRegistryTests
         }
     }
 
+    private ControlFreeWebView CreateViewOutsideAWindow(string resource)
+    {
+        var view = new ControlFreeWebView(Substitute.For<IWebViewPlatform>(), new NullLogger<ControlFreeWebView>())
+        {
+            IsInWindowForTest = false
+        };
+        view.SetResource(new ResourceKey(resource));
+        _registry.Register(view, new TestFocusContext(FocusPanelId.Documents).Create());
+
+        return view;
+    }
+
+    private static async Task WaitForFocusPageCountAsync(ControlFreeWebView view, int expectedCount)
+    {
+        for (var attempt = 0; attempt < 200 && view.FocusPageCount < expectedCount; attempt++)
+        {
+            await Task.Delay(10);
+        }
+    }
+
+    [Test]
+    public async Task FocusFocusedSurface_ForAViewOutsideAWindow_FocusesThePageOnceTheViewArrives()
+    {
+        var view = CreateViewOutsideAWindow("page.browser");
+        _registry.GrantFocus(view);
+
+        _registry.FocusFocusedSurface();
+
+        view.FocusPageCount.Should().Be(1);
+
+        view.IsInWindowForTest = true;
+        await WaitForFocusPageCountAsync(view, 2);
+
+        view.FocusPageCount.Should().Be(2);
+    }
+
+    [Test]
+    public async Task FocusFocusedSurface_ForAViewOutsideAWindow_StopsWaitingWhenTheKeyboardMoves()
+    {
+        var view = CreateViewOutsideAWindow("page.browser");
+        var otherView = new FakeWebView("other.browser");
+        _registry.Register(otherView, new TestFocusContext(FocusPanelId.Documents).Create());
+        _registry.GrantFocus(view);
+        _registry.FocusFocusedSurface();
+
+        _registry.GrantFocus(otherView);
+        view.IsInWindowForTest = true;
+        await Task.Delay(100);
+
+        _registry.IsFocusedSurface(otherView).Should().BeTrue();
+        view.FocusPageCount.Should().Be(1);
+    }
+
     [Test]
     public void GrantFocus_RegisteredView_ReportsItsFocusContext()
     {

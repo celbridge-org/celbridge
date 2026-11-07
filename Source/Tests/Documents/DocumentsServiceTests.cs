@@ -192,10 +192,10 @@ public class DocumentsServiceTests
     {
         // Sidecars belong to project files, so a generated temp: page or any other file outside the project
         // root has nowhere to record the choice. Trying would fail the call after the file had opened.
-        _registry.RegisterFactory(CreateFactory(new EditorId("test.default-editor"), ".webview", "Default Editor"));
+        _registry.RegisterFactory(CreateFactory(new EditorId("test.default-editor"), ".browser", "Default Editor"));
 
         var result = await _documentsService.OpenWithEditorAsync(
-            new ResourceKey("temp:community.webview"), new EditorId("test.other-editor"));
+            new ResourceKey("temp:community.browser"), new EditorId("test.other-editor"));
 
         result.IsSuccess.Should().BeTrue();
         _capturedOpenCommand.Should().NotBeNull();

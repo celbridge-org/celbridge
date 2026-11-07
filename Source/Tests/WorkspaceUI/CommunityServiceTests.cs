@@ -1,7 +1,6 @@
 using Celbridge.Community;
 using Celbridge.Resources;
 using Celbridge.Tests.Localization;
-using Celbridge.UserInterface.Services;
 using Celbridge.WebHost;
 using Celbridge.Workspace;
 using Celbridge.WorkspaceUI.Services;
@@ -10,15 +9,15 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.Tests.WorkspaceUI;
 
 /// <summary>
-/// Verifies the document CommunityService writes: where it lands, and that the .webview editor can parse it
-/// back to a landing page and one navigable bookmark per section.
+/// Verifies the file from CommunityService: the file's location, and that the browser editor can parse the file back
+/// to one navigable bookmark per section.
 /// </summary>
 [TestFixture]
 public class CommunityServiceTests
 {
     private const string LocalizedPrefix = "localized:";
 
-    private static readonly ResourceKey CommunityResource = new("temp:community.webview");
+    private static readonly ResourceKey CommunityResource = new("temp:community.browser");
 
     private IResourceFileSystem _resourceFileSystem = null!;
     private IStringLocalizer _stringLocalizer = null!;
@@ -63,10 +62,10 @@ public class CommunityServiceTests
             _workspaceWrapper);
     }
 
-    // Parses back what the service wrote, which is what the .webview editor reads at open time.
-    private WebViewFileContent ReadWrittenDocument()
+    // Parses back what the service wrote, which is what the .browser editor reads at open time.
+    private BrowserFileContent ReadWrittenDocument()
     {
-        var parseResult = WebViewFileContent.TryParse(_writtenContent);
+        var parseResult = BrowserFileContent.TryParse(_writtenContent);
         parseResult.IsSuccess.Should().BeTrue();
 
         return parseResult.Value;
@@ -91,10 +90,9 @@ public class CommunityServiceTests
             CommunityResource,
             Arg.Any<string>());
 
-        var content = ReadWrittenDocument();
-        content.SourceUrl.Should().Be(CommunityUrls.Celbridge);
-        content.ShowUrlBar.Should().BeTrue();
-        content.ShowBookmarksBar.Should().BeTrue();
+        var openOnStart = ReadWrittenDocument().Bookmarks.Where(bookmark => bookmark.OpenOnStart);
+        openOnStart.Should().ContainSingle()
+            .Which.Url.Should().Be(CommunityUrls.Celbridge);
     }
 
     [Test]
@@ -104,7 +102,7 @@ public class CommunityServiceTests
 
         await service.SeedDocumentAsync();
 
-        // The landing page is bookmarked too, so the bar alone is a complete way around the site.
+        // The landing page is bookmarked too, so the bookmark list alone is a complete way around the site.
         var urls = ReadWrittenDocument().Bookmarks.Select(bookmark => bookmark.Url);
 
         urls.Should().Equal(CommunityUrls.Celbridge, CommunityUrls.Learn, CommunityUrls.Forum);
@@ -128,22 +126,6 @@ public class CommunityServiceTests
 
             var nameKey = bookmark.Name.Substring(LocalizedPrefix.Length);
             strings.Should().ContainKey(nameKey);
-        }
-    }
-
-    [Test]
-    public async Task SeedDocumentAsync_WritesAnIconThatResolvesForEveryBookmark()
-    {
-        var iconService = new IconService();
-
-        var service = CreateService();
-
-        await service.SeedDocumentAsync();
-
-        foreach (var bookmark in ReadWrittenDocument().Bookmarks)
-        {
-            iconService.TryGetGlyph(bookmark.Icon, out _).Should().BeTrue(
-                $"bookmark '{bookmark.Url}' names icon '{bookmark.Icon}'");
         }
     }
 

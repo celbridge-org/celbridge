@@ -48,6 +48,12 @@ internal sealed class WindowsWebViewPlatform : IWebViewPlatform
         return new WindowsWebView(control, this, _webViewLogger, _automationService);
     }
 
+    // The new page takes over a view that has not navigated, which is every view this platform creates.
+    public Task<WebViewBase> CreateWebViewForNewWindowAsync(WebNewWindowRequest request)
+    {
+        return CreateWebViewAsync();
+    }
+
     // The shared profile hangs off a live CoreWebView2, so a web view is created to reach it and closed after.
     public async Task ClearBrowsingDataAsync()
     {

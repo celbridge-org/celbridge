@@ -10,7 +10,7 @@ public partial class WebViewTools
     /// <summary>Read the captured console buffer (console.* messages, errors, unhandled rejections); survives reloads.</summary>
     [McpServerTool(Name = "webview_get_console")]
     [ToolAlias("webview.get_console")]
-    [RelatedGuides("resource_keys", "webview_documents", "webview_devtools")]
+    [RelatedGuides("resource_keys", "browser_documents", "webview_devtools")]
     public async partial Task<CallToolResult> GetConsole(string resource, int tail = 100, bool includeDebug = false, long sinceTimestampMs = 0, string frame = "")
     {
         var webViewService = GetRequiredService<IWebViewService>();

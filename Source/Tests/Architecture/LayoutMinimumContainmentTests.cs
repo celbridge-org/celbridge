@@ -22,7 +22,7 @@ public class LayoutMinimumContainmentTests
     {
         // The settings panel splitter divides two panes of one document rather than two workspace surfaces.
         // Its floors are local to that document and invisible to the section containing it.
-        Path.Combine("Modules", "Celbridge.WebView", "Views", "WebViewDocumentView.xaml.cs"),
+        Path.Combine("Modules", "Celbridge.Browser", "Views", "BrowserDocumentView.xaml.cs"),
 
         // The viewport a headless WebView is rendered at, which no surface is laid out against.
         Path.Combine("Core", "Celbridge.WebHost", "Platform", "SkiaWebViewPlatform.cs"),

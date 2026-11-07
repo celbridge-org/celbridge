@@ -110,7 +110,7 @@ public partial class ApplicationMenuViewModel : ObservableObject
 
     public void ShowWebsite()
     {
-        _commandService.Execute<IOpenBrowserCommand>(command => command.URL = CommunityUrls.Celbridge);
+        _commandService.Execute<IOpenSystemBrowserCommand>(command => command.URL = CommunityUrls.Celbridge);
     }
 
     public void ShowAbout()

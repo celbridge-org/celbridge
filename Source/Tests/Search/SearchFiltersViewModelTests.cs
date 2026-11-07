@@ -113,8 +113,8 @@ public class SearchFiltersViewModelTests
         _documentsService.GetOpenDocuments().Returns(new List<OpenDocumentInfo>
         {
             new(new ResourceKey("notes.md"), address, EditorId.Empty),
-            new(new ResourceKey("utils:scratch.webview"), address, EditorId.Empty),
-            new(new ResourceKey("temp:community.webview"), address, EditorId.Empty),
+            new(new ResourceKey("utils:scratch.browser"), address, EditorId.Empty),
+            new(new ResourceKey("temp:community.browser"), address, EditorId.Empty),
             new(new ResourceKey("docs/guide.md"), address, EditorId.Empty),
         });
         var filters = CreateFilters();

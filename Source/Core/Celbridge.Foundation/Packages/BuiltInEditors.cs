@@ -52,9 +52,9 @@ public static class BuiltInEditors
     public static readonly EditorId ReportViewerId = new("celbridge.report");
 
     /// <summary>
-    /// Built-in id of the web view editor, registered natively by the WebView module.
+    /// Built-in id of the browser editor, registered natively by the Browser module.
     /// </summary>
-    public static readonly EditorId WebViewEditorId = new("celbridge.webview-editor");
+    public static readonly EditorId BrowserEditorId = new("celbridge.browser-editor");
 
     /// <summary>
     /// Built-in id of the Project Settings editor, registered natively by the Project Settings module.
@@ -89,7 +89,7 @@ public static class BuiltInEditors
     [
         MarkdownEditorId,
         HtmlEditorId,
-        WebViewEditorId,
+        BrowserEditorId,
         SpreadsheetEditorId,
         ReportViewerId,
         FileViewerId,

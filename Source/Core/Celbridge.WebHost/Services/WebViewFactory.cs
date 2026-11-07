@@ -134,8 +134,45 @@ internal class WebViewFactory : IWebViewFactory, IDisposable
 
         Guard.IsNotNull(webView);
 
+        if (needsCreation)
+        {
+            _logger.LogDebug("Created a web view for an owner, because no prewarmed view was ready");
+        }
+        else
+        {
+            _logger.LogDebug("Handed an owner a prewarmed web view that has missed {WakeFailures} wake(s)", webView.GetHealth().WakeFailures);
+        }
+
         // Applied here because a prewarmed view has not navigated yet. A view that fails to configure is closed here,
         // because the caller never receives it.
+        try
+        {
+            await webView.ConfigureAsync(options, _featureFlags);
+        }
+        catch
+        {
+            DisposeWebView(webView);
+            throw;
+        }
+
+        _messageDispatcher.Observe(webView);
+
+        return webView;
+    }
+
+    public async Task<IEditorWebView> AcquireForNewWindowAsync(WebNewWindowRequest request, WebViewOptions options)
+    {
+        lock (_lock)
+        {
+            if (_isShuttingDown)
+            {
+                throw new InvalidOperationException("Cannot acquire web views during shutdown");
+            }
+        }
+
+        var webView = await _webViewPlatform.CreateWebViewForNewWindowAsync(request);
+
+        // A view that fails to configure is closed here, because the caller never receives it.
         try
         {
             await webView.ConfigureAsync(options, _featureFlags);

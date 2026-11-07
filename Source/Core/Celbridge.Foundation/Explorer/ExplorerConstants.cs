@@ -6,9 +6,9 @@ namespace Celbridge.Explorer;
 public static class ExplorerConstants
 {
     /// <summary>
-    /// File extension for web view file resources.
+    /// File extension for browser file resources.
     /// </summary>
-    public const string WebViewExtension = ".webview";
+    public const string BrowserExtension = ".browser";
 
     /// <summary>
     /// File extension for markdown file resources.

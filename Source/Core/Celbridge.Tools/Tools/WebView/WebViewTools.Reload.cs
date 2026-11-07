@@ -10,7 +10,7 @@ public partial class WebViewTools
     /// <summary>Reload the WebView page; clears the HTTP cache by default so edited sub-resources are refetched.</summary>
     [McpServerTool(Name = "webview_reload")]
     [ToolAlias("webview.reload")]
-    [RelatedGuides("resource_keys", "webview_documents", "webview_devtools")]
+    [RelatedGuides("resource_keys", "browser_documents", "webview_devtools")]
     public async partial Task<CallToolResult> Reload(string resource, bool clearCache = true, string frame = "")
     {
         var webViewService = GetRequiredService<IWebViewService>();

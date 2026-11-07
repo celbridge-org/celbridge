@@ -75,7 +75,31 @@ internal sealed class SkiaWebViewPlatform : IWebViewPlatform
     // Only macOS hit-tests each press against the native web views.
     public bool IsLastPressInWebView => OperatingSystem.IsMacOS() && MacOSWebViewFocusMonitor.IsLastPressInWebView;
 
-    public async Task<WebViewBase> CreateWebViewAsync()
+    public Task<WebViewBase> CreateWebViewAsync()
+    {
+        return CreateWebViewAsync(applyTemplate: null);
+    }
+
+    // Only the macOS head raises new window requests among the Skia heads, so only macOS requests reach this method.
+    public Task<WebViewBase> CreateWebViewForNewWindowAsync(WebNewWindowRequest request)
+    {
+        if (request is not MacOSNewWindowRequest macRequest)
+        {
+            throw new NotSupportedException("This head opens no new windows.");
+        }
+
+        return CreateWebViewAsync(control =>
+        {
+            // Applying the template builds the control's native view, so this call creates that view.
+            var created = MacOSWebViewInterop.CreateWebViewForNewWindow(macRequest.NativeRequest, () => control.ApplyTemplate());
+            if (!created)
+            {
+                throw new InvalidOperationException("The web view was not built from the configuration WebKit gave for the new window");
+            }
+        });
+    }
+
+    private async Task<WebViewBase> CreateWebViewAsync(Action<WebView2>? applyTemplate)
     {
         // A transparent background stops the view showing white for a moment when its tab is switched to. Similar
         // issue described here: https://github.com/MicrosoftEdge/WebView2Feedback/issues/1412
@@ -84,7 +108,7 @@ internal sealed class SkiaWebViewPlatform : IWebViewPlatform
             DefaultBackgroundColor = Colors.Transparent
         };
 
-        var nativeHandle = await InitializeAsync(control);
+        var nativeHandle = await InitializeAsync(control, applyTemplate);
 
         // Created after initialization, so the view never sees the hidden host it was initialized in.
         if (OperatingSystem.IsMacOS())
@@ -99,12 +123,14 @@ internal sealed class SkiaWebViewPlatform : IWebViewPlatform
     // parented in the hidden, window-rooted host while it initializes, then detached. The owner then places the
     // control in its own container with the CoreWebView2 already live. Returns the pinned native view on macOS,
     // or zero.
-    private async Task<IntPtr> InitializeAsync(WebView2 control)
+    private async Task<IntPtr> InitializeAsync(WebView2 control, Action<WebView2>? applyTemplate)
     {
         var host = await EnsureInitHostAsync();
         host.Children.Add(control);
         try
         {
+            applyTemplate?.Invoke(control);
+
             if (!control.IsLoaded)
             {
                 var loadedCompletionSource = new TaskCompletionSource();

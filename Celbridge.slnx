@@ -35,7 +35,7 @@
   <Folder Name="/Modules/">
     <Project Path="Source/Modules/Celbridge.DocumentEditors/Celbridge.DocumentEditors.csproj" />
     <Project Path="Source/Modules/Celbridge.Spreadsheet/Celbridge.Spreadsheet.csproj" />
-    <Project Path="Source/Modules/Celbridge.WebView/Celbridge.WebView.csproj" />
+    <Project Path="Source/Modules/Celbridge.Browser/Celbridge.Browser.csproj" />
   </Folder>
 
   <Folder Name="/Workspace/">

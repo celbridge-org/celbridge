@@ -86,7 +86,7 @@ public class UtilityRailItemTests
             "people",
             "Community",
             "Community",
-            new ResourceKey("temp:community.webview"),
+            new ResourceKey("temp:community.browser"),
             EditorId.Create("celbridge", "webview"),
             WorkspaceArea.Main);
 
