@@ -2,6 +2,7 @@ using Celbridge.Community;
 using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Projects;
+using Celbridge.Utilities;
 using Celbridge.WebHost;
 using Microsoft.Extensions.Localization;
 
@@ -10,6 +11,7 @@ namespace Celbridge.WorkspaceUI.Services;
 public class CommunityService : ICommunityService
 {
     private const string DocumentName = "community";
+    private const string CelbridgeIconResourceName = "Celbridge.WorkspaceUI.Assets.CelbridgeIcon.png";
 
     private readonly ILogger<CommunityService> _logger;
     private readonly IStringLocalizer _stringLocalizer;
@@ -48,12 +50,21 @@ public class CommunityService : ICommunityService
 
         var resource = DocumentResource;
 
+        // Every Community page uses the Celbridge icon. Each bookmark carries a copy of the icon. The bookmark list shows
+        // the copy before the first visit. When the embedded icon fails to load, the bookmarks show the default icon.
+        var iconResult = EmbeddedResourceReader.ReadBytes(typeof(CommunityService).Assembly, CelbridgeIconResourceName);
+        if (iconResult.IsFailure)
+        {
+            _logger.LogWarning(iconResult, "Failed to read the Celbridge icon for the Community document");
+        }
+        var icon = iconResult.IsSuccess ? iconResult.Value : null;
+
         // The landing page opens when the document has no saved tabs, and the other sections are a click away.
         var bookmarks = new List<BrowserBookmark>
         {
-            CreateBookmark(CommunityUrls.Celbridge, "Community_Section_Celbridge", openOnStart: true),
-            CreateBookmark(CommunityUrls.Learn, "Community_Section_Learn"),
-            CreateBookmark(CommunityUrls.Forum, "Community_Section_Forum")
+            CreateBookmark(CommunityUrls.Celbridge, "Community_Section_Celbridge", icon, openOnStart: true),
+            CreateBookmark(CommunityUrls.Learn, "Community_Section_Learn", icon),
+            CreateBookmark(CommunityUrls.Forum, "Community_Section_Forum", icon)
         };
 
         var content = new BrowserFileContent
@@ -75,8 +86,8 @@ public class CommunityService : ICommunityService
 
     // Names are resolved when the document is written, so a language change reaches the bookmarks on the next
     // workspace load.
-    private BrowserBookmark CreateBookmark(string url, string nameKey, bool openOnStart = false)
+    private BrowserBookmark CreateBookmark(string url, string nameKey, byte[]? icon, bool openOnStart = false)
     {
-        return new BrowserBookmark(url, _stringLocalizer.GetString(nameKey), openOnStart);
+        return new BrowserBookmark(url, _stringLocalizer.GetString(nameKey), openOnStart, icon);
     }
 }

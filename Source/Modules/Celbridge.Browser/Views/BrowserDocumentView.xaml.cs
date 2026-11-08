@@ -53,7 +53,7 @@ public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarg
     private readonly IWebViewFactory _webViewFactory;
     private readonly IWebViewService _webViewService;
     private readonly IWebViewFocusRegistry _webViewFocusRegistry;
-    private readonly IBrowserFaviconCache _faviconCache;
+    private readonly IWebViewFaviconStore _faviconCache;
 
     private readonly List<BrowserTabContent> _tabContents = new();
 
@@ -105,7 +105,7 @@ public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarg
         _webViewFactory = webViewFactory;
         _webViewService = webViewService;
         _webViewFocusRegistry = ServiceLocator.AcquireService<IWebViewFocusRegistry>();
-        _faviconCache = ServiceLocator.AcquireService<IBrowserFaviconCache>();
+        _faviconCache = ServiceLocator.AcquireService<IWebViewFaviconStore>();
 
         ViewModel = serviceProvider.GetRequiredService<BrowserDocumentViewModel>();
 
@@ -451,7 +451,7 @@ public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarg
         {
             var pageUrl = content.Tab.CurrentUrl;
             var favicon = await content.WebView.ReadFaviconAsync(_faviconCache);
-            await ViewModel.ReportTabFaviconAsync(content.Tab, pageUrl, favicon);
+            ViewModel.ReportTabFavicon(content.Tab, pageUrl, favicon);
         }
         catch (Exception ex)
         {
@@ -595,7 +595,7 @@ public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarg
             {
                 Text = bookmark.DisplayName,
                 Tag = bookmark,
-                Icon = BrowserFaviconImage.CreateMenuIcon(bookmark.Favicon)
+                Icon = FaviconImage.CreateMenuIcon(bookmark.Favicon)
             };
             ToolTipService.SetToolTip(item, bookmark.Url);
             item.Click += BookmarkItem_Click;

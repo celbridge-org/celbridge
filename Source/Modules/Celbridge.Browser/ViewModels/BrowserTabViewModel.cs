@@ -318,7 +318,8 @@ public partial class BrowserTabViewModel : ObservableObject
     }
 
     // Another site has another icon, and the tab learns that icon once the page has loaded. Pages on one site keep the
-    // icon. The platform reports no change for a page with the same icon, or for a page the site changes by script.
+    // icon until the new page reports its own. The platform reports no icon when a script changes the page without
+    // loading a new one.
     private void ClearFaviconIfSiteChanges(string url)
     {
         if (_committedUrl.Length == 0

@@ -8,16 +8,16 @@ namespace Celbridge.Browser.Views;
 /// A site's icon at the size of a small glyph. The control shows a default globe when it has no image bytes, and when
 /// the image fails to decode.
 /// </summary>
-public sealed class BrowserFaviconImage : UserControl
+public sealed class FaviconImage : UserControl
 {
     private const double IconSize = 16;
     private const string DefaultIconName = "bs-globe";
-    private const string ImageAutomationId = "BrowserFaviconImage";
+    private const string ImageAutomationId = "FaviconImage";
 
     public static readonly DependencyProperty ImageBytesProperty = DependencyProperty.Register(
         nameof(ImageBytes),
         typeof(byte[]),
-        typeof(BrowserFaviconImage),
+        typeof(FaviconImage),
         new PropertyMetadata(null, OnImageBytesChanged));
 
     private readonly Icon _defaultIcon;
@@ -26,7 +26,7 @@ public sealed class BrowserFaviconImage : UserControl
     // Goes up with each new image, so a decode that finishes late cannot replace a newer image.
     private int _imageVersion;
 
-    public BrowserFaviconImage()
+    public FaviconImage()
     {
         _defaultIcon = new Icon
         {
@@ -44,7 +44,8 @@ public sealed class BrowserFaviconImage : UserControl
             Visibility = Visibility.Collapsed
         };
 
-        // The automation tools find this element only while it shows, which tells a drawn icon from the default globe.
+        // The automation tools find this element only while it shows. A test finds it to tell a drawn icon from the
+        // default globe.
         AutomationProperties.SetAutomationId(_image, ImageAutomationId);
 
         var root = new Grid
@@ -100,7 +101,7 @@ public sealed class BrowserFaviconImage : UserControl
 
     private static void OnImageBytesChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e)
     {
-        var control = (BrowserFaviconImage)sender;
+        var control = (FaviconImage)sender;
         _ = control.ShowImageAsync((byte[]?)e.NewValue);
     }
 

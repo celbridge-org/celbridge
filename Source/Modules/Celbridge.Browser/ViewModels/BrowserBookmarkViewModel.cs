@@ -26,8 +26,8 @@ public partial class BrowserBookmarkViewModel : ObservableObject
     [ObservableProperty]
     private bool _openOnStart;
 
-    // The site's icon as encoded image bytes, or null until the cache has one. The bookmark shows a default icon until
-    // then.
+    // The site's icon as a PNG file, stored with the bookmark, or null until a tab shows the bookmark's page. The
+    // bookmark shows a default icon until then.
     [ObservableProperty]
     private byte[]? _favicon;
 
@@ -84,6 +84,6 @@ public partial class BrowserBookmarkViewModel : ObservableObject
     /// </summary>
     public BrowserBookmark ToBookmark()
     {
-        return new BrowserBookmark(Url.Trim(), Name.Trim(), OpenOnStart);
+        return new BrowserBookmark(Url.Trim(), Name.Trim(), OpenOnStart, Favicon);
     }
 }

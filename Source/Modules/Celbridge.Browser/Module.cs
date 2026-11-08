@@ -3,6 +3,7 @@ using Celbridge.Modules;
 using Celbridge.Browser.Services;
 using Celbridge.Browser.ViewModels;
 using Celbridge.Browser.Views;
+using Celbridge.WebHost;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Browser;
@@ -28,7 +29,7 @@ public class Module : IModule
         // Register services
         //
 
-        services.AddSingleton<IBrowserFaviconCache, BrowserFaviconCache>();
+        services.AddSingleton<IWebViewFaviconStore, FaviconCache>();
     }
 
     public Result Initialize()

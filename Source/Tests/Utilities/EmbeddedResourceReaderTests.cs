@@ -38,4 +38,24 @@ public class EmbeddedResourceReaderTests
 
         result.IsFailure.Should().BeTrue();
     }
+
+    [Test]
+    public void ReadBytes_EmbeddedResource_ReturnsItsBytes()
+    {
+        var text = EmbeddedResourceReader.ReadText(ProjectsAssembly, "Celbridge.Projects.Assets.GitIgnore.txt");
+        var bytes = EmbeddedResourceReader.ReadBytes(ProjectsAssembly, "Celbridge.Projects.Assets.GitIgnore.txt");
+
+        bytes.IsSuccess.Should().BeTrue();
+        System.Text.Encoding.UTF8.GetString(bytes.Value).Should().Contain(text.Value);
+    }
+
+    [Test]
+    public void ReadBytes_MissingResource_Fails()
+    {
+        var result = EmbeddedResourceReader.ReadBytes(
+            ProjectsAssembly, "Celbridge.Projects.Assets.NoSuchResource.png");
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("NoSuchResource.png");
+    }
 }

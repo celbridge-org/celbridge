@@ -23,6 +23,12 @@ internal sealed class WindowsWebView : WebViewBase
     // after it go astray too, so one log line per focus is enough.
     private bool _isKeyOnControlReported;
 
+    // The icon address at WebView2's last FaviconChanged event.
+    private string _changedFaviconUri = string.Empty;
+
+    // The icon address of the last copy written to the store.
+    private string _storedFaviconUri = string.Empty;
+
     public WindowsWebView(WebView2 control, WindowsWebViewPlatform platform, ILogger logger, IAutomationService automationService)
         : base(control, platform, logger, automationService)
     {
@@ -35,15 +41,33 @@ internal sealed class WindowsWebView : WebViewBase
 
         LiveCoreWebView2.WindowCloseRequested += CoreWebView2_WindowCloseRequested;
         LiveCoreWebView2.FaviconChanged += CoreWebView2_FaviconChanged;
+        NavigationCompleted += WindowsWebView_NavigationCompleted;
     }
 
     private void CoreWebView2_FaviconChanged(CoreWebView2 sender, object args)
     {
+        _changedFaviconUri = LiveCoreWebView2.FaviconUri ?? string.Empty;
+
         RaiseFaviconChanged();
     }
 
-    // WebView2 fetches and caches the icon. The store gets a copy, so a restored tab can show the icon before the page
-    // loads.
+    // WebView2 raises FaviconChanged only when the icon's address changes. A new page can keep the previous page's icon
+    // address. This handler raises the event for that page, so every loaded page reports its icon.
+    private void WindowsWebView_NavigationCompleted(object? sender, WebNavigationCompletedEventArgs e)
+    {
+        var address = LiveCoreWebView2.FaviconUri ?? string.Empty;
+        if (e.Result != WebNavigationResult.Succeeded
+            || address.Length == 0
+            || address != _changedFaviconUri)
+        {
+            return;
+        }
+
+        RaiseFaviconChanged();
+    }
+
+    // WebView2 fetches and caches the icon. The store keeps a copy, and a restored tab shows the copy before its page
+    // loads. This method writes a new copy when the icon's address changes.
     public override async Task<WebViewFavicon?> ReadFaviconAsync(IWebViewFaviconStore store)
     {
         var address = LiveCoreWebView2.FaviconUri;
@@ -63,7 +87,11 @@ internal sealed class WindowsWebView : WebViewBase
         await stream.AsStreamForRead().CopyToAsync(memoryStream);
 
         var image = memoryStream.ToArray();
-        await store.WriteIconAsync(address, image);
+        if (address != _storedFaviconUri)
+        {
+            _storedFaviconUri = address;
+            await store.WriteIconAsync(address, image);
+        }
 
         return new WebViewFavicon(address, image);
     }
@@ -129,6 +157,7 @@ internal sealed class WindowsWebView : WebViewBase
 
         LiveCoreWebView2.WindowCloseRequested -= CoreWebView2_WindowCloseRequested;
         LiveCoreWebView2.FaviconChanged -= CoreWebView2_FaviconChanged;
+        NavigationCompleted -= WindowsWebView_NavigationCompleted;
 
         if (Control is not null)
         {

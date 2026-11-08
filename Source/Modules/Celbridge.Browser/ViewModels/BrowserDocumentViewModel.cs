@@ -4,7 +4,6 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Text.Json;
 using Celbridge.Browser.Helpers;
-using Celbridge.Browser.Services;
 using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
@@ -48,7 +47,7 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IMessengerService _messengerService;
-    private readonly IBrowserFaviconCache _faviconCache;
+    private readonly IWebViewFaviconStore _faviconCache;
 
     // Set while the document's file is being read. The bookmarks arriving in the collection then count as loaded, and
     // nothing writes them back out.
@@ -214,7 +213,7 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
         IStringLocalizer stringLocalizer,
         IWindowModeService windowModeService,
         IMessengerService messengerService,
-        IBrowserFaviconCache faviconCache)
+        IWebViewFaviconStore faviconCache)
     {
         _logger = logger;
         _commandService = commandService;
@@ -249,23 +248,14 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
     {
         _isLoadingContent = true;
 
-        Result loadResult;
         try
         {
-            loadResult = await LoadBookmarksAsync();
+            return await LoadBookmarksAsync();
         }
         finally
         {
             _isLoadingContent = false;
         }
-
-        // The icons load once the bookmarks count as loaded, so an edit made during the reads is recorded.
-        if (loadResult.IsSuccess)
-        {
-            await LoadBookmarkFaviconsAsync();
-        }
-
-        return loadResult;
     }
 
     private async Task<Result> LoadBookmarksAsync()
@@ -308,24 +298,13 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
         return Result.Ok();
     }
 
-    private async Task LoadBookmarkFaviconsAsync()
-    {
-        // A copy, since the bookmarks can change while a read is in flight.
-        foreach (var bookmark in Bookmarks.ToList())
-        {
-            if (bookmark.IsNavigable)
-            {
-                bookmark.Favicon = await _faviconCache.TryReadBookmarkIconAsync(bookmark.Url);
-            }
-        }
-    }
-
     /// <summary>
-    /// Records the favicon read from the page at an address. A bookmark that names the tab's page takes the icon, and
-    /// the cache stores the icon. The bookmark then shows the icon before the page loads next time. A null icon changes
-    /// nothing, and so does an icon read from a page the tab has since left.
+    /// Shows the favicon read from the page at an address on the tab. Each iconless bookmark at the page's address
+    /// stores a copy scaled for the file. A bookmark with an icon keeps that icon, so a site's new icon reaches a
+    /// bookmark only when the bookmark is added again. An icon read from an earlier page of the tab changes nothing,
+    /// and so does a null icon.
     /// </summary>
-    public async Task ReportTabFaviconAsync(BrowserTabViewModel tab, string pageUrl, WebViewFavicon? favicon)
+    public void ReportTabFavicon(BrowserTabViewModel tab, string pageUrl, WebViewFavicon? favicon)
     {
         if (favicon is null
             || tab.CurrentUrl != pageUrl)
@@ -336,28 +315,28 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
         tab.Favicon = favicon.Image;
         tab.FaviconAddress = favicon.Address;
 
-        // A copy, since the bookmarks and the tab can change while a write is in flight.
-        foreach (var bookmark in Bookmarks.ToList())
+        // The scaling runs once, and only when a bookmark takes the icon.
+        byte[]? bookmarkIcon = null;
+        foreach (var bookmark in Bookmarks)
         {
-            if (!BrowserUrlHelper.IsSameUrl(bookmark.Url, pageUrl))
-            {
-                continue;
-            }
-
-            // A page reports the same icon on every load, and the cache already has that file.
             if (bookmark.Favicon is not null
-                && bookmark.Favicon.SequenceEqual(favicon.Image))
+                || !BrowserUrlHelper.IsSameUrl(bookmark.Url, pageUrl))
             {
                 continue;
             }
 
-            bookmark.Favicon = favicon.Image;
-            await _faviconCache.WriteBookmarkIconAsync(bookmark.Url, favicon.Image);
+            bookmarkIcon ??= FaviconEncoder.Encode(favicon.Image);
+            if (bookmarkIcon is null)
+            {
+                return;
+            }
+
+            bookmark.Favicon = bookmarkIcon;
         }
     }
 
     /// <summary>
-    /// Reads the cached icon for each restored tab's saved icon address, and makes no request. A hidden tab's page loads
+    /// Reads the cached icon for each restored tab's saved icon address, without a request. A hidden tab's page loads
     /// only once the tab is shown, so this is how a hidden tab gets an icon. A tab that already has an icon keeps that
     /// icon.
     /// </summary>
@@ -378,7 +357,7 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
         }
     }
 
-    // A tab at a bookmark's address uses the bookmark's cached icon until the page loads.
+    // A tab at a bookmark's address uses the bookmark's icon until the page loads.
     private void ApplyBookmarkFavicon(BrowserTabViewModel tab)
     {
         foreach (var bookmark in Bookmarks)
@@ -392,33 +371,24 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
         }
     }
 
-    // Shows the cached icon for a bookmark's new address, or else the icon of an open tab at that address, or else the
-    // default.
-    private async Task RefreshBookmarkFaviconAsync(BrowserBookmarkViewModel bookmark)
+    // The icon belongs to the bookmark's old address, so an address edit clears the icon. A tab at the new address then
+    // gives the bookmark that tab's icon.
+    private void ReplaceBookmarkFavicon(BrowserBookmarkViewModel bookmark)
     {
         bookmark.Favicon = null;
 
-        if (bookmark.IsNavigable)
-        {
-            bookmark.Favicon = await _faviconCache.TryReadBookmarkIconAsync(bookmark.Url);
-        }
-
-        if (bookmark.Favicon is null)
-        {
-            await CacheFaviconFromOpenTabAsync(bookmark);
-        }
+        CopyFaviconFromOpenTab(bookmark);
     }
 
-    // A bookmark added for a page that is already open has the tab's icon at once.
-    private async Task CacheFaviconFromOpenTabAsync(BrowserBookmarkViewModel bookmark)
+    // Copies the icon of a tab showing the bookmark's page, scaled for the file.
+    private void CopyFaviconFromOpenTab(BrowserBookmarkViewModel bookmark)
     {
         foreach (var tab in Tabs)
         {
             if (tab.Favicon is not null
                 && BrowserUrlHelper.IsSameUrl(bookmark.Url, tab.CurrentUrl))
             {
-                bookmark.Favicon = tab.Favicon;
-                await _faviconCache.WriteBookmarkIconAsync(bookmark.Url, tab.Favicon);
+                bookmark.Favicon = FaviconEncoder.Encode(tab.Favicon);
                 return;
             }
         }
@@ -934,7 +904,10 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
 
         Bookmarks.Add(bookmarkViewModel);
 
-        _ = CacheFaviconFromOpenTabAsync(bookmarkViewModel);
+        if (bookmarkViewModel.Favicon is null)
+        {
+            CopyFaviconFromOpenTab(bookmarkViewModel);
+        }
 
         return bookmarkViewModel;
     }
@@ -964,7 +937,8 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
         {
             Url = bookmark.Url,
             Name = bookmark.Name,
-            OpenOnStart = bookmark.OpenOnStart
+            OpenOnStart = bookmark.OpenOnStart,
+            Favicon = bookmark.Favicon
         };
 
         return bookmarkViewModel;
@@ -1045,7 +1019,8 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
         // The stored properties only. A bookmark also reports the display properties derived from these.
         if (e.PropertyName != nameof(BrowserBookmarkViewModel.Url)
             && e.PropertyName != nameof(BrowserBookmarkViewModel.Name)
-            && e.PropertyName != nameof(BrowserBookmarkViewModel.OpenOnStart))
+            && e.PropertyName != nameof(BrowserBookmarkViewModel.OpenOnStart)
+            && e.PropertyName != nameof(BrowserBookmarkViewModel.Favicon))
         {
             return;
         }
@@ -1056,7 +1031,7 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
 
             if (sender is BrowserBookmarkViewModel bookmark)
             {
-                _ = RefreshBookmarkFaviconAsync(bookmark);
+                ReplaceBookmarkFavicon(bookmark);
             }
         }
 

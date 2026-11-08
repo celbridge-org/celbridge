@@ -13,8 +13,8 @@
         <StackPanel Orientation="Horizontal"
                     Spacing="6"
                     VerticalAlignment="Center">
-            <local:BrowserFaviconImage ImageBytes="{x:Bind Tab.Favicon, Mode=OneWay}"
-                                       VerticalAlignment="Center" />
+            <local:FaviconImage ImageBytes="{x:Bind Tab.Favicon, Mode=OneWay}"
+                                VerticalAlignment="Center" />
 
             <!-- The hidden copy sets the label's width at the heavier weight a selected tab draws. Selecting a tab
                  then leaves the tab's width unchanged. -->

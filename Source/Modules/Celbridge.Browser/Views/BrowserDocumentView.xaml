@@ -29,8 +29,8 @@
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
-                    <local:BrowserFaviconImage ImageBytes="{x:Bind Favicon, Mode=OneWay}"
-                                               VerticalAlignment="Center" />
+                    <local:FaviconImage ImageBytes="{x:Bind Favicon, Mode=OneWay}"
+                                        VerticalAlignment="Center" />
 
                     <StackPanel Grid.Column="1"
                                 Spacing="2">

@@ -127,4 +127,83 @@ public class BrowserFileContentTests
     {
         new BrowserFileContent().ToToml().Should().BeEmpty();
     }
+
+    // A one pixel PNG.
+    private static readonly byte[] PngIcon = Convert.FromBase64String(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==");
+
+    private static BrowserBookmark ParseOneBookmark(string favicon)
+    {
+        var toml = $"[[bookmarks]]\nurl = \"https://example.com/\"\nfavicon = \"{favicon}\"\n";
+
+        var result = BrowserFileContent.TryParse(toml);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.UnknownFields.Should().BeEmpty();
+
+        return result.Value.Bookmarks.Should().ContainSingle().Subject;
+    }
+
+    [Test]
+    public void ToToml_WritesTheFaviconLastAsBase64()
+    {
+        var content = new BrowserFileContent
+        {
+            Bookmarks =
+            [
+                new BrowserBookmark("https://example.com/", "Example", OpenOnStart: true, Favicon: PngIcon)
+            ]
+        };
+
+        content.ToToml().Should().Be(
+            "[[bookmarks]]\nurl = \"https://example.com/\"\nname = \"Example\"\nopen_on_start = true\n"
+            + $"favicon = \"{Convert.ToBase64String(PngIcon)}\"\n");
+    }
+
+    [Test]
+    public void ToToml_RoundTripsTheFavicon()
+    {
+        var content = new BrowserFileContent
+        {
+            Bookmarks =
+            [
+                new BrowserBookmark("https://example.com/", Favicon: PngIcon)
+            ]
+        };
+
+        var result = BrowserFileContent.TryParse(content.ToToml());
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Bookmarks.Should().ContainSingle().Which.Favicon.Should().Equal(PngIcon);
+    }
+
+    // Text that is not base64, a GIF, and an empty value.
+    [TestCase("not base64!")]
+    [TestCase("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7")]
+    [TestCase("")]
+    public void TryParse_DropsAFaviconThatIsNotABase64Png_AndKeepsTheBookmark(string favicon)
+    {
+        var bookmark = ParseOneBookmark(favicon);
+
+        bookmark.Url.Should().Be("https://example.com/");
+        bookmark.Favicon.Should().BeNull();
+    }
+
+    [Test]
+    public void TryParse_KeepsAFaviconAtTheSizeLimit()
+    {
+        var largest = new byte[BrowserBookmark.MaximumFaviconBytes];
+        PngIcon.CopyTo(largest, 0);
+
+        ParseOneBookmark(Convert.ToBase64String(largest)).Favicon.Should().Equal(largest);
+    }
+
+    [Test]
+    public void TryParse_DropsAFaviconOverTheSizeLimit()
+    {
+        var oversized = new byte[BrowserBookmark.MaximumFaviconBytes + 1];
+        PngIcon.CopyTo(oversized, 0);
+
+        ParseOneBookmark(Convert.ToBase64String(oversized)).Favicon.Should().BeNull();
+    }
 }

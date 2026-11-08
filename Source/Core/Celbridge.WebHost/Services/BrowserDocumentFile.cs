@@ -15,6 +15,9 @@ internal sealed record BrowserBookmarkEntry
     // Opens the bookmark in a tab when a document with no saved tabs opens.
     public bool? OpenOnStart { get; init; }
 
+    // The site's icon as a PNG file in base64. Left out of the file until a tab shows the bookmark's page.
+    public string? Favicon { get; init; }
+
     [TomlExtensionData]
     public Dictionary<string, object?> UnknownKeys { get; init; } = new();
 }

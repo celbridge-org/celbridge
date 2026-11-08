@@ -8,54 +8,24 @@ using Celbridge.WebHost;
 
 namespace Celbridge.Browser.Services;
 
-/// <summary>
-/// Stores favicons for the current project: the icon from an icon address, and the icon of a bookmark's page, by the
-/// bookmark's address.
-/// </summary>
-public interface IBrowserFaviconCache : IWebViewFaviconStore
-{
-    /// <summary>
-    /// Returns the cached icon for a bookmark's address, or null when the cache has none.
-    /// </summary>
-    Task<byte[]?> TryReadBookmarkIconAsync(string url);
-
-    /// <summary>
-    /// Stores the icon for a bookmark's address.
-    /// </summary>
-    Task WriteBookmarkIconAsync(string url, byte[] favicon);
-}
-
-// Keeps favicons in a folder of the project data folder. An icon's file is named for the icon's address, so every
-// page naming that address reuses the file. A bookmark's file is named for the bookmark's address, so
-// documents with the same bookmark address share a file.
-internal sealed class BrowserFaviconCache : IBrowserFaviconCache
+// Keeps the current project's tab icons in a folder of the project data folder. An icon's file is named for the icon's
+// address, so every page naming that address reuses the file.
+internal sealed class FaviconCache : IWebViewFaviconStore
 {
     private const string FaviconFileExtension = ".favicon";
-    private const string BookmarkFilePrefix = "bookmark-";
-    private const string IconFilePrefix = "icon-";
 
-    private readonly ILogger<BrowserFaviconCache> _logger;
+    private readonly ILogger<FaviconCache> _logger;
     private readonly IProjectService _projectService;
     private readonly ILocalFileSystem _fileSystem;
 
-    public BrowserFaviconCache(
-        ILogger<BrowserFaviconCache> logger,
+    public FaviconCache(
+        ILogger<FaviconCache> logger,
         IProjectService projectService,
         ILocalFileSystem fileSystem)
     {
         _logger = logger;
         _projectService = projectService;
         _fileSystem = fileSystem;
-    }
-
-    public Task<byte[]?> TryReadBookmarkIconAsync(string url)
-    {
-        return TryReadAsync(GetBookmarkFileName(url), url);
-    }
-
-    public Task WriteBookmarkIconAsync(string url, byte[] favicon)
-    {
-        return WriteAsync(GetBookmarkFileName(url), url, favicon);
     }
 
     public Task<byte[]?> TryReadIconAsync(string iconAddress)
@@ -116,25 +86,12 @@ internal sealed class BrowserFaviconCache : IBrowserFaviconCache
     }
 
     /// <summary>
-    /// Returns the file name for a bookmark's address. Two forms of one address share a name.
-    /// </summary>
-    internal static string? GetBookmarkFileName(string url)
-    {
-        return GetFileName(BookmarkFilePrefix, url);
-    }
-
-    /// <summary>
-    /// Returns the file name for an icon's address. A bookmark at the same address gets a different file, which contains
-    /// the icon of the bookmark's page.
+    /// Returns the file name for an icon's address. Addresses that BrowserUrlHelper normalizes to one address share a
+    /// name.
     /// </summary>
     internal static string? GetIconFileName(string iconAddress)
     {
-        return GetFileName(IconFilePrefix, iconAddress);
-    }
-
-    private static string? GetFileName(string prefix, string url)
-    {
-        if (!BrowserUrlHelper.TryNormalize(url, out var normalizedUrl)
+        if (!BrowserUrlHelper.TryNormalize(iconAddress, out var normalizedUrl)
             || !Uri.TryCreate(normalizedUrl, UriKind.Absolute, out var uri))
         {
             return null;
@@ -142,7 +99,7 @@ internal sealed class BrowserFaviconCache : IBrowserFaviconCache
 
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(uri.AbsoluteUri));
 
-        return $"{prefix}{Convert.ToHexStringLower(hash)}{FaviconFileExtension}";
+        return $"{Convert.ToHexStringLower(hash)}{FaviconFileExtension}";
     }
 
     private string? GetFilePath(string? fileName)

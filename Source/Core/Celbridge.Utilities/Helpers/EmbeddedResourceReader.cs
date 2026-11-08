@@ -14,22 +14,42 @@ public static class EmbeddedResourceReader
     /// </summary>
     public static Result<string> ReadText(Assembly assembly, string resourceName)
     {
+        return Read(assembly, resourceName, stream =>
+        {
+            using var reader = new StreamReader(stream);
+            return reader.ReadToEnd();
+        });
+    }
+
+    /// <summary>
+    /// Reads an embedded resource as bytes. The resource name follows the same form as for ReadText.
+    /// </summary>
+    public static Result<byte[]> ReadBytes(Assembly assembly, string resourceName)
+    {
+        return Read(assembly, resourceName, stream =>
+        {
+            using var memory = new MemoryStream();
+            stream.CopyTo(memory);
+            return memory.ToArray();
+        });
+    }
+
+    private static Result<T> Read<T>(Assembly assembly, string resourceName, Func<Stream, T> read)
+        where T : notnull
+    {
         try
         {
             using var stream = assembly.GetManifestResourceStream(resourceName);
             if (stream is null)
             {
-                return Result<string>.Fail($"Embedded resource not found: '{resourceName}'");
+                return Result<T>.Fail($"Embedded resource not found: '{resourceName}'");
             }
 
-            using var reader = new StreamReader(stream);
-            var text = reader.ReadToEnd();
-
-            return text;
+            return Result<T>.Ok(read(stream));
         }
         catch (Exception ex)
         {
-            return Result<string>.Fail($"Failed to read embedded resource: '{resourceName}'")
+            return Result<T>.Fail($"Failed to read embedded resource: '{resourceName}'")
                 .WithException(ex);
         }
     }

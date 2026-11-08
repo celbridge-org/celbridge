@@ -14,8 +14,8 @@
       <StackPanel Orientation="Horizontal"
                   Spacing="8"
                   VerticalAlignment="Center">
-        <local:BrowserFaviconImage ImageBytes="{x:Bind Favicon, Mode=OneWay}"
-                                   VerticalAlignment="Center" />
+        <local:FaviconImage ImageBytes="{x:Bind Favicon, Mode=OneWay}"
+                            VerticalAlignment="Center" />
         <TextBlock Text="{x:Bind DisplayName, Mode=OneWay}"
                    Style="{StaticResource ListItemTitleTextStyle}"
                    TextTrimming="CharacterEllipsis"

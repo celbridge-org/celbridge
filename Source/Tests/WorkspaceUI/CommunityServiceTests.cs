@@ -1,5 +1,6 @@
 using Celbridge.Community;
 using Celbridge.Resources;
+using Celbridge.Tests.Browser;
 using Celbridge.Tests.Localization;
 using Celbridge.WebHost;
 using Celbridge.Workspace;
@@ -10,7 +11,7 @@ namespace Celbridge.Tests.WorkspaceUI;
 
 /// <summary>
 /// Verifies the file from CommunityService: the file's location, and that the browser editor can parse the file back
-/// to one navigable bookmark per section.
+/// to one navigable bookmark per section, each with the Celbridge icon.
 /// </summary>
 [TestFixture]
 public class CommunityServiceTests
@@ -127,6 +128,22 @@ public class CommunityServiceTests
             var nameKey = bookmark.Name.Substring(LocalizedPrefix.Length);
             strings.Should().ContainKey(nameKey);
         }
+    }
+
+    [Test]
+    public async Task SeedDocumentAsync_GivesEveryBookmarkTheCelbridgeIcon()
+    {
+        var service = CreateService();
+
+        await service.SeedDocumentAsync();
+
+        // The parse drops an icon unless the icon is a PNG within the size limit. An icon in the parsed file therefore
+        // passed that check.
+        var icons = ReadWrittenDocument().Bookmarks.Select(bookmark => bookmark.Favicon).ToList();
+
+        icons.Should().HaveCount(3).And.AllSatisfy(icon => icon.Should().NotBeNull());
+        icons.Should().AllSatisfy(icon => icon.Should().Equal(icons[0]));
+        TestFavicons.SizeOf(icons[0]!).Should().Be((32, 32));
     }
 
     [Test]

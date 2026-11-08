@@ -7,9 +7,16 @@ namespace Celbridge.WebHost;
 
 /// <summary>
 /// A bookmarked page in a .browser document. Url is the address to open, and Name is the label in the bookmark list.
-/// OpenOnStart opens the page in a tab when a document with no saved tabs opens.
+/// OpenOnStart opens the page in a tab when a document with no saved tabs opens. Favicon is the site's icon as a PNG
+/// file, or null for a bookmark that shows the default icon.
 /// </summary>
-public sealed record BrowserBookmark(string Url, string Name = "", bool OpenOnStart = false);
+public sealed record BrowserBookmark(string Url, string Name = "", bool OpenOnStart = false, byte[]? Favicon = null)
+{
+    /// <summary>
+    /// The size limit, in bytes, for an icon in the file. A scaled bookmark icon is far smaller.
+    /// </summary>
+    public const int MaximumFaviconBytes = 16 * 1024;
+}
 
 /// <summary>
 /// Storage shape for a .browser file: a TOML document listing the document's bookmarks.
@@ -20,6 +27,9 @@ public sealed record BrowserFileContent
     private const string BookmarkUrlKey = "url";
     private const string BookmarkNameKey = "name";
     private const string BookmarkOpenOnStartKey = "open_on_start";
+    private const string BookmarkFaviconKey = "favicon";
+
+    private static readonly byte[] PngSignature = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
 
     // File keys are the snake_case spelling of the BrowserDocumentFile property names.
     private static readonly TomlSerializerOptions DocumentOptions = new()
@@ -39,7 +49,8 @@ public sealed record BrowserFileContent
 
     /// <summary>
     /// Parses the TOML body of a .browser file. An empty file yields a document with no bookmarks. A bookmark with no
-    /// usable URL is dropped.
+    /// usable URL is dropped. The parse also drops a favicon unless the value is a base64 PNG within
+    /// MaximumFaviconBytes. That bookmark then shows the default icon.
     /// </summary>
     public static Result<BrowserFileContent> TryParse(string toml)
     {
@@ -112,6 +123,12 @@ public sealed record BrowserFileContent
                 builder.Append(BookmarkOpenOnStartKey);
                 builder.Append(" = true\n");
             }
+
+            // The long value goes last, below the keys someone edits by hand.
+            if (bookmark.Favicon is { Length: > 0 } favicon)
+            {
+                AppendStringKey(builder, BookmarkFaviconKey, Convert.ToBase64String(favicon));
+            }
         }
 
         return builder.ToString();
@@ -130,11 +147,39 @@ public sealed record BrowserFileContent
             }
 
             var name = entry.Name ?? string.Empty;
+            var favicon = ReadFavicon(entry.Favicon);
 
-            bookmarks.Add(new BrowserBookmark(url.Trim(), name.Trim(), entry.OpenOnStart ?? false));
+            bookmarks.Add(new BrowserBookmark(url.Trim(), name.Trim(), entry.OpenOnStart ?? false, favicon));
         }
 
         return bookmarks;
+    }
+
+    // Decodes a favicon value. Returns null unless the value is a base64 PNG within the size limit.
+    private static byte[]? ReadFavicon(string? value)
+    {
+        // Base64 takes four characters for every three bytes. A value longer than this decodes to more than the limit.
+        var maximumLength = (BrowserBookmark.MaximumFaviconBytes + 2) / 3 * 4;
+        if (string.IsNullOrEmpty(value)
+            || value.Length > maximumLength)
+        {
+            return null;
+        }
+
+        var buffer = new byte[value.Length / 4 * 3 + 3];
+        if (!Convert.TryFromBase64String(value, buffer, out var length))
+        {
+            return null;
+        }
+
+        var favicon = buffer.AsSpan(0, length);
+        if (length > BrowserBookmark.MaximumFaviconBytes
+            || !favicon.StartsWith(PngSignature))
+        {
+            return null;
+        }
+
+        return favicon.ToArray();
     }
 
     private static IReadOnlyList<string> CollectUnknownFields(BrowserDocumentFile document)

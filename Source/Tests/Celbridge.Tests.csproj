@@ -19,6 +19,7 @@
     <PackageReference Include="NSubstitute" />
     <PackageReference Include="NUnit" />
     <PackageReference Include="NUnit3TestAdapter" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
     <PackageReference Include="StreamJsonRpc" />
     <PackageReference Include="Tomlyn" />
   </ItemGroup>
