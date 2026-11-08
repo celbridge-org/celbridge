@@ -516,54 +516,6 @@ public sealed class MacOSWebView : SkiaWebView
         return $"window={window} {describedFrame} pid={processId}";
     }
 
-    // The page encodes its value itself. A value JSON cannot represent then reads as null.
-    protected override async Task<string> EvaluateAsync(string expression)
-    {
-        var encodedResult = await LiveCoreWebView2.ExecuteScriptAsync(BuildPageEncodedScript(expression));
-
-        return DecodePageEncodedResult(encodedResult);
-    }
-
-    /// <summary>
-    /// Wraps an expression so that the page encodes its value as JSON. The script returns that JSON as the
-    /// only string in an array. If the value cannot be encoded, the script throws, and the result reads as
-    /// null, as it does on WebView2.
-    /// </summary>
-    // UNO-BUG: Uno encodes the result with NSJSONSerialization. A value that refers to itself, such as window,
-    // makes NSJSONSerialization recurse until the main thread's stack overflows, and the application hangs. Uno
-    // also escapes the quotes in a returned string but not its backslashes. NSJSONSerialization escapes an array
-    // correctly, so the page's JSON comes back inside an array.
-    internal static string BuildPageEncodedScript(string expression)
-    {
-        // A trailing semicolon is not allowed inside the parentheses. The line breaks stop a trailing line
-        // comment from hiding the closing parentheses.
-        var trimmedExpression = expression.TrimEnd().TrimEnd(';');
-
-        return $"[JSON.stringify((\n{trimmedExpression}\n)) ?? null]";
-    }
-
-    /// <summary>
-    /// Returns the page's JSON, unwrapped from the array it arrives in.
-    /// </summary>
-    internal static string DecodePageEncodedResult(string? result)
-    {
-        if (string.IsNullOrEmpty(result))
-        {
-            return "null";
-        }
-
-        using var document = JsonDocument.Parse(result);
-        var root = document.RootElement;
-        if (root.ValueKind != JsonValueKind.Array ||
-            root.GetArrayLength() != 1 ||
-            root[0].ValueKind != JsonValueKind.String)
-        {
-            return "null";
-        }
-
-        return root[0].GetString() ?? "null";
-    }
-
     // Page.captureScreenshot (CDP) is not implemented, so the native WKWebView is snapshotted. The bridge resolves
     // the clip rect (viewport or selector) and a Scale that fits MaxEdge. The snapshot clips to the rect and
     // renders at Width * Scale device pixels, since the native path divides out the backing scale.

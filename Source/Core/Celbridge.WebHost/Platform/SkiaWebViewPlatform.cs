@@ -81,8 +81,12 @@ internal sealed class SkiaWebViewPlatform : IWebViewPlatform
     }
 
     // Only the macOS head raises new window requests among the Skia heads, so only macOS requests reach this method.
+    // ApplyTemplate exists only on Uno's WebView2, so the macOS path compiles for the Skia heads only.
     public Task<WebViewBase> CreateWebViewForNewWindowAsync(WebNewWindowRequest request)
     {
+#if WINDOWS
+        throw new NotSupportedException("This head opens no new windows.");
+#else
         if (request is not MacOSNewWindowRequest macRequest)
         {
             throw new NotSupportedException("This head opens no new windows.");
@@ -97,6 +101,7 @@ internal sealed class SkiaWebViewPlatform : IWebViewPlatform
                 throw new InvalidOperationException("The web view was not built from the configuration WebKit gave for the new window");
             }
         });
+#endif
     }
 
     private async Task<WebViewBase> CreateWebViewAsync(Action<WebView2>? applyTemplate)

@@ -41,6 +41,9 @@ public abstract class WebViewBase : IEditorWebView
     private double _presentedHeight;
     private bool _isDisposed;
 
+    // Completes when the view closes. A call still in flight at that moment then fails.
+    private readonly TaskCompletionSource _closed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
     private IWebViewDownloadHandler? _downloadHandler;
     private IDisposable? _navigationCommits;
     private EventHandler<string>? _navigationCommitted;
@@ -741,7 +744,8 @@ public abstract class WebViewBase : IEditorWebView
     protected abstract bool SetNativeViewportSize(double width, double height);
 
     /// <summary>
-    /// Evaluates an expression on the UI thread.
+    /// Evaluates an expression on the UI thread, and returns its value as JSON. The page encodes the value, so a value
+    /// reads the same on every head.
     /// </summary>
     protected abstract Task<string> EvalScriptAsync(string expression);
 
@@ -1100,7 +1104,7 @@ public abstract class WebViewBase : IEditorWebView
                 return Task.FromException<T>(CreateDisposedException());
             }
 
-            return operation();
+            return FailWhenClosedAsync(operation());
         }
 
         var completionSource = new TaskCompletionSource<T>();
@@ -1112,7 +1116,7 @@ public abstract class WebViewBase : IEditorWebView
                 // The view may have been disposed while this call waited in the queue.
                 ThrowIfDisposed();
 
-                var result = await operation();
+                var result = await FailWhenClosedAsync(operation());
                 completionSource.TrySetResult(result);
             }
             catch (Exception ex)
@@ -1127,6 +1131,26 @@ public abstract class WebViewBase : IEditorWebView
         }
 
         return completionSource.Task;
+    }
+
+    // A WebView2 that closes can drop a call in flight, and the call then never completes. A DevTools protocol
+    // evaluation is one example. So the call fails when the view closes. The dropped call may still fail later.
+    // Nothing else waits on the dropped call, so its failure is observed here.
+    private async Task<T> FailWhenClosedAsync<T>(Task<T> operation)
+    {
+        var finished = await Task.WhenAny(operation, _closed.Task);
+        if (finished != operation)
+        {
+            _ = operation.ContinueWith(
+                dropped => _ = dropped.Exception,
+                CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
+
+            throw CreateDisposedException();
+        }
+
+        return await operation;
     }
 
     private void ThrowIfDisposed()
@@ -1228,6 +1252,7 @@ public abstract class WebViewBase : IEditorWebView
         }
 
         _isDisposed = true;
+        _closed.TrySetResult();
 
         // Services drop the view here, before anything is released.
         RaiseClosing();

@@ -206,9 +206,14 @@ internal sealed class WindowsWebView : WebViewBase
         return false;
     }
 
+    // Runs through the DevTools protocol, so the host's script doesn't change the page's user activation.
     protected override async Task<string> EvalScriptAsync(string expression)
     {
-        return await LiveCoreWebView2.ExecuteScriptAsync(expression);
+        var paramsJson = DevToolsEvaluation.BuildEvaluateParams(expression);
+        var responseJson = await LiveCoreWebView2
+            .CallDevToolsProtocolMethodAsync(DevToolsEvaluation.MethodName, paramsJson);
+
+        return DevToolsEvaluation.ReadEvaluateResult(responseJson);
     }
 
     protected override async Task<ScreenshotData> CaptureScreenshotCoreAsync(ScreenshotRequest request)
