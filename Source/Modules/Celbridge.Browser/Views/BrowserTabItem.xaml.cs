@@ -23,7 +23,7 @@ public sealed partial class BrowserTabItem : TabViewItem
 
         // The tab takes the strip band less the gap it keeps above itself.
         Height = TabStripView.TabHeight;
-        Margin = new Thickness(0, TabStripView.TabTopGap, 0, 0);
+        Margin = new Thickness(0, BrowserTabBar.TabTopGap, 0, 0);
     }
 
     protected override void OnApplyTemplate()
