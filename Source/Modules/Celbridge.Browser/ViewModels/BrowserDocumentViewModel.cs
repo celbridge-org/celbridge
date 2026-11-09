@@ -47,7 +47,6 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IMessengerService _messengerService;
-    private readonly IWebViewFaviconStore _faviconCache;
 
     // Set while the document's file is being read. The bookmarks arriving in the collection then count as loaded, and
     // nothing writes them back out.
@@ -104,8 +103,8 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
     public bool AreToolbarsVisible => LayoutMode != LayoutMode.Presentation;
 
     /// <summary>
-    /// The bookmarks the bookmark list offers, which are those with a navigable address. An entry still being filled in
-    /// gets no item.
+    /// The bookmarks the bookmark list offers, which are those with a navigable address. The list leaves out an entry
+    /// while the user is still filling it in.
     /// </summary>
     public IReadOnlyList<BrowserBookmarkViewModel> NavigableBookmarks =>
         Bookmarks.Where(bookmark => bookmark.IsNavigable).ToList();
@@ -155,7 +154,7 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
 
     /// <summary>
     /// Returns true when the placeholder lists bookmarks: for a blank tab or zero tabs, in a document with a navigable
-    /// bookmark. A page that failed to load lists none.
+    /// bookmark. The placeholder for a page that failed to load does not list bookmarks.
     /// </summary>
     public bool AreEmptyPageBookmarksVisible => IsEmptyStateVisible
         && Bookmarks.Any(bookmark => bookmark.IsNavigable);
@@ -212,15 +211,13 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
         IWorkspaceWrapper workspaceWrapper,
         IStringLocalizer stringLocalizer,
         IWindowModeService windowModeService,
-        IMessengerService messengerService,
-        IWebViewFaviconStore faviconCache)
+        IMessengerService messengerService)
     {
         _logger = logger;
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
         _stringLocalizer = stringLocalizer;
         _messengerService = messengerService;
-        _faviconCache = faviconCache;
 
         _layoutMode = windowModeService.LayoutMode;
         messengerService.Register<LayoutModeChangedMessage>(this, OnLayoutModeChanged);
@@ -299,61 +296,38 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
     }
 
     /// <summary>
-    /// Shows the favicon read from the page at an address on the tab. Each iconless bookmark at the page's address
-    /// stores a copy scaled for the file. A bookmark with an icon keeps that icon, so a site's new icon reaches a
-    /// bookmark only when the bookmark is added again. An icon read from an earlier page of the tab changes nothing,
-    /// and so does a null icon.
+    /// Scales the icon from a read of the tab's page to the size the document file stores, and shows the scaled icon
+    /// on the tab. A bookmark at the tab's address stores the same scaled icon when the bookmark has no icon. A
+    /// bookmark with an icon keeps that icon. When a site changes its icon, a bookmark therefore gets the new icon only
+    /// after the user adds the bookmark again. The tab and the bookmarks keep their icons when the image is null or
+    /// the encoder cannot read the image. They also keep their icons when the read is no longer the tab's current
+    /// read.
     /// </summary>
-    public void ReportTabFavicon(BrowserTabViewModel tab, string pageUrl, WebViewFavicon? favicon)
+    public void ReportTabFavicon(BrowserTabViewModel tab, int read, byte[]? image)
     {
-        if (favicon is null
-            || tab.CurrentUrl != pageUrl)
+        if (image is null
+            || !tab.IsCurrentFaviconRead(read))
         {
             return;
         }
 
-        tab.Favicon = favicon.Image;
-        tab.FaviconAddress = favicon.Address;
+        // The encoder refuses an image wider or taller than MaximumSourcePixels. The encode is therefore quick enough
+        // to run on the UI thread.
+        var favicon = FaviconEncoder.Encode(image);
+        if (favicon is null)
+        {
+            return;
+        }
 
-        // The scaling runs once, and only when a bookmark takes the icon.
-        byte[]? bookmarkIcon = null;
+        tab.Favicon = favicon;
+
         foreach (var bookmark in Bookmarks)
         {
-            if (bookmark.Favicon is not null
-                || !BrowserUrlHelper.IsSameUrl(bookmark.Url, pageUrl))
+            if (bookmark.Favicon is null
+                && BrowserUrlHelper.IsSameUrl(bookmark.Url, tab.CurrentUrl))
             {
-                continue;
+                bookmark.Favicon = favicon;
             }
-
-            bookmarkIcon ??= FaviconEncoder.Encode(favicon.Image);
-            if (bookmarkIcon is null)
-            {
-                return;
-            }
-
-            bookmark.Favicon = bookmarkIcon;
-        }
-    }
-
-    /// <summary>
-    /// Reads the cached icon for each restored tab's saved icon address, without a request. A hidden tab's page loads
-    /// only once the tab is shown, so this is how a hidden tab gets an icon. A tab that already has an icon keeps that
-    /// icon.
-    /// </summary>
-    public async Task LoadSavedTabFaviconsAsync()
-    {
-        foreach (var tab in Tabs.ToList())
-        {
-            if (tab.Favicon is not null
-                || tab.FaviconAddress.Length == 0)
-            {
-                continue;
-            }
-
-            var favicon = await _faviconCache.TryReadIconAsync(tab.FaviconAddress);
-
-            // The tab's page may have reported an icon during the read, and that icon stays.
-            tab.Favicon ??= favicon;
         }
     }
 
@@ -380,7 +354,8 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
         CopyFaviconFromOpenTab(bookmark);
     }
 
-    // Copies the icon of a tab showing the bookmark's page, scaled for the file.
+    // Copies the icon of a tab at the bookmark's address. A tab only shows PNG icons that pass the file's check, so
+    // this method copies the icon without scaling it.
     private void CopyFaviconFromOpenTab(BrowserBookmarkViewModel bookmark)
     {
         foreach (var tab in Tabs)
@@ -388,7 +363,7 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
             if (tab.Favicon is not null
                 && BrowserUrlHelper.IsSameUrl(bookmark.Url, tab.CurrentUrl))
             {
-                bookmark.Favicon = FaviconEncoder.Encode(tab.Favicon);
+                bookmark.Favicon = tab.Favicon;
                 return;
             }
         }
@@ -502,8 +477,18 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
         foreach (var savedTab in savedTabs)
         {
             var tab = BrowserTabViewModel.Create(BlankTabLabel, savedTab.Url, savedTab.Title);
-            tab.FaviconAddress = savedTab.FaviconAddress;
-            ApplyBookmarkFavicon(tab);
+
+            // A new bookmark can copy the tab's icon into the file, so the saved icon gets the file's check.
+            if (savedTab.Favicon is { } favicon
+                && BrowserBookmark.IsStorableFavicon(favicon))
+            {
+                tab.Favicon = favicon;
+            }
+            else
+            {
+                ApplyBookmarkFavicon(tab);
+            }
+
             Tabs.Add(tab);
         }
 
@@ -555,7 +540,7 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
         }
 
         var tabStates = savedTabs
-            .Select(tab => new BrowserTabState(tab.CurrentUrl, tab.Title, tab.FaviconAddress))
+            .Select(tab => new BrowserTabState(tab.CurrentUrl, tab.Title, tab.Favicon))
             .ToList();
 
         var editorState = new BrowserEditorState(IsSettingsOpen, SettingsSectionKey, tabStates, shownIndex);
@@ -966,7 +951,8 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
     // up, so the load goes through the collection.
     private void PopulateBookmarks(IReadOnlyList<BrowserBookmark> bookmarks)
     {
-        // Clearing raises a reset, which reports no old items, so the outgoing bookmarks are detached here.
+        // Clearing raises a reset, and a reset does not report the old items. This method therefore detaches the
+        // outgoing bookmarks before clearing them.
         foreach (var bookmark in Bookmarks)
         {
             bookmark.PropertyChanged -= Bookmark_PropertyChanged;

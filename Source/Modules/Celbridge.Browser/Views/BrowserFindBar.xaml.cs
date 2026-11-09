@@ -9,8 +9,8 @@ using Windows.UI.Core;
 namespace Celbridge.Browser.Views;
 
 /// <summary>
-/// A find bar for whole-page web content. The bar runs find through an injected IBrowserFindTarget, and contains no
-/// WebView2 code.
+/// A find bar for whole-page web content. The bar runs find through an injected IBrowserFindTarget, and does not
+/// contain WebView2 code.
 /// </summary>
 public sealed partial class BrowserFindBar : UserControl
 {

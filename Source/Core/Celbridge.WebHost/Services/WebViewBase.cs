@@ -1012,9 +1012,11 @@ public abstract class WebViewBase : IEditorWebView
         }
     }
 
-    public virtual Task<WebViewFavicon?> ReadFaviconAsync(IWebViewFaviconStore store)
+    public virtual async Task<byte[]?> ReadFaviconAsync()
     {
-        return Task.FromResult<WebViewFavicon?>(null);
+        await Task.CompletedTask;
+
+        return null;
     }
 
     /// <summary>

@@ -234,7 +234,8 @@ public class BrowserTabViewModelTests
     [TestCase("https://example.com/#section")]
     public void CommittingAnotherPageOnTheSameSite_KeepsTheFavicon(string nextUrl)
     {
-        // The platform reports no new favicon for a page with the same icon, or for a page the site changes by script.
+        // The platform does not report a new favicon for a page with the same icon. The platform also does not report
+        // one when a script changes the page.
         var favicon = new byte[] { 1 };
         var tab = CreateTabShowingPage("https://example.com/");
         tab.Favicon = favicon;

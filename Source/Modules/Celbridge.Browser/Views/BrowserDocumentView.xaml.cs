@@ -1,4 +1,3 @@
-using Celbridge.Browser.Services;
 using Celbridge.Browser.ViewModels;
 using Celbridge.Commands;
 using Celbridge.Documents;
@@ -53,7 +52,6 @@ public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarg
     private readonly IWebViewFactory _webViewFactory;
     private readonly IWebViewService _webViewService;
     private readonly IWebViewFocusRegistry _webViewFocusRegistry;
-    private readonly IWebViewFaviconStore _faviconCache;
 
     private readonly List<BrowserTabContent> _tabContents = new();
 
@@ -105,7 +103,6 @@ public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarg
         _webViewFactory = webViewFactory;
         _webViewService = webViewService;
         _webViewFocusRegistry = ServiceLocator.AcquireService<IWebViewFocusRegistry>();
-        _faviconCache = ServiceLocator.AcquireService<IWebViewFaviconStore>();
 
         ViewModel = serviceProvider.GetRequiredService<BrowserDocumentViewModel>();
 
@@ -172,9 +169,9 @@ public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarg
         return content;
     }
 
-    // Puts the shown tab's panel on screen. The other panels stay attached, because the Skia heads raise no navigation
-    // events for a page navigated while detached. A hidden page keeps running. A web view that keeps the keyboard while
-    // hidden takes every keystroke on macOS, so the keyboard moves to what now shows.
+    // Puts the shown tab's panel on screen. The other panels stay attached, because the Skia heads do not raise
+    // navigation events for a page navigated while detached. A hidden page keeps running. A web view that keeps the
+    // keyboard while hidden takes every keystroke on macOS, so the keyboard moves to what now shows.
     private void ApplyShownTab()
     {
         var shownTab = ViewModel.ShownTab;
@@ -293,8 +290,8 @@ public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarg
 
         webView.AttachTo(content.Panel);
 
-        // The page runs none of the application's script, so releasing focus does nothing here. The registry's native
-        // click monitor tracks focus on the page.
+        // The application does not run its own script in the page. Releasing focus therefore does nothing here. The
+        // registry's native click monitor tracks focus on the page.
         RegisterWebSurfaceFocus(webView, releaseFocus: () => { });
 
         // No host RPC channel is opened. The page is untrusted third-party content, and the native message bus is
@@ -322,8 +319,8 @@ public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarg
 
         return new WebViewOptions
         {
-            // A page that sets no background sits on white, the default in a browser. On a transparent view, the page's
-            // default black text would sit on the dark theme.
+            // A page that does not set a background sits on white, the default in a browser. On a transparent view, the
+            // page's default black text would sit on the dark theme.
             BackgroundColor = Colors.White,
             AreDevToolsEnabled = _webViewService.IsDevToolsFeatureEnabled(),
 
@@ -449,9 +446,9 @@ public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarg
 
         try
         {
-            var pageUrl = content.Tab.CurrentUrl;
-            var favicon = await content.WebView.ReadFaviconAsync(_faviconCache);
-            ViewModel.ReportTabFavicon(content.Tab, pageUrl, favicon);
+            var read = content.Tab.BeginFaviconRead();
+            var image = await content.WebView.ReadFaviconAsync();
+            ViewModel.ReportTabFavicon(content.Tab, read, image);
         }
         catch (Exception ex)
         {
@@ -768,8 +765,8 @@ public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarg
             {
                 ViewModel.CloseSettings();
 
-                // Navigating to the address already showing raises no change for the binding to follow, so an edit
-                // in the box would survive the navigation.
+                // Navigating to the address already showing does not raise a change for the binding to follow. An
+                // edit in the box would then survive the navigation.
                 SyncAddressText();
                 SendShownTabTo(url);
 
@@ -1028,6 +1025,8 @@ public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarg
     // A document with no saved state opens its Open on Start bookmarks.
     public override async Task RestoreEditorStateAsync(string? state)
     {
+        await Task.CompletedTask;
+
         if (state is null)
         {
             ViewModel.OpenStartTabs();
@@ -1037,10 +1036,8 @@ public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarg
             ViewModel.RestoreEditorState(state);
         }
 
-        // The state may leave the view model's values unchanged, which raises no property change.
+        // The state may leave the view model's values unchanged. The view model then does not raise a property change.
         ApplyShownTab();
-
-        await ViewModel.LoadSavedTabFaviconsAsync();
     }
 
     // Closing the document discards the open tabs, so the next open shows the Open on Start bookmarks.

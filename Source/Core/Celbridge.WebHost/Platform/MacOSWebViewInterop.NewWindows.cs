@@ -92,7 +92,7 @@ public static partial class MacOSWebViewInterop
     /// <summary>
     /// Runs an action that creates exactly one UNOWebView. That view is built from the configuration WebKit gave for the
     /// request, which links the new page to the opener. Returns false when the request has already been answered or
-    /// the action created no view.
+    /// the action did not create a view.
     /// </summary>
     public static bool CreateWebViewForNewWindow(IntPtr request, Action createWebView)
     {
@@ -122,7 +122,7 @@ public static partial class MacOSWebViewInterop
     }
 
     /// <summary>
-    /// Answers a new window request with the web view that shows the new page, or with zero to open no window. Does
+    /// Answers a new window request with the web view for the new page. An answer of zero refuses the window. Does
     /// nothing for a request that has already been answered.
     /// </summary>
     public static void AnswerNewWindowRequest(IntPtr request, IntPtr webView)
@@ -294,9 +294,9 @@ public static partial class MacOSWebViewInterop
         }
     }
 
-    // Returns true when the page asks for the window while handling the user's input. WebKit carries a gesture across a short
-    // timer and a pending fetch, so a sign-in that waits on a response still counts. Without the SPI, only a link the
-    // user followed counts.
+    // Returns true when the page asks for the window while handling the user's input. WebKit keeps a gesture valid
+    // across a short timer and a pending fetch, so a sign-in that waits on a response still counts. Without the SPI,
+    // only a link the user followed counts.
     private static bool ReadIsUserInitiated(IntPtr navigationAction)
     {
         var selector = GetSelector("_isUserInitiated");

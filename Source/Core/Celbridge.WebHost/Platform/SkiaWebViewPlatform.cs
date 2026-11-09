@@ -75,24 +75,26 @@ internal sealed class SkiaWebViewPlatform : IWebViewPlatform
     // Only macOS hit-tests each press against the native web views.
     public bool IsLastPressInWebView => OperatingSystem.IsMacOS() && MacOSWebViewFocusMonitor.IsLastPressInWebView;
 
-    public Task<WebViewBase> CreateWebViewAsync()
+    public async Task<WebViewBase> CreateWebViewAsync()
     {
-        return CreateWebViewAsync(applyTemplate: null);
+        return await CreateWebViewAsync(applyTemplate: null);
     }
 
     // Only the macOS head raises new window requests among the Skia heads, so only macOS requests reach this method.
     // ApplyTemplate exists only on Uno's WebView2, so the macOS path compiles for the Skia heads only.
-    public Task<WebViewBase> CreateWebViewForNewWindowAsync(WebNewWindowRequest request)
+    public async Task<WebViewBase> CreateWebViewForNewWindowAsync(WebNewWindowRequest request)
     {
 #if WINDOWS
-        throw new NotSupportedException("This head opens no new windows.");
+        await Task.CompletedTask;
+
+        throw new NotSupportedException("This head does not open new windows.");
 #else
         if (request is not MacOSNewWindowRequest macRequest)
         {
-            throw new NotSupportedException("This head opens no new windows.");
+            throw new NotSupportedException("This head does not open new windows.");
         }
 
-        return CreateWebViewAsync(control =>
+        return await CreateWebViewAsync(control =>
         {
             // Applying the template builds the control's native view, so this call creates that view.
             var created = MacOSWebViewInterop.CreateWebViewForNewWindow(macRequest.NativeRequest, () => control.ApplyTemplate());

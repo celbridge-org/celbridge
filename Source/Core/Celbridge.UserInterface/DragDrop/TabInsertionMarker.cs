@@ -28,7 +28,7 @@ public sealed class TabInsertionMarker
     /// <summary>
     /// Shows the divider at an insertion slot's boundary. The divider spans the strip bounds vertically. A drop in a
     /// slot either side of the dragged tab leaves the tab in place. The divider then marks the dragged tab's leading
-    /// edge. Pass -1 for the dragged index when the drag carries no tab of this strip.
+    /// edge. Pass -1 for the dragged index when the dragged item is not a tab of this strip.
     /// </summary>
     public void Show(Rect stripBounds, IReadOnlyList<Rect> tabBounds, int slot, int draggedIndex)
     {

@@ -1,7 +1,6 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using Celbridge.WebHost;
 using Celbridge.WebHost.Services;
 
 namespace Celbridge.Tests.WebHost;
@@ -42,88 +41,102 @@ public class WebViewFaviconReaderTests
     }
 
     private const string IconAddress = "https://example.com/favicon.ico";
+    private const string OtherIconAddress = "https://example.com/other.ico";
 
-    private sealed class FakeFaviconStore : IWebViewFaviconStore
+    // Returns a fetch that adds each requested address to the list, and returns the given image.
+    private static Func<string, Task<byte[]?>> Fetch(List<string> fetches, byte[]? image)
     {
-        public Dictionary<string, byte[]> Files { get; } = new();
-
-        public Task<byte[]?> TryReadIconAsync(string iconAddress)
+        return address =>
         {
-            return Task.FromResult(Files.GetValueOrDefault(iconAddress));
-        }
-
-        public Task WriteIconAsync(string iconAddress, byte[] favicon)
-        {
-            Files[iconAddress] = favicon;
-            return Task.CompletedTask;
-        }
+            fetches.Add(address);
+            return Task.FromResult(image);
+        };
     }
 
     [Test]
-    public async Task ReadAsync_AStoredAddress_UsesTheStoredFileWithNoFetch()
+    public async Task ReadAsync_TheLastIconsAddress_ReturnsTheLastImageWithNoFetch()
     {
-        var store = new FakeFaviconStore();
-        store.Files[IconAddress] = new byte[] { 1 };
-        var fetches = 0;
+        var reader = new WebViewFaviconReader();
+        var fetches = new List<string>();
+        await reader.ReadAsync(IconAddress, Fetch(fetches, new byte[] { 1 }));
 
-        var favicon = await WebViewFaviconReader.ReadAsync(IconAddress, store, refresh: false, address =>
-        {
-            fetches++;
-            return Task.FromResult<byte[]?>(new byte[] { 2 });
-        });
+        var favicon = await reader.ReadAsync(IconAddress, Fetch(fetches, new byte[] { 2 }));
 
         favicon.Should().Equal(1);
-        fetches.Should().Be(0);
+        fetches.Should().Equal(IconAddress);
     }
 
     [Test]
-    public async Task ReadAsync_AnUnknownAddress_FetchesAndStoresTheFile()
+    public async Task ReadAsync_AnotherAddress_FetchesThatIcon()
     {
-        var store = new FakeFaviconStore();
+        var reader = new WebViewFaviconReader();
+        var fetches = new List<string>();
+        await reader.ReadAsync(IconAddress, Fetch(fetches, new byte[] { 1 }));
 
-        var favicon = await WebViewFaviconReader.ReadAsync(IconAddress, store, refresh: false,
-            address => Task.FromResult<byte[]?>(new byte[] { 2 }));
+        var favicon = await reader.ReadAsync(OtherIconAddress, Fetch(fetches, new byte[] { 2 }));
 
         favicon.Should().Equal(2);
-        store.Files[IconAddress].Should().Equal(2);
+        fetches.Should().Equal(IconAddress, OtherIconAddress);
     }
 
     [Test]
-    public async Task ReadAsync_AFetchThatFails_StoresNothing()
+    public async Task ReadAsync_AnEarlierIconsAddress_FetchesThatIconAgain()
     {
-        var store = new FakeFaviconStore();
+        var reader = new WebViewFaviconReader();
+        var fetches = new List<string>();
+        await reader.ReadAsync(IconAddress, Fetch(fetches, new byte[] { 1 }));
+        await reader.ReadAsync(OtherIconAddress, Fetch(fetches, new byte[] { 2 }));
 
-        var favicon = await WebViewFaviconReader.ReadAsync(IconAddress, store, refresh: false,
-            address => Task.FromResult<byte[]?>(null));
+        var favicon = await reader.ReadAsync(IconAddress, Fetch(fetches, new byte[] { 3 }));
+
+        favicon.Should().Equal(3);
+        fetches.Should().Equal(IconAddress, OtherIconAddress, IconAddress);
+    }
+
+    [Test]
+    public async Task ReadAsync_AFetchThatFails_ReturnsNullAndFetchesAgainNextTime()
+    {
+        var reader = new WebViewFaviconReader();
+        var fetches = new List<string>();
+
+        var favicon = await reader.ReadAsync(IconAddress, Fetch(fetches, null));
+        var retried = await reader.ReadAsync(IconAddress, Fetch(fetches, new byte[] { 1 }));
 
         favicon.Should().BeNull();
-        store.Files.Should().BeEmpty();
+        retried.Should().Equal(1);
+        fetches.Should().Equal(IconAddress, IconAddress);
     }
 
     [Test]
-    public async Task ReadAsync_ARefresh_FetchesAndReplacesTheStoredFile()
+    public async Task ReadAsync_AfterRefreshNextRead_FetchesTheLastIconsAddressOnce()
     {
-        var store = new FakeFaviconStore();
-        store.Files[IconAddress] = new byte[] { 1 };
+        var reader = new WebViewFaviconReader();
+        var fetches = new List<string>();
+        await reader.ReadAsync(IconAddress, Fetch(fetches, new byte[] { 1 }));
 
-        var favicon = await WebViewFaviconReader.ReadAsync(IconAddress, store, refresh: true,
-            address => Task.FromResult<byte[]?>(new byte[] { 2 }));
+        reader.RefreshNextRead();
+        var favicon = await reader.ReadAsync(IconAddress, Fetch(fetches, new byte[] { 2 }));
+        var next = await reader.ReadAsync(IconAddress, Fetch(fetches, new byte[] { 3 }));
 
         favicon.Should().Equal(2);
-        store.Files[IconAddress].Should().Equal(2);
+        next.Should().Equal(2);
+        fetches.Should().Equal(IconAddress, IconAddress);
     }
 
     [Test]
-    public async Task ReadAsync_ARefreshThatFails_KeepsTheStoredFile()
+    public async Task ReadAsync_ARefreshedReadThatFails_KeepsTheLastImage()
     {
-        var store = new FakeFaviconStore();
-        store.Files[IconAddress] = new byte[] { 1 };
+        var reader = new WebViewFaviconReader();
+        var fetches = new List<string>();
+        await reader.ReadAsync(IconAddress, Fetch(fetches, new byte[] { 1 }));
 
-        var favicon = await WebViewFaviconReader.ReadAsync(IconAddress, store, refresh: true,
-            address => Task.FromResult<byte[]?>(null));
+        reader.RefreshNextRead();
+        var favicon = await reader.ReadAsync(IconAddress, Fetch(fetches, null));
+        var next = await reader.ReadAsync(IconAddress, Fetch(fetches, new byte[] { 3 }));
 
         favicon.Should().Equal(1);
-        store.Files[IconAddress].Should().Equal(1);
+        next.Should().Equal(1);
+        fetches.Should().Equal(IconAddress, IconAddress);
     }
 
     private const string UserAgent = "Test Agent/1.0 (Mac) Celbridge/1.0";

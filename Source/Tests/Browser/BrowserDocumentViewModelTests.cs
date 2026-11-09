@@ -1,4 +1,3 @@
-using Celbridge.Browser.Services;
 using Celbridge.Browser.ViewModels;
 using Celbridge.Browser.Views;
 using Celbridge.Commands;
@@ -20,7 +19,6 @@ public class BrowserDocumentViewModelTests
     private const string PageOne = "https://example.com/one";
     private const string PageTwo = "https://example.com/two";
     private const string PageThree = "https://example.com/three";
-    private const string IconAddress = "https://example.com/favicon.ico";
 
     private ICommandService _commandService = null!;
     private IResourceFileSystem _resourceFileSystem = null!;
@@ -28,7 +26,6 @@ public class BrowserDocumentViewModelTests
     private IStringLocalizer _stringLocalizer = null!;
     private IWindowModeService _windowModeService = null!;
     private IMessengerService _messengerService = null!;
-    private IWebViewFaviconStore _faviconCache = null!;
 
     [SetUp]
     public void SetUp()
@@ -37,7 +34,6 @@ public class BrowserDocumentViewModelTests
         _stringLocalizer = Substitute.For<IStringLocalizer>();
         _windowModeService = Substitute.For<IWindowModeService>();
         _messengerService = new MessengerService();
-        _faviconCache = Substitute.For<IWebViewFaviconStore>();
 
         _resourceFileSystem = Substitute.For<IResourceFileSystem>();
         // Default: the file exists on disk, so reads are attempted. Per-test stubs override individual behaviors.
@@ -65,8 +61,7 @@ public class BrowserDocumentViewModelTests
             _workspaceWrapper,
             _stringLocalizer,
             _windowModeService,
-            _messengerService,
-            _faviconCache)
+            _messengerService)
         {
             FileResource = new ResourceKey("test.browser"),
         };
@@ -326,7 +321,7 @@ public class BrowserDocumentViewModelTests
     [Test]
     public void NavigableBookmarks_LeavesOutAnEntryThatCannotBeNavigatedTo()
     {
-        // Adding a bookmark starts it blank, so an entry still being filled in puts no item in the list.
+        // A new bookmark starts blank, so the list leaves out the entry while the user is still filling in the address.
         var viewModel = CreateViewModel();
         viewModel.AddBookmark(new BrowserBookmark("https://example.com"));
         viewModel.AddBookmark(new BrowserBookmark(string.Empty));
@@ -966,6 +961,15 @@ public class BrowserDocumentViewModelTests
         return viewModel;
     }
 
+    // Reports an icon the way the view does. The helper begins a read of the tab's icon, and then reports the image
+    // under that read's number.
+    private static void ReportFavicon(BrowserDocumentViewModel viewModel, BrowserTabViewModel tab, byte[]? image)
+    {
+        var read = tab.BeginFaviconRead();
+
+        viewModel.ReportTabFavicon(tab, read, image);
+    }
+
     [Test]
     public async Task LoadContent_GivesABookmarkTheIconInItsFile()
     {
@@ -1011,16 +1015,15 @@ public class BrowserDocumentViewModelTests
     }
 
     [Test]
-    public async Task ATabsFavicon_IsStoredScaledOnABookmarkWithNone_AsAnEdit()
+    public async Task ATabsFavicon_IsScaledAndStoredOnABookmarkWithNone_AsAnEdit()
     {
-        var favicon = TestFavicons.Png(64, 64);
         var viewModel = await LoadDocumentWithOneBookmarkAsync();
         viewModel.HasUnsavedChanges.Should().BeFalse();
 
-        viewModel.ReportTabFavicon(viewModel.Tabs[0], PageOne, new WebViewFavicon(IconAddress, favicon));
+        ReportFavicon(viewModel, viewModel.Tabs[0], TestFavicons.Png(64, 64));
 
-        viewModel.Tabs[0].Favicon.Should().BeSameAs(favicon);
-        TestFavicons.SizeOf(viewModel.Bookmarks[0].Favicon!).Should().Be((32, 32));
+        TestFavicons.SizeOf(viewModel.Tabs[0].Favicon!).Should().Be((32, 32));
+        viewModel.Bookmarks[0].Favicon.Should().BeSameAs(viewModel.Tabs[0].Favicon);
         viewModel.HasUnsavedChanges.Should().BeTrue();
     }
 
@@ -1031,9 +1034,9 @@ public class BrowserDocumentViewModelTests
         var reported = TestFavicons.Png(16, 16, SKColors.Blue);
         var viewModel = await LoadDocumentWithOneBookmarkAsync(stored);
 
-        viewModel.ReportTabFavicon(viewModel.Tabs[0], PageOne, new WebViewFavicon(IconAddress, reported));
+        ReportFavicon(viewModel, viewModel.Tabs[0], reported);
 
-        viewModel.Tabs[0].Favicon.Should().BeSameAs(reported);
+        TestFavicons.CenterColor(viewModel.Tabs[0].Favicon!).Should().Be(SKColors.Blue);
         viewModel.Bookmarks[0].Favicon.Should().Equal(stored);
         viewModel.HasUnsavedChanges.Should().BeFalse();
     }
@@ -1045,8 +1048,7 @@ public class BrowserDocumentViewModelTests
         var bookmark = viewModel.CreateBookmark(new BrowserBookmark("https://example.com"));
         viewModel.Bookmarks.Add(bookmark);
 
-        var favicon = new WebViewFavicon(IconAddress, TestFavicons.Png(16, 16));
-        viewModel.ReportTabFavicon(viewModel.Tabs[0], "https://example.com/", favicon);
+        ReportFavicon(viewModel, viewModel.Tabs[0], TestFavicons.Png(16, 16));
 
         TestFavicons.SizeOf(bookmark.Favicon!).Should().Be((16, 16));
     }
@@ -1060,8 +1062,7 @@ public class BrowserDocumentViewModelTests
         viewModel.Bookmarks.Add(first);
         viewModel.Bookmarks.Add(second);
 
-        var favicon = new WebViewFavicon(IconAddress, TestFavicons.Png(16, 16));
-        viewModel.ReportTabFavicon(viewModel.Tabs[0], PageOne, favicon);
+        ReportFavicon(viewModel, viewModel.Tabs[0], TestFavicons.Png(16, 16));
 
         first.Favicon.Should().NotBeNull();
         second.Favicon.Should().BeSameAs(first.Favicon);
@@ -1074,40 +1075,89 @@ public class BrowserDocumentViewModelTests
         var bookmark = viewModel.CreateBookmark(new BrowserBookmark(PageTwo));
         viewModel.Bookmarks.Add(bookmark);
 
-        var favicon = new WebViewFavicon(IconAddress, TestFavicons.Png(16, 16));
-        viewModel.ReportTabFavicon(viewModel.Tabs[0], PageOne, favicon);
+        ReportFavicon(viewModel, viewModel.Tabs[0], TestFavicons.Png(16, 16));
 
         bookmark.Favicon.Should().BeNull();
     }
 
     [Test]
-    public void AnIconTheScalerCannotRead_ShowsOnTheTabAndLeavesTheBookmarkWithNone()
+    public void AnIconTheScalerCannotRead_LeavesTheTabsIconAndTheBookmarkAlone()
     {
-        var unreadable = new byte[] { 1, 2, 3 };
+        var shown = TestFavicons.Png(16, 16);
         var viewModel = CreateViewModelWithTabs(PageOne);
         var bookmark = viewModel.CreateBookmark(new BrowserBookmark(PageOne));
         viewModel.Bookmarks.Add(bookmark);
+        viewModel.Tabs[0].Favicon = shown;
 
-        viewModel.ReportTabFavicon(viewModel.Tabs[0], PageOne, new WebViewFavicon(IconAddress, unreadable));
+        ReportFavicon(viewModel, viewModel.Tabs[0], new byte[] { 1, 2, 3 });
 
-        viewModel.Tabs[0].Favicon.Should().BeSameAs(unreadable);
+        viewModel.Tabs[0].Favicon.Should().BeSameAs(shown);
         bookmark.Favicon.Should().BeNull();
     }
 
     [Test]
-    public void AFaviconReadFromAnEarlierPage_IsDropped()
+    public void AFaviconReadBeforeTheUserSendsTheTabElsewhere_IsDropped()
     {
         var viewModel = CreateViewModelWithTabs(PageOne);
         var bookmark = viewModel.CreateBookmark(new BrowserBookmark(PageTwo));
         viewModel.Bookmarks.Add(bookmark);
         var tab = viewModel.Tabs[0];
+        var read = tab.BeginFaviconRead();
 
         tab.NotifyUserNavigation(PageTwo);
-        viewModel.ReportTabFavicon(tab, PageOne, new WebViewFavicon(IconAddress, TestFavicons.Png(16, 16)));
+        viewModel.ReportTabFavicon(tab, read, TestFavicons.Png(16, 16));
 
         tab.Favicon.Should().BeNull();
         bookmark.Favicon.Should().BeNull();
     }
+
+    [Test]
+    public void AFaviconReadBeforeANavigationStarts_IsDropped()
+    {
+        // A link's navigation changes the tab's address only when the navigation commits. The page that named the icon
+        // is already leaving.
+        var viewModel = CreateViewModelWithTabs(PageOne);
+        var tab = viewModel.Tabs[0];
+        var read = tab.BeginFaviconRead();
+
+        tab.NotifyNavigationStarted(PageTwo);
+        viewModel.ReportTabFavicon(tab, read, TestFavicons.Png(16, 16));
+
+        tab.Favicon.Should().BeNull();
+    }
+
+    [Test]
+    public void AFaviconRead_IsKeptWhenThePageMovesToAnotherAddressOfItsOwn()
+    {
+        // A fragment link or a script can change the page's address with no navigation. The page and its icon stay.
+        var movedUrl = PageOne + "#details";
+        var viewModel = CreateViewModelWithTabs(PageOne);
+        var bookmark = viewModel.CreateBookmark(new BrowserBookmark(movedUrl));
+        viewModel.Bookmarks.Add(bookmark);
+        var tab = viewModel.Tabs[0];
+        var read = tab.BeginFaviconRead();
+
+        tab.NotifyNavigationCommitted(movedUrl);
+        viewModel.ReportTabFavicon(tab, read, TestFavicons.Png(16, 16));
+
+        tab.Favicon.Should().NotBeNull();
+        bookmark.Favicon.Should().BeSameAs(tab.Favicon);
+    }
+
+    [Test]
+    public void AFaviconRead_ThatALaterReadOvertakes_IsDropped()
+    {
+        var viewModel = CreateViewModelWithTabs(PageOne);
+        var tab = viewModel.Tabs[0];
+        var earlier = tab.BeginFaviconRead();
+        var later = tab.BeginFaviconRead();
+
+        viewModel.ReportTabFavicon(tab, later, TestFavicons.Png(16, 16, SKColors.Blue));
+        viewModel.ReportTabFavicon(tab, earlier, TestFavicons.Png(16, 16, SKColors.Red));
+
+        TestFavicons.CenterColor(tab.Favicon!).Should().Be(SKColors.Blue);
+    }
+
 
     [Test]
     public void EditingABookmarksAddress_ClearsItsIcon()
@@ -1125,106 +1175,96 @@ public class BrowserDocumentViewModelTests
     public void EditingABookmarksAddress_ToAPageATabShows_CopiesTheTabsIcon()
     {
         var viewModel = CreateViewModelWithTabs(PageOne);
-        viewModel.Tabs[0].Favicon = TestFavicons.Png(64, 64);
+        viewModel.Tabs[0].Favicon = TestFavicons.Png(32, 32);
         var bookmark = viewModel.CreateBookmark(new BrowserBookmark(PageTwo, Favicon: TestFavicons.Png(16, 16)));
         viewModel.Bookmarks.Add(bookmark);
 
         bookmark.Url = PageOne;
 
-        TestFavicons.SizeOf(bookmark.Favicon!).Should().Be((32, 32));
+        bookmark.Favicon.Should().BeSameAs(viewModel.Tabs[0].Favicon);
     }
 
     [Test]
-    public async Task ARestoredTab_ShowsTheStoredIconOfItsSavedAddress()
+    public void ARestoredTab_ShowsTheIconSavedWithIt()
     {
-        var favicon = new byte[] { 1, 2, 3 };
-        _faviconCache.TryReadIconAsync(IconAddress).Returns(favicon);
         var viewModel = CreateViewModelWithTabs(PageOne);
-        viewModel.ReportTabFavicon(viewModel.Tabs[0], PageOne, new WebViewFavicon(IconAddress, new byte[] { 9 }));
-
-        var restored = CreateViewModel();
-        restored.RestoreEditorState(viewModel.TrySerializeEditorState()!);
-        restored.Tabs[0].Favicon.Should().BeNull();
-
-        await restored.LoadSavedTabFaviconsAsync();
-
-        restored.Tabs[0].Favicon.Should().BeSameAs(favicon);
-        restored.Tabs[0].FaviconAddress.Should().Be(IconAddress);
-    }
-
-    [Test]
-    public async Task ARestoredTabWithABookmarksIcon_KeepsThatIcon()
-    {
-        var bookmarkIcon = new byte[] { 7 };
-        var viewModel = CreateViewModelWithTabs(PageOne);
-        viewModel.ReportTabFavicon(viewModel.Tabs[0], PageOne, new WebViewFavicon(IconAddress, new byte[] { 9 }));
-
-        var restored = CreateViewModel();
-        var bookmark = restored.CreateBookmark(new BrowserBookmark(PageOne));
-        bookmark.Favicon = bookmarkIcon;
-        restored.Bookmarks.Add(bookmark);
-        restored.RestoreEditorState(viewModel.TrySerializeEditorState()!);
-
-        await restored.LoadSavedTabFaviconsAsync();
-
-        restored.Tabs[0].Favicon.Should().BeSameAs(bookmarkIcon);
-        await _faviconCache.DidNotReceive().TryReadIconAsync(Arg.Any<string>());
-    }
-
-    [Test]
-    public async Task ARestoredTabWithNoStoredIcon_ShowsTheDefaultIcon()
-    {
-        _faviconCache.TryReadIconAsync(IconAddress).Returns((byte[]?)null);
-        var viewModel = CreateViewModelWithTabs(PageOne);
-        viewModel.ReportTabFavicon(viewModel.Tabs[0], PageOne, new WebViewFavicon(IconAddress, new byte[] { 9 }));
+        ReportFavicon(viewModel, viewModel.Tabs[0], TestFavicons.Png(64, 64));
 
         var restored = CreateViewModel();
         restored.RestoreEditorState(viewModel.TrySerializeEditorState()!);
 
-        await restored.LoadSavedTabFaviconsAsync();
-
-        restored.Tabs[0].Favicon.Should().BeNull();
+        restored.Tabs[0].Favicon.Should().Equal(viewModel.Tabs[0].Favicon);
     }
 
     [Test]
-    public async Task AStateSavedWithNoIconAddress_RestoresATabWithNoRead()
+    public void ARestoredTabsSavedIcon_TakesPrecedenceOverABookmarksIcon()
     {
+        var viewModel = CreateViewModelWithTabs(PageOne);
+        ReportFavicon(viewModel, viewModel.Tabs[0], TestFavicons.Png(16, 16, SKColors.Blue));
+
+        var restored = CreateViewModel();
+        var bookmarkIcon = TestFavicons.Png(16, 16, SKColors.Red);
+        restored.Bookmarks.Add(restored.CreateBookmark(new BrowserBookmark(PageOne, Favicon: bookmarkIcon)));
+        restored.RestoreEditorState(viewModel.TrySerializeEditorState()!);
+
+        TestFavicons.CenterColor(restored.Tabs[0].Favicon!).Should().Be(SKColors.Blue);
+    }
+
+    [Test]
+    public void ARestoredTabWhoseSavedIconIsNotAPng_ShowsTheBookmarksIcon()
+    {
+        var bookmarkIcon = TestFavicons.Png(16, 16);
         var viewModel = CreateViewModel();
-        viewModel.RestoreEditorState("""
-            { "settingsOpen": false, "settingsSectionKey": "", "tabs": [ { "url": "https://example.com/", "title": "One" } ] }
+        var bookmark = viewModel.CreateBookmark(new BrowserBookmark(PageOne, Favicon: bookmarkIcon));
+        viewModel.Bookmarks.Add(bookmark);
+        var notAPng = Convert.ToBase64String(TestFavicons.Encode(16, 16, SKEncodedImageFormat.Jpeg));
+
+        viewModel.RestoreEditorState($$"""
+            {
+              "settingsOpen": false,
+              "settingsSectionKey": "",
+              "tabs": [ { "url": "https://example.com/one", "title": "", "favicon": "{{notAPng}}" } ]
+            }
             """);
 
-        await viewModel.LoadSavedTabFaviconsAsync();
-
-        viewModel.Tabs.Should().ContainSingle().Which.FaviconAddress.Should().BeEmpty();
-        await _faviconCache.DidNotReceive().TryReadIconAsync(Arg.Any<string>());
+        viewModel.Tabs[0].Favicon.Should().BeSameAs(bookmarkIcon);
     }
 
     [Test]
-    public void ATabGoingToAnotherSite_ForgetsItsIconAddress()
+    public void ATabWithNoIcon_IsSavedWithNone()
+    {
+        var viewModel = CreateViewModelWithTabs(PageOne);
+
+        var restored = CreateViewModel();
+        restored.RestoreEditorState(viewModel.TrySerializeEditorState()!);
+
+        restored.Tabs[0].Favicon.Should().BeNull();
+    }
+
+    [Test]
+    public void ATabGoingToAnotherSite_ForgetsItsIcon()
     {
         var viewModel = CreateViewModelWithTabs("https://one.example/");
         var tab = viewModel.Tabs[0];
         tab.NotifyNavigationCommitted("https://one.example/");
-        viewModel.ReportTabFavicon(tab, "https://one.example/", new WebViewFavicon(IconAddress, new byte[] { 1 }));
+        ReportFavicon(viewModel, tab, TestFavicons.Png(16, 16));
 
         tab.NotifyNavigationCommitted("https://two.example/");
 
-        tab.FaviconAddress.Should().BeEmpty();
         tab.Favicon.Should().BeNull();
     }
 
     [Test]
-    public void ATabMovingWithinItsSite_KeepsItsIconAddress()
+    public void ATabMovingWithinItsSite_KeepsItsIcon()
     {
         var viewModel = CreateViewModelWithTabs("https://one.example/");
         var tab = viewModel.Tabs[0];
         tab.NotifyNavigationCommitted("https://one.example/");
-        viewModel.ReportTabFavicon(tab, "https://one.example/", new WebViewFavicon(IconAddress, new byte[] { 1 }));
+        ReportFavicon(viewModel, tab, TestFavicons.Png(16, 16));
 
         tab.NotifyNavigationCommitted("https://one.example/other");
 
-        tab.FaviconAddress.Should().Be(IconAddress);
+        tab.Favicon.Should().NotBeNull();
     }
 
     [Test]
@@ -1235,20 +1275,20 @@ public class BrowserDocumentViewModelTests
         var bookmark = viewModel.CreateBookmark(new BrowserBookmark(PageOne, Favicon: stored));
         viewModel.Bookmarks.Add(bookmark);
 
-        viewModel.ReportTabFavicon(viewModel.Tabs[0], PageOne, null);
+        ReportFavicon(viewModel, viewModel.Tabs[0], null);
 
         bookmark.Favicon.Should().BeSameAs(stored);
     }
 
     [Test]
-    public void ABookmarkAddedForAnOpenPage_StoresTheTabsIconScaled()
+    public void ABookmarkAddedForAnOpenPage_StoresTheTabsIcon()
     {
         var viewModel = CreateViewModelWithTabs(PageOne);
-        viewModel.Tabs[0].Favicon = TestFavicons.Png(64, 64);
+        viewModel.Tabs[0].Favicon = TestFavicons.Png(32, 32);
 
         var bookmark = viewModel.AddBookmarkFromCurrentPage();
 
-        TestFavicons.SizeOf(bookmark!.Favicon!).Should().Be((32, 32));
+        bookmark!.Favicon.Should().BeSameAs(viewModel.Tabs[0].Favicon);
     }
 
     [Test]

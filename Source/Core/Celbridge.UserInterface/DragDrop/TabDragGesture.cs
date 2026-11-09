@@ -94,7 +94,7 @@ public sealed class TabDragGesture
 
     /// <summary>
     /// Begins tracking a press on a tab. The drag starts only once the pointer passes the drag threshold, so a plain
-    /// click is unaffected. A press on a button inside the tab, like the close button, starts no drag.
+    /// click is unaffected. A press on a button inside the tab, like the close button, does not start a drag.
     /// </summary>
     public void OnTabPressed(TabViewItem tab, PointerRoutedEventArgs e)
     {

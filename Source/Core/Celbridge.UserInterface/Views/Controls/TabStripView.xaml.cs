@@ -27,8 +27,8 @@ public sealed partial class TabStripView : UserControl
     // A scroll shorter than this moves the strip by less than a pixel.
     private const double RevealAlignmentTolerance = 0.5;
 
-    // The tab list template's two overflow arrows, named by their containers because that is what carries the
-    // width each arrow costs the strip.
+    // The names of the containers around the tab list template's two overflow arrows. The strip hides each
+    // container, because the container has the arrow's width.
     private static readonly string[] ScrollButtonContainerNames =
     {
         "ScrollDecreaseButtonContainer",
@@ -484,7 +484,7 @@ public sealed partial class TabStripView : UserControl
     // stops short by that width and clips the last tab. Observed in 6.6.166.
     /// <summary>
     /// Pads the tab list's items presenter by the width of the presenter's header and footer. The width the presenter
-    /// asks for then covers everything the presenter lays out. The header and footer carry the ends of the strip's
+    /// asks for then covers everything the presenter lays out. The header and footer contain the ends of the strip's
     /// bottom border.
     /// </summary>
     private void ReserveTabListHeaderAndFooterWidth()
@@ -633,7 +633,7 @@ public sealed partial class TabStripView : UserControl
         if (tabWidth >= viewportWidth)
         {
             // A tab too wide for the strip cannot be brought fully into view, so its leading edge is the one to show.
-            // The label starts there, while the trailing edge carries only the close button.
+            // The label starts there, and the trailing edge has only the close button.
             targetOffset = currentOffset + tabViewportX;
         }
         else if (tabViewportX < 0)
@@ -651,8 +651,8 @@ public sealed partial class TabStripView : UserControl
 
         double clampedOffset = Math.Clamp(targetOffset, 0, scrollViewer.ScrollableWidth);
 
-        // Transformed coordinates carry a fraction, so a tab already sitting where it is wanted still measures a hair
-        // off. Scrolling by less than a pixel would move nothing.
+        // Transformed coordinates have a fractional part, so a tab already sitting where it is wanted still measures a
+        // hair off. Scrolling by less than a pixel would move nothing.
         if (Math.Abs(clampedOffset - currentOffset) < RevealAlignmentTolerance)
         {
             return;

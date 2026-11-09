@@ -26,9 +26,6 @@ internal sealed class WindowsWebView : WebViewBase
     // The icon address at WebView2's last FaviconChanged event.
     private string _changedFaviconUri = string.Empty;
 
-    // The icon address of the last copy written to the store.
-    private string _storedFaviconUri = string.Empty;
-
     public WindowsWebView(WebView2 control, WindowsWebViewPlatform platform, ILogger logger, IAutomationService automationService)
         : base(control, platform, logger, automationService)
     {
@@ -66,12 +63,10 @@ internal sealed class WindowsWebView : WebViewBase
         RaiseFaviconChanged();
     }
 
-    // WebView2 fetches and caches the icon. The store keeps a copy, and a restored tab shows the copy before its page
-    // loads. This method writes a new copy when the icon's address changes.
-    public override async Task<WebViewFavicon?> ReadFaviconAsync(IWebViewFaviconStore store)
+    // WebView2 fetches and caches the icon, so this method only reads WebView2's copy.
+    public override async Task<byte[]?> ReadFaviconAsync()
     {
-        var address = LiveCoreWebView2.FaviconUri;
-        if (string.IsNullOrEmpty(address))
+        if (string.IsNullOrEmpty(LiveCoreWebView2.FaviconUri))
         {
             return null;
         }
@@ -86,14 +81,7 @@ internal sealed class WindowsWebView : WebViewBase
         using var memoryStream = new MemoryStream();
         await stream.AsStreamForRead().CopyToAsync(memoryStream);
 
-        var image = memoryStream.ToArray();
-        if (address != _storedFaviconUri)
-        {
-            _storedFaviconUri = address;
-            await store.WriteIconAsync(address, image);
-        }
-
-        return new WebViewFavicon(address, image);
+        return memoryStream.ToArray();
     }
 
     private void CoreWebView2_WindowCloseRequested(CoreWebView2 sender, object args)
@@ -313,11 +301,13 @@ internal sealed class WindowsWebView : WebViewBase
             _deferral = args.GetDeferral();
         }
 
-        public override Task AcceptAsync(IEditorWebView webView)
+        public override async Task AcceptAsync(IEditorWebView webView)
         {
+            await Task.CompletedTask;
+
             if (_isAnswered)
             {
-                return Task.CompletedTask;
+                return;
             }
 
             // The request counts as answered only once the view is set. A setter that throws leaves Decline able to
@@ -326,8 +316,6 @@ internal sealed class WindowsWebView : WebViewBase
             _isAnswered = true;
             _args.Handled = true;
             _deferral.Complete();
-
-            return Task.CompletedTask;
         }
 
         public override void Decline()

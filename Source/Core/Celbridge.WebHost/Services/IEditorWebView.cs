@@ -43,7 +43,7 @@ public abstract class WebNewWindowRequest
     public abstract Task AcceptAsync(IEditorWebView webView);
 
     /// <summary>
-    /// Opens no window. The page's window.open returns null.
+    /// Declines the request, so no window opens. The page's window.open returns null.
     /// </summary>
     public abstract void Decline();
 }
@@ -147,10 +147,9 @@ public interface IEditorWebView : IWebView, IDisposable
     event EventHandler? FaviconChanged;
 
     /// <summary>
-    /// Returns the current page's favicon, or null when the page has no drawable icon. The icon may come from the store,
-    /// and a returned icon is in the store under the favicon's address.
+    /// Returns the current page's favicon as encoded image bytes, or null when the page has no drawable icon.
     /// </summary>
-    Task<WebViewFavicon?> ReadFaviconAsync(IWebViewFaviconStore store);
+    Task<byte[]?> ReadFaviconAsync();
 
     /// <summary>
     /// True when the page's history has an entry to go back to.

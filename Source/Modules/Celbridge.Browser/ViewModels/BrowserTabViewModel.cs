@@ -46,6 +46,9 @@ public partial class BrowserTabViewModel : ObservableObject
     // commits.
     private string _committedUrl = string.Empty;
 
+    // The number of the latest read of the page's icon. A new read and a navigation away from the page change it.
+    private int _faviconRead;
+
     [ObservableProperty]
     private bool _canGoBack;
 
@@ -76,7 +79,8 @@ public partial class BrowserTabViewModel : ObservableObject
     [ObservableProperty]
     private bool _isShown;
 
-    // The page's icon as encoded image bytes, or null for a page with none. The tab shows a default icon until then.
+    // The page's icon, or null for a page with none. The icon is a PNG small enough for a bookmark to store. The tab
+    // shows a default icon until the page reports one.
     [ObservableProperty]
     private byte[]? _favicon;
 
@@ -84,12 +88,6 @@ public partial class BrowserTabViewModel : ObservableObject
     {
         _blankLabel = blankLabel;
     }
-
-    /// <summary>
-    /// The address the tab's icon came from. Empty for an icon from a bookmark and for a tab with no icon. The editor
-    /// state saves this address, and a restored tab reads the cached icon for it.
-    /// </summary>
-    public string FaviconAddress { get; set; } = string.Empty;
 
     /// <summary>
     /// The tab that asked for this tab's page, or null for a tab the user opened. The link goes when the opener's tab
@@ -204,6 +202,9 @@ public partial class BrowserTabViewModel : ObservableObject
     /// </summary>
     public void NotifyUserNavigation(string url)
     {
+        // The address changes here, before the web view starts the navigation. This method therefore also ends the
+        // icon reads in progress.
+        EndFaviconReads();
         NavigationDestination = url;
         HasNavigationFailed = false;
         Title = string.Empty;
@@ -231,6 +232,7 @@ public partial class BrowserTabViewModel : ObservableObject
             NavigationDestination = destination;
         }
 
+        EndFaviconReads();
         _navigationStoppedByUser = false;
         HasNavigationFailed = false;
         IsNavigating = true;
@@ -317,9 +319,36 @@ public partial class BrowserTabViewModel : ObservableObject
         NotifyNavigationCompleted(NavigationOutcome.Failed);
     }
 
+    /// <summary>
+    /// Begins a read of the page's icon, and returns the read's number. The read's icon belongs on the tab only while
+    /// IsCurrentFaviconRead accepts that number.
+    /// </summary>
+    public int BeginFaviconRead()
+    {
+        _faviconRead++;
+
+        return _faviconRead;
+    }
+
+    /// <summary>
+    /// Returns true while the read is the tab's latest, and the tab has not started a navigation since the read began.
+    /// A fragment link or a script can change the page's address without a navigation, and the read then stays current.
+    /// </summary>
+    public bool IsCurrentFaviconRead(int read)
+    {
+        return read == _faviconRead;
+    }
+
+    // Ends every icon read in progress. A navigation can become a download and leave the page on screen. The tab then
+    // gets that page's icon only when the page loads again.
+    private void EndFaviconReads()
+    {
+        _faviconRead++;
+    }
+
     // Another site has another icon, and the tab learns that icon once the page has loaded. Pages on one site keep the
-    // icon until the new page reports its own. The platform reports no icon when a script changes the page without
-    // loading a new one.
+    // icon until the new page reports its own. When a script changes the page in place, the platform does not report
+    // an icon.
     private void ClearFaviconIfSiteChanges(string url)
     {
         if (_committedUrl.Length == 0
@@ -329,7 +358,6 @@ public partial class BrowserTabViewModel : ObservableObject
         }
 
         Favicon = null;
-        FaviconAddress = string.Empty;
     }
 
     private static bool IsSameSite(string url, string otherUrl)

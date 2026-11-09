@@ -146,7 +146,7 @@ public static partial class MacOSWebViewInterop
         }
     }
 
-    // Returns where the image goes in the square. An image that reports no size fills the square.
+    // Returns where the image goes in the square. An image that does not report a size fills the square.
     private static CGRect FitInSquare(IntPtr image, int pixelSize)
     {
         var size = SendMessageReturnCGSize(image, GetSelector("size"));

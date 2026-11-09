@@ -81,7 +81,7 @@ public interface IDocumentView : IWorkspaceItem
 
     /// <summary>
     /// Restores the editor state saved for the document, as an opaque JSON string. Called once each time the document
-    /// opens. The state is null when this editor saved none.
+    /// opens. The state is null when this editor did not save one.
     /// </summary>
     Task RestoreEditorStateAsync(string? state);
 

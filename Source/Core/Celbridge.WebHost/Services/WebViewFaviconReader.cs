@@ -3,11 +3,12 @@ using System.Net.Http;
 namespace Celbridge.WebHost.Services;
 
 /// <summary>
-/// Reads a favicon file from an address a page named, from a store or by fetching it. The page chooses the address, so
-/// the fetch accepts only http and https and limits the file's size. The fetch also returns only an image format the
-/// tab bar can draw. The caller supplies a renderer that turns an SVG file into one of those formats.
+/// Fetches a page's favicon file, and keeps the address and the image of the last icon fetched. The page chooses the
+/// address, so the reader fetches only http and https addresses and limits the file's size. The reader also returns
+/// only PNG, JPEG, GIF, WebP, BMP and ICO images. The tab bar can draw those formats. The caller supplies a renderer
+/// that turns an SVG file into a PNG.
 /// </summary>
-internal static class WebViewFaviconReader
+internal sealed class WebViewFaviconReader
 {
     // A favicon of any real size fits well inside this.
     internal const int MaximumFaviconBytes = 1024 * 1024;
@@ -17,6 +18,13 @@ internal static class WebViewFaviconReader
     private static readonly TimeSpan FetchTimeout = TimeSpan.FromSeconds(10);
 
     private static readonly HttpClient HttpClient = new();
+
+    // The address and the image of the last icon fetched. Empty and null until a fetch succeeds.
+    private string _lastAddress = string.Empty;
+    private byte[]? _lastImage;
+
+    // True from a call to RefreshNextRead until the next read.
+    private bool _refreshNextRead;
 
     /// <summary>
     /// Returns true for an address the fetch accepts.
@@ -49,29 +57,38 @@ internal static class WebViewFaviconReader
     }
 
     /// <summary>
-    /// Returns the image at the address, from the store when the store has it, and otherwise fetched and stored. A
-    /// refresh always fetches and replaces the stored file. A refresh that fails returns the stored file.
+    /// Makes the next read fetch the icon, even at the last icon's address.
     /// </summary>
-    public static async Task<byte[]?> ReadAsync(
-        string address,
-        IWebViewFaviconStore store,
-        bool refresh,
-        Func<string, Task<byte[]?>> fetch)
+    public void RefreshNextRead()
     {
-        var stored = await store.TryReadIconAsync(address);
-        if (stored is not null
+        _refreshNextRead = true;
+    }
+
+    /// <summary>
+    /// Returns the image at the address. When the address is the last icon's address, the reader returns the last
+    /// image without fetching. The reader fetches the image at any other address. After a call to RefreshNextRead,
+    /// the reader always fetches. If that fetch fails, the reader returns the last image.
+    /// </summary>
+    public async Task<byte[]?> ReadAsync(string address, Func<string, Task<byte[]?>> fetch)
+    {
+        var refresh = _refreshNextRead;
+        _refreshNextRead = false;
+
+        var last = address == _lastAddress ? _lastImage : null;
+        if (last is not null
             && !refresh)
         {
-            return stored;
+            return last;
         }
 
         var fetched = await fetch(address);
         if (fetched is null)
         {
-            return stored;
+            return last;
         }
 
-        await store.WriteIconAsync(address, fetched);
+        _lastAddress = address;
+        _lastImage = fetched;
 
         return fetched;
     }
@@ -81,9 +98,9 @@ internal static class WebViewFaviconReader
     /// with none. Returns null for an address the fetch refuses, a failed request, a file over the size limit and an
     /// unsupported format. Also returns null for a fetch still unfinished after ten seconds.
     /// </summary>
-    public static Task<byte[]?> FetchAsync(string address, string userAgent, Func<byte[], Task<byte[]?>> renderSvg)
+    public static async Task<byte[]?> FetchAsync(string address, string userAgent, Func<byte[], Task<byte[]?>> renderSvg)
     {
-        return FetchAsync(address, userAgent, renderSvg, FetchTimeout);
+        return await FetchAsync(address, userAgent, renderSvg, FetchTimeout);
     }
 
     /// <summary>

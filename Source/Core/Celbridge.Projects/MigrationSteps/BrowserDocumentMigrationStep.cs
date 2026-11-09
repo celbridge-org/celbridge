@@ -198,7 +198,7 @@ public sealed class BrowserDocumentMigrationStep : IMigrationStep
     }
 
     // Turns source_url into a bookmark at the top of the list, with open_on_start on. A bookmark with the same address
-    // gets open_on_start instead. A blank or non-web value adds no bookmark.
+    // gets open_on_start instead. The step does not add a bookmark for a blank or non-web value.
     private static void ApplySourceUrl(MigrationContext context, TomlTable document, TomlTableArray bookmarks, string documentPath)
     {
         if (!document.TryGetValue(SourceUrlKey, out var sourceUrlObject)

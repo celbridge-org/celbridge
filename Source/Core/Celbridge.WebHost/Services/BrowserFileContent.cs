@@ -16,6 +16,17 @@ public sealed record BrowserBookmark(string Url, string Name = "", bool OpenOnSt
     /// The size limit, in bytes, for an icon in the file. A scaled bookmark icon is far smaller.
     /// </summary>
     public const int MaximumFaviconBytes = 16 * 1024;
+
+    private static readonly byte[] PngSignature = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
+
+    /// <summary>
+    /// Returns true for an icon the file can store: a PNG file within MaximumFaviconBytes.
+    /// </summary>
+    public static bool IsStorableFavicon(ReadOnlySpan<byte> favicon)
+    {
+        return favicon.Length <= MaximumFaviconBytes
+            && favicon.StartsWith(PngSignature);
+    }
 }
 
 /// <summary>
@@ -28,8 +39,6 @@ public sealed record BrowserFileContent
     private const string BookmarkNameKey = "name";
     private const string BookmarkOpenOnStartKey = "open_on_start";
     private const string BookmarkFaviconKey = "favicon";
-
-    private static readonly byte[] PngSignature = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
 
     // File keys are the snake_case spelling of the BrowserDocumentFile property names.
     private static readonly TomlSerializerOptions DocumentOptions = new()
@@ -173,8 +182,7 @@ public sealed record BrowserFileContent
         }
 
         var favicon = buffer.AsSpan(0, length);
-        if (length > BrowserBookmark.MaximumFaviconBytes
-            || !favicon.StartsWith(PngSignature))
+        if (!BrowserBookmark.IsStorableFavicon(favicon))
         {
             return null;
         }

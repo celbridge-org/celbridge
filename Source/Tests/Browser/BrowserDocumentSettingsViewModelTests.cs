@@ -4,7 +4,7 @@ using Celbridge.Browser.ViewModels;
 namespace Celbridge.Tests.Browser;
 
 /// <summary>
-/// Unit tests for the browser settings surface's section rail. The sections carry stand-in content, because the surface
+/// Unit tests for the browser settings surface's section rail. The sections have stand-in content, because the surface
 /// chooses each section's control.
 /// </summary>
 [TestFixture]

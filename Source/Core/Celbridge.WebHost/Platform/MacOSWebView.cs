@@ -47,15 +47,16 @@ public sealed class MacOSWebView : SkiaWebView
     // The installed Safari's version, read by the first view that sets its UA. Used only on the main thread.
     private static string? _safariVersion;
 
-    // Every view whose native view has resolved, keyed by its native handle. WebKit and AppKit callbacks carry only
-    // the native view, and this map finds the view from it. A pinned native view stays allocated for the life of the
+    // Each view with a resolved native view, keyed by the native handle. WebKit and AppKit callbacks pass only the
+    // native view, and this map finds the view from the native view. A pinned native view stays allocated for the life of the
     // process, so its address always belongs to the same view. Used only on the main thread.
     private static readonly Dictionary<IntPtr, MacOSWebView> ViewsByNativeHandle = new();
 
     private readonly SkiaWebViewPlatform _platform;
 
-    // True after a reload that clears the cache. The next favicon read fetches the icon again and resets this.
-    private bool _refreshFavicon;
+    // The reader keeps the address and the image of this view's last icon. When a later page names the same icon
+    // address, the view does not make a request.
+    private readonly WebViewFaviconReader _faviconReader = new();
 
     // The User-Agent the page sends. The favicon fetch sends the same one. Empty for a view left on WebKit's default.
     private string _userAgent = string.Empty;
@@ -311,7 +312,7 @@ public sealed class MacOSWebView : SkiaWebView
 
         if (clearCache)
         {
-            _refreshFavicon = true;
+            _faviconReader.RefreshNextRead();
         }
 
         await base.ReloadPageAsync(clearCache);
@@ -557,7 +558,7 @@ public sealed class MacOSWebView : SkiaWebView
         return _platform.RouteDownloads(nativeHandle);
     }
 
-    // Uno raises no favicon event, so every page that finishes loading reports a possible new icon.
+    // Uno does not raise a favicon event, so every page that finishes loading reports a possible new icon.
     private void MacOSWebView_NavigationCompleted(object? sender, WebNavigationCompletedEventArgs e)
     {
         if (e.Result == WebNavigationResult.Succeeded)
@@ -566,9 +567,9 @@ public sealed class MacOSWebView : SkiaWebView
         }
     }
 
-    // Uno implements no favicon API, so the page names the icon's address. The view reads that file from the store, or
-    // fetches the file when the store has none. A page with no icon link falls back to the site's /favicon.ico.
-    public override async Task<WebViewFavicon?> ReadFaviconAsync(IWebViewFaviconStore store)
+    // Uno does not implement a favicon API. A script therefore reads the icon's address from the page, and the view
+    // fetches that file. For a page with no icon link, the script returns the site's /favicon.ico address.
+    public override async Task<byte[]?> ReadFaviconAsync()
     {
         try
         {
@@ -579,12 +580,7 @@ public sealed class MacOSWebView : SkiaWebView
                 return null;
             }
 
-            var refresh = _refreshFavicon;
-            _refreshFavicon = false;
-
-            var image = await WebViewFaviconReader.ReadAsync(address, store, refresh, FetchFaviconAsync);
-
-            return image is null ? null : new WebViewFavicon(address, image);
+            return await _faviconReader.ReadAsync(address, FetchFaviconAsync);
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException or ObjectDisposedException)
         {
@@ -593,18 +589,18 @@ public sealed class MacOSWebView : SkiaWebView
         }
     }
 
-    private Task<byte[]?> FetchFaviconAsync(string address)
+    private async Task<byte[]?> FetchFaviconAsync(string address)
     {
-        return WebViewFaviconReader.FetchAsync(address, _userAgent, RenderSvgFaviconAsync);
+        return await WebViewFaviconReader.FetchAsync(address, _userAgent, RenderSvgFaviconAsync);
     }
 
     // The page chooses the file. Drawing runs off the main thread, so a file that takes long to draw leaves the UI free.
-    private static Task<byte[]?> RenderSvgFaviconAsync(byte[] svgFile)
+    private static async Task<byte[]?> RenderSvgFaviconAsync(byte[] svgFile)
     {
-        return Task.Run(() => MacOSWebViewInterop.RenderImageAsPng(svgFile, RenderedFaviconPixels));
+        return await Task.Run(() => MacOSWebViewInterop.RenderImageAsPng(svgFile, RenderedFaviconPixels));
     }
 
-    // Uno's own new window event carries only the address, and Uno answers WebKit with no view. That cuts the new page
+    // Uno's own new window event has only the address, and Uno answers WebKit without a view. That cuts the new page
     // off from its opener, so the view hooks WebKit's callbacks.
     protected override void ObserveNewWindows()
     {

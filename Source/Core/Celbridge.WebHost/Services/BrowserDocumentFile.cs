@@ -9,7 +9,7 @@ internal sealed record BrowserBookmarkEntry
 {
     public string? Url { get; init; }
 
-    // The label in the bookmark list. Left out of the file when the user sets none.
+    // The label in the bookmark list. Left out of the file when the user does not set one.
     public string? Name { get; init; }
 
     // Opens the bookmark in a tab when a document with no saved tabs opens.

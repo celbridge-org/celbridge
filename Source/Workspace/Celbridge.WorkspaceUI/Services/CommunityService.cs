@@ -50,7 +50,7 @@ public class CommunityService : ICommunityService
 
         var resource = DocumentResource;
 
-        // Every Community page uses the Celbridge icon. Each bookmark carries a copy of the icon. The bookmark list shows
+        // Every Community page uses the Celbridge icon. Each bookmark has a copy of the icon. The bookmark list shows
         // the copy before the first visit. When the embedded icon fails to load, the bookmarks show the default icon.
         var iconResult = EmbeddedResourceReader.ReadBytes(typeof(CommunityService).Assembly, CelbridgeIconResourceName);
         if (iconResult.IsFailure)
