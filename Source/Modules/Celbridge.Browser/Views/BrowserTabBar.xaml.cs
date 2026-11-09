@@ -15,6 +15,12 @@ namespace Celbridge.Browser.Views;
 /// </summary>
 public sealed partial class BrowserTabBar : UserControl, ITabDragOwner
 {
+    /// <summary>
+    /// The gap each browser tab keeps above itself. No indicator shows above a browser tab, so the gap is smaller than
+    /// the strip's default.
+    /// </summary>
+    public const double TabTopGap = 4;
+
     private readonly IStringLocalizer _stringLocalizer;
 
     private BrowserDocumentViewModel? _viewModel;
@@ -41,8 +47,10 @@ public sealed partial class BrowserTabBar : UserControl, ITabDragOwner
         ToolTipService.SetToolTip(NewTabButton, newTabTooltip);
         AutomationProperties.SetName(NewTabButton, newTabTooltip);
 
+        TabStrip.BandHeight = TabStripView.TabHeight + TabTopGap;
+
         // Centered on the tabs, which sit below the gap at the top of the band.
-        NewTabButton.Margin = new Thickness(0, TabStripView.TabTopGap, 0, 0);
+        NewTabButton.Margin = new Thickness(0, TabTopGap, 0, 0);
 
         TabStrip.TabView.TabCloseRequested += TabView_TabCloseRequested;
         TabStrip.TabView.SelectionChanged += TabView_SelectionChanged;

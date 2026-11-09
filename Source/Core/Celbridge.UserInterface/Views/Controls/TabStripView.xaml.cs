@@ -15,12 +15,12 @@ namespace Celbridge.UserInterface.Views.Controls;
 public sealed partial class TabStripView : UserControl
 {
     /// <summary>
-    /// The gap each tab keeps between itself and the top of the band.
+    /// The gap a tab keeps between itself and the top of a band of the default height.
     /// </summary>
     public const double TabTopGap = 7;
 
     /// <summary>
-    /// The height of each tab: the band less the gap above the tab.
+    /// The height of each tab: the default band less the gap above the tab.
     /// </summary>
     public const double TabHeight = WorkspaceConstants.SectionTabStripHeight - TabTopGap;
 
@@ -95,6 +95,12 @@ public sealed partial class TabStripView : UserControl
     public TabView TabView => StripTabView;
 
     /// <summary>
+    /// The band's fixed height: a tab and the gap above it. To give its tabs a different gap, an owner sets this before
+    /// the strip loads.
+    /// </summary>
+    public double BandHeight { get; set; } = WorkspaceConstants.SectionTabStripHeight;
+
+    /// <summary>
     /// The height the band takes: the strip's fixed height, or zero while the band is hidden.
     /// </summary>
     public double VisibleBandHeight
@@ -108,7 +114,7 @@ public sealed partial class TabStripView : UserControl
                 return 0;
             }
 
-            return WorkspaceConstants.SectionTabStripHeight;
+            return BandHeight;
         }
     }
 
@@ -682,7 +688,7 @@ public sealed partial class TabStripView : UserControl
             return;
         }
 
-        band.Height = WorkspaceConstants.SectionTabStripHeight;
+        band.Height = BandHeight;
     }
 
     /// <summary>
