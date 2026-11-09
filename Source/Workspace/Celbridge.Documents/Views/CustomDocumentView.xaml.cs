@@ -123,14 +123,14 @@ public sealed partial class CustomDocumentView : DocumentView
         return await _controller.TrySaveEditorStateAsync();
     }
 
-    public override async Task RestoreEditorStateAsync(string? state)
+    public override async Task CompleteOpenAsync(string? editorState)
     {
-        if (state is null)
+        if (editorState is null)
         {
             return;
         }
 
-        await _controller.RestoreEditorStateAsync(state);
+        await _controller.RestoreEditorStateAsync(editorState);
     }
 
     public override WebViewHealth GetHealth() => _controller.GetHealth();

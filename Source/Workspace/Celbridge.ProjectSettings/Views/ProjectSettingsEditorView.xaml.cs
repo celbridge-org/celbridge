@@ -264,7 +264,7 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
         return null;
     }
 
-    public async Task RestoreEditorStateAsync(string? state)
+    public async Task CompleteOpenAsync(string? editorState)
     {
         await Task.CompletedTask;
     }

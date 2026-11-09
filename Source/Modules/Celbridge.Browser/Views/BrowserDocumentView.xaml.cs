@@ -1023,17 +1023,17 @@ public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarg
     }
 
     // A document with no saved state opens its Open on Start bookmarks.
-    public override async Task RestoreEditorStateAsync(string? state)
+    public override async Task CompleteOpenAsync(string? editorState)
     {
         await Task.CompletedTask;
 
-        if (state is null)
+        if (editorState is null)
         {
             ViewModel.OpenStartTabs();
         }
         else
         {
-            ViewModel.RestoreEditorState(state);
+            ViewModel.RestoreEditorState(editorState);
         }
 
         // The state may leave the view model's values unchanged. The view model then does not raise a property change.

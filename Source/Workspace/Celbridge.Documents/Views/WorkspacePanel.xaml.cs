@@ -1036,7 +1036,7 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
             }
         }
 
-        await documentView.RestoreEditorStateAsync(stateToRestore);
+        await documentView.CompleteOpenAsync(stateToRestore);
 
         return Result<OpenDocumentOutcome>.Ok(OpenDocumentOutcome.Opened);
     }

@@ -197,7 +197,7 @@ public abstract partial class DocumentView : UserControl, IDocumentView
         return null;
     }
 
-    public virtual async Task RestoreEditorStateAsync(string? state)
+    public virtual async Task CompleteOpenAsync(string? editorState)
     {
         await Task.CompletedTask;
     }
