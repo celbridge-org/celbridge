@@ -67,6 +67,7 @@ public partial class BrowserTabViewModel : ObservableObject
     // Reported by the WebView when a navigation does not complete, which leaves the previous page on screen.
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsPageVisible))]
+    [NotifyPropertyChangedFor(nameof(Label))]
     private bool _hasNavigationFailed;
 
     [ObservableProperty]
@@ -138,13 +139,17 @@ public partial class BrowserTabViewModel : ObservableObject
     public bool IsPageVisible => !HasNavigationFailed && (HasPage || _showsBlankPage);
 
     /// <summary>
-    /// The text on the tab: the page's title, or the address until the page has a title.
+    /// The text on the tab: the page's title, or the address until the page has a title. A tab whose load failed shows
+    /// the failed address, because the title still names the previous page.
     /// </summary>
     public string Label
     {
         get
         {
-            if (!string.IsNullOrWhiteSpace(Title))
+            // WebView2 reports about:blank as a blank page's title. The tab shows the blank label instead.
+            if (!HasNavigationFailed
+                && !string.IsNullOrWhiteSpace(Title)
+                && Title != BlankPageUrl)
             {
                 return Title;
             }
@@ -198,7 +203,9 @@ public partial class BrowserTabViewModel : ObservableObject
 
     /// <summary>
     /// Records that the tab is opening an address the user chose. The address bar names the destination at once, and
-    /// any failure a previous navigation reported is cleared.
+    /// any failure a previous navigation reported is cleared. The title and icon go on naming the page on screen until
+    /// a new page commits. The address may turn out to be a download, which leaves the page on screen. An address with
+    /// no page blanks the tab at once.
     /// </summary>
     public void NotifyUserNavigation(string url)
     {
@@ -207,8 +214,13 @@ public partial class BrowserTabViewModel : ObservableObject
         EndFaviconReads();
         NavigationDestination = url;
         HasNavigationFailed = false;
-        Title = string.Empty;
-        ClearFaviconIfSiteChanges(url);
+
+        if (!IsPageUrl(url))
+        {
+            Title = string.Empty;
+            Favicon = null;
+        }
+
         _showsBlankPage = false;
         CurrentUrl = url;
         OnPropertyChanged(nameof(IsPageVisible));
@@ -280,8 +292,9 @@ public partial class BrowserTabViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Records how a navigation ended. A stopped navigation keeps whatever it had rendered so far. A failed one is
-    /// reported in place of the page, and the address bar names the address that failed.
+    /// Records how a navigation ended. A stopped navigation keeps whatever it had rendered so far, and the address bar
+    /// names the page on screen. A failed one is reported in place of the page, and the address bar names the address
+    /// that failed.
     /// </summary>
     public void NotifyNavigationCompleted(NavigationOutcome outcome)
     {
@@ -291,6 +304,24 @@ public partial class BrowserTabViewModel : ObservableObject
         NavigationDestination = string.Empty;
         OnPropertyChanged(nameof(Label));
 
+        // A server redirect can end at the address the page already had. WebView2 then reports no commit, so the
+        // address bar moves here. When an earlier navigation ends after the user chose a new address, the destination
+        // is the new address, and the address bar stays on the new address.
+        if (outcome == NavigationOutcome.Loaded
+            && HasCommittedPage
+            && destination == _committedUrl)
+        {
+            CurrentUrl = destination;
+        }
+
+        // A stopped navigation leaves the committed page on screen, so the address bar returns to that page. A tab's
+        // first navigation keeps the address the user chose.
+        if (_navigationStoppedByUser
+            && HasCommittedPage)
+        {
+            CurrentUrl = _committedUrl;
+        }
+
         if (outcome != NavigationOutcome.Failed
             || _navigationStoppedByUser)
         {
@@ -299,7 +330,15 @@ public partial class BrowserTabViewModel : ObservableObject
 
         if (destination.Length > 0)
         {
+            ClearFaviconIfSiteChanges(destination);
             CurrentUrl = destination;
+
+            // WebView2 commits an error page for a failed load. The error page has replaced the old page, so the old
+            // title no longer names anything.
+            if (destination == _committedUrl)
+            {
+                Title = string.Empty;
+            }
         }
 
         HasNavigationFailed = true;

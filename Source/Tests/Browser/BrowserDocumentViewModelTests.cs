@@ -700,6 +700,24 @@ public class BrowserDocumentViewModelTests
     }
 
     [Test]
+    public void NavigateShownTab_ToABookmarkedPage_FromATabWithAPage_KeepsThePagesIcon()
+    {
+        var pageFavicon = new byte[] { 1, 2, 3 };
+        var viewModel = CreateViewModelWithTabs(PageOne);
+        var shownTab = viewModel.Tabs[0];
+        shownTab.NotifyNavigationCommitted(PageOne);
+        shownTab.Favicon = pageFavicon;
+        var bookmark = viewModel.CreateBookmark(new BrowserBookmark(PageTwo));
+        bookmark.Favicon = new byte[] { 4, 5, 6 };
+        viewModel.Bookmarks.Add(bookmark);
+
+        var tab = viewModel.NavigateShownTab(PageTwo);
+
+        tab.Should().BeSameAs(shownTab);
+        shownTab.Favicon.Should().BeSameAs(pageFavicon);
+    }
+
+    [Test]
     public void ANewWindowRequest_FromTheUser_OpensATabAfterTheOpenerAndShowsIt()
     {
         var viewModel = CreateViewModelWithTabs(PageOne, PageTwo);

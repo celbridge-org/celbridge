@@ -59,13 +59,205 @@ public class BrowserTabViewModelTests
     }
 
     [Test]
-    public void AnAddressTheUserChose_ClearsTheOldTitle()
+    public void AnAddressTheUserChose_KeepsTheOldTitleUntilTheNewPageNamesItself()
     {
-        var tab = BrowserTabViewModel.Create(BlankLabel, "https://example.com/docs", "Docs");
+        var tab = CreateTabShowingPage("https://example.com/docs");
+        tab.Title = "Docs";
 
         tab.NotifyUserNavigation("https://example.com/other");
 
-        tab.Label.Should().Be("https://example.com/other");
+        tab.Label.Should().Be("Docs");
+        tab.CurrentUrl.Should().Be("https://example.com/other");
+
+        tab.NotifyNavigationCommitted("https://example.com/other");
+        tab.Title = "Other";
+
+        tab.Label.Should().Be("Other");
+    }
+
+    [Test]
+    public void AnAddressTheUserChose_ThatDownloads_KeepsTheTitleAndFavicon()
+    {
+        var favicon = new byte[] { 1 };
+        var tab = CreateTabShowingPage("https://example.com/");
+        tab.Title = "Example";
+        tab.Favicon = favicon;
+
+        tab.NotifyUserNavigation("https://downloads.example.org/file.zip");
+        tab.NotifyNavigationStarted("https://downloads.example.org/file.zip");
+        tab.NotifyDownloadStarted();
+        tab.NotifyNavigationCompleted(NavigationOutcome.Aborted);
+
+        tab.Label.Should().Be("Example");
+        tab.Favicon.Should().BeSameAs(favicon);
+        tab.CurrentUrl.Should().Be("https://example.com/");
+    }
+
+    [Test]
+    public void BlankingATab_ClearsTheTitleAndFaviconAtOnce()
+    {
+        var tab = CreateTabShowingPage("https://example.com/");
+        tab.Title = "Example";
+        tab.Favicon = new byte[] { 1 };
+
+        tab.NotifyUserNavigation("about:blank");
+
+        tab.Label.Should().Be(BlankLabel);
+        tab.Favicon.Should().BeNull();
+    }
+
+    [Test]
+    public void ARedirectBackToTheCurrentAddress_MovesTheAddressBack_AndKeepsTheTitleAndFavicon()
+    {
+        // The redirect ends at the address the page already had, so WebView2 reports no commit.
+        var favicon = new byte[] { 1 };
+        var tab = CreateTabShowingPage("https://example.com/");
+        tab.Title = "Example";
+        tab.Favicon = favicon;
+
+        tab.NotifyUserNavigation("https://www.example.com/");
+        tab.NotifyNavigationStarted("https://www.example.com/");
+        tab.NotifyNavigationStarted("https://example.com/");
+        tab.NotifyNavigationCompleted(NavigationOutcome.Loaded);
+
+        tab.CurrentUrl.Should().Be("https://example.com/");
+        tab.Label.Should().Be("Example");
+        tab.Favicon.Should().BeSameAs(favicon);
+    }
+
+    [TestCase(NavigationOutcome.Loaded)]
+    [TestCase(NavigationOutcome.Aborted)]
+    public void AnEarlierNavigationEnding_LeavesAnAddressTheUserJustChose(NavigationOutcome outcome)
+    {
+        var tab = CreateTabShowingPage("https://example.com/");
+
+        tab.NotifyUserNavigation("https://example.com/next");
+        tab.NotifyNavigationCompleted(outcome);
+
+        tab.CurrentUrl.Should().Be("https://example.com/next");
+    }
+
+    [Test]
+    public void StoppingAnAddressTheUserChose_BeforeThePageCommits_PutsTheAddressBack()
+    {
+        var tab = CreateTabShowingPage("https://example.com/");
+        tab.Title = "Example";
+
+        tab.NotifyUserNavigation("https://example.org/slow");
+        tab.NotifyNavigationStarted("https://example.org/slow");
+        tab.NotifyNavigationStopped();
+        tab.NotifyNavigationCompleted(NavigationOutcome.Aborted);
+
+        tab.CurrentUrl.Should().Be("https://example.com/");
+        tab.Label.Should().Be("Example");
+    }
+
+    [Test]
+    public void StoppingAPageThatHasCommitted_KeepsTheNewAddress()
+    {
+        var tab = CreateTabShowingPage("https://example.com/");
+
+        tab.NotifyNavigationStarted("https://example.com/next");
+        tab.NotifyNavigationCommitted("https://example.com/next");
+        tab.NotifyNavigationStopped();
+        tab.NotifyNavigationCompleted(NavigationOutcome.Aborted);
+
+        tab.CurrentUrl.Should().Be("https://example.com/next");
+    }
+
+    [Test]
+    public void StoppingATabsFirstPage_KeepsTheAddressTheUserChose()
+    {
+        var tab = BrowserTabViewModel.Create(BlankLabel, "https://example.com/slow");
+
+        tab.NotifyNavigationStarted("https://example.com/slow");
+        tab.NotifyNavigationStopped();
+        tab.NotifyNavigationCompleted(NavigationOutcome.Aborted);
+
+        tab.CurrentUrl.Should().Be("https://example.com/slow");
+    }
+
+    [Test]
+    public void ABlankPageTitledWithItsAddress_KeepsTheBlankLabel()
+    {
+        // WebView2 reports about:blank as a blank page's title.
+        var tab = CreateTabShowingPage("about:blank");
+
+        tab.Title = "about:blank";
+
+        tab.Label.Should().Be(BlankLabel);
+    }
+
+    [Test]
+    public void ANewWindowsBlankPage_ShowsATitleTheOpenerGaveIt()
+    {
+        var tab = BrowserTabViewModel.CreateForNewWindow(BlankLabel, string.Empty, opener: null);
+
+        tab.Title = "Report";
+
+        tab.Label.Should().Be("Report");
+    }
+
+    [Test]
+    public void AFailedLoad_LabelsTheTabWithItsAddress_UntilTheNextNavigationStarts()
+    {
+        var tab = CreateTabShowingPage("https://example.com/");
+        tab.Title = "Example";
+
+        tab.NotifyUserNavigation("https://unreachable.example/");
+        tab.NotifyNavigationStarted("https://unreachable.example/");
+        tab.NotifyNavigationCompleted(NavigationOutcome.Failed);
+
+        tab.Label.Should().Be("https://unreachable.example/");
+
+        // The failed load did not commit, so the old page is still behind the placeholder. The next navigation shows
+        // the old page, and the label returns to the old title.
+        tab.NotifyNavigationStarted("https://example.com/");
+
+        tab.Label.Should().Be("Example");
+    }
+
+    [Test]
+    public void AFailedLoadThatCommitted_ForgetsTheOldTitle()
+    {
+        // WebView2 commits an error page in place of the old page. A retry must not bring back the old page's title.
+        var tab = CreateTabShowingPage("https://example.com/");
+        tab.Title = "Example";
+
+        tab.NotifyUserNavigation("https://unreachable.example/");
+        tab.NotifyNavigationStarted("https://unreachable.example/");
+        tab.NotifyNavigationCommitted("https://unreachable.example/");
+        tab.NotifyNavigationCompleted(NavigationOutcome.Failed);
+        tab.NotifyNavigationStarted("https://unreachable.example/");
+
+        tab.Label.Should().Be("https://unreachable.example/");
+    }
+
+    [Test]
+    public void AFailedLoad_RaisesALabelChange()
+    {
+        var tab = CreateTabShowingPage("https://example.com/");
+        tab.Title = "Example";
+        tab.NotifyNavigationStarted("https://unreachable.example/");
+        var changes = new List<string?>();
+        tab.PropertyChanged += (_, e) => changes.Add(e.PropertyName);
+
+        tab.NotifyNavigationCompleted(NavigationOutcome.Failed);
+
+        changes.Should().Contain(nameof(BrowserTabViewModel.Label));
+        tab.Label.Should().Be("https://unreachable.example/");
+    }
+
+    [Test]
+    public void AFailedLoadOnAnotherSite_ClearsTheFavicon()
+    {
+        var tab = CreateTabShowingPage("https://example.com/");
+        tab.Favicon = new byte[] { 1 };
+
+        tab.NotifyNavigationStarted("https://unreachable.example/");
+        tab.NotifyNavigationCompleted(NavigationOutcome.Failed);
+
+        tab.Favicon.Should().BeNull();
     }
 
     [TestCase("https://example.com/docs", true)]
@@ -258,12 +450,17 @@ public class BrowserTabViewModelTests
     }
 
     [Test]
-    public void AnAddressTheUserChoseOnAnotherSite_ClearsTheFavicon()
+    public void AnAddressTheUserChoseOnAnotherSite_KeepsTheFaviconUntilThePageCommits()
     {
+        var favicon = new byte[] { 1 };
         var tab = CreateTabShowingPage("https://example.com/");
-        tab.Favicon = new byte[] { 1 };
+        tab.Favicon = favicon;
 
         tab.NotifyUserNavigation("https://example.org/");
+
+        tab.Favicon.Should().BeSameAs(favicon);
+
+        tab.NotifyNavigationCommitted("https://example.org/");
 
         tab.Favicon.Should().BeNull();
     }

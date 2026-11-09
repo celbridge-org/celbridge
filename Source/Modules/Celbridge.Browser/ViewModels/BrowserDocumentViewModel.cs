@@ -601,9 +601,10 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
     }
 
     /// <summary>
-    /// Sends the shown tab to an address the user chose, or opens a tab for the address with no tab shown. A
-    /// bookmarked page shows the bookmark's icon until the page loads. Returns the tab, or null for an address that is
-    /// not absolute. The view loads the page.
+    /// Sends the shown tab to an address the user chose, or opens a tab for the address with no tab shown. A tab with
+    /// no page yet shows the bookmark's icon while a bookmarked page loads. A tab that already has a page keeps the
+    /// page's icon until a new page commits. Returns the tab, or null for an address that is not absolute. The view
+    /// loads the page.
     /// </summary>
     public BrowserTabViewModel? NavigateShownTab(string url)
     {
@@ -614,7 +615,11 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
 
         var tab = ShownTab ?? OpenBlankTab();
         tab.NotifyUserNavigation(destination.AbsoluteUri);
-        ApplyBookmarkFavicon(tab);
+
+        if (!tab.HasCommittedPage)
+        {
+            ApplyBookmarkFavicon(tab);
+        }
 
         return tab;
     }
