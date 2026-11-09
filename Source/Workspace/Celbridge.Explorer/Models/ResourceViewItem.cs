@@ -16,7 +16,8 @@ public readonly record struct ResourceViewItemAppearance(
     bool IsHidden,
     WritableState WritableState,
     string ReadOnlyMessage,
-    string ProjectFolderTooltip);
+    string ProjectFolderTooltip,
+    IconDefinition? FileIcon);
 
 /// <summary>
 /// A row of the Explorer's resource tree. A row never changes. When a resource's appearance changes, the
@@ -26,12 +27,10 @@ public sealed class ResourceViewItem
 {
     public ResourceViewItem(
         ResourceKey resource,
-        ResourceViewItemAppearance appearance,
-        IconDefinition? fileIcon)
+        ResourceViewItemAppearance appearance)
     {
         Resource = resource;
         Appearance = appearance;
-        FileIcon = fileIcon;
     }
 
     /// <summary>
@@ -47,7 +46,7 @@ public sealed class ResourceViewItem
     /// <summary>
     /// The icon drawn for a file. Null for a folder, which draws the folder icon.
     /// </summary>
-    public IconDefinition? FileIcon { get; }
+    public IconDefinition? FileIcon => Appearance.FileIcon;
 
     /// <summary>
     /// The resource and whether it is a folder, for menus and drags.

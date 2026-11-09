@@ -427,6 +427,24 @@ public class ResourceTreeModelTests
     }
 
     [Test]
+    public async Task Refresh_GivesARowAFileIconRegisteredAfterItWasBuilt()
+    {
+        WriteFile("notes.txt");
+        var iconService = new IconService();
+        var model = CreateModel(iconService);
+        await model.RefreshAsync();
+        Row(model, "notes.txt").FileIcon.Should().Be(iconService.DefaultFileIcon);
+
+        var registeredIcon = iconService.CreateIcon("bs-gear", "#00FF00").Value;
+        iconService.SetFileIconOverrides(
+            new Dictionary<string, IconDefinition> { [".txt"] = registeredIcon },
+            new Dictionary<string, IconDefinition>());
+        await model.RefreshAsync();
+
+        Row(model, "notes.txt").FileIcon.Should().Be(registeredIcon);
+    }
+
+    [Test]
     public async Task Rows_ShowAReadOnlyFile()
     {
         if (!OperatingSystem.IsWindows())
@@ -485,7 +503,7 @@ public class ResourceTreeModelTests
         RowPaths(model).Should().Equal("", "target", "target.txt");
     }
 
-    private ResourceTreeModel CreateModel()
+    private ResourceTreeModel CreateModel(IconService? iconService = null)
     {
         var stringLocalizer = Substitute.For<IStringLocalizer>();
         stringLocalizer[Arg.Any<string>()].Returns(callInfo =>
@@ -509,7 +527,7 @@ public class ResourceTreeModelTests
             _workspaceWrapper,
             projectService,
             Substitute.For<IPlatformInfo>(),
-            new IconService(),
+            iconService ?? new IconService(),
             stringLocalizer,
             Substitute.For<IAutomationService>());
     }
