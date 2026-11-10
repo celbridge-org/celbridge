@@ -269,7 +269,7 @@ public sealed partial class ProjectSettingsEditorView : UserControl, IDocumentVi
         await Task.CompletedTask;
     }
 
-    public bool KeepsEditorStateAfterClose => true;
+    public bool DiscardsEditorStateOnClose => false;
 
     // A pip comes from an editor page, and the settings form is native.
     public WorkspaceItemPip? Pip => null;

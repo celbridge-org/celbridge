@@ -1071,10 +1071,11 @@ public sealed partial class WorkspacePanel : UserControl, IDocumentsPanel
             // If the close is cancelled this value is discarded.
             var capturedEditorState = await TryCaptureEditorStateAsync(documentTab);
 
-            // A view that drops its state on close stores null, which clears the state saved at an earlier close.
-            var stateToStore = documentTab.ViewModel.DocumentView?.KeepsEditorStateAfterClose == true
-                ? capturedEditorState
-                : null;
+            // Store null for a view that discards its editor state on close. Storing null removes any editor state saved
+            // earlier for the document.
+            var stateToStore = documentTab.ViewModel.DocumentView?.DiscardsEditorStateOnClose == true
+                ? null
+                : capturedEditorState;
 
             var closeResult = await documentTab.ViewModel.CloseDocument(closeOptions.ForceClose);
             if (closeResult.IsFailure)
