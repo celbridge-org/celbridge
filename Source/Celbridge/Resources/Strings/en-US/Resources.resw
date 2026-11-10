@@ -713,140 +713,119 @@ This file could not be saved</value>
   <data name="ResourceTree_OpenApplication" xml:space="preserve">
     <value>Open in Application</value>
   </data>
-  <data name="WebView_UrlBar_BackTooltip" xml:space="preserve">
+  <data name="Browser_UrlBar_BackTooltip" xml:space="preserve">
     <value>Go Back</value>
   </data>
-  <data name="WebView_UrlBar_ForwardTooltip" xml:space="preserve">
+  <data name="Browser_UrlBar_ForwardTooltip" xml:space="preserve">
     <value>Go Forward</value>
   </data>
-  <data name="WebView_UrlBar_ReloadTooltip" xml:space="preserve">
+  <data name="Browser_UrlBar_ReloadTooltip" xml:space="preserve">
     <value>Reload (clears cache)</value>
   </data>
-  <data name="WebView_UrlBar_StopTooltip" xml:space="preserve">
+  <data name="Browser_UrlBar_StopTooltip" xml:space="preserve">
     <value>Stop Loading</value>
   </data>
-  <data name="WebView_UrlBar_HomeTooltip" xml:space="preserve">
-    <value>Navigate to Home URL</value>
-  </data>
-  <data name="WebView_UrlBar_AddressPlaceholder" xml:space="preserve">
+  <data name="Browser_UrlBar_AddressPlaceholder" xml:space="preserve">
     <value>e.g. https://example.com</value>
   </data>
-  <data name="WebView_UrlBar_BookmarkPageTooltip" xml:space="preserve">
+  <data name="Browser_UrlBar_BookmarkPageTooltip" xml:space="preserve">
     <value>Bookmark This Page</value>
   </data>
-  <data name="WebView_UrlBar_EditBookmarkTooltip" xml:space="preserve">
-    <value>Edit Bookmark</value>
+  <data name="Browser_UrlBar_RemoveBookmarkTooltip" xml:space="preserve">
+    <value>Remove Bookmark</value>
   </data>
-  <data name="WebView_UrlBar_OpenInBrowserTooltip" xml:space="preserve">
+  <data name="Browser_UrlBar_OpenInBrowserTooltip" xml:space="preserve">
     <value>Open in System Browser</value>
   </data>
-  <data name="WebView_UrlBar_SettingsTooltip" xml:space="preserve">
-    <value>Web View Settings</value>
+  <data name="Browser_UrlBar_SettingsTooltip" xml:space="preserve">
+    <value>Browser Settings</value>
   </data>
-  <data name="WebView_ShowUrlBar" xml:space="preserve">
-    <value>Show URL Bar</value>
-  </data>
-  <data name="WebView_Settings_HomeUrlLabel" xml:space="preserve">
-    <value>Home URL</value>
-  </data>
-  <data name="WebView_Settings_SetCurrentPageAsHome" xml:space="preserve">
-    <value>Set Current Page as Home</value>
-  </data>
-  <data name="WebView_Settings_ShowUrlBarLabel" xml:space="preserve">
-    <value>Show URL Bar</value>
-  </data>
-  <data name="WebView_Settings_ShowUrlBarHint" xml:space="preserve">
-    <value>Right-click the document tab to show the URL bar again.</value>
-  </data>
-  <data name="WebView_Settings_BrowsingDataHint" xml:space="preserve">
+  <data name="Browser_Settings_BrowsingDataHint" xml:space="preserve">
     <value>Clear the browsing data from the application settings.</value>
   </data>
-  <data name="WebView_Settings_OpenApplicationSettings" xml:space="preserve">
+  <data name="Browser_Settings_OpenApplicationSettings" xml:space="preserve">
     <value>Open Application Settings</value>
   </data>
-  <data name="WebView_Settings_ReturnToPage" xml:space="preserve">
+  <data name="Browser_Settings_ReturnToPage" xml:space="preserve">
     <value>Return to Page</value>
   </data>
-  <data name="WebView_Placeholder_AddressHint" xml:space="preserve">
-    <value>Enter a web address above to open a page.</value>
+  <data name="Browser_Placeholder_Hint" xml:space="preserve">
+    <value>Enter a web address or choose a bookmark to open a page.</value>
   </data>
-  <data name="WebView_Placeholder_AddressOrBookmarkHint" xml:space="preserve">
-    <value>Enter a web address or choose a bookmark above to open a page.</value>
-  </data>
-  <data name="WebView_Placeholder_BookmarkHint" xml:space="preserve">
-    <value>Choose a bookmark above to open a page.</value>
-  </data>
-  <data name="WebView_Placeholder_SettingsHint" xml:space="preserve">
-    <value>Set a Home URL in Web View Settings to open a page.</value>
-  </data>
-  <data name="WebView_Placeholder_LoadFailed" xml:space="preserve">
-    <value>This page could not be loaded.</value>
-  </data>
-  <data name="WebView_Placeholder_LoadFailedHint" xml:space="preserve">
-    <value>Check the address and your network connection, then reload.</value>
-  </data>
-  <data name="WebView_Settings_HomeHeader" xml:space="preserve">
-    <value>Home</value>
-  </data>
-  <data name="WebView_Settings_HomeDescription" xml:space="preserve">
-    <value>Choose the page this document opens on.</value>
-  </data>
-  <data name="WebView_Settings_AppearanceHeader" xml:space="preserve">
-    <value>Appearance</value>
-  </data>
-  <data name="WebView_Settings_AppearanceDescription" xml:space="preserve">
-    <value>Choose which toolbars this document shows.</value>
-  </data>
-  <data name="WebView_Settings_BrowsingDataHeader" xml:space="preserve">
-    <value>Browsing Data</value>
-  </data>
-  <data name="WebView_Settings_BrowsingDataDescription" xml:space="preserve">
-    <value>Cookies, saved logins and other data stored by the web pages you visit.</value>
-  </data>
-  <data name="WebView_InvalidUrl" xml:space="preserve">
-    <value>Enter a valid external URL (https://...).</value>
-  </data>
-  <data name="WebView_Settings_BookmarksHeader" xml:space="preserve">
+  <data name="Browser_UrlBar_BookmarksTooltip" xml:space="preserve">
     <value>Bookmarks</value>
   </data>
-  <data name="WebView_Settings_BookmarksDescription" xml:space="preserve">
-    <value>Pages you can jump to from the buttons under the address bar.</value>
+  <data name="Browser_UrlBar_BookmarkSettings" xml:space="preserve">
+    <value>Bookmark Settings</value>
   </data>
-  <data name="WebView_Settings_AddBookmarkFromCurrentPage" xml:space="preserve">
+  <data name="Browser_TabBar_NewTabTooltip" xml:space="preserve">
+    <value>New Tab</value>
+  </data>
+  <data name="Browser_TabBar_NewTabLabel" xml:space="preserve">
+    <value>New Tab</value>
+  </data>
+  <data name="Browser_TabBar_CloseTabTooltip" xml:space="preserve">
+    <value>Close Tab</value>
+  </data>
+  <data name="Browser_TabMenu_Duplicate" xml:space="preserve">
+    <value>Duplicate</value>
+  </data>
+  <data name="Browser_TabMenu_CopyAddress" xml:space="preserve">
+    <value>Copy Address</value>
+  </data>
+  <data name="Browser_Settings_BookmarkOpenOnStartLabel" xml:space="preserve">
+    <value>Open on Start</value>
+  </data>
+  <data name="Browser_Settings_BookmarkOpenOnStartHint" xml:space="preserve">
+    <value>Opens in a tab when this document opens</value>
+  </data>
+  <data name="Browser_Placeholder_LoadFailed" xml:space="preserve">
+    <value>This page could not be loaded.</value>
+  </data>
+  <data name="Browser_Placeholder_LoadFailedHint" xml:space="preserve">
+    <value>Check the address and your network connection, then reload.</value>
+  </data>
+  <data name="Browser_Settings_BrowsingDataHeader" xml:space="preserve">
+    <value>Browsing Data</value>
+  </data>
+  <data name="Browser_Settings_BrowsingDataDescription" xml:space="preserve">
+    <value>Cookies, saved logins and other data stored by the web pages you visit.</value>
+  </data>
+  <data name="Browser_InvalidUrl" xml:space="preserve">
+    <value>Enter a valid external URL (https://...).</value>
+  </data>
+  <data name="Browser_Settings_BookmarksHeader" xml:space="preserve">
+    <value>Bookmarks</value>
+  </data>
+  <data name="Browser_Settings_BookmarksDescription" xml:space="preserve">
+    <value>Pages you can open from the bookmark button on the URL bar.</value>
+  </data>
+  <data name="Browser_Settings_AddBookmarkFromCurrentPage" xml:space="preserve">
     <value>Bookmark Current Page</value>
   </data>
-  <data name="WebView_Settings_AddBookmark" xml:space="preserve">
+  <data name="Browser_Settings_AddBookmark" xml:space="preserve">
     <value>Add Bookmark</value>
   </data>
-  <data name="WebView_Settings_NoBookmarks" xml:space="preserve">
+  <data name="Browser_Settings_NoBookmarks" xml:space="preserve">
     <value>No bookmarks yet.</value>
   </data>
-  <data name="WebView_Settings_BookmarkUrlLabel" xml:space="preserve">
+  <data name="Browser_Settings_BookmarksReadOnly" xml:space="preserve">
+    <value>This file is read-only, so its bookmarks cannot be changed.</value>
+  </data>
+  <data name="Browser_Settings_BookmarkUrlLabel" xml:space="preserve">
     <value>URL</value>
   </data>
-  <data name="WebView_Settings_BookmarkNameLabel" xml:space="preserve">
+  <data name="Browser_Settings_BookmarkNameLabel" xml:space="preserve">
     <value>Name</value>
   </data>
-  <data name="WebView_Settings_BookmarkNamePlaceholder" xml:space="preserve">
-    <value>Name shown on the button</value>
+  <data name="Browser_Settings_BookmarkNamePlaceholder" xml:space="preserve">
+    <value>Name shown in the bookmark list</value>
   </data>
-  <data name="WebView_Settings_BookmarkOpenTooltip" xml:space="preserve">
+  <data name="Browser_Settings_BookmarkOpenTooltip" xml:space="preserve">
     <value>Open This Bookmark</value>
   </data>
-  <data name="WebView_Settings_BookmarkSetAsHome" xml:space="preserve">
-    <value>Set as Home</value>
-  </data>
-  <data name="WebView_Settings_BookmarkUntitled" xml:space="preserve">
+  <data name="Browser_Settings_BookmarkUntitled" xml:space="preserve">
     <value>Untitled bookmark</value>
-  </data>
-  <data name="WebView_Bookmarks_ManageTooltip" xml:space="preserve">
-    <value>Manage Bookmarks</value>
-  </data>
-  <data name="WebView_Settings_ShowBookmarksBarLabel" xml:space="preserve">
-    <value>Show Bookmarks Bar</value>
-  </data>
-  <data name="WebView_Settings_ShowBookmarksBarHint" xml:space="preserve">
-    <value>The bar only appears when you have bookmarks.</value>
   </data>
   <data name="CardList_Reorder" xml:space="preserve">
     <value>Drag to reorder</value>
@@ -1387,8 +1366,8 @@ Open with default application instead?</value>
   <data name="NewFileDialog_FileType_Markdown" xml:space="preserve">
     <value>Markdown (.md)</value>
   </data>
-  <data name="NewFileDialog_FileType_WebView" xml:space="preserve">
-    <value>Web View File (.webview)</value>
+  <data name="NewFileDialog_FileType_Browser" xml:space="preserve">
+    <value>Browser File (.browser)</value>
   </data>
   <data name="NewFileDialog_FileType_Text" xml:space="preserve">
     <value>Text File (.txt)</value>
@@ -1951,8 +1930,8 @@ Open with default application instead?</value>
   <data name="Workshop_PublishBlocked_Message" xml:space="preserve">
     <value>No Author is set. Add one on the Application Settings page, then try again.</value>
   </data>
-  <data name="DocumentEditor_WebViewEditor" xml:space="preserve">
-    <value>Web View Editor</value>
+  <data name="DocumentEditor_BrowserEditor" xml:space="preserve">
+    <value>Browser Editor</value>
   </data>
   <data name="DocumentEditor_ProjectSettings" xml:space="preserve">
     <value>Project Settings</value>
@@ -1963,25 +1942,25 @@ Open with default application instead?</value>
   <data name="DocumentEditor_EditorManifest" xml:space="preserve">
     <value>Editor Manifest</value>
   </data>
-  <data name="WebView_Find_Placeholder" xml:space="preserve">
+  <data name="Browser_Find_Placeholder" xml:space="preserve">
     <value>Find</value>
   </data>
-  <data name="WebView_Find_Next" xml:space="preserve">
+  <data name="Browser_Find_Next" xml:space="preserve">
     <value>Next Match</value>
   </data>
-  <data name="WebView_Find_Previous" xml:space="preserve">
+  <data name="Browser_Find_Previous" xml:space="preserve">
     <value>Previous Match</value>
   </data>
-  <data name="WebView_Find_Close" xml:space="preserve">
+  <data name="Browser_Find_Close" xml:space="preserve">
     <value>Close</value>
   </data>
-  <data name="WebView_Find_MatchCase" xml:space="preserve">
+  <data name="Browser_Find_MatchCase" xml:space="preserve">
     <value>Match Case</value>
   </data>
-  <data name="WebView_Find_NoResults" xml:space="preserve">
+  <data name="Browser_Find_NoResults" xml:space="preserve">
     <value>No results</value>
   </data>
-  <data name="WebView_Find_MatchCount" xml:space="preserve">
+  <data name="Browser_Find_MatchCount" xml:space="preserve">
     <value>{0} of {1}</value>
   </data>
   <data name="Extension_LinkError_Title" xml:space="preserve">

@@ -19,6 +19,7 @@
   ".bin": { "binary": true, "display-name": "Binary File" },
   ".bmp": { "binary": true, "display-name": "Bitmap Image", "icon": "nf-seti-image", "icon-color": "#A074C4" },
   ".bowerrc": { "language": "json", "icon": "nf-seti-json", "icon-color": "#CBCB41" },
+  ".browser": { "display-name": "Browser File", "icon": "bs-globe" },
   ".bz2": { "binary": true, "display-name": "Bzip2 Archive", "icon": "nf-seti-zip", "icon-color": "#D4A15E" },
   ".c": { "language": "c", "icon": "nf-seti-c", "icon-color": "#A8B9CC" },
   ".cab": { "binary": true, "display-name": "Cabinet Archive" },

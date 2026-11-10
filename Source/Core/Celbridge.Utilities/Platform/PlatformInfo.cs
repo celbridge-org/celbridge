@@ -96,7 +96,7 @@ public sealed class PlatformInfo : IPlatformInfo
 
     public bool HostedWebViewFocusIsNative => OperatingSystem.IsMacOS();
 
-    public bool UsesPointerDrivenTabDrag
+    public bool UsesPointerDrivenResourceDrag
     {
         get
         {

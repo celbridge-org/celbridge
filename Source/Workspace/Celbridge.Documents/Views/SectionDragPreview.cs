@@ -1,3 +1,4 @@
+using Celbridge.UserInterface.DragDrop;
 using Windows.Foundation;
 
 namespace Celbridge.Documents.Views;
@@ -5,18 +6,16 @@ namespace Celbridge.Documents.Views;
 /// <summary>
 /// Shared managed drag feedback for document sections: the insertion divider marking where a drop
 /// will land in the tab strip, and the accent tint marking which section will receive it. Both are
-/// display-only Borders in the shared drag overlay canvas, fed by the pointer-driven tab drag and by
-/// resource drags from the Explorer so the two give the same feedback. Display-only overlays composite
-/// cleanly over the native web views on the Skia head, which the built-in drag visuals do not.
+/// display-only elements in the shared drag overlay canvas. The tab drag and resource drags from the
+/// Explorer both feed them, so the two give the same feedback. Display-only overlays composite cleanly
+/// over the native web views on the Skia head. The built-in drag visuals clip against those views.
 /// </summary>
 internal sealed class SectionDragPreview
 {
-    private const double IndicatorWidth = 2.0;
-
     private readonly DocumentSectionContainer _container;
     private readonly Canvas _overlay;
     private readonly Border _highlight;
-    private readonly Border _insertionIndicator;
+    private readonly TabInsertionMarker _insertionMarker;
 
     public SectionDragPreview(DocumentSectionContainer container, Canvas overlay)
     {
@@ -32,18 +31,10 @@ internal sealed class SectionDragPreview
             Visibility = Visibility.Collapsed
         };
 
-        _insertionIndicator = new Border
-        {
-            Width = IndicatorWidth,
-            Background = GetThemeBrush("AccentBrush", Microsoft.UI.Colors.DodgerBlue),
-            IsHitTestVisible = false,
-            Visibility = Visibility.Collapsed
-        };
-
-        // The highlight sits behind the indicator, and both are added ahead of any per-drag ghost the
+        // The highlight sits behind the divider, and both are added ahead of any per-drag ghost the
         // caller adds later, so the ghost always renders on top.
         _overlay.Children.Add(_highlight);
-        _overlay.Children.Add(_insertionIndicator);
+        _insertionMarker = new TabInsertionMarker(_overlay);
     }
 
     /// <summary>
@@ -80,7 +71,7 @@ internal sealed class SectionDragPreview
     /// <summary>
     /// Shows the insertion divider at the given slot within the target section's tab strip. Pass the
     /// tab being dragged when the drag is a tab reorder within this section, so a drop that would not
-    /// move it draws at that tab's own left edge; pass null for resource drags, which have no such tab.
+    /// move it draws at that tab's own left edge. Pass null for resource drags, which have no such tab.
     /// </summary>
     public void ShowInsertion(DocumentSectionView targetSection, int slot, DocumentTab? draggedTab)
     {
@@ -91,48 +82,23 @@ internal sealed class SectionDragPreview
             return;
         }
 
-        var headerBounds = targetSection.GetTabHeaderBounds(_overlay);
+        var tabBounds = targetSection.GetTabBounds(_overlay);
         int draggedIndex = draggedTab is null ? -1 : targetSection.GetTabIndex(draggedTab);
 
-        // Position the divider at the slot boundary: the left edge of the slot's tab, the right edge of
-        // the last tab for the trailing slot (append), or the strip start when empty. A slot adjacent to
-        // the dragged tab's own position is a no-op drop, so mark that tab's left edge - where it stays.
-        bool dropsInPlace = draggedIndex >= 0 &&
-            (slot == draggedIndex || slot == draggedIndex + 1);
-        double indicatorX;
-        if (dropsInPlace &&
-            draggedIndex < headerBounds.Count)
-        {
-            indicatorX = headerBounds[draggedIndex].Bounds.X;
-        }
-        else if (headerBounds.Count == 0)
-        {
-            indicatorX = targetStrip.X;
-        }
-        else if (slot < headerBounds.Count)
-        {
-            indicatorX = headerBounds[slot].Bounds.X;
-        }
-        else
-        {
-            var lastBounds = headerBounds[^1].Bounds;
-            indicatorX = lastBounds.X + lastBounds.Width;
-        }
-
-        // The target's own strip collapses to a short height when the section is empty, so take the
-        // divider's vertical extent from the strip band, which stays full height and shares the same
-        // top edge as every section.
+        // An empty section's strip collapses to a short height. The divider therefore takes its height
+        // and top from the strip band. The band stays full height, and every section's band shares the
+        // same top edge.
         var stripBand = ResolveStripBand(targetSection);
+        var markerBounds = stripBand.IsEmpty
+            ? targetStrip
+            : new Rect(targetStrip.X, stripBand.Y, targetStrip.Width, stripBand.Height);
 
-        _insertionIndicator.Height = stripBand.Height;
-        Canvas.SetLeft(_insertionIndicator, indicatorX - (IndicatorWidth / 2));
-        Canvas.SetTop(_insertionIndicator, stripBand.Y);
-        _insertionIndicator.Visibility = Visibility.Visible;
+        _insertionMarker.Show(markerBounds, tabBounds, slot, draggedIndex);
     }
 
     public void HideInsertion()
     {
-        _insertionIndicator.Visibility = Visibility.Collapsed;
+        _insertionMarker.Hide();
     }
 
     public void Hide()

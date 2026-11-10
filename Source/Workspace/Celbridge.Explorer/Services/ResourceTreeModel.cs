@@ -51,14 +51,12 @@ public sealed class ResourceTreeModel
 
         public void Add(
             ResourceKey resource,
-            ResourceViewItemAppearance appearance,
-            Func<ResourceKey, IconDefinition>? getFileIcon)
+            ResourceViewItemAppearance appearance)
         {
             if (!_previousRowsByResource.TryGetValue(resource, out var row)
                 || row.Appearance != appearance)
             {
-                var fileIcon = getFileIcon?.Invoke(resource);
-                row = new ResourceViewItem(resource, appearance, fileIcon);
+                row = new ResourceViewItem(resource, appearance);
             }
 
             _rows.Add(row);
@@ -629,10 +627,11 @@ public sealed class ResourceTreeModel
             IsHidden: false,
             WritableState: WritableState.Writable,
             ReadOnlyMessage: string.Empty,
-            ProjectFolderTooltip: GetProjectFolderTooltip());
+            ProjectFolderTooltip: GetProjectFolderTooltip(),
+            FileIcon: null);
 
         var builder = new RowBuilder(rows, rowsByResource, previousRowsByResource);
-        builder.Add(ResourceKey.Empty, projectFolderAppearance, null);
+        builder.Add(ResourceKey.Empty, projectFolderAppearance);
 
         // The project folder's children sit at indent level 0, since the project folder row has a negative margin.
         AddChildRows(builder, ResourceKey.Empty, indentLevel: 0);
@@ -679,8 +678,9 @@ public sealed class ResourceTreeModel
                     IsHidden: isHidden,
                     WritableState: writableState,
                     ReadOnlyMessage: readOnlyMessage,
-                    ProjectFolderTooltip: string.Empty);
-                builder.Add(folderChild.Resource, appearance, null);
+                    ProjectFolderTooltip: string.Empty,
+                    FileIcon: null);
+                builder.Add(folderChild.Resource, appearance);
 
                 if (isExpanded
                     && hasChildren)
@@ -700,8 +700,9 @@ public sealed class ResourceTreeModel
                     IsHidden: isHidden,
                     WritableState: writableState,
                     ReadOnlyMessage: readOnlyMessage,
-                    ProjectFolderTooltip: string.Empty);
-                builder.Add(folderChild.Resource, appearance, GetFileIcon);
+                    ProjectFolderTooltip: string.Empty,
+                    FileIcon: GetFileIcon(folderChild.Resource));
+                builder.Add(folderChild.Resource, appearance);
             }
         }
     }

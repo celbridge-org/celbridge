@@ -1,7 +1,8 @@
+using Celbridge.Browser.Helpers;
 using Celbridge.Community;
 using Celbridge.Resources;
+using Celbridge.Tests.Browser;
 using Celbridge.Tests.Localization;
-using Celbridge.UserInterface.Services;
 using Celbridge.WebHost;
 using Celbridge.Workspace;
 using Celbridge.WorkspaceUI.Services;
@@ -10,15 +11,15 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.Tests.WorkspaceUI;
 
 /// <summary>
-/// Verifies the document CommunityService writes: where it lands, and that the .webview editor can parse it
-/// back to a landing page and one navigable bookmark per section.
+/// Verifies the file from CommunityService: the file's location, and that the browser editor can parse the file back
+/// to one navigable bookmark per section, each with the Celbridge icon.
 /// </summary>
 [TestFixture]
 public class CommunityServiceTests
 {
     private const string LocalizedPrefix = "localized:";
 
-    private static readonly ResourceKey CommunityResource = new("temp:community.webview");
+    private static readonly ResourceKey CommunityResource = new("temp:community.browser");
 
     private IResourceFileSystem _resourceFileSystem = null!;
     private IStringLocalizer _stringLocalizer = null!;
@@ -33,6 +34,9 @@ public class CommunityServiceTests
         _resourceFileSystem = Substitute.For<IResourceFileSystem>();
         _resourceFileSystem
             .WriteAllTextAsync(Arg.Any<ResourceKey>(), Arg.Do<string>(content => _writtenContent = content))
+            .Returns(Result.Ok());
+        _resourceFileSystem
+            .SetAttributesAsync(Arg.Any<ResourceKey>(), Arg.Any<FileSystemAttributes>(), Arg.Any<bool>())
             .Returns(Result.Ok());
 
         var resourceService = Substitute.For<IResourceService>();
@@ -63,10 +67,10 @@ public class CommunityServiceTests
             _workspaceWrapper);
     }
 
-    // Parses back what the service wrote, which is what the .webview editor reads at open time.
-    private WebViewFileContent ReadWrittenDocument()
+    // Parses back what the service wrote, which is what the .browser editor reads at open time.
+    private BrowserFileContent ReadWrittenDocument()
     {
-        var parseResult = WebViewFileContent.TryParse(_writtenContent);
+        var parseResult = BrowserFileContent.TryParse(_writtenContent);
         parseResult.IsSuccess.Should().BeTrue();
 
         return parseResult.Value;
@@ -91,10 +95,27 @@ public class CommunityServiceTests
             CommunityResource,
             Arg.Any<string>());
 
-        var content = ReadWrittenDocument();
-        content.SourceUrl.Should().Be(CommunityUrls.Celbridge);
-        content.ShowUrlBar.Should().BeTrue();
-        content.ShowBookmarksBar.Should().BeTrue();
+        var openOnStart = ReadWrittenDocument().Bookmarks.Where(bookmark => bookmark.OpenOnStart);
+        openOnStart.Should().ContainSingle()
+            .Which.Url.Should().Be(CommunityUrls.Celbridge);
+    }
+
+    [Test]
+    public async Task SeedDocumentAsync_WritesTheFileThenMakesItReadOnly()
+    {
+        var service = CreateService();
+
+        await service.SeedDocumentAsync();
+
+        Received.InOrder(() =>
+        {
+            _resourceFileSystem.WriteAllTextAsync(CommunityResource, Arg.Any<string>());
+            _resourceFileSystem.SetAttributesAsync(CommunityResource, FileSystemAttributes.ReadOnly, true);
+        });
+        await _resourceFileSystem.Received(1).SetAttributesAsync(
+            Arg.Any<ResourceKey>(),
+            Arg.Any<FileSystemAttributes>(),
+            Arg.Any<bool>());
     }
 
     [Test]
@@ -104,7 +125,7 @@ public class CommunityServiceTests
 
         await service.SeedDocumentAsync();
 
-        // The landing page is bookmarked too, so the bar alone is a complete way around the site.
+        // Every section, the landing page included, is a bookmark, so the bookmark list covers the whole site.
         var urls = ReadWrittenDocument().Bookmarks.Select(bookmark => bookmark.Url);
 
         urls.Should().Equal(CommunityUrls.Celbridge, CommunityUrls.Learn, CommunityUrls.Forum);
@@ -132,19 +153,20 @@ public class CommunityServiceTests
     }
 
     [Test]
-    public async Task SeedDocumentAsync_WritesAnIconThatResolvesForEveryBookmark()
+    public async Task SeedDocumentAsync_GivesEveryBookmarkTheCelbridgeIcon()
     {
-        var iconService = new IconService();
-
         var service = CreateService();
 
         await service.SeedDocumentAsync();
 
-        foreach (var bookmark in ReadWrittenDocument().Bookmarks)
-        {
-            iconService.TryGetGlyph(bookmark.Icon, out _).Should().BeTrue(
-                $"bookmark '{bookmark.Url}' names icon '{bookmark.Icon}'");
-        }
+        // The parse drops an icon unless the icon is a PNG within the size limit. An icon in the parsed file therefore
+        // passed that check. A browser document also drops an icon that fails to decode, so the test decodes the icon.
+        var icons = ReadWrittenDocument().Bookmarks.Select(bookmark => bookmark.Favicon).ToList();
+
+        icons.Should().HaveCount(3).And.AllSatisfy(icon => icon.Should().NotBeNull());
+        icons.Should().AllSatisfy(icon => icon.Should().Equal(icons[0]));
+        FaviconEncoder.CanDecode(icons[0]!).Should().BeTrue();
+        TestFavicons.SizeOf(icons[0]!).Should().Be((32, 32));
     }
 
     [Test]

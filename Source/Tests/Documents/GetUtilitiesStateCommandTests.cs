@@ -13,7 +13,7 @@ public class GetUtilitiesStateCommandTests
 {
     private static readonly EditorId NotepadId = EditorId.Create("acme", "notepad");
     private static readonly ResourceKey NotepadResource = new("utils:acme.notepad._notepad");
-    private static readonly ResourceKey CommunityResource = new("temp:community.webview");
+    private static readonly ResourceKey CommunityResource = new("temp:community.browser");
 
     private IUtilityPanel _utilityPanel = null!;
     private IUtilityService _utilityService = null!;
@@ -74,7 +74,7 @@ public class GetUtilitiesStateCommandTests
                 BuiltInShortcutIds.Community, "community-utility-button", "people",
                 "Community", "Community",
                 CommunityResource,
-                BuiltInEditors.WebViewEditorId,
+                BuiltInEditors.BrowserEditorId,
                 WorkspaceArea.Main)
         };
     }

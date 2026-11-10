@@ -843,7 +843,7 @@ public partial class WebViewToolBridge : IWebViewToolBridge
     private async Task<string> GetUnavailableReasonAsync(ResourceKey resource)
     {
         // When the service reports the resource is unsupported, it carries a
-        // specific reason (document not open, wrong editor, .webview, DevToolsBlocked).
+        // specific reason (document not open, wrong editor, .browser, DevToolsBlocked).
         // Otherwise the failure is purely that no WebView is currently registered
         // (likely a timing issue), so fall back to the bridge's generic message.
         // Routed through the command queue so the underlying check (which reads

@@ -12,7 +12,7 @@ public partial class WebViewTools
     /// <summary>Capture a visual screenshot of the WebView (returned inline and/or saved into the project tree).</summary>
     [McpServerTool(Name = "webview_screenshot")]
     [ToolAlias("webview.screenshot")]
-    [RelatedGuides("resource_keys", "webview_documents", "webview_devtools")]
+    [RelatedGuides("resource_keys", "browser_documents", "webview_devtools")]
     public async partial Task<CallToolResult> Screenshot(
         string resource,
         string saveTo = "",

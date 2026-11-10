@@ -512,7 +512,6 @@ public sealed partial class DocumentSectionContainer
         sectionView.DocumentsLayoutChanged += OnSectionDocumentsLayoutChanged;
         sectionView.CloseRequested += OnSectionCloseRequested;
         sectionView.ContextMenuActionRequested += OnSectionContextMenuActionRequested;
-        sectionView.TabDroppedInside += OnSectionTabDroppedInside;
         sectionView.FilesDropped += OnSectionFilesDropped;
         sectionView.TabPointerPressed += OnSectionTabPointerPressed;
 
@@ -596,14 +595,6 @@ public sealed partial class DocumentSectionContainer
     private void OnSectionContextMenuActionRequested(DocumentSectionView sectionView, DocumentTab tab, DocumentTabMenuAction action)
     {
         ContextMenuActionRequested?.Invoke(sectionView, tab, action);
-    }
-
-    private void OnSectionTabDroppedInside(DocumentSectionView targetSection, DocumentTab tab)
-    {
-        if (MoveTabToSection(tab, targetSection.Section))
-        {
-            NotifyLayoutChanged();
-        }
     }
 
     private void OnSectionFilesDropped(DocumentSectionView targetSection, List<ResourceItem> resources, int insertionSlot)

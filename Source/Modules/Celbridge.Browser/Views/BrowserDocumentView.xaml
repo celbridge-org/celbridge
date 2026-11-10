@@ -1,0 +1,280 @@
+<documents:DocumentView
+    x:Class="Celbridge.Browser.Views.BrowserDocumentView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
+    xmlns:documents="using:Celbridge.Documents.Views"
+    xmlns:local="using:Celbridge.Browser.Views"
+    xmlns:vm="using:Celbridge.Browser.ViewModels"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    DataContext="{x:Bind ViewModel}">
+
+    <documents:DocumentView.Resources>
+
+        <!-- A row on the empty page with a bookmark's icon, name and address. The tooltip shows an address too long
+             for the row. -->
+        <DataTemplate x:Key="EmptyPageBookmarkTemplate" x:DataType="vm:BrowserBookmarkViewModel">
+            <Button HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Stretch"
+                    Padding="10,6"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    ToolTipService.ToolTip="{x:Bind Url, Mode=OneWay}"
+                    AutomationProperties.AutomationId="EmptyPageBookmark"
+                    AutomationProperties.Name="{x:Bind DisplayName, Mode=OneWay}"
+                    Click="EmptyPageBookmark_Click">
+                <Grid ColumnSpacing="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <local:FaviconImage ImageBytes="{x:Bind Favicon, Mode=OneWay}"
+                                        VerticalAlignment="Center" />
+
+                    <StackPanel Grid.Column="1"
+                                Spacing="2">
+                        <TextBlock Text="{x:Bind DisplayName, Mode=OneWay}"
+                                   Style="{StaticResource ListItemTitleTextStyle}"
+                                   TextTrimming="CharacterEllipsis"
+                                   TextWrapping="NoWrap" />
+                        <TextBlock Text="{x:Bind Url, Mode=OneWay}"
+                                   Style="{StaticResource SupportingTextStyle}"
+                                   TextTrimming="CharacterEllipsis"
+                                   TextWrapping="NoWrap" />
+                    </StackPanel>
+                </Grid>
+            </Button>
+        </DataTemplate>
+
+    </documents:DocumentView.Resources>
+
+    <Grid x:Name="LayoutRoot"
+          KeyDown="LayoutRoot_KeyDown">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <local:BrowserTabBar x:Name="TabBar"
+                             Grid.Row="0"
+                             Visibility="{x:Bind ViewModel.AreToolbarsVisible, Mode=OneWay}" />
+
+        <!-- Docked in a row above the page. On the macOS Skia head, the native WKWebView sits above managed content.
+             The web view takes any mouse input meant for a control drawn over the page, and the control gets the
+             same input too. -->
+        <Border x:Name="UrlBar"
+                Grid.Row="1"
+                Padding="8,4"
+                Background="{ThemeResource ChromeBackgroundBrush}"
+                BorderBrush="{ThemeResource DividerBrush}"
+                BorderThickness="0,0,0,1"
+                Visibility="{x:Bind ViewModel.AreToolbarsVisible, Mode=OneWay}">
+            <Grid ColumnSpacing="6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0"
+                            Orientation="Horizontal"
+                            Spacing="4"
+                            VerticalAlignment="Center">
+                    <controls:IconButton x:Name="BookmarkListButton"
+                                         VerticalAlignment="Center"
+                                         ToolTipService.ToolTip="{x:Bind BookmarksTooltipString}"
+                                         AutomationProperties.Name="{x:Bind BookmarksTooltipString}"
+                                         AutomationProperties.AutomationId="BookmarkListButton">
+                        <controls:Icon IconName="bs-list-stars" FontSize="{StaticResource IconSizeMedium}" />
+                        <controls:IconButton.Flyout>
+                            <MenuFlyout x:Name="BookmarkListFlyout"
+                                        Placement="BottomEdgeAlignedLeft"
+                                        Opening="BookmarkListFlyout_Opening" />
+                        </controls:IconButton.Flyout>
+                    </controls:IconButton>
+                    <controls:IconButton x:Name="BackButton"
+                                         VerticalAlignment="Center"
+                                         IsEnabled="{x:Bind ViewModel.IsBackEnabled, Mode=OneWay}"
+                                         ToolTipService.ToolTip="{x:Bind BackTooltipString}"
+                                         AutomationProperties.Name="{x:Bind BackTooltipString}"
+                                         Click="BackButton_Click">
+                        <controls:Icon Symbol="Back" FontSize="{StaticResource IconSizeMedium}" />
+                    </controls:IconButton>
+                    <controls:IconButton x:Name="ForwardButton"
+                                         VerticalAlignment="Center"
+                                         IsEnabled="{x:Bind ViewModel.IsForwardEnabled, Mode=OneWay}"
+                                         ToolTipService.ToolTip="{x:Bind ForwardTooltipString}"
+                                         AutomationProperties.Name="{x:Bind ForwardTooltipString}"
+                                         Click="ForwardButton_Click">
+                        <controls:Icon Symbol="Forward" FontSize="{StaticResource IconSizeMedium}" />
+                    </controls:IconButton>
+                    <controls:IconButton x:Name="ReloadOrStopButton"
+                                         VerticalAlignment="Center"
+                                         IsEnabled="{x:Bind ViewModel.IsReloadOrStopEnabled, Mode=OneWay}"
+                                         Click="ReloadOrStopButton_Click">
+                        <Grid>
+                            <controls:Icon Symbol="Refresh"
+                                           FontSize="{StaticResource IconSizeMedium}"
+                                           Visibility="{x:Bind ViewModel.IsReloadIconVisible, Mode=OneWay}" />
+                            <controls:Icon Symbol="Close"
+                                           FontSize="{StaticResource IconSizeMedium}"
+                                           Visibility="{x:Bind ViewModel.IsNavigating, Mode=OneWay}" />
+                        </Grid>
+                    </controls:IconButton>
+                </StackPanel>
+
+                <TextBox x:Name="AddressTextBox"
+                         Grid.Column="1"
+                         MinHeight="32"
+                         VerticalAlignment="Center"
+                         IsSpellCheckEnabled="False"
+                         PlaceholderText="{x:Bind AddressPlaceholderString}"
+                         Text="{x:Bind ViewModel.AddressText, Mode=OneWay}"
+                         TextChanged="AddressTextBox_TextChanged"
+                         KeyDown="AddressTextBox_KeyDown" />
+
+                <StackPanel Grid.Column="2"
+                            Orientation="Horizontal"
+                            Spacing="4"
+                            VerticalAlignment="Center">
+                    <!-- The glyph and tooltip are set in code-behind. -->
+                    <controls:IconButton x:Name="BookmarkPageButton"
+                                         VerticalAlignment="Center"
+                                         IsEnabled="{x:Bind ViewModel.IsBookmarkPageEnabled, Mode=OneWay}"
+                                         Click="BookmarkPageButton_Click">
+                        <controls:Icon x:Name="BookmarkPageIcon"
+                                       Symbol="Star"
+                                       FontSize="{StaticResource IconSizeMedium}" />
+                    </controls:IconButton>
+                    <controls:IconButton x:Name="OpenInBrowserButton"
+                                         VerticalAlignment="Center"
+                                         IsEnabled="{x:Bind ViewModel.CanOpenInBrowser, Mode=OneWay}"
+                                         ToolTipService.ToolTip="{x:Bind OpenInBrowserTooltipString}"
+                                         AutomationProperties.Name="{x:Bind OpenInBrowserTooltipString}"
+                                         Click="OpenInBrowserButton_Click">
+                        <controls:Icon Symbol="Reveal" FontSize="{StaticResource IconSizeMedium}" />
+                    </controls:IconButton>
+                    <!-- A toggle button. The settings stay open until the user closes them, and the document saves
+                         their state. The button takes the accent fill while the settings show, like any selected
+                         control. -->
+                    <controls:IconToggleButton x:Name="SettingsButton"
+                                               VerticalAlignment="Center"
+                                               ToolTipService.ToolTip="{x:Bind SettingsTooltipString}"
+                                               AutomationProperties.Name="{x:Bind SettingsTooltipString}"
+                                               IsChecked="{x:Bind ViewModel.IsSettingsOpen, Mode=TwoWay}">
+                        <controls:Icon Symbol="Sliders" FontSize="{StaticResource IconSizeMedium}" />
+                    </controls:IconToggleButton>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <local:BrowserFindBar x:Name="FindBar"
+                              Grid.Row="2" />
+
+        <!-- Contains one panel per tab. Only the shown tab's panel is visible. -->
+        <Grid x:Name="AppWebViewContainer"
+              Grid.Row="3"
+              HorizontalAlignment="Stretch"
+              VerticalAlignment="Stretch" />
+
+        <!-- Shown for a blank tab and for a document with no tabs. The tabs' web views are hidden while this shows,
+             so a blank page does not read as a broken one. -->
+        <Border x:Name="ContentPlaceholder"
+                Grid.Row="3"
+                Background="{ThemeResource ContentBackgroundBrush}"
+                Visibility="Collapsed">
+            <!-- Scrolls when the bookmarks need more height than the document area has. -->
+            <ScrollViewer HorizontalScrollMode="Disabled"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto">
+                <!-- A tab stop, so a document with nothing else to focus still takes the keyboard. Its accessible name
+                     is set in code-behind. The content spans the width, and each part is centered at its maximum
+                     width. -->
+                <ContentControl x:Name="PlaceholderContent"
+                                Margin="16"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                VerticalAlignment="Center"
+                                IsTabStop="True"
+                                UseSystemFocusVisuals="True">
+                    <StackPanel Spacing="24">
+                        <StackPanel MaxWidth="360"
+                                    Spacing="12">
+                            <!-- Sized for an empty state. The icon scale sizes glyphs sitting in controls. -->
+                            <controls:Icon IconName="bs-globe"
+                                           FontSize="48"
+                                           HorizontalAlignment="Center"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                           Visibility="{x:Bind ViewModel.IsEmptyStateVisible, Mode=OneWay}" />
+
+                            <TextBlock x:Name="PlaceholderHint"
+                                       Text="{x:Bind PlaceholderHintString}"
+                                       HorizontalAlignment="Center"
+                                       TextAlignment="Center"
+                                       TextWrapping="Wrap"
+                                       Style="{StaticResource SupportingTextStyle}"
+                                       Visibility="{x:Bind ViewModel.IsEmptyStateVisible, Mode=OneWay}" />
+
+                            <!-- Reports the failure and what to do about it. The address bar names the page that
+                                 failed. -->
+                            <controls:Icon IconName="bs-exclamation-triangle"
+                                           FontSize="48"
+                                           HorizontalAlignment="Center"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                           Visibility="{x:Bind ViewModel.IsLoadFailedVisible, Mode=OneWay}" />
+
+                            <TextBlock Text="{x:Bind PlaceholderLoadFailedString}"
+                                       HorizontalAlignment="Center"
+                                       TextAlignment="Center"
+                                       TextWrapping="Wrap"
+                                       Style="{StaticResource FieldLabelTextStyle}"
+                                       Visibility="{x:Bind ViewModel.IsLoadFailedVisible, Mode=OneWay}" />
+
+                            <TextBlock Text="{x:Bind PlaceholderLoadFailedHintString}"
+                                       HorizontalAlignment="Center"
+                                       TextAlignment="Center"
+                                       TextWrapping="Wrap"
+                                       Style="{StaticResource SupportingTextStyle}"
+                                       Visibility="{x:Bind ViewModel.IsLoadFailedVisible, Mode=OneWay}" />
+                        </StackPanel>
+
+                        <StackPanel Spacing="12"
+                                    Visibility="{x:Bind ViewModel.AreEmptyPageBookmarksVisible, Mode=OneWay}">
+                            <ItemsControl MaxWidth="440"
+                                          ItemsSource="{x:Bind ViewModel.EmptyPageBookmarks, Mode=OneWay}"
+                                          ItemTemplate="{StaticResource EmptyPageBookmarkTemplate}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Spacing="2" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+
+                            <HyperlinkButton HorizontalAlignment="Center"
+                                             Content="{x:Bind BookmarkSettingsString}"
+                                             AutomationProperties.AutomationId="EmptyPageBookmarkSettings"
+                                             Click="BookmarkSettingsLink_Click" />
+                        </StackPanel>
+                    </StackPanel>
+                </ContentControl>
+            </ScrollViewer>
+        </Border>
+
+        <!-- Takes the content row in place of the page, so opening the settings never resizes a tab's page. The tabs'
+             web views are hidden while the settings show. On the macOS Skia head, a hosted web view takes mouse input
+             meant for the settings. -->
+        <local:BrowserDocumentSettingsView x:Name="SettingsSurface"
+                                           Grid.Row="3"
+                                           Visibility="Collapsed" />
+
+        <!-- Spans the document, so a dragged tab's ghost follows the pointer over the page. Display-only content
+             draws over the native web views on every head. -->
+        <Canvas x:Name="TabDragOverlay"
+                Grid.RowSpan="4"
+                IsHitTestVisible="False" />
+
+    </Grid>
+</documents:DocumentView>

@@ -132,7 +132,7 @@ public partial class App : Application
                     {
                         "Celbridge.DocumentEditors",
                         "Celbridge.Spreadsheet",
-                        "Celbridge.WebView",
+                        "Celbridge.Browser",
                     };
                     ModuleService.LoadModules(modules, services);
                 })

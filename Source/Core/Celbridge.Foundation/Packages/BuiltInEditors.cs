@@ -52,9 +52,9 @@ public static class BuiltInEditors
     public static readonly EditorId ReportViewerId = new("celbridge.report");
 
     /// <summary>
-    /// Built-in id of the web view editor, registered natively by the WebView module.
+    /// Built-in id of the browser editor, registered natively by the Browser module.
     /// </summary>
-    public static readonly EditorId WebViewEditorId = new("celbridge.webview-editor");
+    public static readonly EditorId BrowserEditorId = new("celbridge.browser-editor");
 
     /// <summary>
     /// Built-in id of the Project Settings editor, registered natively by the Project Settings module.
@@ -67,7 +67,7 @@ public static class BuiltInEditors
     /// The package built-ins: bundled contributions registered under host-assigned ids. Ordered to
     /// match the shared editors' relative order in BuiltInResolutionOrder, which is the authority for
     /// open precedence; the two lists differ only in that BuiltInResolutionOrder also carries the
-    /// natively registered WebView editor, which is not a package contribution.
+    /// natively registered browser editor, which is not a package contribution.
     /// </summary>
     public static readonly IReadOnlyList<BuiltInEditorDefinition> PackageBuiltIns =
     [
@@ -83,13 +83,13 @@ public static class BuiltInEditors
     /// Fixed resolution order for built-in editors, applied after every declared editor. Specialized
     /// editors rank ahead of the general code editor. This
     /// is the authority for built-in open precedence; PackageBuiltIns lists the same contributions
-    /// (minus the natively registered WebView editor) in the same relative order.
+    /// (minus the natively registered browser editor) in the same relative order.
     /// </summary>
     public static readonly IReadOnlyList<EditorId> BuiltInResolutionOrder =
     [
         MarkdownEditorId,
         HtmlEditorId,
-        WebViewEditorId,
+        BrowserEditorId,
         SpreadsheetEditorId,
         ReportViewerId,
         FileViewerId,

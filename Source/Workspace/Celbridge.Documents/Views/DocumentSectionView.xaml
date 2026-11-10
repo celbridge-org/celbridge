@@ -4,15 +4,7 @@
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
-  xmlns:local="using:Celbridge.Documents.Views">
-
-  <UserControl.Resources>
-    <!-- Lays out every tab, for the platforms whose virtualizing tab panel cannot measure the strip. Swapped
-         in from code-behind, because the tab list lives inside the TabView template. -->
-    <ItemsPanelTemplate x:Key="NonVirtualizingTabStripPanel">
-      <StackPanel Orientation="Horizontal"/>
-    </ItemsPanelTemplate>
-  </UserControl.Resources>
+  xmlns:controls="using:Celbridge.UserInterface.Views.Controls">
 
   <!-- A section is carved out of the chrome field, so it takes the content background across its whole
        area, tab strip included, and draws the edges that face a channel. The thicknesses and corners depend
@@ -37,41 +29,8 @@
                  FontStyle="Italic"/>
     </Border>
     
-    <!-- TabView for documents. The stock padding indents the tab list down the band. The tabs hold their own
-         gap above themselves, so it is cleared here. -->
-    <TabView x:Name="TabView"
-             AutomationProperties.AutomationId="document-tab-strip"
-             IsAddTabButtonVisible="False"
-             Padding="0"
-             TabWidthMode="SizeToContent"
-             VerticalAlignment="Stretch"
-             CanReorderTabs="True"
-             CanDragTabs="True"
-             AllowDrop="True"
-             TabCloseRequested="TabView_CloseRequested"
-             TabItemsChanged="TabView_TabItemsChanged"
-             TabDroppedOutside="TabView_TabDroppedOutside"
-             DragOver="TabView_DragOver"
-             Drop="TabView_Drop">
-      <!-- An area's toolbar goes in whichever of these two slots sits nearest that area's inner edge, so the
-           collapse chevron reads as pushing the area out towards the application edge. -->
-      <TabView.TabStripHeader>
-        <ContentPresenter x:Name="HeaderPresenter"
-                          MinWidth="0"/>
-      </TabView.TabStripHeader>
-      <TabView.TabStripFooter>
-        <ContentPresenter x:Name="FooterPresenter"
-                          MinWidth="0"/>
-      </TabView.TabStripFooter>
-    </TabView>
-
-    <!-- Overlays the bottom edge of the tab strip rather than taking a row of its own, so an overflowing strip
-         gains a scroll affordance without changing the height the section composes its minimum from. Placed
-         over the tabs from code-behind, which is where the strip's geometry is known. -->
-    <local:TabStripScrollIndicator x:Name="ScrollIndicator"
-                                   HorizontalAlignment="Left"
-                                   VerticalAlignment="Top"
-                                   Visibility="Collapsed"/>
+    <!-- The strip and the document area below it. The documents show in the TabView's content area. -->
+    <controls:TabStripView x:Name="DocumentTabStrip"/>
 
     <!-- Active document indicator, drawn in the gap above the tabs and placed over the active tab from
          code-behind. A tab clips its content to its rounded corners, so the bar cannot live inside one. -->

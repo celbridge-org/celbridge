@@ -1131,7 +1131,7 @@ public sealed class CustomEditorController : IHostInput, IHostContext, IEditTarg
             return;
         }
 
-        commandService.Execute<IOpenBrowserCommand>(command =>
+        commandService.Execute<IOpenSystemBrowserCommand>(command =>
         {
             command.URL = uri;
         });

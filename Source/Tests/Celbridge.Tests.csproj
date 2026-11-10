@@ -19,6 +19,7 @@
     <PackageReference Include="NSubstitute" />
     <PackageReference Include="NUnit" />
     <PackageReference Include="NUnit3TestAdapter" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
     <PackageReference Include="StreamJsonRpc" />
     <PackageReference Include="Tomlyn" />
   </ItemGroup>
@@ -44,7 +45,7 @@
     <ProjectReference Include="..\Core\Celbridge.Workshop\Celbridge.Workshop.csproj" />
     <ProjectReference Include="..\Modules\Celbridge.DocumentEditors\Celbridge.DocumentEditors.csproj" />
     <ProjectReference Include="..\Modules\Celbridge.Spreadsheet\Celbridge.Spreadsheet.csproj" />
-    <ProjectReference Include="..\Modules\Celbridge.WebView\Celbridge.WebView.csproj" />
+    <ProjectReference Include="..\Modules\Celbridge.Browser\Celbridge.Browser.csproj" />
     <ProjectReference Include="..\Workspace\Celbridge.Documents\Celbridge.Documents.csproj" />
     <ProjectReference Include="..\Workspace\Celbridge.Packages\Celbridge.Packages.csproj" />
     <ProjectReference Include="..\Workspace\Celbridge.Python\Celbridge.Python.csproj" />

@@ -5,6 +5,7 @@ using Celbridge.Platform;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.UserInterface.Services;
+using Celbridge.UserInterface.Views.Controls;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Xaml.Media.Animation;
@@ -29,7 +30,6 @@ public enum DocumentTabMenuAction
     RevealInExplorer,
     OpenFileExplorer,
     OpenApplication,
-    RestoreChrome,
     Reopen
 }
 
@@ -46,11 +46,6 @@ public partial class DocumentTab : TabViewItem
 
     // True once an item is chosen from the open menu. Cleared each time the menu opens.
     private bool _menuItemChosen;
-
-    /// <summary>
-    /// The gap the tab keeps between itself and the top of the strip band.
-    /// </summary>
-    public const double StripTopGap = 7;
 
     // How long after handling a double tap a second one is treated as the duplicate event rather than a
     // new gesture. Wide enough to cover the duplicate, which trails by a few milliseconds, and well short
@@ -124,18 +119,13 @@ public partial class DocumentTab : TabViewItem
     /// </summary>
     public event Action<DocumentTab, DocumentTabMenuAction>? ContextMenuActionRequested;
 
-    /// <summary>
-    /// Event raised when this tab starts being dragged.
-    /// </summary>
-    public event Action<DocumentTab>? DragStarted;
-
     public DocumentTab()
     {
         this.InitializeComponent();
 
-        // The tab takes the strip band less the gap it holds above itself.
-        Height = WorkspaceConstants.SectionTabStripHeight - StripTopGap;
-        Margin = new Thickness(0, StripTopGap, 0, 0);
+        // The tab takes the strip band less the gap it keeps above itself.
+        Height = TabStripView.TabHeight;
+        Margin = new Thickness(0, TabStripView.TabTopGap, 0, 0);
 
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _commandService = ServiceLocator.AcquireService<ICommandService>();
@@ -337,11 +327,6 @@ public partial class DocumentTab : TabViewItem
         ContextMenuActionRequested?.Invoke(this, DocumentTabMenuAction.OpenApplication);
     }
 
-    private void ContextMenu_RestoreChrome(object sender, RoutedEventArgs e)
-    {
-        ContextMenuActionRequested?.Invoke(this, DocumentTabMenuAction.RestoreChrome);
-    }
-
     private void ContextMenu_Reopen(object sender, RoutedEventArgs e)
     {
         ContextMenuActionRequested?.Invoke(this, DocumentTabMenuAction.Reopen);
@@ -361,19 +346,11 @@ public partial class DocumentTab : TabViewItem
         int tabCount = tabView.TabItems.Count;
         int tabIndex = tabView.TabItems.IndexOf(this);
 
-        // Only show "Close Others" if there are at least 2 other tabs to close
-        CloseOthersMenuItem.Visibility = tabCount > 2 ? Visibility.Visible : Visibility.Collapsed;
-
-        // Only show "Close All" if there are at least 2 tabs to close
-        CloseAllMenuItem.Visibility = tabCount > 1 ? Visibility.Visible : Visibility.Collapsed;
-
-        // Only show "Close to the Right" if there are tabs to the right of this tab
-        bool hasTabsToRight = tabIndex >= 0 && tabIndex < tabCount - 1;
-        CloseToTheRightMenuItem.Visibility = hasTabsToRight ? Visibility.Visible : Visibility.Collapsed;
-
-        // Only show "Close to the Left" if there are tabs to the left of this tab
-        bool hasTabsToLeft = tabIndex > 0;
-        CloseToTheLeftMenuItem.Visibility = hasTabsToLeft ? Visibility.Visible : Visibility.Collapsed;
+        var closeItems = TabCloseItems.ForTab(tabIndex, tabCount);
+        CloseOthersMenuItem.Visibility = closeItems.ShowCloseOthers ? Visibility.Visible : Visibility.Collapsed;
+        CloseToTheRightMenuItem.Visibility = closeItems.ShowCloseToTheRight ? Visibility.Visible : Visibility.Collapsed;
+        CloseToTheLeftMenuItem.Visibility = closeItems.ShowCloseToTheLeft ? Visibility.Visible : Visibility.Collapsed;
+        CloseAllMenuItem.Visibility = closeItems.ShowCloseAll ? Visibility.Visible : Visibility.Collapsed;
 
         // Moving a document into the other section is one action: while the area is unsplit it creates the
         // split, and it is offered only with a document left behind, since a split section is never empty.
@@ -416,19 +393,6 @@ public partial class DocumentTab : TabViewItem
         // rest of the group still resolves to a real path, so only this option goes.
         bool canReveal = !isUtility && ViewModel.CanRevealInExplorer;
         RevealInExplorerMenuItem.Visibility = canReveal ? Visibility.Visible : Visibility.Collapsed;
-
-        // A view that has hidden the chrome carrying its own controls has no way back, so the shared menu
-        // offers one. The view supplies the text, so this menu never names a particular kind of chrome.
-        bool canRestoreChrome = false;
-        if (Content is IDocumentChromeOwner chromeOwner &&
-            chromeOwner.CanRestoreChrome)
-        {
-            canRestoreChrome = true;
-            RestoreChromeMenuItem.Text = _stringLocalizer.GetString(chromeOwner.RestoreChromeMenuTextKey);
-        }
-
-        RestoreChromeSeparator.Visibility = canRestoreChrome ? Visibility.Visible : Visibility.Collapsed;
-        RestoreChromeMenuItem.Visibility = canRestoreChrome ? Visibility.Visible : Visibility.Collapsed;
 
         // A utility tab hosts a docked utility, not a file opened with a chosen editor. Reopening would dock it
         // back into the panel and then open a second, uncontrolled instance, so the reopen options are hidden
@@ -539,11 +503,5 @@ public partial class DocumentTab : TabViewItem
             var documentView = this.Content as IDocumentView;
             documentView?.FocusDocument();
         });
-    }
-
-    private void DocumentTab_DragStarting(UIElement sender, DragStartingEventArgs args)
-    {
-        // Notify that this tab is being dragged
-        DragStarted?.Invoke(this);
     }
 }

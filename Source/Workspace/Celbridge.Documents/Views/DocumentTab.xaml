@@ -12,8 +12,7 @@
     AutomationProperties.HelpText="{x:Bind ViewModel.PipLabel, Mode=OneWay}"
     VerticalContentAlignment="Stretch"
     DoubleTapped="DocumentTab_DoubleTapped"
-    Tapped="DocumentTab_Tapped"
-    DragStarting="DocumentTab_DragStarting">
+    Tapped="DocumentTab_Tapped">
 
     <muxc:TabViewItem.Resources>
         <services:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
@@ -40,8 +39,6 @@
             <MenuFlyoutSeparator x:Name="CopySeparator" />
             <MenuFlyoutItem x:Name="CopyRelativePathMenuItem" Click="ContextMenu_CopyRelativePath" />
             <MenuFlyoutItem x:Name="CopyFullPathMenuItem" Click="ContextMenu_CopyFullPath" />
-            <MenuFlyoutSeparator x:Name="RestoreChromeSeparator" />
-            <MenuFlyoutItem x:Name="RestoreChromeMenuItem" Click="ContextMenu_RestoreChrome" />
         </MenuFlyout>
     </muxc:TabViewItem.ContextFlyout>
 

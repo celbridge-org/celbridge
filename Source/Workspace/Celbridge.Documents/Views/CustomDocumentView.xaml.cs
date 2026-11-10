@@ -118,14 +118,19 @@ public sealed partial class CustomDocumentView : DocumentView
         return await _controller.NavigateToLocationAsync(location);
     }
 
-    public override Task<string?> TrySaveEditorStateAsync()
+    public override async Task<string?> TrySaveEditorStateAsync()
     {
-        return _controller.TrySaveEditorStateAsync();
+        return await _controller.TrySaveEditorStateAsync();
     }
 
-    public override Task RestoreEditorStateAsync(string state)
+    public override async Task CompleteOpenAsync(string? editorState)
     {
-        return _controller.RestoreEditorStateAsync(state);
+        if (editorState is null)
+        {
+            return;
+        }
+
+        await _controller.RestoreEditorStateAsync(editorState);
     }
 
     public override WebViewHealth GetHealth() => _controller.GetHealth();

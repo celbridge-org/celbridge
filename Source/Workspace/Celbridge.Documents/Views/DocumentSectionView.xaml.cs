@@ -1,10 +1,10 @@
 using Celbridge.Documents.Helpers;
 using Celbridge.Logging;
 using Celbridge.Messaging;
-using Celbridge.Platform;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.UserInterface.Services;
+using Celbridge.UserInterface.Views.Controls;
 using Celbridge.WebHost;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
@@ -25,17 +25,11 @@ public sealed partial class DocumentSectionView : UserControl
 {
     private readonly IDocumentSectionViewLogger _logger;
     private readonly IStringLocalizer _stringLocalizer;
-    private readonly IPlatformInfo _platformInfo;
     private readonly IMessengerService _messengerService;
     private readonly IWebViewFocusRegistry _webViewFocusRegistry;
     private readonly IManagedFocus _managedFocus;
-    private readonly PointerEventHandler _tabStripWheelHandler;
     private readonly PointerEventHandler _documentPointerPressedHandler;
     private bool _isShuttingDown = false;
-    private bool _scrollButtonsHidden;
-    private bool _scrollIndicatorAttached;
-    private bool _tabStripWheelHandlerAttached;
-    private readonly WheelGestureAxisTracker _wheelGestureAxisTracker;
     private Storyboard? _perimeterStoryboard;
 
     // The gap the active document indicator leaves between itself and the tab below it. What the tab's own
@@ -47,41 +41,11 @@ public sealed partial class DocumentSectionView : UserControl
     private const double ActiveDocumentIndicatorLeadingInset = 2;
     private const double ActiveDocumentIndicatorTrailingInset = 6;
 
-    // The distance below which a scroll would move the strip by less than a pixel.
-    private const double RevealAlignmentTolerance = 0.5;
-
-    // The tab list template's two overflow arrows, named by their containers because that is what carries
-    // the width each arrow costs the strip.
-    private static readonly string[] TabStripScrollButtonContainerNames =
-    {
-        "ScrollDecreaseButtonContainer",
-        "ScrollIncreaseButtonContainer"
-    };
-
-    // The tab strip band from the TabView template, resolved once so composing a minimum does not walk the
-    // section's visual tree on every query.
-    private FrameworkElement? _tabStripContainer;
-
-    /// <summary>
-    /// Static field to track the tab currently being dragged between sections.
-    /// This is set when a drag starts and cleared after the drop is handled.
-    /// </summary>
     // The stock tab strip's content host, and how far into its template to look for it.
     private const string TabContentPresenterName = "TabContentPresenter";
     private const int TabContentPresenterSearchDepth = 12;
 
     private ContentPresenter? _tabContentPresenter;
-
-    // The tab this section last selected. Kept apart from the TabView's own selection, because reloading the tab
-    // list can clear that.
-    private DocumentTab? _selectedTab;
-
-    private static DocumentTab? _draggedTab;
-
-    /// <summary>
-    /// Static field to track which section the dragged tab came from.
-    /// </summary>
-    private static DocumentSectionView? _dragSourceSectionView;
 
     // Localized strings
     private string NoDocumentsOpenString => _stringLocalizer.GetString("DocumentSection_DropFilesPrompt");
@@ -107,11 +71,6 @@ public sealed partial class DocumentSectionView : UserControl
     public event Action<DocumentSectionView, DocumentTab, DocumentTabMenuAction>? ContextMenuActionRequested;
 
     /// <summary>
-    /// Event raised when a tab from another section is dropped into this section.
-    /// </summary>
-    public event Action<DocumentSectionView, DocumentTab>? TabDroppedInside;
-
-    /// <summary>
     /// Event raised when resource files are dropped into this section from the ResourceTree, with the
     /// insertion slot in the tab order the drop point maps to.
     /// </summary>
@@ -123,36 +82,33 @@ public sealed partial class DocumentSectionView : UserControl
 
         _logger = ServiceLocator.AcquireService<IDocumentSectionViewLogger>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
-        _platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _webViewFocusRegistry = ServiceLocator.AcquireService<IWebViewFocusRegistry>();
         _managedFocus = ServiceLocator.AcquireService<IManagedFocus>();
-        _tabPointerPressedHandler = OnTabPointerPressed;
-        _tabStripWheelHandler = OnTabStripPointerWheelChanged;
-        _wheelGestureAxisTracker = new WheelGestureAxisTracker();
         _documentPointerPressedHandler = OnDocumentPointerPressed;
-        DisableBuiltInTabDrag();
 
         // A press inside a document makes it the active document. Subscribed for handled events too, and on
         // the section root rather than on each document view, because the controls a document is built from
         // mark their own presses handled and a view is adopted into the tab long after this runs.
         RootGrid.AddHandler(PointerPressedEvent, _documentPointerPressedHandler, handledEventsToo: true);
 
-        TabView.Loaded += OnTabViewLoaded;
-        TabView.SelectionChanged += OnTabViewSelectionChanged;
-
+        AutomationProperties.SetAutomationId(TabView, "document-tab-strip");
+        TabView.TabCloseRequested += TabView_CloseRequested;
+        TabView.TabItemsChanged += TabView_TabItemsChanged;
         TabView.SizeChanged += OnTabViewContentSizeChanged;
 
-        // A narrower strip moves the scroll indicator and can change whether it is needed at all. It also
-        // leaves the selected tab clipped off-screen, so a window resize or a change in the number of
-        // sections has to re-scroll it into view.
-        TabView.SizeChanged += OnTabViewSizeChanged;
+        // A resource dragged over the strip from the Explorer drops into this section, on heads that use the
+        // built-in drag-and-drop for resources.
+        TabView.AllowDrop = true;
+        TabView.DragOver += RootGrid_DragOver;
+        TabView.Drop += RootGrid_Drop;
 
-        // The toolbars in these slots share the band with the tab list, so their width decides where the tabs
-        // start and the overlays drawn over the tabs move with them.
-        HeaderPresenter.SizeChanged += OnTabStripPresenterSizeChanged;
-        FooterPresenter.SizeChanged += OnTabStripPresenterSizeChanged;
+        // The active document indicator sits over the strip, so it moves with the strip's tabs.
+        DocumentTabStrip.StripArranged += (_, _) => UpdateActiveDocumentIndicator();
+        DocumentTabStrip.TabPressed += OnStripTabPressed;
     }
+
+    private TabView TabView => DocumentTabStrip.TabView;
 
     // The web surfaces report a click anywhere over them, while managed focus only moves for a press that
     // lands on a focusable control. Reporting from the pointer gives a document built from managed controls
@@ -249,69 +205,6 @@ public sealed partial class DocumentSectionView : UserControl
         documentView.FocusDocument();
     }
 
-    private void OnTabViewLoaded(object sender, RoutedEventArgs e)
-    {
-        // Disable tab add/remove animations so tabs snap into place immediately
-        DisableTabViewAnimations();
-
-        ClearAddTabButtonWidthReservation();
-
-        // The border lines come from the strip's template, and the pair inside the tab list only appears
-        // once that list has laid out, so a section that starts empty is covered by applying now and again
-        // on the next dispatcher cycle. The scroll arrows and the tab list's items presenter live in that
-        // same late template.
-        DisableTabVirtualization();
-        UpdateTabStripBorderLines();
-        FixTabStripBandHeight();
-        AlignTabListToBandTop();
-        HideTabStripScrollButtons();
-        AttachTabStripScrollHandlers();
-
-        _ = DispatcherQueue.TryEnqueue(() =>
-        {
-            DisableTabVirtualization();
-            UpdateTabStripBorderLines();
-            FixTabStripBandHeight();
-            AlignTabListToBandTop();
-            HideTabStripScrollButtons();
-            AttachTabStripScrollHandlers();
-            RestoreSelectionDroppedByReload();
-        });
-    }
-
-    // UNO-BUG: each time the tab list loads, the TabView empties it and adds the tabs back, which clears the
-    // selection. The virtualizing panel happens to restore it and the non-virtualizing one does not, which
-    // leaves a section shown again with every tab unselected and no document content. Observed in 6.6.166.
-    /// <summary>
-    /// Selects the section's last selected tab again when reloading the tab list has cleared the selection.
-    /// </summary>
-    private void RestoreSelectionDroppedByReload()
-    {
-        if (!_platformInfo.RequiresNonVirtualizingTabStrip ||
-            TabView.SelectedItem is not null ||
-            _selectedTab is null ||
-            !TabView.TabItems.Contains(_selectedTab))
-        {
-            return;
-        }
-
-        SelectTab(_selectedTab);
-    }
-
-    private void OnTabViewSizeChanged(object sender, SizeChangedEventArgs e)
-    {
-        if (_isShuttingDown)
-        {
-            return;
-        }
-
-        RevealSelectedTab();
-
-        // The strip is still mid-arrange while its size change is raised, so its leading edge only settles on
-        // the following cycle.
-        _ = DispatcherQueue.TryEnqueue(UpdateTabStripOverlays);
-    }
-
     /// <summary>
     /// Throws if the calling code is not on the UI thread. TabView.TabItems has WinUI thread
     /// affinity and reading it off-thread produces a COMException that is hard to diagnose.
@@ -328,84 +221,11 @@ public sealed partial class DocumentSectionView : UserControl
     }
 
     /// <summary>
-    /// Disables the add/remove animations on the TabView's internal tab strip.
-    /// </summary>
-    private void DisableTabViewAnimations()
-    {
-        // The TabView uses a ListViewBase internally for the tab strip.
-        // We need to find it and clear its ChildrenTransitions.
-        var listView = VisualTree.FindDescendant<ListViewBase>(TabView);
-        if (listView is not null)
-        {
-            listView.ItemContainerTransitions = new TransitionCollection();
-        }
-    }
-
-    // UNO-BUG: the tab list's virtualizing panel estimates the width of the tabs it has not laid out from the
-    // average width of those it has. The strip then cannot scroll a far tab into view, or its last tab fully
-    // into view. Observed in 6.6.166.
-    /// <summary>
-    /// Swaps the tab list's virtualizing panel for one that lays out every tab, so the strip's extent is the
-    /// true width of its tabs and every tab has bounds to reveal.
-    /// </summary>
-    private void DisableTabVirtualization()
-    {
-        if (!_platformInfo.RequiresNonVirtualizingTabStrip)
-        {
-            return;
-        }
-
-        var tabListView = VisualTree.FindDescendant<ListViewBase>(TabView);
-        if (tabListView is null)
-        {
-            return;
-        }
-
-        tabListView.ItemsPanel = (ItemsPanelTemplate)Resources["NonVirtualizingTabStripPanel"];
-
-        ReserveTabListHeaderAndFooterWidth();
-    }
-
-    // UNO-BUG: over a StackPanel, the items presenter leaves its header and footer out of the width it asks
-    // for, yet still lays them out either side of the tabs. The strip's extent then stops short by their width
-    // and clips the last tab. Observed in 6.6.166.
-    /// <summary>
-    /// Pads the tab list's items presenter by the width of its header and footer, so the width it asks for
-    /// covers everything it lays out. The header and footer carry the ends of the strip's bottom border.
-    /// </summary>
-    private void ReserveTabListHeaderAndFooterWidth()
-    {
-        if (GetTabStripScrollViewer()?.Content is not ItemsPresenter itemsPresenter)
-        {
-            // The tab list's template has not been applied yet, so try again on the next cycle.
-            return;
-        }
-
-        double reservedWidth = MeasureWidth(itemsPresenter.Header) + MeasureWidth(itemsPresenter.Footer);
-
-        itemsPresenter.Padding = new Thickness(0, 0, reservedWidth, 0);
-    }
-
-    // Measured here rather than read from the last layout pass, so the width is known before the strip has
-    // laid out.
-    private static double MeasureWidth(object? content)
-    {
-        if (content is not UIElement element)
-        {
-            return 0;
-        }
-
-        element.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-
-        return element.DesiredSize.Width;
-    }
-
-    /// <summary>
     /// Sets the content to display before the tabs, at the leading edge of the tab strip.
     /// </summary>
     public void SetTabStripHeader(UIElement? content)
     {
-        HeaderPresenter.Content = content;
+        DocumentTabStrip.SetHeader(content);
     }
 
     /// <summary>
@@ -413,7 +233,7 @@ public sealed partial class DocumentSectionView : UserControl
     /// </summary>
     public void SetTabStripFooter(UIElement? content)
     {
-        FooterPresenter.Content = content;
+        DocumentTabStrip.SetFooter(content);
     }
 
     /// <summary>
@@ -456,24 +276,7 @@ public sealed partial class DocumentSectionView : UserControl
     {
         double edges = SectionChromeCalculator.EdgeThickness * 2;
 
-        return new Size(edges, MeasureTabStripHeight() + edges);
-    }
-
-    // The band the TabView template lays the tab strip out in, which is the row above the document content, so
-    // its height is the whole vertical chrome. It is fixed at the authored height rather than measured, so a
-    // section's minimum does not move as its tabs open and close.
-    private double MeasureTabStripHeight()
-    {
-        _tabStripContainer ??= VisualTree.FindDescendantByName(TabView, "TabContainerGrid") as FrameworkElement;
-
-        // Presentation mode collapses the band, so the section really does have no strip above its document.
-        if (_tabStripContainer is not null &&
-            _tabStripContainer.Visibility == Visibility.Collapsed)
-        {
-            return 0;
-        }
-
-        return WorkspaceConstants.SectionTabStripHeight;
+        return new Size(edges, DocumentTabStrip.VisibleBandHeight + edges);
     }
 
     /// <summary>
@@ -591,8 +394,6 @@ public sealed partial class DocumentSectionView : UserControl
         tab.IsAreaSplit = IsAreaSplit;
         tab.CanSplitArea = CanSplitArea;
         tab.ContextMenuActionRequested += OnDocumentTabContextMenuAction;
-        tab.DragStarted += OnDocumentTabDragStarted;
-        AddTabPointerPressedHandler(tab);
         TabView.TabItems.Add(tab);
         UpdateEmptySectionVisuals();
     }
@@ -612,16 +413,7 @@ public sealed partial class DocumentSectionView : UserControl
         }
 
         tab.ContextMenuActionRequested -= OnDocumentTabContextMenuAction;
-        tab.DragStarted -= OnDocumentTabDragStarted;
-        RemoveTabPointerPressedHandler(tab);
-        TabView.TabItems.Remove(tab);
-        DetachStrandedContainer(tab);
-
-        // A removed tab is never restored, and holding it would keep a closed document alive.
-        if (ReferenceEquals(_selectedTab, tab))
-        {
-            _selectedTab = null;
-        }
+        DocumentTabStrip.RemoveTab(tab);
 
         UpdateEmptySectionVisuals();
     }
@@ -643,187 +435,11 @@ public sealed partial class DocumentSectionView : UserControl
     }
 
     /// <summary>
-    /// Works around an Uno Skia TabView bug where TabItems.Remove can leave the removed tab's
-    /// container parented to this strip's ItemsStackPanel (seen when it was the selected or last
-    /// tab). While that stale parent stands, adding the tab to another section's strip fails to
-    /// render its header: the tab is in the model and its content shows, but the header stays blank
-    /// until some later reorder rebuilds the panel. Detaching the container here lets the
-    /// destination strip take ownership. The packaged Windows head runs the real WinUI TabView and
-    /// does not hit this.
-    /// </summary>
-    // UNO-BUG: TabItems.Remove strands the removed tab's container.
-    private void DetachStrandedContainer(DocumentTab tab)
-    {
-        var tabListView = VisualTree.FindDescendant<ListViewBase>(TabView);
-        var itemsPanel = tabListView?.ItemsPanelRoot;
-        if (itemsPanel is not null &&
-            itemsPanel.Children.Contains(tab))
-        {
-            itemsPanel.Children.Remove(tab);
-        }
-    }
-
-    /// <summary>
     /// Selects a document tab in this section.
     /// </summary>
     public void SelectTab(DocumentTab tab)
     {
-        SetSelectedItemWithLayoutRetry(tab, () => ScrollTabIntoView(tab));
-    }
-
-    /// <summary>
-    /// Assigns TabView.SelectedItem, retrying once on the next dispatcher cycle if Uno throws a layout
-    /// exception. On the macOS Skia head, selecting a tab in a strip that has not been measured yet makes
-    /// Uno throw a layout exception for the selected tab's corner render (an invalid NaN/Infinity frame
-    /// size) while bringing the tab into view, which would otherwise crash the workspace. The common path
-    /// stays synchronous so tab selection order during restore is preserved.
-    /// </summary>
-    private void SetSelectedItemWithLayoutRetry(object? selectedItem, Action onSelected)
-    {
-        try
-        {
-            TabView.SelectedItem = selectedItem;
-        }
-        catch (InvalidOperationException) when (_platformInfo.RequiresMacOSLayoutRetry)
-        {
-            DispatcherQueue.TryEnqueue(() =>
-            {
-                TabView.SelectedItem = selectedItem;
-                onSelected();
-            });
-            return;
-        }
-
-        onSelected();
-    }
-
-    /// <summary>
-    /// Restores the invariant that the selected tab is visible. Called after anything that changes the
-    /// strip's geometry, and a no-op while the selected tab is already fully in view.
-    /// </summary>
-    private void RevealSelectedTab()
-    {
-        if (TabView.SelectedItem is DocumentTab selectedTab)
-        {
-            ScrollTabIntoView(selectedTab);
-        }
-    }
-
-    /// <summary>
-    /// Scrolls the tab strip so the given tab is visible when it lies outside the visible area. The strip's
-    /// scroll offset is driven directly, because neither head reveals a tab that is selected in the same pass
-    /// that adds it, and the strip's own overflow arrows are hidden.
-    /// </summary>
-    private void ScrollTabIntoView(DocumentTab tab)
-    {
-        // Defer to the next dispatcher cycle so the tab strip has completed layout. A tab that was just
-        // added, or a selection that changes the strip's extent, has no scroll geometry to act on until
-        // the layout pass runs, so measuring synchronously here would read stale bounds.
-        DispatcherQueue.TryEnqueue(() =>
-        {
-            if (_isShuttingDown)
-            {
-                return;
-            }
-
-            var tabListView = VisualTree.FindDescendant<ListViewBase>(TabView);
-            var scrollViewer = GetTabStripScrollViewer();
-            if (tabListView is null ||
-                scrollViewer is null)
-            {
-                return;
-            }
-
-            // Settle the strip before measuring it, so the offset and the bounds read below belong to the
-            // same arrangement.
-            tabListView.UpdateLayout();
-
-            if (tabListView.ContainerFromItem(tab) is FrameworkElement container &&
-                container.ActualWidth > 0)
-            {
-                ScrollToRevealTab(container, scrollViewer);
-
-                return;
-            }
-
-            // A virtualized tab has no bounds to measure, and the strip's own reveal is the only thing that
-            // will realize it. Where it lands is then corrected on the following cycle, once it has settled.
-            tabListView.ScrollIntoView(tab, ScrollIntoViewAlignment.Default);
-
-            _ = DispatcherQueue.TryEnqueue(() =>
-            {
-                if (_isShuttingDown)
-                {
-                    return;
-                }
-
-                if (tabListView.ContainerFromItem(tab) is FrameworkElement realized &&
-                    realized.ActualWidth > 0)
-                {
-                    ScrollToRevealTab(realized, scrollViewer);
-                }
-            });
-        });
-    }
-
-    /// <summary>
-    /// Scrolls the strip by the least it takes to bring a tab fully into view, and leaves the strip alone
-    /// while the tab is already there. A tab whose leading edge sits before the viewport is clipped off that
-    /// edge, and one whose trailing edge sits past the viewport width is clipped off the other, so revealing
-    /// by the minimum that clears the offending edge keeps the rest of the strip where the user left it.
-    /// </summary>
-    private static void ScrollToRevealTab(FrameworkElement container, ScrollViewer scrollViewer)
-    {
-        double viewportWidth = scrollViewer.ViewportWidth;
-        if (viewportWidth <= 0)
-        {
-            // The strip has not been arranged, so there is no viewport to measure a tab against.
-            return;
-        }
-
-        double tabViewportX = TabViewportLeft(container, scrollViewer);
-        double tabWidth = container.ActualWidth;
-        double currentOffset = scrollViewer.HorizontalOffset;
-
-        double targetOffset;
-        if (tabWidth >= viewportWidth)
-        {
-            // A tab too wide for the strip cannot be brought fully into view, so its leading edge is the one
-            // to show. The name starts there, while the trailing edge carries only the close button.
-            targetOffset = currentOffset + tabViewportX;
-        }
-        else if (tabViewportX < 0)
-        {
-            targetOffset = currentOffset + tabViewportX;
-        }
-        else if (tabViewportX + tabWidth > viewportWidth)
-        {
-            targetOffset = currentOffset + (tabViewportX + tabWidth - viewportWidth);
-        }
-        else
-        {
-            return;
-        }
-
-        double clampedOffset = Math.Clamp(targetOffset, 0, scrollViewer.ScrollableWidth);
-
-        // Transformed coordinates carry a fraction, so a tab already sitting where it is wanted still measures
-        // a hair off. Scrolling by less than a pixel would move nothing.
-        if (Math.Abs(clampedOffset - currentOffset) < RevealAlignmentTolerance)
-        {
-            return;
-        }
-
-        scrollViewer.ChangeView(clampedOffset, null, null, disableAnimation: true);
-    }
-
-    /// <summary>
-    /// The x offset of a tab container relative to the tab strip's scroll viewport.
-    /// </summary>
-    private static double TabViewportLeft(FrameworkElement container, ScrollViewer scrollViewer)
-    {
-        var origin = new Windows.Foundation.Point(0, 0);
-        return container.TransformToVisual(scrollViewer).TransformPoint(origin).X;
+        DocumentTabStrip.SelectTab(tab);
     }
 
     /// <summary>
@@ -878,7 +494,7 @@ public sealed partial class DocumentSectionView : UserControl
     {
         var selectedItem = TabView.SelectedItem;
         TabView.SelectedItem = null;
-        SetSelectedItemWithLayoutRetry(selectedItem, () => { });
+        DocumentTabStrip.SelectTab(selectedItem);
     }
 
     /// <summary>
@@ -886,27 +502,7 @@ public sealed partial class DocumentSectionView : UserControl
     /// </summary>
     public void UpdateTabStripVisibility(bool showTabStrip)
     {
-        if (TabView.IsLoaded)
-        {
-            try
-            {
-                var tabListView = VisualTree.FindDescendant<ListView>(TabView);
-                if (tabListView != null)
-                {
-                    tabListView.Visibility = showTabStrip ? Visibility.Visible : Visibility.Collapsed;
-                }
-
-                var tabStripContainer = VisualTree.FindDescendantByName(TabView, "TabContainerGrid");
-                if (tabStripContainer is FrameworkElement container)
-                {
-                    container.Visibility = showTabStrip ? Visibility.Visible : Visibility.Collapsed;
-                }
-            }
-            catch
-            {
-                // Silently handle any template traversal errors
-            }
-        }
+        DocumentTabStrip.SetBandVisible(showTabStrip);
     }
 
     /// <summary>
@@ -915,6 +511,7 @@ public sealed partial class DocumentSectionView : UserControl
     public void Shutdown()
     {
         _isShuttingDown = true;
+        DocumentTabStrip.Shutdown();
 
         foreach (var tabItem in TabView.TabItems)
         {
@@ -924,8 +521,6 @@ public sealed partial class DocumentSectionView : UserControl
             }
 
             documentTab.ContextMenuActionRequested -= OnDocumentTabContextMenuAction;
-            documentTab.DragStarted -= OnDocumentTabDragStarted;
-            RemoveTabPointerPressedHandler(documentTab);
 
             var documentView = documentTab.Content as IDocumentView;
             if (documentView != null)
@@ -1030,207 +625,6 @@ public sealed partial class DocumentSectionView : UserControl
 
         ToolTipService.SetToolTip(TabView, null);
         UpdateEmptySectionVisuals();
-
-        // Removing tabs can leave the strip scrolled past the end of its shrunken content, clipping
-        // tabs at the leading edge while showing a blank gap at the trailing edge. Re-clamp once
-        // layout has settled.
-        _ = DispatcherQueue.TryEnqueue(ClampTabStripScrollOffset);
-
-        // Adding or removing a tab changes the width the strip lays its tabs out in, which can leave the
-        // selected tab clipped. Enqueued after the clamp so the clamp cannot undo the reveal.
-        _ = DispatcherQueue.TryEnqueue(RevealSelectedTab);
-
-        // Opening or closing a tab changes how much there is to scroll, and the indicator is attached late
-        // enough that a section's first tabs can arrive before it exists. A section created with its first
-        // document has no tab list to align when it loads either.
-        _ = DispatcherQueue.TryEnqueue(() =>
-        {
-            DisableTabVirtualization();
-            AlignTabListToBandTop();
-            AttachTabStripScrollHandlers();
-            UpdateTabStripOverlays();
-        });
-    }
-
-
-    private void ClampTabStripScrollOffset()
-    {
-        var scrollViewer = GetTabStripScrollViewer();
-        if (scrollViewer is not null &&
-            scrollViewer.HorizontalOffset > scrollViewer.ScrollableWidth)
-        {
-            scrollViewer.ChangeView(scrollViewer.ScrollableWidth, null, null, disableAnimation: true);
-        }
-    }
-
-    /// <summary>
-    /// Fixes the tab strip band at its authored height, so what a tab happens to contain cannot set the height
-    /// of the strip. Left to itself the band takes the tallest tab, which puts one file type's icon in charge
-    /// of the strip's height and of the section minimum composed from it.
-    /// </summary>
-    private void FixTabStripBandHeight()
-    {
-        if (VisualTree.FindDescendantByName(TabView, "TabContainerGrid") is not FrameworkElement band)
-        {
-            return;
-        }
-
-        band.Height = WorkspaceConstants.SectionTabStripHeight;
-    }
-
-    /// <summary>
-    /// Holds the tab list against the top of the strip band. The list takes the height of the tabs alone, so
-    /// left to itself it is centred in the band, which splits the gap the tabs hold above themselves and drops
-    /// every tab below the active document indicator drawn in that gap.
-    /// </summary>
-    private void AlignTabListToBandTop()
-    {
-        var tabList = VisualTree.FindDescendant<ListViewBase>(TabView);
-        if (tabList?.ItemsPanelRoot is null)
-        {
-            // The tab list's template has not been applied yet, so try again on the next cycle.
-            return;
-        }
-
-        tabList.ItemsPanelRoot.VerticalAlignment = VerticalAlignment.Top;
-    }
-
-    /// <summary>
-    /// Hides the tab strip's overflow scroll arrows and holds them hidden, freeing the 43px each one takes from
-    /// a strip that is short of room precisely when they appear. The strip still scrolls by wheel, and the
-    /// active tab is revealed on selection.
-    /// </summary>
-    private void HideTabStripScrollButtons()
-    {
-        if (_scrollButtonsHidden)
-        {
-            return;
-        }
-
-        var tabListView = VisualTree.FindDescendant<ListViewBase>(TabView);
-        if (tabListView is null)
-        {
-            // The tab list's template has not been applied yet, so try again on the next cycle.
-            return;
-        }
-
-        foreach (var containerName in TabStripScrollButtonContainerNames)
-        {
-            if (VisualTree.FindDescendantByName(tabListView, containerName) is not FrameworkElement container)
-            {
-                continue;
-            }
-
-            container.Visibility = Visibility.Collapsed;
-
-            // The strip shows the arrows again every time it starts overflowing, so the collapse has to be
-            // held rather than applied once.
-            container.RegisterPropertyChangedCallback(VisibilityProperty, HoldScrollButtonCollapsed);
-        }
-
-        _scrollButtonsHidden = true;
-    }
-
-    // Wires the parts that need the strip's own ScrollViewer, which only exists once the tab list's template
-    // has been applied.
-    private void AttachTabStripScrollHandlers()
-    {
-        var scrollViewer = GetTabStripScrollViewer();
-        if (scrollViewer is null)
-        {
-            return;
-        }
-
-        AttachTabStripScrollIndicator(scrollViewer);
-        AttachTabStripWheelHandler(scrollViewer);
-
-        // The strip scrolls a tab into view whenever that tab takes focus. Revealing is driven from the
-        // selection, so that is turned off.
-        scrollViewer.BringIntoViewOnFocusChange = false;
-    }
-
-    private void OnTabViewSelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (_isShuttingDown)
-        {
-            return;
-        }
-
-        if (TabView.SelectedItem is DocumentTab selectedTab)
-        {
-            _selectedTab = selectedTab;
-        }
-
-        RevealSelectedTab();
-    }
-
-    private void OnTabStripPresenterSizeChanged(object sender, SizeChangedEventArgs e)
-    {
-        if (_isShuttingDown)
-        {
-            return;
-        }
-
-        // The strip is still mid-arrange while the size change is raised, so the tabs only settle on the
-        // following cycle.
-        _ = DispatcherQueue.TryEnqueue(UpdateTabStripOverlays);
-    }
-
-    private void AttachTabStripScrollIndicator(ScrollViewer scrollViewer)
-    {
-        if (_scrollIndicatorAttached)
-        {
-            return;
-        }
-
-        scrollViewer.ViewChanged += OnTabStripViewChanged;
-        ScrollIndicator.ScrollRequested += OnScrollIndicatorScrollRequested;
-        _scrollIndicatorAttached = true;
-
-        UpdateTabStripOverlays();
-    }
-
-    // UNO-BUG: the tab strip's ScrollViewer scrolls horizontal wheel input the wrong way on macOS.
-    /// <summary>
-    /// Takes over wheel scrolling of the tab strip on macOS. Registered inside the strip's ScrollViewer, on
-    /// the presenter the wheel passes through first, so the event is handled before the ScrollViewer's own
-    /// wheel handling sees it.
-    /// </summary>
-    private void AttachTabStripWheelHandler(ScrollViewer scrollViewer)
-    {
-        if (!_platformInfo.RequiresMacOSTabWheelScroll ||
-            _tabStripWheelHandlerAttached)
-        {
-            return;
-        }
-
-        // The presenter fills the strip's viewport, so every wheel event over the strip bubbles through it.
-        var scrollPresenter = VisualTree.FindDescendant<ScrollContentPresenter>(scrollViewer);
-        if (scrollPresenter is null)
-        {
-            return;
-        }
-
-        scrollPresenter.AddHandler(PointerWheelChangedEvent, _tabStripWheelHandler, handledEventsToo: true);
-        _tabStripWheelHandlerAttached = true;
-    }
-
-    private void OnTabStripViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
-    {
-        UpdateTabStripOverlays();
-    }
-
-    private void OnScrollIndicatorScrollRequested(double offset)
-    {
-        var scrollViewer = GetTabStripScrollViewer();
-        scrollViewer?.ChangeView(offset, null, null, disableAnimation: true);
-    }
-
-    // Both overlays are placed from the strip's geometry, so both are refreshed together.
-    private void UpdateTabStripOverlays()
-    {
-        UpdateTabStripScrollIndicator();
-        UpdateActiveDocumentIndicator();
     }
 
     /// <summary>
@@ -1254,21 +648,16 @@ public sealed partial class DocumentSectionView : UserControl
             }
         }
 
-        var scrollViewer = GetTabStripScrollViewer();
-        if (activeTab is null ||
-            activeTab.ActualWidth <= 0 ||
-            scrollViewer is null ||
-            scrollViewer.ActualWidth <= 0 ||
-            MeasureTabStripHeight() <= 0)
+        var stripBounds = DocumentTabStrip.GetStripBounds(RootGrid);
+        if (activeTab is null
+            || activeTab.ActualWidth <= 0
+            || stripBounds.IsEmpty
+            || DocumentTabStrip.VisibleBandHeight <= 0)
         {
             ActiveDocumentIndicator.Visibility = Visibility.Collapsed;
 
             return;
         }
-
-        var stripBounds = scrollViewer
-            .TransformToVisual(RootGrid)
-            .TransformBounds(new Rect(0, 0, scrollViewer.ActualWidth, scrollViewer.ActualHeight));
 
         var tabBounds = activeTab
             .TransformToVisual(RootGrid)
@@ -1285,7 +674,7 @@ public sealed partial class DocumentSectionView : UserControl
         }
 
         double indicatorTop = stripBounds.Top
-            + DocumentTab.StripTopGap
+            + TabStripView.TabTopGap
             - ActiveDocumentIndicator.Height
             - ActiveDocumentIndicatorGapToTab;
 
@@ -1294,133 +683,6 @@ public sealed partial class DocumentSectionView : UserControl
         ActiveDocumentIndicator.Margin = new Thickness(left, indicatorTop, 0, 0);
 
         FocusedDocumentIndicator.Visibility = activeTab.IsFocusedActiveDocument ? Visibility.Visible : Visibility.Collapsed;
-    }
-
-    /// <summary>
-    /// Places the scroll indicator inside the tab strip and hands it the strip's geometry.
-    /// </summary>
-    private void UpdateTabStripScrollIndicator()
-    {
-        if (_isShuttingDown)
-        {
-            return;
-        }
-
-        // A collapsed band means the section draws no strip, so there is nowhere for the indicator to sit.
-        double stripHeight = MeasureTabStripHeight();
-        var scrollViewer = GetTabStripScrollViewer();
-        if (stripHeight <= 0 ||
-            scrollViewer is null ||
-            scrollViewer.ActualWidth <= 0)
-        {
-            ScrollIndicator.Visibility = Visibility.Collapsed;
-
-            return;
-        }
-
-        // Where the tabs start across the band depends on the toolbar in the strip header, so the leading
-        // edge is the one part of the placement that has to be measured.
-        var stripBounds = scrollViewer
-            .TransformToVisual(RootGrid)
-            .TransformBounds(new Rect(0, 0, scrollViewer.ActualWidth, scrollViewer.ActualHeight));
-
-        // The pixel the bar keeps below itself clears the macOS web view, which clips a bar flush with the
-        // band's bottom edge.
-        double indicatorTop = stripBounds.Top + stripHeight - ScrollIndicator.Height - 1;
-
-        ScrollIndicator.Width = stripBounds.Width;
-        ScrollIndicator.Margin = new Thickness(stripBounds.Left, indicatorTop, 0, 0);
-
-        ScrollIndicator.Update(
-            scrollViewer.ExtentWidth,
-            scrollViewer.ViewportWidth,
-            scrollViewer.HorizontalOffset);
-    }
-
-    private static void HoldScrollButtonCollapsed(DependencyObject sender, DependencyProperty property)
-    {
-        if (sender is FrameworkElement container &&
-            container.Visibility != Visibility.Collapsed)
-        {
-            container.Visibility = Visibility.Collapsed;
-        }
-    }
-
-    // UNO-BUG: IsAddTabButtonVisible=False collapses the add button's presenter but leaves the button itself
-    // with its declared 32px width, which the strip's width calculation still subtracts from the space it
-    // gives the tabs. Observed in 6.6.166; not verified against the packaged Windows head.
-    /// <summary>
-    /// Clears the width the collapsed add button reserves in the tab strip, so the tabs get the whole strip
-    /// rather than stopping 32px short of the trailing edge.
-    /// </summary>
-    private void ClearAddTabButtonWidthReservation()
-    {
-        if (TabView.IsAddTabButtonVisible)
-        {
-            // A button the user can actually reach keeps its width.
-            return;
-        }
-
-        if (VisualTree.FindDescendantByName(TabView, "AddButton") is not FrameworkElement addButton)
-        {
-            return;
-        }
-
-        // Collapsing the button is what zeroes the reservation: the strip measures what the button wants, and
-        // a collapsed element wants nothing.
-        addButton.Visibility = Visibility.Collapsed;
-    }
-
-    private ScrollViewer? GetTabStripScrollViewer()
-    {
-        var tabListView = VisualTree.FindDescendant<ListViewBase>(TabView);
-
-        return tabListView is null ? null : VisualTree.FindDescendant<ScrollViewer>(tabListView);
-    }
-
-    /// <summary>
-    /// Scrolls the overflowing tab strip horizontally in response to the wheel, covering both the vertical
-    /// wheel of a mouse and the horizontal scrolling of a trackpad. macOS only: the Uno TabView does not
-    /// translate vertical wheel input into horizontal strip scrolling the way the packaged Windows TabView
-    /// does, and it scrolls horizontal input backwards, so the strip's scroll offset is driven directly.
-    /// </summary>
-    private void OnTabStripPointerWheelChanged(object sender, PointerRoutedEventArgs e)
-    {
-        if (_isShuttingDown)
-        {
-            return;
-        }
-
-        var scrollViewer = GetTabStripScrollViewer();
-        if (scrollViewer is null ||
-            scrollViewer.ScrollableWidth <= 0)
-        {
-            return;
-        }
-
-        var pointerPoint = e.GetCurrentPoint(scrollViewer);
-        int wheelDelta = pointerPoint.Properties.MouseWheelDelta;
-        if (wheelDelta == 0)
-        {
-            return;
-        }
-
-        bool isHorizontalWheel = pointerPoint.Properties.IsHorizontalMouseWheel;
-        bool isOnGestureAxis = _wheelGestureAxisTracker.IsOnGestureAxis(
-            pointerPoint.Timestamp,
-            isHorizontalWheel,
-            wheelDelta);
-        if (isOnGestureAxis)
-        {
-            // A forward wheel notch (positive delta) reveals earlier tabs, matching the packaged Windows
-            // TabView. macOS reports a trackpad swipe towards the earlier tabs with that same sign, so one
-            // rule serves the horizontal wheel as well as the vertical one.
-            ScrollTabStripBy(-wheelDelta);
-        }
-
-        // Handled even for an event left off the gesture's axis, so that it stops short of the ScrollViewer,
-        // which would otherwise scroll horizontal input the other way and undo this.
-        e.Handled = true;
     }
 
     private void TabView_CloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args)
@@ -1438,94 +700,16 @@ public sealed partial class DocumentSectionView : UserControl
         ContextMenuActionRequested?.Invoke(this, tab, action);
     }
 
-    private void OnDocumentTabDragStarted(DocumentTab tab)
-    {
-        // Set the static drag state when a tab starts being dragged
-        _draggedTab = tab;
-        _dragSourceSectionView = this;
-    }
-
     private void UpdateEmptySectionVisuals()
     {
         // Keep the TabView visible even when the section has no tabs, so its tab strip footer (which
         // hosts the split-editor toolbar on the rightmost section) stays accessible. The empty
         // placeholder renders behind the empty strip.
         EmptyPlaceholder.Visibility = TabView.TabItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-
-        UpdateTabStripBorderLines();
-    }
-
-    /// <summary>
-    /// Hides the bottom border of the tab strip while the section has no tabs, so an empty section reads as
-    /// one empty rectangle instead of showing a line that divides nothing.
-    /// </summary>
-    private void UpdateTabStripBorderLines()
-    {
-        var tabStripContainer = VisualTree.FindDescendantByName(TabView, "TabContainerGrid");
-        if (tabStripContainer is null)
-        {
-            return;
-        }
-
-        // The stock TabView spreads this border over four elements: a pair in its own template flanking the
-        // tab list, and a 4px pair inside the list's items presenter. Opacity rather than Visibility, which
-        // the template drives on these same elements from its own visual states.
-        double borderOpacity = 1.0;
-        if (TabView.TabItems.Count == 0)
-        {
-            borderOpacity = 0.0;
-        }
-
-        foreach (var borderLine in VisualTree.FindDescendantsByName(tabStripContainer, "LeftBottomBorderLine"))
-        {
-            borderLine.Opacity = borderOpacity;
-        }
-
-        foreach (var borderLine in VisualTree.FindDescendantsByName(tabStripContainer, "RightBottomBorderLine"))
-        {
-            borderLine.Opacity = borderOpacity;
-        }
-    }
-
-    private void TabView_TabDroppedOutside(TabView sender, TabViewTabDroppedOutsideEventArgs args)
-    {
-        if (_isShuttingDown)
-        {
-            return;
-        }
-
-        var tab = args.Tab as DocumentTab;
-        if (tab is null)
-        {
-            return;
-        }
-
-        // The tab was dropped outside the TabView but the drag is now complete.
-        // Check if another section handled the drop (via DragOver/Drop during the drag).
-        // If not, the drag state will still be set and we should clear it.
-
-        // The DragOver/Drop events on other sections fire DURING the drag (before TabDroppedOutside),
-        // so if a drop was handled, _draggedTab will already be cleared.
-
-        // If we get here and no drop occurred, just clear the state.
-        if (_draggedTab == tab)
-        {
-            ClearDragState();
-        }
     }
 
     private void RootGrid_DragOver(object sender, DragEventArgs e)
     {
-        // Accept drags from other sections (for dropping on empty sections or anywhere in the section)
-        if (_draggedTab != null && _dragSourceSectionView != null && _dragSourceSectionView != this)
-        {
-            e.AcceptedOperation = DataPackageOperation.Move;
-            e.DragUIOverride.IsCaptionVisible = false;
-            e.DragUIOverride.IsGlyphVisible = false;
-            e.Handled = true;
-            return;
-        }
-
         if (IsResourceDragInFlight(e))
         {
             // Match the source's requested operation (Move) for compatibility
@@ -1541,73 +725,6 @@ public sealed partial class DocumentSectionView : UserControl
     {
         if (_isShuttingDown)
         {
-            return;
-        }
-
-        // Handle drop from other sections
-        if (_draggedTab != null && _dragSourceSectionView != null && _dragSourceSectionView != this)
-        {
-            var tab = _draggedTab;
-
-            // Clear the drag state
-            ClearDragState();
-
-            // Raise event to notify container to move the tab
-            TabDroppedInside?.Invoke(this, tab);
-            e.Handled = true;
-            return;
-        }
-
-        var draggedResources = TakeResourceDragPayload(e);
-        if (draggedResources != null)
-        {
-            int insertionSlot = GetInsertionSlot(e.GetPosition(this).X, this);
-            FilesDropped?.Invoke(this, draggedResources, insertionSlot);
-            e.Handled = true;
-        }
-    }
-
-    private void TabView_DragOver(object sender, DragEventArgs e)
-    {
-        // Accept drags from other sections
-        if (_draggedTab != null && _dragSourceSectionView != null && _dragSourceSectionView != this)
-        {
-            e.AcceptedOperation = DataPackageOperation.Move;
-            e.DragUIOverride.IsCaptionVisible = false;
-            e.DragUIOverride.IsGlyphVisible = false;
-            e.Handled = true;
-            return;
-        }
-
-        if (IsResourceDragInFlight(e))
-        {
-            // Match the source's requested operation (Move) for compatibility
-            e.AcceptedOperation = DataPackageOperation.Move;
-            e.DragUIOverride.Caption = _stringLocalizer.GetString("ResourceTree_Open");
-            e.DragUIOverride.IsCaptionVisible = true;
-            e.DragUIOverride.IsGlyphVisible = false;
-            e.Handled = true;
-        }
-    }
-
-    private void TabView_Drop(object sender, DragEventArgs e)
-    {
-        if (_isShuttingDown)
-        {
-            return;
-        }
-
-        // Handle drop from other sections
-        if (_draggedTab != null && _dragSourceSectionView != null && _dragSourceSectionView != this)
-        {
-            var tab = _draggedTab;
-
-            // Clear the drag state
-            ClearDragState();
-
-            // Raise event to notify container to move the tab
-            TabDroppedInside?.Invoke(this, tab);
-            e.Handled = true;
             return;
         }
 
@@ -1649,15 +766,6 @@ public sealed partial class DocumentSectionView : UserControl
     }
 
     /// <summary>
-    /// Clears any pending drag state. Should be called after a drag operation completes.
-    /// </summary>
-    public static void ClearDragState()
-    {
-        _draggedTab = null;
-        _dragSourceSectionView = null;
-    }
-
-    /// <summary>
     /// Inserts a tab at the specified index.
     /// </summary>
     public void InsertTab(DocumentTab tab, int index)
@@ -1666,8 +774,6 @@ public sealed partial class DocumentSectionView : UserControl
         tab.IsAreaSplit = IsAreaSplit;
         tab.CanSplitArea = CanSplitArea;
         tab.ContextMenuActionRequested += OnDocumentTabContextMenuAction;
-        tab.DragStarted += OnDocumentTabDragStarted;
-        AddTabPointerPressedHandler(tab);
 
         // An index outside the row appends, which is what DocumentAddress.AppendTabOrder relies on.
         if (index < 0 || index >= TabView.TabItems.Count)

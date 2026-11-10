@@ -31,7 +31,7 @@ public sealed partial class ResourceTree : IResourceDropTarget
     /// </summary>
     private void ConfigurePointerDrag()
     {
-        if (!_platformInfo.UsesPointerDrivenTabDrag)
+        if (!_platformInfo.UsesPointerDrivenResourceDrag)
         {
             return;
         }

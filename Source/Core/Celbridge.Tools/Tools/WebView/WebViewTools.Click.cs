@@ -10,7 +10,7 @@ public partial class WebViewTools
     /// <summary>Dispatch a synthetic click on the first element matching a CSS selector.</summary>
     [McpServerTool(Name = "webview_click")]
     [ToolAlias("webview.click")]
-    [RelatedGuides("resource_keys", "webview_documents", "webview_devtools")]
+    [RelatedGuides("resource_keys", "browser_documents", "webview_devtools")]
     public async partial Task<CallToolResult> Click(string resource, string selector, string frame = "")
     {
         var webViewService = GetRequiredService<IWebViewService>();

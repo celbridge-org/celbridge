@@ -1,4 +1,3 @@
-using Celbridge.Platform;
 using Windows.Foundation;
 
 namespace Celbridge.Documents.Views;
@@ -9,9 +8,8 @@ namespace Celbridge.Documents.Views;
 public record ResourceDropLocation(DocumentSectionView SectionView, int InsertionSlot);
 
 /// <summary>
-/// Pointer-driven tab drag support for DocumentSectionContainer, used on heads where the built-in
-/// TabView drag-and-drop is disabled. Hosts the TabDragController and commits completed drags. Kept
-/// in its own partial so the desktop-only drag surface stays discoverable.
+/// Drag support for DocumentSectionContainer: the tab drag, the drop preview, and the commit of a
+/// completed tab drag. A tab drag and a resource drag from the Explorer share the drop preview.
 /// </summary>
 public sealed partial class DocumentSectionContainer
 {
@@ -20,28 +18,20 @@ public sealed partial class DocumentSectionContainer
     private FrameworkElement? _dragInputRoot;
 
     /// <summary>
-    /// Enables the drag overlay used on heads where the built-in TabView drag-and-drop is disabled:
-    /// the pointer-driven tab drag controller and the shared drop-target preview (the insertion divider
-    /// and section highlight, used by tab drags and by resource drags from the Explorer). The input root
-    /// is the element pointer events are tracked on during a drag, spanning every section. No-op on
-    /// heads that keep the built-in drag-and-drop.
+    /// Enables the drag overlay: the tab drag, and the shared drop-target preview of an insertion
+    /// divider and a section highlight. The input root spans every section, and a resource drop's
+    /// window point is mapped through it.
     /// </summary>
     public void InitializeTabDrag(Canvas dragOverlay, FrameworkElement inputRoot)
     {
-        var platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
-        if (!platformInfo.UsesPointerDrivenTabDrag)
-        {
-            return;
-        }
-
         _dragInputRoot = inputRoot;
         _dropPreview = new SectionDragPreview(this, dragOverlay);
-        _tabDragController = new TabDragController(this, inputRoot, dragOverlay, _dropPreview);
+        _tabDragController = new TabDragController(this, dragOverlay, _dropPreview);
     }
 
     /// <summary>
     /// Resolves the section and insertion slot a resource drop at the given window point would land in,
-    /// or null when the point is over no section or the drag overlay is not active on this head.
+    /// or null for a point outside every section and for a drag overlay still unset.
     /// </summary>
     public ResourceDropLocation? GetResourceDropLocation(Point windowPoint)
     {
@@ -132,8 +122,8 @@ public sealed partial class DocumentSectionContainer
         }
     }
 
-    private void OnSectionTabPointerPressed(DocumentSectionView sectionView, DocumentTab tab, PointerRoutedEventArgs e)
+    private void OnSectionTabPointerPressed(DocumentTab tab, PointerRoutedEventArgs e)
     {
-        _tabDragController?.OnTabPressed(sectionView, tab, e);
+        _tabDragController?.OnTabPressed(tab, e);
     }
 }

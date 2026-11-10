@@ -27,6 +27,11 @@ public sealed class MacOSWebView : SkiaWebView
     // milliseconds, so this only has to outlast a page busy with its own work.
     private const int WakeTimeoutSeconds = 10;
 
+    // Evaluates to the page's icon link, or else the site's default icon, or else an empty string for a blank page.
+    private const string FaviconAddressScript =
+        "(document.querySelector('link[rel~=\"icon\"]') || {}).href"
+        + " || (location.protocol.startsWith('http') ? location.origin + '/favicon.ico' : '')";
+
     // The OS and AppleWebKit build tokens of the macOS WKWebView UA. Apple froze these tokens to resist
     // fingerprinting, so they are safe to hardcode.
     private const string UserAgentPrefix =
@@ -36,15 +41,25 @@ public sealed class MacOSWebView : SkiaWebView
     // UA still passes. The real version is preferred whenever available.
     private const string FallbackSafariVersion = "18.0";
 
+    // A tab draws an icon at 16 points, so twice that keeps an icon drawn from an SVG file sharp on a Retina display.
+    private const int RenderedFaviconPixels = 32;
+
     // The installed Safari's version, read by the first view that sets its UA. Used only on the main thread.
     private static string? _safariVersion;
 
-    // Every view whose native view has resolved, keyed by its native handle. WebKit and AppKit callbacks carry only
-    // the native view, and this map finds the view from it. A pinned native view stays allocated for the life of the
+    // Each view with a resolved native view, keyed by the native handle. WebKit and AppKit callbacks pass only the
+    // native view, and this map finds the view from the native view. A pinned native view stays allocated for the life of the
     // process, so its address always belongs to the same view. Used only on the main thread.
     private static readonly Dictionary<IntPtr, MacOSWebView> ViewsByNativeHandle = new();
 
     private readonly SkiaWebViewPlatform _platform;
+
+    // The reader keeps the address and the image of this view's last icon. When a later page names the same icon
+    // address, the view does not make a request.
+    private readonly WebViewFaviconReader _faviconReader = new();
+
+    // The User-Agent the page sends. The favicon fetch sends the same one. Empty for a view left on WebKit's default.
+    private string _userAgent = string.Empty;
 
     // The native WKWebView, held from the moment it resolves. A held native view is pinned.
     private IntPtr _nativeHandle;
@@ -81,6 +96,8 @@ public sealed class MacOSWebView : SkiaWebView
         }
 
         MacOSHostedViewOpacityRepair.RepairOnAttach(control);
+
+        NavigationCompleted += MacOSWebView_NavigationCompleted;
 
         _ = KeepPageAwakeAsync(_keepAliveCancellation.Token);
     }
@@ -122,6 +139,36 @@ public sealed class MacOSWebView : SkiaWebView
         nativeHandle = _nativeHandle;
         detail = string.Empty;
         return true;
+    }
+
+    /// <summary>
+    /// Waits for the control to enter the visual tree, for at most the timeout.
+    /// </summary>
+    internal async Task WaitForLoadedAsync(TimeSpan timeout, TimeProvider? timeProvider = null)
+    {
+        var control = Control;
+        if (control is null
+            || control.IsLoaded)
+        {
+            return;
+        }
+
+        var loaded = new TaskCompletionSource();
+
+        void OnLoaded(object sender, RoutedEventArgs e)
+        {
+            loaded.TrySetResult();
+        }
+
+        control.Loaded += OnLoaded;
+        try
+        {
+            await Task.WhenAny(loaded.Task, Task.Delay(timeout, timeProvider ?? TimeProvider.System));
+        }
+        finally
+        {
+            control.Loaded -= OnLoaded;
+        }
     }
 
     private void HoldNativeHandle(IntPtr nativeHandle)
@@ -219,8 +266,8 @@ public sealed class MacOSWebView : SkiaWebView
         }
 
         _safariVersion ??= ReadSafariVersion();
-        var userAgent = $"{UserAgentPrefix} Version/{_safariVersion} Safari/605.1.15 {applicationToken}";
-        MacOSWebViewInterop.SetCustomUserAgent(nativeHandle, userAgent);
+        _userAgent = $"{UserAgentPrefix} Version/{_safariVersion} Safari/605.1.15 {applicationToken}";
+        MacOSWebViewInterop.SetCustomUserAgent(nativeHandle, _userAgent);
     }
 
     private string ReadSafariVersion()
@@ -261,6 +308,11 @@ public sealed class MacOSWebView : SkiaWebView
             throw new NotSupportedException(
                 "This page was loaded from an HTML string, which WebKit cannot reload. " +
                 "Close and reopen the document to load it again.");
+        }
+
+        if (clearCache)
+        {
+            _faviconReader.RefreshNextRead();
         }
 
         await base.ReloadPageAsync(clearCache);
@@ -401,6 +453,9 @@ public sealed class MacOSWebView : SkiaWebView
         MacOSWebViewInterop.MakeWebViewFirstResponder(nativeHandle);
     }
 
+    internal override bool IsInWindow => TryGetNativeHandle(out var nativeHandle, out _)
+        && MacOSWebViewInterop.HasWindow(nativeHandle);
+
     // The keyboard goes to the native view inside the control, so this asks macOS whether the native view is the
     // window's first responder. The page's own focus reports cannot be trusted here. Whenever the host moves
     // focus, the native view loses first responder and gets it straight back. The page reports that brief gap as
@@ -462,54 +517,6 @@ public sealed class MacOSWebView : SkiaWebView
         return $"window={window} {describedFrame} pid={processId}";
     }
 
-    // The page encodes its value itself. A value JSON cannot represent then reads as null.
-    protected override async Task<string> EvaluateAsync(string expression)
-    {
-        var encodedResult = await LiveCoreWebView2.ExecuteScriptAsync(BuildPageEncodedScript(expression));
-
-        return DecodePageEncodedResult(encodedResult);
-    }
-
-    /// <summary>
-    /// Wraps an expression so that the page encodes its value as JSON. The script returns that JSON as the
-    /// only string in an array. If the value cannot be encoded, the script throws, and the result reads as
-    /// null, as it does on WebView2.
-    /// </summary>
-    // UNO-BUG: Uno encodes the result with NSJSONSerialization. A value that refers to itself, such as window,
-    // makes NSJSONSerialization recurse until the main thread's stack overflows, and the application hangs. Uno
-    // also escapes the quotes in a returned string but not its backslashes. NSJSONSerialization escapes an array
-    // correctly, so the page's JSON comes back inside an array.
-    internal static string BuildPageEncodedScript(string expression)
-    {
-        // A trailing semicolon is not allowed inside the parentheses. The line breaks stop a trailing line
-        // comment from hiding the closing parentheses.
-        var trimmedExpression = expression.TrimEnd().TrimEnd(';');
-
-        return $"[JSON.stringify((\n{trimmedExpression}\n)) ?? null]";
-    }
-
-    /// <summary>
-    /// Returns the page's JSON, unwrapped from the array it arrives in.
-    /// </summary>
-    internal static string DecodePageEncodedResult(string? result)
-    {
-        if (string.IsNullOrEmpty(result))
-        {
-            return "null";
-        }
-
-        using var document = JsonDocument.Parse(result);
-        var root = document.RootElement;
-        if (root.ValueKind != JsonValueKind.Array ||
-            root.GetArrayLength() != 1 ||
-            root[0].ValueKind != JsonValueKind.String)
-        {
-            return "null";
-        }
-
-        return root[0].GetString() ?? "null";
-    }
-
     // Page.captureScreenshot (CDP) is not implemented, so the native WKWebView is snapshotted. The bridge resolves
     // the clip rect (viewport or selector) and a Scale that fits MaxEdge. The snapshot clips to the rect and
     // renders at Width * Scale device pixels, since the native path divides out the backing scale.
@@ -549,6 +556,88 @@ public sealed class MacOSWebView : SkiaWebView
         TryGetNativeHandle(out var nativeHandle, out _);
 
         return _platform.RouteDownloads(nativeHandle);
+    }
+
+    // Uno does not raise a favicon event, so every page that finishes loading reports a possible new icon.
+    private void MacOSWebView_NavigationCompleted(object? sender, WebNavigationCompletedEventArgs e)
+    {
+        if (e.Result == WebNavigationResult.Succeeded)
+        {
+            RaiseFaviconChanged();
+        }
+    }
+
+    // Uno does not implement a favicon API. A script therefore reads the icon's address from the page, and the view
+    // fetches that file. For a page with no icon link, the script returns the site's /favicon.ico address.
+    public override async Task<byte[]?> ReadFaviconAsync()
+    {
+        try
+        {
+            var addressJson = await EvalAsync(FaviconAddressScript);
+            var address = JsonSerializer.Deserialize<string>(addressJson);
+            if (string.IsNullOrEmpty(address))
+            {
+                return null;
+            }
+
+            return await _faviconReader.ReadAsync(address, FetchFaviconAsync);
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or ObjectDisposedException)
+        {
+            Logger.LogDebug(ex, "Could not read the favicon of the page in {Resource}", Resource);
+            return null;
+        }
+    }
+
+    private async Task<byte[]?> FetchFaviconAsync(string address)
+    {
+        return await WebViewFaviconReader.FetchAsync(address, _userAgent, RenderSvgFaviconAsync);
+    }
+
+    // The page chooses the file. Drawing runs off the main thread, so a file that takes long to draw leaves the UI free.
+    private static async Task<byte[]?> RenderSvgFaviconAsync(byte[] svgFile)
+    {
+        return await Task.Run(() => MacOSWebViewInterop.RenderImageAsPng(svgFile, RenderedFaviconPixels));
+    }
+
+    // Uno's own new window event has only the address, and Uno answers WebKit without a view. That cuts the new page
+    // off from its opener, so the view hooks WebKit's callbacks.
+    protected override void ObserveNewWindows()
+    {
+        if (!TryGetNativeHandle(out var nativeHandle, out var detail))
+        {
+            Logger.LogWarning("A page's new windows open nothing: its native view could not be resolved ({Detail})", detail);
+            return;
+        }
+
+        if (!MacOSWebViewInterop.ObserveNewWindows(nativeHandle, NewWindowListener.Instance, out var hookDetail))
+        {
+            Logger.LogWarning("A page's new windows open nothing: {Detail}", hookDetail);
+        }
+    }
+
+    private sealed class NewWindowListener : IMacOSNewWindowListener
+    {
+        public static readonly NewWindowListener Instance = new();
+
+        public bool OnNewWindowRequested(IntPtr webView, IntPtr request, MacNewWindowAction action)
+        {
+            var view = FromNativeHandle(webView);
+            if (view is null
+                || !view.HasNewWindowHandler)
+            {
+                return false;
+            }
+
+            view.RaiseNewWindowRequested(new MacOSNewWindowRequest(request, action));
+
+            return true;
+        }
+
+        public void OnPageClosed(IntPtr webView)
+        {
+            FromNativeHandle(webView)?.RaisePageClosed();
+        }
     }
 
     // Uno changes Source only when a page finishes loading or follows a fragment link. WebKit's own commit reports
@@ -650,8 +739,10 @@ public sealed class MacOSWebView : SkiaWebView
                 {
                     Logger.LogWarning(
                         ex,
-                        "A hosted page has missed {FailureCount} consecutive wake(s)",
-                        consecutiveFailures);
+                        "A hosted page has missed {FailureCount} consecutive wake(s): {PageUrl} in the web view for '{Resource}'",
+                        consecutiveFailures,
+                        DescribePageUrl(),
+                        Resource);
                 }
 
                 // A dead renderer faults the wake, so the process is read on the failure path too.

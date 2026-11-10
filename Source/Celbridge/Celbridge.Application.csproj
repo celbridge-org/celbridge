@@ -150,7 +150,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Modules\Celbridge.DocumentEditors\Celbridge.DocumentEditors.csproj" />
     <ProjectReference Include="..\Modules\Celbridge.Spreadsheet\Celbridge.Spreadsheet.csproj" />
-    <ProjectReference Include="..\Modules\Celbridge.WebView\Celbridge.WebView.csproj" />
+    <ProjectReference Include="..\Modules\Celbridge.Browser\Celbridge.Browser.csproj" />
   </ItemGroup>
 
 </Project>

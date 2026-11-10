@@ -5,6 +5,7 @@ using Celbridge.UserInterface;
 using Celbridge.WebHost;
 using Celbridge.Workspace;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Celbridge.Tests.WebHost;
 
@@ -25,6 +26,7 @@ public class WebViewFocusRegistryTests
     private MessageHandler<object, MainWindowDeactivatedMessage>? _onWindowDeactivated;
     private MessageHandler<object, ModalDialogOpenedMessage>? _onModalDialogOpened;
     private MessageHandler<object, ModalDialogClosedMessage>? _onModalDialogClosed;
+    private FakeTimeProvider _clock = null!;
     private WebViewFocusRegistry _registry = null!;
 
     [SetUp]
@@ -59,12 +61,14 @@ public class WebViewFocusRegistryTests
 
         _logger = new RecordingLogger<WebViewFocusRegistry>();
         _automationService = Substitute.For<IAutomationService>();
+        _clock = new FakeTimeProvider();
 
         _registry = new WebViewFocusRegistry(
             _focusService,
             messengerService,
             _automationService,
-            _logger);
+            _logger,
+            _clock);
     }
 
     [TearDown]
@@ -78,6 +82,57 @@ public class WebViewFocusRegistryTests
         {
             ServiceLocator.Reset();
         }
+    }
+
+    private ControlFreeWebView CreateViewOutsideAWindow(string resource)
+    {
+        var view = new ControlFreeWebView(Substitute.For<IWebViewPlatform>(), new NullLogger<ControlFreeWebView>())
+        {
+            IsInWindowForTest = false
+        };
+        view.SetResource(new ResourceKey(resource));
+        _registry.Register(view, new TestFocusContext(FocusPanelId.Documents).Create());
+
+        return view;
+    }
+
+    // Advances the clock past one of the registry's checks for a view reaching its window.
+    private void AdvancePastAWindowCheck()
+    {
+        _clock.Advance(TimeSpan.FromMilliseconds(20));
+    }
+
+    [Test]
+    public void FocusFocusedSurface_ForAViewOutsideAWindow_FocusesThePageOnceTheViewArrives()
+    {
+        var view = CreateViewOutsideAWindow("page.browser");
+        _registry.GrantFocus(view);
+
+        _registry.FocusFocusedSurface();
+
+        view.FocusPageCount.Should().Be(1);
+
+        view.IsInWindowForTest = true;
+        AdvancePastAWindowCheck();
+
+        view.FocusPageCount.Should().Be(2);
+    }
+
+    [Test]
+    public void FocusFocusedSurface_ForAViewOutsideAWindow_StopsWaitingWhenTheKeyboardMoves()
+    {
+        var view = CreateViewOutsideAWindow("page.browser");
+        var otherView = new FakeWebView("other.browser");
+        _registry.Register(otherView, new TestFocusContext(FocusPanelId.Documents).Create());
+        _registry.GrantFocus(view);
+        _registry.FocusFocusedSurface();
+
+        _registry.GrantFocus(otherView);
+        view.IsInWindowForTest = true;
+        AdvancePastAWindowCheck();
+
+        _registry.IsFocusedSurface(otherView).Should().BeTrue();
+        view.FocusPageCount.Should().Be(1);
     }
 
     [Test]

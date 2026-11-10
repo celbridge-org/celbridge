@@ -111,8 +111,7 @@ public class DocumentViewFactory
         }
 
         // Markdown is plain text, so it can still be edited as text when no Markdown editor is
-        // available. WebViewDocument and FileViewer are not text-representable, so they never open as
-        // text.
+        // available. BrowserDocument and FileViewer only open in their own views.
         var viewType = _fileTypeClassifier.GetDocumentViewType(fileResource);
         if (viewType != DocumentViewType.TextDocument
             && viewType != DocumentViewType.Markdown)

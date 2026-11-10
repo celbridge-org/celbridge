@@ -31,4 +31,15 @@
     <ProjectReference Include="..\Celbridge.Packages\Celbridge.Packages.csproj" />
   </ItemGroup>
 
+  <!-- CommunityService copies the Celbridge icon into the Community document's file, so the icon is an embedded
+       resource. The exclusion and the Remove keep the Uno SDK and the WinAppSDK from also adding it as content. -->
+  <PropertyGroup>
+    <CelbridgeDefaultItemExcludes>$(CelbridgeDefaultItemExcludes);Assets\CelbridgeIcon.png</CelbridgeDefaultItemExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\CelbridgeIcon.png" />
+    <Content Remove="Assets\CelbridgeIcon.png" />
+  </ItemGroup>
+
 </Project>

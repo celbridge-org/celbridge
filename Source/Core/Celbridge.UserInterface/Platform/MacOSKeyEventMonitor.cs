@@ -243,7 +243,7 @@ internal static class MacOSKeyEventMonitor
 
             // Command+F opens the active document's find bar, as the Find menu item does. WKWebView hands the
             // key equivalent to the web content rather than to the menu, so a page that ignores it (an
-            // external site in a .webview) leaves the shortcut dead. Swallowed only once a find has begun: a
+            // external site in a .browser) leaves the shortcut dead. Swallowed only once a find has begun: a
             // document with no find of its own leaves the key to the page, where the editors run their own.
             if (IsFindShortcut(shortcutCharacter, modifierFlags))
             {

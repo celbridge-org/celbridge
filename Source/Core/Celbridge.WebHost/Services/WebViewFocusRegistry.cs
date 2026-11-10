@@ -28,10 +28,16 @@ internal sealed class WebViewFocusRegistration : IFocusSurface
 
 internal class WebViewFocusRegistry : IWebViewFocusRegistry
 {
+    // How often, and how many times, a grant checks whether its web view has reached a window. A shown web view gets
+    // there on the next render, so two seconds is ample.
+    private static readonly TimeSpan WindowWaitInterval = TimeSpan.FromMilliseconds(20);
+    private const int WindowWaitAttempts = 100;
+
     private readonly IFocusService _focusService;
     private readonly IMessengerService _messengerService;
     private readonly IAutomationService _automationService;
     private readonly ILogger<WebViewFocusRegistry> _logger;
+    private readonly TimeProvider _timeProvider;
 
     // Used only on the UI thread. Views register and close there, and focus signals are marshalled there.
     private readonly Dictionary<IWebView, WebViewFocusRegistration> _registrations = new();
@@ -55,6 +61,9 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
     // Resolved lazily: the reconciler depends on this registry, so constructor-injecting it here would cycle.
     private IFocusReconciler? _focusReconciler;
 
+    // The surface waiting for its web view to reach a window. Touched only on the UI thread.
+    private WebViewFocusRegistration? _registrationWaitingForWindow;
+
     // A grant for a view that has not registered yet. The grant applies when the view registers, because a new
     // document is activated before its web view is ready. The grant is dropped if the user moves focus elsewhere
     // first, or if the view closes before registering.
@@ -65,11 +74,22 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
         IMessengerService messengerService,
         IAutomationService automationService,
         ILogger<WebViewFocusRegistry> logger)
+        : this(focusService, messengerService, automationService, logger, TimeProvider.System)
+    {
+    }
+
+    internal WebViewFocusRegistry(
+        IFocusService focusService,
+        IMessengerService messengerService,
+        IAutomationService automationService,
+        ILogger<WebViewFocusRegistry> logger,
+        TimeProvider timeProvider)
     {
         _focusService = focusService;
         _messengerService = messengerService;
         _automationService = automationService;
         _logger = logger;
+        _timeProvider = timeProvider;
 
         _messengerService.Register<MainWindowActivatedMessage>(this, (_, _) => OnHostWindowActivationChanged(true));
         _messengerService.Register<MainWindowDeactivatedMessage>(this, (_, _) => OnHostWindowActivationChanged(false));
@@ -371,9 +391,59 @@ internal class WebViewFocusRegistry : IWebViewFocusRegistry
 
         _logger.LogTrace("Applying platform focus to web surface {Surface}", registration.SurfaceName);
 
+        if (registration.View is not WebViewBase view)
+        {
+            return;
+        }
+
         // Keyboard focus only: no report (app-level focus state has not changed) and no DOM-side grant
         // (the page's caret is exactly where the user put it and must not move).
-        (registration.View as WebViewBase)?.FocusPage();
+        view.FocusPage();
+
+        if (!view.IsInWindow)
+        {
+            _ = FocusPageOnceInWindowAsync(registration, view);
+        }
+    }
+
+    // A web view shown a moment ago reaches its window on the next render, and only a view in a window can take the
+    // keyboard. The wait ends as soon as the keyboard moves to another surface.
+    private async Task FocusPageOnceInWindowAsync(WebViewFocusRegistration registration, WebViewBase view)
+    {
+        if (ReferenceEquals(_registrationWaitingForWindow, registration))
+        {
+            return;
+        }
+
+        _registrationWaitingForWindow = registration;
+        try
+        {
+            for (var attempt = 0; attempt < WindowWaitAttempts; attempt++)
+            {
+                await Task.Delay(WindowWaitInterval, _timeProvider);
+
+                if (view.IsDisposed
+                    || !ReferenceEquals(KeyboardRegistration, registration))
+                {
+                    return;
+                }
+
+                if (view.IsInWindow)
+                {
+                    view.FocusPage();
+                    return;
+                }
+            }
+
+            _logger.LogDebug("Web surface {Surface} did not reach its window, so it cannot take the keyboard", registration.SurfaceName);
+        }
+        finally
+        {
+            if (ReferenceEquals(_registrationWaitingForWindow, registration))
+            {
+                _registrationWaitingForWindow = null;
+            }
+        }
     }
 
     public bool TryForwardKeyEvent(IntPtr nativeKeyEvent)

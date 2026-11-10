@@ -18,9 +18,9 @@ public enum DocumentViewType
     TextDocument,
 
     /// <summary>
-    /// A web view document with the .webview extension.
+    /// A browser document with the .browser extension.
     /// </summary>
-    WebViewDocument,
+    BrowserDocument,
 
     /// <summary>
     /// A non-text file resource viewed via a web view.

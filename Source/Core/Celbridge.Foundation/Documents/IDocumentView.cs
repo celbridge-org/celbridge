@@ -80,9 +80,17 @@ public interface IDocumentView : IWorkspaceItem
     Task<string?> TrySaveEditorStateAsync();
 
     /// <summary>
-    /// Restores previously saved editor state from an opaque JSON string.
+    /// Finishes opening the document. Called once each time the document opens, after the content loads and any
+    /// location is shown. The editor state is the opaque JSON string that this editor saved for the document. The
+    /// state is null when this editor did not save one.
     /// </summary>
-    Task RestoreEditorStateAsync(string state);
+    Task CompleteOpenAsync(string? editorState);
+
+    /// <summary>
+    /// Returns true when closing the document discards its editor state. The editor then starts from its defaults the
+    /// next time the document opens. The tab menu's Reopen item always keeps the editor state.
+    /// </summary>
+    bool DiscardsEditorStateOnClose { get; }
 
     /// <summary>
     /// The health of the document's web view. A document with no web view is always healthy.

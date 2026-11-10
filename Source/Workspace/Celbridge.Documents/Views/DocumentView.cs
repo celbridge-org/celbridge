@@ -190,15 +190,19 @@ public abstract partial class DocumentView : UserControl, IDocumentView
         }
     }
 
-    public virtual Task<string?> TrySaveEditorStateAsync()
+    public virtual async Task<string?> TrySaveEditorStateAsync()
     {
-        return Task.FromResult<string?>(null);
+        await Task.CompletedTask;
+
+        return null;
     }
 
-    public virtual Task RestoreEditorStateAsync(string state)
+    public virtual async Task CompleteOpenAsync(string? editorState)
     {
-        return Task.CompletedTask;
+        await Task.CompletedTask;
     }
+
+    public virtual bool DiscardsEditorStateOnClose => false;
 
     // Only a custom editor's page sets a pip.
     public virtual WorkspaceItemPip? Pip => null;

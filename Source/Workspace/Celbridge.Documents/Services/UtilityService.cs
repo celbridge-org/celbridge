@@ -333,7 +333,7 @@ public class UtilityService : IUtilityService, IDisposable
             communityName,
             communityName,
             communityService.DocumentResource,
-            BuiltInEditors.WebViewEditorId,
+            BuiltInEditors.BrowserEditorId,
             WorkspaceArea.Main);
 
         shortcutItems.Add(communityItem);

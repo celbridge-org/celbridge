@@ -32,8 +32,10 @@
                   HorizontalAlignment="Left"
                   Spacing="8">
 
-        <ContentPresenter x:Name="AddRowPresenter"
-                          VerticalAlignment="Center" />
+        <!-- Disabling this control disables the consumer's controls in the add row. -->
+        <ContentControl x:Name="AddRowContentControl"
+                        VerticalAlignment="Center"
+                        IsTabStop="False" />
 
         <Button x:Name="AddButton"
                 Click="AddButton_Click" />

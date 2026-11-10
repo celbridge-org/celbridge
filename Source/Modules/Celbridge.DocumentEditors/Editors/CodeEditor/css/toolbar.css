@@ -1,4 +1,4 @@
-/* The document's chrome strip, matching the WebView document's URL bar (WebViewDocumentView.xaml): the
+/* The document's chrome strip, matching the browser document's URL bar (BrowserDocumentView.xaml): the
    chrome fill under a divider hairline, at the same inset, so it reads as one band with the native tab strip
    above it and steps off the Monaco canvas below. Groups sit further apart than the buttons within a group. */
 #toolbar {

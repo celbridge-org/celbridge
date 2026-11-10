@@ -49,9 +49,9 @@ public class FileTypeHelper
     {
         var fileExtension = Path.GetExtension(fileName).ToLowerInvariant();
 
-        if (fileExtension == ExplorerConstants.WebViewExtension)
+        if (fileExtension == ExplorerConstants.BrowserExtension)
         {
-            return DocumentViewType.WebViewDocument;
+            return DocumentViewType.BrowserDocument;
         }
 
         if (fileExtension == ExplorerConstants.MarkdownExtension)
@@ -116,7 +116,7 @@ public class FileTypeHelper
             return false;
         }
 
-        if (fileExtension == ExplorerConstants.WebViewExtension)
+        if (fileExtension == ExplorerConstants.BrowserExtension)
         {
             return true;
         }

@@ -12,6 +12,7 @@ public sealed class DragGhost
 {
     private const double GhostOpacity = 0.85;
     private const double CursorOffset = 14.0;
+    private const double LabelMaxWidth = 320.0;
 
     private readonly Canvas _overlay;
     private Border? _border;
@@ -35,9 +36,13 @@ public sealed class DragGhost
             Visibility = Visibility.Collapsed
         };
 
+        // A page title can run long, so the label is cut off at a width that keeps the ghost near the pointer.
         _labelText = new TextBlock
         {
             Text = label,
+            MaxWidth = LabelMaxWidth,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            TextWrapping = TextWrapping.NoWrap,
             Foreground = GetThemeBrush("TextFillColorPrimaryBrush", Microsoft.UI.Colors.Black)
         };
 
@@ -91,6 +96,24 @@ public sealed class DragGhost
         double maxY = Math.Max(0, _overlay.ActualHeight - _border.ActualHeight);
         double x = Math.Clamp(overlayPosition.X + CursorOffset, 0, maxX);
         double y = Math.Clamp(overlayPosition.Y + CursorOffset, 0, maxY);
+        Canvas.SetLeft(_border, x);
+        Canvas.SetTop(_border, y);
+    }
+
+    /// <summary>
+    /// Moves the ghost so its center sits on the pointer, clamped to the overlay bounds.
+    /// </summary>
+    public void CenterOn(Point overlayPosition)
+    {
+        if (_border is null)
+        {
+            return;
+        }
+
+        double maxX = Math.Max(0, _overlay.ActualWidth - _border.ActualWidth);
+        double maxY = Math.Max(0, _overlay.ActualHeight - _border.ActualHeight);
+        double x = Math.Clamp(overlayPosition.X - (_border.ActualWidth / 2), 0, maxX);
+        double y = Math.Clamp(overlayPosition.Y - (_border.ActualHeight / 2), 0, maxY);
         Canvas.SetLeft(_border, x);
         Canvas.SetTop(_border, y);
     }

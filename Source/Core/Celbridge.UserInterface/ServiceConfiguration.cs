@@ -74,7 +74,7 @@ public static class ServiceConfiguration
         services.AddTransient<IConfirmActionCommand, ConfirmActionCommand>();
         services.AddTransient<ISpotlightCommand, SpotlightCommand>();
         services.AddTransient<IShowLogsCommand, ShowLogsCommand>();
-        services.AddTransient<IOpenBrowserCommand, OpenBrowserCommand>();
+        services.AddTransient<IOpenSystemBrowserCommand, OpenSystemBrowserCommand>();
         services.AddTransient<IMoveDownloadCommand, MoveDownloadCommand>();
 
         //

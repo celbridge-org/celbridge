@@ -100,6 +100,7 @@ internal sealed class WebView2DownloadHandler : IWebViewDownloadHandler
         handler.ApplyDefaultDownloadFolder();
 
         coreWebView2.DownloadStarting += handler.OnDownloadStarting;
+        coreWebView2.IsDefaultDownloadDialogOpenChanged += handler.OnDefaultDownloadDialogOpenChanged;
 
         return handler;
     }
@@ -128,6 +129,7 @@ internal sealed class WebView2DownloadHandler : IWebViewDownloadHandler
     public void Detach()
     {
         _coreWebView2.DownloadStarting -= OnDownloadStarting;
+        _coreWebView2.IsDefaultDownloadDialogOpenChanged -= OnDefaultDownloadDialogOpenChanged;
 
         // A transfer belongs to the web view that started it: the download operation raises no further
         // events once that web view is closed, so a download still running here would report nothing ever
@@ -228,6 +230,21 @@ internal sealed class WebView2DownloadHandler : IWebViewDownloadHandler
         {
             deferral.Complete();
         }
+    }
+
+    // WebView2 opens its Downloads flyout for a download that starts in a new window, even when Handled is set. The
+    // title bar's download badge is the download UI, and Celbridge never asks for the flyout. This handler closes the
+    // flyout whenever WebView2 reports it open.
+    private void OnDefaultDownloadDialogOpenChanged(CoreWebView2 sender, object args)
+    {
+        if (!sender.IsDefaultDownloadDialogOpen)
+        {
+            return;
+        }
+
+        _logger.LogDebug("Closing WebView2's default download dialog");
+
+        sender.CloseDefaultDownloadDialog();
     }
 
     /// <summary>

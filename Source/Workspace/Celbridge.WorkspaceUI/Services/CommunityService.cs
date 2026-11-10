@@ -2,6 +2,7 @@ using Celbridge.Community;
 using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Projects;
+using Celbridge.Utilities;
 using Celbridge.WebHost;
 using Microsoft.Extensions.Localization;
 
@@ -10,6 +11,7 @@ namespace Celbridge.WorkspaceUI.Services;
 public class CommunityService : ICommunityService
 {
     private const string DocumentName = "community";
+    private const string CelbridgeIconResourceName = "Celbridge.WorkspaceUI.Assets.CelbridgeIcon.png";
 
     private readonly ILogger<CommunityService> _logger;
     private readonly IStringLocalizer _stringLocalizer;
@@ -26,7 +28,7 @@ public class CommunityService : ICommunityService
     }
 
     public ResourceKey DocumentResource =>
-        new ResourceKey($"{ProjectConstants.TempFolder}:{DocumentName}{ExplorerConstants.WebViewExtension}");
+        new ResourceKey($"{ProjectConstants.TempFolder}:{DocumentName}{ExplorerConstants.BrowserExtension}");
 
     public async Task SeedDocumentAsync()
     {
@@ -48,17 +50,24 @@ public class CommunityService : ICommunityService
 
         var resource = DocumentResource;
 
-        // The landing page is bookmarked as well as being the Home target, so the bookmarks bar alone is a
-        // complete way around the site.
-        var bookmarks = new List<WebViewBookmark>
+        // Every Community page uses the Celbridge icon. Each bookmark has a copy of the icon. The bookmark list shows
+        // the copy before the first visit. When the embedded icon fails to load, the bookmarks show the default icon.
+        var iconResult = EmbeddedResourceReader.ReadBytes(typeof(CommunityService).Assembly, CelbridgeIconResourceName);
+        if (iconResult.IsFailure)
         {
-            CreateBookmark(CommunityUrls.Celbridge, "Community_Section_Celbridge", "bs-house"),
-            CreateBookmark(CommunityUrls.Learn, "Community_Section_Learn", "bs-book"),
-            CreateBookmark(CommunityUrls.Forum, "Community_Section_Forum", "bs-chat-dots")
+            _logger.LogWarning(iconResult, "Failed to read the Celbridge icon for the Community document");
+        }
+        var icon = iconResult.IsSuccess ? iconResult.Value : null;
+
+        // The landing page opens when the document has no saved tabs, and the other sections are a click away.
+        var bookmarks = new List<BrowserBookmark>
+        {
+            CreateBookmark(CommunityUrls.Celbridge, "Community_Section_Celbridge", icon, openOnStart: true),
+            CreateBookmark(CommunityUrls.Learn, "Community_Section_Learn", icon),
+            CreateBookmark(CommunityUrls.Forum, "Community_Section_Forum", icon)
         };
 
-        // The URL bar stays on: the sections link out to the wider web, and the user needs the way back.
-        var content = new WebViewFileContent(CommunityUrls.Celbridge)
+        var content = new BrowserFileContent
         {
             Bookmarks = bookmarks
         };
@@ -72,13 +81,21 @@ public class CommunityService : ICommunityService
                 .WithErrors(writeResult);
         }
 
+        // A read-only file keeps the user from editing bookmarks that the next load would replace.
+        var lockResult = await resourceFileSystem.SetAttributesAsync(resource, FileSystemAttributes.ReadOnly, set: true);
+        if (lockResult.IsFailure)
+        {
+            return Result.Fail($"Failed to make the Community document read-only: '{resource}'")
+                .WithErrors(lockResult);
+        }
+
         return Result.Ok();
     }
 
-    // Names are resolved at seed time rather than when the bar is drawn, so a language change reaches the
-    // bookmarks on the next workspace load.
-    private WebViewBookmark CreateBookmark(string url, string nameKey, string iconName)
+    // Names are resolved when the document is written, so a language change reaches the bookmarks on the next
+    // workspace load.
+    private BrowserBookmark CreateBookmark(string url, string nameKey, byte[]? icon, bool openOnStart = false)
     {
-        return new WebViewBookmark(url, _stringLocalizer.GetString(nameKey), iconName);
+        return new BrowserBookmark(url, _stringLocalizer.GetString(nameKey), openOnStart, icon);
     }
 }

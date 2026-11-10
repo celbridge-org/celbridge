@@ -202,8 +202,8 @@ public class ShowUtilityCommandTests
             "people",
             "Community",
             "Community",
-            new ResourceKey("temp:community.webview"),
-            BuiltInEditors.WebViewEditorId,
+            new ResourceKey("temp:community.browser"),
+            BuiltInEditors.BrowserEditorId,
             WorkspaceArea.Main);
     }
 }

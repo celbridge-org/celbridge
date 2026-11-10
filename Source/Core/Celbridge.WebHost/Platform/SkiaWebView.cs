@@ -78,34 +78,20 @@ public class SkiaWebView : WebViewBase
         return false;
     }
 
-    // WebKit faults where WebView2 silently returns the JSON literal "null". These faults are normalised to "null",
-    // so common errors and undefined results read alike on every platform. evaluateJavaScript faults on a JS
-    // exception or syntax error (WKError 4), and on an unsupported return type such as a Promise (WKError 5). Uno
-    // surfaces an undefined result as an ArgumentNullException.
+    // The page encodes the value, as on every head. A script that throws reads as null. WebView2 returns null for
+    // such a script. WebKit instead faults with WKError 4, and that fault is read as null here.
     protected override async Task<string> EvalScriptAsync(string expression)
     {
         try
         {
-            return await EvaluateAsync(expression);
-        }
-        catch (ArgumentNullException)
-        {
-            return "null";
+            var result = await LiveCoreWebView2.ExecuteScriptAsync(ScriptValueJson.Wrap(expression));
+
+            return ScriptValueJson.Unwrap(result);
         }
         catch (Exception scriptEx) when (scriptEx.Message.Contains("WKErrorDomain", StringComparison.Ordinal))
         {
             return "null";
         }
-    }
-
-    /// <summary>
-    /// Evaluates an expression and returns its value encoded as JSON.
-    /// </summary>
-    protected virtual async Task<string> EvaluateAsync(string expression)
-    {
-        var result = await LiveCoreWebView2.ExecuteScriptAsync(expression);
-
-        return result ?? "null";
     }
 
     protected override async Task<ScreenshotData> CaptureScreenshotCoreAsync(ScreenshotRequest request)
