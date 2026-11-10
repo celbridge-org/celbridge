@@ -27,14 +27,15 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
     private const string WwwPrefix = "www.";
     private const string MailAddressPrefix = "mailto:";
 
-    // The schemes a new window's tab can show. A blob or data address names content built by the opener page.
+    // The schemes a new window's tab can show. A blob address names content built by the opener page. The list leaves
+    // out data, because a data address hides which site made the page. A data page could then pose as another site's
+    // sign-in page.
     private static readonly string[] NewWindowTabSchemes =
     [
         Uri.UriSchemeHttp,
         Uri.UriSchemeHttps,
         "about",
-        "blob",
-        "data"
+        "blob"
     ];
 
     private static readonly JsonSerializerOptions EditorStateSerializerOptions = new()

@@ -490,9 +490,8 @@ public class BrowserDocumentViewModelTests
     [TestCase("data:text/html,<p>Report</p>")]
     public void TheSavedState_LeavesOutAPageWithNoWebAddress(string url)
     {
-        var viewModel = CreateViewModelWithTabs(PageOne);
-        var tab = viewModel.OpenTabForNewWindow(url, isUserInitiated: true, viewModel.Tabs[0])!;
-        tab.NotifyNavigationCommitted(url);
+        var viewModel = CreateViewModelWithTabs(PageOne, PageTwo);
+        viewModel.Tabs[1].NotifyNavigationCommitted(url);
 
         var restored = CreateViewModel();
         restored.RestoreEditorState(viewModel.TrySerializeEditorState()!);
@@ -760,6 +759,7 @@ public class BrowserDocumentViewModelTests
     [TestCase("file:///etc/passwd")]
     [TestCase("tel:+15551234")]
     [TestCase("acme-app://open")]
+    [TestCase("data:text/html,<p>Sign in</p>")]
     public void ANewWindowRequestForAnotherScheme_OpensNothing(string url)
     {
         // A page chooses this address, so the application passes it to no other program.
