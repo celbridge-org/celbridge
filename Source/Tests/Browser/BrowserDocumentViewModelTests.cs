@@ -74,17 +74,15 @@ public class BrowserDocumentViewModelTests
     {
         var viewModel = CreateViewModel();
         viewModel.OpenStartTabs();
-        var blankTab = viewModel.Tabs[0];
 
-        foreach (var url in urls)
+        for (int i = 0; i < urls.Length; i++)
         {
-            var bookmark = viewModel.CreateBookmark(new BrowserBookmark(url));
-            viewModel.OpenBookmark(bookmark);
-        }
+            if (i > 0)
+            {
+                viewModel.OpenBlankTab();
+            }
 
-        if (urls.Length > 0)
-        {
-            viewModel.CloseTab(blankTab);
+            viewModel.NavigateShownTab(urls[i]);
         }
 
         return viewModel;
@@ -587,7 +585,7 @@ public class BrowserDocumentViewModelTests
     }
 
     [Test]
-    public void OpenBookmark_OpensANewTabAndClosesTheSettings()
+    public void OpenBookmark_WithAPageShown_OpensANewTabAndClosesTheSettings()
     {
         var viewModel = CreateViewModelWithTabs(PageOne);
         viewModel.IsSettingsOpen = true;
@@ -597,6 +595,70 @@ public class BrowserDocumentViewModelTests
         Addresses(viewModel).Should().Equal(PageOne, PageTwo);
         viewModel.ShownTab.Should().BeSameAs(tab);
         viewModel.IsSettingsOpen.Should().BeFalse();
+    }
+
+    [Test]
+    public void OpenBookmark_WithABlankTabShown_LoadsTheBookmarkInThatTabAndClosesTheSettings()
+    {
+        var viewModel = CreateViewModelWithTabs(PageOne);
+        var blankTab = viewModel.OpenBlankTab();
+        viewModel.IsSettingsOpen = true;
+
+        var tab = viewModel.OpenBookmark(viewModel.CreateBookmark(new BrowserBookmark(PageTwo)));
+
+        tab.Should().BeSameAs(blankTab);
+        Addresses(viewModel).Should().Equal(PageOne, PageTwo);
+        viewModel.ShownTab.Should().BeSameAs(blankTab);
+        viewModel.IsSettingsOpen.Should().BeFalse();
+    }
+
+    // A blank tab already has a web view, which loads the page when the event fires.
+    [Test]
+    public void OpenBookmark_WithABlankTabShown_AsksTheViewToLoadThePage()
+    {
+        var viewModel = CreateViewModelWithTabs();
+        var sentTabs = new List<BrowserTabViewModel>();
+        viewModel.ShownTabSent += (_, tab) => sentTabs.Add(tab);
+
+        var tab = viewModel.OpenBookmark(viewModel.CreateBookmark(new BrowserBookmark(PageOne)))!;
+
+        sentTabs.Should().Equal(tab);
+        tab.CurrentUrl.Should().Be(PageOne);
+    }
+
+    [Test]
+    public void OpenBookmark_WithABlankTabHidden_OpensANewTab()
+    {
+        var viewModel = CreateViewModelWithTabs(PageOne);
+        viewModel.OpenBlankTab();
+        viewModel.ChooseTab(viewModel.Tabs[0]);
+
+        var tab = viewModel.OpenBookmark(viewModel.CreateBookmark(new BrowserBookmark(PageTwo)));
+
+        Addresses(viewModel).Should().Equal(PageOne, string.Empty, PageTwo);
+        viewModel.ShownTab.Should().BeSameAs(tab);
+    }
+
+    // A failed page keeps its address, so its tab is not blank.
+    [Test]
+    public void OpenBookmark_WithAFailedPageShown_OpensANewTab()
+    {
+        var viewModel = CreateViewModelWithTabs(PageOne);
+        viewModel.ShownTab!.HasNavigationFailed = true;
+
+        viewModel.OpenBookmark(viewModel.CreateBookmark(new BrowserBookmark(PageTwo)));
+
+        Addresses(viewModel).Should().Equal(PageOne, PageTwo);
+    }
+
+    [Test]
+    public void OpenBookmark_ThatCannotBeNavigatedTo_LeavesTheBlankTab()
+    {
+        var viewModel = CreateViewModelWithTabs();
+
+        viewModel.OpenBookmark(viewModel.CreateBookmark(new BrowserBookmark("file:///c:/notes.txt"))).Should().BeNull();
+
+        ShouldShowOneBlankTab(viewModel);
     }
 
     [Test]

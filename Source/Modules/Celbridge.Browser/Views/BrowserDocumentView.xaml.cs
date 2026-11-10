@@ -122,6 +122,7 @@ public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarg
 
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
         ViewModel.TabChosen += ViewModel_TabChosen;
+        ViewModel.ShownTabSent += ViewModel_ShownTabSent;
         UpdateReloadOrStopTooltip();
         UpdateBookmarkPageButton();
         UpdatePlaceholderName();
@@ -330,17 +331,19 @@ public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarg
         };
     }
 
-    // Opens an address the user chose in the shown tab. The address bar names the address at once. A web view still on
-    // the way loads the tab's address on arrival.
+    // Opens an address the user chose in the shown tab. The address bar names the address at once.
     private void SendShownTabTo(string url)
     {
-        var tab = ViewModel.NavigateShownTab(url);
-        if (tab is null)
+        if (ViewModel.NavigateShownTab(url) is null)
         {
             _logger.LogWarning($"Cannot open '{url}' in the shown tab");
-            return;
         }
+    }
 
+    // Loads the address the shown tab was sent to. A tab whose web view has not arrived yet loads its address when the
+    // web view arrives.
+    private void ViewModel_ShownTabSent(object? sender, BrowserTabViewModel tab)
+    {
         var webView = FindContent(tab)?.WebView;
 
         _logger.LogDebug(
@@ -690,20 +693,14 @@ public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarg
         ShowBookmarksSection();
     }
 
-    // A bookmark on the empty page opens in the shown tab. A web view still on the way loads the tab's address on
-    // arrival.
+    // A row's bookmark loads in the blank tab that shows the empty page.
     private void EmptyPageBookmark_Click(object sender, RoutedEventArgs e)
     {
         var button = (FrameworkElement)sender;
-        if (button.DataContext is not BrowserBookmarkViewModel bookmark
-            || !ViewModel.TryNormalizeUserUrl(bookmark.Url, out var url))
+        if (button.DataContext is BrowserBookmarkViewModel bookmark)
         {
-            return;
+            ViewModel.OpenBookmark(bookmark);
         }
-
-        SendShownTabTo(url);
-
-        GiveFocusToWebContent();
     }
 
     // The link hides with the placeholder, so the settings take the keyboard.
@@ -1239,6 +1236,7 @@ public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarg
     {
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
         ViewModel.TabChosen -= ViewModel_TabChosen;
+        ViewModel.ShownTabSent -= ViewModel_ShownTabSent;
         ViewModel.StopObserving();
 
         _isClosed = true;

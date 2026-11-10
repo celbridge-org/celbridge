@@ -98,6 +98,12 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
     public event EventHandler? TabChosen;
 
     /// <summary>
+    /// Raised after NavigateShownTab sends the shown tab to an address. The handler loads the address in the tab's web
+    /// view.
+    /// </summary>
+    public event EventHandler<BrowserTabViewModel>? ShownTabSent;
+
+    /// <summary>
     /// The document's bookmarks, in the order the bookmark list shows them. Editing the collection or any bookmark in
     /// it records a change against the document.
     /// </summary>
@@ -609,18 +615,28 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
     }
 
     /// <summary>
-    /// Opens a bookmark in a new tab at the end of the tab bar, and shows the tab. Returns null for a bookmark that
-    /// cannot be navigated to.
+    /// Opens a bookmark and shows its tab. A blank shown tab loads the bookmark. With any other tab shown, the bookmark
+    /// opens in a new tab at the end of the tab bar. Returns the tab, or null for a bookmark that cannot be navigated
+    /// to.
     /// </summary>
     public BrowserTabViewModel? OpenBookmark(BrowserBookmarkViewModel bookmark)
     {
-        var tab = CreateBookmarkTab(bookmark);
-        if (tab is null)
+        var tab = ShownTab;
+        if (tab is { IsBlank: true }
+            && BrowserUrlHelper.TryGetAbsoluteUrl(bookmark.Url, out var url))
         {
-            return null;
+            NavigateShownTab(url);
         }
+        else
+        {
+            tab = CreateBookmarkTab(bookmark);
+            if (tab is null)
+            {
+                return null;
+            }
 
-        Tabs.Add(tab);
+            Tabs.Add(tab);
+        }
 
         ChooseTab(tab);
 
@@ -631,7 +647,7 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
     /// Sends the shown tab to an address the user chose. A tab with no page yet shows the bookmark's icon while a
     /// bookmarked page loads. A tab that already has a page keeps the page's icon until a new page commits. Returns the
     /// tab, or null for an address that is not absolute. Also returns null while the document is opening, before it
-    /// shows a tab. The view loads the page.
+    /// shows a tab. A successful send raises ShownTabSent.
     /// </summary>
     public BrowserTabViewModel? NavigateShownTab(string url)
     {
@@ -648,6 +664,8 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
         {
             ApplyBookmarkFavicon(tab);
         }
+
+        ShownTabSent?.Invoke(this, tab);
 
         return tab;
     }
