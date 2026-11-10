@@ -67,11 +67,13 @@ public class BrowserDocumentViewModelTests
         };
     }
 
-    // A document showing a page at each address, with the last one shown.
+    // A document showing a page at each address, with the last one shown. With no address, the document keeps the
+    // blank tab that OpenStartTabs opens.
     private BrowserDocumentViewModel CreateViewModelWithTabs(params string[] urls)
     {
         var viewModel = CreateViewModel();
         viewModel.OpenStartTabs();
+        var blankTab = viewModel.Tabs[0];
 
         foreach (var url in urls)
         {
@@ -79,7 +81,22 @@ public class BrowserDocumentViewModelTests
             viewModel.OpenBookmark(bookmark);
         }
 
+        if (urls.Length > 0)
+        {
+            viewModel.CloseTab(blankTab);
+        }
+
         return viewModel;
+    }
+
+    private static void ShouldShowOneBlankTab(BrowserDocumentViewModel viewModel)
+    {
+        var tab = viewModel.Tabs.Should().ContainSingle().Subject;
+        tab.IsBlank.Should().BeTrue();
+        viewModel.ShownTab.Should().BeSameAs(tab);
+        tab.IsShown.Should().BeTrue();
+        viewModel.IsEmptyStateVisible.Should().BeTrue();
+        viewModel.IsPageOnScreen.Should().BeFalse();
     }
 
     private static string[] Addresses(BrowserDocumentViewModel viewModel)
@@ -390,17 +407,25 @@ public class BrowserDocumentViewModelTests
     }
 
     [Test]
-    public void OpenStartTabs_WithNoOpenOnStartBookmark_LeavesZeroTabs()
+    public void OpenStartTabs_WithNoOpenOnStartBookmark_OpensOneBlankTab()
     {
         var viewModel = CreateViewModel();
         viewModel.Bookmarks.Add(viewModel.CreateBookmark(new BrowserBookmark(PageOne)));
 
         viewModel.OpenStartTabs();
 
-        viewModel.Tabs.Should().BeEmpty();
-        viewModel.ShownTab.Should().BeNull();
-        viewModel.IsEmptyStateVisible.Should().BeTrue();
-        viewModel.IsPageOnScreen.Should().BeFalse();
+        ShouldShowOneBlankTab(viewModel);
+        viewModel.AreEmptyPageBookmarksVisible.Should().BeTrue();
+    }
+
+    [Test]
+    public void OpenStartTabs_WithNoBookmarks_OpensOneBlankTab()
+    {
+        var viewModel = CreateViewModel();
+
+        viewModel.OpenStartTabs();
+
+        ShouldShowOneBlankTab(viewModel);
     }
 
     [Test]
@@ -559,18 +584,6 @@ public class BrowserDocumentViewModelTests
     }
 
     [Test]
-    public void NavigateShownTab_WithZeroTabs_OpensATab()
-    {
-        var viewModel = CreateViewModelWithTabs();
-
-        var tab = viewModel.NavigateShownTab(PageOne);
-
-        viewModel.Tabs.Should().ContainSingle().Which.Should().BeSameAs(tab);
-        viewModel.ShownTab.Should().BeSameAs(tab);
-        Addresses(viewModel).Should().Equal(PageOne);
-    }
-
-    [Test]
     public void NavigateShownTab_SendsTheShownTab()
     {
         var viewModel = CreateViewModelWithTabs(PageOne, PageTwo);
@@ -580,12 +593,12 @@ public class BrowserDocumentViewModelTests
     }
 
     [Test]
-    public void NavigateShownTab_ToAnAddressThatIsNotAbsolute_OpensNothing()
+    public void NavigateShownTab_ToAnAddressThatIsNotAbsolute_LeavesTheTabBlank()
     {
         var viewModel = CreateViewModelWithTabs();
 
         viewModel.NavigateShownTab("example.com").Should().BeNull();
-        viewModel.Tabs.Should().BeEmpty();
+        ShouldShowOneBlankTab(viewModel);
     }
 
     // A tab sent to an address names the address in its absolute form, matching what the page reports on commit.
@@ -634,15 +647,50 @@ public class BrowserDocumentViewModelTests
     }
 
     [Test]
-    public void ClosingTheOnlyTab_LeavesZeroTabsAndTheHint()
+    public void ClosingTheOnlyTab_LeavesOneBlankTab()
     {
         var viewModel = CreateViewModelWithTabs(PageOne);
+        var tab = viewModel.Tabs[0];
+
+        viewModel.CloseTab(tab);
+
+        ShouldShowOneBlankTab(viewModel);
+        tab.IsShown.Should().BeFalse();
+    }
+
+    [Test]
+    public void ClosingTheOnlyTab_WhenItIsBlank_LeavesOneBlankTab()
+    {
+        var viewModel = CreateViewModelWithTabs();
 
         viewModel.CloseTab(viewModel.Tabs[0]);
 
-        viewModel.Tabs.Should().BeEmpty();
-        viewModel.ShownTab.Should().BeNull();
-        viewModel.IsEmptyStateVisible.Should().BeTrue();
+        ShouldShowOneBlankTab(viewModel);
+    }
+
+    [Test]
+    public void ThePageOfTheOnlyTabClosingItself_LeavesOneBlankTab()
+    {
+        var viewModel = CreateViewModelWithTabs(PageOne);
+        var tab = viewModel.OpenTabForNewWindow(PageTwo, isUserInitiated: true, viewModel.Tabs[0])!;
+        viewModel.CloseTab(viewModel.Tabs[0]);
+
+        viewModel.ClosePageTab(tab);
+
+        ShouldShowOneBlankTab(viewModel);
+    }
+
+    [Test]
+    public void TheOnlyTabClosingForADownload_LeavesOneBlankTab()
+    {
+        var viewModel = CreateViewModelWithTabs(PageOne);
+        var tab = viewModel.OpenTabForNewWindow("https://example.com/file.zip", isUserInitiated: true,
+            viewModel.Tabs[0])!;
+        viewModel.CloseTab(viewModel.Tabs[0]);
+
+        viewModel.HandleDownloadStarted(tab).Should().BeTrue();
+
+        ShouldShowOneBlankTab(viewModel);
     }
 
     [Test]
@@ -1046,6 +1094,18 @@ public class BrowserDocumentViewModelTests
     }
 
     [Test]
+    public async Task LoadContent_DropsAnIconInTheFileThatFailsToDecode()
+    {
+        var cutShort = TestFavicons.CutShortPng();
+
+        var viewModel = await LoadDocumentWithOneBookmarkAsync(cutShort);
+
+        viewModel.Bookmarks[0].Favicon.Should().BeNull();
+        viewModel.Tabs[0].Favicon.Should().BeNull();
+        viewModel.HasUnsavedChanges.Should().BeFalse();
+    }
+
+    [Test]
     public async Task LoadContent_LeavesABookmarkWithNoIconInItsFileWithNone()
     {
         var viewModel = await LoadDocumentWithOneBookmarkAsync();
@@ -1300,6 +1360,25 @@ public class BrowserDocumentViewModelTests
               "settingsOpen": false,
               "settingsSectionKey": "",
               "tabs": [ { "url": "https://example.com/one", "title": "", "favicon": "{{notAPng}}" } ]
+            }
+            """);
+
+        viewModel.Tabs[0].Favicon.Should().BeSameAs(bookmarkIcon);
+    }
+
+    [Test]
+    public void ARestoredTabWhoseSavedIconFailsToDecode_ShowsTheBookmarksIcon()
+    {
+        var bookmarkIcon = TestFavicons.Png(16, 16);
+        var viewModel = CreateViewModel();
+        viewModel.Bookmarks.Add(viewModel.CreateBookmark(new BrowserBookmark(PageOne, Favicon: bookmarkIcon)));
+        var cutShort = Convert.ToBase64String(TestFavicons.CutShortPng());
+
+        viewModel.RestoreEditorState($$"""
+            {
+              "settingsOpen": false,
+              "settingsSectionKey": "",
+              "tabs": [ { "url": "https://example.com/one", "title": "", "favicon": "{{cutShort}}" } ]
             }
             """);
 

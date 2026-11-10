@@ -1,4 +1,3 @@
-using Celbridge.Platform;
 using Celbridge.UserInterface.Views.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
 
@@ -125,7 +124,8 @@ public sealed class FaviconImage : UserControl
         _defaultIcon.Visibility = bitmap is null ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    // Returns null for an image the platform cannot decode, so the default icon stays.
+    // Returns null when the platform fails to decode the image, and the default icon stays. The view model shows only
+    // icons that SkiaSharp decoded completely.
     private static async Task<BitmapImage?> DecodeAsync(byte[] imageBytes)
     {
         var bitmap = new BitmapImage();
@@ -134,13 +134,6 @@ public sealed class FaviconImage : UserControl
         {
             var stream = new MemoryStream(imageBytes);
             await bitmap.SetSourceAsync(stream.AsRandomAccessStream());
-
-            var platformInfo = ServiceLocator.AcquireService<IPlatformInfo>();
-            if (!platformInfo.ThrowsForUndecodableImage
-                && bitmap.PixelWidth <= 0)
-            {
-                return null;
-            }
 
             return bitmap;
         }

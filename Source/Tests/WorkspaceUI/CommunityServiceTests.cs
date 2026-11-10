@@ -1,3 +1,4 @@
+using Celbridge.Browser.Helpers;
 using Celbridge.Community;
 using Celbridge.Resources;
 using Celbridge.Tests.Browser;
@@ -159,11 +160,12 @@ public class CommunityServiceTests
         await service.SeedDocumentAsync();
 
         // The parse drops an icon unless the icon is a PNG within the size limit. An icon in the parsed file therefore
-        // passed that check.
+        // passed that check. A browser document also drops an icon that fails to decode, so the test decodes the icon.
         var icons = ReadWrittenDocument().Bookmarks.Select(bookmark => bookmark.Favicon).ToList();
 
         icons.Should().HaveCount(3).And.AllSatisfy(icon => icon.Should().NotBeNull());
         icons.Should().AllSatisfy(icon => icon.Should().Equal(icons[0]));
+        FaviconEncoder.CanDecode(icons[0]!).Should().BeTrue();
         TestFavicons.SizeOf(icons[0]!).Should().Be((32, 32));
     }
 

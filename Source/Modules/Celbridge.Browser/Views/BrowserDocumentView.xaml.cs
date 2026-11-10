@@ -330,14 +330,14 @@ public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarg
         };
     }
 
-    // Opens an address the user chose in the shown tab, or in a new tab with none shown. The address bar names the
-    // address at once. A web view still on the way loads the tab's address on arrival.
+    // Opens an address the user chose in the shown tab. The address bar names the address at once. A web view still on
+    // the way loads the tab's address on arrival.
     private void SendShownTabTo(string url)
     {
         var tab = ViewModel.NavigateShownTab(url);
         if (tab is null)
         {
-            _logger.LogWarning($"Cannot navigate to invalid URL: '{url}'");
+            _logger.LogWarning($"Cannot open '{url}' in the shown tab");
             return;
         }
 
@@ -628,8 +628,8 @@ public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarg
         ShowBookmarksSection();
     }
 
-    // A bookmark on the empty page opens in the shown tab, or in a new tab with no tab shown. A web view still on the way
-    // loads the tab's address on arrival.
+    // A bookmark on the empty page opens in the shown tab. A web view still on the way loads the tab's address on
+    // arrival.
     private void EmptyPageBookmark_Click(object sender, RoutedEventArgs e)
     {
         var button = (FrameworkElement)sender;
@@ -756,10 +756,7 @@ public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarg
             {
                 // Committing an empty address blanks the shown tab, and the placeholder shows.
                 ViewModel.CloseSettings();
-                if (ViewModel.ShownTab is not null)
-                {
-                    SendShownTabTo("about:blank");
-                }
+                SendShownTabTo("about:blank");
             }
             else if (ViewModel.TryNormalizeUserUrl(address, out var url))
             {

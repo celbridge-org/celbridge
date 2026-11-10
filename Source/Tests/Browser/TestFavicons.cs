@@ -16,6 +16,19 @@ internal static class TestFavicons
     }
 
     /// <summary>
+    /// Returns a 32 by 32 PNG cut short inside the image data. The signature and the header are whole, so the icon
+    /// passes the file's check. SkiaSharp fails to decode the whole image.
+    /// </summary>
+    public static byte[] CutShortPng()
+    {
+        var png = Png(32, 32);
+
+        // The last 12 bytes are the end chunk. The 8 before them are the checksums that close the image data chunk. A
+        // decode still succeeds without those 20 bytes, so the cut removes 32 bytes and reaches the image data itself.
+        return png[..^32];
+    }
+
+    /// <summary>
     /// Returns an image of the given size and format, filled with one color.
     /// </summary>
     public static byte[] Encode(int width, int height, SKEncodedImageFormat format, SKColor? color = null)

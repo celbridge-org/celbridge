@@ -119,16 +119,4 @@ public sealed class PlatformInfo : IPlatformInfo
 #endif
         }
     }
-
-    public bool ThrowsForUndecodableImage
-    {
-        get
-        {
-#if WINDOWS
-            return true;
-#else
-            return false;
-#endif
-        }
-    }
 }

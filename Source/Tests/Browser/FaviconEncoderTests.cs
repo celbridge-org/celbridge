@@ -1,5 +1,6 @@
 using System.Text;
 using Celbridge.Browser.Helpers;
+using Celbridge.WebHost;
 using SkiaSharp;
 
 namespace Celbridge.Tests.Browser;
@@ -105,5 +106,38 @@ public class FaviconEncoderTests
         FaviconEncoder.Encode(new byte[] { 1, 2, 3 }).Should().BeNull();
         FaviconEncoder.Encode(PngSignature).Should().BeNull();
         FaviconEncoder.Encode(svg).Should().BeNull();
+    }
+
+    [Test]
+    public void Encode_APngCutShort_IsNull()
+    {
+        FaviconEncoder.Encode(TestFavicons.CutShortPng()).Should().BeNull();
+    }
+
+    [Test]
+    public void CanDecode_AValidPng_IsTrue()
+    {
+        FaviconEncoder.CanDecode(TestFavicons.Png(16, 16)).Should().BeTrue();
+    }
+
+    [Test]
+    public void CanDecode_APngCutShortWithAValidSignature_IsFalse()
+    {
+        var cutShort = TestFavicons.CutShortPng();
+
+        // SkiaSharp still reads the header. Only the decode of the image data fails.
+        using var data = SKData.CreateCopy(cutShort);
+        using var codec = SKCodec.Create(data);
+        codec.Should().NotBeNull();
+
+        BrowserBookmark.IsStorableFavicon(cutShort).Should().BeTrue();
+        FaviconEncoder.CanDecode(cutShort).Should().BeFalse();
+    }
+
+    [Test]
+    public void CanDecode_BytesThatAreNotAnImage_IsFalse()
+    {
+        FaviconEncoder.CanDecode(Array.Empty<byte>()).Should().BeFalse();
+        FaviconEncoder.CanDecode(PngSignature).Should().BeFalse();
     }
 }

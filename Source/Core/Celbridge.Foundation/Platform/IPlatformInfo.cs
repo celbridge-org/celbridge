@@ -141,11 +141,4 @@ public interface IPlatformInfo
     /// True on macOS.
     /// </summary>
     bool HostedWebViewFocusIsNative { get; }
-
-    /// <summary>
-    /// Returns true when a bitmap image throws for a source it cannot decode. Otherwise an undecodable image loads with a
-    /// pixel width of zero. True on the packaged Windows head only.
-    /// </summary>
-    bool ThrowsForUndecodableImage { get; }
-
 }
