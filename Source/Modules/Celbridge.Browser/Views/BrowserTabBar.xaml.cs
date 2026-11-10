@@ -122,8 +122,9 @@ public sealed partial class BrowserTabBar : UserControl, ITabDragOwner
         }
 
         int slot = TabStrip.GetInsertionSlot(overlayPosition.X, _dragOverlay);
+        bool overStrip = stripBounds.Contains(overlayPosition);
 
-        return new TabDropSlot(TabStrip, slot, OverStrip: stripBounds.Contains(overlayPosition));
+        return new TabDropSlot(TabStrip, slot, overStrip);
     }
 
     public void ShowDropSlot(TabViewItem tab, TabDropSlot? slot)
@@ -152,10 +153,13 @@ public sealed partial class BrowserTabBar : UserControl, ITabDragOwner
         }
 
         int currentIndex = ViewModel.Tabs.IndexOf(browserTab.Tab);
-        if (currentIndex >= 0)
+        if (currentIndex < 0)
         {
-            ViewModel.MoveTab(browserTab.Tab, TabDragGesture.GetTargetIndex(currentIndex, slot.InsertionSlot));
+            return;
         }
+
+        int targetIndex = TabDragGesture.GetTargetIndex(currentIndex, slot.InsertionSlot);
+        ViewModel.MoveTab(browserTab.Tab, targetIndex);
     }
 
     private void TabStrip_TabPressed(TabViewItem tab, PointerRoutedEventArgs e)

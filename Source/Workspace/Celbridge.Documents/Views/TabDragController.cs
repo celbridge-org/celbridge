@@ -48,13 +48,15 @@ internal sealed class TabDragController : ITabDragOwner
             if (!stripBounds.IsEmpty &&
                 stripBounds.Contains(overlayPosition))
             {
-                return new TabDropSlot(strip, strip.GetInsertionSlot(overlayPosition.X, _overlay), OverStrip: true);
+                int slot = strip.GetInsertionSlot(overlayPosition.X, _overlay);
+                return new TabDropSlot(strip, slot, OverStrip: true);
             }
 
             var sectionBounds = GetElementBounds(sectionView);
             if (sectionBounds.Contains(overlayPosition))
             {
-                return new TabDropSlot(strip, strip.GetInsertionSlot(overlayPosition.X, _overlay), OverStrip: false);
+                int slot = strip.GetInsertionSlot(overlayPosition.X, _overlay);
+                return new TabDropSlot(strip, slot, OverStrip: false);
             }
         }
 
