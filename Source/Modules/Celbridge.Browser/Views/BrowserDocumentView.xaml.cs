@@ -1041,7 +1041,7 @@ public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarg
     }
 
     // Closing the document discards the open tabs, so the next open shows the Open on Start bookmarks.
-    public override bool KeepsEditorStateAfterClose => false;
+    public override bool DiscardsEditorStateOnClose => true;
 
     public override IEditTarget EditTarget { get; } = new PlatformEditTarget();
 

@@ -202,7 +202,7 @@ public abstract partial class DocumentView : UserControl, IDocumentView
         await Task.CompletedTask;
     }
 
-    public virtual bool KeepsEditorStateAfterClose => true;
+    public virtual bool DiscardsEditorStateOnClose => false;
 
     // Only a custom editor's page sets a pip.
     public virtual WorkspaceItemPip? Pip => null;

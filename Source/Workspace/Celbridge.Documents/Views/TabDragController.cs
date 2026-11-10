@@ -63,7 +63,7 @@ internal sealed class TabDragController : ITabDragOwner
 
     public void ShowDropSlot(TabViewItem tab, TabDropSlot? slot)
     {
-        var sectionView = slot is null ? null : FindSectionView(slot.Strip);
+        var sectionView = slot is null ? null : FindSection(slot.Strip);
         if (slot is null
             || sectionView is null)
         {
@@ -91,8 +91,8 @@ internal sealed class TabDragController : ITabDragOwner
             return;
         }
 
-        var sourceSectionView = FindSectionHolding(documentTab);
-        var targetSectionView = FindSectionView(slot.Strip);
+        var sourceSectionView = FindSection(documentTab);
+        var targetSectionView = FindSection(slot.Strip);
         if (sourceSectionView is null
             || targetSectionView is null)
         {
@@ -102,12 +102,12 @@ internal sealed class TabDragController : ITabDragOwner
         _container.CommitTabDrag(documentTab, sourceSectionView, targetSectionView, slot.InsertionSlot);
     }
 
-    private DocumentSectionView? FindSectionView(TabStripView strip)
+    private DocumentSectionView? FindSection(TabStripView strip)
     {
         return _container.GetMountedSections().FirstOrDefault(sectionView => ReferenceEquals(sectionView.TabStrip, strip));
     }
 
-    private DocumentSectionView? FindSectionHolding(DocumentTab tab)
+    private DocumentSectionView? FindSection(DocumentTab tab)
     {
         return _container.GetMountedSections().FirstOrDefault(sectionView => sectionView.TabStrip.TabView.TabItems.Contains(tab));
     }

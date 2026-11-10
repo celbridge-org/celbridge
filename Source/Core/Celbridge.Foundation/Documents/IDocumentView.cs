@@ -87,10 +87,10 @@ public interface IDocumentView : IWorkspaceItem
     Task CompleteOpenAsync(string? editorState);
 
     /// <summary>
-    /// Returns true when the editor state outlives a close, so the next open restores it. Reopening a document
-    /// from the tab menu keeps the state either way.
+    /// Returns true when closing the document discards its editor state. The editor then starts from its defaults the
+    /// next time the document opens. The tab menu's Reopen item always keeps the editor state.
     /// </summary>
-    bool KeepsEditorStateAfterClose { get; }
+    bool DiscardsEditorStateOnClose { get; }
 
     /// <summary>
     /// The health of the document's web view. A document with no web view is always healthy.
