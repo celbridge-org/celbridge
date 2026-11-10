@@ -81,6 +81,14 @@ public class CommunityService : ICommunityService
                 .WithErrors(writeResult);
         }
 
+        // A read-only file keeps the user from editing bookmarks that the next load would replace.
+        var lockResult = await resourceFileSystem.SetAttributesAsync(resource, FileSystemAttributes.ReadOnly, set: true);
+        if (lockResult.IsFailure)
+        {
+            return Result.Fail($"Failed to make the Community document read-only: '{resource}'")
+                .WithErrors(lockResult);
+        }
+
         return Result.Ok();
     }
 

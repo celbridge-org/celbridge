@@ -13,8 +13,8 @@ namespace Celbridge.Browser.Views;
 public sealed partial class BrowserDocumentSettingsView : UserControl
 {
     /// <summary>
-    /// The key of the section showing the bookmarks. Edit Bookmarks opens this section, from the bookmark list and from
-    /// the empty page.
+    /// The key of the section showing the bookmarks. Bookmark Settings opens this section, from the bookmark list and
+    /// from the empty page.
     /// </summary>
     public const string BookmarksSectionKey = "Bookmarks";
 

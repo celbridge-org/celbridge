@@ -26,6 +26,7 @@
     <DataTemplate x:Key="BookmarkActionsTemplate" x:DataType="vm:BrowserBookmarkViewModel">
       <controls:IconButton VerticalAlignment="Center"
                            ToolTipService.ToolTip="{x:Bind OpenTooltip}"
+                           AutomationProperties.Name="{x:Bind OpenTooltip}"
                            Click="OpenBookmarkButton_Click">
         <controls:Icon IconName="bs-arrow-up-right" FontSize="{StaticResource IconSizeMedium}" />
       </controls:IconButton>
@@ -38,6 +39,8 @@
           <TextBlock Text="{x:Bind UrlLabel}"
                      Style="{StaticResource FieldLabelTextStyle}" />
           <TextBox IsSpellCheckEnabled="False"
+                   AutomationProperties.AutomationId="BookmarkUrlField"
+                   AutomationProperties.Name="{x:Bind UrlLabel}"
                    PlaceholderText="{x:Bind UrlPlaceholder}"
                    Text="{x:Bind Url, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
                    KeyDown="CommitField_KeyDown" />
@@ -75,18 +78,31 @@
 
   </UserControl.Resources>
 
-  <controls:CardListView x:Name="BookmarkCards"
-                         HeaderTemplate="{StaticResource BookmarkHeaderTemplate}"
-                         HeaderActionsTemplate="{StaticResource BookmarkActionsTemplate}"
-                         BodyTemplate="{StaticResource BookmarkBodyTemplate}"
-                         AddButtonText="{x:Bind AddBookmarkString}"
-                         EmptyText="{x:Bind NoBookmarksString}">
+  <StackPanel Spacing="12">
 
-    <controls:CardListView.AddRowContent>
-      <Button Content="{x:Bind AddCurrentPageString}"
-              IsEnabled="{x:Bind ViewModel.CanAddBookmarkFromCurrentPage, Mode=OneWay}"
-              Click="AddCurrentPageButton_Click" />
-    </controls:CardListView.AddRowContent>
+    <InfoBar x:Name="ReadOnlyInfoBar"
+             AutomationProperties.AutomationId="BookmarksReadOnlyNotice"
+             IsOpen="True"
+             IsClosable="False"
+             Severity="Informational"
+             Message="{x:Bind ReadOnlyString}"
+             Visibility="{x:Bind ViewModel.IsReadOnly, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
 
-  </controls:CardListView>
+    <controls:CardListView x:Name="BookmarkCards"
+                           HeaderTemplate="{StaticResource BookmarkHeaderTemplate}"
+                           HeaderActionsTemplate="{StaticResource BookmarkActionsTemplate}"
+                           BodyTemplate="{StaticResource BookmarkBodyTemplate}"
+                           AddButtonText="{x:Bind AddBookmarkString}"
+                           EmptyText="{x:Bind NoBookmarksString}"
+                           IsReadOnly="{x:Bind ViewModel.IsReadOnly, Mode=OneWay}">
+
+      <controls:CardListView.AddRowContent>
+        <Button Content="{x:Bind AddCurrentPageString}"
+                IsEnabled="{x:Bind ViewModel.CanAddBookmarkFromCurrentPage, Mode=OneWay}"
+                Click="AddCurrentPageButton_Click" />
+      </controls:CardListView.AddRowContent>
+
+    </controls:CardListView>
+
+  </StackPanel>
 </UserControl>

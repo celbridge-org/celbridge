@@ -1,3 +1,5 @@
+using Celbridge.UserInterface.Helpers;
+
 namespace Celbridge.UserInterface.Services;
 
 /// <summary>
@@ -8,12 +10,11 @@ namespace Celbridge.UserInterface.Services;
 public class InverseBoolToDimmedOpacityConverter : IValueConverter
 {
     private const double EnabledOpacity = 1.0;
-    private const double DimmedOpacity = 0.5;
 
     public object Convert(object value, Type targetType, object parameter, string language)
     {
         var boolValue = (bool)value;
-        return boolValue ? DimmedOpacity : EnabledOpacity;
+        return boolValue ? Opacities.Dimmed : EnabledOpacity;
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, string language)

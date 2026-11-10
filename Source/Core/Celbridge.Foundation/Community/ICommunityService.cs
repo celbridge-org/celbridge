@@ -12,7 +12,8 @@ public interface ICommunityService
     ResourceKey DocumentResource { get; }
 
     /// <summary>
-    /// Writes the Community document. Called on workspace load. A failure is logged, not propagated.
+    /// Writes the Community document as a read-only file. Called on workspace load. A failure is logged, not
+    /// propagated.
     /// </summary>
     Task SeedDocumentAsync();
 }

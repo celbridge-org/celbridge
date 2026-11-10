@@ -74,6 +74,14 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
     [NotifyPropertyChangedFor(nameof(AreToolbarsVisible))]
     private LayoutMode _layoutMode;
 
+    /// <summary>
+    /// Returns true when the document's file is read-only. The bookmarks are then fixed.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanAddBookmarkFromCurrentPage))]
+    [NotifyPropertyChangedFor(nameof(IsBookmarkPageEnabled))]
+    private bool _isReadOnly;
+
     [ObservableProperty]
     private BrowserTabViewModel? _shownTab;
 
@@ -168,7 +176,14 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
     /// <summary>
     /// Returns true when the shown page can be bookmarked. A page a bookmark already points at cannot.
     /// </summary>
-    public bool CanAddBookmarkFromCurrentPage => HasNavigablePage && !IsCurrentPageBookmarked;
+    public bool CanAddBookmarkFromCurrentPage => !IsReadOnly
+        && HasNavigablePage
+        && !IsCurrentPageBookmarked;
+
+    /// <summary>
+    /// Returns true when the star button can add or remove the shown page's bookmark.
+    /// </summary>
+    public bool IsBookmarkPageEnabled => !IsReadOnly && HasNavigablePage;
 
     /// <summary>
     /// Returns true when a bookmark points at the shown page.
@@ -298,11 +313,11 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
 
     /// <summary>
     /// Scales the icon from a read of the tab's page to the size the document file stores, and shows the scaled icon
-    /// on the tab. A bookmark at the tab's address stores the same scaled icon when the bookmark has no icon. A
-    /// bookmark with an icon keeps that icon. When a site changes its icon, a bookmark therefore gets the new icon only
-    /// after the user adds the bookmark again. The tab and the bookmarks keep their icons when the image is null or
-    /// the encoder cannot read the image. They also keep their icons when the read is no longer the tab's current
-    /// read.
+    /// on the tab. A bookmark at the tab's address stores the same scaled icon when the bookmark has no icon and the
+    /// file is writable. A bookmark with an icon keeps that icon. When a site changes its icon, a bookmark therefore
+    /// gets the new icon only after the user adds the bookmark again. The tab and the bookmarks keep their icons when
+    /// the image is null or the encoder cannot read the image. They also keep their icons when the read is no longer
+    /// the tab's current read.
     /// </summary>
     public void ReportTabFavicon(BrowserTabViewModel tab, int read, byte[]? image)
     {
@@ -321,6 +336,11 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
         }
 
         tab.Favicon = favicon;
+
+        if (IsReadOnly)
+        {
+            return;
+        }
 
         foreach (var bookmark in Bookmarks)
         {
@@ -836,6 +856,7 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
         OnPropertyChanged(nameof(AreEmptyPageBookmarksVisible));
         OnPropertyChanged(nameof(IsPageOnScreen));
         OnPropertyChanged(nameof(CanAddBookmarkFromCurrentPage));
+        OnPropertyChanged(nameof(IsBookmarkPageEnabled));
         OnPropertyChanged(nameof(IsCurrentPageBookmarked));
         OnPropertyChanged(nameof(CanReload));
         OnPropertyChanged(nameof(IsBackEnabled));
@@ -847,11 +868,12 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
     }
 
     /// <summary>
-    /// Adds a bookmark for the shown page, named after its site.
+    /// Adds a bookmark for the shown page, named after its site. Returns null when the file is read-only.
     /// </summary>
     public BrowserBookmarkViewModel? AddBookmarkFromCurrentPage()
     {
-        if (!TryNormalizeUserUrl(CurrentUrl, out var pageUrl))
+        if (IsReadOnly
+            || !TryNormalizeUserUrl(CurrentUrl, out var pageUrl))
         {
             return null;
         }
@@ -866,10 +888,16 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
     }
 
     /// <summary>
-    /// Adds a bookmark for the shown page, or removes the bookmark when one already points at the page.
+    /// Adds a bookmark for the shown page, or removes the bookmark when one already points at the page. Does nothing
+    /// when the file is read-only.
     /// </summary>
     public void ToggleBookmarkForCurrentPage()
     {
+        if (IsReadOnly)
+        {
+            return;
+        }
+
         var bookmark = FindBookmarkForCurrentPage();
         if (bookmark is null)
         {

@@ -255,6 +255,51 @@ public class BrowserDocumentViewModelTests
     }
 
     [Test]
+    public void TheBookmarkControls_FollowTheReadOnlyState()
+    {
+        var viewModel = CreateViewModelWithTabs(PageOne);
+        var changedProperties = new List<string?>();
+        viewModel.PropertyChanged += (sender, args) => changedProperties.Add(args.PropertyName);
+
+        viewModel.IsReadOnly = true;
+
+        viewModel.IsBookmarkPageEnabled.Should().BeFalse();
+        viewModel.CanAddBookmarkFromCurrentPage.Should().BeFalse();
+        changedProperties.Should().Contain(new[]
+        {
+            nameof(BrowserDocumentViewModel.IsBookmarkPageEnabled),
+            nameof(BrowserDocumentViewModel.CanAddBookmarkFromCurrentPage)
+        });
+
+        viewModel.IsReadOnly = false;
+
+        viewModel.IsBookmarkPageEnabled.Should().BeTrue();
+        viewModel.CanAddBookmarkFromCurrentPage.Should().BeTrue();
+    }
+
+    [Test]
+    public void TheStar_InAReadOnlyFile_LeavesTheBookmarksAsTheyAre()
+    {
+        var viewModel = CreateViewModelWithTabs(PageOne, PageTwo);
+        viewModel.AddBookmark(new BrowserBookmark(PageTwo));
+        viewModel.HasUnsavedChanges = false;
+        viewModel.IsReadOnly = true;
+
+        // PageTwo is shown and bookmarked, so a writable file would lose the bookmark.
+        viewModel.ToggleBookmarkForCurrentPage();
+
+        viewModel.Bookmarks.Should().ContainSingle();
+
+        // PageOne has no bookmark, so a writable file would gain one.
+        viewModel.ChooseTab(viewModel.Tabs[0]);
+        viewModel.ToggleBookmarkForCurrentPage();
+
+        viewModel.AddBookmarkFromCurrentPage().Should().BeNull();
+        viewModel.Bookmarks.Should().ContainSingle();
+        viewModel.HasUnsavedChanges.Should().BeFalse();
+    }
+
+    [Test]
     public void CanAddBookmarkFromCurrentPage_FollowsTheShownPage()
     {
         var viewModel = CreateViewModelWithTabs(PageOne);
@@ -1043,6 +1088,19 @@ public class BrowserDocumentViewModelTests
         TestFavicons.SizeOf(viewModel.Tabs[0].Favicon!).Should().Be((32, 32));
         viewModel.Bookmarks[0].Favicon.Should().BeSameAs(viewModel.Tabs[0].Favicon);
         viewModel.HasUnsavedChanges.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task ATabsFavicon_InAReadOnlyFile_ShowsOnTheTabAndIsNotStored()
+    {
+        var viewModel = await LoadDocumentWithOneBookmarkAsync();
+        viewModel.IsReadOnly = true;
+
+        ReportFavicon(viewModel, viewModel.Tabs[0], TestFavicons.Png(64, 64));
+
+        viewModel.Tabs[0].Favicon.Should().NotBeNull();
+        viewModel.Bookmarks[0].Favicon.Should().BeNull();
+        viewModel.HasUnsavedChanges.Should().BeFalse();
     }
 
     [Test]

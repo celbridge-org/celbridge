@@ -743,8 +743,8 @@ This file could not be saved</value>
   <data name="Browser_UrlBar_BookmarksTooltip" xml:space="preserve">
     <value>Bookmarks</value>
   </data>
-  <data name="Browser_UrlBar_EditBookmarks" xml:space="preserve">
-    <value>Edit Bookmarks</value>
+  <data name="Browser_UrlBar_BookmarkSettings" xml:space="preserve">
+    <value>Bookmark Settings</value>
   </data>
   <data name="Browser_TabBar_NewTabTooltip" xml:space="preserve">
     <value>New Tab</value>
@@ -790,6 +790,9 @@ This file could not be saved</value>
   </data>
   <data name="Browser_Settings_NoBookmarks" xml:space="preserve">
     <value>No bookmarks yet.</value>
+  </data>
+  <data name="Browser_Settings_BookmarksReadOnly" xml:space="preserve">
+    <value>This file is read-only, so its bookmarks cannot be changed.</value>
   </data>
   <data name="Browser_Settings_BookmarkUrlLabel" xml:space="preserve">
     <value>URL</value>

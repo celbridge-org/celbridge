@@ -143,7 +143,7 @@
                     <!-- The glyph and tooltip are set in code-behind. -->
                     <controls:IconButton x:Name="BookmarkPageButton"
                                          VerticalAlignment="Center"
-                                         IsEnabled="{x:Bind ViewModel.HasNavigablePage, Mode=OneWay}"
+                                         IsEnabled="{x:Bind ViewModel.IsBookmarkPageEnabled, Mode=OneWay}"
                                          Click="BookmarkPageButton_Click">
                         <controls:Icon x:Name="BookmarkPageIcon"
                                        Symbol="Star"
@@ -254,9 +254,9 @@
                             </ItemsControl>
 
                             <HyperlinkButton HorizontalAlignment="Center"
-                                             Content="{x:Bind EditBookmarksString}"
-                                             AutomationProperties.AutomationId="EmptyPageEditBookmarks"
-                                             Click="EditBookmarksLink_Click" />
+                                             Content="{x:Bind BookmarkSettingsString}"
+                                             AutomationProperties.AutomationId="EmptyPageBookmarkSettings"
+                                             Click="BookmarkSettingsLink_Click" />
                         </StackPanel>
                     </StackPanel>
                 </ContentControl>

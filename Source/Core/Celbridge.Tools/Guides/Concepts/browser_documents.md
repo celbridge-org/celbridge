@@ -17,6 +17,8 @@ Each bookmark has a `url`, an optional `name`, an optional `open_on_start` and a
 
 A bookmark with `open_on_start = true` opens in a tab when the document opens with no saved tabs. The bookmark button at the left of the URL bar lists every bookmark, and choosing one opens a new tab. The file stores the bookmarks, so a team shares them. The open tabs are saved for each user, and they come back when the project loads again. Closing a document discards its open tabs, so the next open shows the Open on Start bookmarks.
 
+A read-only `.browser` file has fixed bookmarks, and the editor grays out the controls that change them. `file_set_writeable` makes a file read-only, or writable again. The Community document is read-only, and every project load writes it again.
+
 Celbridge writes the `favicon` key itself. The key contains the site's icon as a base64 PNG. Celbridge adds the key when a tab first shows the bookmark's page. Leave the key out of a new bookmark. When editing a file, keep each `favicon` line as it is. To change a bookmark's `url`, also remove its `favicon` line. Celbridge then stores the new page's icon on the next visit.
 
 Use `file_write` to create a `.browser` file in one step:

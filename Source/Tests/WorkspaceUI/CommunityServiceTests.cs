@@ -34,6 +34,9 @@ public class CommunityServiceTests
         _resourceFileSystem
             .WriteAllTextAsync(Arg.Any<ResourceKey>(), Arg.Do<string>(content => _writtenContent = content))
             .Returns(Result.Ok());
+        _resourceFileSystem
+            .SetAttributesAsync(Arg.Any<ResourceKey>(), Arg.Any<FileSystemAttributes>(), Arg.Any<bool>())
+            .Returns(Result.Ok());
 
         var resourceService = Substitute.For<IResourceService>();
         resourceService.FileSystem.Returns(_resourceFileSystem);
@@ -94,6 +97,24 @@ public class CommunityServiceTests
         var openOnStart = ReadWrittenDocument().Bookmarks.Where(bookmark => bookmark.OpenOnStart);
         openOnStart.Should().ContainSingle()
             .Which.Url.Should().Be(CommunityUrls.Celbridge);
+    }
+
+    [Test]
+    public async Task SeedDocumentAsync_WritesTheFileThenMakesItReadOnly()
+    {
+        var service = CreateService();
+
+        await service.SeedDocumentAsync();
+
+        Received.InOrder(() =>
+        {
+            _resourceFileSystem.WriteAllTextAsync(CommunityResource, Arg.Any<string>());
+            _resourceFileSystem.SetAttributesAsync(CommunityResource, FileSystemAttributes.ReadOnly, true);
+        });
+        await _resourceFileSystem.Received(1).SetAttributesAsync(
+            Arg.Any<ResourceKey>(),
+            Arg.Any<FileSystemAttributes>(),
+            Arg.Any<bool>());
     }
 
     [Test]

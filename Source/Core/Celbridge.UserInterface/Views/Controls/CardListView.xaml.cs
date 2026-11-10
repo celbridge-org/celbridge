@@ -12,13 +12,17 @@ namespace Celbridge.UserInterface.Views.Controls;
 // One card in the list. Container is what the list positions and drags; Card is the expander inside it, and
 // Outline is the ring drawn over the expander's own border to mark the card the pointer is carrying. The
 // transform holds the card under the pointer, and the grip glyph takes the accent with the outline. A
-// single-card list carries no grip, so that one is optional.
+// single-card list carries no grip, so the grip and its glyph are optional. A read-only list disables the
+// body and the delete button, and dims the grip.
 internal sealed record CardEntry(
     object Item,
     Grid Container,
     Expander Card,
     Border Outline,
     TranslateTransform Transform,
+    ContentControl Body,
+    IconButton DeleteButton,
+    FrameworkElement? Grip,
     Icon? GripIcon);
 
 // What a reorder drag carries from the grab to the drop. The pitch and grab offset are measured once, at
@@ -48,6 +52,9 @@ internal sealed class CardDragState
 /// </summary>
 public sealed partial class CardListView : UserControl
 {
+    // The automation ID of every card's expander. The automation tools find a card by this ID.
+    private const string CardAutomationId = "CardListCard";
+
     private readonly List<CardEntry> _cards = new();
     private readonly IStringLocalizer _stringLocalizer;
 
@@ -105,6 +112,12 @@ public sealed partial class CardListView : UserControl
         typeof(string),
         typeof(CardListView),
         new PropertyMetadata(string.Empty, OnEmptyTextChanged));
+
+    public static readonly DependencyProperty IsReadOnlyProperty = DependencyProperty.Register(
+        nameof(IsReadOnly),
+        typeof(bool),
+        typeof(CardListView),
+        new PropertyMetadata(false, OnIsReadOnlyChanged));
 
     /// <summary>
     /// The list the cards edit. Delete and reorder write straight to it, so it must be mutable; supply an
@@ -173,6 +186,16 @@ public sealed partial class CardListView : UserControl
     }
 
     /// <summary>
+    /// Returns true when the list only shows its entries. The cards still expand, and the header actions stay
+    /// enabled. The add row, each card's body and delete button are disabled, and the cards cannot be reordered.
+    /// </summary>
+    public bool IsReadOnly
+    {
+        get => (bool)GetValue(IsReadOnlyProperty);
+        set => SetValue(IsReadOnlyProperty, value);
+    }
+
+    /// <summary>
     /// Raised when the user asks for a new entry. Only the consumer knows what a blank entry is, so it adds
     /// the item to ItemsSource itself.
     /// </summary>
@@ -225,13 +248,47 @@ public sealed partial class CardListView : UserControl
     private static void OnAddRowContentChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var cardListView = (CardListView)d;
-        cardListView.AddRowPresenter.Content = cardListView.AddRowContent;
+        cardListView.AddRowContentControl.Content = cardListView.AddRowContent;
     }
 
     private static void OnEmptyTextChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var cardListView = (CardListView)d;
         cardListView.EmptyTextBlock.Text = cardListView.EmptyText;
+    }
+
+    private static void OnIsReadOnlyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var cardListView = (CardListView)d;
+        cardListView.CancelDrag();
+        cardListView.ApplyReadOnly();
+    }
+
+    private void ApplyReadOnly()
+    {
+        var isEditable = !IsReadOnly;
+
+        AddButton.IsEnabled = isEditable;
+        AddRowContentControl.IsEnabled = isEditable;
+
+        foreach (var entry in _cards)
+        {
+            ApplyReadOnly(entry);
+        }
+    }
+
+    private void ApplyReadOnly(CardEntry entry)
+    {
+        var isEditable = !IsReadOnly;
+
+        entry.Body.IsEnabled = isEditable;
+        entry.DeleteButton.IsEnabled = isEditable;
+
+        if (entry.Grip is not null)
+        {
+            // A grip is a glyph with no disabled look, so a read-only list dims it.
+            entry.Grip.Opacity = isEditable ? 1 : Opacities.Dimmed;
+        }
     }
 
     private void ItemsSource_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -299,23 +356,33 @@ public sealed partial class CardListView : UserControl
         headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
+        // Disabling the body disables every control inside it.
+        var body = new ContentControl
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            VerticalContentAlignment = VerticalAlignment.Stretch,
+            IsTabStop = false,
+            Content = item,
+            ContentTemplate = BodyTemplate
+        };
+
         var card = new Expander
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
             Header = headerGrid,
-            Content = new ContentPresenter
-            {
-                Content = item,
-                ContentTemplate = BodyTemplate
-            }
+            Content = body
         };
+
+        AutomationProperties.SetAutomationId(card, CardAutomationId);
 
         card.KeyDown += Card_KeyDown;
         card.GotFocus += Card_GotFocus;
         card.LostFocus += Card_LostFocus;
 
         // A single card has nothing to reorder against, so it carries no grip.
+        FrameworkElement? grip = null;
         Icon? gripIcon = null;
         if (itemCount > 1)
         {
@@ -325,7 +392,7 @@ public sealed partial class CardListView : UserControl
                 FontSize = IconSize
             };
 
-            var grip = CreateGrip(card, gripIcon);
+            grip = CreateGrip(card, gripIcon);
             Grid.SetColumn(grip, 0);
             headerGrid.Children.Add(grip);
         }
@@ -339,7 +406,9 @@ public sealed partial class CardListView : UserControl
         Grid.SetColumn(headerContent, 1);
         headerGrid.Children.Add(headerContent);
 
-        var actions = CreateHeaderActions(item, card);
+        var deleteButton = CreateDeleteButton(item, card);
+
+        var actions = CreateHeaderActions(item, deleteButton);
         Grid.SetColumn(actions, 2);
         headerGrid.Children.Add(actions);
 
@@ -359,7 +428,11 @@ public sealed partial class CardListView : UserControl
         container.Children.Add(card);
         container.Children.Add(outline);
 
-        return new CardEntry(item, container, card, outline, transform, gripIcon);
+        var entry = new CardEntry(item, container, card, outline, transform, body, deleteButton, grip, gripIcon);
+
+        ApplyReadOnly(entry);
+
+        return entry;
     }
 
     private FrameworkElement CreateGrip(Expander card, Icon gripIcon)
@@ -381,7 +454,7 @@ public sealed partial class CardListView : UserControl
         return grip;
     }
 
-    private StackPanel CreateHeaderActions(object item, Expander card)
+    private StackPanel CreateHeaderActions(object item, IconButton deleteButton)
     {
         var actions = new StackPanel
         {
@@ -400,6 +473,18 @@ public sealed partial class CardListView : UserControl
             });
         }
 
+        actions.Children.Add(deleteButton);
+
+        // The header sits inside the expander's own toggle. Marking a press on one of these controls handled
+        // keeps the press from opening the card.
+        actions.PointerPressed += Actions_PointerHandled;
+        actions.PointerReleased += Actions_PointerHandled;
+
+        return actions;
+    }
+
+    private IconButton CreateDeleteButton(object item, Expander card)
+    {
         // Delete shows only while the card is open, so a collapsed list carries no destructive control and
         // an entry cannot be removed without its contents having been on screen first.
         var deleteButton = new IconButton
@@ -419,17 +504,11 @@ public sealed partial class CardListView : UserControl
         AutomationProperties.SetName(deleteButton, deleteText);
 
         deleteButton.Click += DeleteButton_Click;
-        actions.Children.Add(deleteButton);
 
         card.Expanding += (sender, args) => deleteButton.Visibility = Visibility.Visible;
         card.Collapsed += (sender, args) => deleteButton.Visibility = Visibility.Collapsed;
 
-        // The header sits inside the expander's own toggle, which would otherwise treat a press on one of
-        // these controls as a request to open the card.
-        actions.PointerPressed += Actions_PointerHandled;
-        actions.PointerReleased += Actions_PointerHandled;
-
-        return actions;
+        return deleteButton;
     }
 
     private void Actions_PointerHandled(object sender, PointerRoutedEventArgs e)
@@ -493,7 +572,8 @@ public sealed partial class CardListView : UserControl
     {
         e.Handled = true;
 
-        if (_dragState is not null
+        if (IsReadOnly
+            || _dragState is not null
             || _cards.Count < 2)
         {
             return;
@@ -764,7 +844,8 @@ public sealed partial class CardListView : UserControl
             return;
         }
 
-        if (!EditKeyboard.IsAltDown())
+        if (IsReadOnly
+            || !EditKeyboard.IsAltDown())
         {
             return;
         }

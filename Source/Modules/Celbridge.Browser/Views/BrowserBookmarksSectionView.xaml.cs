@@ -8,7 +8,7 @@ namespace Celbridge.Browser.Views;
 
 /// <summary>
 /// The Bookmarks section of the browser settings: the pages the document's bookmark list offers, each edited through
-/// a card.
+/// a card. A read-only file shows the cards with their editing controls disabled, under a notice.
 /// </summary>
 public sealed partial class BrowserBookmarksSectionView : UserControl
 {
@@ -32,6 +32,7 @@ public sealed partial class BrowserBookmarksSectionView : UserControl
     public string AddCurrentPageString => _stringLocalizer.GetString("Browser_Settings_AddBookmarkFromCurrentPage");
     public string AddBookmarkString => _stringLocalizer.GetString("Browser_Settings_AddBookmark");
     public string NoBookmarksString => _stringLocalizer.GetString("Browser_Settings_NoBookmarks");
+    public string ReadOnlyString => _stringLocalizer.GetString("Browser_Settings_BookmarksReadOnly");
 
     public BrowserBookmarksSectionView()
     {

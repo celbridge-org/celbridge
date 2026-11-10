@@ -84,7 +84,7 @@ public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarg
     private string PlaceholderHintString => _stringLocalizer.GetString("Browser_Placeholder_Hint");
     private string PlaceholderLoadFailedString => _stringLocalizer.GetString("Browser_Placeholder_LoadFailed");
     private string PlaceholderLoadFailedHintString => _stringLocalizer.GetString("Browser_Placeholder_LoadFailedHint");
-    private string EditBookmarksString => _stringLocalizer.GetString("Browser_UrlBar_EditBookmarks");
+    private string BookmarkSettingsString => _stringLocalizer.GetString("Browser_UrlBar_BookmarkSettings");
 
     public BrowserDocumentView(
         IServiceProvider serviceProvider,
@@ -605,13 +605,13 @@ public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarg
             BookmarkListFlyout.Items.Add(new MenuFlyoutSeparator());
         }
 
-        var editItem = new MenuFlyoutItem
+        var settingsItem = new MenuFlyoutItem
         {
-            Text = EditBookmarksString
+            Text = BookmarkSettingsString
         };
-        editItem.Click += EditBookmarksItem_Click;
+        settingsItem.Click += BookmarkSettingsItem_Click;
 
-        BookmarkListFlyout.Items.Add(editItem);
+        BookmarkListFlyout.Items.Add(settingsItem);
     }
 
     private void BookmarkItem_Click(object sender, RoutedEventArgs e)
@@ -623,7 +623,7 @@ public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarg
         }
     }
 
-    private void EditBookmarksItem_Click(object sender, RoutedEventArgs e)
+    private void BookmarkSettingsItem_Click(object sender, RoutedEventArgs e)
     {
         ShowBookmarksSection();
     }
@@ -645,7 +645,7 @@ public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarg
     }
 
     // The link hides with the placeholder, so the settings take the keyboard.
-    private void EditBookmarksLink_Click(object sender, RoutedEventArgs e)
+    private void BookmarkSettingsLink_Click(object sender, RoutedEventArgs e)
     {
         ShowBookmarksSection();
 
@@ -971,6 +971,11 @@ public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarg
     public override async Task<Result> LoadContent()
     {
         return await ViewModel.LoadContent();
+    }
+
+    protected override void OnWritableStateChanged()
+    {
+        ViewModel.IsReadOnly = WritableState != WritableState.Writable;
     }
 
     public override bool HasUnsavedChanges => ViewModel.HasUnsavedChanges;
