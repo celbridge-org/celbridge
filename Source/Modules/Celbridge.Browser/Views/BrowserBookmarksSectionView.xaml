@@ -92,6 +92,7 @@
                            HeaderTemplate="{StaticResource BookmarkHeaderTemplate}"
                            HeaderActionsTemplate="{StaticResource BookmarkActionsTemplate}"
                            BodyTemplate="{StaticResource BookmarkBodyTemplate}"
+                           CardNamePath="DisplayName"
                            AddButtonText="{x:Bind AddBookmarkString}"
                            EmptyText="{x:Bind NoBookmarksString}"
                            IsReadOnly="{x:Bind ViewModel.IsReadOnly, Mode=OneWay}">

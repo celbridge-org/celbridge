@@ -119,6 +119,12 @@ public sealed partial class CardListView : UserControl
         typeof(CardListView),
         new PropertyMetadata(false, OnIsReadOnlyChanged));
 
+    public static readonly DependencyProperty CardNamePathProperty = DependencyProperty.Register(
+        nameof(CardNamePath),
+        typeof(string),
+        typeof(CardListView),
+        new PropertyMetadata(string.Empty, OnTemplateChanged));
+
     /// <summary>
     /// The list the cards edit. Delete and reorder write straight to it, so it must be mutable; supply an
     /// ObservableCollection for the cards to follow additions the consumer makes.
@@ -193,6 +199,16 @@ public sealed partial class CardListView : UserControl
     {
         get => (bool)GetValue(IsReadOnlyProperty);
         set => SetValue(IsReadOnlyProperty, value);
+    }
+
+    /// <summary>
+    /// Returns the path of the item property that names each card. A screen reader announces the card by this name.
+    /// A new value of the property renames the card.
+    /// </summary>
+    public string CardNamePath
+    {
+        get => (string)GetValue(CardNamePathProperty);
+        set => SetValue(CardNamePathProperty, value);
     }
 
     /// <summary>
@@ -376,6 +392,16 @@ public sealed partial class CardListView : UserControl
         };
 
         AutomationProperties.SetAutomationId(card, CardAutomationId);
+
+        if (!string.IsNullOrEmpty(CardNamePath))
+        {
+            card.SetBinding(AutomationProperties.NameProperty, new Binding
+            {
+                Source = item,
+                Path = new PropertyPath(CardNamePath),
+                Mode = BindingMode.OneWay
+            });
+        }
 
         card.KeyDown += Card_KeyDown;
         card.GotFocus += Card_GotFocus;

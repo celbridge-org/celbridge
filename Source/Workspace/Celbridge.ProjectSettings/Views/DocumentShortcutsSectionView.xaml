@@ -134,6 +134,7 @@
                            HeaderTemplate="{StaticResource ShortcutHeaderTemplate}"
                            HeaderActionsTemplate="{StaticResource ShortcutActionsTemplate}"
                            BodyTemplate="{StaticResource ShortcutBodyTemplate}"
+                           CardNamePath="DisplayName"
                            AddButtonText="{x:Bind ViewModel.AddShortcutText, Mode=OneWay}"
                            EmptyText="{x:Bind ViewModel.EmptyText, Mode=OneWay}" />
   </ScrollViewer>
