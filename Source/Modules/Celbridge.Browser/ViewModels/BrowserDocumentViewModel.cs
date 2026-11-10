@@ -5,11 +5,13 @@ using System.Globalization;
 using System.Text.Json;
 using Celbridge.Browser.Helpers;
 using Celbridge.Commands;
+using Celbridge.DataTransfer;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.WebHost;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -816,6 +818,136 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
         Tabs.Move(oldIndex, targetIndex);
     }
 
+    /// <summary>
+    /// Returns which items of a tab's context menu apply to the tab.
+    /// </summary>
+    public BrowserTabMenuState GetTabMenuState(BrowserTabViewModel tab)
+    {
+        return new BrowserTabMenuState
+        {
+            CloseItems = TabCloseItems.ForTab(Tabs.IndexOf(tab), Tabs.Count),
+            CanDuplicate = tab.HasNavigablePage,
+            IsBookmarked = FindBookmark(tab.CurrentUrl) is not null,
+            CanToggleBookmark = !IsReadOnly && tab.HasNavigablePage,
+            HasAddress = tab.HasPage
+        };
+    }
+
+    /// <summary>
+    /// Opens a tab's page in a new tab after it, and shows the new tab. The new tab starts with an empty history and no
+    /// opener. Returns null for a tab with no web address.
+    /// </summary>
+    public BrowserTabViewModel? DuplicateTab(BrowserTabViewModel tab)
+    {
+        var index = Tabs.IndexOf(tab);
+        if (index < 0
+            || !tab.HasNavigablePage)
+        {
+            return null;
+        }
+
+        var duplicate = BrowserTabViewModel.Create(BlankTabLabel, tab.CurrentUrl, tab.Title);
+        duplicate.Favicon = tab.Favicon;
+        Tabs.Insert(index + 1, duplicate);
+
+        ChooseTab(duplicate);
+
+        return duplicate;
+    }
+
+    /// <summary>
+    /// Closes every tab except the given one.
+    /// </summary>
+    public void CloseOtherTabs(BrowserTabViewModel tab)
+    {
+        if (!Tabs.Contains(tab))
+        {
+            return;
+        }
+
+        CloseTabsBeside(tab, Tabs.Where(other => !ReferenceEquals(other, tab)).ToList());
+    }
+
+    /// <summary>
+    /// Closes the tabs to the right of the given tab.
+    /// </summary>
+    public void CloseTabsToTheRight(BrowserTabViewModel tab)
+    {
+        var index = Tabs.IndexOf(tab);
+        if (index < 0)
+        {
+            return;
+        }
+
+        CloseTabsBeside(tab, Tabs.Skip(index + 1).ToList());
+    }
+
+    /// <summary>
+    /// Closes the tabs to the left of the given tab.
+    /// </summary>
+    public void CloseTabsToTheLeft(BrowserTabViewModel tab)
+    {
+        var index = Tabs.IndexOf(tab);
+        if (index < 0)
+        {
+            return;
+        }
+
+        CloseTabsBeside(tab, Tabs.Take(index).ToList());
+    }
+
+    /// <summary>
+    /// Closes every tab, which leaves one blank tab.
+    /// </summary>
+    public void CloseAllTabs()
+    {
+        // The shown tab closes last. The others close while hidden, so the shown tab stays until then and no other page
+        // loads.
+        var closing = Tabs.Where(tab => !ReferenceEquals(tab, ShownTab)).ToList();
+        if (ShownTab is not null)
+        {
+            closing.Add(ShownTab);
+        }
+
+        foreach (var tab in closing)
+        {
+            CloseTab(tab);
+        }
+    }
+
+    // When the shown tab is among the closing tabs, the given tab shows first. Each closing tab then closes while hidden,
+    // so closing one never shows another.
+    private void CloseTabsBeside(BrowserTabViewModel tab, IReadOnlyList<BrowserTabViewModel> closing)
+    {
+        if (ShownTab is not null
+            && closing.Contains(ShownTab))
+        {
+            ShowTab(tab);
+        }
+
+        foreach (var other in closing)
+        {
+            CloseTab(other);
+        }
+    }
+
+    /// <summary>
+    /// Copies a tab's address to the clipboard. Does nothing for a blank tab.
+    /// </summary>
+    public void CopyTabAddress(BrowserTabViewModel tab)
+    {
+        if (!tab.HasPage)
+        {
+            return;
+        }
+
+        _commandService.Execute<ICopyTextToClipboardCommand>(command =>
+        {
+            command.Text = tab.CurrentUrl;
+            command.TransferMode = DataTransferMode.Copy;
+        });
+    }
+
     private void RemoveTab(BrowserTabViewModel tab)
     {
         Tabs.Remove(tab);
@@ -882,8 +1014,53 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
     /// </summary>
     public BrowserBookmarkViewModel? AddBookmarkFromCurrentPage()
     {
+        if (ShownTab is null)
+        {
+            return null;
+        }
+
+        return AddBookmarkForTab(ShownTab);
+    }
+
+    /// <summary>
+    /// Adds a bookmark for the shown page, or removes the bookmark when one already points at the page. Does nothing
+    /// when the file is read-only.
+    /// </summary>
+    public void ToggleBookmarkForCurrentPage()
+    {
+        if (ShownTab is not null)
+        {
+            ToggleBookmarkForTab(ShownTab);
+        }
+    }
+
+    /// <summary>
+    /// Adds a bookmark for a tab's page, or removes the bookmark when one already points at the page. The tab may be
+    /// hidden, with its page not loaded yet. Does nothing when the file is read-only.
+    /// </summary>
+    public void ToggleBookmarkForTab(BrowserTabViewModel tab)
+    {
+        if (IsReadOnly)
+        {
+            return;
+        }
+
+        var bookmark = FindBookmark(tab.CurrentUrl);
+        if (bookmark is null)
+        {
+            AddBookmarkForTab(tab);
+        }
+        else
+        {
+            Bookmarks.Remove(bookmark);
+        }
+    }
+
+    // A bookmark for a tab's page, named after its site, with the tab's icon.
+    private BrowserBookmarkViewModel? AddBookmarkForTab(BrowserTabViewModel tab)
+    {
         if (IsReadOnly
-            || !TryNormalizeUserUrl(CurrentUrl, out var pageUrl))
+            || !TryNormalizeUserUrl(tab.CurrentUrl, out var pageUrl))
         {
             return null;
         }
@@ -894,29 +1071,7 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
             name = GetDefaultBookmarkName(uri);
         }
 
-        return AddBookmark(new BrowserBookmark(pageUrl, name));
-    }
-
-    /// <summary>
-    /// Adds a bookmark for the shown page, or removes the bookmark when one already points at the page. Does nothing
-    /// when the file is read-only.
-    /// </summary>
-    public void ToggleBookmarkForCurrentPage()
-    {
-        if (IsReadOnly)
-        {
-            return;
-        }
-
-        var bookmark = FindBookmarkForCurrentPage();
-        if (bookmark is null)
-        {
-            AddBookmarkFromCurrentPage();
-        }
-        else
-        {
-            Bookmarks.Remove(bookmark);
-        }
+        return AddBookmark(new BrowserBookmark(pageUrl, name, Favicon: tab.Favicon));
     }
 
     /// <summary>
@@ -946,9 +1101,14 @@ public partial class BrowserDocumentViewModel : DocumentViewModel
     /// </summary>
     public BrowserBookmarkViewModel? FindBookmarkForCurrentPage()
     {
+        return FindBookmark(CurrentUrl);
+    }
+
+    private BrowserBookmarkViewModel? FindBookmark(string url)
+    {
         foreach (var bookmark in Bookmarks)
         {
-            if (BrowserUrlHelper.IsSameUrl(bookmark.Url, CurrentUrl))
+            if (BrowserUrlHelper.IsSameUrl(bookmark.Url, url))
             {
                 return bookmark;
             }

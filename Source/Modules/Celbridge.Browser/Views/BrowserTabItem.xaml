@@ -35,4 +35,22 @@
         </StackPanel>
     </muxc:TabViewItem.Header>
 
+    <!-- The close items follow the document tab menu's order. -->
+    <muxc:TabViewItem.ContextFlyout>
+        <MenuFlyout x:Name="TabMenu" Opening="TabMenu_Opening">
+            <MenuFlyoutItem x:Name="CloseMenuItem" Click="MenuItem_Click" />
+            <MenuFlyoutItem x:Name="CloseOthersMenuItem" Click="MenuItem_Click" />
+            <MenuFlyoutItem x:Name="CloseToTheRightMenuItem" Click="MenuItem_Click" />
+            <MenuFlyoutItem x:Name="CloseToTheLeftMenuItem" Click="MenuItem_Click" />
+            <MenuFlyoutItem x:Name="CloseAllMenuItem" Click="MenuItem_Click" />
+            <MenuFlyoutSeparator />
+            <MenuFlyoutItem x:Name="DuplicateMenuItem" Click="MenuItem_Click" />
+            <MenuFlyoutSeparator />
+            <MenuFlyoutItem x:Name="BookmarkMenuItem" Click="MenuItem_Click" />
+            <MenuFlyoutSeparator />
+            <MenuFlyoutItem x:Name="CopyAddressMenuItem" Click="MenuItem_Click" />
+            <MenuFlyoutItem x:Name="OpenInSystemBrowserMenuItem" Click="MenuItem_Click" />
+        </MenuFlyout>
+    </muxc:TabViewItem.ContextFlyout>
+
 </muxc:TabViewItem>

@@ -23,7 +23,7 @@ public sealed partial class BrowserTabBar : UserControl, ITabDragOwner
 
     private readonly IStringLocalizer _stringLocalizer;
 
-    private BrowserDocumentViewModel? _viewModel;
+    private IBrowserTabMenuOwner? _menuOwner;
     private Canvas? _dragOverlay;
     private TabDragGesture? _dragGesture;
     private TabInsertionMarker? _insertionMarker;
@@ -58,29 +58,23 @@ public sealed partial class BrowserTabBar : UserControl, ITabDragOwner
     }
 
     /// <summary>
-    /// The document's view model. Set once, when the document view is constructed.
+    /// The document's view model. The strip follows its tabs and its shown tab.
     /// </summary>
-    public BrowserDocumentViewModel? ViewModel
+    public BrowserDocumentViewModel? ViewModel { get; private set; }
+
+    /// <summary>
+    /// Connects the bar to the document's view model, and to the owner that runs each tab's context menu. Call once,
+    /// when the document view is constructed.
+    /// </summary>
+    public void Attach(BrowserDocumentViewModel viewModel, IBrowserTabMenuOwner menuOwner)
     {
-        get => _viewModel;
-        set
-        {
-            if (_viewModel is not null)
-            {
-                _viewModel.Tabs.CollectionChanged -= Tabs_CollectionChanged;
-                _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
-            }
+        ViewModel = viewModel;
+        _menuOwner = menuOwner;
 
-            _viewModel = value;
+        viewModel.Tabs.CollectionChanged += Tabs_CollectionChanged;
+        viewModel.PropertyChanged += ViewModel_PropertyChanged;
 
-            if (_viewModel is not null)
-            {
-                _viewModel.Tabs.CollectionChanged += Tabs_CollectionChanged;
-                _viewModel.PropertyChanged += ViewModel_PropertyChanged;
-            }
-
-            FollowViewModel(RebuildTabs);
-        }
+        FollowViewModel(RebuildTabs);
     }
 
     /// <summary>
@@ -225,7 +219,7 @@ public sealed partial class BrowserTabBar : UserControl, ITabDragOwner
                 int insertIndex = e.NewStartingIndex;
                 foreach (BrowserTabViewModel tab in e.NewItems)
                 {
-                    var item = new BrowserTabItem(tab);
+                    var item = CreateTabItem(tab);
                     if (insertIndex < 0
                         || insertIndex >= tabItems.Count)
                     {
@@ -283,7 +277,7 @@ public sealed partial class BrowserTabBar : UserControl, ITabDragOwner
 
         foreach (var tab in ViewModel.Tabs)
         {
-            tabItems.Add(new BrowserTabItem(tab));
+            tabItems.Add(CreateTabItem(tab));
         }
 
         SelectShownTab();
@@ -298,6 +292,16 @@ public sealed partial class BrowserTabBar : UserControl, ITabDragOwner
         {
             TabStrip.SelectTab(item);
         }
+    }
+
+    private BrowserTabItem CreateTabItem(BrowserTabViewModel tab)
+    {
+        if (_menuOwner is null)
+        {
+            throw new InvalidOperationException("The tab bar has tabs before it is attached to a document");
+        }
+
+        return new BrowserTabItem(tab, _menuOwner);
     }
 
     private BrowserTabItem? FindTabItem(BrowserTabViewModel tab)

@@ -22,7 +22,7 @@ namespace Celbridge.Browser.Views;
 /// Shows the external pages of a .browser document in tabs. A URL bar and a tab bar sit above the page, and the settings
 /// surface takes the page's place.
 /// </summary>
-public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarget
+public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarget, IBrowserTabMenuOwner
 {
     /// <summary>
     /// A tab's content: a panel in the document area, and the web view in that panel. The web view arrives the first time
@@ -108,7 +108,7 @@ public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarg
 
         this.InitializeComponent();
 
-        TabBar.ViewModel = ViewModel;
+        TabBar.Attach(ViewModel, this);
         TabBar.TabCloseRequested += TabBar_TabCloseRequested;
         TabBar.SetDragOverlay(TabDragOverlay);
 
@@ -558,12 +558,74 @@ public sealed partial class BrowserDocumentView : DocumentView, IBrowserFindTarg
     private void CloseTabAndContent(BrowserTabViewModel tab)
     {
         ViewModel.CloseTab(tab);
+        ReleaseClosedTabContents();
+    }
 
-        var content = FindContent(tab);
-        if (content is not null)
+    // Releases the content of each closed tab, and disposes the tab's web view.
+    private void ReleaseClosedTabContents()
+    {
+        var closedContents = _tabContents
+            .Where(content => !ViewModel.Tabs.Contains(content.Tab))
+            .ToList();
+
+        foreach (var content in closedContents)
         {
             ReleaseContent(content);
         }
+    }
+
+    BrowserTabMenuState IBrowserTabMenuOwner.GetTabMenuState(BrowserTabViewModel tab)
+    {
+        return ViewModel.GetTabMenuState(tab);
+    }
+
+    void IBrowserTabMenuOwner.RunTabMenuAction(BrowserTabViewModel tab, BrowserTabMenuAction action)
+    {
+        switch (action)
+        {
+            case BrowserTabMenuAction.Close:
+                CloseFromTabMenu(() => ViewModel.CloseTab(tab));
+                break;
+            case BrowserTabMenuAction.CloseOthers:
+                CloseFromTabMenu(() => ViewModel.CloseOtherTabs(tab));
+                break;
+            case BrowserTabMenuAction.CloseToTheRight:
+                CloseFromTabMenu(() => ViewModel.CloseTabsToTheRight(tab));
+                break;
+            case BrowserTabMenuAction.CloseToTheLeft:
+                CloseFromTabMenu(() => ViewModel.CloseTabsToTheLeft(tab));
+                break;
+            case BrowserTabMenuAction.CloseAll:
+                CloseFromTabMenu(ViewModel.CloseAllTabs);
+                break;
+            case BrowserTabMenuAction.Duplicate:
+                // Showing the new tab gives its page the keyboard.
+                ViewModel.DuplicateTab(tab);
+                break;
+            case BrowserTabMenuAction.ToggleBookmark:
+                ViewModel.ToggleBookmarkForTab(tab);
+                break;
+            case BrowserTabMenuAction.CopyAddress:
+                ViewModel.CopyTabAddress(tab);
+                break;
+            case BrowserTabMenuAction.OpenInSystemBrowser:
+                ViewModel.OpenInSystemBrowser(tab.CurrentUrl);
+                break;
+        }
+    }
+
+    // A close can remove the tab that had the keyboard, so the keyboard moves to what now shows.
+    private void CloseFromTabMenu(Action closeTabs)
+    {
+        closeTabs();
+        ReleaseClosedTabContents();
+        FocusDocumentContent();
+    }
+
+    // On macOS, closing a menu drops the keyboard on the window's first focusable element.
+    void IBrowserTabMenuOwner.ReturnKeyboardAfterTabMenu()
+    {
+        FocusDocumentContent();
     }
 
     private void ReleaseContent(BrowserTabContent content)

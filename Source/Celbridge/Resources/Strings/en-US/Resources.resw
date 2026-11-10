@@ -755,6 +755,12 @@ This file could not be saved</value>
   <data name="Browser_TabBar_CloseTabTooltip" xml:space="preserve">
     <value>Close Tab</value>
   </data>
+  <data name="Browser_TabMenu_Duplicate" xml:space="preserve">
+    <value>Duplicate</value>
+  </data>
+  <data name="Browser_TabMenu_CopyAddress" xml:space="preserve">
+    <value>Copy Address</value>
+  </data>
   <data name="Browser_Settings_BookmarkOpenOnStartLabel" xml:space="preserve">
     <value>Open on Start</value>
   </data>

@@ -346,19 +346,11 @@ public partial class DocumentTab : TabViewItem
         int tabCount = tabView.TabItems.Count;
         int tabIndex = tabView.TabItems.IndexOf(this);
 
-        // Only show "Close Others" if there are at least 2 other tabs to close
-        CloseOthersMenuItem.Visibility = tabCount > 2 ? Visibility.Visible : Visibility.Collapsed;
-
-        // Only show "Close All" if there are at least 2 tabs to close
-        CloseAllMenuItem.Visibility = tabCount > 1 ? Visibility.Visible : Visibility.Collapsed;
-
-        // Only show "Close to the Right" if there are tabs to the right of this tab
-        bool hasTabsToRight = tabIndex >= 0 && tabIndex < tabCount - 1;
-        CloseToTheRightMenuItem.Visibility = hasTabsToRight ? Visibility.Visible : Visibility.Collapsed;
-
-        // Only show "Close to the Left" if there are tabs to the left of this tab
-        bool hasTabsToLeft = tabIndex > 0;
-        CloseToTheLeftMenuItem.Visibility = hasTabsToLeft ? Visibility.Visible : Visibility.Collapsed;
+        var closeItems = TabCloseItems.ForTab(tabIndex, tabCount);
+        CloseOthersMenuItem.Visibility = closeItems.ShowCloseOthers ? Visibility.Visible : Visibility.Collapsed;
+        CloseToTheRightMenuItem.Visibility = closeItems.ShowCloseToTheRight ? Visibility.Visible : Visibility.Collapsed;
+        CloseToTheLeftMenuItem.Visibility = closeItems.ShowCloseToTheLeft ? Visibility.Visible : Visibility.Collapsed;
+        CloseAllMenuItem.Visibility = closeItems.ShowCloseAll ? Visibility.Visible : Visibility.Collapsed;
 
         // Moving a document into the other section is one action: while the area is unsplit it creates the
         // split, and it is offered only with a document left behind, since a split section is never empty.

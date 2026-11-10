@@ -1,6 +1,7 @@
 using Celbridge.Browser.ViewModels;
 using Celbridge.Browser.Views;
 using Celbridge.Commands;
+using Celbridge.DataTransfer;
 using Celbridge.Messaging;
 using Celbridge.Messaging.Services;
 using Celbridge.Resources;
@@ -97,6 +98,21 @@ public class BrowserDocumentViewModelTests
         tab.IsShown.Should().BeTrue();
         viewModel.IsEmptyStateVisible.Should().BeTrue();
         viewModel.IsPageOnScreen.Should().BeFalse();
+    }
+
+    // Returns a list that records the shown tab at each change from now on.
+    private static List<BrowserTabViewModel?> RecordShownTabs(BrowserDocumentViewModel viewModel)
+    {
+        var shownTabs = new List<BrowserTabViewModel?>();
+        viewModel.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(BrowserDocumentViewModel.ShownTab))
+            {
+                shownTabs.Add(viewModel.ShownTab);
+            }
+        };
+
+        return shownTabs;
     }
 
     private static string[] Addresses(BrowserDocumentViewModel viewModel)
@@ -691,6 +707,240 @@ public class BrowserDocumentViewModelTests
         viewModel.HandleDownloadStarted(tab).Should().BeTrue();
 
         ShouldShowOneBlankTab(viewModel);
+    }
+
+    [Test]
+    public void DuplicatingAHiddenTab_OpensACopyAfterIt_AndShowsTheCopy()
+    {
+        var viewModel = CreateViewModelWithTabs(PageOne, PageTwo);
+        var hidden = viewModel.Tabs[0];
+        hidden.Title = "One";
+        hidden.Favicon = TestFavicons.Png(16, 16);
+
+        var copy = viewModel.DuplicateTab(hidden);
+
+        copy.Should().NotBeNull();
+        Addresses(viewModel).Should().Equal(PageOne, PageOne, PageTwo);
+        viewModel.Tabs[1].Should().BeSameAs(copy);
+        viewModel.ShownTab.Should().BeSameAs(copy);
+        copy!.Label.Should().Be("One");
+        copy.Favicon.Should().BeSameAs(hidden.Favicon);
+        copy.CanGoBack.Should().BeFalse();
+    }
+
+    [Test]
+    public void DuplicatingANewWindowsTab_GivesTheCopyNoOpener()
+    {
+        var viewModel = CreateViewModelWithTabs(PageOne);
+        var newWindow = viewModel.OpenTabForNewWindow(PageTwo, isUserInitiated: true, viewModel.Tabs[0])!;
+        newWindow.NotifyNavigationCommitted(PageTwo);
+
+        var copy = viewModel.DuplicateTab(newWindow)!;
+
+        copy.Opener.Should().BeNull();
+        copy.IsNewWindow.Should().BeFalse();
+    }
+
+    [Test]
+    public void DuplicatingABlankTab_OpensNothing()
+    {
+        var viewModel = CreateViewModelWithTabs();
+
+        viewModel.DuplicateTab(viewModel.Tabs[0]).Should().BeNull();
+
+        ShouldShowOneBlankTab(viewModel);
+    }
+
+    [Test]
+    public void ClosingTheOthers_OfAHiddenTab_ShowsThatTab_AndNoOtherOnTheWay()
+    {
+        var viewModel = CreateViewModelWithTabs(PageOne, PageTwo, PageThree);
+        var kept = viewModel.Tabs[0];
+        var shownTabs = RecordShownTabs(viewModel);
+
+        viewModel.CloseOtherTabs(kept);
+
+        viewModel.Tabs.Should().ContainSingle().Which.Should().BeSameAs(kept);
+        viewModel.ShownTab.Should().BeSameAs(kept);
+        shownTabs.Should().Equal(kept);
+    }
+
+    [Test]
+    public void ClosingTheOthers_OfABlankTab_LeavesThatTab()
+    {
+        var viewModel = CreateViewModelWithTabs(PageOne, PageTwo);
+        var blankTab = viewModel.OpenBlankTab();
+
+        viewModel.CloseOtherTabs(blankTab);
+
+        viewModel.Tabs.Should().ContainSingle().Which.Should().BeSameAs(blankTab);
+        ShouldShowOneBlankTab(viewModel);
+    }
+
+    [Test]
+    public void ClosingTheTabsToTheRight_WithTheShownTabAmongThem_ShowsTheMenusTab()
+    {
+        var viewModel = CreateViewModelWithTabs(PageOne, PageTwo, PageThree);
+        var menuTab = viewModel.Tabs[0];
+        var shownTabs = RecordShownTabs(viewModel);
+
+        viewModel.CloseTabsToTheRight(menuTab);
+
+        Addresses(viewModel).Should().Equal(PageOne);
+        viewModel.ShownTab.Should().BeSameAs(menuTab);
+        shownTabs.Should().Equal(menuTab);
+    }
+
+    [Test]
+    public void ClosingTheTabsToTheLeft_LeavesTheShownTab()
+    {
+        var viewModel = CreateViewModelWithTabs(PageOne, PageTwo, PageThree);
+        var shownTab = viewModel.ShownTab;
+
+        viewModel.CloseTabsToTheLeft(viewModel.Tabs[1]);
+
+        Addresses(viewModel).Should().Equal(PageTwo, PageThree);
+        viewModel.ShownTab.Should().BeSameAs(shownTab);
+    }
+
+    [Test]
+    public void ClosingAllTabs_LeavesOneBlankTab_AndShowsNoOtherTabOnTheWay()
+    {
+        var viewModel = CreateViewModelWithTabs(PageOne, PageTwo, PageThree);
+        viewModel.ChooseTab(viewModel.Tabs[1]);
+        var shownTabs = RecordShownTabs(viewModel);
+
+        viewModel.CloseAllTabs();
+
+        ShouldShowOneBlankTab(viewModel);
+        shownTabs.Should().Equal(viewModel.Tabs[0]);
+    }
+
+    [Test]
+    public void TheBookmarkItem_OnAHiddenTab_AddsABookmarkWithTheTabsAddressAndIcon()
+    {
+        var viewModel = CreateViewModelWithTabs(PageOne, PageTwo);
+        var hidden = viewModel.Tabs[0];
+        var icon = TestFavicons.Png(16, 16);
+        hidden.Favicon = icon;
+
+        viewModel.ToggleBookmarkForTab(hidden);
+
+        var bookmark = viewModel.Bookmarks.Should().ContainSingle().Subject;
+        bookmark.Url.Should().Be(PageOne);
+        bookmark.Name.Should().Be("example.com");
+        bookmark.Favicon.Should().BeSameAs(icon);
+        viewModel.ShownTab!.CurrentUrl.Should().Be(PageTwo);
+        viewModel.GetTabMenuState(hidden).IsBookmarked.Should().BeTrue();
+    }
+
+    [Test]
+    public void TheBookmarkItem_OnABookmarkedHiddenTab_RemovesOnlyThatBookmark()
+    {
+        var viewModel = CreateViewModelWithTabs(PageOne, PageTwo);
+        viewModel.Bookmarks.Add(viewModel.CreateBookmark(new BrowserBookmark(PageOne)));
+        viewModel.Bookmarks.Add(viewModel.CreateBookmark(new BrowserBookmark(PageTwo)));
+
+        viewModel.ToggleBookmarkForTab(viewModel.Tabs[0]);
+
+        viewModel.Bookmarks.Should().ContainSingle().Which.Url.Should().Be(PageTwo);
+    }
+
+    [Test]
+    public void TheBookmarkItem_InAReadOnlyFile_LeavesTheBookmarksAsTheyAre()
+    {
+        var viewModel = CreateViewModelWithTabs(PageOne, PageTwo);
+        viewModel.IsReadOnly = true;
+
+        viewModel.ToggleBookmarkForTab(viewModel.Tabs[0]);
+
+        viewModel.Bookmarks.Should().BeEmpty();
+    }
+
+    [Test]
+    public void CopyTabAddress_CopiesTheAddressOfAHiddenTab()
+    {
+        Action<ICopyTextToClipboardCommand>? configure = null;
+        _commandService.Execute(
+            Arg.Do<Action<ICopyTextToClipboardCommand>>(action => configure = action),
+            Arg.Any<string>(),
+            Arg.Any<int>());
+        var viewModel = CreateViewModelWithTabs(PageOne, PageTwo);
+
+        viewModel.CopyTabAddress(viewModel.Tabs[0]);
+
+        configure.Should().NotBeNull();
+        var command = Substitute.For<ICopyTextToClipboardCommand>();
+        configure!(command);
+        command.Text.Should().Be(PageOne);
+        command.TransferMode.Should().Be(DataTransferMode.Copy);
+    }
+
+    [Test]
+    public void TheTabMenu_OnABlankTab_GraysOutTheItemsThatNeedAnAddress()
+    {
+        var viewModel = CreateViewModelWithTabs(PageOne);
+        var blankTab = viewModel.OpenBlankTab();
+
+        var state = viewModel.GetTabMenuState(blankTab);
+
+        state.CanDuplicate.Should().BeFalse();
+        state.CanToggleBookmark.Should().BeFalse();
+        state.IsBookmarked.Should().BeFalse();
+        state.HasAddress.Should().BeFalse();
+    }
+
+    [Test]
+    public void TheTabMenu_InAReadOnlyFile_GraysOutOnlyTheBookmarkItem()
+    {
+        var viewModel = CreateViewModelWithTabs(PageOne);
+        viewModel.IsReadOnly = true;
+
+        var state = viewModel.GetTabMenuState(viewModel.Tabs[0]);
+
+        state.CanToggleBookmark.Should().BeFalse();
+        state.CanDuplicate.Should().BeTrue();
+        state.HasAddress.Should().BeTrue();
+    }
+
+    [Test]
+    public void TheTabMenu_OffersTheClosesForTheFirstAndTheLastTab()
+    {
+        var viewModel = CreateViewModelWithTabs(PageOne, PageTwo, PageThree);
+
+        var first = viewModel.GetTabMenuState(viewModel.Tabs[0]);
+        var last = viewModel.GetTabMenuState(viewModel.Tabs[2]);
+
+        first.CloseItems.ShowCloseToTheLeft.Should().BeFalse();
+        first.CloseItems.ShowCloseToTheRight.Should().BeTrue();
+        last.CloseItems.ShowCloseToTheLeft.Should().BeTrue();
+        last.CloseItems.ShowCloseToTheRight.Should().BeFalse();
+        first.CloseItems.ShowCloseOthers.Should().BeTrue();
+        first.CloseItems.ShowCloseAll.Should().BeTrue();
+    }
+
+    [Test]
+    public void TheTabMenu_WithTwoTabs_LeavesOutCloseOthers()
+    {
+        var viewModel = CreateViewModelWithTabs(PageOne, PageTwo);
+
+        var state = viewModel.GetTabMenuState(viewModel.Tabs[0]);
+
+        state.CloseItems.ShowCloseOthers.Should().BeFalse();
+        state.CloseItems.ShowCloseAll.Should().BeTrue();
+    }
+
+    [Test]
+    public void TheTabMenu_OnTheOnlyTab_OffersOnlyClose()
+    {
+        var viewModel = CreateViewModelWithTabs(PageOne);
+
+        var state = viewModel.GetTabMenuState(viewModel.Tabs[0]);
+
+        state.CloseItems.ShowCloseOthers.Should().BeFalse();
+        state.CloseItems.ShowCloseToTheRight.Should().BeFalse();
+        state.CloseItems.ShowCloseToTheLeft.Should().BeFalse();
+        state.CloseItems.ShowCloseAll.Should().BeFalse();
     }
 
     [Test]
