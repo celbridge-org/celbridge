@@ -6,27 +6,11 @@ external-content = true
 display-name = "FileViewer_Editor_Name"
 
 [[file-types]]
-extension = ".jpg"
+extension = ".apng"
 display-name = "FileViewer_FileType_Image"
 
 [[file-types]]
-extension = ".jpeg"
-display-name = "FileViewer_FileType_Image"
-
-[[file-types]]
-extension = ".png"
-display-name = "FileViewer_FileType_Image"
-
-[[file-types]]
-extension = ".gif"
-display-name = "FileViewer_FileType_Image"
-
-[[file-types]]
-extension = ".webp"
-display-name = "FileViewer_FileType_Image"
-
-[[file-types]]
-extension = ".svg"
+extension = ".avif"
 display-name = "FileViewer_FileType_Image"
 
 [[file-types]]
@@ -34,19 +18,59 @@ extension = ".bmp"
 display-name = "FileViewer_FileType_Image"
 
 [[file-types]]
+extension = ".gif"
+display-name = "FileViewer_FileType_Image"
+
+[[file-types]]
+extension = ".heic"
+display-name = "FileViewer_FileType_Image"
+
+[[file-types]]
+extension = ".heif"
+display-name = "FileViewer_FileType_Image"
+
+[[file-types]]
 extension = ".ico"
 display-name = "FileViewer_FileType_Image"
 
 [[file-types]]
-extension = ".mp3"
-display-name = "FileViewer_FileType_Audio"
+extension = ".jfif"
+display-name = "FileViewer_FileType_Image"
 
 [[file-types]]
-extension = ".wav"
-display-name = "FileViewer_FileType_Audio"
+extension = ".jpeg"
+display-name = "FileViewer_FileType_Image"
 
 [[file-types]]
-extension = ".ogg"
+extension = ".jpg"
+display-name = "FileViewer_FileType_Image"
+
+[[file-types]]
+extension = ".jxl"
+display-name = "FileViewer_FileType_Image"
+
+[[file-types]]
+extension = ".png"
+display-name = "FileViewer_FileType_Image"
+
+[[file-types]]
+extension = ".svg"
+display-name = "FileViewer_FileType_Image"
+
+[[file-types]]
+extension = ".tif"
+display-name = "FileViewer_FileType_Image"
+
+[[file-types]]
+extension = ".tiff"
+display-name = "FileViewer_FileType_Image"
+
+[[file-types]]
+extension = ".webp"
+display-name = "FileViewer_FileType_Image"
+
+[[file-types]]
+extension = ".aac"
 display-name = "FileViewer_FileType_Audio"
 
 [[file-types]]
@@ -58,6 +82,38 @@ extension = ".m4a"
 display-name = "FileViewer_FileType_Audio"
 
 [[file-types]]
+extension = ".mp3"
+display-name = "FileViewer_FileType_Audio"
+
+[[file-types]]
+extension = ".oga"
+display-name = "FileViewer_FileType_Audio"
+
+[[file-types]]
+extension = ".ogg"
+display-name = "FileViewer_FileType_Audio"
+
+[[file-types]]
+extension = ".opus"
+display-name = "FileViewer_FileType_Audio"
+
+[[file-types]]
+extension = ".wav"
+display-name = "FileViewer_FileType_Audio"
+
+[[file-types]]
+extension = ".weba"
+display-name = "FileViewer_FileType_Audio"
+
+[[file-types]]
+extension = ".m4v"
+display-name = "FileViewer_FileType_Video"
+
+[[file-types]]
+extension = ".mov"
+display-name = "FileViewer_FileType_Video"
+
+[[file-types]]
 extension = ".mp4"
 display-name = "FileViewer_FileType_Video"
 
@@ -66,16 +122,20 @@ extension = ".webm"
 display-name = "FileViewer_FileType_Video"
 
 [[file-types]]
-extension = ".avi"
-display-name = "FileViewer_FileType_Video"
+extension = ".otf"
+display-name = "FileViewer_FileType_Font"
 
 [[file-types]]
-extension = ".mov"
-display-name = "FileViewer_FileType_Video"
+extension = ".ttf"
+display-name = "FileViewer_FileType_Font"
 
 [[file-types]]
-extension = ".mkv"
-display-name = "FileViewer_FileType_Video"
+extension = ".woff"
+display-name = "FileViewer_FileType_Font"
+
+[[file-types]]
+extension = ".woff2"
+display-name = "FileViewer_FileType_Font"
 
 [[file-types]]
 extension = ".pdf"

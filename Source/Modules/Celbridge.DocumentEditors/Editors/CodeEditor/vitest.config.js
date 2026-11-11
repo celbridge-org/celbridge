@@ -10,10 +10,13 @@ export default defineConfig({
                 fileURLToPath(new URL('./tests/fixtures/celbridge-stub.js', import.meta.url)),
             '/assets/celbridge-client/api/document-api.js':
                 fileURLToPath(new URL('./tests/fixtures/document-api-stub.js', import.meta.url)),
-            '/assets/celbridge-client/localization.js':
-                fileURLToPath(new URL('./tests/fixtures/localization-stub.js', import.meta.url)),
             '/assets/celbridge-client/ui/find-bar.js':
                 fileURLToPath(new URL('./tests/fixtures/find-bar-stub.js', import.meta.url)),
+            // The localization module uses only a table of strings and the DOM, so jsdom runs the real module.
+            '/assets/celbridge-client/localization.js':
+                fileURLToPath(new URL(
+                    '../../../../Core/Celbridge.WebHost/Web/celbridge-client/localization.js',
+                    import.meta.url)),
             // The platform check reads nothing but the navigator, so it runs as-is under jsdom.
             '/assets/celbridge-client/platform.js':
                 fileURLToPath(new URL(

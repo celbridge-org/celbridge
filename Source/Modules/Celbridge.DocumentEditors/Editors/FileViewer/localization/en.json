@@ -4,5 +4,8 @@
     "FileViewer_FileType_Image": "Image",
     "FileViewer_FileType_Audio": "Audio",
     "FileViewer_FileType_Video": "Video",
-    "FileViewer_FileType_Pdf": "PDF Document"
+    "FileViewer_FileType_Font": "Font",
+    "FileViewer_FileType_Pdf": "PDF Document",
+    "FileViewer_CannotDisplay": "This file could not be shown. This computer may not support its format.",
+    "FileViewer_FontSample": "The quick brown fox jumps over the lazy dog."
 }

@@ -6,8 +6,11 @@ export default defineConfig({
         include: ['tests/**/*.test.js'],
         environment: 'jsdom',
         alias: {
+            // The localization module uses only a table of strings and the DOM, so jsdom runs the real module.
             '/assets/celbridge-client/localization.js':
-                fileURLToPath(new URL('./tests/fixtures/localization-stub.js', import.meta.url))
+                fileURLToPath(new URL(
+                    '../../../../Core/Celbridge.WebHost/Web/celbridge-client/localization.js',
+                    import.meta.url))
         }
     }
 });
