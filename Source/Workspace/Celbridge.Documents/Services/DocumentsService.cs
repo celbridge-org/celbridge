@@ -91,17 +91,10 @@ public class DocumentsService : IDocumentsService, IDisposable
         // messages fired by RestorePanelState (which runs first) do not write back what was just read
         // out of settings.
 
-        // Must happen before FileTypeHelper initialization so factories can provide language mappings.
         RegisterModuleDocumentEditorFactories(moduleService);
 
         _fileTypeHelper = new FileTypeHelper();
         _fileTypeHelper.SetDocumentEditorRegistry(_documentEditorRegistry);
-
-        var loadResult = _fileTypeHelper.Initialize();
-        if (loadResult.IsFailure)
-        {
-            throw new InvalidProgramException("Failed to initialize file type helper");
-        }
 
         _fileTypeClassifier = new FileTypeClassifier(
             _fileTypeHelper,

@@ -1,44 +1,20 @@
-using System.Reflection;
-using System.Text.Json;
 using Celbridge.Explorer;
+using Celbridge.Packages;
 
 namespace Celbridge.Documents.Helpers;
 
 public class FileTypeHelper
 {
-    private const string FileViewerTypesResourceName = "Celbridge.Documents.Assets.DocumentTypes.FileViewerTypes.json";
     private const string PlaintextLanguage = "plaintext";
-
-    private List<string> _fileViewerExtensions = new();
-    private HashSet<string> _binaryFileExtensions = new();
 
     private IDocumentEditorRegistry? _documentEditorRegistry;
 
     /// <summary>
     /// Sets the document editor registry for querying language mappings and supported extensions.
-    /// This must be called after factories are registered.
     /// </summary>
     public void SetDocumentEditorRegistry(IDocumentEditorRegistry registry)
     {
         _documentEditorRegistry = registry;
-    }
-
-    public Result Initialize()
-    {
-        var loadWebResult = LoadFileViewerTypes();
-        if (loadWebResult.IsFailure)
-        {
-            return loadWebResult;
-        }
-
-        // Initialize the set of supported binary file extensions.
-        // These are binary formats that have specific file viewer support.
-        foreach (var ext in _fileViewerExtensions)
-        {
-            _binaryFileExtensions.Add(ext);
-        }
-
-        return Result.Ok();
     }
 
     /// <summary>
@@ -59,7 +35,7 @@ public class FileTypeHelper
             return DocumentViewType.Markdown;
         }
 
-        if (IsWebViewerFile(fileExtension))
+        if (IsFileViewerExtension(fileExtension))
         {
             return DocumentViewType.FileViewer;
         }
@@ -83,20 +59,6 @@ public class FileTypeHelper
 
         var language = _documentEditorRegistry?.GetLanguageForExtension(fileExtension);
         return language ?? PlaintextLanguage;
-    }
-
-    public bool IsWebViewerFile(string fileExtension)
-    {
-        return _fileViewerExtensions.Contains(fileExtension);
-    }
-
-    /// <summary>
-    /// Checks if a file extension corresponds to a supported binary format.
-    /// Supported binary formats include spreadsheets (.xlsx) and file viewer types (images, audio, video, etc.).
-    /// </summary>
-    public bool IsSupportedBinaryExtension(string fileExtension)
-    {
-        return _binaryFileExtensions.Contains(fileExtension);
     }
 
     /// <summary>
@@ -131,40 +93,20 @@ public class FileTypeHelper
             return true;
         }
 
-        if (_binaryFileExtensions.Contains(fileExtension))
-        {
-            return true;
-        }
-
         return false;
     }
 
-    private Result LoadFileViewerTypes()
+    // Returns true when the File Viewer registers the extension. Those files open only in the File Viewer, with no
+    // text editor offered. The File Viewer's manifest is the one list of its types.
+    private bool IsFileViewerExtension(string fileExtension)
     {
-        var assembly = Assembly.GetExecutingAssembly();
-
-        var readResult = EmbeddedResourceReader.ReadText(assembly, FileViewerTypesResourceName);
-        if (readResult.IsFailure)
+        if (_documentEditorRegistry is null)
         {
-            return Result.Fail($"Failed to read embedded resource: {FileViewerTypesResourceName}")
-                .WithErrors(readResult);
+            return false;
         }
 
-        var json = readResult.Value;
-
-        try
-        {
-            // Deserialize the JSON into a list of file extensions
-            var fileExtensions = JsonSerializer.Deserialize<List<string>>(json);
-
-            _fileViewerExtensions.ReplaceWith(fileExtensions);
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"An exception occurred when deserializing embedded resource: {FileViewerTypesResourceName}")
-                .WithException(ex);
-        }
-
-        return Result.Ok();
+        return _documentEditorRegistry
+            .GetFactoriesForExtension(fileExtension)
+            .Any(factory => factory.EditorId == BuiltInEditors.FileViewerId);
     }
 }

@@ -53,6 +53,27 @@ html, body {
     border: none;
 }
 
+/* A font specimen fills the page and scrolls, since its largest samples run past a small panel. */
+.file-font {
+    align-self: stretch;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 1.5em 2em;
+    overflow: auto;
+}
+
+.file-font-name {
+    margin: 0 0 1em;
+    font-size: 1em;
+    font-weight: normal;
+}
+
+.file-font-sample {
+    margin: 0 0 0.5em;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
 .file-error {
     padding: 1em 1.5em;
     color: var(--text-color);

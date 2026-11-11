@@ -1,7 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { setStrings } from '/assets/celbridge-client/localization.js';
+import strings from '../localization/en.json';
 import { Severity } from '../js/report-model.js';
 import { renderReport, showParseError } from '../js/report-view.js';
+
+// The tests read the text a reader sees, so the page gets the editor's own strings.
+setStrings(strings);
 
 // The page skeleton report-view.js renders into, matching index.html.
 function installPage() {

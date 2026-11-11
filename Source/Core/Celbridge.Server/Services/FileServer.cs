@@ -54,11 +54,8 @@ public class FileServer : IFileServer, IDisposable
         // /project/ serves the open project's files. Its pages fetch their own content same-origin, so it
         // opts out of cross-origin reads: a page in another local origin (e.g. one loaded in the user's
         // browser that discovered the loopback port) cannot read the project's files across origins.
-        // Project files change with every save, agent write and external edit, so the route forbids caching
-        // and a reloaded page always gets the current files.
         application.MapGet("/project/{**path}", (HttpContext context, string path) =>
         {
-            context.Response.Headers.CacheControl = "no-store";
             IFileInfo? fileInfo = null;
             if (IsServable(ResourceKey.Empty, path))
             {
@@ -153,11 +150,12 @@ public class FileServer : IFileServer, IDisposable
         return Result.Ok();
     }
 
-    private async Task ServeFileAsync(HttpContext context, IFileInfo? fileInfo, string path, bool allowCrossOrigin)
+    internal async Task ServeFileAsync(HttpContext context, IFileInfo? fileInfo, string path, bool allowCrossOrigin)
     {
         if (fileInfo is null
             || !fileInfo.Exists
-            || fileInfo.IsDirectory)
+            || fileInfo.IsDirectory
+            || string.IsNullOrEmpty(fileInfo.PhysicalPath))
         {
             context.Response.StatusCode = StatusCodes.Status404NotFound;
             return;
@@ -168,8 +166,6 @@ public class FileServer : IFileServer, IDisposable
         {
             contentType = "application/octet-stream";
         }
-
-        context.Response.ContentType = contentType;
 
         // Loopback-served pages are same-origin and need no CORS. Only a synthetic-origin editor (loaded
         // under a faked origin for a domain-locked library) reads across origins: it pulls its lib and the
@@ -192,7 +188,15 @@ public class FileServer : IFileServer, IDisposable
         context.Response.Headers["Cross-Origin-Embedder-Policy"] = "credentialless";
         context.Response.Headers["Cross-Origin-Opener-Policy"] = "same-origin";
 
-        await context.Response.SendFileAsync(fileInfo);
+        // Project and package files change with every save, agent write and external edit. The file result sends
+        // each file's Last-Modified date, which would let a WebView reuse an old copy. Every route forbids caching,
+        // so a reloaded page always gets the current files.
+        context.Response.Headers.CacheControl = "no-store";
+
+        // WebKit's media player needs the file's length, and seeks by requesting a range of bytes. The file result
+        // sends the length, and answers a range request with that part of the file.
+        var fileResult = TypedResults.PhysicalFile(fileInfo.PhysicalPath, contentType, enableRangeProcessing: true);
+        await fileResult.ExecuteAsync(context);
     }
 
     public void Enable(IRootHandlerRegistry rootHandlers, IResourcePolicy policy, int port)

@@ -50,7 +50,6 @@ public class DocumentViewFactoryTests
 
         _fileTypeHelper = new FileTypeHelper();
         _fileTypeHelper.SetDocumentEditorRegistry(_registry);
-        _fileTypeHelper.Initialize();
 
         _preferenceStore = new DocumentEditorPreferenceStore(
             _workspaceWrapper,

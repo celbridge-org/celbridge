@@ -1,17 +1,13 @@
 // File viewer initialization for Celbridge WebView integration.
-// Renders an image, audio, video, or PDF file by loading it from the file server.
+// Loads the document's file from the file server and shows the file. Shows the file again after each change on disk.
 // Served over the loopback file server, so the shared client is addressed root-relative
 // under /assets/ (resolved against the page's own loopback origin).
 
 import celbridge from '/assets/celbridge-client/celbridge.js';
 import { ContentLoadedReason, projectUrl } from '/assets/celbridge-client/api/document-api.js';
+import { renderFile } from './file-render.js';
 
 const client = celbridge;
-
-const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', '.ico']);
-const AUDIO_EXTENSIONS = new Set(['.mp3', '.wav', '.ogg', '.flac', '.m4a']);
-const VIDEO_EXTENSIONS = new Set(['.mp4', '.webm', '.avi', '.mov', '.mkv']);
-const PDF_EXTENSIONS = new Set(['.pdf']);
 
 function applyTheme(theme) {
     const isDark = theme === 'Dark';
@@ -24,14 +20,6 @@ client.appState.onChanged((appState) => {
     }
 });
 
-function getExtension(fileName) {
-    const dotIndex = fileName.lastIndexOf('.');
-    if (dotIndex < 0) {
-        return '';
-    }
-    return fileName.substring(dotIndex).toLowerCase();
-}
-
 function buildResourceUrl(resourceKey) {
     // Cache-bust on every load so external changes immediately replace the rendered media. The file server's
     // no-store header is not enough, because a page reuses an image it has already loaded from the same URL.
@@ -39,56 +27,21 @@ function buildResourceUrl(resourceKey) {
     return `${projectUrl(resourceKey)}?t=${cacheBuster}`;
 }
 
-function renderFile(metadata) {
+function showFile(metadata) {
     const container = document.getElementById('file-viewer-container');
-    container.innerHTML = '';
-
-    const extension = getExtension(metadata.fileName || '');
-    const url = buildResourceUrl(metadata.resourceKey);
-
-    let element;
-
-    if (IMAGE_EXTENSIONS.has(extension)) {
-        element = document.createElement('img');
-        element.className = 'file-image';
-        element.alt = metadata.fileName;
-        element.src = url;
-    } else if (AUDIO_EXTENSIONS.has(extension)) {
-        element = document.createElement('audio');
-        element.className = 'file-audio';
-        element.controls = true;
-        element.src = url;
-    } else if (VIDEO_EXTENSIONS.has(extension)) {
-        element = document.createElement('video');
-        element.className = 'file-video';
-        element.controls = true;
-        element.src = url;
-    } else if (PDF_EXTENSIONS.has(extension)) {
-        // An iframe rather than an embed. WebKit sends the menu's copy: and the other edit commands to a PDF
-        // plugin only when the PDF is its frame's whole document. An embedded PDF gets only its context menu.
-        element = document.createElement('iframe');
-        element.className = 'file-pdf';
-        element.title = metadata.fileName;
-        element.src = url;
-    } else {
-        element = document.createElement('div');
-        element.className = 'file-error';
-        element.textContent = `Unsupported file type: ${extension || metadata.fileName}`;
-    }
-
-    container.appendChild(element);
+    renderFile(container, metadata.fileName || '', buildResourceUrl(metadata.resourceKey));
 }
 
 async function initializeEditor() {
     try {
         await client.initializeDocument({
             onContent: (_content, metadata) => {
-                renderFile(metadata);
+                showFile(metadata);
             },
             onExternalChange: async () => {
                 try {
                     const result = await client.document.load();
-                    renderFile(result.metadata);
+                    showFile(result.metadata);
                 } catch (e) {
                     console.error('[FileViewer] Failed to reload content:', e);
                 }
