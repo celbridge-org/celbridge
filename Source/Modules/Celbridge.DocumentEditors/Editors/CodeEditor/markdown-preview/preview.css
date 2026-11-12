@@ -23,7 +23,7 @@ html, body {
     --bg-color: #ffffff;
     --text-color: #24292f;
     --heading-color: #1f2328;
-    --link-color: var(--cel-accent);
+    --link-color: var(--cel-accent-contrast);
     --code-bg: #f6f8fa;
     --code-text: #24292f;
     --blockquote-border: #d0d7de;
