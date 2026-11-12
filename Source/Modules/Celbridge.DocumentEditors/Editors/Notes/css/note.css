@@ -44,7 +44,6 @@ html, body {
     font-family: var(--cel-font-ui);
     background: var(--bg-primary);
     color: var(--text-primary);
-    color-scheme: light dark;
 }
 
 body {

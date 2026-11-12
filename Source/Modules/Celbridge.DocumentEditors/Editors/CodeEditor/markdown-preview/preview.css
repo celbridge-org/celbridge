@@ -9,8 +9,6 @@ html, body {
     height: 100%;
     margin: 0;
     padding: 0;
-    /* Use light color scheme by default for native elements (scrollbars, etc.) */
-    color-scheme: light;
 }
 
 /* Light theme defaults. Dark theme keys off html[data-theme], which the parent sets to the effective
@@ -33,11 +31,6 @@ html, body {
     --hr-color: #d0d7de;
     --kbd-bg: #f6f8fa;
     --kbd-border: #d0d7de;
-}
-
-html[data-theme="dark"] {
-    /* Use dark color scheme for native elements (scrollbars, etc.) */
-    color-scheme: dark;
 }
 
 :root[data-theme="dark"] {
