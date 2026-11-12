@@ -33,6 +33,7 @@ internal sealed class SkiaWebViewPlatform : IWebViewPlatform
     private bool _checkedBackgroundActivity;
     private bool _checkedInactiveSelection;
     private bool _checkedLoadingWhenDetached;
+    private bool _checkedInWindowChanges;
     private bool _reportedRemoteInspection;
 
     // Routes every web view's downloads on macOS, created with the first view that routes its downloads.
@@ -194,6 +195,7 @@ internal sealed class SkiaWebViewPlatform : IWebViewPlatform
         }
 
         KeepLoadingWhenDetached();
+        DeferInWindowChanges();
 
         // UNO-BUG: the script message handler is registered on every Loaded and never removed. The second load
         // of a control then aborts the process inside WebKit. This control loads a second time when it moves
@@ -309,6 +311,25 @@ internal sealed class SkiaWebViewPlatform : IWebViewPlatform
         {
             _logger.LogWarning(
                 "Uno's web view no longer has the dispose method it is hooked on, so a document sent to a background tab while its page loads may stay blank");
+        }
+    }
+
+    // Uno takes a web view out of the window and later puts the web view back. WebKit then draws no thumb on a scroll
+    // bar inside a frame of the page. These hooks defer WebKit's in-window change while the web view is out, so those
+    // scroll bars keep their thumbs. The hooks are installed once, before the first web view leaves the init host.
+    private void DeferInWindowChanges()
+    {
+        if (_checkedInWindowChanges)
+        {
+            return;
+        }
+
+        _checkedInWindowChanges = true;
+
+        if (!MacOSWebViewInterop.DeferInWindowChanges())
+        {
+            _logger.LogWarning(
+                "Uno's web view class or WebKit's methods that defer an in-window change are missing, so a scroll bar inside a frame may draw no thumb after its document has been in a background tab");
         }
     }
 
