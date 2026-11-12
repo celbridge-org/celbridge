@@ -165,7 +165,7 @@ body {
     padding: 0;
     border: none;
     background: none;
-    color: var(--cel-accent);
+    color: var(--cel-accent-contrast);
     cursor: pointer;
     text-align: left;
 }
