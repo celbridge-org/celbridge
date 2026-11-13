@@ -17,30 +17,13 @@ namespace Celbridge.UserInterface.Platform;
 /// </summary>
 internal static class MacOSKeyEventMonitor
 {
-    private const string LibObjC = "/usr/lib/libobjc.A.dylib";
-    private const string LibSystem = "/usr/lib/libSystem.dylib";
-
-    // BLOCK_IS_GLOBAL marks a block literal as a global (never copied or freed) block.
-    private const int BlockIsGlobal = 1 << 28;
-
     // NSEventMaskKeyDown == 1 << 10.
     private const ulong EventMaskKeyDown = 1UL << 10;
 
     // kVK_Tab hardware key code.
     private const ulong TabKeyCode = 48;
 
-    // objc_msgSend for +addLocalMonitorForEventsMatchingMask:handler: (an NSUInteger mask then a block).
-    [DllImport(LibObjC, EntryPoint = "objc_msgSend")]
-    private static extern IntPtr SendMessageAddMonitor(IntPtr receiver, IntPtr selector, nuint mask, IntPtr block);
-
-    [DllImport(LibSystem)]
-    private static extern IntPtr dlsym(IntPtr handle, string symbol);
-
-    private static readonly IntPtr RtldDefault = new(-2);
-
     private static bool _started;
-    private static IntPtr _monitor;
-    private static IntPtr _monitorBlock;
     private static IFocusService? _focusService;
     private static ITextControlEditing? _textControlEditing;
     private static IWebViewFocusRegistry? _webViewFocusRegistry;
@@ -50,7 +33,7 @@ internal static class MacOSKeyEventMonitor
     private static IFocusReconciler? _focusReconciler;
     private static ILogger? _logger;
 
-    public static void Start(
+    public static unsafe void Start(
         IFocusService focusService,
         ITextControlEditing textControlEditing,
         IWebViewFocusRegistry webViewFocusRegistry,
@@ -80,50 +63,8 @@ internal static class MacOSKeyEventMonitor
         _focusReconciler = focusReconciler;
         _logger = logger;
 
-        var nsEventClass = GetClass("NSEvent");
-        var selector = GetSelector("addLocalMonitorForEventsMatchingMask:handler:");
-        var block = EnsureMonitorBlock();
-
-        var monitor = SendMessageAddMonitor(nsEventClass, selector, (nuint)EventMaskKeyDown, block);
-
-        // Retain the monitor object for the process lifetime so the subscription survives.
-        _monitor = SendMessage(monitor, GetSelector("retain"));
-    }
-
-    // The handler is an Objective-C block of shape NSEvent* (^)(NSEvent*). Built once as a no-capture global
-    // block whose invoke pointer is a managed method: returning the event passes it on, returning nil swallows
-    // it.
-    private static unsafe IntPtr EnsureMonitorBlock()
-    {
-        if (_monitorBlock != IntPtr.Zero)
-        {
-            return _monitorBlock;
-        }
-
-        var descriptor = new BlockDescriptor
-        {
-            Reserved = 0,
-            Size = (nuint)Marshal.SizeOf<BlockLiteral>(),
-        };
-        var descriptorPointer = Marshal.AllocHGlobal(Marshal.SizeOf<BlockDescriptor>());
-        Marshal.StructureToPtr(descriptor, descriptorPointer, false);
-
-        var blockIsa = dlsym(RtldDefault, "_NSConcreteGlobalBlock");
-        var invoke = (IntPtr)(delegate* unmanaged[Cdecl]<IntPtr, IntPtr, IntPtr>)&MonitorCallback;
-
-        var block = new BlockLiteral
-        {
-            Isa = blockIsa,
-            Flags = BlockIsGlobal,
-            Reserved = 0,
-            Invoke = invoke,
-            Descriptor = descriptorPointer,
-        };
-        var blockPointer = Marshal.AllocHGlobal(Marshal.SizeOf<BlockLiteral>());
-        Marshal.StructureToPtr(block, blockPointer, false);
-
-        _monitorBlock = blockPointer;
-        return blockPointer;
+        var handler = (IntPtr)(delegate* unmanaged[Cdecl]<IntPtr, IntPtr, IntPtr>)&MonitorCallback;
+        AddLocalEventMonitor(EventMaskKeyDown, handler);
     }
 
     [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]
@@ -434,22 +375,5 @@ internal static class MacOSKeyEventMonitor
         }
 
         return MacOSKeyboardLayout.ResolveAsciiLetter(keyCode);
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct BlockLiteral
-    {
-        public IntPtr Isa;
-        public int Flags;
-        public int Reserved;
-        public IntPtr Invoke;
-        public IntPtr Descriptor;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct BlockDescriptor
-    {
-        public nuint Reserved;
-        public nuint Size;
     }
 }

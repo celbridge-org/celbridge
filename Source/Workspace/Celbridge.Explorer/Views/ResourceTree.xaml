@@ -91,7 +91,7 @@
   </UserControl.Resources>
 
   <!-- Resource List View styled as a tree -->
-  <ListView x:Name="ResourceListView"
+  <controls:MultiSelectListView x:Name="ResourceListView"
             ItemsSource="{x:Bind ViewModel.TreeItems, Mode=OneWay}"
             ItemTemplate="{StaticResource TreeListItemTemplate}"
             SelectionMode="Extended"
@@ -113,11 +113,11 @@
             IsTabStop="True">
 
     <!-- Disable item transitions to prevent animation flicker when rebuilding the tree -->
-    <ListView.ItemContainerTransitions>
+    <controls:MultiSelectListView.ItemContainerTransitions>
       <TransitionCollection/>
-    </ListView.ItemContainerTransitions>
+    </controls:MultiSelectListView.ItemContainerTransitions>
     
-    <ListView.ItemContainerStyle>
+    <controls:MultiSelectListView.ItemContainerStyle>
       <Style TargetType="ListViewItem">
         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
         <Setter Property="Padding" Value="0"/>
@@ -177,6 +177,6 @@
           </Setter.Value>
         </Setter>
       </Style>
-    </ListView.ItemContainerStyle>
-  </ListView>
+    </controls:MultiSelectListView.ItemContainerStyle>
+  </controls:MultiSelectListView>
 </UserControl>

@@ -104,6 +104,9 @@ public partial class MainPage : Page
         // as well as the overlay. macOS-only. A no-op elsewhere.
         MacOSWebViewInputSuppressor.Start(_logger);
 
+        // Make a Control-click a secondary click, so it opens context menus. macOS-only. A no-op elsewhere.
+        MacOSControlClickMonitor.Start(_logger);
+
         // Route the editing keys Uno diverts away from the native first responder (Backspace, Enter,
         // arrows) into the focused web surface instead of dropping them. macOS-only. A no-op elsewhere.
         MacOSKeyCommandRouter.SetFocusRegistry(_webViewFocusRegistry);
