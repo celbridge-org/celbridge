@@ -1,7 +1,1 @@
-define("vs/language/css/monaco.contribution", ["exports", "../../editor.api-CykLys8L", "../../monaco.contribution-D_SyqKiy"], (function(exports, editor_api, language_css_monaco_contribution) {
-  "use strict";
-  exports.cssDefaults = language_css_monaco_contribution.cssDefaults;
-  exports.lessDefaults = language_css_monaco_contribution.lessDefaults;
-  exports.scssDefaults = language_css_monaco_contribution.scssDefaults;
-  Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
-}));
+define("vs/language/css/monaco.contribution",["exports","../../monaco.contribution-C7tY_xnl"],(function(s,l){"use strict";s.cssDefaults=l.cssDefaults,s.lessDefaults=l.lessDefaults,s.scssDefaults=l.scssDefaults,Object.defineProperty(s,Symbol.toStringTag,{value:"Module"})}));
