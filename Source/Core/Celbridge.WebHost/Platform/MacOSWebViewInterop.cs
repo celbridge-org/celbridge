@@ -41,9 +41,6 @@ public static partial class MacOSWebViewInterop
     private const string LibObjC = "/usr/lib/libobjc.A.dylib";
     private const string LibSystem = "/usr/lib/libSystem.dylib";
 
-    // BLOCK_IS_GLOBAL marks a block literal as a global (never copied or freed) block.
-    private const int BlockIsGlobal = 1 << 28;
-
     // WKUserScriptInjectionTimeAtDocumentStart == 0.
     private const nint InjectionTimeAtDocumentStart = 0;
 
@@ -1035,32 +1032,6 @@ public static partial class MacOSWebViewInterop
         return _clearBrowsingDataBlock;
     }
 
-    // Builds a no-capture global block whose invoke pointer is a managed UnmanagedCallersOnly method. A
-    // global block is never copied or freed, so each one is built once and reused across calls.
-    private static IntPtr CreateGlobalBlock(IntPtr invoke)
-    {
-        var descriptor = new BlockDescriptor
-        {
-            Reserved = 0,
-            Size = (nuint)Marshal.SizeOf<BlockLiteral>(),
-        };
-        var descriptorPointer = Marshal.AllocHGlobal(Marshal.SizeOf<BlockDescriptor>());
-        Marshal.StructureToPtr(descriptor, descriptorPointer, false);
-
-        var block = new BlockLiteral
-        {
-            Isa = dlsym(RtldDefault, "_NSConcreteGlobalBlock"),
-            Flags = BlockIsGlobal,
-            Reserved = 0,
-            Invoke = invoke,
-            Descriptor = descriptorPointer,
-        };
-        var blockPointer = Marshal.AllocHGlobal(Marshal.SizeOf<BlockLiteral>());
-        Marshal.StructureToPtr(block, blockPointer, false);
-
-        return blockPointer;
-    }
-
     [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]
     private static void FindCompletionCallback(IntPtr block, IntPtr findResult)
     {
@@ -1134,22 +1105,5 @@ public static partial class MacOSWebViewInterop
         public double Y;
         public double Width;
         public double Height;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct BlockLiteral
-    {
-        public IntPtr Isa;
-        public int Flags;
-        public int Reserved;
-        public IntPtr Invoke;
-        public IntPtr Descriptor;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct BlockDescriptor
-    {
-        public nuint Reserved;
-        public nuint Size;
     }
 }

@@ -4,10 +4,7 @@ using Celbridge.Explorer.Models;
 using Celbridge.UserInterface.DragDrop;
 using Celbridge.UserInterface.Helpers;
 using Microsoft.Extensions.Localization;
-using Microsoft.UI.Input;
 using Windows.Foundation;
-using Windows.System;
-using Windows.UI.Core;
 
 namespace Celbridge.Explorer.Views;
 
@@ -132,7 +129,7 @@ public sealed partial class ResourceTree : IResourceDropTarget
             ClearDragFeedback();
         }
 
-        var captionKey = IsCopyRequested() ? "ResourceTree_Copy" : "ResourceTree_Move";
+        var captionKey = EditKeyboard.IsCopyDragModifierDown() ? "ResourceTree_Copy" : "ResourceTree_Move";
         return _stringLocalizer.GetString(captionKey);
     }
 
@@ -160,7 +157,7 @@ public sealed partial class ResourceTree : IResourceDropTarget
             return false;
         }
 
-        var transferMode = IsCopyRequested() ? DataTransferMode.Copy : DataTransferMode.Move;
+        var transferMode = EditKeyboard.IsCopyDragModifierDown() ? DataTransferMode.Copy : DataTransferMode.Move;
         TransferResourcesToFolder(draggedResources, destFolder, transferMode);
 
         return true;
@@ -247,12 +244,6 @@ public sealed partial class ResourceTree : IResourceDropTarget
         }
 
         return false;
-    }
-
-    private static bool IsCopyRequested()
-    {
-        return InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control)
-            .HasFlag(CoreVirtualKeyStates.Down);
     }
 
     private static Brush CreateDropHighlightBrush()

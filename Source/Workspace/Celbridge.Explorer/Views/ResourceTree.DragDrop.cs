@@ -1,10 +1,9 @@
 using Celbridge.DataTransfer;
 using Celbridge.Explorer.Helpers;
 using Celbridge.Explorer.Models;
+using Celbridge.UserInterface.Helpers;
 using Microsoft.Extensions.Localization;
 using Windows.ApplicationModel.DataTransfer;
-using Windows.System;
-using Windows.UI.Core;
 
 namespace Celbridge.Explorer.Views;
 
@@ -126,11 +125,10 @@ public sealed partial class ResourceTree
         {
             if (dropInfo.IsInternalDrag)
             {
-                // For internal drags, check if Ctrl is pressed for copy operation
-                var isControlPressed = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control)
-                    .HasFlag(CoreVirtualKeyStates.Down);
+                // An internal drag copies while the platform's copy modifier is held, and moves otherwise
+                var isCopyRequested = EditKeyboard.IsCopyDragModifierDown();
 
-                e.AcceptedOperation = isControlPressed
+                e.AcceptedOperation = isCopyRequested
                     ? DataPackageOperation.Copy
                     : DataPackageOperation.Move;
                 var captionKey = e.AcceptedOperation == DataPackageOperation.Copy ? "ResourceTree_Copy" : "ResourceTree_Move";
