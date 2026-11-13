@@ -13,8 +13,9 @@
     </UnoFeatures>
 
     <!-- Turn off this project's resource index. MakePri reads the ja and ko parts of two SpreadJS resource file
-         names as languages. Neither file has a copy with no language in its name, so MakePri raises warning
-         PRI263 for each. The loopback server reads the package's files from disk, and nothing reads the index. -->
+         names as languages. MakePri expects a language-neutral copy of each file, and SpreadJS ships none. So
+         each file raises warning PRI263. The loopback server reads the package's files from disk, and nothing
+         reads the index. -->
     <AppxGeneratePriEnabled>false</AppxGeneratePriEnabled>
     <IncludeProjectPriFile>false</IncludeProjectPriFile>
 
