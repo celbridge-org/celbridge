@@ -1,6 +1,1 @@
-define("vs/language/json/monaco.contribution", ["exports", "../../editor.api-CykLys8L", "../../monaco.contribution-Cqdn_4Kw"], (function(exports, editor_api, language_json_monaco_contribution) {
-  "use strict";
-  exports.getWorker = language_json_monaco_contribution.getWorker;
-  exports.jsonDefaults = language_json_monaco_contribution.jsonDefaults;
-  Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
-}));
+define("vs/language/json/monaco.contribution",["exports","../../monaco.contribution-D1-wBxcq"],(function(o,e){"use strict";o.getWorker=e.getWorker,o.jsonDefaults=e.jsonDefaults,Object.defineProperty(o,Symbol.toStringTag,{value:"Module"})}));

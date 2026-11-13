@@ -60,7 +60,7 @@ marked-highlight
     Copyright (c) 2021 @markedjs
     Note: Bundled into the Markdown preview script.
 
-Monaco Editor 0.55.1
+Monaco Editor 0.57.0
     License: MIT
     Source: https://github.com/microsoft/monaco-editor
     Copyright (c) Microsoft Corporation
