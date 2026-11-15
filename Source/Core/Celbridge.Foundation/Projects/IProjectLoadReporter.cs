@@ -1,4 +1,5 @@
 using Celbridge.Reports;
+using Celbridge.Workspace;
 
 namespace Celbridge.Projects;
 
@@ -42,6 +43,17 @@ public interface IProjectLoadReporter
     /// own entries, so each call adds to what the report will hold rather than replacing it.
     /// </summary>
     void RecordConfigEntryErrors(IReadOnlyList<ProjectConfigEntryError> entryErrors);
+
+    /// <summary>
+    /// Records the failure of a project file that did not load. The project then loads with an empty
+    /// configuration.
+    /// </summary>
+    void RecordConfigLoadFailure(Result configLoadFailure);
+
+    /// <summary>
+    /// Records the causes of Safe Mode for a load that opens the project in Safe Mode.
+    /// </summary>
+    void RecordSafeModeCauses(IReadOnlyList<SafeModeCause> causes);
 
     /// <summary>
     /// Records the package discovery outcome, including any load failures.

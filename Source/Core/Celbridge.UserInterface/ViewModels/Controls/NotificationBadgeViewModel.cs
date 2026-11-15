@@ -4,6 +4,7 @@ using Celbridge.Localization;
 using Celbridge.Notifications;
 using Celbridge.Reports;
 using Celbridge.Utilities;
+using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.ViewModels.Controls;
 
@@ -18,6 +19,7 @@ public class NotificationBadgeViewModel
     private readonly ILocalizerService _localizerService;
     private readonly INotificationCentre _notificationCentre;
     private readonly ICommandService _commandService;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
 
     /// <summary>
     /// Raised on the UI thread when the pending notifications change.
@@ -49,18 +51,25 @@ public class NotificationBadgeViewModel
     /// </summary>
     public bool HasEvents { get; private set; }
 
+    /// <summary>
+    /// Returns true while the loaded workspace is in Safe Mode. The badge then shows the Safe Mode label.
+    /// </summary>
+    public bool IsSafeMode { get; private set; }
+
     public NotificationBadgeViewModel(
         IMessengerService messengerService,
         IDispatcher dispatcher,
         ILocalizerService localizerService,
         INotificationCentre notificationCentre,
-        ICommandService commandService)
+        ICommandService commandService,
+        IWorkspaceWrapper workspaceWrapper)
     {
         _messengerService = messengerService;
         _dispatcher = dispatcher;
         _localizerService = localizerService;
         _notificationCentre = notificationCentre;
         _commandService = commandService;
+        _workspaceWrapper = workspaceWrapper;
     }
 
     public void OnLoaded()
@@ -121,6 +130,20 @@ public class NotificationBadgeViewModel
         Severity = ResolveSeverity(notifications);
         Summary = ComposeSummary(notifications);
         HasEvents = notifications.Any(notification => notification.Kind == NotificationKind.Event);
+        IsSafeMode = ResolveIsSafeMode();
+    }
+
+    // A workspace in Safe Mode records its condition when the workspace finishes loading. So the state is read
+    // again whenever the notifications change.
+    private bool ResolveIsSafeMode()
+    {
+        if (!_workspaceWrapper.HasWorkspaceService)
+        {
+            return false;
+        }
+
+        var safeModeService = _workspaceWrapper.WorkspaceService.SafeModeService;
+        return safeModeService.IsActive;
     }
 
     private static ReportSeverity ResolveSeverity(IReadOnlyList<NotificationEntry> notifications)

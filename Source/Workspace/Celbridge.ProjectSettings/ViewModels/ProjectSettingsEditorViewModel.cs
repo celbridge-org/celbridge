@@ -81,6 +81,11 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
     /// </summary>
     public bool HasConfigErrorDetail => !string.IsNullOrWhiteSpace(ConfigErrorDetail);
 
+    /// <summary>
+    /// Returns true while the workspace is in Safe Mode. The error panel then says that most features are off.
+    /// </summary>
+    public bool IsSafeMode { get; }
+
     [ObservableProperty]
     private IReadOnlyList<SettingsSection> _sections = Array.Empty<SettingsSection>();
 
@@ -143,6 +148,7 @@ public partial class ProjectSettingsEditorViewModel : ObservableObject
         var project = projectService.CurrentProject;
         HasConfigError = project is not null && !project.ConfigIsHealthy;
         ConfigErrorDetail = project?.ConfigLoadFailure?.MessageChain ?? string.Empty;
+        IsSafeMode = workspaceWrapper.WorkspaceService.SafeModeService.IsActive;
 
         _context = new ProjectSettingsContext(workspaceWrapper, projectService, commandService, MarkPending);
         InformationSection = new InformationSectionViewModel(_context, projectLoadReporter);

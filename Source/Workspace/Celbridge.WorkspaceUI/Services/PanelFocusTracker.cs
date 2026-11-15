@@ -165,7 +165,7 @@ public class PanelFocusTracker
         // Reported after the claim so the activation it drives sees the panel the document belongs to.
         if (!documentResource.IsEmpty)
         {
-            var message = new DocumentViewFocusedMessage(documentResource);
+            var message = new DocumentViewFocusedMessage(documentResource, IsTabClick: false);
             _messengerService.Send(message);
         }
     }

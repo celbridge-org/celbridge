@@ -19,6 +19,11 @@ public interface IWorkspaceService
         IDocumentsPanel documentsPanel);
 
     /// <summary>
+    /// Returns the Safe Mode service, which keeps the workspace's Safe Mode state.
+    /// </summary>
+    ISafeModeService SafeModeService { get; }
+
+    /// <summary>
     /// Returns the workspace settings service for the current project, which owns
     /// the property bag and the Workspace-scope settings store.
     /// </summary>

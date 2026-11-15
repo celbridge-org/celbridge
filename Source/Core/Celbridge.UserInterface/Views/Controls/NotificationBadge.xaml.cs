@@ -45,6 +45,7 @@ public sealed partial class NotificationBadge : UserControl
     {
         TitleText.Text = _stringLocalizer.GetString("NotificationCentre_Title");
         ClearAllButton.Content = _stringLocalizer.GetString("NotificationCentre_ClearAll");
+        SafeModeLabel.Text = _stringLocalizer.GetString("NotificationCentre_SafeModeLabel");
         ToolTipService.SetPlacement(BadgeButton, PlacementMode.Bottom);
 
         ViewModel.NotificationsChanged += OnNotificationsChanged;
@@ -105,6 +106,8 @@ public sealed partial class NotificationBadge : UserControl
         var summary = ViewModel.Summary;
         ToolTipService.SetToolTip(BadgeButton, summary);
         AutomationProperties.SetName(BadgeButton, summary);
+
+        SafeModeLabel.Visibility = ViewModel.IsSafeMode ? Visibility.Visible : Visibility.Collapsed;
 
         SetBadgeVisible(true);
     }

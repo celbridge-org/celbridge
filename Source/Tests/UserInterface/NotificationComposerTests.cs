@@ -20,7 +20,8 @@ public class NotificationComposerTests
     private IMessengerService _messengerService = null!;
     private NotificationCentre _centre = null!;
 
-    private MessageHandler<object, ProjectLoadNotificationMessage>? _loadHandler;
+    private MessageHandler<object, ProjectLoadIssuesReportedMessage>? _loadHandler;
+    private MessageHandler<object, WorkspaceLoadedInSafeModeMessage>? _safeModeHandler;
     private MessageHandler<object, ResourceOperationFailedMessage>? _operationHandler;
     private MessageHandler<object, ArchiveEntriesSkippedMessage>? _skippedEntriesHandler;
     private MessageHandler<object, WorkspaceItemSaveDiscardedMessage>? _saveDiscardedHandler;
@@ -35,8 +36,14 @@ public class NotificationComposerTests
         _messengerService
             .When(service => service.Register(
                 Arg.Any<object>(),
-                Arg.Any<MessageHandler<object, ProjectLoadNotificationMessage>>()))
-            .Do(call => _loadHandler = call.Arg<MessageHandler<object, ProjectLoadNotificationMessage>>());
+                Arg.Any<MessageHandler<object, ProjectLoadIssuesReportedMessage>>()))
+            .Do(call => _loadHandler = call.Arg<MessageHandler<object, ProjectLoadIssuesReportedMessage>>());
+
+        _messengerService
+            .When(service => service.Register(
+                Arg.Any<object>(),
+                Arg.Any<MessageHandler<object, WorkspaceLoadedInSafeModeMessage>>()))
+            .Do(call => _safeModeHandler = call.Arg<MessageHandler<object, WorkspaceLoadedInSafeModeMessage>>());
 
         _messengerService
             .When(service => service.Register(
@@ -71,7 +78,7 @@ public class NotificationComposerTests
     [Test]
     public void ALoadWithFindings_IsAConditionPointingAtItsReport()
     {
-        SendLoadNotification(ReportSeverity.Warning, issueCount: 3);
+        SendLoadIssuesReported(ReportSeverity.Warning, issueCount: 3);
 
         var notification = _centre.Notifications.Should().ContainSingle().Subject;
         notification.Kind.Should().Be(NotificationKind.Condition);
@@ -85,9 +92,54 @@ public class NotificationComposerTests
     }
 
     [Test]
+    public void SafeModeForAProjectFileThatFailedToLoad_IsAnErrorConditionThatOpensProjectSettings()
+    {
+        SendWorkspaceLoadedInSafeMode(SafeModeCause.ConfigurationFailed);
+
+        var notification = _centre.Notifications.Should().ContainSingle().Subject;
+        notification.Kind.Should().Be(NotificationKind.Condition);
+        notification.Content.Severity.Should().Be(ReportSeverity.Error);
+        notification.Content.Message.Should().Be("Safe Mode is on. The project file could not be read");
+
+        var action = notification.Content.Action;
+        action.Should().NotBeNull();
+        action!.Resource.Should().Be(new ResourceKey("Acme.celbridge"));
+        action.Label.Should().Be("Open Project Settings");
+    }
+
+    // Each cause needs its own text. A cause without one fails here, not during a load.
+    [Test]
+    public void EachCauseOfSafeMode_HasItsOwnText([Values] SafeModeCause cause)
+    {
+        SendWorkspaceLoadedInSafeMode(cause);
+
+        var notification = _centre.Notifications.Should().ContainSingle().Subject;
+        notification.Content.Message.Should().NotStartWith("Notification_");
+    }
+
+    [Test]
+    public void SafeMode_IsListedApartFromTheLoadAndCannotBeDismissed()
+    {
+        SendLoadIssuesReported(ReportSeverity.Error, issueCount: 1);
+        SendWorkspaceLoadedInSafeMode(SafeModeCause.ConfigurationFailed);
+
+        // Conditions are listed newest first, and the Safe Mode entry is recorded at the end of the load.
+        var messages = _centre.Notifications.Select(notification => notification.Content.Message);
+        messages.Should().Equal(
+            "Safe Mode is on. The project file could not be read",
+            "The project loaded with 1 issue");
+
+        var safeModeEntry = _centre.Notifications[0];
+        _centre.Dismiss(safeModeEntry.Id);
+        _centre.ClearEvents();
+
+        _centre.Notifications.Should().HaveCount(2);
+    }
+
+    [Test]
     public void ALoadWithOneFinding_SaysSoInTheSingular()
     {
-        SendLoadNotification(ReportSeverity.Error, issueCount: 1);
+        SendLoadIssuesReported(ReportSeverity.Error, issueCount: 1);
 
         _centre.Notifications.Should().ContainSingle()
             .Which.Content.Message.Should().Be("The project loaded with 1 issue");
@@ -248,7 +300,7 @@ public class NotificationComposerTests
         // Nothing competes for a slot, so every notification is kept. The load's condition stands above the
         // events.
         SendOperationFailure(ResourceOperationType.Delete, "notes.txt");
-        SendLoadNotification(ReportSeverity.Warning, issueCount: 3);
+        SendLoadIssuesReported(ReportSeverity.Warning, issueCount: 3);
         _editorHandler!.Invoke(this, new EditorNotificationMessage(ReportSeverity.Info, "Conversion finished"));
 
         var messages = _centre.Notifications
@@ -261,14 +313,20 @@ public class NotificationComposerTests
             "Could not delete 'notes.txt': the file is locked");
     }
 
-    private void SendLoadNotification(ReportSeverity severity, int issueCount)
+    private void SendLoadIssuesReported(ReportSeverity severity, int issueCount)
     {
         var summary = new ProjectLoadReportSummary(
             new ResourceKey("logs:reports/project-load.report"),
             severity,
             issueCount);
 
-        _loadHandler!.Invoke(this, new ProjectLoadNotificationMessage(summary));
+        _loadHandler!.Invoke(this, new ProjectLoadIssuesReportedMessage(summary));
+    }
+
+    private void SendWorkspaceLoadedInSafeMode(params SafeModeCause[] causes)
+    {
+        var message = new WorkspaceLoadedInSafeModeMessage(causes, new ResourceKey("Acme.celbridge"));
+        _safeModeHandler!.Invoke(this, message);
     }
 
     private void SendOperationFailure(ResourceOperationType operationType, params string[] failedItems)

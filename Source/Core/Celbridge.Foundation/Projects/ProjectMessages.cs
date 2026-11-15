@@ -1,8 +1,7 @@
 namespace Celbridge.Projects;
 
 /// <summary>
-/// Raised once at the end of a project load whose report recorded something worth telling the user
-/// about. Everything the load found is in the report this names, so the load raises one message rather
-/// than a notification per condition.
+/// Sent at the end of a project load when the load report records an issue. The report holds everything the
+/// load found, so the load sends one message rather than one for each issue.
 /// </summary>
-public record ProjectLoadNotificationMessage(ProjectLoadReportSummary Summary);
+public record ProjectLoadIssuesReportedMessage(ProjectLoadReportSummary Summary);

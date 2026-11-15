@@ -72,9 +72,16 @@ public class UtilityService : IUtilityService, IDisposable
     public void RegisterBuiltInUtilityItems(IReadOnlyList<UtilityRailItem> builtInUtilityItems)
     {
         _builtInUtilityItems.Clear();
-        _builtInUtilityItems.AddRange(builtInUtilityItems);
+        _builtInUtilityItems.AddRange(GetAllowedItems(builtInUtilityItems));
 
         RebuildRailRegister();
+    }
+
+    // In Safe Mode, only the ids on the allow list get a utility or a rail button.
+    private IEnumerable<UtilityRailItem> GetAllowedItems(IEnumerable<UtilityRailItem> railItems)
+    {
+        var safeModeService = _workspaceWrapper.WorkspaceService.SafeModeService;
+        return railItems.Where(railItem => safeModeService.IsAllowed(railItem.ItemId));
     }
 
     public IReadOnlyList<UtilityRailItem> GetRailItems()
@@ -146,6 +153,7 @@ public class UtilityService : IUtilityService, IDisposable
     public async Task CreateUtilitiesAsync(IReadOnlyList<ResolvedEditor> resolvedEditors)
     {
         var localizationService = _serviceProvider.GetRequiredService<IPackageLocalizationService>();
+        var safeModeService = _workspaceWrapper.WorkspaceService.SafeModeService;
 
         _contributedItems.Clear();
         foreach (var resolvedEditor in resolvedEditors)
@@ -158,6 +166,10 @@ public class UtilityService : IUtilityService, IDisposable
             }
 
             var utilityId = resolvedEditor.EditorId;
+            if (!safeModeService.IsAllowed(utilityId))
+            {
+                continue;
+            }
 
             // Each utility owns one state file, named from its contribution reference.
             var resourceValue = $"{ProjectConstants.UtilsFolder}:{utilityId}{descriptor.ResourceExtension}";
@@ -198,10 +210,10 @@ public class UtilityService : IUtilityService, IDisposable
         }
 
         _projectShortcutItems.Clear();
-        _projectShortcutItems.AddRange(BuildProjectShortcutItems());
+        _projectShortcutItems.AddRange(GetAllowedItems(BuildProjectShortcutItems()));
 
         _builtInShortcutItems.Clear();
-        _builtInShortcutItems.AddRange(BuildBuiltInShortcutItems());
+        _builtInShortcutItems.AddRange(GetAllowedItems(BuildBuiltInShortcutItems()));
 
         RebuildRailRegister();
     }

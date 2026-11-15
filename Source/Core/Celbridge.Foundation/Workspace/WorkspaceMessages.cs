@@ -40,6 +40,11 @@ public record WorkspaceLoadedMessage();
 public record WorkspaceUnloadedMessage();
 
 /// <summary>
+/// Sent when a workspace in Safe Mode finishes loading. Carries the causes of Safe Mode and the project file.
+/// </summary>
+public record WorkspaceLoadedInSafeModeMessage(IReadOnlyList<SafeModeCause> Causes, ResourceKey ProjectFileResource);
+
+/// <summary>
 /// Sent when the workspace state needs to be saved.
 /// </summary>
 public record WorkspaceStateDirtyMessage();

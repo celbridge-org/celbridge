@@ -10,6 +10,7 @@ using Celbridge.Resources;
 using Celbridge.Tests.Helpers;
 using Celbridge.Tests.Migration.TestHelpers;
 using Celbridge.Utilities;
+using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Projects;
 
@@ -232,6 +233,81 @@ public class ProjectLoadReporterTests
         var detail = string.Join("\n", loadItems.Select(item => item.GetProperty("detail").GetString()));
         detail.Should().Contain("Invalid \\r not followed by \\n");
         detail.Should().Contain("Failed to load project");
+    }
+
+    [Test]
+    public async Task FlushAsync_ProjectFileThatFailedToParse_RecordsTheParseFailure()
+    {
+        var parseFailure = Result.Fail("Failed to parse project configuration: unexpected key 'pakages'");
+
+        // The migration check passes, and the project file fails as the project loads.
+        _reporter.BeginLoad(_projectFilePath);
+        _reporter.RecordMigrationResult(MigrationResult.Success(), userConfirmedUpgrade: false, userCancelledUpgrade: false);
+        _reporter.RecordConfigLoadFailure(parseFailure);
+        _reporter.RecordLoadOutcome(loadSucceeded: true, loadResult: Result.Ok());
+
+        var report = await FlushAndReadAsync();
+
+        report.RootElement.GetProperty("severity").GetString().Should().Be("error");
+        GetSectionCodes(report, "Load").Should().Equal(ReportFindingCatalog.Project.ConfigParseFailed.Code);
+
+        var detail = GetSectionItems(report, "Load").Single().GetProperty("detail").GetString();
+        detail.Should().Contain("unexpected key 'pakages'");
+    }
+
+    [Test]
+    public async Task FlushAsync_FailedMigration_RecordsTheFailureOnce()
+    {
+        var migrationFailure = Result.Fail("Failed to parse project TOML file");
+
+        // When the migration fails, the project carries the migration's failure as its configuration failure.
+        _reporter.BeginLoad(_projectFilePath);
+        _reporter.RecordMigrationResult(
+            MigrationResult.FromStatus(MigrationStatus.InvalidConfig, migrationFailure),
+            userConfirmedUpgrade: false,
+            userCancelledUpgrade: false);
+        _reporter.RecordConfigLoadFailure(migrationFailure);
+        _reporter.RecordLoadOutcome(loadSucceeded: true, loadResult: Result.Ok());
+
+        var report = await FlushAndReadAsync();
+
+        GetSectionCodes(report, "Load").Should().Equal(ReportFindingCatalog.Project.MigrationFailed.Code);
+    }
+
+    [Test]
+    public async Task FlushAsync_InSafeMode_TheSummaryGivesEachCause()
+    {
+        _reporter.BeginLoad(_projectFilePath);
+        _reporter.RecordSafeModeCauses([SafeModeCause.ConfigurationFailed]);
+        _reporter.RecordLoadOutcome(loadSucceeded: true, loadResult: Result.Ok());
+
+        var report = await FlushAndReadAsync();
+
+        GetSectionFacts(report, "Summary")["Safe Mode"].Should().Be("On. The project file could not be read.");
+    }
+
+    // Each cause needs its own text. A cause without one fails here, not during a load.
+    [Test]
+    public async Task FlushAsync_InSafeMode_EachCauseHasItsOwnText([Values] SafeModeCause cause)
+    {
+        _reporter.BeginLoad(_projectFilePath);
+        _reporter.RecordSafeModeCauses([cause]);
+        _reporter.RecordLoadOutcome(loadSucceeded: true, loadResult: Result.Ok());
+
+        var report = await FlushAndReadAsync();
+
+        GetSectionFacts(report, "Summary")["Safe Mode"].Should().NotContain("Report_");
+    }
+
+    [Test]
+    public async Task FlushAsync_OutsideSafeMode_TheSummaryLeavesOutSafeMode()
+    {
+        _reporter.BeginLoad(_projectFilePath);
+        _reporter.RecordLoadOutcome(loadSucceeded: true, loadResult: Result.Ok());
+
+        var report = await FlushAndReadAsync();
+
+        GetSectionFacts(report, "Summary").Should().NotContainKey("Safe Mode");
     }
 
     [Test]

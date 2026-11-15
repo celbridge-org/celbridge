@@ -8,6 +8,7 @@ using Celbridge.Resources;
 using Celbridge.Resources.Services;
 using Celbridge.Settings;
 using Celbridge.Tests.FileSystem;
+using Celbridge.Tests.Helpers;
 using Celbridge.Tests.Migration.TestHelpers;
 using Celbridge.Workspace;
 
@@ -25,6 +26,7 @@ public class PackageServiceTests
     private IconService _iconService = null!;
     private IResourceService _resourceService = null!;
     private IProjectService _projectService = null!;
+    private IWorkspaceService _workspaceService = null!;
 
     [SetUp]
     public void Setup()
@@ -76,8 +78,11 @@ public class PackageServiceTests
         resourceService.Sidecars.Returns(sidecarService);
 
         var workspaceService = Substitute.For<IWorkspaceService>();
+        var safeModeService = TestSafeMode.Create(isActive: false);
+        workspaceService.SafeModeService.Returns(safeModeService);
         workspaceService.ResourceService.Returns(resourceService);
         resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
+        _workspaceService = workspaceService;
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
@@ -1175,6 +1180,29 @@ public class PackageServiceTests
         };
 
         UseProjectConfig(config);
+    }
+
+    [Test]
+    public async Task RegisterPackagesAsync_OutsideSafeMode_WritesTheTidiedConfig()
+    {
+        UseProjectConfig(new ProjectConfig());
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        await _projectService.Received(1).ReconcileConfigAsync(Arg.Any<IReadOnlyList<EditorContribution>>(), true);
+    }
+
+    [Test]
+    public async Task RegisterPackagesAsync_InSafeMode_LeavesTheProjectFileUnchanged()
+    {
+        // A load in Safe Mode never rewrites the project file, even when every package loads.
+        UseProjectConfig(new ProjectConfig());
+        var safeModeService = TestSafeMode.Create(isActive: true);
+        _workspaceService.SafeModeService.Returns(safeModeService);
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        await _projectService.Received(1).ReconcileConfigAsync(Arg.Any<IReadOnlyList<EditorContribution>>(), false);
     }
 
     private void UseProjectConfig(ProjectConfig config)

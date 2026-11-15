@@ -30,9 +30,11 @@ public record DocumentResourceChangedMessage(ResourceKey OldResource, ResourceKe
 public record DocumentSaveCompletedMessage(ResourceKey DocumentResource);
 
 /// <summary>
-/// A message sent when a document view's content area receives focus.
+/// A message sent when the user is working in a document, so it should become the active one: its content takes
+/// the keyboard, a press lands on it, or its tab is clicked. A tab click also gives the keyboard to the content,
+/// which sends a second message.
 /// </summary>
-public record DocumentViewFocusedMessage(ResourceKey DocumentResource);
+public record DocumentViewFocusedMessage(ResourceKey DocumentResource, bool IsTabClick);
 
 /// <summary>
 /// A message sent when a document has been opened and its view created. Paired with

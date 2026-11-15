@@ -98,7 +98,10 @@ public class PackageRegistry
 
         var resolvedEditorFailures = new List<ResolvedEditorLoadFailure>();
         var resolvedEditorWarnings = new List<ResolvedEditorLoadFailure>();
-        var persistNormalizedConfig = failures.Count == 0;
+        // A load in Safe Mode never rewrites the project file.
+        var safeModeService = _workspaceWrapper.WorkspaceService.SafeModeService;
+        var persistNormalizedConfig = failures.Count == 0
+            && !safeModeService.IsActive;
         await ResolveResolvedEditorsAsync(persistNormalizedConfig, resolvedEditorFailures, resolvedEditorWarnings);
         ResolveBuiltInEditors();
 

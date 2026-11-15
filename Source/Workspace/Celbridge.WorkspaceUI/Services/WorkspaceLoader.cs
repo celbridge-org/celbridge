@@ -49,12 +49,26 @@ public class WorkspaceLoader
             return Result.Fail("Workspace service is not initialized");
         }
 
+        var safeModeService = workspaceService.SafeModeService;
+
         // Apply project-level feature flag overrides.
         var currentProject = _projectService.CurrentProject;
         if (currentProject is not null)
         {
             var projectFeatures = currentProject.Config.Features;
             _featureFlags.ApplyProjectOverrides(projectFeatures);
+
+            // Done before the packages register, because a flag decides whether a bundled package registers.
+            if (safeModeService.IsActive)
+            {
+                _featureFlags.TurnOffAllFeatures();
+                _loadReporter.RecordSafeModeCauses(safeModeService.Causes);
+            }
+
+            if (currentProject.ConfigLoadFailure is not null)
+            {
+                _loadReporter.RecordConfigLoadFailure(currentProject.ConfigLoadFailure);
+            }
 
             // Record entries the config parser skipped or degraded. The rest of the file applied, and
             // the load report is where the detail lands.
@@ -165,7 +179,28 @@ public class WorkspaceLoader
         // Written last, so the report covers everything the load recorded along the way.
         await WriteLoadReportAsync();
 
+        // Sent after the load report's notification, so the Safe Mode entry is listed first.
+        if (safeModeService.IsActive)
+        {
+            SendWorkspaceLoadedInSafeMode(safeModeService.Causes);
+        }
+
         return Result.Ok();
+    }
+
+    private void SendWorkspaceLoadedInSafeMode(IReadOnlyList<SafeModeCause> causes)
+    {
+        // The project file is at the project root, so the file name is the resource key.
+        var projectFileName = Path.GetFileName(_projectService.CurrentProject!.ProjectFilePath);
+        if (!ResourceKey.TryCreate(projectFileName, out var projectFileResource))
+        {
+            _logger.LogWarning($"The project file name is not a valid resource key: '{projectFileName}'");
+            return;
+        }
+
+        var messengerService = ServiceLocator.AcquireService<IMessengerService>();
+        var message = new WorkspaceLoadedInSafeModeMessage(causes, projectFileResource);
+        messengerService.Send(message);
     }
 
     // Sets the process working folder to the loaded project. Directory.SetCurrentDirectory
@@ -208,7 +243,7 @@ public class WorkspaceLoader
             // One notification for the whole load: everything it covers is in the report the action opens.
             // Raised after the flush, so that report is already on disk.
             var messengerService = ServiceLocator.AcquireService<IMessengerService>();
-            var message = new ProjectLoadNotificationMessage(reportSummary);
+            var message = new ProjectLoadIssuesReportedMessage(reportSummary);
             messengerService.Send(message);
         }
         catch (Exception ex)

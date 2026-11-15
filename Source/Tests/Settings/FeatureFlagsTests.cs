@@ -191,4 +191,49 @@ public class FeatureFlagsTests
     }
 
     #endregion
+
+    [Test]
+    public void TurnOffAllFeatures_TurnsOffADefaultAndAProjectOverride()
+    {
+        var overrides = new Dictionary<string, bool>
+        {
+            ["note-editor"] = true
+        };
+        _featureFlags.ApplyProjectOverrides(overrides);
+
+        _featureFlags.TurnOffAllFeatures();
+
+        _featureFlags.IsEnabled("webview-dev-tools").Should().BeFalse("the application turns the flag on by default");
+        _featureFlags.IsEnabled("note-editor").Should().BeFalse("the project turns the flag on");
+    }
+
+    [Test]
+    public void TurnOffAllFeatures_LeavesTheApplicationValues()
+    {
+        _featureFlags.TurnOffAllFeatures();
+
+        _featureFlags.GetApplicationValue("webview-dev-tools").Should().BeTrue();
+    }
+
+    [Test]
+    public void ClearProjectOverrides_TurnsTheFeaturesBackOn()
+    {
+        _featureFlags.TurnOffAllFeatures();
+
+        _featureFlags.ClearProjectOverrides();
+
+        _featureFlags.IsEnabled("webview-dev-tools").Should().BeTrue();
+    }
+
+    [Test]
+    public void TurnOffAllFeatures_SendsFeatureFlagsChangedMessage()
+    {
+        bool messageReceived = false;
+        var recipient = new object();
+        _messengerService.Register<FeatureFlagsChangedMessage>(recipient, (r, m) => messageReceived = true);
+
+        _featureFlags.TurnOffAllFeatures();
+
+        messageReceived.Should().BeTrue();
+    }
 }

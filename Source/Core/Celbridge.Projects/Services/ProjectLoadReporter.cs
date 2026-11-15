@@ -3,6 +3,7 @@ using Celbridge.Logging;
 using Celbridge.Packages;
 using Celbridge.Reports;
 using Celbridge.Utilities;
+using Celbridge.Workspace;
 
 namespace Celbridge.Projects.Services;
 
@@ -32,6 +33,8 @@ internal sealed class ProjectLoadReporter : IProjectLoadReporter
     private bool _loadSucceeded;
     private Result? _loadResult;
     private readonly List<ProjectConfigEntryError> _configEntryErrors = new();
+    private Result? _configLoadFailure;
+    private readonly List<SafeModeCause> _safeModeCauses = new();
     private PackageDiscoveryReport? _packageReport;
 
     public ProjectLoadReportSummary? WrittenReport { get; private set; }
@@ -59,6 +62,8 @@ internal sealed class ProjectLoadReporter : IProjectLoadReporter
         _loadSucceeded = false;
         _loadResult = null;
         _configEntryErrors.Clear();
+        _configLoadFailure = null;
+        _safeModeCauses.Clear();
         _packageReport = null;
         WrittenReport = null;
     }
@@ -80,6 +85,17 @@ internal sealed class ProjectLoadReporter : IProjectLoadReporter
     public void RecordConfigEntryErrors(IReadOnlyList<ProjectConfigEntryError> entryErrors)
     {
         _configEntryErrors.AddRange(entryErrors);
+    }
+
+    public void RecordConfigLoadFailure(Result configLoadFailure)
+    {
+        _configLoadFailure = configLoadFailure;
+    }
+
+    public void RecordSafeModeCauses(IReadOnlyList<SafeModeCause> causes)
+    {
+        _safeModeCauses.Clear();
+        _safeModeCauses.AddRange(causes);
     }
 
     public void RecordPackageReport(PackageDiscoveryReport report)
@@ -219,6 +235,11 @@ internal sealed class ProjectLoadReporter : IProjectLoadReporter
 
         items.Add(CreateFact("Report_ProjectLoad_Fact_Outcome", ResolveOutcomeText()));
 
+        if (_safeModeCauses.Count > 0)
+        {
+            items.Add(CreateFact("Report_ProjectLoad_Fact_SafeMode", ComposeSafeModeText()));
+        }
+
         if (_loadCompletedAt is DateTimeOffset completedAt
             && _loadStartedAt is DateTimeOffset startedAt)
         {
@@ -246,6 +267,18 @@ internal sealed class ProjectLoadReporter : IProjectLoadReporter
             : "Report_ProjectLoad_Outcome_Failed";
 
         return _localizerService.GetString(outcomeKey);
+    }
+
+    // Gives each cause of Safe Mode as a sentence.
+    private string ComposeSafeModeText()
+    {
+        var causeTexts = _safeModeCauses.Select(cause => cause switch
+        {
+            SafeModeCause.ConfigurationFailed => _localizerService.GetString("Report_ProjectLoad_SafeModeCause_ConfigurationFailed"),
+            _ => throw new ArgumentOutOfRangeException(nameof(cause), cause, "Unhandled Safe Mode cause")
+        });
+
+        return _localizerService.GetString("Report_ProjectLoad_Fact_SafeModeValue", string.Join(" ", causeTexts));
     }
 
     private ReportSection? BuildLoadIssuesSection()
@@ -277,6 +310,12 @@ internal sealed class ProjectLoadReporter : IProjectLoadReporter
         if (_migrationResult.OperationResult.IsFailure)
         {
             items.Add(CreateResultItem(ReportFindingCatalog.Project.MigrationFailed, _migrationResult.OperationResult));
+        }
+        else if (_configLoadFailure is not null)
+        {
+            // The project file passed the migration check and failed to parse. A failed migration also fails the
+            // configuration, and the finding above records it.
+            items.Add(CreateResultItem(ReportFindingCatalog.Project.ConfigParseFailed, _configLoadFailure));
         }
 
         if (_loadResult is { IsFailure: true } loadResult)

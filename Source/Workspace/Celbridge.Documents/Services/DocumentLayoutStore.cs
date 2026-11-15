@@ -6,7 +6,8 @@ namespace Celbridge.Documents.Services;
 
 /// <summary>
 /// Owns the workspace-settings round trip for the documents panel: which tabs are open, in which
-/// sections, and their saved editor state.
+/// sections, and their saved editor state. In Safe Mode the store restores the layout and writes nothing, so the
+/// next full load restores the same layout.
 /// </summary>
 public class DocumentLayoutStore
 {
@@ -51,6 +52,11 @@ public class DocumentLayoutStore
     {
         try
         {
+            if (IsSafeMode())
+            {
+                return;
+            }
+
             var propertyBag = GetPropertyBag();
 
             var openDocumentAddresses = DocumentsPanel.GetOpenDocuments()
@@ -78,6 +84,11 @@ public class DocumentLayoutStore
     {
         try
         {
+            if (IsSafeMode())
+            {
+                return;
+            }
+
             var propertyBag = GetPropertyBag();
 
             // Read the panel's active document directly. The gated IDocumentsService.ActiveDocument
@@ -122,6 +133,11 @@ public class DocumentLayoutStore
     {
         try
         {
+            if (IsSafeMode())
+            {
+                return;
+            }
+
             var propertyBag = GetPropertyBag();
 
             var areaSplitRatios = new Dictionary<string, StoredAreaSplitRatio>();
@@ -138,8 +154,16 @@ public class DocumentLayoutStore
         }
     }
 
-    // Throws once the workspace settings are gone, which the store paths catch: they run on the update
-    // loop and on teardown, where a late write is dropped rather than reported.
+    // In Safe Mode, a document fails to reopen when its editor is off. Another document can reopen in the code
+    // editor. Writing that layout would lose those documents and their editor state. Throws once the workspace
+    // is gone.
+    private bool IsSafeMode()
+    {
+        var safeModeService = _workspaceWrapper.WorkspaceService.SafeModeService;
+        return safeModeService.IsActive;
+    }
+
+    // Throws once the workspace settings are gone.
     private IWorkspacePropertyBag GetPropertyBag()
     {
         var propertyBag = _workspaceWrapper.WorkspaceService.WorkspaceSettings.PropertyBag;
@@ -152,6 +176,11 @@ public class DocumentLayoutStore
     {
         try
         {
+            if (IsSafeMode())
+            {
+                return;
+            }
+
             var propertyBag = GetPropertyBag();
 
             // Start with existing saved states so that editors that aren't ready yet
@@ -209,6 +238,11 @@ public class DocumentLayoutStore
     {
         try
         {
+            if (IsSafeMode())
+            {
+                return;
+            }
+
             var propertyBag = GetPropertyBag();
 
             var editorStates = await TryLoadPropertyAsync<Dictionary<string, StoredEditorState>>(propertyBag, DocumentEditorStatesKey)
@@ -276,8 +310,12 @@ public class DocumentLayoutStore
             await RestoreDocumentsAsync(storedLayout.OpenDocumentAddresses, storedLayout.EditorStates);
         }
 
-        // After the restore, so a document the last session left open keeps the place it was restored to.
-        await OpenOnLoadDocumentsAsync(documentShortcuts);
+        // After the restore, so a document the last session left open keeps the place it was restored to. Safe
+        // Mode turns the project's shortcuts off.
+        if (!IsSafeMode())
+        {
+            await OpenOnLoadDocumentsAsync(documentShortcuts);
+        }
 
         // A document whose file has gone since the last session leaves the section it was restoring into
         // empty, so fold away any split that ended up with nothing in it.

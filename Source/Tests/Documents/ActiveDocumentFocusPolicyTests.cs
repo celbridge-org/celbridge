@@ -5,8 +5,8 @@ namespace Celbridge.Tests.Documents;
 
 /// <summary>
 /// Unit tests for ActiveDocumentFocusPolicy, the rules deciding whether a focus report makes its document
-/// active, whether a change of active document carries the keyboard to that document, and whether a press
-/// inside a document hands the keyboard to it.
+/// active, whether the report comes from a document behind another tab, whether a change of active document
+/// carries the keyboard to that document, and whether a press inside a document hands the keyboard to it.
 /// </summary>
 [TestFixture]
 public class ActiveDocumentFocusPolicyTests
@@ -38,6 +38,40 @@ public class ActiveDocumentFocusPolicyTests
         var shouldActivate = ActiveDocumentFocusPolicy.ShouldActivate(ResourceKey.Empty, Document);
 
         shouldActivate.Should().BeFalse();
+    }
+
+    [Test]
+    public void AFocusReportFromADocumentBehindAnotherTab_IsFromAHiddenDocument()
+    {
+        var isFromHiddenDocument = ActiveDocumentFocusPolicy.IsFromHiddenDocument(
+            Document,
+            OtherDocument,
+            isTabClick: false);
+
+        isFromHiddenDocument.Should().BeTrue();
+    }
+
+    [Test]
+    public void AFocusReportFromTheShownDocument_IsNotFromAHiddenDocument()
+    {
+        var isFromHiddenDocument = ActiveDocumentFocusPolicy.IsFromHiddenDocument(
+            Document,
+            Document,
+            isTabClick: false);
+
+        isFromHiddenDocument.Should().BeFalse();
+    }
+
+    [Test]
+    public void AClickOnATabBehindAnotherTab_IsNotFromAHiddenDocument()
+    {
+        // The click brings the tab to the front.
+        var isFromHiddenDocument = ActiveDocumentFocusPolicy.IsFromHiddenDocument(
+            Document,
+            OtherDocument,
+            isTabClick: true);
+
+        isFromHiddenDocument.Should().BeFalse();
     }
 
     [Test]

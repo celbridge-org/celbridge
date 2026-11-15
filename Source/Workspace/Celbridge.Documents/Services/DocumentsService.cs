@@ -16,6 +16,7 @@ public class DocumentsService : IDocumentsService, IDisposable
     private readonly ILogger<DocumentsService> _logger;
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
+    private readonly IModuleService _moduleService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ITextBinarySniffer _textBinarySniffer;
     private readonly FileTypeHelper _fileTypeHelper;
@@ -79,6 +80,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         _messengerService = messengerService;
         _logger = logger;
         _commandService = commandService;
+        _moduleService = moduleService;
         _workspaceWrapper = workspaceWrapper;
         _textBinarySniffer = textBinarySniffer;
         _documentEditorRegistry = new DocumentEditorRegistry(_textBinarySniffer);
@@ -90,8 +92,6 @@ public class DocumentsService : IDocumentsService, IDisposable
         // The layout / active / section subscriptions are deferred to OnWorkspaceLoadedMessage so the
         // messages fired by RestorePanelState (which runs first) do not write back what was just read
         // out of settings.
-
-        RegisterModuleDocumentEditorFactories(moduleService);
 
         _fileTypeHelper = new FileTypeHelper();
         _fileTypeHelper.SetDocumentEditorRegistry(_documentEditorRegistry);
@@ -106,7 +106,6 @@ public class DocumentsService : IDocumentsService, IDisposable
             _workspaceWrapper,
             serviceProvider.GetRequiredService<ILogger<DocumentEditorPreferenceStore>>());
 
-        // Built after the registry is fully populated so the factory sees every editor it might choose.
         _viewFactory = new DocumentViewFactory(
             _documentEditorRegistry,
             _workspaceWrapper,
@@ -119,20 +118,33 @@ public class DocumentsService : IDocumentsService, IDisposable
             serviceProvider.GetRequiredService<ILogger<DocumentLayoutStore>>());
     }
 
-    private void RegisterModuleDocumentEditorFactories(IModuleService moduleService)
+    // In Safe Mode, an editor that is off never registers, so no lookup finds the editor. The Safe Mode state is
+    // read here, because the workspace wrapper has no workspace service yet when this service is created.
+    private void RegisterFactory(IDocumentEditorFactory factory)
     {
-        foreach (var module in moduleService.LoadedModules)
+        var safeModeService = _workspaceWrapper.WorkspaceService.SafeModeService;
+        if (!safeModeService.IsAllowed(factory.EditorId))
+        {
+            return;
+        }
+
+        var result = _documentEditorRegistry.RegisterFactory(factory);
+        if (result.IsFailure)
+        {
+            _logger.LogWarning(result, $"Failed to register the document editor factory for: {factory.EditorId}");
+        }
+    }
+
+    private void RegisterModuleDocumentEditorFactories()
+    {
+        foreach (var module in _moduleService.LoadedModules)
         {
             try
             {
                 var factories = module.CreateDocumentEditorFactories(_serviceProvider);
                 foreach (var factory in factories)
                 {
-                    var result = _documentEditorRegistry.RegisterFactory(factory);
-                    if (result.IsFailure)
-                    {
-                        _logger.LogWarning(result, $"Failed to register document editor factory");
-                    }
+                    RegisterFactory(factory);
                 }
             }
             catch (Exception ex)
@@ -144,14 +156,17 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     private void OnPackagesInitializedMessage(object recipient, PackagesInitializedMessage message)
     {
+        // Every editor registers here, once the Safe Mode state is readable. The module editors register first,
+        // then the declared editors in declaration order, then the built-ins. Registration order carries the
+        // editor resolution precedence.
+        RegisterModuleDocumentEditorFactories();
+
         try
         {
             var workspaceService = _workspaceWrapper.WorkspaceService;
             var packageService = workspaceService.PackageService;
             var localizationService = _serviceProvider.GetRequiredService<IPackageLocalizationService>();
 
-            // Declared editors register first, in declaration order, then the built-ins.
-            // Registration order carries the editor resolution precedence.
             foreach (var resolvedEditor in packageService.GetResolvedEditors())
             {
                 RegisterResolvedEditorFactory(resolvedEditor, localizationService);
@@ -177,12 +192,7 @@ public class DocumentsService : IDocumentsService, IDisposable
             // Register an editor factory for each resolved editor, including utilities: a utility's
             // factory is what lets it be docked into a document tab.
             var factory = new CustomDocumentViewFactory(_serviceProvider, resolvedEditor, localizationService);
-            var result = _documentEditorRegistry.RegisterFactory(factory);
-            if (result.IsFailure)
-            {
-                _logger.LogWarning(result,
-                    $"Failed to register custom editor factory for: {resolvedEditor.EditorId}");
-            }
+            RegisterFactory(factory);
         }
         catch (Exception ex)
         {
@@ -205,12 +215,20 @@ public class DocumentsService : IDocumentsService, IDisposable
 
         var validatedAssociations = new Dictionary<string, string>();
         var invalidEntries = new List<string>();
+        var safeModeService = _workspaceWrapper.WorkspaceService.SafeModeService;
 
         foreach (var (extension, editorIdValue) in config.Celbridge.EditorAssociations)
         {
             if (!EditorId.TryParse(editorIdValue, out var editorId))
             {
                 invalidEntries.Add($"'{extension}': '{editorIdValue}' is not a valid editor id");
+                continue;
+            }
+
+            // Safe Mode leaves the editor unregistered, so the entry is skipped rather than reported. The entry
+            // applies again at the next full load.
+            if (!safeModeService.IsAllowed(editorId))
+            {
                 continue;
             }
 
@@ -331,8 +349,8 @@ public class DocumentsService : IDocumentsService, IDisposable
         return documentView.OkResult();
     }
 
-    public DocumentViewType GetDocumentViewType(ResourceKey fileResource) =>
-        _fileTypeClassifier.GetDocumentViewType(fileResource);
+    public Task<EditorId> ResolveDefaultEditorIdAsync(ResourceKey fileResource) =>
+        _viewFactory.ResolveDefaultEditorIdAsync(fileResource);
 
     public IDocumentView? GetActiveDocumentView()
     {
@@ -664,7 +682,7 @@ public class DocumentsService : IDocumentsService, IDisposable
             Guard.IsTrue(infoResult.IsSuccess && infoResult.Value.Kind == StorageItemKind.File);
 
             // The new name may open with another editor, in which case the panel replaces the view.
-            var newEditorId = await _viewFactory.ResolveEditorIdAsync(newResource);
+            var newEditorId = await _viewFactory.ResolveDefaultEditorIdAsync(newResource);
 
             var changeResult = await DocumentsPanel.ChangeDocumentResource(oldResource, newResource, newResourcePath, newEditorId);
             if (changeResult.IsFailure)

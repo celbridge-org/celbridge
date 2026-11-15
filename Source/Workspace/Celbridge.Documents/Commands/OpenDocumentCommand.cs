@@ -60,12 +60,20 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
     {
         var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
 
-        var viewType = documentsService.GetDocumentViewType(FileResource);
-        if (viewType == DocumentViewType.UnsupportedFormat)
+        // The dialog shows when no editor can open the file. When a named editor can't open the file, the open
+        // fails with the general alert instead. In Safe Mode, a file has no editor when every editor for its type
+        // is off.
+        var defaultEditorId = await documentsService.ResolveDefaultEditorIdAsync(FileResource);
+        if (defaultEditorId.IsEmpty)
         {
             var extension = Path.GetExtension(FileResource);
             var title = _stringLocalizer.GetString("Documents_UnsupportedFileFormatTitle");
-            var message = _stringLocalizer.GetString("Documents_OpenDocumentFailedNotSupported", extension);
+
+            var safeModeService = _workspaceWrapper.WorkspaceService.SafeModeService;
+            var messageKey = safeModeService.IsActive
+                ? "Documents_OpenDocumentFailedSafeMode"
+                : "Documents_OpenDocumentFailedNotSupported";
+            var message = _stringLocalizer.GetString(messageKey, extension);
             var primaryButtonText = _stringLocalizer.GetString("ResourceTree_OpenApplication");
             var secondaryButtonText = _stringLocalizer.GetString("DialogButton_Cancel");
 

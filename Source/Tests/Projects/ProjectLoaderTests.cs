@@ -1,9 +1,12 @@
 using Celbridge.Automation;
+using Celbridge.Commands;
 using Celbridge.Dialog;
+using Celbridge.Documents;
 using Celbridge.Messaging;
 using Celbridge.Notifications;
 using Celbridge.Projects;
 using Celbridge.Projects.Services;
+using Celbridge.Reports;
 using Celbridge.Server;
 using Celbridge.Settings;
 using Celbridge.Tests.Helpers;
@@ -40,6 +43,7 @@ public class ProjectLoaderTests
     private IWorkspaceWrapper _workspaceWrapper = null!;
     private IAutomationService _automationService = null!;
     private IProjectLoadReporter _loadReporter = null!;
+    private ICommandService _commandService = null!;
     private ProjectLoader _projectLoader = null!;
 
     [SetUp]
@@ -54,6 +58,7 @@ public class ProjectLoaderTests
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _automationService = Substitute.For<IAutomationService>();
         _loadReporter = Substitute.For<IProjectLoadReporter>();
+        _commandService = Substitute.For<ICommandService>();
 
         // Another project is open in this instance, and this instance has the project's lock. The project service
         // tracks the current project as the loader and the unloader change it.
@@ -100,6 +105,7 @@ public class ProjectLoaderTests
             _settingsService,
             _workspaceWrapper,
             Substitute.For<IMessengerService>(),
+            _commandService,
             _automationService,
             CreateStringLocalizer(),
             _loadReporter);
@@ -385,7 +391,7 @@ public class ProjectLoaderTests
     public async Task ADeclinedUpgrade_LeavesTheCurrentProjectOpenAndReleasesTheLock()
     {
         StubMigration(MigrationStatus.UpgradeRequired, "1.2.0", "1.3.0");
-        StubUpgradeAnswer(false);
+        StubConfirmationAnswer(false);
 
         var result = await _projectLoader.LoadProjectAsync(ProjectFilePath, ProjectLoadOrigin.RunningWindow);
 
@@ -401,7 +407,7 @@ public class ProjectLoaderTests
     public async Task ADeclinedUpgrade_WritesItsReportApartFromTheCurrentLoad()
     {
         StubMigration(MigrationStatus.UpgradeRequired, "1.2.0", "1.3.0");
-        StubUpgradeAnswer(false);
+        StubConfirmationAnswer(false);
 
         await _projectLoader.LoadProjectAsync(ProjectFilePath, ProjectLoadOrigin.RunningWindow);
 
@@ -413,7 +419,7 @@ public class ProjectLoaderTests
     public async Task AConfirmedUpgrade_ClosesTheCurrentProjectBeforeUpgrading()
     {
         StubMigration(MigrationStatus.UpgradeRequired, "1.2.0", "1.3.0");
-        StubUpgradeAnswer(true);
+        StubConfirmationAnswer(true);
         _migrationService.PerformMigrationUpgradeAsync(ProjectFilePath).Returns(MigrationResult.Success());
 
         var result = await _projectLoader.LoadProjectAsync(ProjectFilePath, ProjectLoadOrigin.RunningWindow);
@@ -532,6 +538,131 @@ public class ProjectLoaderTests
         _projectLockService.HeldProjectFiles.Should().Contain(CurrentProjectFilePath);
     }
 
+    [Test]
+    public async Task AFailedUpgrade_ShowsItsSafeModeAlertOnceTheWorkspaceHasLoaded()
+    {
+        StubMigration(MigrationStatus.UpgradeRequired, "1.2.0", "1.3.0");
+
+        // The user confirms the upgrade, and closes the Safe Mode alert.
+        StubConfirmationAnswer(false);
+        _dialogService.ShowConfirmationDialogAsync("Project Upgrade Required", Arg.Any<string>(), Arg.Any<ConfirmationDialogOptions?>())
+            .Returns(Result<bool>.Ok(true));
+        _migrationService.PerformMigrationUpgradeAsync(ProjectFilePath)
+            .Returns(MigrationResult.FromStatus(MigrationStatus.Failed, Result.Fail("The upgrade failed")));
+        var safeModeService = TestSafeMode.Create(isActive: true);
+        _workspaceWrapper.WorkspaceService.SafeModeService.Returns(safeModeService);
+
+        var result = await _projectLoader.LoadProjectAsync(ProjectFilePath, ProjectLoadOrigin.RunningWindow);
+
+        result.IsSuccess.Should().BeTrue();
+        Received.InOrder(() =>
+        {
+            _applicationShell.ShowWorkspaceAsync(Arg.Any<CancellationTokenSource>());
+            _dialogService.ShowConfirmationDialogAsync(
+                "Project Upgrade Failed",
+                Arg.Is<string>(message => message.Contains("'Acme'") && message.Contains("Safe Mode")),
+                Arg.Is<ConfirmationDialogOptions?>(options => IsSafeModeAlert(options)));
+        });
+        await _dialogService.DidNotReceive().ShowConfirmationDialogAsync(
+            "Project Configuration Error",
+            Arg.Any<string>(),
+            Arg.Any<ConfirmationDialogOptions?>());
+    }
+
+    [TestCase(MigrationStatus.InvalidConfig)]
+    [TestCase(MigrationStatus.Complete)]
+    public async Task AConfigurationError_ShowsItsSafeModeAlertOnceTheWorkspaceHasLoaded(MigrationStatus migrationStatus)
+    {
+        // A configuration error fails the migration check. A project file that fails to parse passes the check
+        // and fails as the project loads.
+        StubMigration(migrationStatus, "1.3.0", "1.3.0");
+        StubConfirmationAnswer(false);
+        var safeModeService = TestSafeMode.Create(isActive: true);
+        _workspaceWrapper.WorkspaceService.SafeModeService.Returns(safeModeService);
+
+        var result = await _projectLoader.LoadProjectAsync(ProjectFilePath, ProjectLoadOrigin.RunningWindow);
+
+        result.IsSuccess.Should().BeTrue();
+        Received.InOrder(() =>
+        {
+            _applicationShell.ShowWorkspaceAsync(Arg.Any<CancellationTokenSource>());
+            _dialogService.ShowConfirmationDialogAsync(
+                "Project Configuration Error",
+                Arg.Is<string>(message => message.Contains("'Acme'") && message.Contains("Safe Mode")),
+                Arg.Is<ConfirmationDialogOptions?>(options => IsSafeModeAlert(options)));
+        });
+    }
+
+    [Test]
+    public async Task ChoosingViewLoadReport_OpensTheReportWithTheLoadOutcome()
+    {
+        StubMigration(MigrationStatus.InvalidConfig, "1.3.0", "1.3.0");
+        StubConfirmationAnswer(true);
+        var safeModeService = TestSafeMode.Create(isActive: true);
+        _workspaceWrapper.WorkspaceService.SafeModeService.Returns(safeModeService);
+
+        var reportResource = new ResourceKey("logs:reports/project-load.report");
+        _loadReporter.FlushAsync().Returns(new ProjectLoadReportSummary(reportResource, ReportSeverity.Error, 1));
+        Action<IOpenDocumentCommand>? configure = null;
+        _commandService.Execute(
+            Arg.Do<Action<IOpenDocumentCommand>>(action => configure = action),
+            Arg.Any<string>(),
+            Arg.Any<int>());
+
+        await _projectLoader.LoadProjectAsync(ProjectFilePath, ProjectLoadOrigin.RunningWindow);
+
+        // The load records its outcome, then writes the report, then opens the report. The load writes the report
+        // again as the load ends.
+        Received.InOrder(() =>
+        {
+            _loadReporter.RecordLoadOutcome(true, Arg.Any<Result?>());
+            _loadReporter.FlushAsync();
+            _commandService.Execute(Arg.Any<Action<IOpenDocumentCommand>>(), Arg.Any<string>(), Arg.Any<int>());
+            _loadReporter.FlushAsync();
+        });
+
+        configure.Should().NotBeNull();
+        var openCommand = Substitute.For<IOpenDocumentCommand>();
+        configure!(openCommand);
+        openCommand.FileResource.Should().Be(reportResource);
+    }
+
+    [Test]
+    public async Task ClosingTheSafeModeAlert_OpensNoReport()
+    {
+        StubMigration(MigrationStatus.InvalidConfig, "1.3.0", "1.3.0");
+        StubConfirmationAnswer(false);
+        var safeModeService = TestSafeMode.Create(isActive: true);
+        _workspaceWrapper.WorkspaceService.SafeModeService.Returns(safeModeService);
+
+        await _projectLoader.LoadProjectAsync(ProjectFilePath, ProjectLoadOrigin.RunningWindow);
+
+        _commandService.DidNotReceive().Execute(
+            Arg.Any<Action<IOpenDocumentCommand>>(),
+            Arg.Any<string>(),
+            Arg.Any<int>());
+    }
+
+    [Test]
+    public async Task AProjectOutsideSafeMode_ShowsNoAlert()
+    {
+        var safeModeService = TestSafeMode.Create(isActive: false);
+        _workspaceWrapper.WorkspaceService.SafeModeService.Returns(safeModeService);
+
+        var result = await _projectLoader.LoadProjectAsync(ProjectFilePath, ProjectLoadOrigin.RunningWindow);
+
+        result.IsSuccess.Should().BeTrue();
+        await _dialogService.DidNotReceiveWithAnyArgs().ShowAlertDialogAsync(default!, default!);
+        await _dialogService.DidNotReceiveWithAnyArgs().ShowConfirmationDialogAsync(default!, default!, default);
+    }
+
+    private static bool IsSafeModeAlert(ConfirmationDialogOptions? options)
+    {
+        return options is not null
+            && options.PrimaryButtonText == "View Load Report"
+            && options.SecondaryButtonText == "Close";
+    }
+
     private static IProject CreateProject(string projectFilePath)
     {
         var project = Substitute.For<IProject>();
@@ -556,7 +687,7 @@ public class ProjectLoaderTests
         _migrationService.CheckMigrationAsync(ProjectFilePath).Returns(migrationResult);
     }
 
-    private void StubUpgradeAnswer(bool confirmed)
+    private void StubConfirmationAnswer(bool confirmed)
     {
         _dialogService.ShowConfirmationDialogAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<ConfirmationDialogOptions?>())
             .Returns(Result<bool>.Ok(confirmed));
