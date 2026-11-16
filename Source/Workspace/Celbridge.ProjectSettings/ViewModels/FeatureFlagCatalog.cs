@@ -32,6 +32,7 @@ internal static class FeatureFlagCatalog
         new("ProjectSettings_FeatureFlagGroup_Documents_Title", new List<FeatureFlagDescriptor>
         {
             new(FeatureFlagConstants.NoteEditor, "ProjectSettings_FeatureFlag_NoteEditor_Title", "ProjectSettings_FeatureFlag_NoteEditor_Description"),
+            new(FeatureFlagConstants.EditorZoomControls, "ProjectSettings_FeatureFlag_EditorZoomControls_Title", "ProjectSettings_FeatureFlag_EditorZoomControls_Description"),
         }),
     };
 }

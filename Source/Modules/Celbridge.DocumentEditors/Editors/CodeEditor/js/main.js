@@ -9,12 +9,14 @@ import celbridge from '/assets/celbridge-client/celbridge.js';
 import { EditorController } from './editor-controller.js';
 import { ViewMode } from './view-mode-controller.js';
 import { PreviewPipeline } from './preview-pipeline.js';
+import { ZoomController } from './zoom-controller.js';
 import { initializeToolbar, pressToolbarReloadButton, setToolbarReadOnly } from './toolbar.js';
 import { initializeLanguageMap, getLanguageForFile } from './language-mapper.js';
 import { log, warn } from './logger.js';
 
 let editorController = null;
 let previewPipeline = null;
+let zoomController = null;
 
 // Configure AMD loader and load Monaco
 require.config({ paths: { 'vs': './min/vs' } });
@@ -100,6 +102,7 @@ function parseOptions() {
         previewRendererUrl: resolveRendererUrl(raw.preview_renderer_url),
         initialViewMode: raw.initial_view_mode || ViewMode.Source,
         enableSnippetToolbar: raw.enable_snippet_toolbar === 'true',
+        enableZoomControls: raw.enable_zoom_controls === 'true',
         snippetSet: raw.snippet_set || null
     };
 }
@@ -155,11 +158,21 @@ async function initialize() {
         });
     }
 
+    if (options.enableZoomControls) {
+        zoomController = new ZoomController({ editorController, previewPipeline });
+        editorController.addZoomKeybindings({
+            zoomIn: () => zoomController.zoomIn(),
+            zoomOut: () => zoomController.zoomOut(),
+            reset: () => zoomController.reset()
+        });
+    }
+
     initializeToolbar({
         showViewMode: previewPipeline !== null,
         showSnippets: options.enableSnippetToolbar,
         snippetSet: options.snippetSet,
         viewModeController: previewPipeline?.viewModeController ?? null,
+        zoomController,
         onReloadPreview: () => previewPipeline?.reload(),
         onInsertSnippet: (text) => editorController.insertText(text)
     });
@@ -283,6 +296,10 @@ function captureState() {
         Object.assign(state, previewPipeline.captureState());
     }
 
+    if (zoomController) {
+        state.zoom = zoomController.getZoom();
+    }
+
     return JSON.stringify(state);
 }
 
@@ -298,6 +315,10 @@ function restoreState(stateJson) {
         // so the editor's scroll percentage is applied against the final layout.
         if (previewPipeline) {
             previewPipeline.restoreState(state);
+        }
+
+        if (zoomController && typeof state.zoom === 'number') {
+            zoomController.setZoom(state.zoom);
         }
 
         if (typeof state.editorScrollPercentage === 'number') {
